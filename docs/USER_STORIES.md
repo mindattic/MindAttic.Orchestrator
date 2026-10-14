@@ -37,3 +37,24 @@ _Nothing recorded yet._
 | MAO-T15 | 2026-10-13 | fix | open | First refresh reads 7 days of transcripts (~3s); persist reader offsets and per-file usage between runs so startup is instant | — |
 | MAO-T16 | 2026-10-13 | chore | open | Act on audit findings: move statusline.ps1 (25 repos), quickload-on-do.ps1 (22 identical + drifted copies) and tools/build-readme.ps1 (20) into mindattic-agent-standard and have install.ps1 point repos at the shared copy | — |
 | MAO-T17 | 2026-10-13 | feature | open | Audit: schedule a daily run and toast when new drift or duplication appears, instead of only on demand | — |
+| MAO-T18 | 2026-10-13 | feature | open | **(top priority)** Adaptive self-throttle: as burn rate projects hitting the block or weekly limit before it resets, automatically scale back (fewer concurrent auto-dispatch slots, longer interval, defer low-priority tickets) so spend eases down and lands at the reset instead of hitting a hard wall mid-session | — |
+| MAO-T19 | 2026-10-13 | feature | open | Per-repo / per-provider budget caps, so one greedy repo or provider can't exhaust the shared block budget before others get a turn | — |
+| MAO-T20 | 2026-10-13 | feature | open | Pre-dispatch cost projection: estimate a ticket's likely token cost against remaining budget before opening the tab, so you know upfront if it fits | — |
+| MAO-T21 | 2026-10-13 | feature | open | Stuck/looping session watchdog: detect a transcript that's growing but not progressing (repeated identical tool calls, no new files touched) and surface it, distinct from a stale/abandoned assignment (MAO-T10) | — |
+| MAO-T22 | 2026-10-13 | feature | open | Auto-suggest splitting a ticket whose estimated cost exceeds remaining budget, instead of dispatching it to run out of room mid-task | — |
+| MAO-T23 | 2026-10-13 | feature | open | Learn actual tokens burned per ticket type/repo over time to improve cost estimates (feeds MAO-T20 and MAO-T22) | — |
+| MAO-T24 | 2026-10-13 | feature | open | Priority budget reservation: let a ticket "reserve" a slice of the remaining block budget so background auto-dispatch can't spend it first | — |
+| MAO-T25 | 2026-10-13 | feature | open | Mobile push / webhook notifications for "needs you" and budget-warn events, so alerts aren't tied to the desktop toast | — |
+| MAO-T26 | 2026-10-13 | feature | open | Minimal always-on-top status HUD and system tray quick actions (pause auto-dispatch, dispatch next proposal, jump to a waiting repo) without opening the full dashboard | — |
+| MAO-T27 | 2026-10-13 | feature | open | Quiet hours / do-not-disturb windows that pause auto-dispatch on a schedule (overnight, during meetings) | — |
+| MAO-T28 | 2026-10-13 | feature | open | Ticket dependency graph: a ticket can declare "blocked by" another ticket ID so the scheduler won't propose it before its blocker closes | — |
+| MAO-T29 | 2026-10-13 | feature | open | Conflict-risk flag when two open tickets touch code the Audit's duplication detector already linked, before dispatching them concurrently | — |
+| MAO-T30 | 2026-10-13 | feature | open | One-click replay/diff viewer for a closed ticket: its transcript plus the resulting diff, without digging through Launcher history | — |
+| MAO-T31 | 2026-10-13 | feature | open | 7-day budget burndown chart: projected exhaustion date at current pace vs. the weekly reset, not just the current 5-hour block | — |
+| MAO-T32 | 2026-10-13 | feature | open | Cost attribution report: tokens spent by repo, ticket type and week, exportable | — |
+| MAO-T33 | 2026-10-13 | feature | open | Flag a closed ticket that reopened soon after, or closed with no Ref/test cited, as a possible incomplete fix | — |
+| MAO-T34 | 2026-10-13 | feature | open | Configurable per-repo concurrency: some repos can run more than one worktree session at once instead of always one per repo | — |
+| MAO-T35 | 2026-10-13 | feature | open | "While you were away" dashboard briefing: one auto-generated paragraph on open summarizing what happened and what's waiting | — |
+| MAO-T36 | 2026-10-13 | chore | open | Stale ticket grooming: flag open tickets with no activity for N days for re-prioritization or closing as wont-do | — |
+| MAO-T37 | 2026-10-13 | feature | open | External trigger support: a CI failure or GitHub issue webhook can file a ticket into USER_STORIES.md and the queue automatically | — |
+| MAO-T38 | 2026-10-13 | feature | open | Dispatch dry-run: simulate what auto-dispatch would do right now (which tickets, which repos) without actually opening tabs, for trying out settings safely | — |
