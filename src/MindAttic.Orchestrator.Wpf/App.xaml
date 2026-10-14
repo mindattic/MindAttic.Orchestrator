@@ -1,0 +1,154 @@
+<Application x:Class="MindAttic.Orchestrator.Wpf.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/MindAttic.Components.Wpf;component/Theme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <BooleanToVisibilityConverter x:Key="Visible" />
+
+            <!-- Section label: small caps-style heading used across the window. -->
+            <Style x:Key="SectionLabel" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource McMuted}" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Margin" Value="0,18,0,8" />
+            </Style>
+
+            <Style x:Key="Muted" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource McMuted}" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            </Style>
+
+            <!-- A summary card in the header; clicking one focuses the grid on that group. -->
+            <Style x:Key="StatCard" TargetType="Button" BasedOn="{StaticResource McTileButton}">
+                <Setter Property="Height" Value="74" />
+                <Setter Property="MinWidth" Value="150" />
+                <Setter Property="Margin" Value="0,0,10,0" />
+                <Setter Property="Padding" Value="14,0,18,0" />
+            </Style>
+
+            <!-- A repo tile: McTileButton with room for a state bar, two lines and a token count. -->
+            <Style x:Key="RepoTile" TargetType="Button" BasedOn="{StaticResource McTileButton}">
+                <Setter Property="Width" Value="256" />
+                <Setter Property="Height" Value="78" />
+                <Setter Property="Margin" Value="0,0,10,10" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                        <Setter Property="BorderBrush" Value="{StaticResource McFocus}" />
+                        <Setter Property="BorderThickness" Value="2" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- A gently pulsing dot for agents that are mid-turn. -->
+            <Style x:Key="PulseDot" TargetType="Ellipse">
+                <Setter Property="Width" Value="8" />
+                <Setter Property="Height" Value="8" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsWorking}" Value="True">
+                        <DataTrigger.EnterActions>
+                            <BeginStoryboard x:Name="Pulse">
+                                <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1" To="0.25" Duration="0:0:0.9" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </DataTrigger.EnterActions>
+                        <DataTrigger.ExitActions>
+                            <StopStoryboard BeginStoryboardName="Pulse" />
+                        </DataTrigger.ExitActions>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="Card" TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource McSurface}" />
+                <Setter Property="BorderBrush" Value="{StaticResource McChromeBorder}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="Padding" Value="12,10" />
+                <Setter Property="Margin" Value="0,0,0,8" />
+            </Style>
+
+            <!-- A horizontal single-choice pill row (ListBox) that matches the dark chrome. -->
+            <Style x:Key="PillChoice" TargetType="ListBox">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+                <Setter Property="ItemsPanel">
+                    <Setter.Value>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Setter Property="ItemContainerStyle">
+                    <Setter.Value>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Foreground" Value="{StaticResource McText}" />
+                            <Setter Property="Cursor" Value="Hand" />
+                            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="Bd" Background="{StaticResource McChrome}" BorderBrush="{StaticResource McControlBorder}"
+                                                BorderThickness="1" CornerRadius="14" Padding="14,5" Margin="0,0,6,6">
+                                            <ContentPresenter />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource McHover}" />
+                                            </Trigger>
+                                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource McFocus}" />
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource McAccent}" />
+                                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource McAccent}" />
+                                                <Setter Property="Foreground" Value="White" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="PillToggle" TargetType="ToggleButton">
+                <Setter Property="Foreground" Value="{StaticResource McText}" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="Bd" Background="{StaticResource McSurface}" BorderBrush="{StaticResource McControlBorder}"
+                                    BorderThickness="1" CornerRadius="14" Padding="14,5">
+                                <ContentPresenter VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource McHover}" />
+                                </Trigger>
+                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource McFocus}" />
+                                </Trigger>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource McAccent}" />
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource McAccent}" />
+                                    <Setter Property="Foreground" Value="White" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

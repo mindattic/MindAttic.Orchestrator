@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>MindAttic.Orchestrator.Wpf</RootNamespace>
+    <AssemblyName>MindAttic.Orchestrator</AssemblyName>
+    <!-- HOUSE-LAW-1: whole-number versions only; bump the major. -->
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MindAttic.Components.Wpf" Version="5.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MindAttic.Orchestrator.Core\MindAttic.Orchestrator.Core.csproj" />
+  </ItemGroup>
+
+</Project>
