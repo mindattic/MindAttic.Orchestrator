@@ -38,6 +38,14 @@ public sealed record BudgetStatus(
         : BudgetLevel.Ok;
 
     public long BlockRemaining => Math.Max(0, BlockLimit - (CurrentBlock?.Usage.Fresh ?? 0));
+
+    /// <summary>Where <see cref="Week"/> starts counting: the last weekly reset, or 7 days ago.</summary>
+    public DateTime WeekStartUtc { get; init; }
+
+    /// <summary>The next weekly reset; null when the week is a rolling 7 days.</summary>
+    public DateTime? WeekResetUtc { get; init; }
+
+    public bool WeekIsRolling => WeekResetUtc is null;
 }
 
 /// <summary>
@@ -73,7 +81,8 @@ public static class BudgetCalculator
         return blocks;
     }
 
-    public static BudgetStatus Compute(IReadOnlyList<UsageEvent> events, OrchestratorSettings settings, DateTime nowUtc, DateTime startOfTodayUtc)
+    public static BudgetStatus Compute(IReadOnlyList<UsageEvent> events, OrchestratorSettings settings, DateTime nowUtc, DateTime startOfTodayUtc,
+        TimeZoneInfo? zone = null)
     {
         var blocks = Blocks(events);
         var current = blocks.Count > 0 && blocks[^1].IsActive(nowUtc) ? blocks[^1] : null;
@@ -86,7 +95,14 @@ public static class BudgetCalculator
         var limit = settings.BlockBudget ?? (peak > 0 ? peak : currentFresh);
         var blockPercent = limit > 0 ? 100.0 * currentFresh / limit : 0;
 
-        var weekStart = nowUtc - TimeSpan.FromDays(7);
+        // A configured reset day/time means the week restarts when Claude's does; otherwise it rolls.
+        // An unparseable setting falls back to rolling rather than failing the whole refresh.
+        DateTime weekStart;
+        DateTime? weekReset = null;
+        if (WeeklyReset.TryParse(settings.WeeklyReset, out var reset) && reset is { } r)
+            (weekStart, weekReset) = r.Window(nowUtc, zone);
+        else
+            weekStart = nowUtc - TimeSpan.FromDays(7);
         var week = Sum(events.Where(e => e.AtUtc >= weekStart));
         double? weeklyPercent = settings.WeeklyBudget is > 0 ? 100.0 * week.Fresh / settings.WeeklyBudget.Value : null;
 
@@ -109,7 +125,11 @@ public static class BudgetCalculator
         }
 
         return new BudgetStatus(current, limit, isPeak, blockPercent, Sum(events.Where(e => e.AtUtc >= startOfTodayUtc)),
-            week, settings.WeeklyBudget, weeklyPercent, perHour, projected, settings.WarnPercent);
+            week, settings.WeeklyBudget, weeklyPercent, perHour, projected, settings.WarnPercent)
+        {
+            WeekStartUtc = weekStart,
+            WeekResetUtc = weekReset,
+        };
     }
 
     private static TokenUsage Sum(IEnumerable<UsageEvent> events) =>

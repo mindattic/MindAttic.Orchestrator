@@ -9,7 +9,7 @@ public sealed class SettingsViewModel : ObservableObject
 {
     private readonly JsonStore store;
     private readonly Action saved;
-    private string blockBudget = "", weeklyBudget = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "";
+    private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "";
     private bool autoDispatch;
 
     public SettingsViewModel(JsonStore store, Action saved)
@@ -22,6 +22,7 @@ public sealed class SettingsViewModel : ObservableObject
 
     public string BlockBudget { get => blockBudget; set => Set(ref blockBudget, value); }
     public string WeeklyBudget { get => weeklyBudget; set => Set(ref weeklyBudget, value); }
+    public string WeeklyReset { get => weeklyReset; set => Set(ref weeklyReset, value); }
     public string WarnPercent { get => warnPercent; set => Set(ref warnPercent, value); }
     public string MaxSessions { get => maxSessions; set => Set(ref maxSessions, value); }
     public string Provider { get => provider; set => Set(ref provider, value); }
@@ -36,6 +37,7 @@ public sealed class SettingsViewModel : ObservableObject
         var s = store.LoadSettings();
         BlockBudget = s.BlockBudget is { } b ? Formatting.Tokens(b) : "";
         WeeklyBudget = s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "";
+        WeeklyReset = Budget.WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } reset ? reset.Display : "";
         WarnPercent = s.WarnPercent.ToString(CultureInfo.InvariantCulture);
         MaxSessions = s.MaxConcurrentSessions.ToString(CultureInfo.InvariantCulture);
         Provider = s.DefaultProvider;
@@ -47,13 +49,14 @@ public sealed class SettingsViewModel : ObservableObject
     {
         if (!TryTokens(BlockBudget, out var block)) { Error = "5-hour budget: a number like 20M, 500k or blank."; return; }
         if (!TryTokens(WeeklyBudget, out var weekly)) { Error = "Weekly budget: a number like 150M or blank."; return; }
+        if (!Budget.WeeklyReset.TryParse(WeeklyReset, out var reset)) { Error = "Week resets: a day and a time like Mon 9:00 AM, or blank for a rolling 7 days."; return; }
         if (!int.TryParse(WarnPercent, out var warn) || warn is < 1 or > 100) { Error = "Warn at: 1 to 100."; return; }
         if (!int.TryParse(MaxSessions, out var max) || max is < 1 or > 50) { Error = "Max sessions: 1 to 50."; return; }
 
         var s = store.LoadSettings();
         store.SaveSettings(s with
         {
-            BlockBudget = block, WeeklyBudget = weekly, WarnPercent = warn, MaxConcurrentSessions = max,
+            BlockBudget = block, WeeklyBudget = weekly, WeeklyReset = reset?.ToString(), WarnPercent = warn, MaxConcurrentSessions = max,
             DefaultProvider = Provider, AutoDispatch = AutoDispatch,
         });
         Load();

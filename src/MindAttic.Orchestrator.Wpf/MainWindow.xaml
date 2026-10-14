@@ -749,9 +749,14 @@
                     <TextBlock Text="Per 5-hour block" Margin="0,4,0,4" />
                     <TextBox Style="{StaticResource McTextBox}" Height="32" Text="{Binding BlockBudget, UpdateSourceTrigger=PropertyChanged}"
                              AutomationProperties.Name="Budget per 5-hour block" />
-                    <TextBlock Text="Per rolling 7 days" Margin="0,10,0,4" />
+                    <TextBlock Text="Per week" Margin="0,10,0,4" />
                     <TextBox Style="{StaticResource McTextBox}" Height="32" Text="{Binding WeeklyBudget, UpdateSourceTrigger=PropertyChanged}"
                              AutomationProperties.Name="Weekly budget" />
+                    <TextBlock Text="Week resets (local time)" Margin="0,10,0,4" />
+                    <TextBox Style="{StaticResource McTextBox}" Height="32" Width="160" HorizontalAlignment="Left"
+                             Text="{Binding WeeklyReset, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Weekly reset day and time" />
+                    <TextBlock Text="When Claude's weekly limit restarts, e.g. Mon 9:00 AM or Tue 5pm. Blank counts a rolling 7 days."
+                               Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
                     <TextBlock Text="Warn and hold new work at (%)" Margin="0,10,0,4" />
                     <TextBox Style="{StaticResource McTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
                              Text="{Binding WarnPercent, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Warn percent" />

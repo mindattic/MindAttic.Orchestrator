@@ -201,7 +201,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
 
         AnsiConsole.MarkupLine($"settings: {Markup.Escape(Path.Combine(store.Directory, "settings.json"))}");
         AnsiConsole.MarkupLine($"  max sessions {s.MaxConcurrentSessions} · auto-dispatch {(s.AutoDispatch ? "[green]on[/]" : "off")} · provider {s.DefaultProvider}");
-        AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (peak-relative)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none")} · warn at {s.WarnPercent}%");
+        AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (peak-relative)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display : "rolling 7 days")} · warn at {s.WarnPercent}%");
         AnsiConsole.MarkupLine($"  worktrees under {Markup.Escape(s.WorktreeRoot)} · {s.Priorities.Count} manual priorities");
         return 0;
     }

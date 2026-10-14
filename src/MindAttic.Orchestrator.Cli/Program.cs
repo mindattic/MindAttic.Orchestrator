@@ -149,8 +149,12 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
         public long? Block { get; init; }
 
         [CommandOption("--weekly <TOKENS>")]
-        [Description("Uncached tokens per rolling 7 days (0 clears it).")]
+        [Description("Uncached tokens per week (0 clears it).")]
         public long? Weekly { get; init; }
+
+        [CommandOption("--weekly-reset <WHEN>")]
+        [Description("When the week resets, local time: \"Mon 9:00\", \"Tue 5pm\". \"none\" makes the week a rolling 7 days.")]
+        public string? WeeklyReset { get; init; }
 
         [CommandOption("--warn <PERCENT>")]
         public int? Warn { get; init; }
@@ -159,7 +163,13 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
     public override int Execute(CommandContext context, Settings settings)
     {
         var store = new JsonStore();
-        if (settings.Block is not null || settings.Weekly is not null || settings.Warn is not null)
+        WeeklyReset? reset = null;
+        if (settings.WeeklyReset is not null && !WeeklyReset.TryParse(settings.WeeklyReset, out reset))
+        {
+            AnsiConsole.MarkupLine($"[red]Couldn't read \"{Markup.Escape(settings.WeeklyReset)}\"; use a day and a time, like \"Mon 9:00\" or \"Tue 5pm\".[/]");
+            return 1;
+        }
+        if (settings.Block is not null || settings.Weekly is not null || settings.Warn is not null || settings.WeeklyReset is not null)
         {
             var s = store.LoadSettings();
             store.SaveSettings(s with
@@ -167,6 +177,7 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
                 BlockBudget = settings.Block is { } bl ? (bl > 0 ? bl : null) : s.BlockBudget,
                 WeeklyBudget = settings.Weekly is { } w ? (w > 0 ? w : null) : s.WeeklyBudget,
                 WarnPercent = settings.Warn ?? s.WarnPercent,
+                WeeklyReset = settings.WeeklyReset is null ? s.WeeklyReset : reset?.ToString(),
             });
         }
 
@@ -175,9 +186,17 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
         if (b.CurrentBlock is { } block)
             AnsiConsole.MarkupLine($"  block {block.StartUtc.ToLocalTime():t}–{block.EndUtc.ToLocalTime():t} · burning {Format.Tokens((long)b.FreshPerHour)}/h" +
                 (b.ProjectedLimitUtc is { } p ? $" · [red]limit at this pace: {p.ToLocalTime():t}[/]" : ""));
-        AnsiConsole.MarkupLine($"  today {Format.Tokens(b.Today.Fresh)} uncached ({Format.Tokens(b.Today.CacheRead)} cache reads) · 7 days {Format.Tokens(b.Week.Fresh)} uncached" +
-            (b.WeeklyPercent is { } wp ? $" ({wp:0}% of weekly)" : ""));
+        AnsiConsole.MarkupLine($"  today {Format.Tokens(b.Today.Fresh)} uncached ({Format.Tokens(b.Today.CacheRead)} cache reads)");
+        AnsiConsole.MarkupLine($"  {WeekLine(b)}");
         return 0;
+    }
+
+    public static string WeekLine(BudgetStatus b)
+    {
+        var used = $"{Format.Tokens(b.Week.Fresh)} uncached" + (b.WeeklyPercent is { } wp ? $" ({wp:0}% of weekly)" : "");
+        return b.WeekResetUtc is { } next
+            ? $"this week (since {b.WeekStartUtc.ToLocalTime():ddd h:mm tt}) {used} · resets {next.ToLocalTime():ddd h:mm tt}"
+            : $"last 7 days {used} [grey]· rolling: set the real reset with --weekly-reset \"Mon 9:00\"[/]";
     }
 
     public static string Line(BudgetStatus b)

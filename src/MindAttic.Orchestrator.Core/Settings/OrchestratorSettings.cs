@@ -10,8 +10,12 @@ public sealed record OrchestratorSettings
     /// Null measures blocks against your own peak block in the last 7 days instead.</summary>
     public long? BlockBudget { get; init; }
 
-    /// <summary>Uncached tokens allowed per rolling 7 days. Null means no weekly line.</summary>
+    /// <summary>Uncached tokens allowed per week. Null means no weekly line.</summary>
     public long? WeeklyBudget { get; init; }
+
+    /// <summary>When the week resets, as "Monday 09:00" local time (see <see cref="Budget.WeeklyReset"/>).
+    /// Null means the week is a rolling 7 days.</summary>
+    public string? WeeklyReset { get; init; }
 
     /// <summary>Percent of a budget at which the dashboard warns and the scheduler stops proposing.</summary>
     public int WarnPercent { get; init; } = 80;

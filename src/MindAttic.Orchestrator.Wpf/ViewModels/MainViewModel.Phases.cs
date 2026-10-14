@@ -86,9 +86,11 @@ public sealed partial class MainViewModel
     {
         get
         {
-            if (Budget is not { CurrentBlock: { } block } b) return Budget is null ? "" : $"{Formatting.Tokens(Budget.Today.Fresh)} uncached today";
+            if (Budget is not { CurrentBlock: { } block } b)
+                return Budget is null ? "" : Budget.WeeklyPercent is { } wp ? $"week {wp:0}%" : $"{Formatting.Tokens(Budget.Today.Fresh)} uncached today";
             var parts = new List<string> { $"resets {block.EndUtc.ToLocalTime():t}", $"{Formatting.Tokens((long)b.FreshPerHour)}/h" };
             if (b.ProjectedLimitUtc is { } at) parts.Add($"limit ~{at.ToLocalTime():t}");
+            if (b.WeeklyPercent is { } weekPercent) parts.Add($"week {weekPercent:0}%");
             return string.Join(" · ", parts);
         }
     }
@@ -103,7 +105,11 @@ public sealed partial class MainViewModel
                 $"This block: {Formatting.Tokens(b.CurrentBlock?.Usage.Fresh ?? 0)} uncached of {Formatting.Tokens(b.BlockLimit)}" +
                     (b.BlockLimitIsPeak ? " (your busiest block in 7 days; set a budget in Settings to track a real limit)" : ""),
                 $"Today: {Formatting.Tokens(b.Today.Fresh)} uncached, {Formatting.Tokens(b.Today.CacheRead)} cache reads, {Formatting.Tokens(b.Today.Output)} output",
-                $"Last 7 days: {Formatting.Tokens(b.Week.Fresh)} uncached" + (b.WeeklyPercent is { } w ? $" ({w:0}% of weekly budget)" : ""),
+                (b.WeekResetUtc is { } next
+                    ? $"This week (since {b.WeekStartUtc.ToLocalTime():ddd h:mm tt}): "
+                    : "Last 7 days (rolling; set the weekly reset in Settings): ") +
+                    $"{Formatting.Tokens(b.Week.Fresh)} uncached" + (b.WeeklyPercent is { } w ? $" ({w:0}% of weekly budget)" : "") +
+                    (b.WeekResetUtc is { } n ? $", resets {n.ToLocalTime():ddd h:mm tt}" : ""),
                 "Uncached = input + cache writes + output. Cache reads are cheap and excluded from budgets.",
             };
             return string.Join("\n", lines);

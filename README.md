@@ -26,7 +26,7 @@ The same core drives a CLI (`dotnet run --project src/MindAttic.Orchestrator.Cli
 | `status [--all] [--json]` | every repo's state, sessions, open tickets, tokens today, budget line |
 | `start <Repo> [--provider] [--prompt]` | open a Launcher tab for a repo |
 | `send <Repo> "text"` | type text + Enter into that repo's Launcher tab(s) |
-| `budget [--block 20M] [--weekly 150M] [--warn 80]` | current 5-hour block and week; set limits (`0` clears) |
+| `budget [--block 20M] [--weekly 150M] [--weekly-reset "Mon 9:00"] [--warn 80]` | current 5-hour block and week; set limits (`0` clears, `none` makes the week rolling) |
 | `queue` / `bump <ID> [--by n]` | the cross-repo ticket queue and what's proposed next; reprioritize |
 | `dispatch <ID> [--provider] [--worktree]` | start a session on a ticket |
 | `release <ID> [--remove-worktree]` | put a ticket back in the queue; remove its (clean) worktree |
@@ -52,7 +52,9 @@ budget metric is *uncached* tokens (input + cache writes + output); cache reads 
 excluded because they dominate raw totals. With a 5-hour budget set you get percent used, burn rate,
 the projected time you'd hit it, a warning toast, and `~/.claude/rl-status.json` kept current for the
 `rl-check.py` prompt hook. With no budget set, the block is compared to your busiest block in the
-last 7 days as context only: it never warns, and no limit file is written.
+last 7 days as context only: it never warns, and no limit file is written. The week starts at the reset day and
+time you set (local time, e.g. `Mon 9:00 AM`, matching when Claude's weekly limit restarts); with no
+reset set it's a rolling 7 days.
 
 **3 · Scheduler.** Every open ticket across all repos in one queue: manual priority, then fixes
 before features before chores before docs, then oldest. Each refresh it proposes up to the free
@@ -78,5 +80,6 @@ files across repos, clusters them, and suggests a home (`mindattic-agent-standar
 - Token usage and budgets are Claude Code only; Codex/Gemini/Kimi sessions show as Launcher tabs but
   aren't in the totals.
 - A session started outside the Launcher is tracked and counted but can't be typed into.
-- Claude Code prunes transcripts after about 30 days; the budget history window is 7 days.
+- Claude Code prunes transcripts after about 30 days; the budget history window is 7 days, which
+  always covers the current week.
 - The budget file only updates while the dashboard or `orchestrator daemon` is running.
