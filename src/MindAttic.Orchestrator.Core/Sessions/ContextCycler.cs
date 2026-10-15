@@ -150,6 +150,30 @@ public sealed class ContextCycler(string? directory = null)
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
+    /// <summary>Drops /unthrottle marks whose CLI has closed, so a reused process id never inherits one.</summary>
+    public void PruneUnthrottled()
+    {
+        if (!System.IO.Directory.Exists(Directory)) return;
+        foreach (var f in System.IO.Directory.EnumerateFiles(Directory, "unthrottled-*"))
+        {
+            var alive = int.TryParse(Path.GetFileName(f)["unthrottled-".Length..], out var pid) && IsClaude(pid);
+            if (!alive) try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
+    }
+
+    /// <summary>The CLIs running unthrottled right now (by process id).</summary>
+    public IReadOnlyList<int> Unthrottled() => !System.IO.Directory.Exists(Directory) ? []
+        : [.. System.IO.Directory.EnumerateFiles(Directory, "unthrottled-*")
+            .Select(f => int.TryParse(Path.GetFileName(f)["unthrottled-".Length..], out var pid) ? pid : 0).Where(IsClaude)];
+
+    private static bool IsClaude(int pid)
+    {
+        if (pid <= 0) return false;
+        try { using var p = System.Diagnostics.Process.GetProcessById(pid); return p.ProcessName.Equals("claude", StringComparison.OrdinalIgnoreCase); }
+        catch (ArgumentException) { return false; }
+        catch (InvalidOperationException) { return false; }
+    }
+
     /// <summary>Drops files for sessions not heard from in a week, so the folder doesn't grow forever.</summary>
     public void Prune(DateTime nowUtc)
     {

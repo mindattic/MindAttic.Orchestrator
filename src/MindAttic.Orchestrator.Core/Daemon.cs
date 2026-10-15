@@ -66,6 +66,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"couldn't install the agent hooks: {ex.Message}"); }
                     gatePercent = s.ContextCyclePercent;
                 }
+                cycler.PruneUnthrottled();
                 foreach (var line in cycler.Tick([.. snapshot.Repos.SelectMany(r => r.Hosts)], s, DateTime.UtcNow))
                 {
                     Say(LogEventLevel.Information, line);

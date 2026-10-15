@@ -20,6 +20,55 @@ public static class AgentGate
 
     public static string ClaudeDir { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude");
 
+    /// <summary>Python shared by both hooks: the claude.exe process the hook runs under (through the
+    /// shell between), so a CLI can be typed into or exempted by process, not by session.</summary>
+    private const string CliPid = """
+        def cli_pid():
+            try:
+                import ctypes, os
+                from ctypes import wintypes
+                class Entry(ctypes.Structure):
+                    _fields_ = [("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD), ("th32ProcessID", wintypes.DWORD),
+                                ("th32DefaultHeapID", ctypes.c_size_t), ("th32ModuleID", wintypes.DWORD), ("cntThreads", wintypes.DWORD),
+                                ("th32ParentProcessID", wintypes.DWORD), ("pcPriClassBase", ctypes.c_long), ("dwFlags", wintypes.DWORD),
+                                ("szExeFile", ctypes.c_char * 260)]
+                k = ctypes.windll.kernel32
+                k.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+                snap = k.CreateToolhelp32Snapshot(2, 0)
+                procs, e = {}, Entry()
+                e.dwSize = ctypes.sizeof(Entry)
+                ok = k.Process32First(snap, ctypes.byref(e))
+                while ok:
+                    procs[e.th32ProcessID] = (e.th32ParentProcessID, e.szExeFile.decode(errors="ignore").lower())
+                    ok = k.Process32Next(snap, ctypes.byref(e))
+                k.CloseHandle(snap)
+                pid = os.getpid()
+                for _ in range(8):
+                    pid = procs.get(pid, (0, ""))[0]
+                    if not pid:
+                        return None
+                    if procs.get(pid, (0, ""))[1] == "claude.exe":
+                        return pid
+            except Exception:
+                pass
+            return None
+        """;
+
+    // The context gate acts on these when they're typed (UserPromptSubmit); the files make them real slash commands.
+    internal const string UnthrottleCommand = """
+        ---
+        description: Run this CLI unthrottled (no pace holds) until it closes, for when something has to get done fast.
+        ---
+        MindAttic.Orchestrator's context gate has exempted this CLI process from pace holds, subagents included, until the CLI closes or you run /throttle. Its usage still counts toward the 5-hour pace, so other CLIs absorb the slowdown. Reply with one short line confirming this CLI is now unthrottled, then carry on with whatever was asked.
+        """;
+
+    internal const string ThrottleCommand = """
+        ---
+        description: Put this CLI back under the orchestrator's pace holds after /unthrottle.
+        ---
+        MindAttic.Orchestrator's context gate has put this CLI process back under pace holds. Reply with one short line confirming this CLI is paced again.
+        """;
+
     internal static string Script => $$"""
         #!/usr/bin/env python3
         # MindAttic.Orchestrator's pace gate (written by the orchestrator; edits are overwritten).
@@ -28,6 +77,8 @@ public static class AgentGate
         import json, time
         from datetime import datetime
         from pathlib import Path
+
+        {{CliPid}}
 
         STATUS = Path.home() / ".claude" / "rl-status.json"
         STALE = {{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}
@@ -44,6 +95,13 @@ public static class AgentGate
                 return float(s.get("pace_delay_seconds", 0))
             except Exception:
                 return 0
+
+        # /unthrottle exempts one CLI (its process, so subagents and /clear included) until it closes.
+        MARKS = Path.home() / ".claude" / "session-context"
+        if MARKS.exists() and any(MARKS.glob("unthrottled-*")):
+            pid = cli_pid()
+            if pid is not None and (MARKS / ("unthrottled-" + str(pid))).exists():
+                raise SystemExit(0)
 
         start = time.monotonic()
         while True:
@@ -85,37 +143,7 @@ public static class AgentGate
             tmp.write_text(json.dumps(value))
             tmp.replace(path)
 
-        def cli_pid():
-            # The claude process this hook runs under (via the shell between), so the orchestrator can
-            # type into its console when it isn't in a Launcher tab.
-            try:
-                import ctypes, os
-                from ctypes import wintypes
-                class Entry(ctypes.Structure):
-                    _fields_ = [("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD), ("th32ProcessID", wintypes.DWORD),
-                                ("th32DefaultHeapID", ctypes.c_size_t), ("th32ModuleID", wintypes.DWORD), ("cntThreads", wintypes.DWORD),
-                                ("th32ParentProcessID", wintypes.DWORD), ("pcPriClassBase", ctypes.c_long), ("dwFlags", wintypes.DWORD),
-                                ("szExeFile", ctypes.c_char * 260)]
-                k = ctypes.windll.kernel32
-                k.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
-                snap = k.CreateToolhelp32Snapshot(2, 0)
-                procs, e = {}, Entry()
-                e.dwSize = ctypes.sizeof(Entry)
-                ok = k.Process32First(snap, ctypes.byref(e))
-                while ok:
-                    procs[e.th32ProcessID] = (e.th32ParentProcessID, e.szExeFile.decode(errors="ignore").lower())
-                    ok = k.Process32Next(snap, ctypes.byref(e))
-                k.CloseHandle(snap)
-                pid = os.getpid()
-                for _ in range(8):
-                    pid = procs.get(pid, (0, ""))[0]
-                    if not pid:
-                        return None
-                    if procs.get(pid, (0, ""))[1] == "claude.exe":
-                        return pid
-            except Exception:
-                pass
-            return None
+        {{{CliPid}}}
 
         try:
             data = json.load(sys.stdin)
@@ -132,6 +160,15 @@ public static class AgentGate
             state.update(state="idle", at=now, pid=cli_pid())
         elif event == "UserPromptSubmit":
             state.update(state="busy", at=now, warned=False)
+            prompt = (data.get("prompt") or "").strip().lower()
+            if prompt.startswith("/unthrottle") or prompt.startswith("/throttle"):
+                pid = cli_pid()
+                if pid is not None:
+                    mark = DIR / ("unthrottled-" + str(pid))
+                    if prompt.startswith("/unthrottle"):
+                        mark.write_text(now)
+                    elif mark.exists():
+                        mark.unlink()
         elif event == "PostToolUse":
             used = load(DIR / (sid + ".json")).get("used_percentage") or 0
             if state.get("warned") or used < PERCENT:
@@ -156,7 +193,12 @@ public static class AgentGate
 
         var script = Path.Combine(dir, ScriptName);
         var contextScript = Path.Combine(dir, ContextScriptName);
-        foreach (var (path, body) in new[] { (script, Script), (contextScript, ContextScript(contextPercent)) })
+        Directory.CreateDirectory(Path.Combine(dir, "commands"));
+        foreach (var (path, body) in new[]
+        {
+            (script, Script), (contextScript, ContextScript(contextPercent)),
+            (Path.Combine(dir, "commands", "unthrottle.md"), UnthrottleCommand), (Path.Combine(dir, "commands", "throttle.md"), ThrottleCommand),
+        })
         {
             if (File.Exists(path) && File.ReadAllText(path) == body) continue;
             File.WriteAllText(path, body);
