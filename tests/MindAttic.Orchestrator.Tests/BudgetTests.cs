@@ -46,6 +46,36 @@ public sealed class BudgetTests
     }
 
     [Test]
+    public void After_an_account_switch_Claudes_percent_is_what_counts_not_the_old_accounts_tokens()
+    {
+        // 9,000 local tokens this window came from the old account; the new one says 3% at 11:00, 200 spent since.
+        var reported = new ReportedUsage(new ReportedWindow(3, Day.AddHours(15)), null, Day.AddHours(11));
+        var events = new[] { E(10.2, 9000), E(11.5, 200) };
+
+        var s = BudgetCalculator.Compute(events, new OrchestratorSettings(), Day.AddHours(12), Day, TimeZoneInfo.Utc, reported: reported, reportedLimit: 10_000);
+
+        Assert.That(s.BlockLimitSource, Is.EqualTo(LimitSource.Reported));
+        Assert.That(s.BlockPercent, Is.EqualTo(6).Within(0.01), "3% taken as 4%, plus 200 of 10,000 since: not the 92% the local tokens say");
+    }
+
+    [Test]
+    public void The_limit_is_sized_from_how_far_the_percent_moved_so_other_spending_cancels_out()
+    {
+        var samples = new List<UsageSample>();
+        var reset = Day.AddHours(15);
+        UsageEvent[] events = [E(10.1, 50_000), E(10.6, 900)]; // the 50,000 predates both reports (another account)
+        Assert.That(ReportedLimit.Record(samples, new(new(10, reset), null, Day.AddHours(10.5)), events, Day.AddHours(10.5)), Is.True);
+        Assert.That(ReportedLimit.Record(samples, new(new(10, reset), null, Day.AddHours(10.5)), events, Day.AddHours(10.6)), Is.False, "one sample per report");
+        Assert.That(ReportedLimit.Estimate(samples), Is.Null, "one report can't show movement");
+
+        ReportedLimit.Record(samples, new(new(13, reset), null, Day.AddHours(10.7)), events, Day.AddHours(10.7));
+        Assert.That(ReportedLimit.Estimate(samples), Is.Null, "3 points is too coarse to size by");
+
+        ReportedLimit.Record(samples, new(new(14, reset), null, Day.AddHours(10.8)), [.. events, E(10.75, 100)], Day.AddHours(10.8));
+        Assert.That(ReportedLimit.Estimate(samples), Is.EqualTo(20_000), "1,000 spent while it moved 4 points, taken as 5: errs small, ignores the 50,000");
+    }
+
+    [Test]
     public void A_report_too_coarse_or_from_a_window_already_reset_is_not_used()
     {
         var events = new[] { E(10.5, 100) };

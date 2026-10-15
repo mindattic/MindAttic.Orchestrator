@@ -6,6 +6,46 @@ namespace MindAttic.Orchestrator.Budget;
 /// <summary>One limit window as Claude Code reports it: percent used and when it resets.</summary>
 public sealed record ReportedWindow(double Percent, DateTime ResetUtc);
 
+/// <summary>One 5-hour report, with the local uncached tokens counted in its window by then.</summary>
+public sealed record UsageSample(DateTime AtUtc, double Percent, DateTime ResetUtc, long WindowFresh);
+
+/// <summary>
+/// The 5-hour limit in tokens, from how far Claude's percent moved while local transcripts recorded a
+/// known number of tokens, within one window. Using the change, not the level, means tokens from another
+/// account (after a switch), claude.ai or another machine cancel out instead of skewing the size.
+/// </summary>
+public static class ReportedLimit
+{
+    /// <summary>The smallest percent change to size a limit by: whole-percent reports are ±1 at each end.</summary>
+    public const double MinDelta = 4;
+
+    /// <summary>Records <paramref name="reported"/> once (keyed by its time) and trims to a week.</summary>
+    public static bool Record(List<UsageSample> samples, ReportedUsage? reported, IReadOnlyList<UsageEvent> events, DateTime nowUtc)
+    {
+        if (reported?.FiveHour is not { } w || samples.Any(s => s.AtUtc == reported.AtUtc)) return false;
+        var start = w.ResetUtc - BudgetCalculator.BlockLength;
+        var fresh = events.Where(e => e.AtUtc >= start && e.AtUtc <= reported.AtUtc).Sum(e => e.Usage.Fresh);
+        samples.Add(new UsageSample(reported.AtUtc, w.Percent, w.ResetUtc, fresh));
+        samples.RemoveAll(s => nowUtc - s.AtUtc > TimeSpan.FromDays(7));
+        return true;
+    }
+
+    /// <summary>Tokens per 100% from the most recent window whose reports moved at least <see cref="MinDelta"/>;
+    /// the change is taken a point wider than reported, so the limit errs small. Null until one has.</summary>
+    public static long? Estimate(IReadOnlyList<UsageSample> samples)
+    {
+        foreach (var window in samples.GroupBy(s => s.ResetUtc).OrderByDescending(g => g.Key))
+        {
+            var ordered = window.OrderBy(s => s.AtUtc).ToList();
+            var (first, last) = (ordered[0], ordered[^1]);
+            var delta = last.Percent - first.Percent;
+            var spent = last.WindowFresh - first.WindowFresh;
+            if (delta >= MinDelta && spent > 0) return (long)(spent / ((delta + 1) / 100));
+        }
+        return null;
+    }
+}
+
 /// <summary>
 /// The usage Claude Code itself reports (<c>rate_limits</c> in the statusline input), saved to
 /// <c>~/.claude/claude-usage.json</c> by the shared statusline. It's the real meter, so it beats any
@@ -23,9 +63,10 @@ public sealed record ReportedUsage(ReportedWindow? FiveHour, ReportedWindow? Wee
     /// <summary>How long a report stays usable without a Claude session redrawing its statusline.</summary>
     public static readonly TimeSpan MaxAge = TimeSpan.FromHours(1);
 
-    /// <summary>A window that's still running and reported precisely enough; null otherwise.</summary>
+    /// <summary>A window that's still running (its reset is ahead); null otherwise. Any percent counts:
+    /// a low one is the truth about what's used, it's only too coarse to size a limit by.</summary>
     public static ReportedWindow? Usable(ReportedWindow? w, DateTime nowUtc) =>
-        w is { Percent: >= MinPercent } && w.ResetUtc > nowUtc ? w : null;
+        w is not null && w.ResetUtc > nowUtc ? w : null;
 
     /// <summary>The saved report, or null when there's none, it's unreadable, or it's older than <see cref="MaxAge"/>.</summary>
     public static ReportedUsage? Load(DateTime nowUtc, string? path = null)

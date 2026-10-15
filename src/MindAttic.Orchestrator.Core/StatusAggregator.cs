@@ -76,8 +76,9 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
         List<UsageEvent> events = [.. allSessions.SelectMany(s => s.Events).OrderBy(e => e.AtUtc)];
         var calibration = Calibrate(allSessions, events, historyStartUtc, now);
+        var reported = ReportedUsage.Load(now);
         var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration,
-            reported: ReportedUsage.Load(now));
+            reported: reported, reportedLimit: ReportedLimitFrom(reported, events, now));
 
         var recentFrom = now - BudgetCalculator.RecentWindow;
         var active = allSessions.Count(s => s.Events.Count > 0 && s.Events[^1].AtUtc >= recentFrom);
@@ -132,6 +133,16 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// Folds limit hits in the transcripts into <c>limits.json</c>. The first run reads the last
     /// month once, so limits are learned from hits you already had rather than the next one.
     /// </summary>
+    /// <summary>Keeps a week of Claude's 5-hour reports (with the local tokens behind each) in
+    /// <c>usage-samples.json</c> and sizes the limit from how they moved; null until one window has moved enough.</summary>
+    private long? ReportedLimitFrom(ReportedUsage? reported, IReadOnlyList<UsageEvent> events, DateTime now)
+    {
+        if (store is null) return null;
+        var samples = store.Load<List<UsageSample>>("usage-samples");
+        if (ReportedLimit.Record(samples, reported, events, now)) store.Save("usage-samples", samples);
+        return ReportedLimit.Estimate(samples);
+    }
+
     private LimitCalibration Calibrate(IReadOnlyList<TranscriptSession> sessions, IReadOnlyList<UsageEvent> events, DateTime historyStartUtc, DateTime now)
     {
         var stored = Store.LoadLimits();

@@ -121,7 +121,7 @@ public static class BudgetCalculator
     /// neither, the 5-hour block is compared to your busiest block as context only.
     /// </summary>
     public static BudgetStatus Compute(IReadOnlyList<UsageEvent> events, OrchestratorSettings settings, DateTime nowUtc, DateTime startOfTodayUtc,
-        TimeZoneInfo? zone = null, LimitCalibration? learned = null, ReportedUsage? reported = null)
+        TimeZoneInfo? zone = null, LimitCalibration? learned = null, ReportedUsage? reported = null, long? reportedLimit = null)
     {
         var blocks = Blocks(events);
         var current = blocks.Count > 0 && blocks[^1].IsActive(nowUtc) ? blocks[^1] : null;
@@ -137,7 +137,10 @@ public static class BudgetCalculator
                 inBlock.Count > 0 ? inBlock.Max(e => e.AtUtc) : sessionWall?.HitUtc ?? start);
         }
         var currentFresh = current?.Usage.Fresh ?? 0;
-        var reportedLimit5h = ImpliedLimit(events, reported5h, BlockLength, reported?.AtUtc);
+        // With Claude's own percent, the limit's size comes from how the percent moved between reports
+        // (reportedLimit), else the learned one, else (5%+) this window's tokens over its percent.
+        var reportedLimit5h = reported5h is null ? null
+            : reportedLimit ?? learned?.Learned5h ?? (reported5h.Percent >= ReportedUsage.MinPercent ? ImpliedLimit(events, reported5h, BlockLength, reported?.AtUtc) : null);
 
         // Without a budget, compare against the heaviest earlier block: "how hard am I going vs usual".
         // It can pass 100%, and it isn't a limit, so it never warns or projects.
@@ -154,6 +157,15 @@ public static class BudgetCalculator
             : (LimitSource.Peak, peak > 0 ? peak : currentFresh);
         var isPeak = blockSource == LimitSource.Peak;
         var limit = blockLimit;
+
+        // Claude's percent is what's used, whoever spent it (another account, claude.ai, another machine);
+        // the local count only adds what's been spent since its last report. Taken a point high, like the size.
+        if (blockSource == LimitSource.Reported && reported5h is not null && reported is not null && current is not null)
+        {
+            var since = events.Where(e => e.AtUtc > reported.AtUtc && e.AtUtc <= nowUtc).Sum(e => e.Usage.Fresh);
+            currentFresh = (long)(Math.Min(100, reported5h.Percent + 1) / 100 * limit) + since;
+            current = current with { Usage = new TokenUsage(currentFresh, 0, 0, 0) };
+        }
         var blockPercent = limit > 0 ? 100.0 * currentFresh / limit : 0;
 
         // A configured reset day/time means the week restarts when Claude's does; failing that, the
@@ -175,10 +187,11 @@ public static class BudgetCalculator
         var weeklyRefuted = learnedWeekly is { } lw && weeklyWall is null && week.Fresh > lw;
         if (weeklyRefuted) learnedWeekly = null;
         var (weeklySource, weeklyLimit) = settings.WeeklyBudget is > 0 ? (LimitSource.Manual, settings.WeeklyBudget)
-            : ImpliedLimit(events, reportedWeek, TimeSpan.FromDays(7), reported?.AtUtc) is { } repW ? (LimitSource.Reported, repW)
+            : reportedWeek is { Percent: >= ReportedUsage.MinPercent } && ImpliedLimit(events, reportedWeek, TimeSpan.FromDays(7), reported?.AtUtc) is { } repW ? (LimitSource.Reported, repW)
             : learnedWeekly is { } limW ? (LimitSource.Learned, limW)
             : ((LimitSource?)null, (long?)null);
-        double? weeklyPercent = weeklyLimit is > 0 ? 100.0 * week.Fresh / weeklyLimit.Value : null;
+        double? weeklyPercent = reportedWeek is not null && settings.WeeklyBudget is not > 0 ? reportedWeek.Percent
+            : weeklyLimit is > 0 ? 100.0 * week.Fresh / weeklyLimit.Value : null;
 
         var wall = weeklyWall ?? sessionWall;
         var recentFrom = nowUtc - RecentWindow;
