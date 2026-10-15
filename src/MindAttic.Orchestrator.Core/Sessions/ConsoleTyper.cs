@@ -33,8 +33,12 @@ public static partial class ConsoleTyper
                 if (input == new IntPtr(-1)) return false;
                 try
                 {
-                    var records = Records(text.TrimEnd('\r', '\n') + "\n");
-                    return WriteConsoleInputW(input, records, (uint)records.Length, out var written) && written == records.Length;
+                    // Enter goes on its own after a pause: in the same burst, Claude Code takes it as part of a paste.
+                    var records = Records(text.TrimEnd('\r', '\n'));
+                    if (!WriteConsoleInputW(input, records, (uint)records.Length, out var written) || written != records.Length) return false;
+                    Thread.Sleep(SessionControl.EnterAfter);
+                    var enter = Records("\n");
+                    return WriteConsoleInputW(input, enter, (uint)enter.Length, out written) && written == enter.Length;
                 }
                 finally { CloseHandle(input); }
             }

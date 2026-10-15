@@ -192,6 +192,30 @@ public sealed class AutopilotTests
     }
 
     [Test]
+    public async Task Enter_goes_to_the_tab_on_its_own_after_the_text_so_it_isnt_read_as_part_of_a_paste()
+    {
+        // Found live: text and Enter in one write left a long story prompt sitting unsent in the box.
+        var pipe = "orch-test-" + Guid.NewGuid().ToString("N");
+        var got = new List<(string Text, DateTime At)>();
+        var server = Task.Run(async () =>
+        {
+            for (var i = 0; i < 2; i++)
+            {
+                using var s = new System.IO.Pipes.NamedPipeServerStream(pipe, System.IO.Pipes.PipeDirection.In, 1,
+                    System.IO.Pipes.PipeTransmissionMode.Byte, System.IO.Pipes.PipeOptions.Asynchronous);
+                await s.WaitForConnectionAsync();
+                using var r = new StreamReader(s);
+                got.Add((await r.ReadToEndAsync(), DateTime.UtcNow));
+            }
+        });
+
+        Assert.That(await SessionControl.SubmitAsync(pipe, "Work on ticket X-T1 (fix): a long prompt\n"), Is.True);
+        await server.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.That(got.Select(g => g.Text), Is.EqualTo(new[] { "Work on ticket X-T1 (fix): a long prompt", "\n" }));
+        Assert.That(got[1].At - got[0].At, Is.GreaterThanOrEqualTo(SessionControl.EnterAfter - TimeSpan.FromMilliseconds(100)));
+    }
+
+    [Test]
     public void A_cli_the_updater_renamed_still_counts_as_claude()
     {
         Assert.That(ConsoleTyper.IsClaude("claude"), Is.True);

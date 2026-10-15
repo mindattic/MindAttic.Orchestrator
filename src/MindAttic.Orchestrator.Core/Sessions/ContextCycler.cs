@@ -52,7 +52,7 @@ public sealed class ContextCycler(string? directory = null)
             if (cycling.ContainsKey(s.SessionId) || !Due(s, settings.ContextCyclePercent, nowUtc)) continue;
             Func<string, Task<bool>>? send = null;
             var host = HostFor(s, hosts, out var why);
-            if (host is not null) send = text => SessionControl.SendAsync(host.PipeName, text, submit: true);
+            if (host is not null) send = text => SessionControl.SubmitAsync(host.PipeName, text);
             else if (s.Pid is { } pid && Typer(pid, "")) send = text => Task.FromResult(Typer(pid, text));
             else why = s.Pid is null ? why : "its console can't be typed into (a desktop-app session)";
             if (send is null)

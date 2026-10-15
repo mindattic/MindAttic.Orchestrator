@@ -128,7 +128,7 @@ public sealed class HostRowViewModel : ObservableObject
     private async Task SendAsync()
     {
         var text = Draft;
-        var ok = await SessionControl.SendAsync(host.PipeName, text, submit: true);
+        var ok = await SessionControl.SubmitAsync(host.PipeName, text);
         if (ok) Draft = "";
         Feedback = ok ? "Sent." : "Couldn't reach that tab; it may have closed.";
     }

@@ -70,6 +70,21 @@ public sealed class SessionControl(OrchestratorOptions options)
         }
     }
 
+    /// <summary>How long typed text settles before Enter is pressed on its own.</summary>
+    public static readonly TimeSpan EnterAfter = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// Types <paramref name="text"/> into a hosted session, then presses Enter as a keystroke of its own.
+    /// Claude Code reads a burst of keys as a paste, and a line break inside a paste is just a new line,
+    /// so text and Enter sent together leave a long prompt sitting unsent in the box.
+    /// </summary>
+    public static async Task<bool> SubmitAsync(string pipeName, string text, CancellationToken ct = default)
+    {
+        if (!await SendAsync(pipeName, text.TrimEnd('\r', '\n'), submit: false, ct).ConfigureAwait(false)) return false;
+        await Task.Delay(EnterAfter, ct).ConfigureAwait(false);
+        return await SendAsync(pipeName, "", submit: true, ct).ConfigureAwait(false);
+    }
+
     /// <summary>The Launcher host processes running now, so a tab opened next can be told apart from them.</summary>
     public IReadOnlySet<int> HostIds() => new HostSessionScanner(options).Scan().Select(h => h.ProcessId).ToHashSet();
 

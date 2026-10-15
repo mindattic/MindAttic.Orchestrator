@@ -19,7 +19,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     public static readonly TimeSpan Settle = TimeSpan.FromSeconds(30);
 
     internal Func<HostSession, string, bool> SendToHost { get; init; } =
-        (host, text) => SessionControl.SendAsync(host.PipeName, text, submit: true).GetAwaiter().GetResult();
+        (host, text) => SessionControl.SubmitAsync(host.PipeName, text).GetAwaiter().GetResult();
     internal Func<int, string, bool> Typer { get; init; } = ConsoleTyper.Submit;
     internal Func<int, int, bool> IsAncestor { get; init; } = ProcessTree.IsAncestor;
     internal Func<IReadOnlyList<string>?> Order { get; init; } = sessions.AutopilotOrder;
