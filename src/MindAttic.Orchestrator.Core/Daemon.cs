@@ -68,6 +68,10 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"couldn't install the agent hooks: {ex.Message}"); }
                     gatePercent = s.ContextCyclePercent;
                 }
+                foreach (var r in Sessions.ProcessReaper.ReapOnce(DateTime.UtcNow))
+                    Say(LogEventLevel.Warning, $"reaped pid {r.Process.Pid} ({r.Process.Name}): {r.Reason}" +
+                        (string.IsNullOrWhiteSpace(r.Process.CommandLine) ? "" : $" — was running: {r.Process.CommandLine}"));
+
                 cycler.PruneMarks();
                 foreach (var line in cycler.Tick([.. snapshot.Repos.SelectMany(r => r.Hosts)], s, DateTime.UtcNow))
                 {
