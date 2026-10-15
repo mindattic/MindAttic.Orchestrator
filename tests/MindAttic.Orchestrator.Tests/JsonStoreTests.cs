@@ -1,0 +1,74 @@
+using MindAttic.Orchestrator.Settings;
+using NUnit.Framework;
+
+namespace MindAttic.Orchestrator.Tests;
+
+public sealed class JsonStoreTests
+{
+    private string dir = "";
+
+    [SetUp]
+    public void SetUp() => dir = Path.Combine(Path.GetTempPath(), "orch-store-" + Guid.NewGuid().ToString("N"), "nested");
+
+    [TearDown]
+    public void TearDown()
+    {
+        var top = Path.GetDirectoryName(dir)!;
+        if (Directory.Exists(top)) Directory.Delete(top, recursive: true);
+    }
+
+    [Test]
+    public void A_missing_unreadable_or_locked_file_loads_as_defaults()
+    {
+        var store = new JsonStore(dir);
+        Assert.That(SameJson(store.LoadSettings(), new OrchestratorSettings()), Is.True, "missing");
+
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, "settings.json");
+        File.WriteAllText(path, "{ not json");
+        Assert.That(store.LoadSettings().MaxConcurrentSessions, Is.EqualTo(new OrchestratorSettings().MaxConcurrentSessions), "invalid JSON");
+
+        File.WriteAllText(path, """{ "MaxConcurrentSessions": 9 }""");
+        using (new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            Assert.That(store.LoadSettings().MaxConcurrentSessions, Is.EqualTo(new OrchestratorSettings().MaxConcurrentSessions), "locked by another process");
+        Assert.That(store.LoadSettings().MaxConcurrentSessions, Is.EqualTo(9), "readable again");
+    }
+
+    [Test]
+    public void Save_creates_the_folder_writes_through_a_temp_file_and_leaves_no_temp_behind()
+    {
+        var store = new JsonStore(dir);
+        store.SaveSettings(new OrchestratorSettings { MaxConcurrentSessions = 3 });
+        store.SaveSettings(new OrchestratorSettings { MaxConcurrentSessions = 4 }); // over an existing file
+        Assert.That(Directory.GetFiles(dir).Select(Path.GetFileName), Is.EqualTo(new[] { "settings.json" }));
+        Assert.That(store.LoadSettings().MaxConcurrentSessions, Is.EqualTo(4));
+    }
+
+    [Test]
+    public void Settings_and_assignments_round_trip_and_nulls_are_left_out()
+    {
+        var store = new JsonStore(dir);
+        var s = new OrchestratorSettings
+        {
+            RepoBudgetPercent = new() { ["Prose"] = 40 },
+            Reservations = new() { ["X-T5"] = 2_000_000 },
+            BlockedBy = new() { ["X-T2"] = ["X-T1"] },
+            QuietHours = ["22:00-07:00"],
+            NotifyUrl = null,
+        };
+        store.SaveSettings(s);
+        var back = store.LoadSettings();
+        Assert.That(back.RepoBudgetPercent["Prose"], Is.EqualTo(40));
+        Assert.That(back.Reservations["X-T5"], Is.EqualTo(2_000_000));
+        Assert.That(back.BlockedBy["X-T2"], Is.EqualTo(new[] { "X-T1" }));
+        Assert.That(back.QuietHours, Is.EqualTo(new[] { "22:00-07:00" }));
+        Assert.That(File.ReadAllText(Path.Combine(dir, "settings.json")), Does.Not.Contain("NotifyUrl"), "nulls omitted");
+
+        var a = new Assignment("X-T1", "X", @"D:\W\X", "Claude", new DateTime(2026, 10, 15, 4, 0, 0, DateTimeKind.Utc), true) { Pilot = 7, Log = "x.log" };
+        store.SaveAssignments([a]);
+        Assert.That(store.LoadAssignments().Single(), Is.EqualTo(a));
+    }
+
+    private static bool SameJson(OrchestratorSettings x, OrchestratorSettings y) =>
+        System.Text.Json.JsonSerializer.Serialize(x) == System.Text.Json.JsonSerializer.Serialize(y);
+}
