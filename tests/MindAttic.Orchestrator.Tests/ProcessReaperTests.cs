@@ -104,4 +104,26 @@ public sealed class ProcessReaperTests
 
         Assert.That(Select(processes, Now), Is.Empty);
     }
+
+    [Test]
+    public void Only_the_processes_about_to_be_killed_have_their_command_line_fetched()
+    {
+        // The scan lists every process without its command line (the costly part of the WMI query, MAO-T117);
+        // a reap candidate's is looked up on its own, before it's killed, so the log still says what it was running.
+        var processes = new[]
+        {
+            P(1, "claude.exe", parentPid: 0, cmd: null),
+            P(2, "bash.exe", parentPid: 1, cmd: null),
+            P(3, "rg.exe", parentPid: 2, startUtc: Now.AddMinutes(-2), cmd: null),
+            P(4, "find.exe", parentPid: 99, cmd: null),
+        }.Select(p => p with { CommandLine = null }).ToList();
+        var asked = new List<int>();
+        var killed = new List<int>();
+
+        var reaped = ReapOnce(Now, () => processes, pid => { asked.Add(pid); return "find / -name x"; }, killed.Add);
+
+        Assert.That(asked, Is.EqualTo(new[] { 4 }), "only the orphaned find");
+        Assert.That(killed, Is.EqualTo(new[] { 4 }));
+        Assert.That(reaped.Single().Process.CommandLine, Is.EqualTo("find / -name x"));
+    }
 }

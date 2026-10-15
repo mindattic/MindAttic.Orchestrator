@@ -17,6 +17,10 @@ public static class ProcessReaper
     public const long MaxHandleCount = 50_000;
     public static readonly TimeSpan MaxAge = TimeSpan.FromMinutes(30);
 
+    /// <summary>How often the daemon scans: a leak takes minutes to matter, and each scan is a WMI query that
+    /// WmiPrvSE pays for (MAO-T117: every 15s it was a steady CPU cost of its own).</summary>
+    public static readonly TimeSpan Every = TimeSpan.FromSeconds(60);
+
     /// <summary>Ancestor hops to walk looking for a live Claude CLI before giving up on telling either way.</summary>
     private const int MaxAncestorHops = 20;
 
@@ -77,15 +81,24 @@ public static class ProcessReaper
     /// <summary>Snapshots every process via WMI, kills the ones <see cref="Select"/> flags (the whole tree under
     /// each, so an orphaned shell takes its own still-running children with it), and returns what it killed.
     /// Best effort: a process that exits mid-kill, or WMI being unavailable, is swallowed rather than thrown.</summary>
-    public static IReadOnlyList<Reaped> ReapOnce(DateTime nowUtc)
+    public static IReadOnlyList<Reaped> ReapOnce(DateTime nowUtc) => ReapOnce(nowUtc, Snapshot, CommandLineOf, Kill);
+
+    /// <summary>The scan lists processes without their command lines (reading one means opening the process and
+    /// its memory, the costly part of a WMI process query); only the ones about to be killed have theirs fetched,
+    /// for the log, before they go.</summary>
+    internal static IReadOnlyList<Reaped> ReapOnce(DateTime nowUtc, Func<IReadOnlyList<ProcessInfo>> snapshot, Func<int, string?> commandLine, Action<int> kill)
     {
-        var reaped = Select(Snapshot(), nowUtc);
-        foreach (var r in reaped)
-        {
-            try { using var p = Process.GetProcessById(r.Process.Pid); p.Kill(true); }
-            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception) { }
-        }
+        var reaped = Select(snapshot(), nowUtc)
+            .Select(r => r with { Process = r.Process with { CommandLine = commandLine(r.Process.Pid) } })
+            .ToList();
+        foreach (var r in reaped) kill(r.Process.Pid);
         return reaped;
+    }
+
+    private static void Kill(int pid)
+    {
+        try { using var p = Process.GetProcessById(pid); p.Kill(true); }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception) { }
     }
 
     private static IReadOnlyList<ProcessInfo> Snapshot()
@@ -94,7 +107,7 @@ public static class ProcessReaper
         try
         {
             using var searcher = new ManagementObjectSearcher(
-                "SELECT ProcessId, ParentProcessId, Name, CommandLine, HandleCount, CreationDate FROM Win32_Process");
+                "SELECT ProcessId, ParentProcessId, Name, HandleCount, CreationDate FROM Win32_Process");
             foreach (var o in searcher.Get())
             {
                 using (o)
@@ -103,13 +116,26 @@ public static class ProcessReaper
                     var parentPid = o["ParentProcessId"] is uint ppid ? (int)ppid : 0;
                     var handles = o["HandleCount"] is uint h ? h : 0;
                     var started = o["CreationDate"] is string cd ? SafeParse(cd) : DateTime.UtcNow;
-                    result.Add(new ProcessInfo((int)pid, name, parentPid, handles, started, o["CommandLine"] as string));
+                    result.Add(new ProcessInfo((int)pid, name, parentPid, handles, started, null));
                 }
             }
         }
         catch (ManagementException) { }
         catch (COMException) { }
         return result;
+    }
+
+    private static string? CommandLineOf(int pid)
+    {
+        try
+        {
+            using var searcher = new ManagementObjectSearcher($"SELECT CommandLine FROM Win32_Process WHERE ProcessId = {pid}");
+            foreach (var o in searcher.Get())
+                using (o) return o["CommandLine"] as string;
+        }
+        catch (ManagementException) { }
+        catch (COMException) { }
+        return null;
     }
 
     private static DateTime SafeParse(string dmtf)

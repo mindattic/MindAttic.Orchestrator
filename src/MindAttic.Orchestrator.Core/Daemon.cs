@@ -69,7 +69,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     gatePercent = (s.ContextCyclePercent, s.KeepGoing);
                 }
                 WatchHealth(autopilot);
-                foreach (var r in Sessions.ProcessReaper.ReapOnce(DateTime.UtcNow))
+                foreach (var r in ReapIfDue())
                     Say(LogEventLevel.Warning, $"reaped pid {r.Process.Pid} ({r.Process.Name}): {r.Reason}" +
                         (string.IsNullOrWhiteSpace(r.Process.CommandLine) ? "" : $" — was running: {r.Process.CommandLine}"));
 
@@ -174,6 +174,16 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             Alert("Audit found something new", news.ToString());
         }
         else Say(LogEventLevel.Information, $"audit: nothing new ({after.Drift.Count} drifted files, {after.Duplicates.Count} duplicate groups, {after.Took.TotalSeconds:0}s)");
+    }
+
+    private DateTime reapedUtc;
+
+    /// <summary>Every <see cref="Sessions.ProcessReaper.Every"/>, kills the tool processes dead agents left behind.</summary>
+    private IReadOnlyList<Sessions.ProcessReaper.Reaped> ReapIfDue()
+    {
+        if (DateTime.UtcNow - reapedUtc < Sessions.ProcessReaper.Every) return [];
+        reapedUtc = DateTime.UtcNow;
+        return Sessions.ProcessReaper.ReapOnce(reapedUtc);
     }
 
     private Activity.HealthLevel healthLevel;
