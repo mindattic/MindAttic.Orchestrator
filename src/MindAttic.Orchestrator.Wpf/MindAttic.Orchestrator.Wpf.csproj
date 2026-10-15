@@ -25,4 +25,8 @@
     <ProjectReference Include="..\MindAttic.Orchestrator.Core\MindAttic.Orchestrator.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="MindAttic.Orchestrator.Tests" />
+  </ItemGroup>
+
 </Project>

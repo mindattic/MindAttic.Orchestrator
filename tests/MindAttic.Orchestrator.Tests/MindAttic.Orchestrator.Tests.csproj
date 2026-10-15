@@ -4,7 +4,14 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- For the dashboard's view models (MindAttic.Orchestrator.Wpf). -->
+    <UseWPF>true</UseWPF>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- UseWPF drops System.IO from the implicit usings. -->
+    <Using Include="System.IO" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
@@ -15,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\MindAttic.Orchestrator.Core\MindAttic.Orchestrator.Core.csproj" />
     <ProjectReference Include="..\..\src\MindAttic.Orchestrator.Cli\MindAttic.Orchestrator.Cli.csproj" />
+    <ProjectReference Include="..\..\src\MindAttic.Orchestrator.Wpf\MindAttic.Orchestrator.Wpf.csproj" />
   </ItemGroup>
 
 </Project>
