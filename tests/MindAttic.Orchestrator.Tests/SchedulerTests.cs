@@ -136,6 +136,27 @@ public sealed class SchedulerTests
     }
 
     [Test]
+    public void After_priority_the_smallest_effort_goes_first_and_every_story_ends_committed_and_closed()
+    {
+        // Fixes in A have cost ~100 each, in B ~1,000: B's older fix waits behind A's cheaper one.
+        var done = new List<MindAttic.Orchestrator.Budget.SessionCost>();
+        for (var i = 0; i < 3; i++)
+        {
+            done.Add(new("a" + i, "A-T9" + i, "fix", "A", 100, DateTime.UtcNow));
+            done.Add(new("b" + i, "B-T9" + i, "fix", "B", 1000, DateTime.UtcNow));
+        }
+        var older = new Ticket("B-T1", "2026-01-01", "fix", "open", "old but big", "");
+        var newer = new Ticket("A-T1", "2026-10-01", "fix", "open", "new but small", "");
+        var snap = Snap(null, Repo("A", RepoState.Dormant, newer), Repo("B", RepoState.Dormant, older)) with { Costs = new(done) };
+
+        var plan = Scheduler.Plan(snap, new OrchestratorSettings(), []);
+        Assert.That(plan.Queue.Select(q => q.Id), Is.EqualTo(new[] { "A-T1", "B-T1" }));
+        Assert.That(Scheduler.Plan(snap, new OrchestratorSettings { Priorities = new() { ["B-T1"] = 1 } }, []).Queue[0].Id, Is.EqualTo("B-T1"),
+            "priority still comes first");
+        Assert.That(Scheduler.PromptFor(plan.Queue[0]), Does.Contain("/commit").And.Contains("workflow ticket close A-T1 --repo A"));
+    }
+
+    [Test]
     public void Auto_dispatch_reaches_past_the_queue_top_to_the_repos_it_may_start()
     {
         var snap = Snap(null, Repo("A", RepoState.Dormant, T("A-T1")), Repo("B", RepoState.Dormant, T("B-T1")));
@@ -155,6 +176,7 @@ public sealed class SchedulerTests
         var s = new OrchestratorSettings { AutoSubmitRepos = ["Prose"] };
         Assert.That(AutoDispatch.Submits(s, "prose"), Is.True, "repo names match case-insensitively");
         Assert.That(AutoDispatch.Submits(s, "Codex"), Is.False, "only the listed repos");
+        Assert.That(AutoDispatch.Submits(new OrchestratorSettings { AutoSubmitRepos = ["*"] }, "Codex"), Is.True, "* is every repo");
     }
 
     [Test]

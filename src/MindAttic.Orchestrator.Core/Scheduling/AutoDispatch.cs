@@ -42,5 +42,5 @@ public sealed class AutoDispatch(Dispatcher dispatcher, TimeSpan? interval = nul
 
     /// <summary>Whether a tab auto-dispatch opens in <paramref name="repo"/> presses Enter by itself.</summary>
     public static bool Submits(OrchestratorSettings settings, string repo) =>
-        settings.AutoSubmitRepos.Contains(repo, StringComparer.OrdinalIgnoreCase);
+        settings.AutoSubmitRepos.Contains(repo, StringComparer.OrdinalIgnoreCase) || settings.AutoSubmitRepos.Contains("*");
 }

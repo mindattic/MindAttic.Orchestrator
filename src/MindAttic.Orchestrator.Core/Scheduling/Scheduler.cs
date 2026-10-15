@@ -111,6 +111,9 @@ public static partial class Scheduler
             .OrderBy(q => q.IsAssigned)
             .ThenByDescending(q => q.Reserved > 0)
             .ThenByDescending(q => q.Priority)
+            // Smallest effort first: a known estimate before an unknown one, cheapest first.
+            .ThenBy(q => q.Estimate is null)
+            .ThenBy(q => q.Estimate?.Fresh ?? 0)
             .ThenByDescending(q => TypeRank.GetValueOrDefault(q.Ticket.Type))
             .ThenBy(q => q.Ticket.Date, StringComparer.Ordinal)
             .ThenBy(q => q.Ticket.Number ?? int.MaxValue)
@@ -250,5 +253,5 @@ public static partial class Scheduler
     /// <summary>The opening prompt for a ticket: what to do, and how to mark it done.</summary>
     public static string PromptFor(QueueItem item) =>
         $"Work on ticket {item.Id} ({item.Ticket.Type}): {item.Ticket.Summary} " +
-        $"When it's done and committed, close it with: workflow ticket close {item.Id} --repo {item.Repo}";
+        $"When it's done: run /commit (it commits only what you changed), then mark it finished with: workflow ticket close {item.Id} --repo {item.Repo} --ref \"<the test or commit that proves it>\"";
 }
