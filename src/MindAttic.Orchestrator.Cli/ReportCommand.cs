@@ -20,7 +20,7 @@ internal sealed class ReportCommand : Command<ReportCommand.Settings>
         public string? Csv { get; init; }
     }
 
-    private static DateOnly WeekOf(DateOnly d) => d.AddDays(-(((int)d.DayOfWeek + 6) % 7)); // Mondays
+    internal static DateOnly WeekOf(DateOnly d) => d.AddDays(-(((int)d.DayOfWeek + 6) % 7)); // Mondays
 
     public override int Execute(CommandContext context, Settings settings)
     {

@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MindAttic.Orchestrator.Core\MindAttic.Orchestrator.Core.csproj" />
+    <ProjectReference Include="..\..\src\MindAttic.Orchestrator.Cli\MindAttic.Orchestrator.Cli.csproj" />
   </ItemGroup>
 
 </Project>
