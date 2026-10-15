@@ -367,4 +367,36 @@ public sealed class ContextCyclerTests
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
+
+    [Test]
+    public void A_subagent_whose_transcript_has_gone_quiet_stops_counting_without_waiting_for_its_mark_to_age_out()
+    {
+        // A SubagentStop that never came kept a mark alive for up to 6 hours, and its transcript re-read every refresh (MAO-T114).
+        var dir = Path.Combine(Path.GetTempPath(), "ctx-" + Guid.NewGuid().ToString("N"));
+        var projects = Path.Combine(dir, "projects");
+        var sub = Path.Combine(dir, "subagents");
+        Directory.CreateDirectory(sub);
+        try
+        {
+            var now = DateTime.UtcNow;
+            foreach (var (id, quiet) in new[] { ("busy", TimeSpan.FromMinutes(1)), ("quiet", ContextCycler.SubagentIdleLife + TimeSpan.FromMinutes(1)), ("unwritten", TimeSpan.Zero) })
+            {
+                File.WriteAllText(Path.Combine(sub, id), ""); // no pid: trusted while young
+                if (id == "unwritten") continue; // its transcript isn't there yet: the mark alone decides
+                var folder = Path.Combine(projects, "proj", "parent-session", "subagents");
+                Directory.CreateDirectory(folder);
+                var transcript = Path.Combine(folder, $"agent-{id}.jsonl");
+                File.WriteAllText(transcript, "{}\n");
+                File.SetLastWriteTimeUtc(transcript, now - quiet);
+            }
+            var cycler = new ContextCycler(dir) { ProjectsDir = projects };
+
+            Assert.That(cycler.AliveSubagentIds(now).Order(), Is.EqualTo(new[] { "busy", "unwritten" }));
+            Assert.That(cycler.Subagents(), Is.EqualTo(2));
+            cycler.PruneMarks();
+            Assert.That(Directory.GetFiles(sub).Select(Path.GetFileName).Order(), Is.EqualTo(new[] { "busy", "quiet", "unwritten" }),
+                "a quiet one's mark stays, so it counts again the moment it writes");
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
 }

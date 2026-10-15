@@ -211,19 +211,34 @@ public sealed class ContextCycler(string? directory = null)
     /// <summary>A subagent mark older than this is a stop that never came (the CLI was killed mid-run).</summary>
     public static readonly TimeSpan SubagentMarkLife = TimeSpan.FromHours(6);
 
+    /// <summary>A subagent whose own transcript hasn't been written for this long has stopped, whether or not its
+    /// SubagentStop came (MAO-T114). Longer than the quietest a live one gets: a tool call held by the pace gate
+    /// (up to 5 minutes) and then running to the Bash tool's 10-minute limit writes nothing in between.</summary>
+    public static readonly TimeSpan SubagentIdleLife = TimeSpan.FromMinutes(20);
+
+    /// <summary>Where Claude Code keeps transcripts, to tell when a subagent's own has gone quiet.</summary>
+    public string ProjectsDir { get; init; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "projects");
+
     /// <summary>Subagents running now across every CLI: marks whose CLI is still running and that aren't stale.</summary>
     public int Subagents() => !System.IO.Directory.Exists(SubagentDirectory) ? 0
-        : System.IO.Directory.EnumerateFiles(SubagentDirectory).Count(f => SubagentAlive(f, DateTime.UtcNow));
+        : System.IO.Directory.EnumerateFiles(SubagentDirectory).Count(f => SubagentAlive(f, DateTime.UtcNow, idle: true));
 
     /// <summary>The agent ids (mark file names) of subagents running now across every CLI.</summary>
     public IReadOnlyList<string> AliveSubagentIds(DateTime nowUtc) => !System.IO.Directory.Exists(SubagentDirectory) ? []
-        : [.. System.IO.Directory.EnumerateFiles(SubagentDirectory).Where(f => SubagentAlive(f, nowUtc)).Select(f => Path.GetFileName(f))];
+        : [.. System.IO.Directory.EnumerateFiles(SubagentDirectory).Where(f => SubagentAlive(f, nowUtc, idle: true)).Select(f => Path.GetFileName(f))];
 
-    private static bool SubagentAlive(string mark, DateTime nowUtc)
+    /// <param name="idle">Also count one whose transcript has gone quiet (<see cref="SubagentIdleLife"/>) as stopped. The mark
+    /// itself is only deleted by the old rules (its CLI closed, or <see cref="SubagentMarkLife"/>), so a quiet one that
+    /// turns out to be alive counts again as soon as it writes.</param>
+    private bool SubagentAlive(string mark, DateTime nowUtc, bool idle)
     {
         try
         {
             if (nowUtc - File.GetLastWriteTimeUtc(mark) > SubagentMarkLife) return false;
+            if (idle && Activity.SubagentTranscripts.Find(ProjectsDir, Path.GetFileName(mark)) is { } transcript &&
+                nowUtc - File.GetLastWriteTimeUtc(transcript) > SubagentIdleLife)
+                return false;
             // No process id (the gate couldn't find its CLI): trust the age alone.
             return !int.TryParse(File.ReadAllText(mark).Trim(), out var pid) || IsClaude(pid);
         }
@@ -235,7 +250,7 @@ public sealed class ContextCycler(string? directory = null)
     public void PruneMarks()
     {
         if (System.IO.Directory.Exists(SubagentDirectory))
-            foreach (var f in System.IO.Directory.EnumerateFiles(SubagentDirectory).Where(f => !SubagentAlive(f, DateTime.UtcNow)))
+            foreach (var f in System.IO.Directory.EnumerateFiles(SubagentDirectory).Where(f => !SubagentAlive(f, DateTime.UtcNow, idle: false)))
                 try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         if (!System.IO.Directory.Exists(Directory)) return;
         foreach (var prefix in new[] { "unthrottled-", "crossrepo-" })

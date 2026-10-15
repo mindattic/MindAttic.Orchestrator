@@ -34,7 +34,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     private readonly Workspace workspace = new(options.WorkspaceRoot);
     private readonly OpenTicketSource tickets = new();
     private readonly TranscriptReader transcripts = new(options.ClaudeProjectsDir, options.TranscriptCache);
-    private readonly Sessions.ContextCycler contextCycler = new();
+    private readonly Sessions.ContextCycler contextCycler = new() { ProjectsDir = options.ClaudeProjectsDir };
     private readonly SubagentActivityReader subagents = new(options.ClaudeProjectsDir);
 
     /// <summary>The Launcher tabs open now (a live pipe scan); replaceable for tests.</summary>
