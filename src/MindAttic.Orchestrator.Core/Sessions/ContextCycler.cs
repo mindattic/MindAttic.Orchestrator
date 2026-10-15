@@ -1,0 +1,147 @@
+using System.Globalization;
+using System.Text.Json;
+using MindAttic.Orchestrator.Settings;
+
+namespace MindAttic.Orchestrator.Sessions;
+
+/// <summary>A session's context fill (saved by the statusline) and turn state (saved by the context gate hook).</summary>
+public sealed record SessionContext(string SessionId, string? Cwd, double Percent, bool Idle, DateTime TurnUtc);
+
+/// <summary>
+/// Keeps agents from running out of context: once a Claude session in a Launcher tab is past
+/// <see cref="OrchestratorSettings.ContextCyclePercent"/> and its turn has ended (so its subagents are
+/// done; the context gate told it to wrap up), types <c>/quicksave</c>, waits for that turn to end,
+/// then <c>/clear</c> and <c>/quickload</c>, so it carries on from the handoff with a fresh context.
+/// A session outside a Launcher tab can't be typed into, so you're told instead.
+/// </summary>
+public sealed class ContextCycler(string? directory = null)
+{
+    public string Directory { get; } = directory ?? Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "session-context");
+
+    /// <summary>How long a turn has to have been over before cycling, so a quick follow-up isn't typed over.</summary>
+    public static readonly TimeSpan Settle = TimeSpan.FromSeconds(10);
+
+    /// <summary>The longest /quicksave gets to write its handoff before the cycle gives up (without clearing).</summary>
+    public static readonly TimeSpan SaveTimeout = TimeSpan.FromMinutes(10);
+
+    private readonly Dictionary<string, Task<string>> cycling = new(StringComparer.Ordinal);
+    private readonly HashSet<string> told = new(StringComparer.Ordinal);
+
+    /// <summary>Starts a cycle for every session that's due; returns what it did or couldn't do, and finished cycles' outcomes.</summary>
+    public IReadOnlyList<string> Tick(IReadOnlyList<HostSession> hosts, OrchestratorSettings settings, DateTime nowUtc)
+    {
+        var said = new List<string>();
+        foreach (var (id, task) in cycling.Where(c => c.Value.IsCompleted).ToList())
+        {
+            cycling.Remove(id);
+            said.Add(task.IsCompletedSuccessfully ? task.Result : $"context cycle for session {id} failed: {task.Exception?.InnerException?.Message}");
+        }
+        if (!settings.ContextCycle) return said;
+
+        foreach (var s in Load())
+        {
+            if (cycling.ContainsKey(s.SessionId) || !Due(s, settings.ContextCyclePercent, nowUtc)) continue;
+            var host = HostFor(s, hosts, out var why);
+            if (host is null)
+            {
+                if (told.Add(s.SessionId)) said.Add($"session in {s.Cwd} is {s.Percent:0}% full of context but {why}: /quicksave, /clear and /quickload it yourself");
+                continue;
+            }
+            said.Add($"cycling the context of {s.Cwd} ({s.Percent:0}% full): /quicksave, /clear, /quickload");
+            cycling[s.SessionId] = Task.Run(() => CycleAsync(s, host));
+        }
+        return said;
+    }
+
+    /// <summary>Past the cycle point with its turn over long enough that nothing is still running.</summary>
+    public static bool Due(SessionContext s, int percent, DateTime nowUtc) =>
+        s.Percent >= percent && s.Idle && nowUtc - s.TurnUtc >= Settle;
+
+    /// <summary>The one Claude Launcher tab rooted where the session runs; null (and why) when there's none or it's ambiguous.</summary>
+    internal static HostSession? HostFor(SessionContext s, IEnumerable<HostSession> hosts, out string why)
+    {
+        why = "it isn't in a Launcher tab the orchestrator can type into";
+        if (s.Cwd is null) return null;
+        var target = Path.GetFullPath(s.Cwd).TrimEnd('\\', '/');
+        var matches = hosts.Where(h => h.Provider == Providers.Claude && h.WorkingDirectory is { } d &&
+            string.Equals(Path.GetFullPath(d).TrimEnd('\\', '/'), target, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (matches.Count > 1) why = "more than one Claude tab is open there, so it can't tell which is which";
+        return matches.Count == 1 ? matches[0] : null;
+    }
+
+    private async Task<string> CycleAsync(SessionContext s, HostSession host)
+    {
+        var sent = DateTime.UtcNow;
+        if (!await SessionControl.SendAsync(host.PipeName, "/quicksave", submit: true))
+            return $"couldn't reach the tab for {s.Cwd} to cycle its context";
+        // /quicksave is a turn of its own; its Stop marks the handoff written.
+        var deadline = sent + SaveTimeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(5));
+            if (Read(s.SessionId) is { Idle: true } after && after.TurnUtc > sent) break;
+        }
+        if (DateTime.UtcNow >= deadline)
+            return $"{s.Cwd}: /quicksave didn't finish in {SaveTimeout.TotalMinutes:0} minutes, so its context was left as is";
+        await SessionControl.SendAsync(host.PipeName, "/clear", submit: true);
+        await Task.Delay(TimeSpan.FromSeconds(5));
+        await SessionControl.SendAsync(host.PipeName, "/quickload", submit: true);
+        Forget(s.SessionId); // /clear starts a new session id; this one is done
+        return $"{s.Cwd}: context cycled; it picks up from its handoff";
+    }
+
+    public IEnumerable<SessionContext> Load()
+    {
+        if (!System.IO.Directory.Exists(Directory)) return [];
+        return System.IO.Directory.EnumerateFiles(Directory, "*.json")
+            .Where(f => !f.EndsWith(".state.json", StringComparison.OrdinalIgnoreCase))
+            .Select(f => Read(Path.GetFileNameWithoutExtension(f)))
+            .OfType<SessionContext>()
+            .ToList();
+    }
+
+    internal SessionContext? Read(string sessionId)
+    {
+        try
+        {
+            var context = Path.Combine(Directory, sessionId + ".json");
+            var state = Path.Combine(Directory, sessionId + ".state.json");
+            if (!File.Exists(context)) return null;
+            using var c = JsonDocument.Parse(File.ReadAllText(context));
+            var percent = c.RootElement.TryGetProperty("used_percentage", out var p) && p.ValueKind == JsonValueKind.Number ? p.GetDouble() : 0;
+            var cwd = c.RootElement.TryGetProperty("cwd", out var w) ? w.GetString() : null;
+            bool idle = false;
+            var turn = DateTime.MinValue;
+            if (File.Exists(state))
+            {
+                using var t = JsonDocument.Parse(File.ReadAllText(state));
+                idle = t.RootElement.TryGetProperty("state", out var st) && st.GetString() == "idle";
+                if (t.RootElement.TryGetProperty("at", out var at) &&
+                    DateTime.TryParse(at.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var when))
+                    turn = when;
+            }
+            return new SessionContext(sessionId, cwd, percent, idle, turn);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    private void Forget(string sessionId)
+    {
+        foreach (var suffix in new[] { ".json", ".state.json" })
+            try { File.Delete(Path.Combine(Directory, sessionId + suffix)); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+
+    /// <summary>Drops files for sessions not heard from in a week, so the folder doesn't grow forever.</summary>
+    public void Prune(DateTime nowUtc)
+    {
+        if (!System.IO.Directory.Exists(Directory)) return;
+        foreach (var f in System.IO.Directory.EnumerateFiles(Directory))
+            try { if (nowUtc - File.GetLastWriteTimeUtc(f) > TimeSpan.FromDays(7)) File.Delete(f); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+}

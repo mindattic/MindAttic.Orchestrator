@@ -34,8 +34,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         Build();
 
         Say(LogEventLevel.Information, $"daemon started (pid {Environment.ProcessId}, every {interval.TotalSeconds:0}s, workspace {options.WorkspaceRoot})");
-        try { if (Setup.AgentGate.Ensure() is { } did) Say(LogEventLevel.Information, did); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"couldn't install the pace gate: {ex.Message}"); }
+        var cycler = new ContextCycler();
+        cycler.Prune(DateTime.UtcNow);
+        int? gatePercent = null;
         string? lastHold = null;
         (PaceMode, int)? lastPace = null;
         bool? lastHeldElsewhere = null;
@@ -57,6 +58,19 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 var s = store.LoadSettings();
                 var plan = Scheduler.Plan(snapshot, s, store.LoadAssignments());
                 notifyUrl = s.NotifyUrl;
+
+                // The hooks carry the cycle point, so rewrite them when it changes.
+                if (gatePercent != s.ContextCyclePercent)
+                {
+                    try { if (Setup.AgentGate.Ensure(contextPercent: s.ContextCyclePercent) is { } did) Say(LogEventLevel.Information, did); }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"couldn't install the agent hooks: {ex.Message}"); }
+                    gatePercent = s.ContextCyclePercent;
+                }
+                foreach (var line in cycler.Tick([.. snapshot.Repos.SelectMany(r => r.Hosts)], s, DateTime.UtcNow))
+                {
+                    Say(LogEventLevel.Information, line);
+                    if (line.EndsWith("yourself", StringComparison.Ordinal)) Alert("Context nearly full", line);
+                }
 
                 // An agent finished its turn and is waiting on you: the alert worth leaving the desk for.
                 foreach (var repo in snapshot.Repos)

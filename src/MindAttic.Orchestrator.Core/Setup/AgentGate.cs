@@ -54,57 +54,122 @@ public static class AgentGate
             time.sleep(min(left, 5))
         """.Replace("\r\n", "\n");
 
-    /// <summary>Writes the script and registers the hook when either is missing or out of date.
+    public const string ContextScriptName = "context-gate.py";
+
+    /// <summary>
+    /// The context gate: records each session's turn (busy on a prompt, idle on Stop) next to the
+    /// context fill the statusline saves, and once a turn tells the main agent its context is past
+    /// <paramref name="percent"/> so it wraps up and lets its subagents finish. The orchestrator then
+    /// cycles it (<see cref="Sessions.ContextCycler"/>).
+    /// </summary>
+    internal static string ContextScript(int percent) => $$$"""
+        #!/usr/bin/env python3
+        # MindAttic.Orchestrator's context gate (written by the orchestrator; edits are overwritten).
+        # Records each session's turn state and warns the main agent once per turn when its context is
+        # past the cycle point, so it finishes cleanly before the orchestrator saves, clears and reloads it.
+        import json, sys
+        from datetime import datetime, timezone
+        from pathlib import Path
+
+        DIR = Path.home() / ".claude" / "session-context"
+        PERCENT = {{{percent}}}
+
+        def load(path):
+            try:
+                return json.loads(path.read_text())
+            except Exception:
+                return {}
+
+        def save(path, value):
+            tmp = path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(value))
+            tmp.replace(path)
+
+        try:
+            data = json.load(sys.stdin)
+        except Exception:
+            sys.exit(0)
+        sid, event = data.get("session_id"), data.get("hook_event_name")
+        if not sid or data.get("agent_id"):
+            sys.exit(0)  # subagents finish inside their parent's turn
+        DIR.mkdir(parents=True, exist_ok=True)
+        state_file = DIR / (sid + ".state.json")
+        state = load(state_file)
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        if event == "Stop":
+            state.update(state="idle", at=now)
+        elif event == "UserPromptSubmit":
+            state.update(state="busy", at=now, warned=False)
+        elif event == "PostToolUse":
+            used = load(DIR / (sid + ".json")).get("used_percentage") or 0
+            if state.get("warned") or used < PERCENT:
+                sys.exit(0)
+            state["warned"] = True
+            print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext":
+                "Context is " + str(used) + "% full. Finish the step you're on, let running subagents finish and "
+                "start no new ones, then end your turn with a short status. The orchestrator will /quicksave, "
+                "/clear and /quickload this session so the work carries on with a fresh context."}}))
+        else:
+            sys.exit(0)
+        save(state_file, state)
+        """.Replace("\r\n", "\n");
+
+    /// <summary>Writes the scripts and registers their hooks when anything is missing or out of date.
     /// Returns what it did, or null when everything was already in place.</summary>
-    public static string? Ensure(string? claudeDir = null)
+    public static string? Ensure(string? claudeDir = null, int contextPercent = 80)
     {
         var dir = claudeDir ?? ClaudeDir;
         Directory.CreateDirectory(dir);
-        string? did = null;
+        var did = new List<string>();
 
         var script = Path.Combine(dir, ScriptName);
-        if (!File.Exists(script) || File.ReadAllText(script) != Script)
+        var contextScript = Path.Combine(dir, ContextScriptName);
+        foreach (var (path, body) in new[] { (script, Script), (contextScript, ContextScript(contextPercent)) })
         {
-            File.WriteAllText(script, Script);
-            did = "wrote the pace gate";
+            if (File.Exists(path) && File.ReadAllText(path) == body) continue;
+            File.WriteAllText(path, body);
+            did.Add("wrote " + Path.GetFileName(path));
         }
 
         var settingsPath = Path.Combine(dir, "settings.json");
         JsonObject? root;
         try { root = File.Exists(settingsPath) ? JsonNode.Parse(File.ReadAllText(settingsPath)) as JsonObject : new JsonObject(); }
         catch (JsonException) { root = null; }
-        if (root is null) return did; // unreadable: leave someone else's file alone
-        if (AddHook(root, Command(script)))
+        if (root is null) return did.Count > 0 ? string.Join(", ", did) : null; // unreadable: leave someone else's file alone
+        var changed = AddHook(root, "PreToolUse", ScriptName, Command(script), HookTimeoutSeconds);
+        foreach (var hookEvent in new[] { "PostToolUse", "Stop", "UserPromptSubmit" })
+            changed |= AddHook(root, hookEvent, ContextScriptName, Command(contextScript), 10);
+        if (changed)
         {
             var temp = settingsPath + ".tmp";
             File.WriteAllText(temp, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
             File.Move(temp, settingsPath, overwrite: true);
-            did = did is null ? "registered the pace gate hook" : did + " and registered its hook";
+            did.Add("registered the pace and context gate hooks");
         }
-        return did;
+        return did.Count > 0 ? string.Join(", ", did) : null;
     }
 
     internal static string Command(string script) => $"python \"{script.Replace('\\', '/')}\"";
 
-    /// <summary>Adds the PreToolUse entry unless one already runs the gate; true when it changed <paramref name="root"/>.</summary>
-    internal static bool AddHook(JsonObject root, string command)
+    /// <summary>Adds a <paramref name="hookEvent"/> entry unless one already runs <paramref name="scriptName"/>; true when it changed <paramref name="root"/>.</summary>
+    internal static bool AddHook(JsonObject root, string hookEvent, string scriptName, string command, int timeout)
     {
         var hooks = root["hooks"] as JsonObject ?? (JsonObject)(root["hooks"] = new JsonObject());
-        var pre = hooks["PreToolUse"] as JsonArray ?? (JsonArray)(hooks["PreToolUse"] = new JsonArray());
-        foreach (var hook in pre.OfType<JsonObject>().SelectMany(m => (m["hooks"] as JsonArray ?? []).OfType<JsonObject>()))
+        var entries = hooks[hookEvent] as JsonArray ?? (JsonArray)(hooks[hookEvent] = new JsonArray());
+        foreach (var hook in entries.OfType<JsonObject>().SelectMany(m => (m["hooks"] as JsonArray ?? []).OfType<JsonObject>()))
         {
-            if (hook["command"]?.GetValue<string>() is { } c && c.Contains(ScriptName, StringComparison.OrdinalIgnoreCase))
+            if (hook["command"]?.GetValue<string>() is { } c && c.Contains(scriptName, StringComparison.OrdinalIgnoreCase))
             {
-                if (c == command && hook["timeout"]?.GetValue<int>() == HookTimeoutSeconds) return false;
+                if (c == command && hook["timeout"]?.GetValue<int>() == timeout) return false;
                 hook["command"] = command;
-                hook["timeout"] = HookTimeoutSeconds;
+                hook["timeout"] = timeout;
                 return true;
             }
         }
-        pre.Add(new JsonObject
+        entries.Add(new JsonObject
         {
             ["matcher"] = "",
-            ["hooks"] = new JsonArray(new JsonObject { ["type"] = "command", ["command"] = command, ["timeout"] = HookTimeoutSeconds }),
+            ["hooks"] = new JsonArray(new JsonObject { ["type"] = "command", ["command"] = command, ["timeout"] = timeout }),
         });
         return true;
     }

@@ -39,6 +39,14 @@ public sealed record OrchestratorSettings
     /// <summary>The longest one tool call is held while throttling.</summary>
     public int MaxAgentDelaySeconds { get; init; } = 300;
 
+    /// <summary>On: a Claude session in a Launcher tab past <see cref="ContextCyclePercent"/> of its context
+    /// is told to wrap up, then /quicksave, /clear and /quickload are typed into it once its turn ends.</summary>
+    public bool ContextCycle { get; init; } = true;
+
+    /// <summary>Context fill at which a session is wrapped up and cycled; high enough to use most of the
+    /// window, low enough that the wrap-up turn fits before Claude Code compacts on its own.</summary>
+    public int ContextCyclePercent { get; init; } = 80;
+
     /// <summary>Sessions the scheduler will fill up to (working + waiting both occupy a slot).</summary>
     public int MaxConcurrentSessions { get; init; } = 4;
 
