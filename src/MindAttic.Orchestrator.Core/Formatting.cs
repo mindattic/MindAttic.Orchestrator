@@ -4,10 +4,11 @@ namespace MindAttic.Orchestrator;
 
 public static class Formatting
 {
+    // The thresholds are where the smaller unit would round up to 1000 (999,999 is "1M", not "1000k").
     public static string Tokens(long n) => n switch
     {
-        >= 1_000_000_000 => (n / 1e9).ToString("0.##", CultureInfo.InvariantCulture) + "B",
-        >= 1_000_000 => (n / 1e6).ToString("0.#", CultureInfo.InvariantCulture) + "M",
+        >= 999_950_000 => (n / 1e9).ToString("0.##", CultureInfo.InvariantCulture) + "B",
+        >= 999_950 => (n / 1e6).ToString("0.#", CultureInfo.InvariantCulture) + "M",
         >= 1_000 => (n / 1e3).ToString("0.#", CultureInfo.InvariantCulture) + "k",
         _ => n.ToString(CultureInfo.InvariantCulture),
     };
