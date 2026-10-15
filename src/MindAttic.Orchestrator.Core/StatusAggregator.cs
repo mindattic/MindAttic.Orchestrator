@@ -26,9 +26,13 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
     private readonly Workspace workspace = new(options.WorkspaceRoot);
     private readonly OpenTicketSource tickets = new();
-    private readonly HostSessionScanner hosts = new(options);
     private readonly TranscriptReader transcripts = new(options.ClaudeProjectsDir, options.TranscriptCache);
-    private readonly ProviderLogReader otherProviders = ProviderLogReader.Default();
+
+    /// <summary>The Launcher tabs open now (a live pipe scan); replaceable for tests.</summary>
+    internal Func<IReadOnlyList<HostSession>> ScanHosts { get; init; } = new HostSessionScanner(options).Scan;
+
+    /// <summary>Codex's and Gemini's own logs under your profile; replaceable for tests.</summary>
+    internal ProviderLogReader OtherProviders { get; init; } = ProviderLogReader.Default();
     private DateTime auditStamp;
     private DateTime historySavedUtc;
     private IReadOnlyDictionary<string, IReadOnlySet<string>> links = new Dictionary<string, IReadOnlySet<string>>();
@@ -58,11 +62,11 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         var allSessions = transcripts.Poll(historyStartUtc)
             .Select(s => s with { UsageToday = s.UsageSince(startOfTodayUtc) })
             .ToList();
-        var providerSessions = otherProviders.Poll(historyStartUtc)
+        var providerSessions = OtherProviders.Poll(historyStartUtc)
             .Select(s => s with { UsageToday = s.UsageSince(startOfTodayUtc) })
             .ToList();
         var sessions = allSessions.Concat(providerSessions).ToLookup(s => Bucket(s.Cwd));
-        var hostSessions = hosts.Scan().ToLookup(h => Bucket(h.WorkingDirectory));
+        var hostSessions = ScanHosts().ToLookup(h => Bucket(h.WorkingDirectory));
 
         var result = new List<RepoStatus>(repos.Count + 2);
         foreach (var repo in repos)
@@ -96,7 +100,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             .Select(p => new ProviderUsage(p.Item1,
                 p.Item2.Aggregate(default(TokenUsage), (sum, s) => sum + s.UsageToday),
                 p.Item2.Aggregate(default(TokenUsage), (sum, s) => sum + s.UsageSince(weekFrom)),
-                [.. otherProviders.Limits.Where(l => l.Provider == p.Item1 && l.ResetsUtc > now)]))
+                [.. OtherProviders.Limits.Where(l => l.Provider == p.Item1 && l.ResetsUtc > now)]))
             .ToList();
 
         var storedHistory = Store.LoadUsageHistory();
