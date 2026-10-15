@@ -68,6 +68,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"couldn't install the agent hooks: {ex.Message}"); }
                     gatePercent = s.ContextCyclePercent;
                 }
+                WatchHealth(autopilot);
                 foreach (var r in Sessions.ProcessReaper.ReapOnce(DateTime.UtcNow))
                     Say(LogEventLevel.Warning, $"reaped pid {r.Process.Pid} ({r.Process.Name}): {r.Reason}" +
                         (string.IsNullOrWhiteSpace(r.Process.CommandLine) ? "" : $" — was running: {r.Process.CommandLine}"));
@@ -168,6 +169,34 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             Alert("Audit found something new", news.ToString());
         }
         else Say(LogEventLevel.Information, $"audit: nothing new ({after.Drift.Count} drifted files, {after.Duplicates.Count} duplicate groups, {after.Took.TotalSeconds:0}s)");
+    }
+
+    private Activity.HealthLevel healthLevel;
+    private DateTime healthSampledUtc;
+
+    /// <summary>
+    /// Every 30 seconds, samples handles, commit charge and free RAM. A change of level is logged and alerted with the
+    /// worst offenders, and while it isn't OK autopilot starts no agents.
+    /// </summary>
+    private void WatchHealth(Autopilot autopilot)
+    {
+        if (DateTime.UtcNow - healthSampledUtc < TimeSpan.FromSeconds(30)) return;
+        healthSampledUtc = DateTime.UtcNow;
+        var sample = Activity.MachineHealth.Sample();
+        var (level, why) = Activity.MachineHealth.Judge(sample);
+        autopilot.HealthHold = level == Activity.HealthLevel.Ok ? null : why;
+        if (level == healthLevel) return;
+        var top = string.Join(", ", sample.Top.Select(h => $"{h.Name} {h.Handles:N0}"));
+        if (level == Activity.HealthLevel.Ok)
+            Say(LogEventLevel.Information, "machine health is back to normal; autopilot can start agents again");
+        else
+        {
+            Say(level == Activity.HealthLevel.Danger ? LogEventLevel.Error : LogEventLevel.Warning,
+                $"machine health {level.ToString().ToLowerInvariant()}: {why} (most handles: {top}); autopilot starts no agents until it recovers");
+            Alert(level == Activity.HealthLevel.Danger ? "Machine in danger" : "Machine running low",
+                $"{why}. Most handles: {top}. Autopilot is holding.", urgent: level == Activity.HealthLevel.Danger);
+        }
+        healthLevel = level;
     }
 
     private DateTime syncedDbWriteUtc;

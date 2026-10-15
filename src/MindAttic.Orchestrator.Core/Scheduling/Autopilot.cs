@@ -37,6 +37,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// <summary>Why no new agent starts right now (switched off, quiet hours, the pace), if that's so.</summary>
     public string? Paused { get; private set; }
 
+    /// <summary>Set by the daemon while the machine is short of handles or memory (<see cref="Activity.MachineHealth"/>): no new agent starts.</summary>
+    public string? HealthHold { get; set; }
+
     /// <summary>Whether <c>/autopilot</c> is on (until <c>/autopilot off</c>).</summary>
     public bool On { get; private set; }
 
@@ -73,6 +76,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             Tell("unknown", $"autopilot: no repo named {string.Join(", ", unknown)} in the workspace");
 
         Paused = !settings.Autopilot ? "autopilot is switched off"
+            : HealthHold is { } sick ? $"machine health: {sick}"
             : QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is { } quiet ? $"quiet hours ({quiet})"
             : PaceHold(plan, snapshot);
         if (repos.Count == 0 || Paused is not null || HeldElsewhere) return said;
