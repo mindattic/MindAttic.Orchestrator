@@ -27,4 +27,17 @@ public sealed class AuditNewsTests
         Assert.That(news.ToString(), Does.Contain("B/hook.ps1").And.Contain("B+C"));
         Assert.That(AuditNews.Between(null, after).Any, Is.False, "the first audit has nothing to compare with");
     }
+
+    [Test]
+    public void The_news_line_says_one_or_many_and_names_at_most_three()
+    {
+        Assert.That(new AuditNews([Drift("A", "x.ps1")], [Dup("A", "B")]).ToString(),
+            Is.EqualTo("1 newly drifted agent file (A/x.ps1); 1 new duplicated-code group (A+B)"));
+        Assert.That(new AuditNews([.. "ABCD".Select(r => Drift(r.ToString(), "x.ps1"))], []).ToString(),
+            Is.EqualTo("4 newly drifted agent files (A/x.ps1, B/x.ps1, C/x.ps1, …)"));
+        Assert.That(new AuditNews([], [Dup("A", "B"), Dup("B", "C"), Dup("C", "D"), Dup("D", "A")]).ToString(),
+            Is.EqualTo("4 new duplicated-code groups (A+B, B+C, C+D, …)"));
+        Assert.That(new AuditNews([], [Dup("A", "B"), Dup("B", "C")]).ToString(), Is.EqualTo("2 new duplicated-code groups (A+B, B+C)"), "no ellipsis at three or fewer");
+        Assert.That((new AuditNews([], []).ToString(), new AuditNews([], []).Any), Is.EqualTo(("", false)));
+    }
 }

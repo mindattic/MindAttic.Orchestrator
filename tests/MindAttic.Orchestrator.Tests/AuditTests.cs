@@ -70,6 +70,34 @@ public sealed class AuditTests
         .Append("}"));
 
     [Test]
+    public void A_run_over_the_workspace_is_saved_and_latest_reads_back_its_findings()
+    {
+        // The daemon's scheduled audit and its "what's new" alert both start from Latest().
+        foreach (var name in new[] { "Alpha", "Beta", "Gamma", "Delta" })
+        {
+            var files = new Dictionary<string, string> { [".claude/hooks/load.ps1"] = string.Format(Hook, name) + (name == "Delta" ? "Remove-Item -Recurse x\n" : "") };
+            if (name != "Delta") files[".claude/commands/quicksave.md"] = "save";
+            if (name is "Alpha" or "Beta") files["src/Util.cs"] = Code("Util");
+            Directory.CreateDirectory(Path.Combine(Repo(name, files).Path, ".git"));
+        }
+        var store = new MindAttic.Orchestrator.Settings.JsonStore(Path.Combine(root, "store"));
+        var runner = new AuditRunner(new OrchestratorOptions { WorkspaceRoot = root }, store);
+        Assert.That(runner.Latest(), Is.Null, "no audit yet");
+
+        var report = runner.Run();
+        var latest = new AuditRunner(new OrchestratorOptions { WorkspaceRoot = root }, store).Latest()!;
+
+        Assert.That((report.ReposScanned, report.Drift.Single().Repo, report.Missing.Single(m => m.File.EndsWith("quicksave.md")).Repo),
+            Is.EqualTo((4, "Delta", "Delta")));
+        Assert.That(report.Duplicates.Single().Files.Select(f => f.Repo), Is.EquivalentTo(new[] { "Alpha", "Beta" }));
+        Assert.That((latest.RanUtc, latest.Took, latest.ReposScanned, latest.FilesScanned), Is.EqualTo((report.RanUtc, report.Took, report.ReposScanned, report.FilesScanned)));
+        Assert.That(latest.Drift, Is.EqualTo(report.Drift));
+        Assert.That(latest.Missing, Is.EqualTo(report.Missing));
+        Assert.That(latest.Duplicates.Select(g => (g.Identical, string.Join(",", g.Files.Select(f => $"{f.Repo}:{f.Path}")))),
+            Is.EqualTo(report.Duplicates.Select(g => (g.Identical, string.Join(",", g.Files.Select(f => $"{f.Repo}:{f.Path}"))))));
+    }
+
+    [Test]
     public void Finds_identical_and_near_copies_across_repos_but_not_within_one()
     {
         var repos = new[]
