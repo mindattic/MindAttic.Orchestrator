@@ -144,4 +144,73 @@ public sealed class StatusAggregatorTests
         writes.Refresh();
         Assert.That(File.Exists(rlPath), Is.True, "nobody held it: free to take, and it writes");
     }
+
+    [Test]
+    public void Only_the_lease_holder_builds_a_snapshot_and_every_other_process_shows_the_one_it_published()
+    {
+        // Every dashboard window and the daemon used to poll every transcript, parse subagents and scan the
+        // Launcher's pipes on its own timer (MAO-T115).
+        store.SaveSettings(new OrchestratorSettings { WorktreeRoot = worktrees, BlockBudget = 100_000 });
+        Transcript("s1", Path.Combine(ws, "A"), TimeSpan.FromSeconds(30), 10, 20);
+        StatusAggregator With(MindAttic.Orchestrator.Scheduling.DispatchLease lease) =>
+            new(new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null }, store,
+                new RateLimitStatusWriter(Path.Combine(dir, "rl-status.json")), lease)
+            { ScanHosts = () => hosts, OtherProviders = new ProviderLogReader(Path.Combine(dir, "codex"), Path.Combine(dir, "gemini")) };
+
+        using var daemonLease = new MindAttic.Orchestrator.Scheduling.DispatchLease(Path.Combine(dir, "store"));
+        using var windowLease = new MindAttic.Orchestrator.Scheduling.DispatchLease(Path.Combine(dir, "store"));
+        var daemon = With(daemonLease);
+        var built = daemon.Refresh();
+        Assert.That((daemon.LastWasShared, daemonLease.IsHeld), Is.EqualTo((false, true)));
+
+        Transcript("s2", Path.Combine(ws, "B"), TimeSpan.FromSeconds(10), 5);
+        var window = With(windowLease);
+        var shown = window.Refresh();
+        Assert.That(window.LastWasShared, Is.True);
+        Assert.That(shown.TakenUtc, Is.EqualTo(built.TakenUtc), "the holder's snapshot, not one of its own");
+        Assert.That(shown.Repos.Single(r => r.Name == "B").Sessions, Is.Empty, "it didn't read the transcripts itself");
+
+        daemonLease.Dispose(); // the holder exited
+        var taken = window.Refresh();
+        Assert.That((window.LastWasShared, windowLease.IsHeld), Is.EqualTo((false, true)), "the lease was free: it took over");
+        Assert.That(taken.Repos.Single(r => r.Name == "B").Sessions.Single().SessionId, Is.EqualTo("s2"));
+    }
+
+    [Test]
+    public void A_published_snapshot_reads_back_with_the_same_numbers_and_ages_out()
+    {
+        store.SaveSettings(new OrchestratorSettings { WorktreeRoot = worktrees, BlockBudget = 100_000 });
+        Transcript("s1", Path.Combine(ws, "A", "src"), TimeSpan.FromSeconds(30), 10, 20);
+        Transcript("s2", Path.Combine(worktrees, "A", "A-T1"), TimeSpan.FromMinutes(10), 5);
+        hosts.Add(new HostSession("Claude", 42, "mindattic-host-claude-42", Path.Combine(ws, "B")));
+        var built = Aggregator().Refresh();
+        var a = built.Repos.Single(r => r.Name == "A");
+        built = built with
+        {
+            Repos = [.. built.Repos.Select(r => r.Name != "A" ? r : r with
+            {
+                Sessions = [.. r.Sessions.Select(x => x with { Loop = new Loop("Bash", "ls", 5, built.TakenUtc) })],
+            })],
+            LinkedRepos = new Dictionary<string, IReadOnlySet<string>>(StringComparer.OrdinalIgnoreCase) { ["A"] = new HashSet<string>(["B"], StringComparer.OrdinalIgnoreCase) },
+            Requires = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase) { ["A-T3"] = ["A-T1"] },
+            Agents = [new AgentBoardRow("s1", "A", "A-T1", "fix", built.TakenUtc, built.TakenUtc, AgentState.Working, "", false, new TokenUsage(1, 2, 3, 4),
+                [new SubagentActivity("x", "s1", "Explore", built.TakenUtc, built.TakenUtc, new TokenUsage(5, 6, 7, 8))])],
+            Budget = built.Budget! with { Calibration = new LimitCalibration([new LimitObservation(LimitKind.Session, built.TakenUtc, built.TakenUtc.AddHours(1), 123)]) },
+        };
+        var file = new SnapshotFile(Path.Combine(dir, "snapshot.json"));
+        file.Write(built);
+
+        var read = new SnapshotFile(file.Path).Read(built.TakenUtc.AddSeconds(5))!;
+
+        var json = new System.Text.Json.JsonSerializerOptions { NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals };
+        Assert.That(System.Text.Json.JsonSerializer.Serialize(read, json), Is.EqualTo(System.Text.Json.JsonSerializer.Serialize(built, json)));
+        Assert.That(read.Repos.SelectMany(r => r.Sessions).Select(s => s.Events), Is.EqualTo(built.Repos.SelectMany(r => r.Sessions).Select(s => s.Events)),
+            "usage events travel too: a repo's spend this block is worked out from them");
+        Assert.That(read.Repos.Single(r => r.Name == "A").Sessions.Sum(s => s.UsageSince(a.Sessions.Min(x => x.Events[0].AtUtc)).Output), Is.EqualTo(35));
+        Assert.That((read.LinkedRepos["a"].Contains("b"), read.Requires["a-t3"].Single()), Is.EqualTo((true, "A-T1")), "lookups stay case-insensitive");
+        Assert.That((read.Pace!.SessionCap, read.Budget!.BlockPercent, read.Budget.Level), Is.EqualTo((built.Pace!.SessionCap, built.Budget!.BlockPercent, built.Budget.Level)));
+
+        Assert.That(new SnapshotFile(file.Path).Read(built.TakenUtc + SnapshotFile.MaxAge + TimeSpan.FromSeconds(1)), Is.Null,
+            "its writer stopped: build one instead");
+    }
 }

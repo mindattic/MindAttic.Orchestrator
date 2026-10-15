@@ -133,6 +133,10 @@ public sealed partial class MainViewModel : ObservableObject
     public string StatusMessage { get => statusMessage; private set => Set(ref statusMessage, value); }
     public string RefreshInfo { get => refreshInfo; private set => Set(ref refreshInfo, value); }
 
+    /// <summary>Whether this window is the one process building snapshots (no daemon got the lease first), so it has to
+    /// keep refreshing even while hidden: rl-status.json and autopilot depend on it.</summary>
+    public bool HoldsLease => lease.IsHeld;
+
     public int WorkingCount => snapshot?.Working ?? 0;
     public int WaitingCount => snapshot?.Waiting ?? 0;
     public int HostCount => snapshot?.LiveHosts ?? 0;
@@ -159,7 +163,9 @@ public sealed partial class MainViewModel : ObservableObject
             var clock = Stopwatch.StartNew();
             var next = await Task.Run(() => aggregator.Refresh());
             Apply(next);
-            RefreshInfo = $"Updated {DateTime.Now:T} · {clock.ElapsedMilliseconds} ms";
+            RefreshInfo = aggregator.LastWasShared
+                ? $"Updated {next.TakenUtc.ToLocalTime():T} · shared"
+                : $"Updated {DateTime.Now:T} · {clock.ElapsedMilliseconds} ms";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {

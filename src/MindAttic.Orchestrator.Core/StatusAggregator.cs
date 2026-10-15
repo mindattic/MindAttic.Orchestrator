@@ -14,6 +14,8 @@ namespace MindAttic.Orchestrator;
 /// Launcher's host pipes, and Claude Code's transcripts. Holds incremental state between calls,
 /// so keep one instance and call <see cref="Refresh"/> on a timer. Not thread-safe.
 /// </summary>
+/// <remarks>With a <paramref name="statusLease"/>, only the process holding it builds snapshots; it publishes each one
+/// (<see cref="SnapshotFile"/>) and every other dashboard window or daemon shows that instead of building its own (MAO-T115).</remarks>
 /// <param name="statusLease">With <paramref name="rateLimitFile"/>, write it only while held (or free to
 /// take): every open dashboard window and the headless daemon would otherwise poll Claude's own report and
 /// the session transcripts at their own moment and overwrite the one shared file with a different number
@@ -60,9 +62,37 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     public OrchestratorOptions Options => options;
     public JsonStore Store { get; } = store ?? new JsonStore();
 
+    /// <summary>Where the lease holder publishes its snapshots; defaults to beside the transcript cache.</summary>
+    internal string? SnapshotPath { get; init; }
+
+    private SnapshotFile? published;
+    private SnapshotFile Published => published ??= new SnapshotFile(SnapshotPath ??
+        Path.Combine(Path.GetDirectoryName(options.TranscriptCache) is { Length: > 0 } d ? d : Store.Directory, "status-snapshot.json"));
+
+    /// <summary>Whether the last <see cref="Refresh"/> showed the lease holder's published snapshot rather than building one.</summary>
+    public bool LastWasShared { get; private set; }
+
+    /// <summary>
+    /// The workspace now. Holding the status lease (or taking it while it's free), this builds the snapshot and publishes
+    /// it; otherwise it shows the holder's latest, building its own only when there's none younger than
+    /// <see cref="SnapshotFile.MaxAge"/>. A refresh for a given time always builds its own.
+    /// </summary>
     public Snapshot Refresh(DateTime? nowUtc = null)
     {
-        var now = nowUtc ?? DateTime.UtcNow;
+        LastWasShared = false;
+        if (nowUtc is null && statusLease is not null && !statusLease.IsHeld && !statusLease.TryAcquire() &&
+            Published.Read(DateTime.UtcNow) is { } shared)
+        {
+            LastWasShared = true;
+            return shared;
+        }
+        var snapshot = Build(nowUtc ?? DateTime.UtcNow);
+        if (nowUtc is null && statusLease is { IsHeld: true }) Published.Write(snapshot);
+        return snapshot;
+    }
+
+    private Snapshot Build(DateTime now)
+    {
         var settings = Store.LoadSettings();
         var warnings = new List<string>();
         var repos = workspace.Repos();
@@ -96,12 +126,12 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
         var result = new List<RepoStatus>(repos.Count + 2);
         foreach (var repo in repos)
-            result.Add(Build(repo.Name, repo.Path, tickets.OpenFor(repo, warnings)));
+            result.Add(Repo(repo.Name, repo.Path, tickets.OpenFor(repo, warnings)));
 
         foreach (var pseudo in new[] { (WorkspaceRootName, workspace.Root), (OutsideName, "") })
         {
             if (sessions[pseudo.Item1].Any() || hostSessions[pseudo.Item1].Any())
-                result.Add(Build(pseudo.Item1, pseudo.Item2, []));
+                result.Add(Repo(pseudo.Item1, pseudo.Item2, []));
         }
 
         var events = claudeEvents;
@@ -150,7 +180,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
         return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Requires = tickets.Requires, Agents = agentBoard };
 
-        RepoStatus Build(string name, string path, IReadOnlyList<MindAttic.Workflow.Tickets.Ticket> open)
+        RepoStatus Repo(string name, string path, IReadOnlyList<MindAttic.Workflow.Tickets.Ticket> open)
         {
             var repoSessions = sessions[name].OrderByDescending(s => s.LastWriteUtc).ToList();
             var repoHosts = hostSessions[name].ToList();

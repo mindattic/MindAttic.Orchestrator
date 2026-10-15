@@ -12,6 +12,12 @@ public partial class MainWindow : Window
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
 
+    /// <summary>Hidden in the tray while the daemon builds the snapshots: just enough to keep the tray's summary current.</summary>
+    private static readonly TimeSpan HiddenInterval = TimeSpan.FromSeconds(60);
+
+    /// <summary>Hidden but holding the lease (no daemon running): the daemon's own pace, since rl-status.json and autopilot depend on it.</summary>
+    private static readonly TimeSpan HiddenHolderInterval = TimeSpan.FromSeconds(15);
+
     private readonly MainViewModel model = new();
     private readonly DispatcherTimer timer;
 
@@ -30,13 +36,38 @@ public partial class MainWindow : Window
         model.Toasts.CollectionChanged += OnToastsChanged;
 
         timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = PollInterval };
-        timer.Tick += async (_, _) => await model.RefreshAsync();
+        timer.Tick += async (_, _) =>
+        {
+            await model.RefreshAsync();
+            Retime();
+        };
         Loaded += async (_, _) =>
         {
             await model.RefreshAsync();
             timer.Start();
         };
         Closed += (_, _) => timer.Stop();
+        // Minimized to the tray, nobody is looking: no 5-second refresh (MAO-T115). Shown again, it catches up at once.
+        IsVisibleChanged += async (_, _) => await OnShownOrHidden();
+        StateChanged += async (_, _) => await OnShownOrHidden();
+    }
+
+    private bool Hidden => !IsVisible || WindowState == WindowState.Minimized;
+
+    private void Retime()
+    {
+        var interval = !Hidden ? PollInterval : model.HoldsLease ? HiddenHolderInterval : HiddenInterval;
+        if (timer.Interval != interval) timer.Interval = interval;
+    }
+
+    private bool wasHidden;
+
+    private async Task OnShownOrHidden()
+    {
+        Retime();
+        var shown = wasHidden && !Hidden;
+        wasHidden = Hidden;
+        if (shown && IsLoaded) await model.RefreshAsync();
     }
 
     private void OnEscape()
