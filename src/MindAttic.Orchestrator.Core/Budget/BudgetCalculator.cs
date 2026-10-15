@@ -8,7 +8,7 @@ public enum BudgetLevel { Ok, Warn, Over }
 
 /// <summary>Where a limit came from: you set it, it was learned from your limit hits, or (5-hour
 /// block only) there is none and the block is compared to your busiest one as context.</summary>
-public enum LimitSource { Peak, Learned, Manual }
+public enum LimitSource { Peak, Learned, Manual, Reported }
 
 /// <summary>
 /// A 5-hour usage block, the unit Claude's subscription limits reset on: it starts at the first
@@ -121,21 +121,23 @@ public static class BudgetCalculator
     /// neither, the 5-hour block is compared to your busiest block as context only.
     /// </summary>
     public static BudgetStatus Compute(IReadOnlyList<UsageEvent> events, OrchestratorSettings settings, DateTime nowUtc, DateTime startOfTodayUtc,
-        TimeZoneInfo? zone = null, LimitCalibration? learned = null)
+        TimeZoneInfo? zone = null, LimitCalibration? learned = null, ReportedUsage? reported = null)
     {
         var blocks = Blocks(events);
         var current = blocks.Count > 0 && blocks[^1].IsActive(nowUtc) ? blocks[^1] : null;
 
-        // Behind a reported wall, its reset time is the block's real end; trust it over the estimate.
+        // Behind a reported wall, or with Claude's own reset time, the block's real end is known; trust it over the estimate.
         var sessionWall = learned?.Active(LimitKind.Session, nowUtc);
-        if (sessionWall is not null)
+        var reported5h = ReportedUsage.Usable(reported?.FiveHour, nowUtc);
+        if ((sessionWall?.ResetUtc ?? reported5h?.ResetUtc) is { } blockEnd)
         {
-            var start = sessionWall.ResetUtc - BlockLength;
+            var start = blockEnd - BlockLength;
             var inBlock = events.Where(e => e.AtUtc >= start && e.AtUtc <= nowUtc).ToList();
-            current = new UsageBlock(start, sessionWall.ResetUtc, Sum(inBlock),
-                inBlock.Count > 0 ? inBlock.Max(e => e.AtUtc) : sessionWall.HitUtc);
+            current = new UsageBlock(start, blockEnd, Sum(inBlock),
+                inBlock.Count > 0 ? inBlock.Max(e => e.AtUtc) : sessionWall?.HitUtc ?? start);
         }
         var currentFresh = current?.Usage.Fresh ?? 0;
+        var reportedLimit5h = ImpliedLimit(events, reported5h, BlockLength, reported?.AtUtc);
 
         // Without a budget, compare against the heaviest earlier block: "how hard am I going vs usual".
         // It can pass 100%, and it isn't a limit, so it never warns or projects.
@@ -147,6 +149,7 @@ public static class BudgetCalculator
         var blockRefuted = learned5h is { } l5 && sessionWall is null && currentFresh > l5;
         if (blockRefuted) learned5h = null;
         var (blockSource, blockLimit) = settings.BlockBudget is { } manual ? (LimitSource.Manual, manual)
+            : reportedLimit5h is { } rep5 ? (LimitSource.Reported, rep5)
             : learned5h is { } lim5 ? (LimitSource.Learned, lim5)
             : (LimitSource.Peak, peak > 0 ? peak : currentFresh);
         var isPeak = blockSource == LimitSource.Peak;
@@ -159,7 +162,10 @@ public static class BudgetCalculator
         DateTime weekStart;
         DateTime? weekReset = null;
         var resetSetting = WeeklyReset.TryParse(settings.WeeklyReset, out var reset) ? reset : null;
-        if ((resetSetting ?? learned?.LearnedWeeklyReset(zone)) is { } r)
+        var reportedWeek = ReportedUsage.Usable(reported?.Week, nowUtc);
+        if (reportedWeek is not null)
+            (weekStart, weekReset) = (reportedWeek.ResetUtc - TimeSpan.FromDays(7), reportedWeek.ResetUtc);
+        else if ((resetSetting ?? learned?.LearnedWeeklyReset(zone)) is { } r)
             (weekStart, weekReset) = r.Window(nowUtc, zone);
         else
             weekStart = nowUtc - TimeSpan.FromDays(7);
@@ -169,6 +175,7 @@ public static class BudgetCalculator
         var weeklyRefuted = learnedWeekly is { } lw && weeklyWall is null && week.Fresh > lw;
         if (weeklyRefuted) learnedWeekly = null;
         var (weeklySource, weeklyLimit) = settings.WeeklyBudget is > 0 ? (LimitSource.Manual, settings.WeeklyBudget)
+            : ImpliedLimit(events, reportedWeek, TimeSpan.FromDays(7), reported?.AtUtc) is { } repW ? (LimitSource.Reported, repW)
             : learnedWeekly is { } limW ? (LimitSource.Learned, limW)
             : ((LimitSource?)null, (long?)null);
         double? weeklyPercent = weeklyLimit is > 0 ? 100.0 * week.Fresh / weeklyLimit.Value : null;
@@ -212,6 +219,16 @@ public static class BudgetCalculator
         };
     }
 
+    /// <summary>A window's limit in tokens from Claude's own percent: what the window had spent by the
+    /// report, over the fraction it said that was. Null when there's nothing to size it by.</summary>
+    internal static long? ImpliedLimit(IEnumerable<UsageEvent> events, ReportedWindow? window, TimeSpan length, DateTime? reportedAtUtc)
+    {
+        if (window is null || reportedAtUtc is not { } at) return null;
+        var start = window.ResetUtc - length;
+        var spent = events.Where(e => e.AtUtc >= start && e.AtUtc <= at).Sum(e => e.Usage.Fresh);
+        return spent > 0 ? (long)(spent / (window.Percent / 100)) : null;
+    }
+
     private static TokenUsage Sum(IEnumerable<UsageEvent> events) =>
         events.Aggregate(default(TokenUsage), (s, e) => s + e.Usage);
 }
@@ -248,9 +265,12 @@ public sealed class RateLimitStatusWriter(string? path = null)
             ["percent_used"] = Math.Round(status.AtLimitKind == LimitKind.Session ? Math.Max(100, status.BlockPercent) : status.BlockPercent, 1),
             ["reset_time"] = reset,
             ["tokens_remaining"] = status.AtLimitKind == LimitKind.Session ? 0 : status.BlockRemaining,
-            ["basis"] = status.BlockLimitSource == LimitSource.Learned
-                ? $"uncached tokens vs the 5h limit learned from your last {status.Calibration?.Basis(LimitKind.Session)} limit hits"
-                : "uncached tokens vs your 5h block budget",
+            ["basis"] = status.BlockLimitSource switch
+            {
+                LimitSource.Reported => "Claude Code's own 5h usage percent",
+                LimitSource.Learned => $"uncached tokens vs the 5h limit learned from your last {status.Calibration?.Basis(LimitKind.Session)} limit hits",
+                _ => "uncached tokens vs your 5h block budget",
+            },
             ["source"] = "MindAttic.Orchestrator",
         };
         if (status.WeeklyPercent is { } wp) body["weekly_percent"] = Math.Round(wp, 1);

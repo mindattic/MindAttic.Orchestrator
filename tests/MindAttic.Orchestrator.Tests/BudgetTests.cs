@@ -27,6 +27,53 @@ public sealed class BudgetTests
     }
 
     [Test]
+    public void Claudes_own_percent_sizes_the_limit_and_fixes_the_reset()
+    {
+        // Claude said 24% at 11:00 with 2,400 spent since the block it resets at 15:20 began; 600 more since.
+        var reported = new ReportedUsage(new ReportedWindow(24, Day.AddHours(15 + 1.0 / 3)), new ReportedWindow(50, Day.AddDays(2)), Day.AddHours(11));
+        var events = new[] { E(-30, 9_000), E(10.5, 2400), E(11.5, 600) };
+
+        var s = BudgetCalculator.Compute(events, new OrchestratorSettings(), Day.AddHours(12), Day, TimeZoneInfo.Utc, reported: reported);
+
+        Assert.That((s.BlockLimitSource, s.BlockLimit), Is.EqualTo((LimitSource.Reported, 10_000L)));
+        Assert.That(s.BlockPercent, Is.EqualTo(30).Within(0.01), "Claude's 24% plus what's been spent since it said so");
+        Assert.That(s.CurrentBlock!.EndUtc, Is.EqualTo(Day.AddHours(15 + 1.0 / 3)), "the reset Claude gave, not the estimate");
+        Assert.That((s.WeeklyLimitSource, s.WeeklyLimit), Is.EqualTo((LimitSource.Reported, 22_800L)), "11,400 this week was 50%");
+        Assert.That(s.WeekResetUtc, Is.EqualTo(Day.AddDays(2)));
+
+        var manual = BudgetCalculator.Compute(events, new OrchestratorSettings { BlockBudget = 5_000 }, Day.AddHours(12), Day, TimeZoneInfo.Utc, reported: reported);
+        Assert.That(manual.BlockLimitSource, Is.EqualTo(LimitSource.Manual), "a budget you set still wins");
+    }
+
+    [Test]
+    public void A_report_too_coarse_or_from_a_window_already_reset_is_not_used()
+    {
+        var events = new[] { E(10.5, 100) };
+        var coarse = new ReportedUsage(new ReportedWindow(2, Day.AddHours(15)), null, Day.AddHours(11));
+        var ended = new ReportedUsage(new ReportedWindow(60, Day.AddHours(11.5)), null, Day.AddHours(11));
+
+        Assert.That(BudgetCalculator.Compute(events, new OrchestratorSettings(), Day.AddHours(12), Day, reported: coarse).BlockLimitIsPeak, Is.True, "2% is ±25%");
+        Assert.That(BudgetCalculator.Compute(events, new OrchestratorSettings(), Day.AddHours(12), Day, reported: ended).BlockLimitIsPeak, Is.True);
+    }
+
+    [Test]
+    public void The_report_the_statusline_saves_is_read_and_goes_stale()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "usage-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            File.WriteAllText(path, """{"rate_limits":{"five_hour":{"used_percentage":24,"resets_at":1792041600},"seven_day":{"used_percentage":72,"resets_at":1792533600}},"at":"2026-10-15T01:04:10Z"}""");
+            var at = new DateTime(2026, 10, 15, 1, 4, 10, DateTimeKind.Utc);
+
+            var r = ReportedUsage.Load(at.AddMinutes(5), path)!;
+            Assert.That(r.FiveHour, Is.EqualTo(new ReportedWindow(24, DateTimeOffset.FromUnixTimeSeconds(1792041600).UtcDateTime)));
+            Assert.That(r.Week!.Percent, Is.EqualTo(72));
+            Assert.That(ReportedUsage.Load(at.AddHours(2), path), Is.Null, "no Claude session has redrawn it in an hour");
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Test]
     public void Without_a_budget_the_current_block_is_measured_against_the_peak_block()
     {
         var events = new[] { E(1, 1000), E(10, 250) };

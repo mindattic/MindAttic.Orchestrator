@@ -268,6 +268,7 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
         string Of(LimitSource? source, long? limit, LimitKind kind, bool outdated, long? old) => source switch
         {
             LimitSource.Manual => $"{Format.Tokens(limit ?? 0)} (set)",
+            LimitSource.Reported => $"{Format.Tokens(limit ?? 0)} (from Claude's own usage percent)",
             LimitSource.Learned => $"{Format.Tokens(limit ?? 0)} (learned from {b.Calibration?.Basis(kind)} limit hits)",
             _ when outdated => $"relearning (already past the {Format.Tokens(old ?? 0)} learned earlier, with no wall)",
             _ => "none",
@@ -316,7 +317,7 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
         if (b.BlockLimitIsPeak)
             return $"[aqua]this block is at {b.BlockPercent:0}% of your heaviest block in 7 days[/] ({used}) [grey]· no budget set: `orchestrator budget --block <tokens>`[/]";
         var color = b.Level switch { BudgetLevel.Over => "red", BudgetLevel.Warn => "yellow", _ => "green" };
-        var what = b.BlockLimitSource == LimitSource.Learned ? "learned 5h limit" : "5h budget";
+        var what = b.BlockLimitSource switch { LimitSource.Learned => "learned 5h limit", LimitSource.Reported => "5h limit (Claude's count)", _ => "5h budget" };
         var wall = b.AtLimitUntilUtc is { } until ? $" [red]· at the {(b.AtLimitKind == LimitKind.Weekly ? "weekly" : "5-hour")} limit until {until.ToLocalTime():t}[/]" : "";
         return $"[{color}]budget: {b.BlockPercent:0}% of your {what}[/] ({Format.Tokens(block.Usage.Fresh)} of {Format.Tokens(b.BlockLimit)}; {used}){wall}";
     }

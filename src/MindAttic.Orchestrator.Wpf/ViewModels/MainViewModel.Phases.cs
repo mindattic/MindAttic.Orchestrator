@@ -89,6 +89,7 @@ public sealed partial class MainViewModel
         { CurrentBlock: null } => "No 5-hour block running",
         { BlockLimitIsPeak: true } => "of your busiest 5h block",
         { BlockLimitSource: LimitSource.Learned } => "of your learned 5-hour limit",
+        { BlockLimitSource: LimitSource.Reported } => "of your 5-hour limit (Claude's count)",
         _ => "of your 5-hour budget",
     };
 
@@ -143,6 +144,7 @@ public sealed partial class MainViewModel
         string Of(LimitSource? source, long? limit, LimitKind kind, bool outdated) => source switch
         {
             LimitSource.Manual => $"{Formatting.Tokens(limit ?? 0)}, set by you",
+            LimitSource.Reported => $"{Formatting.Tokens(limit ?? 0)}, from Claude's own usage percent",
             LimitSource.Learned => $"{Formatting.Tokens(limit ?? 0)}, learned from your last {b.Calibration?.Basis(kind)} limit hits",
             _ when outdated => "relearning: already spent past the learned limit without hitting it",
             _ => "none yet",

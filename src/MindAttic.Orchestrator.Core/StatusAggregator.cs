@@ -76,7 +76,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
         List<UsageEvent> events = [.. allSessions.SelectMany(s => s.Events).OrderBy(e => e.AtUtc)];
         var calibration = Calibrate(allSessions, events, historyStartUtc, now);
-        var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration);
+        var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration,
+            reported: ReportedUsage.Load(now));
 
         var recentFrom = now - BudgetCalculator.RecentWindow;
         var active = allSessions.Count(s => s.Events.Count > 0 && s.Events[^1].AtUtc >= recentFrom);
