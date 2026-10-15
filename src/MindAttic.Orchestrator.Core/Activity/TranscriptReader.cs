@@ -16,6 +16,13 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
     private const int HeadScanLimit = 256 * 1024;
     private const int CacheVersion = 2;
     private static readonly TimeSpan SaveEvery = TimeSpan.FromMinutes(1);
+
+    /// <summary>A file written this recently is opened every poll whatever its directory entry says (a file held open can
+    /// show a stale length and timestamp there); one quiet longer is skipped while its entry is unchanged.</summary>
+    internal static readonly TimeSpan HotFor = TimeSpan.FromMinutes(10);
+
+    /// <summary>How often every file in the window is opened anyway, so growth a stale directory entry hid is still found.</summary>
+    internal static readonly TimeSpan FullCheckEvery = TimeSpan.FromMinutes(5);
     private static readonly byte[] UsageMarker = Encoding.UTF8.GetBytes("\"usage\"");
     private static readonly byte[] TicketMarker = Encoding.UTF8.GetBytes(TicketAttribution.PromptMarker);
 
@@ -24,6 +31,14 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
     private bool triedCache;
     private bool dirty;
     private DateTime savedUtc = DateTime.MinValue;
+    private DateTime fullCheckUtc = DateTime.MinValue;
+    private IReadOnlyList<TranscriptSession>? sessions;
+
+    /// <summary>Bumped whenever a poll finds anything new; while it's unchanged, <see cref="Poll"/> returns the same sessions.</summary>
+    public long Version { get; private set; }
+
+    /// <summary>How many transcripts the last poll opened (for tests).</summary>
+    internal int LastPollOpened { get; private set; }
 
     private sealed class FileState
     {
@@ -34,6 +49,10 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
         public string? TicketId;
         public string? TicketType;
         public DateTime LastWriteUtc;
+        /// <summary>The length and timestamp its directory entry showed when last read; while both are unchanged and the
+        /// file has been quiet a while, it isn't opened again (MAO-T116).</summary>
+        public long ListedLength = -1;
+        public DateTime ListedWriteUtc;
         /// <summary>Loaded from the cache and not read since: growth found now happened while nobody was watching.</summary>
         public bool Restored;
         public readonly List<UsageEvent> Events = [];
@@ -49,20 +68,30 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
     /// </summary>
     public IReadOnlyList<TranscriptSession> Poll(DateTime sinceUtc)
     {
+        var changed = false;
         if (!triedCache)
         {
             triedCache = true;
             LoadCache(sinceUtc);
+            changed = true;
         }
         if (sinceUtc != countingSinceUtc)
         {
             if (countingSinceUtc != default && sinceUtc > countingSinceUtc) Trim(sinceUtc);
             else files.Clear();
             countingSinceUtc = sinceUtc;
-            dirty = true;
+            dirty = changed = true;
         }
-        if (!Directory.Exists(projectsDir)) return [];
+        if (!Directory.Exists(projectsDir))
+        {
+            if (sessions is not { Count: 0 }) Version++;
+            return sessions = [];
+        }
 
+        var now = DateTime.UtcNow;
+        LastPollOpened = 0;
+        var fullCheck = now - fullCheckUtc >= FullCheckEvery;
+        if (fullCheck) fullCheckUtc = now;
         var present = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var info in EnumerateTranscripts())
         {
@@ -78,39 +107,52 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
                     if (state.LastWriteUtc != info.LastWriteTimeUtc)
                     {
                         if (state.Cwd is null) ScanHead(info.FullName, state);
-                        dirty = true;
+                        dirty = changed = true;
                     }
                     state.Offset = 0;
                     state.LastWriteUtc = info.LastWriteTimeUtc;
                 }
                 else
                 {
+                    // Opening every file in the window every poll was most of a refresh's cost (MAO-T116). One whose
+                    // directory entry hasn't moved since it was last read, and that has been quiet a while, is skipped.
+                    if (!fullCheck && !state.Restored && state.ListedLength == info.Length && state.ListedWriteUtc == info.LastWriteTimeUtc &&
+                        now - state.LastWriteUtc >= HotFor)
+                        continue;
+
                     // A file Claude Code holds open can show a stale timestamp in the directory listing,
-                    // so today's files are checked by their real length rather than trusted by mtime.
+                    // so recent files are checked by their real length rather than trusted by mtime.
                     var known = state.LastWriteUtc != default && !state.Restored;
+                    LastPollOpened++;
                     var grew = ReadAppended(info.FullName, state, sinceUtc);
                     // Growth on a file we'd already read means "written just now"; the first read of a
                     // file (or of one restored from the cache) only tells us its history, so it keeps
                     // the directory's timestamp.
                     var seen = grew && known ? DateTime.UtcNow : DateTime.MinValue;
-                    state.LastWriteUtc = new[] { state.LastWriteUtc, info.LastWriteTimeUtc, seen }.Max();
+                    var lastWrite = new[] { state.LastWriteUtc, info.LastWriteTimeUtc, seen }.Max();
+                    changed |= grew || lastWrite != state.LastWriteUtc || state.Restored;
+                    state.LastWriteUtc = lastWrite;
                     state.Restored = false;
+                    state.ListedLength = info.Length;
+                    state.ListedWriteUtc = info.LastWriteTimeUtc;
                     dirty |= grew;
                 }
             }
-            catch (IOException) { /* being rotated or locked: next poll */ }
-            catch (UnauthorizedAccessException) { }
+            catch (IOException) { changed = true; /* being rotated or locked: next poll */ }
+            catch (UnauthorizedAccessException) { changed = true; }
         }
 
         foreach (var gone in files.Keys.Where(k => !present.Contains(k)).ToList())
         {
             files.Remove(gone);
-            dirty = true;
+            dirty = changed = true;
         }
 
         if (dirty && DateTime.UtcNow - savedUtc >= SaveEvery) SaveCache();
 
-        return [.. files.Values
+        if (!changed && sessions is not null) return sessions;
+        Version++;
+        return sessions = [.. files.Values
             .Where(s => s.Cwd is not null)
             .GroupBy(s => s.SessionId ?? "")
             .Select(g => new TranscriptSession(

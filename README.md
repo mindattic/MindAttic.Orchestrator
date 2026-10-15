@@ -96,7 +96,9 @@ Entries are tagged with a `Component` (`Daemon`, `Dashboard`, `Cli`) and a categ
 
 What's been read from the transcripts is cached in `%LOCALAPPDATA%\MindAttic\MindAttic.Orchestrator\transcripts.cache.json`
 (each file's read offset plus its parsed usage and limit hits; a few MB, saved at most once a minute),
-so a new process parses only what was written since: a CLI run takes under a second instead of ~4.
+so a new process parses only what was written since: a CLI run takes under a second instead of ~4. Within a
+process, a transcript that's been quiet for 10 minutes and whose size and timestamp haven't moved isn't
+reopened on the next refresh (every one is rechecked every 5 minutes).
 When the 7-day window moves on at midnight, what fell out of it is trimmed rather than reread. Deleting
 the file is always safe; the next run rebuilds it.
 

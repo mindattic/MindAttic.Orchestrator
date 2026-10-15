@@ -187,4 +187,30 @@ public sealed class TranscriptReaderTests
     // Filesystem timestamps can be coarse; make sure the reader sees a change.
     private static void TouchLater(string path) =>
         System.IO.File.SetLastWriteTimeUtc(path, System.IO.File.GetLastWriteTimeUtc(path).AddSeconds(1));
+
+    [Test]
+    public void A_quiet_transcript_whose_directory_entry_hasnt_moved_isnt_opened_again()
+    {
+        // Every poll opened all ~900 transcripts of the week to check their length (MAO-T116).
+        var hour = DateTime.UtcNow.AddHours(-1);
+        System.IO.File.WriteAllLines(File("quiet.jsonl"), [Line("q1", "2026-10-13T12:00:00Z", 1, 10)]);
+        System.IO.File.SetLastWriteTimeUtc(File("quiet.jsonl"), hour);
+        System.IO.File.WriteAllLines(File("hot.jsonl"), [Line("h1", "2026-10-13T12:00:00Z", 1, 5)]);
+        var reader = new TranscriptReader(dir);
+
+        var first = reader.Poll(Since);
+        Assert.That(reader.LastPollOpened, Is.EqualTo(2));
+
+        var again = reader.Poll(Since);
+        Assert.That(reader.LastPollOpened, Is.EqualTo(1), "only the one written in the last few minutes");
+        Assert.That(again, Is.SameAs(first), "nothing new: the same sessions, not rebuilt");
+        var version = reader.Version;
+
+        System.IO.File.AppendAllLines(File("quiet.jsonl"), [Line("q2", "2026-10-13T12:05:00Z", 1, 30)]);
+        System.IO.File.SetLastWriteTimeUtc(File("quiet.jsonl"), hour); // even with its timestamp put back, its length moved
+        var grown = reader.Poll(Since);
+        Assert.That(reader.LastPollOpened, Is.EqualTo(2));
+        Assert.That(reader.Version, Is.GreaterThan(version));
+        Assert.That(grown.Single().UsageSince(Since).Output, Is.EqualTo(45));
+    }
 }

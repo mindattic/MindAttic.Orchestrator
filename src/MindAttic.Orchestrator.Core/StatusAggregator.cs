@@ -43,6 +43,17 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// <summary>Codex's and Gemini's own logs under your profile; replaceable for tests.</summary>
     internal ProviderLogReader OtherProviders { get; init; } = ProviderLogReader.Default();
     private DateTime auditStamp;
+
+    // What the transcripts add up to only changes when they do (MAO-T116): kept until the reader's version or the day moves.
+    private (long Version, DateTime Today) claudeKey = (-1, default);
+    private List<TranscriptSession> claudeSessions = [];
+    private List<UsageEvent> claudeEvents = [];
+    private double? typicalPerSession;
+
+    // usage-samples.json, reread only when another process has written it since.
+    private List<UsageSample>? samples;
+    private DateTime samplesStamp;
+    private long? samplesEstimate;
     private DateTime historySavedUtc;
     private IReadOnlyDictionary<string, IReadOnlySet<string>> links = new Dictionary<string, IReadOnlySet<string>>();
 
@@ -68,9 +79,15 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
         // Claude's sessions drive the budget and pacing (its limits are Claude's); every provider's
         // count toward repo activity and per-repo totals.
-        var allSessions = transcripts.Poll(historyStartUtc)
-            .Select(s => s with { UsageToday = s.UsageSince(startOfTodayUtc) })
-            .ToList();
+        var polled = transcripts.Poll(historyStartUtc);
+        if (claudeKey != (transcripts.Version, startOfTodayUtc))
+        {
+            claudeKey = (transcripts.Version, startOfTodayUtc);
+            claudeSessions = [.. polled.Select(s => s with { UsageToday = s.UsageSince(startOfTodayUtc) })];
+            claudeEvents = [.. claudeSessions.SelectMany(s => s.Events).OrderBy(e => e.AtUtc)];
+            typicalPerSession = Pacer.TypicalPerSession(claudeSessions.Select(s => s.Events), historyStartUtc);
+        }
+        var allSessions = claudeSessions;
         var providerSessions = OtherProviders.Poll(historyStartUtc)
             .Select(s => s with { UsageToday = s.UsageSince(startOfTodayUtc) })
             .ToList();
@@ -87,7 +104,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
                 result.Add(Build(pseudo.Item1, pseudo.Item2, []));
         }
 
-        List<UsageEvent> events = [.. allSessions.SelectMany(s => s.Events).OrderBy(e => e.AtUtc)];
+        var events = claudeEvents;
         var calibration = Calibrate(allSessions, events, historyStartUtc, now);
         var reported = ReportedUsage.Load(now);
         var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration,
@@ -95,7 +112,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
         var recentFrom = now - BudgetCalculator.RecentWindow;
         var active = allSessions.Count(s => s.Events.Count > 0 && s.Events[^1].AtUtc >= recentFrom);
-        var pace = Pacer.Compute(budget, active, Pacer.TypicalPerSession(allSessions.Select(s => s.Events), historyStartUtc), settings, now,
+        var pace = Pacer.Compute(budget, active, typicalPerSession, settings, now,
             rateLimitFile?.AgentDelay(now) ?? 0, rateLimitFile is null ? 0 : contextCycler.Subagents());
         if (rateLimitFile is not null && (statusLease is null || statusLease.IsHeld || statusLease.TryAcquire()))
             rateLimitFile.Write(budget, pace);
@@ -155,9 +172,21 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     private long? ReportedLimitFrom(ReportedUsage? reported, IReadOnlyList<UsageEvent> events, DateTime now)
     {
         if (store is null) return null;
-        var samples = store.Load<List<UsageSample>>("usage-samples");
-        if (ReportedLimit.Record(samples, reported, events, now)) store.Save("usage-samples", samples);
-        return ReportedLimit.Estimate(samples);
+        var path = Path.Combine(store.Directory, "usage-samples.json");
+        var stamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default;
+        if (samples is null || stamp != samplesStamp)
+        {
+            samples = store.Load<List<UsageSample>>("usage-samples");
+            samplesStamp = stamp;
+            samplesEstimate = ReportedLimit.Estimate(samples);
+        }
+        if (ReportedLimit.Record(samples, reported, events, now))
+        {
+            store.Save("usage-samples", samples);
+            samplesStamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default;
+            samplesEstimate = ReportedLimit.Estimate(samples);
+        }
+        return samplesEstimate;
     }
 
     private LimitCalibration Calibrate(IReadOnlyList<TranscriptSession> sessions, IReadOnlyList<UsageEvent> events, DateTime historyStartUtc, DateTime now)
