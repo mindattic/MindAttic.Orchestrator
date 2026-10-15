@@ -40,11 +40,11 @@ internal sealed class QueueCommand : Command<QueueCommand.Settings>
     public override int Execute(CommandContext context, Settings settings)
     {
         var (_, _, _, plan) = Ctx.Load();
-        AnsiConsole.MarkupLine($"{plan.Queue.Count} open tickets Â· {plan.Occupied} of {plan.Slots} session slots in use" +
-            (plan.Cap < plan.Slots ? $" Â· pacing allows {plan.Cap}" : ""));
+        AnsiConsole.MarkupLine($"{plan.Queue.Count} open tickets · {plan.Occupied} of {plan.Slots} session slots in use" +
+            (plan.Cap < plan.Slots ? $" · pacing allows {plan.Cap}" : ""));
         if (plan.Hold is not null) AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(plan.Hold)}[/]");
         foreach (var p in plan.Proposals)
-            AnsiConsole.MarkupLine($"[green]next:[/] {p.Item.Id} in {Markup.Escape(p.Item.Repo)} [grey]({Markup.Escape(p.Reason)})[/]  â†’ orchestrator dispatch {p.Item.Id}");
+            AnsiConsole.MarkupLine($"[green]next:[/] {p.Item.Id} in {Markup.Escape(p.Item.Repo)} [grey]({Markup.Escape(p.Reason)})[/]  → orchestrator dispatch {p.Item.Id}");
         if (plan.Groom.Count > 0)
             AnsiConsole.MarkupLine($"[grey]{plan.Groom.Count} open tickets are over {Ctx.Settings.GroomAfterDays} days old with nobody on them: `orchestrator queue --groom` lists them.[/]");
         foreach (var q in plan.TooBig)
@@ -70,7 +70,7 @@ internal sealed class QueueCommand : Command<QueueCommand.Settings>
         return 0;
     }
 
-    private static string Trim(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "â€¦";
+    private static string Trim(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "…";
 }
 
 internal sealed class BumpCommand : Command<BumpCommand.Settings>
@@ -310,17 +310,17 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
                 : order.Count == 0 ? "[green]on[/] for every open repo CLI" : $"[green]on[/] for the CLIs in {Markup.Escape(string.Join(", ", order))}") +
             (s.AutopilotSkip.Count > 0 ? $", skipping {Markup.Escape(string.Join(", ", s.AutopilotSkip))}" : "") +
             (s.KeepGoing ? " · CLIs keep going through their open tickets without asking" : " · CLIs may stop to ask between tickets"));
-        AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (learned from limit hits)")} Â· weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (learned)")} Â· week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display : "learned, or rolling 7 days")} Â· warn at {s.WarnPercent}%");
+        AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display : "learned, or rolling 7 days")} · warn at {s.WarnPercent}%");
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +
-            (s.ThrottleAgents ? $" Â· running agents held up to {s.MaxAgentDelaySeconds}s per tool call when the burn won't last" : " Â· running agents never held") +
+            (s.ThrottleAgents ? $" · running agents held up to {s.MaxAgentDelaySeconds}s per tool call when the burn won't last" : " · running agents never held") +
             $" · subagents: as many as the pace allows, at most {s.MaxSubagents}");
-        AnsiConsole.MarkupLine($"  worktrees under {Markup.Escape(s.WorktreeRoot)} Â· {s.Priorities.Count} manual priorities Â· " +
+        AnsiConsole.MarkupLine($"  worktrees under {Markup.Escape(s.WorktreeRoot)} · {s.Priorities.Count} manual priorities · " +
             (s.StaleAfterHours > 0 ? $"assignments go stale after {s.StaleAfterHours}h quiet" : "assignments never go stale"));
-        AnsiConsole.MarkupLine($"  quiet hours {(s.QuietHours.Count > 0 ? string.Join(", ", s.QuietHours) : "none")} Â· {s.MaxSessionsPerRepo} sessions per repo" +
+        AnsiConsole.MarkupLine($"  quiet hours {(s.QuietHours.Count > 0 ? string.Join(", ", s.QuietHours) : "none")} · {s.MaxSessionsPerRepo} sessions per repo" +
             string.Concat(s.RepoMaxSessions.Select(kv => $", {kv.Key} {kv.Value}")) +
-            (s.RepoBudgetPercent.Count > 0 ? " Â· repo caps " + string.Join(", ", s.RepoBudgetPercent.Select(kv => $"{kv.Key} {kv.Value}%")) : "") +
-            (s.Reservations.Count > 0 ? " Â· reserved " + string.Join(", ", s.Reservations.Select(kv => $"{kv.Key} {Formatting.Tokens(kv.Value)}")) : "") +
-            $" Â· groom after {s.GroomAfterDays} days");
+            (s.RepoBudgetPercent.Count > 0 ? " · repo caps " + string.Join(", ", s.RepoBudgetPercent.Select(kv => $"{kv.Key} {kv.Value}%")) : "") +
+            (s.Reservations.Count > 0 ? " · reserved " + string.Join(", ", s.Reservations.Select(kv => $"{kv.Key} {Formatting.Tokens(kv.Value)}")) : "") +
+            $" · groom after {s.GroomAfterDays} days");
         return 0;
     }
 }

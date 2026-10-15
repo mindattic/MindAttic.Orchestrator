@@ -110,7 +110,7 @@ public sealed class PacerTests
         Assert.That(Pacer.TypicalPerSession([a, b], Day.AddHours(5)), Is.EqualTo(1200), "600, 1,200 and 1,800 an hour; the 1:00 burst is before the window");
     }
 
-    // â”€â”€ Holding running agents â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Holding running agents ──────────────────────────────────────────────
 
     [Test]
     public void Outrunning_the_window_holds_running_agents_and_fitting_it_runs_them_free()
@@ -386,7 +386,7 @@ public sealed class PacerTests
         }
     }
 
-    // â”€â”€ Scheduler and status file â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Scheduler and status file ───────────────────────────────────────────
 
     private static Ticket T(string id) => new(id, "2026-10-01", "feature", "open", $"summary of {id}", "");
 
