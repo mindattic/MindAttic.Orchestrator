@@ -296,6 +296,47 @@ public sealed class ContextCyclerTests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
+    [Test]
+    public void Autopilot_this_turns_it_on_for_just_the_cli_that_ran_it()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
+        var ws = Path.Combine(dir, "ws");
+        var repo = Path.Combine(ws, "A");
+        Directory.CreateDirectory(Path.Combine(repo, ".git"));
+        Directory.CreateDirectory(Path.Combine(ws, "B", ".git"));
+        try
+        {
+            Setup.AgentGate.Ensure(dir);
+            string Gate(object input)
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\"")
+                    { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
+                psi.Environment["USERPROFILE"] = dir;
+                psi.Environment["MINDATTIC_WORKSPACE"] = ws;
+                using var p = System.Diagnostics.Process.Start(psi)!;
+                p.StandardInput.Write(System.Text.Json.JsonSerializer.Serialize(input));
+                p.StandardInput.Close();
+                var output = p.StandardOutput.ReadToEnd();
+                Assert.That(p.WaitForExit(20_000), Is.True);
+                return output;
+            }
+            var order = Path.Combine(dir, ".claude", "session-context", "autopilot.order");
+
+            Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd = repo, prompt = "/autopilot this" });
+            Assert.That(File.ReadAllText(order), Is.EqualTo("A"), "only this CLI's own repo, not every open one");
+
+            Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd = ws, prompt = "/autopilot this" });
+            Assert.That(File.ReadAllText(order), Is.Empty, "the workspace root isn't a repo: no repo to scope it to");
+
+            Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd = repo, prompt = "/autopilot off" });
+            Assert.That(File.Exists(order), Is.False);
+
+            Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd = repo, prompt = "/autopilot" });
+            Assert.That(File.ReadAllText(order), Is.Empty, "plain /autopilot still means every open repo");
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
     private static void Python(string script)
     {
         var psi = new System.Diagnostics.ProcessStartInfo("python", "-I -") { RedirectStandardInput = true, RedirectStandardError = true, UseShellExecute = false };
