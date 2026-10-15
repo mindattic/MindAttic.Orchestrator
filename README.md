@@ -160,8 +160,8 @@ each prompt too, so agents know to start subagents a few at a time.
 stop), records whether its turn is running and, once past 80% (`ContextCyclePercent`), tells the main
 agent to finish its step, let its subagents finish and end the turn. When that turn has ended, the
 daemon types `/quicksave`, waits for it, then `/clear` and `/quickload` into the session's Launcher tab,
-so it carries on from the handoff with a fresh context. A session outside a Launcher tab, or sharing a
-folder with another Claude tab, can't be typed into; you get an alert instead.
+so it carries on from the handoff with a fresh context. A CLI in a plain terminal is typed into through its
+console (the hook records its process); a Claude desktop-app session has no console, so you get an alert instead.
 
 **3 · Scheduler.** Every open ticket across all repos in one queue: manual priority, then fixes
 before features before chores before docs, then oldest. Each refresh it proposes up to the free
@@ -244,6 +244,6 @@ files across repos, clusters them, and suggests a home (`mindattic-agent-standar
   The repo list is only as current as the last `workspace export` that was pushed.
 - Only Claude Code agents are held; Codex, Gemini and Kimi tabs get no hook (MAO-T50). A hold slows
   tool calls, not a long reply with no tool calls in it.
-- Context cycling needs a Launcher tab to type into (MAO-T58).
+- Context cycling can't reach Claude desktop-app sessions (no console to type into); they get an alert.
 - Learned limits are in uncached tokens, and the token-to-limit ratio shifts with the model mix, so
   they're estimates, used only when Claude's own count isn't available.
