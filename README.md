@@ -12,6 +12,30 @@ It reads what already exists rather than adding new bookkeeping:
 | `docs/USER_STORIES.md` per repo (`MindAttic.Workflow` parser) | open tickets |
 | `\\.\pipe\mindattic-host-{provider}-{pid}` (MindAttic.Launcher) | live Launcher tabs, and a way to type into them |
 | `~/.claude/projects/**/*.jsonl` (Claude Code transcripts) | per-session activity and per-response token usage, read incrementally |
+| `~/.claude/claude-usage.json` (written by the shared statusline) | Claude's own 5-hour and weekly percent used and reset times |
+| `~/.claude/session-context/*.json` (statusline + `context-gate.py`) | each session's context fill, whether its turn is running, and its CLI process |
+
+## How it runs, in one screen
+
+The goal: keep agents working all day and night, spending ~99% of every 5-hour window without ever
+hitting the session limit, and never stalling on a full context. Pick what runs; it handles the rest.
+
+| Piece | What it does | Where |
+| --- | --- | --- |
+| Daemon | runs at logon, refreshes every 15s: budget, pace, dispatch, context cycling | logon task `\MindAttic\Orchestrator\...`; log in Vault (below) |
+| Claude's count | 5-hour percent and reset straight from Claude Code, sized safely | `~/.claude/claude-usage.json` |
+| Pacing | caps new sessions so the window lands on 99% at its reset; the week is never paced | `rl-status.json` → `pace` |
+| Holding agents | every Claude CLI and subagent waits before each tool call while the draw won't last, 0s once it fits | `~/.claude/pace-gate.py` (PreToolUse hook) |
+| Context cycling | past 80% context: wrap up, then `/quicksave`, `/clear`, `/quickload` typed in | `~/.claude/context-gate.py` (prompt, tool, stop hooks) |
+| Auto-dispatch | starts the top queued ticket when a slot frees (off by default) | `settings --auto-dispatch true` |
+| Auto-submit | in listed repos, auto-dispatched tabs press Enter themselves (none by default) | `settings --auto-submit Repo=true` |
+
+To run unattended overnight: `orchestrator settings --auto-dispatch true --auto-submit Prose=true`
+(any repos), make sure `--max-sessions` leaves free slots (waiting sessions take one), then
+`orchestrator dryrun` to see what it would start. Everything else is on by default. To check on it:
+`orchestrator status` (sessions), `orchestrator budget` (percent, pace, hold), `orchestrator queue`.
+The hooks are written into your global `~/.claude/settings.json` by the daemon and dashboard, and
+rewritten if they go missing.
 
 ## Install
 
@@ -36,7 +60,8 @@ place (the running daemon and dashboard are stopped and restarted). `MindAttic.O
 removes the task and shortcuts.
 
 The daemon is what makes budgets and pacing always on: it keeps `~/.claude/rl-status.json` and the pace
-current, notices stale assignments, and auto-dispatches when that's on. Only one runs (a named mutex),
+(including the hold on running agents) current, installs and repairs the pace and context hooks,
+cycles full contexts, notices stale assignments, and auto-dispatches when that's on. Only one runs (a named mutex),
 and only one process auto-dispatches at a time (`dispatch.lock`): with the daemon running, an open
 dashboard shows proposals and leaves the dispatching to it.
 
@@ -94,7 +119,8 @@ longest wait first), *Working* (a transcript grew in the last 2 minutes), *Open 
 and *Quiet*. A toast and a taskbar flash fire when a repo goes Working → Needs you.
 
 **1 · Session control.** Start a Claude/Codex/Gemini/Kimi tab in any repo (ticket text can pre-fill
-the prompt, never auto-sent) and reply to a live Launcher tab from the detail pane.
+the prompt, sent only by you, or by auto-submit in repos you list) and reply to a live Launcher tab
+from the detail pane.
 
 **2 · Budget.** Usage is grouped into 5-hour blocks (the window Claude's subscription limits reset
 on), starting at the first response after the previous block, rounded down to 10 minutes: that's
@@ -129,7 +155,8 @@ under 5%, too coarse to size by).
 hitting the wall and waiting hours. The *sustainable rate* is what's left of the target divided by
 the hours to the reset. The weekly limit is shown, never paced: a week-long stretch would hold agents
 for days, and you manage the week yourself; only a real weekly wall stops new work. A session's cost
-is the last 30 minutes' burn divided by the sessions active in it, or with none running, your median
+is the last 30 minutes' burn divided by the sessions active in it (scaled up for any hold in force,
+since a held session burns less than it will once let go), or with none running, your median
 10-minute session burn over the past week. The session cap is how many such sessions fit the
 sustainable rate:
 
@@ -231,11 +258,15 @@ files across repos, clusters them, and suggests a home (`mindattic-agent-standar
 
 ## Limits
 
-- Budgets and pacing are Claude's (its limits are learned from Claude Code's limit hits). Codex
+- Budgets and pacing are Claude's (from Claude Code's own count, else learned from its limit hits). Codex
   (`~/.codex/sessions`) and Gemini CLI (`~/.gemini/tmp/*/chats`) usage counts toward repo activity and
   per-repo totals and is shown per provider, with Codex's own 5-hour/weekly percentages; Kimi writes no
   local session log, so its sessions show as Launcher tabs but aren't counted.
-- A session started outside the Launcher is tracked and counted but can't be typed into.
+- A session started outside the Launcher is tracked, counted, held and context-cycled, but `send` and
+  the dashboard's reply box only reach Launcher tabs.
+- The context cycle point (80%) and holding are set in the dashboard's Settings panel (or
+  `settings.json`: `ContextCyclePercent`, `ContextCycle`, `ThrottleAgents`, `MaxAgentDelaySeconds`);
+  the CLI only has `--throttle-agents` and `--max-delay`.
 - Claude Code prunes transcripts after about 30 days; the budget history window is 7 days, which
   always covers the current week.
 - The budget file only updates while the daemon or the dashboard is running, so pacing only steers
