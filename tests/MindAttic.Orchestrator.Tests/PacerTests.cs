@@ -148,6 +148,28 @@ public sealed class PacerTests
     }
 
     [Test]
+    public void A_lull_right_after_a_batch_of_sessions_ends_doesnt_make_the_next_one_look_free()
+    {
+        // Found live (MAO-T111): right after a batch of sessions finished, the live per-session estimate
+        // read as near-zero, so spare/perSession exploded and autopilot started 24 sessions in one tick,
+        // well past the 5-hour target before its reset. The historical typical per-session cost is now a
+        // floor, so a momentary lull can't make the next (likely similar) session look free.
+        var (b, s) = Budget(10.5, new OrchestratorSettings { BlockBudget = 10_000, PaceTargetPercent = 100 }, E(9, 500), E(10.49, 40));
+
+        var noFloor = Pacer.Compute(b, 4, null, s, Day.AddHours(10.5));
+        Assert.That(noFloor.PerSessionPerHour, Is.EqualTo(20).Within(1), "the live rate right now reads tiny");
+        Assert.That(noFloor.SpareSessions, Is.EqualTo(100), "spare / a near-zero cost explodes to the clamp");
+
+        var floored = Pacer.Compute(b, 4, 2000, s, Day.AddHours(10.5));
+        Assert.That(floored.PerSessionPerHour, Is.EqualTo(2000), "never below what a session has typically cost");
+        Assert.That(floored.SpareSessions, Is.EqualTo(1), "a sane number of more sessions, not the clamp");
+
+        // A live rate already above the historical typical isn't pulled down by it.
+        var aboveTypical = Pacer.Compute(b, 4, 5, s, Day.AddHours(10.5));
+        Assert.That(aboveTypical.PerSessionPerHour, Is.EqualTo(20).Within(1));
+    }
+
+    [Test]
     public void Coasting_only_closes_new_sessions_it_doesnt_slow_the_running_ones()
     {
         var coast = new Pace(PaceMode.Coast, 0, 2000, 1500, 3000, "5-hour", Day, "Coasting: not even one more session fits.");

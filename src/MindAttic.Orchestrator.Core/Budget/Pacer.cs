@@ -121,7 +121,14 @@ public static class Pacer
 
         // What one more session costs: today's sessions if any are running, else your usual session. A
         // held session burns less than it will once let go, so judge it by what it would draw unheld.
-        double? perSession = activeSessions > 0 && recent > 0 ? Unheld(recent, recentDelaySeconds) / activeSessions : typicalPerSession;
+        // Never below the historical typical: a lull right after a batch of sessions ends (recent draw
+        // momentarily near zero) must not make the next session look free, or spare/perSession explodes
+        // into a burst of new sessions sized for a cost that isn't real (found live: autopilot read a
+        // post-batch lull as near-zero cost and started 24 sessions in one tick, well past the 5-hour
+        // target before its reset, MAO-T111).
+        double? perSession = activeSessions > 0 && recent > 0
+            ? Math.Max(Unheld(recent, recentDelaySeconds) / activeSessions, typicalPerSession ?? 0)
+            : typicalPerSession;
         var cap = sustainable <= 0 ? 0
             : perSession is > 0 and var p ? (int)Math.Clamp(Math.Floor(sustainable / p), 0, max)
             : Math.Min(1, max); // no history at all: start one and measure it
