@@ -209,6 +209,43 @@ public sealed class ContextCyclerTests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
+    [Test]
+    public void Hooks_firing_together_neither_fail_nor_lose_the_sessions_state()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            Setup.AgentGate.Ensure(dir);
+            System.Diagnostics.Process Start(object input)
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\"")
+                    { RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+                psi.Environment["USERPROFILE"] = dir;
+                var p = System.Diagnostics.Process.Start(psi)!;
+                p.StandardInput.Write(System.Text.Json.JsonSerializer.Serialize(input));
+                p.StandardInput.Close();
+                return p;
+            }
+            using (var first = Start(new { session_id = "c", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "/goal ship it" })) first.WaitForExit(20_000);
+
+            // Prompts and stops (both write the state) overlapping, as when a turn ends while the next is typed.
+            var all = Enumerable.Range(0, 32).Select(i => Start(new { session_id = "c", hook_event_name = i % 2 == 0 ? "UserPromptSubmit" : "Stop", cwd = @"D:\W\A", prompt = "go on" })).ToList();
+            foreach (var p in all)
+            {
+                Assert.That(p.WaitForExit(30_000), Is.True);
+                var err = p.StandardError.ReadToEnd();
+                Assert.That((p.ExitCode, err), Is.EqualTo((0, "")), "a hook failing shows up as an error in the CLI");
+                p.Dispose();
+            }
+
+            var ctx = Path.Combine(dir, ".claude", "session-context");
+            Assert.That(new ContextCycler(ctx).Load().Single().Goal, Is.EqualTo("ship it"), "no write read the state as empty and wiped it");
+            Assert.That(Directory.EnumerateFiles(ctx, "*.tmp"), Is.Empty, "no temp file left behind");
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
     private static void Python(string script)
     {
         var psi = new System.Diagnostics.ProcessStartInfo("python", "-I -") { RedirectStandardInput = true, RedirectStandardError = true, UseShellExecute = false };

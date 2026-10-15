@@ -269,7 +269,7 @@ public static class AgentGate
         # MindAttic.Orchestrator's context gate (written by the orchestrator; edits are overwritten).
         # Records each session's turn state and warns the main agent once per turn when its context is
         # past the cycle point, so it finishes cleanly before the orchestrator saves, clears and reloads it.
-        import json, os, re, sys
+        import json, os, re, sys, time
         from datetime import datetime, timezone
         from pathlib import Path
 
@@ -317,16 +317,31 @@ public static class AgentGate
                         return text
             return ""
 
+        # Hooks fire together (parallel tool calls, a Stop racing a SubagentStop). A read or replace Windows refuses while
+        # another hook has the file open is retried: read as empty, the next save would wipe the session's goal and pid.
         def load(path):
-            try:
-                return json.loads(path.read_text())
-            except Exception:
-                return {}
+            for _ in range(20):
+                try:
+                    return json.loads(path.read_text())
+                except PermissionError:
+                    time.sleep(0.05)
+                except Exception:
+                    return {}
+            return {}
 
         def save(path, value):
-            tmp = path.with_suffix(".tmp")
+            tmp = path.with_name(path.name + "." + str(os.getpid()) + ".tmp")
             tmp.write_text(json.dumps(value))
-            tmp.replace(path)
+            for _ in range(20):
+                try:
+                    tmp.replace(path)
+                    return
+                except PermissionError:
+                    time.sleep(0.05)
+            try:
+                tmp.unlink()
+            except Exception:
+                pass
 
         {{{CliPid}}}
 
