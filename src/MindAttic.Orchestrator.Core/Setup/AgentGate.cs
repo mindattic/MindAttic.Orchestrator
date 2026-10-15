@@ -118,6 +118,66 @@ public static class AgentGate
             data = {}
         tool = data.get("tool_name")
 
+        # A repo's window works only that repo (MAO-T95): its own folder and worktrees, and its own tickets. Another
+        # repo's files and tickets belong to that repo's window, autopilot, or the General (workspace-root) session.
+        import os, re, sqlite3
+        WS = Path(os.environ.get("MINDATTIC_WORKSPACE", "D:/Projects/MindAttic"))
+        WT = WS.parent / (WS.name + ".worktrees")
+
+        def repo_of(path):
+            try:
+                p = Path(path).resolve()
+            except Exception:
+                return None
+            for base, in_ws in ((WS, True), (WT, False)):
+                try:
+                    rel = p.relative_to(base.resolve())
+                except Exception:
+                    continue
+                if not rel.parts:
+                    return None
+                name = rel.parts[0]
+                if in_ws and not (base / name / ".git").exists():
+                    return None
+                return name
+            return None
+
+        def ticket_repo(ticket_id):
+            try:
+                db = sqlite3.connect(str(WS / "MindAttic.Workflow" / "data" / "workflow.db"))
+                row = db.execute("SELECT repo FROM tickets WHERE id = ? COLLATE NOCASE", (ticket_id,)).fetchone()
+                db.close()
+                return row[0] if row else None
+            except Exception:
+                return None
+
+        def refuse(why):
+            print(json.dumps(dict(hookSpecificOutput=dict(hookEventName="PreToolUse", permissionDecision="deny", permissionDecisionReason=why))))
+            raise SystemExit(0)
+
+        here = repo_of(data.get("cwd") or "")
+        if here:
+            args = data.get("tool_input") or {}
+            other = lambda r: r and r.lower() != here.lower()
+            if tool in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
+                target = args.get("file_path") or args.get("notebook_path") or ""
+                if other(repo_of(target)):
+                    refuse(f"This window is for {here}; {target} belongs to {repo_of(target)}. Work {repo_of(target)} in its own window "
+                           f"(or autopilot, or the General session), or file a ticket for it: workflow ticket new --repo {repo_of(target)} ...")
+            if tool in ("Bash", "PowerShell"):
+                command = str(args.get("command") or "")
+                if re.search(r"\bworkflow['\"]?\s+ticket\s+(new|close|correct)\b", command):
+                    named = re.search(r"--repo[\s=]+['\"]?([^\s'\"]+)", command)
+                    owners = [named.group(1)] if named else []
+                    owners += [ticket_repo(m) for m in re.findall(r"\b[A-Z][A-Z0-9]*-T\d+\b", command)]
+                    for owner in owners:
+                        if other(owner):
+                            refuse(f"This window is for {here}; that ticket belongs to {owner}. Only {here}'s tickets are worked here: "
+                                   f"leave {owner}'s to its own window, autopilot or the General session.")
+                for target in re.findall(r"\bgit\s+-C\s+['\"]?([^'\"\s]+)", command):
+                    if other(repo_of(target)) and re.search(r"\b(commit|push|add|rm|mv|reset|checkout|merge|rebase|stash)\b", command):
+                        refuse(f"This window is for {here}; git changes in {repo_of(target)} belong to that repo's window.")
+
         # A search of a whole drive never finishes in time and, orphaned when its agent stops, leaks handles until
         # Windows can't draw (found live: two `find /` held 660k handles and froze the desktop). Refuse it up front.
         import re

@@ -241,6 +241,48 @@ public sealed class PacerTests
     }
 
     [Test]
+    public void A_repo_window_is_refused_another_repos_files_tickets_and_git_but_the_general_window_is_not()
+    {
+        // Found live: a UnitySolarSystem window built Orchestrator stories.
+        var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
+        var ws = Path.Combine(dir, "ws");
+        foreach (var r in new[] { "UnitySolarSystem", "MindAttic.Orchestrator" }) Directory.CreateDirectory(Path.Combine(ws, r, ".git"));
+        var worktree = Path.Combine(dir, "ws.worktrees", "UnitySolarSystem", "USS-T1");
+        Directory.CreateDirectory(worktree);
+        try
+        {
+            MindAttic.Orchestrator.Setup.AgentGate.Ensure(dir);
+            string Gate(string cwd, string tool, object input)
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "pace-gate.py")}\"")
+                    { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
+                psi.Environment["USERPROFILE"] = dir;
+                psi.Environment["MINDATTIC_WORKSPACE"] = ws;
+                using var p = System.Diagnostics.Process.Start(psi)!;
+                p.StandardInput.Write(JsonSerializer.Serialize(new { tool_name = tool, tool_input = input, cwd }));
+                p.StandardInput.Close();
+                var output = p.StandardOutput.ReadToEnd();
+                p.WaitForExit(20_000);
+                return output;
+            }
+            var uss = Path.Combine(ws, "UnitySolarSystem");
+            var orch = Path.Combine(ws, "MindAttic.Orchestrator", "src", "Autopilot.cs");
+
+            Assert.That(Gate(uss, "Edit", new { file_path = orch }), Does.Contain("\"deny\"").And.Contain("This window is for UnitySolarSystem"));
+            Assert.That(Gate(uss, "Write", new { file_path = Path.Combine(uss, "a.cs") }), Is.Empty, "its own repo");
+            Assert.That(Gate(worktree, "Edit", new { file_path = Path.Combine(worktree, "a.cs") }), Is.Empty, "its own worktree");
+            Assert.That(Gate(worktree, "Edit", new { file_path = orch }), Does.Contain("\"deny\""), "a worktree is still that repo's window");
+            Assert.That(Gate(uss, "Edit", new { file_path = Path.Combine(dir, "notes.md") }), Is.Empty, "outside the workspace (temp, ~/.claude)");
+            Assert.That(Gate(uss, "Bash", new { command = "workflow ticket close MAO-T1 --repo MindAttic.Orchestrator --ref x" }), Does.Contain("\"deny\""));
+            Assert.That(Gate(uss, "Bash", new { command = "workflow ticket new --repo UnitySolarSystem --type fix --summary x" }), Is.Empty);
+            Assert.That(Gate(uss, "Bash", new { command = $"git -C {Path.Combine(ws, "MindAttic.Orchestrator")} commit -m x" }), Does.Contain("\"deny\""));
+            Assert.That(Gate(uss, "Bash", new { command = $"git -C {Path.Combine(ws, "MindAttic.Orchestrator")} log -1" }), Is.Empty, "reading another repo is fine");
+            Assert.That(Gate(ws, "Edit", new { file_path = orch }), Is.Empty, "the General (workspace-root) window may work anywhere");
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Test]
     public void Subagents_are_counted_by_their_start_and_stop_marks()
     {
         var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
