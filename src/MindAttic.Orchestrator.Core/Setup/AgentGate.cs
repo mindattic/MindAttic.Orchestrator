@@ -358,7 +358,7 @@ public static class AgentGate
             # anything, is let go (something there really needs you), and so is one past the cycle point.
             used = load(DIR / (sid + ".json")).get("used_percentage") or 0
             insisted = state.get("nudged") and not state.get("worked")
-            if KEEP_GOING and not insisted and not state.get("warned") and used < PERCENT and ASKS.search(last_said(data)[-500:]):
+            if KEEP_GOING and not insisted and not state.get("goal") and not state.get("warned") and used < PERCENT and ASKS.search(last_said(data)[-500:]):
                 repo, ids = open_tickets(data.get("cwd") or "")
                 if ids:
                     state.update(nudged=True, worked=False)
@@ -388,6 +388,14 @@ public static class AgentGate
                 else:
                     m = re.search(r"-{1,2}repos?\s*[=:]?\s*\[?([^\]]*)\]?", args, re.I)
                     order.write_text(",".join(r.strip() for r in m.group(1).replace(" ", ",").split(",") if r.strip()) if m else "")
+            # /goal <condition> runs turn after turn until its condition holds; cycling would end it, so the session is
+            # marked and left to Claude's own compaction until /goal clear (MAO-T93).
+            if re.match(r"/goal\b", prompt):
+                args = typed[len("/goal"):].strip()
+                if not args or re.match(r"(clear|off|stop)\b", args, re.I):
+                    state.pop("goal", None)
+                else:
+                    state["goal"] = args
             # /crossrepo <A,B|all> lets this CLI work other repos too (the explicit exception to MAO-T95); /crossrepo off ends it.
             if prompt.startswith("/crossrepo"):
                 pid = cli_pid()
@@ -420,7 +428,7 @@ public static class AgentGate
                 state["worked"] = True  # it carried on after being told to
                 save(state_file, state)
             used = load(DIR / (sid + ".json")).get("used_percentage") or 0
-            if state.get("warned") or used < PERCENT:
+            if state.get("warned") or used < PERCENT or state.get("goal"):
                 sys.exit(0)
             state["warned"] = True
             print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext":

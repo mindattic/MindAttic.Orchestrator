@@ -9,6 +9,9 @@ public sealed record SessionContext(string SessionId, string? Cwd, double Percen
 {
     /// <summary>The Claude CLI process the session runs in (recorded by the context gate), for typing into a plain terminal.</summary>
     public int? Pid { get; init; }
+
+    /// <summary>The condition of a <c>/goal</c> running in the session (the context gate records it, <c>/goal clear</c> ends it); null when none.</summary>
+    public string? Goal { get; init; }
 }
 
 /// <summary>
@@ -53,6 +56,12 @@ public sealed class ContextCycler(string? directory = null)
         foreach (var s in Load())
         {
             if (cycling.ContainsKey(s.SessionId) || !Due(s, settings.ContextCyclePercent, nowUtc) || (s.Pid is { } agent && IsAgent(agent))) continue;
+            // /clear would silently end a /goal; Claude's own compaction carries it on instead.
+            if (s.Goal is { } goal)
+            {
+                if (told.Add(s.SessionId)) said.Add($"session in {s.Cwd} is {s.Percent:0}% full of context but running /goal \"{goal}\", so it isn't cycled; Claude's own compaction carries it on");
+                continue;
+            }
             Func<string, Task<bool>>? send = null;
             var host = HostFor(s, hosts, out var why);
             if (host is not null) send = text => SessionControl.SubmitAsync(host.PipeName, text);
@@ -135,6 +144,7 @@ public sealed class ContextCycler(string? directory = null)
             }
             bool idle = false;
             int? pid = null;
+            string? goal = null;
             var turn = DateTime.MinValue;
             if (File.Exists(state))
             {
@@ -144,9 +154,10 @@ public sealed class ContextCycler(string? directory = null)
                     DateTime.TryParse(at.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var when))
                     turn = when;
                 if (t.RootElement.TryGetProperty("pid", out var pp) && pp.ValueKind == JsonValueKind.Number) pid = pp.GetInt32();
+                if (t.RootElement.TryGetProperty("goal", out var g) && g.ValueKind == JsonValueKind.String) goal = g.GetString();
                 if (cwd is null && t.RootElement.TryGetProperty("cwd", out var tc) && tc.ValueKind == JsonValueKind.String) cwd = tc.GetString();
             }
-            return new SessionContext(sessionId, cwd, percent, idle, turn) { Pid = pid };
+            return new SessionContext(sessionId, cwd, percent, idle, turn) { Pid = pid, Goal = goal };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
         {

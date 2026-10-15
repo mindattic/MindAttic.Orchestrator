@@ -169,6 +169,46 @@ public sealed class ContextCyclerTests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
+    [Test]
+    public void A_session_running_a_goal_isnt_cycled_or_told_to_wrap_up_until_the_goal_is_cleared()
+    {
+        // /clear would silently end the /goal (MAO-T92's finding), so its compaction carries it on instead.
+        var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            Setup.AgentGate.Ensure(dir, contextPercent: 80);
+            string Gate(object input)
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\"")
+                    { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
+                psi.Environment["USERPROFILE"] = dir;
+                using var p = System.Diagnostics.Process.Start(psi)!;
+                p.StandardInput.Write(System.Text.Json.JsonSerializer.Serialize(input));
+                p.StandardInput.Close();
+                var output = p.StandardOutput.ReadToEnd();
+                Assert.That(p.WaitForExit(20_000), Is.True);
+                return output;
+            }
+            var ctx = Path.Combine(dir, ".claude", "session-context");
+            Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "/goal all the tests pass" });
+            File.WriteAllText(Path.Combine(ctx, "g.json"), """{"cwd":"D:\\W\\A","used_percentage":90}""");
+            Assert.That(Gate(new { session_id = "g", hook_event_name = "PostToolUse" }), Is.Empty, "no wrap-up: ending the turn won't get it cycled");
+            Gate(new { session_id = "g", hook_event_name = "Stop", cwd = @"D:\W\A" });
+
+            var cycler = new ContextCycler(ctx) { Typer = (_, _) => throw new AssertionException("nothing is typed into a /goal session") };
+            Assert.That(cycler.Load().Single().Goal, Is.EqualTo("all the tests pass"));
+            var said = cycler.Tick([], new OrchestratorSettings(), DateTime.UtcNow.AddMinutes(1));
+            Assert.That(said, Has.One.Contains("running /goal \"all the tests pass\", so it isn't cycled"));
+            Assert.That(cycler.Tick([], new OrchestratorSettings(), DateTime.UtcNow.AddMinutes(2)), Is.Empty, "said once");
+
+            Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "/goal clear" });
+            Assert.That(new ContextCycler(ctx).Load().Single().Goal, Is.Null, "cleared: cycled as usual again");
+            Assert.That(Gate(new { session_id = "g", hook_event_name = "PostToolUse" }), Does.Contain("% full"));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
     private static void Python(string script)
     {
         var psi = new System.Diagnostics.ProcessStartInfo("python", "-I -") { RedirectStandardInput = true, RedirectStandardError = true, UseShellExecute = false };
