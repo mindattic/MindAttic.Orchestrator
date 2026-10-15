@@ -162,6 +162,14 @@
                                    Visibility="{Binding PaceText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                     </StackPanel>
                 </Button>
+                <!-- Weekly: the other half of /status's picture; the 5-hour card above never shows it on its own. -->
+                <Border Style="{StaticResource Card}" Height="74" MinWidth="150" Padding="14,0,18,0"
+                        ToolTip="Claude's weekly usage percent, the same figure /status reports">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding WeeklyHeadline}" Style="{StaticResource StatValue}" />
+                        <TextBlock Text="{Binding WeeklyCaption}" Style="{StaticResource McTileSubtitle}" />
+                    </StackPanel>
+                </Border>
             </WrapPanel>
         </Grid>
 
@@ -691,6 +699,80 @@
                                             <TextBlock Text="{Binding Repos}" TextWrapping="Wrap" Margin="0,4,0,0" Style="{StaticResource Muted}" />
                                         </StackPanel>
                                     </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Agent board: every live Claude session and autopilot background agent, subagents nested under it. -->
+            <ScrollViewer Grid.ColumnSpan="2" VerticalScrollBarVisibility="Auto" Padding="24,0,24,16" Focusable="False"
+                          Visibility="{Binding IsAgentsView, Converter={StaticResource Visible}}">
+                <StackPanel MaxWidth="1200" HorizontalAlignment="Left">
+                    <TextBlock Style="{StaticResource SectionLabel}">
+                        <Run Text="AGENTS · " /><Run Text="{Binding Agents.Count, Mode=OneWay}" />
+                    </TextBlock>
+                    <TextBlock Text="Every Claude CLI and autopilot background agent working right now, with its running subagents nested under it."
+                               Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,10" />
+
+                    <StackPanel HorizontalAlignment="Left" Margin="0,30,0,0"
+                                Visibility="{Binding HasAgents, Converter={x:Static vm:Converters.FalseToVisible}}">
+                        <TextBlock Text="No agent is running right now." FontSize="16" FontWeight="SemiBold" />
+                        <TextBlock Text="Open a Claude CLI in a repo, or turn on autopilot, and it'll show up here."
+                                   Style="{StaticResource Muted}" Margin="0,4,0,0" />
+                    </StackPanel>
+
+                    <ItemsControl ItemsSource="{Binding Agents}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:AgentRowViewModel}">
+                                <Border Style="{StaticResource Card}" BorderBrush="{Binding StateBrush}">
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Tokens}" Style="{StaticResource Muted}" VerticalAlignment="Top" />
+                                            <Ellipse DockPanel.Dock="Left" Width="8" Height="8" Fill="{Binding StateBrush}"
+                                                     VerticalAlignment="Center" Margin="0,2,8,0" />
+                                            <Button Command="{Binding DataContext.ShowTicketCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}" Style="{StaticResource McTextButton}" Padding="0"
+                                                    HorizontalContentAlignment="Left" IsEnabled="{Binding HasTicket}"
+                                                    ToolTip="Open its full row and history">
+                                                <TextBlock Text="{Binding Headline}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            </Button>
+                                        </DockPanel>
+                                        <TextBlock Margin="16,4,0,0">
+                                            <Run Text="{Binding Repo, Mode=OneWay}" Foreground="{StaticResource McMuted}" />
+                                            <Run Text="  ·  " Foreground="{StaticResource McMuted}" />
+                                            <Run Text="{Binding Kind, Mode=OneWay}" Foreground="{StaticResource McMuted}" />
+                                            <Run Text="  ·  " Foreground="{StaticResource McMuted}" />
+                                            <Run Text="{Binding Elapsed, Mode=OneWay}" Foreground="{StaticResource McMuted}" />
+                                            <Run Text="  ·  " Foreground="{StaticResource McMuted}" />
+                                            <Run Text="{Binding StateLabel, Mode=OneWay}" Foreground="{Binding StateBrush}" FontWeight="SemiBold" />
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding StateDetail}" Style="{StaticResource Muted}" Margin="16,2,0,0" TextWrapping="Wrap"
+                                                   Visibility="{Binding StateDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+
+                                        <!-- Subagents, nested under their parent. -->
+                                        <ItemsControl ItemsSource="{Binding Subagents}" Focusable="False" Margin="16,8,0,0"
+                                                      Visibility="{Binding HasSubagents, Converter={StaticResource Visible}}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:SubagentRowViewModel}">
+                                                    <Grid Margin="0,0,0,4">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="16" />
+                                                            <ColumnDefinition Width="160" />
+                                                            <ColumnDefinition Width="60" />
+                                                            <ColumnDefinition Width="80" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="1" FontSize="12">
+                                                            <Run Text="&#x21B3; " Foreground="{StaticResource McMuted}" /><Run Text="{Binding Type, Mode=OneWay}" />
+                                                        </TextBlock>
+                                                        <TextBlock Grid.Column="2" Text="{Binding Elapsed}" Style="{StaticResource Muted}" FontSize="12" />
+                                                        <TextBlock Grid.Column="3" Text="{Binding Tokens}" Style="{StaticResource Muted}" FontSize="12" TextAlignment="Right" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>

@@ -104,6 +104,9 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// <summary>Ticket → the tickets it requires (prerequisite links in the Workflow database).</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>> Requires { get; init; } = new Dictionary<string, IReadOnlyList<string>>();
 
+    /// <summary>Every live Claude session and autopilot background agent, with its running subagents nested under it.</summary>
+    public IReadOnlyList<Activity.AgentBoardRow> Agents { get; init; } = [];
+
     public TokenUsage UsageToday => Repos.Aggregate(default(TokenUsage), (sum, r) => sum + r.UsageToday);
     public int Working => Repos.Count(r => r.State == RepoState.Working);
     public int Waiting => Repos.Count(r => r.State == RepoState.Waiting);

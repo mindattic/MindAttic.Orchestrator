@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using System.Windows.Media;
+using MindAttic.Orchestrator.Activity;
 using MindAttic.Orchestrator.Audit;
 using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Scheduling;
@@ -8,7 +9,7 @@ using MindAttic.Orchestrator.Settings;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
-public enum View { Repos, Queue, Audit }
+public enum View { Repos, Queue, Audit, Agents }
 
 /// <summary>Budget (phase 2), the cross-repo queue (phase 3) and the audit (phase 4).</summary>
 public sealed partial class MainViewModel
@@ -44,13 +45,14 @@ public sealed partial class MainViewModel
         ToggleSettingsCommand = new RelayCommand(() => { Settings.Load(); IsSettingsOpen = !IsSettingsOpen; });
         RunAuditCommand = new RelayCommand(async () => await RunAuditAsync(), () => !IsAuditing);
         ShowViewCommand = new RelayCommand(p => { if (p is string s) ViewChoice = s; });
+        ShowTicketCommand = new RelayCommand(p => { if (p is AgentRowViewModel a) ShowTicketDetails(a); });
 
         if (auditRunner.Latest() is { } last) ShowAudit(last);
     }
 
     // ── View switching ──────────────────────────────────────────────────────
 
-    public IReadOnlyList<string> ViewChoices { get; } = ["Repos", "Queue", "Audit"];
+    public IReadOnlyList<string> ViewChoices { get; } = ["Repos", "Queue", "Audit", "Agents"];
 
     public string ViewChoice
     {
@@ -59,7 +61,7 @@ public sealed partial class MainViewModel
         {
             if (!Set(ref viewChoice, value)) return;
             view = Enum.TryParse<View>(value, out var v) ? v : View.Repos;
-            Raise(nameof(IsReposView)); Raise(nameof(IsQueueView)); Raise(nameof(IsAuditView)); Raise(nameof(ShowDetail));
+            Raise(nameof(IsReposView)); Raise(nameof(IsQueueView)); Raise(nameof(IsAuditView)); Raise(nameof(IsAgentsView)); Raise(nameof(ShowDetail));
         }
     }
 
@@ -68,6 +70,7 @@ public sealed partial class MainViewModel
     public bool IsReposView => view == View.Repos;
     public bool IsQueueView => view == View.Queue;
     public bool IsAuditView => view == View.Audit;
+    public bool IsAgentsView => view == View.Agents;
     public ICommand ShowViewCommand { get; private set; } = null!;
 
     // ── Settings ────────────────────────────────────────────────────────────
@@ -185,6 +188,54 @@ public sealed partial class MainViewModel
         { Level: BudgetLevel.Warn } => Palette.Waiting,
         _ => Palette.Working,
     };
+
+    /// <summary>5-hour reset, for the agent board's header.</summary>
+    public string BlockResetText => Budget?.CurrentBlock is { } b ? $"resets {b.EndUtc.ToLocalTime():t}" : "";
+
+    public string WeeklyHeadline => Budget?.WeeklyPercent is { } w ? $"{w:0}%" : "—";
+
+    public string WeeklyCaption => Budget switch
+    {
+        { WeeklyPercent: null } or null => "no weekly limit known yet",
+        { WeekResetUtc: { } r } => $"resets {r.ToLocalTime():ddd h:mm tt}",
+        _ => "rolling 7 days",
+    };
+
+    // ── Agent board ─────────────────────────────────────────────────────────
+
+    public ObservableCollection<AgentRowViewModel> Agents { get; } = [];
+    public bool HasAgents => Agents.Count > 0;
+    public ICommand ShowTicketCommand { get; private set; } = null!;
+
+    /// <summary>The ticket's full row and history: its sessions and the commits that mention it, from
+    /// <c>docs/USER_STORIES.md</c> (the Workflow ticket database, once MAO-T83 lands).</summary>
+    public async void ShowTicketDetails(AgentRowViewModel a)
+    {
+        if (a.TicketId is not { Length: > 0 } ticketId) return;
+        var repo = snapshot?.Repos.FirstOrDefault(r => r.Name == a.Repo);
+        var repoPath = repo?.Path ?? "";
+        var ticket = repo?.OpenTickets.FirstOrDefault(t => t.Id == ticketId);
+        var text = await Task.Run(() => MindAttic.Orchestrator.Tickets.TicketReplay.PlainReport(ticketId, repoPath, aggregator.Options.ClaudeProjectsDir, ticket));
+        var box = new System.Windows.Controls.TextBox
+        {
+            Text = text, IsReadOnly = true, FontFamily = new FontFamily("Consolas"), FontSize = 12,
+            VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+        };
+        new System.Windows.Window { Title = $"{ticketId} in {a.Repo}", Width = 900, Height = 650, Content = box,
+            Owner = System.Windows.Application.Current.MainWindow }.Show();
+    }
+
+    private void ApplyAgents(Snapshot next)
+    {
+        Agents.SyncBy(next.Agents, r => r.SessionId, a => a.SessionId,
+            r => { var a = new AgentRowViewModel(r.SessionId); a.Update(r, TitleOf(r), next.TakenUtc); return a; },
+            (a, r) => a.Update(r, TitleOf(r), next.TakenUtc));
+        Raise(nameof(HasAgents));
+
+        string? TitleOf(AgentBoardRow r) => r.TicketId is not { Length: > 0 } id ? null
+            : next.Repos.FirstOrDefault(repo => repo.Name == r.Repo)?.OpenTickets.FirstOrDefault(t => t.Id == id)?.Summary;
+    }
 
     // ── Queue ───────────────────────────────────────────────────────────────
 
@@ -336,8 +387,11 @@ public sealed partial class MainViewModel
     {
         foreach (var name in new[] { nameof(Budget), nameof(BudgetIsPeak), nameof(BudgetHeadline), nameof(BudgetCaption),
                                      nameof(BudgetDetail), nameof(BudgetTooltip), nameof(BudgetFill), nameof(BudgetBrush),
+                                     nameof(BlockResetText), nameof(WeeklyHeadline), nameof(WeeklyCaption),
                                      nameof(Pace), nameof(PaceText), nameof(PaceBrush) })
             Raise(name);
+
+        ApplyAgents(next);
 
         // Paced, the pace is what changes what the scheduler does, so it's what gets a toast.
         if (next.Pace is { IsPaced: true } pace)

@@ -171,6 +171,10 @@ public sealed class ContextCycler(string? directory = null)
     public int Subagents() => !System.IO.Directory.Exists(SubagentDirectory) ? 0
         : System.IO.Directory.EnumerateFiles(SubagentDirectory).Count(f => SubagentAlive(f, DateTime.UtcNow));
 
+    /// <summary>The agent ids (mark file names) of subagents running now across every CLI.</summary>
+    public IReadOnlyList<string> AliveSubagentIds(DateTime nowUtc) => !System.IO.Directory.Exists(SubagentDirectory) ? []
+        : [.. System.IO.Directory.EnumerateFiles(SubagentDirectory).Where(f => SubagentAlive(f, nowUtc)).Select(f => Path.GetFileName(f))];
+
     private static bool SubagentAlive(string mark, DateTime nowUtc)
     {
         try

@@ -109,10 +109,18 @@ public static class TicketReplay
         catch (System.ComponentModel.Win32Exception) { return ""; }
     }
 
-    /// <summary>The whole replay as plain text, for a window that just shows it.</summary>
-    public static string PlainReport(string ticketId, string repoPath, string projectsDir)
+    /// <summary>The whole replay as plain text, for a window that just shows it. With <paramref name="ticket"/>,
+    /// leads with its row (type, status, summary, ref) before the sessions and commits.</summary>
+    public static string PlainReport(string ticketId, string repoPath, string projectsDir, MindAttic.Workflow.Tickets.Ticket? ticket = null)
     {
         var sb = new StringBuilder();
+        if (ticket is { } t)
+        {
+            sb.AppendLine($"{t.Id} · {t.Type} · {t.Status} · opened {t.Date}");
+            sb.AppendLine(t.Summary);
+            if (t.Ref.Trim() is { Length: > 0 } r && r != "—") sb.AppendLine($"Ref: {r}");
+            sb.AppendLine();
+        }
         var sessions = Sessions(ticketId, projectsDir);
         sb.AppendLine(sessions.Count == 0 ? "No dispatched sessions found (only sessions the orchestrator started are tied to a ticket)."
             : $"{sessions.Count} session(s), {Formatting.Tokens(sessions.Sum(s => s.Fresh))} uncached");

@@ -109,4 +109,24 @@ public sealed class ContextCyclerTests
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
+
+    [Test]
+    public void Alive_subagent_ids_are_the_marks_whose_age_hasnt_gone_stale()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "ctx-" + Guid.NewGuid().ToString("N"));
+        var sub = Path.Combine(dir, "subagents");
+        Directory.CreateDirectory(sub);
+        try
+        {
+            File.WriteAllText(Path.Combine(sub, "agent-fresh"), "");
+            var stale = Path.Combine(sub, "agent-stale");
+            File.WriteAllText(stale, "");
+            File.SetLastWriteTimeUtc(stale, Now - ContextCycler.SubagentMarkLife - TimeSpan.FromMinutes(1));
+
+            var ids = new ContextCycler(dir).AliveSubagentIds(Now);
+
+            Assert.That(ids, Is.EqualTo(new[] { "agent-fresh" }), "a mark whose stop never came times out eventually");
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
 }
