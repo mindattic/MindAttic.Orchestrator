@@ -53,7 +53,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             .Append((WorkspaceRootName, workspace.Root)));
         string Bucket(string? dir) => matcher.Match(dir) ?? OutsideName;
 
-        var startOfToday = DateTime.Now.Date;
+        var startOfToday = now.ToLocalTime().Date; // the day of the refresh asked for, not of the wall clock
         var startOfTodayUtc = startOfToday.ToUniversalTime();
         var historyStartUtc = startOfToday.AddDays(-HistoryDays).ToUniversalTime();
 

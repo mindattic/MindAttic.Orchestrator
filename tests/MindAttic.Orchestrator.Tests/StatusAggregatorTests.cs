@@ -93,6 +93,17 @@ public sealed class StatusAggregatorTests
     }
 
     [Test]
+    public void Today_is_the_day_of_the_refresh_asked_for_not_the_wall_clocks()
+    {
+        Transcript("s1", Path.Combine(ws, "A"), TimeSpan.FromMinutes(1), 10);
+
+        Assert.That(Aggregator().Refresh().Repos.Single(r => r.Name == "A").UsageToday.Output, Is.EqualTo(10));
+        var twoDaysOn = Aggregator().Refresh(DateTime.UtcNow.AddDays(2)).Repos.Single(r => r.Name == "A");
+        Assert.That(twoDaysOn.UsageToday.Output, Is.Zero, "two days later that turn isn't today's usage any more");
+        Assert.That(twoDaysOn.Sessions, Has.Count.EqualTo(1), "still inside the week of history");
+    }
+
+    [Test]
     public void The_root_and_outside_pseudo_repos_appear_only_once_they_have_a_session_or_a_tab()
     {
         var aggregator = Aggregator();
