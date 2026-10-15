@@ -44,7 +44,7 @@ public static class AgentBoard
         DateTime nowUtc)
     {
         var byParent = subagents.ToLookup(s => s.ParentSessionId, StringComparer.Ordinal);
-        var byTicket = assignments.ToDictionary(a => a.TicketId, StringComparer.OrdinalIgnoreCase);
+        var byTicket = assignments.DistinctBy(a => a.TicketId, StringComparer.OrdinalIgnoreCase).ToDictionary(a => a.TicketId, StringComparer.OrdinalIgnoreCase);
         var paceHolding = pace is { IsPaced: true, Mode: not PaceMode.Open };
 
         var rows = new List<AgentBoardRow>();

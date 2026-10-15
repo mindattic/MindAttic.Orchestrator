@@ -23,25 +23,27 @@ internal sealed class BlockCommand : Command<BlockCommand.Settings>
     public override int Execute(CommandContext context, Settings settings)
     {
         var store = new JsonStore();
+        var id = Ctx.Id(settings.Ticket);
+        var by = settings.By.Select(Ctx.Id).ToList();
         // Once migrated, prerequisites are 'requires' links in the Workflow database, where every tool sees them.
         using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(OrchestratorOptions.Load(store).WorkspaceRoot))
             if (db is not null)
             {
                 if (settings.Clear)
-                    foreach (var to in db.Requires(settings.Ticket)) db.RemoveLink(settings.Ticket, to, "requires");
-                foreach (var prerequisite in settings.By) db.AddLink(settings.Ticket, prerequisite, "requires", "orchestrator block");
-                var now = db.Requires(settings.Ticket);
-                AnsiConsole.MarkupLine(now.Count > 0 ? $"{settings.Ticket} requires {string.Join(", ", now)}." : $"{settings.Ticket} requires nothing.");
+                    foreach (var to in db.Requires(id)) db.RemoveLink(id, to, "requires");
+                foreach (var prerequisite in by) db.AddLink(id, prerequisite, "requires", "orchestrator block");
+                var now = db.Requires(id);
+                AnsiConsole.MarkupLine(Markup.Escape(now.Count > 0 ? $"{id} requires {string.Join(", ", now)}." : $"{id} requires nothing."));
                 return 0;
             }
         var s = store.LoadSettings();
         var map = new Dictionary<string, List<string>>(s.BlockedBy, StringComparer.Ordinal);
-        if (settings.Clear) map.Remove(settings.Ticket);
-        else map[settings.Ticket] = [.. (map.GetValueOrDefault(settings.Ticket) ?? []).Concat(settings.By).Distinct(StringComparer.Ordinal)];
+        if (settings.Clear) map.Remove(id);
+        else map[id] = [.. (map.GetValueOrDefault(id) ?? []).Concat(by).Distinct(StringComparer.Ordinal)];
         store.SaveSettings(s with { BlockedBy = map });
-        AnsiConsole.MarkupLine(map.GetValueOrDefault(settings.Ticket) is { Count: > 0 } by
-            ? $"{settings.Ticket} waits for {string.Join(", ", by)}."
-            : $"{settings.Ticket} waits for nothing set by hand (a \"blocked by\" in its summary still counts).");
+        AnsiConsole.MarkupLine(Markup.Escape(map.GetValueOrDefault(id) is { Count: > 0 } waits
+            ? $"{id} waits for {string.Join(", ", waits)}."
+            : $"{id} waits for nothing set by hand (a \"blocked by\" in its summary still counts)."));
         return 0;
     }
 }
@@ -62,13 +64,14 @@ internal sealed class ReserveCommand : Command<ReserveCommand.Settings>
     {
         if (!TokenText.TryParse(settings.Tokens, out var tokens)) { AnsiConsole.MarkupLine("[red]Tokens: a number like 2M, 500k or 0.[/]"); return 1; }
         var store = new JsonStore();
+        var id = Ctx.Id(settings.Ticket);
         var s = store.LoadSettings();
         var map = new Dictionary<string, long>(s.Reservations, StringComparer.Ordinal);
-        if (tokens <= 0) map.Remove(settings.Ticket); else map[settings.Ticket] = tokens;
+        if (tokens <= 0) map.Remove(id); else map[id] = tokens;
         store.SaveSettings(s with { Reservations = map });
-        AnsiConsole.MarkupLine(tokens > 0
-            ? $"{settings.Ticket} has {Formatting.Tokens(tokens)} reserved: it's proposed first, and everything else paces against what's left after it."
-            : $"{settings.Ticket}'s reservation is released.");
+        AnsiConsole.MarkupLine(Markup.Escape(tokens > 0
+            ? $"{id} has {Formatting.Tokens(tokens)} reserved: it's proposed first, and everything else paces against what's left after it."
+            : $"{id}'s reservation is released."));
         return 0;
     }
 }

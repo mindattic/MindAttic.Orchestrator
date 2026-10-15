@@ -17,10 +17,11 @@ public sealed class DispatchLease(string directory) : IDisposable
     public bool TryAcquire()
     {
         if (held is not null) return true;
+        FileStream? stream = null;
         try
         {
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path)!);
-            var stream = new FileStream(Path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read);
+            stream = new FileStream(Path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read);
             stream.SetLength(0);
             var pid = System.Text.Encoding.ASCII.GetBytes(Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
             stream.Write(pid);
@@ -28,8 +29,11 @@ public sealed class DispatchLease(string directory) : IDisposable
             held = stream;
             return true;
         }
-        catch (IOException) { return false; }
-        catch (UnauthorizedAccessException) { return false; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            stream?.Dispose(); // opened but not written: don't sit on the lock without holding the lease
+            return false;
+        }
     }
 
     public void Dispose()

@@ -35,6 +35,35 @@ public sealed class JsonStoreTests
     }
 
     [Test]
+    public void A_file_locked_only_for_a_moment_loads_its_real_contents_and_concurrent_saves_never_tear()
+    {
+        // Callers load, change and save: defaults read during another process's save were saved over the real file.
+        var store = new JsonStore(dir);
+        store.SaveSettings(new OrchestratorSettings { MaxConcurrentSessions = 9 });
+        var path = Path.Combine(dir, "settings.json");
+        var locked = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        var release = Task.Delay(200).ContinueWith(_ => locked.Dispose());
+        Assert.That(store.LoadSettings().MaxConcurrentSessions, Is.EqualTo(9));
+        release.Wait();
+
+        Parallel.For(0, 40, i => new JsonStore(dir).SaveSettings(new OrchestratorSettings { MaxConcurrentSessions = 1 + i % 5 }));
+        Assert.That(store.LoadSettings().MaxConcurrentSessions, Is.InRange(1, 5), "always one whole save, never a torn mix");
+        Assert.That(Directory.GetFiles(dir).Select(Path.GetFileName), Is.EqualTo(new[] { "settings.json" }), "no temp left behind");
+    }
+
+    [Test]
+    public void The_lease_is_one_holders_at_a_time_and_names_it()
+    {
+        using var first = new MindAttic.Orchestrator.Scheduling.DispatchLease(dir);
+        using var second = new MindAttic.Orchestrator.Scheduling.DispatchLease(dir);
+        Assert.That((first.TryAcquire(), second.TryAcquire()), Is.EqualTo((true, false)));
+        using (var read = new FileStream(first.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            Assert.That(new StreamReader(read).ReadToEnd(), Is.EqualTo(Environment.ProcessId.ToString()));
+        first.Dispose();
+        Assert.That(second.TryAcquire(), Is.True, "free once its holder lets go");
+    }
+
+    [Test]
     public void Save_creates_the_folder_writes_through_a_temp_file_and_leaves_no_temp_behind()
     {
         var store = new JsonStore(dir);

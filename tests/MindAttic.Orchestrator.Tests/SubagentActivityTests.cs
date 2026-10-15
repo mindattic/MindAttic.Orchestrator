@@ -117,6 +117,10 @@ public sealed class SubagentActivityTests
 
             File.WriteAllLines(file, [Line("assistant", "2026-10-15T11:55:00Z", usage: (3, 0, 0, 3))]); // replaced with something shorter
             Assert.That(reader.Poll(cycler, Now).Single().Usage, Is.EqualTo(new TokenUsage(3, 0, 0, 3)), "a file that shrank is read again from the start");
+
+            // A message id that isn't a string used to throw out of the whole snapshot build.
+            File.AppendAllText(file, """{"type":"assistant","timestamp":"2026-10-15T11:56:00Z","message":{"id":123,"usage":{"input_tokens":4,"output_tokens":4}}}""" + "\n");
+            Assert.That(reader.Poll(cycler, Now).Single().Usage, Is.EqualTo(new TokenUsage(7, 0, 0, 7)));
         }
         finally
         {

@@ -32,7 +32,7 @@ public static partial class ConventionAudit
             {
                 string text;
                 try { text = File.ReadAllText(file); }
-                catch (IOException) { continue; }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { continue; }
                 (byKey.TryGetValue(key, out var list) ? list : byKey[key] = []).Add((name, path, file, Normalize(text, name, path)));
             }
         }
@@ -52,7 +52,8 @@ public static partial class ConventionAudit
                             LineSimilarity(canonical.Normalized, c.Normalized)));
             }
 
-            var have = copies.Select(c => c.Repo).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            // Only agent repos are eligible, so only they count as having it: otherwise "20/5 have it" always clears the bar.
+            var have = copies.Select(c => c.Repo).Where(r => agentRepos.Contains(r, StringComparer.OrdinalIgnoreCase)).ToHashSet(StringComparer.OrdinalIgnoreCase);
             var eligible = agentRepos.Count;
             if (eligible >= MinRepos && have.Count >= eligible * MissingThreshold)
             {

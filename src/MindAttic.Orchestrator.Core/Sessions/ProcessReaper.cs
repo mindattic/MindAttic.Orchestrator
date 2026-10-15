@@ -24,6 +24,9 @@ public static class ProcessReaper
     /// <summary>Ancestor hops to walk looking for a live Claude CLI before giving up on telling either way.</summary>
     private const int MaxAncestorHops = 20;
 
+    /// <summary>A start time WMI couldn't give: never compared, never counted as old.</summary>
+    public static readonly DateTime Unknown = DateTime.MinValue;
+
     private static readonly string[] TargetNames = ["find", "rg", "grep", "git", "bash", "python", "node"];
 
     public sealed record ProcessInfo(int Pid, string Name, int ParentPid, long HandleCount, DateTime StartUtc, string? CommandLine);
@@ -53,7 +56,7 @@ public static class ProcessReaper
             }
             if (!foundClaude) continue; // ancestry reaches no agent at all: a plain dev process, leave it alone
             if (p.HandleCount > MaxHandleCount) reaped.Add(new Reaped(p, $"over {MaxHandleCount:N0} handles ({p.HandleCount:N0})"));
-            else if (nowUtc - p.StartUtc > MaxAge) reaped.Add(new Reaped(p, $"running {MindAttic.Orchestrator.Formatting.Ago(p.StartUtc, nowUtc)}, over {MaxAge.TotalMinutes:0} min"));
+            else if (p.StartUtc != Unknown && nowUtc - p.StartUtc > MaxAge) reaped.Add(new Reaped(p, $"running {MindAttic.Orchestrator.Formatting.Ago(p.StartUtc, nowUtc)}, over {MaxAge.TotalMinutes:0} min"));
         }
         return reaped;
     }
@@ -67,13 +70,16 @@ public static class ProcessReaper
     /// exited, breaking the chain). Gives up after <see cref="MaxAncestorHops"/> hops without resolving either way.</summary>
     private static (bool FoundClaude, bool ChainBroken) WalkAncestors(ProcessInfo start, IReadOnlyDictionary<int, ProcessInfo> byPid)
     {
-        var pid = start.ParentPid;
+        var child = start;
         for (var hop = 0; hop < MaxAncestorHops; hop++)
         {
+            var pid = child.ParentPid;
             if (pid == 0) return (false, false);
             if (!byPid.TryGetValue(pid, out var parent)) return (false, true);
+            // Windows reuses ids: a "parent" younger than its child is another process that took the dead one's id.
+            if (parent.StartUtc != Unknown && child.StartUtc != Unknown && parent.StartUtc > child.StartUtc) return (false, true);
             if (ConsoleTyper.IsClaude(Bare(parent.Name))) return (true, false);
-            pid = parent.ParentPid;
+            child = parent;
         }
         return (false, false);
     }
@@ -108,14 +114,15 @@ public static class ProcessReaper
         {
             using var searcher = new ManagementObjectSearcher(
                 "SELECT ProcessId, ParentProcessId, Name, HandleCount, CreationDate FROM Win32_Process");
-            foreach (var o in searcher.Get())
+            using var found = searcher.Get();
+            foreach (var o in found)
             {
                 using (o)
                 {
                     if (o["ProcessId"] is not uint pid || o["Name"] is not string name) continue;
                     var parentPid = o["ParentProcessId"] is uint ppid ? (int)ppid : 0;
                     var handles = o["HandleCount"] is uint h ? h : 0;
-                    var started = o["CreationDate"] is string cd ? SafeParse(cd) : DateTime.UtcNow;
+                    var started = o["CreationDate"] is string cd ? SafeParse(cd) : Unknown;
                     result.Add(new ProcessInfo((int)pid, name, parentPid, handles, started, null));
                 }
             }
@@ -130,7 +137,8 @@ public static class ProcessReaper
         try
         {
             using var searcher = new ManagementObjectSearcher($"SELECT CommandLine FROM Win32_Process WHERE ProcessId = {pid}");
-            foreach (var o in searcher.Get())
+            using var found = searcher.Get();
+            foreach (var o in found)
                 using (o) return o["CommandLine"] as string;
         }
         catch (ManagementException) { }
@@ -141,6 +149,6 @@ public static class ProcessReaper
     private static DateTime SafeParse(string dmtf)
     {
         try { return ManagementDateTimeConverter.ToDateTime(dmtf).ToUniversalTime(); }
-        catch (Exception ex) when (ex is FormatException or ArgumentException) { return DateTime.UtcNow; }
+        catch (Exception ex) when (ex is FormatException or ArgumentException) { return Unknown; }
     }
 }

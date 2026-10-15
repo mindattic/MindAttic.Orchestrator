@@ -51,6 +51,31 @@ public sealed class TranscriptReaderTests
     private void BlankReadBytes() =>
         System.IO.File.WriteAllText(File(), new string(' ', (int)new FileInfo(File()).Length - 1) + "\n");
 
+    private static string ToolLine(string id, string ts) =>
+        System.Text.Json.JsonSerializer.Serialize(new
+        {
+            type = "assistant", timestamp = ts, sessionId = "s1", cwd = @"D:\Projects\X",
+            message = new
+            {
+                id, model = "claude-sonnet-5",
+                usage = new { input_tokens = 1, cache_creation_input_tokens = 0, cache_read_input_tokens = 0, output_tokens = 1 },
+                content = new[] { new { type = "tool_use", name = "Bash", input = new { command = "ls" } } },
+            },
+        });
+
+    [Test]
+    public void A_transcript_read_again_from_the_start_doesnt_count_its_tool_calls_twice()
+    {
+        // Three identical calls read twice became six, past the loop threshold: a false "looks stuck".
+        string[] calls = [ToolLine("m1", "2026-10-13T06:00:00Z"), ToolLine("m2", "2026-10-13T06:01:00Z"), ToolLine("m3", "2026-10-13T06:02:00Z")];
+        System.IO.File.WriteAllLines(File(), [.. calls, Line("pad", "2026-10-13T06:03:00Z", 1, 1)]);
+        var reader = new TranscriptReader(dir);
+        Assert.That(reader.Poll(Since).Single().Loop, Is.Null);
+
+        System.IO.File.WriteAllLines(File(), calls); // rewritten shorter: read again from 0
+        Assert.That(reader.Poll(Since).Single().Loop, Is.Null);
+    }
+
     [Test]
     public void A_restarted_reader_picks_up_where_the_last_one_stopped()
     {

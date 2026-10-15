@@ -64,9 +64,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     {
                         if (Setup.AgentGate.Ensure(contextPercent: s.ContextCyclePercent, keepGoing: s.KeepGoing) is { } did) Say(LogEventLevel.Information, did);
                         if (Setup.AgentGate.EnsureOtherProviders() is { } didOthers) Say(LogEventLevel.Information, didOthers);
+                        gatePercent = (s.ContextCyclePercent, s.KeepGoing);
                     }
-                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"couldn't install the agent hooks: {ex.Message}"); }
-                    gatePercent = (s.ContextCyclePercent, s.KeepGoing);
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"couldn't install the agent hooks (retrying next tick): {ex.Message}"); }
                 }
                 WatchHealth(autopilot);
                 foreach (var r in ReapIfDue())
@@ -133,9 +133,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
                 foreach (var line in autopilot.Tick(plan, snapshot, s, DateTime.UtcNow))
                 {
-                    var needsYou = line.Contains("needs you", StringComparison.Ordinal);
-                    Say(needsYou ? LogEventLevel.Warning : LogEventLevel.Information, line);
-                    if (needsYou) Alert("Needs you", line["autopilot: needs you: ".Length..]);
+                    var needsYou = Autopilot.NeedsYou(line);
+                    Say(needsYou is null ? LogEventLevel.Information : LogEventLevel.Warning, line);
+                    if (needsYou is not null) Alert("Needs you", needsYou);
                 }
                 if (autopilot.On && autopilot.Paused != lastPaused)
                 {
@@ -235,10 +235,10 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
             })!;
             var output = p.StandardOutput.ReadToEndAsync();
-            var error = p.StandardError.ReadToEnd();
+            var error = p.StandardError.ReadToEndAsync();
             if (!p.WaitForExit(120_000)) { p.Kill(true); Say(LogEventLevel.Warning, "workflow db sync took over 2 minutes; stopped it"); return; }
             if (p.ExitCode == 0) syncedDbWriteUtc = written;
-            Say(p.ExitCode == 0 ? LogEventLevel.Information : LogEventLevel.Warning, $"workflow db sync: {(output.Result + error).Trim()}");
+            Say(p.ExitCode == 0 ? LogEventLevel.Information : LogEventLevel.Warning, $"workflow db sync: {(output.Result + error.Result).Trim()}");
         }
         catch (System.ComponentModel.Win32Exception ex) { Say(LogEventLevel.Warning, $"couldn't run 'workflow db sync': {ex.Message}"); }
     }

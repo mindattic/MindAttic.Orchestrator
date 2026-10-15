@@ -108,6 +108,8 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         return code == 0 ? (true, path, "") : (false, path, $"git worktree add failed: {output.Trim()}");
     }
 
+    internal static readonly TimeSpan GitTimeout = TimeSpan.FromMinutes(2);
+
     internal static (int Code, string Output) Git(string repoPath, params string[] args)
     {
         var psi = new ProcessStartInfo("git")
@@ -120,13 +122,19 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         psi.ArgumentList.Add("-C");
         psi.ArgumentList.Add(repoPath);
         foreach (var a in args) psi.ArgumentList.Add(a);
+        // Never wait on a credential prompt: this runs inside the daemon's tick, and nobody is there to answer it.
+        psi.Environment["GIT_TERMINAL_PROMPT"] = "0";
         try
         {
             using var p = Process.Start(psi)!;
             var stdout = p.StandardOutput.ReadToEndAsync();
-            var stderr = p.StandardError.ReadToEnd();
-            p.WaitForExit();
-            return (p.ExitCode, stdout.Result + stderr);
+            var stderr = p.StandardError.ReadToEndAsync();
+            if (!p.WaitForExit(GitTimeout))
+            {
+                p.Kill(entireProcessTree: true);
+                return (-1, $"git {string.Join(' ', args)} took over {GitTimeout.TotalSeconds:0}s; stopped it");
+            }
+            return (p.ExitCode, stdout.Result + stderr.Result);
         }
         catch (System.ComponentModel.Win32Exception ex)
         {

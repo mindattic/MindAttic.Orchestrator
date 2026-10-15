@@ -76,19 +76,27 @@ public sealed class ProviderLogReader(string codexSessionsDir, string geminiTmpD
             {
                 var dir = Path.Combine(codexSessionsDir, day.ToString("yyyy"), day.ToString("MM"), day.ToString("dd"));
                 if (!Directory.Exists(dir)) continue;
-                foreach (var f in Directory.EnumerateFiles(dir, "*.jsonl")) yield return (f, Providers.Codex, null);
+                foreach (var f in List(() => Directory.GetFiles(dir, "*.jsonl"))) yield return (f, Providers.Codex, null);
             }
 
         if (Directory.Exists(geminiTmpDir))
-            foreach (var project in Directory.EnumerateDirectories(geminiTmpDir))
+            foreach (var project in List(() => Directory.GetDirectories(geminiTmpDir)))
             {
                 var chats = Path.Combine(project, "chats");
                 if (!Directory.Exists(chats)) continue;
                 var rootFile = Path.Combine(project, ".project_root");
                 string? cwd = null;
-                try { if (File.Exists(rootFile)) cwd = File.ReadAllText(rootFile).Trim(); } catch (IOException) { }
-                foreach (var f in Directory.EnumerateFiles(chats, "*.jsonl")) yield return (f, Providers.Gemini, cwd);
+                try { if (File.Exists(rootFile)) cwd = File.ReadAllText(rootFile).Trim(); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+                foreach (var f in List(() => Directory.GetFiles(chats, "*.jsonl"))) yield return (f, Providers.Gemini, cwd);
             }
+    }
+
+    // A folder removed or locked between the Exists check and the listing is skipped, not a failed poll.
+    private static string[] List(Func<string[]> list)
+    {
+        try { return list(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return []; }
     }
 
     private void ReadAppended(string path, FileState state, DateTime sinceUtc)

@@ -327,6 +327,11 @@ public sealed partial class MainViewModel
     {
         ViewChoice = "Repos";
         if (Waiting.Tiles.Concat(Working.Tiles).Concat(Tickets.Tiles).FirstOrDefault(t => t.Name == name) is { } tile) Selected = tile;
+        else if (tiles.GetValueOrDefault(name) is { } hidden)
+        {
+            Search = ""; // the tray asked for a repo the search box was hiding
+            Selected = hidden;
+        }
     }
 
     /// <summary>The ticket's sessions and commits in a window: what happened, without digging through Launcher history.</summary>
@@ -442,8 +447,8 @@ public sealed partial class MainViewModel
             {
                 QueueMessage = line;
                 queueLog.Information("{Line:l}", line);
-                if (line.Contains("needs you", StringComparison.Ordinal))
-                    Toasts.Insert(0, new ToastViewModel("Needs you", line["autopilot: needs you: ".Length..], Palette.Waiting, null));
+                if (Autopilot.NeedsYou(line) is { } needsYou)
+                    Toasts.Insert(0, new ToastViewModel("Needs you", needsYou, Palette.Waiting, null));
             }
         Raise(nameof(AutopilotText));
     }

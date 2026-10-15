@@ -142,7 +142,13 @@ public static class WorkspaceBootstrap
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancel);
                 timeout.CancelAfter(perApp ?? TimeSpan.FromMinutes(15));
                 try { await p.WaitForExitAsync(timeout.Token); }
-                catch (OperationCanceledException) { p.Kill(entireProcessTree: true); failed.Add($"{app}: timed out"); continue; }
+                catch (OperationCanceledException)
+                {
+                    p.Kill(entireProcessTree: true);
+                    if (cancel.IsCancellationRequested) throw; // you cancelled: stop, rather than "time out" every app left
+                    failed.Add($"{app}: timed out");
+                    continue;
+                }
                 if (p.ExitCode == 0) progress.Report($"    {app} installed");
                 else
                 {

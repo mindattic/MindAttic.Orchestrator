@@ -12,11 +12,18 @@ internal static class Ctx
     public static (StatusAggregator Aggregator, JsonStore Store, Snapshot Snapshot, SchedulePlan Plan) Load()
     {
         var store = new JsonStore();
-        var aggregator = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter());
+        var aggregator = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter(), Lease(store));
         var snapshot = aggregator.Refresh();
         var plan = Scheduler.Plan(snapshot, store.LoadSettings(), store.LoadAssignments());
         return (aggregator, store, snapshot, plan);
     }
+
+    /// <summary>The status lease the daemon and dashboards share: a one-off command only writes rl-status.json while
+    /// nobody else holds it, so it never overwrites the running daemon's pace. Released when the command exits.</summary>
+    public static DispatchLease Lease(JsonStore store) => new(store.Directory);
+
+    /// <summary>A ticket id as stored and compared everywhere (upper case), so "mao-t5" isn't silently a different ticket.</summary>
+    public static string Id(string typed) => typed.Trim().ToUpperInvariant();
 
     public static OrchestratorSettings Settings => new JsonStore().LoadSettings();
 
@@ -89,11 +96,12 @@ internal sealed class BumpCommand : Command<BumpCommand.Settings>
     {
         var store = new JsonStore();
         var s = store.LoadSettings();
+        var id = Ctx.Id(settings.Ticket);
         var priorities = new Dictionary<string, int>(s.Priorities, StringComparer.Ordinal);
-        var next = priorities.GetValueOrDefault(settings.Ticket) + settings.By;
-        if (next == 0) priorities.Remove(settings.Ticket); else priorities[settings.Ticket] = next;
+        var next = priorities.GetValueOrDefault(id) + settings.By;
+        if (next == 0) priorities.Remove(id); else priorities[id] = next;
         store.SaveSettings(s with { Priorities = priorities });
-        AnsiConsole.MarkupLine($"{settings.Ticket} priority is now {next:+#;-#;0}.");
+        AnsiConsole.MarkupLine($"{Markup.Escape(id)} priority is now {next:+#;-#;0}.");
         return 0;
     }
 }
@@ -169,13 +177,18 @@ internal sealed class DaemonCommand : Command<DaemonCommand.Settings>
     public override int Execute(CommandContext context, Settings settings)
     {
         using var stop = new CancellationTokenSource();
-        Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
+        ConsoleCancelEventHandler onCtrlC = (_, e) => { e.Cancel = true; stop.Cancel(); };
+        Console.CancelKeyPress += onCtrlC;
         AnsiConsole.MarkupLine($"[grey]Ctrl+C to stop. Log: {Markup.Escape(OrchestratorLog.Directory)}[/]");
-        new Daemon(new JsonStore(), (level, line) =>
+        try
         {
-            var color = level switch { Serilog.Events.LogEventLevel.Error => "red", Serilog.Events.LogEventLevel.Warning => "yellow", _ => "default" };
-            AnsiConsole.MarkupLine($"[grey]{DateTime.Now:T}[/] [{color}]{Markup.Escape(line)}[/]");
-        }).Run(TimeSpan.FromSeconds(Math.Max(5, settings.Interval)), stop.Token);
+            new Daemon(new JsonStore(), (level, line) =>
+            {
+                var color = level switch { Serilog.Events.LogEventLevel.Error => "red", Serilog.Events.LogEventLevel.Warning => "yellow", _ => "default" };
+                AnsiConsole.MarkupLine($"[grey]{DateTime.Now:T}[/] [{color}]{Markup.Escape(line)}[/]");
+            }).Run(TimeSpan.FromSeconds(Math.Max(5, settings.Interval)), stop.Token);
+        }
+        finally { Console.CancelKeyPress -= onCtrlC; } // a Ctrl+C during shutdown would cancel a disposed source
         return 0;
     }
 }
@@ -248,13 +261,22 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
     public override int Execute(CommandContext context, Settings settings)
     {
         if (settings.StaleHours is < 0) { AnsiConsole.MarkupLine("[red]--stale-hours can't be negative.[/]"); return 1; }
+        if (settings.MaxSessions is < 1) { AnsiConsole.MarkupLine("[red]--max-sessions is at least 1.[/]"); return 1; }
+        if (settings.GroomDays is < 1) { AnsiConsole.MarkupLine("[red]--groom-days is at least 1.[/]"); return 1; }
+        string? provider = null;
+        if (settings.Provider is { } typed &&
+            (provider = MindAttic.Orchestrator.Sessions.SessionControl.Providers.FirstOrDefault(p => p.Equals(typed, StringComparison.OrdinalIgnoreCase))) is null)
+        {
+            AnsiConsole.MarkupLine($"[red]No provider \"{Markup.Escape(typed)}\"; use one of {Markup.Escape(string.Join(", ", MindAttic.Orchestrator.Sessions.SessionControl.Providers))}.[/]");
+            return 1;
+        }
         var store = new JsonStore();
         var s = store.LoadSettings();
         s = s with
         {
             MaxConcurrentSessions = settings.MaxSessions ?? s.MaxConcurrentSessions,
             Autopilot = settings.Autopilot ?? s.Autopilot,
-            DefaultProvider = settings.Provider ?? s.DefaultProvider,
+            DefaultProvider = provider ?? s.DefaultProvider,
             StaleAfterHours = settings.StaleHours ?? s.StaleAfterHours,
             GroomAfterDays = settings.GroomDays ?? s.GroomAfterDays,
         };
@@ -315,7 +337,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
 
         var order = new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotOrder();
         AnsiConsole.MarkupLine($"settings: {Markup.Escape(Path.Combine(store.Directory, "settings.json"))}");
-        AnsiConsole.MarkupLine($"  max sessions {s.MaxConcurrentSessions} · provider {s.DefaultProvider} · autopilot " +
+        AnsiConsole.MarkupLine($"  max sessions {s.MaxConcurrentSessions} · provider {Markup.Escape(s.DefaultProvider)} · autopilot " +
             (order is null ? "off (type /autopilot in any CLI)" : !s.Autopilot ? "[yellow]paused[/] (--autopilot true resumes)"
                 : order.Count == 0 ? "[green]on[/] for every open repo CLI" : $"[green]on[/] for the CLIs in {Markup.Escape(string.Join(", ", order))}") +
             (s.AutopilotSkip.Count > 0 ? $", skipping {Markup.Escape(string.Join(", ", s.AutopilotSkip))}" : "") +
@@ -328,9 +350,9 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         AnsiConsole.MarkupLine($"  worktrees under {Markup.Escape(s.WorktreeRoot)} · {s.Priorities.Count} manual priorities · " +
             (s.StaleAfterHours > 0 ? $"assignments go stale after {s.StaleAfterHours}h quiet" : "assignments never go stale"));
         AnsiConsole.MarkupLine($"  quiet hours {(s.QuietHours.Count > 0 ? string.Join(", ", s.QuietHours) : "none")} · {s.MaxSessionsPerRepo} sessions per repo" +
-            string.Concat(s.RepoMaxSessions.Select(kv => $", {kv.Key} {kv.Value}")) +
-            (s.RepoBudgetPercent.Count > 0 ? " · repo caps " + string.Join(", ", s.RepoBudgetPercent.Select(kv => $"{kv.Key} {kv.Value}%")) : "") +
-            (s.Reservations.Count > 0 ? " · reserved " + string.Join(", ", s.Reservations.Select(kv => $"{kv.Key} {Formatting.Tokens(kv.Value)}")) : "") +
+            Markup.Escape(string.Concat(s.RepoMaxSessions.Select(kv => $", {kv.Key} {kv.Value}"))) +
+            (s.RepoBudgetPercent.Count > 0 ? " · repo caps " + Markup.Escape(string.Join(", ", s.RepoBudgetPercent.Select(kv => $"{kv.Key} {kv.Value}%"))) : "") +
+            (s.Reservations.Count > 0 ? " · reserved " + Markup.Escape(string.Join(", ", s.Reservations.Select(kv => $"{kv.Key} {Formatting.Tokens(kv.Value)}"))) : "") +
             $" · groom after {s.GroomAfterDays} days");
         return 0;
     }

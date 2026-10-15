@@ -55,16 +55,20 @@ public static class CollectionSync
         while (target.Count > desired.Count) target.RemoveAt(target.Count - 1);
     }
 
-    /// <summary>Keyed sync: reuses rows whose key survives, creates new ones, drops the rest.</summary>
+    /// <summary>Keyed sync: reuses rows whose key survives, creates new ones, drops the rest. A key repeated in
+    /// <paramref name="source"/> keeps only its first item, so one row is never placed twice.</summary>
     public static void SyncBy<TRow, TSource, TKey>(
         this ObservableCollection<TRow> target, IEnumerable<TSource> source,
         Func<TSource, TKey> sourceKey, Func<TRow, TKey> rowKey,
         Func<TSource, TRow> create, Action<TRow, TSource> update) where TRow : class where TKey : notnull
     {
-        var existing = target.ToDictionary(rowKey);
+        var existing = new Dictionary<TKey, TRow>();
+        foreach (var r in target) existing.TryAdd(rowKey(r), r);
+        var seen = new HashSet<TKey>();
         var desired = new List<TRow>();
         foreach (var s in source)
         {
+            if (!seen.Add(sourceKey(s))) continue;
             if (existing.TryGetValue(sourceKey(s), out var row)) update(row, s);
             else row = create(s);
             desired.Add(row);

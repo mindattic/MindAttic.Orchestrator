@@ -201,18 +201,17 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// <c>usage-samples.json</c> and sizes the limit from how they moved; null until one window has moved enough.</summary>
     private long? ReportedLimitFrom(ReportedUsage? reported, IReadOnlyList<UsageEvent> events, DateTime now)
     {
-        if (store is null) return null;
-        var path = Path.Combine(store.Directory, "usage-samples.json");
+        var path = Path.Combine(Store.Directory, "usage-samples.json");
         var stamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default;
         if (samples is null || stamp != samplesStamp)
         {
-            samples = store.Load<List<UsageSample>>("usage-samples");
+            samples = Store.Load<List<UsageSample>>("usage-samples");
             samplesStamp = stamp;
             samplesEstimate = ReportedLimit.Estimate(samples);
         }
         if (ReportedLimit.Record(samples, reported, events, now))
         {
-            store.Save("usage-samples", samples);
+            Store.Save("usage-samples", samples);
             samplesStamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default;
             samplesEstimate = ReportedLimit.Estimate(samples);
         }

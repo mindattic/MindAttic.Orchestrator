@@ -52,7 +52,9 @@ public sealed class Tray : IDisposable
     private void BuildMenu()
     {
         var menu = icon.ContextMenuStrip!;
+        var old = menu.Items.Cast<Forms.ToolStripItem>().ToList();
         menu.Items.Clear();
+        foreach (var item in old) item.Dispose(); // Clear doesn't, and this rebuilds on every open
         menu.Items.Add("Open dashboard", null, (_, _) => ShowWindow());
         menu.Items.Add(vm.AutopilotOn ? "Pause autopilot" : "Resume autopilot", null, (_, _) => vm.ToggleAutopilot());
         menu.Items.Add("Start the next proposal", null, (_, _) => icon.ShowBalloonTip(4000, "MindAttic Orchestrator", vm.DispatchNext(), Forms.ToolTipIcon.Info));

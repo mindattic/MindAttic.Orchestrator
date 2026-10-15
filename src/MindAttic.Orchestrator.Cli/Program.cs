@@ -77,7 +77,8 @@ internal sealed class StatusCommand : Command<StatusCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        var snapshot = new StatusAggregator(OrchestratorOptions.Load(), rateLimitFile: new RateLimitStatusWriter()).Refresh();
+        var store = new JsonStore();
+        var snapshot = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter(), Ctx.Lease(store)).Refresh();
         if (settings.Json)
         {
             Console.WriteLine(JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true }));
@@ -224,6 +225,7 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
             return 1;
         }
         if (settings.Target is < 1 or > 100) { AnsiConsole.MarkupLine("[red]--target is a percent from 1 to 100.[/]"); return 1; }
+        if (settings.Warn is < 1 or > 100) { AnsiConsole.MarkupLine("[red]--warn is a percent from 1 to 100.[/]"); return 1; }
         if (settings.Block is not null || settings.Weekly is not null || settings.Warn is not null || settings.WeeklyReset is not null ||
             settings.Pace is not null || settings.Target is not null)
         {
@@ -239,7 +241,8 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
             });
         }
 
-        var snapshot = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter()).Refresh();
+        // Built here (not the daemon's published copy) so a budget just changed above shows at once.
+        var snapshot = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter(), Ctx.Lease(store)).Refresh(DateTime.UtcNow);
         var b = snapshot.Budget!;
         AnsiConsole.MarkupLine(Line(b));
         if (b.CurrentBlock is { } block)

@@ -31,9 +31,10 @@ public static partial class GitHubIntake
         {
             using var p = Process.Start(psi)!;
             var output = p.StandardOutput.ReadToEndAsync();
-            var error = p.StandardError.ReadToEnd();
-            p.WaitForExit();
-            return (p.ExitCode, p.ExitCode == 0 ? output.Result : error);
+            var error = p.StandardError.ReadToEndAsync();
+            // It runs inside the daemon's tick: a network stall mustn't stop pacing.
+            if (!p.WaitForExit(60_000)) { p.Kill(entireProcessTree: true); return (-1, "gh took over a minute; stopped it"); }
+            return (p.ExitCode, p.ExitCode == 0 ? output.Result : error.Result);
         }
         catch (System.ComponentModel.Win32Exception) { return (-1, "the GitHub CLI (gh) isn't installed"); }
     }

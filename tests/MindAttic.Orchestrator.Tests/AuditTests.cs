@@ -76,6 +76,30 @@ public sealed class AuditTests
         Assert.That(missing.Single(m => m.File == ".claude/commands/quicksave.md").Repo, Is.EqualTo("D"));
     }
 
+    [Test]
+    public void Repos_without_agent_files_dont_count_toward_how_many_have_a_file()
+    {
+        // "(5/2 have it)": every repo with an AGENTS.md was counted, but only the .claude ones were eligible.
+        var plain = new[] { "P1", "P2", "P3", "P4" }.Select(n =>
+        {
+            var path = Path.Combine(root, n);
+            Directory.CreateDirectory(path);
+            File.WriteAllText(Path.Combine(path, "AGENTS.md"), "read the standard");
+            return (n, path);
+        });
+        var repos = plain.Concat(new[]
+        {
+            Repo("A", new() { ["AGENTS.md"] = "read the standard" }),
+            Repo("B", new() { [".claude/commands/x.md"] = "x" }),
+            Repo("C", new() { [".claude/commands/y.md"] = "y" }),
+        }).ToArray();
+
+        var (_, missing) = ConventionAudit.Run(repos);
+
+        Assert.That(missing.Where(m => m.File == "AGENTS.md"), Is.Empty, "1 of 3 agent repos has it: under the bar");
+        Assert.That(missing.All(m => m.HaveIt <= m.Eligible), Is.True);
+    }
+
     private static string Code(string name, int extra = 0) => string.Join('\n',
         new[] { "namespace X;", "public static class " + name + " {" }
         .Concat(Enumerable.Range(0, 30).Select(i => $"    public static int F{i}(int a) => a * {i} + {i % 7};"))

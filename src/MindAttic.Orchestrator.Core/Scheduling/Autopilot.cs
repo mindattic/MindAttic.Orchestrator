@@ -19,7 +19,8 @@ namespace MindAttic.Orchestrator.Scheduling;
 public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchLease? lease = null)
 {
     internal Func<string, string, string, int?> Start { get; init; } = BackgroundAgent.Start;
-    internal Func<int, bool> IsRunning { get; init; } = BackgroundAgent.IsRunning;
+    internal Func<Assignment, bool> IsRunning { get; init; } = a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc);
+    internal Func<int, DateTime?> StartTimeOf { get; init; } = BackgroundAgent.StartTimeOf;
     internal Func<IReadOnlyList<string>?> Order { get; init; } = sessions.AutopilotOrder;
     internal Func<int, bool> Alive { get; init; } = ContextCycler.IsClaude;
     internal string LogDirectory { get; init; } = BackgroundAgent.LogDirectory;
@@ -74,8 +75,8 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         var order = Order();
         On = order is not null;
         HeldElsewhere = lease is not null && (On || store.LoadAssignments().Any(a => a.Log is not null)) && !lease.TryAcquire();
-        if (!dryRun && !HeldElsewhere) Reap(plan, said);
-        Working = [.. store.LoadAssignments().Where(a => a.Log is not null && a.Pilot is { } p && IsRunning(p))];
+        if (!dryRun && !HeldElsewhere) Reap(plan, snapshot, said);
+        Working = [.. store.LoadAssignments().Where(a => a.Log is not null && a.Pilot is not null && IsRunning(a))];
 
         // Repos with an open Claude CLI (agents' own sessions aside), or the ones named.
         var repos = order is null ? []
@@ -171,7 +172,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 told.Remove(repo.Name);
                 var all = store.LoadAssignments();
                 all.RemoveAll(a => a.TicketId == next.Id);
-                all.Add(new Assignment(next.Id, next.Repo, tree, Providers.Claude, nowUtc, true) { Pilot = pid, Log = log });
+                all.Add(new Assignment(next.Id, next.Repo, tree, Providers.Claude, nowUtc, true) { Pilot = pid, PilotStartedUtc = StartTimeOf(pid), Log = log });
                 store.SaveAssignments(all);
                 said.Add($"autopilot: started {next.Id} in {repo.Name} in the background: {next.Ticket.Summary} (log {log})");
             }
@@ -180,7 +181,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
 
         IReadOnlyList<string> Done(bool paceBound)
         {
-            Working = [.. store.LoadAssignments().Where(a => a.Log is not null && a.Pilot is { } p && IsRunning(p))];
+            Working = [.. store.LoadAssignments().Where(a => a.Log is not null && a.Pilot is not null && IsRunning(a))];
             if (!dryRun && !HeldElsewhere)
                 SaveWaiting(paceBound ? [.. Repos.Where(r => !Working.Any(a => Same(a.Repo, r)))] : [], nowUtc);
             return said;
@@ -220,20 +221,22 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// would touch your own changes) and the worktree removed (git keeps it if anything there is uncommitted). Otherwise
     /// the ticket goes back in the queue, parked for you.
     /// </summary>
-    private void Reap(SchedulePlan plan, List<string> said)
+    private void Reap(SchedulePlan plan, Snapshot snapshot, List<string> said)
     {
         var all = store.LoadAssignments();
-        var gone = all.Where(a => a.Log is not null && !(a.Pilot is { } p && IsRunning(p))).ToList();
+        var gone = all.Where(a => a.Log is not null && !(a.Pilot is not null && IsRunning(a))).ToList();
         if (gone.Count == 0) return;
         foreach (var a in gone)
         {
             all.Remove(a);
-            var repoPath = plan.Queue.FirstOrDefault(q => Same(q.Repo, a.Repo))?.RepoPath ?? a.Directory;
+            // The repo's own checkout, from the snapshot: the queue has no item for a repo whose last open story this was.
+            var repoPath = snapshot.Repos.FirstOrDefault(r => r.Path.Length > 0 && Same(r.Name, a.Repo))?.Path
+                ?? plan.Queue.FirstOrDefault(q => Same(q.Repo, a.Repo))?.RepoPath ?? a.Directory;
             var (closed, note) = a.Worktree ? Land(a, repoPath) : (!plan.Queue.Any(q => q.Id == a.TicketId), "");
             if (!closed) parked.Add(a.TicketId);
             said.Add(closed
                 ? $"autopilot: finished {a.TicketId} in {a.Repo}{note}"
-                : $"autopilot: needs you: {a.TicketId}'s agent in {a.Repo} ended without closing it, so autopilot leaves it for you (it's back in the queue); see {a.Log}{note}");
+                : $"{NeedsYouPrefix}{a.TicketId}'s agent in {a.Repo} ended without closing it, so autopilot leaves it for you (it's back in the queue); see {a.Log}{note}");
         }
         store.SaveAssignments(all);
     }
@@ -268,6 +271,13 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         else note += $"; its work is in {a.Directory} (branch {Dispatcher.BranchFor(a.TicketId)})";
         return (closed, note);
     }
+
+    private const string NeedsYouPrefix = "autopilot: needs you: ";
+
+    /// <summary>The alert text when <paramref name="line"/> is one of <see cref="Tick"/>'s "needs you" lines; null for any other
+    /// (a started line can carry "needs you" inside its ticket summary).</summary>
+    public static string? NeedsYou(string line) =>
+        line.StartsWith(NeedsYouPrefix, StringComparison.Ordinal) ? line[NeedsYouPrefix.Length..] : null;
 
     /// <summary>Whether the ticket table in <paramref name="stories"/> has <paramref name="id"/> closed (or wont-do).</summary>
     internal static bool ClosedIn(string stories, string id) =>

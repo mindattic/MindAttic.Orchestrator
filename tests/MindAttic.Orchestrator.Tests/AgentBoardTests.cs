@@ -75,6 +75,17 @@ public sealed class AgentBoardTests
     }
 
     [Test]
+    public void Assignments_whose_ids_differ_only_in_case_dont_break_the_board()
+    {
+        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-1), "MAO-T1")) };
+        Assignment Of(string id, int hours) => new(id, "A", @"D:\A", Providers.Claude, Now.AddHours(-hours), Worktree: true) { Pilot = 1 };
+
+        var rows = AgentBoard.Build(repos, null, [Of("MAO-T1", 2), Of("mao-t1", 1)], [], WorkingWindow, Now);
+
+        Assert.That(rows[0].StartedUtc, Is.EqualTo(Now.AddHours(-2)), "the first one counts");
+    }
+
+    [Test]
     public void A_session_with_no_assignment_starts_from_its_first_recorded_event()
     {
         var session = Session("s1", Now.AddMinutes(-1), "MAO-T1") with { Events = [new UsageEvent(Now.AddMinutes(-20), default)] };

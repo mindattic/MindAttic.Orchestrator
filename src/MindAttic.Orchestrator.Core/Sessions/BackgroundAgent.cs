@@ -43,13 +43,29 @@ public static class BackgroundAgent
     internal static string CommandLine(string promptPath, string logPath, string? command = null) =>
         $"{command ?? ClaudeCommand()} -p < \"{promptPath}\" > \"{logPath}\" 2>&1";
 
-    /// <summary>Whether the agent started as <paramref name="pid"/> is still working.</summary>
-    public static bool IsRunning(int pid)
+    /// <summary>Whether the agent started as <paramref name="pid"/> (at <paramref name="startedUtc"/>, when known) is still
+    /// working; a <c>cmd</c> that started at another time only reuses its id.</summary>
+    public static bool IsRunning(int pid, DateTime? startedUtc = null)
     {
         if (pid <= 0) return false;
-        try { using var p = Process.GetProcessById(pid); return p.ProcessName.Equals("cmd", StringComparison.OrdinalIgnoreCase) && !p.HasExited; }
+        try
+        {
+            using var p = Process.GetProcessById(pid);
+            return p.ProcessName.Equals("cmd", StringComparison.OrdinalIgnoreCase) && !p.HasExited &&
+                (startedUtc is not { } at || SameStart(p.StartTime.ToUniversalTime(), at));
+        }
         catch (ArgumentException) { return false; }
         catch (InvalidOperationException) { return false; }
+        catch (System.ComponentModel.Win32Exception) { return false; }
+    }
+
+    internal static bool SameStart(DateTime a, DateTime b) => (a - b).Duration() < TimeSpan.FromSeconds(1);
+
+    /// <summary>When process <paramref name="pid"/> started; null when it's gone or can't be read.</summary>
+    public static DateTime? StartTimeOf(int pid)
+    {
+        try { using var p = Process.GetProcessById(pid); return p.StartTime.ToUniversalTime(); }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception) { return null; }
     }
 
     /// <summary>The Launcher's Claude command (its model included), so agents match the tabs you open yourself.</summary>

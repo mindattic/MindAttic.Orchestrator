@@ -29,8 +29,8 @@ public sealed class ProcessReaperTests
     {
         var processes = new[]
         {
-            P(1, "claude.exe", parentPid: 0),
-            P(2, "bash.exe", parentPid: 1),
+            P(1, "claude.exe", parentPid: 0, startUtc: Now.AddHours(-1)),
+            P(2, "bash.exe", parentPid: 1, startUtc: Now.AddMinutes(-3)),
             P(3, "rg.exe", parentPid: 2, handles: 200, startUtc: Now.AddMinutes(-2)),
         };
 
@@ -38,12 +38,32 @@ public sealed class ProcessReaperTests
     }
 
     [Test]
+    public void A_parent_younger_than_its_child_took_a_dead_parents_id_so_the_child_is_orphaned()
+    {
+        // The agent's bash exited; Windows gave its id to a claude.exe started later. That CLI isn't this find's agent.
+        var processes = new[]
+        {
+            P(2, "claude.exe", parentPid: 0, startUtc: Now.AddMinutes(-1)),
+            P(3, "find.exe", parentPid: 2, startUtc: Now.AddMinutes(-10)),
+        };
+        Assert.That(Select(processes, Now).Select(r => r.Process.Pid), Is.EqualTo(new[] { 3 }));
+
+        var unknown = new[]
+        {
+            P(2, "claude.exe", parentPid: 0, startUtc: Unknown),
+            P(3, "find.exe", parentPid: 2, startUtc: Now.AddMinutes(-10)),
+            P(4, "git.exe", parentPid: 2, startUtc: Unknown),
+        };
+        Assert.That(Select(unknown, Now), Is.Empty, "an unknown start is neither younger nor old");
+    }
+
+    [Test]
     public void A_tool_process_under_a_live_claude_cli_with_too_many_handles_is_reaped()
     {
         var processes = new[]
         {
-            P(1, "claude.exe", parentPid: 0),
-            P(2, "bash.exe", parentPid: 1),
+            P(1, "claude.exe", parentPid: 0, startUtc: Now.AddHours(-1)),
+            P(2, "bash.exe", parentPid: 1, startUtc: Now.AddMinutes(-2)),
             P(3, "find.exe", parentPid: 2, handles: MaxHandleCount + 1, startUtc: Now.AddMinutes(-1)),
         };
 
@@ -59,7 +79,7 @@ public sealed class ProcessReaperTests
     {
         var processes = new[]
         {
-            P(1, "claude.exe", parentPid: 0),
+            P(1, "claude.exe", parentPid: 0, startUtc: Now.AddHours(-2)),
             P(2, "git.exe", parentPid: 1, handles: 50, startUtc: Now - MaxAge - TimeSpan.FromMinutes(1)),
         };
 
@@ -77,8 +97,8 @@ public sealed class ProcessReaperTests
         // chain has exited, so this is an ordinary dev process, not something an agent spawned.
         var processes = new[]
         {
-            P(1, "explorer.exe", parentPid: 0),
-            P(2, "pwsh.exe", parentPid: 1),
+            P(1, "explorer.exe", parentPid: 0, startUtc: Now.AddDays(-1)),
+            P(2, "pwsh.exe", parentPid: 1, startUtc: Now.AddHours(-3)),
             P(3, "git.exe", parentPid: 2, handles: MaxHandleCount + 1, startUtc: Now - MaxAge - TimeSpan.FromHours(1)),
         };
 
@@ -90,7 +110,7 @@ public sealed class ProcessReaperTests
     {
         var processes = new[]
         {
-            P(1, "claude.exe.old.5", parentPid: 0),
+            P(1, "claude.exe.old.5", parentPid: 0, startUtc: Now.AddHours(-1)),
             P(2, "node.exe", parentPid: 1, handles: 50, startUtc: Now.AddMinutes(-2)),
         };
 
@@ -112,8 +132,8 @@ public sealed class ProcessReaperTests
         // a reap candidate's is looked up on its own, before it's killed, so the log still says what it was running.
         var processes = new[]
         {
-            P(1, "claude.exe", parentPid: 0, cmd: null),
-            P(2, "bash.exe", parentPid: 1, cmd: null),
+            P(1, "claude.exe", parentPid: 0, startUtc: Now.AddHours(-1), cmd: null),
+            P(2, "bash.exe", parentPid: 1, startUtc: Now.AddMinutes(-3), cmd: null),
             P(3, "rg.exe", parentPid: 2, startUtc: Now.AddMinutes(-2), cmd: null),
             P(4, "find.exe", parentPid: 99, cmd: null),
         }.Select(p => p with { CommandLine = null }).ToList();

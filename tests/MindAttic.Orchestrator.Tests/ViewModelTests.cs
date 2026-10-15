@@ -116,4 +116,15 @@ public sealed class ViewModelTests
         Assert.That(rows.Select(r => (r.Key, r.Value)), Is.EqualTo(new[] { ("c", 30), ("a", 10) }));
         Assert.That(rows[1], Is.SameAs(a), "a's row is the same object, updated, so its bound control keeps its state");
     }
+
+    [Test]
+    public void Keyed_sync_keeps_the_first_of_a_repeated_key_so_no_row_is_placed_twice()
+    {
+        // Placed twice, the next refresh's ToDictionary threw and the async void timer took the dashboard down.
+        var rows = new ObservableCollection<Row>();
+        rows.SyncBy([("a", 1), ("b", 2), ("a", 3)], s => s.Item1, r => r.Key, s => new Row(s.Item1, s.Item2), (r, s) => r.Value = s.Item2);
+        Assert.That(rows.Select(r => (r.Key, r.Value)), Is.EqualTo(new[] { ("a", 1), ("b", 2) }));
+        Assert.That(() => rows.SyncBy([("a", 4)], s => s.Item1, r => r.Key, s => new Row(s.Item1, s.Item2), (r, s) => r.Value = s.Item2), Throws.Nothing);
+        Assert.That(rows.Select(r => (r.Key, r.Value)), Is.EqualTo(new[] { ("a", 4) }));
+    }
 }

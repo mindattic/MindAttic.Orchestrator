@@ -167,9 +167,12 @@ public sealed partial class MainViewModel : ObservableObject
                 ? $"Updated {next.TakenUtc.ToLocalTime():T} · shared"
                 : $"Updated {DateTime.Now:T} · {clock.ElapsedMilliseconds} ms";
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        // Any failure is shown and retried next tick: this runs from an async void timer, so an escaped exception would
+        // close the dashboard, and with it autopilot and rl-status.json if this window holds the lease.
+        catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             RefreshInfo = $"Refresh failed: {ex.Message}";
+            OrchestratorLog.For("Dashboard").Error(ex, "refresh failed");
         }
         finally { refreshing = false; }
     }

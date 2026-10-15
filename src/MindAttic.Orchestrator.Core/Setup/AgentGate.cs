@@ -205,9 +205,10 @@ public static class AgentGate
                 command = str(args.get("command") or "")
                 # Only a segment that IS a workflow ticket command counts: the words inside a message or a string don't.
                 for segment in re.split(r"[;\n|]|&&", command):
-                    if not re.match(r"\s*(?:&\s*)?['\"]?workflow(?:\.exe)?['\"]?\s+ticket\s+(new|close|correct)\b", segment):
-                        continue
-                    action = re.match(r"\s*(?:&\s*)?['\"]?workflow(?:\.exe)?['\"]?\s+ticket\s+(new|close|correct)\s*(.*)", segment).group(2)
+                    called = re.match(r"\s*(?:&\s*)?['\"]?workflow(?:\.exe)?['\"]?\s+ticket\s+(close|correct)\b\s*(.*)", segment)
+                    if not called:
+                        continue  # filing a new ticket in another repo is how work is handed to it, so `new` is never refused
+                    action = called.group(2)
                     named = re.search(r"--repo[\s=]+['\"]?([^\s'\"]+)", action)
                     owners = [named.group(1)] if named else []
                     # The ticket a close/correct acts on is its first argument; IDs in --summary or --ref are just text.
@@ -227,12 +228,17 @@ public static class AgentGate
         cmd = str((data.get("tool_input") or {}).get("command") or "")
         ROOT_SEARCH = (r"(?:^|[;&|(])\s*(?:\"[^\"]*[\\/]|'[^']*[\\/]|[^\s\"';&|]*[\\/])?(find|fd|rg|grep|ls|dir|Get-ChildItem|gci)(?:\.exe)?[\"']?"
                        r"(?=\s)[^|;&\n]*?\s[\"']?(/|/[a-zA-Z]|[A-Za-z]:[\\/]?|~|\$HOME|\$env:USERPROFILE)[\"']?(?=\s|$|[;&|)])")
-        def root_search(c):
+        def root_search(c, powershell):
             if not re.search(ROOT_SEARCH, c, re.I):
                 return False
-            # Listing a root is harmless; only a recursive listing walks the whole drive.
-            return not re.match(r"^\s*(ls|dir|Get-ChildItem|gci)\b", c, re.I) or bool(re.search(r"(\s-\w*R\w*\b|\s/s\b|-Recurse)", c))
-        if tool in ("Bash", "PowerShell") and root_search(cmd):
+            # Listing a root is harmless; only a recursive listing walks the whole drive. PowerShell's parameters ignore
+            # case (-recurse, -r), but bash's `ls -r` only reverses the order.
+            if not re.match(r"^\s*(ls|dir|Get-ChildItem|gci)\b", c, re.I):
+                return True
+            if powershell or re.match(r"^\s*(Get-ChildItem|gci)\b", c, re.I):
+                return bool(re.search(r"\s-r(?:e(?:c(?:u(?:r(?:s(?:e)?)?)?)?)?)?\b|\s/s\b", c, re.I))
+            return bool(re.search(r"(\s-\w*R\w*\b|\s/s\b)", c))
+        if tool in ("Bash", "PowerShell") and root_search(cmd, tool == "PowerShell"):
             print(json.dumps(dict(hookSpecificOutput=dict(hookEventName="PreToolUse", permissionDecision="deny",
                 permissionDecisionReason="Searching a whole drive or the filesystem root is blocked: it never finishes and leaks handles until "
                 "Windows freezes. Search the specific folder instead (a repo under D:\\Projects\\MindAttic, or a known install folder), "
@@ -251,9 +257,20 @@ public static class AgentGate
         # wait counts toward the same MAX_HOLD, and past it the subagent starts anyway: held, never refused.
         if tool in ("Agent", "Task"):
             SUB = MARKS / "subagents"
+            def running(s):
+                # The daemon's count leaves out marks whose stop never came; only marks newer than its count are added to it.
+                marks = list(SUB.iterdir()) if SUB.exists() else []
+                if s.get("subagents_running") is None:
+                    return len(marks)
+                at = datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00")).timestamp()
+                return int(s["subagents_running"]) + sum(1 for m in marks if m.stat().st_mtime > at)
             while time.monotonic() - start < MAX_HOLD:
-                allowed = status().get("subagent_allowance")
-                if allowed is None or (sum(1 for _ in SUB.iterdir()) if SUB.exists() else 0) < allowed:
+                s = status()
+                allowed = s.get("subagent_allowance")
+                try:
+                    if allowed is None or running(s) < allowed:
+                        break
+                except Exception:
                     break
                 time.sleep(5)
         while True:
@@ -461,7 +478,8 @@ public static class AgentGate
                     order.write_text(repo_of(data.get("cwd") or "", worktrees=False) or "")
                 else:
                     m = re.search(r"-{1,2}repos?\s*[=:]?\s*\[?([^\]]*)\]?", args, re.I)
-                    order.write_text(",".join(r.strip() for r in m.group(1).replace(" ", ",").split(",") if r.strip()) if m else "")
+                    names = [r.strip() for r in m.group(1).replace(" ", ",").split(",")] if m else []
+                    order.write_text(",".join(r for r in names if r and r.lower() not in ("on", "off", "this")))
             # /goal <condition> runs turn after turn until its condition holds; cycling would end it, so the session is
             # marked and left to Claude's own compaction until /goal clear (MAO-T93).
             if re.match(r"/goal\b", prompt):
@@ -641,9 +659,9 @@ public static class AgentGate
         var entries = hooks[hookEvent] as JsonArray ?? (JsonArray)(hooks[hookEvent] = new JsonArray());
         foreach (var hook in entries.OfType<JsonObject>().SelectMany(m => (m["hooks"] as JsonArray ?? []).OfType<JsonObject>()))
         {
-            if (hook["command"]?.GetValue<string>() is { } c && c.Contains(scriptName, StringComparison.OrdinalIgnoreCase))
+            if (hook["command"] is JsonValue cv && cv.TryGetValue<string>(out var c) && c.Contains(scriptName, StringComparison.OrdinalIgnoreCase))
             {
-                if (c == command && hook["timeout"]?.GetValue<int>() == timeout) return false;
+                if (c == command && hook["timeout"] is JsonValue tv && tv.TryGetValue<int>(out var t) && t == timeout) return false;
                 hook["command"] = command;
                 hook["timeout"] = timeout;
                 return true;

@@ -17,6 +17,7 @@ public sealed class AutopilotTests
     private readonly HashSet<int> agents = [];
     private IReadOnlyList<string>? order = [];
     private readonly HashSet<string> landed = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> landedFrom = new(StringComparer.Ordinal);
     private int nextPid = 5000;
     private static readonly DateTime Now = new(2026, 10, 15, 6, 0, 0, DateTimeKind.Utc);
 
@@ -30,7 +31,41 @@ public sealed class AutopilotTests
         started.Clear();
         clis.Clear();
         agents.Clear();
+        landedFrom.Clear();
         order = [];
+    }
+
+    [Test]
+    public void The_last_open_story_of_a_repo_is_landed_from_the_repos_own_checkout_not_its_worktree()
+    {
+        Cli(100, @"D:\W\A");
+        var snap = Snap(("A", [T("A-T1")]));
+        var pilot = Pilot();
+        pilot.Tick(Paced(snap, 1), snap, new() { WorktreeRoot = @"D:\WT" }, Now);
+        agents.Clear();
+        landed.Add("A-T1");
+
+        var after = Snap(("A", [])); // it closed the repo's last open story, so the queue has nothing for A
+        var said = pilot.Tick(Paced(after, 1), after, new() { WorktreeRoot = @"D:\WT" }, Now.AddMinutes(30));
+        Assert.That(landedFrom["A-T1"], Is.EqualTo(@"D:\W\A"), "the worktree has no ticket database beside it, so a finished story was parked");
+        Assert.That(said, Has.Some.Contains("finished A-T1"));
+    }
+
+    [Test]
+    public void Only_a_line_that_is_a_needs_you_line_raises_the_alert()
+    {
+        Assert.That(Autopilot.NeedsYou("autopilot: needs you: A-T1's agent in A ended"), Is.EqualTo("A-T1's agent in A ended"));
+        Assert.That(Autopilot.NeedsYou("autopilot: started A-T2 in A in the background: Toast when a session needs you: (log x)"), Is.Null,
+            "a ticket summary can say \"needs you\"");
+    }
+
+    [Test]
+    public void A_cmd_that_reuses_a_finished_agents_pid_is_not_the_agent()
+    {
+        var start = new DateTime(2026, 10, 15, 6, 0, 0, DateTimeKind.Utc);
+        Assert.That(BackgroundAgent.SameStart(start.AddMilliseconds(400), start), Is.True);
+        Assert.That(BackgroundAgent.SameStart(start.AddMinutes(20), start), Is.False);
+        Assert.That(BackgroundAgent.IsRunning(Environment.ProcessId, DateTime.UtcNow), Is.False, "not a cmd, whatever its start");
     }
 
     [TearDown]
@@ -45,10 +80,11 @@ public sealed class AutopilotTests
         WaitingPath = waiting,
         Order = () => order,
         Alive = clis.Contains,
-        IsRunning = agents.Contains,
+        IsRunning = a => agents.Contains(a.Pilot!.Value),
+        StartTimeOf = _ => null,
         LogDirectory = Path.Combine(dir, "logs"),
         MakeWorktree = (repo, path, branch) => (true, path, ""),
-        Land = (a, repo) => (landed.Contains(a.TicketId), ""),
+        Land = (a, repo) => { landedFrom[a.TicketId] = repo; return (landed.Contains(a.TicketId), ""); },
         Start = (d, prompt, log) =>
         {
             var pid = nextPid++;

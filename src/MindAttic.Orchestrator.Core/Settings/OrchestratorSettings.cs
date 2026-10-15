@@ -125,6 +125,9 @@ public sealed record Assignment(string TicketId, string Repo, string Directory, 
     /// <summary>The background agent <c>/autopilot</c> started on it (its process id); null for a tab.</summary>
     public int? Pilot { get; init; }
 
+    /// <summary>When <see cref="Pilot"/>'s process started, so a later process given the same id isn't taken for it.</summary>
+    public DateTime? PilotStartedUtc { get; init; }
+
     /// <summary>Where that background agent's output goes.</summary>
     public string? Log { get; init; }
 }
@@ -141,11 +144,16 @@ public sealed class JsonStore(string? directory = null)
     public string Directory { get; } = directory ?? Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MindAttic", "MindAttic.Orchestrator");
 
+    /// <summary>How long a file another process has open (mid-save, mid-read) is retried before giving up.</summary>
+    private static readonly TimeSpan Busy = TimeSpan.FromSeconds(1);
+
+    /// <summary>The file's contents, or defaults when it's missing, unreadable JSON, or locked past <see cref="Busy"/>.
+    /// A briefly locked file is retried: callers load, change and save, so defaults here would be saved over the real file.</summary>
     public T Load<T>(string name) where T : new()
     {
         var path = PathOf(name);
         if (!File.Exists(path)) return new T();
-        try { return JsonSerializer.Deserialize<T>(File.ReadAllText(path), Options) ?? new T(); }
+        try { return JsonSerializer.Deserialize<T>(Retry(() => File.ReadAllText(path)), Options) ?? new T(); }
         catch (JsonException) { return new T(); }
         catch (IOException) { return new T(); }
     }
@@ -154,9 +162,24 @@ public sealed class JsonStore(string? directory = null)
     {
         System.IO.Directory.CreateDirectory(Directory);
         var path = PathOf(name);
-        var temp = path + ".tmp";
+        // Each writer has its own temp file, so two saving at once can't move each other's half-written JSON into place.
+        var temp = $"{path}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
         File.WriteAllText(temp, JsonSerializer.Serialize(value, Options));
-        File.Move(temp, path, overwrite: true);
+        try { Retry(() => { File.Move(temp, path, overwrite: true); return true; }); }
+        finally { if (File.Exists(temp)) File.Delete(temp); }
+    }
+
+    private static TResult Retry<TResult>(Func<TResult> io)
+    {
+        var until = DateTime.UtcNow + Busy;
+        while (true)
+        {
+            try { return io(); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException && ex is not FileNotFoundException && DateTime.UtcNow < until)
+            {
+                Thread.Sleep(50);
+            }
+        }
     }
 
     public OrchestratorSettings LoadSettings() => Load<OrchestratorSettings>("settings");

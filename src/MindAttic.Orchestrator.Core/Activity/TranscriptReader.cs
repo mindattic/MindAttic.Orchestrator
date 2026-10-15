@@ -110,6 +110,7 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
                         dirty = changed = true;
                     }
                     state.Offset = 0;
+                    state.Tools.Clear(); // read again from 0 when it's resumed: tool calls aren't de-duplicated like usage
                     state.LastWriteUtc = info.LastWriteTimeUtc;
                 }
                 else
@@ -266,6 +267,7 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
             state.Offset = 0;
             state.Events.Clear();
             state.Hits.Clear();
+            state.Tools.Clear();
             state.CountedMessages.Clear();
         }
         if (stream.Length == state.Offset) return false;

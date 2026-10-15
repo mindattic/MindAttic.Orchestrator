@@ -39,6 +39,13 @@ public sealed class CliHelperTests
     }
 
     [Test]
+    public void Ticket_ids_typed_in_any_case_are_stored_as_the_scheduler_compares_them()
+    {
+        // `bump mao-t5` said "priority is now +1" and changed nothing: the scheduler compares ids ordinally, upper case.
+        Assert.That(Ctx.Id(" mao-t5 "), Is.EqualTo("MAO-T5"));
+    }
+
+    [Test]
     public void Status_lists_working_repos_first_then_the_most_recent_then_the_most_tickets_then_by_name()
     {
         RepoStatus R(string name, RepoState state, int minutesAgo = -1, int tickets = 0) => new(name, "", state, [], [],

@@ -77,7 +77,8 @@ public sealed partial class HostSessionScanner(OrchestratorOptions options)
         {
             using var searcher = new ManagementObjectSearcher(
                 "SELECT ProcessId, CommandLine FROM Win32_Process WHERE Name = 'MindAttic.Launcher.exe'");
-            foreach (var o in searcher.Get())
+            using var found = searcher.Get();
+            foreach (var o in found)
             {
                 using (o)
                 {
