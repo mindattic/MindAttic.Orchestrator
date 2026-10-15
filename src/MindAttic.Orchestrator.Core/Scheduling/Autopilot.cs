@@ -7,9 +7,10 @@ namespace MindAttic.Orchestrator.Scheduling;
 /// <summary>
 /// <c>/autopilot</c>, typed in any CLI, works the repos that have an open Claude CLI (or, with
 /// <c>-repo=a,b</c>, those repos whether or not one is open): each repo's next open story (queue order:
-/// priority, then smallest effort first) goes to a headless background Claude in that repo, so no tab is
-/// opened and nothing is typed into a CLI you may be using. One agent per repo at a time, and no more in
-/// total than the pace's session cap, so more run in parallel while there's room; a new one only starts
+/// priority, then smallest effort first) goes to a headless background Claude in its own git worktree of that
+/// repo, so no tab is opened, nothing is typed into a CLI you may be using, and no checkout is edited under
+/// anyone. Agents run in parallel up to the repo's session limit and, in total, the pace's session cap, so as
+/// much runs at once as the window allows; a new one only starts
 /// while the 5-hour pace can afford it, and the pace gate holds the running ones, so the window is spent
 /// to its target without running into the limit. An agent that exits without closing its ticket gives the
 /// ticket back and says so. <c>/autopilot off</c> starts nothing new. With a <see cref="DispatchLease"/>, only
@@ -22,6 +23,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     internal Func<IReadOnlyList<string>?> Order { get; init; } = sessions.AutopilotOrder;
     internal Func<int, bool> Alive { get; init; } = ContextCycler.IsClaude;
     internal string LogDirectory { get; init; } = BackgroundAgent.LogDirectory;
+    internal Func<string, string, string, (bool Ok, string Path, string Error)> MakeWorktree { get; init; } = Dispatcher.EnsureWorktree;
 
     private readonly Dictionary<string, string> told = [];
 
@@ -75,58 +77,96 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             : PaceHold(plan, snapshot);
         if (repos.Count == 0 || Paused is not null || HeldElsewhere) return said;
 
+        // Every agent gets its own worktree, so a repo runs as many stories at once as its session limit and the
+        // pace allow, and nobody's checkout (yours included) is ever edited under them.
         var running = Working.Count;
         var room = plan.Pace?.RoomTokens;
+        var taken = new HashSet<string>(StringComparer.Ordinal);
         foreach (var repo in repos)
         {
-            if (running >= plan.Cap)
+            var limit = settings.RepoMaxSessions.GetValueOrDefault(repo.Name, settings.MaxSessionsPerRepo);
+            var inRepo = Working.Count(a => Same(a.Repo, repo.Name));
+            while (true)
             {
-                Tell("cap", $"autopilot: {running} agents working, which is all the pace allows right now ({plan.Cap})");
-                break;
-            }
-            // One story at a time per checkout: never two agents (or an agent and a dispatched tab) in one folder.
-            if (plan.Queue.FirstOrDefault(q => q.IsAssigned && Same(q.Repo, repo.Name) && !q.Assignment!.Worktree) is { } open)
-            {
-                Tell(repo.Name, open.Assignment!.Log is not null
-                    ? $"autopilot: {repo.Name} is working on {open.Id}"
-                    : $"autopilot: {repo.Name} already has {open.Id} going in a session, so it waits");
-                continue;
-            }
-            var next = plan.Queue.FirstOrDefault(q => Same(q.Repo, repo.Name) && !q.IsAssigned && q.BlockedBy.Count == 0 && !parked.Contains(q.Id) &&
-                !(room is { } left && q.Estimate is { } e && e.Fresh > left));
-            if (next is null)
-            {
-                Tell(repo.Name, plan.Queue.Any(q => Same(q.Repo, repo.Name) && !q.IsAssigned)
-                    ? $"autopilot: {repo.Name}'s open stories are blocked or too big for what's left before the reset"
-                    : $"autopilot: {repo.Name} has no open stories left");
-                continue;
-            }
-            if (dryRun)
-            {
-                said.Add($"autopilot would start a background agent on {next.Id} in {repo.Name}: {next.Ticket.Summary}");
-                running++;
-                continue;
-            }
+                if (running >= plan.Cap)
+                {
+                    Tell("cap", $"autopilot: {running} agents working, which is all the pace allows right now ({plan.Cap})");
+                    return Done();
+                }
+                if (inRepo >= limit)
+                {
+                    Tell(repo.Name, $"autopilot: {repo.Name} has {inRepo} agents working, its limit (settings --repo-sessions {repo.Name}=N raises it)");
+                    break;
+                }
+                var next = plan.Queue.FirstOrDefault(q => Same(q.Repo, repo.Name) && !q.IsAssigned && q.BlockedBy.Count == 0 &&
+                    !parked.Contains(q.Id) && !taken.Contains(q.Id) && !(room is { } left && q.Estimate is { } e && e.Fresh > left));
+                if (next is null)
+                {
+                    if (inRepo == 0)
+                        Tell(repo.Name, plan.Queue.Any(q => Same(q.Repo, repo.Name) && !q.IsAssigned)
+                            ? $"autopilot: {repo.Name}'s open stories are blocked, parked or too big for what's left before the reset"
+                            : $"autopilot: {repo.Name} has no open stories left");
+                    break;
+                }
+                taken.Add(next.Id);
+                if (dryRun)
+                {
+                    said.Add($"autopilot would start a background agent on {next.Id} in {repo.Name}: {next.Ticket.Summary}");
+                    running++;
+                    inRepo++;
+                    continue;
+                }
 
-            var log = Path.Combine(LogDirectory, $"{next.Id}-{nowUtc.ToLocalTime():yyyyMMdd-HHmm}.log");
-            if (Start(repo.Path, Scheduler.PromptFor(next), log) is not { } pid)
-            {
-                Tell(repo.Name, $"autopilot: couldn't start an agent in {repo.Name}");
-                continue;
+                var branch = Dispatcher.BranchFor(next.Id);
+                var (ok, tree, error) = MakeWorktree(repo.Path, Path.Combine(settings.WorktreeRoot, repo.Name, next.Id), branch);
+                if (!ok)
+                {
+                    Tell(repo.Name, $"autopilot: couldn't make a worktree for {next.Id}: {error}");
+                    break;
+                }
+                var log = Path.Combine(LogDirectory, $"{next.Id}-{nowUtc.ToLocalTime():yyyyMMdd-HHmm}.log");
+                if (Start(tree, PromptFor(next, tree, branch), log) is not { } pid)
+                {
+                    Tell(repo.Name, $"autopilot: couldn't start an agent in {repo.Name}");
+                    break;
+                }
+                running++;
+                inRepo++;
+                told.Remove(repo.Name);
+                var all = store.LoadAssignments();
+                all.RemoveAll(a => a.TicketId == next.Id);
+                all.Add(new Assignment(next.Id, next.Repo, tree, Providers.Claude, nowUtc, true) { Pilot = pid, Log = log });
+                store.SaveAssignments(all);
+                said.Add($"autopilot: started {next.Id} in {repo.Name} in the background: {next.Ticket.Summary} (log {log})");
             }
-            running++;
-            told.Remove(repo.Name);
-            var all = store.LoadAssignments();
-            all.RemoveAll(a => a.TicketId == next.Id);
-            all.Add(new Assignment(next.Id, next.Repo, next.RepoPath, Providers.Claude, nowUtc, false) { Pilot = pid, Log = log });
-            store.SaveAssignments(all);
-            said.Add($"autopilot: started {next.Id} in {repo.Name} in the background: {next.Ticket.Summary} (log {log})");
         }
-        Working = [.. store.LoadAssignments().Where(a => a.Log is not null && a.Pilot is { } p && IsRunning(p))];
-        return said;
+        return Done();
+
+        IReadOnlyList<string> Done()
+        {
+            Working = [.. store.LoadAssignments().Where(a => a.Log is not null && a.Pilot is { } p && IsRunning(p))];
+            return said;
+        }
     }
 
-    /// <summary>Agents that exited: their ticket closed (done), or it's still open and goes back in the queue.</summary>
+    /// <summary>
+    /// The story's prompt for an agent in its own worktree. It starts like <see cref="Scheduler.PromptFor"/> (so its
+    /// session is tied to the ticket), closes the ticket in the worktree's own USER_STORIES.md (<c>workflow ticket close</c>
+    /// would edit the main checkout), and lands the branch on main itself.
+    /// </summary>
+    internal static string PromptFor(QueueItem item, string worktree, string branch) =>
+        $"Work on ticket {item.Id} ({item.Ticket.Type}): {item.Ticket.Summary} " +
+        $"You are in your own git worktree of {item.Repo} ({worktree}, branch {branch}) so other agents can work {item.Repo} at the same time; work, build and test only here. " +
+        "When it's done: run /commit, but don't push (the last step does). Then mark the ticket finished by editing this worktree's docs/USER_STORIES.md: " +
+        $"set {item.Id}'s Status to closed and its Ref to the test or commit that proves it (not with workflow ticket close, which edits the main checkout), and commit that. " +
+        "Finally land it: git fetch origin, git rebase origin/main (resolve any conflicts and rerun the tests), git push origin HEAD:main. " +
+        "If you can't finish or land it, leave the ticket open and say why.";
+
+    /// <summary>
+    /// Agents that exited. A worktree agent is done when its ticket is closed on origin/main: then your checkout is
+    /// fast-forwarded to it (git refuses if that would touch your own changes) and the worktree removed (git keeps
+    /// it if anything there is uncommitted). Otherwise the ticket goes back in the queue, parked for you.
+    /// </summary>
     private void Reap(SchedulePlan plan, List<string> said)
     {
         var all = store.LoadAssignments();
@@ -135,14 +175,39 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         foreach (var a in gone)
         {
             all.Remove(a);
-            var open = plan.Queue.Any(q => q.Id == a.TicketId);
-            if (open) parked.Add(a.TicketId);
-            said.Add(open
-                ? $"autopilot: needs you: {a.TicketId}'s agent in {a.Repo} ended without closing it, so autopilot leaves it for you (it's back in the queue); see {a.Log}"
-                : $"autopilot: finished {a.TicketId} in {a.Repo}");
+            var repoPath = plan.Queue.FirstOrDefault(q => Same(q.Repo, a.Repo))?.RepoPath ?? a.Directory;
+            var (closed, note) = a.Worktree ? Land(a, repoPath) : (!plan.Queue.Any(q => q.Id == a.TicketId), "");
+            if (!closed) parked.Add(a.TicketId);
+            said.Add(closed
+                ? $"autopilot: finished {a.TicketId} in {a.Repo}{note}"
+                : $"autopilot: needs you: {a.TicketId}'s agent in {a.Repo} ended without closing it, so autopilot leaves it for you (it's back in the queue); see {a.Log}{note}");
         }
         store.SaveAssignments(all);
     }
+
+    /// <summary>Whether a worktree agent's ticket landed closed on origin/main, after tidying up; and what to add about it.</summary>
+    internal Func<Assignment, string, (bool Closed, string Note)> Land { get; init; } = LandOnMain;
+
+    internal static (bool Closed, string Note) LandOnMain(Assignment a, string repoPath)
+    {
+        Dispatcher.Git(repoPath, "fetch", "-q", "origin");
+        var (code, stories) = Dispatcher.Git(repoPath, "show", "origin/main:docs/USER_STORIES.md");
+        var closed = code == 0 && ClosedIn(stories, a.TicketId);
+        var note = "";
+        if (closed && Dispatcher.Git(repoPath, "rev-parse", "--abbrev-ref", "HEAD").Output.Trim() == "main")
+            note += Dispatcher.Git(repoPath, "merge", "--ff-only", "-q", "origin/main").Code == 0
+                ? "; your checkout is up to date with it" : "; pull main to get it (your checkout has changes in the way)";
+        if (closed)
+            note += Dispatcher.Git(repoPath, "worktree", "remove", a.Directory).Code == 0
+                ? "" : $"; its worktree {a.Directory} kept (something there is uncommitted)";
+        else note += $"; its work is in {a.Directory} (branch {Dispatcher.BranchFor(a.TicketId)})";
+        return (closed, note);
+    }
+
+    /// <summary>Whether the ticket table in <paramref name="stories"/> has <paramref name="id"/> closed (or wont-do).</summary>
+    internal static bool ClosedIn(string stories, string id) =>
+        stories.Split('\n').Any(l => l.TrimStart().StartsWith($"| {id} |", StringComparison.Ordinal) &&
+            l.Split('|').Select(c => c.Trim()).ElementAtOrDefault(4) is "closed" or "wont-do");
 
     /// <summary>Why the pace can't afford another story right now; null when it can.</summary>
     internal static string? PaceHold(SchedulePlan plan, Snapshot snapshot) =>

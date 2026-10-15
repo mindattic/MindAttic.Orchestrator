@@ -28,14 +28,16 @@ hitting the session limit, and never stalling on a full context. Pick what runs;
 | Holding agents | every Claude CLI and subagent waits before each tool call while the draw won't last, 0s once it fits | `~/.claude/pace-gate.py` (PreToolUse hook) |
 | Subagent allowance | how many subagents may run at once across every CLI, worked out live from the pace (up to 16); each turn is told it, and a new subagent past it waits | `rl-status.json` → `subagent_allowance`; `settings --max-subagents 16` |
 | Context cycling | past 80% context: wrap up, then `/quicksave`, `/clear`, `/quickload` typed in | `~/.claude/context-gate.py` (prompt, tool, stop hooks) |
-| Autopilot | each repo with an open CLI has its stories worked in background agents, one per repo at a time, while the pace can afford them | `/autopilot` in any CLI; `-repo=A,B`; `/autopilot off` |
+| Autopilot | each repo with an open CLI has its stories worked in parallel background agents, each in its own worktree, while the pace can afford them | `/autopilot` in any CLI; `-repo=A,B`; `/autopilot off` |
 
 To run unattended: open a Launcher tab in each repo you want worked, then type `/autopilot` in any one
 of them (`/autopilot -repo=UnityEve,MindAttic.Legion` works those repos, open or not). Each repo's next
-open story (manual priority, then smallest effort first) goes to a headless background Claude in that
-repo (the Launcher's Claude command with `-p`; log in `%APPDATA%\MindAttic\MindAttic.Orchestrator\autopilot`),
-ending with `/commit` and closing its ticket, then the next. No window opens and nothing is typed into
-your tabs, so they stay yours. One agent per repo, and no more at once than the pace's session cap; new
+open story (manual priority, then smallest effort first) goes to a headless background Claude (the Launcher's Claude command with `-p`; log in
+`%APPDATA%\MindAttic\MindAttic.Orchestrator\autopilot`) in its own git worktree on branch `orch/<id>`. It
+commits, closes its ticket there, rebases onto `origin/main` and pushes; then your checkout is fast-forwarded
+(when git can do that without touching your changes) and the worktree removed. No window opens and nothing
+is typed into your tabs or edited in your checkouts. A repo runs as many at once as its session limit
+(`--repo-sessions`, default 2), and no more in total than the pace's session cap; new
 stories start only while the 5-hour pace can afford them, and the pace gate slows the running ones, so
 the window is used to its target without hitting the limit. Repos whose CLIs open later join in; an
 agent that ends without closing its ticket gives it back and alerts *Needs you*. `/autopilot off` ends it; `settings --autopilot false` pauses

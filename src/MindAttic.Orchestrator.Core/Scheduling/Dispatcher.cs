@@ -108,7 +108,7 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         return code == 0 ? (true, path, "") : (false, path, $"git worktree add failed: {output.Trim()}");
     }
 
-    private static (int Code, string Output) Git(string repoPath, params string[] args)
+    internal static (int Code, string Output) Git(string repoPath, params string[] args)
     {
         var psi = new ProcessStartInfo("git")
         {

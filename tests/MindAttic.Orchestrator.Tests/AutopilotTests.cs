@@ -16,6 +16,7 @@ public sealed class AutopilotTests
     private readonly HashSet<int> clis = [];
     private readonly HashSet<int> agents = [];
     private IReadOnlyList<string>? order = [];
+    private readonly HashSet<string> landed = new(StringComparer.Ordinal);
     private int nextPid = 5000;
     private static readonly DateTime Now = new(2026, 10, 15, 6, 0, 0, DateTimeKind.Utc);
 
@@ -33,7 +34,11 @@ public sealed class AutopilotTests
     }
 
     [TearDown]
-    public void TearDown() => Directory.Delete(dir, recursive: true);
+    public void TearDown()
+    {
+        foreach (var f in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)) File.SetAttributes(f, FileAttributes.Normal);
+        Directory.Delete(dir, recursive: true);
+    }
 
     private Autopilot Pilot(DispatchLease? lease = null) => new(store, sessions, lease)
     {
@@ -41,6 +46,8 @@ public sealed class AutopilotTests
         Alive = clis.Contains,
         IsRunning = agents.Contains,
         LogDirectory = Path.Combine(dir, "logs"),
+        MakeWorktree = (repo, path, branch) => (true, path, ""),
+        Land = (a, repo) => (landed.Contains(a.TicketId), ""),
         Start = (d, prompt, log) =>
         {
             var pid = nextPid++;
@@ -66,46 +73,52 @@ public sealed class AutopilotTests
     private SchedulePlan Plan(Snapshot snap, int cap = 6) => Scheduler.Plan(snap, new() { MaxConcurrentSessions = cap }, store.LoadAssignments());
 
     [Test]
-    public void Each_repo_with_an_open_cli_gets_one_background_agent_on_its_next_story_and_nothing_is_typed()
+    public void Repos_with_an_open_cli_get_parallel_background_agents_each_in_its_own_worktree_and_nothing_is_typed()
     {
         Cli(100, @"D:\W\A");
         Cli(200, @"D:\W\B\src");
         Cli(300, @"D:\W"); // the workspace root: no repo of its own
-        var snap = Snap(("A", [T("A-T1"), T("A-T2")]), ("B", [T("B-T1")]), ("C", [T("C-T1")]));
+        var snap = Snap(("A", [T("A-T1"), T("A-T2"), T("A-T3")]), ("B", [T("B-T1")]), ("C", [T("C-T1")]));
         var pilot = Pilot();
 
-        var said = pilot.Tick(Plan(snap), snap, new(), Now);
-        Assert.That(started.Select(s => (s.Dir, s.Prompt[..19])), Is.EquivalentTo(new[] { (@"D:\W\A", "Work on ticket A-T1"), (@"D:\W\B", "Work on ticket B-T1") }),
-            "C has no CLI open, and A gets one agent, not two");
-        Assert.That(started[0].Prompt, Does.Contain("/commit").And.Contains("workflow ticket close"));
+        var said = pilot.Tick(Plan(snap), snap, new() { WorktreeRoot = @"D:\WT" }, Now);
+        Assert.That(started.Select(s => (s.Dir, s.Prompt[..19])), Is.EquivalentTo(new[]
+        {
+            (@"D:\WT\A\A-T1", "Work on ticket A-T1"), (@"D:\WT\A\A-T2", "Work on ticket A-T2"), (@"D:\WT\B\B-T1", "Work on ticket B-T1"),
+        }), "A runs two at once (its session limit), B one, C has no CLI open");
+        Assert.That(started[0].Prompt, Does.Contain("own git worktree").And.Contains("branch orch/a-t1").And.Contains("/commit")
+            .And.Contains("git push origin HEAD:main").And.Contains("not with workflow ticket close"));
         Assert.That(started[0].Log, Does.StartWith(Path.Combine(dir, "logs")).And.Contains("T1-"));
-        Assert.That(said, Has.Count.EqualTo(2).And.All.Contains("in the background"));
+        Assert.That(said, Has.Some.Contains("in the background"));
         var a = store.LoadAssignments().Single(x => x.TicketId == "A-T1");
-        Assert.That((a.Pilot, a.Log, a.Worktree), Is.EqualTo(((int?)started.Single(s => s.Dir.EndsWith('A')).Pid, started.Single(s => s.Dir.EndsWith('A')).Log, false)));
-        Assert.That(pilot.Working.Select(w => w.TicketId), Is.EquivalentTo(new[] { "A-T1", "B-T1" }));
+        Assert.That((a.Directory, a.Worktree, a.Pilot), Is.EqualTo((@"D:\WT\A\A-T1", true, (int?)started[0].Pid)));
+        Assert.That(pilot.Working, Has.Count.EqualTo(3));
 
-        pilot.Tick(Plan(snap), snap, new(), Now.AddMinutes(1));
-        Assert.That(started, Has.Count.EqualTo(2), "still working: no second agent in A");
+        pilot.Tick(Plan(snap), snap, new() { WorktreeRoot = @"D:\WT" }, Now.AddMinutes(1));
+        Assert.That(started, Has.Count.EqualTo(3), "A is at its limit until one finishes");
     }
 
     [Test]
     public void A_finished_agent_makes_way_for_the_next_story_and_one_that_left_its_ticket_open_gives_it_back()
     {
         Cli(100, @"D:\W\A");
-        Cli(200, @"D:\W\B");
-        var snap = Snap(("A", [T("A-T1"), T("A-T2")]), ("B", [T("B-T1")]));
+        var snap = Snap(("A", [T("A-T1"), T("A-T2"), T("A-T3")]));
         var pilot = Pilot();
-        pilot.Tick(Plan(snap), snap, new(), Now);
-        agents.Clear(); // both agents exit: A closed A-T1, B didn't close B-T1
+        pilot.Tick(Plan(snap), snap, new(), Now); // A-T1 and A-T2 start, the repo's two
+        agents.Clear(); // both exit: A-T1 landed closed on main, A-T2 didn't close
+        landed.Add("A-T1");
 
-        var after = Snap(("A", [T("A-T2")]), ("B", [T("B-T1")]));
+        var after = Snap(("A", [T("A-T2"), T("A-T3")]));
         var said = pilot.Tick(Plan(after), after, new(), Now.AddMinutes(30));
         Assert.That(said, Has.Some.Contains("finished A-T1"));
-        Assert.That(said, Has.Some.Contains("needs you: B-T1's agent in B ended without closing it"));
+        Assert.That(said, Has.Some.Contains("needs you: A-T2's agent in A ended without closing it"));
         pilot.Tick(Plan(after), after, new(), Now.AddMinutes(31));
-        Assert.That(started.Skip(2).Select(s => s.Prompt[..19]), Is.EqualTo(new[] { "Work on ticket A-T2" }),
-            "A moves on; B-T1 is back in the queue for you, not retried in a loop");
-        Assert.That(store.LoadAssignments().Any(x => x.TicketId == "B-T1"), Is.False);
+        Assert.That(started.Skip(2).Select(s => s.Prompt[..19]), Is.EqualTo(new[] { "Work on ticket A-T3" }),
+            "A moves on to A-T3; A-T2 is back in the queue for you, not retried in a loop");
+        Assert.That(store.LoadAssignments().Any(x => x.TicketId == "A-T2"), Is.False);
+        Assert.That(Autopilot.ClosedIn("| A-T1 | 2026-10-01 | fix | closed | x | t |\n| A-T2 | 2026-10-01 | fix | open | y | — |", "A-T1"), Is.True);
+        Assert.That(Autopilot.ClosedIn("| A-T1 | 2026-10-01 | fix | closed | x | t |\n| A-T2 | 2026-10-01 | fix | open | y | — |", "A-T2"), Is.False);
+        Assert.That(Autopilot.ClosedIn("| A-T10 | 2026-10-01 | fix | closed | x | t |", "A-T1"), Is.False, "the whole ID, not a prefix");
     }
 
     [Test]
@@ -125,7 +138,7 @@ public sealed class AutopilotTests
         var snap = Snap(("A", [T("A-T1")]), ("B", [T("B-T1")]));
         order = ["b", "Nope"];
         var said = Pilot().Tick(Plan(snap), snap, new(), Now);
-        Assert.That(started.Single().Dir, Is.EqualTo(@"D:\W\B"));
+        Assert.That(started.Single().Dir, Does.EndWith(@"\B\B-T1"));
         Assert.That(said, Has.Some.Contains("no repo named Nope"));
 
         order = null;
@@ -136,13 +149,15 @@ public sealed class AutopilotTests
     }
 
     [Test]
-    public void A_repo_with_a_story_going_in_a_tab_waits_and_the_pace_or_switch_holds_everything()
+    public void A_story_going_in_a_tab_is_left_to_it_and_the_pace_or_switch_holds_everything()
     {
         Cli(100, @"D:\W\A");
         var snap = Snap(("A", [T("A-T1"), T("A-T2")]));
         store.SaveAssignments([new Assignment("A-T1", "A", @"D:\W\A", "Claude", Now, false)]);
-        Assert.That(Pilot().Tick(Plan(snap), snap, new(), Now).Single(), Does.Contain("A-T1 going in a session"));
-        Assert.That(started, Is.Empty, "never two agents in one checkout");
+        Pilot().Tick(Plan(snap), snap, new(), Now);
+        Assert.That(started.Single().Prompt, Does.StartWith("Work on ticket A-T2"), "A-T1 is the tab's; the agent takes the next, in its own worktree");
+        started.Clear();
+        agents.Clear();
 
         store.SaveAssignments([]);
         var coast = Plan(snap) with { Pace = new Pace(PaceMode.Coast, 1, 0, 0, null, null, null, "burning faster than the window allows") };
@@ -159,10 +174,10 @@ public sealed class AutopilotTests
     {
         Cli(100, @"D:\W\A");
         var snap = Snap(("A", [T("A-T1"), T("A-T2")]));
-        Pilot().Tick(Plan(snap), snap, new(), Now);
+        Pilot().Tick(Plan(snap), snap, new() { MaxSessionsPerRepo = 1 }, Now);
 
-        var restarted = Pilot(); // a new daemon: same store, the agent's process still running
-        Assert.That(restarted.Tick(Plan(snap), snap, new(), Now.AddMinutes(5)).Single(), Does.Contain("A is working on A-T1"));
+        var restarted = Pilot(); // a new daemon: same store, the agents' processes still running
+        restarted.Tick(Plan(snap), snap, new() { MaxSessionsPerRepo = 1 }, Now.AddMinutes(5));
         Assert.That(started, Has.Count.EqualTo(1));
         Assert.That(restarted.Working.Single().TicketId, Is.EqualTo("A-T1"));
     }
@@ -197,6 +212,47 @@ public sealed class AutopilotTests
         Assert.That(BackgroundAgent.ClaudeCommand(Path.Combine(dir, "missing.json")), Is.EqualTo(BackgroundAgent.FallbackCommand));
         Assert.That(BackgroundAgent.CommandLine(@"C:\l\A-T1.prompt.txt", @"C:\l\A-T1.log", "claude --x"),
             Is.EqualTo("""claude --x -p < "C:\l\A-T1.prompt.txt" > "C:\l\A-T1.log" 2>&1"""));
+    }
+
+    [Test]
+    public void A_worktree_agent_that_pushed_its_closed_ticket_to_main_is_landed_and_tidied_up()
+    {
+        var origin = Path.Combine(dir, "origin.git");
+        var repo = Path.Combine(dir, "A");
+        Git(dir, "init", "-q", "--bare", "-b", "main", origin);
+        Git(dir, "clone", "-q", origin, repo);
+        Directory.CreateDirectory(Path.Combine(repo, "docs"));
+        File.WriteAllText(Path.Combine(repo, "docs", "USER_STORIES.md"), "## Tickets\n\n| A-T1 | 2026-10-01 | fix | open | x | — |\n");
+        Git(repo, "add", ".");
+        Git(repo, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init");
+        Git(repo, "push", "-q", "origin", "HEAD:main");
+
+        var tree = Path.Combine(dir, "wt", "A-T1");
+        Assert.That(Dispatcher.EnsureWorktree(repo, tree, "orch/a-t1").Ok);
+        var a = new Assignment("A-T1", "A", tree, "Claude", Now, true) { Pilot = 1, Log = "x.log" };
+        Assert.That(Autopilot.LandOnMain(a, repo).Closed, Is.False, "not pushed yet");
+
+        // What the agent does at the end: close its row in the worktree, commit, push to main.
+        File.WriteAllText(Path.Combine(tree, "docs", "USER_STORIES.md"), "## Tickets\n\n| A-T1 | 2026-10-01 | fix | closed | x | the test |\n");
+        Git(tree, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qam", "close A-T1");
+        Git(tree, "push", "-q", "origin", "HEAD:main");
+
+        var (closed, note) = Autopilot.LandOnMain(a, repo);
+        Assert.That(closed, Is.True, note);
+        Assert.That(File.ReadAllText(Path.Combine(repo, "docs", "USER_STORIES.md")), Does.Contain("| closed |"), "your checkout fast-forwarded to it");
+        Assert.That(Directory.Exists(tree), Is.False, "its worktree removed");
+    }
+
+    private static void Git(string where, params string[] args)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo("git") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+        psi.ArgumentList.Add("-C"); psi.ArgumentList.Add(where);
+        foreach (var x in args) psi.ArgumentList.Add(x);
+        using var p = System.Diagnostics.Process.Start(psi)!;
+        var err = p.StandardError.ReadToEndAsync();
+        p.StandardOutput.ReadToEnd();
+        p.WaitForExit();
+        Assert.That(p.ExitCode, Is.Zero, $"git {string.Join(" ", args)}: {err.Result}");
     }
 
     [Test]
