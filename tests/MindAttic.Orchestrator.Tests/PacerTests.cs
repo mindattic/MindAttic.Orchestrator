@@ -75,15 +75,14 @@ public sealed class PacerTests
     }
 
     [Test]
-    public void The_tighter_weekly_window_governs()
+    public void The_weekly_window_is_never_paced()
     {
-        // Week resets Wednesday 00:00 (13.5h away) with 9,000 of 100k left: 667/h, far below the block's room.
+        // Week resets Wednesday 00:00 (13.5h away) with 9,000 of 100k left: pacing it would allow 667/h.
         var settings = new OrchestratorSettings { BlockBudget = 1_000_000, WeeklyBudget = 100_000, WeeklyReset = "Wed 00:00", PaceTargetPercent = 100 };
         var p = Pace(10.5, 1, settings, E(-24, 90_000), E(10, 1000));
 
-        Assert.That(p.Governing, Is.EqualTo("weekly"));
-        Assert.That(p.SustainablePerHour, Is.EqualTo(9000 / 13.5).Within(1));
-        Assert.That((p.Mode, p.SessionCap), Is.EqualTo((PaceMode.Coast, 0)), "one session at 2,000/h doesn't fit 667/h");
+        Assert.That(p.Governing, Is.EqualTo("5-hour"));
+        Assert.That((p.Mode, p.AgentDelaySeconds), Is.EqualTo((PaceMode.Open, 0.0)), "the block has room, so nothing is held for the week");
     }
 
     [Test]

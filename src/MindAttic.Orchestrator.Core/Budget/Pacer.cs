@@ -77,8 +77,8 @@ public static class Pacer
             windows.Add(b.CurrentBlock is { } block
                 ? ("5-hour", b.BlockLimit, block.Usage.Fresh, block.EndUtc)
                 : ("5-hour", b.BlockLimit, 0, nowUtc + BudgetCalculator.BlockLength));
-        if (b.WeeklyLimit is > 0 && b.WeekResetUtc is { } weekReset)
-            windows.Add(("weekly", b.WeeklyLimit.Value, b.Week.Fresh, weekReset));
+        // The week is shown, never paced: spending each 5-hour window to its target is the goal, and a
+        // week-long stretch would hold agents for days. Only a real weekly wall (above) stops new work.
         if (windows.Count == 0)
             return new Pace(PaceMode.Unpaced, max, 0, recent, null, null, null,
                 "Nothing to pace against yet: set a budget, or one is learned the first time you hit a limit.");
