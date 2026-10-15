@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using MindAttic.Orchestrator.Tickets;
 using NUnit.Framework;
@@ -6,6 +7,50 @@ namespace MindAttic.Orchestrator.Tests;
 
 public sealed class TicketReplayTests
 {
+    [Test]
+    public void Commits_matches_the_ticket_id_as_a_whole_word_not_a_substring()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "orch-replay-git-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            Git(dir, "init", "-q", "-b", "main");
+            Git(dir, "config", "user.email", "test@example.com");
+            Git(dir, "config", "user.name", "Test");
+            File.WriteAllText(Path.Combine(dir, "a.txt"), "1");
+            Git(dir, "add", "-A");
+            Git(dir, "commit", "-q", "-m", "Work on MAO-T1: first one");
+            File.WriteAllText(Path.Combine(dir, "a.txt"), "2");
+            Git(dir, "add", "-A");
+            Git(dir, "commit", "-q", "-m", "Work on MAO-T10: an unrelated ticket");
+            File.WriteAllText(Path.Combine(dir, "a.txt"), "3");
+            Git(dir, "add", "-A");
+            Git(dir, "commit", "-q", "-m", "Work on MAO-T19: another unrelated ticket");
+
+            var commits = TicketReplay.Commits("MAO-T1", dir, diff: false);
+
+            Assert.That(commits, Does.Contain("MAO-T1:"));
+            Assert.That(commits, Does.Not.Contain("MAO-T10"));
+            Assert.That(commits, Does.Not.Contain("MAO-T19"));
+        }
+        finally
+        {
+            foreach (var f in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)) File.SetAttributes(f, FileAttributes.Normal);
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    private static void Git(string dir, params string[] args)
+    {
+        var psi = new ProcessStartInfo("git") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+        psi.ArgumentList.Add("-C"); psi.ArgumentList.Add(dir);
+        foreach (var a in args) psi.ArgumentList.Add(a);
+        using var p = Process.Start(psi)!;
+        p.StandardOutput.ReadToEnd();
+        p.StandardError.ReadToEnd();
+        p.WaitForExit();
+    }
+
     [Test]
     public void Finds_the_sessions_dispatched_on_a_ticket_and_sums_them_up()
     {

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using MindAttic.Orchestrator.Activity;
 
 namespace MindAttic.Orchestrator.Tickets;
@@ -92,8 +93,9 @@ public static class TicketReplay
     public static string Commits(string ticketId, string repoPath, bool diff)
     {
         if (!Directory.Exists(repoPath)) return "";
+        var wholeWord = $"(^|[^A-Za-z0-9]){Regex.Escape(ticketId)}([^A-Za-z0-9]|$)";
         var psi = new ProcessStartInfo("git") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
-        foreach (var a in new[] { "-C", repoPath, "log", "--all", "--fixed-strings", $"--grep={ticketId}", "--date=format-local:%Y-%m-%d %H:%M",
+        foreach (var a in new[] { "-C", repoPath, "log", "--all", "--extended-regexp", $"--grep={wholeWord}", "--date=format-local:%Y-%m-%d %H:%M",
                      "--format=%n%h %ad %an%n    %s", diff ? "--patch" : "--stat" })
             psi.ArgumentList.Add(a);
         try
