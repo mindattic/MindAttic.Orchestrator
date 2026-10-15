@@ -34,6 +34,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         Build();
 
         Say(LogEventLevel.Information, $"daemon started (pid {Environment.ProcessId}, every {interval.TotalSeconds:0}s, workspace {options.WorkspaceRoot})");
+        try { if (Setup.AgentGate.Ensure() is { } did) Say(LogEventLevel.Information, did); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"couldn't install the pace gate: {ex.Message}"); }
         string? lastHold = null;
         (PaceMode, int)? lastPace = null;
         bool? lastHeldElsewhere = null;

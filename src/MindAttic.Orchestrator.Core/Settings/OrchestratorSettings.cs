@@ -30,7 +30,14 @@ public sealed record OrchestratorSettings
 
     /// <summary>How much of each limit pacing aims to use by the reset; the rest is margin for usage
     /// the orchestrator can't see (claude.ai, other machines).</summary>
-    public int PaceTargetPercent { get; init; } = 95;
+    public int PaceTargetPercent { get; init; } = 99;
+
+    /// <summary>On: while the forecast says the burn won't last until the reset, running Claude Code agents
+    /// wait before each tool call (the pace-gate hook), so they slow down instead of hitting the wall.</summary>
+    public bool ThrottleAgents { get; init; } = true;
+
+    /// <summary>The longest one tool call is held while throttling.</summary>
+    public int MaxAgentDelaySeconds { get; init; } = 90;
 
     /// <summary>Sessions the scheduler will fill up to (working + waiting both occupy a slot).</summary>
     public int MaxConcurrentSessions { get; init; } = 4;

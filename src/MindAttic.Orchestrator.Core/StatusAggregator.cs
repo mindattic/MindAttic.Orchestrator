@@ -80,7 +80,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
         var recentFrom = now - BudgetCalculator.RecentWindow;
         var active = allSessions.Count(s => s.Events.Count > 0 && s.Events[^1].AtUtc >= recentFrom);
-        var pace = Pacer.Compute(budget, active, Pacer.TypicalPerSession(allSessions.Select(s => s.Events), historyStartUtc), settings, now);
+        var pace = Pacer.Compute(budget, active, Pacer.TypicalPerSession(allSessions.Select(s => s.Events), historyStartUtc), settings, now,
+            rateLimitFile?.AgentDelay(now) ?? 0);
         rateLimitFile?.Write(budget, pace);
 
         var weekFrom = now.AddDays(-7);

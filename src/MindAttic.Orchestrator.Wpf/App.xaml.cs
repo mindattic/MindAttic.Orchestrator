@@ -132,7 +132,7 @@ public partial class App : Application
     {
         try
         {
-            foreach (var did in new[] { installer.EnsureDaemon(self), Installer.EnsureShortcuts(self) })
+            foreach (var did in new[] { installer.EnsureDaemon(self), Installer.EnsureShortcuts(self), AgentGate.Ensure() })
                 if (did is not null) log.Information("Setup: {Did:l}", did);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or COMException)

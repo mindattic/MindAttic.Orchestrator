@@ -50,6 +50,11 @@ public sealed record BudgetStatus(
     /// the burn rate to steer by, since the whole-block average lags.</summary>
     public double RecentFreshPerHour { get; init; }
 
+    /// <summary>Uncached tokens per hour over the last <see cref="BudgetCalculator.ControlWindow"/>, every
+    /// session and subagent together: what holding running agents steers by, so a hold follows the draw
+    /// within minutes instead of lingering on a burst that already ended.</summary>
+    public double ControlFreshPerHour { get; init; }
+
     /// <summary>Set while you're behind a limit Claude Code actually reported hitting.</summary>
     public DateTime? AtLimitUntilUtc { get; init; }
     public LimitKind? AtLimitKind { get; init; }
@@ -82,6 +87,7 @@ public static class BudgetCalculator
 {
     public static readonly TimeSpan BlockLength = TimeSpan.FromHours(5);
     public static readonly TimeSpan RecentWindow = TimeSpan.FromMinutes(30);
+    public static readonly TimeSpan ControlWindow = TimeSpan.FromMinutes(10);
 
     // Claude Code's own reset times land on 10-minute marks just before the window's first message
     // (checked against 20 recorded session-limit hits); flooring to the hour put resets up to 50 minutes early.
@@ -197,6 +203,7 @@ public static class BudgetCalculator
             BlockLimitSource = blockSource,
             WeeklyLimitSource = weeklySource,
             RecentFreshPerHour = recent / RecentWindow.TotalHours,
+            ControlFreshPerHour = events.Where(e => e.AtUtc >= nowUtc - ControlWindow && e.AtUtc <= nowUtc).Sum(e => e.Usage.Fresh) / ControlWindow.TotalHours,
             AtLimitUntilUtc = wall?.ResetUtc,
             AtLimitKind = wall?.Kind,
             Calibration = learned,
@@ -252,11 +259,18 @@ public sealed class RateLimitStatusWriter(string? path = null)
             body["pace"] = pace.Key;
             if (pace.Advise) body["pace_note"] = pace.AgentNote;
         }
+        // pace-gate.py holds each tool call this long; the average is what the next refresh corrects the
+        // measured rate by (Pacer.AgentDelay), so it's kept until it decays even once the hold is off.
+        var nowUtc = DateTime.UtcNow;
+        var average = AgentDelay(nowUtc);
+        var delay = pace?.AgentDelaySeconds ?? 0;
+        if (delay > 0) body["pace_delay_seconds"] = delay;
+        if (average >= 0.5) body["pace_delay_avg"] = Math.Round(average, 1);
         var key = JsonSerializer.Serialize(body);
         // Readers show the file's age, so refresh it at least once a minute even when nothing changed.
         if (key == lastWritten && DateTime.UtcNow - lastWrittenUtc < TimeSpan.FromMinutes(1)) return;
 
-        body["timestamp"] = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture) + "Z";
+        body["timestamp"] = nowUtc.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture) + "Z";
         try
         {
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path)!);
@@ -271,6 +285,40 @@ public sealed class RateLimitStatusWriter(string? path = null)
     }
 
     private static string Clock(DateTime utc) => utc.ToLocalTime().ToString("h:mm tt", CultureInfo.InvariantCulture);
+
+    /// <summary>How long the gate stops honoring a file nobody refreshes: the orchestrator isn't running, so nothing paces.</summary>
+    public static readonly TimeSpan GateStale = TimeSpan.FromMinutes(3);
+
+    /// <summary>
+    /// The agent delay averaged over <see cref="BudgetCalculator.ControlWindow"/> as of <paramref name="nowUtc"/>
+    /// (an exponential average of the delay the file has been asking for), which is how much the recent
+    /// burn rate was slowed. 0 when no file of ours, or one too old to have been obeyed.
+    /// </summary>
+    public double AgentDelay(DateTime nowUtc)
+    {
+        try
+        {
+            if (!File.Exists(Path)) return 0;
+            using var doc = JsonDocument.Parse(File.ReadAllText(Path));
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("source", out var s) || s.GetString() != "MindAttic.Orchestrator") return 0;
+            if (!root.TryGetProperty("timestamp", out var t) ||
+                !DateTime.TryParse(t.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var at))
+                return 0;
+            var held = root.TryGetProperty("pace_delay_seconds", out var d) ? d.GetDouble() : 0;
+            var average = root.TryGetProperty("pace_delay_avg", out var a) ? a.GetDouble() : 0;
+            // The gate ignores a stale file, so past that the agents weren't held at all.
+            var obeyed = Math.Clamp((nowUtc - at).TotalMinutes, 0, GateStale.TotalMinutes);
+            var idle = Math.Max(0, (nowUtc - at).TotalMinutes - obeyed);
+            var window = BudgetCalculator.ControlWindow.TotalMinutes;
+            average += (held - average) * (1 - Math.Exp(-obeyed / window));
+            return average * Math.Exp(-idle / window);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or FormatException)
+        {
+            return 0;
+        }
+    }
 
     private void RemoveOwnFile()
     {
