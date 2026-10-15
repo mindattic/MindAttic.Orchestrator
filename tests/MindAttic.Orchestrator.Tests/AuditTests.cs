@@ -48,6 +48,19 @@ public sealed class AuditTests
     }
 
     [Test]
+    public void A_repo_name_is_stripped_only_as_a_whole_word()
+    {
+        // Found writing the AuditRunner test: a repo named "A" turned "save" into "s{REPO}ve" and reported drift.
+        Assert.That(ConventionAudit.Normalize("save the Prose notes; prosebook stays", "Prose", @"C:\W\Prose"), Is.EqualTo("save the {REPO} notes; prosebook stays"));
+        Assert.That(ConventionAudit.Normalize("using MindAttic.Orchestrator.Core; MindAttic.OrchestratorX", "MindAttic.Orchestrator", @"C:\W\MindAttic.Orchestrator"),
+            Is.EqualTo("using {REPO}.Core; MindAttic.OrchestratorX"), "a namespace under it counts; a longer name doesn't");
+        Assert.That(ConventionAudit.Normalize("cd C:\\W\\A && echo a-b A", "A", @"C:\W\A"), Is.EqualTo("cd {PATH} && echo a-b {REPO}"));
+
+        var repos = new[] { "A", "B", "C" }.Select(n => Repo(n, new() { [".claude/commands/quicksave.md"] = "save the handoff" })).ToArray();
+        Assert.That(ConventionAudit.Run(repos).Drift, Is.Empty, "one-letter repo names no longer make identical files differ");
+    }
+
+    [Test]
     public void Repos_missing_a_widely_shared_file_are_listed()
     {
         var repos = new[]

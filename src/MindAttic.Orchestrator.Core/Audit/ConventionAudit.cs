@@ -89,13 +89,14 @@ public static partial class ConventionAudit
         }
     }
 
-    /// <summary>Line endings, trailing space and the repo's own name/path don't make a file different.</summary>
+    /// <summary>Line endings, trailing space and the repo's own name/path don't make a file different. The name only
+    /// counts as a whole word, so a short one (Prose, Core) doesn't rewrite words that merely contain it.</summary>
     internal static string Normalize(string text, string repoName, string repoPath)
     {
         var s = text.Replace("\r\n", "\n");
         s = s.Replace(repoPath.TrimEnd('\\'), "{PATH}", StringComparison.OrdinalIgnoreCase)
-             .Replace(repoPath.TrimEnd('\\').Replace('\\', '/'), "{PATH}", StringComparison.OrdinalIgnoreCase)
-             .Replace(repoName, "{REPO}", StringComparison.OrdinalIgnoreCase);
+             .Replace(repoPath.TrimEnd('\\').Replace('\\', '/'), "{PATH}", StringComparison.OrdinalIgnoreCase);
+        s = Regex.Replace(s, $@"(?<![\w-]){Regex.Escape(repoName)}(?![\w-])", "{REPO}", RegexOptions.IgnoreCase);
         return string.Join('\n', s.Split('\n').Select(l => TrailingSpace().Replace(l, ""))).Trim();
     }
 
