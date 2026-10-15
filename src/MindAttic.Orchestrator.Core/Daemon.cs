@@ -102,7 +102,16 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 }
 
                 if (auto.Tick(plan, s, DateTime.UtcNow) is { } r)
+                {
                     Say(r.Ok ? LogEventLevel.Information : LogEventLevel.Error, r.Message);
+                    var ticket = r.Assignment?.TicketId;
+                    r.Submitted?.ContinueWith(t =>
+                    {
+                        if (t.IsCompletedSuccessfully && t.Result) return;
+                        Say(LogEventLevel.Warning, $"{ticket}'s tab never came up to submit its prompt; press Enter in it yourself");
+                        Alert("Auto-submit missed", $"{ticket}: press Enter in its tab to begin.");
+                    }, TaskScheduler.Default);
+                }
                 if (s.AutoDispatch && auto.HeldElsewhere != lastHeldElsewhere)
                 {
                     Say(LogEventLevel.Information, auto.HeldElsewhere

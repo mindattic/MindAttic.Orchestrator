@@ -191,6 +191,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("true or false.")]
         public bool? AutoDispatch { get; init; }
 
+        [CommandOption("--auto-submit <REPO=ON>")]
+        [Description("Tabs auto-dispatch opens in this repo submit their prompt by themselves, like Prose=true (false clears). Repeatable.")]
+        public string[] AutoSubmit { get; init; } = [];
+
         [CommandOption("--provider <PROVIDER>")]
         public string? Provider { get; init; }
 
@@ -262,12 +266,22 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = isCap ? s with { RepoBudgetPercent = map } : s with { RepoMaxSessions = map };
             changed = true;
         }
+        foreach (var opt in settings.AutoSubmit)
+        {
+            var parts = opt.Split('=', 2);
+            if (parts.Length != 2 || !bool.TryParse(parts[1], out var on)) { AnsiConsole.MarkupLine($"[red]Use REPO=true or REPO=false, not \"{Markup.Escape(opt)}\".[/]"); return 1; }
+            var repos = s.AutoSubmitRepos.Where(r => !r.Equals(parts[0], StringComparison.OrdinalIgnoreCase)).ToList();
+            if (on) repos.Add(parts[0]);
+            s = s with { AutoSubmitRepos = repos };
+            changed = true;
+        }
         if (changed) store.SaveSettings(s);
         if (settings.MaxSessions is not null || settings.AutoDispatch is not null || settings.Provider is not null || settings.StaleHours is not null)
             store.SaveSettings(s);
 
         AnsiConsole.MarkupLine($"settings: {Markup.Escape(Path.Combine(store.Directory, "settings.json"))}");
-        AnsiConsole.MarkupLine($"  max sessions {s.MaxConcurrentSessions} · auto-dispatch {(s.AutoDispatch ? "[green]on[/]" : "off")} · provider {s.DefaultProvider}");
+        AnsiConsole.MarkupLine($"  max sessions {s.MaxConcurrentSessions} · auto-dispatch {(s.AutoDispatch ? "[green]on[/]" : "off")} · provider {s.DefaultProvider}" +
+            (s.AutoSubmitRepos.Count > 0 ? $" · auto-submit in {Markup.Escape(string.Join(", ", s.AutoSubmitRepos))}" : " · auto-dispatched tabs wait for Enter"));
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display : "learned, or rolling 7 days")} · warn at {s.WarnPercent}%");
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}");
         AnsiConsole.MarkupLine($"  worktrees under {Markup.Escape(s.WorktreeRoot)} · {s.Priorities.Count} manual priorities · " +

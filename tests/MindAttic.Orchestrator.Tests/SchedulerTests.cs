@@ -135,6 +135,28 @@ public sealed class SchedulerTests
         Assert.That(auto.Tick(plan, on, now.AddSeconds(10)), Is.Null, "paced");
     }
 
+    [Test]
+    public void Auto_submit_is_per_repo_and_off_by_default()
+    {
+        Assert.That(AutoDispatch.Submits(new OrchestratorSettings(), "Prose"), Is.False, "off by default");
+        var s = new OrchestratorSettings { AutoSubmitRepos = ["Prose"] };
+        Assert.That(AutoDispatch.Submits(s, "prose"), Is.True, "repo names match case-insensitively");
+        Assert.That(AutoDispatch.Submits(s, "Codex"), Is.False, "only the listed repos");
+    }
+
+    [Test]
+    public void Auto_submit_presses_enter_only_in_the_tab_it_just_opened()
+    {
+        HostSession H(int pid, string? dir) => new("Claude", pid, "mindattic-host-claude-" + pid, dir);
+        var hosts = new[] { H(1, @"D:\W\A"), H(2, @"D:\W\A\sub"), H(3, null), H(4, @"d:\w\a\"), H(5, @"D:\W\A") };
+        var before = new HashSet<int> { 1 };
+
+        Assert.That(MindAttic.Orchestrator.Sessions.SessionControl.NewHostAt(hosts, @"D:\W\A", before)?.ProcessId, Is.EqualTo(4),
+            "skips the tab already open there, other folders and unreadable command lines");
+        Assert.That(MindAttic.Orchestrator.Sessions.SessionControl.NewHostAt(hosts[..3], @"D:\W\A", before), Is.Null,
+            "no new tab there yet: nothing to submit");
+    }
+
     private const string Worktree = @"D:\Projects\MindAttic.worktrees\A\A-T1";
 
     private static Snapshot Activity(DateTime now, DateTime? transcriptAt = null, bool tabOpen = false) =>

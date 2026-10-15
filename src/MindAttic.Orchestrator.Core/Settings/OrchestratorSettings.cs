@@ -39,6 +39,10 @@ public sealed record OrchestratorSettings
     /// (prompt pre-filled, never submitted) when a slot is free and the budget allows.</summary>
     public bool AutoDispatch { get; init; }
 
+    /// <summary>Repos whose auto-dispatched tabs submit their prompt by themselves once the agent is up,
+    /// so work runs unattended under the pacer's caps. Empty by default; manual starts never submit.</summary>
+    public List<string> AutoSubmitRepos { get; init; } = [];
+
     /// <summary>Hours without a transcript write or open tab where a ticket was dispatched before it
     /// goes back in the queue as stale. 0 keeps assignments until the ticket closes or is released.</summary>
     public int StaleAfterHours { get; init; } = 12;

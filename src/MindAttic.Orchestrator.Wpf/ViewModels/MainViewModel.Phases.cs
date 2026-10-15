@@ -384,6 +384,12 @@ public sealed partial class MainViewModel
             Record(r, "Auto-dispatch");
             Toasts.Insert(0, new ToastViewModel(r.Ok ? "Auto-dispatched" : "Auto-dispatch failed", r.Message,
                 r.Ok ? Palette.Working : Palette.Over, null));
+            var ticket = r.Assignment?.TicketId;
+            r.Submitted?.ContinueWith(t =>
+            {
+                if (!(t.IsCompletedSuccessfully && t.Result))
+                    queueLog.Warning("{Ticket:l}'s tab never came up to submit its prompt; press Enter in it yourself", ticket);
+            }, TaskScheduler.Default);
         }
         Raise(nameof(AutoDispatchText));
     }

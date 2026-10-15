@@ -5,7 +5,8 @@ namespace MindAttic.Orchestrator.Scheduling;
 /// <summary>
 /// The opt-in loop: when <see cref="OrchestratorSettings.AutoDispatch"/> is on, start the top
 /// proposal, at most one per interval, so a burst of free slots can't open a dozen tabs at once.
-/// Tabs open with the prompt pre-filled and unsent, so nothing spends tokens until you press Enter.
+/// Tabs open with the prompt pre-filled and unsent, so nothing spends tokens until you press Enter,
+/// except in <see cref="OrchestratorSettings.AutoSubmitRepos"/>, where the tab submits it by itself.
 /// With a <see cref="DispatchLease"/>, only the process holding it dispatches.
 /// </summary>
 public sealed class AutoDispatch(Dispatcher dispatcher, TimeSpan? interval = null, DispatchLease? lease = null)
@@ -28,6 +29,10 @@ public sealed class AutoDispatch(Dispatcher dispatcher, TimeSpan? interval = nul
         if (HeldElsewhere || plan.Proposals.Count == 0 || nowUtc - lastUtc < interval) return null;
         var p = plan.Proposals[0];
         lastUtc = nowUtc;
-        return dispatcher.Dispatch(p.Item, settings.DefaultProvider, p.UseWorktree);
+        return dispatcher.Dispatch(p.Item, settings.DefaultProvider, p.UseWorktree, Submits(settings, p.Item.Repo));
     }
+
+    /// <summary>Whether a tab auto-dispatch opens in <paramref name="repo"/> presses Enter by itself.</summary>
+    public static bool Submits(OrchestratorSettings settings, string repo) =>
+        settings.AutoSubmitRepos.Contains(repo, StringComparer.OrdinalIgnoreCase);
 }

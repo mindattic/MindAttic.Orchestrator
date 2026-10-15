@@ -11,9 +11,14 @@ namespace MindAttic.Orchestrator.Scheduling;
 /// </summary>
 public sealed class Dispatcher(SessionControl sessions, JsonStore store)
 {
-    public sealed record Result(bool Ok, string Message, Assignment? Assignment);
+    /// <param name="Submitted">With <c>submit</c>: completes true once Enter was pressed in the new tab.</param>
+    public sealed record Result(bool Ok, string Message, Assignment? Assignment, Task<bool>? Submitted = null);
 
-    public Result Dispatch(QueueItem item, string provider, bool useWorktree)
+    /// <summary>How long a new tab gets to load its agent before Enter is pressed, and to appear at all.</summary>
+    public static readonly TimeSpan SubmitSettle = TimeSpan.FromSeconds(15), SubmitTimeout = TimeSpan.FromMinutes(2);
+
+    /// <param name="submit">Press Enter on the pre-filled prompt once the agent is up (auto-submit repos only).</param>
+    public Result Dispatch(QueueItem item, string provider, bool useWorktree, bool submit = false)
     {
         var settings = store.LoadSettings();
         var directory = item.RepoPath;
@@ -25,8 +30,11 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         }
 
         var title = useWorktree ? $"{item.Repo} {item.Id}" : item.Repo;
+        var before = submit ? sessions.HostIds() : null;
         var startError = sessions.Start(title, directory, provider, Scheduler.PromptFor(item));
         if (startError is not null) return new Result(false, startError, null);
+        var submitted = before is null ? null
+            : Task.Run(() => sessions.SubmitWhenReadyAsync(directory, before, SubmitSettle, SubmitTimeout));
 
         var assignment = new Assignment(item.Id, item.Repo, directory, provider, DateTime.UtcNow, useWorktree);
         var all = store.LoadAssignments();
@@ -35,7 +43,9 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         store.SaveAssignments(all);
 
         var where = useWorktree ? $"worktree {directory} (branch {BranchFor(item.Id)})" : item.Repo;
-        return new Result(true, $"Opened {provider} on {item.Id} in {where}. Its prompt is pre-filled; press Enter in the tab to begin.", assignment);
+        return new Result(true, $"Opened {provider} on {item.Id} in {where}. " + (submitted is null
+            ? "Its prompt is pre-filled; press Enter in the tab to begin."
+            : "Its prompt submits by itself once the agent is up."), assignment, submitted);
     }
 
     /// <summary>Drops an assignment (the ticket returns to the queue). Never touches the worktree.</summary>

@@ -72,7 +72,7 @@ The same core drives a CLI (`dotnet run --project src/MindAttic.Orchestrator.Cli
 | `dispatch <ID> [--provider] [--worktree]` | start a session on a ticket |
 | `release <ID> [--remove-worktree]` | put a ticket back in the queue; remove its (clean) worktree |
 | `daemon [--interval 15]` | keep the budget file and pace fresh and, if enabled, auto-dispatch without the dashboard open |
-| `settings [--max-sessions n] [--auto-dispatch true] [--provider X] [--stale-hours 12] [--quiet 22:00-07:00] [--repo-cap Repo=40] [--repo-sessions Repo=3] [--groom-days 30] [--notify URL] [--github-intake true]` | scheduler settings |
+| `settings [--max-sessions n] [--auto-dispatch true] [--auto-submit Repo=true] [--provider X] [--stale-hours 12] [--quiet 22:00-07:00] [--repo-cap Repo=40] [--repo-sessions Repo=3] [--groom-days 30] [--notify URL] [--github-intake true]` | scheduler settings |
 | `audit [--latest]` | convention drift and cross-repo duplication |
 | `block <ID> --by <ID>` / `reserve <ID> <tokens>` | make a ticket wait for others; set tokens aside for a ticket |
 | `dryrun` | what auto-dispatch would open right now, and where, without opening anything |
@@ -144,7 +144,10 @@ session slots (one per repo) under the pace's session cap. It holds when the slo
 is coasting or over, or (with pacing off or nothing to pace against) the budget passes the warn line.
 Proposals wait for a click by default; *auto-dispatch* (Settings) opens one per minute by itself.
 Either way the tab opens with the ticket pre-filled and unsent, and the prompt tells the agent to
-finish with `workflow ticket close <ID> --repo <Repo>`. A ticket for a repo that already has a session
+finish with `workflow ticket close <ID> --repo <Repo>`. To run a repo unattended, `settings
+--auto-submit Repo=true` makes the tabs auto-dispatch opens there press Enter by themselves once the
+agent is up (about 15 seconds); pacing still caps how many run. If the tab never comes up, the daemon
+warns (and alerts via `--notify`) so you can press Enter yourself. A ticket for a repo that already has a session
 goes into a git worktree under `D:\Projects\MindAttic.worktrees\<Repo>\<ID>` on branch `orch/<id>`, so
 two agents never share a checkout. When the ticket closes, the queue offers to remove the worktree
 (git refuses if it has uncommitted changes; the branch is always kept).
