@@ -37,7 +37,7 @@ public sealed record OrchestratorSettings
     public bool ThrottleAgents { get; init; } = true;
 
     /// <summary>The longest one tool call is held while throttling.</summary>
-    public int MaxAgentDelaySeconds { get; init; } = 90;
+    public int MaxAgentDelaySeconds { get; init; } = 300;
 
     /// <summary>Sessions the scheduler will fill up to (working + waiting both occupy a slot).</summary>
     public int MaxConcurrentSessions { get; init; } = 4;

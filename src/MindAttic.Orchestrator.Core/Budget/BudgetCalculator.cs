@@ -220,13 +220,15 @@ public static class BudgetCalculator
     }
 
     /// <summary>A window's limit in tokens from Claude's own percent: what the window had spent by the
-    /// report, over the fraction it said that was. Null when there's nothing to size it by.</summary>
+    /// report, over the fraction it said that was. Claude reports whole percents, so the fraction is
+    /// taken a point high: the limit errs small (by under 1% near the end), never large enough to walk
+    /// into the wall. Null when there's nothing to size it by.</summary>
     internal static long? ImpliedLimit(IEnumerable<UsageEvent> events, ReportedWindow? window, TimeSpan length, DateTime? reportedAtUtc)
     {
         if (window is null || reportedAtUtc is not { } at) return null;
         var start = window.ResetUtc - length;
         var spent = events.Where(e => e.AtUtc >= start && e.AtUtc <= at).Sum(e => e.Usage.Fresh);
-        return spent > 0 ? (long)(spent / (window.Percent / 100)) : null;
+        return spent > 0 ? (long)(spent / ((window.Percent + 1) / 100)) : null;
     }
 
     private static TokenUsage Sum(IEnumerable<UsageEvent> events) =>

@@ -130,8 +130,8 @@ public sealed class PacerTests
         Assert.That(Pacer.AgentDelay(2000, 2000, 20, s), Is.EqualTo(20),
             "the hold brought the rate down to what fits; releasing it would put it straight back at twice that");
         Assert.That(Pacer.AgentDelay(1000, 2000, 20, s), Is.Zero, "unheld they'd burn 2,000/h, which fits: release at once");
-        Assert.That(Pacer.AgentDelay(100_000, 2000, 0, s), Is.EqualTo(90), "capped at the max");
-        Assert.That(Pacer.AgentDelay(100, 0, 0, s), Is.EqualTo(90), "out of room before the reset: slowest pace, still running");
+        Assert.That(Pacer.AgentDelay(100_000, 2000, 0, s), Is.EqualTo(300), "capped at the max");
+        Assert.That(Pacer.AgentDelay(100, 0, 0, s), Is.EqualTo(300), "out of room before the reset: slowest pace, still running");
         Assert.That(Pacer.AgentDelay(0, 0, 0, s), Is.Zero, "nothing running, nothing to hold");
         Assert.That(Pacer.AgentDelay(4000, 2000, 0, s with { ThrottleAgents = false }), Is.Zero);
     }

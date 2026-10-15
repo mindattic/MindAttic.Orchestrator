@@ -35,10 +35,10 @@ public sealed class BudgetTests
 
         var s = BudgetCalculator.Compute(events, new OrchestratorSettings(), Day.AddHours(12), Day, TimeZoneInfo.Utc, reported: reported);
 
-        Assert.That((s.BlockLimitSource, s.BlockLimit), Is.EqualTo((LimitSource.Reported, 10_000L)));
-        Assert.That(s.BlockPercent, Is.EqualTo(30).Within(0.01), "Claude's 24% plus what's been spent since it said so");
+        Assert.That((s.BlockLimitSource, s.BlockLimit), Is.EqualTo((LimitSource.Reported, 9_600L)), "2,400 over 25%: a whole-percent report could be up to a point low, so the limit errs small");
+        Assert.That(s.BlockPercent, Is.EqualTo(31.25).Within(0.01), "Claude's 24% (taken as 25) plus what's been spent since it said so");
         Assert.That(s.CurrentBlock!.EndUtc, Is.EqualTo(Day.AddHours(15 + 1.0 / 3)), "the reset Claude gave, not the estimate");
-        Assert.That((s.WeeklyLimitSource, s.WeeklyLimit), Is.EqualTo((LimitSource.Reported, 22_800L)), "11,400 this week was 50%");
+        Assert.That((s.WeeklyLimitSource, s.WeeklyLimit), Is.EqualTo((LimitSource.Reported, 22_352L)), "11,400 this week over 51%");
         Assert.That(s.WeekResetUtc, Is.EqualTo(Day.AddDays(2)));
 
         var manual = BudgetCalculator.Compute(events, new OrchestratorSettings { BlockBudget = 5_000 }, Day.AddHours(12), Day, TimeZoneInfo.Utc, reported: reported);

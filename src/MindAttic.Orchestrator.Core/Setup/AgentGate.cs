@@ -14,9 +14,9 @@ public static class AgentGate
     public const string ScriptName = "pace-gate.py";
 
     /// <summary>Claude Code's limit on the hook; above <see cref="MaxHoldSeconds"/> so a hold is never cut off as a failure.</summary>
-    public const int HookTimeoutSeconds = 150;
+    public const int HookTimeoutSeconds = 330;
 
-    public const int MaxHoldSeconds = 120;
+    public const int MaxHoldSeconds = 300;
 
     public static string ClaudeDir { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude");
 
