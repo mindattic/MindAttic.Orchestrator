@@ -28,6 +28,7 @@ hitting the session limit, and never stalling on a full context. Pick what runs;
 | Holding agents | every Claude CLI and subagent waits before each tool call while the draw won't last, 0s once it fits | `~/.claude/pace-gate.py` (PreToolUse hook) |
 | Subagent allowance | how many subagents may run at once across every CLI, worked out live from the pace (up to 16); each turn is told it, and a new subagent past it waits | `rl-status.json` → `subagent_allowance`; `settings --max-subagents 16` |
 | Context cycling | past 80% context: wrap up, then `/quicksave`, `/clear`, `/quickload` typed in | `~/.claude/context-gate.py` (prompt, tool, stop hooks) |
+| Keep going | a CLI that ends its turn asking "shall I start the next one?" while its repo still has open tickets is told to carry on; one that stops again straight after without doing anything is let go (it really needs you) | `~/.claude/context-gate.py` (Stop hook); `settings --keep-going false` |
 | Autopilot | each repo with an open CLI has its stories worked in parallel background agents, each in its own worktree, while the pace can afford them | `/autopilot` in any CLI; `-repo=A,B`; `/autopilot off` |
 
 To run unattended: open a Launcher tab in each repo you want worked, then type `/autopilot` in any one
@@ -110,7 +111,7 @@ The same core drives a CLI (`dotnet run --project src/MindAttic.Orchestrator.Cli
 | `dispatch <ID> [--provider] [--worktree]` | start a session on a ticket |
 | `release <ID> [--remove-worktree]` | put a ticket back in the queue; remove its (clean) worktree |
 | `daemon [--interval 15]` | keep the budget file and pace fresh, cycle context, and run autopilot without the dashboard open |
-| `settings [--max-sessions n] [--autopilot false] [--throttle-agents true] [--max-delay 300] [--provider X] [--stale-hours 12] [--quiet 22:00-07:00] [--repo-cap Repo=40] [--repo-sessions Repo=3] [--autopilot-skip A,B] [--groom-days 30] [--notify URL] [--github-intake true]` | scheduler settings |
+| `settings [--max-sessions n] [--autopilot false] [--throttle-agents true] [--max-delay 300] [--provider X] [--stale-hours 12] [--quiet 22:00-07:00] [--repo-cap Repo=40] [--repo-sessions Repo=3] [--autopilot-skip A,B] [--keep-going false] [--groom-days 30] [--notify URL] [--github-intake true]` | scheduler settings |
 | `audit [--latest]` | convention drift and cross-repo duplication |
 | `block <ID> --by <ID>` / `reserve <ID> <tokens>` | make a ticket wait for others; set tokens aside for a ticket |
 | `dryrun` | what `/autopilot` would start right now, without starting anything |

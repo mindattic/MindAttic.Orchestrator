@@ -34,7 +34,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         cycler.IsAgent = autopilot.IsAgent;
         string? lastPaused = null;
         cycler.Prune(DateTime.UtcNow);
-        int? gatePercent = null;
+        (int, bool)? gatePercent = null; // what the hooks were last written with
         string? lastHold = null;
         (PaceMode, int)? lastPace = null;
         bool? lastHeldElsewhere = null;
@@ -58,15 +58,15 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 notifyUrl = s.NotifyUrl;
 
                 // The hooks carry the cycle point, so rewrite them when it changes.
-                if (gatePercent != s.ContextCyclePercent)
+                if (gatePercent != (s.ContextCyclePercent, s.KeepGoing))
                 {
                     try
                     {
-                        if (Setup.AgentGate.Ensure(contextPercent: s.ContextCyclePercent) is { } did) Say(LogEventLevel.Information, did);
+                        if (Setup.AgentGate.Ensure(contextPercent: s.ContextCyclePercent, keepGoing: s.KeepGoing) is { } did) Say(LogEventLevel.Information, did);
                         if (Setup.AgentGate.EnsureOtherProviders() is { } didOthers) Say(LogEventLevel.Information, didOthers);
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"couldn't install the agent hooks: {ex.Message}"); }
-                    gatePercent = s.ContextCyclePercent;
+                    gatePercent = (s.ContextCyclePercent, s.KeepGoing);
                 }
                 WatchHealth(autopilot);
                 foreach (var r in Sessions.ProcessReaper.ReapOnce(DateTime.UtcNow))

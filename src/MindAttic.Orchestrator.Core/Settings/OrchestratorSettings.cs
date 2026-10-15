@@ -90,6 +90,10 @@ public sealed record OrchestratorSettings
 
     public Dictionary<string, int> RepoMaxSessions { get; init; } = [];
 
+    /// <summary>Keep development going without you: a CLI whose turn ends asking whether to go on while its repo still has
+    /// open tickets is told to carry on (the context gate's Stop hook). False lets it stop and ask.</summary>
+    public bool KeepGoing { get; init; } = true;
+
     /// <summary>Repos <c>/autopilot</c> never starts agents in, even when named or their CLI is open.</summary>
     public List<string> AutopilotSkip { get; init; } = [];
 

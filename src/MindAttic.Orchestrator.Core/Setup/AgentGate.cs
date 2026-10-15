@@ -261,19 +261,61 @@ public static class AgentGate
     /// The context gate: records each session's turn (busy on a prompt, idle on Stop) next to the
     /// context fill the statusline saves, and once a turn tells the main agent its context is past
     /// <paramref name="percent"/> so it wraps up and lets its subagents finish. The orchestrator then
-    /// cycles it (<see cref="Sessions.ContextCycler"/>).
+    /// cycles it (<see cref="Sessions.ContextCycler"/>). With <paramref name="keepGoing"/>, a turn that ends asking whether
+    /// to go on while its repo still has open tickets is told to carry on (<see cref="Settings.OrchestratorSettings.KeepGoing"/>).
     /// </summary>
-    internal static string ContextScript(int percent) => $$$"""
+    internal static string ContextScript(int percent, bool keepGoing = true) => $$$"""
         #!/usr/bin/env python3
         # MindAttic.Orchestrator's context gate (written by the orchestrator; edits are overwritten).
         # Records each session's turn state and warns the main agent once per turn when its context is
         # past the cycle point, so it finishes cleanly before the orchestrator saves, clears and reloads it.
-        import json, re, sys
+        import json, os, re, sys
         from datetime import datetime, timezone
         from pathlib import Path
 
         DIR = Path.home() / ".claude" / "session-context"
         PERCENT = {{{percent}}}
+        KEEP_GOING = {{{(keepGoing ? "True" : "False")}}}
+        WS = Path(os.environ.get("MINDATTIC_WORKSPACE", "D:/Projects/MindAttic"))
+        # A turn ending on one of these is asking for a go-ahead the orchestrator gives itself.
+        ASKS = re.compile(r"\b(shall i|should i|do you want|want me to|would you like|ready for me to|ok(?:ay)? to (?:start|continue|proceed|go)|"
+                          r"let me know (?:if|when|whether)|(?:go ahead|proceed|continue|carry on|keep going)\?)", re.I)
+
+        def open_tickets(cwd):
+            # The repo checkout cwd is in (never an autopilot worktree, which lives outside the workspace) and its open tickets.
+            try:
+                rel = Path(cwd).resolve().relative_to(WS.resolve())
+            except Exception:
+                return None, []
+            if not rel.parts or not (WS / rel.parts[0] / ".git").exists():
+                return None, []
+            try:
+                import sqlite3
+                db = sqlite3.connect(str(WS / "MindAttic.Workflow" / "data" / "workflow.db"))
+                rows = db.execute("SELECT id FROM tickets WHERE repo = ? COLLATE NOCASE AND status = 'open' ORDER BY ordinal", (rel.parts[0],)).fetchall()
+                db.close()
+                return rel.parts[0], [r[0] for r in rows]
+            except Exception:
+                return rel.parts[0], []
+
+        def last_said(data):
+            if data.get("last_assistant_message"):
+                return str(data["last_assistant_message"])
+            try:
+                lines = Path(data.get("transcript_path") or "").read_text(encoding="utf-8", errors="ignore").splitlines()
+            except Exception:
+                return ""
+            for line in reversed(lines[-200:]):
+                try:
+                    m = json.loads(line)
+                except Exception:
+                    continue
+                if m.get("type") == "assistant":
+                    parts = (m.get("message") or {}).get("content") or []
+                    text = " ".join(p.get("text", "") for p in parts if isinstance(p, dict) and p.get("type") == "text")
+                    if text.strip():
+                        return text
+            return ""
 
         def load(path):
             try:
@@ -311,8 +353,28 @@ public static class AgentGate
         state = load(state_file)
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         if event == "Stop":
+            # The orchestrator keeps development going without you: a turn that ends asking whether to go on while its
+            # repo still has open tickets is told to carry on. One that stops again straight after, without doing
+            # anything, is let go (something there really needs you), and so is one past the cycle point.
+            used = load(DIR / (sid + ".json")).get("used_percentage") or 0
+            insisted = state.get("nudged") and not state.get("worked")
+            if KEEP_GOING and not insisted and not state.get("warned") and used < PERCENT and ASKS.search(last_said(data)[-500:]):
+                repo, ids = open_tickets(data.get("cwd") or "")
+                if ids:
+                    state.update(nudged=True, worked=False)
+                    save(state_file, state)
+                    print(json.dumps({"decision": "block", "reason":
+                        "Don't stop to ask: MindAttic.Orchestrator keeps development going without the user. " + repo + " still has " +
+                        str(len(ids)) + " open ticket" + ("" if len(ids) == 1 else "s") + " (" + ", ".join(ids[:6]) + ("..." if len(ids) > 6 else "") +
+                        "). Finish and commit the one you're on, then start the next and keep going. End your turn only when they're "
+                        "done or you're blocked on a decision only the user can make, and then say plainly what it is."}))
+                    sys.exit(0)
+            state.pop("nudged", None)
+            state.pop("worked", None)
             state.update(state="idle", at=now, pid=cli_pid(), cwd=data.get("cwd"))
         elif event == "UserPromptSubmit":
+            state.pop("nudged", None)
+            state.pop("worked", None)
             state.update(state="busy", at=now, warned=False, cwd=data.get("cwd"))
             typed = (data.get("prompt") or "").strip()
             prompt = typed.lower()
@@ -354,6 +416,9 @@ public static class AgentGate
             except Exception:
                 pass
         elif event == "PostToolUse":
+            if state.get("nudged") and not state.get("worked"):
+                state["worked"] = True  # it carried on after being told to
+                save(state_file, state)
             used = load(DIR / (sid + ".json")).get("used_percentage") or 0
             if state.get("warned") or used < PERCENT:
                 sys.exit(0)
@@ -369,7 +434,7 @@ public static class AgentGate
 
     /// <summary>Writes the scripts and registers their hooks when anything is missing or out of date.
     /// Returns what it did, or null when everything was already in place.</summary>
-    public static string? Ensure(string? claudeDir = null, int contextPercent = 80)
+    public static string? Ensure(string? claudeDir = null, int contextPercent = 80, bool keepGoing = true)
     {
         var dir = claudeDir ?? ClaudeDir;
         Directory.CreateDirectory(dir);
@@ -380,7 +445,7 @@ public static class AgentGate
         Directory.CreateDirectory(Path.Combine(dir, "commands"));
         foreach (var (path, body) in new[]
         {
-            (script, Script), (contextScript, ContextScript(contextPercent)),
+            (script, Script), (contextScript, ContextScript(contextPercent, keepGoing)),
             (Path.Combine(dir, "commands", "unthrottle.md"), UnthrottleCommand), (Path.Combine(dir, "commands", "throttle.md"), ThrottleCommand),
             (Path.Combine(dir, "commands", "autopilot.md"), AutopilotCommand),
             (Path.Combine(dir, "commands", "crossrepo.md"), CrossRepoCommand),

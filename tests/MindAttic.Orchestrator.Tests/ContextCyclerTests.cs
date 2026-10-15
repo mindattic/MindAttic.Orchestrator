@@ -111,6 +111,76 @@ public sealed class ContextCyclerTests
     }
 
     [Test]
+    public void A_turn_ending_on_a_go_ahead_question_while_its_repo_has_open_tickets_is_told_to_keep_going()
+    {
+        // Found live: a CLI finished a story and asked "shall I start the next one?" with four tickets still open.
+        var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
+        var ws = Path.Combine(dir, "ws");
+        var repo = Path.Combine(ws, "A");
+        Directory.CreateDirectory(Path.Combine(repo, ".git"));
+        Directory.CreateDirectory(Path.Combine(ws, "B", ".git"));
+        var data = Path.Combine(ws, "MindAttic.Workflow", "data");
+        Directory.CreateDirectory(data);
+        try
+        {
+            Python($"""
+                import sqlite3
+                d = sqlite3.connect(r"{Path.Combine(data, "workflow.db")}")
+                d.execute("CREATE TABLE tickets (id TEXT PRIMARY KEY, repo TEXT, status TEXT, ordinal INTEGER)")
+                d.executemany("INSERT INTO tickets VALUES (?, ?, ?, ?)", [("A-T1", "A", "closed", 1), ("A-T2", "A", "open", 2), ("A-T3", "A", "open", 3)])
+                d.commit()
+                """);
+            Setup.AgentGate.Ensure(dir);
+            string Gate(object input)
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\"")
+                    { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
+                psi.Environment["USERPROFILE"] = dir;
+                psi.Environment["MINDATTIC_WORKSPACE"] = ws;
+                using var p = System.Diagnostics.Process.Start(psi)!;
+                p.StandardInput.Write(System.Text.Json.JsonSerializer.Serialize(input));
+                p.StandardInput.Close();
+                var output = p.StandardOutput.ReadToEnd();
+                Assert.That(p.WaitForExit(20_000), Is.True);
+                return output;
+            }
+            object Stop(string said, string? cwd = null) => new { session_id = "s", hook_event_name = "Stop", cwd = cwd ?? repo, last_assistant_message = said };
+            const string ask = "MAO-T91 is done and pushed. Next is MAO-T93. Shall I start it?";
+
+            var told = Gate(Stop(ask));
+            Assert.That(told, Does.Contain("\"decision\": \"block\"").And.Contain("A still has 2 open tickets (A-T2, A-T3)"));
+            Assert.That(Gate(Stop(ask)), Is.Empty, "it stopped again without doing anything: something really needs the user, so it's let go");
+
+            Gate(Stop(ask));
+            Gate(new { session_id = "s", hook_event_name = "PostToolUse", cwd = repo });
+            Assert.That(Gate(Stop(ask)), Does.Contain("\"block\""), "it carried on (a tool ran) and asks again at the next story: told again");
+
+            Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd = repo, prompt = "x" });
+            Assert.That(Gate(Stop("Done: the tests pass and it's pushed.")), Is.Empty, "a plain report isn't asking");
+            Assert.That(Gate(Stop(ask, Path.Combine(ws, "B"))), Is.Empty, "B has no open tickets");
+            Assert.That(Gate(Stop(ask, ws)), Is.Empty, "the workspace root isn't a repo");
+            File.WriteAllText(Path.Combine(dir, ".claude", "session-context", "s.json"), """{"used_percentage": 90}""");
+            Assert.That(Gate(Stop(ask)), Is.Empty, "past the cycle point it stops, so the context can be cycled");
+
+            Setup.AgentGate.Ensure(dir, keepGoing: false);
+            File.Delete(Path.Combine(dir, ".claude", "session-context", "s.json"));
+            Assert.That(Gate(Stop(ask)), Is.Empty, "switched off (settings --keep-going false)");
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    private static void Python(string script)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo("python", "-I -") { RedirectStandardInput = true, RedirectStandardError = true, UseShellExecute = false };
+        using var p = System.Diagnostics.Process.Start(psi)!;
+        p.StandardInput.Write(script);
+        p.StandardInput.Close();
+        var err = p.StandardError.ReadToEnd();
+        p.WaitForExit();
+        Assert.That(p.ExitCode, Is.Zero, err);
+    }
+
+    [Test]
     public void Alive_subagent_ids_are_the_marks_whose_age_hasnt_gone_stale()
     {
         var dir = Path.Combine(Path.GetTempPath(), "ctx-" + Guid.NewGuid().ToString("N"));

@@ -217,6 +217,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("Sessions one repo may run at once, like Prose=3 (0 clears). Repeatable.")]
         public string[] RepoSessions { get; init; } = [];
 
+        [CommandOption("--keep-going <ON>")]
+        [Description("true (default): a CLI that ends its turn asking whether to go on while its repo has open tickets is told to carry on; false lets it ask.")]
+        public bool? KeepGoing { get; init; }
+
         [CommandOption("--autopilot-skip <REPOS>")]
         [Description("Repos /autopilot never starts agents in, comma-separated: \"GTFO.EZ,Prose\"; \"none\" clears.")]
         public string? AutopilotSkip { get; init; }
@@ -276,6 +280,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { QuietHours = windows };
             changed = true;
         }
+        if (settings.KeepGoing is { } keep)
+        {
+            s = s with { KeepGoing = keep };
+            changed = true;
+        }
         if (settings.AutopilotSkip is { } skip)
         {
             s = s with { AutopilotSkip = skip.Equals("none", StringComparison.OrdinalIgnoreCase) ? [] : [.. skip.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)] };
@@ -299,7 +308,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         AnsiConsole.MarkupLine($"  max sessions {s.MaxConcurrentSessions} · provider {s.DefaultProvider} · autopilot " +
             (order is null ? "off (type /autopilot in any CLI)" : !s.Autopilot ? "[yellow]paused[/] (--autopilot true resumes)"
                 : order.Count == 0 ? "[green]on[/] for every open repo CLI" : $"[green]on[/] for the CLIs in {Markup.Escape(string.Join(", ", order))}") +
-            (s.AutopilotSkip.Count > 0 ? $", skipping {Markup.Escape(string.Join(", ", s.AutopilotSkip))}" : ""));
+            (s.AutopilotSkip.Count > 0 ? $", skipping {Markup.Escape(string.Join(", ", s.AutopilotSkip))}" : "") +
+            (s.KeepGoing ? " · CLIs keep going through their open tickets without asking" : " · CLIs may stop to ask between tickets"));
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (learned from limit hits)")} Â· weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (learned)")} Â· week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display : "learned, or rolling 7 days")} Â· warn at {s.WarnPercent}%");
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +
             (s.ThrottleAgents ? $" Â· running agents held up to {s.MaxAgentDelaySeconds}s per tool call when the burn won't last" : " Â· running agents never held") +
