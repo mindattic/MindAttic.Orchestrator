@@ -24,7 +24,7 @@ internal sealed class ShowCommand : Command<ShowCommand.Settings>
         var id = settings.Ticket.ToUpperInvariant();
         var hit = new MindAttic.Workflow.Workspace(options.WorkspaceRoot).Repos()
             .Where(r => File.Exists(r.StoriesPath))
-            .Select(r => (Repo: r, Ticket: StoryFile.Load(r.StoriesPath).Tickets.FirstOrDefault(t => t.Id == id)))
+            .Select(r => (Repo: r, Ticket: WorkspaceTickets.All([r]).Select(x => x.Ticket).FirstOrDefault(t => t.Id == id)))
             .FirstOrDefault(x => x.Ticket is not null);
         if (hit.Ticket is null) { AnsiConsole.MarkupLine($"[red]No ticket {Markup.Escape(id)} in the workspace.[/]"); return 1; }
 

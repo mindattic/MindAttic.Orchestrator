@@ -113,6 +113,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 knownStuck.IntersectWith(stuck.Select(x => x.SessionId + x.Loop.Tool + x.Loop.Input));
 
                 RunAuditIfDue(options, s);
+                SyncWorkflowDbIfDue(options);
                 if (s.GitHubIntake && DateTime.UtcNow - intakeUtc >= TimeSpan.FromHours(1))
                 {
                     intakeUtc = DateTime.UtcNow;
@@ -165,6 +166,35 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         else Say(LogEventLevel.Information, $"audit: nothing new ({after.Drift.Count} drifted files, {after.Duplicates.Count} duplicate groups, {after.Took.TotalSeconds:0}s)");
     }
 
+    private DateTime syncedDbWriteUtc;
+    private DateTime syncTriedUtc;
+
+    /// <summary>
+    /// Every 10 minutes, when the Workflow database has changed since the last sync, commits it (and its readable dump)
+    /// in the MindAttic.Workflow repo and pushes, so tickets are backed up and reach other machines.
+    /// </summary>
+    private void SyncWorkflowDbIfDue(OrchestratorOptions options)
+    {
+        var path = MindAttic.Workflow.Data.WorkflowDb.DefaultPath(options.WorkspaceRoot);
+        if (!File.Exists(path) || DateTime.UtcNow - syncTriedUtc < TimeSpan.FromMinutes(10)) return;
+        var written = File.GetLastWriteTimeUtc(path);
+        if (written == syncedDbWriteUtc) return;
+        syncTriedUtc = DateTime.UtcNow;
+        try
+        {
+            using var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("workflow", "db sync")
+            {
+                UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
+            })!;
+            var output = p.StandardOutput.ReadToEndAsync();
+            var error = p.StandardError.ReadToEnd();
+            if (!p.WaitForExit(120_000)) { p.Kill(true); Say(LogEventLevel.Warning, "workflow db sync took over 2 minutes; stopped it"); return; }
+            if (p.ExitCode == 0) syncedDbWriteUtc = written;
+            Say(p.ExitCode == 0 ? LogEventLevel.Information : LogEventLevel.Warning, $"workflow db sync: {(output.Result + error).Trim()}");
+        }
+        catch (System.ComponentModel.Win32Exception ex) { Say(LogEventLevel.Warning, $"couldn't run 'workflow db sync': {ex.Message}"); }
+    }
+
     /// <summary>Files new GitHub issues and CI failures as tickets in every repo that has a GitHub origin.</summary>
     public static IEnumerable<(string Repo, MindAttic.Workflow.Tickets.Ticket Ticket)> Intake(string workspaceRoot, bool dryRun = false)
     {
@@ -175,6 +205,13 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             if (remote is null || Tickets.GitHubIntake.Slug(remote) is not { } slug) continue;
             var items = Tickets.GitHubIntake.Find(slug, Tickets.GitHubIntake.Gh, DateTime.UtcNow);
             if (items.Count == 0) continue;
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(workspaceRoot))
+                if (db is not null && db.Repos().Any(x => x.Name.Equals(repo.Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    if (dryRun) continue; // a dry run files nothing
+                    foreach (var t in Tickets.GitHubIntake.FileNew(db, repo.Name, items)) yield return (repo.Name, t);
+                    continue;
+                }
             var stories = MindAttic.Workflow.Tickets.StoryFile.Load(repo.StoriesPath);
             var filed = Tickets.GitHubIntake.FileNew(stories, items);
             if (filed.Count > 0 && !dryRun) stories.Save();

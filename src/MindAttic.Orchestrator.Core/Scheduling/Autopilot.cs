@@ -158,21 +158,21 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
 
     /// <summary>
     /// The story's prompt for an agent in its own worktree. It starts like <see cref="Scheduler.PromptFor"/> (so its
-    /// session is tied to the ticket), closes the ticket in the worktree's own USER_STORIES.md (<c>workflow ticket close</c>
-    /// would edit the main checkout), and lands the branch on main itself.
+    /// session is tied to the ticket), lands the branch on main itself, then closes the ticket in the Workflow
+    /// database (the same database from any folder, worktrees included).
     /// </summary>
     internal static string PromptFor(QueueItem item, string worktree, string branch) =>
         $"Work on ticket {item.Id} ({item.Ticket.Type}): {item.Ticket.Summary} " +
         $"You are in your own git worktree of {item.Repo} ({worktree}, branch {branch}) so other agents can work {item.Repo} at the same time; work, build and test only here. " +
-        "When it's done: run /commit, but don't push (the last step does). Then mark the ticket finished by editing this worktree's docs/USER_STORIES.md: " +
-        $"set {item.Id}'s Status to closed and its Ref to the test or commit that proves it (not with workflow ticket close, which edits the main checkout), and commit that. " +
-        "Finally land it: git fetch origin, git rebase origin/main (resolve any conflicts and rerun the tests), git push origin HEAD:main. " +
+        "When it's done: run /commit, but don't push (the next step does). Land it: git fetch origin, git rebase origin/main (resolve any conflicts and rerun the tests), git push origin HEAD:main. " +
+        $"Then mark it finished: workflow ticket close {item.Id} --ref <the test or commit that proves it>. " +
         "If you can't finish or land it, leave the ticket open and say why.";
 
     /// <summary>
-    /// Agents that exited. A worktree agent is done when its ticket is closed on origin/main: then your checkout is
-    /// fast-forwarded to it (git refuses if that would touch your own changes) and the worktree removed (git keeps
-    /// it if anything there is uncommitted). Otherwise the ticket goes back in the queue, parked for you.
+    /// Agents that exited. A worktree agent is done when its ticket is closed (in the Workflow database, or on origin/main
+    /// before the migration) and its branch is on origin/main: then your checkout is fast-forwarded (git refuses if that
+    /// would touch your own changes) and the worktree removed (git keeps it if anything there is uncommitted). Otherwise
+    /// the ticket goes back in the queue, parked for you.
     /// </summary>
     private void Reap(SchedulePlan plan, List<string> said)
     {
@@ -198,9 +198,21 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     internal static (bool Closed, string Note) LandOnMain(Assignment a, string repoPath)
     {
         Dispatcher.Git(repoPath, "fetch", "-q", "origin");
-        var (code, stories) = Dispatcher.Git(repoPath, "show", "origin/main:docs/USER_STORIES.md");
-        var closed = code == 0 && ClosedIn(stories, a.TicketId);
+        bool closed;
+        using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(Path.GetDirectoryName(repoPath)))
+        {
+            if (db is not null)
+                closed = db.Ticket(a.TicketId)?.Ticket.Status is "closed" or "wont-do";
+            else
+            {
+                var (code, stories) = Dispatcher.Git(repoPath, "show", "origin/main:docs/USER_STORIES.md");
+                closed = code == 0 && ClosedIn(stories, a.TicketId);
+            }
+        }
         var note = "";
+        // Closed but never landed: its commits are only on its branch, so it isn't done.
+        if (closed && Dispatcher.Git(repoPath, "merge-base", "--is-ancestor", Dispatcher.BranchFor(a.TicketId), "origin/main").Code != 0)
+            return (false, $"; it closed its ticket but its branch {Dispatcher.BranchFor(a.TicketId)} isn't on main; the work is in {a.Directory}");
         if (closed && Dispatcher.Git(repoPath, "rev-parse", "--abbrev-ref", "HEAD").Output.Trim() == "main")
             note += Dispatcher.Git(repoPath, "merge", "--ff-only", "-q", "origin/main").Code == 0
                 ? "; your checkout is up to date with it" : "; pull main to get it (your checkout has changes in the way)";

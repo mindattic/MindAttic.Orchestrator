@@ -101,6 +101,9 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// <summary>Repos that share duplicated code (from the last audit): editing them at once risks conflicting fixes.</summary>
     public IReadOnlyDictionary<string, IReadOnlySet<string>> LinkedRepos { get; init; } = new Dictionary<string, IReadOnlySet<string>>();
 
+    /// <summary>Ticket → the tickets it requires (prerequisite links in the Workflow database).</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> Requires { get; init; } = new Dictionary<string, IReadOnlyList<string>>();
+
     public TokenUsage UsageToday => Repos.Aggregate(default(TokenUsage), (sum, r) => sum + r.UsageToday);
     public int Working => Repos.Count(r => r.State == RepoState.Working);
     public int Waiting => Repos.Count(r => r.State == RepoState.Waiting);

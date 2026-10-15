@@ -92,7 +92,7 @@ public sealed class AutopilotTests
             (@"D:\WT\B\B-T1", "Work on ticket B-T1"),
         }), "with room, all of A's stories run at once, each in its worktree; C has no CLI open");
         Assert.That(started[0].Prompt, Does.Contain("own git worktree").And.Contains("branch orch/a-t1").And.Contains("/commit")
-            .And.Contains("git push origin HEAD:main").And.Contains("not with workflow ticket close"));
+            .And.Contains("git push origin HEAD:main").And.Contains("workflow ticket close A-T1 --ref"));
         Assert.That(started[0].Log, Does.StartWith(Path.Combine(dir, "logs")).And.Contains("T1-"));
         Assert.That(said, Has.Some.Contains("in the background"));
         var a = store.LoadAssignments().Single(x => x.TicketId == "A-T1");

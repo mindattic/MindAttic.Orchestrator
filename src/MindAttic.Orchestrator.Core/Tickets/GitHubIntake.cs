@@ -81,6 +81,20 @@ public static partial class GitHubIntake
         return filed;
     }
 
+    /// <summary>Adds the items no ticket in <paramref name="repo"/> mentions yet (by marker) to the Workflow database.</summary>
+    public static IReadOnlyList<Ticket> FileNew(MindAttic.Workflow.Data.WorkflowDb db, string repo, IEnumerable<IntakeItem> items)
+    {
+        var existing = db.Tickets(repo).Select(t => t.Ticket).ToList();
+        var filed = new List<Ticket>();
+        foreach (var item in items)
+        {
+            var marker = new Regex($@"{Regex.Escape(item.Marker)}\b");
+            if (existing.Concat(filed).Any(t => marker.IsMatch(t.Summary))) continue;
+            filed.Add(db.Add(repo, item.Type, TicketRules.Open, item.Summary, item.Url));
+        }
+        return filed;
+    }
+
     private static IEnumerable<JsonElement> Parse(string json)
     {
         try

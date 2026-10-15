@@ -13,7 +13,7 @@ internal sealed class HygieneCommand : Command
             .Where(r => File.Exists(r.StoriesPath))
             .SelectMany(r =>
             {
-                try { return TicketHygiene.Check(r.Name, StoryFile.Load(r.StoriesPath).Tickets); }
+                try { return TicketHygiene.Check(r.Name, [.. WorkspaceTickets.All([r]).Select(x => x.Ticket)]); }
                 catch (Exception ex) when (ex is IOException or InvalidOperationException) { return []; }
             })
             .ToList();

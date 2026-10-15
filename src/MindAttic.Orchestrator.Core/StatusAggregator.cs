@@ -114,7 +114,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
 
-        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history };
+        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Requires = tickets.Requires };
 
         RepoStatus Build(string name, string path, IReadOnlyList<MindAttic.Workflow.Tickets.Ticket> open)
         {

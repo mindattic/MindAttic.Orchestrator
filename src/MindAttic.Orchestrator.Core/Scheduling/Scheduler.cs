@@ -87,6 +87,7 @@ public static partial class Scheduler
         IReadOnlyList<string> Blockers(Ticket t) =>
             [.. BlockedByPhrase().Matches(t.Summary).Select(m => m.Groups["id"].Value.ToUpperInvariant())
                 .Concat(settings.BlockedBy.GetValueOrDefault(t.Id) ?? [])
+                .Concat(snapshot.Requires.GetValueOrDefault(t.Id) ?? [])
                 .Where(id => id != t.Id && openIds.Contains(id))
                 .Distinct(StringComparer.Ordinal)];
 

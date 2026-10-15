@@ -23,6 +23,17 @@ internal sealed class BlockCommand : Command<BlockCommand.Settings>
     public override int Execute(CommandContext context, Settings settings)
     {
         var store = new JsonStore();
+        // Once migrated, prerequisites are 'requires' links in the Workflow database, where every tool sees them.
+        using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(OrchestratorOptions.Load(store).WorkspaceRoot))
+            if (db is not null)
+            {
+                if (settings.Clear)
+                    foreach (var to in db.Requires(settings.Ticket)) db.RemoveLink(settings.Ticket, to, "requires");
+                foreach (var prerequisite in settings.By) db.AddLink(settings.Ticket, prerequisite, "requires", "orchestrator block");
+                var now = db.Requires(settings.Ticket);
+                AnsiConsole.MarkupLine(now.Count > 0 ? $"{settings.Ticket} requires {string.Join(", ", now)}." : $"{settings.Ticket} requires nothing.");
+                return 0;
+            }
         var s = store.LoadSettings();
         var map = new Dictionary<string, List<string>>(s.BlockedBy, StringComparer.Ordinal);
         if (settings.Clear) map.Remove(settings.Ticket);
