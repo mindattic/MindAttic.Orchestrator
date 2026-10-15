@@ -59,6 +59,35 @@ public sealed class ContextCyclerTests
     }
 
     [Test]
+    public void A_session_in_a_plain_terminal_is_typed_into_through_its_console_and_a_desktop_one_is_reported()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "ctx-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            foreach (var (id, pid) in new[] { ("cli", 111), ("app", 222) })
+            {
+                File.WriteAllText(Path.Combine(dir, id + ".json"), $$"""{"session_id":"{{id}}","cwd":"D:\\W\\{{id}}","used_percentage":90}""");
+                File.WriteAllText(Path.Combine(dir, id + ".state.json"), $$"""{"state":"idle","at":"2026-10-15T01:59:00Z","pid":{{pid}}}""");
+            }
+            var typed = new List<(int, string)>();
+            var cycler = new ContextCycler(dir)
+            {
+                // 111 is a CLI with a console; 222 is a desktop-app session with none. The fake stops the cycle at its first line.
+                Typer = (pid, text) => { if (text.Length > 0) typed.Add((pid, text)); return pid == 111 && text.Length == 0; },
+            };
+
+            var said = cycler.Tick([], new OrchestratorSettings(), Now);
+
+            Assert.That(said, Has.Some.Contains(@"D:\W\cli").And.Some.Contains("in its own terminal"));
+            Assert.That(said, Has.Some.Contains("desktop-app session").And.Some.Contains("yourself"));
+            SpinWait.SpinUntil(() => typed.Count > 0, 5000);
+            Assert.That(typed, Is.EqualTo(new[] { (111, "/quicksave") }));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Test]
     public void The_context_gate_is_hooked_on_prompt_tool_and_stop_with_the_cycle_point()
     {
         var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));

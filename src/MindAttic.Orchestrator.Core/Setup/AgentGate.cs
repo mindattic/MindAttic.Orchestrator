@@ -85,6 +85,38 @@ public static class AgentGate
             tmp.write_text(json.dumps(value))
             tmp.replace(path)
 
+        def cli_pid():
+            # The claude process this hook runs under (via the shell between), so the orchestrator can
+            # type into its console when it isn't in a Launcher tab.
+            try:
+                import ctypes, os
+                from ctypes import wintypes
+                class Entry(ctypes.Structure):
+                    _fields_ = [("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD), ("th32ProcessID", wintypes.DWORD),
+                                ("th32DefaultHeapID", ctypes.c_size_t), ("th32ModuleID", wintypes.DWORD), ("cntThreads", wintypes.DWORD),
+                                ("th32ParentProcessID", wintypes.DWORD), ("pcPriClassBase", ctypes.c_long), ("dwFlags", wintypes.DWORD),
+                                ("szExeFile", ctypes.c_char * 260)]
+                k = ctypes.windll.kernel32
+                k.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+                snap = k.CreateToolhelp32Snapshot(2, 0)
+                procs, e = {}, Entry()
+                e.dwSize = ctypes.sizeof(Entry)
+                ok = k.Process32First(snap, ctypes.byref(e))
+                while ok:
+                    procs[e.th32ProcessID] = (e.th32ParentProcessID, e.szExeFile.decode(errors="ignore").lower())
+                    ok = k.Process32Next(snap, ctypes.byref(e))
+                k.CloseHandle(snap)
+                pid = os.getpid()
+                for _ in range(8):
+                    pid = procs.get(pid, (0, ""))[0]
+                    if not pid:
+                        return None
+                    if procs.get(pid, (0, ""))[1] == "claude.exe":
+                        return pid
+            except Exception:
+                pass
+            return None
+
         try:
             data = json.load(sys.stdin)
         except Exception:
@@ -97,7 +129,7 @@ public static class AgentGate
         state = load(state_file)
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         if event == "Stop":
-            state.update(state="idle", at=now)
+            state.update(state="idle", at=now, pid=cli_pid())
         elif event == "UserPromptSubmit":
             state.update(state="busy", at=now, warned=False)
         elif event == "PostToolUse":

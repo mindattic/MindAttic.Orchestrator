@@ -5,14 +5,19 @@ using MindAttic.Orchestrator.Settings;
 namespace MindAttic.Orchestrator.Sessions;
 
 /// <summary>A session's context fill (saved by the statusline) and turn state (saved by the context gate hook).</summary>
-public sealed record SessionContext(string SessionId, string? Cwd, double Percent, bool Idle, DateTime TurnUtc);
+public sealed record SessionContext(string SessionId, string? Cwd, double Percent, bool Idle, DateTime TurnUtc)
+{
+    /// <summary>The Claude CLI process the session runs in (recorded by the context gate), for typing into a plain terminal.</summary>
+    public int? Pid { get; init; }
+}
 
 /// <summary>
 /// Keeps agents from running out of context: once a Claude session in a Launcher tab is past
 /// <see cref="OrchestratorSettings.ContextCyclePercent"/> and its turn has ended (so its subagents are
 /// done; the context gate told it to wrap up), types <c>/quicksave</c>, waits for that turn to end,
 /// then <c>/clear</c> and <c>/quickload</c>, so it carries on from the handoff with a fresh context.
-/// A session outside a Launcher tab can't be typed into, so you're told instead.
+/// A session in a plain terminal is typed into through its console (<see cref="ConsoleTyper"/>); one with
+/// no console (the Claude desktop app) can't be, so you're told instead.
 /// </summary>
 public sealed class ContextCycler(string? directory = null)
 {
@@ -24,6 +29,9 @@ public sealed class ContextCycler(string? directory = null)
 
     /// <summary>The longest /quicksave gets to write its handoff before the cycle gives up (without clearing).</summary>
     public static readonly TimeSpan SaveTimeout = TimeSpan.FromMinutes(10);
+
+    /// <summary>Types a line into a console by process id; an empty line only checks it can. Replaceable for tests.</summary>
+    internal Func<int, string, bool> Typer { get; init; } = (pid, text) => text.Length == 0 ? ConsoleTyper.CanType(pid) : ConsoleTyper.Submit(pid, text);
 
     private readonly Dictionary<string, Task<string>> cycling = new(StringComparer.Ordinal);
     private readonly HashSet<string> told = new(StringComparer.Ordinal);
@@ -42,14 +50,18 @@ public sealed class ContextCycler(string? directory = null)
         foreach (var s in Load())
         {
             if (cycling.ContainsKey(s.SessionId) || !Due(s, settings.ContextCyclePercent, nowUtc)) continue;
+            Func<string, Task<bool>>? send = null;
             var host = HostFor(s, hosts, out var why);
-            if (host is null)
+            if (host is not null) send = text => SessionControl.SendAsync(host.PipeName, text, submit: true);
+            else if (s.Pid is { } pid && Typer(pid, "")) send = text => Task.FromResult(Typer(pid, text));
+            else why = s.Pid is null ? why : "its console can't be typed into (a desktop-app session)";
+            if (send is null)
             {
                 if (told.Add(s.SessionId)) said.Add($"session in {s.Cwd} is {s.Percent:0}% full of context but {why}: /quicksave, /clear and /quickload it yourself");
                 continue;
             }
-            said.Add($"cycling the context of {s.Cwd} ({s.Percent:0}% full): /quicksave, /clear, /quickload");
-            cycling[s.SessionId] = Task.Run(() => CycleAsync(s, host));
+            said.Add($"cycling the context of {s.Cwd} ({s.Percent:0}% full{(host is null ? ", in its own terminal" : "")}): /quicksave, /clear, /quickload");
+            cycling[s.SessionId] = Task.Run(() => CycleAsync(s, send));
         }
         return said;
     }
@@ -70,10 +82,10 @@ public sealed class ContextCycler(string? directory = null)
         return matches.Count == 1 ? matches[0] : null;
     }
 
-    private async Task<string> CycleAsync(SessionContext s, HostSession host)
+    private async Task<string> CycleAsync(SessionContext s, Func<string, Task<bool>> send)
     {
         var sent = DateTime.UtcNow;
-        if (!await SessionControl.SendAsync(host.PipeName, "/quicksave", submit: true))
+        if (!await send("/quicksave"))
             return $"couldn't reach the tab for {s.Cwd} to cycle its context";
         // /quicksave is a turn of its own; its Stop marks the handoff written.
         var deadline = sent + SaveTimeout;
@@ -84,9 +96,9 @@ public sealed class ContextCycler(string? directory = null)
         }
         if (DateTime.UtcNow >= deadline)
             return $"{s.Cwd}: /quicksave didn't finish in {SaveTimeout.TotalMinutes:0} minutes, so its context was left as is";
-        await SessionControl.SendAsync(host.PipeName, "/clear", submit: true);
+        await send("/clear");
         await Task.Delay(TimeSpan.FromSeconds(5));
-        await SessionControl.SendAsync(host.PipeName, "/quickload", submit: true);
+        await send("/quickload");
         Forget(s.SessionId); // /clear starts a new session id; this one is done
         return $"{s.Cwd}: context cycled; it picks up from its handoff";
     }
@@ -112,6 +124,7 @@ public sealed class ContextCycler(string? directory = null)
             var percent = c.RootElement.TryGetProperty("used_percentage", out var p) && p.ValueKind == JsonValueKind.Number ? p.GetDouble() : 0;
             var cwd = c.RootElement.TryGetProperty("cwd", out var w) ? w.GetString() : null;
             bool idle = false;
+            int? pid = null;
             var turn = DateTime.MinValue;
             if (File.Exists(state))
             {
@@ -120,8 +133,9 @@ public sealed class ContextCycler(string? directory = null)
                 if (t.RootElement.TryGetProperty("at", out var at) &&
                     DateTime.TryParse(at.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var when))
                     turn = when;
+                if (t.RootElement.TryGetProperty("pid", out var pp) && pp.ValueKind == JsonValueKind.Number) pid = pp.GetInt32();
             }
-            return new SessionContext(sessionId, cwd, percent, idle, turn);
+            return new SessionContext(sessionId, cwd, percent, idle, turn) { Pid = pid };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
         {
