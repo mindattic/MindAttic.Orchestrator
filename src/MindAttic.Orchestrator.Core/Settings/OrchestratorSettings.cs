@@ -90,6 +90,9 @@ public sealed record OrchestratorSettings
 
     public Dictionary<string, int> RepoMaxSessions { get; init; } = [];
 
+    /// <summary>Repos <c>/autopilot</c> never starts agents in, even when named or their CLI is open.</summary>
+    public List<string> AutopilotSkip { get; init; } = [];
+
     /// <summary>Open tickets older than this many days with nobody on them are listed for grooming. 0 means never.</summary>
     public int GroomAfterDays { get; init; } = 30;
 

@@ -80,7 +80,17 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             : sessions.Load().Where(s => s.Pid is { } p && Alive(p) && !IsAgent(p))
                 .Select(s => RepoFor(s.Cwd, snapshot)).OfType<RepoStatus>()
                 .DistinctBy(r => r.Name, StringComparer.OrdinalIgnoreCase).ToList();
-        Repos = [.. repos.Select(r => r.Name).Order(StringComparer.OrdinalIgnoreCase)];
+        // Repos you've told it to skip, and ones whose own CLI you're working in by hand, get no new agents.
+        var byHand = ByHand(nowUtc, snapshot);
+        foreach (var r in repos.ToList())
+        {
+            var why = settings.AutopilotSkip.Contains(r.Name, StringComparer.OrdinalIgnoreCase) ? "you set it to be skipped (settings --autopilot-skip)"
+                : byHand.Contains(r.Name) ? "its CLI is being worked by hand" : null;
+            if (why is null) continue;
+            repos.Remove(r);
+            Tell(r.Name, $"autopilot: leaving {r.Name} alone: {why}");
+        }
+        Repos =[.. repos.Select(r => r.Name).Order(StringComparer.OrdinalIgnoreCase)];
         if (order is { Count: > 0 } && order.Where(n => !snapshot.Repos.Any(r => Same(r.Name, n))).ToList() is { Count: > 0 } unknown)
             Tell("unknown", $"autopilot: no repo named {string.Join(", ", unknown)} in the workspace");
 
@@ -263,6 +273,16 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         plan.Pace is { Mode: PaceMode.Over or PaceMode.Coast } p ? $"pace: {p.Note}"
         : snapshot.Budget is { Level: BudgetLevel.Over } b ? $"budget at {b.WorstPercent:0}%"
         : null;
+
+    /// <summary>How recently a CLI's last turn ended for its repo still to count as being worked by hand, so a pause
+    /// between your prompts doesn't hand the repo to autopilot.</summary>
+    public static readonly TimeSpan HandWindow = TimeSpan.FromMinutes(15);
+
+    /// <summary>The repos whose own CLI (not one of the agents) is mid-turn, or ended a turn within <see cref="HandWindow"/>.</summary>
+    internal HashSet<string> ByHand(DateTime nowUtc, Snapshot snapshot) =>
+        sessions.Load().Where(s => s.Pid is { } p && Alive(p) && !IsAgent(p) && (!s.Idle || nowUtc - s.TurnUtc < HandWindow))
+            .Select(s => RepoFor(s.Cwd, snapshot)?.Name).OfType<string>()
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The repo a CLI runs in: its root or a folder under it (never a worktree, which lives elsewhere).</summary>
     internal static RepoStatus? RepoFor(string? cwd, Snapshot snapshot)

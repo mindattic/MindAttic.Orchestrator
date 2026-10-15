@@ -58,12 +58,13 @@ public sealed class AutopilotTests
         },
     };
 
-    /// <summary>An open Claude CLI (process <paramref name="pid"/>) in <paramref name="cwd"/>.</summary>
-    private void Cli(int pid, string cwd)
+    /// <summary>An open Claude CLI (process <paramref name="pid"/>) in <paramref name="cwd"/>, idle since an hour ago
+    /// unless it's <paramref name="busy"/> or its turn ended at <paramref name="turn"/>.</summary>
+    private void Cli(int pid, string cwd, bool busy = false, DateTime? turn = null)
     {
         clis.Add(pid);
         File.WriteAllText(Path.Combine(sessions.Directory, "s" + pid + ".state.json"),
-            $$"""{"state":"idle","at":"{{Now:yyyy-MM-ddTHH:mm:ssZ}}","pid":{{pid}},"cwd":"{{cwd.Replace(@"\", @"\\")}}"}""");
+            $$"""{"state":"{{(busy ? "busy" : "idle")}}","at":"{{turn ?? Now.AddHours(-1):yyyy-MM-ddTHH:mm:ssZ}}","pid":{{pid}},"cwd":"{{cwd.Replace(@"\", @"\\")}}"}""");
     }
 
     private static Ticket T(string id) => new(id, "2026-10-01", "fix", "open", $"summary of {id}", "");
@@ -164,6 +165,30 @@ public sealed class AutopilotTests
         var off = Pilot();
         off.Tick(Plan(snap), snap, new(), Now);
         Assert.That((off.On, started.Count), Is.EqualTo((false, 1)));
+    }
+
+    [Test]
+    public void Repos_being_worked_by_hand_or_set_to_be_skipped_get_no_new_agents()
+    {
+        var snap = Snap(("A", [T("A-T1")]), ("B", [T("B-T1")]), ("C", [T("C-T1")]), ("D", [T("D-T1")]));
+        order = ["A", "B", "C", "D"];
+        Cli(100, @"D:\W\A\src", busy: true);                    // mid-turn
+        Cli(200, @"D:\W\B", turn: Now.AddMinutes(-5));          // between your prompts
+        Cli(300, @"D:\W\C", busy: true);
+        agents.Add(300);                                        // one of autopilot's own agents, not you
+        store.SaveAssignments([new Assignment("X-T1", "C", @"D:\WT\C\X-T1", "Claude", Now, true) { Pilot = 300, Log = "x.log" }]);
+        var pilot = Pilot();
+
+        var said = pilot.Tick(Paced(snap, 10), snap, new() { AutopilotSkip = ["d"] }, Now);
+        Assert.That(started.Select(s => s.Prompt[..19]), Is.EqualTo(new[] { "Work on ticket C-T1" }), "only C: its busy CLI is autopilot's own agent");
+        Assert.That(said, Has.Some.EqualTo("autopilot: leaving A alone: its CLI is being worked by hand"));
+        Assert.That(said, Has.Some.EqualTo("autopilot: leaving B alone: its CLI is being worked by hand"));
+        Assert.That(said, Has.Some.Contains("leaving D alone: you set it to be skipped"));
+        Assert.That(pilot.Repos, Is.EqualTo(new[] { "C" }));
+
+        pilot.Tick(Paced(snap, 10), snap, new() { AutopilotSkip = ["d"] }, Now.AddMinutes(11));
+        Assert.That(started.Select(s => s.Prompt[..19]), Is.EquivalentTo(new[] { "Work on ticket C-T1", "Work on ticket B-T1" }),
+            "B's CLI has been idle past the window, so autopilot takes it; A is still mid-turn");
     }
 
     [Test]

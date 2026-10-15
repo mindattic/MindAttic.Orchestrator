@@ -41,7 +41,9 @@ many more as the spare rate pays for (what fits the 5-hour target, minus what's 
 session's draw; agents started in the last 10 minutes count as drawing already), none while it's over, so
 the count scales up and down on its own (`--repo-sessions Repo=N` caps one repo if you want); new
 stories start only while the 5-hour pace can afford them, and the pace gate slows the running ones, so
-the window is used to its target without hitting the limit. Repos whose CLIs open later join in; an
+the window is used to its target without hitting the limit. Repos whose CLIs open later join in; a repo
+whose own CLI you're working in by hand (mid-turn, or a turn ended in the last 15 minutes) gets no new agents
+until it's been left idle, and `settings --autopilot-skip GTFO.EZ,Prose` keeps repos out altogether; an
 agent that ends without closing its ticket gives it back and alerts *Needs you*. `/autopilot off` ends it; `settings --autopilot false` pauses
 it. `orchestrator dryrun` shows what it would start. Everything else is on by default. To check on it:
 `orchestrator status` (sessions), `orchestrator budget` (percent, pace, hold), `orchestrator queue`.
@@ -108,7 +110,7 @@ The same core drives a CLI (`dotnet run --project src/MindAttic.Orchestrator.Cli
 | `dispatch <ID> [--provider] [--worktree]` | start a session on a ticket |
 | `release <ID> [--remove-worktree]` | put a ticket back in the queue; remove its (clean) worktree |
 | `daemon [--interval 15]` | keep the budget file and pace fresh, cycle context, and run autopilot without the dashboard open |
-| `settings [--max-sessions n] [--autopilot false] [--throttle-agents true] [--max-delay 300] [--provider X] [--stale-hours 12] [--quiet 22:00-07:00] [--repo-cap Repo=40] [--repo-sessions Repo=3] [--groom-days 30] [--notify URL] [--github-intake true]` | scheduler settings |
+| `settings [--max-sessions n] [--autopilot false] [--throttle-agents true] [--max-delay 300] [--provider X] [--stale-hours 12] [--quiet 22:00-07:00] [--repo-cap Repo=40] [--repo-sessions Repo=3] [--autopilot-skip A,B] [--groom-days 30] [--notify URL] [--github-intake true]` | scheduler settings |
 | `audit [--latest]` | convention drift and cross-repo duplication |
 | `block <ID> --by <ID>` / `reserve <ID> <tokens>` | make a ticket wait for others; set tokens aside for a ticket |
 | `dryrun` | what `/autopilot` would start right now, without starting anything |
