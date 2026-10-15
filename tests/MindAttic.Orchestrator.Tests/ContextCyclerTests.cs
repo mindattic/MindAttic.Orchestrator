@@ -179,6 +179,8 @@ public sealed class ContextCyclerTests
             Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd = repo, prompt = "x" });
             Assert.That(Gate(Stop(ask, Path.Combine(ws, "B"))), Is.Empty, "B has no open tickets");
             Assert.That(Gate(Stop(ask, ws)), Is.Empty, "the workspace root isn't a repo");
+            var worktree = Directory.CreateDirectory(Path.Combine(dir, "ws.worktrees", "A", "A-T2")).FullName;
+            Assert.That(Gate(Stop(ask, worktree)), Is.Empty, "an autopilot agent in its worktree works its one ticket");
             File.WriteAllText(Path.Combine(dir, ".claude", "session-context", "s.json"), """{"used_percentage": 90}""");
             Assert.That(Gate(Stop(ask)), Is.Empty, "past the cycle point it stops, so the context can be cycled");
 

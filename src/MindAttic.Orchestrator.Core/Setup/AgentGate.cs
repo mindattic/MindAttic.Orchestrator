@@ -54,6 +54,34 @@ public static class AgentGate
             return None
         """;
 
+    /// <summary>Python shared by both hooks (needs <c>os</c> and <c>Path</c>): the workspace and which repo a folder is in,
+    /// so the repo-window guard and keep-going can't disagree about it.</summary>
+    private const string WorkspacePython = """
+        WS = Path(os.environ.get("MINDATTIC_WORKSPACE", "D:/Projects/MindAttic"))
+        WT = WS.parent / (WS.name + ".worktrees")
+
+        def repo_of(path, worktrees=True):
+            # A repo checkout under the workspace, or (with worktrees) one of autopilot's worktrees of it; None elsewhere.
+            try:
+                p = Path(path).resolve()
+            except Exception:
+                return None
+            for base, in_ws in ((WS, True), (WT, False)):
+                if not (in_ws or worktrees):
+                    continue
+                try:
+                    rel = p.relative_to(base.resolve())
+                except Exception:
+                    continue
+                if not rel.parts:
+                    return None
+                name = rel.parts[0]
+                if in_ws and not (base / name / ".git").exists():
+                    return None
+                return name
+            return None
+        """;
+
     // The context gate acts on these when they're typed (UserPromptSubmit); the files make them real slash commands.
     internal const string UnthrottleCommand = """
         ---
@@ -133,26 +161,7 @@ public static class AgentGate
         # A repo's window works only that repo (MAO-T95): its own folder and worktrees, and its own tickets. Another
         # repo's files and tickets belong to that repo's window, autopilot, or the General (workspace-root) session.
         import os, re, sqlite3
-        WS = Path(os.environ.get("MINDATTIC_WORKSPACE", "D:/Projects/MindAttic"))
-        WT = WS.parent / (WS.name + ".worktrees")
-
-        def repo_of(path):
-            try:
-                p = Path(path).resolve()
-            except Exception:
-                return None
-            for base, in_ws in ((WS, True), (WT, False)):
-                try:
-                    rel = p.relative_to(base.resolve())
-                except Exception:
-                    continue
-                if not rel.parts:
-                    return None
-                name = rel.parts[0]
-                if in_ws and not (base / name / ".git").exists():
-                    return None
-                return name
-            return None
+        {{WorkspacePython}}
 
         def ticket_repo(ticket_id):
             try:
@@ -276,27 +285,25 @@ public static class AgentGate
         DIR = Path.home() / ".claude" / "session-context"
         PERCENT = {{{percent}}}
         KEEP_GOING = {{{(keepGoing ? "True" : "False")}}}
-        WS = Path(os.environ.get("MINDATTIC_WORKSPACE", "D:/Projects/MindAttic"))
+        {{{WorkspacePython}}}
+
         # A turn ending on one of these is asking for a go-ahead the orchestrator gives itself.
         ASKS = re.compile(r"\b(shall i|should i|do you want|want me to|would you like|ready for me to|ok(?:ay)? to (?:start|continue|proceed|go)|"
                           r"let me know (?:if|when|whether)|(?:go ahead|proceed|continue|carry on|keep going)\?)", re.I)
 
         def open_tickets(cwd):
-            # The repo checkout cwd is in (never an autopilot worktree, which lives outside the workspace) and its open tickets.
-            try:
-                rel = Path(cwd).resolve().relative_to(WS.resolve())
-            except Exception:
-                return None, []
-            if not rel.parts or not (WS / rel.parts[0] / ".git").exists():
+            # The repo checkout cwd is in (never an autopilot worktree: its agent works one ticket) and its open tickets.
+            repo = repo_of(cwd, worktrees=False)
+            if not repo:
                 return None, []
             try:
                 import sqlite3
                 db = sqlite3.connect(str(WS / "MindAttic.Workflow" / "data" / "workflow.db"))
-                rows = db.execute("SELECT id FROM tickets WHERE repo = ? COLLATE NOCASE AND status = 'open' ORDER BY ordinal", (rel.parts[0],)).fetchall()
+                rows = db.execute("SELECT id FROM tickets WHERE repo = ? COLLATE NOCASE AND status = 'open' ORDER BY ordinal", (repo,)).fetchall()
                 db.close()
-                return rel.parts[0], [r[0] for r in rows]
+                return repo, [r[0] for r in rows]
             except Exception:
-                return rel.parts[0], []
+                return repo, []
 
         def last_said(data):
             if data.get("last_assistant_message"):
