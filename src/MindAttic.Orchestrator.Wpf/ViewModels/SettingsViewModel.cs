@@ -9,8 +9,9 @@ public sealed class SettingsViewModel : ObservableObject
 {
     private readonly JsonStore store;
     private readonly Action saved;
-    private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "";
-    private bool autoDispatch, pacing;
+    private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "",
+        maxDelay = "", contextPercent = "", autoSubmitRepos = "";
+    private bool autoDispatch, pacing, throttleAgents, contextCycle;
 
     public SettingsViewModel(JsonStore store, Action saved)
     {
@@ -29,6 +30,13 @@ public sealed class SettingsViewModel : ObservableObject
     public bool AutoDispatch { get => autoDispatch; set => Set(ref autoDispatch, value); }
     public bool Pacing { get => pacing; set => Set(ref pacing, value); }
     public string PaceTarget { get => paceTarget; set => Set(ref paceTarget, value); }
+    public bool ThrottleAgents { get => throttleAgents; set => Set(ref throttleAgents, value); }
+    public string MaxDelay { get => maxDelay; set => Set(ref maxDelay, value); }
+    public bool ContextCycle { get => contextCycle; set => Set(ref contextCycle, value); }
+    public string ContextPercent { get => contextPercent; set => Set(ref contextPercent, value); }
+
+    /// <summary>Comma-separated repo names whose auto-dispatched tabs submit their prompt by themselves.</summary>
+    public string AutoSubmitRepos { get => autoSubmitRepos; set => Set(ref autoSubmitRepos, value); }
     public string Error { get => error; private set => Set(ref error, value); }
     public IReadOnlyList<string> Providers => Sessions.SessionControl.Providers;
     public string FilePath => System.IO.Path.Combine(store.Directory, "settings.json");
@@ -46,6 +54,11 @@ public sealed class SettingsViewModel : ObservableObject
         AutoDispatch = s.AutoDispatch;
         Pacing = s.Pacing;
         PaceTarget = s.PaceTargetPercent.ToString(CultureInfo.InvariantCulture);
+        ThrottleAgents = s.ThrottleAgents;
+        MaxDelay = s.MaxAgentDelaySeconds.ToString(CultureInfo.InvariantCulture);
+        ContextCycle = s.ContextCycle;
+        ContextPercent = s.ContextCyclePercent.ToString(CultureInfo.InvariantCulture);
+        AutoSubmitRepos = string.Join(", ", s.AutoSubmitRepos);
         Error = "";
     }
 
@@ -57,12 +70,16 @@ public sealed class SettingsViewModel : ObservableObject
         if (!int.TryParse(WarnPercent, out var warn) || warn is < 1 or > 100) { Error = "Warn at: 1 to 100."; return; }
         if (!int.TryParse(MaxSessions, out var max) || max is < 1 or > 50) { Error = "Max sessions: 1 to 50."; return; }
         if (!int.TryParse(PaceTarget, out var target) || target is < 1 or > 100) { Error = "Pace target: 1 to 100."; return; }
+        if (!int.TryParse(MaxDelay, out var delay) || delay is < 0 or > Setup.AgentGate.MaxHoldSeconds) { Error = $"Longest hold: 0 to {Setup.AgentGate.MaxHoldSeconds} seconds."; return; }
+        if (!int.TryParse(ContextPercent, out var cycleAt) || cycleAt is < 10 or > 95) { Error = "Cycle context at: 10 to 95."; return; }
 
         var s = store.LoadSettings();
         store.SaveSettings(s with
         {
             BlockBudget = block, WeeklyBudget = weekly, WeeklyReset = reset?.ToString(), WarnPercent = warn, MaxConcurrentSessions = max,
             DefaultProvider = Provider, AutoDispatch = AutoDispatch, Pacing = Pacing, PaceTargetPercent = target,
+            ThrottleAgents = ThrottleAgents, MaxAgentDelaySeconds = delay, ContextCycle = ContextCycle, ContextCyclePercent = cycleAt,
+            AutoSubmitRepos = [.. AutoSubmitRepos.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Distinct(StringComparer.OrdinalIgnoreCase)],
         });
         Load();
         saved();
