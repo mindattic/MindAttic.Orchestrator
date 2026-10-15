@@ -85,7 +85,8 @@ internal sealed class DryRunCommand : Command
         var lines = autopilot.Tick(plan, snapshot, s with { Autopilot = true }, DateTime.UtcNow, dryRun: true);
 
         if (!autopilot.On) { AnsiConsole.MarkupLine("[grey]/autopilot is off; type /autopilot in any CLI (optionally -repo=a,b).[/]"); return 0; }
-        if (autopilot.Repos.Count == 0) { AnsiConsole.MarkupLine("[grey]/autopilot is on, but no Claude CLI is open in a repo (or -repo named none).[/]"); return 0; }
+        foreach (var (repo, reason) in autopilot.LeftAlone) AnsiConsole.MarkupLine($"[grey]Leaving {Markup.Escape(repo)} alone: {Markup.Escape(reason)}.[/]");
+        if (autopilot.Repos.Count == 0) { AnsiConsole.MarkupLine("[grey]/autopilot is on, but no Claude CLI is open in a repo it may work (or -repo named none).[/]"); return 0; }
         AnsiConsole.MarkupLine($"/autopilot is on for {Markup.Escape(string.Join(", ", autopilot.Repos))}.");
         if (!s.Autopilot) AnsiConsole.MarkupLine("[yellow]Autopilot is paused (--autopilot true resumes); this is what it would do.[/]");
         if (autopilot.Paused is { } why) AnsiConsole.MarkupLine($"[yellow]Holding: {Markup.Escape(why)}[/]");

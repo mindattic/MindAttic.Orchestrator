@@ -221,6 +221,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("true (default): a CLI that ends its turn asking whether to go on while its repo has open tickets is told to carry on; false lets it ask.")]
         public bool? KeepGoing { get; init; }
 
+        [CommandOption("--hand-minutes <N>")]
+        [Description("Minutes after a repo's own CLI last ended a turn that autopilot still leaves the repo to you (default 15; 0: only while mid-turn).")]
+        public int? HandMinutes { get; init; }
+
         [CommandOption("--autopilot-skip <REPOS>")]
         [Description("Repos /autopilot never starts agents in, comma-separated: \"GTFO.EZ,Prose\"; \"none\" clears.")]
         public string? AutopilotSkip { get; init; }
@@ -280,6 +284,12 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { QuietHours = windows };
             changed = true;
         }
+        if (settings.HandMinutes is { } hand)
+        {
+            if (hand < 0) { AnsiConsole.MarkupLine("[red]--hand-minutes can't be negative.[/]"); return 1; }
+            s = s with { AutopilotHandMinutes = hand };
+            changed = true;
+        }
         if (settings.KeepGoing is { } keep)
         {
             s = s with { KeepGoing = keep };
@@ -309,6 +319,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (order is null ? "off (type /autopilot in any CLI)" : !s.Autopilot ? "[yellow]paused[/] (--autopilot true resumes)"
                 : order.Count == 0 ? "[green]on[/] for every open repo CLI" : $"[green]on[/] for the CLIs in {Markup.Escape(string.Join(", ", order))}") +
             (s.AutopilotSkip.Count > 0 ? $", skipping {Markup.Escape(string.Join(", ", s.AutopilotSkip))}" : "") +
+            $", leaving a repo to you {(s.AutopilotHandMinutes > 0 ? $"until its CLI has been idle {s.AutopilotHandMinutes} min" : "only while its CLI is mid-turn")}" +
             (s.KeepGoing ? " · CLIs keep going through their open tickets without asking" : " · CLIs may stop to ask between tickets"));
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display : "learned, or rolling 7 days")} · warn at {s.WarnPercent}%");
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +

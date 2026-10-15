@@ -252,7 +252,8 @@ public sealed partial class MainViewModel
             : autopilot.Repos.Count == 0 ? "Autopilot is on, but no Claude CLI is open in a repo it covers."
             : autopilot.Paused is { } why ? $"Autopilot is on for {string.Join(", ", autopilot.Repos)} but holding: {why}."
             : $"Autopilot is on for {string.Join(", ", autopilot.Repos)}, paced to the 5-hour window" + (autopilot.HeldElsewhere ? " (run by the background daemon)." : ".")) +
-        (autopilot.Working.Count == 0 ? "" : $" Working in the background: {string.Join(", ", autopilot.Working.Select(a => $"{a.TicketId} in {a.Repo}"))}.");
+        (autopilot.Working.Count == 0 ? "" : $" Working in the background: {string.Join(", ", autopilot.Working.Select(a => $"{a.TicketId} in {a.Repo}"))}.") +
+        (!autopilot.On || autopilot.LeftAlone.Count == 0 ? "" : $" Leaving alone: {string.Join(", ", autopilot.LeftAlone.Select(kv => $"{kv.Key} ({kv.Value})"))}.");
     public string QueueMessage { get => queueMessage; private set => Set(ref queueMessage, value); }
     public int QueueCount => Queue.Count(q => !q.IsAssigned);
 

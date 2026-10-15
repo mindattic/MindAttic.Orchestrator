@@ -177,7 +177,8 @@ public sealed class AutopilotTests
         Cli(300, @"D:\W\C", busy: true);
         agents.Add(300);                                        // one of autopilot's own agents, not you
         store.SaveAssignments([new Assignment("X-T1", "C", @"D:\WT\C\X-T1", "Claude", Now, true) { Pilot = 300, Log = "x.log" }]);
-        var pilot = Pilot();
+        var waiting = Path.Combine(dir, "waiting.json");
+        var pilot = Pilot(waiting: waiting);
 
         var said = pilot.Tick(Paced(snap, 10), snap, new() { AutopilotSkip = ["d"] }, Now);
         Assert.That(started.Select(s => s.Prompt[..19]), Is.EqualTo(new[] { "Work on ticket C-T1" }), "only C: its busy CLI is autopilot's own agent");
@@ -185,10 +186,15 @@ public sealed class AutopilotTests
         Assert.That(said, Has.Some.EqualTo("autopilot: leaving B alone: its CLI is being worked by hand"));
         Assert.That(said, Has.Some.Contains("leaving D alone: you set it to be skipped"));
         Assert.That(pilot.Repos, Is.EqualTo(new[] { "C" }));
+        Assert.That(pilot.LeftAlone.Keys, Is.EquivalentTo(new[] { "A", "B", "D" }), "the dashboard says which and why");
+        Assert.That(File.ReadAllText(waiting), Does.Contain("\"left_alone\":{").And.Contain("\"D\":\"you set it to be skipped"), "and so can the statusline");
 
-        pilot.Tick(Paced(snap, 10), snap, new() { AutopilotSkip = ["d"] }, Now.AddMinutes(11));
+        pilot.Tick(Paced(snap, 10), snap, new() { AutopilotSkip = ["d"], AutopilotHandMinutes = 10 }, Now.AddMinutes(1));
+        Assert.That(started, Has.Count.EqualTo(1), "with a 10-minute window B's pause of 6 minutes is still yours");
+        pilot.Tick(Paced(snap, 10), snap, new() { AutopilotSkip = ["d"], AutopilotHandMinutes = 10 }, Now.AddMinutes(6));
         Assert.That(started.Select(s => s.Prompt[..19]), Is.EquivalentTo(new[] { "Work on ticket C-T1", "Work on ticket B-T1" }),
             "B's CLI has been idle past the window, so autopilot takes it; A is still mid-turn");
+        Assert.That(pilot.LeftAlone.Keys, Is.EquivalentTo(new[] { "A", "D" }));
     }
 
     [Test]

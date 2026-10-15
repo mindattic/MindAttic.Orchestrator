@@ -94,6 +94,10 @@ public sealed record OrchestratorSettings
     /// open tickets is told to carry on (the context gate's Stop hook). False lets it stop and ask.</summary>
     public bool KeepGoing { get; init; } = true;
 
+    /// <summary>Minutes since a repo's own CLI last ended a turn that it still counts as worked by hand, so autopilot
+    /// leaves the repo alone through the pauses between your prompts. 0 counts only a CLI that's mid-turn.</summary>
+    public int AutopilotHandMinutes { get; init; } = 15;
+
     /// <summary>Repos <c>/autopilot</c> never starts agents in, even when named or their CLI is open.</summary>
     public List<string> AutopilotSkip { get; init; } = [];
 
