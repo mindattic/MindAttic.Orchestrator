@@ -218,6 +218,43 @@ public sealed class ContextCycler(string? directory = null)
         : [.. System.IO.Directory.EnumerateFiles(Directory, "unthrottled-*")
             .Select(f => int.TryParse(Path.GetFileName(f)["unthrottled-".Length..], out var pid) ? pid : 0).Where(IsClaude)];
 
+    /// <summary>Where the context gate logs each time it kept a CLI going (or let one stop that insisted).</summary>
+    public string KeepGoingLog => Path.Combine(Directory, "keep-going.jsonl");
+
+    private long? keepGoingRead;
+
+    /// <summary>What the context gate's keep-going did since the last call, one line each; the first call only
+    /// remembers where the log ends, so a restart doesn't repeat old entries.</summary>
+    public IReadOnlyList<string> KeepGoingSince()
+    {
+        try
+        {
+            if (!File.Exists(KeepGoingLog)) { keepGoingRead ??= 0; return []; }
+            using var f = new FileStream(KeepGoingLog, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            if (keepGoingRead is not { } from || from > f.Length) { keepGoingRead = f.Length; return []; }
+            f.Seek(from, SeekOrigin.Begin);
+            var text = new StreamReader(f).ReadToEnd();
+            var complete = text.LastIndexOf('\n') + 1; // a line still being written waits for the next call
+            keepGoingRead = from + System.Text.Encoding.UTF8.GetByteCount(text[..complete]);
+            return [.. text[..complete].Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(Describe).OfType<string>()];
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return []; }
+
+        static string? Describe(string line)
+        {
+            try
+            {
+                using var j = JsonDocument.Parse(line);
+                var r = j.RootElement;
+                string S(string name) => r.TryGetProperty(name, out var v) ? v.ToString() : "?";
+                return S("action") == "let stop"
+                    ? $"keep-going: let the CLI in {S("repo")} stop ({S("why")}, {S("open")} open); it stopped again without doing anything, so it likely needs you"
+                    : $"keep-going: told the CLI in {S("repo")} to carry on ({S("why")}, {S("open")} tickets still open)";
+            }
+            catch (JsonException) { return null; }
+        }
+    }
+
     /// <summary>The standing <c>/autopilot</c> order the context gate writes: the file is there while it's on.</summary>
     public const string AutopilotFile = "autopilot.order";
 

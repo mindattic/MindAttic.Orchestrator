@@ -368,28 +368,39 @@ public static class AgentGate
         state = load(state_file)
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         if event == "Stop":
-            # The orchestrator keeps development going without you: a turn that ends asking whether to go on while its
-            # repo still has open tickets is told to carry on. One that stops again straight after, without doing
-            # anything, is let go (something there really needs you), and so is one past the cycle point.
+            # The orchestrator keeps development going without you: a turn that ends asking whether to go on, or that
+            # closed a ticket and stopped, while its repo still has open tickets is told to carry on. One that stops
+            # again straight after without doing anything is let go (something there really needs you), and so is one
+            # past the cycle point. Each is logged to keep-going.jsonl, which the daemon reports.
             used = load(DIR / (sid + ".json")).get("used_percentage") or 0
             insisted = state.get("nudged") and not state.get("worked")
-            if KEEP_GOING and not insisted and not state.get("goal") and not state.get("warned") and used < PERCENT and ASKS.search(last_said(data)[-500:]):
-                repo, ids = open_tickets(data.get("cwd") or "")
-                if ids:
-                    state.update(nudged=True, worked=False)
-                    save(state_file, state)
-                    print(json.dumps({"decision": "block", "reason":
-                        "Don't stop to ask: MindAttic.Orchestrator keeps development going without the user. " + repo + " still has " +
-                        str(len(ids)) + " open ticket" + ("" if len(ids) == 1 else "s") + " (" + ", ".join(ids[:6]) + ("..." if len(ids) > 6 else "") +
-                        "). Finish and commit the one you're on, then start the next and keep going. End your turn only when they're "
-                        "done or you're blocked on a decision only the user can make, and then say plainly what it is."}))
-                    sys.exit(0)
-            state.pop("nudged", None)
-            state.pop("worked", None)
+            why = None
+            if KEEP_GOING and not state.get("goal") and not state.get("warned") and used < PERCENT:
+                why = "asked to go on" if ASKS.search(last_said(data)[-500:]) else "closed " + ", ".join(state["closed"]) if state.get("closed") else None
+            repo, ids = open_tickets(data.get("cwd") or "") if why else (None, [])
+            if ids:
+                try:
+                    with open(DIR / "keep-going.jsonl", "a", encoding="utf-8") as log:
+                        log.write(json.dumps({"at": now, "repo": repo, "session": sid, "why": why, "open": len(ids),
+                                              "action": "let stop" if insisted else "kept going"}) + "\n")
+                except Exception:
+                    pass
+            if ids and not insisted:
+                state.update(nudged=True, worked=False)
+                state.pop("closed", None)
+                save(state_file, state)
+                print(json.dumps({"decision": "block", "reason":
+                    "Don't stop: MindAttic.Orchestrator keeps development going without the user. " + repo + " still has " +
+                    str(len(ids)) + " open ticket" + ("" if len(ids) == 1 else "s") + " (" + ", ".join(ids[:6]) + ("..." if len(ids) > 6 else "") +
+                    "). Finish and commit the one you're on, then start the next and keep going. End your turn only when they're "
+                    "done or you're blocked on a decision only the user can make, and then say plainly what it is."}))
+                sys.exit(0)
+            for k in ("nudged", "worked", "closed"):
+                state.pop(k, None)
             state.update(state="idle", at=now, pid=cli_pid(), cwd=data.get("cwd"))
         elif event == "UserPromptSubmit":
-            state.pop("nudged", None)
-            state.pop("worked", None)
+            for k in ("nudged", "worked", "closed"):
+                state.pop(k, None)
             state.update(state="busy", at=now, warned=False, cwd=data.get("cwd"))
             typed = (data.get("prompt") or "").strip()
             prompt = typed.lower()
@@ -439,8 +450,16 @@ public static class AgentGate
             except Exception:
                 pass
         elif event == "PostToolUse":
+            touched = False
             if state.get("nudged") and not state.get("worked"):
-                state["worked"] = True  # it carried on after being told to
+                state["worked"] = touched = True  # it carried on after being told to
+            # A ticket closed this turn: stopping right after it, with more open, is a stop keep-going catches.
+            closed = re.search(r"\bworkflow(?:\.exe)?['\"]?\s+ticket\s+close\s+['\"]?([A-Z][A-Z0-9]*-T\d+)",
+                               str((data.get("tool_input") or {}).get("command") or ""))
+            if closed and closed.group(1) not in state.get("closed", []):
+                state["closed"] = state.get("closed", []) + [closed.group(1)]
+                touched = True
+            if touched:
                 save(state_file, state)
             used = load(DIR / (sid + ".json")).get("used_percentage") or 0
             if state.get("warned") or used < PERCENT or state.get("goal"):

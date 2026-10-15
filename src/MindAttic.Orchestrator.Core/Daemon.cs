@@ -74,6 +74,11 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                         (string.IsNullOrWhiteSpace(r.Process.CommandLine) ? "" : $" — was running: {r.Process.CommandLine}"));
 
                 cycler.PruneMarks();
+                foreach (var line in cycler.KeepGoingSince())
+                {
+                    Say(LogEventLevel.Information, line);
+                    if (line.Contains("let the CLI", StringComparison.Ordinal)) Alert("Needs you", line["keep-going: ".Length..]);
+                }
                 foreach (var line in cycler.Tick([.. snapshot.Repos.SelectMany(r => r.Hosts)], s, DateTime.UtcNow))
                 {
                     Say(LogEventLevel.Information, line);

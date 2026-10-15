@@ -157,6 +157,26 @@ public sealed class ContextCyclerTests
 
             Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd = repo, prompt = "x" });
             Assert.That(Gate(Stop("Done: the tests pass and it's pushed.")), Is.Empty, "a plain report isn't asking");
+
+            // Closing a ticket and stopping on a plain report, with more open, is caught too (MAO-T103).
+            var ctx = Path.Combine(dir, ".claude", "session-context");
+            var cycler = new ContextCycler(ctx);
+            Assert.That(cycler.KeepGoingSince(), Is.Empty, "the first look only finds where the log ends");
+            Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd = repo, prompt = "do A-T1" });
+            Gate(new { session_id = "s", hook_event_name = "PostToolUse", cwd = repo, tool_input = new { command = "& 'workflow' ticket close A-T1 --ref t" } });
+            Assert.That(Gate(Stop("A-T1 is closed and pushed.")), Does.Contain("\"block\"").And.Contain("A still has 2 open tickets"));
+            Assert.That(Gate(Stop("A-T1 is closed and pushed.")), Is.Empty, "stopped again straight away: let go");
+            Assert.That(cycler.KeepGoingSince(), Is.EqualTo(new[] { "keep-going: told the CLI in A to carry on (closed A-T1, 2 tickets still open)" }),
+                "the stop after it had nothing new to go on (the close was already acted on), so nothing more is logged");
+            Gate(new { session_id = "s", hook_event_name = "PostToolUse", cwd = repo, tool_input = new { command = "x" } });
+            Gate(Stop(ask));
+            Assert.That(Gate(Stop(ask)), Is.Empty);
+            Assert.That(cycler.KeepGoingSince(), Is.EqualTo(new[]
+            {
+                "keep-going: told the CLI in A to carry on (asked to go on, 2 tickets still open)",
+                "keep-going: let the CLI in A stop (asked to go on, 2 open); it stopped again without doing anything, so it likely needs you",
+            }));
+            Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd = repo, prompt = "x" });
             Assert.That(Gate(Stop(ask, Path.Combine(ws, "B"))), Is.Empty, "B has no open tickets");
             Assert.That(Gate(Stop(ask, ws)), Is.Empty, "the workspace root isn't a repo");
             File.WriteAllText(Path.Combine(dir, ".claude", "session-context", "s.json"), """{"used_percentage": 90}""");
