@@ -32,6 +32,72 @@ public sealed class TranscriptReaderTests
 
     private string File(string name = "s1.jsonl") => Path.Combine(dir, "D--Projects-X", name);
 
+    // The shape Claude Code writes when it refuses a turn at the limit (trimmed from a real transcript).
+    private static string LimitLine(string ts, string text) =>
+        System.Text.Json.JsonSerializer.Serialize(new
+        {
+            type = "assistant", timestamp = ts, sessionId = "s1", cwd = @"D:\Projects\X", error = "rate_limit", isApiErrorMessage = true,
+            message = new
+            {
+                id = Guid.NewGuid().ToString(), model = "<synthetic>", role = "assistant",
+                usage = new { input_tokens = 0, cache_creation_input_tokens = 0, cache_read_input_tokens = 0, output_tokens = 0 },
+                content = new[] { new { type = "text", text } },
+            },
+        });
+
+    private string Cache => Path.Combine(dir, "cache", "transcripts.json");
+
+    // Overwrites the bytes already read with spaces: only a reader that starts over would notice.
+    private void BlankReadBytes() =>
+        System.IO.File.WriteAllText(File(), new string(' ', (int)new FileInfo(File()).Length - 1) + "\n");
+
+    [Test]
+    public void A_restarted_reader_picks_up_where_the_last_one_stopped()
+    {
+        System.IO.File.WriteAllLines(File(), [Line("m1", "2026-10-13T12:00:00Z", 1, 10), Line("m2", "2026-10-13T12:01:00Z", 1, 20)]);
+        System.IO.File.SetLastWriteTimeUtc(File(), new DateTime(2026, 10, 13, 12, 1, 0, DateTimeKind.Utc));
+        new TranscriptReader(dir, Cache).Poll(Since);
+        BlankReadBytes();
+        System.IO.File.AppendAllLines(File(), [Line("m3", "2026-10-13T12:02:00Z", 1, 40)]);
+        var mtime = new DateTime(2026, 10, 13, 12, 2, 0, DateTimeKind.Utc);
+        System.IO.File.SetLastWriteTimeUtc(File(), mtime);
+
+        var s = new TranscriptReader(dir, Cache).Poll(Since).Single();
+
+        Assert.That(s.UsageSince(Since).Output, Is.EqualTo(70), "m1 and m2 from the cache, m3 read fresh");
+        Assert.That(s.Cwd, Is.EqualTo(@"D:\Projects\X"));
+        Assert.That(s.LastWriteUtc, Is.EqualTo(mtime), "growth while nobody watched isn't activity right now");
+    }
+
+    [Test]
+    public void A_later_window_trims_the_cache_and_an_earlier_one_reads_from_scratch()
+    {
+        System.IO.File.WriteAllLines(File(), [Line("m1", "2026-10-13T12:00:00Z", 1, 10), Line("m2", "2026-10-14T12:00:00Z", 1, 20)]);
+        new TranscriptReader(dir, Cache).Poll(Since);
+        BlankReadBytes();
+
+        var later = new TranscriptReader(dir, Cache).Poll(Since.AddDays(1)).Single();
+        var earlier = new TranscriptReader(dir, Cache).Poll(Since.AddDays(-1));
+
+        Assert.That(later.UsageSince(DateTime.MinValue).Output, Is.EqualTo(20), "m1 fell out of the window; m2 kept without rereading");
+        Assert.That(earlier, Is.Empty, "a window the cache doesn't cover is read from the file, which is blank now");
+    }
+
+    [Test]
+    public void A_limit_message_is_recorded_as_a_hit_not_a_response()
+    {
+        System.IO.File.WriteAllLines(File(), [
+            Line("m1", "2026-10-13T20:00:00Z", 5, 5),
+            LimitLine("2026-10-13T21:22:25Z", "You've hit your session limit · resets 6:40pm (America/Chicago)"),
+        ]);
+
+        var s = new TranscriptReader(dir).Poll(Since).Single();
+
+        Assert.That(s.Events, Has.Count.EqualTo(1), "the zero-usage synthetic message isn't a response");
+        Assert.That(s.Hits.Single(), Is.EqualTo(new LimitHit(
+            new DateTime(2026, 10, 13, 21, 22, 25, DateTimeKind.Utc), LimitKind.Session, new DateTime(2026, 10, 13, 23, 40, 0, DateTimeKind.Utc))));
+    }
+
     [Test]
     public void Counts_each_message_once_even_when_split_across_lines()
     {

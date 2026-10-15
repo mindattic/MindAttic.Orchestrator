@@ -13,11 +13,52 @@ It reads what already exists rather than adding new bookkeeping:
 | `\\.\pipe\mindattic-host-{provider}-{pid}` (MindAttic.Launcher) | live Launcher tabs, and a way to type into them |
 | `~/.claude/projects/**/*.jsonl` (Claude Code transcripts) | per-session activity and per-response token usage, read incrementally |
 
-## Run
+## Install
+
+There's no setup step. `MindAttic.Orchestrator.exe` is one self-contained file (no .NET needed):
+drop it anywhere and double-click it. The first run:
+
+1. copies itself to `C:\Apps\MindAttic.Orchestrator` (per-user `%LOCALAPPDATA%\Programs` if `C:\Apps`
+   isn't writable) and hands over to that copy;
+2. if the workspace (default `D:\Projects\MindAttic`) is missing or empty, asks once: **build one**
+   (pick an empty folder; it clones the workspace root repo, `mindattic/codex-standard`, then every repo
+   listed in its `docs\workspace-repos.json`, four at a time, with a progress window) or **point at one
+   that's already here**. Repos that fail (offline, no access) are listed; opening it again clones only
+   what's missing;
+3. registers the logon task `\MindAttic\Orchestrator\Orchestrator daemon` (the same exe with `--daemon`: headless,
+   no window, no time limit) and starts it;
+4. makes Start menu and desktop shortcuts, then opens the dashboard, which scans every repo and learns
+   your limits from the last month of transcripts.
+
+Every later start checks the same things and repairs only what's missing or points elsewhere, so a
+moved exe, a deleted shortcut or a dead daemon fixes itself. Double-clicking a newer copy upgrades in
+place (the running daemon and dashboard are stopped and restarted). `MindAttic.Orchestrator.exe --uninstall`
+removes the task and shortcuts.
+
+The daemon is what makes budgets and pacing always on: it keeps `~/.claude/rl-status.json` and the pace
+current, notices stale assignments, and auto-dispatches when that's on. Only one runs (a named mutex),
+and only one process auto-dispatches at a time (`dispatch.lock`): with the daemon running, an open
+dashboard shows proposals and leaves the dispatching to it.
+
+From source:
 
 ```powershell
-dotnet run --project src/MindAttic.Orchestrator.Wpf   # the dashboard: Repos, Queue and Audit views + Settings
+.\deploy.ps1          # build artifacts\MindAttic.Orchestrator.exe (+ the CLI in C:\Apps\MindAttic.Orchestrator\Cli), then install it as a double-click would
+.\deploy.ps1 -Launch  # same, then open the dashboard
+dotnet run --project src/MindAttic.Orchestrator.Wpf   # a dev build: never installs itself
 ```
+
+Every process logs through [MindAttic.Log](../MindAttic.Log), the workspace's shared schema, to its
+rolled-SQLite tier at `%LOCALAPPDATA%\MindAttic\MindAttic.Orchestrator\logs\MindAttic.Log.<yyyy-MM>.db`
+(open it with MindAttic.Log.Reader). The daemon records pace changes, holds, stale tickets, dispatches
+and failed refreshes; the dashboard records dispatches, releases and crashes; the CLI records crashes.
+Entries are tagged with a `Component` (`Daemon`, `Dashboard`, `Cli`) and a category.
+
+What's been read from the transcripts is cached in `%LOCALAPPDATA%\MindAttic\MindAttic.Orchestrator\transcripts.cache.json`
+(each file's read offset plus its parsed usage and limit hits; a few MB, saved at most once a minute),
+so a new process parses only what was written since: a CLI run takes under a second instead of ~4.
+When the 7-day window moves on at midnight, what fell out of it is trimmed rather than reread. Deleting
+the file is always safe; the next run rebuilds it.
 
 The same core drives a CLI (`dotnet run --project src/MindAttic.Orchestrator.Cli -- <command>`):
 
@@ -26,16 +67,25 @@ The same core drives a CLI (`dotnet run --project src/MindAttic.Orchestrator.Cli
 | `status [--all] [--json]` | every repo's state, sessions, open tickets, tokens today, budget line |
 | `start <Repo> [--provider] [--prompt]` | open a Launcher tab for a repo |
 | `send <Repo> "text"` | type text + Enter into that repo's Launcher tab(s) |
-| `budget [--block 20M] [--weekly 150M] [--weekly-reset "Mon 9:00"] [--warn 80]` | current 5-hour block and week; set limits (`0` clears, `none` makes the week rolling) |
-| `queue` / `bump <ID> [--by n]` | the cross-repo ticket queue and what's proposed next; reprioritize |
+| `budget [--block 20M] [--weekly 150M] [--weekly-reset "Mon 9:00"] [--warn 80] [--pace true] [--target 95] [--hits] [--week]` | current 5-hour block, week and pace, and Codex/Gemini usage; set limits (`0` clears back to learned, `none` drops the reset); `--hits` lists the limit hits the learned limits come from; `--week` charts the week day by day and projects it against the weekly limit |
+| `queue [--groom]` / `bump <ID> [--by n]` | the cross-repo ticket queue, what's proposed next, and why (estimate, stale, too big, blocked, reserved); `--groom` lists old untouched tickets; reprioritize |
 | `dispatch <ID> [--provider] [--worktree]` | start a session on a ticket |
 | `release <ID> [--remove-worktree]` | put a ticket back in the queue; remove its (clean) worktree |
-| `daemon [--interval 15]` | keep the budget file fresh and, if enabled, auto-dispatch without the dashboard open |
-| `settings [--max-sessions n] [--auto-dispatch true] [--provider X]` | scheduler settings |
+| `daemon [--interval 15]` | keep the budget file and pace fresh and, if enabled, auto-dispatch without the dashboard open |
+| `settings [--max-sessions n] [--auto-dispatch true] [--provider X] [--stale-hours 12] [--quiet 22:00-07:00] [--repo-cap Repo=40] [--repo-sessions Repo=3] [--groom-days 30] [--notify URL] [--github-intake true]` | scheduler settings |
 | `audit [--latest]` | convention drift and cross-repo duplication |
+| `block <ID> --by <ID>` / `reserve <ID> <tokens>` | make a ticket wait for others; set tokens aside for a ticket |
+| `dryrun` | what auto-dispatch would open right now, and where, without opening anything |
+| `show <ID> [--diff]` | a ticket end to end: its row, the sessions dispatched on it, and the commits that mention it |
+| `report [--weeks 4] [--csv FILE]` | uncached tokens by week and repo, by provider, and by ticket type |
+| `hygiene` | closed tickets that may not be done: no Ref cited, or a later ticket says it came back |
+| `intake [--dry-run]` | file GitHub issues labelled `orchestrator` and today's CI failures on main as tickets |
+| `workspace export` | write `docs\workspace-repos.json` in the workspace root repo from the repos on disk (commit and push it so new machines get them) |
+| `workspace build <folder> [--root URL] [--install-apps]` / `workspace install-apps` | clone the workspace root, then every repo it lists, into a folder; on a partial workspace, only what's missing |
 
 Starting sessions needs the deployed Launcher at `C:\Apps\MindAttic.Launcher\MindAttic.Launcher.exe`.
-Settings, assignments and the last audit live in `%APPDATA%\MindAttic\MindAttic.Orchestrator`.
+Settings, assignments, learned limits (`limits.json`) and the last audit live in
+`%APPDATA%\MindAttic\MindAttic.Orchestrator`.
 
 ## Phases
 
@@ -47,24 +97,100 @@ and *Quiet*. A toast and a taskbar flash fire when a repo goes Working → Needs
 the prompt, never auto-sent) and reply to a live Launcher tab from the detail pane.
 
 **2 · Budget.** Usage is grouped into 5-hour blocks (the window Claude's subscription limits reset
-on; the same convention as community tools like ccusage, since the real limit isn't exposed). The
-budget metric is *uncached* tokens (input + cache writes + output); cache reads are reported but
-excluded because they dominate raw totals. With a 5-hour budget set you get percent used, burn rate,
-the projected time you'd hit it, a warning toast, and `~/.claude/rl-status.json` kept current for the
-`rl-check.py` prompt hook. With no budget set, the block is compared to your busiest block in the
-last 7 days as context only: it never warns, and no limit file is written. The week starts at the reset day and
-time you set (local time, e.g. `Mon 9:00 AM`, matching when Claude's weekly limit restarts); with no
-reset set it's a rolling 7 days.
+on), starting at the first response after the previous block, rounded down to 10 minutes: that's
+where Claude Code's own reported resets land. The budget metric is *uncached* tokens (input + cache
+writes + output); cache reads are reported but excluded because they dominate raw totals.
+
+The limits are **learned**. Whenever Claude Code refuses a turn it writes `You've hit your session
+limit · resets 2pm (America/Chicago)` (or *weekly limit*) into the transcript. Each wall becomes one
+observation: the uncached tokens in that window up to the hit, plus the exact reset time. The learned
+limit is the median of the 5 most recent hits, so a raised limit takes over within a few hits. The
+first run reads the last 30 days to start from the hits you already have. While you're behind a
+wall, its reported reset replaces the estimated block end. A weekly hit's reset becomes the week's
+reset when you haven't set one. Spending past a learned limit with no wall means the limit went up,
+so it's retired until the next hit relearns it. A budget you set always overrides the learned one.
+The local count misses claude.ai and other machines, which makes the learned limit err low (pacing
+early) rather than high.
+
+With a limit (set or learned) you get percent used, burn rate, the projected time you'd hit it, a
+warning toast, and `~/.claude/rl-status.json` kept current for the `rl-check.py` prompt hook. With
+neither, the block is compared to your busiest block in the last 7 days as context only: it never
+warns, and no limit file is written. The week starts at the reset day and time you set (local time,
+e.g. `Mon 9:00 AM`), else the learned one, else it's a rolling 7 days.
+
+**Pacing** (on by default) aims to land on 95% of each limit right as it resets, instead of hitting
+the wall and waiting hours. For each window with a limit and a reset, the *sustainable rate* is what's
+left of the target divided by the hours to the reset; the tightest window governs. A session's cost
+is the last 30 minutes' burn divided by the sessions active in it, or with none running, your median
+10-minute session burn over the past week. The session cap is how many such sessions fit the
+sustainable rate:
+
+| Pace | When | Effect |
+| --- | --- | --- |
+| open | every slot fits | normal |
+| throttled | fewer than max fit | fewer new sessions; running ones aren't replaced as they finish |
+| coast | none fit, or the 95% target is spent | no new sessions |
+| over | at a limit (reported or counted) | no new sessions |
+
+Near a reset with budget left, the sustainable rate climbs and the cap opens back up, so the leftover
+gets used. The orchestrator can't slow a session that's already running, so while you're outrunning
+the window it adds `pace` and `pace_note` to `rl-status.json`. `rl-check.py` prints the note into each
+prompt: smaller steps, no subagents, skip optional verification. A note older than 10 minutes is
+ignored, so a stopped daemon doesn't leave stale advice behind. It never types into tabs.
 
 **3 · Scheduler.** Every open ticket across all repos in one queue: manual priority, then fixes
 before features before chores before docs, then oldest. Each refresh it proposes up to the free
-session slots (one per repo), and holds when the slots are full or the budget passes the warn line.
+session slots (one per repo) under the pace's session cap. It holds when the slots are full, the pace
+is coasting or over, or (with pacing off or nothing to pace against) the budget passes the warn line.
 Proposals wait for a click by default; *auto-dispatch* (Settings) opens one per minute by itself.
 Either way the tab opens with the ticket pre-filled and unsent, and the prompt tells the agent to
 finish with `workflow ticket close <ID> --repo <Repo>`. A ticket for a repo that already has a session
 goes into a git worktree under `D:\Projects\MindAttic.worktrees\<Repo>\<ID>` on branch `orch/<id>`, so
 two agents never share a checkout. When the ticket closes, the queue offers to remove the worktree
 (git refuses if it has uncommitted changes; the branch is always kept).
+
+A dispatched ticket stays assigned while there's any sign of life where it was dispatched: a transcript
+written under its directory, or a Launcher tab still open there. After `StaleAfterHours` (default 12;
+`settings --stale-hours`, 0 never) of neither, the session evidently ended without closing the ticket,
+so it goes back in the queue at its normal place, marked *stale*. The queue, `orchestrator queue` and
+the daemon log show it. Starting it again reuses its worktree, where the partial work is, and replaces
+the old assignment.
+
+**Ticket costs.** A dispatched session is tied to its ticket by the prompt the scheduler writes ("Work on
+ticket ID (type)") or by its worktree folder, so the orchestrator learns what tickets cost: every
+session's uncached tokens, kept per session for 180 days in `ticket-costs.json`. Each queued ticket
+gets an estimate: the median cost of the same type in the same repo (3+ done), else the same type, else
+all tickets. Proposals show it (`~1.2M (median of 5 fix tickets in Prose)`). When pacing is on and the
+estimate is more than what's left before the reset, the ticket isn't proposed but listed as *too big
+for now*: split it, or let it wait for the reset rather than run out of room halfway.
+
+**Steering the queue.** `orchestrator block X-T2 --by X-T1` (or "blocked by X-T1" in a ticket's summary)
+keeps a ticket out of proposals until its blockers close. `orchestrator reserve X-T5 2M` sets tokens aside:
+that ticket is proposed first and may start while pacing coasts (never past a limit), and everything
+else paces against what's left. `settings --quiet 22:00-07:00` pauses auto-dispatch in those hours.
+`settings --repo-cap Prose=40` stops proposing work in a repo once it has spent 40% of the 5-hour limit
+in the current block; `--repo-sessions Prose=3` lets a repo run 3 sessions at once (default 2: the repo
+plus a worktree). A non-Claude default provider holds at 90% of its own reported 5-hour limit. Proposals
+in a repo that shares duplicated code (per the last audit) with a repo that has a session say so, since
+two agents fixing the same copied code is how conflicting edits happen. `queue --groom` lists open
+tickets over 30 days old that nobody is on. `orchestrator dryrun` prints what auto-dispatch would open
+right now, and where, without opening anything.
+
+**Watching.** The daemon also flags a session that keeps repeating the identical tool call (5 of its last
+12, still writing) as *looks stuck*: in its log, as a dashboard toast and in `orchestrator status`. It
+audits the workspace every `AuditEveryHours` (24) and reports drift or duplication that's new since the
+last audit. With `settings --notify https://ntfy.sh/<topic>` (or any webhook that takes a plain-text
+POST), the moments worth leaving the desk for go to your phone: an agent finished and is waiting on you,
+pacing coasts or hits a limit, a session looks stuck, a ticket went stale, the audit found something.
+With `settings --github-intake true` it files GitHub issues labelled `orchestrator` and CI failures on
+main as tickets every hour (once each, marked `GH#n` / `CI#id`; nothing is written back to GitHub).
+
+**Dashboard extras.** A tray icon shows budget, pace and who needs you; its menu opens the dashboard,
+pauses or resumes auto-dispatch, starts the next proposal, jumps to a waiting repo, and shows an
+always-on-top HUD strip. Minimizing hides the window to the tray. Opening it after an hour or more
+away starts with a *While you were away* summary. A finished ticket's *Details* shows its sessions and
+commits. Usage is kept by day for a year (`usage-history.json`), so `report` and the week projection
+reach past the 7 days of transcripts.
 
 **4 · Audit.** *Drift*: for each agent file most repos share (`.claude/commands`, hooks, skills,
 `.prose/commands`, `AGENTS.md`, `CLAUDE.md`), the version most repos have is canonical (repo name and
@@ -77,9 +203,18 @@ files across repos, clusters them, and suggests a home (`mindattic-agent-standar
 
 ## Limits
 
-- Token usage and budgets are Claude Code only; Codex/Gemini/Kimi sessions show as Launcher tabs but
-  aren't in the totals.
+- Budgets and pacing are Claude's (its limits are learned from Claude Code's limit hits). Codex
+  (`~/.codex/sessions`) and Gemini CLI (`~/.gemini/tmp/*/chats`) usage counts toward repo activity and
+  per-repo totals and is shown per provider, with Codex's own 5-hour/weekly percentages; Kimi writes no
+  local session log, so its sessions show as Launcher tabs but aren't counted.
 - A session started outside the Launcher is tracked and counted but can't be typed into.
 - Claude Code prunes transcripts after about 30 days; the budget history window is 7 days, which
   always covers the current week.
-- The budget file only updates while the dashboard or `orchestrator daemon` is running.
+- The budget file only updates while the daemon or the dashboard is running, so pacing only steers
+  while one of them is; the logon task keeps the daemon up, and opening the dashboard restarts it if it died.
+- Building a workspace clones the repos; it doesn't install the other apps (Launcher etc.; MAO-T44).
+  The repo list is only as current as the last `workspace export` that was pushed.
+- Pacing advice reaches a running agent only at its next prompt (`rl-check.py` is a prompt hook), not
+  mid-turn.
+- Learned limits are in uncached tokens, and the token-to-limit ratio shifts with the model mix, so
+  they're estimates. The 5 most recent hits keep them current.

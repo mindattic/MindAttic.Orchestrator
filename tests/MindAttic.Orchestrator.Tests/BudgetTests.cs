@@ -13,14 +13,16 @@ public sealed class BudgetTests
         new(Day.AddHours(hour), new TokenUsage(0, 0, 1_000_000, output));
 
     [Test]
-    public void Blocks_start_on_the_hour_and_last_five_hours()
+    public void Blocks_start_on_the_ten_minutes_before_the_first_message_and_last_five_hours()
     {
-        var blocks = BudgetCalculator.Blocks([E(9.5, 10), E(13.9, 20), E(14.1, 30), E(20, 40)]);
+        // 9:33, 14:27, 14:33, 20:00
+        var blocks = BudgetCalculator.Blocks([E(9.55, 10), E(14.45, 20), E(14.55, 30), E(20, 40)]);
 
         Assert.That(blocks, Has.Count.EqualTo(3));
-        Assert.That(blocks[0].StartUtc, Is.EqualTo(Day.AddHours(9)));
-        Assert.That(blocks[0].Usage.Output, Is.EqualTo(30), "9:30 and 13:54 share the 9:00-14:00 block");
-        Assert.That(blocks[1].StartUtc, Is.EqualTo(Day.AddHours(14)));
+        Assert.That(blocks[0].StartUtc, Is.EqualTo(Day.AddHours(9.5)), "Claude Code's resets land on 10-minute marks, not the hour");
+        Assert.That(blocks[0].EndUtc, Is.EqualTo(Day.AddHours(14.5)));
+        Assert.That(blocks[0].Usage.Output, Is.EqualTo(30), "9:33 and 14:27 share the 9:30-14:30 block");
+        Assert.That(blocks[1].StartUtc, Is.EqualTo(Day.AddHours(14.5)));
         Assert.That(blocks[2].Usage.Output, Is.EqualTo(40));
     }
 

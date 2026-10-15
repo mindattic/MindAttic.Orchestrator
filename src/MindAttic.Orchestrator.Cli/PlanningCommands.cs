@@ -1,0 +1,129 @@
+using System.ComponentModel;
+using MindAttic.Orchestrator;
+using MindAttic.Orchestrator.Scheduling;
+using MindAttic.Orchestrator.Settings;
+using Spectre.Console;
+using Spectre.Console.Cli;
+
+internal sealed class BlockCommand : Command<BlockCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandArgument(0, "<TICKET>")]
+        public string Ticket { get; init; } = "";
+
+        [CommandOption("--by <TICKET>")]
+        [Description("The ticket it waits for (repeatable).")]
+        public string[] By { get; init; } = [];
+
+        [CommandOption("--clear")]
+        public bool Clear { get; init; }
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        var store = new JsonStore();
+        var s = store.LoadSettings();
+        var map = new Dictionary<string, List<string>>(s.BlockedBy, StringComparer.Ordinal);
+        if (settings.Clear) map.Remove(settings.Ticket);
+        else map[settings.Ticket] = [.. (map.GetValueOrDefault(settings.Ticket) ?? []).Concat(settings.By).Distinct(StringComparer.Ordinal)];
+        store.SaveSettings(s with { BlockedBy = map });
+        AnsiConsole.MarkupLine(map.GetValueOrDefault(settings.Ticket) is { Count: > 0 } by
+            ? $"{settings.Ticket} waits for {string.Join(", ", by)}."
+            : $"{settings.Ticket} waits for nothing set by hand (a \"blocked by\" in its summary still counts).");
+        return 0;
+    }
+}
+
+internal sealed class ReserveCommand : Command<ReserveCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandArgument(0, "<TICKET>")]
+        public string Ticket { get; init; } = "";
+
+        [CommandArgument(1, "<TOKENS>")]
+        [Description("Uncached tokens to set aside, like 2M; 0 releases the reservation.")]
+        public string Tokens { get; init; } = "";
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        if (!TokenText.TryParse(settings.Tokens, out var tokens)) { AnsiConsole.MarkupLine("[red]Tokens: a number like 2M, 500k or 0.[/]"); return 1; }
+        var store = new JsonStore();
+        var s = store.LoadSettings();
+        var map = new Dictionary<string, long>(s.Reservations, StringComparer.Ordinal);
+        if (tokens <= 0) map.Remove(settings.Ticket); else map[settings.Ticket] = tokens;
+        store.SaveSettings(s with { Reservations = map });
+        AnsiConsole.MarkupLine(tokens > 0
+            ? $"{settings.Ticket} has {Formatting.Tokens(tokens)} reserved: it's proposed first, and everything else paces against what's left after it."
+            : $"{settings.Ticket}'s reservation is released.");
+        return 0;
+    }
+}
+
+/// <summary>What auto-dispatch would do right now, without opening anything.</summary>
+internal sealed class DryRunCommand : Command
+{
+    public override int Execute(CommandContext context)
+    {
+        var (_, store, _, plan) = Ctx.Load();
+        var s = store.LoadSettings();
+        using var lease = new DispatchLease(store.Directory);
+        var quiet = QuietHours.Active(s.QuietHours, DateTime.Now);
+
+        AnsiConsole.MarkupLine(!s.AutoDispatch ? "[grey]Auto-dispatch is off, so nothing would open by itself; this is what it would do if it were on.[/]"
+            : quiet is not null ? $"[yellow]Quiet hours ({Markup.Escape(quiet)}): auto-dispatch is paused.[/]"
+            : !lease.TryAcquire() ? "[grey]Another orchestrator (the daemon) holds auto-dispatch; it would do this:[/]"
+            : "Auto-dispatch would do this:");
+        if (plan.Hold is not null) AnsiConsole.MarkupLine($"[yellow]Nothing opens: {Markup.Escape(plan.Hold)}[/]");
+        var minute = 0;
+        foreach (var p in plan.Proposals)
+        {
+            var dir = p.UseWorktree ? Path.Combine(s.WorktreeRoot, p.Item.Repo, p.Item.Id) : p.Item.RepoPath;
+            AnsiConsole.MarkupLine($"  {(minute == 0 ? "now" : $"+{minute} min")}: open {s.DefaultProvider} on [bold]{p.Item.Id}[/] in {Markup.Escape(dir)}" +
+                (p.UseWorktree ? $" (branch {Dispatcher.BranchFor(p.Item.Id)})" : "") + $" [grey]({Markup.Escape(p.Reason)})[/]");
+            minute++;
+        }
+        if (plan.Proposals.Count == 0 && plan.Hold is null) AnsiConsole.MarkupLine("[grey]Nothing is ready to start.[/]");
+        AnsiConsole.MarkupLine("[grey]One tab a minute, prompt pre-filled and unsent. Nothing was opened.[/]");
+        return 0;
+    }
+}
+
+/// <summary>File GitHub issues labelled "orchestrator" and today's CI failures on main as tickets, once.</summary>
+internal sealed class IntakeCommand : Command<IntakeCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandOption("--dry-run")]
+        [Description("Show what would be filed without writing any USER_STORIES.md.")]
+        public bool DryRun { get; init; }
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        var filed = Daemon.Intake(OrchestratorOptions.Load().WorkspaceRoot, settings.DryRun).ToList();
+        foreach (var (repo, t) in filed)
+            AnsiConsole.MarkupLine($"{(settings.DryRun ? "would file" : "filed")} [bold]{t.Id}[/] in {Markup.Escape(repo)} ({t.Type}): {Markup.Escape(t.Summary)}");
+        AnsiConsole.MarkupLine(filed.Count == 0 ? "[grey]Nothing new on GitHub (issues labelled 'orchestrator', CI failures on main in the last day).[/]"
+            : $"[grey]{filed.Count} ticket{(filed.Count == 1 ? "" : "s")}{(settings.DryRun ? " would be filed; nothing was written" : " filed")}.[/]");
+        return 0;
+    }
+}
+
+internal static class TokenText
+{
+    /// <summary>20000000, 20M, 1.5B, 500k.</summary>
+    public static bool TryParse(string text, out long value)
+    {
+        value = 0;
+        var t = text.Trim().Replace(",", "").Replace("_", "");
+        if (t.Length == 0) return false;
+        var scale = char.ToUpperInvariant(t[^1]) switch { 'K' => 1e3, 'M' => 1e6, 'B' => 1e9, _ => 1 };
+        if (scale != 1) t = t[..^1];
+        if (!double.TryParse(t, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var n) || n < 0) return false;
+        value = (long)(n * scale);
+        return true;
+    }
+}

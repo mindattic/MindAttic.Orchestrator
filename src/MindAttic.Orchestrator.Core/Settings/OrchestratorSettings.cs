@@ -6,6 +6,10 @@ namespace MindAttic.Orchestrator.Settings;
 /// <summary>What you tell the orchestrator. Everything has a working default.</summary>
 public sealed record OrchestratorSettings
 {
+    /// <summary>The folder holding every repo. Null uses MindAttic.Workflow's default; the first run
+    /// asks for one when that doesn't exist on this machine.</summary>
+    public string? WorkspaceRoot { get; init; }
+
     /// <summary>Uncached tokens (input + cache write + output) allowed per 5-hour usage block.
     /// Null measures blocks against your own peak block in the last 7 days instead.</summary>
     public long? BlockBudget { get; init; }
@@ -17,8 +21,16 @@ public sealed record OrchestratorSettings
     /// Null means the week is a rolling 7 days.</summary>
     public string? WeeklyReset { get; init; }
 
-    /// <summary>Percent of a budget at which the dashboard warns and the scheduler stops proposing.</summary>
+    /// <summary>Percent of a budget at which the dashboard warns. Without pacing, the scheduler also stops proposing here.</summary>
     public int WarnPercent { get; init; } = 80;
+
+    /// <summary>On: with a limit to pace against (set or learned), the scheduler caps sessions so
+    /// spend lands on <see cref="PaceTargetPercent"/> at the reset instead of holding at the warn line.</summary>
+    public bool Pacing { get; init; } = true;
+
+    /// <summary>How much of each limit pacing aims to use by the reset; the rest is margin for usage
+    /// the orchestrator can't see (claude.ai, other machines).</summary>
+    public int PaceTargetPercent { get; init; } = 95;
 
     /// <summary>Sessions the scheduler will fill up to (working + waiting both occupy a slot).</summary>
     public int MaxConcurrentSessions { get; init; } = 4;
@@ -27,11 +39,51 @@ public sealed record OrchestratorSettings
     /// (prompt pre-filled, never submitted) when a slot is free and the budget allows.</summary>
     public bool AutoDispatch { get; init; }
 
+    /// <summary>Hours without a transcript write or open tab where a ticket was dispatched before it
+    /// goes back in the queue as stale. 0 keeps assignments until the ticket closes or is released.</summary>
+    public int StaleAfterHours { get; init; } = 12;
+
     public string DefaultProvider { get; init; } = "Claude";
 
     /// <summary>Worktrees for concurrent tickets live here, outside the workspace root so they never
     /// show up as repos of their own.</summary>
     public string WorktreeRoot { get; init; } = @"D:\Projects\MindAttic.worktrees";
+
+    /// <summary>Percent of the 5-hour limit one repo may spend in a block before it gets no new sessions
+    /// (repo name → percent), so one greedy repo can't eat the block. Missing means no cap.</summary>
+    public Dictionary<string, int> RepoBudgetPercent { get; init; } = [];
+
+    /// <summary>For a provider other than Claude: its own reported 5-hour used percent at which dispatching to it holds. 0 means never.</summary>
+    public int ProviderCapPercent { get; init; } = 90;
+
+    /// <summary>Uncached tokens set aside for a ticket (ticket → tokens): it's proposed first and may start
+    /// while pacing coasts, and everything else paces against what's left after it.</summary>
+    public Dictionary<string, long> Reservations { get; init; } = [];
+
+    /// <summary>Local-time windows when auto-dispatch pauses, like "22:00-07:00". Manual starts still work.</summary>
+    public List<string> QuietHours { get; init; } = [];
+
+    /// <summary>Ticket → the tickets it waits for. A summary saying "blocked by X-T1" counts too.</summary>
+    public Dictionary<string, List<string>> BlockedBy { get; init; } = [];
+
+    /// <summary>Sessions one repo may run at once (the repo itself plus worktrees), unless <see cref="RepoMaxSessions"/> says otherwise.</summary>
+    public int MaxSessionsPerRepo { get; init; } = 2;
+
+    public Dictionary<string, int> RepoMaxSessions { get; init; } = [];
+
+    /// <summary>Open tickets older than this many days with nobody on them are listed for grooming. 0 means never.</summary>
+    public int GroomAfterDays { get; init; } = 30;
+
+    /// <summary>Where alerts go off the desktop: a URL that takes a plain-text POST, like an ntfy.sh topic
+    /// (https://ntfy.sh/your-topic) for phone pushes. Null sends nothing.</summary>
+    public string? NotifyUrl { get; init; }
+
+    /// <summary>Hours between audits the daemon runs by itself (it alerts on anything new). 0 means only on demand.</summary>
+    public int AuditEveryHours { get; init; } = 24;
+
+    /// <summary>Off by default, since it writes tickets into every repo's log: hourly, file GitHub issues
+    /// labelled "orchestrator" and CI runs that failed on main as tickets (see <see cref="Tickets.GitHubIntake"/>).</summary>
+    public bool GitHubIntake { get; init; }
 
     /// <summary>Manual priority per ticket ID; higher runs sooner. Missing means 0.</summary>
     public Dictionary<string, int> Priorities { get; init; } = new(StringComparer.Ordinal);
@@ -74,6 +126,13 @@ public sealed class JsonStore(string? directory = null)
     public void SaveSettings(OrchestratorSettings s) => Save("settings", s);
     public List<Assignment> LoadAssignments() => Load<List<Assignment>>("assignments");
     public void SaveAssignments(List<Assignment> a) => Save("assignments", a);
+    public bool HasLimits => File.Exists(PathOf("limits"));
+    public List<Budget.LimitObservation> LoadLimits() => Load<List<Budget.LimitObservation>>("limits");
+    public void SaveLimits(List<Budget.LimitObservation> o) => Save("limits", o);
+    public List<Budget.DayUsage> LoadUsageHistory() => Load<List<Budget.DayUsage>>("usage-history");
+    public void SaveUsageHistory(List<Budget.DayUsage> d) => Save("usage-history", d);
+    public List<Budget.SessionCost> LoadTicketCosts() => Load<List<Budget.SessionCost>>("ticket-costs");
+    public void SaveTicketCosts(List<Budget.SessionCost> c) => Save("ticket-costs", c);
 
     private string PathOf(string name) => Path.Combine(Directory, name + ".json");
 }

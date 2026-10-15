@@ -135,6 +135,109 @@ public sealed class SchedulerTests
         Assert.That(auto.Tick(plan, on, now.AddSeconds(10)), Is.Null, "paced");
     }
 
+    private const string Worktree = @"D:\Projects\MindAttic.worktrees\A\A-T1";
+
+    private static Snapshot Activity(DateTime now, DateTime? transcriptAt = null, bool tabOpen = false) =>
+        new(now, [new RepoStatus("A", @"D:\W\A", RepoState.Dormant,
+            tabOpen ? [new HostSession("Claude", 1, "pipe", Worktree + @"\src")] : [],
+            transcriptAt is { } at ? [new TranscriptSession("s", Worktree, at, default, null)] : [],
+            [T("A-T1"), T("A-T2")], transcriptAt, default)], []);
+
+    private static readonly Assignment Quiet =
+        new("A-T1", "A", Worktree, "Claude", DateTime.UtcNow.AddHours(-20), Worktree: true);
+
+    [Test]
+    public void A_ticket_whose_session_went_quiet_goes_back_in_the_queue_and_back_to_its_worktree()
+    {
+        var now = DateTime.UtcNow;
+        var plan = Scheduler.Plan(Activity(now, transcriptAt: now.AddHours(-13)), new OrchestratorSettings(), [Quiet]);
+
+        var item = plan.Stale.Single();
+        Assert.That(item.Id, Is.EqualTo("A-T1"));
+        Assert.That(item.IsAssigned, Is.False);
+        Assert.That(item.StaleSinceUtc, Is.EqualTo(now.AddHours(-13)), "the last sign of life, not the dispatch");
+        var proposal = plan.Proposals.Single();
+        Assert.That(proposal.Item.Id, Is.EqualTo("A-T1"), "it keeps its place in line rather than sinking");
+        Assert.That(proposal.UseWorktree, Is.True, "its partial work is in the worktree");
+        Assert.That(proposal.Reason, Does.Contain("went quiet"));
+    }
+
+    [Test]
+    public void Recent_work_or_an_open_tab_keeps_the_assignment()
+    {
+        var now = DateTime.UtcNow;
+
+        var working = Scheduler.Plan(Activity(now, transcriptAt: now.AddHours(-2)), new OrchestratorSettings(), [Quiet]);
+        var tabOpen = Scheduler.Plan(Activity(now, transcriptAt: now.AddHours(-30), tabOpen: true), new OrchestratorSettings(), [Quiet]);
+        var off = Scheduler.Plan(Activity(now), new OrchestratorSettings { StaleAfterHours = 0 }, [Quiet]);
+
+        Assert.That(working.Stale, Is.Empty);
+        Assert.That(tabOpen.Stale, Is.Empty, "a tab left open is you coming back to it");
+        Assert.That(off.Stale, Is.Empty);
+        Assert.That(working.Proposals.Single().Item.Id, Is.EqualTo("A-T2"));
+    }
+
+    [Test]
+    public void A_worktree_git_already_removed_counts_as_removed_and_releases_its_ticket()
+    {
+        // Found live: with the agent's tab still open in the worktree, git unregisters it and deletes
+        // its files but Windows keeps the folder, so `git worktree remove` fails on an empty husk.
+        var root = Path.Combine(Path.GetTempPath(), "orch-wtgone-" + Guid.NewGuid().ToString("N"));
+        var repo = Path.Combine(root, "repo");
+        Directory.CreateDirectory(repo);
+        try
+        {
+            Run(repo, "init", "-q");
+            File.WriteAllText(Path.Combine(repo, "a.txt"), "a");
+            Run(repo, "add", ".");
+            Run(repo, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init");
+            var wt = Path.Combine(root, "wt", "X-T1");
+            Assert.That(Dispatcher.EnsureWorktree(repo, wt, "orch/x-t1").Ok);
+            Run(repo, "worktree", "remove", wt);
+            Directory.CreateDirectory(wt); // the folder Windows wouldn't let go of
+
+            var store = new JsonStore(Path.Combine(root, "store"));
+            var a = new Assignment("X-T1", "repo", wt, "Claude", DateTime.UtcNow, Worktree: true);
+            store.SaveAssignments([a]);
+            var r = new Dispatcher(new MindAttic.Orchestrator.Sessions.SessionControl(new OrchestratorOptions()), store).RemoveWorktree(a, repo);
+
+            Assert.That(r.Ok, Is.True, r.Message);
+            Assert.That(store.LoadAssignments(), Is.Empty, "released, so the queue stops offering it");
+            Assert.That(Directory.Exists(wt), Is.False, "the empty folder goes too when nothing holds it");
+        }
+        finally
+        {
+            foreach (var f in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)) File.SetAttributes(f, FileAttributes.Normal);
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Test]
+    public void Only_one_process_auto_dispatches_and_the_next_takes_over_when_it_exits()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "orch-lease-" + Guid.NewGuid().ToString("N"));
+        var store = new JsonStore(dir);
+        Dispatcher Disp() => new(new MindAttic.Orchestrator.Sessions.SessionControl(new OrchestratorOptions { LauncherExe = @"Z:\nope.exe" }), store);
+        var plan = Scheduler.Plan(Snap(null, Repo("A", RepoState.Dormant, T("A-T1"))), new OrchestratorSettings(), []);
+        var on = new OrchestratorSettings { AutoDispatch = true };
+        try
+        {
+            using var daemonLease = new DispatchLease(dir);
+            using var dashboardLease = new DispatchLease(dir);
+            var daemon = new AutoDispatch(Disp(), lease: daemonLease);
+            var dashboard = new AutoDispatch(Disp(), lease: dashboardLease);
+
+            Assert.That(daemon.Tick(plan, on, DateTime.UtcNow), Is.Not.Null, "the first to ask dispatches");
+            Assert.That(dashboard.Tick(plan, on, DateTime.UtcNow), Is.Null);
+            Assert.That(dashboard.HeldElsewhere, Is.True);
+
+            daemonLease.Dispose(); // the daemon exits
+            Assert.That(dashboard.Tick(plan, on, DateTime.UtcNow), Is.Not.Null, "the lease is free again");
+            Assert.That(dashboard.HeldElsewhere, Is.False);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
     private static string Run(string dir, params string[] args)
     {
         var psi = new ProcessStartInfo("git") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };

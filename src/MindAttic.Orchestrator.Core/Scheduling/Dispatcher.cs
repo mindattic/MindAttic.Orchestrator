@@ -51,9 +51,31 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
     {
         if (!a.Worktree) { Release(a.TicketId); return new Result(true, $"{a.TicketId} released.", null); }
         var (code, output) = Git(repoPath, "worktree", "remove", a.Directory);
-        if (code != 0) return new Result(false, $"git kept the worktree: {output.Trim()}", a);
+        if (code != 0 && IsWorktree(repoPath, a.Directory))
+            return new Result(false, output.Contains("Permission denied", StringComparison.OrdinalIgnoreCase)
+                ? $"Something still has {a.Directory} open, most likely the agent's tab: close it, then remove the worktree."
+                : $"git kept the worktree: {output.Trim()}", a);
+
+        // git unregisters the worktree and deletes its files even when Windows won't let it delete the
+        // folder itself (a tab still open in it): that's removed, not failed. The empty folder goes
+        // when the tab closes, or on the next removal.
+        var leftover = code != 0;
+        if (leftover)
+            try { Directory.Delete(a.Directory); leftover = false; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         Release(a.TicketId);
-        return new Result(true, $"Removed {a.Directory}; branch {BranchFor(a.TicketId)} is kept.", null);
+        return new Result(true, $"Removed {a.Directory}; branch {BranchFor(a.TicketId)} is kept." +
+            (leftover ? " Its empty folder stays until the tab open in it closes." : ""), null);
+    }
+
+    /// <summary>Whether git still lists <paramref name="directory"/> as one of the repo's worktrees.</summary>
+    private static bool IsWorktree(string repoPath, string directory)
+    {
+        var (code, list) = Git(repoPath, "worktree", "list", "--porcelain");
+        if (code != 0) return true; // can't tell: don't claim it's gone
+        var target = Path.GetFullPath(directory).TrimEnd('\\', '/');
+        return list.Split('\n').Any(l => l.StartsWith("worktree ", StringComparison.Ordinal) &&
+            string.Equals(Path.GetFullPath(l[9..].Trim()).TrimEnd('\\', '/'), target, StringComparison.OrdinalIgnoreCase));
     }
 
     public static string BranchFor(string ticketId) => "orch/" + ticketId.ToLowerInvariant();

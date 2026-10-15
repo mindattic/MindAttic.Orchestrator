@@ -33,9 +33,16 @@ public sealed class QueueRowViewModel : ObservableObject
     public string Reason => proposal?.Reason ?? "";
     public string Where => proposal?.UseWorktree == true || (proposal is null && item.RepoBusy) ? "in a worktree" : "in the repo";
 
-    public string Status => item.Assignment is { } a
-        ? $"{a.Provider} since {Formatting.Ago(a.StartedUtc, DateTime.UtcNow)}{(a.Worktree ? " · worktree" : "")}"
-        : IsNext ? "Next up" : item.RepoBusy ? "Repo busy" : "";
+    public string Status => item switch
+    {
+        { BlockedBy.Count: > 0 } => $"Waits for {string.Join(", ", item.BlockedBy)}",
+        { IsStale: true } => $"Stale: quiet {Formatting.Ago(item.StaleSinceUtc, DateTime.UtcNow)}",
+        { TooBig: true } => $"Too big for what's left ({item.Estimate}): split it or wait for the reset",
+        { Assignment: { } a } => $"{a.Provider} since {Formatting.Ago(a.StartedUtc, DateTime.UtcNow)}{(a.Worktree ? " · worktree" : "")}",
+        _ => (IsNext ? "Next up" : item.RepoBusy ? "Repo busy" : item.Old ? "Old: groom it?" : "") +
+             (item.Reserved > 0 ? $" · {Formatting.Tokens(item.Reserved)} reserved" : "") +
+             (item.Estimate is { } e ? $" · ~{Formatting.Tokens(e.Fresh)}" : ""),
+    };
 
     public ICommand StartCommand { get; }
     public ICommand UpCommand { get; }
@@ -60,4 +67,5 @@ public sealed class FinishedViewModel(Assignment assignment, MainViewModel owner
         : $"{assignment.TicketId} in {assignment.Repo} is closed.";
     public string ActionLabel => assignment.Worktree ? "Remove worktree" : "Clear";
     public ICommand ActionCommand { get; } = new RelayCommand(() => owner.Finish(assignment));
+    public ICommand DetailsCommand { get; } = new RelayCommand(() => owner.ShowDetails(assignment));
 }

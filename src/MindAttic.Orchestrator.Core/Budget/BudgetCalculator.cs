@@ -6,9 +6,13 @@ namespace MindAttic.Orchestrator.Budget;
 
 public enum BudgetLevel { Ok, Warn, Over }
 
+/// <summary>Where a limit came from: you set it, it was learned from your limit hits, or (5-hour
+/// block only) there is none and the block is compared to your busiest one as context.</summary>
+public enum LimitSource { Peak, Learned, Manual }
+
 /// <summary>
-/// A 5-hour usage block, the unit Claude's subscription limits reset on: it starts at the top of
-/// the hour of the first response after the previous block ended, and lasts five hours.
+/// A 5-hour usage block, the unit Claude's subscription limits reset on: it starts at the first
+/// response after the previous block ended, rounded down to 10 minutes, and lasts five hours.
 /// </summary>
 public sealed record UsageBlock(DateTime StartUtc, DateTime EndUtc, TokenUsage Usage, DateTime LastActivityUtc)
 {
@@ -30,12 +34,32 @@ public sealed record BudgetStatus(
 {
     /// <summary>The highest percentage of a real limit. Peak-relative block numbers are context, not a
     /// limit, so they never raise the level on their own.</summary>
-    public double WorstPercent => Math.Max(BlockLimitIsPeak ? 0 : BlockPercent, WeeklyPercent ?? 0);
+    public double WorstPercent => AtLimitUntilUtc is not null ? Math.Max(100, RawWorstPercent) : RawWorstPercent;
+
+    private double RawWorstPercent => Math.Max(BlockLimitIsPeak ? 0 : BlockPercent, WeeklyPercent ?? 0);
 
     public BudgetLevel Level =>
         WorstPercent >= 100 ? BudgetLevel.Over
         : WorstPercent >= WarnPercent ? BudgetLevel.Warn
         : BudgetLevel.Ok;
+
+    public LimitSource BlockLimitSource { get; init; } = LimitSource.Peak;
+    public LimitSource? WeeklyLimitSource { get; init; }
+
+    /// <summary>Uncached tokens per hour over the last <see cref="BudgetCalculator.RecentWindow"/>:
+    /// the burn rate to steer by, since the whole-block average lags.</summary>
+    public double RecentFreshPerHour { get; init; }
+
+    /// <summary>Set while you're behind a limit Claude Code actually reported hitting.</summary>
+    public DateTime? AtLimitUntilUtc { get; init; }
+    public LimitKind? AtLimitKind { get; init; }
+
+    public LimitCalibration? Calibration { get; init; }
+
+    /// <summary>This window already spent more than the learned limit without hitting a wall, so the
+    /// learned value is stale and isn't used until the next hit relearns it.</summary>
+    public bool BlockLimitOutdated { get; init; }
+    public bool WeeklyLimitOutdated { get; init; }
 
     public long BlockRemaining => Math.Max(0, BlockLimit - (CurrentBlock?.Usage.Fresh ?? 0));
 
@@ -57,6 +81,11 @@ public sealed record BudgetStatus(
 public static class BudgetCalculator
 {
     public static readonly TimeSpan BlockLength = TimeSpan.FromHours(5);
+    public static readonly TimeSpan RecentWindow = TimeSpan.FromMinutes(30);
+
+    // Claude Code's own reset times land on 10-minute marks just before the window's first message
+    // (checked against 20 recorded session-limit hits); flooring to the hour put resets up to 50 minutes early.
+    private static readonly long BlockGrain = TimeSpan.FromMinutes(10).Ticks;
 
     public static IReadOnlyList<UsageBlock> Blocks(IEnumerable<UsageEvent> events)
     {
@@ -69,7 +98,7 @@ public static class BudgetCalculator
             if (!open || e.AtUtc >= end)
             {
                 if (open) blocks.Add(new UsageBlock(start, end, sum, last));
-                start = new DateTime(e.AtUtc.Year, e.AtUtc.Month, e.AtUtc.Day, e.AtUtc.Hour, 0, 0, DateTimeKind.Utc);
+                start = new DateTime(e.AtUtc.Ticks - e.AtUtc.Ticks % BlockGrain, DateTimeKind.Utc);
                 end = start + BlockLength;
                 sum = default;
                 open = true;
@@ -81,30 +110,66 @@ public static class BudgetCalculator
         return blocks;
     }
 
+    /// <summary>
+    /// Limits come from settings first, then from <paramref name="learned"/> limit hits; with
+    /// neither, the 5-hour block is compared to your busiest block as context only.
+    /// </summary>
     public static BudgetStatus Compute(IReadOnlyList<UsageEvent> events, OrchestratorSettings settings, DateTime nowUtc, DateTime startOfTodayUtc,
-        TimeZoneInfo? zone = null)
+        TimeZoneInfo? zone = null, LimitCalibration? learned = null)
     {
         var blocks = Blocks(events);
         var current = blocks.Count > 0 && blocks[^1].IsActive(nowUtc) ? blocks[^1] : null;
+
+        // Behind a reported wall, its reset time is the block's real end; trust it over the estimate.
+        var sessionWall = learned?.Active(LimitKind.Session, nowUtc);
+        if (sessionWall is not null)
+        {
+            var start = sessionWall.ResetUtc - BlockLength;
+            var inBlock = events.Where(e => e.AtUtc >= start && e.AtUtc <= nowUtc).ToList();
+            current = new UsageBlock(start, sessionWall.ResetUtc, Sum(inBlock),
+                inBlock.Count > 0 ? inBlock.Max(e => e.AtUtc) : sessionWall.HitUtc);
+        }
         var currentFresh = current?.Usage.Fresh ?? 0;
 
         // Without a budget, compare against the heaviest earlier block: "how hard am I going vs usual".
         // It can pass 100%, and it isn't a limit, so it never warns or projects.
-        var peak = blocks.Where(b => b != current).Select(b => b.Usage.Fresh).DefaultIfEmpty(0).Max();
-        var isPeak = settings.BlockBudget is null;
-        var limit = settings.BlockBudget ?? (peak > 0 ? peak : currentFresh);
+        var peak = blocks.Where(b => b.EndUtc <= (current?.StartUtc ?? nowUtc)).Select(b => b.Usage.Fresh).DefaultIfEmpty(0).Max();
+
+        // Limits move. Spending past a learned limit without hitting a wall proves it's out of date,
+        // so drop it until the next hit relearns it rather than report a wall that isn't there.
+        var learned5h = learned?.Learned5h;
+        var blockRefuted = learned5h is { } l5 && sessionWall is null && currentFresh > l5;
+        if (blockRefuted) learned5h = null;
+        var (blockSource, blockLimit) = settings.BlockBudget is { } manual ? (LimitSource.Manual, manual)
+            : learned5h is { } lim5 ? (LimitSource.Learned, lim5)
+            : (LimitSource.Peak, peak > 0 ? peak : currentFresh);
+        var isPeak = blockSource == LimitSource.Peak;
+        var limit = blockLimit;
         var blockPercent = limit > 0 ? 100.0 * currentFresh / limit : 0;
 
-        // A configured reset day/time means the week restarts when Claude's does; otherwise it rolls.
-        // An unparseable setting falls back to rolling rather than failing the whole refresh.
+        // A configured reset day/time means the week restarts when Claude's does; failing that, the
+        // reset your last weekly hit reported; otherwise it rolls. An unparseable setting is skipped
+        // rather than failing the whole refresh.
         DateTime weekStart;
         DateTime? weekReset = null;
-        if (WeeklyReset.TryParse(settings.WeeklyReset, out var reset) && reset is { } r)
+        var resetSetting = WeeklyReset.TryParse(settings.WeeklyReset, out var reset) ? reset : null;
+        if ((resetSetting ?? learned?.LearnedWeeklyReset(zone)) is { } r)
             (weekStart, weekReset) = r.Window(nowUtc, zone);
         else
             weekStart = nowUtc - TimeSpan.FromDays(7);
         var week = Sum(events.Where(e => e.AtUtc >= weekStart));
-        double? weeklyPercent = settings.WeeklyBudget is > 0 ? 100.0 * week.Fresh / settings.WeeklyBudget.Value : null;
+        var weeklyWall = learned?.Active(LimitKind.Weekly, nowUtc);
+        var learnedWeekly = learned?.LearnedWeekly;
+        var weeklyRefuted = learnedWeekly is { } lw && weeklyWall is null && week.Fresh > lw;
+        if (weeklyRefuted) learnedWeekly = null;
+        var (weeklySource, weeklyLimit) = settings.WeeklyBudget is > 0 ? (LimitSource.Manual, settings.WeeklyBudget)
+            : learnedWeekly is { } limW ? (LimitSource.Learned, limW)
+            : ((LimitSource?)null, (long?)null);
+        double? weeklyPercent = weeklyLimit is > 0 ? 100.0 * week.Fresh / weeklyLimit.Value : null;
+
+        var wall = weeklyWall ?? sessionWall;
+        var recentFrom = nowUtc - RecentWindow;
+        var recent = events.Where(e => e.AtUtc >= recentFrom && e.AtUtc <= nowUtc).Sum(e => e.Usage.Fresh);
 
         // Burn rate over the current block (at least 10 minutes, so one burst isn't extrapolated).
         double perHour = 0;
@@ -125,10 +190,18 @@ public static class BudgetCalculator
         }
 
         return new BudgetStatus(current, limit, isPeak, blockPercent, Sum(events.Where(e => e.AtUtc >= startOfTodayUtc)),
-            week, settings.WeeklyBudget, weeklyPercent, perHour, projected, settings.WarnPercent)
+            week, weeklyLimit, weeklyPercent, perHour, projected, settings.WarnPercent)
         {
             WeekStartUtc = weekStart,
             WeekResetUtc = weekReset,
+            BlockLimitSource = blockSource,
+            WeeklyLimitSource = weeklySource,
+            RecentFreshPerHour = recent / RecentWindow.TotalHours,
+            AtLimitUntilUtc = wall?.ResetUtc,
+            AtLimitKind = wall?.Kind,
+            Calibration = learned,
+            BlockLimitOutdated = blockRefuted,
+            WeeklyLimitOutdated = weeklyRefuted,
         };
     }
 
@@ -148,7 +221,9 @@ public sealed class RateLimitStatusWriter(string? path = null)
     private string? lastWritten;
     private DateTime lastWrittenUtc;
 
-    public void Write(BudgetStatus status)
+    /// <summary>With a <paramref name="pace"/>, also tells running agents whether to conserve: rl-check.py
+    /// prints <c>pace_note</c> into every prompt while the pace isn't open.</summary>
+    public void Write(BudgetStatus status, Pace? pace = null)
     {
         // The file means "this much of a limit is used". With no budget there's no limit to report,
         // so withdraw a file this writer produced rather than leave stale numbers behind.
@@ -158,17 +233,25 @@ public sealed class RateLimitStatusWriter(string? path = null)
             return;
         }
 
-        var reset = status.CurrentBlock is { } b
-            ? b.EndUtc.ToLocalTime().ToString("h:mm tt", CultureInfo.InvariantCulture)
+        var reset = status.AtLimitKind == LimitKind.Session && status.AtLimitUntilUtc is { } wall ? Clock(wall)
+            : status.CurrentBlock is { } b ? Clock(b.EndUtc)
             : "no active block";
         var body = new Dictionary<string, object>
         {
-            ["percent_used"] = Math.Round(status.BlockPercent, 1),
+            ["percent_used"] = Math.Round(status.AtLimitKind == LimitKind.Session ? Math.Max(100, status.BlockPercent) : status.BlockPercent, 1),
             ["reset_time"] = reset,
-            ["tokens_remaining"] = status.BlockRemaining,
-            ["basis"] = status.BlockLimitIsPeak ? "uncached tokens vs your 7-day peak 5h block" : "uncached tokens vs your 5h block budget",
+            ["tokens_remaining"] = status.AtLimitKind == LimitKind.Session ? 0 : status.BlockRemaining,
+            ["basis"] = status.BlockLimitSource == LimitSource.Learned
+                ? $"uncached tokens vs the 5h limit learned from your last {status.Calibration?.Basis(LimitKind.Session)} limit hits"
+                : "uncached tokens vs your 5h block budget",
             ["source"] = "MindAttic.Orchestrator",
         };
+        if (status.WeeklyPercent is { } wp) body["weekly_percent"] = Math.Round(wp, 1);
+        if (pace is { IsPaced: true })
+        {
+            body["pace"] = pace.Key;
+            if (pace.Advise) body["pace_note"] = pace.AgentNote;
+        }
         var key = JsonSerializer.Serialize(body);
         // Readers show the file's age, so refresh it at least once a minute even when nothing changed.
         if (key == lastWritten && DateTime.UtcNow - lastWrittenUtc < TimeSpan.FromMinutes(1)) return;
@@ -186,6 +269,8 @@ public sealed class RateLimitStatusWriter(string? path = null)
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
     }
+
+    private static string Clock(DateTime utc) => utc.ToLocalTime().ToString("h:mm tt", CultureInfo.InvariantCulture);
 
     private void RemoveOwnFile()
     {

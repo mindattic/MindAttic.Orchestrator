@@ -155,7 +155,11 @@
                                 </Border.RenderTransform>
                             </Border>
                         </Grid>
-                        <TextBlock Text="{Binding BudgetDetail}" Style="{StaticResource McTileSubtitle}" />
+                        <!-- While pacing holds work back, that's the line that matters; the full detail stays in the tooltip. -->
+                        <TextBlock Text="{Binding BudgetDetail}" Style="{StaticResource McTileSubtitle}"
+                                   Visibility="{Binding PaceText, Converter={x:Static vm:Converters.EmptyToVisible}}" />
+                        <TextBlock Text="{Binding PaceText}" Style="{StaticResource McTileSubtitle}" Foreground="{Binding PaceBrush}"
+                                   Visibility="{Binding PaceText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                     </StackPanel>
                 </Button>
             </WrapPanel>
@@ -445,6 +449,9 @@
                                         <Button DockPanel.Dock="Right" Style="{StaticResource McButton}" Padding="12,5"
                                                 Content="{Binding ActionLabel}" Command="{Binding ActionCommand}"
                                                 ToolTip="git keeps the worktree if it has uncommitted changes; the branch is never deleted" />
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource McButton}" Padding="12,5" Margin="0,0,8,0"
+                                                Content="Details" Command="{Binding DetailsCommand}"
+                                                ToolTip="The sessions that worked on it and the commits that mention it" />
                                         <TextBlock Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0" />
                                     </DockPanel>
                                 </Border>
@@ -744,7 +751,7 @@
                     </DockPanel>
 
                     <TextBlock Text="TOKEN BUDGET" Style="{StaticResource SectionLabel}" />
-                    <TextBlock Text="Uncached tokens (input + cache writes + output). Accepts 20M, 500k, 1.5B. Leave the 5-hour budget blank to compare against your busiest block instead."
+                    <TextBlock Text="Uncached tokens (input + cache writes + output). Accepts 20M, 500k, 1.5B. Leave blank to use the limits learned from the times you actually hit the wall."
                                Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8" />
                     <TextBlock Text="Per 5-hour block" Margin="0,4,0,4" />
                     <TextBox Style="{StaticResource McTextBox}" Height="32" Text="{Binding BlockBudget, UpdateSourceTrigger=PropertyChanged}"
@@ -755,11 +762,18 @@
                     <TextBlock Text="Week resets (local time)" Margin="0,10,0,4" />
                     <TextBox Style="{StaticResource McTextBox}" Height="32" Width="160" HorizontalAlignment="Left"
                              Text="{Binding WeeklyReset, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Weekly reset day and time" />
-                    <TextBlock Text="When Claude's weekly limit restarts, e.g. Mon 9:00 AM or Tue 5pm. Blank counts a rolling 7 days."
+                    <TextBlock Text="When Claude's weekly limit restarts, e.g. Mon 9:00 AM or Tue 5pm. Blank uses the reset your last weekly limit hit reported, or a rolling 7 days before you've had one."
                                Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                    <TextBlock Text="Warn and hold new work at (%)" Margin="0,10,0,4" />
+                    <TextBlock Text="Warn at (%)" Margin="0,10,0,4" />
                     <TextBox Style="{StaticResource McTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
                              Text="{Binding WarnPercent, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Warn percent" />
+                    <ToggleButton Style="{StaticResource PillToggle}" IsChecked="{Binding Pacing}" Margin="0,12,0,0" HorizontalAlignment="Left"
+                                  Content="Pace to the reset" />
+                    <TextBlock Text="Caps new sessions so spend lands on the target as each limit resets, instead of hitting the wall and waiting. Running agents are asked to conserve while they're outrunning it. Off: new work holds at the warn line."
+                               Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    <TextBlock Text="Pace target (% of each limit by its reset)" Margin="0,10,0,4" />
+                    <TextBox Style="{StaticResource McTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
+                             Text="{Binding PaceTarget, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Pace target percent" />
 
                     <TextBlock Text="SCHEDULER" Style="{StaticResource SectionLabel}" />
                     <TextBlock Text="Max concurrent sessions (working + waiting)" Margin="0,0,0,4" />
@@ -770,7 +784,7 @@
                              AutomationProperties.Name="Dispatch provider" />
                     <ToggleButton Style="{StaticResource PillToggle}" IsChecked="{Binding AutoDispatch}" Margin="0,8,0,0" HorizontalAlignment="Left"
                                   Content="Auto-dispatch proposals" />
-                    <TextBlock Text="When on, the next proposal opens by itself once a minute while a slot is free and the budget is under the warn line. Tabs open with the ticket pre-filled; nothing is sent until you press Enter."
+                    <TextBlock Text="When on, the next proposal opens by itself once a minute while the pace (or, with pacing off, the warn line) leaves a slot free. Tabs open with the ticket pre-filled; nothing is sent until you press Enter."
                                Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
 
                     <TextBlock Text="{Binding Error}" Foreground="{StaticResource McRec}" TextWrapping="Wrap" Margin="0,14,0,0"

@@ -27,6 +27,9 @@ public sealed class TileGroupViewModel(string title, string hint, Brush accent) 
 public sealed class ToastViewModel(string title, string body, Brush accent, RepoTileViewModel? target)
 {
     public DateTime CreatedUtc { get; } = DateTime.UtcNow;
+
+    /// <summary>How long it stays up; null uses the default two minutes.</summary>
+    public TimeSpan? Lifetime { get; init; }
     public string Title { get; } = title;
     public string Body { get; } = body;
     public Brush Accent { get; } = accent;
@@ -54,7 +57,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     public MainViewModel()
     {
-        aggregator = new StatusAggregator(new OrchestratorOptions(), store, new RateLimitStatusWriter());
+        aggregator = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter());
         control = new SessionControl(aggregator.Options);
         Waiting = new("Needs you", "Sessions that stopped and are waiting for input, longest wait first", Palette.Waiting);
         Working = new("Working", "Agents mid-turn right now", Palette.Working);
@@ -175,7 +178,7 @@ public sealed partial class MainViewModel : ObservableObject
             if (tiles[gone] == Selected) Selected = null;
             tiles.Remove(gone);
         }
-        foreach (var stale in Toasts.Where(t => DateTime.UtcNow - t.CreatedUtc > ToastLifetime ||
+        foreach (var stale in Toasts.Where(t => DateTime.UtcNow - t.CreatedUtc > (t.Lifetime ?? ToastLifetime) ||
                                                 t.Target is { State: not RepoState.Waiting }).ToList())
             Toasts.Remove(stale);
         while (Toasts.Count > 4) Toasts.RemoveAt(Toasts.Count - 1);
