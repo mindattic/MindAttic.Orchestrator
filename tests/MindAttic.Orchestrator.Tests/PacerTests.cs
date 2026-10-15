@@ -175,6 +175,68 @@ public sealed class PacerTests
     }
 
     [Test]
+    public void The_subagent_allowance_grows_with_the_spare_rate_and_drains_when_over()
+    {
+        Assert.That(Pacer.SubagentAllowance(2000, 1000, 250, 2, 16), Is.EqualTo(6), "1,000/h spare pays for 4 more at 250/h each");
+        Assert.That(Pacer.SubagentAllowance(2000, 3000, 500, 4, 16), Is.EqualTo(2), "1,000/h over: two fewer, so the excess drains as they finish");
+        Assert.That(Pacer.SubagentAllowance(2000, 9000, 500, 4, 16), Is.EqualTo(1), "never below one while anything's left: a held spawn waits");
+        Assert.That(Pacer.SubagentAllowance(2000, 0, 1, 0, 16), Is.EqualTo(16), "lots of room: the ceiling caps it");
+        Assert.That(Pacer.SubagentAllowance(0, 0, 500, 3, 16), Is.EqualTo(0), "the window is at its target: none new");
+        Assert.That(Pacer.SubagentAllowance(2000, 1000, null, 3, 16), Is.EqualTo(5), "no per-agent history: two more while there's room");
+        Assert.That(Pacer.SubagentAllowance(2000, 1000, 250, 2, 0), Is.EqualTo(0), "--max-subagents 0 holds every new one");
+    }
+
+    [Test]
+    public void Agents_are_told_the_allowance_and_the_gate_reads_it_from_the_status_file()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "rl-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var (b, s) = Budget(10.5, new OrchestratorSettings { BlockBudget = 10_000 }, E(10, 500));
+            var pace = Pacer.Compute(b, 1, 500, s, Day.AddHours(10.5), subagents: 3);
+            Assert.That(pace.SubagentAllowance, Is.GreaterThan(3).And.LessThanOrEqualTo(16));
+            Assert.That(pace.SubagentNote, Does.Contain("3 running now").And.Contains("parallel subagents"), "room: it says to fan out");
+
+            new RateLimitStatusWriter(path).Write(b, pace);
+            using var doc = JsonDocument.Parse(File.ReadAllText(path));
+            Assert.That(doc.RootElement.GetProperty("subagent_allowance").GetInt32(), Is.EqualTo(pace.SubagentAllowance));
+            Assert.That(doc.RootElement.GetProperty("subagent_note").GetString(), Is.EqualTo(pace.SubagentNote));
+
+            var over = Pace(10.5, 1, new OrchestratorSettings { BlockBudget = 1_000 }, E(10, 2_000)) with { Subagents = 2 };
+            Assert.That(over.SubagentAllowance, Is.EqualTo(0));
+            Assert.That(over.SubagentNote, Does.StartWith("Subagents: none new"));
+            Assert.That(new Pace(PaceMode.Unpaced, 4, 0, 0, null, null, null, "off").SubagentNote, Is.Empty, "unpaced: nothing held, nothing said");
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Test]
+    public void Subagents_are_counted_by_their_start_and_stop_marks()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Assert.That(MindAttic.Orchestrator.Setup.AgentGate.Ensure(dir), Is.Not.Null);
+            var hooks = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(dir, "settings.json")))!["hooks"]!;
+            foreach (var e in new[] { "SubagentStart", "SubagentStop" })
+                Assert.That(hooks[e]!.ToJsonString(), Does.Contain("context-gate.py"), e);
+            Assert.That(File.ReadAllText(Path.Combine(dir, "pace-gate.py")), Does.Contain("subagent_allowance"));
+
+            var cycler = new MindAttic.Orchestrator.Sessions.ContextCycler(Path.Combine(dir, "session-context"));
+            Directory.CreateDirectory(cycler.SubagentDirectory);
+            File.WriteAllText(Path.Combine(cycler.SubagentDirectory, "a1"), Environment.ProcessId.ToString()); // not a Claude CLI: closed
+            File.WriteAllText(Path.Combine(cycler.SubagentDirectory, "a2"), ""); // no pid: trusted while young
+            var old = Path.Combine(cycler.SubagentDirectory, "a3");
+            File.WriteAllText(old, "");
+            File.SetLastWriteTimeUtc(old, DateTime.UtcNow.AddHours(-7)); // its stop never came
+            Assert.That(cycler.Subagents(), Is.EqualTo(1));
+            cycler.PruneMarks();
+            Assert.That(Directory.GetFiles(cycler.SubagentDirectory).Select(Path.GetFileName), Is.EqualTo(new[] { "a2" }));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Test]
     public void The_pace_gate_hook_is_installed_once_beside_the_users_own_hooks()
     {
         var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
@@ -258,7 +320,8 @@ public sealed class PacerTests
 
             using var doc = JsonDocument.Parse(File.ReadAllText(path));
             Assert.That(doc.RootElement.GetProperty("pace").GetString(), Is.EqualTo("throttled"));
-            Assert.That(doc.RootElement.GetProperty("pace_note").GetString(), Does.Contain("subagents included"));
+            Assert.That(doc.RootElement.GetProperty("pace_note").GetString(), Does.Contain("Keep working normally").And.Contains("subagent allowance"),
+                "never told to skip subagents; the allowance decides how many");
         }
         finally { File.Delete(path); }
     }

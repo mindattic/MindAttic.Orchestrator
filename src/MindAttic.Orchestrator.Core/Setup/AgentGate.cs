@@ -86,7 +86,7 @@ public static class AgentGate
         # MindAttic.Orchestrator's pace gate (written by the orchestrator; edits are overwritten).
         # Holds each tool call for rl-status.json's pace_delay_seconds so agents slow down instead of
         # hitting the usage limit. Re-reads the file while waiting: a lifted hold ends at once.
-        import json, time
+        import json, sys, time
         from datetime import datetime
         from pathlib import Path
 
@@ -96,17 +96,26 @@ public static class AgentGate
         STALE = {{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}
         MAX_HOLD = {{MaxHoldSeconds}}
 
-        def delay():
+        def status():
             try:
                 s = json.loads(STATUS.read_text())
                 if s.get("source") != "MindAttic.Orchestrator":
-                    return 0
+                    return {}
                 at = datetime.fromisoformat(s["timestamp"].replace("Z", ""))
-                if (datetime.utcnow() - at).total_seconds() > STALE:
-                    return 0
-                return float(s.get("pace_delay_seconds", 0))
+                return s if (datetime.utcnow() - at).total_seconds() <= STALE else {}
+            except Exception:
+                return {}
+
+        def delay():
+            try:
+                return float(status().get("pace_delay_seconds", 0))
             except Exception:
                 return 0
+
+        try:
+            tool = json.load(sys.stdin).get("tool_name")
+        except Exception:
+            tool = None
 
         # /unthrottle exempts one CLI (its process, so subagents and /clear included) until it closes.
         MARKS = Path.home() / ".claude" / "session-context"
@@ -116,6 +125,15 @@ public static class AgentGate
                 raise SystemExit(0)
 
         start = time.monotonic()
+        # A new subagent waits while the allowance the pace works out is used up (all CLIs together); the
+        # wait counts toward the same MAX_HOLD, and past it the subagent starts anyway: held, never refused.
+        if tool in ("Agent", "Task"):
+            SUB = MARKS / "subagents"
+            while time.monotonic() - start < MAX_HOLD:
+                allowed = status().get("subagent_allowance")
+                if allowed is None or (sum(1 for _ in SUB.iterdir()) if SUB.exists() else 0) < allowed:
+                    break
+                time.sleep(5)
         while True:
             waited = time.monotonic() - start
             left = min(delay(), MAX_HOLD) - waited
@@ -162,6 +180,17 @@ public static class AgentGate
         except Exception:
             sys.exit(0)
         sid, event = data.get("session_id"), data.get("hook_event_name")
+        # Every running subagent has a mark, so the pace gate can hold new ones past the allowance.
+        if event in ("SubagentStart", "SubagentStop"):
+            if data.get("agent_id"):
+                sub = DIR / "subagents"
+                sub.mkdir(parents=True, exist_ok=True)
+                mark = sub / re.sub(r"[^A-Za-z0-9_.-]", "_", str(data["agent_id"]))
+                if event == "SubagentStart":
+                    mark.write_text(str(cli_pid() or ""))
+                elif mark.exists():
+                    mark.unlink()
+            sys.exit(0)
         if not sid or data.get("agent_id"):
             sys.exit(0)  # subagents finish inside their parent's turn
         DIR.mkdir(parents=True, exist_ok=True)
@@ -192,6 +221,14 @@ public static class AgentGate
                         mark.write_text(now)
                     elif mark.exists():
                         mark.unlink()
+            # Each turn starts knowing how many subagents the pace allows right now.
+            try:
+                s = json.loads((Path.home() / ".claude" / "rl-status.json").read_text())
+                fresh = (datetime.now(timezone.utc) - datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00"))).total_seconds() <= {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}}
+                if s.get("source") == "MindAttic.Orchestrator" and fresh and s.get("subagent_note"):
+                    print(json.dumps({"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": s["subagent_note"]}}))
+            except Exception:
+                pass
         elif event == "PostToolUse":
             used = load(DIR / (sid + ".json")).get("used_percentage") or 0
             if state.get("warned") or used < PERCENT:
@@ -235,7 +272,7 @@ public static class AgentGate
         catch (JsonException) { root = null; }
         if (root is null) return did.Count > 0 ? string.Join(", ", did) : null; // unreadable: leave someone else's file alone
         var changed = AddHook(root, "PreToolUse", ScriptName, Command(script), HookTimeoutSeconds);
-        foreach (var hookEvent in new[] { "PostToolUse", "Stop", "UserPromptSubmit" })
+        foreach (var hookEvent in new[] { "PostToolUse", "Stop", "UserPromptSubmit", "SubagentStart", "SubagentStop" })
             changed |= AddHook(root, hookEvent, ContextScriptName, Command(contextScript), 10);
         if (changed)
         {

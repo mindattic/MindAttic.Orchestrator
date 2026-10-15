@@ -158,9 +158,34 @@ public sealed class ContextCycler(string? directory = null)
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
-    /// <summary>Drops /unthrottle marks whose CLI has closed, so a reused process id never inherits one.</summary>
+    /// <summary>Where the context gate marks each running subagent (SubagentStart writes its CLI's process id, SubagentStop removes it).</summary>
+    public string SubagentDirectory => Path.Combine(Directory, "subagents");
+
+    /// <summary>A subagent mark older than this is a stop that never came (the CLI was killed mid-run).</summary>
+    public static readonly TimeSpan SubagentMarkLife = TimeSpan.FromHours(6);
+
+    /// <summary>Subagents running now across every CLI: marks whose CLI is still running and that aren't stale.</summary>
+    public int Subagents() => !System.IO.Directory.Exists(SubagentDirectory) ? 0
+        : System.IO.Directory.EnumerateFiles(SubagentDirectory).Count(f => SubagentAlive(f, DateTime.UtcNow));
+
+    private static bool SubagentAlive(string mark, DateTime nowUtc)
+    {
+        try
+        {
+            if (nowUtc - File.GetLastWriteTimeUtc(mark) > SubagentMarkLife) return false;
+            // No process id (the gate couldn't find its CLI): trust the age alone.
+            return !int.TryParse(File.ReadAllText(mark).Trim(), out var pid) || IsClaude(pid);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
+    }
+
+    /// <summary>Drops /unthrottle marks whose CLI has closed, so a reused process id never inherits one, and
+    /// subagent marks whose stop never came.</summary>
     public void PruneMarks()
     {
+        if (System.IO.Directory.Exists(SubagentDirectory))
+            foreach (var f in System.IO.Directory.EnumerateFiles(SubagentDirectory).Where(f => !SubagentAlive(f, DateTime.UtcNow)))
+                try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         if (!System.IO.Directory.Exists(Directory)) return;
         foreach (var f in System.IO.Directory.EnumerateFiles(Directory, "unthrottled-*"))
         {

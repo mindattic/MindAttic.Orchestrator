@@ -198,6 +198,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [CommandOption("--max-delay <SECONDS>")]
         public int? MaxDelay { get; init; }
 
+        [CommandOption("--max-subagents <N>")]
+        [Description("The most subagents running at once across every CLI; under it the pace decides, live (0 holds every new one).")]
+        public int? MaxSubagents { get; init; }
+
         [CommandOption("--provider <PROVIDER>")]
         public string? Provider { get; init; }
 
@@ -247,8 +251,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         {
             ThrottleAgents = settings.ThrottleAgents ?? s.ThrottleAgents,
             MaxAgentDelaySeconds = settings.MaxDelay ?? s.MaxAgentDelaySeconds,
+            MaxSubagents = settings.MaxSubagents ?? s.MaxSubagents,
         };
-        var changed = settings.GroomDays is not null || settings.GitHubIntake is not null || settings.ThrottleAgents is not null || settings.MaxDelay is not null;
+        if (settings.MaxSubagents is < 0) { AnsiConsole.MarkupLine("[red]--max-subagents can't be negative.[/]"); return 1; }
+        var changed = settings.GroomDays is not null || settings.GitHubIntake is not null || settings.ThrottleAgents is not null || settings.MaxDelay is not null || settings.MaxSubagents is not null;
         if (settings.GitHubIntake is { } intake) s = s with { GitHubIntake = intake };
         if (settings.Notify is { } notify)
         {
@@ -286,7 +292,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
                 : order.Count == 0 ? "[green]on[/] for every open repo CLI" : $"[green]on[/] for the CLIs in {Markup.Escape(string.Join(", ", order))}"));
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (learned from limit hits)")} Â· weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (learned)")} Â· week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display : "learned, or rolling 7 days")} Â· warn at {s.WarnPercent}%");
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +
-            (s.ThrottleAgents ? $" Â· running agents held up to {s.MaxAgentDelaySeconds}s per tool call when the burn won't last" : " Â· running agents never held"));
+            (s.ThrottleAgents ? $" Â· running agents held up to {s.MaxAgentDelaySeconds}s per tool call when the burn won't last" : " Â· running agents never held") +
+            $" · subagents: as many as the pace allows, at most {s.MaxSubagents}");
         AnsiConsole.MarkupLine($"  worktrees under {Markup.Escape(s.WorktreeRoot)} Â· {s.Priorities.Count} manual priorities Â· " +
             (s.StaleAfterHours > 0 ? $"assignments go stale after {s.StaleAfterHours}h quiet" : "assignments never go stale"));
         AnsiConsole.MarkupLine($"  quiet hours {(s.QuietHours.Count > 0 ? string.Join(", ", s.QuietHours) : "none")} Â· {s.MaxSessionsPerRepo} sessions per repo" +

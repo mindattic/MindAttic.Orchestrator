@@ -39,6 +39,10 @@ public sealed record OrchestratorSettings
     /// <summary>The longest one tool call is held while throttling.</summary>
     public int MaxAgentDelaySeconds { get; init; } = 300;
 
+    /// <summary>The most subagents that may run at once across every CLI, however much room the pace has; under it,
+    /// the allowance is worked out live from the pace (<see cref="Budget.Pace.SubagentAllowance"/>).</summary>
+    public int MaxSubagents { get; init; } = 16;
+
     /// <summary>On: a Claude session in a Launcher tab past <see cref="ContextCyclePercent"/> of its context
     /// is told to wrap up, then /quicksave, /clear and /quickload are typed into it once its turn ends.</summary>
     public bool ContextCycle { get; init; } = true;

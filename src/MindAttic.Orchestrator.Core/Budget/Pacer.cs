@@ -36,6 +36,23 @@ public sealed record Pace(
     /// <summary>Seconds running agents wait before each tool call so the burn lasts until the reset; 0 runs them free.</summary>
     public double AgentDelaySeconds { get; init; }
 
+    /// <summary>How many subagents may run at once across every CLI right now (the gate holds a new one past it);
+    /// null when unpaced, so nothing is held.</summary>
+    public int? SubagentAllowance { get; init; }
+
+    /// <summary>Subagents running when the allowance was worked out.</summary>
+    public int Subagents { get; init; }
+
+    /// <summary>What agents are told about the allowance at the start of each turn.</summary>
+    public string SubagentNote => SubagentAllowance switch
+    {
+        null => "",
+        0 => $"Subagents: none new right now ({Note}). Finish with the {Subagents} running; a new one waits until there's room.",
+        var a when a > Subagents => $"Subagents: up to {a} may run at once across all agents ({Subagents} running now). There's room under the 5-hour pace, " +
+            "so hand independent pieces (searches, separate files, test runs, reviews) to parallel subagents rather than doing them one after another.",
+        var a => $"Subagents: {a} at once across all agents ({Subagents} running now). Usage is ahead of the 5-hour pace, so don't start extra subagents; a new one waits for a free slot.",
+    };
+
     public string Key => Mode.ToString().ToLowerInvariant();
 
     /// <summary>Running agents should conserve: past a limit, out of room, or burning faster than fits.
@@ -57,8 +74,9 @@ public static class Pacer
 
     /// <param name="recentDelaySeconds">The agent delay averaged over the recent-rate window (see
     /// <see cref="RateLimitStatusWriter.AgentDelay"/>): what the measured rate was slowed by.</param>
+    /// <param name="subagents">Subagents running now across every CLI (the context gate's SubagentStart/Stop marks).</param>
     public static Pace Compute(BudgetStatus b, int activeSessions, double? typicalPerSession, OrchestratorSettings s, DateTime nowUtc,
-        double recentDelaySeconds = 0)
+        double recentDelaySeconds = 0, int subagents = 0)
     {
         var max = s.MaxConcurrentSessions;
         var recent = b.RecentFreshPerHour;
@@ -69,7 +87,8 @@ public static class Pacer
             var name = b.AtLimitKind == LimitKind.Weekly ? "weekly" : "5-hour";
             return new Pace(PaceMode.Over, 0, 0, recent, null, name, until,
                 $"At the {name} limit until {Clock(until)}.",
-                $"At the {name} limit until {Clock(until)}. Finish the current step and stop at a clean point.");
+                $"At the {name} limit until {Clock(until)}. Finish the current step and stop at a clean point.")
+            { SubagentAllowance = 0, Subagents = subagents };
         }
 
         var windows = new List<(string Name, long Limit, long Used, DateTime ResetUtc)>();
@@ -89,7 +108,7 @@ public static class Pacer
             return new Pace(PaceMode.Over, 0, 0, recent, null, spent.Name, spent.ResetUtc,
                 $"Past the {spent.Name} limit until {Clock(spent.ResetUtc)}.",
                 $"Past the {spent.Name} limit until {Clock(spent.ResetUtc)}. Finish the current step and stop at a clean point.")
-            { AgentDelaySeconds = AgentDelay(b.ControlFreshPerHour, 0, recentDelaySeconds, s) };
+            { AgentDelaySeconds = AgentDelay(b.ControlFreshPerHour, 0, recentDelaySeconds, s), SubagentAllowance = 0, Subagents = subagents };
 
         var target = Math.Clamp(s.PaceTargetPercent, 1, 100) / 100.0;
         var (gov, sustainable) = windows
@@ -116,11 +135,27 @@ public static class Pacer
         var delay = AgentDelay(b.ControlFreshPerHour, sustainable, recentDelaySeconds, s);
         var agentNote = $"Usage is running ahead of the {gov.Name} limit (resets {Clock(gov.ResetUtc)}); the orchestrator is stretching it" +
                         (delay > 0 ? $" by holding each tool call about {delay:0}s" : "") +
-                        ". Keep working normally, subagents included, but start them a few at a time rather than many in parallel.";
+                        ". Keep working normally; the subagent allowance says how many subagents may run at once.";
         if (delay > 0) note += $" Agents held {delay:0}s per tool call.";
         var room = windows.Min(w => Math.Max(0, w.Limit * target - w.Used));
+        var allowance = SubagentAllowance(sustainable, Unheld(b.ControlFreshPerHour, recentDelaySeconds), perSession, subagents, s.MaxSubagents);
         return new Pace(mode, cap, sustainable, recent, perSession, gov.Name, gov.ResetUtc, note, agentNote)
-        { RoomTokens = room, AgentDelaySeconds = delay };
+        { RoomTokens = room, AgentDelaySeconds = delay, SubagentAllowance = allowance, Subagents = subagents };
+    }
+
+    /// <summary>
+    /// How many subagents may run at once: the ones running plus as many more as the spare rate
+    /// (<paramref name="sustainable"/> minus the unheld <paramref name="demand"/>) pays for, one
+    /// <paramref name="perAgent"/> each; fewer when demand is over, so the excess drains as they finish.
+    /// Never below 1 while there's anything left (a held spawn waits, it isn't refused), 0 once the
+    /// window is at its target, and never above <paramref name="max"/>.
+    /// </summary>
+    internal static int SubagentAllowance(double sustainable, double demand, double? perAgent, int running, int max)
+    {
+        if (max <= 0 || sustainable <= 0) return 0;
+        var spare = sustainable - demand;
+        var more = perAgent is > 0 and var p ? (int)Math.Clamp(Math.Floor(spare / p), -1000, 1000) : spare > 0 ? 2 : -1;
+        return (int)Math.Clamp((long)running + more, 1, max);
     }
 
     /// <summary>What a draw measured under a hold of <paramref name="heldSeconds"/> per tool call would be

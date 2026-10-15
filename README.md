@@ -26,6 +26,7 @@ hitting the session limit, and never stalling on a full context. Pick what runs;
 | Claude's count | 5-hour percent and reset straight from Claude Code, sized safely | `~/.claude/claude-usage.json` |
 | Pacing | caps new sessions so the window lands on 99% at its reset; the week is never paced | `rl-status.json` → `pace` |
 | Holding agents | every Claude CLI and subagent waits before each tool call while the draw won't last, 0s once it fits | `~/.claude/pace-gate.py` (PreToolUse hook) |
+| Subagent allowance | how many subagents may run at once across every CLI, worked out live from the pace (up to 16); each turn is told it, and a new subagent past it waits | `rl-status.json` → `subagent_allowance`; `settings --max-subagents 16` |
 | Context cycling | past 80% context: wrap up, then `/quicksave`, `/clear`, `/quickload` typed in | `~/.claude/context-gate.py` (prompt, tool, stop hooks) |
 | Autopilot | every open repo CLI works its own repo's stories, one after another, while the pace can afford them | `/autopilot` in any CLI; `-repo=A,B`; `/autopilot off` |
 

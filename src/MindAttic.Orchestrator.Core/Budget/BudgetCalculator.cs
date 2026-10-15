@@ -293,6 +293,13 @@ public sealed class RateLimitStatusWriter(string? path = null)
         {
             body["pace"] = pace.Key;
             if (pace.Advise) body["pace_note"] = pace.AgentNote;
+            // pace-gate.py holds a new subagent while this many run; context-gate.py tells each turn.
+            if (pace.SubagentAllowance is { } allowed)
+            {
+                body["subagent_allowance"] = allowed;
+                body["subagents_running"] = pace.Subagents;
+                body["subagent_note"] = pace.SubagentNote;
+            }
         }
         // pace-gate.py holds each tool call this long; the average is what the next refresh corrects the
         // measured rate by (Pacer.AgentDelay), so it's kept until it decays even once the hold is off.
