@@ -8,6 +8,36 @@ namespace MindAttic.Orchestrator.Tests;
 public sealed class TicketReplayTests
 {
     [Test]
+    public void Commits_shows_a_stat_or_a_patch_and_the_report_says_when_there_is_nothing()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "orch-replay-stat-" + Guid.NewGuid().ToString("N"));
+        var projects = Path.Combine(dir, "projects");
+        Directory.CreateDirectory(projects);
+        try
+        {
+            Git(dir, "init", "-q", "-b", "main");
+            Git(dir, "config", "user.email", "test@example.com");
+            Git(dir, "config", "user.name", "Test");
+            File.WriteAllText(Path.Combine(dir, "a.txt"), "one\n");
+            Git(dir, "add", "a.txt");
+            Git(dir, "commit", "-q", "-m", "Fix X-T7: the thing");
+
+            Assert.That(TicketReplay.Commits("X-T7", dir, diff: false), Does.Contain("a.txt").And.Contain("1 file changed").And.Not.Contain("+one"));
+            Assert.That(TicketReplay.Commits("X-T7", dir, diff: true), Does.Contain("+one"), "the patch itself");
+            Assert.That(TicketReplay.Commits("X-T7", Path.Combine(dir, "missing"), diff: false), Is.Empty, "no repo there: empty, not an error");
+
+            var report = TicketReplay.PlainReport("X-T8", dir, projects);
+            Assert.That(report, Does.Contain("No dispatched sessions found").And.Contain("No commits mention it."));
+            Assert.That(TicketReplay.PlainReport("X-T7", dir, projects), Does.Contain("Fix X-T7: the thing").And.Not.Contain("No commits mention it."));
+        }
+        finally
+        {
+            foreach (var f in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)) File.SetAttributes(f, FileAttributes.Normal);
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Test]
     public void Commits_matches_the_ticket_id_as_a_whole_word_not_a_substring()
     {
         var dir = Path.Combine(Path.GetTempPath(), "orch-replay-git-" + Guid.NewGuid().ToString("N"));
