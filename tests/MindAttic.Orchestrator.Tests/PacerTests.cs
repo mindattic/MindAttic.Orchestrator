@@ -275,6 +275,11 @@ public sealed class PacerTests
             Assert.That(Gate(uss, "Edit", new { file_path = Path.Combine(dir, "notes.md") }), Is.Empty, "outside the workspace (temp, ~/.claude)");
             Assert.That(Gate(uss, "Bash", new { command = "workflow ticket close MAO-T1 --repo MindAttic.Orchestrator --ref x" }), Does.Contain("\"deny\""));
             Assert.That(Gate(uss, "Bash", new { command = "workflow ticket new --repo UnitySolarSystem --type fix --summary x" }), Is.Empty);
+            // Found live: the words inside a handoff string were taken for a command.
+            Assert.That(Gate(uss, "PowerShell", new { command = "& save.ps1 -State 'then run workflow ticket close MAO-T1 --ref x'" }), Is.Empty, "text, not a command");
+            Assert.That(Gate(uss, "Bash", new { command = "workflow ticket new --repo UnitySolarSystem --type fix --summary 'follows MAO-T1'" }), Is.Empty, "an ID in the summary is just text");
+            Assert.That(Gate(uss, "PowerShell", new { command = "& 'workflow' ticket close MAO-T1 --repo MindAttic.Orchestrator --ref x" }), Does.Contain("\"deny\""),
+                "the PowerShell call form still counts (this scratch workspace has no database to look MAO-T1 up in)");
             Assert.That(Gate(uss, "Bash", new { command = $"git -C {Path.Combine(ws, "MindAttic.Orchestrator")} commit -m x" }), Does.Contain("\"deny\""));
             Assert.That(Gate(uss, "Bash", new { command = $"git -C {Path.Combine(ws, "MindAttic.Orchestrator")} log -1" }), Is.Empty, "reading another repo is fine");
             Assert.That(Gate(ws, "Edit", new { file_path = orch }), Is.Empty, "the General (workspace-root) window may work anywhere");

@@ -194,10 +194,16 @@ public static class AgentGate
                            f"(or autopilot, or the General session), or file a ticket for it: workflow ticket new --repo {repo_of(target)} ...")
             if tool in ("Bash", "PowerShell"):
                 command = str(args.get("command") or "")
-                if re.search(r"\bworkflow['\"]?\s+ticket\s+(new|close|correct)\b", command):
-                    named = re.search(r"--repo[\s=]+['\"]?([^\s'\"]+)", command)
+                # Only a segment that IS a workflow ticket command counts: the words inside a message or a string don't.
+                for segment in re.split(r"[;\n|]|&&", command):
+                    if not re.match(r"\s*(?:&\s*)?['\"]?workflow(?:\.exe)?['\"]?\s+ticket\s+(new|close|correct)\b", segment):
+                        continue
+                    action = re.match(r"\s*(?:&\s*)?['\"]?workflow(?:\.exe)?['\"]?\s+ticket\s+(new|close|correct)\s*(.*)", segment).group(2)
+                    named = re.search(r"--repo[\s=]+['\"]?([^\s'\"]+)", action)
                     owners = [named.group(1)] if named else []
-                    owners += [ticket_repo(m) for m in re.findall(r"\b[A-Z][A-Z0-9]*-T\d+\b", command)]
+                    # The ticket a close/correct acts on is its first argument; IDs in --summary or --ref are just text.
+                    first = re.match(r"['\"]?([A-Z][A-Z0-9]*-T\d+)\b", action.strip())
+                    owners += [ticket_repo(first.group(1))] if first else []
                     for owner in owners:
                         if other(owner):
                             refuse(f"This window is for {here}; that ticket belongs to {owner}. Only {here}'s tickets are worked here: "
