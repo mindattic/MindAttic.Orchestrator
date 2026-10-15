@@ -259,6 +259,41 @@ public sealed class PacerTests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
+    [Test]
+    public void The_pace_hold_is_wired_into_Codex_Gemini_and_Kimis_own_hooks_too()
+    {
+        var claudeDir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
+        var codexDir = Path.Combine(Path.GetTempPath(), "codex-" + Guid.NewGuid().ToString("N"));
+        var geminiDir = Path.Combine(Path.GetTempPath(), "gemini-" + Guid.NewGuid().ToString("N"));
+        var kimiConfig = Path.Combine(Path.GetTempPath(), "kimi-" + Guid.NewGuid().ToString("N"), "config.toml");
+        try
+        {
+            // Nothing to wire in before pace-gate.py itself exists.
+            Assert.That(MindAttic.Orchestrator.Setup.AgentGate.EnsureOtherProviders(claudeDir, codexDir, geminiDir, kimiConfig), Is.Null);
+
+            Directory.CreateDirectory(Path.GetDirectoryName(kimiConfig)!);
+            File.WriteAllText(kimiConfig, "default_model = \"kimi-code/k3\"\n");
+            Assert.That(MindAttic.Orchestrator.Setup.AgentGate.Ensure(claudeDir), Is.Not.Null);
+            Assert.That(MindAttic.Orchestrator.Setup.AgentGate.EnsureOtherProviders(claudeDir, codexDir, geminiDir, kimiConfig), Is.Not.Null);
+            Assert.That(MindAttic.Orchestrator.Setup.AgentGate.EnsureOtherProviders(claudeDir, codexDir, geminiDir, kimiConfig), Is.Null, "already in place: nothing rewritten");
+
+            var codexHook = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(codexDir, "hooks.json")))!["hooks"]!["PreToolUse"]![0]!;
+            Assert.That(codexHook["hooks"]![0]!["command"]!.GetValue<string>(), Does.Contain("pace-gate.py"));
+
+            var geminiHook = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(geminiDir, "settings.json")))!["hooks"]!["BeforeTool"]![0]!;
+            Assert.That(geminiHook["hooks"]![0]!["timeout"]!.GetValue<int>(), Is.EqualTo(MindAttic.Orchestrator.Setup.AgentGate.HookTimeoutSeconds * 1000), "Gemini's timeout is milliseconds");
+
+            var kimiText = File.ReadAllText(kimiConfig);
+            Assert.That(kimiText, Does.Contain("default_model"), "the user's own config survives");
+            Assert.That(kimiText, Does.Contain("[[hooks]]").And.Contain("event = \"PreToolUse\"").And.Contain("pace-gate.py"));
+        }
+        finally
+        {
+            foreach (var d in new[] { claudeDir, codexDir, geminiDir, Path.GetDirectoryName(kimiConfig)! })
+                if (Directory.Exists(d)) Directory.Delete(d, recursive: true);
+        }
+    }
+
     // â”€â”€ Scheduler and status file â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private static Ticket T(string id) => new(id, "2026-10-01", "feature", "open", $"summary of {id}", "");

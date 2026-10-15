@@ -193,6 +193,12 @@ nobody has refreshed for 3 minutes is ignored, so a stopped daemon never slows a
 `settings --throttle-agents false` turns holding off; `--max-delay` caps it. `pace_note` is printed into
 each prompt too, so agents know to start subagents a few at a time.
 
+The same `pace-gate.py` is wired into Codex's, Gemini's and Kimi's own pre-tool-call hook too (Codex's
+`PreToolUse` in `~/.codex/hooks.json`, Gemini's `BeforeTool` in `~/.gemini/settings.json`, Kimi's
+`PreToolUse` in `~/.kimi-code/config.toml`), so a Launcher tab on any of the four providers slows down
+the same way (MAO-T50). Codex shows its own one-time "hooks need review" prompt in its TUI before a
+freshly added hook runs there; nothing types through that for you.
+
 **Context cycling.** The statusline also saves each session's context fill to
 `~/.claude/session-context/<session>.json`, and a second hook, `context-gate.py` (on prompt, tool and
 stop), records whether its turn is running and, once past 80% (`ContextCyclePercent`), tells the main
@@ -281,8 +287,8 @@ files across repos, clusters them, and suggests a home (`mindattic-agent-standar
   while one of them is; the logon task keeps the daemon up, and opening the dashboard restarts it if it died.
 - Building a workspace clones the repos; it doesn't install the other apps (Launcher etc.; MAO-T44).
   The repo list is only as current as the last `workspace export` that was pushed.
-- Only Claude Code agents are held; Codex, Gemini and Kimi tabs get no hook (MAO-T50). A hold slows
-  tool calls, not a long reply with no tool calls in it.
+- A hold slows tool calls, not a long reply with no tool calls in it. Codex needs a one-time "trust
+  this hook" click in its own TUI the first time its hold fires on a machine; nothing automates that.
 - Context cycling can't reach Claude desktop-app sessions (no console to type into); they get an alert.
 - Learned limits are in uncached tokens, and the token-to-limit ratio shifts with the model mix, so
   they're estimates, used only when Claude's own count isn't available.

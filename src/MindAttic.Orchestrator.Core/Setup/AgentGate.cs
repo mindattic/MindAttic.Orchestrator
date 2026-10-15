@@ -284,6 +284,64 @@ public static class AgentGate
         return did.Count > 0 ? string.Join(", ", did) : null;
     }
 
+    public static string CodexDir { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".codex");
+    public static string GeminiDir { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gemini");
+    public static string KimiConfigPath { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".kimi-code", "config.toml");
+
+    /// <summary>
+    /// Wires the same <c>pace-gate.py</c> into Codex's, Gemini's and Kimi's own pre-tool-call hook, so the
+    /// pacer's hold slows their tool calls too, not just Claude's: Codex's <c>PreToolUse</c> in
+    /// <c>~/.codex/hooks.json</c>, Gemini's <c>BeforeTool</c> in <c>~/.gemini/settings.json</c>, Kimi's
+    /// <c>PreToolUse</c> in <c>~/.kimi-code/config.toml</c>. The script's own CLI-walk and /unthrottle check
+    /// only ever match a <c>claude.exe</c> parent, so under these three it just falls through to the plain
+    /// wait on <c>pace_delay_seconds</c>, same as it gives Claude. Codex still shows its own one-time "hooks
+    /// need review" prompt in its TUI before a freshly added hook runs the first time; nothing types through
+    /// that for you, since a mis-keyed approval there is worse than leaving it for a click. Returns null
+    /// until <see cref="Ensure"/> has written <paramref name="claudeDir"/>'s <c>pace-gate.py</c>.
+    /// </summary>
+    public static string? EnsureOtherProviders(string? claudeDir = null, string? codexDir = null, string? geminiDir = null, string? kimiConfigPath = null)
+    {
+        var script = Path.Combine(claudeDir ?? ClaudeDir, ScriptName);
+        if (!File.Exists(script)) return null;
+        var command = Command(script);
+        var did = new List<string>();
+
+        if (MergeJsonHook(Path.Combine(codexDir ?? CodexDir, "hooks.json"), "PreToolUse", command, HookTimeoutSeconds) is { } c) did.Add("Codex: " + c);
+        if (MergeJsonHook(Path.Combine(geminiDir ?? GeminiDir, "settings.json"), "BeforeTool", command, HookTimeoutSeconds * 1000) is { } g) did.Add("Gemini: " + g);
+        if (AppendKimiHook(kimiConfigPath ?? KimiConfigPath, command, HookTimeoutSeconds)) did.Add("Kimi: wired PreToolUse into config.toml");
+
+        return did.Count > 0 ? string.Join(", ", did) : null;
+    }
+
+    /// <summary>Adds <paramref name="hookEvent"/> to the JSON hook file at <paramref name="path"/> (created fresh if
+    /// missing), reusing <see cref="AddHook"/>'s idempotent merge; null when already wired in or the file is
+    /// someone else's unreadable JSON.</summary>
+    private static string? MergeJsonHook(string path, string hookEvent, string command, int timeout)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        JsonObject? root;
+        try { root = File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path)) as JsonObject : new JsonObject(); }
+        catch (JsonException) { return null; }
+        if (root is null || !AddHook(root, hookEvent, ScriptName, command, timeout)) return null;
+        var temp = path + ".tmp";
+        File.WriteAllText(temp, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        File.Move(temp, path, overwrite: true);
+        return $"wired {hookEvent} into {Path.GetFileName(path)}";
+    }
+
+    /// <summary>Appends a <c>[[hooks]]</c> table to Kimi's <c>config.toml</c> (a plain text append: Kimi's own
+    /// config has no JSON equivalent and no library here parses TOML); false when <paramref name="command"/>
+    /// is already in the file.</summary>
+    private static bool AppendKimiHook(string path, string command, int timeoutSeconds)
+    {
+        var existing = File.Exists(path) ? File.ReadAllText(path) : "";
+        if (existing.Contains(command, StringComparison.Ordinal)) return false;
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var block = $"[[hooks]]\nevent = \"PreToolUse\"\ncommand = '{command}'\ntimeout = {timeoutSeconds}\n";
+        File.WriteAllText(path, (existing.Length > 0 ? existing.TrimEnd('\r', '\n') + "\n\n" : "") + block);
+        return true;
+    }
+
     internal static string Command(string script) => $"python \"{script.Replace('\\', '/')}\"";
 
     /// <summary>Adds a <paramref name="hookEvent"/> entry unless one already runs <paramref name="scriptName"/>; true when it changed <paramref name="root"/>.</summary>

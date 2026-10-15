@@ -60,7 +60,11 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 // The hooks carry the cycle point, so rewrite them when it changes.
                 if (gatePercent != s.ContextCyclePercent)
                 {
-                    try { if (Setup.AgentGate.Ensure(contextPercent: s.ContextCyclePercent) is { } did) Say(LogEventLevel.Information, did); }
+                    try
+                    {
+                        if (Setup.AgentGate.Ensure(contextPercent: s.ContextCyclePercent) is { } did) Say(LogEventLevel.Information, did);
+                        if (Setup.AgentGate.EnsureOtherProviders() is { } didOthers) Say(LogEventLevel.Information, didOthers);
+                    }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"couldn't install the agent hooks: {ex.Message}"); }
                     gatePercent = s.ContextCyclePercent;
                 }
