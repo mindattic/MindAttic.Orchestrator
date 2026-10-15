@@ -82,20 +82,25 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         var running = Working.Count;
         var room = plan.Pace?.RoomTokens;
         var taken = new HashSet<string>(StringComparer.Ordinal);
+        // How many more the pace pays for, worked out fresh every tick. An agent started in the last control
+        // window isn't in the measured draw yet, so it's counted as drawing already; unpaced, the session setting decides.
+        var fresh = Working.Count(a => nowUtc - a.StartedUtc < BudgetCalculator.ControlWindow);
+        var more = plan.Pace is { } pace ? pace.SpareSessions - fresh : settings.MaxConcurrentSessions - running;
         foreach (var repo in repos)
         {
-            var limit = settings.RepoMaxSessions.GetValueOrDefault(repo.Name, settings.MaxSessionsPerRepo);
+            // Worktrees keep agents apart, so a repo is only capped if you've capped it yourself.
+            var limit = settings.RepoMaxSessions.GetValueOrDefault(repo.Name, int.MaxValue);
             var inRepo = Working.Count(a => Same(a.Repo, repo.Name));
             while (true)
             {
-                if (running >= plan.Cap)
+                if (more <= 0)
                 {
-                    Tell("cap", $"autopilot: {running} agents working, which is all the pace allows right now ({plan.Cap})");
+                    Tell("cap", $"autopilot: {running} agent{(running == 1 ? "" : "s")} working; the pace has no room for another right now");
                     return Done();
                 }
                 if (inRepo >= limit)
                 {
-                    Tell(repo.Name, $"autopilot: {repo.Name} has {inRepo} agents working, its limit (settings --repo-sessions {repo.Name}=N raises it)");
+                    Tell(repo.Name, $"autopilot: {repo.Name} has {inRepo} agents working, the cap you set for it (settings --repo-sessions)");
                     break;
                 }
                 var next = plan.Queue.FirstOrDefault(q => Same(q.Repo, repo.Name) && !q.IsAssigned && q.BlockedBy.Count == 0 &&
@@ -113,6 +118,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 {
                     said.Add($"autopilot would start a background agent on {next.Id} in {repo.Name}: {next.Ticket.Summary}");
                     running++;
+                more--;
                     inRepo++;
                     continue;
                 }
@@ -131,6 +137,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                     break;
                 }
                 running++;
+                more--;
                 inRepo++;
                 told.Remove(repo.Name);
                 var all = store.LoadAssignments();

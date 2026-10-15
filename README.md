@@ -36,8 +36,10 @@ open story (manual priority, then smallest effort first) goes to a headless back
 `%APPDATA%\MindAttic\MindAttic.Orchestrator\autopilot`) in its own git worktree on branch `orch/<id>`. It
 commits, closes its ticket there, rebases onto `origin/main` and pushes; then your checkout is fast-forwarded
 (when git can do that without touching your changes) and the worktree removed. No window opens and nothing
-is typed into your tabs or edited in your checkouts. A repo runs as many at once as its session limit
-(`--repo-sessions`, default 2), and no more in total than the pace's session cap; new
+is typed into your tabs or edited in your checkouts. How many run at once is worked out every refresh: as
+many more as the spare rate pays for (what fits the 5-hour target, minus what's being drawn, over one
+session's draw; agents started in the last 10 minutes count as drawing already), none while it's over, so
+the count scales up and down on its own (`--repo-sessions Repo=N` caps one repo if you want); new
 stories start only while the 5-hour pace can afford them, and the pace gate slows the running ones, so
 the window is used to its target without hitting the limit. Repos whose CLIs open later join in; an
 agent that ends without closing its ticket gives it back and alerts *Needs you*. `/autopilot off` ends it; `settings --autopilot false` pauses

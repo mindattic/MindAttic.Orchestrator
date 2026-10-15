@@ -72,6 +72,10 @@ public sealed class AutopilotTests
 
     private SchedulePlan Plan(Snapshot snap, int cap = 6) => Scheduler.Plan(snap, new() { MaxConcurrentSessions = cap }, store.LoadAssignments());
 
+    /// <summary>A plan whose pace has room for <paramref name="spare"/> more sessions.</summary>
+    private SchedulePlan Paced(Snapshot snap, int spare) =>
+        Plan(snap) with { Pace = new Pace(PaceMode.Open, 6, 10_000, 0, 1_000, "5-hour", Now.AddHours(3), "On pace.") { SpareSessions = spare } };
+
     [Test]
     public void Repos_with_an_open_cli_get_parallel_background_agents_each_in_its_own_worktree_and_nothing_is_typed()
     {
@@ -81,21 +85,22 @@ public sealed class AutopilotTests
         var snap = Snap(("A", [T("A-T1"), T("A-T2"), T("A-T3")]), ("B", [T("B-T1")]), ("C", [T("C-T1")]));
         var pilot = Pilot();
 
-        var said = pilot.Tick(Plan(snap), snap, new() { WorktreeRoot = @"D:\WT" }, Now);
+        var said = pilot.Tick(Paced(snap, 10), snap, new() { WorktreeRoot = @"D:\WT" }, Now);
         Assert.That(started.Select(s => (s.Dir, s.Prompt[..19])), Is.EquivalentTo(new[]
         {
-            (@"D:\WT\A\A-T1", "Work on ticket A-T1"), (@"D:\WT\A\A-T2", "Work on ticket A-T2"), (@"D:\WT\B\B-T1", "Work on ticket B-T1"),
-        }), "A runs two at once (its session limit), B one, C has no CLI open");
+            (@"D:\WT\A\A-T1", "Work on ticket A-T1"), (@"D:\WT\A\A-T2", "Work on ticket A-T2"), (@"D:\WT\A\A-T3", "Work on ticket A-T3"),
+            (@"D:\WT\B\B-T1", "Work on ticket B-T1"),
+        }), "with room, all of A's stories run at once, each in its worktree; C has no CLI open");
         Assert.That(started[0].Prompt, Does.Contain("own git worktree").And.Contains("branch orch/a-t1").And.Contains("/commit")
             .And.Contains("git push origin HEAD:main").And.Contains("not with workflow ticket close"));
         Assert.That(started[0].Log, Does.StartWith(Path.Combine(dir, "logs")).And.Contains("T1-"));
         Assert.That(said, Has.Some.Contains("in the background"));
         var a = store.LoadAssignments().Single(x => x.TicketId == "A-T1");
         Assert.That((a.Directory, a.Worktree, a.Pilot), Is.EqualTo((@"D:\WT\A\A-T1", true, (int?)started[0].Pid)));
-        Assert.That(pilot.Working, Has.Count.EqualTo(3));
+        Assert.That(pilot.Working, Has.Count.EqualTo(4));
 
-        pilot.Tick(Plan(snap), snap, new() { WorktreeRoot = @"D:\WT" }, Now.AddMinutes(1));
-        Assert.That(started, Has.Count.EqualTo(3), "A is at its limit until one finishes");
+        pilot.Tick(Paced(snap, 10), snap, new() { WorktreeRoot = @"D:\WT" }, Now.AddMinutes(1));
+        Assert.That(started, Has.Count.EqualTo(4), "nothing left that isn't already going");
     }
 
     [Test]
@@ -104,15 +109,15 @@ public sealed class AutopilotTests
         Cli(100, @"D:\W\A");
         var snap = Snap(("A", [T("A-T1"), T("A-T2"), T("A-T3")]));
         var pilot = Pilot();
-        pilot.Tick(Plan(snap), snap, new(), Now); // A-T1 and A-T2 start, the repo's two
+        pilot.Tick(Paced(snap, 2), snap, new(), Now); // room for two: A-T1 and A-T2
         agents.Clear(); // both exit: A-T1 landed closed on main, A-T2 didn't close
         landed.Add("A-T1");
 
         var after = Snap(("A", [T("A-T2"), T("A-T3")]));
-        var said = pilot.Tick(Plan(after), after, new(), Now.AddMinutes(30));
+        var said = pilot.Tick(Paced(after, 2), after, new(), Now.AddMinutes(30));
         Assert.That(said, Has.Some.Contains("finished A-T1"));
         Assert.That(said, Has.Some.Contains("needs you: A-T2's agent in A ended without closing it"));
-        pilot.Tick(Plan(after), after, new(), Now.AddMinutes(31));
+        pilot.Tick(Paced(after, 2), after, new(), Now.AddMinutes(31));
         Assert.That(started.Skip(2).Select(s => s.Prompt[..19]), Is.EqualTo(new[] { "Work on ticket A-T3" }),
             "A moves on to A-T3; A-T2 is back in the queue for you, not retried in a loop");
         Assert.That(store.LoadAssignments().Any(x => x.TicketId == "A-T2"), Is.False);
@@ -122,14 +127,26 @@ public sealed class AutopilotTests
     }
 
     [Test]
-    public void No_more_agents_at_once_than_the_pace_allows()
+    public void It_starts_as_many_as_the_pace_has_room_for_right_now_counting_fresh_agents_as_drawing()
     {
         foreach (var (pid, name) in new[] { (1, "A"), (2, "B"), (3, "C") }) Cli(pid, $@"D:\W\{name}");
-        var snap = Snap(("A", [T("A-T1")]), ("B", [T("B-T1")]), ("C", [T("C-T1")]));
+        var snap = Snap(("A", [T("A-T1"), T("A-T2")]), ("B", [T("B-T1")]), ("C", [T("C-T1")]));
+        var pilot = Pilot();
 
-        var said = Pilot().Tick(Plan(snap, cap: 2), snap, new(), Now);
-        Assert.That(started, Has.Count.EqualTo(2));
-        Assert.That(said, Has.Some.Contains("all the pace allows"));
+        var said = pilot.Tick(Paced(snap, 2), snap, new() { MaxConcurrentSessions = 1 }, Now);
+        Assert.That(started, Has.Count.EqualTo(2), "room for two: the session setting doesn't cap a paced run");
+        Assert.That(said, Has.Some.Contains("the pace has no room for another"));
+
+        pilot.Tick(Paced(snap, 3), snap, new(), Now.AddMinutes(2));
+        Assert.That(started, Has.Count.EqualTo(3), "room for three, but the two started minutes ago aren't in the measured draw yet: one more");
+
+        pilot.Tick(Paced(snap, -1), snap, new(), Now.AddMinutes(30));
+        Assert.That(started, Has.Count.EqualTo(3), "over pace: nothing new; the running ones drain");
+
+        Assert.That(Pacer.SpareSessions(10_000, 6_000, 1_000), Is.EqualTo(4));
+        Assert.That(Pacer.SpareSessions(10_000, 12_500, 1_000), Is.EqualTo(-3));
+        Assert.That(Pacer.SpareSessions(0, 0, 1_000), Is.EqualTo(0), "at the target");
+        Assert.That(Pacer.SpareSessions(10_000, 0, null), Is.EqualTo(1), "no history: one, to measure it");
     }
 
     [Test]
@@ -174,10 +191,11 @@ public sealed class AutopilotTests
     {
         Cli(100, @"D:\W\A");
         var snap = Snap(("A", [T("A-T1"), T("A-T2")]));
-        Pilot().Tick(Plan(snap), snap, new() { MaxSessionsPerRepo = 1 }, Now);
+        OrchestratorSettings one = new() { RepoMaxSessions = new() { ["A"] = 1 } };
+        Pilot().Tick(Plan(snap), snap, one, Now);
 
         var restarted = Pilot(); // a new daemon: same store, the agents' processes still running
-        restarted.Tick(Plan(snap), snap, new() { MaxSessionsPerRepo = 1 }, Now.AddMinutes(5));
+        restarted.Tick(Plan(snap), snap, one, Now.AddMinutes(5));
         Assert.That(started, Has.Count.EqualTo(1));
         Assert.That(restarted.Working.Single().TicketId, Is.EqualTo("A-T1"));
     }

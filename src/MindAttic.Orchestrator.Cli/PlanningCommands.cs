@@ -79,7 +79,7 @@ internal sealed class DryRunCommand : Command
         if (!s.Autopilot) AnsiConsole.MarkupLine("[yellow]Autopilot is paused (--autopilot true resumes); this is what it would do.[/]");
         if (autopilot.Paused is { } why) AnsiConsole.MarkupLine($"[yellow]Holding: {Markup.Escape(why)}[/]");
         foreach (var line in lines) AnsiConsole.MarkupLine("  " + Markup.Escape(line));
-        AnsiConsole.MarkupLine("[grey]Each starts as a background agent (each in its own worktree, as many at once as the repo limits and the pace allow). Nothing was started.[/]");
+        AnsiConsole.MarkupLine("[grey]Each starts as a background agent (each in its own worktree, as many at once as the pace has room for, worked out every refresh). Nothing was started.[/]");
         return 0;
     }
 }

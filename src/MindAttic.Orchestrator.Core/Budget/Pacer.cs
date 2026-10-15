@@ -40,6 +40,10 @@ public sealed record Pace(
     /// null when unpaced, so nothing is held.</summary>
     public int? SubagentAllowance { get; init; }
 
+    /// <summary>How many more sessions the spare rate pays for right now (what fits the target minus what's being drawn,
+    /// over what one session draws); negative when the draw is already over. Autopilot starts at most this many.</summary>
+    public int SpareSessions { get; init; }
+
     /// <summary>Subagents running when the allowance was worked out.</summary>
     public int Subagents { get; init; }
 
@@ -138,9 +142,24 @@ public static class Pacer
                         ". Keep working normally; the subagent allowance says how many subagents may run at once.";
         if (delay > 0) note += $" Agents held {delay:0}s per tool call.";
         var room = windows.Min(w => Math.Max(0, w.Limit * target - w.Used));
-        var allowance = SubagentAllowance(sustainable, Unheld(b.ControlFreshPerHour, recentDelaySeconds), perSession, subagents, s.MaxSubagents);
+        var demand = Unheld(b.ControlFreshPerHour, recentDelaySeconds);
+        var allowance = SubagentAllowance(sustainable, demand, perSession, subagents, s.MaxSubagents);
         return new Pace(mode, cap, sustainable, recent, perSession, gov.Name, gov.ResetUtc, note, agentNote)
-        { RoomTokens = room, AgentDelaySeconds = delay, SubagentAllowance = allowance, Subagents = subagents };
+        {
+            RoomTokens = room, AgentDelaySeconds = delay, SubagentAllowance = allowance, Subagents = subagents,
+            SpareSessions = SpareSessions(sustainable, demand, perSession),
+        };
+    }
+
+    /// <summary>
+    /// Sessions the spare rate pays for: (<paramref name="sustainable"/> − <paramref name="demand"/>) ÷ one session's
+    /// draw, rounded down; negative when over. With no session history yet, one while there's any room, to measure it.
+    /// </summary>
+    internal static int SpareSessions(double sustainable, double demand, double? perSession)
+    {
+        if (sustainable <= 0) return 0;
+        var spare = sustainable - demand;
+        return perSession is > 0 and var p ? (int)Math.Clamp(Math.Floor(spare / p), -100, 100) : spare > 0 ? 1 : 0;
     }
 
     /// <summary>
