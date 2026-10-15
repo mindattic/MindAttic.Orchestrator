@@ -33,6 +33,9 @@ public sealed class ContextCycler(string? directory = null)
     /// <summary>Types a line into a console by process id; an empty line only checks it can. Replaceable for tests.</summary>
     internal Func<int, string, bool> Typer { get; init; } = (pid, text) => text.Length == 0 ? ConsoleTyper.CanType(pid) : ConsoleTyper.Submit(pid, text);
 
+    /// <summary>Sessions to leave alone: autopilot's headless agents, which have no prompt to type /quicksave into.</summary>
+    public Func<int, bool> IsAgent { get; set; } = _ => false;
+
     private readonly Dictionary<string, Task<string>> cycling = new(StringComparer.Ordinal);
     private readonly HashSet<string> told = new(StringComparer.Ordinal);
 
@@ -49,7 +52,7 @@ public sealed class ContextCycler(string? directory = null)
 
         foreach (var s in Load())
         {
-            if (cycling.ContainsKey(s.SessionId) || !Due(s, settings.ContextCyclePercent, nowUtc)) continue;
+            if (cycling.ContainsKey(s.SessionId) || !Due(s, settings.ContextCyclePercent, nowUtc) || (s.Pid is { } agent && IsAgent(agent))) continue;
             Func<string, Task<bool>>? send = null;
             var host = HostFor(s, hosts, out var why);
             if (host is not null) send = text => SessionControl.SubmitAsync(host.PipeName, text);

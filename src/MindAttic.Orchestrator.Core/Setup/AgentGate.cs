@@ -71,14 +71,14 @@ public static class AgentGate
 
     internal const string AutopilotCommand = """
         ---
-        description: Put every open repo CLI to work on its own repo's stories, one after another, paced to use the 5-hour window without hitting the limit. -repo=a,b limits it to those repos' CLIs; /autopilot off stops it.
+        description: Work the stories of every repo with an open CLI (or -repo=a,b) in background agents, one per repo at a time, paced to use the 5-hour window without hitting the limit. /autopilot off stops it.
         argument-hint: "[on|off] [-repo=a,b,c]"
         ---
         The user ran /autopilot $ARGUMENTS. MindAttic.Orchestrator's context gate has already recorded it; there is nothing for you to set up, and nothing for you to work on because of it.
 
-        If the arguments start with "off": reply with one short line confirming autopilot is off; the orchestrator types no new stories into any CLI (stories already running finish).
+        If the arguments start with "off": reply with one short line confirming autopilot is off; the orchestrator types no new stories into any CLI (agents already working finish their stories).
 
-        Otherwise reply with one short line confirming autopilot is on for every open Claude CLI that sits in a repo (or, with -repo=, only the CLIs in those repos; name them), then end your turn. From then on, whenever one of those CLIs has been idle for half a minute and its last story is closed, the orchestrator types in that repo's next open story (manual priority first, then smallest effort); each ends with /commit and closing its ticket. A CLI never gets another repo's story. New stories only start while the 5-hour pace can afford them and the pace gate slows running agents, so the window gets used without hitting the limit. CLIs opened later join in; /autopilot off stops it.
+        Otherwise reply with one short line confirming autopilot is on for the repos that have an open Claude CLI (or, with -repo=, the repos named; name them), then end your turn. From then on the orchestrator works each of those repos' next open story (manual priority first, then smallest effort) in a background agent of its own: no window, nothing typed into any CLI, so every tab stays free for you. One agent per repo at a time, each ending with /commit and closing its ticket, then the next. New stories only start while the 5-hour pace can afford them and the pace gate slows running agents, so the window gets used without hitting the limit. Repos whose CLIs open later join in; an agent that ends without closing its ticket gives it back and you get a "Needs you"; /autopilot off starts nothing new.
         """;
 
     internal static string Script => $$"""

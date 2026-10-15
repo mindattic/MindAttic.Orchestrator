@@ -31,6 +31,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         Say(LogEventLevel.Information, $"daemon started (pid {Environment.ProcessId}, every {interval.TotalSeconds:0}s, workspace {options.WorkspaceRoot})");
         var cycler = new ContextCycler();
         var autopilot = new Autopilot(store, cycler, lease);
+        cycler.IsAgent = autopilot.IsAgent;
         string? lastPaused = null;
         cycler.Prune(DateTime.UtcNow);
         int? gatePercent = null;
@@ -116,17 +117,21 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 }
 
                 foreach (var line in autopilot.Tick(plan, snapshot, s, DateTime.UtcNow))
-                    Say(LogEventLevel.Information, line);
+                {
+                    var needsYou = line.Contains("needs you", StringComparison.Ordinal);
+                    Say(needsYou ? LogEventLevel.Warning : LogEventLevel.Information, line);
+                    if (needsYou) Alert("Needs you", line["autopilot: needs you: ".Length..]);
+                }
                 if (autopilot.On && autopilot.Paused != lastPaused)
                 {
-                    Say(LogEventLevel.Information, autopilot.Paused is { } why ? $"autopilot is holding: {why}" : "autopilot is feeding its CLIs again");
+                    Say(LogEventLevel.Information, autopilot.Paused is { } why ? $"autopilot is holding: {why}" : "autopilot is starting stories again");
                     lastPaused = autopilot.Paused;
                 }
                 if (autopilot.On && autopilot.HeldElsewhere != lastHeldElsewhere)
                 {
                     Say(LogEventLevel.Information, autopilot.HeldElsewhere
-                        ? "another orchestrator (an open dashboard) is feeding the /autopilot CLIs; this one only keeps the budget file fresh"
-                        : "feeding the /autopilot CLIs from this process");
+                        ? "another orchestrator (an open dashboard) is running autopilot; this one only keeps the budget file fresh"
+                        : "running autopilot from this process");
                     lastHeldElsewhere = autopilot.HeldElsewhere;
                 }
             }

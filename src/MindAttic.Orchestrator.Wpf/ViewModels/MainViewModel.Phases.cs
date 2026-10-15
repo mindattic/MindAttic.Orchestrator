@@ -196,12 +196,12 @@ public sealed partial class MainViewModel
     public string SlotsText => plan is null ? ""
         : plan.Cap < plan.Slots ? $"{plan.Occupied} sessions open · pacing allows {plan.Cap} of {plan.Slots}"
         : $"{plan.Occupied} sessions open · fills up to {plan.Slots}";
-    public string AutopilotText => !autopilot.On
-        ? "Proposals wait for you. Type /autopilot in any CLI to put every open repo CLI to work on its own stories."
-        : autopilot.Repos.Count == 0 ? "Autopilot is on, but no Claude CLI is open in a repo it covers."
-        : autopilot.Paused is { } why ? $"Autopilot is on for {string.Join(", ", autopilot.Repos)} but holding: {why}."
-        : $"Autopilot is on for {string.Join(", ", autopilot.Repos)}: each CLI gets its repo's next story when idle, paced to the 5-hour window" +
-          (autopilot.HeldElsewhere ? " (fed by the background daemon)." : ".");
+    public string AutopilotText => (!autopilot.On
+            ? "Proposals wait for you. Type /autopilot in any CLI to have each open repo's stories worked in the background."
+            : autopilot.Repos.Count == 0 ? "Autopilot is on, but no Claude CLI is open in a repo it covers."
+            : autopilot.Paused is { } why ? $"Autopilot is on for {string.Join(", ", autopilot.Repos)} but holding: {why}."
+            : $"Autopilot is on for {string.Join(", ", autopilot.Repos)}, paced to the 5-hour window" + (autopilot.HeldElsewhere ? " (run by the background daemon)." : ".")) +
+        (autopilot.Working.Count == 0 ? "" : $" Working in the background: {string.Join(", ", autopilot.Working.Select(a => $"{a.TicketId} in {a.Repo}"))}.");
     public string QueueMessage { get => queueMessage; private set => Set(ref queueMessage, value); }
     public int QueueCount => Queue.Count(q => !q.IsAssigned);
 
@@ -384,6 +384,8 @@ public sealed partial class MainViewModel
             {
                 QueueMessage = line;
                 queueLog.Information("{Line:l}", line);
+                if (line.Contains("needs you", StringComparison.Ordinal))
+                    Toasts.Insert(0, new ToastViewModel("Needs you", line["autopilot: needs you: ".Length..], Palette.Waiting, null));
             }
         Raise(nameof(AutopilotText));
     }

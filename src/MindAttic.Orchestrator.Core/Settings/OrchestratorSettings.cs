@@ -111,8 +111,11 @@ public sealed record OrchestratorSettings
 /// <summary>A ticket the orchestrator has handed to a session.</summary>
 public sealed record Assignment(string TicketId, string Repo, string Directory, string Provider, DateTime StartedUtc, bool Worktree)
 {
-    /// <summary>The Claude CLI <c>/autopilot</c> typed it into; null for a tab the orchestrator opened.</summary>
+    /// <summary>The background agent <c>/autopilot</c> started on it (its process id); null for a tab.</summary>
     public int? Pilot { get; init; }
+
+    /// <summary>Where that background agent's output goes.</summary>
+    public string? Log { get; init; }
 }
 
 /// <summary>Small JSON files under <c>%APPDATA%\MindAttic\MindAttic.Orchestrator</c>, written atomically.</summary>
