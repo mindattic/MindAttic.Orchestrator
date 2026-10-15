@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows.Input;
 using System.Windows.Media;
 using MindAttic.Orchestrator.Budget;
+using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
 
@@ -41,6 +42,10 @@ public sealed partial class MainViewModel : ObservableObject
     private static readonly TimeSpan ToastLifetime = TimeSpan.FromMinutes(2);
 
     private readonly JsonStore store = new();
+    // Shared with the headless daemon (same lock file): whichever process grabs it first is the one that
+    // dispatches autopilot and writes rl-status.json, so every open window doesn't race to overwrite it
+    // (MAO-T112); released when this process exits, same as the daemon's own.
+    private readonly DispatchLease lease;
     private readonly StatusAggregator aggregator;
     private readonly SessionControl control;
     private readonly Dictionary<string, RepoTileViewModel> tiles = new(StringComparer.OrdinalIgnoreCase);
@@ -57,7 +62,8 @@ public sealed partial class MainViewModel : ObservableObject
 
     public MainViewModel()
     {
-        aggregator = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter());
+        lease = new DispatchLease(store.Directory);
+        aggregator = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter(), lease);
         control = new SessionControl(aggregator.Options);
         Waiting = new("Needs you", "Sessions that stopped and are waiting for input, longest wait first", Palette.Waiting);
         Working = new("Working", "Agents mid-turn right now", Palette.Working);

@@ -37,8 +37,11 @@ public sealed partial class MainViewModel
     private void InitPhases()
     {
         dispatcher = new Dispatcher(control, store);
-        // Held until the app exits; while the logon daemon holds it, the daemon feeds the /autopilot CLIs and this window only shows.
-        autopilot = new Autopilot(store, new MindAttic.Orchestrator.Sessions.ContextCycler(), new DispatchLease(store.Directory)) { WaitingPath = Autopilot.DefaultWaitingPath };
+        // The same lease the status refresh uses (MAO-T112): one FileStream per path per process, so a second
+        // one here would just fail to acquire what the first already holds. Held until the app exits; while
+        // the logon daemon holds it, the daemon feeds the /autopilot CLIs and keeps rl-status.json fresh, and
+        // this window only shows.
+        autopilot = new Autopilot(store, new MindAttic.Orchestrator.Sessions.ContextCycler(), lease) { WaitingPath = Autopilot.DefaultWaitingPath };
         auditRunner = new AuditRunner(aggregator.Options, store);
         Settings = new SettingsViewModel(store, () => { IsSettingsOpen = false; _ = RefreshAsync(); });
 

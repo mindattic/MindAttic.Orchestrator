@@ -1,4 +1,5 @@
 using MindAttic.Orchestrator.Activity;
+using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Settings;
 using NUnit.Framework;
 
@@ -117,5 +118,30 @@ public sealed class StatusAggregatorTests
         var root = snap.Repos.Single(r => r.Name == StatusAggregator.WorkspaceRootName);
         Assert.That((root.Path, root.State, root.Sessions.Single().SessionId), Is.EqualTo((ws, RepoState.Dormant, "root")), "two hours quiet, no tab");
         Assert.That(snap.Repos.Single(r => r.Name == StatusAggregator.OutsideName).Hosts.Single().ProcessId, Is.EqualTo(7));
+    }
+
+    [Test]
+    public void A_refresh_only_writes_rlstatus_while_it_holds_or_can_take_the_lease()
+    {
+        // Every open dashboard window and the headless daemon used to refresh and write it independently,
+        // flapping the pace gate's hold and the "RATE LIMIT" banner between whichever wrote last (MAO-T112).
+        store.SaveSettings(new OrchestratorSettings { WorktreeRoot = worktrees, BlockBudget = 100_000 });
+        var rlPath = Path.Combine(dir, "rl-status.json");
+
+        using (var heldElsewhere = new MindAttic.Orchestrator.Scheduling.DispatchLease(dir))
+        {
+            Assert.That(heldElsewhere.TryAcquire(), Is.True);
+            using var locked = new MindAttic.Orchestrator.Scheduling.DispatchLease(dir);
+            var gated = new StatusAggregator(new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null }, store,
+                new RateLimitStatusWriter(rlPath), locked) { ScanHosts = () => hosts, OtherProviders = new ProviderLogReader(Path.Combine(dir, "codex"), Path.Combine(dir, "gemini")) };
+            gated.Refresh();
+            Assert.That(File.Exists(rlPath), Is.False, "another process holds the lease: this one doesn't write");
+        }
+
+        using var free = new MindAttic.Orchestrator.Scheduling.DispatchLease(dir);
+        var writes = new StatusAggregator(new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null }, store,
+            new RateLimitStatusWriter(rlPath), free) { ScanHosts = () => hosts, OtherProviders = new ProviderLogReader(Path.Combine(dir, "codex"), Path.Combine(dir, "gemini")) };
+        writes.Refresh();
+        Assert.That(File.Exists(rlPath), Is.True, "nobody held it: free to take, and it writes");
     }
 }

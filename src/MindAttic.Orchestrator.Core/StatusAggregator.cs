@@ -1,5 +1,6 @@
 using MindAttic.Orchestrator.Activity;
 using MindAttic.Orchestrator.Budget;
+using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
 using MindAttic.Orchestrator.Tickets;
@@ -13,7 +14,13 @@ namespace MindAttic.Orchestrator;
 /// Launcher's host pipes, and Claude Code's transcripts. Holds incremental state between calls,
 /// so keep one instance and call <see cref="Refresh"/> on a timer. Not thread-safe.
 /// </summary>
-public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? store = null, RateLimitStatusWriter? rateLimitFile = null)
+/// <param name="statusLease">With <paramref name="rateLimitFile"/>, write it only while held (or free to
+/// take): every open dashboard window and the headless daemon would otherwise poll Claude's own report and
+/// the session transcripts at their own moment and overwrite the one shared file with a different number
+/// every few seconds, flapping the pace gate's hold and the "RATE LIMIT" banner between whichever process
+/// wrote last (found live: two dashboard windows open at once, MAO-T112). Null always writes, as a one-off
+/// CLI run does.</param>
+public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? store = null, RateLimitStatusWriter? rateLimitFile = null, DispatchLease? statusLease = null)
 {
     /// <summary>Activity in the workspace root itself (cross-repo sessions).</summary>
     public const string WorkspaceRootName = "(workspace root)";
@@ -89,7 +96,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         var contextCycler = new Sessions.ContextCycler();
         var pace = Pacer.Compute(budget, active, Pacer.TypicalPerSession(allSessions.Select(s => s.Events), historyStartUtc), settings, now,
             rateLimitFile?.AgentDelay(now) ?? 0, rateLimitFile is null ? 0 : contextCycler.Subagents());
-        rateLimitFile?.Write(budget, pace);
+        if (rateLimitFile is not null && (statusLease is null || statusLease.IsHeld || statusLease.TryAcquire()))
+            rateLimitFile.Write(budget, pace);
 
         var runningSubagents = SubagentActivityReader.Running(contextCycler, options.ClaudeProjectsDir, now);
         var agentBoard = AgentBoard.Build(result, pace, Store.LoadAssignments(), runningSubagents, options.WorkingWindow, now);

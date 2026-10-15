@@ -25,7 +25,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         var options = OrchestratorOptions.Load(store);
         using var lease = new DispatchLease(store.Directory);
         StatusAggregator aggregator = null!;
-        void Build() => aggregator = new StatusAggregator(options, store, new RateLimitStatusWriter());
+        void Build() => aggregator = new StatusAggregator(options, store, new RateLimitStatusWriter(), lease);
         Build();
 
         Say(LogEventLevel.Information, $"daemon started (pid {Environment.ProcessId}, every {interval.TotalSeconds:0}s, workspace {options.WorkspaceRoot})");
@@ -145,7 +145,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 if (autopilot.On && autopilot.HeldElsewhere != lastHeldElsewhere)
                 {
                     Say(LogEventLevel.Information, autopilot.HeldElsewhere
-                        ? "another orchestrator (an open dashboard) is running autopilot; this one only keeps the budget file fresh"
+                        ? "another orchestrator (an open dashboard) is running autopilot and keeping the budget file fresh; this does neither until it's free"
                         : "running autopilot from this process");
                     lastHeldElsewhere = autopilot.HeldElsewhere;
                 }
