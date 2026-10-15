@@ -67,8 +67,9 @@ internal sealed class DryRunCommand : Command
 {
     public override int Execute(CommandContext context)
     {
-        var (_, store, _, plan) = Ctx.Load();
+        var (_, store, snapshot, all) = Ctx.Load();
         var s = store.LoadSettings();
+        var plan = AutoDispatch.PlanFor(all, snapshot, s, store.LoadAssignments());
         using var lease = new DispatchLease(store.Directory);
         var quiet = QuietHours.Active(s.QuietHours, DateTime.Now);
 
@@ -76,6 +77,8 @@ internal sealed class DryRunCommand : Command
             : quiet is not null ? $"[yellow]Quiet hours ({Markup.Escape(quiet)}): auto-dispatch is paused.[/]"
             : !lease.TryAcquire() ? "[grey]Another orchestrator (the daemon) holds auto-dispatch; it would do this:[/]"
             : "Auto-dispatch would do this:");
+        AnsiConsole.MarkupLine(s.DispatchRepos.Count == 0 ? "[grey]It may start tickets in any repo (no --dispatch-repos allowlist).[/]"
+            : $"[grey]Only tickets in {Markup.Escape(string.Join(", ", s.DispatchRepos))} (--dispatch-repos).[/]");
         if (plan.Hold is not null) AnsiConsole.MarkupLine($"[yellow]Nothing opens: {Markup.Escape(plan.Hold)}[/]");
         var minute = 0;
         foreach (var p in plan.Proposals)
@@ -86,7 +89,7 @@ internal sealed class DryRunCommand : Command
             minute++;
         }
         if (plan.Proposals.Count == 0 && plan.Hold is null) AnsiConsole.MarkupLine("[grey]Nothing is ready to start.[/]");
-        AnsiConsole.MarkupLine("[grey]One tab a minute, prompt pre-filled and unsent. Nothing was opened.[/]");
+        AnsiConsole.MarkupLine("[grey]One tab a minute, prompt pre-filled; sent by itself only in --auto-submit repos. Nothing was opened.[/]");
         return 0;
     }
 }

@@ -136,6 +136,19 @@ public sealed class SchedulerTests
     }
 
     [Test]
+    public void Auto_dispatch_reaches_past_the_queue_top_to_the_repos_it_may_start()
+    {
+        var snap = Snap(null, Repo("A", RepoState.Dormant, T("A-T1")), Repo("B", RepoState.Dormant, T("B-T1")));
+        var s = new OrchestratorSettings { MaxConcurrentSessions = 1, DispatchRepos = ["b"] };
+        var plan = Scheduler.Plan(snap, s, []);
+
+        Assert.That(plan.Proposals.Select(p => p.Item.Id), Is.EqualTo(new[] { "A-T1" }), "a click still sees the top of the queue");
+        Assert.That(AutoDispatch.PlanFor(plan, snap, s, []).Proposals.Select(p => p.Item.Id), Is.EqualTo(new[] { "B-T1" }),
+            "auto-dispatch skips A, which isn't allowed, for the next one that is, even with one slot");
+        Assert.That(AutoDispatch.PlanFor(plan, snap, s with { DispatchRepos = [] }, []), Is.SameAs(plan), "no allowlist: every repo");
+    }
+
+    [Test]
     public void Auto_submit_is_per_repo_and_off_by_default()
     {
         Assert.That(AutoDispatch.Submits(new OrchestratorSettings(), "Prose"), Is.False, "off by default");

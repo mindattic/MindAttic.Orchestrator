@@ -380,7 +380,8 @@ public sealed partial class MainViewModel
         ApplyPlan(next);
         Brief(next);
 
-        if (plan is not null && autoDispatch.Tick(plan, store.LoadSettings(), DateTime.UtcNow) is { } r)
+        var autoSettings = store.LoadSettings();
+        if (plan is not null && autoDispatch.Tick(AutoDispatch.PlanFor(plan, next, autoSettings, store.LoadAssignments()), autoSettings, DateTime.UtcNow) is { } r)
         {
             QueueMessage = r.Message;
             Record(r, "Auto-dispatch");

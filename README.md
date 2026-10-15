@@ -27,11 +27,11 @@ hitting the session limit, and never stalling on a full context. Pick what runs;
 | Pacing | caps new sessions so the window lands on 99% at its reset; the week is never paced | `rl-status.json` → `pace` |
 | Holding agents | every Claude CLI and subagent waits before each tool call while the draw won't last, 0s once it fits | `~/.claude/pace-gate.py` (PreToolUse hook) |
 | Context cycling | past 80% context: wrap up, then `/quicksave`, `/clear`, `/quickload` typed in | `~/.claude/context-gate.py` (prompt, tool, stop hooks) |
-| Auto-dispatch | starts the top queued ticket when a slot frees (off by default) | `settings --auto-dispatch true` |
+| Auto-dispatch | starts the top queued ticket when a slot frees (off by default), only in `--dispatch-repos` if set | `settings --auto-dispatch true --dispatch-repos Prose,Claudia` |
 | Auto-submit | in listed repos, auto-dispatched tabs press Enter themselves (none by default) | `settings --auto-submit Repo=true` |
 
-To run unattended overnight: `orchestrator settings --auto-dispatch true --auto-submit Prose=true`
-(any repos), make sure `--max-sessions` leaves free slots (waiting sessions take one), then
+To run unattended overnight: `orchestrator settings --auto-dispatch true --dispatch-repos Prose
+--auto-submit Prose=true` (any repos; `--dispatch-repos all` lifts the limit), make sure `--max-sessions` leaves free slots (waiting sessions take one), then
 `orchestrator dryrun` to see what it would start. Everything else is on by default. To check on it:
 `orchestrator status` (sessions), `orchestrator budget` (percent, pace, hold), `orchestrator queue`.
 The hooks are written into your global `~/.claude/settings.json` by the daemon and dashboard, and
@@ -97,7 +97,7 @@ The same core drives a CLI (`dotnet run --project src/MindAttic.Orchestrator.Cli
 | `dispatch <ID> [--provider] [--worktree]` | start a session on a ticket |
 | `release <ID> [--remove-worktree]` | put a ticket back in the queue; remove its (clean) worktree |
 | `daemon [--interval 15]` | keep the budget file and pace fresh and, if enabled, auto-dispatch without the dashboard open |
-| `settings [--max-sessions n] [--auto-dispatch true] [--auto-submit Repo=true] [--throttle-agents true] [--max-delay 300] [--provider X] [--stale-hours 12] [--quiet 22:00-07:00] [--repo-cap Repo=40] [--repo-sessions Repo=3] [--groom-days 30] [--notify URL] [--github-intake true]` | scheduler settings |
+| `settings [--max-sessions n] [--auto-dispatch true] [--dispatch-repos A,B] [--auto-submit Repo=true] [--throttle-agents true] [--max-delay 300] [--provider X] [--stale-hours 12] [--quiet 22:00-07:00] [--repo-cap Repo=40] [--repo-sessions Repo=3] [--groom-days 30] [--notify URL] [--github-intake true]` | scheduler settings |
 | `audit [--latest]` | convention drift and cross-repo duplication |
 | `block <ID> --by <ID>` / `reserve <ID> <tokens>` | make a ticket wait for others; set tokens aside for a ticket |
 | `dryrun` | what auto-dispatch would open right now, and where, without opening anything |
@@ -194,7 +194,9 @@ console (the hook records its process); a Claude desktop-app session has no cons
 before features before chores before docs, then oldest. Each refresh it proposes up to the free
 session slots (one per repo) under the pace's session cap. It holds when the slots are full, the pace
 is coasting or over, or (with pacing off or nothing to pace against) the budget passes the warn line.
-Proposals wait for a click by default; *auto-dispatch* (Settings) opens one per minute by itself.
+Proposals wait for a click by default; *auto-dispatch* (Settings) opens one per minute by itself,
+from every repo or only those in `--dispatch-repos` (it reaches past other repos' tickets at the top
+of the queue; the queue and manual starts still cover everything).
 Either way the tab opens with the ticket pre-filled and unsent, and the prompt tells the agent to
 finish with `workflow ticket close <ID> --repo <Repo>`. To run a repo unattended, `settings
 --auto-submit Repo=true` makes the tabs auto-dispatch opens there press Enter by themselves once the

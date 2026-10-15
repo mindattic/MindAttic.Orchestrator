@@ -117,7 +117,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                         Say(LogEventLevel.Information, $"filed {ticket.Id} in {repo} from GitHub: {ticket.Summary}");
                 }
 
-                if (auto.Tick(plan, s, DateTime.UtcNow) is { } r)
+                if (auto.Tick(AutoDispatch.PlanFor(plan, snapshot, s, store.LoadAssignments()), s, DateTime.UtcNow) is { } r)
                 {
                     Say(r.Ok ? LogEventLevel.Information : LogEventLevel.Error, r.Message);
                     var ticket = r.Assignment?.TicketId;

@@ -32,6 +32,14 @@ public sealed class AutoDispatch(Dispatcher dispatcher, TimeSpan? interval = nul
         return dispatcher.Dispatch(p.Item, settings.DefaultProvider, p.UseWorktree, Submits(settings, p.Item.Repo));
     }
 
+    /// <summary>Whether auto-dispatch may start tickets in <paramref name="repo"/>: every repo when the allowlist is empty.</summary>
+    public static bool Allowed(OrchestratorSettings settings, string repo) =>
+        settings.DispatchRepos.Count == 0 || settings.DispatchRepos.Contains(repo, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The plan auto-dispatch acts on: <paramref name="plan"/> itself, or one proposing only allowed repos.</summary>
+    public static SchedulePlan PlanFor(SchedulePlan plan, Snapshot snapshot, OrchestratorSettings settings, IReadOnlyList<Assignment> assignments) =>
+        settings.DispatchRepos.Count == 0 ? plan : Scheduler.Plan(snapshot, settings, assignments, forAutoDispatch: true);
+
     /// <summary>Whether a tab auto-dispatch opens in <paramref name="repo"/> presses Enter by itself.</summary>
     public static bool Submits(OrchestratorSettings settings, string repo) =>
         settings.AutoSubmitRepos.Contains(repo, StringComparer.OrdinalIgnoreCase);

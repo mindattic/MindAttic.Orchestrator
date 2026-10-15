@@ -10,7 +10,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly JsonStore store;
     private readonly Action saved;
     private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "",
-        maxDelay = "", contextPercent = "", autoSubmitRepos = "";
+        maxDelay = "", contextPercent = "", autoSubmitRepos = "", dispatchRepos = "";
     private bool autoDispatch, pacing, throttleAgents, contextCycle;
 
     public SettingsViewModel(JsonStore store, Action saved)
@@ -37,6 +37,9 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>Comma-separated repo names whose auto-dispatched tabs submit their prompt by themselves.</summary>
     public string AutoSubmitRepos { get => autoSubmitRepos; set => Set(ref autoSubmitRepos, value); }
+
+    /// <summary>Comma-separated repos auto-dispatch may start tickets in; blank means any.</summary>
+    public string DispatchRepos { get => dispatchRepos; set => Set(ref dispatchRepos, value); }
     public string Error { get => error; private set => Set(ref error, value); }
     public IReadOnlyList<string> Providers => Sessions.SessionControl.Providers;
     public string FilePath => System.IO.Path.Combine(store.Directory, "settings.json");
@@ -59,6 +62,7 @@ public sealed class SettingsViewModel : ObservableObject
         ContextCycle = s.ContextCycle;
         ContextPercent = s.ContextCyclePercent.ToString(CultureInfo.InvariantCulture);
         AutoSubmitRepos = string.Join(", ", s.AutoSubmitRepos);
+        DispatchRepos = string.Join(", ", s.DispatchRepos);
         Error = "";
     }
 
@@ -79,6 +83,7 @@ public sealed class SettingsViewModel : ObservableObject
             BlockBudget = block, WeeklyBudget = weekly, WeeklyReset = reset?.ToString(), WarnPercent = warn, MaxConcurrentSessions = max,
             DefaultProvider = Provider, AutoDispatch = AutoDispatch, Pacing = Pacing, PaceTargetPercent = target,
             ThrottleAgents = ThrottleAgents, MaxAgentDelaySeconds = delay, ContextCycle = ContextCycle, ContextCyclePercent = cycleAt,
+            DispatchRepos = [.. DispatchRepos.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Distinct(StringComparer.OrdinalIgnoreCase)],
             AutoSubmitRepos = [.. AutoSubmitRepos.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Distinct(StringComparer.OrdinalIgnoreCase)],
         });
         Load();

@@ -54,6 +54,10 @@ public sealed record OrchestratorSettings
     /// (prompt pre-filled, never submitted) when a slot is free and the budget allows.</summary>
     public bool AutoDispatch { get; init; }
 
+    /// <summary>The repos auto-dispatch may start tickets in; empty means every repo. Manual starts and
+    /// the queue are unaffected.</summary>
+    public List<string> DispatchRepos { get; init; } = [];
+
     /// <summary>Repos whose auto-dispatched tabs submit their prompt by themselves once the agent is up,
     /// so work runs unattended under the pacer's caps. Empty by default; manual starts never submit.</summary>
     public List<string> AutoSubmitRepos { get; init; } = [];
