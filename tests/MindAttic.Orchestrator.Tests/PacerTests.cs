@@ -137,6 +137,17 @@ public sealed class PacerTests
     }
 
     [Test]
+    public void A_held_session_is_costed_at_what_it_will_draw_once_let_go()
+    {
+        var (b, s) = Budget(10.5, new OrchestratorSettings { BlockBudget = 11_000, PaceTargetPercent = 100 }, E(10, 1000), E(10.4, 1000));
+
+        Assert.That(Pacer.Compute(b, 4, null, s, Day.AddHours(10.5)).PerSessionPerHour, Is.EqualTo(1000).Within(1));
+        var held = Pacer.Compute(b, 4, null, s, Day.AddHours(10.5), recentDelaySeconds: 20);
+        Assert.That(held.PerSessionPerHour, Is.EqualTo(2000).Within(1), "held 20s per 20s step: it burned half what it will");
+        Assert.That(held.SessionCap, Is.EqualTo(1), "so one session fits 2,000/h, not two");
+    }
+
+    [Test]
     public void Coasting_only_closes_new_sessions_it_doesnt_slow_the_running_ones()
     {
         var coast = new Pace(PaceMode.Coast, 0, 2000, 1500, 3000, "5-hour", Day, "Coasting: not even one more session fits.");

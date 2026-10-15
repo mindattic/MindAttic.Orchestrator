@@ -96,8 +96,9 @@ public static class Pacer
             .Select(w => (w, Rate: Math.Max(0, w.Limit * target - w.Used) / Math.Max((w.ResetUtc - nowUtc).TotalHours, 1.0 / 60)))
             .MinBy(x => x.Rate);
 
-        // What one more session costs: today's sessions if any are running, else your usual session.
-        double? perSession = activeSessions > 0 && recent > 0 ? recent / activeSessions : typicalPerSession;
+        // What one more session costs: today's sessions if any are running, else your usual session. A
+        // held session burns less than it will once let go, so judge it by what it would draw unheld.
+        double? perSession = activeSessions > 0 && recent > 0 ? Unheld(recent, recentDelaySeconds) / activeSessions : typicalPerSession;
         var cap = sustainable <= 0 ? 0
             : perSession is > 0 and var p ? (int)Math.Clamp(Math.Floor(sustainable / p), 0, max)
             : Math.Min(1, max); // no history at all: start one and measure it
@@ -122,6 +123,11 @@ public static class Pacer
         { RoomTokens = room, AgentDelaySeconds = delay };
     }
 
+    /// <summary>What a draw measured under a hold of <paramref name="heldSeconds"/> per tool call would be
+    /// unheld: a <see cref="StepSeconds"/> step plus the wait burns what the step alone would.</summary>
+    internal static double Unheld(double measured, double heldSeconds) =>
+        measured * (StepSeconds + Math.Max(0, heldSeconds)) / StepSeconds;
+
     /// <summary>The working time between an agent's tool calls the delay is added to.</summary>
     internal const double StepSeconds = 20;
 
@@ -137,7 +143,7 @@ public static class Pacer
         var max = Math.Max(0, s.MaxAgentDelaySeconds);
         if (!s.ThrottleAgents || max == 0) return 0;
         if (sustainable <= 0) return recent > 0 ? max : 0;
-        var demand = recent * (StepSeconds + Math.Max(0, recentDelaySeconds)) / StepSeconds;
+        var demand = Unheld(recent, recentDelaySeconds);
         if (demand <= sustainable) return 0;
         return Math.Round(Math.Min(max, StepSeconds * (demand / sustainable - 1)));
     }
