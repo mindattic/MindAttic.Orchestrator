@@ -113,9 +113,28 @@ public static class AgentGate
                 return 0
 
         try:
-            tool = json.load(sys.stdin).get("tool_name")
+            data = json.load(sys.stdin)
         except Exception:
-            tool = None
+            data = {}
+        tool = data.get("tool_name")
+
+        # A search of a whole drive never finishes in time and, orphaned when its agent stops, leaks handles until
+        # Windows can't draw (found live: two `find /` held 660k handles and froze the desktop). Refuse it up front.
+        import re
+        cmd = str((data.get("tool_input") or {}).get("command") or "")
+        ROOT_SEARCH = (r"(?:^|[;&|(])\s*(?:\"[^\"]*[\\/]|'[^']*[\\/]|[^\s\"';&|]*[\\/])?(find|fd|rg|grep|ls|dir|Get-ChildItem|gci)(?:\.exe)?[\"']?"
+                       r"(?=\s)[^|;&\n]*?\s[\"']?(/|/[a-zA-Z]|[A-Za-z]:[\\/]?|~|\$HOME|\$env:USERPROFILE)[\"']?(?=\s|$|[;&|)])")
+        def root_search(c):
+            if not re.search(ROOT_SEARCH, c, re.I):
+                return False
+            # Listing a root is harmless; only a recursive listing walks the whole drive.
+            return not re.match(r"^\s*(ls|dir|Get-ChildItem|gci)\b", c, re.I) or bool(re.search(r"(\s-\w*R\w*\b|\s/s\b|-Recurse)", c))
+        if tool in ("Bash", "PowerShell") and root_search(cmd):
+            print(json.dumps(dict(hookSpecificOutput=dict(hookEventName="PreToolUse", permissionDecision="deny",
+                permissionDecisionReason="Searching a whole drive or the filesystem root is blocked: it never finishes and leaks handles until "
+                "Windows freezes. Search the specific folder instead (a repo under D:\\Projects\\MindAttic, or a known install folder), "
+                "or use the Glob/Grep tools with a path."))))
+            raise SystemExit(0)
 
         # /unthrottle exempts one CLI (its process, so subagents and /clear included) until it closes.
         MARKS = Path.home() / ".claude" / "session-context"

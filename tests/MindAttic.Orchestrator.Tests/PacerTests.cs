@@ -211,6 +211,36 @@ public sealed class PacerTests
     }
 
     [Test]
+    public void The_pace_gate_refuses_a_search_of_a_whole_drive_and_lets_a_folder_search_through()
+    {
+        // Found live: two orphaned `find /` runs held 660k handles and froze the desktop.
+        var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            MindAttic.Orchestrator.Setup.AgentGate.Ensure(dir);
+            string Gate(string tool, string command)
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "pace-gate.py")}\"")
+                    { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
+                psi.Environment["USERPROFILE"] = dir; // no status file there: nothing to hold for
+                using var p = System.Diagnostics.Process.Start(psi)!;
+                p.StandardInput.Write(JsonSerializer.Serialize(new { tool_name = tool, tool_input = new { command } }));
+                p.StandardInput.Close();
+                var output = p.StandardOutput.ReadToEnd();
+                Assert.That(p.WaitForExit(20_000), Is.True, command);
+                return output;
+            }
+
+            foreach (var c in new[] { "find / -iname \"*kimi*\"", "\"C:/Program Files/Git/usr/bin/find.exe\" / -iname x", "rg foo /", "cd x && find C:\\ -name y" })
+                Assert.That(Gate("Bash", c), Does.Contain("\"deny\""), c);
+            Assert.That(Gate("PowerShell", "Get-ChildItem C:\\ -Recurse -Filter x"), Does.Contain("\"deny\""));
+            foreach (var c in new[] { "find . -name x", "find /d/Projects/MindAttic/X -name y", "ls /", "echo find the root /" })
+                Assert.That(Gate("Bash", c), Is.Empty, c);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Test]
     public void Subagents_are_counted_by_their_start_and_stop_marks()
     {
         var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
