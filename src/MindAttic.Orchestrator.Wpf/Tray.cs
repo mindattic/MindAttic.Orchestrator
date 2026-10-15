@@ -9,7 +9,7 @@ namespace MindAttic.Orchestrator.Wpf;
 
 /// <summary>
 /// The workspace without the full window: a tray icon whose tooltip is the one-line summary, with
-/// quick actions (open, pause or resume auto-dispatch, start the next proposal, jump to a repo that's
+/// quick actions (open, pause or resume autopilot, start the next proposal, jump to a repo that's
 /// waiting on you), and an optional always-on-top HUD strip. Minimizing the dashboard hides it here.
 /// </summary>
 public sealed class Tray : IDisposable
@@ -54,7 +54,7 @@ public sealed class Tray : IDisposable
         var menu = icon.ContextMenuStrip!;
         menu.Items.Clear();
         menu.Items.Add("Open dashboard", null, (_, _) => ShowWindow());
-        menu.Items.Add(vm.AutoDispatchOn ? "Pause auto-dispatch" : "Resume auto-dispatch", null, (_, _) => vm.ToggleAutoDispatch());
+        menu.Items.Add(vm.AutopilotOn ? "Pause autopilot" : "Resume autopilot", null, (_, _) => vm.ToggleAutopilot());
         menu.Items.Add("Start the next proposal", null, (_, _) => icon.ShowBalloonTip(4000, "MindAttic Orchestrator", vm.DispatchNext(), Forms.ToolTipIcon.Info));
         var waiting = new Forms.ToolStripMenuItem("Waiting on you");
         foreach (var repo in vm.WaitingRepos)

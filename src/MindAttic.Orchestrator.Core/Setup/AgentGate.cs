@@ -47,7 +47,7 @@ public static class AgentGate
                     pid = procs.get(pid, (0, ""))[0]
                     if not pid:
                         return None
-                    if procs.get(pid, (0, ""))[1] == "claude.exe":
+                    if procs.get(pid, (0, ""))[1].startswith("claude.exe"):  # or claude.exe.old.N, once the updater renames it
                         return pid
             except Exception:
                 pass
@@ -67,6 +67,18 @@ public static class AgentGate
         description: Put this CLI back under the orchestrator's pace holds after /unthrottle.
         ---
         MindAttic.Orchestrator's context gate has put this CLI process back under pace holds. Reply with one short line confirming this CLI is paced again.
+        """;
+
+    internal const string AutopilotCommand = """
+        ---
+        description: Put every open repo CLI to work on its own repo's stories, one after another, paced to use the 5-hour window without hitting the limit. -repo=a,b limits it to those repos' CLIs; /autopilot off stops it.
+        argument-hint: "[on|off] [-repo=a,b,c]"
+        ---
+        The user ran /autopilot $ARGUMENTS. MindAttic.Orchestrator's context gate has already recorded it; there is nothing for you to set up, and nothing for you to work on because of it.
+
+        If the arguments start with "off": reply with one short line confirming autopilot is off; the orchestrator types no new stories into any CLI (stories already running finish).
+
+        Otherwise reply with one short line confirming autopilot is on for every open Claude CLI that sits in a repo (or, with -repo=, only the CLIs in those repos; name them), then end your turn. From then on, whenever one of those CLIs has been idle for half a minute and its last story is closed, the orchestrator types in that repo's next open story (manual priority first, then smallest effort); each ends with /commit and closing its ticket. A CLI never gets another repo's story. New stories only start while the 5-hour pace can afford them and the pace gate slows running agents, so the window gets used without hitting the limit. CLIs opened later join in; /autopilot off stops it.
         """;
 
     internal static string Script => $$"""
@@ -125,7 +137,7 @@ public static class AgentGate
         # MindAttic.Orchestrator's context gate (written by the orchestrator; edits are overwritten).
         # Records each session's turn state and warns the main agent once per turn when its context is
         # past the cycle point, so it finishes cleanly before the orchestrator saves, clears and reloads it.
-        import json, sys
+        import json, re, sys
         from datetime import datetime, timezone
         from pathlib import Path
 
@@ -157,10 +169,21 @@ public static class AgentGate
         state = load(state_file)
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         if event == "Stop":
-            state.update(state="idle", at=now, pid=cli_pid())
+            state.update(state="idle", at=now, pid=cli_pid(), cwd=data.get("cwd"))
         elif event == "UserPromptSubmit":
-            state.update(state="busy", at=now, warned=False)
-            prompt = (data.get("prompt") or "").strip().lower()
+            state.update(state="busy", at=now, warned=False, cwd=data.get("cwd"))
+            typed = (data.get("prompt") or "").strip()
+            prompt = typed.lower()
+            # /autopilot [on|off] [-repo=a,b]: every open repo CLI (or those repos' CLIs) works its own stories until off.
+            if prompt.startswith("/autopilot"):
+                order = DIR / "autopilot.order"
+                args = typed[len("/autopilot"):].strip()
+                if re.match(r"off\b", args, re.I):
+                    if order.exists():
+                        order.unlink()
+                else:
+                    m = re.search(r"-{1,2}repos?\s*[=:]?\s*\[?([^\]]*)\]?", args, re.I)
+                    order.write_text(",".join(r.strip() for r in m.group(1).replace(" ", ",").split(",") if r.strip()) if m else "")
             if prompt.startswith("/unthrottle") or prompt.startswith("/throttle"):
                 pid = cli_pid()
                 if pid is not None:
@@ -198,6 +221,7 @@ public static class AgentGate
         {
             (script, Script), (contextScript, ContextScript(contextPercent)),
             (Path.Combine(dir, "commands", "unthrottle.md"), UnthrottleCommand), (Path.Combine(dir, "commands", "throttle.md"), ThrottleCommand),
+            (Path.Combine(dir, "commands", "autopilot.md"), AutopilotCommand),
         })
         {
             if (File.Exists(path) && File.ReadAllText(path) == body) continue;

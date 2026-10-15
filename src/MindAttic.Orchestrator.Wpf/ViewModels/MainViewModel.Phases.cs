@@ -14,7 +14,7 @@ public enum View { Repos, Queue, Audit }
 public sealed partial class MainViewModel
 {
     private Dispatcher dispatcher = null!;
-    private AutoDispatch autoDispatch = null!;
+    private Autopilot autopilot = null!;
     private AuditRunner auditRunner = null!;
     private SchedulePlan? plan;
     private BudgetLevel? lastBudgetLevel;
@@ -36,8 +36,8 @@ public sealed partial class MainViewModel
     private void InitPhases()
     {
         dispatcher = new Dispatcher(control, store);
-        // Held until the app exits; while the logon daemon holds it, the daemon dispatches and this window only shows.
-        autoDispatch = new AutoDispatch(dispatcher, lease: new DispatchLease(store.Directory));
+        // Held until the app exits; while the logon daemon holds it, the daemon feeds the /autopilot CLIs and this window only shows.
+        autopilot = new Autopilot(store, new MindAttic.Orchestrator.Sessions.ContextCycler(), new DispatchLease(store.Directory));
         auditRunner = new AuditRunner(aggregator.Options, store);
         Settings = new SettingsViewModel(store, () => { IsSettingsOpen = false; _ = RefreshAsync(); });
 
@@ -196,13 +196,12 @@ public sealed partial class MainViewModel
     public string SlotsText => plan is null ? ""
         : plan.Cap < plan.Slots ? $"{plan.Occupied} sessions open · pacing allows {plan.Cap} of {plan.Slots}"
         : $"{plan.Occupied} sessions open · fills up to {plan.Slots}";
-    public string AutoDispatchText => !store.LoadSettings().AutoDispatch
-        ? "Proposals wait for you. Turn on auto-dispatch in Settings to let them open by themselves."
-        : autoDispatch.Quiet is { } quiet
-            ? $"Auto-dispatch is on but paused for quiet hours ({quiet}); proposals wait until it ends."
-        : autoDispatch.HeldElsewhere
-            ? "Auto-dispatch is on and running in the background daemon: proposals open from there, one a minute, prompt pre-filled and unsent."
-            : "Auto-dispatch is on: proposals open by themselves, one a minute, prompt pre-filled and unsent.";
+    public string AutopilotText => !autopilot.On
+        ? "Proposals wait for you. Type /autopilot in any CLI to put every open repo CLI to work on its own stories."
+        : autopilot.Repos.Count == 0 ? "Autopilot is on, but no Claude CLI is open in a repo it covers."
+        : autopilot.Paused is { } why ? $"Autopilot is on for {string.Join(", ", autopilot.Repos)} but holding: {why}."
+        : $"Autopilot is on for {string.Join(", ", autopilot.Repos)}: each CLI gets its repo's next story when idle, paced to the 5-hour window" +
+          (autopilot.HeldElsewhere ? " (fed by the background daemon)." : ".");
     public string QueueMessage { get => queueMessage; private set => Set(ref queueMessage, value); }
     public int QueueCount => Queue.Count(q => !q.IsAssigned);
 
@@ -249,16 +248,16 @@ public sealed partial class MainViewModel
         (Pace is { IsPaced: true } p ? $" · {p.Key}" : "") +
         $" · {WaitingCount} need you · {WorkingCount} working";
 
-    public bool AutoDispatchOn => store.LoadSettings().AutoDispatch;
+    public bool AutopilotOn => store.LoadSettings().Autopilot;
 
     public IReadOnlyList<string> WaitingRepos => snapshot?.Repos.Where(r => r.State == RepoState.Waiting).Select(r => r.Name).ToList() ?? [];
 
-    public void ToggleAutoDispatch()
+    public void ToggleAutopilot()
     {
         var s = store.LoadSettings();
-        store.SaveSettings(s with { AutoDispatch = !s.AutoDispatch });
-        queueLog.Information("Auto-dispatch turned {State:l} from the tray", s.AutoDispatch ? "off" : "on");
-        Raise(nameof(AutoDispatchText));
+        store.SaveSettings(s with { Autopilot = !s.Autopilot });
+        queueLog.Information("Autopilot {State:l} from the tray", s.Autopilot ? "paused" : "resumed");
+        Raise(nameof(AutopilotText));
     }
 
     /// <summary>Starts the top proposal, if there is one; returns what it said.</summary>
@@ -380,23 +379,13 @@ public sealed partial class MainViewModel
         ApplyPlan(next);
         Brief(next);
 
-        var autoSettings = store.LoadSettings();
-        if (plan is not null && autoDispatch.Tick(AutoDispatch.PlanFor(plan, next, autoSettings, store.LoadAssignments()), autoSettings, DateTime.UtcNow) is { } r)
-        {
-            QueueMessage = r.Message;
-            Record(r, "Auto-dispatch");
-            Toasts.Insert(0, new ToastViewModel(r.Ok ? "Auto-dispatched" : "Auto-dispatch failed", r.Message,
-                r.Ok ? Palette.Working : Palette.Over, null));
-            var ticket = r.Assignment?.TicketId;
-            r.CameUp?.ContinueWith(t =>
+        if (plan is not null)
+            foreach (var line in autopilot.Tick(plan, next, store.LoadSettings(), DateTime.UtcNow))
             {
-                if (t.IsCompletedSuccessfully && t.Result) return;
-                if (ticket is not null) dispatcher.Release(ticket);
-                store.SaveSettings(store.LoadSettings() with { AutoDispatch = false });
-                queueLog.Error("{Ticket:l}'s tab never came up (or didn't stay up); released it and turned auto-dispatch off", ticket);
-            }, TaskScheduler.Default);
-        }
-        Raise(nameof(AutoDispatchText));
+                QueueMessage = line;
+                queueLog.Information("{Line:l}", line);
+            }
+        Raise(nameof(AutopilotText));
     }
 
     /// <summary>Once per open: if you've been away, say what happened. Then remember you're here.</summary>
@@ -426,7 +415,7 @@ public sealed partial class MainViewModel
         Proposals.ReorderTo([.. Queue.Where(q => q.IsNext)]);
         Finished.SyncBy(plan.Finished, a => a.TicketId, f => f.TicketId, a => new FinishedViewModel(a, this), (_, _) => { });
 
-        foreach (var name in new[] { nameof(Hold), nameof(HasHold), nameof(SlotsText), nameof(AutoDispatchText), nameof(QueueCount) })
+        foreach (var name in new[] { nameof(Hold), nameof(HasHold), nameof(SlotsText), nameof(AutopilotText), nameof(QueueCount) })
             Raise(name);
     }
 }

@@ -50,17 +50,9 @@ public sealed record OrchestratorSettings
     /// <summary>Sessions the scheduler will fill up to (working + waiting both occupy a slot).</summary>
     public int MaxConcurrentSessions { get; init; } = 4;
 
-    /// <summary>Off by default: proposals wait for a click. On: the scheduler opens tabs itself
-    /// (prompt pre-filled, never submitted) when a slot is free and the budget allows.</summary>
-    public bool AutoDispatch { get; init; }
-
-    /// <summary>The repos auto-dispatch may start tickets in; empty means every repo. Manual starts and
-    /// the queue are unaffected.</summary>
-    public List<string> DispatchRepos { get; init; } = [];
-
-    /// <summary>Repos whose auto-dispatched tabs submit their prompt by themselves once the agent is up,
-    /// so work runs unattended under the pacer's caps. Empty by default; manual starts never submit.</summary>
-    public List<string> AutoSubmitRepos { get; init; } = [];
+    /// <summary>The master switch for <c>/autopilot</c>: on, every CLI where <c>/autopilot</c> was typed is fed its
+    /// repos' next story whenever it's idle and the pace allows; off pauses all of them (their marks stay).</summary>
+    public bool Autopilot { get; init; } = true;
 
     /// <summary>Hours without a transcript write or open tab where a ticket was dispatched before it
     /// goes back in the queue as stale. 0 keeps assignments until the ticket closes or is released.</summary>
@@ -83,7 +75,7 @@ public sealed record OrchestratorSettings
     /// while pacing coasts, and everything else paces against what's left after it.</summary>
     public Dictionary<string, long> Reservations { get; init; } = [];
 
-    /// <summary>Local-time windows when auto-dispatch pauses, like "22:00-07:00". Manual starts still work.</summary>
+    /// <summary>Local-time windows when autopilot pauses, like "22:00-07:00". Manual starts still work.</summary>
     public List<string> QuietHours { get; init; } = [];
 
     /// <summary>Ticket → the tickets it waits for. A summary saying "blocked by X-T1" counts too.</summary>
@@ -113,7 +105,11 @@ public sealed record OrchestratorSettings
 }
 
 /// <summary>A ticket the orchestrator has handed to a session.</summary>
-public sealed record Assignment(string TicketId, string Repo, string Directory, string Provider, DateTime StartedUtc, bool Worktree);
+public sealed record Assignment(string TicketId, string Repo, string Directory, string Provider, DateTime StartedUtc, bool Worktree)
+{
+    /// <summary>The Claude CLI <c>/autopilot</c> typed it into; null for a tab the orchestrator opened.</summary>
+    public int? Pilot { get; init; }
+}
 
 /// <summary>Small JSON files under <c>%APPDATA%\MindAttic\MindAttic.Orchestrator</c>, written atomically.</summary>
 public sealed class JsonStore(string? directory = null)

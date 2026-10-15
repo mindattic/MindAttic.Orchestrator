@@ -430,7 +430,7 @@
                 <StackPanel MaxWidth="1200" HorizontalAlignment="Left">
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Right" Text="{Binding SlotsText}" Style="{StaticResource Muted}" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding AutoDispatchText}" Style="{StaticResource Muted}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding AutopilotText}" Style="{StaticResource Muted}" TextWrapping="Wrap" />
                     </DockPanel>
 
                     <Border Style="{StaticResource Card}" Margin="0,12,0,0" BorderBrush="{x:Static vm:Palette.Waiting}"
@@ -796,18 +796,10 @@
                     <TextBlock Text="Provider for dispatched tickets" Margin="0,10,0,4" />
                     <ListBox Style="{StaticResource PillChoice}" ItemsSource="{Binding Providers}" SelectedItem="{Binding Provider}"
                              AutomationProperties.Name="Dispatch provider" />
-                    <ToggleButton Style="{StaticResource PillToggle}" IsChecked="{Binding AutoDispatch}" Margin="0,8,0,0" HorizontalAlignment="Left"
-                                  Content="Auto-dispatch proposals" />
-                    <TextBlock Text="When on, the next proposal opens by itself once a minute while the pace (or, with pacing off, the warn line) leaves a slot free. Tabs open with the ticket pre-filled; nothing is sent until you press Enter."
+                    <ToggleButton Style="{StaticResource PillToggle}" IsChecked="{Binding Autopilot}" Margin="0,8,0,0" HorizontalAlignment="Left"
+                                  Content="Autopilot" />
+                    <TextBlock Text="Type /autopilot in any CLI and every open Claude CLI in a repo (or, with -repo=a,b, only those repos' CLIs) gets its repo's next open story whenever it's idle, one at a time, while the 5-hour pace can afford it. No tabs open. Off here pauses it; /autopilot off ends it."
                                Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                    <TextBlock Text="Auto-dispatch only in these repos (comma-separated; blank: any)" Margin="0,10,0,4" />
-                    <TextBox Style="{StaticResource McTextBox}" Height="32" HorizontalAlignment="Stretch"
-                             Text="{Binding DispatchRepos, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Auto-dispatch repos" />
-                    <TextBlock Text="Auto-submit in these repos (comma-separated)" Margin="0,10,0,4" />
-                    <TextBox Style="{StaticResource McTextBox}" Height="32" HorizontalAlignment="Stretch"
-                             Text="{Binding AutoSubmitRepos, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Auto-submit repos" />
-                    <TextBlock Text="Tabs auto-dispatch opens in these repos press Enter by themselves once the agent is up, so they run unattended."
-                               Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
 
                     <TextBlock Text="{Binding Error}" Foreground="{StaticResource McRec}" TextWrapping="Wrap" Margin="0,14,0,0"
                                Visibility="{Binding Error, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />

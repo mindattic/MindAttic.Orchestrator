@@ -20,7 +20,7 @@ public static partial class ConsoleTyper
         try
         {
             using var p = Process.GetProcessById(pid);
-            if (!p.ProcessName.Equals("claude", StringComparison.OrdinalIgnoreCase)) return false;
+            if (!IsClaude(p.ProcessName)) return false;
         }
         catch (ArgumentException) { return false; }
 
@@ -48,7 +48,7 @@ public static partial class ConsoleTyper
         try
         {
             using var p = Process.GetProcessById(pid);
-            if (!p.ProcessName.Equals("claude", StringComparison.OrdinalIgnoreCase)) return false;
+            if (!IsClaude(p.ProcessName)) return false;
         }
         catch (ArgumentException) { return false; }
         lock (Gate)
@@ -58,6 +58,11 @@ public static partial class ConsoleTyper
             return true;
         }
     }
+
+    /// <summary>The Claude CLI's process name: <c>claude</c>, or <c>claude.exe.old.…</c> once its auto-updater has renamed the
+    /// running binary to put a new one in place (the CLI keeps running under the old name until it restarts).</summary>
+    public static bool IsClaude(string processName) =>
+        processName.Equals("claude", StringComparison.OrdinalIgnoreCase) || processName.StartsWith("claude.exe.", StringComparison.OrdinalIgnoreCase);
 
     internal static INPUT_RECORD[] Records(string text)
     {

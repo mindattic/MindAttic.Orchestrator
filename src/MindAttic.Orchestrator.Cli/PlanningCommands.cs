@@ -62,34 +62,24 @@ internal sealed class ReserveCommand : Command<ReserveCommand.Settings>
     }
 }
 
-/// <summary>What auto-dispatch would do right now, without opening anything.</summary>
+/// <summary>What /autopilot would type into each CLI that has it on, without typing anything.</summary>
 internal sealed class DryRunCommand : Command
 {
     public override int Execute(CommandContext context)
     {
-        var (_, store, snapshot, all) = Ctx.Load();
+        var (_, store, snapshot, plan) = Ctx.Load();
         var s = store.LoadSettings();
-        var plan = AutoDispatch.PlanFor(all, snapshot, s, store.LoadAssignments());
-        using var lease = new DispatchLease(store.Directory);
-        var quiet = QuietHours.Active(s.QuietHours, DateTime.Now);
+        var cycler = new MindAttic.Orchestrator.Sessions.ContextCycler();
+        var autopilot = new Autopilot(store, cycler);
+        var lines = autopilot.Tick(plan, snapshot, s with { Autopilot = true }, DateTime.UtcNow, dryRun: true);
 
-        AnsiConsole.MarkupLine(!s.AutoDispatch ? "[grey]Auto-dispatch is off, so nothing would open by itself; this is what it would do if it were on.[/]"
-            : quiet is not null ? $"[yellow]Quiet hours ({Markup.Escape(quiet)}): auto-dispatch is paused.[/]"
-            : !lease.TryAcquire() ? "[grey]Another orchestrator (the daemon) holds auto-dispatch; it would do this:[/]"
-            : "Auto-dispatch would do this:");
-        AnsiConsole.MarkupLine(s.DispatchRepos.Count == 0 ? "[grey]It may start tickets in any repo (no --dispatch-repos allowlist).[/]"
-            : $"[grey]Only tickets in {Markup.Escape(string.Join(", ", s.DispatchRepos))} (--dispatch-repos).[/]");
-        if (plan.Hold is not null) AnsiConsole.MarkupLine($"[yellow]Nothing opens: {Markup.Escape(plan.Hold)}[/]");
-        var minute = 0;
-        foreach (var p in plan.Proposals)
-        {
-            var dir = p.UseWorktree ? Path.Combine(s.WorktreeRoot, p.Item.Repo, p.Item.Id) : p.Item.RepoPath;
-            AnsiConsole.MarkupLine($"  {(minute == 0 ? "now" : $"+{minute} min")}: open {s.DefaultProvider} on [bold]{p.Item.Id}[/] in {Markup.Escape(dir)}" +
-                (p.UseWorktree ? $" (branch {Dispatcher.BranchFor(p.Item.Id)})" : "") + $" [grey]({Markup.Escape(p.Reason)})[/]");
-            minute++;
-        }
-        if (plan.Proposals.Count == 0 && plan.Hold is null) AnsiConsole.MarkupLine("[grey]Nothing is ready to start.[/]");
-        AnsiConsole.MarkupLine("[grey]One tab a minute, prompt pre-filled; sent by itself only in --auto-submit repos. Nothing was opened.[/]");
+        if (!autopilot.On) { AnsiConsole.MarkupLine("[grey]/autopilot is off; type /autopilot in any CLI (optionally -repo=a,b).[/]"); return 0; }
+        if (autopilot.Repos.Count == 0) { AnsiConsole.MarkupLine("[grey]/autopilot is on, but no Claude CLI is open in a repo it covers.[/]"); return 0; }
+        AnsiConsole.MarkupLine($"/autopilot is on for the open CLIs in {Markup.Escape(string.Join(", ", autopilot.Repos))}.");
+        if (!s.Autopilot) AnsiConsole.MarkupLine("[yellow]Autopilot is paused (--autopilot true resumes); this is what it would do.[/]");
+        if (autopilot.Paused is { } why) AnsiConsole.MarkupLine($"[yellow]Holding: {Markup.Escape(why)}[/]");
+        foreach (var line in lines) AnsiConsole.MarkupLine("  " + Markup.Escape(line));
+        AnsiConsole.MarkupLine("[grey]Each CLI is fed only once it has been idle for half a minute and its last story is closed. Nothing was typed.[/]");
         return 0;
     }
 }

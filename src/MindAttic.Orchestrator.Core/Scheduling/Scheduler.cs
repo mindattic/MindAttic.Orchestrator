@@ -62,7 +62,7 @@ public sealed record SchedulePlan(
 
 /// <summary>
 /// Turns every repo's open tickets into one ordered queue and decides what should start now. It
-/// never starts anything itself: <see cref="Dispatcher"/> does, on a click or (opt-in) automatically.
+/// never starts anything itself: <see cref="Dispatcher"/> does on a click, and <see cref="Autopilot"/> feeds the CLIs that ask for it.
 /// </summary>
 public static partial class Scheduler
 {
@@ -71,9 +71,7 @@ public static partial class Scheduler
         ["fix"] = 3, ["feature"] = 2, ["chore"] = 1, ["docs"] = 0,
     };
 
-    /// <param name="forAutoDispatch">Propose only tickets auto-dispatch may start (<see cref="OrchestratorSettings.DispatchRepos"/>),
-    /// reaching past others at the top of the queue; the queue itself still lists everything.</param>
-    public static SchedulePlan Plan(Snapshot snapshot, OrchestratorSettings settings, IReadOnlyList<Assignment> assignments, bool forAutoDispatch = false)
+    public static SchedulePlan Plan(Snapshot snapshot, OrchestratorSettings settings, IReadOnlyList<Assignment> assignments)
     {
         var assigned = assignments.ToDictionary(a => a.TicketId, StringComparer.Ordinal);
         var openIds = snapshot.Repos.SelectMany(r => r.OpenTickets).Select(t => t.Id).ToHashSet(StringComparer.Ordinal);
@@ -183,7 +181,6 @@ public static partial class Scheduler
         foreach (var item in queue)
         {
             if (item.IsAssigned || item.RepoPath.Length == 0 || reposTaken.Contains(item.Repo) || item.BlockedBy.Count > 0) continue;
-            if (forAutoDispatch && !AutoDispatch.Allowed(settings, item.Repo)) continue;
             var reserved = item.Reserved > 0;
             // A reserved ticket gets its slice even while pacing coasts or caps, never past a limit.
             if (reserved ? overLimit || proposals.Count >= free || pace?.RoomTokens < item.Reserved

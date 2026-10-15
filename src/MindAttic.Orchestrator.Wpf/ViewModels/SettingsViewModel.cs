@@ -10,8 +10,8 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly JsonStore store;
     private readonly Action saved;
     private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "",
-        maxDelay = "", contextPercent = "", autoSubmitRepos = "", dispatchRepos = "";
-    private bool autoDispatch, pacing, throttleAgents, contextCycle;
+        maxDelay = "", contextPercent = "";
+    private bool autopilot, pacing, throttleAgents, contextCycle;
 
     public SettingsViewModel(JsonStore store, Action saved)
     {
@@ -27,19 +27,13 @@ public sealed class SettingsViewModel : ObservableObject
     public string WarnPercent { get => warnPercent; set => Set(ref warnPercent, value); }
     public string MaxSessions { get => maxSessions; set => Set(ref maxSessions, value); }
     public string Provider { get => provider; set => Set(ref provider, value); }
-    public bool AutoDispatch { get => autoDispatch; set => Set(ref autoDispatch, value); }
+    public bool Autopilot { get => autopilot; set => Set(ref autopilot, value); }
     public bool Pacing { get => pacing; set => Set(ref pacing, value); }
     public string PaceTarget { get => paceTarget; set => Set(ref paceTarget, value); }
     public bool ThrottleAgents { get => throttleAgents; set => Set(ref throttleAgents, value); }
     public string MaxDelay { get => maxDelay; set => Set(ref maxDelay, value); }
     public bool ContextCycle { get => contextCycle; set => Set(ref contextCycle, value); }
     public string ContextPercent { get => contextPercent; set => Set(ref contextPercent, value); }
-
-    /// <summary>Comma-separated repo names whose auto-dispatched tabs submit their prompt by themselves.</summary>
-    public string AutoSubmitRepos { get => autoSubmitRepos; set => Set(ref autoSubmitRepos, value); }
-
-    /// <summary>Comma-separated repos auto-dispatch may start tickets in; blank means any.</summary>
-    public string DispatchRepos { get => dispatchRepos; set => Set(ref dispatchRepos, value); }
     public string Error { get => error; private set => Set(ref error, value); }
     public IReadOnlyList<string> Providers => Sessions.SessionControl.Providers;
     public string FilePath => System.IO.Path.Combine(store.Directory, "settings.json");
@@ -54,15 +48,13 @@ public sealed class SettingsViewModel : ObservableObject
         WarnPercent = s.WarnPercent.ToString(CultureInfo.InvariantCulture);
         MaxSessions = s.MaxConcurrentSessions.ToString(CultureInfo.InvariantCulture);
         Provider = s.DefaultProvider;
-        AutoDispatch = s.AutoDispatch;
+        Autopilot = s.Autopilot;
         Pacing = s.Pacing;
         PaceTarget = s.PaceTargetPercent.ToString(CultureInfo.InvariantCulture);
         ThrottleAgents = s.ThrottleAgents;
         MaxDelay = s.MaxAgentDelaySeconds.ToString(CultureInfo.InvariantCulture);
         ContextCycle = s.ContextCycle;
         ContextPercent = s.ContextCyclePercent.ToString(CultureInfo.InvariantCulture);
-        AutoSubmitRepos = string.Join(", ", s.AutoSubmitRepos);
-        DispatchRepos = string.Join(", ", s.DispatchRepos);
         Error = "";
     }
 
@@ -81,10 +73,8 @@ public sealed class SettingsViewModel : ObservableObject
         store.SaveSettings(s with
         {
             BlockBudget = block, WeeklyBudget = weekly, WeeklyReset = reset?.ToString(), WarnPercent = warn, MaxConcurrentSessions = max,
-            DefaultProvider = Provider, AutoDispatch = AutoDispatch, Pacing = Pacing, PaceTargetPercent = target,
+            DefaultProvider = Provider, Autopilot = Autopilot, Pacing = Pacing, PaceTargetPercent = target,
             ThrottleAgents = ThrottleAgents, MaxAgentDelaySeconds = delay, ContextCycle = ContextCycle, ContextCyclePercent = cycleAt,
-            DispatchRepos = [.. DispatchRepos.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Distinct(StringComparer.OrdinalIgnoreCase)],
-            AutoSubmitRepos = [.. AutoSubmitRepos.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Distinct(StringComparer.OrdinalIgnoreCase)],
         });
         Load();
         saved();

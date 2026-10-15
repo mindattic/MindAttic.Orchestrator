@@ -122,7 +122,7 @@ public sealed class Installer
         <?xml version="1.0" encoding="UTF-16"?>
         <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
           <RegistrationInfo>
-            <Description>Keeps MindAttic.Orchestrator's budget, pace and auto-dispatch running. Installed by MindAttic.Orchestrator.exe; it repairs this task whenever it starts.</Description>
+            <Description>Keeps MindAttic.Orchestrator's budget, pace and autopilot running. Installed by MindAttic.Orchestrator.exe; it repairs this task whenever it starts.</Description>
           </RegistrationInfo>
           <Triggers>
             <LogonTrigger><Enabled>true</Enabled><UserId>{Escape(user)}</UserId></LogonTrigger>

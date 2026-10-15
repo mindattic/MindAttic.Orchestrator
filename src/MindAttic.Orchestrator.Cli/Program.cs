@@ -22,12 +22,12 @@ app.Configure(config =>
     config.AddCommand<BumpCommand>("bump").WithDescription("Raise (or with a negative --by, lower) a ticket's priority.");
     config.AddCommand<DispatchCommand>("dispatch").WithDescription("Start a session on a ticket (a worktree when its repo is busy).");
     config.AddCommand<ReleaseCommand>("release").WithDescription("Return a ticket to the queue; --remove-worktree also deletes its clean worktree.");
-    config.AddCommand<DaemonCommand>("daemon").WithDescription("Keep the budget file fresh and, when auto-dispatch is on, start proposals.");
+    config.AddCommand<DaemonCommand>("daemon").WithDescription("Keep the budget file fresh, cycle context, and feed the CLIs where /autopilot is on.");
     config.AddCommand<SettingsCommand>("settings").WithDescription("Show or change scheduler settings.");
     config.AddCommand<AuditCommand>("audit").WithDescription("Find drift in shared agent files and code duplicated across repos.");
     config.AddCommand<BlockCommand>("block").WithDescription("Make a ticket wait for others (--by X-T1), or --clear it.");
     config.AddCommand<ReserveCommand>("reserve").WithDescription("Set aside tokens for a ticket so background work can't spend them first (0 releases).");
-    config.AddCommand<DryRunCommand>("dryrun").WithDescription("Show what auto-dispatch would open right now, without opening anything.");
+    config.AddCommand<DryRunCommand>("dryrun").WithDescription("Show what /autopilot would type into each CLI that has it on, without typing anything.");
     config.AddCommand<ShowCommand>("show").WithDescription("A ticket end to end: its row, the sessions that worked on it, and its commits (--diff for the full diff).");
     config.AddCommand<HygieneCommand>("hygiene").WithDescription("Closed tickets that may not be done: no Ref cited, or a later ticket says it came back.");
     config.AddCommand<IntakeCommand>("intake").WithDescription("File GitHub issues labelled orchestrator and CI failures on main as tickets (--dry-run to preview).");

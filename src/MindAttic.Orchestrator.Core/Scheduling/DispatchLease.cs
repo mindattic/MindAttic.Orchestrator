@@ -1,8 +1,8 @@
 namespace MindAttic.Orchestrator.Scheduling;
 
 /// <summary>
-/// Lets only one orchestrator process auto-dispatch: the logon daemon and an open dashboard would
-/// otherwise both open the same top proposal. It's a lock file held open with no sharing, so it's
+/// Lets only one orchestrator process feed the /autopilot CLIs: the logon daemon and an open dashboard would
+/// otherwise both type the same story into a CLI. It's a lock file held open with no sharing, so it's
 /// released when the holder exits, crashes included, and works from any thread.
 /// </summary>
 public sealed class DispatchLease(string directory) : IDisposable

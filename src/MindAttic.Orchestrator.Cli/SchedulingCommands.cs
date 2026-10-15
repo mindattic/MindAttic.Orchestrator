@@ -187,13 +187,9 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [CommandOption("--max-sessions <N>")]
         public int? MaxSessions { get; init; }
 
-        [CommandOption("--auto-dispatch <ON>")]
-        [Description("true or false.")]
-        public bool? AutoDispatch { get; init; }
-
-        [CommandOption("--dispatch-repos <REPOS>")]
-        [Description("The only repos auto-dispatch may start tickets in, comma-separated: \"Prose,Claudia\"; \"all\" lifts the limit.")]
-        public string? DispatchRepos { get; init; }
+        [CommandOption("--autopilot <ON>")]
+        [Description("false pauses every CLI where /autopilot is on (their marks stay); true lets them go again.")]
+        public bool? Autopilot { get; init; }
 
         [CommandOption("--throttle-agents <ON>")]
         [Description("true: while the burn won't last until the reset, running Claude agents wait before each tool call (up to --max-delay seconds).")]
@@ -202,15 +198,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [CommandOption("--max-delay <SECONDS>")]
         public int? MaxDelay { get; init; }
 
-        [CommandOption("--auto-submit <REPO=ON>")]
-        [Description("Tabs auto-dispatch opens in this repo submit their prompt by themselves, like Prose=true (false clears). Repeatable.")]
-        public string[] AutoSubmit { get; init; } = [];
-
         [CommandOption("--provider <PROVIDER>")]
         public string? Provider { get; init; }
 
         [CommandOption("--quiet <WINDOWS>")]
-        [Description("Local times auto-dispatch pauses, comma-separated: \"22:00-07:00,12:00-13:00\"; \"none\" clears.")]
+        [Description("Local times autopilot pauses, comma-separated: \"22:00-07:00,12:00-13:00\"; \"none\" clears.")]
         public string? Quiet { get; init; }
 
         [CommandOption("--repo-cap <REPO=PERCENT>")]
@@ -245,7 +237,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         s = s with
         {
             MaxConcurrentSessions = settings.MaxSessions ?? s.MaxConcurrentSessions,
-            AutoDispatch = settings.AutoDispatch ?? s.AutoDispatch,
+            Autopilot = settings.Autopilot ?? s.Autopilot,
             DefaultProvider = settings.Provider ?? s.DefaultProvider,
             StaleAfterHours = settings.StaleHours ?? s.StaleAfterHours,
             GroomAfterDays = settings.GroomDays ?? s.GroomAfterDays,
@@ -283,32 +275,15 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = isCap ? s with { RepoBudgetPercent = map } : s with { RepoMaxSessions = map };
             changed = true;
         }
-        if (settings.DispatchRepos is { } allow)
-        {
-            var repos = allow.Equals("all", StringComparison.OrdinalIgnoreCase) ? []
-                : allow.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-            var known = new MindAttic.Workflow.Workspace(OrchestratorOptions.Load(store).WorkspaceRoot).Repos().Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            if (repos.FirstOrDefault(r => !known.Contains(r)) is { } unknown) { AnsiConsole.MarkupLine($"[red]No repo named \"{Markup.Escape(unknown)}\" in the workspace.[/]"); return 1; }
-            s = s with { DispatchRepos = repos };
-            changed = true;
-        }
-        foreach (var opt in settings.AutoSubmit)
-        {
-            var parts = opt.Split('=', 2);
-            if (parts.Length != 2 || !bool.TryParse(parts[1], out var on)) { AnsiConsole.MarkupLine($"[red]Use REPO=true or REPO=false, not \"{Markup.Escape(opt)}\".[/]"); return 1; }
-            var repos = s.AutoSubmitRepos.Where(r => !r.Equals(parts[0], StringComparison.OrdinalIgnoreCase)).ToList();
-            if (on) repos.Add(parts[0]);
-            s = s with { AutoSubmitRepos = repos };
-            changed = true;
-        }
         if (changed) store.SaveSettings(s);
-        if (settings.MaxSessions is not null || settings.AutoDispatch is not null || settings.Provider is not null || settings.StaleHours is not null)
+        if (settings.MaxSessions is not null || settings.Autopilot is not null || settings.Provider is not null || settings.StaleHours is not null)
             store.SaveSettings(s);
 
+        var order = new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotOrder();
         AnsiConsole.MarkupLine($"settings: {Markup.Escape(Path.Combine(store.Directory, "settings.json"))}");
-        AnsiConsole.MarkupLine($"  max sessions {s.MaxConcurrentSessions} Â· auto-dispatch {(s.AutoDispatch ? "[green]on[/]" : "off")} Â· provider {s.DefaultProvider}" +
-            (s.DispatchRepos.Count > 0 ? $" · auto-dispatch only in {Markup.Escape(string.Join(", ", s.DispatchRepos))}" : " · auto-dispatch in any repo") +
-            (s.AutoSubmitRepos.Count > 0 ? $" Â· auto-submit in {Markup.Escape(string.Join(", ", s.AutoSubmitRepos))}" : " Â· auto-dispatched tabs wait for Enter"));
+        AnsiConsole.MarkupLine($"  max sessions {s.MaxConcurrentSessions} · provider {s.DefaultProvider} · autopilot " +
+            (order is null ? "off (type /autopilot in any CLI)" : !s.Autopilot ? "[yellow]paused[/] (--autopilot true resumes)"
+                : order.Count == 0 ? "[green]on[/] for every open repo CLI" : $"[green]on[/] for the CLIs in {Markup.Escape(string.Join(", ", order))}"));
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (learned from limit hits)")} Â· weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (learned)")} Â· week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display : "learned, or rolling 7 days")} Â· warn at {s.WarnPercent}%");
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +
             (s.ThrottleAgents ? $" Â· running agents held up to {s.MaxAgentDelaySeconds}s per tool call when the burn won't last" : " Â· running agents never held"));

@@ -22,17 +22,22 @@ hitting the session limit, and never stalling on a full context. Pick what runs;
 
 | Piece | What it does | Where |
 | --- | --- | --- |
-| Daemon | runs at logon, refreshes every 15s: budget, pace, dispatch, context cycling | logon task `\MindAttic\Orchestrator\...`; log in Vault (below) |
+| Daemon | runs at logon, refreshes every 15s: budget, pace, autopilot, context cycling | logon task `\MindAttic\Orchestrator\...`; log in Vault (below) |
 | Claude's count | 5-hour percent and reset straight from Claude Code, sized safely | `~/.claude/claude-usage.json` |
 | Pacing | caps new sessions so the window lands on 99% at its reset; the week is never paced | `rl-status.json` → `pace` |
 | Holding agents | every Claude CLI and subagent waits before each tool call while the draw won't last, 0s once it fits | `~/.claude/pace-gate.py` (PreToolUse hook) |
 | Context cycling | past 80% context: wrap up, then `/quicksave`, `/clear`, `/quickload` typed in | `~/.claude/context-gate.py` (prompt, tool, stop hooks) |
-| Auto-dispatch | starts the top queued ticket when a slot frees (off by default), only in `--dispatch-repos` if set | `settings --auto-dispatch true --dispatch-repos Prose,Claudia` |
-| Auto-submit | in listed repos, auto-dispatched tabs press Enter themselves (none by default) | `settings --auto-submit Repo=true` |
+| Autopilot | every open repo CLI works its own repo's stories, one after another, while the pace can afford them | `/autopilot` in any CLI; `-repo=A,B`; `/autopilot off` |
 
-To run unattended overnight: `orchestrator settings --auto-dispatch true --dispatch-repos Prose
---auto-submit Prose=true` (any repos; `--dispatch-repos all` lifts the limit), make sure `--max-sessions` leaves free slots (waiting sessions take one), then
-`orchestrator dryrun` to see what it would start. Everything else is on by default. To check on it:
+To run unattended: open a Launcher tab in each repo you want worked, then type `/autopilot` in any one
+of them (`/autopilot -repo=UnityEve,MindAttic.Legion` for only those repos' CLIs). Whenever one of those
+CLIs has been idle for 30 seconds and its last story is closed, the daemon types in that repo's next
+open story (manual priority, then smallest effort first), ending with `/commit` and closing its ticket.
+A CLI never gets another repo's story and no tab is ever opened, so nothing takes the screen. New
+stories start only while the 5-hour pace can afford them, and the pace gate slows the running ones, so
+the window is used to its target without hitting the limit. CLIs opened later join in; a story that
+ends without being closed waits for you. `/autopilot off` ends it; `settings --autopilot false` pauses
+it. `orchestrator dryrun` shows what it would type where. Everything else is on by default. To check on it:
 `orchestrator status` (sessions), `orchestrator budget` (percent, pace, hold), `orchestrator queue`.
 The hooks are written into your global `~/.claude/settings.json` by the daemon and dashboard, and
 rewritten if they go missing.
@@ -61,9 +66,9 @@ removes the task and shortcuts.
 
 The daemon is what makes budgets and pacing always on: it keeps `~/.claude/rl-status.json` and the pace
 (including the hold on running agents) current, installs and repairs the pace and context hooks,
-cycles full contexts, notices stale assignments, and auto-dispatches when that's on. Only one runs (a named mutex),
-and only one process auto-dispatches at a time (`dispatch.lock`): with the daemon running, an open
-dashboard shows proposals and leaves the dispatching to it.
+cycles full contexts, notices stale assignments, and feeds the `/autopilot` CLIs. Only one runs (a named mutex),
+and only one process feeds them at a time (`dispatch.lock`): with the daemon running, an open
+dashboard shows proposals and leaves the feeding to it.
 
 From source:
 
@@ -96,11 +101,11 @@ The same core drives a CLI (`dotnet run --project src/MindAttic.Orchestrator.Cli
 | `queue [--groom]` / `bump <ID> [--by n]` | the cross-repo ticket queue, what's proposed next, and why (estimate, stale, too big, blocked, reserved); `--groom` lists old untouched tickets; reprioritize |
 | `dispatch <ID> [--provider] [--worktree]` | start a session on a ticket |
 | `release <ID> [--remove-worktree]` | put a ticket back in the queue; remove its (clean) worktree |
-| `daemon [--interval 15]` | keep the budget file and pace fresh and, if enabled, auto-dispatch without the dashboard open |
-| `settings [--max-sessions n] [--auto-dispatch true] [--dispatch-repos A,B] [--auto-submit Repo=true] [--throttle-agents true] [--max-delay 300] [--provider X] [--stale-hours 12] [--quiet 22:00-07:00] [--repo-cap Repo=40] [--repo-sessions Repo=3] [--groom-days 30] [--notify URL] [--github-intake true]` | scheduler settings |
+| `daemon [--interval 15]` | keep the budget file and pace fresh, cycle context, and feed the `/autopilot` CLIs without the dashboard open |
+| `settings [--max-sessions n] [--autopilot false] [--throttle-agents true] [--max-delay 300] [--provider X] [--stale-hours 12] [--quiet 22:00-07:00] [--repo-cap Repo=40] [--repo-sessions Repo=3] [--groom-days 30] [--notify URL] [--github-intake true]` | scheduler settings |
 | `audit [--latest]` | convention drift and cross-repo duplication |
 | `block <ID> --by <ID>` / `reserve <ID> <tokens>` | make a ticket wait for others; set tokens aside for a ticket |
-| `dryrun` | what auto-dispatch would open right now, and where, without opening anything |
+| `dryrun` | what `/autopilot` would type into each open CLI right now, without typing anything |
 | `show <ID> [--diff]` | a ticket end to end: its row, the sessions dispatched on it, and the commits that mention it |
 | `report [--weeks 4] [--csv FILE]` | uncached tokens by week and repo, by provider, and by ticket type |
 | `hygiene` | closed tickets that may not be done: no Ref cited, or a later ticket says it came back |
@@ -119,7 +124,7 @@ longest wait first), *Working* (a transcript grew in the last 2 minutes), *Open 
 and *Quiet*. A toast and a taskbar flash fire when a repo goes Working → Needs you.
 
 **1 · Session control.** Start a Claude/Codex/Gemini/Kimi tab in any repo (ticket text can pre-fill
-the prompt, sent only by you, or by auto-submit in repos you list) and reply to a live Launcher tab
+the prompt, sent only by you) and reply to a live Launcher tab
 from the detail pane.
 
 **2 · Budget.** Usage is grouped into 5-hour blocks (the window Claude's subscription limits reset
@@ -194,14 +199,9 @@ console (the hook records its process); a Claude desktop-app session has no cons
 before features before chores before docs, then oldest. Each refresh it proposes up to the free
 session slots (one per repo) under the pace's session cap. It holds when the slots are full, the pace
 is coasting or over, or (with pacing off or nothing to pace against) the budget passes the warn line.
-Proposals wait for a click by default; *auto-dispatch* (Settings) opens one per minute by itself,
-from every repo or only those in `--dispatch-repos` (it reaches past other repos' tickets at the top
-of the queue; the queue and manual starts still cover everything).
-Either way the tab opens with the ticket pre-filled and unsent, and the prompt tells the agent to
-finish with `workflow ticket close <ID> --repo <Repo>`. To run a repo unattended, `settings
---auto-submit Repo=true` makes the tabs auto-dispatch opens there press Enter by themselves once the
-agent is up (about 15 seconds); pacing still caps how many run. If the tab never comes up, the daemon
-warns (and alerts via `--notify`) so you can press Enter yourself. A ticket for a repo that already has a session
+Proposals wait for a click; the tab opens with the ticket pre-filled and unsent, and the prompt tells
+the agent to finish with `/commit` and `workflow ticket close <ID> --repo <Repo>`. To work unattended,
+`/autopilot` (above) feeds the CLIs you already have open instead of opening tabs. A ticket for a repo that already has a session
 goes into a git worktree under `D:\Projects\MindAttic.worktrees\<Repo>\<ID>` on branch `orch/<id>`, so
 two agents never share a checkout. When the ticket closes, the queue offers to remove the worktree
 (git refuses if it has uncommitted changes; the branch is always kept).
@@ -224,14 +224,14 @@ for now*: split it, or let it wait for the reset rather than run out of room hal
 **Steering the queue.** `orchestrator block X-T2 --by X-T1` (or "blocked by X-T1" in a ticket's summary)
 keeps a ticket out of proposals until its blockers close. `orchestrator reserve X-T5 2M` sets tokens aside:
 that ticket is proposed first and may start while pacing coasts (never past a limit), and everything
-else paces against what's left. `settings --quiet 22:00-07:00` pauses auto-dispatch in those hours.
+else paces against what's left. `settings --quiet 22:00-07:00` pauses autopilot in those hours.
 `settings --repo-cap Prose=40` stops proposing work in a repo once it has spent 40% of the 5-hour limit
 in the current block; `--repo-sessions Prose=3` lets a repo run 3 sessions at once (default 2: the repo
 plus a worktree). A non-Claude default provider holds at 90% of its own reported 5-hour limit. Proposals
 in a repo that shares duplicated code (per the last audit) with a repo that has a session say so, since
 two agents fixing the same copied code is how conflicting edits happen. `queue --groom` lists open
-tickets over 30 days old that nobody is on. `orchestrator dryrun` prints what auto-dispatch would open
-right now, and where, without opening anything.
+tickets over 30 days old that nobody is on. `orchestrator dryrun` prints what autopilot would type
+into each open CLI right now, without typing anything.
 
 **Watching.** The daemon also flags a session that keeps repeating the identical tool call (5 of its last
 12, still writing) as *looks stuck*: in its log, as a dashboard toast and in `orchestrator status`. It
@@ -243,7 +243,7 @@ With `settings --github-intake true` it files GitHub issues labelled `orchestrat
 main as tickets every hour (once each, marked `GH#n` / `CI#id`; nothing is written back to GitHub).
 
 **Dashboard extras.** A tray icon shows budget, pace and who needs you; its menu opens the dashboard,
-pauses or resumes auto-dispatch, starts the next proposal, jumps to a waiting repo, and shows an
+pauses or resumes autopilot, starts the next proposal, jumps to a waiting repo, and shows an
 always-on-top HUD strip. Minimizing hides the window to the tray. Opening it after an hour or more
 away starts with a *While you were away* summary. A finished ticket's *Details* shows its sessions and
 commits. Usage is kept by day for a year (`usage-history.json`), so `report` and the week projection

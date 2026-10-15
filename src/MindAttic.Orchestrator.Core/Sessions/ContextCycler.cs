@@ -106,9 +106,11 @@ public sealed class ContextCycler(string? directory = null)
     public IEnumerable<SessionContext> Load()
     {
         if (!System.IO.Directory.Exists(Directory)) return [];
+        // A session that hasn't drawn its statusline yet has only the hook's state file.
         return System.IO.Directory.EnumerateFiles(Directory, "*.json")
-            .Where(f => !f.EndsWith(".state.json", StringComparison.OrdinalIgnoreCase))
-            .Select(f => Read(Path.GetFileNameWithoutExtension(f)))
+            .Select(f => Path.GetFileName(f) is var n && n.EndsWith(".state.json", StringComparison.OrdinalIgnoreCase) ? n[..^".state.json".Length] : n[..^".json".Length])
+            .Distinct(StringComparer.Ordinal)
+            .Select(Read)
             .OfType<SessionContext>()
             .ToList();
     }
@@ -119,10 +121,15 @@ public sealed class ContextCycler(string? directory = null)
         {
             var context = Path.Combine(Directory, sessionId + ".json");
             var state = Path.Combine(Directory, sessionId + ".state.json");
-            if (!File.Exists(context)) return null;
-            using var c = JsonDocument.Parse(File.ReadAllText(context));
-            var percent = c.RootElement.TryGetProperty("used_percentage", out var p) && p.ValueKind == JsonValueKind.Number ? p.GetDouble() : 0;
-            var cwd = c.RootElement.TryGetProperty("cwd", out var w) ? w.GetString() : null;
+            if (!File.Exists(context) && !File.Exists(state)) return null;
+            double percent = 0;
+            string? cwd = null;
+            if (File.Exists(context))
+            {
+                using var c = JsonDocument.Parse(File.ReadAllText(context));
+                percent = c.RootElement.TryGetProperty("used_percentage", out var p) && p.ValueKind == JsonValueKind.Number ? p.GetDouble() : 0;
+                cwd = c.RootElement.TryGetProperty("cwd", out var w) ? w.GetString() : null;
+            }
             bool idle = false;
             int? pid = null;
             var turn = DateTime.MinValue;
@@ -134,6 +141,7 @@ public sealed class ContextCycler(string? directory = null)
                     DateTime.TryParse(at.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var when))
                     turn = when;
                 if (t.RootElement.TryGetProperty("pid", out var pp) && pp.ValueKind == JsonValueKind.Number) pid = pp.GetInt32();
+                if (cwd is null && t.RootElement.TryGetProperty("cwd", out var tc) && tc.ValueKind == JsonValueKind.String) cwd = tc.GetString();
             }
             return new SessionContext(sessionId, cwd, percent, idle, turn) { Pid = pid };
         }
@@ -151,7 +159,7 @@ public sealed class ContextCycler(string? directory = null)
     }
 
     /// <summary>Drops /unthrottle marks whose CLI has closed, so a reused process id never inherits one.</summary>
-    public void PruneUnthrottled()
+    public void PruneMarks()
     {
         if (!System.IO.Directory.Exists(Directory)) return;
         foreach (var f in System.IO.Directory.EnumerateFiles(Directory, "unthrottled-*"))
@@ -166,10 +174,27 @@ public sealed class ContextCycler(string? directory = null)
         : [.. System.IO.Directory.EnumerateFiles(Directory, "unthrottled-*")
             .Select(f => int.TryParse(Path.GetFileName(f)["unthrottled-".Length..], out var pid) ? pid : 0).Where(IsClaude)];
 
-    private static bool IsClaude(int pid)
+    /// <summary>The standing <c>/autopilot</c> order the context gate writes: the file is there while it's on.</summary>
+    public const string AutopilotFile = "autopilot.order";
+
+    /// <summary>Null while <c>/autopilot</c> is off; otherwise the repos whose CLIs it works (<c>-repo=a,b</c>), empty for every open one.</summary>
+    public IReadOnlyList<string>? AutopilotOrder()
+    {
+        try
+        {
+            var path = Path.Combine(Directory, AutopilotFile);
+            return File.Exists(path)
+                ? [.. File.ReadAllText(path).Split([',', '\n', '\r'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)]
+                : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+    }
+
+    /// <summary>Whether <paramref name="pid"/> is a running Claude CLI.</summary>
+    public static bool IsClaude(int pid)
     {
         if (pid <= 0) return false;
-        try { using var p = System.Diagnostics.Process.GetProcessById(pid); return p.ProcessName.Equals("claude", StringComparison.OrdinalIgnoreCase); }
+        try { using var p = System.Diagnostics.Process.GetProcessById(pid); return ConsoleTyper.IsClaude(p.ProcessName); }
         catch (ArgumentException) { return false; }
         catch (InvalidOperationException) { return false; }
     }
@@ -178,7 +203,7 @@ public sealed class ContextCycler(string? directory = null)
     public void Prune(DateTime nowUtc)
     {
         if (!System.IO.Directory.Exists(Directory)) return;
-        foreach (var f in System.IO.Directory.EnumerateFiles(Directory))
+        foreach (var f in System.IO.Directory.EnumerateFiles(Directory).Where(f => Path.GetFileName(f) != AutopilotFile))
             try { if (nowUtc - File.GetLastWriteTimeUtc(f) > TimeSpan.FromDays(7)) File.Delete(f); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }

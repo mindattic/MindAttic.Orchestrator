@@ -17,7 +17,7 @@ public sealed class InstallerTests
         Assert.That(xml.Descendants(t + "Arguments").Single().Value, Is.EqualTo(Installer.DaemonArg));
         Assert.That(xml.Descendants(t + "LogonTrigger").Single().Element(t + "UserId")!.Value, Is.EqualTo(@"PC\ryan"));
         Assert.That(xml.Descendants(t + "ExecutionTimeLimit").Single().Value, Is.EqualTo("PT0S"), "Task Scheduler's default would kill it after 3 days");
-        Assert.That(xml.Descendants(t + "LogonType").Single().Value, Is.EqualTo("InteractiveToken"), "auto-dispatch opens tabs on your desktop");
+        Assert.That(xml.Descendants(t + "LogonType").Single().Value, Is.EqualTo("InteractiveToken"), "autopilot types into CLIs on your desktop");
     }
 
     [TestCase(@"D:\Projects\MindAttic\MindAttic.Orchestrator\src\MindAttic.Orchestrator.Wpf\bin\Debug\net10.0-windows\MindAttic.Orchestrator.exe", true)]

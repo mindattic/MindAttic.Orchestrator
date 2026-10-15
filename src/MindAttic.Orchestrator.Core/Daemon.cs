@@ -9,7 +9,7 @@ namespace MindAttic.Orchestrator;
 
 /// <summary>
 /// The always-on loop the logon task runs: keeps <c>rl-status.json</c> and the pace current, notices
-/// stale assignments, and auto-dispatches when that's on (holding <see cref="DispatchLease"/>). Every
+/// stale assignments, cycles context, and feeds the CLIs where /autopilot is on (holding <see cref="DispatchLease"/>). Every
 /// event goes to MindAttic.Log; <c>echo</c> also gets it when someone is watching (the CLI's console).
 /// Runs until cancelled; a failed refresh is logged and retried, since nobody sees a headless crash.
 /// </summary>
@@ -25,16 +25,13 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         var options = OrchestratorOptions.Load(store);
         using var lease = new DispatchLease(store.Directory);
         StatusAggregator aggregator = null!;
-        AutoDispatch auto = null!;
-        void Build()
-        {
-            aggregator = new StatusAggregator(options, store, new RateLimitStatusWriter());
-            auto = new AutoDispatch(new Dispatcher(new SessionControl(options), store), lease: lease);
-        }
+        void Build() => aggregator = new StatusAggregator(options, store, new RateLimitStatusWriter());
         Build();
 
         Say(LogEventLevel.Information, $"daemon started (pid {Environment.ProcessId}, every {interval.TotalSeconds:0}s, workspace {options.WorkspaceRoot})");
         var cycler = new ContextCycler();
+        var autopilot = new Autopilot(store, cycler, lease);
+        string? lastPaused = null;
         cycler.Prune(DateTime.UtcNow);
         int? gatePercent = null;
         string? lastHold = null;
@@ -66,7 +63,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"couldn't install the agent hooks: {ex.Message}"); }
                     gatePercent = s.ContextCyclePercent;
                 }
-                cycler.PruneUnthrottled();
+                cycler.PruneMarks();
                 foreach (var line in cycler.Tick([.. snapshot.Repos.SelectMany(r => r.Hosts)], s, DateTime.UtcNow))
                 {
                     Say(LogEventLevel.Information, line);
@@ -118,26 +115,19 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                         Say(LogEventLevel.Information, $"filed {ticket.Id} in {repo} from GitHub: {ticket.Summary}");
                 }
 
-                if (auto.Tick(AutoDispatch.PlanFor(plan, snapshot, s, store.LoadAssignments()), s, DateTime.UtcNow) is { } r)
+                foreach (var line in autopilot.Tick(plan, snapshot, s, DateTime.UtcNow))
+                    Say(LogEventLevel.Information, line);
+                if (autopilot.On && autopilot.Paused != lastPaused)
                 {
-                    Say(r.Ok ? LogEventLevel.Information : LogEventLevel.Error, r.Message);
-                    var ticket = r.Assignment?.TicketId;
-                    r.CameUp?.ContinueWith(t =>
-                    {
-                        if (t.IsCompletedSuccessfully && t.Result) return;
-                        // Something is wrong with starting tabs; stop rather than open a broken one every minute.
-                        if (ticket is not null) new Dispatcher(new SessionControl(options), store).Release(ticket);
-                        store.SaveSettings(store.LoadSettings() with { AutoDispatch = false });
-                        Say(LogEventLevel.Error, $"{ticket}'s tab never came up (or didn't stay up); released it and turned auto-dispatch off");
-                        Alert("Auto-dispatch stopped", $"{ticket}'s tab failed to start, so auto-dispatch is off until you turn it back on.", urgent: true);
-                    }, TaskScheduler.Default);
+                    Say(LogEventLevel.Information, autopilot.Paused is { } why ? $"autopilot is holding: {why}" : "autopilot is feeding its CLIs again");
+                    lastPaused = autopilot.Paused;
                 }
-                if (s.AutoDispatch && auto.HeldElsewhere != lastHeldElsewhere)
+                if (autopilot.On && autopilot.HeldElsewhere != lastHeldElsewhere)
                 {
-                    Say(LogEventLevel.Information, auto.HeldElsewhere
-                        ? "another orchestrator (an open dashboard) holds auto-dispatch; this one only keeps the budget file fresh"
-                        : "auto-dispatching from this process");
-                    lastHeldElsewhere = auto.HeldElsewhere;
+                    Say(LogEventLevel.Information, autopilot.HeldElsewhere
+                        ? "another orchestrator (an open dashboard) is feeding the /autopilot CLIs; this one only keeps the budget file fresh"
+                        : "feeding the /autopilot CLIs from this process");
+                    lastHeldElsewhere = autopilot.HeldElsewhere;
                 }
             }
             catch (Exception ex)

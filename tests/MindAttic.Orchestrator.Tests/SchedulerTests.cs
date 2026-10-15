@@ -121,21 +121,6 @@ public sealed class SchedulerTests
     }
 
     [Test]
-    public void Auto_dispatch_is_off_unless_asked_and_paced()
-    {
-        var store = new JsonStore(Path.Combine(Path.GetTempPath(), "orch-store-" + Guid.NewGuid().ToString("N")));
-        var auto = new AutoDispatch(new Dispatcher(new MindAttic.Orchestrator.Sessions.SessionControl(
-            new OrchestratorOptions { LauncherExe = @"Z:\nope.exe" }), store), busy: () => null);
-        var plan = Scheduler.Plan(Snap(null, Repo("A", RepoState.Dormant, T("A-T1"))), new OrchestratorSettings(), []);
-        var now = DateTime.UtcNow;
-
-        Assert.That(auto.Tick(plan, new OrchestratorSettings(), now), Is.Null, "off by default");
-        var on = new OrchestratorSettings { AutoDispatch = true };
-        Assert.That(auto.Tick(plan, on, now)?.Ok, Is.False, "missing Launcher reports, doesn't throw");
-        Assert.That(auto.Tick(plan, on, now.AddSeconds(10)), Is.Null, "paced");
-    }
-
-    [Test]
     public void After_priority_the_smallest_effort_goes_first_and_every_story_ends_committed_and_closed()
     {
         // Fixes in A have cost ~100 each, in B ~1,000: B's older fix waits behind A's cheaper one.
@@ -157,29 +142,6 @@ public sealed class SchedulerTests
     }
 
     [Test]
-    public void Auto_dispatch_reaches_past_the_queue_top_to_the_repos_it_may_start()
-    {
-        var snap = Snap(null, Repo("A", RepoState.Dormant, T("A-T1")), Repo("B", RepoState.Dormant, T("B-T1")));
-        var s = new OrchestratorSettings { MaxConcurrentSessions = 1, DispatchRepos = ["b"] };
-        var plan = Scheduler.Plan(snap, s, []);
-
-        Assert.That(plan.Proposals.Select(p => p.Item.Id), Is.EqualTo(new[] { "A-T1" }), "a click still sees the top of the queue");
-        Assert.That(AutoDispatch.PlanFor(plan, snap, s, []).Proposals.Select(p => p.Item.Id), Is.EqualTo(new[] { "B-T1" }),
-            "auto-dispatch skips A, which isn't allowed, for the next one that is, even with one slot");
-        Assert.That(AutoDispatch.PlanFor(plan, snap, s with { DispatchRepos = [] }, []), Is.SameAs(plan), "no allowlist: every repo");
-    }
-
-    [Test]
-    public void Auto_submit_is_per_repo_and_off_by_default()
-    {
-        Assert.That(AutoDispatch.Submits(new OrchestratorSettings(), "Prose"), Is.False, "off by default");
-        var s = new OrchestratorSettings { AutoSubmitRepos = ["Prose"] };
-        Assert.That(AutoDispatch.Submits(s, "prose"), Is.True, "repo names match case-insensitively");
-        Assert.That(AutoDispatch.Submits(s, "Codex"), Is.False, "only the listed repos");
-        Assert.That(AutoDispatch.Submits(new OrchestratorSettings { AutoSubmitRepos = ["*"] }, "Codex"), Is.True, "* is every repo");
-    }
-
-    [Test]
     public void Auto_submit_presses_enter_only_in_the_tab_it_just_opened()
     {
         HostSession H(int pid, string? dir) => new("Claude", pid, "mindattic-host-claude-" + pid, dir);
@@ -190,22 +152,6 @@ public sealed class SchedulerTests
             "skips the tab already open there, other folders and unreadable command lines");
         Assert.That(MindAttic.Orchestrator.Sessions.SessionControl.NewHostAt(hosts[..3], @"D:\W\A", before), Is.Null,
             "no new tab there yet: nothing to submit");
-    }
-
-    [Test]
-    public void Auto_dispatch_never_takes_the_screen_from_a_game_and_never_repeats_a_tab_that_did_not_come_up()
-    {
-        var store = new JsonStore(Path.Combine(Path.GetTempPath(), "orch-store-" + Guid.NewGuid().ToString("N")));
-        var disp = new Dispatcher(new MindAttic.Orchestrator.Sessions.SessionControl(new OrchestratorOptions { LauncherExe = @"Z:\nope.exe" }), store);
-        var plan = Scheduler.Plan(Snap(null, Repo("A", RepoState.Dormant, T("A-T1"))), new OrchestratorSettings(), []);
-        var on = new OrchestratorSettings { AutoDispatch = true };
-
-        string? screen = "a fullscreen game is running";
-        var auto = new AutoDispatch(disp, busy: () => screen);
-        Assert.That(auto.Tick(plan, on, DateTime.UtcNow), Is.Null, "in a game: nothing opens");
-        Assert.That(auto.Deferred, Does.Contain("game"));
-        screen = null;
-        Assert.That(auto.Tick(plan, on, DateTime.UtcNow), Is.Not.Null, "out of it: it carries on");
     }
 
     [Test]
@@ -301,32 +247,6 @@ public sealed class SchedulerTests
             foreach (var f in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)) File.SetAttributes(f, FileAttributes.Normal);
             Directory.Delete(root, recursive: true);
         }
-    }
-
-    [Test]
-    public void Only_one_process_auto_dispatches_and_the_next_takes_over_when_it_exits()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), "orch-lease-" + Guid.NewGuid().ToString("N"));
-        var store = new JsonStore(dir);
-        Dispatcher Disp() => new(new MindAttic.Orchestrator.Sessions.SessionControl(new OrchestratorOptions { LauncherExe = @"Z:\nope.exe" }), store);
-        var plan = Scheduler.Plan(Snap(null, Repo("A", RepoState.Dormant, T("A-T1"))), new OrchestratorSettings(), []);
-        var on = new OrchestratorSettings { AutoDispatch = true };
-        try
-        {
-            using var daemonLease = new DispatchLease(dir);
-            using var dashboardLease = new DispatchLease(dir);
-            var daemon = new AutoDispatch(Disp(), lease: daemonLease, busy: () => null);
-            var dashboard = new AutoDispatch(Disp(), lease: dashboardLease, busy: () => null);
-
-            Assert.That(daemon.Tick(plan, on, DateTime.UtcNow), Is.Not.Null, "the first to ask dispatches");
-            Assert.That(dashboard.Tick(plan, on, DateTime.UtcNow), Is.Null);
-            Assert.That(dashboard.HeldElsewhere, Is.True);
-
-            daemonLease.Dispose(); // the daemon exits
-            Assert.That(dashboard.Tick(plan, on, DateTime.UtcNow), Is.Not.Null, "the lease is free again");
-            Assert.That(dashboard.HeldElsewhere, Is.False);
-        }
-        finally { Directory.Delete(dir, recursive: true); }
     }
 
     private static string Run(string dir, params string[] args)
