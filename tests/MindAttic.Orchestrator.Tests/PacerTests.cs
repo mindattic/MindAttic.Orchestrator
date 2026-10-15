@@ -278,6 +278,21 @@ public sealed class PacerTests
             Assert.That(Gate(uss, "Bash", new { command = $"git -C {Path.Combine(ws, "MindAttic.Orchestrator")} commit -m x" }), Does.Contain("\"deny\""));
             Assert.That(Gate(uss, "Bash", new { command = $"git -C {Path.Combine(ws, "MindAttic.Orchestrator")} log -1" }), Is.Empty, "reading another repo is fine");
             Assert.That(Gate(ws, "Edit", new { file_path = orch }), Is.Empty, "the General (workspace-root) window may work anywhere");
+
+            // The explicit exception: /crossrepo marks this CLI (by process) as allowed into the repos named.
+            var marks = Path.Combine(dir, ".claude", "session-context");
+            Directory.CreateDirectory(marks);
+            File.WriteAllText(Path.Combine(marks, "crossrepo-4242"), "MindAttic.Orchestrator");
+            string GateAs(int pid, string cwd, string tool, object input)
+            {
+                Environment.SetEnvironmentVariable("MINDATTIC_CLI_PID", pid.ToString());
+                try { return Gate(cwd, tool, input); }
+                finally { Environment.SetEnvironmentVariable("MINDATTIC_CLI_PID", null); }
+            }
+            Assert.That(GateAs(4242, uss, "Edit", new { file_path = orch }), Is.Empty, "excepted into MindAttic.Orchestrator");
+            Assert.That(GateAs(4343, uss, "Edit", new { file_path = orch }), Does.Contain("\"deny\""), "another CLI has no exception");
+            File.WriteAllText(Path.Combine(marks, "crossrepo-4242"), "all");
+            Assert.That(GateAs(4242, uss, "Bash", new { command = "workflow ticket close MAO-T1 --repo MindAttic.Orchestrator" }), Is.Empty, "all lifts it");
         }
         finally { Directory.Delete(dir, recursive: true); }
     }

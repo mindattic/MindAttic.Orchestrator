@@ -81,6 +81,18 @@ public static class AgentGate
         Otherwise reply with one short line confirming autopilot is on for the repos that have an open Claude CLI (or, with -repo=, the repos named; name them), then end your turn. From then on the orchestrator works each of those repos' next open story (manual priority first, then smallest effort) in background agents of their own, each in its own git worktree: no window, nothing typed into any CLI, so every tab and checkout stays free for you. As many run at once as each repo's session limit and the pace allow; each commits, closes its ticket and lands its work on main, then the next starts. New stories only start while the 5-hour pace can afford them and the pace gate slows running agents, so the window gets used without hitting the limit. Repos whose CLIs open later join in; an agent that ends without closing its ticket gives it back and you get a "Needs you"; /autopilot off starts nothing new.
         """;
 
+    internal const string CrossRepoCommand = """
+        ---
+        description: Let this CLI work other repos too (the one exception to "a repo's window works only that repo"). /crossrepo off ends it.
+        argument-hint: "<Repo,Repo|all|off>"
+        ---
+        The user ran /crossrepo $ARGUMENTS. MindAttic.Orchestrator's context gate has recorded it for this CLI process, until it closes.
+
+        If the arguments are empty or "off": reply with one short line confirming this window is back to its own repo only.
+
+        Otherwise reply with one short line confirming this window may now also edit and close tickets in the repos named ("all" means any repo), then carry on with whatever was asked.
+        """;
+
     internal static string Script => $$"""
         #!/usr/bin/env python3
         # MindAttic.Orchestrator's pace gate (written by the orchestrator; edits are overwritten).
@@ -155,10 +167,26 @@ public static class AgentGate
             print(json.dumps(dict(hookSpecificOutput=dict(hookEventName="PreToolUse", permissionDecision="deny", permissionDecisionReason=why))))
             raise SystemExit(0)
 
+        # The one exception is explicit, per CLI and until it closes: /crossrepo <A,B|all> (the context gate writes the mark).
+        def allowed_here():
+            pid = os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
+            mark = Path.home() / ".claude" / "session-context" / ("crossrepo-" + str(pid))
+            try:
+                return {r.strip().lower() for r in mark.read_text().split(",") if r.strip()} if pid else set()
+            except Exception:
+                return set()
+
         here = repo_of(data.get("cwd") or "")
         if here:
             args = data.get("tool_input") or {}
-            other = lambda r: r and r.lower() != here.lower()
+            excepted = None
+            def other(r):
+                global excepted
+                if not r or r.lower() == here.lower():
+                    return False
+                if excepted is None:
+                    excepted = allowed_here()
+                return "all" not in excepted and r.lower() not in excepted
             if tool in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
                 target = args.get("file_path") or args.get("notebook_path") or ""
                 if other(repo_of(target)):
@@ -292,6 +320,17 @@ public static class AgentGate
                 else:
                     m = re.search(r"-{1,2}repos?\s*[=:]?\s*\[?([^\]]*)\]?", args, re.I)
                     order.write_text(",".join(r.strip() for r in m.group(1).replace(" ", ",").split(",") if r.strip()) if m else "")
+            # /crossrepo <A,B|all> lets this CLI work other repos too (the explicit exception to MAO-T95); /crossrepo off ends it.
+            if prompt.startswith("/crossrepo"):
+                pid = cli_pid()
+                if pid is not None:
+                    mark = DIR / ("crossrepo-" + str(pid))
+                    args = typed[len("/crossrepo"):].strip()
+                    if not args or re.match(r"off\b", args, re.I):
+                        if mark.exists():
+                            mark.unlink()
+                    else:
+                        mark.write_text(",".join(r.strip() for r in args.replace(" ", ",").split(",") if r.strip()))
             if prompt.startswith("/unthrottle") or prompt.startswith("/throttle"):
                 pid = cli_pid()
                 if pid is not None:
@@ -338,6 +377,7 @@ public static class AgentGate
             (script, Script), (contextScript, ContextScript(contextPercent)),
             (Path.Combine(dir, "commands", "unthrottle.md"), UnthrottleCommand), (Path.Combine(dir, "commands", "throttle.md"), ThrottleCommand),
             (Path.Combine(dir, "commands", "autopilot.md"), AutopilotCommand),
+            (Path.Combine(dir, "commands", "crossrepo.md"), CrossRepoCommand),
         })
         {
             if (File.Exists(path) && File.ReadAllText(path) == body) continue;

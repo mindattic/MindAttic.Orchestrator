@@ -194,11 +194,12 @@ public sealed class ContextCycler(string? directory = null)
             foreach (var f in System.IO.Directory.EnumerateFiles(SubagentDirectory).Where(f => !SubagentAlive(f, DateTime.UtcNow)))
                 try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         if (!System.IO.Directory.Exists(Directory)) return;
-        foreach (var f in System.IO.Directory.EnumerateFiles(Directory, "unthrottled-*"))
-        {
-            var alive = int.TryParse(Path.GetFileName(f)["unthrottled-".Length..], out var pid) && IsClaude(pid);
-            if (!alive) try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
-        }
+        foreach (var prefix in new[] { "unthrottled-", "crossrepo-" })
+            foreach (var f in System.IO.Directory.EnumerateFiles(Directory, prefix + "*"))
+            {
+                var alive = int.TryParse(Path.GetFileName(f)[prefix.Length..], out var pid) && IsClaude(pid);
+                if (!alive) try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            }
     }
 
     /// <summary>The CLIs running unthrottled right now (by process id).</summary>
