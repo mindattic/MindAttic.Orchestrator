@@ -87,4 +87,41 @@ public sealed class SubagentActivityTests
             Directory.Delete(projectsDir, recursive: true);
         }
     }
+
+    [Test]
+    public void A_subagent_transcript_is_tailed_so_each_poll_reads_only_what_was_appended()
+    {
+        // A long subagent's transcript reaches tens of MB; it was re-parsed from byte 0 every refresh (MAO-T113).
+        var sessionDir = NewDir("ctx");
+        var projectsDir = NewDir("projects");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(sessionDir, "subagents"));
+            File.WriteAllText(Path.Combine(sessionDir, "subagents", "a2"), "");
+            var folder = Path.Combine(projectsDir, "proj", "session-2", "subagents");
+            Directory.CreateDirectory(folder);
+            var file = Path.Combine(folder, "agent-a2.jsonl");
+            File.WriteAllLines(file, [Line("assistant", "2026-10-15T11:50:00Z", attributionAgent: "Plan", usage: (10, 0, 0, 5))]);
+
+            var cycler = new ContextCycler(sessionDir);
+            var reader = new SubagentActivityReader(projectsDir);
+            Assert.That(reader.Poll(cycler, Now).Single().Usage, Is.EqualTo(new TokenUsage(10, 0, 0, 5)));
+
+            // Appended since: one whole line and one still being written (no newline yet).
+            File.AppendAllText(file, Line("assistant", "2026-10-15T11:52:00Z", attributionAgent: "Plan", usage: (1, 0, 0, 1)) + "\n" +
+                Line("assistant", "2026-10-15T11:53:00Z", usage: (1000, 0, 0, 0))[..20]);
+            var s = reader.Poll(cycler, Now).Single();
+            Assert.That((s.Usage, s.ParentSessionId, s.Type), Is.EqualTo((new TokenUsage(11, 0, 0, 6), "session-2", "Plan")), "the first line isn't counted twice");
+            Assert.That((s.StartedUtc, s.LastWriteUtc), Is.EqualTo((new DateTime(2026, 10, 15, 11, 50, 0, DateTimeKind.Utc), new DateTime(2026, 10, 15, 11, 52, 0, DateTimeKind.Utc))),
+                "the half-written line waits until it's whole");
+
+            File.WriteAllLines(file, [Line("assistant", "2026-10-15T11:55:00Z", usage: (3, 0, 0, 3))]); // replaced with something shorter
+            Assert.That(reader.Poll(cycler, Now).Single().Usage, Is.EqualTo(new TokenUsage(3, 0, 0, 3)), "a file that shrank is read again from the start");
+        }
+        finally
+        {
+            Directory.Delete(sessionDir, recursive: true);
+            Directory.Delete(projectsDir, recursive: true);
+        }
+    }
 }

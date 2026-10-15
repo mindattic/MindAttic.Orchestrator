@@ -34,6 +34,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     private readonly Workspace workspace = new(options.WorkspaceRoot);
     private readonly OpenTicketSource tickets = new();
     private readonly TranscriptReader transcripts = new(options.ClaudeProjectsDir, options.TranscriptCache);
+    private readonly Sessions.ContextCycler contextCycler = new();
+    private readonly SubagentActivityReader subagents = new(options.ClaudeProjectsDir);
 
     /// <summary>The Launcher tabs open now (a live pipe scan); replaceable for tests.</summary>
     internal Func<IReadOnlyList<HostSession>> ScanHosts { get; init; } = new HostSessionScanner(options).Scan;
@@ -93,13 +95,12 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
         var recentFrom = now - BudgetCalculator.RecentWindow;
         var active = allSessions.Count(s => s.Events.Count > 0 && s.Events[^1].AtUtc >= recentFrom);
-        var contextCycler = new Sessions.ContextCycler();
         var pace = Pacer.Compute(budget, active, Pacer.TypicalPerSession(allSessions.Select(s => s.Events), historyStartUtc), settings, now,
             rateLimitFile?.AgentDelay(now) ?? 0, rateLimitFile is null ? 0 : contextCycler.Subagents());
         if (rateLimitFile is not null && (statusLease is null || statusLease.IsHeld || statusLease.TryAcquire()))
             rateLimitFile.Write(budget, pace);
 
-        var runningSubagents = SubagentActivityReader.Running(contextCycler, options.ClaudeProjectsDir, now);
+        var runningSubagents = subagents.Poll(contextCycler, now);
         var agentBoard = AgentBoard.Build(result, pace, Store.LoadAssignments(), runningSubagents, options.WorkingWindow, now);
 
         var weekFrom = now.AddDays(-7);
