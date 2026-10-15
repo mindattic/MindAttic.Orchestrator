@@ -247,9 +247,10 @@ public sealed class ContextCycler(string? directory = null)
                 using var j = JsonDocument.Parse(line);
                 var r = j.RootElement;
                 string S(string name) => r.TryGetProperty(name, out var v) ? v.ToString() : "?";
+                var cli = r.TryGetProperty("provider", out var p) && p.GetString() is { } who && who != Providers.Claude ? $"{who} CLI" : "CLI";
                 return S("action") == "let stop"
-                    ? $"keep-going: let the CLI in {S("repo")} stop ({S("why")}, {S("open")} open); it stopped again without doing anything, so it likely needs you"
-                    : $"keep-going: told the CLI in {S("repo")} to carry on ({S("why")}, {S("open")} tickets still open)";
+                    ? $"keep-going: let the {cli} in {S("repo")} stop ({S("why")}, {S("open")} open); it stopped again without doing anything, so it likely needs you"
+                    : $"keep-going: told the {cli} in {S("repo")} to carry on ({S("why")}, {S("open")} tickets still open)";
             }
             catch (JsonException) { return null; }
         }

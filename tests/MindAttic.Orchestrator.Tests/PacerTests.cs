@@ -375,6 +375,12 @@ public sealed class PacerTests
             var geminiHook = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(geminiDir, "settings.json")))!["hooks"]!["BeforeTool"]![0]!;
             Assert.That(geminiHook["hooks"]![0]!["timeout"]!.GetValue<int>(), Is.EqualTo(MindAttic.Orchestrator.Setup.AgentGate.HookTimeoutSeconds * 1000), "Gemini's timeout is milliseconds");
 
+            // Keep development going: Codex's Stop and Gemini's AfterAgent run the context gate, named so it knows whose they are.
+            var codexStop = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(codexDir, "hooks.json")))!["hooks"]!["Stop"]![0]!["hooks"]![0]!;
+            Assert.That(codexStop["command"]!.GetValue<string>(), Does.Contain("context-gate.py").And.EndWith(" codex"));
+            var geminiAfter = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(geminiDir, "settings.json")))!["hooks"]!["AfterAgent"]![0]!["hooks"]![0]!;
+            Assert.That((geminiAfter["command"]!.GetValue<string>().EndsWith(" gemini"), geminiAfter["timeout"]!.GetValue<int>()), Is.EqualTo((true, 10_000)));
+
             var kimiText = File.ReadAllText(kimiConfig);
             Assert.That(kimiText, Does.Contain("default_model"), "the user's own config survives");
             Assert.That(kimiText, Does.Contain("[[hooks]]").And.Contain("event = \"PreToolUse\"").And.Contain("pace-gate.py"));

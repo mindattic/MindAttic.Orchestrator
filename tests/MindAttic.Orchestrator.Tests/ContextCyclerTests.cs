@@ -131,9 +131,9 @@ public sealed class ContextCyclerTests
                 d.commit()
                 """);
             Setup.AgentGate.Ensure(dir);
-            string Gate(object input)
+            string Gate(object input, string provider = "")
             {
-                var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\"")
+                var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\" {provider}".TrimEnd())
                     { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
                 psi.Environment["USERPROFILE"] = dir;
                 psi.Environment["MINDATTIC_WORKSPACE"] = ws;
@@ -183,6 +183,18 @@ public sealed class ContextCyclerTests
             Assert.That(Gate(Stop(ask, worktree)), Is.Empty, "an autopilot agent in its worktree works its one ticket");
             File.WriteAllText(Path.Combine(dir, ".claude", "session-context", "s.json"), """{"used_percentage": 90}""");
             Assert.That(Gate(Stop(ask)), Is.Empty, "past the cycle point it stops, so the context can be cycled");
+
+            // Gemini's AfterAgent and Codex's Stop get the same carry-on in their own shape (MAO-T104); their own
+            // stop_hook_active lets the second stop through, and nothing of theirs is recorded as a Claude session.
+            Assert.That(Gate(new { session_id = "g1", hook_event_name = "AfterAgent", cwd = repo, prompt_response = ask }, "gemini"),
+                Does.Contain("\"decision\": \"deny\"").And.Contain("A still has 2 open tickets"));
+            Assert.That(Gate(new { session_id = "g1", hook_event_name = "AfterAgent", cwd = repo, prompt_response = ask, stop_hook_active = true }, "gemini"), Is.Empty);
+            Assert.That(Gate(new { session_id = "c1", hook_event_name = "Stop", cwd = repo, last_assistant_message = ask }, "codex"), Does.Contain("\"decision\": \"block\""));
+            Assert.That(Gate(new { session_id = "c1", hook_event_name = "Stop", cwd = repo, last_assistant_message = "Done." }, "codex"), Is.Empty);
+            Assert.That(File.Exists(Path.Combine(ctx, "g1.state.json")) || File.Exists(Path.Combine(ctx, "c1.state.json")), Is.False);
+            Assert.That(cycler.KeepGoingSince(), Has.Some.EqualTo("keep-going: told the Gemini CLI in A to carry on (asked to go on, 2 tickets still open)")
+                .And.Some.EqualTo("keep-going: let the Gemini CLI in A stop (asked to go on, 2 open); it stopped again without doing anything, so it likely needs you")
+                .And.Some.Contains("told the Codex CLI in A"));
 
             Setup.AgentGate.Ensure(dir, keepGoing: false);
             File.Delete(Path.Combine(dir, ".claude", "session-context", "s.json"));

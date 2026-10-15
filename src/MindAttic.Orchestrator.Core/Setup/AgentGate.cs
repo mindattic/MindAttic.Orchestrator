@@ -305,6 +305,22 @@ public static class AgentGate
             except Exception:
                 return repo, []
 
+        def keep_going(repo, ids, sid, why, insisted, provider="Claude"):
+            # Logs it to keep-going.jsonl (the daemon reports it); the reason to give the agent, or None when it's let stop.
+            try:
+                DIR.mkdir(parents=True, exist_ok=True)
+                with open(DIR / "keep-going.jsonl", "a", encoding="utf-8") as log:
+                    log.write(json.dumps({"at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "repo": repo, "session": sid,
+                                          "provider": provider, "why": why, "open": len(ids), "action": "let stop" if insisted else "kept going"}) + "\n")
+            except Exception:
+                pass
+            if insisted:
+                return None
+            return ("Don't stop: MindAttic.Orchestrator keeps development going without the user. " + repo + " still has " +
+                    str(len(ids)) + " open ticket" + ("" if len(ids) == 1 else "s") + " (" + ", ".join(ids[:6]) + ("..." if len(ids) > 6 else "") +
+                    "). Finish and commit the one you're on, then start the next and keep going. End your turn only when they're "
+                    "done or you're blocked on a decision only the user can make, and then say plainly what it is.")
+
         def last_said(data):
             if data.get("last_assistant_message"):
                 return str(data["last_assistant_message"])
@@ -357,6 +373,17 @@ public static class AgentGate
         except Exception:
             sys.exit(0)
         sid, event = data.get("session_id"), data.get("hook_event_name")
+        # Codex (its Stop hook) and Gemini (AfterAgent) run this too, named on the command line: only keep-going applies
+        # to them (their sessions aren't Claude's to cycle), and their own stop_hook_active guards the second stop.
+        provider = sys.argv[1].capitalize() if len(sys.argv) > 1 else "Claude"
+        if provider != "Claude":
+            said = str(data.get("last_assistant_message") or data.get("prompt_response") or "")
+            if KEEP_GOING and event in ("Stop", "AfterAgent") and ASKS.search(said[-500:]):
+                repo, ids = open_tickets(data.get("cwd") or "")
+                reason = keep_going(repo, ids, sid, "asked to go on", bool(data.get("stop_hook_active")), provider) if ids else None
+                if reason:
+                    print(json.dumps({"decision": "deny" if event == "AfterAgent" else "block", "reason": reason}))
+            sys.exit(0)
         # Every running subagent has a mark, so the pace gate can hold new ones past the allowance.
         if event in ("SubagentStart", "SubagentStop"):
             if data.get("agent_id"):
@@ -385,22 +412,12 @@ public static class AgentGate
             if KEEP_GOING and not state.get("goal") and not state.get("warned") and used < PERCENT:
                 why = "asked to go on" if ASKS.search(last_said(data)[-500:]) else "closed " + ", ".join(state["closed"]) if state.get("closed") else None
             repo, ids = open_tickets(data.get("cwd") or "") if why else (None, [])
-            if ids:
-                try:
-                    with open(DIR / "keep-going.jsonl", "a", encoding="utf-8") as log:
-                        log.write(json.dumps({"at": now, "repo": repo, "session": sid, "why": why, "open": len(ids),
-                                              "action": "let stop" if insisted else "kept going"}) + "\n")
-                except Exception:
-                    pass
-            if ids and not insisted:
+            reason = keep_going(repo, ids, sid, why, insisted) if ids else None
+            if reason:
                 state.update(nudged=True, worked=False)
                 state.pop("closed", None)
                 save(state_file, state)
-                print(json.dumps({"decision": "block", "reason":
-                    "Don't stop: MindAttic.Orchestrator keeps development going without the user. " + repo + " still has " +
-                    str(len(ids)) + " open ticket" + ("" if len(ids) == 1 else "s") + " (" + ", ".join(ids[:6]) + ("..." if len(ids) > 6 else "") +
-                    "). Finish and commit the one you're on, then start the next and keep going. End your turn only when they're "
-                    "done or you're blocked on a decision only the user can make, and then say plainly what it is."}))
+                print(json.dumps({"decision": "block", "reason": reason}))
                 sys.exit(0)
             for k in ("nudged", "worked", "closed"):
                 state.pop(k, None)
@@ -545,9 +562,19 @@ public static class AgentGate
         var command = Command(script);
         var did = new List<string>();
 
-        if (MergeJsonHook(Path.Combine(codexDir ?? CodexDir, "hooks.json"), "PreToolUse", command, HookTimeoutSeconds) is { } c) did.Add("Codex: " + c);
-        if (MergeJsonHook(Path.Combine(geminiDir ?? GeminiDir, "settings.json"), "BeforeTool", command, HookTimeoutSeconds * 1000) is { } g) did.Add("Gemini: " + g);
+        var codexHooks = Path.Combine(codexDir ?? CodexDir, "hooks.json");
+        var geminiSettings = Path.Combine(geminiDir ?? GeminiDir, "settings.json");
+        if (MergeJsonHook(codexHooks, "PreToolUse", ScriptName, command, HookTimeoutSeconds) is { } c) did.Add("Codex: " + c);
+        if (MergeJsonHook(geminiSettings, "BeforeTool", ScriptName, command, HookTimeoutSeconds * 1000) is { } g) did.Add("Gemini: " + g);
         if (AppendKimiHook(kimiConfigPath ?? KimiConfigPath, command, HookTimeoutSeconds)) did.Add("Kimi: wired PreToolUse into config.toml");
+        // Keep development going: Codex's Stop and Gemini's AfterAgent take the same "carry on" as Claude's Stop. Kimi
+        // has no end-of-turn hook, so its CLIs can stop to ask (README says so).
+        var contextScript = Path.Combine(claudeDir ?? ClaudeDir, ContextScriptName);
+        if (File.Exists(contextScript))
+        {
+            if (MergeJsonHook(codexHooks, "Stop", ContextScriptName, Command(contextScript) + " codex", 10) is { } cs) did.Add("Codex: " + cs);
+            if (MergeJsonHook(geminiSettings, "AfterAgent", ContextScriptName, Command(contextScript) + " gemini", 10_000) is { } ga) did.Add("Gemini: " + ga);
+        }
 
         return did.Count > 0 ? string.Join(", ", did) : null;
     }
@@ -555,13 +582,13 @@ public static class AgentGate
     /// <summary>Adds <paramref name="hookEvent"/> to the JSON hook file at <paramref name="path"/> (created fresh if
     /// missing), reusing <see cref="AddHook"/>'s idempotent merge; null when already wired in or the file is
     /// someone else's unreadable JSON.</summary>
-    private static string? MergeJsonHook(string path, string hookEvent, string command, int timeout)
+    private static string? MergeJsonHook(string path, string hookEvent, string scriptName, string command, int timeout)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         JsonObject? root;
         try { root = File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path)) as JsonObject : new JsonObject(); }
         catch (JsonException) { return null; }
-        if (root is null || !AddHook(root, hookEvent, ScriptName, command, timeout)) return null;
+        if (root is null || !AddHook(root, hookEvent, scriptName, command, timeout)) return null;
         var temp = path + ".tmp";
         File.WriteAllText(temp, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
         File.Move(temp, path, overwrite: true);

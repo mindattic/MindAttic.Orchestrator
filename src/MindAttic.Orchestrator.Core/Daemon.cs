@@ -77,7 +77,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 foreach (var line in cycler.KeepGoingSince())
                 {
                     Say(LogEventLevel.Information, line);
-                    if (line.Contains("let the CLI", StringComparison.Ordinal)) Alert("Needs you", line["keep-going: ".Length..]);
+                    if (line.StartsWith("keep-going: let the ", StringComparison.Ordinal)) Alert("Needs you", line["keep-going: ".Length..]);
                 }
                 foreach (var line in cycler.Tick([.. snapshot.Repos.SelectMany(r => r.Hosts)], s, DateTime.UtcNow))
                 {
