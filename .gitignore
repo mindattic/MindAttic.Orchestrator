@@ -9,3 +9,4 @@ TestResults/
 *.log
 .claude/quicksave.md*
 .claude/settings.local.json
+.prose/
