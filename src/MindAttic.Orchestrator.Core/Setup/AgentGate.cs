@@ -321,6 +321,23 @@ public static class AgentGate
                     "). Finish and commit the one you're on, then start the next and keep going. End your turn only when they're "
                     "done or you're blocked on a decision only the user can make, and then say plainly what it is.")
 
+        def goal_finished(transcript, goal):
+            # A /goal ends on its own once its condition holds: the session's last entry is then the stop summary naming it
+            # (an unmet goal keeps the turn going, so more follows). The summary lands after this hook's own Stop, so it's
+            # checked later: on the next prompt here, and by the orchestrator's cycler (MAO-T109).
+            try:
+                lines = Path(transcript).read_text(encoding="utf-8", errors="ignore").splitlines()[-60:]
+            except Exception:
+                return False
+            for line in reversed(lines):
+                try:
+                    m = json.loads(line)
+                except Exception:
+                    continue
+                if m.get("type") in ("assistant", "user", "system"):
+                    return m.get("subtype") == "stop_hook_summary" and any(h.get("promptText") == goal for h in m.get("hookInfos") or [])
+            return False
+
         def last_said(data):
             if data.get("last_assistant_message"):
                 return str(data["last_assistant_message"])
@@ -425,6 +442,10 @@ public static class AgentGate
         elif event == "UserPromptSubmit":
             for k in ("nudged", "worked", "closed"):
                 state.pop(k, None)
+            if state.get("goal") and goal_finished(state.get("transcript"), state["goal"]):
+                state.pop("goal", None)
+            if data.get("transcript_path"):
+                state["transcript"] = data["transcript_path"]
             state.update(state="busy", at=now, warned=False, cwd=data.get("cwd"))
             typed = (data.get("prompt") or "").strip()
             prompt = typed.lower()

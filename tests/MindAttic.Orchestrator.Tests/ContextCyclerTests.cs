@@ -225,7 +225,9 @@ public sealed class ContextCyclerTests
                 return output;
             }
             var ctx = Path.Combine(dir, ".claude", "session-context");
-            Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "/goal all the tests pass" });
+            var transcript = Path.Combine(dir, "g.jsonl");
+            File.WriteAllText(transcript, """{"type":"assistant","message":{"content":[{"type":"text","text":"Working on it."}]}}""" + "\n");
+            Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "/goal all the tests pass", transcript_path = transcript });
             File.WriteAllText(Path.Combine(ctx, "g.json"), """{"cwd":"D:\\W\\A","used_percentage":90}""");
             Assert.That(Gate(new { session_id = "g", hook_event_name = "PostToolUse" }), Is.Empty, "no wrap-up: ending the turn won't get it cycled");
             Gate(new { session_id = "g", hook_event_name = "Stop", cwd = @"D:\W\A" });
@@ -236,6 +238,20 @@ public sealed class ContextCyclerTests
             Assert.That(said, Has.One.Contains("running /goal \"all the tests pass\", so it isn't cycled"));
             Assert.That(cycler.Tick([], new OrchestratorSettings(), DateTime.UtcNow.AddMinutes(2)), Is.Empty, "said once");
 
+            // The goal met: Claude Code's stop summary naming it is the last entry (shape trimmed from a real run, MAO-T109).
+            const string summary = """{"type":"system","subtype":"stop_hook_summary","hookCount":2,"hookInfos":[{"command":"python context-gate.py","durationMs":106},{"command":"all the tests pass","promptText":"all the tests pass","durationMs":1637}],"preventedContinuation":false}""";
+            File.AppendAllText(transcript, summary + "\n" + """{"type":"last-prompt"}""" + "\n" + """{"type":"cost-state"}""" + "\n");
+            Assert.That(ContextCycler.GoalFinished(transcript, "all the tests pass"), Is.True, "metadata after the summary doesn't count");
+            Assert.That(ContextCycler.GoalFinished(transcript, "another goal"), Is.False);
+            Assert.That(new ContextCycler(ctx).Tick([], new OrchestratorSettings(), DateTime.UtcNow.AddMinutes(3)), Has.One.Contains("/quicksave, /clear and /quickload it yourself"),
+                "finished on its own: cycled as usual again (here, no console to type into)");
+            File.AppendAllText(transcript, """{"type":"assistant","message":{"content":[{"type":"text","text":"Not yet: one test fails."}]}}""" + "\n");
+            Assert.That(ContextCycler.GoalFinished(transcript, "all the tests pass"), Is.False, "the evaluator sent it back to work: still running");
+            File.AppendAllText(transcript, summary + "\n");
+            Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "thanks", transcript_path = transcript });
+            Assert.That(new ContextCycler(ctx).Load().Single().Goal, Is.Null, "the gate unmarks a finished goal at the next prompt");
+
+            Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "/goal all the tests pass", transcript_path = transcript });
             Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "/goal clear" });
             Assert.That(new ContextCycler(ctx).Load().Single().Goal, Is.Null, "cleared: cycled as usual again");
             Assert.That(Gate(new { session_id = "g", hook_event_name = "PostToolUse" }), Does.Contain("% full"));

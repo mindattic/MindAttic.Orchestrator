@@ -12,6 +12,9 @@ public sealed record SessionContext(string SessionId, string? Cwd, double Percen
 
     /// <summary>The condition of a <c>/goal</c> running in the session (the context gate records it, <c>/goal clear</c> ends it); null when none.</summary>
     public string? Goal { get; init; }
+
+    /// <summary>The session's transcript (recorded by the context gate), to tell when a <c>/goal</c> has finished on its own.</summary>
+    public string? Transcript { get; init; }
 }
 
 /// <summary>
@@ -57,7 +60,7 @@ public sealed class ContextCycler(string? directory = null)
         {
             if (cycling.ContainsKey(s.SessionId) || !Due(s, settings.ContextCyclePercent, nowUtc) || (s.Pid is { } agent && IsAgent(agent))) continue;
             // /clear would silently end a /goal; Claude's own compaction carries it on instead.
-            if (s.Goal is { } goal)
+            if (s.Goal is { } goal && !(s.Transcript is { } transcript && GoalFinished(transcript, goal)))
             {
                 if (told.Add(s.SessionId)) said.Add($"session in {s.Cwd} is {s.Percent:0}% full of context but running /goal \"{goal}\", so it isn't cycled; Claude's own compaction carries it on");
                 continue;
@@ -76,6 +79,35 @@ public sealed class ContextCycler(string? directory = null)
             cycling[s.SessionId] = Task.Run(() => CycleAsync(s, send));
         }
         return said;
+    }
+
+    /// <summary>
+    /// Whether a <c>/goal</c> finished on its own: once its condition holds, the session's last entry is the stop summary
+    /// naming it (an unmet goal keeps the turn going, so more follows). The context gate can't see this at the Stop
+    /// itself, because the summary is written after its hook runs (MAO-T109).
+    /// </summary>
+    internal static bool GoalFinished(string transcript, string goal)
+    {
+        try
+        {
+            using var f = new FileStream(transcript, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            f.Seek(Math.Max(0, f.Length - 64 * 1024), SeekOrigin.Begin);
+            foreach (var line in new StreamReader(f).ReadToEnd().Split('\n').Reverse())
+            {
+                JsonDocument doc;
+                try { doc = JsonDocument.Parse(line); } catch (JsonException) { continue; }
+                using (doc)
+                {
+                    var r = doc.RootElement;
+                    if (r.ValueKind != JsonValueKind.Object || !r.TryGetProperty("type", out var type) || type.GetString() is not ("assistant" or "user" or "system")) continue;
+                    return r.TryGetProperty("subtype", out var sub) && sub.GetString() == "stop_hook_summary" &&
+                        r.TryGetProperty("hookInfos", out var hooks) && hooks.ValueKind == JsonValueKind.Array &&
+                        hooks.EnumerateArray().Any(h => h.TryGetProperty("promptText", out var p) && p.GetString() == goal);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { }
+        return false;
     }
 
     /// <summary>Past the cycle point with its turn over long enough that nothing is still running.</summary>
@@ -144,7 +176,7 @@ public sealed class ContextCycler(string? directory = null)
             }
             bool idle = false;
             int? pid = null;
-            string? goal = null;
+            string? goal = null, transcript = null;
             var turn = DateTime.MinValue;
             if (File.Exists(state))
             {
@@ -155,9 +187,10 @@ public sealed class ContextCycler(string? directory = null)
                     turn = when;
                 if (t.RootElement.TryGetProperty("pid", out var pp) && pp.ValueKind == JsonValueKind.Number) pid = pp.GetInt32();
                 if (t.RootElement.TryGetProperty("goal", out var g) && g.ValueKind == JsonValueKind.String) goal = g.GetString();
+                if (t.RootElement.TryGetProperty("transcript", out var tp) && tp.ValueKind == JsonValueKind.String) transcript = tp.GetString();
                 if (cwd is null && t.RootElement.TryGetProperty("cwd", out var tc) && tc.ValueKind == JsonValueKind.String) cwd = tc.GetString();
             }
-            return new SessionContext(sessionId, cwd, percent, idle, turn) { Pid = pid, Goal = goal };
+            return new SessionContext(sessionId, cwd, percent, idle, turn) { Pid = pid, Goal = goal, Transcript = transcript };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
         {
