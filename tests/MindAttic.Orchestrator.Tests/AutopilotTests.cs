@@ -40,8 +40,9 @@ public sealed class AutopilotTests
         Directory.Delete(dir, recursive: true);
     }
 
-    private Autopilot Pilot(DispatchLease? lease = null) => new(store, sessions, lease)
+    private Autopilot Pilot(DispatchLease? lease = null, string? waiting = null) => new(store, sessions, lease)
     {
+        WaitingPath = waiting,
         Order = () => order,
         Alive = clis.Contains,
         IsRunning = agents.Contains,
@@ -184,6 +185,30 @@ public sealed class AutopilotTests
         pilot.Tick(Plan(snap), snap, new() { Autopilot = false }, Now);
         Assert.That(pilot.Paused, Does.Contain("switched off"));
         Assert.That(started, Is.Empty);
+    }
+
+    [Test]
+    public void Repos_waiting_on_the_pace_are_saved_for_the_statusline_and_cleared_once_one_starts()
+    {
+        Cli(100, @"D:\W\A");
+        Cli(101, @"D:\W\B");
+        var snap = Snap(("A", [T("A-T1")]), ("B", [T("B-T1")]));
+        var path = Path.Combine(dir, "waiting.json");
+        var withFile = Pilot(waiting: path);
+        string Saved() => File.ReadAllText(path);
+
+        var coast = Plan(snap) with { Pace = new Pace(PaceMode.Coast, 1, 0, 0, null, null, null, "burning faster than the window allows") };
+        withFile.Tick(coast, snap, new(), Now);
+        Assert.That(Saved(), Does.Contain("\"A\"").And.Contain("\"B\""), "both repos wait on the pace");
+
+        withFile.Tick(Paced(snap, 1), snap, new(), Now.AddMinutes(1));
+        Assert.That(started, Has.Count.EqualTo(1));
+        var startedRepo = started.Single().Prompt.Contains("A-T1") ? "A" : "B";
+        var other = startedRepo == "A" ? "B" : "A";
+        Assert.That(Saved(), Does.Contain($"\"{other}\"").And.Not.Contain($"\"{startedRepo}\""), "the repo with an agent working no longer waits");
+
+        withFile.Tick(Paced(snap, 10), snap, new() { Autopilot = false }, Now.AddMinutes(2));
+        Assert.That(Saved(), Does.Contain("\"repos\":[]"), "switched off isn't waiting on the pace");
     }
 
     [Test]

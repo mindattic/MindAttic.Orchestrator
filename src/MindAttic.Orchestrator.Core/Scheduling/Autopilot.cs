@@ -25,6 +25,15 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     internal string LogDirectory { get; init; } = BackgroundAgent.LogDirectory;
     internal Func<string, string, string, (bool Ok, string Path, string Error)> MakeWorktree { get; init; } = Dispatcher.EnsureWorktree;
 
+    /// <summary>Where the shared statusline reads which repos wait on the pace (<see cref="DefaultWaitingPath"/>);
+    /// null writes nothing.</summary>
+    public string? WaitingPath { get; init; }
+
+    /// <summary><c>~/.claude/autopilot-waiting.json</c>: the repos autopilot is on for that have no agent working because
+    /// the pace can't afford one yet, so each repo's CLI can say so in its statusline (no turn, no tokens).</summary>
+    public static string DefaultWaitingPath { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "autopilot-waiting.json");
+
     private readonly Dictionary<string, string> told = [];
 
     /// <summary>Stories whose agent ended without closing them: not retried (it would likely fail the same way) until
@@ -79,7 +88,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             : HealthHold is { } sick ? $"machine health: {sick}"
             : QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is { } quiet ? $"quiet hours ({quiet})"
             : PaceHold(plan, snapshot);
-        if (repos.Count == 0 || Paused is not null || HeldElsewhere) return said;
+        if (repos.Count == 0 || Paused is not null || HeldElsewhere) return Done(Paused is not null && Paused == PaceHold(plan, snapshot));
 
         // Every agent gets its own worktree, so a repo runs as many stories at once as its session limit and the
         // pace allow, and nobody's checkout (yours included) is ever edited under them.
@@ -100,7 +109,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 if (more <= 0)
                 {
                     Tell("cap", $"autopilot: {running} agent{(running == 1 ? "" : "s")} working; the pace has no room for another right now");
-                    return Done();
+                    return Done(paceBound: true);
                 }
                 if (inRepo >= limit)
                 {
@@ -151,13 +160,30 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 said.Add($"autopilot: started {next.Id} in {repo.Name} in the background: {next.Ticket.Summary} (log {log})");
             }
         }
-        return Done();
+        return Done(paceBound: false);
 
-        IReadOnlyList<string> Done()
+        IReadOnlyList<string> Done(bool paceBound)
         {
             Working = [.. store.LoadAssignments().Where(a => a.Log is not null && a.Pilot is { } p && IsRunning(p))];
+            if (!dryRun && !HeldElsewhere)
+                SaveWaiting(paceBound ? [.. Repos.Where(r => !Working.Any(a => Same(a.Repo, r)))] : [], nowUtc);
             return said;
         }
+    }
+
+    /// <summary>Saves the repos waiting on the pace for the statusline; best effort, it's only a hint.</summary>
+    private void SaveWaiting(IReadOnlyList<string> repos, DateTime nowUtc)
+    {
+        if (WaitingPath is null) return;
+        try
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(new { repos, at = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ") });
+            var tmp = $"{WaitingPath}.{Environment.ProcessId}.tmp";
+            File.WriteAllText(tmp, json);
+            File.Move(tmp, WaitingPath, overwrite: true);
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 
     /// <summary>

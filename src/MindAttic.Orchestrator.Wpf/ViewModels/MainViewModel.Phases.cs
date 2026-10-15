@@ -38,7 +38,7 @@ public sealed partial class MainViewModel
     {
         dispatcher = new Dispatcher(control, store);
         // Held until the app exits; while the logon daemon holds it, the daemon feeds the /autopilot CLIs and this window only shows.
-        autopilot = new Autopilot(store, new MindAttic.Orchestrator.Sessions.ContextCycler(), new DispatchLease(store.Directory));
+        autopilot = new Autopilot(store, new MindAttic.Orchestrator.Sessions.ContextCycler(), new DispatchLease(store.Directory)) { WaitingPath = Autopilot.DefaultWaitingPath };
         auditRunner = new AuditRunner(aggregator.Options, store);
         Settings = new SettingsViewModel(store, () => { IsSettingsOpen = false; _ = RefreshAsync(); });
 
