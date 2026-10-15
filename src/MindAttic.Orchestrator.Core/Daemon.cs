@@ -122,11 +122,14 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 {
                     Say(r.Ok ? LogEventLevel.Information : LogEventLevel.Error, r.Message);
                     var ticket = r.Assignment?.TicketId;
-                    r.Submitted?.ContinueWith(t =>
+                    r.CameUp?.ContinueWith(t =>
                     {
                         if (t.IsCompletedSuccessfully && t.Result) return;
-                        Say(LogEventLevel.Warning, $"{ticket}'s tab never came up to submit its prompt; press Enter in it yourself");
-                        Alert("Auto-submit missed", $"{ticket}: press Enter in its tab to begin.");
+                        // Something is wrong with starting tabs; stop rather than open a broken one every minute.
+                        if (ticket is not null) new Dispatcher(new SessionControl(options), store).Release(ticket);
+                        store.SaveSettings(store.LoadSettings() with { AutoDispatch = false });
+                        Say(LogEventLevel.Error, $"{ticket}'s tab never came up (or didn't stay up); released it and turned auto-dispatch off");
+                        Alert("Auto-dispatch stopped", $"{ticket}'s tab failed to start, so auto-dispatch is off until you turn it back on.", urgent: true);
                     }, TaskScheduler.Default);
                 }
                 if (s.AutoDispatch && auto.HeldElsewhere != lastHeldElsewhere)

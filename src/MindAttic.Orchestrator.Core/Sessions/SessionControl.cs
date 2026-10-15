@@ -42,10 +42,15 @@ public sealed class SessionControl(OrchestratorOptions options)
             "-w", "0", "new-tab", "--title", tabTitle, "-d", directory, "--",
             options.LauncherExe, "host", "--path", directory, "--title", tabTitle, "--provider", provider,
         ];
-        string[] all = string.IsNullOrWhiteSpace(prompt) ? head : [.. head, "--prompt", prompt];
+        // A double quote (or a line break) in the prompt survives .NET's quoting but not wt's own re-parse,
+        // which splits the prompt into stray arguments the Launcher rejects ("Unknown command"), so the tab dies.
+        string[] all = string.IsNullOrWhiteSpace(prompt) ? head : [.. head, "--prompt", SafePrompt(prompt)];
         // wt splits its whole command line into subcommands on ';' unless it's escaped.
         return all.Select(a => a.Replace(";", @"\;"));
     }
+
+    internal static string SafePrompt(string prompt) =>
+        string.Join(' ', prompt.Replace('"', '\'').Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).Select(l => l.Trim()));
 
     /// <summary>Types <paramref name="text"/> into a hosted session; <paramref name="submit"/> presses Enter after it.</summary>
     public static async Task<bool> SendAsync(string pipeName, string text, bool submit, CancellationToken ct = default)
@@ -75,18 +80,27 @@ public sealed class SessionControl(OrchestratorOptions options)
     /// </summary>
     public async Task<bool> SubmitWhenReadyAsync(string directory, IReadOnlySet<int> before, TimeSpan settle, TimeSpan timeout, CancellationToken ct = default)
     {
+        if (await WaitForHostAsync(directory, before, timeout, ct).ConfigureAwait(false) is not { } host) return false;
+        await Task.Delay(settle, ct).ConfigureAwait(false);
+        return await SendAsync(host.PipeName, "", submit: true, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>The tab just opened at <paramref name="directory"/>, once it has stayed up for a few seconds
+    /// (a tab whose agent fails to start exits at once); null if none appears and stays within <paramref name="timeout"/>.</summary>
+    public async Task<HostSession?> WaitForHostAsync(string directory, IReadOnlySet<int> before, TimeSpan timeout, CancellationToken ct = default)
+    {
         var scanner = new HostSessionScanner(options);
         var deadline = DateTime.UtcNow + timeout;
         while (DateTime.UtcNow < deadline)
         {
             if (NewHostAt(scanner.Scan(), directory, before) is { } host)
             {
-                await Task.Delay(settle, ct).ConfigureAwait(false);
-                return await SendAsync(host.PipeName, "", submit: true, ct).ConfigureAwait(false);
+                await Task.Delay(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
+                if (scanner.Scan().Any(h => h.ProcessId == host.ProcessId)) return host;
             }
             await Task.Delay(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false);
         }
-        return false;
+        return null;
     }
 
     internal static HostSession? NewHostAt(IEnumerable<HostSession> hosts, string directory, IReadOnlySet<int> before)

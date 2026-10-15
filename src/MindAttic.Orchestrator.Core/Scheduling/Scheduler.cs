@@ -125,6 +125,10 @@ public static partial class Scheduler
 
         // Every repo with an agent working or waiting holds a slot, as does every live assignment.
         var occupied = snapshot.Repos.Count(r => r.State != RepoState.Dormant);
+        // A tab opened in the last few minutes holds its slot before its transcript shows it working,
+        // so a run of starts can't outpace the cap (or keep filling slots with tabs that never came up).
+        var dormant = snapshot.Repos.Where(r => r.State == RepoState.Dormant).Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        occupied += assignments.Count(a => dormant.Contains(a.Repo) && snapshot.TakenUtc - a.StartedUtc < TimeSpan.FromMinutes(10));
 
         // Paced, the cap follows the burn rate and the warn line is only a warning; unpaced, the warn
         // line holds everything, as it always did. Over a limit holds either way.

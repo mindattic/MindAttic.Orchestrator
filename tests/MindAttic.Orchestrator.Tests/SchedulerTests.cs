@@ -125,7 +125,7 @@ public sealed class SchedulerTests
     {
         var store = new JsonStore(Path.Combine(Path.GetTempPath(), "orch-store-" + Guid.NewGuid().ToString("N")));
         var auto = new AutoDispatch(new Dispatcher(new MindAttic.Orchestrator.Sessions.SessionControl(
-            new OrchestratorOptions { LauncherExe = @"Z:\nope.exe" }), store));
+            new OrchestratorOptions { LauncherExe = @"Z:\nope.exe" }), store), busy: () => null);
         var plan = Scheduler.Plan(Snap(null, Repo("A", RepoState.Dormant, T("A-T1"))), new OrchestratorSettings(), []);
         var now = DateTime.UtcNow;
 
@@ -190,6 +190,40 @@ public sealed class SchedulerTests
             "skips the tab already open there, other folders and unreadable command lines");
         Assert.That(MindAttic.Orchestrator.Sessions.SessionControl.NewHostAt(hosts[..3], @"D:\W\A", before), Is.Null,
             "no new tab there yet: nothing to submit");
+    }
+
+    [Test]
+    public void Auto_dispatch_never_takes_the_screen_from_a_game_and_never_repeats_a_tab_that_did_not_come_up()
+    {
+        var store = new JsonStore(Path.Combine(Path.GetTempPath(), "orch-store-" + Guid.NewGuid().ToString("N")));
+        var disp = new Dispatcher(new MindAttic.Orchestrator.Sessions.SessionControl(new OrchestratorOptions { LauncherExe = @"Z:\nope.exe" }), store);
+        var plan = Scheduler.Plan(Snap(null, Repo("A", RepoState.Dormant, T("A-T1"))), new OrchestratorSettings(), []);
+        var on = new OrchestratorSettings { AutoDispatch = true };
+
+        string? screen = "a fullscreen game is running";
+        var auto = new AutoDispatch(disp, busy: () => screen);
+        Assert.That(auto.Tick(plan, on, DateTime.UtcNow), Is.Null, "in a game: nothing opens");
+        Assert.That(auto.Deferred, Does.Contain("game"));
+        screen = null;
+        Assert.That(auto.Tick(plan, on, DateTime.UtcNow), Is.Not.Null, "out of it: it carries on");
+    }
+
+    [Test]
+    public void A_tab_opened_minutes_ago_holds_its_slot_before_it_shows_as_working()
+    {
+        var snap = Snap(null, Repo("A", RepoState.Dormant, T("A-T1")), Repo("B", RepoState.Dormant, T("B-T1")));
+        var fresh = new Assignment("A-T1", "A", @"D:\W\A", "Claude", DateTime.UtcNow.AddMinutes(-2), false);
+        var plan = Scheduler.Plan(snap, new OrchestratorSettings { MaxConcurrentSessions = 1 }, [fresh]);
+        Assert.That((plan.Occupied, plan.Proposals.Count), Is.EqualTo((1, 0)), "the one slot is A's new tab, so B waits");
+    }
+
+    [Test]
+    public void A_quote_or_line_break_in_a_prompt_never_reaches_windows_terminal()
+    {
+        var control = new MindAttic.Orchestrator.Sessions.SessionControl(new OrchestratorOptions());
+        var args = control.StartArguments("A", @"D:\W\A", "Claude", "close it with --ref \"<the test>\"\nnext line").ToList();
+        Assert.That(args[^1], Is.EqualTo("close it with --ref '<the test>' next line"));
+        Assert.That(args.Any(a => a.Contains('"')), Is.False);
     }
 
     private const string Worktree = @"D:\Projects\MindAttic.worktrees\A\A-T1";
@@ -281,8 +315,8 @@ public sealed class SchedulerTests
         {
             using var daemonLease = new DispatchLease(dir);
             using var dashboardLease = new DispatchLease(dir);
-            var daemon = new AutoDispatch(Disp(), lease: daemonLease);
-            var dashboard = new AutoDispatch(Disp(), lease: dashboardLease);
+            var daemon = new AutoDispatch(Disp(), lease: daemonLease, busy: () => null);
+            var dashboard = new AutoDispatch(Disp(), lease: dashboardLease, busy: () => null);
 
             Assert.That(daemon.Tick(plan, on, DateTime.UtcNow), Is.Not.Null, "the first to ask dispatches");
             Assert.That(dashboard.Tick(plan, on, DateTime.UtcNow), Is.Null);

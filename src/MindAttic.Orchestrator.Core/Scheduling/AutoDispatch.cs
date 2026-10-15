@@ -9,10 +9,15 @@ namespace MindAttic.Orchestrator.Scheduling;
 /// except in <see cref="OrchestratorSettings.AutoSubmitRepos"/>, where the tab submits it by itself.
 /// With a <see cref="DispatchLease"/>, only the process holding it dispatches.
 /// </summary>
-public sealed class AutoDispatch(Dispatcher dispatcher, TimeSpan? interval = null, DispatchLease? lease = null)
+public sealed class AutoDispatch(Dispatcher dispatcher, TimeSpan? interval = null, DispatchLease? lease = null, Func<string?>? busy = null)
 {
     private readonly TimeSpan interval = interval ?? TimeSpan.FromMinutes(1);
+    private readonly Func<string?> busy = busy ?? Sessions.Foreground.Busy;
     private DateTime lastUtc = DateTime.MinValue;
+    private Task<bool>? lastCameUp;
+
+    /// <summary>Why it's waiting to open a window (you're in a game or fullscreen app), if it is.</summary>
+    public string? Deferred { get; private set; }
 
     /// <summary>Auto-dispatch is on, but another orchestrator process (usually the logon daemon) is doing it.</summary>
     public bool HeldElsewhere { get; private set; }
@@ -27,9 +32,16 @@ public sealed class AutoDispatch(Dispatcher dispatcher, TimeSpan? interval = nul
         if (Quiet is not null) return null;
         HeldElsewhere = lease is not null && !lease.TryAcquire();
         if (HeldElsewhere || plan.Proposals.Count == 0 || nowUtc - lastUtc < interval) return null;
+        // One unconfirmed tab at a time: a tab that never comes up must stop the run, not repeat every minute.
+        if (lastCameUp is { IsCompleted: false }) return null;
+        // Never take the screen from a game or a fullscreen app; the work waits until you're out of it.
+        Deferred = busy();
+        if (Deferred is not null) return null;
         var p = plan.Proposals[0];
         lastUtc = nowUtc;
-        return dispatcher.Dispatch(p.Item, settings.DefaultProvider, p.UseWorktree, Submits(settings, p.Item.Repo));
+        var result = dispatcher.Dispatch(p.Item, settings.DefaultProvider, p.UseWorktree, Submits(settings, p.Item.Repo));
+        lastCameUp = result.CameUp;
+        return result;
     }
 
     /// <summary>Whether auto-dispatch may start tickets in <paramref name="repo"/>: every repo when the allowlist is empty.</summary>
