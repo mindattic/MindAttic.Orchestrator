@@ -540,7 +540,7 @@ public static class AgentGate
                     names = [n.strip() for n in order.read_text().split(",") if n.strip()] if order.exists() else []
                 except Exception:
                     names = []
-                mine = repo_of(data.get("cwd") or "", worktrees=False)
+                mine = repo_of(data.get("cwd") or "")  # a worktree's CLI is its repo's: "off" there mustn't mean off everywhere
                 m = re.search(r"-{1,2}repos?\s*[=:]?\s*\[?([^\]]*)\]?", args, re.I)
                 named = [r.strip() for r in m.group(1).replace(" ", ",").split(",") if r.strip() and r.strip().lower() not in ("on", "off", "this", "all")] if m else ([mine] if mine else [])
                 lower = {n.lower() for n in named}

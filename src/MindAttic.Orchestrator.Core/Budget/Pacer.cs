@@ -101,7 +101,15 @@ public static class Pacer
     {
         var max = s.MaxConcurrentSessions;
         var recent = b.RecentFreshPerHour;
-        if (!s.Pacing) return new Pace(PaceMode.Unpaced, max, 0, recent, null, null, null, "Pacing is off.");
+
+        // The stop never depends on pacing being on: a wall Claude reported, or a known 5-hour limit spent to its target,
+        // stops everything either way (found in review: with pacing off nothing ever said stop).
+        if (!s.Pacing && b.AtLimitUntilUtc is null)
+        {
+            var spentOut = !b.BlockLimitIsPeak && b.BlockLimit > 0 && b.CurrentBlock is { } blk &&
+                blk.Usage.Fresh >= b.BlockLimit * Math.Clamp(s.PaceTargetPercent, 1, 100) / 100.0;
+            return new Pace(PaceMode.Unpaced, max, 0, recent, null, "5-hour", b.CurrentBlock?.EndUtc, "Pacing is off.") { Stop = spentOut };
+        }
 
         if (b.AtLimitUntilUtc is { } until)
         {

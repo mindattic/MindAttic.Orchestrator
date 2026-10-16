@@ -62,6 +62,16 @@ public sealed class JsonStoreTests
     }
 
     [Test]
+    public void A_change_to_a_file_that_cant_be_read_leaves_it_alone_instead_of_saving_an_empty_one_over_it()
+    {
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, "assignments.json");
+        File.WriteAllText(path, "[ { \"TicketId\": \"X-T1\", ");
+        Assert.That(() => new JsonStore(dir).UpdateAssignments(all => all.Clear()), Throws.InstanceOf<InvalidDataException>());
+        Assert.That(File.ReadAllText(path), Is.EqualTo("[ { \"TicketId\": \"X-T1\", "), "untouched for the next try");
+    }
+
+    [Test]
     public void The_lease_is_one_holders_at_a_time_and_names_it()
     {
         using var first = new MindAttic.Orchestrator.Scheduling.DispatchLease(dir);

@@ -95,6 +95,84 @@ public sealed class AutopilotTests
     }
 
     [Test]
+    public void An_agent_is_told_to_land_on_its_repos_own_main_line()
+    {
+        // Found live: Automata lands on master; told to push HEAD:main, an agent created a stray main branch on GitHub.
+        Cli(100, @"D:\W\A");
+        var snap = Snap(("A", [T("A-T1")]));
+        new Autopilot(store, sessions)
+        {
+            Order = () => order, Alive = clis.Contains, IsRunning = _ => false, StartTimeOf = _ => null, LogDirectory = Path.Combine(dir, "logs"),
+            MakeWorktree = (repo, path, branch) => (true, path, ""), MainlineOf = _ => "master",
+            Start = (d, prompt, log) => { started.Add((d, prompt, log, 1)); return 1; },
+        }.Tick(Paced(snap, 1), snap, new() { WorktreeRoot = Path.Combine(dir, "wt") }, Now);
+        Assert.That(started.Single().Prompt, Does.Contain("git rebase origin/master").And.Contain("git push origin HEAD:master").And.Not.Contain("HEAD:main "));
+        Assert.That(started.Single().Prompt, Does.Contain("never in the background"), "a -p run ends with its last turn and cuts off background subagents");
+    }
+
+    [Test]
+    public void Landing_checks_the_repos_real_main_line_against_a_real_git_remote()
+    {
+        static (int, string) Git(string cwd, params string[] args) => Dispatcher.Git(cwd, args);
+        var origin = Path.Combine(dir, "origin.git");
+        var repo = Path.Combine(dir, "repo");
+        Directory.CreateDirectory(repo);
+        Git(dir, "init", "-q", "--bare", "-b", "master", origin);
+        Git(repo, "init", "-q", "-b", "master");
+        Git(repo, "config", "user.email", "t@t");
+        Git(repo, "config", "user.name", "t");
+        Directory.CreateDirectory(Path.Combine(repo, "docs"));
+        File.WriteAllText(Path.Combine(repo, "docs", "USER_STORIES.md"), "| ID | Date | Type | Status | Summary | Ref |\n| X-T1 | 2026-10-15 | fix | open | s | |\n");
+        Git(repo, "add", "-A");
+        Git(repo, "commit", "-q", "-m", "start");
+        Git(repo, "remote", "add", "origin", origin);
+        Git(repo, "push", "-q", "-u", "origin", "master");
+        Git(repo, "remote", "set-head", "origin", "master");
+        Assert.That(Dispatcher.Mainline(repo), Is.EqualTo("master"));
+
+        var tree = Path.Combine(dir, "wt", "X-T1");
+        Assert.That(Dispatcher.EnsureWorktree(repo, tree, Dispatcher.BranchFor("X-T1")).Ok, Is.True);
+        File.WriteAllText(Path.Combine(tree, "docs", "USER_STORIES.md"), "| ID | Date | Type | Status | Summary | Ref |\n| X-T1 | 2026-10-15 | fix | closed | s | done |\n");
+        Git(tree, "commit", "-q", "-am", "X-T1 done");
+        var a = new Assignment("X-T1", "X", tree, "Claude", Now, true);
+
+        Assert.That(Autopilot.LandOnMain(a, repo).Closed, Is.False, "closed on its branch but not pushed: not done");
+        Git(tree, "push", "-q", "origin", "HEAD:master");
+        var (closed, note) = Autopilot.LandOnMain(a, repo);
+        Assert.That(closed, Is.True, note);
+        Assert.That(note, Does.Contain("up to date"), "your checkout on master is fast-forwarded");
+        Assert.That(Directory.Exists(tree), Is.False, "the worktree is removed");
+    }
+
+    [Test]
+    public void A_closed_ticket_s_leftover_worktree_is_swept_and_a_closed_tab_assignment_is_dropped()
+    {
+        Directory.CreateDirectory(Path.Combine(dir, "wt", "A", "A-T7"));
+        File.WriteAllText(Path.Combine(dir, "wt", "A", "A-T7", ".git"), "gitdir: x");
+        Directory.CreateDirectory(Path.Combine(dir, "wt", "A", "A-T8")); // open: still work in progress
+        File.WriteAllText(Path.Combine(dir, "wt", "A", "A-T8", ".git"), "gitdir: x");
+        store.SaveAssignments([new Assignment("A-T5", "A", @"D:\W\A", "Claude", Now.AddDays(-1), false)]); // a tab's, its ticket since closed
+        landed.Add("A-T7");
+        Cli(100, @"D:\W\A");
+        var snap = Snap(("A", [T("A-T8")]));
+
+        var said = Pilot().Tick(Paced(snap, 0), snap, new() { WorktreeRoot = Path.Combine(dir, "wt") }, Now);
+
+        Assert.That(said, Has.Some.Contains("tidied the finished worktree of A-T7"));
+        Assert.That(landedFrom.Keys, Is.EquivalentTo(new[] { "A-T7" }), "an open ticket's worktree is left alone");
+        Assert.That(store.LoadAssignments(), Is.Empty, "found live: closed tab assignments were listed as done forever");
+    }
+
+    [Test]
+    public void A_repo_whose_stories_all_wait_for_approval_says_so()
+    {
+        Cli(100, @"D:\W\A");
+        var snap = Snap(("A", [new Ticket("A-T1", "2026-10-01", "chore", "open", "tests", "")]));
+        var said = Pilot().Tick(Paced(snap, 3), snap, new(), Now);
+        Assert.That(said, Has.Some.Contains("A's 1 open story waits for your approval"), "not 'no open stories left'");
+    }
+
+    [Test]
     public void Only_a_line_that_is_a_needs_you_line_raises_the_alert()
     {
         Assert.That(Autopilot.NeedsYou("autopilot: needs you: A-T1's agent in A ended"), Is.EqualTo("A-T1's agent in A ended"));
@@ -200,7 +278,7 @@ public sealed class AutopilotTests
         var after = Snap(("A", [T("A-T2"), T("A-T3")]));
         var said = pilot.Tick(Paced(after, 2), after, new(), Now.AddMinutes(30));
         Assert.That(said, Has.Some.Contains("finished A-T1"));
-        Assert.That(said, Has.Some.Contains("needs you: A-T2's agent in A ended without closing it"));
+        Assert.That(said, Has.Some.Contains("needs you: A-T2's agent in A ended without finishing it (closed and landed)"));
         pilot.Tick(Paced(after, 2), after, new(), Now.AddMinutes(31));
         Assert.That(started.Skip(2).Select(s => s.Prompt[..19]), Is.EqualTo(new[] { "Work on ticket A-T3" }),
             "A moves on to A-T3; A-T2 is back in the queue for you, not retried in a loop");

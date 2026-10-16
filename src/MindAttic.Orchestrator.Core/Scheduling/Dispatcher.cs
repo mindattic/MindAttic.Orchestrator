@@ -110,6 +110,18 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
 
     internal static readonly TimeSpan GitTimeout = TimeSpan.FromMinutes(2);
 
+    /// <summary>The branch <paramref name="repoPath"/>'s work lands on: what origin/HEAD points at (main or master), else
+    /// whichever of main and master origin has, else main.</summary>
+    public static string Mainline(string repoPath)
+    {
+        var (code, head) = Git(repoPath, "symbolic-ref", "--short", "refs/remotes/origin/HEAD");
+        if (code == 0 && head.Trim() is var h && h.StartsWith("origin/", StringComparison.Ordinal) && h.Length > "origin/".Length)
+            return h["origin/".Length..];
+        foreach (var name in new[] { "main", "master" })
+            if (Git(repoPath, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/" + name).Code == 0) return name;
+        return "main";
+    }
+
     internal static (int Code, string Output) Git(string repoPath, params string[] args)
     {
         var psi = new ProcessStartInfo("git")

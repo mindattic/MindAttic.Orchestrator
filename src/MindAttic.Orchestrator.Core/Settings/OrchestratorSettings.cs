@@ -203,7 +203,12 @@ public sealed class JsonStore(string? directory = null)
     {
         System.IO.Directory.CreateDirectory(Directory);
         using var held = Lock(name);
-        var value = Load<T>(name);
+        // Not Load's defaults: a file that can't be read right now would be saved over with an empty one (every
+        // assignment lost, its agents untracked). Throwing leaves the file as it is for the next try.
+        var path = PathOf(name);
+        T value;
+        try { value = File.Exists(path) ? JsonSerializer.Deserialize<T>(Retry(() => File.ReadAllText(path)), Options) ?? new T() : new T(); }
+        catch (JsonException ex) { throw new InvalidDataException($"{path} isn't readable JSON; left as it is rather than saved over", ex); }
         change(value);
         Save(name, value);
     }

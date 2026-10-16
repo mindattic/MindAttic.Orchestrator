@@ -137,10 +137,12 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     Say(needsYou is null ? LogEventLevel.Information : LogEventLevel.Warning, line);
                     if (needsYou is not null) Alert("Needs you", needsYou);
                 }
-                if (autopilot.On && autopilot.Paused != lastPaused)
+                // Keyed without its numbers: a hold whose percent ticks 93 → 94 is the same hold, not a new line (found live: 46 lines in 2h).
+                var pausedKey = autopilot.Paused is null ? null : Digits().Replace(autopilot.Paused, "#");
+                if (autopilot.On && pausedKey != lastPaused)
                 {
                     Say(LogEventLevel.Information, autopilot.Paused is { } why ? $"autopilot is holding: {why}" : "autopilot is starting stories again");
-                    lastPaused = autopilot.Paused;
+                    lastPaused = pausedKey;
                 }
                 if (autopilot.On && autopilot.HeldElsewhere != lastHeldElsewhere)
                 {
@@ -163,7 +165,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     public static string RefreshSignal { get; } = Path.Combine(Setup.AgentGate.ClaudeDir, "session-context", "refresh.now");
 
     /// <summary>The soonest a signal brings the next refresh forward after the last one.</summary>
-    internal static readonly TimeSpan MinGap = TimeSpan.FromSeconds(2);
+    // Each refresh runs the whole tick (a WMI process query for the Launcher's tabs among it), and with a dozen agents a
+    // turn ends every second or two: 10s keeps typed turns counted well inside the 15s tick without refreshing nonstop.
+    internal static readonly TimeSpan MinGap = TimeSpan.FromSeconds(10);
 
     private DateTime lastSignal = SignalStamp();
 
@@ -235,21 +239,27 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         if (DateTime.UtcNow - healthSampledUtc < TimeSpan.FromSeconds(30)) return;
         healthSampledUtc = DateTime.UtcNow;
         var sample = Activity.MachineHealth.Sample();
-        var (level, why) = Activity.MachineHealth.Judge(sample);
+        // Judged against the last level, so it only comes down once clearly clear of the line, a step at a time.
+        var (level, why) = Activity.MachineHealth.Judge(sample, healthLevel);
         autopilot.HealthHold = level == Activity.HealthLevel.Ok ? null : why;
         if (level == healthLevel) return;
-        var top = string.Join(", ", sample.Top.Select(h => $"{h.Name} {h.Handles:N0}"));
+        var offenders = sample.Offenders(why);
         if (level == Activity.HealthLevel.Ok)
             Say(LogEventLevel.Information, "machine health is back to normal; autopilot can start agents again");
         else
         {
             Say(level == Activity.HealthLevel.Danger ? LogEventLevel.Error : LogEventLevel.Warning,
-                $"machine health {level.ToString().ToLowerInvariant()}: {why} (most handles: {top}); autopilot starts no agents until it recovers");
-            Alert(level == Activity.HealthLevel.Danger ? "Machine in danger" : "Machine running low",
-                $"{why}. Most handles: {top}. Autopilot is holding.", urgent: level == Activity.HealthLevel.Danger);
+                $"machine health {level.ToString().ToLowerInvariant()}: {why} ({offenders}); autopilot starts no agents until it recovers");
+            // One alert per episode and per escalation: warn, then danger; not again for every step back down and up.
+            if (level > alertedHealth)
+                Alert(level == Activity.HealthLevel.Danger ? "Machine in danger" : "Machine running low",
+                    $"{why}. {char.ToUpperInvariant(offenders[0])}{offenders[1..]}. Autopilot is holding.", urgent: level == Activity.HealthLevel.Danger);
         }
+        alertedHealth = level == Activity.HealthLevel.Ok ? level : (Activity.HealthLevel)Math.Max((int)alertedHealth, (int)level);
         healthLevel = level;
     }
+
+    private Activity.HealthLevel alertedHealth;
 
     private DateTime syncedDbWriteUtc;
     private DateTime syncTriedUtc;

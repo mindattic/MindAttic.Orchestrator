@@ -246,6 +246,9 @@ public sealed class PacerTests
         var spent = Pace(10.5, 1, s, E(10, 990));
         Assert.That(spent.Stop, Is.True, "99% is the target: nothing more is spent");
         Assert.That(Pace(10.5, 1, s with { ThrottleAgents = false }, E(10, 990)).Stop, Is.True, "holds off or not, the stop stands");
+        var unpaced = Pace(10.5, 1, s with { Pacing = false }, E(10, 990));
+        Assert.That((unpaced.IsPaced, unpaced.Stop), Is.EqualTo((false, true)), "found in review: with pacing off nothing ever said stop");
+        Assert.That(Pace(10.5, 1, s with { Pacing = false }, E(10, 500)).Stop, Is.False);
         Assert.That(Pace(10.5, 1, s, E(10, 1_200)).Stop, Is.True, "past the limit");
 
         var path = Path.Combine(Path.GetTempPath(), "rl-" + Guid.NewGuid().ToString("N") + ".json");
@@ -256,6 +259,10 @@ public sealed class PacerTests
             using var doc = JsonDocument.Parse(File.ReadAllText(path));
             Assert.That(doc.RootElement.GetProperty("stop").GetBoolean(), Is.True);
             Assert.That(doc.RootElement.GetProperty("stop_note").GetString(), Does.Contain("End your turn"));
+
+            new RateLimitStatusWriter(path).Write(b, unpaced);
+            using (var off = JsonDocument.Parse(File.ReadAllText(path)))
+                Assert.That(off.RootElement.GetProperty("stop").GetBoolean(), Is.True, "written unpaced too");
 
             var (b2, _) = Budget(10.5, s, E(10, 920));
             new RateLimitStatusWriter(path).Write(b2, late);

@@ -41,7 +41,8 @@ and other CLIs are untouched (`/autopilot -repo=UnityEve,MindAttic.Legion` works
 `/autopilot all` every repo with open stories). Each repo's next
 open story (manual priority, then smallest effort first) goes to a headless background Claude (the Launcher's Claude command with `-p`; log in
 `%APPDATA%\MindAttic\MindAttic.Orchestrator\autopilot`) in its own git worktree on branch `orch/<id>`. It
-commits, closes its ticket there, rebases onto `origin/main` and pushes; then your checkout is fast-forwarded
+commits, closes its ticket there, rebases onto the repo's own main line (what `origin/HEAD` points at: `main`
+or `master`) and pushes; then your checkout is fast-forwarded
 (when git can do that without touching your changes) and the worktree removed. No window opens and nothing
 is typed into your tabs or edited in your checkouts. How many run at once is worked out every refresh: as
 many more as the spare rate pays for (what fits the 5-hour target, minus what's being drawn, over one
@@ -185,7 +186,7 @@ report stays in use for its whole 5-hour window, so with only background agents 
 statusline) the count carries on rather than falling back to a learned limit; the hooks also give the
 statusline a 60s `refreshInterval`, so any open tab, idle or not, keeps the real percent fresh. Set or
 learned limits apply only when there's no report for the current window (or it's under 5%, too coarse
-to size by). The daemon recounts on its 15s tick, and at once (within ~2s) whenever a turn or subagent
+to size by). The daemon recounts on its 15s tick, and sooner (at most every 10s) whenever a turn or subagent
 ends anywhere or a new report lands (`~/.claude/session-context/refresh.now`).
 
 **Pacing** (on by default) aims to land on 99% of the 5-hour window right as it resets, instead of
@@ -279,11 +280,15 @@ POST), the moments worth leaving the desk for go to your phone: an agent finishe
 pacing coasts or hits a limit, a session looks stuck, a ticket went stale, the audit found something.
 With `settings --github-intake true` it files GitHub issues labelled `orchestrator` and CI failures on
 main as tickets every hour (once each, marked `GH#n` / `CI#id`; nothing is written back to GitHub).
-Every 30 seconds it samples the machine (kernel handles, commit charge, free RAM, GDI/USER objects): past
-a warn line it alerts with the worst offenders and autopilot starts no agents; past a danger line it also
-reaps the worst agent-spawned offender. Every 60 seconds it reaps tool processes (`find`, `rg`, `grep`,
-`git`, `bash`, `python`, `node`) left orphaned when their agent exited, and ones still under an agent that
-pass 50,000 handles or 30 minutes. An orphan is only reaped if an earlier scan saw it (or the shell it ran
+Every 30 seconds it samples the machine (kernel handles, commit charge, free RAM): past a warn line (88%
+commit, under 2 GB free, 100k handles in one process) autopilot starts no agents, and past a danger line
+(95%, 0.75 GB, 250k) the alert is urgent. It names the worst offenders by what's short: memory users (and
+all Claude processes together) when it's memory, handle holders when it's handles. Going up is immediate;
+coming down is one level at a time and only once clear of the line (5 points of commit, 1 GB, a fifth of the
+handles), so it doesn't flap as agents come and go, and you're alerted once per escalation. Nothing is
+killed for it. Every 60 seconds it reaps tool processes (`find`, `rg`, `grep`, `git`, `bash`, `python`,
+`node`) left orphaned when their agent exited, ones still under an agent that pass 50,000 handles, and
+searches (`find`, `rg`, `grep`) running past 30 minutes; a long test run or build under an agent is left be. An orphan is only reaped if an earlier scan saw it (or the shell it ran
 in) under a live Claude CLI, so a dev server or script you started yourself is never touched. Git and `gh` calls made inside its loop give up after 2 minutes and
 1 minute and never wait on a credential prompt, so a network stall can't stop pacing.
 

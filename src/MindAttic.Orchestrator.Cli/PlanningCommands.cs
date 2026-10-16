@@ -75,6 +75,13 @@ internal sealed class ApproveCommand : Command<ApproveCommand.Settings>
         }
         var store = new JsonStore();
         var ids = settings.Tickets.Select(Ctx.Id).ToList();
+        // A typo would be "approved" while the ticket you meant goes on waiting, so only ids the database knows count.
+        using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(OrchestratorOptions.Load(store).WorkspaceRoot))
+            if (db is not null && ids.Where(id => db.Ticket(id) is null).ToList() is { Count: > 0 } unknown)
+            {
+                AnsiConsole.MarkupLine($"[red]No ticket {Markup.Escape(string.Join(", ", unknown))}; nothing was changed.[/]");
+                return 1;
+            }
         var s = store.LoadSettings();
         var approved = s.Approved.Where(a => !ids.Contains(a, StringComparer.OrdinalIgnoreCase)).ToList();
         if (!settings.Undo) approved.AddRange(ids);

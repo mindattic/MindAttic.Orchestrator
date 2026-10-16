@@ -51,7 +51,7 @@ public static class ProcessReaper
             if (!IsTarget(p.Name)) continue;
             var (foundClaude, chainBroken, chain) = WalkAncestors(p, byPid);
             if (foundClaude)
-                foreach (var c in chain) underAgent.Add((c.Pid, c.StartUtc));
+                foreach (var c in chain.Where(c => c.StartUtc != Unknown)) underAgent.Add((c.Pid, c.StartUtc)); // without a start, a reused id would match
             if (chainBroken && !foundClaude)
             {
                 if (chain.Any(c => underAgent.Contains((c.Pid, c.StartUtc))))
@@ -60,10 +60,14 @@ public static class ProcessReaper
             }
             if (!foundClaude) continue; // ancestry reaches no agent at all: a plain dev process, leave it alone
             if (p.HandleCount > MaxHandleCount) reaped.Add(new Reaped(p, $"over {MaxHandleCount:N0} handles ({p.HandleCount:N0})"));
-            else if (p.StartUtc != Unknown && nowUtc - p.StartUtc > MaxAge) reaped.Add(new Reaped(p, $"running {MindAttic.Orchestrator.Formatting.Ago(p.StartUtc, nowUtc)}, over {MaxAge.TotalMinutes:0} min"));
+            // Age only marks a runaway search: a test suite, build or dev server under an agent may rightly run longer
+            // (found live: an agent's 30-minute python test run was killed).
+            else if (IsSearch(p.Name) && p.StartUtc != Unknown && nowUtc - p.StartUtc > MaxAge) reaped.Add(new Reaped(p, $"running {MindAttic.Orchestrator.Formatting.Ago(p.StartUtc, nowUtc)}, over {MaxAge.TotalMinutes:0} min"));
         }
         return reaped;
     }
+
+    private static bool IsSearch(string name) => Bare(name).ToLowerInvariant() is "find" or "rg" or "grep";
 
     private static bool IsTarget(string name) => TargetNames.Any(t => Bare(name).Equals(t, StringComparison.OrdinalIgnoreCase));
 

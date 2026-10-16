@@ -138,6 +138,7 @@ public sealed class ContextCyclerTests
                     { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
                 psi.Environment["USERPROFILE"] = dir;
                 psi.Environment["MINDATTIC_WORKSPACE"] = ws;
+                psi.Environment["APPDATA"] = dir; // approvals come from here, never this machine's settings
                 using var p = System.Diagnostics.Process.Start(psi)!;
                 p.StandardInput.Write(System.Text.Json.JsonSerializer.Serialize(input));
                 p.StandardInput.Close();
@@ -318,6 +319,7 @@ public sealed class ContextCyclerTests
                     { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
                 psi.Environment["USERPROFILE"] = dir;
                 psi.Environment["MINDATTIC_WORKSPACE"] = ws;
+                psi.Environment["APPDATA"] = dir; // approvals come from here, never this machine's settings
                 using var p = System.Diagnostics.Process.Start(psi)!;
                 p.StandardInput.Write(System.Text.Json.JsonSerializer.Serialize(input));
                 p.StandardInput.Close();

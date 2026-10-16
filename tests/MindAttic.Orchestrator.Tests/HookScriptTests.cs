@@ -32,6 +32,7 @@ public sealed class HookScriptTests
         psi.ArgumentList.Add(Path.Combine(Claude, script));
         foreach (var a in args) psi.ArgumentList.Add(a);
         psi.Environment["USERPROFILE"] = dir;
+        psi.Environment["APPDATA"] = dir; // the orchestrator's settings (approvals) come from here, never this machine's
         psi.Environment["MINDATTIC_WORKSPACE"] = ws;
         var p = Process.Start(psi)!;
         p.StandardInput.Write(JsonSerializer.Serialize(input));
@@ -147,6 +148,16 @@ public sealed class HookScriptTests
         object Asking(string sid) => new { hook_event_name = "Stop", session_id = sid, cwd = uss, last_assistant_message = "Shall I start the next one?" };
         Status(new { });
         Assert.That(Gate(Asking("w3"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\""), "open tickets: told to carry on");
+
+        // Only a fix or an approved ticket is work to be pushed on to.
+        using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
+            "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute(\"update tickets set type='feature'\"); d.commit()", db }, UseShellExecute = false })!)
+            mk.WaitForExit(20_000);
+        Assert.That(Gate(Asking("w5"), AgentGate.ContextScriptName).Output, Is.Empty, "a feature you haven't approved isn't work");
+        var settings = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "settings.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
+        File.WriteAllText(settings, """{ "Approved": ["uss-t1"] }""");
+        Assert.That(Gate(Asking("w6"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\""), "approved (any case): it is");
         Status(new { stop = true });
         Assert.That(Gate(Asking("w4"), AgentGate.ContextScriptName).Output, Is.Empty, "at the target, a stop is let stop");
     }
@@ -202,6 +213,12 @@ public sealed class HookScriptTests
         Assert.That(File.ReadAllText(Path.Combine(Marks, "autopilot.order")), Is.EqualTo("a,b"));
         Gate(Prompt("/autopilot this"), AgentGate.ContextScriptName);
         Assert.That(File.ReadAllText(Path.Combine(Marks, "autopilot.order")), Is.EqualTo("a,b"), "the workspace root is no repo of its own: nothing added");
+        // Found in review: "off" typed in a worktree's CLI had no repo of its own, so it turned autopilot off everywhere.
+        var tree = Path.Combine(dir, "ws.worktrees", "UnitySolarSystem", "USS-T1");
+        Directory.CreateDirectory(tree);
+        Gate(new { hook_event_name = "UserPromptSubmit", session_id = "s1", prompt = "/autopilot -repo=UnitySolarSystem,b", cwd = ws }, AgentGate.ContextScriptName);
+        Gate(new { hook_event_name = "UserPromptSubmit", session_id = "s1", prompt = "/autopilot off", cwd = tree }, AgentGate.ContextScriptName);
+        Assert.That(File.ReadAllText(Path.Combine(Marks, "autopilot.order")), Is.EqualTo("a,b"), "only the worktree's own repo goes off");
         Gate(Prompt("/autopilot all"), AgentGate.ContextScriptName);
         Assert.That(File.ReadAllText(Path.Combine(Marks, "autopilot.order")), Is.EqualTo(MindAttic.Orchestrator.Scheduling.Autopilot.AllRepos));
         Gate(Prompt("/autopilot off"), AgentGate.ContextScriptName);

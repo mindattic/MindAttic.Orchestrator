@@ -105,18 +105,20 @@ public sealed class ProcessReaperTests
     }
 
     [Test]
-    public void A_tool_process_under_a_live_claude_cli_running_too_long_is_reaped()
+    public void A_search_under_a_live_claude_cli_running_too_long_is_reaped_but_a_long_test_run_is_not()
     {
+        var old = Now - MaxAge - TimeSpan.FromMinutes(1);
         var processes = new[]
         {
             P(1, "claude.exe", parentPid: 0, startUtc: Now.AddHours(-2)),
-            P(2, "git.exe", parentPid: 1, handles: 50, startUtc: Now - MaxAge - TimeSpan.FromMinutes(1)),
+            P(2, "rg.exe", parentPid: 1, handles: 50, startUtc: old),
+            P(3, "python.exe", parentPid: 1, handles: 50, startUtc: old), // found live: an agent's 30-minute test run was killed
+            P(4, "git.exe", parentPid: 1, handles: 50, startUtc: old),
         };
 
         var reaped = Pick(processes);
 
-        Assert.That(reaped, Has.Count.EqualTo(1));
-        Assert.That(reaped[0].Process.Pid, Is.EqualTo(2));
+        Assert.That(reaped.Select(r => r.Process.Pid), Is.EqualTo(new[] { 2 }));
         Assert.That(reaped[0].Reason, Does.Contain("running"));
     }
 

@@ -25,6 +25,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     internal Func<int, bool> Alive { get; init; } = ContextCycler.IsClaude;
     internal string LogDirectory { get; init; } = BackgroundAgent.LogDirectory;
     internal Func<string, string, string, (bool Ok, string Path, string Error)> MakeWorktree { get; init; } = Dispatcher.EnsureWorktree;
+    internal Func<string, string> MainlineOf { get; init; } = Dispatcher.Mainline;
 
     /// <summary>Where the shared statusline reads which repos wait on the pace (<see cref="DefaultWaitingPath"/>);
     /// null writes nothing.</summary>
@@ -75,7 +76,15 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         var order = Order();
         On = order is not null;
         HeldElsewhere = lease is not null && (On || store.LoadAssignments().Any(a => a.Log is not null)) && !lease.TryAcquire();
-        if (!dryRun && !HeldElsewhere) Reap(plan, snapshot, said);
+        if (!dryRun && !HeldElsewhere)
+        {
+            Reap(plan, snapshot, said);
+            if (nowUtc - sweptUtc >= SweepEvery)
+            {
+                sweptUtc = nowUtc;
+                Sweep(snapshot, settings, said, nowUtc);
+            }
+        }
         Working = [.. store.LoadAssignments().Where(a => a.Log is not null && a.Pilot is not null && IsRunning(a))];
 
         // Repos with an open Claude CLI (agents' own sessions aside), or the ones named.
@@ -159,7 +168,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 continue;
             }
             var log = Path.Combine(LogDirectory, $"{next.Id}-{nowUtc.ToLocalTime():yyyyMMdd-HHmm}.log");
-            if (Start(tree, PromptFor(next, tree, branch), log) is not { } pid)
+            if (Start(tree, PromptFor(next, tree, branch, MainlineOf(repo.Path)), log) is not { } pid)
             {
                 Tell(repo.Name, $"autopilot: couldn't start an agent in {repo.Name}");
                 failed.Add(repo.Name);
@@ -181,7 +190,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             foreach (var repo in repos.Where(r => inRepo[r.Name] == 0 && !failed.Contains(r.Name)))
                 Tell(repo.Name, plan.Queue.Any(q => Same(q.Repo, repo.Name) && !q.IsAssigned)
                     ? $"autopilot: {repo.Name}'s open stories are blocked, parked or too big for what's left before the reset"
-                    : $"autopilot: {repo.Name} has no open stories left");
+                    : plan.AwaitingApproval.Count(q => Same(q.Repo, repo.Name)) is > 0 and var waiting
+                        ? $"autopilot: {repo.Name}'s {waiting} open stor{(waiting == 1 ? "y waits" : "ies wait")} for your approval (orchestrator approve)"
+                        : $"autopilot: {repo.Name} has no open stories left");
         return Done(paceBound);
 
         IReadOnlyList<string> Done(bool paceBound)
@@ -213,10 +224,12 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// session is tied to the ticket), lands the branch on main itself, then closes the ticket in the Workflow
     /// database (the same database from any folder, worktrees included).
     /// </summary>
-    internal static string PromptFor(QueueItem item, string worktree, string branch) =>
+    internal static string PromptFor(QueueItem item, string worktree, string branch, string mainline = "main") =>
         $"Work on ticket {item.Id} ({item.Ticket.Type}): {item.Ticket.Summary} " +
         $"You are in your own git worktree of {item.Repo} ({worktree}, branch {branch}) so other agents can work {item.Repo} at the same time; work, build and test only here. " +
-        "When it's done: run /commit, but don't push (the next step does). Land it: git fetch origin, git rebase origin/main (resolve any conflicts and rerun the tests), git push origin HEAD:main. " +
+        // Run headless (-p): the run ends with your last turn, so a subagent left running in the background is cut off with it.
+        "Run any subagents in the foreground, never in the background. " +
+        $"When it's done: run /commit, but don't push (the next step does). Land it on {item.Repo}'s main line, {mainline}: git fetch origin, git rebase origin/{mainline} (resolve any conflicts and rerun the tests), git push origin HEAD:{mainline}. " +
         $"Then mark it finished: workflow ticket close {item.Id} --ref <the test or commit that proves it>. " +
         "If you can't finish or land it, leave the ticket open and say why.";
 
@@ -228,6 +241,11 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// </summary>
     private void Reap(SchedulePlan plan, Snapshot snapshot, List<string> said)
     {
+        // A tab's assignment (no agent of ours, no worktree to tidy) whose ticket closed is simply done; kept, it was
+        // listed as "done" by every queue forever.
+        var finishedTabs = plan.Finished.Where(a => a.Log is null && !a.Worktree).Select(a => a.TicketId).ToHashSet(StringComparer.Ordinal);
+        if (finishedTabs.Count > 0) store.UpdateAssignments(all => all.RemoveAll(a => a.Log is null && !a.Worktree && finishedTabs.Contains(a.TicketId)));
+
         var gone = store.LoadAssignments().Where(a => a.Log is not null && !(a.Pilot is not null && IsRunning(a))).ToList();
         if (gone.Count == 0) return;
         foreach (var a in gone)
@@ -242,10 +260,45 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             said.Add(closed
                 ? $"autopilot: finished {a.TicketId} in {a.Repo}{note}"
                 : halted ? $"autopilot: {a.TicketId}'s agent in {a.Repo} stopped at the window's target; it starts again after the reset{note}"
-                : $"{NeedsYouPrefix}{a.TicketId}'s agent in {a.Repo} ended without closing it, so autopilot leaves it for you (it's back in the queue); see {a.Log}{note}");
+                : $"{NeedsYouPrefix}{a.TicketId}'s agent in {a.Repo} ended without finishing it (closed and landed), so autopilot leaves it for you (it's back in the queue); see {a.Log}{note}");
         }
         // Landing runs git for a while; only what was reaped is removed, under the lock, so a Dispatch meanwhile survives.
         store.UpdateAssignments(all => all.RemoveAll(gone.Contains));
+    }
+
+    internal static readonly TimeSpan SweepEvery = TimeSpan.FromHours(1);
+    private DateTime sweptUtc;
+
+    /// <summary>
+    /// Worktrees under <see cref="OrchestratorSettings.WorktreeRoot"/> that no agent is on and whose ticket is no longer
+    /// open: landed, they're removed (as <see cref="Land"/> would have, had it not missed them, e.g. on a repo landing on
+    /// master before that was understood); not landed, they're kept and named once, since the work is only there.
+    /// </summary>
+    private void Sweep(Snapshot snapshot, OrchestratorSettings settings, List<string> said, DateTime nowUtc)
+    {
+        var assigned = store.LoadAssignments().Select(a => a.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var open = snapshot.Repos.SelectMany(r => r.OpenTickets).Select(t => t.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var repo in snapshot.Repos.Where(r => r.Path.Length > 0 && !r.Name.StartsWith('(')))
+        {
+            var root = Path.Combine(settings.WorktreeRoot, repo.Name);
+            string[] trees;
+            try { trees = Directory.Exists(root) ? Directory.GetDirectories(root) : []; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { continue; }
+            foreach (var tree in trees)
+            {
+                var id = Path.GetFileName(tree);
+                // Only a ticket's own worktree (a .git file, not a full clone that ended up here) whose ticket is finished.
+                if (assigned.Contains(id) || open.Contains(id) || !File.Exists(Path.Combine(tree, ".git"))) continue;
+                var (landed, note) = Land(new Assignment(id.ToUpperInvariant(), repo.Name, tree, Providers.Claude, nowUtc, true), repo.Path);
+                if (landed) said.Add($"autopilot: tidied the finished worktree of {id} in {repo.Name}{note}");
+                else
+                {
+                    var why = $"autopilot: {id}'s worktree in {repo.Name} isn't open work any more but isn't landed{note}";
+                    if (told.GetValueOrDefault("sweep:" + tree) != why) said.Add(why); // once, not every hour
+                    told["sweep:" + tree] = why;
+                }
+            }
+        }
     }
 
     /// <summary>Whether a worktree agent's ticket landed closed on origin/main, after tidying up; and what to add about it.</summary>
@@ -254,6 +307,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     internal static (bool Closed, string Note) LandOnMain(Assignment a, string repoPath)
     {
         Dispatcher.Git(repoPath, "fetch", "-q", "origin");
+        // Found live: Automata, Prose and MindAttic.Authentication land on master; checking origin/main parked their
+        // finished stories, and one agent told to push HEAD:main created a stray main branch.
+        var mainline = Dispatcher.Mainline(repoPath);
         bool closed;
         using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(Path.GetDirectoryName(repoPath)))
         {
@@ -261,17 +317,17 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 closed = db.Ticket(a.TicketId)?.Ticket.Status is "closed" or "wont-do";
             else
             {
-                var (code, stories) = Dispatcher.Git(repoPath, "show", "origin/main:docs/USER_STORIES.md");
+                var (code, stories) = Dispatcher.Git(repoPath, "show", $"origin/{mainline}:docs/USER_STORIES.md");
                 closed = code == 0 && ClosedIn(stories, a.TicketId);
             }
         }
         var note = "";
         // Closed but never landed: its commits are only on its branch, so it isn't done.
-        if (closed && Dispatcher.Git(repoPath, "merge-base", "--is-ancestor", Dispatcher.BranchFor(a.TicketId), "origin/main").Code != 0)
-            return (false, $"; it closed its ticket but its branch {Dispatcher.BranchFor(a.TicketId)} isn't on main; the work is in {a.Directory}");
-        if (closed && Dispatcher.Git(repoPath, "rev-parse", "--abbrev-ref", "HEAD").Output.Trim() == "main")
-            note += Dispatcher.Git(repoPath, "merge", "--ff-only", "-q", "origin/main").Code == 0
-                ? "; your checkout is up to date with it" : "; pull main to get it (your checkout has changes in the way)";
+        if (closed && Dispatcher.Git(repoPath, "merge-base", "--is-ancestor", Dispatcher.BranchFor(a.TicketId), $"origin/{mainline}").Code != 0)
+            return (false, $"; it closed its ticket but its branch {Dispatcher.BranchFor(a.TicketId)} isn't on {mainline}; the work is in {a.Directory}");
+        if (closed && Dispatcher.Git(repoPath, "rev-parse", "--abbrev-ref", "HEAD").Output.Trim() == mainline)
+            note += Dispatcher.Git(repoPath, "merge", "--ff-only", "-q", $"origin/{mainline}").Code == 0
+                ? "; your checkout is up to date with it" : $"; pull {mainline} to get it (your checkout has changes in the way)";
         if (closed)
             note += Dispatcher.Git(repoPath, "worktree", "remove", a.Directory).Code == 0
                 ? "" : $"; its worktree {a.Directory} kept (something there is uncommitted)";
