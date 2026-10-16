@@ -114,77 +114,77 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         // pace allow, and nobody's checkout (yours included) is ever edited under them.
         var running = Working.Count;
         var room = plan.Pace?.RoomTokens;
-        var taken = new HashSet<string>(StringComparer.Ordinal);
         // How many more the pace pays for, worked out fresh every tick. An agent started in the last control
         // window isn't in the measured draw yet, so it's counted as drawing already; unpaced, the session setting decides.
         var fresh = Working.Count(a => nowUtc - a.StartedUtc < BudgetCalculator.ControlWindow);
         var more = plan.Pace is { } pace ? pace.SpareSessions - fresh : settings.MaxConcurrentSessions - running;
-        foreach (var repo in repos)
+        var byName = repos.ToDictionary(r => r.Name, StringComparer.OrdinalIgnoreCase);
+        var inRepo = repos.ToDictionary(r => r.Name, r => Working.Count(a => Same(a.Repo, r.Name)), StringComparer.OrdinalIgnoreCase);
+        var failed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var paceBound = false;
+        // The whole queue in its order (manual priority, then smallest effort), not repo by repo: filling the first repo
+        // alphabetically before looking at the next left a +70 story waiting behind five unprioritized ones (found live).
+        foreach (var next in plan.Queue)
         {
-            // Worktrees keep agents apart, so a repo is only capped if you've capped it yourself.
-            var limit = settings.RepoMaxSessions.GetValueOrDefault(repo.Name, int.MaxValue);
-            var inRepo = Working.Count(a => Same(a.Repo, repo.Name));
-            while (true)
+            if (!byName.TryGetValue(next.Repo, out var repo) || failed.Contains(repo.Name)) continue;
+            if (next.IsAssigned || next.BlockedBy.Count > 0 || parked.Contains(next.Id) ||
+                (room is { } left && next.Estimate is { } e && e.Fresh > left) ||
+                // Past the wind-down line only a story known to fit what's left starts: one that can't finish before the stop waits for the reset.
+                (plan.Pace is { WindDown: true } && next.Estimate is null)) continue;
+            if (more <= 0)
             {
-                if (more <= 0)
-                {
-                    Tell("cap", $"autopilot: {running} agent{(running == 1 ? "" : "s")} working; the pace has no room for another right now");
-                    return Done(paceBound: true);
-                }
-                if (inRepo >= limit)
-                {
-                    Tell(repo.Name, $"autopilot: {repo.Name} has {inRepo} agents working, the cap you set for it (settings --repo-sessions)");
-                    break;
-                }
-                var next = plan.Queue.FirstOrDefault(q => Same(q.Repo, repo.Name) && !q.IsAssigned && q.BlockedBy.Count == 0 &&
-                    !parked.Contains(q.Id) && !taken.Contains(q.Id) && !(room is { } left && q.Estimate is { } e && e.Fresh > left) &&
-                    // Past the wind-down line only a story known to fit what's left starts: one that can't finish before the stop waits for the reset.
-                    !(plan.Pace is { WindDown: true } && q.Estimate is null));
-                if (next is null)
-                {
-                    if (inRepo == 0)
-                        Tell(repo.Name, plan.Queue.Any(q => Same(q.Repo, repo.Name) && !q.IsAssigned)
-                            ? $"autopilot: {repo.Name}'s open stories are blocked, parked or too big for what's left before the reset"
-                            : $"autopilot: {repo.Name} has no open stories left");
-                    break;
-                }
-                taken.Add(next.Id);
-                if (dryRun)
-                {
-                    said.Add($"autopilot would start a background agent on {next.Id} in {repo.Name}: {next.Ticket.Summary}");
-                    running++;
-                more--;
-                    inRepo++;
-                    continue;
-                }
-
-                var branch = Dispatcher.BranchFor(next.Id);
-                var (ok, tree, error) = MakeWorktree(repo.Path, Path.Combine(settings.WorktreeRoot, repo.Name, next.Id), branch);
-                if (!ok)
-                {
-                    Tell(repo.Name, $"autopilot: couldn't make a worktree for {next.Id}: {error}");
-                    break;
-                }
-                var log = Path.Combine(LogDirectory, $"{next.Id}-{nowUtc.ToLocalTime():yyyyMMdd-HHmm}.log");
-                if (Start(tree, PromptFor(next, tree, branch), log) is not { } pid)
-                {
-                    Tell(repo.Name, $"autopilot: couldn't start an agent in {repo.Name}");
-                    break;
-                }
+                Tell("cap", $"autopilot: {running} agent{(running == 1 ? "" : "s")} working; the pace has no room for another right now");
+                paceBound = true;
+                break;
+            }
+            // Worktrees keep agents apart, so a repo is only capped if you've capped it yourself.
+            if (inRepo[repo.Name] >= settings.RepoMaxSessions.GetValueOrDefault(repo.Name, int.MaxValue))
+            {
+                Tell(repo.Name, $"autopilot: {repo.Name} has {inRepo[repo.Name]} agents working, the cap you set for it (settings --repo-sessions)");
+                continue;
+            }
+            if (dryRun)
+            {
+                said.Add($"autopilot would start a background agent on {next.Id} in {repo.Name}: {next.Ticket.Summary}");
                 running++;
                 more--;
-                inRepo++;
-                told.Remove(repo.Name);
-                var started = new Assignment(next.Id, next.Repo, tree, Providers.Claude, nowUtc, true) { Pilot = pid, PilotStartedUtc = StartTimeOf(pid), Log = log };
-                store.UpdateAssignments(all =>
-                {
-                    all.RemoveAll(a => a.TicketId == next.Id);
-                    all.Add(started);
-                });
-                said.Add($"autopilot: started {next.Id} in {repo.Name} in the background: {next.Ticket.Summary} (log {log})");
+                inRepo[repo.Name]++;
+                continue;
             }
+
+            var branch = Dispatcher.BranchFor(next.Id);
+            var (ok, tree, error) = MakeWorktree(repo.Path, Path.Combine(settings.WorktreeRoot, repo.Name, next.Id), branch);
+            if (!ok)
+            {
+                Tell(repo.Name, $"autopilot: couldn't make a worktree for {next.Id}: {error}");
+                failed.Add(repo.Name);
+                continue;
+            }
+            var log = Path.Combine(LogDirectory, $"{next.Id}-{nowUtc.ToLocalTime():yyyyMMdd-HHmm}.log");
+            if (Start(tree, PromptFor(next, tree, branch), log) is not { } pid)
+            {
+                Tell(repo.Name, $"autopilot: couldn't start an agent in {repo.Name}");
+                failed.Add(repo.Name);
+                continue;
+            }
+            running++;
+            more--;
+            inRepo[repo.Name]++;
+            told.Remove(repo.Name);
+            var started = new Assignment(next.Id, next.Repo, tree, Providers.Claude, nowUtc, true) { Pilot = pid, PilotStartedUtc = StartTimeOf(pid), Log = log };
+            store.UpdateAssignments(all =>
+            {
+                all.RemoveAll(a => a.TicketId == next.Id);
+                all.Add(started);
+            });
+            said.Add($"autopilot: started {next.Id} in {repo.Name} in the background: {next.Ticket.Summary} (log {log})");
         }
-        return Done(paceBound: false);
+        if (!paceBound)
+            foreach (var repo in repos.Where(r => inRepo[r.Name] == 0 && !failed.Contains(r.Name)))
+                Tell(repo.Name, plan.Queue.Any(q => Same(q.Repo, repo.Name) && !q.IsAssigned)
+                    ? $"autopilot: {repo.Name}'s open stories are blocked, parked or too big for what's left before the reset"
+                    : $"autopilot: {repo.Name} has no open stories left");
+        return Done(paceBound);
 
         IReadOnlyList<string> Done(bool paceBound)
         {

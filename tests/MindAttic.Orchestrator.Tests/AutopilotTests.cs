@@ -67,6 +67,21 @@ public sealed class AutopilotTests
     }
 
     [Test]
+    public void Stories_start_in_queue_order_across_repos_not_one_repo_filled_first()
+    {
+        // Found live: /autopilot all put all five spare sessions into Automata while a +70 story elsewhere waited.
+        order = [Autopilot.AllRepos];
+        var snap = Snap(("Automata", [T("AUT-T1"), T("AUT-T2"), T("AUT-T3")]), ("Launcher", [T("MCO-T21")]));
+        var plan = Scheduler.Plan(snap, new() { Priorities = new() { ["MCO-T21"] = 70 } }, store.LoadAssignments());
+        plan = plan with { Pace = new Pace(PaceMode.Open, 6, 10_000, 0, 1_000, "5-hour", Now.AddHours(3), "On pace.") { SpareSessions = 2 } };
+
+        Pilot().Tick(plan, snap, new() { WorktreeRoot = @"D:\WT", Priorities = new() { ["MCO-T21"] = 70 } }, Now);
+
+        Assert.That(started.Select(s => s.Dir).First(), Is.EqualTo(@"D:\WT\Launcher\MCO-T21"), "the prioritized story goes first");
+        Assert.That(started, Has.Count.EqualTo(2));
+    }
+
+    [Test]
     public void Past_the_wind_down_line_only_a_story_with_an_estimate_that_fits_starts()
     {
         Cli(100, @"D:\W\A");
