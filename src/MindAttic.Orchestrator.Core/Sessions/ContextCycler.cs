@@ -186,12 +186,26 @@ public sealed class ContextCycler(string? directory = null)
             foreach (var f in System.IO.Directory.EnumerateFiles(SubagentDirectory).Where(f => !SubagentAlive(f, DateTime.UtcNow, idle: false)))
                 try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         if (!System.IO.Directory.Exists(Directory)) return;
-        foreach (var prefix in new[] { "unthrottled-", "crossrepo-" })
+        foreach (var prefix in new[] { "unthrottled-", "crossrepo-", "autopilot-" })
             foreach (var f in System.IO.Directory.EnumerateFiles(Directory, prefix + "*"))
             {
                 var alive = int.TryParse(Path.GetFileName(f)[prefix.Length..], out var pid) && IsClaude(pid);
                 if (!alive) try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
             }
+    }
+
+    /// <summary>The CLIs /autopilot is on in (by process id), and the repos each works through its own subagents ("*": all).</summary>
+    public IReadOnlyDictionary<int, IReadOnlyList<string>> AutopilotClis() => !System.IO.Directory.Exists(Directory)
+        ? new Dictionary<int, IReadOnlyList<string>>()
+        : System.IO.Directory.EnumerateFiles(Directory, "autopilot-*")
+            .Select(f => (Pid: int.TryParse(Path.GetFileName(f)["autopilot-".Length..], out var pid) ? pid : 0, File: f))
+            .Where(x => x.Pid > 0 && IsClaude(x.Pid))
+            .ToDictionary(x => x.Pid, x => (IReadOnlyList<string>)[.. ReadOrEmpty(x.File).Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)]);
+
+    private static string ReadOrEmpty(string path)
+    {
+        try { return File.ReadAllText(path); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return ""; }
     }
 
     /// <summary>The CLIs running unthrottled right now (by process id).</summary>

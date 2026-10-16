@@ -12,6 +12,7 @@ public sealed class HookScriptTests
     private string ws = "";
     private string Claude => Path.Combine(dir, ".claude");
     private string Marks => Path.Combine(Claude, "session-context");
+    private const int Cli = 4242;
 
     [SetUp]
     public void SetUp()
@@ -33,6 +34,7 @@ public sealed class HookScriptTests
         foreach (var a in args) psi.ArgumentList.Add(a);
         psi.Environment["USERPROFILE"] = dir;
         psi.Environment["APPDATA"] = dir; // the orchestrator's settings (approvals) come from here, never this machine's
+        psi.Environment["MINDATTIC_CLI_PID"] = Cli.ToString(); // as one CLI process, never the one running these tests
         psi.Environment["MINDATTIC_WORKSPACE"] = ws;
         var p = Process.Start(psi)!;
         p.StandardInput.Write(JsonSerializer.Serialize(input));
@@ -144,7 +146,7 @@ public sealed class HookScriptTests
             "d.execute(\"insert into tickets values('USS-T1','UnitySolarSystem','open',1,'fix')\"); d.commit()", db }, UseShellExecute = false })!)
             mk.WaitForExit(20_000);
         var uss = Path.Combine(ws, "UnitySolarSystem");
-        File.WriteAllText(Path.Combine(Marks, "autopilot.order"), "UnitySolarSystem"); // keep-going acts only where /autopilot is on
+        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem"); // keep-going acts only in the CLI /autopilot is on in
         object Asking(string sid) => new { hook_event_name = "Stop", session_id = sid, cwd = uss, last_assistant_message = "Shall I start the next one?" };
         Status(new { });
         Assert.That(Gate(Asking("w3"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\""), "open tickets: told to carry on");
@@ -218,23 +220,22 @@ public sealed class HookScriptTests
     }
 
     [Test]
-    public void Autopilot_repo_lists_drop_the_on_off_words()
+    public void Autopilot_takes_repo_or_repos_and_its_repos_are_this_clis_cross_repo_exception()
     {
+        var mark = Path.Combine(Marks, $"autopilot-{Cli}");
         object Prompt(string prompt) => new { hook_event_name = "UserPromptSubmit", session_id = "s1", prompt, cwd = ws };
         Gate(Prompt("/autopilot -repo=a,b on"), AgentGate.ContextScriptName);
-        Assert.That(File.ReadAllText(Path.Combine(Marks, "autopilot.order")), Is.EqualTo("a,b"));
-        Gate(Prompt("/autopilot this"), AgentGate.ContextScriptName);
-        Assert.That(File.ReadAllText(Path.Combine(Marks, "autopilot.order")), Is.EqualTo("a,b"), "the workspace root is no repo of its own: nothing added");
-        // Found in review: "off" typed in a worktree's CLI had no repo of its own, so it turned autopilot off everywhere.
-        var tree = Path.Combine(dir, "ws.worktrees", "UnitySolarSystem", "USS-T1");
-        Directory.CreateDirectory(tree);
-        Gate(new { hook_event_name = "UserPromptSubmit", session_id = "s1", prompt = "/autopilot -repo=UnitySolarSystem,b", cwd = ws }, AgentGate.ContextScriptName);
-        Gate(new { hook_event_name = "UserPromptSubmit", session_id = "s1", prompt = "/autopilot off", cwd = tree }, AgentGate.ContextScriptName);
-        Assert.That(File.ReadAllText(Path.Combine(Marks, "autopilot.order")), Is.EqualTo("a,b"), "only the worktree's own repo goes off");
-        Gate(Prompt("/autopilot all"), AgentGate.ContextScriptName);
-        Assert.That(File.ReadAllText(Path.Combine(Marks, "autopilot.order")), Is.EqualTo(MindAttic.Orchestrator.Scheduling.Autopilot.AllRepos));
+        Assert.That(File.ReadAllText(mark), Is.EqualTo("a,b"));
+        Gate(Prompt("/autopilot -repos=MindAttic.Workflow"), AgentGate.ContextScriptName);
+        Assert.That(File.ReadAllText(mark), Is.EqualTo("a,b,MindAttic.Workflow"), "-repos works as -repo does");
+
+        // Its subagents edit and close tickets in the repos it's working, though this CLI sits in another repo.
+        var uss = Path.Combine(ws, "UnitySolarSystem");
+        var file = Path.Combine(ws, "MindAttic.Workflow", "src", "x.cs");
+        Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = file }, cwd = uss }).Output, Is.Empty);
         Gate(Prompt("/autopilot off"), AgentGate.ContextScriptName);
-        Assert.That(File.Exists(Path.Combine(Marks, "autopilot.order")), Is.False);
+        Assert.That(File.Exists(mark), Is.False);
+        Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = file }, cwd = uss }).Output, Does.Contain("\"deny\""), "off: back to its own repo");
     }
 
     [Test]

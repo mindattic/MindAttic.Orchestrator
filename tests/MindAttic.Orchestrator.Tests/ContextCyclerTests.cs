@@ -100,14 +100,14 @@ public sealed class ContextCyclerTests
     }
 
     [Test]
-    public void A_turn_ending_on_a_go_ahead_question_while_its_repo_has_open_tickets_is_told_to_keep_going()
+    public void Only_the_cli_that_typed_autopilot_is_kept_going_on_its_own_repos_workable_tickets()
     {
-        // Found live: a CLI finished a story and asked "shall I start the next one?" with four tickets still open.
+        // Found live: a CLI the user was working in was told to start on its repo's 22 tickets because autopilot was
+        // on for that repo elsewhere. Now /autopilot belongs to the CLI it's typed into, which works the tickets itself.
         var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
         var ws = Path.Combine(dir, "ws");
         var repo = Path.Combine(ws, "A");
         Directory.CreateDirectory(Path.Combine(repo, ".git"));
-        Directory.CreateDirectory(Path.Combine(ws, "B", ".git"));
         var data = Path.Combine(ws, "MindAttic.Workflow", "data");
         Directory.CreateDirectory(data);
         try
@@ -117,17 +117,18 @@ public sealed class ContextCyclerTests
                 d = sqlite3.connect(r"{Path.Combine(data, "workflow.db")}")
                 d.execute("CREATE TABLE tickets (id TEXT PRIMARY KEY, repo TEXT, status TEXT, ordinal INTEGER, type TEXT)")
                 d.executemany("INSERT INTO tickets VALUES (?, ?, ?, ?, ?)", [("A-T1", "A", "closed", 1, "fix"), ("A-T2", "A", "open", 2, "fix"),
-                    ("A-T3", "A", "open", 3, "fix"), ("A-T4", "A", "open", 4, "feature")])
+                    ("A-T3", "A", "open", 3, "fix"), ("A-T4", "A", "open", 4, "feature"), ("B-T1", "B", "open", 5, "fix")])
                 d.commit()
                 """);
             Setup.AgentGate.Ensure(dir);
-            string Gate(object input, string provider = "")
+            string Gate(int cli, object input, string provider = "")
             {
                 var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\" {provider}".TrimEnd())
                     { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
                 psi.Environment["USERPROFILE"] = dir;
                 psi.Environment["MINDATTIC_WORKSPACE"] = ws;
                 psi.Environment["APPDATA"] = dir; // approvals come from here, never this machine's settings
+                psi.Environment["MINDATTIC_CLI_PID"] = cli.ToString();
                 using var p = System.Diagnostics.Process.Start(psi)!;
                 p.StandardInput.Write(System.Text.Json.JsonSerializer.Serialize(input));
                 p.StandardInput.Close();
@@ -135,65 +136,24 @@ public sealed class ContextCyclerTests
                 Assert.That(p.WaitForExit(20_000), Is.True);
                 return output;
             }
-            object Stop(string said, string? cwd = null) => new { session_id = "s", hook_event_name = "Stop", cwd = cwd ?? repo, last_assistant_message = said };
-            const string ask = "MAO-T91 is done and pushed. Next is MAO-T93. Shall I start it?";
+            object Stop(string sid, string said) => new { session_id = sid, hook_event_name = "Stop", cwd = repo, last_assistant_message = said };
+            object Typed(string sid, string prompt) => new { session_id = sid, hook_event_name = "UserPromptSubmit", cwd = ws, prompt };
+            const string ask = "That's done. Shall I start the next one?";
 
-            // Found live: a GridGameGaiden CLI the user was working in was told to start on its 22 open tickets.
-            Assert.That(Gate(Stop(ask)), Is.Empty, "autopilot isn't on for A: a CLI you're just using is never pushed on");
-            Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd = repo, prompt = "/autopilot" });
+            Assert.That(Gate(100, Stop("mine", ask)), Is.Empty, "no autopilot: a CLI you're using is never pushed on");
+            Gate(200, Typed("pilot", "/autopilot -repos=A"));
+            Assert.That(Gate(100, Stop("mine", ask)), Is.Empty, "autopilot in another CLI marks nothing here, though it's in A");
 
-            var told = Gate(Stop(ask));
-            Assert.That(told, Does.Contain("\"decision\": \"block\"").And.Contain("A still has 2 open tickets (A-T2, A-T3)"));
-            Assert.That(Gate(Stop(ask)), Is.Empty, "it stopped again without doing anything: something really needs the user, so it's let go");
+            var told = Gate(200, Stop("pilot", "PRS-T16 landed."));
+            Assert.That(told, Does.Contain("\"block\"").And.Contain("2 workable tickets remain (A-T2, A-T3)").And.Contain("orchestrator next --repos A --claim"),
+                "the autopilot CLI goes on to its next tickets (fixes only: A-T4 awaits approval; B isn't its repo)");
+            Assert.That(Gate(200, Stop("pilot", "Blocked on a decision.")), Is.Empty, "stopped again without doing anything: let go");
 
-            Gate(Stop(ask));
-            Gate(new { session_id = "s", hook_event_name = "PostToolUse", cwd = repo });
-            Assert.That(Gate(Stop(ask)), Does.Contain("\"block\""), "it carried on (a tool ran) and asks again at the next story: told again");
-
-            Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd = repo, prompt = "x" });
-            Assert.That(Gate(Stop("Done: the tests pass and it's pushed.")), Is.Empty, "a plain report isn't asking");
-
-            // Closing a ticket and stopping on a plain report, with more open, is caught too (MAO-T103).
-            var ctx = Path.Combine(dir, ".claude", "session-context");
-            var cycler = new ContextCycler(ctx);
-            Assert.That(cycler.KeepGoingSince(), Is.Empty, "the first look only finds where the log ends");
-            Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd = repo, prompt = "do A-T1" });
-            Gate(new { session_id = "s", hook_event_name = "PostToolUse", cwd = repo, tool_input = new { command = "& 'workflow' ticket close A-T1 --ref t" } });
-            Assert.That(Gate(Stop("A-T1 is closed and pushed.")), Does.Contain("\"block\"").And.Contain("A still has 2 open tickets"));
-            Assert.That(Gate(Stop("A-T1 is closed and pushed.")), Is.Empty, "stopped again straight away: let go");
-            Assert.That(cycler.KeepGoingSince(), Is.EqualTo(new[] { "keep-going: told the CLI in A to carry on (closed A-T1, 2 tickets still open)" }),
-                "the stop after it had nothing new to go on (the close was already acted on), so nothing more is logged");
-            Gate(new { session_id = "s", hook_event_name = "PostToolUse", cwd = repo, tool_input = new { command = "x" } });
-            Gate(Stop(ask));
-            Assert.That(Gate(Stop(ask)), Is.Empty);
-            Assert.That(cycler.KeepGoingSince(), Is.EqualTo(new[]
-            {
-                "keep-going: told the CLI in A to carry on (asked to go on, 2 tickets still open)",
-                "keep-going: let the CLI in A stop (asked to go on, 2 open); it stopped again without doing anything, so it likely needs you",
-            }));
-            Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd = repo, prompt = "x" });
-            Assert.That(Gate(Stop(ask, Path.Combine(ws, "B"))), Is.Empty, "B has no open tickets");
-            Assert.That(Gate(Stop(ask, ws)), Is.Empty, "the workspace root isn't a repo");
-            var worktree = Directory.CreateDirectory(Path.Combine(dir, "ws.worktrees", "A", "A-T2")).FullName;
-            Assert.That(Gate(Stop(ask, worktree)), Is.Empty, "an autopilot agent in its worktree works its one ticket");
-            File.WriteAllText(Path.Combine(dir, ".claude", "session-context", "s.json"), """{"used_percentage": 90}""");
-            Assert.That(Gate(Stop(ask)), Is.Empty, "past the cycle point it stops, so the context can be cycled");
-
-            // Gemini's AfterAgent and Codex's Stop get the same carry-on in their own shape (MAO-T104); their own
-            // stop_hook_active lets the second stop through, and nothing of theirs is recorded as a Claude session.
-            Assert.That(Gate(new { session_id = "g1", hook_event_name = "AfterAgent", cwd = repo, prompt_response = ask }, "gemini"),
-                Does.Contain("\"decision\": \"deny\"").And.Contain("A still has 2 open tickets"));
-            Assert.That(Gate(new { session_id = "g1", hook_event_name = "AfterAgent", cwd = repo, prompt_response = ask, stop_hook_active = true }, "gemini"), Is.Empty);
-            Assert.That(Gate(new { session_id = "c1", hook_event_name = "Stop", cwd = repo, last_assistant_message = ask }, "codex"), Does.Contain("\"decision\": \"block\""));
-            Assert.That(Gate(new { session_id = "c1", hook_event_name = "Stop", cwd = repo, last_assistant_message = "Done." }, "codex"), Is.Empty);
-            Assert.That(File.Exists(Path.Combine(ctx, "g1.state.json")) || File.Exists(Path.Combine(ctx, "c1.state.json")), Is.False);
-            Assert.That(cycler.KeepGoingSince(), Has.Some.EqualTo("keep-going: told the Gemini CLI in A to carry on (asked to go on, 2 tickets still open)")
-                .And.Some.EqualTo("keep-going: let the Gemini CLI in A stop (asked to go on, 2 open); it stopped again without doing anything, so it likely needs you")
-                .And.Some.Contains("told the Codex CLI in A"));
-
-            Setup.AgentGate.Ensure(dir, keepGoing: false);
-            File.Delete(Path.Combine(dir, ".claude", "session-context", "s.json"));
-            Assert.That(Gate(Stop(ask)), Is.Empty, "switched off (settings --keep-going false)");
+            Gate(200, Typed("pilot", "/autopilot off"));
+            Gate(200, Typed("pilot", "x"));
+            Assert.That(Gate(200, Stop("pilot", ask)), Is.Empty, "off in this CLI");
+            Assert.That(Gate(300, new { session_id = "c1", hook_event_name = "Stop", cwd = repo, last_assistant_message = ask }, "codex"), Is.Empty,
+                "a Codex CLI is never pushed onto tickets");
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
@@ -297,41 +257,36 @@ public sealed class ContextCyclerTests
         try
         {
             Setup.AgentGate.Ensure(dir);
-            string Gate(object input)
+            void Typed(int cli, string cwd, string prompt)
             {
                 var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\"")
                     { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
                 psi.Environment["USERPROFILE"] = dir;
                 psi.Environment["MINDATTIC_WORKSPACE"] = ws;
-                psi.Environment["APPDATA"] = dir; // approvals come from here, never this machine's settings
+                psi.Environment["MINDATTIC_CLI_PID"] = cli.ToString();
                 using var p = System.Diagnostics.Process.Start(psi)!;
-                p.StandardInput.Write(System.Text.Json.JsonSerializer.Serialize(input));
+                p.StandardInput.Write(System.Text.Json.JsonSerializer.Serialize(new { session_id = "s" + cli, hook_event_name = "UserPromptSubmit", cwd, prompt }));
                 p.StandardInput.Close();
-                var output = p.StandardOutput.ReadToEnd();
+                p.StandardOutput.ReadToEnd();
                 Assert.That(p.WaitForExit(20_000), Is.True);
-                return output;
             }
-            var order = Path.Combine(dir, ".claude", "session-context", "autopilot.order");
+            var ctx = Path.Combine(dir, ".claude", "session-context");
+            string? Mark(int cli) => File.Exists(Path.Combine(ctx, $"autopilot-{cli}")) ? File.ReadAllText(Path.Combine(ctx, $"autopilot-{cli}")) : null;
 
-            void Typed(string cwd, string prompt) => Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd, prompt });
-            var b = Path.Combine(ws, "B");
-
-            Typed(repo, "/autopilot");
-            Assert.That(File.ReadAllText(order), Is.EqualTo("A"), "only the CLI it's typed into, not every open one");
-            Typed(b, "/autopilot");
-            Assert.That(File.ReadAllText(order), Is.EqualTo("A,B"), "another CLI adds its own repo, not replaces");
-            Typed(repo, "/autopilot off");
-            Assert.That(File.ReadAllText(order), Is.EqualTo("B"), "off is for this CLI's repo only");
-            Typed(ws, "/autopilot");
-            Assert.That(File.ReadAllText(order), Is.EqualTo("B"), "the workspace root has no repo of its own");
-            Typed(repo, "/autopilot -repo=C,D on");
-            Assert.That(File.ReadAllText(order), Is.EqualTo("B,C,D"));
-            Typed(repo, "/autopilot all");
-            Assert.That(File.ReadAllText(order), Is.EqualTo("*"));
-            Typed(repo, "/autopilot");
-            Assert.That(File.ReadAllText(order), Is.EqualTo("A"), "back to just this CLI's repo");
-            Typed(ws, "/autopilot off all");
-            Assert.That(File.Exists(order), Is.False, "off everywhere");
+            Typed(1, repo, "/autopilot");
+            Assert.That(Mark(1), Is.EqualTo("A"), "this CLI's own repo, for this CLI only");
+            Typed(2, ws, "/autopilot -repo=B");
+            Typed(2, ws, "/autopilot -repos=C,D on");
+            Assert.That((Mark(1), Mark(2)), Is.EqualTo(("A", "B,C,D")), "-repo and -repos both name repos; each CLI has its own list");
+            Typed(2, ws, "/autopilot off -repos=C");
+            Assert.That(Mark(2), Is.EqualTo("B,D"));
+            Typed(1, repo, "/autopilot off");
+            Assert.That((Mark(1), Mark(2)), Is.EqualTo(((string?)null, "B,D")), "off is for this CLI only");
+            Typed(1, repo, "/autopilot all");
+            Assert.That(Mark(1), Is.EqualTo("*"));
+            Typed(3, ws, "/autopilot off all");
+            Assert.That((Mark(1), Mark(2)), Is.EqualTo(((string?)null, (string?)null)), "off all: in every CLI");
+            Assert.That(File.Exists(Path.Combine(ctx, "autopilot.order")), Is.False, "nothing workspace-wide any more");
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
@@ -343,8 +298,7 @@ public sealed class ContextCyclerTests
         p.StandardInput.Write(script);
         p.StandardInput.Close();
         var err = p.StandardError.ReadToEnd();
-        p.WaitForExit();
-        Assert.That(p.ExitCode, Is.Zero, err);
+        Assert.That(p.WaitForExit(20_000) && p.ExitCode == 0, Is.True, err);
     }
 
     [Test]

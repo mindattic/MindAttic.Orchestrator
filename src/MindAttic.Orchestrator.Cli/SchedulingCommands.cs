@@ -335,13 +335,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         if (settings.MaxSessions is not null || settings.Autopilot is not null || settings.Provider is not null || settings.StaleHours is not null)
             store.SaveSettings(s);
 
-        var order = new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotOrder();
+        var clis = new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis();
         AnsiConsole.MarkupLine($"settings: {Markup.Escape(Path.Combine(store.Directory, "settings.json"))}");
         AnsiConsole.MarkupLine($"  max sessions {s.MaxConcurrentSessions} · provider {Markup.Escape(s.DefaultProvider)} · autopilot " +
-            (order is null ? "off (type /autopilot in any CLI)" : !s.Autopilot ? "[yellow]paused[/] (--autopilot true resumes)"
-                : order.Count == 0 ? "[green]on[/] for every open repo CLI"
-                : order.Contains(Autopilot.AllRepos) ? "[green]on[/] for every repo with open stories" : $"[green]on[/] for the CLIs in {Markup.Escape(string.Join(", ", order))}") +
-            (s.AutopilotSkip.Count > 0 ? $", skipping {Markup.Escape(string.Join(", ", s.AutopilotSkip))}" : "") +
+            (clis.Count == 0 ? "off in every CLI (type /autopilot in the CLI that should work tickets)"
+                : "[green]on[/] in " + Markup.Escape(string.Join("; ", clis.Select(c => $"CLI {c.Key} for {string.Join(", ", c.Value)}")))) +
             $", leaving a repo to you {(s.AutopilotHandMinutes > 0 ? $"until its CLI has been idle {s.AutopilotHandMinutes} min" : "only while its CLI is mid-turn")}" +
             (s.KeepGoing ? " · CLIs keep going through their open tickets without asking" : " · CLIs may stop to ask between tickets"));
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display : "learned, or rolling 7 days")} · warn at {s.WarnPercent}%");

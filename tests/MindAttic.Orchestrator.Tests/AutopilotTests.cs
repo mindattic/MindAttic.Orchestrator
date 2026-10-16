@@ -188,6 +188,44 @@ public sealed class AutopilotTests
     }
 
     [Test]
+    public void A_cli_running_autopilot_is_handed_its_repos_workable_tickets_each_with_a_worktree_and_prompt_once()
+    {
+        // MAO-T164: /autopilot works tickets through the CLI's own subagents; `orchestrator next --claim` hands them out.
+        var snap = Snap(("A", [T("A-T1"), T("A-T2"), new Ticket("A-T3", "2026-10-01", "feature", "open", "not approved", "")]), ("B", [T("B-T1")]));
+        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
+        var made = new List<string>();
+        (bool, string, string) Make(string repo, string path, string branch) { made.Add(path); return (true, path, ""); }
+        SchedulePlan Planned() => Paced(snap, 5) with { Pace = Paced(snap, 5).Pace! with { SubagentAllowance = 4, Subagents = 2 } };
+
+        var (handed, why) = Autopilot.Next(Planned(), settings, store, ["A"], null, claim: true, Now, Make, _ => "master");
+        Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T1", "A-T2" }), "A's fixes only (A-T3 awaits approval, B isn't named), up to the 2 the allowance has room for");
+        Assert.That(why, Is.Null);
+        Assert.That(made, Is.EqualTo(new[] { @"D:\WT\A\A-T1", @"D:\WT\A\A-T2" }));
+        Assert.That(handed[0].Prompt, Does.Contain("Work on ticket A-T1").And.Contain("cd there first").And.Contain("HEAD:master").And.Contain("workflow ticket close A-T1"));
+        Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EquivalentTo(new[] { "A-T1", "A-T2" }), "claimed, so not handed out twice");
+
+        var (again, whyAgain) = Autopilot.Next(Planned(), settings, store, ["A"], null, claim: true, Now, Make, _ => "main");
+        Assert.That(again, Is.Empty);
+        Assert.That(whyAgain, Does.Contain("2 already being worked"));
+
+        var (waiting, whyWaiting) = Autopilot.Next(Scheduler.Plan(Snap(("C", [new Ticket("C-T1", "2026-10-01", "chore", "open", "x", "")])), new(), []),
+            settings, store, ["C"], null, claim: false, Now, Make, _ => "main");
+        Assert.That((waiting.Count, whyWaiting), Is.EqualTo((0, "none left that may be worked: 1 wait for your approval (orchestrator approve)")));
+
+        var stopped = Planned() with { Pace = Planned().Pace! with { Stop = true } };
+        Assert.That(Autopilot.Next(stopped, settings, store, ["*"], null, claim: false, Now, Make, _ => "main").Why, Does.Contain("at its target"));
+    }
+
+    [Test]
+    public void The_daemon_no_longer_starts_headless_agents_of_its_own()
+    {
+        var snap = Snap(("A", [T("A-T1")]));
+        var said = new Autopilot(store, sessions) { Start = (_, _, _) => throw new AssertionException("no headless agent may start") }
+            .Tick(Paced(snap, 5), snap, new(), Now);
+        Assert.That(said, Is.Empty);
+    }
+
+    [Test]
     public void Only_a_line_that_is_a_needs_you_line_raises_the_alert()
     {
         Assert.That(Autopilot.NeedsYou("autopilot: needs you: A-T1's agent in A ended"), Is.EqualTo("A-T1's agent in A ended"));

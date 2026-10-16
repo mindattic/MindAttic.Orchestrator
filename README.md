@@ -34,28 +34,10 @@ hitting the session limit, and never stalling on a full context. Pick what runs;
 | No master pushes | every repo lands on `main` (the four master repos were renamed 2026-10-16), so `git push` to `master` is refused with a pointer to `HEAD:main`; it would only recreate a stray branch | `~/.claude/pace-gate.py` |
 | Whole-drive guard | `find`/`rg`/`grep`/`fd` on a drive root or `~`, and a recursive `ls`/`dir`/`Get-ChildItem` there (`-R`, `/s`, or PowerShell's `-Recurse`/`-r` in any case), is refused: such a search never finishes and leaks handles until Windows freezes | `~/.claude/pace-gate.py` |
 | Context | nothing ever types `/quicksave`, `/clear` or `/quickload` into a session, and no turn is told to stop for its context: a full context is left to Claude's own compaction (automatic cycling cleared a session in use, 2026-10-16, so it was removed) | — |
-| Keep going | in a repo `/autopilot` is on for (and only there: a CLI you're just using is never pushed onto its repo's tickets), a CLI that ends its turn asking "shall I start the next one?", or that closed a ticket and stopped, while its repo still has open tickets is told to carry on; one that stops again straight after without doing anything is let go (it really needs you) and you get a *Needs you*; every nudge is logged to `~/.claude/session-context/keep-going.jsonl`, which the daemon reports in its log. Codex (its Stop hook) and Gemini (AfterAgent) CLIs are kept going the same way when they ask; Kimi has no end-of-turn hook, so a Kimi CLI can still stop to ask | `~/.claude/context-gate.py` (Stop hook; `~/.codex/hooks.json` Stop, `~/.gemini/settings.json` AfterAgent); `settings --keep-going false` |
-| Autopilot | the repos you turned it on for have their stories worked in parallel background agents, each in its own worktree, while the pace can afford them; repos waiting on the pace are listed for the statusline | `/autopilot` turns it on for the CLI it's typed into (that CLI's repo; each CLI adds its own); `/autopilot off` turns off that repo only, `/autopilot off all` everywhere; `-repo=A,B` names repos; `/autopilot all` is every repo with open stories; `~/.claude/autopilot-waiting.json` |
+| Keep going | only the CLI `/autopilot` is on in, and only while its repos have workable tickets (fixes and approved ones): when its turn ends it's told to run `orchestrator next` again and carry on; one that stops again straight after without doing anything is let go. No other CLI is ever pushed onto tickets, whatever its repo. Logged to `~/.claude/session-context/keep-going.jsonl` | `~/.claude/context-gate.py` (Stop hook) |
+| Autopilot | the CLI you type it into works the tickets itself, through its own subagents: each takes one ticket in its own worktree, lands it on the repo's `main` and closes it, as many at once as the pace's subagent allowance has room for | `/autopilot` (this CLI's repo), `-repo=A,B` or `-repos=A,B`, `all`; `/autopilot off` (this CLI), `/autopilot off all` (every CLI); `orchestrator next --repos A,B --claim` hands out the tickets |
 
-To run unattended: type `/autopilot` in the CLI of each repo you want worked; it's on for that repo only,
-and other CLIs are untouched (`/autopilot -repo=UnityEve,MindAttic.Legion` works those repos, open or not;
-`/autopilot all` every repo with open stories). Each repo's next
-open story (manual priority, then smallest effort first) goes to a headless background Claude (the Launcher's Claude command with `-p`; log in
-`%APPDATA%\MindAttic\MindAttic.Orchestrator\autopilot`) in its own git worktree on branch `orch/<id>`. It
-commits, closes its ticket there, rebases onto the repo's own main line (what `origin/HEAD` points at: `main`
-or `master`) and pushes; then your checkout is fast-forwarded
-(when git can do that without touching your changes) and the worktree removed. No window opens and nothing
-is typed into your tabs or edited in your checkouts. How many run at once is worked out every refresh: as
-many more as the spare rate pays for (what fits the 5-hour target, minus what's being drawn, over one
-session's draw; agents started in the last 10 minutes count as drawing already), none while it's over, so
-the count scales up and down on its own (`--repo-sessions Repo=N` caps one repo if you want); new
-stories start only while the 5-hour pace can afford them, and the pace gate slows the running ones, so
-the window is used to its target without hitting the limit. Repos whose CLIs open later join in; a repo
-whose own CLI you're working in by hand (mid-turn, or a turn ended in the last 15 minutes; `settings --hand-minutes N`)
-gets no new agents until it's been left idle, and `settings --autopilot-skip GTFO.EZ,Prose` keeps repos out
-altogether (the dashboard and `dryrun` say which repos it's leaving alone and why); an
-agent that ends without closing its ticket gives it back and alerts *Needs you*. `/autopilot off` ends it; `settings --autopilot false` pauses
-it. `orchestrator dryrun` shows what it would start. Everything else is on by default. To check on it:
+To run unattended: type `/autopilot` in a CLI. That CLI works its own repo's tickets (or `-repo=A,B` / `-repos=A,B`, or `all`) through its own subagents, and no other CLI is affected. It runs `orchestrator next --repos ... --claim`, which hands it the next workable tickets (fixes, and tickets you approved, in queue order: manual priority, then smallest effort), as many as the pace's subagent allowance has room for, each with its own git worktree from the repo's main line (branch `orch/<id>`) and a full prompt. It starts one subagent per ticket; each works only in its worktree, commits, rebases onto the repo's `main`, pushes and closes its ticket. When they return it asks for the next ones, and stops when `next` hands out nothing and says why (none left, waiting for your approval, or the pace). While it's on, the repos named are that CLI's cross-repo exception, so its subagents may edit and close tickets there. The daemon no longer starts headless agents of its own; it still reaps ones started before, and its hourly sweep removes the worktrees of finished tickets once landed. `/autopilot off` ends it in that CLI. To check on it:
 `orchestrator status` (sessions), `orchestrator budget` (percent, pace, hold), `orchestrator queue`.
 The hooks are written into your global `~/.claude/settings.json` by the daemon and dashboard, and
 rewritten if they go missing (a failed write, say while Claude Code has the file open, is retried on the
@@ -133,7 +115,7 @@ The same core drives a CLI (`dotnet run --project src/MindAttic.Orchestrator.Cli
 | `audit [--latest]` | convention drift and cross-repo duplication |
 | `approve [<ID> ...] [--undo]` | only fixes are worked without asking; every other open ticket (feature, chore, docs) waits outside the queue, and for autopilot and keep-going, until you approve it. With no ids it lists what's waiting |
 | `block <ID> --by <ID> [--clear]` / `reserve <ID> <tokens>` | make a ticket wait for others (or clear what it waits for); set tokens aside for a ticket. Ticket ids may be typed in any case |
-| `dryrun` | what `/autopilot` would start right now, without starting anything |
+| `dryrun` / `next [--repos A,B] [--count n] [--claim]` | which CLIs have `/autopilot` on and what each would hand its subagents next; `next --claim` claims them (worktree, assignment, prompt) |
 | `show <ID> [--diff]` | a ticket end to end: its row, the sessions dispatched on it, and the commits that mention it |
 | `report [--weeks 4] [--csv FILE]` | uncached tokens by week and repo, by provider, and by ticket type |
 | `hygiene` | closed tickets that may not be done: no Ref cited, or a later ticket says it came back |

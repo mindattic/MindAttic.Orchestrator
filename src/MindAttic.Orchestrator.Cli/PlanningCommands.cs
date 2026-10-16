@@ -121,25 +121,62 @@ internal sealed class ReserveCommand : Command<ReserveCommand.Settings>
     }
 }
 
-/// <summary>What /autopilot would type into each CLI that has it on, without typing anything.</summary>
+/// <summary>Which CLIs have /autopilot on, and what each would hand its subagents next, without claiming anything.</summary>
 internal sealed class DryRunCommand : Command
 {
     public override int Execute(CommandContext context)
     {
-        var (_, store, snapshot, plan) = Ctx.Load();
-        var s = store.LoadSettings();
-        var cycler = new MindAttic.Orchestrator.Sessions.ContextCycler();
-        var autopilot = new Autopilot(store, cycler);
-        var lines = autopilot.Tick(plan, snapshot, s with { Autopilot = true }, DateTime.UtcNow, dryRun: true);
+        var (_, store, _, plan) = Ctx.Load();
+        var clis = new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis();
+        if (clis.Count == 0) { AnsiConsole.MarkupLine("[grey]/autopilot is off in every CLI; type /autopilot (optionally -repo=A,B) in the CLI that should work the tickets.[/]"); return 0; }
+        foreach (var (pid, repos) in clis)
+        {
+            AnsiConsole.MarkupLine($"/autopilot is on in CLI {pid} for {Markup.Escape(string.Join(", ", repos))}:");
+            var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, null, claim: false, DateTime.UtcNow);
+            foreach (var h in handed) AnsiConsole.MarkupLine($"  next: {Markup.Escape(h.Item.Id)} in {Markup.Escape(h.Item.Repo)}: {Markup.Escape(h.Item.Ticket.Summary)}");
+            if (why is not null) AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(why)}[/]");
+        }
+        AnsiConsole.MarkupLine("[grey]Each CLI hands these to its own subagents (orchestrator next --claim). Nothing was claimed.[/]");
+        return 0;
+    }
+}
 
-        if (!autopilot.On) { AnsiConsole.MarkupLine("[grey]/autopilot is off; type /autopilot in any CLI (optionally -repo=a,b).[/]"); return 0; }
-        foreach (var (repo, reason) in autopilot.LeftAlone) AnsiConsole.MarkupLine($"[grey]Leaving {Markup.Escape(repo)} alone: {Markup.Escape(reason)}.[/]");
-        if (autopilot.Repos.Count == 0) { AnsiConsole.MarkupLine("[grey]/autopilot is on, but no Claude CLI is open in a repo it may work (or -repo named none).[/]"); return 0; }
-        AnsiConsole.MarkupLine($"/autopilot is on for {Markup.Escape(string.Join(", ", autopilot.Repos))}.");
-        if (!s.Autopilot) AnsiConsole.MarkupLine("[yellow]Autopilot is paused (--autopilot true resumes); this is what it would do.[/]");
-        if (autopilot.Paused is { } why) AnsiConsole.MarkupLine($"[yellow]Holding: {Markup.Escape(why)}[/]");
-        foreach (var line in lines) AnsiConsole.MarkupLine("  " + Markup.Escape(line));
-        AnsiConsole.MarkupLine("[grey]Each starts as a background agent (each in its own worktree, as many at once as the pace has room for, worked out every refresh). Nothing was started.[/]");
+/// <summary>The next tickets a CLI running /autopilot hands to its subagents: each with its worktree and full prompt when claimed.</summary>
+internal sealed class NextCommand : Command<NextCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandOption("--repos <REPOS>")]
+        [Description("Repos to take tickets from, comma-separated (also --repo); \"*\" for every repo. Default: the repo of the current folder.")]
+        public string? Repos { get; init; }
+
+        [CommandOption("--repo <REPOS>")]
+        public string? Repo { get; init; }
+
+        [CommandOption("--count <N>")]
+        [Description("How many to hand out (default: as many as the pace's subagent allowance has room for).")]
+        public int? Count { get; init; }
+
+        [CommandOption("--claim")]
+        [Description("Claim them: make each its worktree, record it as assigned, and print the subagent's prompt.")]
+        public bool Claim { get; init; }
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        var (_, store, snapshot, plan) = Ctx.Load();
+        IReadOnlyList<string> repos = (settings.Repos ?? settings.Repo) is { } list
+            ? [.. list.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)]
+            : Autopilot.RepoFor(Environment.CurrentDirectory, snapshot) is { } here ? [here.Name] : [];
+        if (repos.Count == 0) { Console.Error.WriteLine("No repo here; name them with --repos A,B (or \"*\")."); return 1; }
+        var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, settings.Count, settings.Claim, DateTime.UtcNow);
+        foreach (var h in handed)
+        {
+            Console.WriteLine($"=== {h.Item.Id} ({h.Item.Repo}, {h.Item.Ticket.Type}): {h.Item.Ticket.Summary}");
+            if (h.Worktree is not null) Console.WriteLine($"worktree: {h.Worktree}");
+            if (h.Prompt is not null) Console.WriteLine("prompt:\n" + h.Prompt + "\n");
+        }
+        if (why is not null) Console.WriteLine($"Nothing handed out: {why}.");
         return 0;
     }
 }

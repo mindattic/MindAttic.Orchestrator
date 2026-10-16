@@ -21,7 +21,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     internal Func<string, string, string, int?> Start { get; init; } = BackgroundAgent.Start;
     internal Func<Assignment, bool> IsRunning { get; init; } = a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc);
     internal Func<int, DateTime?> StartTimeOf { get; init; } = BackgroundAgent.StartTimeOf;
-    internal Func<IReadOnlyList<string>?> Order { get; init; } = sessions.AutopilotOrder;
+    // The daemon no longer starts headless background agents (MAO-T164): /autopilot runs inside the CLI it's typed into, as
+    // that CLI's subagents (see Next). Tick still reaps agents started before, lands their work and sweeps finished worktrees.
+    internal Func<IReadOnlyList<string>?> Order { get; init; } = () => null;
     internal Func<int, bool> Alive { get; init; } = ContextCycler.IsClaude;
     internal string LogDirectory { get; init; } = BackgroundAgent.LogDirectory;
     internal Func<string, string, string, (bool Ok, string Path, string Error)> MakeWorktree { get; init; } = Dispatcher.EnsureWorktree;
@@ -226,7 +228,8 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// </summary>
     internal static string PromptFor(QueueItem item, string worktree, string branch, string mainline = "main") =>
         $"Work on ticket {item.Id} ({item.Ticket.Type}): {item.Ticket.Summary} " +
-        $"You are in your own git worktree of {item.Repo} ({worktree}, branch {branch}) so other agents can work {item.Repo} at the same time; work, build and test only here. " +
+        $"You have your own git worktree of {item.Repo} ({worktree}, branch {branch}) so other agents can work {item.Repo} at the same time: " +
+        "run every command from that folder (cd there first) and edit only files under it; work, build and test only there. " +
         // Run headless (-p): the run ends with your last turn, so a subagent left running in the background is cut off with it.
         "Run any subagents in the foreground, never in the background. " +
         $"When it's done: run /commit, but don't push (the next step does). Land it on {item.Repo}'s main line, {mainline}: git fetch origin, git rebase origin/{mainline} (resolve any conflicts and rerun the tests), git push origin HEAD:{mainline}. " +
@@ -243,8 +246,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     {
         // A tab's assignment (no agent of ours, no worktree to tidy) whose ticket closed is simply done; kept, it was
         // listed as "done" by every queue forever.
-        var finishedTabs = plan.Finished.Where(a => a.Log is null && !a.Worktree).Select(a => a.TicketId).ToHashSet(StringComparer.Ordinal);
-        if (finishedTabs.Count > 0) store.UpdateAssignments(all => all.RemoveAll(a => a.Log is null && !a.Worktree && finishedTabs.Contains(a.TicketId)));
+        // A claim by a CLI's subagent (orchestrator next) is the same: its worktree is tidied by the sweep once landed.
+        var finishedTabs = plan.Finished.Where(a => a.Log is null).Select(a => a.TicketId).ToHashSet(StringComparer.Ordinal);
+        if (finishedTabs.Count > 0) store.UpdateAssignments(all => all.RemoveAll(a => a.Log is null && finishedTabs.Contains(a.TicketId)));
 
         var gone = store.LoadAssignments().Where(a => a.Log is not null && !(a.Pilot is not null && IsRunning(a))).ToList();
         if (gone.Count == 0) return;
@@ -340,6 +344,58 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         return (closed, note);
     }
 
+    /// <summary>A ticket handed to a CLI's subagent: where it works and what it's told.</summary>
+    public sealed record Handout(QueueItem Item, string? Worktree, string? Prompt);
+
+    /// <summary>
+    /// The next tickets a CLI running <c>/autopilot</c> hands to its own subagents (MAO-T164): workable ones (fixes and
+    /// approved, already the only ones in the queue) of <paramref name="repos"/> ("*": all) that nobody has, in queue order,
+    /// as many as the pace's subagent allowance has room for (or <paramref name="count"/>). With <paramref name="claim"/>
+    /// each gets its own worktree from the repo's main line and an assignment, so it isn't handed out twice; when nothing
+    /// is handed out, <c>Why</c> says why.
+    /// </summary>
+    public static (IReadOnlyList<Handout> Handed, string? Why) Next(SchedulePlan plan, OrchestratorSettings settings, JsonStore store,
+        IReadOnlyList<string> repos, int? count, bool claim, DateTime nowUtc,
+        Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree = null, Func<string, string>? mainlineOf = null)
+    {
+        makeWorktree ??= Dispatcher.EnsureWorktree;
+        mainlineOf ??= Dispatcher.Mainline;
+        if (plan.Pace is { Stop: true }) return ([], "the 5-hour window is at its target: nothing starts before it resets");
+        var every = repos.Contains("*");
+        bool Named(string repo) => every || repos.Contains(repo, StringComparer.OrdinalIgnoreCase);
+        var room = plan.Pace?.RoomTokens;
+        var open = plan.Queue.Where(q => Named(q.Repo) && q.RepoPath.Length > 0 && !q.IsAssigned && q.BlockedBy.Count == 0 &&
+            !(room is { } left && q.Estimate is { } e && e.Fresh > left) &&
+            // Past the wind-down line only a ticket known to fit what's left starts.
+            !(plan.Pace is { WindDown: true } && q.Estimate is null)).ToList();
+        if (open.Count == 0)
+        {
+            var waiting = plan.AwaitingApproval.Count(q => Named(q.Repo));
+            var busy = plan.Queue.Count(q => Named(q.Repo) && q.IsAssigned);
+            return ([], waiting > 0 && busy == 0 ? $"none left that may be worked: {waiting} wait for your approval (orchestrator approve)"
+                : busy > 0 ? $"{busy} already being worked; nothing else is ready"
+                : "no open fixes or approved tickets left there");
+        }
+        var more = count ?? (plan.Pace?.SubagentAllowance is { } allowed ? allowed - plan.Pace.Subagents : settings.MaxConcurrentSessions);
+        if (more <= 0) return ([], "the pace has no room for another subagent right now; run it again in a few minutes");
+
+        var handed = new List<Handout>();
+        foreach (var item in open.Take(more))
+        {
+            if (!claim) { handed.Add(new Handout(item, null, null)); continue; }
+            var branch = Dispatcher.BranchFor(item.Id);
+            var (ok, tree, _) = makeWorktree(item.RepoPath, Path.Combine(settings.WorktreeRoot, item.Repo, item.Id), branch);
+            if (!ok) continue;
+            store.UpdateAssignments(all =>
+            {
+                all.RemoveAll(a => a.TicketId == item.Id);
+                all.Add(new Assignment(item.Id, item.Repo, tree, Providers.Claude, nowUtc, true));
+            });
+            handed.Add(new Handout(item, tree, PromptFor(item, tree, branch, mainlineOf(item.RepoPath))));
+        }
+        return (handed, handed.Count == 0 ? "couldn't make a worktree for any of them (see orchestrator queue)" : null);
+    }
+
     private const string NeedsYouPrefix = "autopilot: needs you: ";
 
     /// <summary>The order <c>/autopilot all</c> writes: every repo with open stories.</summary>
@@ -369,7 +425,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The repo a CLI runs in: its root or a folder under it (never a worktree, which lives elsewhere).</summary>
-    internal static RepoStatus? RepoFor(string? cwd, Snapshot snapshot)
+    public static RepoStatus? RepoFor(string? cwd, Snapshot snapshot)
     {
         if (string.IsNullOrEmpty(cwd)) return null;
         var dir = Path.TrimEndingDirectorySeparator(Path.GetFullPath(cwd));

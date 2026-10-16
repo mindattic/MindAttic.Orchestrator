@@ -101,14 +101,18 @@ public static class AgentGate
 
     internal const string AutopilotCommand = """
         ---
-        description: Work this CLI's repo's stories (or -repo=a,b, or "all" for every repo with open stories) in parallel background agents, each in its own worktree, paced to use the 5-hour window without hitting the limit. /autopilot off stops it for this repo; /autopilot off all stops it everywhere.
-        argument-hint: "[on|off|off all|all] [-repo=a,b,c]"
+        description: This CLI works the open tickets of its own repo (or -repo/-repos=A,B, or "all") through its own subagents, each in its own worktree, landing on main and closing the ticket, until none are left. /autopilot off stops it in this CLI; /autopilot off all in every CLI.
+        argument-hint: "[off|off all|all] [-repo=A,B | -repos=A,B]"
         ---
-        The user ran /autopilot $ARGUMENTS. MindAttic.Orchestrator's context gate has already recorded it; there is nothing for you to set up, and nothing for you to work on because of it.
+        The user ran /autopilot $ARGUMENTS in this CLI. MindAttic.Orchestrator's context gate has recorded it for this CLI only (no other CLI is affected), and while it's on, the repos named are this CLI's cross-repo exception so your subagents can work and close tickets there.
 
-        If the arguments start with "off": reply with one short line confirming autopilot is off for this CLI's repo (or the repos named; "off all": everywhere); agents already working finish their stories.
+        If the arguments start with "off": reply with one short line confirming autopilot is off in this CLI (with -repo/-repos, just for those repos; "off all": in every CLI). Subagents already working finish their tickets. Then end your turn.
 
-        Otherwise reply with one short line confirming autopilot is on for this CLI's own repo only (or, with -repo=, the repos named; with "all", every repo in the workspace that has open stories), alongside any other repos other CLIs turned it on for; name them. Then end your turn. From then on the orchestrator works each of those repos' next open story (manual priority first, then smallest effort) in background agents of their own, each in its own git worktree: no window, nothing typed into any CLI, so every tab and checkout stays free for you. As many run at once as each repo's session limit and the pace allow; each commits, closes its ticket and lands its work on main, then the next starts. New stories only start while the 5-hour pace can afford them and the pace gate slows running agents, so the window gets used without hitting the limit. Repos whose CLIs open later join in; an agent that ends without closing its ticket gives it back and you get a "Needs you"; /autopilot off starts nothing new.
+        Otherwise you work the tickets yourself, through subagents, now:
+        1. Run `orchestrator next --repos <the repos: the -repo/-repos list, "*" for all, or this CLI's own repo when none are named> --claim`. It claims the next workable tickets (fixes and tickets the user approved, in queue order, as many as the pace allows right now), makes each its own git worktree, and prints each ticket's id and a full prompt.
+        2. Start one subagent per ticket it printed, all in one message, each with exactly the prompt printed for it (a general-purpose subagent, in the foreground). Each works only in its worktree, commits, lands on the repo's main line and closes its ticket.
+        3. When they've returned, say in one line per ticket what happened, and go back to step 1.
+        4. Stop when `orchestrator next` hands out nothing (it says why: none left, waiting for approval, or the pace), and say so in one short line. Don't start anything else on your own. From then on the orchestrator works each of those repos' next open story (manual priority first, then smallest effort) in background agents of their own, each in its own git worktree: no window, nothing typed into any CLI, so every tab and checkout stays free for you. As many run at once as each repo's session limit and the pace allow; each commits, closes its ticket and lands its work on main, then the next starts. New stories only start while the 5-hour pace can afford them and the pace gate slows running agents, so the window gets used without hitting the limit. Repos whose CLIs open later join in; an agent that ends without closing its ticket gives it back and you get a "Needs you"; /autopilot off starts nothing new.
         """;
 
     internal const string CrossRepoCommand = """
@@ -180,12 +184,15 @@ public static class AgentGate
 
         # The one exception is explicit, per CLI and until it closes: /crossrepo <A,B|all> (the context gate writes the mark).
         def allowed_here():
+            # /crossrepo's repos, and the repos /autopilot is working in this CLI ("*" for all): its subagents edit and close there.
             pid = os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
-            mark = Path.home() / ".claude" / "session-context" / ("crossrepo-" + str(pid))
-            try:
-                return {r.strip().lower() for r in mark.read_text().split(",") if r.strip()} if pid else set()
-            except Exception:
-                return set()
+            found = set()
+            for kind in ("crossrepo-", "autopilot-"):
+                try:
+                    found |= {r.strip().lower() for r in (Path.home() / ".claude" / "session-context" / (kind + str(pid))).read_text().split(",") if r.strip()} if pid else set()
+                except Exception:
+                    pass
+            return {"all" if r == "*" else r for r in found}
 
         here = repo_of(data.get("cwd") or "")
         if here:
@@ -326,24 +333,20 @@ public static class AgentGate
         ASKS = re.compile(r"\b(shall i|should i|do you want|want me to|would you like|ready for me to|ok(?:ay)? to (?:start|continue|proceed|go)|"
                           r"let me know (?:if|when|whether)|(?:go ahead|proceed|continue|carry on|keep going)\?)", re.I)
 
-        def autopilot_on(repo):
-            # Only a repo /autopilot was turned on for (typed in its CLI, or -repo= / all): never a CLI you're just using.
+        def autopilot_repos(pid):
+            # What /autopilot typed in THIS CLI turned on (its repos, or "*"): it works them through its own subagents.
+            # Never another CLI's: one you're using is never pushed onto tickets because its repo was named elsewhere.
             try:
-                names = {n.strip().lower() for n in (DIR / "autopilot.order").read_text().split(",") if n.strip()}
+                return [n.strip() for n in (DIR / ("autopilot-" + str(pid))).read_text().split(",") if n.strip()] if pid else []
             except Exception:
-                return False
-            return "*" in names or repo.lower() in names
+                return []
 
-        def open_tickets(cwd):
-            # The repo checkout cwd is in (never an autopilot worktree: its agent works one ticket) and its open tickets,
-            # when /autopilot is on for it; otherwise keep-going leaves the CLI alone.
-            repo = repo_of(cwd, worktrees=False)
-            if not repo or not autopilot_on(repo):
-                return None, []
+        def workable(repos):
+            # The open fixes and approved tickets of repos ("*": every repo), in ticket order.
             try:
                 import sqlite3
                 db = sqlite3.connect(str(WS / "MindAttic.Workflow" / "data" / "workflow.db"))
-                rows = db.execute("SELECT id, type FROM tickets WHERE repo = ? COLLATE NOCASE AND status = 'open' ORDER BY ordinal", (repo,)).fetchall()
+                rows = db.execute("SELECT id, type, repo FROM tickets WHERE status = 'open' ORDER BY ordinal").fetchall()
                 db.close()
                 # Only fixes and tickets the user approved are work (orchestrator approve); the rest wait for their yes.
                 try:
@@ -351,11 +354,14 @@ public static class AgentGate
                     approved = {a.upper() for a in settings.get("Approved") or []}
                 except Exception:
                     approved = set()
-                return repo, [r[0] for r in rows if (r[1] or "").lower() == "fix" or r[0].upper() in approved]
+                named = {r.lower() for r in repos}
+                return [r[0] for r in rows if ("*" in named or (r[2] or "").lower() in named) and
+                        ((r[1] or "").lower() == "fix" or r[0].upper() in approved)]
             except Exception:
-                return repo, []
+                return []
 
-        def keep_going(repo, ids, sid, why, insisted, provider="Claude"):
+        def keep_going(repos, ids, sid, why, insisted, provider="Claude"):
+            repo = ", ".join(repos)
             # Logs it to keep-going.jsonl (the daemon reports it); the reason to give the agent, or None when it's let stop.
             try:
                 DIR.mkdir(parents=True, exist_ok=True)
@@ -366,10 +372,11 @@ public static class AgentGate
                 pass
             if insisted:
                 return None
-            return ("Don't stop: MindAttic.Orchestrator keeps development going without the user. " + repo + " still has " +
-                    str(len(ids)) + " open ticket" + ("" if len(ids) == 1 else "s") + " (" + ", ".join(ids[:6]) + ("..." if len(ids) > 6 else "") +
-                    "). Finish and commit the one you're on, then start the next and keep going. End your turn only when they're "
-                    "done or you're blocked on a decision only the user can make, and then say plainly what it is.")
+            return ("Don't stop: /autopilot is on in this CLI for " + repo + ", and " + str(len(ids)) + " workable ticket" +
+                    ("" if len(ids) == 1 else "s") + " remain (" + ", ".join(ids[:6]) + ("..." if len(ids) > 6 else "") + "). "
+                    "Run `orchestrator next --repos " + ",".join(repos) + " --claim` and hand each ticket it prints to a subagent with the "
+                    "prompt it prints (several at once, in one message), then repeat. End your turn only when it hands out nothing, "
+                    "or you're blocked on a decision only the user can make, and then say plainly what it is.")
 
         def orchestrator_status():
             # rl-status.json while the orchestrator keeps it fresh; {} when it's stale or someone else's.
@@ -456,6 +463,9 @@ public static class AgentGate
 
         {{{CliPid}}}
 
+        def my_pid():
+            return os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
+
         try:
             data = json.load(sys.stdin)
         except Exception:
@@ -465,13 +475,7 @@ public static class AgentGate
         # to them (their sessions aren't Claude's to cycle), and their own stop_hook_active guards the second stop.
         provider = sys.argv[1].capitalize() if len(sys.argv) > 1 else "Claude"
         if provider != "Claude":
-            said = str(data.get("last_assistant_message") or data.get("prompt_response") or "")
-            if KEEP_GOING and event in ("Stop", "AfterAgent") and ASKS.search(said[-500:]):
-                repo, ids = open_tickets(data.get("cwd") or "")
-                reason = keep_going(repo, ids, sid, "asked to go on", bool(data.get("stop_hook_active")), provider) if ids else None
-                if reason:
-                    print(json.dumps({"decision": "deny" if event == "AfterAgent" else "block", "reason": reason}))
-            sys.exit(0)
+            sys.exit(0)  # /autopilot runs in a Claude CLI; a Codex or Gemini CLI is never pushed onto tickets
         # Every running subagent has a mark, so the pace gate can hold new ones past the allowance.
         if event in ("SubagentStart", "SubagentStop"):
             if event == "SubagentStop":
@@ -512,10 +516,12 @@ public static class AgentGate
             why = None
             limits = orchestrator_status()
             # At the window's target nothing more may run, so a stop is never pushed back to work.
-            if KEEP_GOING and not limits.get("stop") and not state.get("goal") and not state.get("warned") and used < PERCENT:
-                why = "asked to go on" if ASKS.search(last_said(data)[-500:]) else "closed " + ", ".join(state["closed"]) if state.get("closed") else None
-            repo, ids = open_tickets(data.get("cwd") or "") if why else (None, [])
-            reason = keep_going(repo, ids, sid, why, insisted) if ids else None
+            # Only a CLI that typed /autopilot is kept going, on its own repos, while they have workable tickets.
+            repos = autopilot_repos(my_pid())
+            if repos and KEEP_GOING and not limits.get("stop") and not state.get("goal"):
+                why = "autopilot"
+            ids = workable(repos) if why else []
+            reason = keep_going(repos, ids, sid, why, insisted) if ids else None
             if reason and limits.get("wind_down_note"):
                 reason += " " + limits["wind_down_note"]
             if reason:
@@ -537,31 +543,37 @@ public static class AgentGate
             state.update(state="busy", at=now, warned=False, cwd=data.get("cwd"))
             typed = (data.get("prompt") or "").strip()
             prompt = typed.lower()
-            # /autopilot [on|off|this] [-repo=a,b]: every open repo CLI (or those repos' CLIs, or just this
-            # one's own repo with "this") works its own stories until off.
+            # /autopilot [off|all] [-repo|-repos=A,B]: THIS CLI works those repos' tickets through its own subagents (its own
+            # repo when none are named) until /autopilot off here. Nothing is marked for any other CLI.
             if prompt.startswith("/autopilot"):
-                # It acts on the CLI it's typed into: on (or off) for this CLI's own repo, added to (or taken from) what other
-                # CLIs turned on. -repo=A,B names repos instead; "all" is every repo with open stories; "off all" ends it everywhere.
-                order = DIR / "autopilot.order"
+                pid = my_pid()
+                mark = DIR / ("autopilot-" + str(pid))
                 args = typed[len("/autopilot"):].strip()
-                try:
-                    names = [n.strip() for n in order.read_text().split(",") if n.strip()] if order.exists() else []
-                except Exception:
-                    names = []
-                mine = repo_of(data.get("cwd") or "")  # a worktree's CLI is its repo's: "off" there mustn't mean off everywhere
+                names = autopilot_repos(pid)
+                mine = repo_of(data.get("cwd") or "")
                 m = re.search(r"-{1,2}repos?\s*[=:]?\s*\[?([^\]]*)\]?", args, re.I)
                 named = [r.strip() for r in m.group(1).replace(" ", ",").split(",") if r.strip() and r.strip().lower() not in ("on", "off", "this", "all")] if m else ([mine] if mine else [])
                 lower = {n.lower() for n in named}
                 if re.match(r"off\b", args, re.I):
-                    names = [] if re.match(r"off\s+all\b", args, re.I) or not named else [n for n in names if n.lower() not in lower]
+                    names = [] if re.match(r"off\s+all\b", args, re.I) or not m else [n for n in names if n.lower() not in lower]
                 elif re.match(r"all\b", args, re.I):
                     names = ["*"]
                 else:
                     names = [n for n in names if n != "*" and n.lower() not in lower] + named
-                if names:
-                    order.write_text(",".join(names))
-                elif order.exists():
-                    order.unlink()
+                try:
+                    (DIR / "autopilot.order").unlink()  # the old workspace-wide list: nothing reads it any more
+                except Exception:
+                    pass
+                if re.match(r"off\s+all\b", args, re.I):
+                    for other in DIR.glob("autopilot-*"):  # off everywhere: every CLI's
+                        try:
+                            other.unlink()
+                        except Exception:
+                            pass
+                if pid and names:
+                    mark.write_text(",".join(names))
+                elif mark.exists():
+                    mark.unlink()
             # /goal <condition> runs turn after turn until its condition holds; cycling would end it, so the session is
             # marked and left to Claude's own compaction until /goal clear (MAO-T93).
             if re.match(r"/goal\b", prompt):
