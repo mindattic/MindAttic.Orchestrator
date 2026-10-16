@@ -97,6 +97,53 @@ public sealed class HookScriptTests
             "past the longest hold it's refused, not let through");
     }
 
+    private void ClaudeReports(double percent, DateTime? resetUtc = null) =>
+        File.WriteAllText(Path.Combine(Claude, "claude-usage.json"), JsonSerializer.Serialize(new
+        {
+            rate_limits = new { five_hour = new { used_percentage = percent, resets_at = new DateTimeOffset(resetUtc ?? DateTime.UtcNow.AddHours(1)).ToUnixTimeSeconds() } },
+            at = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+        }));
+
+    [Test]
+    public void With_the_daemon_down_claudes_own_percent_still_stops_every_call_at_the_line()
+    {
+        // The orchestrator's file is 10 minutes old: its daemon died. Before M.ORCH-T167 that meant no pacing and no stop at all.
+        Status(new { stop = false }, at: DateTime.UtcNow.AddMinutes(-10));
+        var call = new { tool_name = "Read", tool_input = new { file_path = "x" } };
+
+        ClaudeReports(99);
+        using (var held = Run(AgentGate.ScriptName, call))
+        {
+            Assert.That(held.WaitForExit(7_000), Is.False, "Claude at 99% holds the call (then refuses it), daemon or not");
+            held.Kill();
+        }
+        Assert.That(File.ReadAllText(Path.Combine(Claude, AgentGate.ScriptName)), Does.Contain("claude_stop_note(own)"), "and refuses it saying why");
+
+        ClaudeReports(50);
+        Assert.That(Gate(call).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "below the line it runs");
+        ClaudeReports(99.5, resetUtc: DateTime.UtcNow.AddMinutes(-1));
+        Assert.That(Gate(call).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "a window that already reset doesn't stop anything");
+    }
+
+    [Test]
+    public void With_the_daemon_down_you_are_told_and_a_typed_prompt_at_claudes_own_line_is_answered_unsent()
+    {
+        object Prompt(string prompt) => new { hook_event_name = "UserPromptSubmit", session_id = "d1", prompt, cwd = ws };
+        Status(new { stop = false }, at: DateTime.UtcNow.AddMinutes(-12));
+
+        ClaudeReports(40);
+        var told = Gate(Prompt("carry on"), AgentGate.ContextScriptName).Output;
+        Assert.That(told, Does.Contain("systemMessage").And.Contain("12 min").And.Contain("isn't running"));
+        Assert.That(told, Does.Not.Contain("\"block\""));
+
+        ClaudeReports(99);
+        Assert.That(Gate(Prompt("fix the bug"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\"").And.Contain("no tokens were spent"));
+
+        Status(new { stop = false }); // the daemon is back
+        ClaudeReports(40);
+        Assert.That(Gate(Prompt("carry on"), AgentGate.ContextScriptName).Output, Does.Not.Contain("systemMessage"));
+    }
+
     [Test]
     public void At_the_stop_a_typed_prompt_is_answered_at_once_without_reaching_the_model_but_control_commands_go_through()
     {
@@ -270,7 +317,9 @@ public sealed class HookScriptTests
         Status(new { subagent_note = "Subagents: up to 3." });
         Assert.That(Gate(Prompt(), AgentGate.ContextScriptName).Output, Does.Contain("Subagents: up to 3."));
         Status(new { subagent_note = "Subagents: up to 3." }, at: DateTime.UtcNow.AddMinutes(-10));
-        Assert.That(Gate(Prompt(), AgentGate.ContextScriptName).Output, Is.Empty);
+        var stale = Gate(Prompt(), AgentGate.ContextScriptName).Output;
+        Assert.That(stale, Does.Not.Contain("Subagents: up to 3."), "a stale note isn't passed on");
+        Assert.That(stale, Does.Contain("isn't running"), "the stale file is reported as the daemon being down (M.ORCH-T167)");
     }
 
     [Test]

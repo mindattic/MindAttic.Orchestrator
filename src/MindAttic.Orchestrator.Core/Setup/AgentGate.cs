@@ -56,6 +56,43 @@ public static class AgentGate
             return None
         """;
 
+    /// <summary>
+    /// Python shared by both hooks (needs <c>json</c>, <c>time</c>, <c>datetime</c> and <c>Path</c>): the never-over line
+    /// without the orchestrator. While the daemon keeps <c>rl-status.json</c> fresh it decides the stop; if it dies or
+    /// stalls, the hooks used to treat the stale file as "no pacing", so nothing stopped a window passing the limit.
+    /// Claude Code's own 5-hour percent (the shared statusline saves it every minute) stands in, and a stale file is
+    /// reported as the daemon being down (M.ORCH-T167).
+    /// </summary>
+    internal static string ClaudeUsagePython => $$"""
+        STOP_PERCENT = {{StopPercent}}
+        def claude_stop():
+            # (percent, reset epoch) when Claude itself reports this window at the stop line; None otherwise.
+            try:
+                w = json.loads((Path.home() / ".claude" / "claude-usage.json").read_text())["rate_limits"]["five_hour"]
+                if float(w["used_percentage"]) >= STOP_PERCENT and float(w["resets_at"]) > time.time():
+                    return float(w["used_percentage"]), float(w["resets_at"])
+            except Exception:
+                pass
+            return None
+        def claude_stop_note(stop):
+            reset = datetime.fromtimestamp(stop[1]).strftime("%I:%M %p").lstrip("0")
+            return ("Claude reports " + str(int(stop[0])) + "% of the 5-hour window used and MindAttic.Orchestrator isn't running to pace it, "
+                    "so tool calls are refused until it resets at " + reset + ". End your turn now.")
+        def daemon_down():
+            # Seconds since the orchestrator last wrote rl-status.json, once that's past what the gates trust; else None.
+            try:
+                s = json.loads((Path.home() / ".claude" / "rl-status.json").read_text())
+                if s.get("source") != "MindAttic.Orchestrator":
+                    return None
+                age = time.time() - datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00")).timestamp()
+                return age if age > {{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}} else None
+            except Exception:
+                return None
+        """;
+
+    /// <summary>The percent of the 5-hour window at which every tool call is refused, whoever is counting.</summary>
+    public const int StopPercent = 99;
+
     /// <summary>Python shared by both hooks (needs <c>os</c> and <c>Path</c>): the workspace and which repo a folder is in,
     /// so the repo-window guard and keep-going can't disagree about it.</summary>
     private const string WorkspacePython = """
@@ -137,6 +174,8 @@ public static class AgentGate
         from pathlib import Path
 
         {{CliPid}}
+
+        {{ClaudeUsagePython}}
 
         STATUS = Path.home() / ".claude" / "rl-status.json"
         STALE = {{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}
@@ -283,12 +322,17 @@ public static class AgentGate
         # Never past the limit, whatever else is set (/unthrottle included): at the window's target a call is held as long
         # as a hook may wait, in case the reset or a lower count lifts it, then refused rather than let through.
         start = time.monotonic()
-        if status().get("stop"):
-            while time.monotonic() - start < MAX_HOLD and status().get("stop"):
+        # The orchestrator's stop, or Claude's own percent at the line: a dead daemon can't switch the stop off (M.ORCH-T167).
+        def stopped():
+            return bool(status().get("stop")) or claude_stop() is not None
+        if stopped():
+            while time.monotonic() - start < MAX_HOLD and stopped():
                 time.sleep(5)
-            if status().get("stop"):
+            if stopped():
                 gate_log("refused", time.monotonic() - start)
-                refuse(status().get("stop_note") or "The 5-hour window is at its target: tool calls are refused until it resets. End your turn now.")
+                own = claude_stop()
+                refuse(status().get("stop_note") or (claude_stop_note(own) if own else
+                       "The 5-hour window is at its target: tool calls are refused until it resets. End your turn now."))
 
         # /unthrottle exempts one CLI (its process, so subagents and /clear included) from holds until it closes.
         MARKS = Path.home() / ".claude" / "session-context"
@@ -487,6 +531,8 @@ public static class AgentGate
 
         {{{CliPid}}}
 
+        {{{ClaudeUsagePython}}}
+
         def my_pid():
             return os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
 
@@ -521,6 +567,9 @@ public static class AgentGate
             # At the window's stop a typed message is answered at once by this, not by the model: nothing is spent, so
             # the limit is never passed even by your own prompts. The orchestrator's control commands still go through.
             limits = orchestrator_status()
+            own = None if limits.get("stop") else claude_stop()
+            if own:
+                limits = dict(limits, stop=True, percent_used=own[0], reset_time=datetime.fromtimestamp(own[1]).strftime("%I:%M %p").lstrip("0"))
             if limits.get("stop") and not CONTROL.match((data.get("prompt") or "").strip()):
                 try:
                     DIR.mkdir(parents=True, exist_ok=True)
@@ -642,8 +691,16 @@ public static class AgentGate
             s = orchestrator_status()
             notes = [n for n in (s.get("subagent_note"), s.get("stop_note") or s.get("wind_down_note")) if n]
             state["wind_down_told"] = bool(s.get("wind_down_note") or s.get("stop_note"))
-            if notes:
-                print(json.dumps({"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": " ".join(notes)}}))
+            out = {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": " ".join(notes)}} if notes else {}
+            # A dead or stalled daemon is said to you, on every prompt, until it's back (M.ORCH-T167): nothing is paced
+            # meanwhile except Claude's own 99% stop.
+            down = daemon_down()
+            if down is not None:
+                out["systemMessage"] = ("MindAttic.Orchestrator hasn't updated the pace for " + str(int(down // 60)) + " min: its daemon "
+                    "isn't running, so agents aren't being paced (only Claude's own " + str(STOP_PERCENT) + "% stop still holds). "
+                    "Start it: C:\\Apps\\MindAttic.Orchestrator\\MindAttic.Orchestrator.exe")
+            if out:
+                print(json.dumps(out))
         elif event == "PostToolUse":
             touched = False
             if state.get("nudged") and not state.get("worked"):
