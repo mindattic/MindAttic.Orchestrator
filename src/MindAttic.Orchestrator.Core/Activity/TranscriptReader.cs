@@ -40,6 +40,9 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
     /// <summary>How many transcripts the last poll opened (for tests).</summary>
     internal int LastPollOpened { get; private set; }
 
+    /// <summary>The clock for the full check, hot files and cache saves (a seam for tests).</summary>
+    internal Func<DateTime> UtcNow { get; init; } = () => DateTime.UtcNow;
+
     private sealed class FileState
     {
         public long Offset;
@@ -88,7 +91,7 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
             return sessions = [];
         }
 
-        var now = DateTime.UtcNow;
+        var now = UtcNow();
         LastPollOpened = 0;
         var fullCheck = now - fullCheckUtc >= FullCheckEvery;
         if (fullCheck) fullCheckUtc = now;
@@ -129,7 +132,7 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
                     // Growth on a file we'd already read means "written just now"; the first read of a
                     // file (or of one restored from the cache) only tells us its history, so it keeps
                     // the directory's timestamp.
-                    var seen = grew && known ? DateTime.UtcNow : DateTime.MinValue;
+                    var seen = grew && known ? UtcNow() : DateTime.MinValue;
                     var lastWrite = new[] { state.LastWriteUtc, info.LastWriteTimeUtc, seen }.Max();
                     changed |= grew || lastWrite != state.LastWriteUtc || state.Restored;
                     state.LastWriteUtc = lastWrite;
@@ -149,7 +152,7 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
             dirty = changed = true;
         }
 
-        if (dirty && DateTime.UtcNow - savedUtc >= SaveEvery) SaveCache();
+        if (dirty && UtcNow() - savedUtc >= SaveEvery) SaveCache();
 
         if (!changed && sessions is not null) return sessions;
         Version++;
@@ -220,7 +223,7 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
     private void SaveCache()
     {
         dirty = false;
-        savedUtc = DateTime.UtcNow;
+        savedUtc = UtcNow();
         if (cachePath is null) return;
         var cache = new Cache(CacheVersion, countingSinceUtc, [.. files.Select(kv => new CachedFile(
             kv.Key, kv.Value.Offset, kv.Value.Cwd, kv.Value.SessionId, kv.Value.Model, kv.Value.TicketId, kv.Value.TicketType, kv.Value.LastWriteUtc,
