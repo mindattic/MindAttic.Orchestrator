@@ -339,7 +339,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         AnsiConsole.MarkupLine($"settings: {Markup.Escape(Path.Combine(store.Directory, "settings.json"))}");
         AnsiConsole.MarkupLine($"  max sessions {s.MaxConcurrentSessions} · provider {Markup.Escape(s.DefaultProvider)} · autopilot " +
             (order is null ? "off (type /autopilot in any CLI)" : !s.Autopilot ? "[yellow]paused[/] (--autopilot true resumes)"
-                : order.Count == 0 ? "[green]on[/] for every open repo CLI" : $"[green]on[/] for the CLIs in {Markup.Escape(string.Join(", ", order))}") +
+                : order.Count == 0 ? "[green]on[/] for every open repo CLI"
+                : order.Contains(Autopilot.AllRepos) ? "[green]on[/] for every repo with open stories" : $"[green]on[/] for the CLIs in {Markup.Escape(string.Join(", ", order))}") +
             (s.AutopilotSkip.Count > 0 ? $", skipping {Markup.Escape(string.Join(", ", s.AutopilotSkip))}" : "") +
             $", leaving a repo to you {(s.AutopilotHandMinutes > 0 ? $"until its CLI has been idle {s.AutopilotHandMinutes} min" : "only while its CLI is mid-turn")}" +
             (s.KeepGoing ? " · CLIs keep going through their open tickets without asking" : " · CLIs may stop to ask between tickets"));

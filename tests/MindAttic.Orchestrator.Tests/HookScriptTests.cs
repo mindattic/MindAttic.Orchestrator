@@ -166,6 +166,8 @@ public sealed class HookScriptTests
         Assert.That(File.ReadAllText(Path.Combine(Marks, "autopilot.order")), Is.EqualTo("a,b"));
         Gate(Prompt("/autopilot this"), AgentGate.ContextScriptName);
         Assert.That(File.ReadAllText(Path.Combine(Marks, "autopilot.order")), Is.Empty, "the workspace root is no repo of its own");
+        Gate(Prompt("/autopilot all"), AgentGate.ContextScriptName);
+        Assert.That(File.ReadAllText(Path.Combine(Marks, "autopilot.order")), Is.EqualTo(MindAttic.Orchestrator.Scheduling.Autopilot.AllRepos));
         Gate(Prompt("/autopilot off"), AgentGate.ContextScriptName);
         Assert.That(File.Exists(Path.Combine(Marks, "autopilot.order")), Is.False);
     }

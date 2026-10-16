@@ -79,7 +79,10 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         Working = [.. store.LoadAssignments().Where(a => a.Log is not null && a.Pilot is not null && IsRunning(a))];
 
         // Repos with an open Claude CLI (agents' own sessions aside), or the ones named.
+        // "/autopilot all" (order "*"): every repo in the workspace with an open story, CLI open or not.
+        var everyRepo = order?.Contains(AllRepos) == true;
         var repos = order is null ? []
+            : everyRepo ? snapshot.Repos.Where(r => r.Path.Length > 0 && !r.Name.StartsWith('(') && r.OpenTickets.Count > 0).ToList()
             : order.Count > 0 ? snapshot.Repos.Where(r => r.Path.Length > 0 && order.Contains(r.Name, StringComparer.OrdinalIgnoreCase)).ToList()
             : sessions.Load().Where(s => s.Pid is { } p && Alive(p) && !IsAgent(p))
                 .Select(s => RepoFor(s.Cwd, snapshot)).OfType<RepoStatus>()
@@ -98,7 +101,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         }
         LeftAlone = alone;
         Repos =[.. repos.Select(r => r.Name).Order(StringComparer.OrdinalIgnoreCase)];
-        if (order is { Count: > 0 } && order.Where(n => !snapshot.Repos.Any(r => Same(r.Name, n))).ToList() is { Count: > 0 } unknown)
+        if (order is { Count: > 0 } && !everyRepo && order.Where(n => !snapshot.Repos.Any(r => Same(r.Name, n))).ToList() is { Count: > 0 } unknown)
             Tell("unknown", $"autopilot: no repo named {string.Join(", ", unknown)} in the workspace");
 
         Paused = !settings.Autopilot ? "autopilot is switched off"
@@ -279,6 +282,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     }
 
     private const string NeedsYouPrefix = "autopilot: needs you: ";
+
+    /// <summary>The order <c>/autopilot all</c> writes: every repo with open stories.</summary>
+    public const string AllRepos = "*";
 
     /// <summary>The alert text when <paramref name="line"/> is one of <see cref="Tick"/>'s "needs you" lines; null for any other
     /// (a started line can carry "needs you" inside its ticket summary).</summary>

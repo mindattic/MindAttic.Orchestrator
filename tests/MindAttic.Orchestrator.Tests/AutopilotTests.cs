@@ -52,6 +52,34 @@ public sealed class AutopilotTests
     }
 
     [Test]
+    public void Autopilot_all_works_every_repo_with_open_stories_whether_or_not_a_cli_is_open()
+    {
+        order = [Autopilot.AllRepos];
+        Cli(100, @"D:\W\A", busy: true); // A's own CLI is being worked by hand
+        var snap = Snap(("A", [T("A-T1")]), ("B", [T("B-T1")]), ("C", []));
+        var pilot = Pilot();
+
+        var said = pilot.Tick(Paced(snap, 10), snap, new() { WorktreeRoot = @"D:\WT" }, Now);
+
+        Assert.That(started.Select(s => s.Dir), Is.EqualTo(new[] { @"D:\WT\B\B-T1" }), "B has no CLI open and still gets an agent; A is yours; C has nothing open");
+        Assert.That(pilot.Repos, Is.EqualTo(new[] { "B" }));
+        Assert.That(said, Has.None.Contains("no repo named"));
+    }
+
+    [Test]
+    public void Past_the_wind_down_line_only_a_story_with_an_estimate_that_fits_starts()
+    {
+        Cli(100, @"D:\W\A");
+        var snap = Snap(("A", [T("A-T1")]));
+        var winding = Paced(snap, 5);
+        winding = winding with { Pace = winding.Pace! with { WindDown = true } };
+
+        Pilot().Tick(winding, snap, new(), Now);
+
+        Assert.That(started, Is.Empty, "no estimate yet: it might not finish before the stop");
+    }
+
+    [Test]
     public void Only_a_line_that_is_a_needs_you_line_raises_the_alert()
     {
         Assert.That(Autopilot.NeedsYou("autopilot: needs you: A-T1's agent in A ended"), Is.EqualTo("A-T1's agent in A ended"));
