@@ -985,5 +985,32 @@
                 </TextBlock>
             </DockPanel>
         </Border>
+
+        <!-- Covers every row until the first refresh lands (M.ORCH-T184). -->
+        <Border x:Name="Loader" Grid.RowSpan="5" Panel.ZIndex="100" Background="{StaticResource McChrome}"
+                Visibility="{Binding IsLoading, Converter={StaticResource Visible}}"
+                AutomationProperties.Name="Loading the dashboard" AutomationProperties.LiveSetting="Polite">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Ellipse Width="44" Height="44" StrokeThickness="4" Stroke="{StaticResource McAccent}"
+                         StrokeDashArray="6 4" StrokeDashCap="Round" RenderTransformOrigin="0.5,0.5" HorizontalAlignment="Center">
+                    <Ellipse.RenderTransform>
+                        <RotateTransform />
+                    </Ellipse.RenderTransform>
+                    <Ellipse.Triggers>
+                        <EventTrigger RoutedEvent="Loaded">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                     From="0" To="360" Duration="0:0:1.2" RepeatBehavior="Forever" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                    </Ellipse.Triggers>
+                </Ellipse>
+                <TextBlock Margin="0,16,0,0" FontSize="15" HorizontalAlignment="Center" Text="Loading the workspace…" />
+                <TextBlock Style="{StaticResource Muted}" Margin="0,4,0,0" HorizontalAlignment="Center"
+                           Text="Reading every repo's sessions, tickets and usage" />
+            </StackPanel>
+        </Border>
     </Grid>
 </Window>

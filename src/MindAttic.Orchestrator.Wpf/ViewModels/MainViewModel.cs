@@ -155,6 +155,12 @@ public sealed partial class MainViewModel : ObservableObject
     public IReadOnlyList<string> Warnings => snapshot?.Warnings ?? [];
     public bool HasWarnings => Warnings.Count > 0;
 
+    private bool isLoading = true;
+
+    /// <summary>True until the first refresh finishes, either way (a failure shows in RefreshInfo): the full-screen
+    /// loader covers the dashboard until then, so it never shows empty or half-filled panels (M.ORCH-T184).</summary>
+    public bool IsLoading { get => isLoading; private set => Set(ref isLoading, value); }
+
     public async Task RefreshAsync()
     {
         if (refreshing) return;
@@ -175,7 +181,11 @@ public sealed partial class MainViewModel : ObservableObject
             RefreshInfo = $"Refresh failed: {ex.Message}";
             OrchestratorLog.For("Dashboard").Error(ex, "refresh failed");
         }
-        finally { refreshing = false; }
+        finally
+        {
+            refreshing = false;
+            IsLoading = false;
+        }
     }
 
     private void Apply(Snapshot next)
