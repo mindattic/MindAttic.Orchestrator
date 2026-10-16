@@ -122,7 +122,7 @@ public sealed class AutopilotTests
         Git(repo, "config", "user.email", "t@t");
         Git(repo, "config", "user.name", "t");
         Directory.CreateDirectory(Path.Combine(repo, "docs"));
-        File.WriteAllText(Path.Combine(repo, "docs", "USER_STORIES.md"), "| ID | Date | Type | Status | Summary | Ref |\n| X-T1 | 2026-10-15 | fix | open | s | |\n");
+        File.WriteAllText(Path.Combine(repo, "docs", "USER_STORIES.md"), "| ID | Date | Type | Status | Summary | Ref |\n| X-T1 | 2026-10-15 | fix | open | s | |\n| X-T2 | 2026-10-15 | fix | closed | s | done |\n");
         Git(repo, "add", "-A");
         Git(repo, "commit", "-q", "-m", "start");
         Git(repo, "remote", "add", "origin", origin);
@@ -139,7 +139,7 @@ public sealed class AutopilotTests
         Assert.That(Dispatcher.EnsureWorktree(repo, tree, Dispatcher.BranchFor("X-T1")).Ok, Is.True);
         Assert.That(File.Exists(Path.Combine(tree, "mine.txt")), Is.False, "the agent starts from origin/master, not your branch");
         Git(repo, "checkout", "-q", "master");
-        File.WriteAllText(Path.Combine(tree, "docs", "USER_STORIES.md"), "| ID | Date | Type | Status | Summary | Ref |\n| X-T1 | 2026-10-15 | fix | closed | s | done |\n");
+        File.WriteAllText(Path.Combine(tree, "docs", "USER_STORIES.md"), "| ID | Date | Type | Status | Summary | Ref |\n| X-T1 | 2026-10-15 | fix | closed | s | done |\n| X-T2 | 2026-10-15 | fix | closed | s | done |\n");
         Git(tree, "commit", "-q", "-am", "X-T1 done");
         var a = new Assignment("X-T1", "X", tree, "Claude", Now, true);
 
@@ -149,6 +149,14 @@ public sealed class AutopilotTests
         Assert.That(closed, Is.True, note);
         Assert.That(note, Does.Contain("up to date"), "your checkout on master is fast-forwarded");
         Assert.That(Directory.Exists(tree), Is.False, "the worktree is removed");
+
+        // A worktree that was never on an orch/<id> branch, whose ticket is closed and whose work is on master, is landed
+        // (found live: 35 such worktrees were reported unlanded because orch/<id> didn't exist).
+        var other = Path.Combine(dir, "wt", "X-T2");
+        Git(repo, "worktree", "add", "-q", "-b", "a-name-the-agent-chose", other, "origin/master");
+        var (otherLanded, otherNote) = Autopilot.LandOnMain(new Assignment("X-T2", "X", other, "Claude", Now, true), repo);
+        Assert.That(otherLanded, Is.True, otherNote);
+        Assert.That(Directory.Exists(other), Is.False);
     }
 
     [Test]

@@ -322,8 +322,13 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             }
         }
         var note = "";
-        // Closed but never landed: its commits are only on its branch, so it isn't done.
-        if (closed && Dispatcher.Git(repoPath, "merge-base", "--is-ancestor", Dispatcher.BranchFor(a.TicketId), $"origin/{mainline}").Code != 0)
+        // Closed but never landed: its commits are only on its branch, so it isn't done. Judged by where the worktree
+        // itself stands, not by an orch/<id> branch it may never have been on (found live: 35 worktrees whose work was all
+        // on master were reported unlanded because that branch didn't exist).
+        var landed = Directory.Exists(a.Directory)
+            ? Dispatcher.Git(a.Directory, "merge-base", "--is-ancestor", "HEAD", $"origin/{mainline}").Code == 0
+            : Dispatcher.Git(repoPath, "merge-base", "--is-ancestor", Dispatcher.BranchFor(a.TicketId), $"origin/{mainline}").Code == 0;
+        if (closed && !landed)
             return (false, $"; it closed its ticket but its branch {Dispatcher.BranchFor(a.TicketId)} isn't on {mainline}; the work is in {a.Directory}");
         if (closed && Dispatcher.Git(repoPath, "rev-parse", "--abbrev-ref", "HEAD").Output.Trim() == mainline)
             note += Dispatcher.Git(repoPath, "merge", "--ff-only", "-q", $"origin/{mainline}").Code == 0
