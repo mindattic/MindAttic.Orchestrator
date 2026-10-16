@@ -42,10 +42,11 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
             : await sessions.WaitForHostAsync(directory, before, SubmitTimeout) is not null);
 
         var assignment = new Assignment(item.Id, item.Repo, directory, provider, DateTime.UtcNow, useWorktree);
-        var all = store.LoadAssignments();
-        all.RemoveAll(a => a.TicketId == item.Id);
-        all.Add(assignment);
-        store.SaveAssignments(all);
+        store.UpdateAssignments(all =>
+        {
+            all.RemoveAll(a => a.TicketId == item.Id);
+            all.Add(assignment);
+        });
 
         var where = useWorktree ? $"worktree {directory} (branch {BranchFor(item.Id)})" : item.Repo;
         return new Result(true, $"Opened {provider} on {item.Id} in {where}. " + (!submit
@@ -56,8 +57,7 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
     /// <summary>Drops an assignment (the ticket returns to the queue). Never touches the worktree.</summary>
     public void Release(string ticketId)
     {
-        var all = store.LoadAssignments();
-        if (all.RemoveAll(a => a.TicketId == ticketId) > 0) store.SaveAssignments(all);
+        store.UpdateAssignments(all => all.RemoveAll(a => a.TicketId == ticketId));
     }
 
     /// <summary>Removes a finished assignment's worktree. git refuses if it has uncommitted changes,

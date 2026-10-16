@@ -71,6 +71,51 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void At_the_windows_target_a_call_is_refused_even_from_an_unthrottled_cli()
+    {
+        Status(new { stop = true, stop_note = "At the target until 9:50 PM. End your turn now." });
+        Directory.CreateDirectory(Marks);
+        File.WriteAllText(Path.Combine(Marks, "unthrottled-4242"), "x");
+        // MAX_HOLD is 300s; the test shortens nothing, so it only checks the call is still held well past a normal delay.
+        using var held = Run(AgentGate.ScriptName, new { tool_name = "Read", tool_input = new { file_path = "x" } });
+        Assert.That(held.WaitForExit(7_000), Is.False, "held, not let through");
+        held.Kill();
+
+        Status(new { stop = false });
+        Assert.That(Gate(new { tool_name = "Read", tool_input = new { file_path = "x" } }).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "lifted: runs at once");
+        Assert.That(File.ReadAllText(Path.Combine(Claude, AgentGate.ScriptName)), Does.Contain("refuse(status().get(\"stop_note\")"),
+            "past the longest hold it's refused, not let through");
+    }
+
+    [Test]
+    public void Wind_down_is_told_at_the_turn_and_once_mid_turn_and_a_stop_is_never_pushed_back_to_work()
+    {
+        Status(new { wind_down_note = "Past 90%: finish or file it." });
+        Assert.That(Gate(new { hook_event_name = "UserPromptSubmit", session_id = "w1", prompt = "go", cwd = ws }, AgentGate.ContextScriptName).Output,
+            Does.Contain("Past 90%"));
+
+        Status(new { });
+        Gate(new { hook_event_name = "UserPromptSubmit", session_id = "w2", prompt = "go", cwd = ws }, AgentGate.ContextScriptName);
+        Status(new { wind_down_note = "Past 90%: finish or file it." });
+        object Tool() => new { hook_event_name = "PostToolUse", session_id = "w2", cwd = ws, tool_input = new { command = "ls" } };
+        Assert.That(Gate(Tool(), AgentGate.ContextScriptName).Output, Does.Contain("Past 90%"), "crossed mid-turn");
+        Assert.That(Gate(Tool(), AgentGate.ContextScriptName).Output, Is.Empty, "once");
+
+        var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(db)!);
+        using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
+            "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal)'); " +
+            "d.execute(\"insert into tickets values('USS-T1','UnitySolarSystem','open',1)\"); d.commit()", db }, UseShellExecute = false })!)
+            mk.WaitForExit(20_000);
+        var uss = Path.Combine(ws, "UnitySolarSystem");
+        object Asking(string sid) => new { hook_event_name = "Stop", session_id = sid, cwd = uss, last_assistant_message = "Shall I start the next one?" };
+        Status(new { });
+        Assert.That(Gate(Asking("w3"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\""), "open tickets: told to carry on");
+        Status(new { stop = true });
+        Assert.That(Gate(Asking("w4"), AgentGate.ContextScriptName).Output, Is.Empty, "at the target, a stop is let stop");
+    }
+
+    [Test]
     public void A_new_subagent_counts_the_daemons_live_subagents_not_marks_whose_stop_never_came()
     {
         var sub = Path.Combine(Marks, "subagents");

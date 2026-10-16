@@ -47,6 +47,20 @@ public sealed record Pace(
     /// <summary>Subagents running when the allowance was worked out.</summary>
     public int Subagents { get; init; }
 
+    /// <summary>The window is at its target or a limit: nothing more may be spent before the reset. The pace gate then
+    /// refuses tool calls (every CLI, /unthrottle included) rather than letting a held call through, so usage never
+    /// passes the limit, whatever the hold settings.</summary>
+    public bool Stop { get; init; }
+
+    /// <summary>The window is past <see cref="Pacer.WindDownShare"/> of its limit: agents start only what they can finish
+    /// before the stop, and file what they can't as a ticket; autopilot starts only stories whose estimate fits.</summary>
+    public bool WindDown { get; init; }
+
+    public string WindDownNote => !WindDown || Stop ? "" :
+        $"The {Governing ?? "5-hour"} window is past {Pacer.WindDownShare:P0} of its limit" + (ResetUtc is { } r ? $" (resets {r.ToLocalTime():h:mm tt})" : "") +
+        ", and work stops outright at the target. Don't start anything you can't finish before then. If the task you're on " +
+        "won't finish, commit what's done, file the rest as a ticket (workflow ticket new --type <type> --summary \"...\"), and /quicksave.";
+
     /// <summary>What agents are told about the allowance at the start of each turn.</summary>
     public string SubagentNote => SubagentAllowance switch
     {
@@ -76,6 +90,9 @@ public static class Pacer
 {
     private static readonly TimeSpan Bucket = TimeSpan.FromMinutes(10);
 
+    /// <summary>Past this share of the 5-hour limit, only work that can finish before the stop starts.</summary>
+    public const double WindDownShare = 0.90;
+
     /// <param name="recentDelaySeconds">The agent delay averaged over the recent-rate window (see
     /// <see cref="RateLimitStatusWriter.AgentDelay"/>): what the measured rate was slowed by.</param>
     /// <param name="subagents">Subagents running now across every CLI (the context gate's SubagentStart/Stop marks).</param>
@@ -92,7 +109,7 @@ public static class Pacer
             return new Pace(PaceMode.Over, 0, 0, recent, null, name, until,
                 $"At the {name} limit until {Clock(until)}.",
                 $"At the {name} limit until {Clock(until)}. Finish the current step and stop at a clean point.")
-            { SubagentAllowance = 0, Subagents = subagents };
+            { SubagentAllowance = 0, Subagents = subagents, Stop = true };
         }
 
         var windows = new List<(string Name, long Limit, long Used, DateTime ResetUtc)>();
@@ -112,7 +129,7 @@ public static class Pacer
             return new Pace(PaceMode.Over, 0, 0, recent, null, spent.Name, spent.ResetUtc,
                 $"Past the {spent.Name} limit until {Clock(spent.ResetUtc)}.",
                 $"Past the {spent.Name} limit until {Clock(spent.ResetUtc)}. Finish the current step and stop at a clean point.")
-            { AgentDelaySeconds = AgentDelay(b.ControlFreshPerHour, 0, recentDelaySeconds, s), SubagentAllowance = 0, Subagents = subagents };
+            { AgentDelaySeconds = AgentDelay(b.ControlFreshPerHour, 0, recentDelaySeconds, s), SubagentAllowance = 0, Subagents = subagents, Stop = true };
 
         var target = Math.Clamp(s.PaceTargetPercent, 1, 100) / 100.0;
         var (gov, sustainable) = windows
@@ -155,6 +172,8 @@ public static class Pacer
         {
             RoomTokens = room, AgentDelaySeconds = delay, SubagentAllowance = allowance, Subagents = subagents,
             SpareSessions = SpareSessions(sustainable, demand, perSession),
+            Stop = sustainable <= 0,
+            WindDown = windows.Any(w => w.Used >= w.Limit * WindDownShare),
         };
     }
 

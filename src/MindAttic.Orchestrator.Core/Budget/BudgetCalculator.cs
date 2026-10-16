@@ -293,6 +293,15 @@ public sealed class RateLimitStatusWriter(string? path = null)
         {
             body["pace"] = pace.Key;
             if (pace.Advise) body["pace_note"] = pace.AgentNote;
+            // pace-gate.py refuses tool calls while this is set (after holding them its longest), so nothing passes the limit.
+            if (pace.Stop)
+            {
+                body["stop"] = true;
+                body["stop_note"] = $"The {pace.Governing ?? "5-hour"} window is at its target" +
+                    (pace.ResetUtc is { } r ? $" until {Clock(r)}" : "") + "; no more tokens are spent before the reset, so tool calls are refused. " +
+                    "End your turn now with one short line saying where you stopped; your uncommitted work stays where it is.";
+            }
+            else if (pace.WindDown) body["wind_down_note"] = pace.WindDownNote;
             // pace-gate.py holds a new subagent while this many run; context-gate.py tells each turn.
             if (pace.SubagentAllowance is { } allowed)
             {

@@ -233,6 +233,39 @@ public sealed class PacerTests
     }
 
     [Test]
+    public void Past_90_percent_the_window_winds_down_and_at_its_target_everything_stops()
+    {
+        var s = new OrchestratorSettings { BlockBudget = 1_000 };
+        var early = Pace(10.5, 1, s, E(10, 500));
+        Assert.That((early.WindDown, early.Stop, early.WindDownNote), Is.EqualTo((false, false, "")));
+
+        var late = Pace(10.5, 1, s, E(10, 920));
+        Assert.That((late.WindDown, late.Stop), Is.EqualTo((true, false)));
+        Assert.That(late.WindDownNote, Does.Contain("90%").And.Contains("workflow ticket new").And.Contains("/quicksave"));
+
+        var spent = Pace(10.5, 1, s, E(10, 990));
+        Assert.That(spent.Stop, Is.True, "99% is the target: nothing more is spent");
+        Assert.That(Pace(10.5, 1, s with { ThrottleAgents = false }, E(10, 990)).Stop, Is.True, "holds off or not, the stop stands");
+        Assert.That(Pace(10.5, 1, s, E(10, 1_200)).Stop, Is.True, "past the limit");
+
+        var path = Path.Combine(Path.GetTempPath(), "rl-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var (b, _) = Budget(10.5, s, E(10, 990));
+            new RateLimitStatusWriter(path).Write(b, spent);
+            using var doc = JsonDocument.Parse(File.ReadAllText(path));
+            Assert.That(doc.RootElement.GetProperty("stop").GetBoolean(), Is.True);
+            Assert.That(doc.RootElement.GetProperty("stop_note").GetString(), Does.Contain("End your turn"));
+
+            var (b2, _) = Budget(10.5, s, E(10, 920));
+            new RateLimitStatusWriter(path).Write(b2, late);
+            using var doc2 = JsonDocument.Parse(File.ReadAllText(path));
+            Assert.That((doc2.RootElement.TryGetProperty("stop", out _), doc2.RootElement.GetProperty("wind_down_note").GetString()), Is.EqualTo((false, late.WindDownNote)));
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Test]
     public void The_pace_gate_refuses_a_search_of_a_whole_drive_and_lets_a_folder_search_through()
     {
         // Found live: two orphaned `find /` runs held 660k handles and froze the desktop.

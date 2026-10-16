@@ -26,6 +26,8 @@ hitting the session limit, and never stalling on a full context. Pick what runs;
 | Claude's count | 5-hour percent and reset straight from Claude Code, sized safely | `~/.claude/claude-usage.json` |
 | Pacing | caps new sessions so the window lands on 99% at its reset; the week is never paced | `rl-status.json` → `pace` |
 | Holding agents | every Claude CLI and subagent waits before each tool call while the draw won't last, 0s once it fits | `~/.claude/pace-gate.py` (PreToolUse hook) |
+| Wind-down | past 90% of the 5-hour window each turn is told (once more mid-turn if it crosses the line) to start only what it can finish before the stop, and to commit, file the rest as a ticket and `/quicksave` if its task won't finish; autopilot starts only stories whose cost estimate fits what's left | `rl-status.json` → `wind_down_note` |
+| Never over | at the 99% target (or a limit) the status says `stop`: every tool call, in every CLI and `/unthrottle`d ones too, is held as long as a hook may wait and then refused, so usage can't pass the limit whatever the hold settings; keep-going lets those turns end, and autopilot gives a stopped agent's story back to start again after the reset (its work stays in its worktree) | `rl-status.json` → `stop`, `stop_note` |
 | Subagent allowance | how many subagents may run at once across every CLI, worked out live from the pace (up to 16); each turn is told it, and a new subagent past it waits (counted as the daemon's live count plus any started since, so a subagent whose stop never arrived doesn't hold the rest) | `rl-status.json` → `subagent_allowance`, `subagents_running`; `settings --max-subagents 16` |
 | Unthrottle | `/unthrottle` exempts one CLI (its process, subagents and `/clear` included) from every hold until it closes; its usage still counts, so the others absorb it; `/throttle` ends it | `~/.claude/session-context/unthrottled-<pid>` |
 | Repo windows | a CLI opened in a repo works only that repo: `pace-gate.py` refuses edits to another repo's files, `workflow ticket close`/`correct` on another repo's tickets, and `git -C <other repo>` changes. Filing a ticket in another repo (`workflow ticket new --repo X`) is always allowed, since that's how work is handed over. The workspace-root (General) CLI may work anywhere; `/crossrepo A,B` (or `all`) lets one CLI into other repos until it closes, `/crossrepo off` ends it | `~/.claude/pace-gate.py`; `~/.claude/session-context/crossrepo-<pid>` |
@@ -273,7 +275,8 @@ Every 30 seconds it samples the machine (kernel handles, commit charge, free RAM
 a warn line it alerts with the worst offenders and autopilot starts no agents; past a danger line it also
 reaps the worst agent-spawned offender. Every 60 seconds it reaps tool processes (`find`, `rg`, `grep`,
 `git`, `bash`, `python`, `node`) left orphaned when their agent exited, and ones still under an agent that
-pass 50,000 handles or 30 minutes. Git and `gh` calls made inside its loop give up after 2 minutes and
+pass 50,000 handles or 30 minutes. An orphan is only reaped if an earlier scan saw it (or the shell it ran
+in) under a live Claude CLI, so a dev server or script you started yourself is never touched. Git and `gh` calls made inside its loop give up after 2 minutes and
 1 minute and never wait on a credential prompt, so a network stall can't stop pacing.
 
 **Dashboard extras.** A tray icon shows budget, pace and who needs you; its menu opens the dashboard,
@@ -311,7 +314,8 @@ files across repos, clusters them, and suggests a home (`mindattic-agent-standar
 - Building a workspace clones the repos; it doesn't install the other apps (Launcher etc.; MAO-T44).
   The repo list is only as current as the last `workspace export` that was pushed.
 - No hold lasts past 5 minutes per tool call (a subagent waiting on the allowance included): past it the call
-  goes ahead, held but never refused. `/unthrottle` exempts a CLI from holds entirely.
+  goes ahead, held but never refused, except at the window's target, where it's refused. `/unthrottle` exempts
+  a CLI from holds, never from that stop.
 - A hold slows tool calls, not a long reply with no tool calls in it. Codex needs a one-time "trust
   this hook" click in its own TUI the first time its hold fires on a machine; nothing automates that.
 - Context cycling can't reach Claude desktop-app sessions (no console to type into); they get an alert.

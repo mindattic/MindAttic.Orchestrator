@@ -186,6 +186,36 @@ public sealed class JsonStore(string? directory = null)
     public void SaveSettings(OrchestratorSettings s) => Save("settings", s);
     public List<Assignment> LoadAssignments() => Load<List<Assignment>>("assignments");
     public void SaveAssignments(List<Assignment> a) => Save("assignments", a);
+
+    /// <summary>Loads, changes and saves the assignments under a lock every process takes (the daemon's autopilot, a
+    /// dashboard's Dispatch, the CLI), so one's save never drops what another added in between.</summary>
+    public void UpdateAssignments(Action<List<Assignment>> change) => Update("assignments", change);
+
+    public void Update<T>(string name, Action<T> change) where T : new()
+    {
+        System.IO.Directory.CreateDirectory(Directory);
+        using var held = Lock(name);
+        var value = Load<T>(name);
+        change(value);
+        Save(name, value);
+    }
+
+    /// <summary>An exclusive lock file beside <paramref name="name"/>; null past a few seconds (go ahead unlocked rather than
+    /// stall a refresh behind a stuck holder).</summary>
+    private FileStream? Lock(string name)
+    {
+        var path = PathOf(name) + ".lock";
+        var until = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        while (true)
+        {
+            try { return new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                if (DateTime.UtcNow >= until) return null;
+                Thread.Sleep(25);
+            }
+        }
+    }
     public bool HasLimits => File.Exists(PathOf("limits"));
     public List<Budget.LimitObservation> LoadLimits() => Load<List<Budget.LimitObservation>>("limits");
     public void SaveLimits(List<Budget.LimitObservation> o) => Save("limits", o);

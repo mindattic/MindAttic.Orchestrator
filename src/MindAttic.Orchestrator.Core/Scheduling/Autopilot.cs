@@ -134,7 +134,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                     break;
                 }
                 var next = plan.Queue.FirstOrDefault(q => Same(q.Repo, repo.Name) && !q.IsAssigned && q.BlockedBy.Count == 0 &&
-                    !parked.Contains(q.Id) && !taken.Contains(q.Id) && !(room is { } left && q.Estimate is { } e && e.Fresh > left));
+                    !parked.Contains(q.Id) && !taken.Contains(q.Id) && !(room is { } left && q.Estimate is { } e && e.Fresh > left) &&
+                    // Past the wind-down line only a story known to fit what's left starts: one that can't finish before the stop waits for the reset.
+                    !(plan.Pace is { WindDown: true } && q.Estimate is null));
                 if (next is null)
                 {
                     if (inRepo == 0)
@@ -170,10 +172,12 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 more--;
                 inRepo++;
                 told.Remove(repo.Name);
-                var all = store.LoadAssignments();
-                all.RemoveAll(a => a.TicketId == next.Id);
-                all.Add(new Assignment(next.Id, next.Repo, tree, Providers.Claude, nowUtc, true) { Pilot = pid, PilotStartedUtc = StartTimeOf(pid), Log = log });
-                store.SaveAssignments(all);
+                var started = new Assignment(next.Id, next.Repo, tree, Providers.Claude, nowUtc, true) { Pilot = pid, PilotStartedUtc = StartTimeOf(pid), Log = log };
+                store.UpdateAssignments(all =>
+                {
+                    all.RemoveAll(a => a.TicketId == next.Id);
+                    all.Add(started);
+                });
                 said.Add($"autopilot: started {next.Id} in {repo.Name} in the background: {next.Ticket.Summary} (log {log})");
             }
         }
@@ -223,22 +227,24 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// </summary>
     private void Reap(SchedulePlan plan, Snapshot snapshot, List<string> said)
     {
-        var all = store.LoadAssignments();
-        var gone = all.Where(a => a.Log is not null && !(a.Pilot is not null && IsRunning(a))).ToList();
+        var gone = store.LoadAssignments().Where(a => a.Log is not null && !(a.Pilot is not null && IsRunning(a))).ToList();
         if (gone.Count == 0) return;
         foreach (var a in gone)
         {
-            all.Remove(a);
             // The repo's own checkout, from the snapshot: the queue has no item for a repo whose last open story this was.
             var repoPath = snapshot.Repos.FirstOrDefault(r => r.Path.Length > 0 && Same(r.Name, a.Repo))?.Path
                 ?? plan.Queue.FirstOrDefault(q => Same(q.Repo, a.Repo))?.RepoPath ?? a.Directory;
             var (closed, note) = a.Worktree ? Land(a, repoPath) : (!plan.Queue.Any(q => q.Id == a.TicketId), "");
-            if (!closed) parked.Add(a.TicketId);
+            // Halted by the window's stop, it didn't fail: its work stays in its worktree and it carries on after the reset.
+            var halted = !closed && plan.Pace is { Stop: true };
+            if (!closed && !halted) parked.Add(a.TicketId);
             said.Add(closed
                 ? $"autopilot: finished {a.TicketId} in {a.Repo}{note}"
+                : halted ? $"autopilot: {a.TicketId}'s agent in {a.Repo} stopped at the window's target; it starts again after the reset{note}"
                 : $"{NeedsYouPrefix}{a.TicketId}'s agent in {a.Repo} ended without closing it, so autopilot leaves it for you (it's back in the queue); see {a.Log}{note}");
         }
-        store.SaveAssignments(all);
+        // Landing runs git for a while; only what was reaped is removed, under the lock, so a Dispatch meanwhile survives.
+        store.UpdateAssignments(all => all.RemoveAll(gone.Contains));
     }
 
     /// <summary>Whether a worktree agent's ticket landed closed on origin/main, after tidying up; and what to add about it.</summary>

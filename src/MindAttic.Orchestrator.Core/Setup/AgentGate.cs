@@ -245,14 +245,22 @@ public static class AgentGate
                 "or use the Glob/Grep tools with a path."))))
             raise SystemExit(0)
 
-        # /unthrottle exempts one CLI (its process, so subagents and /clear included) until it closes.
+        # Never past the limit, whatever else is set (/unthrottle included): at the window's target a call is held as long
+        # as a hook may wait, in case the reset or a lower count lifts it, then refused rather than let through.
+        start = time.monotonic()
+        if status().get("stop"):
+            while time.monotonic() - start < MAX_HOLD and status().get("stop"):
+                time.sleep(5)
+            if status().get("stop"):
+                refuse(status().get("stop_note") or "The 5-hour window is at its target: tool calls are refused until it resets. End your turn now.")
+
+        # /unthrottle exempts one CLI (its process, so subagents and /clear included) from holds until it closes.
         MARKS = Path.home() / ".claude" / "session-context"
         if MARKS.exists() and any(MARKS.glob("unthrottled-*")):
             pid = cli_pid()
             if pid is not None and (MARKS / ("unthrottled-" + str(pid))).exists():
                 raise SystemExit(0)
 
-        start = time.monotonic()
         # A new subagent waits while the allowance the pace works out is used up (all CLIs together); the
         # wait counts toward the same MAX_HOLD, and past it the subagent starts anyway: held, never refused.
         if tool in ("Agent", "Task"):
@@ -337,6 +345,15 @@ public static class AgentGate
                     str(len(ids)) + " open ticket" + ("" if len(ids) == 1 else "s") + " (" + ", ".join(ids[:6]) + ("..." if len(ids) > 6 else "") +
                     "). Finish and commit the one you're on, then start the next and keep going. End your turn only when they're "
                     "done or you're blocked on a decision only the user can make, and then say plainly what it is.")
+
+        def orchestrator_status():
+            # rl-status.json while the orchestrator keeps it fresh; {} when it's stale or someone else's.
+            try:
+                s = json.loads((Path.home() / ".claude" / "rl-status.json").read_text())
+                age = (datetime.now(timezone.utc) - datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00"))).total_seconds()
+                return s if s.get("source") == "MindAttic.Orchestrator" and age <= {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}} else {}
+            except Exception:
+                return {}
 
         def goal_finished(transcript, goal):
             # A /goal ends on its own once its condition holds: the session's last entry is then the stop summary naming it
@@ -443,10 +460,14 @@ public static class AgentGate
             used = load(DIR / (sid + ".json")).get("used_percentage") or 0
             insisted = state.get("nudged") and not state.get("worked")
             why = None
-            if KEEP_GOING and not state.get("goal") and not state.get("warned") and used < PERCENT:
+            limits = orchestrator_status()
+            # At the window's target nothing more may run, so a stop is never pushed back to work.
+            if KEEP_GOING and not limits.get("stop") and not state.get("goal") and not state.get("warned") and used < PERCENT:
                 why = "asked to go on" if ASKS.search(last_said(data)[-500:]) else "closed " + ", ".join(state["closed"]) if state.get("closed") else None
             repo, ids = open_tickets(data.get("cwd") or "") if why else (None, [])
             reason = keep_going(repo, ids, sid, why, insisted) if ids else None
+            if reason and limits.get("wind_down_note"):
+                reason += " " + limits["wind_down_note"]
             if reason:
                 state.update(nudged=True, worked=False)
                 state.pop("closed", None)
@@ -507,14 +528,12 @@ public static class AgentGate
                         mark.write_text(now)
                     elif mark.exists():
                         mark.unlink()
-            # Each turn starts knowing how many subagents the pace allows right now.
-            try:
-                s = json.loads((Path.home() / ".claude" / "rl-status.json").read_text())
-                fresh = (datetime.now(timezone.utc) - datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00"))).total_seconds() <= {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}}
-                if s.get("source") == "MindAttic.Orchestrator" and fresh and s.get("subagent_note"):
-                    print(json.dumps({"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": s["subagent_note"]}}))
-            except Exception:
-                pass
+            # Each turn starts knowing how many subagents the pace allows right now, and whether the window is winding down.
+            s = orchestrator_status()
+            notes = [n for n in (s.get("subagent_note"), s.get("stop_note") or s.get("wind_down_note")) if n]
+            state["wind_down_told"] = bool(s.get("wind_down_note") or s.get("stop_note"))
+            if notes:
+                print(json.dumps({"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": " ".join(notes)}}))
         elif event == "PostToolUse":
             touched = False
             if state.get("nudged") and not state.get("worked"):
@@ -527,14 +546,22 @@ public static class AgentGate
                 touched = True
             if touched:
                 save(state_file, state)
+            said = []
+            # A turn that crosses the window's wind-down line (a long autopilot run has only the one prompt) hears it once.
+            if not state.get("wind_down_told"):
+                s = orchestrator_status()
+                if s.get("wind_down_note"):
+                    state["wind_down_told"] = True
+                    said.append(s["wind_down_note"])
             used = load(DIR / (sid + ".json")).get("used_percentage") or 0
-            if state.get("warned") or used < PERCENT or state.get("goal"):
+            if not (state.get("warned") or used < PERCENT or state.get("goal")):
+                state["warned"] = True
+                said.append("Context is " + str(used) + "% full. Finish the step you're on, let running subagents finish and "
+                    "start no new ones, then end your turn with a short status. The orchestrator will /quicksave, "
+                    "/clear and /quickload this session so the work carries on with a fresh context.")
+            if not said:
                 sys.exit(0)
-            state["warned"] = True
-            print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext":
-                "Context is " + str(used) + "% full. Finish the step you're on, let running subagents finish and "
-                "start no new ones, then end your turn with a short status. The orchestrator will /quicksave, "
-                "/clear and /quickload this session so the work carries on with a fresh context."}}))
+            print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": " ".join(said)}}))
         else:
             sys.exit(0)
         save(state_file, state)

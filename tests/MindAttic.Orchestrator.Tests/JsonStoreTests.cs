@@ -52,6 +52,16 @@ public sealed class JsonStoreTests
     }
 
     [Test]
+    public void Assignments_changed_at_once_by_several_writers_all_survive()
+    {
+        // A dashboard's Dispatch and the daemon's autopilot each loaded, changed and saved: one dropped the other's (MAO-T119).
+        Parallel.For(0, 24, i => new JsonStore(dir).UpdateAssignments(all =>
+            all.Add(new Assignment($"X-T{i}", "X", @"D:\W\X", "Claude", DateTime.UtcNow, true))));
+        Assert.That(new JsonStore(dir).LoadAssignments().Select(a => a.TicketId), Is.EquivalentTo(Enumerable.Range(0, 24).Select(i => $"X-T{i}")));
+        Assert.That(Directory.GetFiles(dir).Select(Path.GetFileName), Is.EqualTo(new[] { "assignments.json" }), "the lock file goes with its holder");
+    }
+
+    [Test]
     public void The_lease_is_one_holders_at_a_time_and_names_it()
     {
         using var first = new MindAttic.Orchestrator.Scheduling.DispatchLease(dir);
