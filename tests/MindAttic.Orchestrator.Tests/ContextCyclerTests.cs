@@ -126,8 +126,9 @@ public sealed class ContextCyclerTests
             Python($"""
                 import sqlite3
                 d = sqlite3.connect(r"{Path.Combine(data, "workflow.db")}")
-                d.execute("CREATE TABLE tickets (id TEXT PRIMARY KEY, repo TEXT, status TEXT, ordinal INTEGER)")
-                d.executemany("INSERT INTO tickets VALUES (?, ?, ?, ?)", [("A-T1", "A", "closed", 1), ("A-T2", "A", "open", 2), ("A-T3", "A", "open", 3)])
+                d.execute("CREATE TABLE tickets (id TEXT PRIMARY KEY, repo TEXT, status TEXT, ordinal INTEGER, type TEXT)")
+                d.executemany("INSERT INTO tickets VALUES (?, ?, ?, ?, ?)", [("A-T1", "A", "closed", 1, "fix"), ("A-T2", "A", "open", 2, "fix"),
+                    ("A-T3", "A", "open", 3, "fix"), ("A-T4", "A", "open", 4, "feature")])
                 d.commit()
                 """);
             Setup.AgentGate.Ensure(dir);

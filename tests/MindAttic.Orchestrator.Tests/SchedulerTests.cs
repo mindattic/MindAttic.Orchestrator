@@ -9,7 +9,8 @@ namespace MindAttic.Orchestrator.Tests;
 
 public sealed class SchedulerTests
 {
-    private static Ticket T(string id, string type = "feature", string date = "2026-10-01") =>
+    // Fixes need no approval, so they're what these scheduling tests use unless the type itself matters.
+    private static Ticket T(string id, string type = "fix", string date = "2026-10-01") =>
         new(id, date, type, "open", $"summary of {id}", "");
 
     private static RepoStatus Repo(string name, RepoState state, params Ticket[] open) =>
@@ -24,11 +25,28 @@ public sealed class SchedulerTests
         var snap = Snap(null,
             Repo("A", RepoState.Dormant, T("A-T1", "docs", "2026-01-01"), T("A-T2", "fix", "2026-09-01")),
             Repo("B", RepoState.Dormant, T("B-T1", "feature", "2026-02-01"), T("B-T2", "fix", "2026-08-01")));
-        var settings = new OrchestratorSettings { Priorities = new() { ["A-T1"] = 5 } };
+        var settings = new OrchestratorSettings { Priorities = new() { ["A-T1"] = 5 }, Approved = ["A-T1", "B-T1"] };
 
         var plan = Scheduler.Plan(snap, settings, []);
 
         Assert.That(plan.Queue.Select(q => q.Id), Is.EqualTo(new[] { "A-T1", "B-T2", "A-T2", "B-T1" }));
+    }
+
+    [Test]
+    public void Only_fixes_and_approved_tickets_are_work_and_the_rest_wait_for_your_yes()
+    {
+        var snap = Snap(null, Repo("A", RepoState.Dormant, T("A-T1", "feature"), T("A-T2", "fix"), T("A-T3", "chore"), T("A-T4", "docs")));
+
+        var waiting = Scheduler.Plan(snap, new OrchestratorSettings(), []);
+        Assert.That(waiting.Queue.Select(q => q.Id), Is.EqualTo(new[] { "A-T2" }), "a fix needs no approval");
+        Assert.That(waiting.AwaitingApproval.Select(q => q.Id), Is.EqualTo(new[] { "A-T1", "A-T3", "A-T4" }));
+
+        var approved = Scheduler.Plan(snap, new OrchestratorSettings { Approved = ["a-t3"] }, []);
+        Assert.That(approved.Queue.Select(q => q.Id), Is.EquivalentTo(new[] { "A-T2", "A-T3" }), "approved, in any case");
+
+        var running = Scheduler.Plan(snap, new OrchestratorSettings(),
+            [new Assignment("A-T1", "A", @"D:\W\A", "Claude", DateTime.UtcNow, true) { Pilot = 1, Log = "x" }]);
+        Assert.That(running.Queue.Select(q => q.Id), Does.Contain("A-T1"), "one already being worked stays tracked");
     }
 
     [Test]

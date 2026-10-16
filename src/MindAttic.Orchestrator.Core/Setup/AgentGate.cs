@@ -335,9 +335,15 @@ public static class AgentGate
             try:
                 import sqlite3
                 db = sqlite3.connect(str(WS / "MindAttic.Workflow" / "data" / "workflow.db"))
-                rows = db.execute("SELECT id FROM tickets WHERE repo = ? COLLATE NOCASE AND status = 'open' ORDER BY ordinal", (repo,)).fetchall()
+                rows = db.execute("SELECT id, type FROM tickets WHERE repo = ? COLLATE NOCASE AND status = 'open' ORDER BY ordinal", (repo,)).fetchall()
                 db.close()
-                return repo, [r[0] for r in rows]
+                # Only fixes and tickets the user approved are work (orchestrator approve); the rest wait for their yes.
+                try:
+                    settings = json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "settings.json").read_text())
+                    approved = {a.upper() for a in settings.get("Approved") or []}
+                except Exception:
+                    approved = set()
+                return repo, [r[0] for r in rows if (r[1] or "").lower() == "fix" or r[0].upper() in approved]
             except Exception:
                 return repo, []
 

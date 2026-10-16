@@ -449,7 +449,7 @@ public sealed class PacerTests
 
     // ── Scheduler and status file ───────────────────────────────────────────
 
-    private static Ticket T(string id) => new(id, "2026-10-01", "feature", "open", $"summary of {id}", "");
+    private static Ticket T(string id) => new(id, "2026-10-01", "fix", "open", $"summary of {id}", "");
 
     private static RepoStatus Repo(string name, RepoState state, params Ticket[] open) =>
         new(name, $@"D:\W\{name}", state, [], [], open, null, default);

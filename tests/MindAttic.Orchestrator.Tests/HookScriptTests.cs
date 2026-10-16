@@ -139,8 +139,8 @@ public sealed class HookScriptTests
         var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
         Directory.CreateDirectory(Path.GetDirectoryName(db)!);
         using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
-            "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal)'); " +
-            "d.execute(\"insert into tickets values('USS-T1','UnitySolarSystem','open',1)\"); d.commit()", db }, UseShellExecute = false })!)
+            "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal,type)'); " +
+            "d.execute(\"insert into tickets values('USS-T1','UnitySolarSystem','open',1,'fix')\"); d.commit()", db }, UseShellExecute = false })!)
             mk.WaitForExit(20_000);
         var uss = Path.Combine(ws, "UnitySolarSystem");
         File.WriteAllText(Path.Combine(Marks, "autopilot.order"), "UnitySolarSystem"); // keep-going acts only where /autopilot is on

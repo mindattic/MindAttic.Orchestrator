@@ -10,7 +10,7 @@ public sealed class PlanningTests
 {
     private static readonly DateTime Now = new(2026, 10, 14, 12, 0, 0, DateTimeKind.Utc);
 
-    private static Ticket T(string id, string summary = "work", string date = "2026-10-10", string type = "feature") =>
+    private static Ticket T(string id, string summary = "work", string date = "2026-10-10", string type = "fix") =>
         new(id, date, type, "open", summary, "");
 
     private static RepoStatus Repo(string name, RepoState state, params Ticket[] open) =>

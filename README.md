@@ -129,6 +129,7 @@ The same core drives a CLI (`dotnet run --project src/MindAttic.Orchestrator.Cli
 | `daemon [--interval 15]` | keep the budget file and pace fresh, cycle context, and run autopilot without the dashboard open |
 | `settings [--max-sessions n] [--autopilot false] [--throttle-agents true] [--max-delay 300] [--max-subagents 16] [--provider Claude\|Codex\|Gemini\|Kimi] [--stale-hours 12] [--quiet 22:00-07:00] [--repo-cap Repo=40] [--repo-sessions Repo=3] [--autopilot-skip A,B] [--hand-minutes 15] [--keep-going false] [--groom-days 30] [--notify URL] [--github-intake true]` | scheduler settings |
 | `audit [--latest]` | convention drift and cross-repo duplication |
+| `approve [<ID> ...] [--undo]` | only fixes are worked without asking; every other open ticket (feature, chore, docs) waits outside the queue, and for autopilot and keep-going, until you approve it. With no ids it lists what's waiting |
 | `block <ID> --by <ID> [--clear]` / `reserve <ID> <tokens>` | make a ticket wait for others (or clear what it waits for); set tokens aside for a ticket. Ticket ids may be typed in any case |
 | `dryrun` | what `/autopilot` would start right now, without starting anything |
 | `show <ID> [--diff]` | a ticket end to end: its row, the sessions dispatched on it, and the commits that mention it |

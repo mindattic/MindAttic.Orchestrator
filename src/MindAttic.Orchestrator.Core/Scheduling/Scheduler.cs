@@ -58,6 +58,9 @@ public sealed record SchedulePlan(
 
     /// <summary>Old open tickets nobody is on: re-prioritize them, or close them as wont-do.</summary>
     public IReadOnlyList<QueueItem> Groom { get; init; } = [];
+
+    /// <summary>Open tickets that aren't fixes and that you haven't approved: never proposed or started until you do.</summary>
+    public IReadOnlyList<QueueItem> AwaitingApproval { get; init; } = [];
 }
 
 /// <summary>
@@ -94,8 +97,15 @@ public static partial class Scheduler
         var groomBefore = settings.GroomAfterDays > 0
             ? DateOnly.FromDateTime(snapshot.TakenUtc.ToLocalTime().AddDays(-settings.GroomAfterDays))
             : DateOnly.MinValue;
+        // Only fixes and tickets you approved are work; the rest wait for your yes outside the queue (one already
+        // being worked stays, so its agent is still tracked).
+        var awaiting = snapshot.Repos
+            .SelectMany(r => r.OpenTickets.Where(t => !settings.MayWork(t) && !assigned.ContainsKey(t.Id))
+                .Select(t => new QueueItem(r.Name, r.Path, t, settings.Priorities.GetValueOrDefault(t.Id), null, false)))
+            .OrderBy(q => q.Repo, StringComparer.OrdinalIgnoreCase).ThenBy(q => q.Ticket.Number ?? int.MaxValue)
+            .ToList();
         var queue = snapshot.Repos
-            .SelectMany(r => r.OpenTickets.Select(t => new QueueItem(
+            .SelectMany(r => r.OpenTickets.Where(t => settings.MayWork(t) || assigned.ContainsKey(t.Id)).Select(t => new QueueItem(
                 r.Name, r.Path, t,
                 settings.Priorities.GetValueOrDefault(t.Id),
                 assigned.GetValueOrDefault(t.Id),
@@ -221,6 +231,7 @@ public static partial class Scheduler
         {
             Cap = cap, Pace = pace, Stale = [.. queue.Where(q => q.IsStale)], TooBig = tooBig,
             Groom = [.. queue.Where(q => q.Old && q.Assignment is null)],
+            AwaitingApproval = awaiting,
         };
     }
 

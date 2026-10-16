@@ -84,7 +84,7 @@ public sealed class TicketCostTests
             Costs = new TicketCosts([.. Enumerable.Range(1, 3).SelectMany(i => new[] { S($"X-T{i}", "feature", "X", 9_000), S($"Y-T{i}", "fix", "Y", 500) })]),
         };
 
-        var plan = Scheduler.Plan(snap, new OrchestratorSettings(), []);
+        var plan = Scheduler.Plan(snap, new OrchestratorSettings { Approved = ["A-T9"] }, []);
 
         Assert.That(plan.TooBig.Single().Id, Is.EqualTo("A-T9"));
         Assert.That(plan.Proposals.Single().Item.Id, Is.EqualTo("B-T9"));

@@ -26,6 +26,7 @@ app.Configure(config =>
     config.AddCommand<SettingsCommand>("settings").WithDescription("Show or change scheduler settings.");
     config.AddCommand<AuditCommand>("audit").WithDescription("Find drift in shared agent files and code duplicated across repos.");
     config.AddCommand<BlockCommand>("block").WithDescription("Make a ticket wait for others (--by X-T1), or --clear it.");
+    config.AddCommand<ApproveCommand>("approve").WithDescription("Approve tickets for work (fixes need none); with no ids, list what's waiting for your yes. --undo takes it back.");
     config.AddCommand<ReserveCommand>("reserve").WithDescription("Set aside tokens for a ticket so background work can't spend them first (0 releases).");
     config.AddCommand<DryRunCommand>("dryrun").WithDescription("Show what /autopilot would start right now, without starting anything.");
     config.AddCommand<ShowCommand>("show").WithDescription("A ticket end to end: its row, the sessions that worked on it, and its commits (--diff for the full diff).");

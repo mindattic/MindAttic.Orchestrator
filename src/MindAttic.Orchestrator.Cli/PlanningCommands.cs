@@ -48,6 +48,44 @@ internal sealed class BlockCommand : Command<BlockCommand.Settings>
     }
 }
 
+/// <summary>Only fixes are worked without asking; any other ticket waits for your yes here.</summary>
+internal sealed class ApproveCommand : Command<ApproveCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandArgument(0, "[TICKETS]")]
+        [Description("Ticket ids to approve; none lists every ticket waiting for approval.")]
+        public string[] Tickets { get; init; } = [];
+
+        [CommandOption("--undo")]
+        [Description("Take the approval back: the tickets wait again (one already started finishes).")]
+        public bool Undo { get; init; }
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        if (settings.Tickets.Length == 0)
+        {
+            var (_, _, _, plan) = Ctx.Load();
+            AnsiConsole.MarkupLine($"{plan.AwaitingApproval.Count} tickets wait for your approval (fixes need none):");
+            foreach (var q in plan.AwaitingApproval)
+                AnsiConsole.MarkupLine($"  [bold]{Markup.Escape(q.Id)}[/] {Markup.Escape(q.Repo)} ({Markup.Escape(q.Ticket.Type)}): {Markup.Escape(q.Ticket.Summary)}");
+            AnsiConsole.MarkupLine("[grey]orchestrator approve <ID> [[<ID> ...]] lets them be worked.[/]");
+            return 0;
+        }
+        var store = new JsonStore();
+        var ids = settings.Tickets.Select(Ctx.Id).ToList();
+        var s = store.LoadSettings();
+        var approved = s.Approved.Where(a => !ids.Contains(a, StringComparer.OrdinalIgnoreCase)).ToList();
+        if (!settings.Undo) approved.AddRange(ids);
+        store.SaveSettings(s with { Approved = approved });
+        AnsiConsole.MarkupLine(Markup.Escape(settings.Undo
+            ? $"{string.Join(", ", ids)} wait for approval again."
+            : $"{string.Join(", ", ids)} approved: they join the queue in their order."));
+        return 0;
+    }
+}
+
 internal sealed class ReserveCommand : Command<ReserveCommand.Settings>
 {
     public sealed class Settings : CommandSettings

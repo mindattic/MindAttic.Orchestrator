@@ -101,6 +101,14 @@ public sealed record OrchestratorSettings
     /// <summary>Repos <c>/autopilot</c> never starts agents in, even when named or their CLI is open.</summary>
     public List<string> AutopilotSkip { get; init; } = [];
 
+    /// <summary>Tickets you approved for work (<c>orchestrator approve</c>). Fixes need no approval; any other open
+    /// ticket waits outside the queue until it's here, so no agent works a feature you didn't ask for.</summary>
+    public List<string> Approved { get; init; } = [];
+
+    /// <summary>Whether <paramref name="ticket"/> may be worked: a fix, or one you approved.</summary>
+    public bool MayWork(MindAttic.Workflow.Tickets.Ticket ticket) =>
+        ticket.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) || Approved.Contains(ticket.Id, StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Open tickets older than this many days with nobody on them are listed for grooming. 0 means never.</summary>
     public int GroomAfterDays { get; init; } = 30;
 
