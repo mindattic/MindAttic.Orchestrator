@@ -26,7 +26,9 @@ public sealed class HookScriptTests
     [TearDown]
     public void TearDown() => Directory.Delete(dir, recursive: true);
 
-    private Process Run(string script, object input, params string[] args)
+    private Process Run(string script, object input, params string[] args) => Run(script, input, null, args);
+
+    private Process Run(string script, object input, IDictionary<string, string>? env, params string[] args)
     {
         var psi = new ProcessStartInfo("python") { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
         psi.ArgumentList.Add("-I");
@@ -36,6 +38,7 @@ public sealed class HookScriptTests
         psi.Environment["APPDATA"] = dir; // the orchestrator's settings (approvals) come from here, never this machine's
         psi.Environment["MINDATTIC_CLI_PID"] = Cli.ToString(); // as one CLI process, never the one running these tests
         psi.Environment["MINDATTIC_WORKSPACE"] = ws;
+        foreach (var (k, v) in env ?? new Dictionary<string, string>()) psi.Environment[k] = v;
         var p = Process.Start(psi)!;
         p.StandardInput.Write(JsonSerializer.Serialize(input));
         p.StandardInput.Close();
@@ -50,6 +53,45 @@ public sealed class HookScriptTests
         Assert.That(p.WaitForExit(30_000), Is.True);
         return (output, clock.Elapsed);
     }
+
+    /// <summary>The pace gate with MINDATTIC_MAX_HOLD at <paramref name="maxHold"/> seconds, so the longest hold ends in seconds.</summary>
+    private (string Output, TimeSpan Took) GateHeld(object input, int maxHold)
+    {
+        var clock = Stopwatch.StartNew();
+        using var p = Run(AgentGate.ScriptName, input, MaxHold(maxHold));
+        var output = p.StandardOutput.ReadToEnd();
+        Assert.That(p.WaitForExit(30_000), Is.True);
+        return (output, clock.Elapsed);
+    }
+
+    /// <summary>MINDATTIC_MAX_HOLD, so a hold that would last the full 300s ends (and is refused) in seconds.</summary>
+    private static Dictionary<string, string>? MaxHold(int? seconds) =>
+        seconds is { } s ? new() { ["MINDATTIC_MAX_HOLD"] = s.ToString() } : null;
+
+    /// <summary>Starts the gate, then after <paramref name="after"/> rewrites rl-status.json while the gate is waiting.</summary>
+    private (string Output, TimeSpan Took) GateWhile(object input, TimeSpan after, Action change, int? maxHold = null)
+    {
+        var clock = Stopwatch.StartNew();
+        using var p = Run(AgentGate.ScriptName, input, MaxHold(maxHold));
+        var read = p.StandardOutput.ReadToEndAsync();
+        Assert.That(p.WaitForExit((int)after.TotalMilliseconds), Is.False, "still held when the file changes");
+        change();
+        Assert.That(p.WaitForExit(30_000), Is.True);
+        return (read.Result, clock.Elapsed);
+    }
+
+    private void Tickets(params (string Id, string Repo)[] rows)
+    {
+        var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(db)!);
+        var values = string.Join(",", rows.Select(r => $"('{r.Id}','{r.Repo}','open',1,'fix')"));
+        using var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
+            "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal,type)'); " +
+            $"d.execute(\"insert into tickets values{values}\"); d.commit()", db }, UseShellExecute = false })!;
+        Assert.That(mk.WaitForExit(20_000), Is.True);
+    }
+
+    private static readonly object ReadCall = new { tool_name = "Read", tool_input = new { file_path = "x" } };
 
     private string[] GateLog()
     {
@@ -480,5 +522,85 @@ public sealed class HookScriptTests
         Assert.That(KeepGoingLines(), Is.Empty);
         Assert.That(Directory.GetFiles(Marks, "*.state.json"), Is.Empty);
         Assert.That(Stopped("c2", "Shall I go on?"), Does.Contain("\"block\""), "the same stop from the Claude CLI is");
+    }
+
+    [Test]
+    public void A_hold_ends_early_when_rl_status_is_lowered_mid_wait()
+    {
+        Status(new { pace_delay_seconds = 60 });
+        var (output, took) = GateWhile(ReadCall, TimeSpan.FromSeconds(2), () => Status(new { pace_delay_seconds = 0 }));
+        Assert.That(output, Is.Empty, "let through, not refused");
+        Assert.That(took, Is.LessThan(TimeSpan.FromSeconds(15)), "the file is re-read while waiting: a 60s hold lowered to 0 ends within a poll");
+        Assert.That(GateLog().Single(), Does.Contain("\"decision\": \"held\""), "the part it did wait is on the record");
+    }
+
+    [Test]
+    public void A_stop_lifted_mid_wait_lets_the_call_through_and_one_that_lasts_past_max_hold_is_refused()
+    {
+        Status(new { stop = true, stop_note = "At the target until 9:50 PM. End your turn now." });
+        var (output, took) = GateWhile(ReadCall, TimeSpan.FromSeconds(2), () => Status(new { stop = false }));
+        Assert.That(output, Is.Empty, "lifted mid-wait: let through");
+        Assert.That(took, Is.LessThan(TimeSpan.FromSeconds(15)));
+        Assert.That(GateLog(), Has.None.Contains("refused"));
+
+        Status(new { stop = true, stop_note = "At the target until 9:50 PM. End your turn now." });
+        var (refused, longest) = GateHeld(ReadCall, 2);
+        Assert.That(refused, Does.Contain("\"deny\"").And.Contain("9:50 PM"), "still at the stop past the longest hold: refused with the daemon's note");
+        Assert.That(longest, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(1.9)).And.LessThan(TimeSpan.FromSeconds(15)), "held for MAX_HOLD first");
+        Assert.That(GateLog().Last(), Does.Contain("\"decision\": \"refused\""));
+    }
+
+    [Test]
+    public void An_unthrottled_cli_skips_the_pace_delay_but_not_the_stop()
+    {
+        Directory.CreateDirectory(Marks);
+        File.WriteAllText(Path.Combine(Marks, $"unthrottled-{Cli}"), "x");
+        Status(new { pace_delay_seconds = 60 });
+        Assert.That(Gate(ReadCall).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "this CLI is exempt from the pace hold");
+
+        File.Delete(Path.Combine(Marks, $"unthrottled-{Cli}"));
+        File.WriteAllText(Path.Combine(Marks, "unthrottled-1"), "x");
+        using (var held = Run(AgentGate.ScriptName, ReadCall))
+        {
+            Assert.That(held.WaitForExit(5_000), Is.False, "another CLI's /unthrottle doesn't exempt this one");
+            held.Kill();
+        }
+
+        File.WriteAllText(Path.Combine(Marks, $"unthrottled-{Cli}"), "x");
+        Status(new { stop = true, pace_delay_seconds = 60 });
+        Assert.That(GateHeld(ReadCall, 2).Output, Does.Contain("\"deny\""), "the stop holds and refuses it all the same");
+    }
+
+    [Test]
+    public void A_stale_status_never_holds_an_agent_call()
+    {
+        Directory.CreateDirectory(Path.Combine(Marks, "subagents"));
+        foreach (var m in new[] { "a1", "a2", "a3" }) File.WriteAllText(Path.Combine(Marks, "subagents", m), "");
+        var agent = new { tool_name = "Agent", tool_input = new { prompt = "x" } };
+        Status(new { subagent_allowance = 1, subagents_running = 3, pace_delay_seconds = 60 }, at: DateTime.UtcNow.AddMinutes(-10));
+        var (output, took) = Gate(agent);
+        Assert.That(output, Is.Empty);
+        Assert.That(took, Is.LessThan(TimeSpan.FromSeconds(10)), "a full allowance and a long delay from a file nobody refreshes hold nothing");
+
+        Status(new { subagent_allowance = 1, subagents_running = 3 }); // the same numbers, fresh: it waits
+        using var held = Run(AgentGate.ScriptName, agent);
+        Assert.That(held.WaitForExit(5_000), Is.False);
+        held.Kill();
+    }
+
+    [Test]
+    public void The_repo_window_guard_looks_up_a_closes_first_ticket_argument_in_the_workflow_db()
+    {
+        Tickets(("U.SPC-T1", "UnitySolarSystem"), ("M.WF-T7", "MindAttic.Workflow"));
+        var uss = Path.Combine(ws, "UnitySolarSystem");
+        object Bash(string command) => new { tool_name = "Bash", tool_input = new { command }, cwd = uss };
+
+        Assert.That(Gate(Bash("workflow ticket close M.WF-T7 --ref abc123")).Output,
+            Does.Contain("\"deny\"").And.Contain("belongs to MindAttic.Workflow"), "no --repo: the db says whose ticket it is");
+        Assert.That(Gate(Bash("cd x && workflow ticket close M.WF-T7 --ref abc")).Output, Does.Contain("\"deny\""), "as any segment of a command");
+        Assert.That(Gate(Bash("workflow ticket close U.SPC-T1 --ref M.WF-T7 --summary 'like M.WF-T7'")).Output, Is.Empty,
+            "this repo's own ticket; the IDs in --ref and --summary are just text");
+        Assert.That(Gate(Bash("workflow ticket correct M.WF-T7 --summary x")).Output, Does.Contain("\"deny\""), "correct is looked up the same way");
+        Assert.That(Gate(Bash("workflow ticket close X.NOPE-T1 --ref x")).Output, Is.Empty, "a ticket the db doesn't know isn't refused");
     }
 }

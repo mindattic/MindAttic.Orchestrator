@@ -169,7 +169,7 @@ public static class AgentGate
         # MindAttic.Orchestrator's pace gate (written by the orchestrator; edits are overwritten).
         # Holds each tool call for rl-status.json's pace_delay_seconds so agents slow down instead of
         # hitting the usage limit. Re-reads the file while waiting: a lifted hold ends at once.
-        import json, sys, time
+        import json, os, sys, time
         from datetime import datetime
         from pathlib import Path
 
@@ -179,7 +179,11 @@ public static class AgentGate
 
         STATUS = Path.home() / ".claude" / "rl-status.json"
         STALE = {{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}
-        MAX_HOLD = {{MaxHoldSeconds}}
+        # MINDATTIC_MAX_HOLD shortens the longest hold so tests can run the held-then-refused paths in seconds.
+        try:
+            MAX_HOLD = float(os.environ.get("MINDATTIC_MAX_HOLD") or {{MaxHoldSeconds}})
+        except ValueError:
+            MAX_HOLD = {{MaxHoldSeconds}}
 
         def status():
             try:
@@ -337,7 +341,7 @@ public static class AgentGate
         # /unthrottle exempts one CLI (its process, so subagents and /clear included) from holds until it closes.
         MARKS = Path.home() / ".claude" / "session-context"
         if MARKS.exists() and any(MARKS.glob("unthrottled-*")):
-            pid = cli_pid()
+            pid = os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
             if pid is not None and (MARKS / ("unthrottled-" + str(pid))).exists():
                 raise SystemExit(0)
 
