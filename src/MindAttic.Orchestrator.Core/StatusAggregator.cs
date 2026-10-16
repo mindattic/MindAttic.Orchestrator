@@ -44,6 +44,9 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
     /// <summary>Codex's and Gemini's own logs under your profile; replaceable for tests.</summary>
     internal ProviderLogReader OtherProviders { get; init; } = ProviderLogReader.Default();
+
+    /// <summary>Claude's own usage report (claude-usage.json); null reads the real one. Replaceable for tests.</summary>
+    internal string? ReportedUsagePath { get; init; }
     private DateTime auditStamp;
 
     // What the transcripts add up to only changes when they do (M.ORCH-T116): kept until the reader's version or the day moves.
@@ -136,7 +139,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
         var events = claudeEvents;
         var calibration = Calibrate(allSessions, events, historyStartUtc, now);
-        var reported = ReportedUsage.Load(now);
+        var reported = ReportedUsage.Load(now, ReportedUsagePath);
         var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration,
             reported: reported, reportedLimit: ReportedLimitFrom(reported, events, now));
 

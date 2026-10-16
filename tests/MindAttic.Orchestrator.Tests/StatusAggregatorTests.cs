@@ -213,4 +213,120 @@ public sealed class StatusAggregatorTests
         Assert.That(new SnapshotFile(file.Path).Read(built.TakenUtc + SnapshotFile.MaxAge + TimeSpan.FromSeconds(1)), Is.Null,
             "its writer stopped: build one instead");
     }
+
+    // M.ORCH-T131: the lease's edges, and the 5-minute history save.
+
+    private StatusAggregator Leased(MindAttic.Orchestrator.Scheduling.DispatchLease lease, string rlPath) =>
+        new(new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null }, store,
+            new RateLimitStatusWriter(rlPath), lease)
+        { ScanHosts = () => hosts, OtherProviders = new ProviderLogReader(Path.Combine(dir, "codex"), Path.Combine(dir, "gemini")) };
+
+    private static DateTime Seconds(DateTime t) => new(t.Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond, DateTimeKind.Utc);
+
+    [Test]
+    public void A_store_less_aggregator_sizes_the_5_hour_limit_from_the_same_usage_samples_as_a_store_backed_one()
+    {
+        // It used to skip usage-samples.json without a store (if (store is null) return null), so a one-off CLI run
+        // fell back to a learned or peak limit while the daemon sized it from Claude's own reports (MAO-T121).
+        var options = new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null };
+        Assert.That(new StatusAggregator(options).Store.Directory, Is.EqualTo(new JsonStore().Directory),
+            "no store given: it reads and keeps usage-samples.json where the daemon and dashboard do");
+
+        var reset = Seconds(DateTime.UtcNow.AddHours(3));
+        var at = Seconds(DateTime.UtcNow.AddMinutes(-1));
+        List<UsageSample> samples = [new(at.AddHours(-1), 10, reset, 100_000), new(at, 30, reset, 300_000)];
+        store.Save("usage-samples", samples);
+        var reportPath = Path.Combine(dir, "claude-usage.json");
+        File.WriteAllText(reportPath, System.Text.Json.JsonSerializer.Serialize(new
+        {
+            rate_limits = new { five_hour = new { used_percentage = 30, resets_at = new DateTimeOffset(reset).ToUnixTimeSeconds() } },
+            at = at.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture),
+        }));
+        StatusAggregator On(JsonStore s) => new(options, s)
+        {
+            ScanHosts = () => hosts, OtherProviders = new ProviderLogReader(Path.Combine(dir, "codex"), Path.Combine(dir, "gemini")), ReportedUsagePath = reportPath,
+        };
+
+        var budget = On(store).Refresh().Budget!;
+        var again = On(new JsonStore(store.Directory)).Refresh().Budget!;
+
+        Assert.That((budget.BlockLimitSource, budget.BlockLimit), Is.EqualTo((LimitSource.Reported, ReportedLimit.Estimate(samples)!.Value)),
+            "sized from how Claude's percent moved between the saved samples");
+        Assert.That((again.BlockLimitSource, again.BlockLimit), Is.EqualTo((budget.BlockLimitSource, budget.BlockLimit)),
+            "any aggregator over that store directory sizes it the same");
+        Assert.That(store.Load<List<UsageSample>>("usage-samples"), Has.Count.EqualTo(2), "a report already sampled isn't recorded twice");
+    }
+
+    [Test]
+    public void A_one_off_aggregator_whose_lease_is_held_elsewhere_shows_the_published_snapshot_and_never_writes_rlstatus()
+    {
+        store.SaveSettings(new OrchestratorSettings { WorktreeRoot = worktrees, BlockBudget = 100_000 });
+        Transcript("s1", Path.Combine(ws, "A"), TimeSpan.FromSeconds(30), 10, 20);
+        var oneOffRl = Path.Combine(dir, "one-off-rl-status.json");
+
+        using var daemonLease = new MindAttic.Orchestrator.Scheduling.DispatchLease(store.Directory);
+        using var oneOffLease = new MindAttic.Orchestrator.Scheduling.DispatchLease(store.Directory);
+        Assert.That(daemonLease.TryAcquire(), Is.True);
+
+        // Nothing published yet: it builds its own to show, but still leaves rl-status.json to the holder.
+        var unpublished = Leased(oneOffLease, oneOffRl);
+        unpublished.Refresh();
+        Assert.That((unpublished.LastWasShared, oneOffLease.IsHeld, File.Exists(oneOffRl)), Is.EqualTo((false, false, false)));
+
+        var built = Leased(daemonLease, Path.Combine(dir, "daemon-rl-status.json")).Refresh();
+        Transcript("s2", Path.Combine(ws, "B"), TimeSpan.FromSeconds(10), 5);
+        var oneOff = Leased(oneOffLease, oneOffRl);
+        var shown = oneOff.Refresh();
+
+        Assert.That(oneOff.LastWasShared, Is.True);
+        Assert.That(shown.TakenUtc, Is.EqualTo(built.TakenUtc), "the holder's published snapshot");
+        Assert.That(shown.Repos.Single(r => r.Name == "B").Sessions, Is.Empty, "not one it read the transcripts for");
+        Assert.That((oneOffLease.IsHeld, File.Exists(oneOffRl)), Is.EqualTo((false, false)), "never writes rl-status.json under another's lease");
+    }
+
+    [Test]
+    public void A_refresh_for_a_given_time_always_builds_its_own_and_never_publishes()
+    {
+        store.SaveSettings(new OrchestratorSettings { WorktreeRoot = worktrees, BlockBudget = 100_000 });
+        Transcript("s1", Path.Combine(ws, "A"), TimeSpan.FromSeconds(30), 10, 20);
+        var snapshotPath = Path.Combine(store.Directory, "status-snapshot.json");
+
+        using var daemonLease = new MindAttic.Orchestrator.Scheduling.DispatchLease(store.Directory);
+        using var windowLease = new MindAttic.Orchestrator.Scheduling.DispatchLease(store.Directory);
+        var daemon = Leased(daemonLease, Path.Combine(dir, "rl-status.json"));
+        var published = daemon.Refresh();
+        Assert.That(new SnapshotFile(snapshotPath).Read(DateTime.UtcNow)!.TakenUtc, Is.EqualTo(published.TakenUtc));
+
+        Transcript("s2", Path.Combine(ws, "B"), TimeSpan.FromSeconds(10), 5);
+        var at = DateTime.UtcNow;
+        var window = Leased(windowLease, Path.Combine(dir, "window-rl-status.json"));
+        var own = window.Refresh(at);
+        Assert.That((window.LastWasShared, own.TakenUtc), Is.EqualTo((false, at)), "a fresh published snapshot was there, but it built its own");
+        Assert.That(own.Repos.Single(r => r.Name == "B").Sessions.Single().SessionId, Is.EqualTo("s2"));
+
+        var held = daemon.Refresh(at.AddSeconds(1));
+        Assert.That((daemon.LastWasShared, held.TakenUtc), Is.EqualTo((false, at.AddSeconds(1))));
+        Assert.That(new SnapshotFile(snapshotPath).Read(DateTime.UtcNow)!.TakenUtc, Is.EqualTo(published.TakenUtc),
+            "neither the other window nor the holder itself published a snapshot for a given time");
+    }
+
+    [Test]
+    public void Usage_history_is_saved_at_most_every_5_minutes()
+    {
+        Transcript("s1", Path.Combine(ws, "A"), TimeSpan.FromMinutes(1), 10);
+        long Saved(string repo) => store.LoadUsageHistory().Where(d => d.Repo == repo).Sum(d => d.Fresh);
+        var aggregator = Aggregator();
+        var t0 = DateTime.UtcNow;
+
+        aggregator.Refresh(t0);
+        Assert.That((Saved("A") > 0, Saved("B")), Is.EqualTo((true, 0L)), "the first refresh saves");
+
+        Transcript("s2", Path.Combine(ws, "B"), TimeSpan.FromSeconds(10), 20);
+        var shown = aggregator.Refresh(t0.AddMinutes(4)).History!.Where(d => d.Repo == "B").Sum(d => d.Fresh);
+        Assert.That(shown, Is.GreaterThan(0L), "4 minutes on: it's shown");
+        Assert.That(Saved("B"), Is.Zero, "but the saved copy waits");
+
+        aggregator.Refresh(t0.AddMinutes(5));
+        Assert.That(Saved("B"), Is.EqualTo(shown), "5 minutes on: saved");
+    }
 }
