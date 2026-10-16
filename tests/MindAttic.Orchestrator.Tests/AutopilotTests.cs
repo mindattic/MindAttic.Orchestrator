@@ -130,8 +130,15 @@ public sealed class AutopilotTests
         Git(repo, "remote", "set-head", "origin", "master");
         Assert.That(Dispatcher.Mainline(repo), Is.EqualTo("master"));
 
+        // Your checkout is on an unfinished branch of your own: the agent's branch must not start from it.
+        Git(repo, "checkout", "-q", "-b", "mine");
+        File.WriteAllText(Path.Combine(repo, "mine.txt"), "half done");
+        Git(repo, "add", "-A");
+        Git(repo, "commit", "-q", "-m", "my unfinished work");
         var tree = Path.Combine(dir, "wt", "X-T1");
         Assert.That(Dispatcher.EnsureWorktree(repo, tree, Dispatcher.BranchFor("X-T1")).Ok, Is.True);
+        Assert.That(File.Exists(Path.Combine(tree, "mine.txt")), Is.False, "the agent starts from origin/master, not your branch");
+        Git(repo, "checkout", "-q", "master");
         File.WriteAllText(Path.Combine(tree, "docs", "USER_STORIES.md"), "| ID | Date | Type | Status | Summary | Ref |\n| X-T1 | 2026-10-15 | fix | closed | s | done |\n");
         Git(tree, "commit", "-q", "-am", "X-T1 done");
         var a = new Assignment("X-T1", "X", tree, "Claude", Now, true);

@@ -104,8 +104,18 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         var (exists, _) = Git(repoPath, "rev-parse", "--verify", "--quiet", "refs/heads/" + branch);
         var (code, output) = exists == 0
             ? Git(repoPath, "worktree", "add", path, branch)
-            : Git(repoPath, "worktree", "add", "-b", branch, path, "HEAD");
+            : Git(repoPath, "worktree", "add", "-b", branch, path, StartPoint(repoPath));
         return code == 0 ? (true, path, "") : (false, path, $"git worktree add failed: {output.Trim()}");
+    }
+
+    /// <summary>Where a new ticket branch starts: the repo's main line as origin has it, not whatever your checkout has
+    /// checked out (a feature branch of yours would otherwise ride along onto main with the agent's work); HEAD only
+    /// when there's no origin to start from.</summary>
+    internal static string StartPoint(string repoPath)
+    {
+        Git(repoPath, "fetch", "-q", "origin");
+        var line = "origin/" + Mainline(repoPath);
+        return Git(repoPath, "rev-parse", "--verify", "--quiet", line).Code == 0 ? line : "HEAD";
     }
 
     internal static readonly TimeSpan GitTimeout = TimeSpan.FromMinutes(2);
