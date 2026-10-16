@@ -217,6 +217,17 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void A_heredocs_body_is_not_read_as_a_search_but_a_search_on_a_later_line_is()
+    {
+        object Bash(string command) => new { tool_name = "Bash", tool_input = new { command } };
+        const string heredoc = "cd /d/x; python - <<'EOF'\nwith open(DIR / \"a.txt\") as f:\n    pass\nEOF\ndotnet test | grep -E \"Passed\" | head";
+        Assert.That(Gate(Bash(heredoc)).Output, Is.Empty, "open(DIR / x) inside a heredoc is Python, not `dir /`");
+        Assert.That(Gate(new { tool_name = "PowerShell", tool_input = new { command = "$s = @'\nopen(DIR / x)\n'@\nWrite-Output $s" } }).Output, Is.Empty);
+        Assert.That(Gate(Bash("cd /d/x\nfind / -name foo")).Output, Does.Contain("\"deny\""), "the second line is a command too");
+        Assert.That(Gate(Bash("cat <<EOF > x.txt\nhi\nEOF\nfind / -name foo")).Output, Does.Contain("\"deny\""), "after the heredoc ends");
+    }
+
+    [Test]
     public void PowerShell_recursion_is_caught_in_any_case_but_bash_ls_r_only_reverses()
     {
         object Ps(string command) => new { tool_name = "PowerShell", tool_input = new { command } };

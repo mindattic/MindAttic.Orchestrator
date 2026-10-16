@@ -255,9 +255,15 @@ public static class AgentGate
         # Windows can't draw (found live: two `find /` held 660k handles and froze the desktop). Refuse it up front.
         import re
         cmd = str((data.get("tool_input") or {}).get("command") or "")
-        ROOT_SEARCH = (r"(?:^|[;&|(])\s*(?:\"[^\"]*[\\/]|'[^']*[\\/]|[^\s\"';&|]*[\\/])?(find|fd|rg|grep|ls|dir|Get-ChildItem|gci)(?:\.exe)?[\"']?"
+        ROOT_SEARCH = (r"(?:^|[;&|(\n])\s*(?:\"[^\"]*[\\/]|'[^']*[\\/]|[^\s\"';&|]*[\\/])?(find|fd|rg|grep|ls|dir|Get-ChildItem|gci)(?:\.exe)?[\"']?"
                        r"(?=\s)[^|;&\n]*?\s[\"']?(/|/[a-zA-Z]|[A-Za-z]:[\\/]?|~|\$HOME|\$env:USERPROFILE)[\"']?(?=\s|$|[;&|)])")
+        # A heredoc's or here-string's body is data (a script, a file's text), not commands: `open(DIR / x)` in a Python
+        # heredoc read as `dir /` (MAO-T168). Each line of what's left starts a command, so `cd x` then `find /` is caught.
+        def commands_only(c):
+            c = re.sub(r"<<-?\s*([\"']?)(\w+)\1[^\n]*\n.*?\n\s*\2\s*(?=\n|$)", "", c, flags=re.S)
+            return re.sub(r"@([\"'])\s*\n.*?\n\1@", "", c, flags=re.S)
         def root_search(c, powershell):
+            c = commands_only(c)
             if not re.search(ROOT_SEARCH, c, re.I):
                 return False
             # Listing a root is harmless; only a recursive listing walks the whole drive. PowerShell's parameters ignore
