@@ -27,7 +27,7 @@ hitting the session limit, and never stalling on a full context. Pick what runs;
 | Pacing | caps new sessions so the window lands on 99% at its reset; the week is never paced | `rl-status.json` → `pace` |
 | Holding agents | every Claude CLI and subagent waits before each tool call while the draw won't last, 0s once it fits | `~/.claude/pace-gate.py` (PreToolUse hook) |
 | Wind-down | past 90% of the 5-hour window each turn is told (once more mid-turn if it crosses the line) to start only what it can finish before the stop, and to commit, file the rest as a ticket and `/quicksave` if its task won't finish; autopilot starts only stories whose cost estimate fits what's left | `rl-status.json` → `wind_down_note` |
-| Never over | at the 99% target (or a limit) the status says `stop`: every tool call, in every CLI and `/unthrottle`d ones too, is held as long as a hook may wait and then refused, so usage can't pass the limit whatever the hold settings; keep-going lets those turns end, and autopilot gives a stopped agent's story back to start again after the reset (its work stays in its worktree) | `rl-status.json` → `stop`, `stop_note` |
+| Never over | at the 99% target (or a limit) the status says `stop`: every tool call, in every CLI and `/unthrottle`d ones too, is held as long as a hook may wait and then refused, so usage can't pass the limit whatever the hold settings. A message you type then is answered at once by the hook (not sent, so nothing is spent; it says when typing works again), except `/autopilot`, `/throttle`, `/unthrottle`, `/crossrepo` and `/goal`. Below the stop, typing is never held; keep-going lets those turns end, and autopilot gives a stopped agent's story back to start again after the reset (its work stays in its worktree) | `rl-status.json` → `stop`, `stop_note` |
 | Subagent allowance | how many subagents may run at once across every CLI, worked out live from the pace (up to 16); each turn is told it, and a new subagent past it waits (counted as the daemon's live count plus any started since, so a subagent whose stop never arrived doesn't hold the rest) | `rl-status.json` → `subagent_allowance`, `subagents_running`; `settings --max-subagents 16` |
 | Unthrottle | `/unthrottle` exempts one CLI (its process, subagents and `/clear` included) from every hold until it closes; its usage still counts, so the others absorb it; `/throttle` ends it | `~/.claude/session-context/unthrottled-<pid>` |
 | Repo windows | a CLI opened in a repo works only that repo: `pace-gate.py` refuses edits to another repo's files, `workflow ticket close`/`correct` on another repo's tickets, and `git -C <other repo>` changes. Filing a ticket in another repo (`workflow ticket new --repo X`) is always allowed, since that's how work is handed over. The workspace-root (General) CLI may work anywhere; `/crossrepo A,B` (or `all`) lets one CLI into other repos until it closes, `/crossrepo off` ends it | `~/.claude/pace-gate.py`; `~/.claude/session-context/crossrepo-<pid>` |
@@ -177,8 +177,14 @@ e.g. `Mon 9:00 AM`), else the learned one, else it's a rolling 7 days.
 and 7-day percent used and reset time); the shared statusline saves it to `~/.claude/claude-usage.json`
 and the orchestrator sizes each limit from it (what the window spent by then, over the percent taken a
 point high, since Claude reports whole percents, so the limit errs small and pacing never walks into
-the wall). Set or learned limits apply only when there's no fresh report (none in the last hour, or
-under 5%, too coarse to size by).
+the wall). Between reports the percent is the last report's plus what the transcripts recorded since, so
+everything is counted: what you type, every reply (tool calls or not), subagents, background agents. A
+report stays in use for its whole 5-hour window, so with only background agents running (they draw no
+statusline) the count carries on rather than falling back to a learned limit; the hooks also give the
+statusline a 60s `refreshInterval`, so any open tab, idle or not, keeps the real percent fresh. Set or
+learned limits apply only when there's no report for the current window (or it's under 5%, too coarse
+to size by). The daemon recounts on its 15s tick, and at once (within ~2s) whenever a turn or subagent
+ends anywhere or a new report lands (`~/.claude/session-context/refresh.now`).
 
 **Pacing** (on by default) aims to land on 99% of the 5-hour window right as it resets, instead of
 hitting the wall and waiting hours. The *sustainable rate* is what's left of the target divided by

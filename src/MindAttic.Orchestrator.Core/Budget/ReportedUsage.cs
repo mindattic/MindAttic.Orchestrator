@@ -60,8 +60,11 @@ public sealed record ReportedUsage(ReportedWindow? FiveHour, ReportedWindow? Wee
     /// <summary>Below this the reported whole percent is too coarse to size a limit by (at 2%, ±0.5 is ±25%).</summary>
     public const double MinPercent = 5;
 
-    /// <summary>How long a report stays usable without a Claude session redrawing its statusline.</summary>
-    public static readonly TimeSpan MaxAge = TimeSpan.FromHours(1);
+    /// <summary>How long a report stays usable without a Claude session redrawing its statusline: its whole 5-hour
+    /// window. With no tab open (only background agents, which draw no statusline) the budget carries on from Claude's
+    /// last percent plus what the transcripts recorded since, rather than dropping to a learned limit after an hour;
+    /// a window that has reset is dropped by <see cref="Usable"/>.</summary>
+    public static readonly TimeSpan MaxAge = BudgetCalculator.BlockLength;
 
     /// <summary>A window that's still running (its reset is ahead); null otherwise. Any percent counts:
     /// a low one is the truth about what's used, it's only too coarse to size a limit by.</summary>

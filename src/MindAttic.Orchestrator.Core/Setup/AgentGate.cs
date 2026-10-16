@@ -18,6 +18,8 @@ public static class AgentGate
 
     public const int MaxHoldSeconds = 300;
 
+    public const int StatusLineRefreshSeconds = 60;
+
     public static string ClaudeDir { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude");
 
     /// <summary>Python shared by both hooks: the claude.exe process the hook runs under (through the
@@ -355,6 +357,18 @@ public static class AgentGate
             except Exception:
                 return {}
 
+        def poke():
+            # A turn (or a subagent) just ended, so its reply's tokens are in its transcript: the daemon recounts now
+            # instead of on its next tick, so even a reply with no tool calls is in the pace within a second or two.
+            try:
+                DIR.mkdir(parents=True, exist_ok=True)
+                (DIR / "refresh.now").write_text(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"))
+            except Exception:
+                pass
+
+        # Typed at the window's stop, these still go through: they're how you steer the orchestrator itself.
+        CONTROL = re.compile(r"/(autopilot|crossrepo|throttle|unthrottle|goal)\b", re.I)
+
         def goal_finished(transcript, goal):
             # A /goal ends on its own once its condition holds: the session's last entry is then the stop summary naming it
             # (an unmet goal keeps the turn going, so more follows). The summary lands after this hook's own Stop, so it's
@@ -437,6 +451,8 @@ public static class AgentGate
             sys.exit(0)
         # Every running subagent has a mark, so the pace gate can hold new ones past the allowance.
         if event in ("SubagentStart", "SubagentStop"):
+            if event == "SubagentStop":
+                poke()
             if data.get("agent_id"):
                 sub = DIR / "subagents"
                 sub.mkdir(parents=True, exist_ok=True)
@@ -446,8 +462,19 @@ public static class AgentGate
                 elif mark.exists():
                     mark.unlink()
             sys.exit(0)
+        if event == "Stop":
+            poke()
         if not sid or data.get("agent_id"):
             sys.exit(0)  # subagents finish inside their parent's turn
+        if event == "UserPromptSubmit":
+            # At the window's stop a typed message is answered at once by this, not by the model: nothing is spent, so
+            # the limit is never passed even by your own prompts. The orchestrator's control commands still go through.
+            limits = orchestrator_status()
+            if limits.get("stop") and not CONTROL.match((data.get("prompt") or "").strip()):
+                print(json.dumps({"decision": "block", "reason": "Not sent, so no tokens were spent: the 5-hour window is at its target "
+                    "(MindAttic.Orchestrator never lets it pass the limit). Typing works again when it resets at " +
+                    str(limits.get("reset_time") or "the end of the window") + ". /autopilot, /throttle and /goal still go through."}))
+                sys.exit(0)
         DIR.mkdir(parents=True, exist_ok=True)
         state_file = DIR / (sid + ".state.json")
         state = load(state_file)
@@ -601,6 +628,13 @@ public static class AgentGate
         var changed = AddHook(root, "PreToolUse", ScriptName, Command(script), HookTimeoutSeconds);
         foreach (var hookEvent in new[] { "PostToolUse", "Stop", "UserPromptSubmit", "SubagentStart", "SubagentStop" })
             changed |= AddHook(root, hookEvent, ContextScriptName, Command(contextScript), 10);
+        // Claude's own usage reaches the orchestrator only through a statusline redraw; an idle tab redraws on this
+        // timer too, so the real percent stays fresh while any tab is open (MAO-T125).
+        if (root["statusLine"] is JsonObject statusLine && statusLine["refreshInterval"] is null)
+        {
+            statusLine["refreshInterval"] = StatusLineRefreshSeconds;
+            changed = true;
+        }
         if (changed)
         {
             var temp = settingsPath + ".tmp";

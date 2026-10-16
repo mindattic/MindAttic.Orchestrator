@@ -154,9 +154,46 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             {
                 Say(LogEventLevel.Error, $"refresh failed: {ex.Message}", ex);
             }
-            cancel.WaitHandle.WaitOne(interval);
+            WaitForNextRefresh(interval, cancel);
         }
         Say(LogEventLevel.Information, "daemon stopped");
+    }
+
+    /// <summary>Touched by the context gate whenever a turn or a subagent ends (its reply's tokens are then in its transcript).</summary>
+    public static string RefreshSignal { get; } = Path.Combine(Setup.AgentGate.ClaudeDir, "session-context", "refresh.now");
+
+    /// <summary>The soonest a signal brings the next refresh forward after the last one.</summary>
+    internal static readonly TimeSpan MinGap = TimeSpan.FromSeconds(2);
+
+    private DateTime lastSignal = SignalStamp();
+
+    /// <summary>
+    /// Waits out <paramref name="interval"/>, but refreshes early when a turn ends anywhere (the context gate's
+    /// <see cref="RefreshSignal"/>) or Claude's own usage report is rewritten, so what you type and every reply,
+    /// tool calls or not, is in the pace within a couple of seconds rather than at the next tick.
+    /// </summary>
+    private void WaitForNextRefresh(TimeSpan interval, CancellationToken cancel)
+    {
+        var until = DateTime.UtcNow + interval;
+        var earliest = DateTime.UtcNow + MinGap;
+        while (DateTime.UtcNow < until)
+        {
+            if (cancel.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(500))) return;
+            if (DateTime.UtcNow < earliest) continue;
+            var stamp = SignalStamp();
+            if (stamp == lastSignal) continue;
+            lastSignal = stamp;
+            return;
+        }
+        lastSignal = SignalStamp();
+    }
+
+    private static DateTime SignalStamp()
+    {
+        static DateTime Of(string path) { try { return File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default; } catch (IOException) { return default; } }
+        var a = Of(RefreshSignal);
+        var b = Of(ReportedUsage.DefaultPath);
+        return a > b ? a : b;
     }
 
     /// <summary>The scheduled audit: when the last one is older than <see cref="OrchestratorSettings.AuditEveryHours"/>, run it and report what's new.</summary>

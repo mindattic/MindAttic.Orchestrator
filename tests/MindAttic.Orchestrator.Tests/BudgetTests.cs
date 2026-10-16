@@ -98,7 +98,9 @@ public sealed class BudgetTests
             var r = ReportedUsage.Load(at.AddMinutes(5), path)!;
             Assert.That(r.FiveHour, Is.EqualTo(new ReportedWindow(24, DateTimeOffset.FromUnixTimeSeconds(1792041600).UtcDateTime)));
             Assert.That(r.Week!.Percent, Is.EqualTo(72));
-            Assert.That(ReportedUsage.Load(at.AddHours(2), path), Is.Null, "no Claude session has redrawn it in an hour");
+            Assert.That(ReportedUsage.Load(at.AddHours(2), path), Is.Not.Null,
+                "with only background agents running nothing redraws a statusline: the last report carries on, plus the transcripts since");
+            Assert.That(ReportedUsage.Load(at.AddHours(6), path), Is.Null, "older than a whole window: its window has reset");
         }
         finally { File.Delete(path); }
     }

@@ -88,6 +88,41 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void At_the_stop_a_typed_prompt_is_answered_at_once_without_reaching_the_model_but_control_commands_go_through()
+    {
+        object Prompt(string prompt) => new { hook_event_name = "UserPromptSubmit", session_id = "p1", prompt, cwd = ws };
+        Status(new { stop = true, reset_time = "9:50 PM" });
+        var blocked = Gate(Prompt("fix the login bug"), AgentGate.ContextScriptName).Output;
+        Assert.That(blocked, Does.Contain("\"block\"").And.Contain("9:50 PM").And.Contain("no tokens were spent"));
+        Assert.That(Gate(Prompt("/autopilot off"), AgentGate.ContextScriptName).Output, Does.Not.Contain("\"block\""));
+
+        Status(new { });
+        Assert.That(Gate(Prompt("fix the login bug"), AgentGate.ContextScriptName).Output, Does.Not.Contain("\"block\""), "under the target typing is never held");
+    }
+
+    [Test]
+    public void The_end_of_every_turn_and_subagent_signals_the_daemon_to_recount_at_once()
+    {
+        var signal = Path.Combine(Marks, "refresh.now");
+        Gate(new { hook_event_name = "Stop", session_id = "r1", cwd = ws }, AgentGate.ContextScriptName);
+        Assert.That(File.Exists(signal), Is.True, "a reply with no tool calls is counted when its turn ends, not at the next tick");
+        var first = File.GetLastWriteTimeUtc(signal);
+        Thread.Sleep(50);
+        Gate(new { hook_event_name = "SubagentStop", session_id = "r1", agent_id = "a9", cwd = ws }, AgentGate.ContextScriptName);
+        Assert.That(File.GetLastWriteTimeUtc(signal), Is.GreaterThan(first));
+    }
+
+    [Test]
+    public void An_idle_tab_redraws_its_statusline_on_a_timer_so_claudes_own_percent_stays_fresh()
+    {
+        File.WriteAllText(Path.Combine(Claude, "settings.json"), """{ "statusLine": { "type": "command", "command": "x.ps1" } }""");
+        AgentGate.Ensure(Claude);
+        var line = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(Claude, "settings.json")))!["statusLine"]!;
+        Assert.That((line["command"]!.GetValue<string>(), line["refreshInterval"]!.GetValue<int>()), Is.EqualTo(("x.ps1", AgentGate.StatusLineRefreshSeconds)));
+        Assert.That(AgentGate.Ensure(Claude), Is.Null, "set once");
+    }
+
+    [Test]
     public void Wind_down_is_told_at_the_turn_and_once_mid_turn_and_a_stop_is_never_pushed_back_to_work()
     {
         Status(new { wind_down_note = "Past 90%: finish or file it." });
