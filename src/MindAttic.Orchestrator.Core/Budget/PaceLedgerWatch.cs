@@ -5,7 +5,7 @@ using Serilog.Events;
 namespace MindAttic.Orchestrator.Budget;
 
 /// <summary>
-/// The daemon's side of the pace ledger (MAO-T166). Once a minute it closes every 5-hour window that has ended into
+/// The daemon's side of the pace ledger (M.ORCH-T166). Once a minute it closes every 5-hour window that has ended into
 /// <c>pace-ledger.jsonl</c>; a new 5-hour limit hit is raised the moment it's read (Error in the log, an urgent alert and
 /// a fix ticket in this repo with what the pace gate did around it), and a window that closes over or blind is too.
 /// Windows backfilled from before the ledger existed are only recorded: their tickets would be history, not news.

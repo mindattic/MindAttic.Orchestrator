@@ -208,7 +208,7 @@ each prompt too, so agents know to start subagents a few at a time.
 The same `pace-gate.py` is wired into Codex's, Gemini's and Kimi's own pre-tool-call hook too (Codex's
 `PreToolUse` in `~/.codex/hooks.json`, Gemini's `BeforeTool` in `~/.gemini/settings.json`, Kimi's
 `PreToolUse` in `~/.kimi-code/config.toml`), so a Launcher tab on any of the four providers slows down
-the same way (MAO-T50). Codex shows its own one-time "hooks need review" prompt in its TUI before a
+the same way (M.ORCH-T50). Codex shows its own one-time "hooks need review" prompt in its TUI before a
 freshly added hook runs there; nothing types through that for you.
 
 **Context.** The statusline saves each session's context fill to `~/.claude/session-context/<session>.json`, and
@@ -304,7 +304,7 @@ files across repos, clusters them, and suggests a home (`mindattic-agent-standar
   always covers the current week.
 - The budget file only updates while the daemon or the dashboard is running, so pacing only steers
   while one of them is; the logon task keeps the daemon up, and opening the dashboard restarts it if it died.
-- Building a workspace clones the repos; it doesn't install the other apps (Launcher etc.; MAO-T44).
+- Building a workspace clones the repos; it doesn't install the other apps (Launcher etc.; M.ORCH-T44).
   The repo list is only as current as the last `workspace export` that was pushed.
 - No hold lasts past 5 minutes per tool call (a subagent waiting on the allowance included): past it the call
   goes ahead, held but never refused, except at the window's target, where it's refused. `/unthrottle` exempts

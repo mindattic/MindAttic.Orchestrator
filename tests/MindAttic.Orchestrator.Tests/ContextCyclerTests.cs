@@ -161,7 +161,7 @@ public sealed class ContextCyclerTests
     [Test]
     public void A_session_running_a_goal_isnt_cycled_or_told_to_wrap_up_until_the_goal_is_cleared()
     {
-        // /clear would silently end the /goal (MAO-T92's finding), so its compaction carries it on instead.
+        // /clear would silently end the /goal (M.ORCH-T92's finding), so its compaction carries it on instead.
         var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         try
@@ -190,7 +190,7 @@ public sealed class ContextCyclerTests
             var cycler = new ContextCycler(ctx);
             Assert.That(cycler.Load().Single().Goal, Is.EqualTo("all the tests pass"));
 
-            // The goal met: Claude Code's stop summary naming it is the last entry (shape trimmed from a real run, MAO-T109).
+            // The goal met: Claude Code's stop summary naming it is the last entry (shape trimmed from a real run, M.ORCH-T109).
             const string summary = """{"type":"system","subtype":"stop_hook_summary","hookCount":2,"hookInfos":[{"command":"python context-gate.py","durationMs":106},{"command":"all the tests pass","promptText":"all the tests pass","durationMs":1637}],"preventedContinuation":false}""";
             File.AppendAllText(transcript, summary + "\n" + """{"type":"last-prompt"}""" + "\n" + """{"type":"cost-state"}""" + "\n");
             Assert.That(ContextCycler.GoalFinished(transcript, "all the tests pass"), Is.True, "metadata after the summary doesn't count");
@@ -330,7 +330,7 @@ public sealed class ContextCyclerTests
     [Test]
     public void A_subagent_whose_transcript_has_gone_quiet_stops_counting_without_waiting_for_its_mark_to_age_out()
     {
-        // A SubagentStop that never came kept a mark alive for up to 6 hours, and its transcript re-read every refresh (MAO-T114).
+        // A SubagentStop that never came kept a mark alive for up to 6 hours, and its transcript re-read every refresh (M.ORCH-T114).
         var dir = Path.Combine(Path.GetTempPath(), "ctx-" + Guid.NewGuid().ToString("N"));
         var projects = Path.Combine(dir, "projects");
         var sub = Path.Combine(dir, "subagents");

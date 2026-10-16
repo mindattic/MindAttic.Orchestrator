@@ -47,7 +47,7 @@ public partial class MainWindow : Window
             timer.Start();
         };
         Closed += (_, _) => timer.Stop();
-        // Minimized to the tray, nobody is looking: no 5-second refresh (MAO-T115). Shown again, it catches up at once.
+        // Minimized to the tray, nobody is looking: no 5-second refresh (M.ORCH-T115). Shown again, it catches up at once.
         IsVisibleChanged += async (_, _) => await OnShownOrHidden();
         StateChanged += async (_, _) => await OnShownOrHidden();
     }

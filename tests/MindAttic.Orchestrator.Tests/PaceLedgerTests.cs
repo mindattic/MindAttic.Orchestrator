@@ -145,7 +145,7 @@ public sealed class PaceLedgerTests
             Watch = new PaceLedgerWatch(Store, "unused", (l, s) => Said.Add((l, s)), (t, _, u) => Alerts.Add((t, u)))
             {
                 EventsPath = Path.Combine(Store.Directory, "pace-gate.jsonl"),
-                FileTicket = s => { Filed.Add(s); return "MAO-T" + (900 + Filed.Count); },
+                FileTicket = s => { Filed.Add(s); return "M.ORCH-T" + (900 + Filed.Count); },
             };
         }
     }
@@ -174,7 +174,7 @@ public sealed class PaceLedgerTests
         var watch = new PaceLedgerWatch(h.Store, "unused", (_, _) => { }, (t, _, u) => h.Alerts.Add((t, u)))
         {
             EventsPath = h.Watch.EventsPath,
-            FileTicket = s => { h.Filed.Add(s); return "MAO-T999"; },
+            FileTicket = s => { h.Filed.Add(s); return "M.ORCH-T999"; },
         };
         watch.Tick(End.AddHours(5).AddMinutes(5));
         Assert.That(h.Filed, Has.Count.EqualTo(1));

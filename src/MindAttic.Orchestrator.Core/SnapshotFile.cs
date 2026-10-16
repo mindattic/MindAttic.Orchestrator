@@ -5,7 +5,7 @@ namespace MindAttic.Orchestrator;
 
 /// <summary>
 /// The last <see cref="Snapshot"/> the status lease holder built, for every other orchestrator process to show
-/// instead of building its own (MAO-T115): each open dashboard window and the daemon used to poll every transcript,
+/// instead of building its own (M.ORCH-T115): each open dashboard window and the daemon used to poll every transcript,
 /// parse subagents, scan the Launcher's pipes and rewrite the transcript cache on its own timer. Written whole to a
 /// private temp file and swapped in, so a reader never sees half of one. Each session's usage events (which plain
 /// JSON leaves out) travel alongside, so what's worked out from them (a repo's spend this block, the "while you

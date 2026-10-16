@@ -49,19 +49,19 @@ public sealed class TicketReplayTests
             Git(dir, "config", "user.name", "Test");
             File.WriteAllText(Path.Combine(dir, "a.txt"), "1");
             Git(dir, "add", "-A");
-            Git(dir, "commit", "-q", "-m", "Work on MAO-T1: first one");
+            Git(dir, "commit", "-q", "-m", "Work on M.ORCH-T1: first one");
             File.WriteAllText(Path.Combine(dir, "a.txt"), "2");
             Git(dir, "add", "-A");
-            Git(dir, "commit", "-q", "-m", "Work on MAO-T10: an unrelated ticket");
+            Git(dir, "commit", "-q", "-m", "Work on M.ORCH-T10: an unrelated ticket");
             File.WriteAllText(Path.Combine(dir, "a.txt"), "3");
             Git(dir, "add", "-A");
-            Git(dir, "commit", "-q", "-m", "Work on MAO-T19: another unrelated ticket");
+            Git(dir, "commit", "-q", "-m", "Work on M.ORCH-T19: another unrelated ticket");
 
-            var commits = TicketReplay.Commits("MAO-T1", dir, diff: false);
+            var commits = TicketReplay.Commits("M.ORCH-T1", dir, diff: false);
 
-            Assert.That(commits, Does.Contain("MAO-T1:"));
-            Assert.That(commits, Does.Not.Contain("MAO-T10"));
-            Assert.That(commits, Does.Not.Contain("MAO-T19"));
+            Assert.That(commits, Does.Contain("M.ORCH-T1:"));
+            Assert.That(commits, Does.Not.Contain("M.ORCH-T10"));
+            Assert.That(commits, Does.Not.Contain("M.ORCH-T19"));
         }
         finally
         {

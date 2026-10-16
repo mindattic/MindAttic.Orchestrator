@@ -158,7 +158,7 @@ public static class AgentGate
             except Exception:
                 return 0
 
-        # Every hold of a second or more and every refusal at the stop goes to the pace ledger's event log (MAO-T166),
+        # Every hold of a second or more and every refusal at the stop goes to the pace ledger's event log (M.ORCH-T166),
         # so a window that went over can be traced to the calls around it.
         def gate_log(decision, held):
             try:
@@ -175,7 +175,7 @@ public static class AgentGate
             data = {}
         tool = data.get("tool_name")
 
-        # A repo's window works only that repo (MAO-T95): its own folder and worktrees, and its own tickets. Another
+        # A repo's window works only that repo (M.ORCH-T95): its own folder and worktrees, and its own tickets. Another
         # repo's files and tickets belong to that repo's window, autopilot, or the General (workspace-root) session.
         import fnmatch, os, re, sqlite3
         {{WorkspacePython}}
@@ -233,7 +233,7 @@ public static class AgentGate
                     named = re.search(r"--repo[\s=]+['\"]?([^\s'\"]+)", action)
                     owners = [named.group(1)] if named else []
                     # The ticket a close/correct acts on is its first argument; IDs in --summary or --ref are just text.
-                    first = re.match(r"['\"]?([A-Z][A-Z0-9]*-T\d+)\b", action.strip())
+                    first = re.match(r"['\"]?((?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)\b", action.strip())
                     owners += [ticket_repo(first.group(1))] if first else []
                     for owner in owners:
                         if other(owner):
@@ -258,7 +258,7 @@ public static class AgentGate
         ROOT_SEARCH = (r"(?:^|[;&|(\n])\s*(?:\"[^\"]*[\\/]|'[^']*[\\/]|[^\s\"';&|]*[\\/])?(find|fd|rg|grep|ls|dir|Get-ChildItem|gci)(?:\.exe)?[\"']?"
                        r"(?=\s)[^|;&\n]*?\s[\"']?(/|/[a-zA-Z]|[A-Za-z]:[\\/]?|~|\$HOME|\$env:USERPROFILE)[\"']?(?=\s|$|[;&|)])")
         # A heredoc's or here-string's body is data (a script, a file's text), not commands: `open(DIR / x)` in a Python
-        # heredoc read as `dir /` (MAO-T168). Each line of what's left starts a command, so `cd x` then `find /` is caught.
+        # heredoc read as `dir /` (M.ORCH-T168). Each line of what's left starts a command, so `cd x` then `find /` is caught.
         def commands_only(c):
             c = re.sub(r"<<-?\s*([\"']?)(\w+)\1[^\n]*\n.*?\n\s*\2\s*(?=\n|$)", "", c, flags=re.S)
             return re.sub(r"@([\"'])\s*\n.*?\n\1@", "", c, flags=re.S)
@@ -426,7 +426,7 @@ public static class AgentGate
         def goal_finished(transcript, goal):
             # A /goal ends on its own once its condition holds: the session's last entry is then the stop summary naming it
             # (an unmet goal keeps the turn going, so more follows). The summary lands after this hook's own Stop, so it's
-            # checked later: on the next prompt here, and by the orchestrator's cycler (MAO-T109).
+            # checked later: on the next prompt here, and by the orchestrator's cycler (M.ORCH-T109).
             try:
                 lines = Path(transcript).read_text(encoding="utf-8", errors="ignore").splitlines()[-60:]
             except Exception:
@@ -576,7 +576,7 @@ public static class AgentGate
             prompt = typed.lower()
             # /autopilot [off|all] [-repo=A,B]: THIS CLI works those repos' tickets through its own subagents (its own
             # repo when none are named) until /autopilot off here. Nothing is marked for any other CLI. A name may be a
-            # wildcard (-repo=GTFO.*), kept as typed and matched wherever the repos are read (MAO-T165).
+            # wildcard (-repo=GTFO.*), kept as typed and matched wherever the repos are read (M.ORCH-T165).
             if prompt.startswith("/autopilot") and re.search(r"-{1,2}repos\b", typed, re.I):
                 # The -repos alias is gone (it read as a different switch); say so rather than guess what was meant.
                 print(json.dumps({"decision": "block", "reason": "/autopilot takes -repo=A,B (wildcards too: -repo=GTFO.*); -repos is gone. "
@@ -612,14 +612,14 @@ public static class AgentGate
                 elif mark.exists():
                     mark.unlink()
             # /goal <condition> runs turn after turn until its condition holds; cycling would end it, so the session is
-            # marked and left to Claude's own compaction until /goal clear (MAO-T93).
+            # marked and left to Claude's own compaction until /goal clear (M.ORCH-T93).
             if re.match(r"/goal\b", prompt):
                 args = typed[len("/goal"):].strip()
                 if not args or re.match(r"(clear|off|stop)\b", args, re.I):
                     state.pop("goal", None)
                 else:
                     state["goal"] = args
-            # /crossrepo <A,B|all> lets this CLI work other repos too (the explicit exception to MAO-T95); /crossrepo off ends it.
+            # /crossrepo <A,B|all> lets this CLI work other repos too (the explicit exception to M.ORCH-T95); /crossrepo off ends it.
             if prompt.startswith("/crossrepo"):
                 pid = cli_pid()
                 if pid is not None:
@@ -649,7 +649,7 @@ public static class AgentGate
             if state.get("nudged") and not state.get("worked"):
                 state["worked"] = touched = True  # it carried on after being told to
             # A ticket closed this turn: stopping right after it, with more open, is a stop keep-going catches.
-            closed = re.search(r"\bworkflow(?:\.exe)?['\"]?\s+ticket\s+close\s+['\"]?([A-Z][A-Z0-9]*-T\d+)",
+            closed = re.search(r"\bworkflow(?:\.exe)?['\"]?\s+ticket\s+close\s+['\"]?((?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)",
                                str((data.get("tool_input") or {}).get("command") or ""))
             if closed and closed.group(1) not in state.get("closed", []):
                 state["closed"] = state.get("closed", []) + [closed.group(1)]
@@ -706,7 +706,7 @@ public static class AgentGate
         foreach (var hookEvent in new[] { "PostToolUse", "Stop", "UserPromptSubmit", "SubagentStart", "SubagentStop" })
             changed |= AddHook(root, hookEvent, ContextScriptName, Command(contextScript), 10);
         // Claude's own usage reaches the orchestrator only through a statusline redraw; an idle tab redraws on this
-        // timer too, so the real percent stays fresh while any tab is open (MAO-T125).
+        // timer too, so the real percent stays fresh while any tab is open (M.ORCH-T125).
         if (root["statusLine"] is JsonObject statusLine && statusLine["refreshInterval"] is null)
         {
             statusLine["refreshInterval"] = StatusLineRefreshSeconds;

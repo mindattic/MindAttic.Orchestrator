@@ -22,6 +22,15 @@ public sealed class TicketCostTests
     }
 
     [Test]
+    public void A_family_code_with_a_dot_is_attributed_like_any_other()
+    {
+        var item = new QueueItem("MindAttic.Orchestrator", @"D:\W\MindAttic.Orchestrator", new Ticket("M.ORCH-T7", "2026-10-01", "fix", "open", "x", ""), 0, null, false);
+
+        Assert.That(TicketAttribution.FromPrompt(Scheduler.PromptFor(item)), Is.EqualTo(("M.ORCH-T7", "fix")));
+        Assert.That(TicketAttribution.FromWorktree(@"D:\Projects\MindAttic.worktrees\MindAttic.Orchestrator\M.ORCH-T7\src"), Is.EqualTo("M.ORCH-T7"));
+    }
+
+    [Test]
     public void A_transcript_that_was_dispatched_on_a_ticket_says_so()
     {
         var dir = Path.Combine(Path.GetTempPath(), "orch-attr-" + Guid.NewGuid().ToString("N"));

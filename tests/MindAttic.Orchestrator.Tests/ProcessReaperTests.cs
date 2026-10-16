@@ -31,7 +31,7 @@ public sealed class ProcessReaperTests
     [Test]
     public void An_orphan_never_seen_under_an_agent_is_yours_and_left_alone()
     {
-        // A node server started from a terminal you've since closed: orphaned, but no agent ever ran it (MAO-T118).
+        // A node server started from a terminal you've since closed: orphaned, but no agent ever ran it (M.ORCH-T118).
         var processes = new[] { P(3, "node.exe", parentPid: 2, startUtc: Now.AddHours(-2)), P(4, "python.exe", parentPid: 2, startUtc: Now.AddHours(-2)) };
         Assert.That(Pick(processes), Is.Empty);
     }
@@ -160,7 +160,7 @@ public sealed class ProcessReaperTests
     [Test]
     public void Only_the_processes_about_to_be_killed_have_their_command_line_fetched()
     {
-        // The scan lists every process without its command line (the costly part of the WMI query, MAO-T117);
+        // The scan lists every process without its command line (the costly part of the WMI query, M.ORCH-T117);
         // a reap candidate's is looked up on its own, before it's killed, so the log still says what it was running.
         var processes = new[]
         {

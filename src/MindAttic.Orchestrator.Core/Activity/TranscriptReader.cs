@@ -50,7 +50,7 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
         public string? TicketType;
         public DateTime LastWriteUtc;
         /// <summary>The length and timestamp its directory entry showed when last read; while both are unchanged and the
-        /// file has been quiet a while, it isn't opened again (MAO-T116).</summary>
+        /// file has been quiet a while, it isn't opened again (M.ORCH-T116).</summary>
         public long ListedLength = -1;
         public DateTime ListedWriteUtc;
         /// <summary>Loaded from the cache and not read since: growth found now happened while nobody was watching.</summary>
@@ -115,7 +115,7 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
                 }
                 else
                 {
-                    // Opening every file in the window every poll was most of a refresh's cost (MAO-T116). One whose
+                    // Opening every file in the window every poll was most of a refresh's cost (M.ORCH-T116). One whose
                     // directory entry hasn't moved since it was last read, and that has been quiet a while, is skipped.
                     if (!fullCheck && !state.Restored && state.ListedLength == info.Length && state.ListedWriteUtc == info.LastWriteTimeUtc &&
                         now - state.LastWriteUtc >= HotFor)

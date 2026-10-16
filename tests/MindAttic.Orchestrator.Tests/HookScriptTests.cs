@@ -151,7 +151,7 @@ public sealed class HookScriptTests
         Directory.CreateDirectory(Path.GetDirectoryName(db)!);
         using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
             "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal,type)'); " +
-            "d.execute(\"insert into tickets values('USS-T1','UnitySolarSystem','open',1,'fix')\"); d.commit()", db }, UseShellExecute = false })!)
+            "d.execute(\"insert into tickets values('U.SPC-T1','UnitySolarSystem','open',1,'fix')\"); d.commit()", db }, UseShellExecute = false })!)
             mk.WaitForExit(20_000);
         var uss = Path.Combine(ws, "UnitySolarSystem");
         File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem"); // keep-going acts only in the CLI /autopilot is on in
@@ -166,7 +166,7 @@ public sealed class HookScriptTests
         Assert.That(Gate(Asking("w5"), AgentGate.ContextScriptName).Output, Is.Empty, "a feature you haven't approved isn't work");
         var settings = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "settings.json");
         Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
-        File.WriteAllText(settings, """{ "Approved": ["uss-t1"] }""");
+        File.WriteAllText(settings, """{ "Approved": ["u.spc-t1"] }""");
         Assert.That(Gate(Asking("w6"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\""), "approved (any case): it is");
         Status(new { stop = true });
         Assert.That(Gate(Asking("w4"), AgentGate.ContextScriptName).Output, Is.Empty, "at the target, a stop is let stop");
@@ -200,8 +200,8 @@ public sealed class HookScriptTests
         object Bash(string command) => new { tool_name = "Bash", tool_input = new { command }, cwd = uss };
         Assert.That(Gate(Bash("workflow ticket new --repo MindAttic.Workflow --type chore --summary 'bring it up to date'")).Output, Is.Empty,
             "the edit refusal itself says to file a ticket for the other repo");
-        Assert.That(Gate(Bash("workflow ticket close MAO-T1 --repo MindAttic.Workflow --ref x")).Output, Does.Contain("\"deny\""));
-        Assert.That(Gate(Bash("workflow ticket correct MAO-T1 --repo MindAttic.Workflow --summary x")).Output, Does.Contain("\"deny\""));
+        Assert.That(Gate(Bash("workflow ticket close M.ORCH-T1 --repo MindAttic.Workflow --ref x")).Output, Does.Contain("\"deny\""));
+        Assert.That(Gate(Bash("workflow ticket correct M.ORCH-T1 --repo MindAttic.Workflow --summary x")).Output, Does.Contain("\"deny\""));
     }
 
     [Test]

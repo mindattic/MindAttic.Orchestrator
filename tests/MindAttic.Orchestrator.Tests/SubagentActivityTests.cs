@@ -91,7 +91,7 @@ public sealed class SubagentActivityTests
     [Test]
     public void A_subagent_transcript_is_tailed_so_each_poll_reads_only_what_was_appended()
     {
-        // A long subagent's transcript reaches tens of MB; it was re-parsed from byte 0 every refresh (MAO-T113).
+        // A long subagent's transcript reaches tens of MB; it was re-parsed from byte 0 every refresh (M.ORCH-T113).
         var sessionDir = NewDir("ctx");
         var projectsDir = NewDir("projects");
         try

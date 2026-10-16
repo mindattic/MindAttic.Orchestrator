@@ -71,13 +71,13 @@ public sealed class AutopilotTests
     {
         // Found live: /autopilot all put all five spare sessions into Automata while a +70 story elsewhere waited.
         order = [Autopilot.AllRepos];
-        var snap = Snap(("Automata", [T("AUT-T1"), T("AUT-T2"), T("AUT-T3")]), ("Launcher", [T("MCO-T21")]));
-        var plan = Scheduler.Plan(snap, new() { Priorities = new() { ["MCO-T21"] = 70 } }, store.LoadAssignments());
+        var snap = Snap(("Automata", [T("AUT-T1"), T("AUT-T2"), T("AUT-T3")]), ("Launcher", [T("M.LNCH-T21")]));
+        var plan = Scheduler.Plan(snap, new() { Priorities = new() { ["M.LNCH-T21"] = 70 } }, store.LoadAssignments());
         plan = plan with { Pace = new Pace(PaceMode.Open, 6, 10_000, 0, 1_000, "5-hour", Now.AddHours(3), "On pace.") { SpareSessions = 2 } };
 
-        Pilot().Tick(plan, snap, new() { WorktreeRoot = @"D:\WT", Priorities = new() { ["MCO-T21"] = 70 } }, Now);
+        Pilot().Tick(plan, snap, new() { WorktreeRoot = @"D:\WT", Priorities = new() { ["M.LNCH-T21"] = 70 } }, Now);
 
-        Assert.That(started.Select(s => s.Dir).First(), Is.EqualTo(@"D:\WT\Launcher\MCO-T21"), "the prioritized story goes first");
+        Assert.That(started.Select(s => s.Dir).First(), Is.EqualTo(@"D:\WT\Launcher\M.LNCH-T21"), "the prioritized story goes first");
         Assert.That(started, Has.Count.EqualTo(2));
     }
 
@@ -190,7 +190,7 @@ public sealed class AutopilotTests
     [Test]
     public void A_cli_running_autopilot_is_handed_its_repos_workable_tickets_each_with_a_worktree_and_prompt_once()
     {
-        // MAO-T164: /autopilot works tickets through the CLI's own subagents; `orchestrator next --claim` hands them out.
+        // M.ORCH-T164: /autopilot works tickets through the CLI's own subagents; `orchestrator next --claim` hands them out.
         var snap = Snap(("A", [T("A-T1"), T("A-T2"), new Ticket("A-T3", "2026-10-01", "feature", "open", "not approved", "")]), ("B", [T("B-T1")]));
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
         var made = new List<string>();
@@ -216,7 +216,7 @@ public sealed class AutopilotTests
         Assert.That(Autopilot.Next(stopped, settings, store, ["*"], null, claim: false, Now, Make, _ => "main").Why, Does.Contain("at its target"));
         Assert.That((Autopilot.Named(["GTFO.*"], "gtfo.Api"), Autopilot.Named(["GTFO.*"], "GTFO"), Autopilot.Named(["GTFO.*"], "MindAttic.GTFO.x"),
             Autopilot.Named(["*"], "anything"), Autopilot.Named(["A", "B"], "b")), Is.EqualTo((true, false, false, true, true)),
-            "-repo=GTFO.* names every repo starting GTFO. (MAO-T165)");
+            "-repo=GTFO.* names every repo starting GTFO. (M.ORCH-T165)");
     }
 
     [Test]

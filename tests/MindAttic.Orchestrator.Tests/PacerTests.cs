@@ -150,7 +150,7 @@ public sealed class PacerTests
     [Test]
     public void A_lull_right_after_a_batch_of_sessions_ends_doesnt_make_the_next_one_look_free()
     {
-        // Found live (MAO-T111): right after a batch of sessions finished, the live per-session estimate
+        // Found live (M.ORCH-T111): right after a batch of sessions finished, the live per-session estimate
         // read as near-zero, so spare/perSession exploded and autopilot started 24 sessions in one tick,
         // well past the 5-hour target before its reset. The historical typical per-session cost is now a
         // floor, so a momentary lull can't make the next (likely similar) session look free.
@@ -309,7 +309,7 @@ public sealed class PacerTests
         var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
         var ws = Path.Combine(dir, "ws");
         foreach (var r in new[] { "UnitySolarSystem", "MindAttic.Orchestrator" }) Directory.CreateDirectory(Path.Combine(ws, r, ".git"));
-        var worktree = Path.Combine(dir, "ws.worktrees", "UnitySolarSystem", "USS-T1");
+        var worktree = Path.Combine(dir, "ws.worktrees", "UnitySolarSystem", "U.SPC-T1");
         Directory.CreateDirectory(worktree);
         try
         {
@@ -335,13 +335,13 @@ public sealed class PacerTests
             Assert.That(Gate(worktree, "Edit", new { file_path = Path.Combine(worktree, "a.cs") }), Is.Empty, "its own worktree");
             Assert.That(Gate(worktree, "Edit", new { file_path = orch }), Does.Contain("\"deny\""), "a worktree is still that repo's window");
             Assert.That(Gate(uss, "Edit", new { file_path = Path.Combine(dir, "notes.md") }), Is.Empty, "outside the workspace (temp, ~/.claude)");
-            Assert.That(Gate(uss, "Bash", new { command = "workflow ticket close MAO-T1 --repo MindAttic.Orchestrator --ref x" }), Does.Contain("\"deny\""));
+            Assert.That(Gate(uss, "Bash", new { command = "workflow ticket close M.ORCH-T1 --repo MindAttic.Orchestrator --ref x" }), Does.Contain("\"deny\""));
             Assert.That(Gate(uss, "Bash", new { command = "workflow ticket new --repo UnitySolarSystem --type fix --summary x" }), Is.Empty);
             // Found live: the words inside a handoff string were taken for a command.
-            Assert.That(Gate(uss, "PowerShell", new { command = "& save.ps1 -State 'then run workflow ticket close MAO-T1 --ref x'" }), Is.Empty, "text, not a command");
-            Assert.That(Gate(uss, "Bash", new { command = "workflow ticket new --repo UnitySolarSystem --type fix --summary 'follows MAO-T1'" }), Is.Empty, "an ID in the summary is just text");
-            Assert.That(Gate(uss, "PowerShell", new { command = "& 'workflow' ticket close MAO-T1 --repo MindAttic.Orchestrator --ref x" }), Does.Contain("\"deny\""),
-                "the PowerShell call form still counts (this scratch workspace has no database to look MAO-T1 up in)");
+            Assert.That(Gate(uss, "PowerShell", new { command = "& save.ps1 -State 'then run workflow ticket close M.ORCH-T1 --ref x'" }), Is.Empty, "text, not a command");
+            Assert.That(Gate(uss, "Bash", new { command = "workflow ticket new --repo UnitySolarSystem --type fix --summary 'follows M.ORCH-T1'" }), Is.Empty, "an ID in the summary is just text");
+            Assert.That(Gate(uss, "PowerShell", new { command = "& 'workflow' ticket close M.ORCH-T1 --repo MindAttic.Orchestrator --ref x" }), Does.Contain("\"deny\""),
+                "the PowerShell call form still counts (this scratch workspace has no database to look M.ORCH-T1 up in)");
             Assert.That(Gate(uss, "Bash", new { command = $"git -C {Path.Combine(ws, "MindAttic.Orchestrator")} commit -m x" }), Does.Contain("\"deny\""));
             Assert.That(Gate(uss, "Bash", new { command = $"git -C {Path.Combine(ws, "MindAttic.Orchestrator")} log -1" }), Is.Empty, "reading another repo is fine");
             Assert.That(Gate(ws, "Edit", new { file_path = orch }), Is.Empty, "the General (workspace-root) window may work anywhere");
@@ -359,7 +359,7 @@ public sealed class PacerTests
             Assert.That(GateAs(4242, uss, "Edit", new { file_path = orch }), Is.Empty, "excepted into MindAttic.Orchestrator");
             Assert.That(GateAs(4343, uss, "Edit", new { file_path = orch }), Does.Contain("\"deny\""), "another CLI has no exception");
             File.WriteAllText(Path.Combine(marks, "crossrepo-4242"), "all");
-            Assert.That(GateAs(4242, uss, "Bash", new { command = "workflow ticket close MAO-T1 --repo MindAttic.Orchestrator" }), Is.Empty, "all lifts it");
+            Assert.That(GateAs(4242, uss, "Bash", new { command = "workflow ticket close M.ORCH-T1 --repo MindAttic.Orchestrator" }), Is.Empty, "all lifts it");
         }
         finally { Directory.Delete(dir, recursive: true); }
     }

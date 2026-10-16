@@ -54,7 +54,7 @@ public sealed class JsonStoreTests
     [Test]
     public void Assignments_changed_at_once_by_several_writers_all_survive()
     {
-        // A dashboard's Dispatch and the daemon's autopilot each loaded, changed and saved: one dropped the other's (MAO-T119).
+        // A dashboard's Dispatch and the daemon's autopilot each loaded, changed and saved: one dropped the other's (M.ORCH-T119).
         Parallel.For(0, 24, i => new JsonStore(dir).UpdateAssignments(all =>
             all.Add(new Assignment($"X-T{i}", "X", @"D:\W\X", "Claude", DateTime.UtcNow, true))));
         Assert.That(new JsonStore(dir).LoadAssignments().Select(a => a.TicketId), Is.EquivalentTo(Enumerable.Range(0, 24).Select(i => $"X-T{i}")));

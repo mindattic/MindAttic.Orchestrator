@@ -124,7 +124,7 @@ public sealed class StatusAggregatorTests
     public void A_refresh_only_writes_rlstatus_while_it_holds_or_can_take_the_lease()
     {
         // Every open dashboard window and the headless daemon used to refresh and write it independently,
-        // flapping the pace gate's hold and the "RATE LIMIT" banner between whichever wrote last (MAO-T112).
+        // flapping the pace gate's hold and the "RATE LIMIT" banner between whichever wrote last (M.ORCH-T112).
         store.SaveSettings(new OrchestratorSettings { WorktreeRoot = worktrees, BlockBudget = 100_000 });
         var rlPath = Path.Combine(dir, "rl-status.json");
 
@@ -149,7 +149,7 @@ public sealed class StatusAggregatorTests
     public void Only_the_lease_holder_builds_a_snapshot_and_every_other_process_shows_the_one_it_published()
     {
         // Every dashboard window and the daemon used to poll every transcript, parse subagents and scan the
-        // Launcher's pipes on its own timer (MAO-T115).
+        // Launcher's pipes on its own timer (M.ORCH-T115).
         store.SaveSettings(new OrchestratorSettings { WorktreeRoot = worktrees, BlockBudget = 100_000 });
         Transcript("s1", Path.Combine(ws, "A"), TimeSpan.FromSeconds(30), 10, 20);
         StatusAggregator With(MindAttic.Orchestrator.Scheduling.DispatchLease lease) =>

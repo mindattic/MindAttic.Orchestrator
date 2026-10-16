@@ -44,7 +44,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly JsonStore store = new();
     // Shared with the headless daemon (same lock file): whichever process grabs it first is the one that
     // dispatches autopilot and writes rl-status.json, so every open window doesn't race to overwrite it
-    // (MAO-T112); released when this process exits, same as the daemon's own.
+    // (M.ORCH-T112); released when this process exits, same as the daemon's own.
     private readonly DispatchLease lease;
     private readonly StatusAggregator aggregator;
     private readonly SessionControl control;

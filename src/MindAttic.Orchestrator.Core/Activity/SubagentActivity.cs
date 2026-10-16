@@ -12,7 +12,7 @@ public sealed record SubagentActivity(string AgentId, string ParentSessionId, st
 /// Where a subagent's own transcript is: Claude Code writes it to <c>{projectsDir}/{project}/{parentSessionId}/subagents/
 /// agent-{agentId}.jsonl</c>, next to its parent's own <c>{parentSessionId}.jsonl</c>. Looked for only in those
 /// session folders (a few hundred existence checks), never by walking every transcript under the projects folder,
-/// and remembered once found (MAO-T113).
+/// and remembered once found (M.ORCH-T113).
 /// </summary>
 public static class SubagentTranscripts
 {
@@ -62,7 +62,7 @@ public static class SubagentTranscripts
 /// transcript (<see cref="SubagentTranscripts"/>). Each line carries an <c>attributionAgent</c> (the subagent
 /// type, e.g. "Explore") and, on assistant lines, the same <c>usage</c> block a top-level transcript line
 /// carries. A transcript is tailed: each poll parses only what was appended since the last one, since a
-/// long-running subagent's file reaches tens of MB and was re-parsed whole every refresh (MAO-T113).
+/// long-running subagent's file reaches tens of MB and was re-parsed whole every refresh (M.ORCH-T113).
 /// Keep one instance; not thread-safe.
 /// </summary>
 public sealed class SubagentActivityReader(string projectsDir)

@@ -21,7 +21,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     internal Func<string, string, string, int?> Start { get; init; } = BackgroundAgent.Start;
     internal Func<Assignment, bool> IsRunning { get; init; } = a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc);
     internal Func<int, DateTime?> StartTimeOf { get; init; } = BackgroundAgent.StartTimeOf;
-    // The daemon no longer starts headless background agents (MAO-T164): /autopilot runs inside the CLI it's typed into, as
+    // The daemon no longer starts headless background agents (M.ORCH-T164): /autopilot runs inside the CLI it's typed into, as
     // that CLI's subagents (see Next). Tick still reaps agents started before, lands their work and sweeps finished worktrees.
     internal Func<IReadOnlyList<string>?> Order { get; init; } = () => null;
     internal Func<int, bool> Alive { get; init; } = ContextCycler.IsClaude;
@@ -348,7 +348,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     public sealed record Handout(QueueItem Item, string? Worktree, string? Prompt);
 
     /// <summary>
-    /// The next tickets a CLI running <c>/autopilot</c> hands to its own subagents (MAO-T164): workable ones (fixes and
+    /// The next tickets a CLI running <c>/autopilot</c> hands to its own subagents (M.ORCH-T164): workable ones (fixes and
     /// approved, already the only ones in the queue) of <paramref name="repos"/> ("*": all) that nobody has, in queue order,
     /// as many as the pace's subagent allowance has room for (or <paramref name="count"/>). With <paramref name="claim"/>
     /// each gets its own worktree from the repo's main line and an assignment, so it isn't handed out twice; when nothing
@@ -438,7 +438,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     private static bool Same(string a, string b) => a.Equals(b, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Whether <paramref name="repo"/> is one of <paramref name="names"/>: a name, or a wildcard (<c>*</c>, <c>?</c>)
-    /// such as <c>GTFO.*</c> for every repo whose name starts <c>GTFO.</c> (MAO-T165); <c>*</c> alone is every repo.</summary>
+    /// such as <c>GTFO.*</c> for every repo whose name starts <c>GTFO.</c> (M.ORCH-T165); <c>*</c> alone is every repo.</summary>
     public static bool Named(IEnumerable<string> names, string repo) =>
         names.Any(n => System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(n, repo, ignoreCase: true));
 }

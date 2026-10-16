@@ -51,7 +51,7 @@ public sealed record LedgerWindow(
 }
 
 /// <summary>
-/// The pace ledger (MAO-T166): one permanent row per 5-hour window in <c>pace-ledger.jsonl</c>, graded against the
+/// The pace ledger (M.ORCH-T166): one permanent row per 5-hour window in <c>pace-ledger.jsonl</c>, graded against the
 /// goal, so "agents never run out of tokens" is something measured over time rather than assumed. Built from what
 /// is already recorded: Claude's own percent (<c>usage-samples.json</c>), the limit hits read from transcripts
 /// (<c>limits.json</c>) and the pace gate's holds and refusals (<c>pace-gate.jsonl</c>).

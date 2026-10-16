@@ -7,7 +7,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// <summary>
 /// Kills tool processes a dead agent left behind. A <c>find</c>/<c>rg</c>/<c>grep</c>/<c>git</c>/
 /// <c>bash</c>/<c>python</c>/<c>node</c> whose Claude CLI (or the shell an agent ran it through) has
-/// already exited leaks handles forever once orphaned (MAO-T87 found two orphaned <c>find /</c> runs
+/// already exited leaks handles forever once orphaned (M.ORCH-T87 found two orphaned <c>find /</c> runs
 /// holding 660k handles and freezing the desktop); the pace gate in <see cref="Setup.AgentGate"/> stops
 /// new ones from starting, this reaps the ones that already did. It also catches a still-attached search
 /// that's gone rogue: past <see cref="MaxHandleCount"/> handles or <see cref="MaxAge"/> old.
@@ -18,7 +18,7 @@ public static class ProcessReaper
     public static readonly TimeSpan MaxAge = TimeSpan.FromMinutes(30);
 
     /// <summary>How often the daemon scans: a leak takes minutes to matter, and each scan is a WMI query that
-    /// WmiPrvSE pays for (MAO-T117: every 15s it was a steady CPU cost of its own).</summary>
+    /// WmiPrvSE pays for (M.ORCH-T117: every 15s it was a steady CPU cost of its own).</summary>
     public static readonly TimeSpan Every = TimeSpan.FromSeconds(60);
 
     /// <summary>Ancestor hops to walk looking for a live Claude CLI before giving up on telling either way.</summary>

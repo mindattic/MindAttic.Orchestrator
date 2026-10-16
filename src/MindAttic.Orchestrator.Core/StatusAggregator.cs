@@ -15,12 +15,12 @@ namespace MindAttic.Orchestrator;
 /// so keep one instance and call <see cref="Refresh"/> on a timer. Not thread-safe.
 /// </summary>
 /// <remarks>With a <paramref name="statusLease"/>, only the process holding it builds snapshots; it publishes each one
-/// (<see cref="SnapshotFile"/>) and every other dashboard window or daemon shows that instead of building its own (MAO-T115).</remarks>
+/// (<see cref="SnapshotFile"/>) and every other dashboard window or daemon shows that instead of building its own (M.ORCH-T115).</remarks>
 /// <param name="statusLease">With <paramref name="rateLimitFile"/>, write it only while held (or free to
 /// take): every open dashboard window and the headless daemon would otherwise poll Claude's own report and
 /// the session transcripts at their own moment and overwrite the one shared file with a different number
 /// every few seconds, flapping the pace gate's hold and the "RATE LIMIT" banner between whichever process
-/// wrote last (found live: two dashboard windows open at once, MAO-T112). Null always writes, as a one-off
+/// wrote last (found live: two dashboard windows open at once, M.ORCH-T112). Null always writes, as a one-off
 /// CLI run does.</param>
 public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? store = null, RateLimitStatusWriter? rateLimitFile = null, DispatchLease? statusLease = null)
 {
@@ -46,7 +46,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     internal ProviderLogReader OtherProviders { get; init; } = ProviderLogReader.Default();
     private DateTime auditStamp;
 
-    // What the transcripts add up to only changes when they do (MAO-T116): kept until the reader's version or the day moves.
+    // What the transcripts add up to only changes when they do (M.ORCH-T116): kept until the reader's version or the day moves.
     private (long Version, DateTime Today) claudeKey = (-1, default);
     private List<TranscriptSession> claudeSessions = [];
     private List<UsageEvent> claudeEvents = [];

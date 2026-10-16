@@ -235,7 +235,7 @@ public static partial class Scheduler
         };
     }
 
-    [GeneratedRegex(@"blocked by (?<id>[A-Z][A-Z0-9]*-T\d+)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"blocked by (?<id>(?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex BlockedByPhrase();
 
     /// <summary>

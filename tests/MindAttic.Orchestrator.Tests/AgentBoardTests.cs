@@ -19,7 +19,7 @@ public sealed class AgentBoardTests
     [Test]
     public void A_session_that_wrote_within_the_working_window_is_working()
     {
-        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-1), "MAO-T1")) };
+        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-1), "M.ORCH-T1")) };
 
         var rows = AgentBoard.Build(repos, null, [], [], WorkingWindow, Now);
 
@@ -31,7 +31,7 @@ public sealed class AgentBoardTests
     [Test]
     public void A_session_idle_past_the_working_window_is_waiting_for_you()
     {
-        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-30), "MAO-T1")) };
+        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-30), "M.ORCH-T1")) };
 
         var rows = AgentBoard.Build(repos, null, [], [], WorkingWindow, Now);
 
@@ -42,7 +42,7 @@ public sealed class AgentBoardTests
     [Test]
     public void A_recent_session_under_a_pace_hold_is_held_by_pace_not_plain_working()
     {
-        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-1), "MAO-T1")) };
+        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-1), "M.ORCH-T1")) };
         var pace = new Pace(PaceMode.Throttled, 1, 100, 100, null, "5-hour", Now.AddHours(1), "Paced to 1 session.");
 
         var rows = AgentBoard.Build(repos, pace, [], [], WorkingWindow, Now);
@@ -54,7 +54,7 @@ public sealed class AgentBoardTests
     [Test]
     public void An_open_pace_leaves_a_recent_session_plain_working()
     {
-        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-1), "MAO-T1")) };
+        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-1), "M.ORCH-T1")) };
         var pace = new Pace(PaceMode.Open, 4, 100, 50, null, null, null, "Open: every slot is available.");
 
         var rows = AgentBoard.Build(repos, pace, [], [], WorkingWindow, Now);
@@ -65,8 +65,8 @@ public sealed class AgentBoardTests
     [Test]
     public void An_autopilot_assignment_is_flagged_and_timed_from_when_it_started()
     {
-        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-1), "MAO-T1")) };
-        var assignment = new Assignment("MAO-T1", "A", @"D:\A", Providers.Claude, Now.AddHours(-2), Worktree: true) { Pilot = 4242 };
+        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-1), "M.ORCH-T1")) };
+        var assignment = new Assignment("M.ORCH-T1", "A", @"D:\A", Providers.Claude, Now.AddHours(-2), Worktree: true) { Pilot = 4242 };
 
         var rows = AgentBoard.Build(repos, null, [assignment], [], WorkingWindow, Now);
 
@@ -77,10 +77,10 @@ public sealed class AgentBoardTests
     [Test]
     public void Assignments_whose_ids_differ_only_in_case_dont_break_the_board()
     {
-        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-1), "MAO-T1")) };
+        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-1), "M.ORCH-T1")) };
         Assignment Of(string id, int hours) => new(id, "A", @"D:\A", Providers.Claude, Now.AddHours(-hours), Worktree: true) { Pilot = 1 };
 
-        var rows = AgentBoard.Build(repos, null, [Of("MAO-T1", 2), Of("mao-t1", 1)], [], WorkingWindow, Now);
+        var rows = AgentBoard.Build(repos, null, [Of("M.ORCH-T1", 2), Of("m.orch-t1", 1)], [], WorkingWindow, Now);
 
         Assert.That(rows[0].StartedUtc, Is.EqualTo(Now.AddHours(-2)), "the first one counts");
     }
@@ -88,7 +88,7 @@ public sealed class AgentBoardTests
     [Test]
     public void A_session_with_no_assignment_starts_from_its_first_recorded_event()
     {
-        var session = Session("s1", Now.AddMinutes(-1), "MAO-T1") with { Events = [new UsageEvent(Now.AddMinutes(-20), default)] };
+        var session = Session("s1", Now.AddMinutes(-1), "M.ORCH-T1") with { Events = [new UsageEvent(Now.AddMinutes(-20), default)] };
         var repos = new[] { Repo("A", session) };
 
         var rows = AgentBoard.Build(repos, null, [], [], WorkingWindow, Now);
@@ -100,7 +100,7 @@ public sealed class AgentBoardTests
     [Test]
     public void Subagents_are_nested_under_the_row_whose_session_id_is_their_parent()
     {
-        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-1), "MAO-T1"), Session("s2", Now.AddMinutes(-1), "MAO-T2")) };
+        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-1), "M.ORCH-T1"), Session("s2", Now.AddMinutes(-1), "M.ORCH-T2")) };
         var subagent = new SubagentActivity("agent-1", "s1", "Explore", Now.AddMinutes(-5), Now, new TokenUsage(10, 0, 0, 5));
 
         var rows = AgentBoard.Build(repos, null, [], [subagent], WorkingWindow, Now);
@@ -114,7 +114,7 @@ public sealed class AgentBoardTests
     [Test]
     public void Rows_come_back_most_recently_active_first()
     {
-        var repos = new[] { Repo("A", Session("old", Now.AddMinutes(-30), "MAO-T1"), Session("fresh", Now.AddMinutes(-1), "MAO-T2")) };
+        var repos = new[] { Repo("A", Session("old", Now.AddMinutes(-30), "M.ORCH-T1"), Session("fresh", Now.AddMinutes(-1), "M.ORCH-T2")) };
 
         var rows = AgentBoard.Build(repos, null, [], [], WorkingWindow, Now);
 

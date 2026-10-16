@@ -8,10 +8,10 @@ public static partial class TicketAttribution
     /// <summary>How <see cref="Scheduling.Scheduler.PromptFor"/> opens every dispatched session.</summary>
     public const string PromptMarker = "Work on ticket ";
 
-    [GeneratedRegex(@"Work on ticket (?<id>[A-Z][A-Z0-9]*-T\d+) \((?<type>[a-z]+)\)")]
+    [GeneratedRegex(@"Work on ticket (?<id>(?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+) \((?<type>[a-z]+)\)")]
     private static partial Regex Prompt();
 
-    [GeneratedRegex(@"[\\/]MindAttic\.worktrees[\\/][^\\/]+[\\/](?<id>[A-Z][A-Z0-9]*-T\d+)(?:[\\/]|$)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"[\\/]MindAttic\.worktrees[\\/][^\\/]+[\\/](?<id>(?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)(?:[\\/]|$)", RegexOptions.IgnoreCase)]
     private static partial Regex Worktree();
 
     public static (string Id, string Type)? FromPrompt(string text) =>

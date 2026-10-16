@@ -8,7 +8,7 @@ public sealed class NotifierTests
     [Test]
     public async Task An_alert_is_a_plain_text_post_with_a_title_and_a_dead_endpoint_is_not_a_crash()
     {
-        // A random port sometimes collided with one in use when the whole suite ran in parallel (MAO-T94):
+        // A random port sometimes collided with one in use when the whole suite ran in parallel (M.ORCH-T94):
         // ask the OS for a free one, and try again if something grabs it before the listener does.
         var (listener, url) = Listen();
         using var _ = listener;

@@ -38,7 +38,7 @@ public sealed partial class MainViewModel
     private void InitPhases()
     {
         dispatcher = new Dispatcher(control, store);
-        // The same lease the status refresh uses (MAO-T112): one FileStream per path per process, so a second
+        // The same lease the status refresh uses (M.ORCH-T112): one FileStream per path per process, so a second
         // one here would just fail to acquire what the first already holds. Held until the app exits; while
         // the logon daemon holds it, the daemon feeds the /autopilot CLIs and keeps rl-status.json fresh, and
         // this window only shows.
@@ -255,7 +255,7 @@ public sealed partial class MainViewModel
     public ICommand ShowTicketCommand { get; private set; } = null!;
 
     /// <summary>The ticket's full row and history: its sessions and the commits that mention it, from
-    /// <c>docs/USER_STORIES.md</c> (the Workflow ticket database, once MAO-T83 lands).</summary>
+    /// <c>docs/USER_STORIES.md</c> (the Workflow ticket database, once M.ORCH-T83 lands).</summary>
     public async void ShowTicketDetails(AgentRowViewModel a)
     {
         if (a.TicketId is not { Length: > 0 } ticketId) return;

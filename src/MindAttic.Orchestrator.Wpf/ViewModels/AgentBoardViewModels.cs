@@ -16,7 +16,7 @@ public sealed class AgentRowViewModel(string sessionId) : ObservableObject
     public string? TicketId => row.TicketId;
     public bool HasTicket => TicketId is { Length: > 0 };
 
-    /// <summary>"MAO-T84: Agent board …" when the ticket's title is known, else just the id, else the repo's name.</summary>
+    /// <summary>"M.ORCH-T84: Agent board …" when the ticket's title is known, else just the id, else the repo's name.</summary>
     public string Headline => TicketId is not { Length: > 0 } ? $"{Repo} (no ticket)"
         : ticketTitle is { Length: > 0 } ? $"{TicketId}: {ticketTitle}" : TicketId;
 

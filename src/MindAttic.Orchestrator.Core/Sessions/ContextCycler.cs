@@ -38,7 +38,7 @@ public sealed class ContextCycler(string? directory = null)
     /// <summary>
     /// Whether a <c>/goal</c> finished on its own: once its condition holds, the session's last entry is the stop summary
     /// naming it (an unmet goal keeps the turn going, so more follows). The context gate can't see this at the Stop
-    /// itself, because the summary is written after its hook runs (MAO-T109).
+    /// itself, because the summary is written after its hook runs (M.ORCH-T109).
     /// </summary>
     internal static bool GoalFinished(string transcript, string goal)
     {
@@ -145,7 +145,7 @@ public sealed class ContextCycler(string? directory = null)
     public static readonly TimeSpan SubagentMarkLife = TimeSpan.FromHours(6);
 
     /// <summary>A subagent whose own transcript hasn't been written for this long has stopped, whether or not its
-    /// SubagentStop came (MAO-T114). Longer than the quietest a live one gets: a tool call held by the pace gate
+    /// SubagentStop came (M.ORCH-T114). Longer than the quietest a live one gets: a tool call held by the pace gate
     /// (up to 5 minutes) and then running to the Bash tool's 10-minute limit writes nothing in between.</summary>
     public static readonly TimeSpan SubagentIdleLife = TimeSpan.FromMinutes(20);
 

@@ -7,7 +7,7 @@ using MindAttic.Orchestrator.Settings;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
-/// <summary>The pace ledger: every 5-hour window graded against "99%, never over", and the record so far (MAO-T166).</summary>
+/// <summary>The pace ledger: every 5-hour window graded against "99%, never over", and the record so far (M.ORCH-T166).</summary>
 internal sealed class LedgerCommand : Command<LedgerCommand.Settings>
 {
     public sealed class Settings : CommandSettings

@@ -41,8 +41,8 @@ public sealed class CliHelperTests
     [Test]
     public void Ticket_ids_typed_in_any_case_are_stored_as_the_scheduler_compares_them()
     {
-        // `bump mao-t5` said "priority is now +1" and changed nothing: the scheduler compares ids ordinally, upper case.
-        Assert.That(Ctx.Id(" mao-t5 "), Is.EqualTo("MAO-T5"));
+        // `bump m.orch-t5` said "priority is now +1" and changed nothing: the scheduler compares ids ordinally, upper case.
+        Assert.That(Ctx.Id(" m.orch-t5 "), Is.EqualTo("M.ORCH-T5"));
     }
 
     [Test]

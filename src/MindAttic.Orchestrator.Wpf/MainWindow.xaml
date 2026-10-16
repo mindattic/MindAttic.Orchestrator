@@ -170,7 +170,7 @@
                         <TextBlock Text="{Binding WeeklyCaption}" Style="{StaticResource McTileSubtitle}" />
                     </StackPanel>
                 </Border>
-                <!-- The pace ledger (MAO-T166): how long since a 5-hour window last went over, from every window on record. -->
+                <!-- The pace ledger (M.ORCH-T166): how long since a 5-hour window last went over, from every window on record. -->
                 <Border Style="{StaticResource Card}" Height="74" MinWidth="150" Padding="14,0,18,0" ToolTip="{Binding LedgerTooltip}">
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="{Binding LedgerHeadline}" Style="{StaticResource StatValue}" Foreground="{Binding LedgerBrush}" />

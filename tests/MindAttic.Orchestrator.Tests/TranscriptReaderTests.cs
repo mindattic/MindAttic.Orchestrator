@@ -216,7 +216,7 @@ public sealed class TranscriptReaderTests
     [Test]
     public void A_quiet_transcript_whose_directory_entry_hasnt_moved_isnt_opened_again()
     {
-        // Every poll opened all ~900 transcripts of the week to check their length (MAO-T116).
+        // Every poll opened all ~900 transcripts of the week to check their length (M.ORCH-T116).
         var hour = DateTime.UtcNow.AddHours(-1);
         System.IO.File.WriteAllLines(File("quiet.jsonl"), [Line("q1", "2026-10-13T12:00:00Z", 1, 10)]);
         System.IO.File.SetLastWriteTimeUtc(File("quiet.jsonl"), hour);

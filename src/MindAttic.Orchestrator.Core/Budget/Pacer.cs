@@ -150,7 +150,7 @@ public static class Pacer
         // momentarily near zero) must not make the next session look free, or spare/perSession explodes
         // into a burst of new sessions sized for a cost that isn't real (found live: autopilot read a
         // post-batch lull as near-zero cost and started 24 sessions in one tick, well past the 5-hour
-        // target before its reset, MAO-T111).
+        // target before its reset, M.ORCH-T111).
         double? perSession = activeSessions > 0 && recent > 0
             ? Math.Max(Unheld(recent, recentDelaySeconds) / activeSessions, typicalPerSession ?? 0)
             : typicalPerSession;
