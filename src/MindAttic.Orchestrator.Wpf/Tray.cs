@@ -10,7 +10,8 @@ namespace MindAttic.Orchestrator.Wpf;
 /// <summary>
 /// The workspace without the full window: a tray icon whose tooltip is the one-line summary, with
 /// quick actions (open, pause or resume autopilot, start the next proposal, jump to a repo that's
-/// waiting on you), and an optional always-on-top HUD strip. Minimizing the dashboard hides it here.
+/// waiting on you), and an optional always-on-top HUD strip. Minimizing or closing the dashboard hides it
+/// here; a left click brings it back, and only the menu's Exit quits.
 /// </summary>
 public sealed class Tray : IDisposable
 {
@@ -20,6 +21,7 @@ public sealed class Tray : IDisposable
     private readonly DispatcherTimer timer;
     private Window? hud;
     private TextBlock? hudText;
+    private bool exiting;
 
     public Tray(Window window, MainViewModel vm)
     {
@@ -32,9 +34,11 @@ public sealed class Tray : IDisposable
             Text = "MindAttic Orchestrator",
             ContextMenuStrip = new Forms.ContextMenuStrip(),
         };
-        icon.DoubleClick += (_, _) => ShowWindow();
+        // One left click opens the dashboard (a double click is two of them); the right button is the menu (M.ORCH-T183).
+        icon.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) ShowWindow(); };
         icon.ContextMenuStrip.Opening += (_, _) => BuildMenu();
         window.StateChanged += (_, _) => { if (window.WindowState == WindowState.Minimized) window.Hide(); };
+        CloseToTray(window, () => exiting);
 
         timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         timer.Tick += (_, _) => Update();
@@ -65,10 +69,23 @@ public sealed class Tray : IDisposable
         menu.Items.Add(waiting);
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add(hud is null ? "Show HUD" : "Hide HUD", null, (_, _) => ToggleHud());
-        menu.Items.Add("Exit", null, (_, _) => Application.Current.Shutdown());
+        menu.Items.Add("Exit", null, (_, _) => { exiting = true; Application.Current.Shutdown(); });
     }
 
-    private void ShowWindow()
+    private void ShowWindow() => Restore(window);
+
+    /// <summary>The close button hides <paramref name="window"/> to the tray instead of quitting (M.ORCH-T183): it closes
+    /// for real only once <paramref name="exiting"/> says so (the tray's Exit). Windows ending the session closes it regardless.</summary>
+    public static void CloseToTray(Window window, Func<bool> exiting) =>
+        window.Closing += (_, e) =>
+        {
+            if (exiting()) return;
+            e.Cancel = true;
+            window.Hide();
+        };
+
+    /// <summary>Shows <paramref name="window"/> from the tray: visible, not minimized, in front.</summary>
+    public static void Restore(Window window)
     {
         window.Show();
         if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
