@@ -6,6 +6,9 @@
     <IsTestProject>true</IsTestProject>
     <!-- For the dashboard's view models (MindAttic.Orchestrator.Wpf). -->
     <UseWPF>true</UseWPF>
+    <!-- SnapshotWriterProgram.Main: SnapshotFileTests start this assembly as separate writer processes. -->
+    <GenerateProgramFile>false</GenerateProgramFile>
+    <StartupObject>MindAttic.Orchestrator.Tests.SnapshotWriterProgram</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
