@@ -34,7 +34,6 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         cycler.IsAgent = autopilot.IsAgent;
         string? lastPaused = null;
         cycler.Prune(DateTime.UtcNow);
-        (int, bool)? gatePercent = null; // what the hooks were last written with
         string? lastHold = null;
         (PaceMode, int)? lastPace = null;
         bool? lastHeldElsewhere = null;
@@ -58,17 +57,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 var plan = Scheduler.Plan(snapshot, s, store.LoadAssignments());
                 notifyUrl = s.NotifyUrl;
 
-                // The hooks carry the cycle point, so rewrite them when it changes.
-                if (gatePercent != (s.ContextCyclePercent, s.KeepGoing))
-                {
-                    try
-                    {
-                        if (Setup.AgentGate.Ensure(contextPercent: s.ContextCyclePercent, keepGoing: s.KeepGoing) is { } did) Say(LogEventLevel.Information, did);
-                        if (Setup.AgentGate.EnsureOtherProviders() is { } didOthers) Say(LogEventLevel.Information, didOthers);
-                        gatePercent = (s.ContextCyclePercent, s.KeepGoing);
-                    }
-                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"couldn't install the agent hooks (retrying next tick): {ex.Message}"); }
-                }
+                EnsureHooks(s);
                 WatchHealth(autopilot);
                 try { ledger.Tick(DateTime.UtcNow); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"pace ledger: couldn't update it (retrying next minute): {ex.Message}"); }
@@ -125,16 +114,11 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 if (s.GitHubIntake && DateTime.UtcNow - intakeUtc >= TimeSpan.FromHours(1))
                 {
                     intakeUtc = DateTime.UtcNow;
-                    foreach (var (repo, ticket) in Intake(options.WorkspaceRoot))
+                    foreach (var (repo, ticket) in Intake(options.WorkspaceRoot, gh: args => Tickets.GitHubIntake.Gh(Runner, Tickets.GitHubIntake.GhTimeout, args)))
                         Say(LogEventLevel.Information, $"filed {ticket.Id} in {repo} from GitHub: {ticket.Summary}");
                 }
 
-                foreach (var line in autopilot.Tick(plan, snapshot, s, DateTime.UtcNow))
-                {
-                    var needsYou = Autopilot.NeedsYou(line);
-                    Say(needsYou is null ? LogEventLevel.Information : LogEventLevel.Warning, line);
-                    if (needsYou is not null) Alert("Needs you", needsYou);
-                }
+                ReportAutopilot(autopilot.Tick(plan, snapshot, s, DateTime.UtcNow));
                 // Keyed without its numbers: a hold whose percent ticks 93 → 94 is the same hold, not a new line (found live: 46 lines in 2h).
                 var pausedKey = autopilot.Paused is null ? null : Digits().Replace(autopilot.Paused, "#");
                 if (autopilot.On && pausedKey != lastPaused)
@@ -157,6 +141,49 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             WaitForNextRefresh(interval, cancel);
         }
         Say(LogEventLevel.Information, "daemon stopped");
+    }
+
+    /// <summary>Installs the agent hooks; the default writes Claude's and the other providers'. A test's stands in for it.</summary>
+    internal Func<int, bool, IEnumerable<string?>> InstallHooks { get; init; } = (percent, keepGoing) =>
+        [Setup.AgentGate.Ensure(contextPercent: percent, keepGoing: keepGoing), Setup.AgentGate.EnsureOtherProviders()];
+
+    /// <summary>Runs <c>workflow db sync</c> and <c>gh</c>; a test's stands in for the real one.</summary>
+    internal IProcessRunner Runner { get; init; } = ProcessRunner.Default;
+
+    /// <summary>How long <c>workflow db sync</c> may run before it's killed, so a hung push can't stall the loop.</summary>
+    internal TimeSpan SyncTimeout { get; init; } = TimeSpan.FromMinutes(2);
+
+    /// <summary>Where alerts go; null sends them through the <see cref="Notifier"/>. A test's records them.</summary>
+    internal Action<string, string, bool>? AlertSink { get; init; }
+
+    private (int, bool)? gatePercent; // what the hooks were last written with
+
+    /// <summary>
+    /// The hooks carry the cycle point, so they're rewritten when it (or keep-going) changes. A write that fails on the
+    /// file system (a hook file locked by a running CLI) is logged and left undone, so the next tick tries again.
+    /// </summary>
+    internal void EnsureHooks(OrchestratorSettings s)
+    {
+        if (gatePercent == (s.ContextCyclePercent, s.KeepGoing)) return;
+        try
+        {
+            foreach (var did in InstallHooks(s.ContextCyclePercent, s.KeepGoing).ToList())
+                if (did is not null) Say(LogEventLevel.Information, did);
+            gatePercent = (s.ContextCyclePercent, s.KeepGoing);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"couldn't install the agent hooks (retrying next tick): {ex.Message}"); }
+    }
+
+    /// <summary>Logs autopilot's lines; only its "needs you" lines (<see cref="Autopilot.NeedsYou"/>) are warnings and raise the
+    /// Needs you alert, not a started line whose ticket summary happens to say "needs you".</summary>
+    internal void ReportAutopilot(IEnumerable<string> lines)
+    {
+        foreach (var line in lines)
+        {
+            var needsYou = Autopilot.NeedsYou(line);
+            Say(needsYou is null ? LogEventLevel.Information : LogEventLevel.Warning, line);
+            if (needsYou is not null) Alert("Needs you", needsYou);
+        }
     }
 
     /// <summary>Touched by the context gate whenever a turn or a subagent ends (its reply's tokens are then in its transcript).</summary>
@@ -244,37 +271,38 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// Every 10 minutes, when the Workflow database has changed since the last sync, commits it (and its readable dump)
     /// in the MindAttic.Workflow repo and pushes, so tickets are backed up and reach other machines.
     /// </summary>
-    private void SyncWorkflowDbIfDue(OrchestratorOptions options)
+    private void SyncWorkflowDbIfDue(OrchestratorOptions options) =>
+        SyncWorkflowDbIfDue(MindAttic.Workflow.Data.WorkflowDb.DefaultPath(options.WorkspaceRoot), DateTime.UtcNow);
+
+    /// <summary>The sync for the database at <paramref name="path"/>. One that runs past <see cref="SyncTimeout"/> is killed and
+    /// logged, and the database isn't counted as synced, so the next try (10 minutes on) runs it again.</summary>
+    internal void SyncWorkflowDbIfDue(string path, DateTime nowUtc)
     {
-        var path = MindAttic.Workflow.Data.WorkflowDb.DefaultPath(options.WorkspaceRoot);
-        if (!File.Exists(path) || DateTime.UtcNow - syncTriedUtc < TimeSpan.FromMinutes(10)) return;
+        if (!File.Exists(path) || nowUtc - syncTriedUtc < TimeSpan.FromMinutes(10)) return;
         var written = File.GetLastWriteTimeUtc(path);
         if (written == syncedDbWriteUtc) return;
-        syncTriedUtc = DateTime.UtcNow;
+        syncTriedUtc = nowUtc;
         try
         {
-            using var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("workflow", "db sync")
-            {
-                UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
-            })!;
-            var output = p.StandardOutput.ReadToEndAsync();
-            var error = p.StandardError.ReadToEndAsync();
-            if (!p.WaitForExit(120_000)) { p.Kill(true); Say(LogEventLevel.Warning, "workflow db sync took over 2 minutes; stopped it"); return; }
-            if (p.ExitCode == 0) syncedDbWriteUtc = written;
-            Say(p.ExitCode == 0 ? LogEventLevel.Information : LogEventLevel.Warning, $"workflow db sync: {(output.Result + error.Result).Trim()}");
+            var r = Runner.Run("workflow", ["db", "sync"], SyncTimeout);
+            if (r.TimedOut) { Say(LogEventLevel.Warning, $"workflow db sync took over {SyncTimeout.TotalSeconds:0}s; stopped it (retrying in 10 minutes)"); return; }
+            if (r.ExitCode == 0) syncedDbWriteUtc = written;
+            Say(r.ExitCode == 0 ? LogEventLevel.Information : LogEventLevel.Warning, $"workflow db sync: {(r.Output + r.Error).Trim()}");
         }
         catch (System.ComponentModel.Win32Exception ex) { Say(LogEventLevel.Warning, $"couldn't run 'workflow db sync': {ex.Message}"); }
     }
 
     /// <summary>Files new GitHub issues and CI failures as tickets in every repo that has a GitHub origin.</summary>
-    public static IEnumerable<(string Repo, MindAttic.Workflow.Tickets.Ticket Ticket)> Intake(string workspaceRoot, bool dryRun = false)
+    public static IEnumerable<(string Repo, MindAttic.Workflow.Tickets.Ticket Ticket)> Intake(string workspaceRoot, bool dryRun = false,
+        Func<string[], (int Code, string Output)>? gh = null)
     {
+        gh ??= Tickets.GitHubIntake.Gh;
         var remotes = Setup.WorkspaceBootstrap.Export(workspaceRoot).Repos.ToDictionary(m => m.Name, m => m.Remote, StringComparer.OrdinalIgnoreCase);
         foreach (var repo in new MindAttic.Workflow.Workspace(workspaceRoot).Repos().Where(r => File.Exists(r.StoriesPath)))
         {
             var remote = remotes.GetValueOrDefault(repo.Name);
             if (remote is null || Tickets.GitHubIntake.Slug(remote) is not { } slug) continue;
-            var items = Tickets.GitHubIntake.Find(slug, Tickets.GitHubIntake.Gh, DateTime.UtcNow);
+            var items = Tickets.GitHubIntake.Find(slug, gh, DateTime.UtcNow);
             if (items.Count == 0) continue;
             using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(workspaceRoot))
                 if (db is not null && db.Repos().Any(x => x.Name.Equals(repo.Name, StringComparison.OrdinalIgnoreCase)))
@@ -290,8 +318,11 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         }
     }
 
-    private void Alert(string title, string message, bool urgent = false) =>
-        _ = notifier.SendAsync(notifyUrl, title, message, urgent);
+    private void Alert(string title, string message, bool urgent = false)
+    {
+        if (AlertSink is { } sink) sink(title, message, urgent);
+        else _ = notifier.SendAsync(notifyUrl, title, message, urgent);
+    }
 
     private void Say(LogEventLevel level, string line, Exception? ex = null)
     {

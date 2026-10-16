@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using MindAttic.Workflow.Tickets;
@@ -23,18 +22,24 @@ public static partial class GitHubIntake
 
     public static string? Slug(string remote) => Remote().Match(remote.Trim()) is { Success: true } m ? m.Groups["slug"].Value : null;
 
-    public static (int Code, string Output) Gh(params string[] args)
+    /// <summary>How long one <c>gh</c> call may run inside the daemon's tick before it's killed.</summary>
+    internal static readonly TimeSpan GhTimeout = TimeSpan.FromMinutes(1);
+
+    public static (int Code, string Output) Gh(params string[] args) => Gh(ProcessRunner.Default, GhTimeout, args);
+
+    /// <summary><see cref="Gh(string[])"/> through <paramref name="runner"/>: a call past <paramref name="timeout"/> is killed and reads as a failure.</summary>
+    internal static (int Code, string Output) Gh(IProcessRunner runner, TimeSpan timeout, params string[] args)
     {
-        var psi = new ProcessStartInfo("gh") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
-        foreach (var a in args) psi.ArgumentList.Add(a);
         try
         {
-            using var p = Process.Start(psi)!;
-            var output = p.StandardOutput.ReadToEndAsync();
-            var error = p.StandardError.ReadToEndAsync();
             // It runs inside the daemon's tick: a network stall mustn't stop pacing.
-            if (!p.WaitForExit(60_000)) { p.Kill(entireProcessTree: true); return (-1, "gh took over a minute; stopped it"); }
-            return (p.ExitCode, p.ExitCode == 0 ? output.Result : error.Result);
+            var r = runner.Run("gh", args, timeout);
+            if (r.TimedOut)
+            {
+                OrchestratorLog.For("GitHubIntake").Warning("gh {Args} took over {Seconds:0}s; stopped it", string.Join(' ', args), timeout.TotalSeconds);
+                return (-1, $"gh took over {timeout.TotalSeconds:0}s; stopped it");
+            }
+            return (r.ExitCode, r.ExitCode == 0 ? r.Output : r.Error);
         }
         catch (System.ComponentModel.Win32Exception) { return (-1, "the GitHub CLI (gh) isn't installed"); }
     }
