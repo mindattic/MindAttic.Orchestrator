@@ -257,6 +257,9 @@ public sealed class RateLimitStatusWriter(string? path = null)
     public string Path { get; } = path ?? System.IO.Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "rl-status.json");
 
+    /// <summary>The clock the writer stamps and dedupes by; tests move it.</summary>
+    internal Func<DateTime> UtcNow { get; init; } = () => DateTime.UtcNow;
+
     private string? lastWritten;
     private DateTime lastWrittenUtc;
 
@@ -313,14 +316,14 @@ public sealed class RateLimitStatusWriter(string? path = null)
         }
         // pace-gate.py holds each tool call this long; the average is what the next refresh corrects the
         // measured rate by (Pacer.AgentDelay), so it's kept until it decays even once the hold is off.
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = UtcNow();
         var average = AgentDelay(nowUtc);
         var delay = pace?.AgentDelaySeconds ?? 0;
         if (delay > 0) body["pace_delay_seconds"] = delay;
         if (average >= 0.5) body["pace_delay_avg"] = Math.Round(average, 1);
         var key = JsonSerializer.Serialize(body);
         // Readers show the file's age, so refresh it at least once a minute even when nothing changed.
-        if (key == lastWritten && DateTime.UtcNow - lastWrittenUtc < TimeSpan.FromMinutes(1)) return;
+        if (key == lastWritten && nowUtc - lastWrittenUtc < TimeSpan.FromMinutes(1)) return;
 
         body["timestamp"] = nowUtc.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture) + "Z";
         try
@@ -330,7 +333,7 @@ public sealed class RateLimitStatusWriter(string? path = null)
             File.WriteAllText(temp, JsonSerializer.Serialize(body, new JsonSerializerOptions { WriteIndented = true }));
             File.Move(temp, Path, overwrite: true);
             lastWritten = key;
-            lastWrittenUtc = DateTime.UtcNow;
+            lastWrittenUtc = nowUtc;
         }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
