@@ -31,15 +31,8 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         }
 
         var title = useWorktree ? $"{item.Repo} {item.Id}" : item.Repo;
-        var before = sessions.HostIds();
-        var focus = Foreground.Current();
-        var startError = sessions.Start(title, directory, provider, Scheduler.PromptFor(item));
+        var (startError, cameUp) = (OpenTab ?? Open)(title, directory, provider, Scheduler.PromptFor(item), submit);
         if (startError is not null) return new Result(false, startError, null);
-        _ = Foreground.RestoreAsync(focus, TimeSpan.FromSeconds(2));
-        // Every tab is checked: one whose agent never starts would otherwise look like a free slot.
-        var cameUp = Task.Run(async () => submit
-            ? await sessions.SubmitWhenReadyAsync(directory, before, SubmitSettle, SubmitTimeout)
-            : await sessions.WaitForHostAsync(directory, before, SubmitTimeout) is not null);
 
         var assignment = new Assignment(item.Id, item.Repo, directory, provider, DateTime.UtcNow, useWorktree);
         store.UpdateAssignments(all =>
@@ -52,6 +45,23 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         return new Result(true, $"Opened {provider} on {item.Id} in {where}. " + (!submit
             ? "Its prompt is pre-filled; press Enter in the tab to begin."
             : "Its prompt submits by itself once the agent is up."), assignment, cameUp);
+    }
+
+    /// <summary>Seam: opens the agent's tab (title, directory, provider, prompt, submit) and returns the error, or the
+    /// task that says whether it came up. Tests swap it so no Windows Terminal tab opens.</summary>
+    internal Func<string, string, string, string, bool, (string? Error, Task<bool>? CameUp)>? OpenTab { get; init; }
+
+    private (string? Error, Task<bool>? CameUp) Open(string title, string directory, string provider, string prompt, bool submit)
+    {
+        var before = sessions.HostIds();
+        var focus = Foreground.Current();
+        var startError = sessions.Start(title, directory, provider, prompt);
+        if (startError is not null) return (startError, null);
+        _ = Foreground.RestoreAsync(focus, TimeSpan.FromSeconds(2));
+        // Every tab is checked: one whose agent never starts would otherwise look like a free slot.
+        return (null, Task.Run(async () => submit
+            ? await sessions.SubmitWhenReadyAsync(directory, before, SubmitSettle, SubmitTimeout)
+            : await sessions.WaitForHostAsync(directory, before, SubmitTimeout) is not null));
     }
 
     /// <summary>Drops an assignment (the ticket returns to the queue). Never touches the worktree.</summary>
@@ -132,7 +142,10 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         return "main";
     }
 
-    internal static (int Code, string Output) Git(string repoPath, params string[] args)
+    internal static (int Code, string Output) Git(string repoPath, params string[] args) => Git(GitTimeout, repoPath, args);
+
+    /// <param name="timeout">How long git gets before it's killed with its whole process tree (seam: tests pass a short one).</param>
+    internal static (int Code, string Output) Git(TimeSpan timeout, string repoPath, params string[] args)
     {
         var psi = new ProcessStartInfo("git")
         {
@@ -151,10 +164,10 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
             using var p = Process.Start(psi)!;
             var stdout = p.StandardOutput.ReadToEndAsync();
             var stderr = p.StandardError.ReadToEndAsync();
-            if (!p.WaitForExit(GitTimeout))
+            if (!p.WaitForExit(timeout))
             {
                 p.Kill(entireProcessTree: true);
-                return (-1, $"git {string.Join(' ', args)} took over {GitTimeout.TotalSeconds:0}s; stopped it");
+                return (-1, $"git {string.Join(' ', args)} took over {timeout.TotalSeconds:0}s; stopped it");
             }
             return (p.ExitCode, stdout.Result + stderr.Result);
         }
