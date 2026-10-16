@@ -101,14 +101,14 @@ public static class AgentGate
 
     internal const string AutopilotCommand = """
         ---
-        description: Work the stories of every repo with an open CLI (or "all" for every repo with open stories, -repo=a,b, or "this" for just this CLI's own repo) in parallel background agents, each in its own worktree, paced to use the 5-hour window without hitting the limit. /autopilot off stops it.
-        argument-hint: "[on|off|all|this] [-repo=a,b,c]"
+        description: Work this CLI's repo's stories (or -repo=a,b, or "all" for every repo with open stories) in parallel background agents, each in its own worktree, paced to use the 5-hour window without hitting the limit. /autopilot off stops it for this repo; /autopilot off all stops it everywhere.
+        argument-hint: "[on|off|off all|all] [-repo=a,b,c]"
         ---
         The user ran /autopilot $ARGUMENTS. MindAttic.Orchestrator's context gate has already recorded it; there is nothing for you to set up, and nothing for you to work on because of it.
 
-        If the arguments start with "off": reply with one short line confirming autopilot is off; the orchestrator types no new stories into any CLI (agents already working finish their stories).
+        If the arguments start with "off": reply with one short line confirming autopilot is off for this CLI's repo (or the repos named; "off all": everywhere); agents already working finish their stories.
 
-        Otherwise reply with one short line confirming autopilot is on for the repos that have an open Claude CLI (or, with "all", every repo in the workspace that has open stories, CLI open or not; with -repo=, the repos named; with "this", only this CLI's own repo; name them), then end your turn. From then on the orchestrator works each of those repos' next open story (manual priority first, then smallest effort) in background agents of their own, each in its own git worktree: no window, nothing typed into any CLI, so every tab and checkout stays free for you. As many run at once as each repo's session limit and the pace allow; each commits, closes its ticket and lands its work on main, then the next starts. New stories only start while the 5-hour pace can afford them and the pace gate slows running agents, so the window gets used without hitting the limit. Repos whose CLIs open later join in; an agent that ends without closing its ticket gives it back and you get a "Needs you"; /autopilot off starts nothing new.
+        Otherwise reply with one short line confirming autopilot is on for this CLI's own repo only (or, with -repo=, the repos named; with "all", every repo in the workspace that has open stories), alongside any other repos other CLIs turned it on for; name them. Then end your turn. From then on the orchestrator works each of those repos' next open story (manual priority first, then smallest effort) in background agents of their own, each in its own git worktree: no window, nothing typed into any CLI, so every tab and checkout stays free for you. As many run at once as each repo's session limit and the pace allow; each commits, closes its ticket and lands its work on main, then the next starts. New stories only start while the 5-hour pace can afford them and the pace gate slows running agents, so the window gets used without hitting the limit. Repos whose CLIs open later join in; an agent that ends without closing its ticket gives it back and you get a "Needs you"; /autopilot off starts nothing new.
         """;
 
     internal const string CrossRepoCommand = """
@@ -318,10 +318,19 @@ public static class AgentGate
         ASKS = re.compile(r"\b(shall i|should i|do you want|want me to|would you like|ready for me to|ok(?:ay)? to (?:start|continue|proceed|go)|"
                           r"let me know (?:if|when|whether)|(?:go ahead|proceed|continue|carry on|keep going)\?)", re.I)
 
+        def autopilot_on(repo):
+            # Only a repo /autopilot was turned on for (typed in its CLI, or -repo= / all): never a CLI you're just using.
+            try:
+                names = {n.strip().lower() for n in (DIR / "autopilot.order").read_text().split(",") if n.strip()}
+            except Exception:
+                return False
+            return "*" in names or repo.lower() in names
+
         def open_tickets(cwd):
-            # The repo checkout cwd is in (never an autopilot worktree: its agent works one ticket) and its open tickets.
+            # The repo checkout cwd is in (never an autopilot worktree: its agent works one ticket) and its open tickets,
+            # when /autopilot is on for it; otherwise keep-going leaves the CLI alone.
             repo = repo_of(cwd, worktrees=False)
-            if not repo:
+            if not repo or not autopilot_on(repo):
                 return None, []
             try:
                 import sqlite3
@@ -517,19 +526,28 @@ public static class AgentGate
             # /autopilot [on|off|this] [-repo=a,b]: every open repo CLI (or those repos' CLIs, or just this
             # one's own repo with "this") works its own stories until off.
             if prompt.startswith("/autopilot"):
+                # It acts on the CLI it's typed into: on (or off) for this CLI's own repo, added to (or taken from) what other
+                # CLIs turned on. -repo=A,B names repos instead; "all" is every repo with open stories; "off all" ends it everywhere.
                 order = DIR / "autopilot.order"
                 args = typed[len("/autopilot"):].strip()
+                try:
+                    names = [n.strip() for n in order.read_text().split(",") if n.strip()] if order.exists() else []
+                except Exception:
+                    names = []
+                mine = repo_of(data.get("cwd") or "", worktrees=False)
+                m = re.search(r"-{1,2}repos?\s*[=:]?\s*\[?([^\]]*)\]?", args, re.I)
+                named = [r.strip() for r in m.group(1).replace(" ", ",").split(",") if r.strip() and r.strip().lower() not in ("on", "off", "this", "all")] if m else ([mine] if mine else [])
+                lower = {n.lower() for n in named}
                 if re.match(r"off\b", args, re.I):
-                    if order.exists():
-                        order.unlink()
-                elif re.match(r"this\b", args, re.I):
-                    order.write_text(repo_of(data.get("cwd") or "", worktrees=False) or "")
+                    names = [] if re.match(r"off\s+all\b", args, re.I) or not named else [n for n in names if n.lower() not in lower]
                 elif re.match(r"all\b", args, re.I):
-                    order.write_text("*")  # every repo with open stories, CLI open or not
+                    names = ["*"]
                 else:
-                    m = re.search(r"-{1,2}repos?\s*[=:]?\s*\[?([^\]]*)\]?", args, re.I)
-                    names = [r.strip() for r in m.group(1).replace(" ", ",").split(",")] if m else []
-                    order.write_text(",".join(r for r in names if r and r.lower() not in ("on", "off", "this")))
+                    names = [n for n in names if n != "*" and n.lower() not in lower] + named
+                if names:
+                    order.write_text(",".join(names))
+                elif order.exists():
+                    order.unlink()
             # /goal <condition> runs turn after turn until its condition holds; cycling would end it, so the session is
             # marked and left to Claude's own compaction until /goal clear (MAO-T93).
             if re.match(r"/goal\b", prompt):

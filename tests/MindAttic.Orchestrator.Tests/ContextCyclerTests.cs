@@ -147,6 +147,10 @@ public sealed class ContextCyclerTests
             object Stop(string said, string? cwd = null) => new { session_id = "s", hook_event_name = "Stop", cwd = cwd ?? repo, last_assistant_message = said };
             const string ask = "MAO-T91 is done and pushed. Next is MAO-T93. Shall I start it?";
 
+            // Found live: a GridGameGaiden CLI the user was working in was told to start on its 22 open tickets.
+            Assert.That(Gate(Stop(ask)), Is.Empty, "autopilot isn't on for A: a CLI you're just using is never pushed on");
+            Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd = repo, prompt = "/autopilot" });
+
             var told = Gate(Stop(ask));
             Assert.That(told, Does.Contain("\"decision\": \"block\"").And.Contain("A still has 2 open tickets (A-T2, A-T3)"));
             Assert.That(Gate(Stop(ask)), Is.Empty, "it stopped again without doing anything: something really needs the user, so it's let go");
@@ -297,7 +301,7 @@ public sealed class ContextCyclerTests
     }
 
     [Test]
-    public void Autopilot_this_turns_it_on_for_just_the_cli_that_ran_it()
+    public void Autopilot_turns_on_for_just_the_cli_it_is_typed_into()
     {
         var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
         var ws = Path.Combine(dir, "ws");
@@ -322,17 +326,25 @@ public sealed class ContextCyclerTests
             }
             var order = Path.Combine(dir, ".claude", "session-context", "autopilot.order");
 
-            Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd = repo, prompt = "/autopilot this" });
-            Assert.That(File.ReadAllText(order), Is.EqualTo("A"), "only this CLI's own repo, not every open one");
+            void Typed(string cwd, string prompt) => Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd, prompt });
+            var b = Path.Combine(ws, "B");
 
-            Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd = ws, prompt = "/autopilot this" });
-            Assert.That(File.ReadAllText(order), Is.Empty, "the workspace root isn't a repo: no repo to scope it to");
-
-            Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd = repo, prompt = "/autopilot off" });
-            Assert.That(File.Exists(order), Is.False);
-
-            Gate(new { session_id = "s", hook_event_name = "UserPromptSubmit", cwd = repo, prompt = "/autopilot" });
-            Assert.That(File.ReadAllText(order), Is.Empty, "plain /autopilot still means every open repo");
+            Typed(repo, "/autopilot");
+            Assert.That(File.ReadAllText(order), Is.EqualTo("A"), "only the CLI it's typed into, not every open one");
+            Typed(b, "/autopilot");
+            Assert.That(File.ReadAllText(order), Is.EqualTo("A,B"), "another CLI adds its own repo, not replaces");
+            Typed(repo, "/autopilot off");
+            Assert.That(File.ReadAllText(order), Is.EqualTo("B"), "off is for this CLI's repo only");
+            Typed(ws, "/autopilot");
+            Assert.That(File.ReadAllText(order), Is.EqualTo("B"), "the workspace root has no repo of its own");
+            Typed(repo, "/autopilot -repo=C,D on");
+            Assert.That(File.ReadAllText(order), Is.EqualTo("B,C,D"));
+            Typed(repo, "/autopilot all");
+            Assert.That(File.ReadAllText(order), Is.EqualTo("*"));
+            Typed(repo, "/autopilot");
+            Assert.That(File.ReadAllText(order), Is.EqualTo("A"), "back to just this CLI's repo");
+            Typed(ws, "/autopilot off all");
+            Assert.That(File.Exists(order), Is.False, "off everywhere");
         }
         finally { Directory.Delete(dir, recursive: true); }
     }

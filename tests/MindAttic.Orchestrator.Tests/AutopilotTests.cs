@@ -142,6 +142,9 @@ public sealed class AutopilotTests
     private void Cli(int pid, string cwd, bool busy = false, DateTime? turn = null)
     {
         clis.Add(pid);
+        // /autopilot typed in it: on for that CLI's own repo (a CLI at the workspace root has none).
+        var rel = Path.GetRelativePath(@"D:\W", cwd);
+        if (order is not null && rel != "." && rel.Split('\\')[0] is var repo && !order.Contains(repo)) order = [.. order, repo];
         File.WriteAllText(Path.Combine(sessions.Directory, "s" + pid + ".state.json"),
             $$"""{"state":"{{(busy ? "busy" : "idle")}}","at":"{{turn ?? Now.AddHours(-1):yyyy-MM-ddTHH:mm:ssZ}}","pid":{{pid}},"cwd":"{{cwd.Replace(@"\", @"\\")}}"}""");
     }

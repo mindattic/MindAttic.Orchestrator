@@ -143,6 +143,7 @@ public sealed class HookScriptTests
             "d.execute(\"insert into tickets values('USS-T1','UnitySolarSystem','open',1)\"); d.commit()", db }, UseShellExecute = false })!)
             mk.WaitForExit(20_000);
         var uss = Path.Combine(ws, "UnitySolarSystem");
+        File.WriteAllText(Path.Combine(Marks, "autopilot.order"), "UnitySolarSystem"); // keep-going acts only where /autopilot is on
         object Asking(string sid) => new { hook_event_name = "Stop", session_id = sid, cwd = uss, last_assistant_message = "Shall I start the next one?" };
         Status(new { });
         Assert.That(Gate(Asking("w3"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\""), "open tickets: told to carry on");
@@ -200,7 +201,7 @@ public sealed class HookScriptTests
         Gate(Prompt("/autopilot -repo=a,b on"), AgentGate.ContextScriptName);
         Assert.That(File.ReadAllText(Path.Combine(Marks, "autopilot.order")), Is.EqualTo("a,b"));
         Gate(Prompt("/autopilot this"), AgentGate.ContextScriptName);
-        Assert.That(File.ReadAllText(Path.Combine(Marks, "autopilot.order")), Is.Empty, "the workspace root is no repo of its own");
+        Assert.That(File.ReadAllText(Path.Combine(Marks, "autopilot.order")), Is.EqualTo("a,b"), "the workspace root is no repo of its own: nothing added");
         Gate(Prompt("/autopilot all"), AgentGate.ContextScriptName);
         Assert.That(File.ReadAllText(Path.Combine(Marks, "autopilot.order")), Is.EqualTo(MindAttic.Orchestrator.Scheduling.Autopilot.AllRepos));
         Gate(Prompt("/autopilot off"), AgentGate.ContextScriptName);

@@ -83,10 +83,8 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         var everyRepo = order?.Contains(AllRepos) == true;
         var repos = order is null ? []
             : everyRepo ? snapshot.Repos.Where(r => r.Path.Length > 0 && !r.Name.StartsWith('(') && r.OpenTickets.Count > 0).ToList()
-            : order.Count > 0 ? snapshot.Repos.Where(r => r.Path.Length > 0 && order.Contains(r.Name, StringComparer.OrdinalIgnoreCase)).ToList()
-            : sessions.Load().Where(s => s.Pid is { } p && Alive(p) && !IsAgent(p))
-                .Select(s => RepoFor(s.Cwd, snapshot)).OfType<RepoStatus>()
-                .DistinctBy(r => r.Name, StringComparer.OrdinalIgnoreCase).ToList();
+            // Only the repos /autopilot was turned on for (each CLI adds its own), never every repo that has a CLI open.
+            : snapshot.Repos.Where(r => r.Path.Length > 0 && order.Contains(r.Name, StringComparer.OrdinalIgnoreCase)).ToList();
         // Repos you've told it to skip, and ones whose own CLI you're working in by hand, get no new agents.
         var byHand = ByHand(nowUtc, snapshot, TimeSpan.FromMinutes(Math.Max(0, settings.AutopilotHandMinutes)));
         var alone = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
