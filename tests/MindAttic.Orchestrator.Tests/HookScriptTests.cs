@@ -42,10 +42,10 @@ public sealed class HookScriptTests
         return p;
     }
 
-    private (string Output, TimeSpan Took) Gate(object input, string script = AgentGate.ScriptName)
+    private (string Output, TimeSpan Took) Gate(object input, string script = AgentGate.ScriptName, params string[] args)
     {
         var clock = Stopwatch.StartNew();
-        using var p = Run(script, input);
+        using var p = Run(script, input, args);
         var output = p.StandardOutput.ReadToEnd();
         Assert.That(p.WaitForExit(30_000), Is.True);
         return (output, clock.Elapsed);
@@ -356,5 +356,129 @@ public sealed class HookScriptTests
 
         var odd = System.Text.Json.Nodes.JsonNode.Parse("""{ "hooks": { "Stop": [ { "hooks": [ { "command": 42 } ] } ] } }""")!.AsObject();
         Assert.That(AgentGate.AddHook(odd, "Stop", AgentGate.ContextScriptName, "python c.py", 10), Is.True, "a non-string command is someone else's: ours is added beside it");
+    }
+
+    // ---- keep-going (M.ORCH-T140): what context-gate.py does when an /autopilot turn stops ----
+
+    private string Uss => Path.Combine(ws, "UnitySolarSystem");
+    private string KeepGoingLog => Path.Combine(Marks, "keep-going.jsonl");
+
+    /// <summary>Two open fixes for UnitySolarSystem in the workflow db, and /autopilot on for it in this CLI.</summary>
+    private void AutopilotWithOpenFixes()
+    {
+        var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(db)!);
+        using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
+            "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal,type)'); " +
+            "d.execute(\"insert into tickets values('U.SPC-T1','UnitySolarSystem','open',1,'fix')\"); " +
+            "d.execute(\"insert into tickets values('U.SPC-T2','UnitySolarSystem','open',2,'fix')\"); d.commit()", db }, UseShellExecute = false })!)
+            Assert.That(mk.WaitForExit(20_000), Is.True);
+        Directory.CreateDirectory(Marks);
+        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem");
+    }
+
+    private string Turn(string sid, string prompt, string? transcript = null) =>
+        Gate(new { hook_event_name = "UserPromptSubmit", session_id = sid, prompt, cwd = Uss, transcript_path = transcript }, AgentGate.ContextScriptName).Output;
+
+    private string Ran(string sid, string command) =>
+        Gate(new { hook_event_name = "PostToolUse", session_id = sid, cwd = Uss, tool_name = "Bash", tool_input = new { command } }, AgentGate.ContextScriptName).Output;
+
+    private string Stopped(string sid, string said = "Done: U.SPC-T1 is closed.") =>
+        Gate(new { hook_event_name = "Stop", session_id = sid, cwd = Uss, last_assistant_message = said }, AgentGate.ContextScriptName).Output;
+
+    private JsonElement[] KeepGoingLines() =>
+        File.Exists(KeepGoingLog) ? File.ReadAllLines(KeepGoingLog).Select(l => JsonDocument.Parse(l).RootElement).ToArray() : [];
+
+    private static string Reason(string output) => JsonDocument.Parse(output).RootElement.GetProperty("reason").GetString()!;
+
+    [Test]
+    public void A_turn_that_closed_a_ticket_and_stopped_is_nudged_and_a_second_stop_with_no_work_between_is_let_go()
+    {
+        AutopilotWithOpenFixes();
+        Status(new { });
+        Turn("k1", "go");
+        Ran("k1", "workflow ticket close U.SPC-T1 --ref abc123");
+        var state = Path.Combine(Marks, "k1.state.json");
+        Assert.That(File.ReadAllText(state), Does.Contain("U.SPC-T1"), "the close is remembered for the stop");
+
+        var nudge = Stopped("k1");
+        Assert.That(nudge, Does.Contain("\"decision\": \"block\""));
+        Assert.That(Reason(nudge), Does.StartWith("Don't stop").And.Contain("2 workable tickets remain (U.SPC-T1, U.SPC-T2)")
+            .And.Contain("orchestrator next --repos \"UnitySolarSystem\" --claim"));
+        Assert.That(File.ReadAllText(state), Does.Contain("\"nudged\": true").And.Contain("\"worked\": false").And.Not.Contain("closed"));
+
+        Assert.That(Stopped("k1"), Is.Empty, "stopped again straight after with nothing done: something really needs you");
+        Assert.That(File.ReadAllText(state), Does.Not.Contain("nudged").And.Contain("\"state\": \"idle\""), "and the next stop starts fresh");
+
+        var lines = KeepGoingLines();
+        Assert.That(lines.Select(l => l.GetProperty("action").GetString()), Is.EqualTo(new[] { "kept going", "let stop" }));
+        Assert.That(lines.Select(l => (l.GetProperty("repo").GetString(), l.GetProperty("session").GetString(), l.GetProperty("provider").GetString(),
+            l.GetProperty("why").GetString(), l.GetProperty("open").GetInt32())), Is.All.EqualTo(("UnitySolarSystem", "k1", "Claude", "autopilot", 2)));
+
+        // Nudged, then carried on (any tool call counts as work): its next stop is nudged again rather than let go.
+        Assert.That(Stopped("k1"), Does.Contain("\"block\""));
+        Ran("k1", "dotnet test");
+        Assert.That(Stopped("k1"), Does.Contain("\"block\""), "it worked after the nudge, so stopping again isn't insisting");
+        Assert.That(KeepGoingLines().Select(l => l.GetProperty("action").GetString()), Is.EqualTo(new[] { "kept going", "let stop", "kept going", "kept going" }));
+    }
+
+    [Test]
+    public void The_wind_down_note_is_appended_to_a_nudge()
+    {
+        AutopilotWithOpenFixes();
+        Status(new { wind_down_note = "Past 90%: finish or file it." });
+        var reason = Reason(Stopped("k2"));
+        Assert.That(reason, Does.StartWith("Don't stop").And.EndWith(" Past 90%: finish or file it."), "after the carry-on, so the agent hears both");
+
+        Status(new { });
+        Assert.That(Reason(Stopped("k3")), Does.Not.Contain("Past 90%"), "no note, nothing appended");
+    }
+
+    [Test]
+    public void A_goal_turn_is_not_nudged_until_goal_clear_or_its_stop_summary_ends_the_goal()
+    {
+        AutopilotWithOpenFixes();
+        Status(new { });
+        Turn("g1", "/goal all the tests pass");
+        Assert.That(Stopped("g1"), Is.Empty, "a /goal runs turn after turn on its own: keep-going leaves it alone");
+        Assert.That(KeepGoingLines(), Is.Empty, "and logs nothing, since it never considered it");
+
+        Turn("g1", "/goal clear");
+        Assert.That(Stopped("g1"), Does.Contain("\"block\""), "/goal clear ends the goal");
+
+        // A goal that finished on its own: the transcript's last entry is the stop summary naming it.
+        var transcript = Path.Combine(dir, "g2.jsonl");
+        File.WriteAllText(transcript, "");
+        Turn("g2", "/goal ship it", transcript);
+        Assert.That(Stopped("g2"), Is.Empty);
+        File.WriteAllLines(transcript, [
+            JsonSerializer.Serialize(new { type = "assistant", message = new { content = new[] { new { type = "text", text = "Shipped." } } } }),
+            JsonSerializer.Serialize(new { type = "system", subtype = "stop_hook_summary", hookInfos = new[] { new { promptText = "something else" } } }),
+        ]);
+        Turn("g2", "go");
+        Assert.That(Stopped("g2"), Is.Empty, "a summary naming another goal doesn't end this one");
+        File.AppendAllLines(transcript, [
+            JsonSerializer.Serialize(new { type = "system", subtype = "stop_hook_summary", hookInfos = new[] { new { promptText = "ship it" } } }),
+            "not json",
+        ]);
+        Turn("g2", "go");
+        Assert.That(File.ReadAllText(Path.Combine(Marks, "g2.state.json")), Does.Not.Contain("ship it"), "goal_finished: the goal is gone");
+        Assert.That(Stopped("g2"), Does.Contain("\"block\""), "so its stops are kept going again");
+    }
+
+    [Test]
+    public void A_codex_stop_or_gemini_after_agent_is_never_pushed_onto_tickets()
+    {
+        // The installer hooks both up to context-gate.py (codex / gemini on the command line), but /autopilot runs in a
+        // Claude CLI: theirs are let stop, with nothing logged and no session state written (84d9b91).
+        AutopilotWithOpenFixes();
+        Status(new { });
+        Assert.That(Gate(new { hook_event_name = "Stop", session_id = "c1", cwd = Uss, last_assistant_message = "Shall I go on?" },
+            AgentGate.ContextScriptName, "codex").Output, Is.Empty);
+        Assert.That(Gate(new { hook_event_name = "AfterAgent", session_id = "m1", cwd = Uss, prompt_response = "Shall I go on?" },
+            AgentGate.ContextScriptName, "gemini").Output, Is.Empty);
+        Assert.That(KeepGoingLines(), Is.Empty);
+        Assert.That(Directory.GetFiles(Marks, "*.state.json"), Is.Empty);
+        Assert.That(Stopped("c2", "Shall I go on?"), Does.Contain("\"block\""), "the same stop from the Claude CLI is");
     }
 }
