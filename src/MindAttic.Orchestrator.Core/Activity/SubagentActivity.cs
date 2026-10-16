@@ -29,7 +29,10 @@ public static class SubagentTranscripts
     private static readonly ConcurrentDictionary<string, string> Found = new(StringComparer.OrdinalIgnoreCase);
     private static readonly ConcurrentDictionary<string, DateTime> Missed = new(StringComparer.OrdinalIgnoreCase);
 
-    public static string? Find(string projectsDir, string agentId)
+    public static string? Find(string projectsDir, string agentId) => Find(projectsDir, agentId, DateTime.UtcNow);
+
+    /// <summary><see cref="Find(string, string)"/> as of <paramref name="now"/> (a seam for tests of the retry wait).</summary>
+    internal static string? Find(string projectsDir, string agentId, DateTime now)
     {
         var key = projectsDir + "|" + agentId;
         if (Found.TryGetValue(key, out var known))
@@ -37,7 +40,6 @@ public static class SubagentTranscripts
             if (File.Exists(known)) return known;
             Found.TryRemove(key, out _);
         }
-        var now = DateTime.UtcNow;
         if (Missed.TryGetValue(key, out var missedAt) && now - missedAt < RetryMissAfter) return null;
 
         var name = "agent-" + agentId + ".jsonl";

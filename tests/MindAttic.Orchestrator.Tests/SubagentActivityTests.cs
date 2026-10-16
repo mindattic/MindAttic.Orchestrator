@@ -128,4 +128,133 @@ public sealed class SubagentActivityTests
             Directory.Delete(projectsDir, recursive: true);
         }
     }
+
+    // ---- SubagentTranscripts.Find (M.ORCH-T143) ----
+
+    private static string WriteTranscript(string projectsDir, string session, string agentId, params string[] lines)
+    {
+        var folder = Path.Combine(projectsDir, "proj", session, "subagents");
+        Directory.CreateDirectory(folder);
+        var file = Path.Combine(folder, $"agent-{agentId}.jsonl");
+        File.WriteAllLines(file, lines);
+        return file;
+    }
+
+    [Test]
+    public void Find_remembers_a_miss_and_looks_again_only_after_the_retry_wait()
+    {
+        var projectsDir = NewDir("projects");
+        try
+        {
+            var id = "miss-" + Guid.NewGuid().ToString("N");
+            var t0 = DateTime.UtcNow;
+            Assert.That(SubagentTranscripts.Find(projectsDir, id, t0), Is.Null, "not written yet");
+
+            var file = WriteTranscript(projectsDir, "session-1", id, "{}");
+            Assert.That(SubagentTranscripts.Find(projectsDir, id, t0 + SubagentTranscripts.RetryMissAfter - TimeSpan.FromSeconds(1)), Is.Null,
+                "a miss isn't looked for again inside the retry wait, even though the file is there now");
+            Assert.That(SubagentTranscripts.Find(projectsDir, id, t0 + SubagentTranscripts.RetryMissAfter), Is.EqualTo(file),
+                "once the wait is up it's looked for again and found");
+            Assert.That(SubagentTranscripts.Find(projectsDir, id, t0 + SubagentTranscripts.RetryMissAfter), Is.EqualTo(file), "and remembered");
+        }
+        finally { Directory.Delete(projectsDir, recursive: true); }
+    }
+
+    [Test]
+    public void Find_forgets_a_remembered_path_whose_file_was_deleted()
+    {
+        var projectsDir = NewDir("projects");
+        try
+        {
+            var id = "gone-" + Guid.NewGuid().ToString("N");
+            var first = WriteTranscript(projectsDir, "session-1", id, "{}");
+            var t0 = DateTime.UtcNow;
+            Assert.That(SubagentTranscripts.Find(projectsDir, id, t0), Is.EqualTo(first));
+
+            File.Delete(first);
+            Assert.That(SubagentTranscripts.Find(projectsDir, id, t0), Is.Null, "the remembered path isn't handed out once its file is gone");
+
+            var moved = WriteTranscript(projectsDir, "session-2", id, "{}");
+            Assert.That(SubagentTranscripts.Find(projectsDir, id, t0 + SubagentTranscripts.RetryMissAfter), Is.EqualTo(moved),
+                "it's looked for afresh, not stuck on the old path");
+        }
+        finally { Directory.Delete(projectsDir, recursive: true); }
+    }
+
+    // ---- SubagentActivityReader (M.ORCH-T143) ----
+
+    [Test]
+    public void The_tail_of_a_subagent_no_longer_alive_is_dropped()
+    {
+        var sessionDir = NewDir("ctx");
+        var projectsDir = NewDir("projects");
+        try
+        {
+            var cycler = new ContextCycler(sessionDir) { ProjectsDir = projectsDir };
+            Directory.CreateDirectory(cycler.SubagentDirectory);
+            var a = "drop-a-" + Guid.NewGuid().ToString("N");
+            var b = "drop-b-" + Guid.NewGuid().ToString("N");
+            var markA = Path.Combine(cycler.SubagentDirectory, a);
+            File.WriteAllText(markA, "");
+            File.WriteAllText(Path.Combine(cycler.SubagentDirectory, b), "");
+            var fileA = WriteTranscript(projectsDir, "session-1", a, Line("assistant", "2026-10-15T11:50:00Z", usage: (10, 0, 0, 0)));
+            WriteTranscript(projectsDir, "session-1", b, Line("assistant", "2026-10-15T11:50:00Z", usage: (1, 0, 0, 0)));
+            var now = DateTime.UtcNow;
+
+            var reader = new SubagentActivityReader(projectsDir);
+            Assert.That(reader.Poll(cycler, now).Select(s => s.AgentId).Order(), Is.EqualTo(new[] { a, b }.Order()));
+
+            File.Delete(markA); // a stopped; b runs on
+            Assert.That(reader.Poll(cycler, now).Select(s => s.AgentId), Is.EqualTo(new[] { b }));
+
+            // a's transcript is now something else, longer than before. Had its tail been kept, the next read would
+            // pick up at the old offset (mid-line) and add to the old count; dropped, it's read whole from the start.
+            File.WriteAllLines(fileA,
+            [
+                Line("assistant", "2026-10-15T11:40:00Z", attributionAgent: "Explore-with-a-long-name", usage: (7, 0, 0, 0)),
+                Line("assistant", "2026-10-15T11:41:00Z", attributionAgent: "Explore-with-a-long-name", usage: (5, 0, 0, 0)),
+            ]);
+            File.WriteAllText(markA, "");
+            var again = reader.Poll(cycler, now).Single(s => s.AgentId == a);
+            Assert.That((again.Usage, again.StartedUtc), Is.EqualTo((new TokenUsage(12, 0, 0, 0), new DateTime(2026, 10, 15, 11, 40, 0, DateTimeKind.Utc))));
+        }
+        finally
+        {
+            Directory.Delete(sessionDir, recursive: true);
+            Directory.Delete(projectsDir, recursive: true);
+        }
+    }
+
+    [Test]
+    public void A_subagent_idle_twenty_minutes_isnt_reported_but_its_mark_is_kept()
+    {
+        var sessionDir = NewDir("ctx");
+        var projectsDir = NewDir("projects");
+        try
+        {
+            var cycler = new ContextCycler(sessionDir) { ProjectsDir = projectsDir };
+            Directory.CreateDirectory(cycler.SubagentDirectory);
+            var id = "idle-" + Guid.NewGuid().ToString("N");
+            var mark = Path.Combine(cycler.SubagentDirectory, id);
+            File.WriteAllText(mark, ""); // no pid: trust the mark's age alone
+            var file = WriteTranscript(projectsDir, "session-1", id, Line("assistant", "2026-10-15T11:00:00Z", usage: (1, 0, 0, 1)));
+            var now = DateTime.UtcNow;
+            File.SetLastWriteTimeUtc(file, now - ContextCycler.SubagentIdleLife - TimeSpan.FromMinutes(1));
+
+            var reader = new SubagentActivityReader(projectsDir);
+            Assert.That(reader.Poll(cycler, now), Is.Empty, "quiet past 20 minutes: not running");
+            Assert.That(cycler.Subagents(), Is.Zero);
+
+            cycler.PruneMarks();
+            Assert.That(File.Exists(mark), "the idle rule only stops it counting; its mark stays");
+
+            File.SetLastWriteTimeUtc(file, now);
+            Assert.That(reader.Poll(cycler, now).Select(s => s.AgentId), Is.EqualTo(new[] { id }), "it's reported again as soon as it writes");
+        }
+        finally
+        {
+            Directory.Delete(sessionDir, recursive: true);
+            Directory.Delete(projectsDir, recursive: true);
+        }
+    }
 }
