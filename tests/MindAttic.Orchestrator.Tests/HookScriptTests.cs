@@ -195,6 +195,18 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void A_push_to_master_is_refused_now_that_every_repo_lands_on_main()
+    {
+        object Bash(string command) => new { tool_name = "Bash", tool_input = new { command } };
+        foreach (var c in new[] { "git push origin master", "git -C ../MindAttic.Ideas push origin master", "git push origin HEAD:master",
+                                  "cd x && git push -u origin master" })
+            Assert.That(Gate(Bash(c)).Output, Does.Contain("\"deny\"").And.Contain("HEAD:main"), c);
+        foreach (var c in new[] { "git push origin main", "git push origin HEAD:main", "git log master..main", "git push origin --delete master",
+                                  "echo 'git push origin master' > notes.txt" })
+            Assert.That(Gate(Bash(c)).Output, Does.Not.Contain("main line is main"), c);
+    }
+
+    [Test]
     public void PowerShell_recursion_is_caught_in_any_case_but_bash_ls_r_only_reverses()
     {
         object Ps(string command) => new { tool_name = "PowerShell", tool_input = new { command } };

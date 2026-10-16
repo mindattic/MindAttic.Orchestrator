@@ -224,6 +224,14 @@ public static class AgentGate
                     if other(repo_of(target)) and re.search(r"\b(commit|push|add|rm|mv|reset|checkout|merge|rebase|stash)\b", command):
                         refuse(f"This window is for {here}; git changes in {repo_of(target)} belong to that repo's window.")
 
+        # Every repo lands on main (the master repos were renamed 2026-10-16): a push to master would only recreate a stray
+        # branch on GitHub that triggers nothing (found live: an agent told to push main to a master repo made a stray main).
+        if tool in ("Bash", "PowerShell"):
+            for segment in re.split(r"[;\n|]|&&", str((data.get("tool_input") or {}).get("command") or "")):
+                if re.match(r"\s*(?:&\s*)?['\"]?git(?:\.exe)?['\"]?\s[^\n]*\bpush\b", segment) and re.search(r"(?:\s|:)master\b", segment) and not re.search(r"--delete\b", segment):
+                    refuse("Every MindAttic repo's main line is main now (renamed from master 2026-10-16); pushing master would "
+                           "recreate a stray branch. Push main instead: git push origin HEAD:main.")
+
         # A search of a whole drive never finishes in time and, orphaned when its agent stops, leaks handles until
         # Windows can't draw (found live: two `find /` held 660k handles and froze the desktop). Refuse it up front.
         import re
