@@ -1,3 +1,4 @@
+using System.IO;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -157,6 +158,49 @@ public sealed partial class MainViewModel
         };
         return $"Limits: 5-hour {Of(b.BlockLimitIsPeak ? null : b.BlockLimitSource, b.BlockLimit, LimitKind.Session, b.BlockLimitOutdated)}; " +
                $"weekly {Of(b.WeeklyLimitSource, b.WeeklyLimit, LimitKind.Weekly, b.WeeklyLimitOutdated)}.";
+    }
+
+    // ── Pace ledger ─────────────────────────────────────────────────────────
+
+    private List<LedgerWindow> ledger = [];
+    private DateTime ledgerStamp;
+
+    /// <summary>The daemon's <c>pace-ledger.jsonl</c>, reread only when it has written to it.</summary>
+    private IReadOnlyList<LedgerWindow> Ledger
+    {
+        get
+        {
+            var path = Path.Combine(store.Directory, PaceLedger.FileName);
+            var stamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default;
+            if (stamp != ledgerStamp)
+            {
+                try { ledger = PaceLedger.Load(path); ledgerStamp = stamp; }
+                catch (IOException) { }
+            }
+            return ledger;
+        }
+    }
+
+    private LedgerWindow? LastOver => Ledger.LastOrDefault(w => w.Grade == WindowGrade.Over);
+
+    public string LedgerHeadline => Ledger.Count == 0 ? "—" : LastOver is { } o ? Formatting.Span(DateTime.UtcNow - (o.LimitHitUtc ?? o.EndUtc)) : "never";
+
+    public string LedgerCaption => Ledger.Count == 0 ? "no windows recorded yet"
+        : LastOver is null ? $"over in {Ledger.Count} windows" : "since a window went over";
+
+    public Brush LedgerBrush => LastOver is { } o && DateTime.UtcNow - (o.LimitHitUtc ?? o.EndUtc) < TimeSpan.FromDays(1) ? Palette.Over : Palette.Working;
+
+    public string LedgerTooltip
+    {
+        get
+        {
+            var rows = Ledger;
+            var lines = new List<string> { "Pace ledger: " + PaceLedger.Summary(rows, DateTime.UtcNow) };
+            lines.AddRange(rows.TakeLast(6).Reverse().Select(w =>
+                $"{w.EndUtc.ToLocalTime():ddd h:mm tt}  {w.Grade.ToString().ToLowerInvariant()}: {w.Why}" + (w.Held > 0 ? $" · {w.Held} calls held" : "")));
+            lines.Add("orchestrator ledger lists every window.");
+            return string.Join("\n", lines);
+        }
     }
 
     // ── Pace ────────────────────────────────────────────────────────────────
@@ -397,7 +441,8 @@ public sealed partial class MainViewModel
         foreach (var name in new[] { nameof(Budget), nameof(BudgetIsPeak), nameof(BudgetHeadline), nameof(BudgetCaption),
                                      nameof(BudgetDetail), nameof(BudgetTooltip), nameof(BudgetFill), nameof(BudgetBrush),
                                      nameof(BlockResetText), nameof(WeeklyHeadline), nameof(WeeklyCaption),
-                                     nameof(Pace), nameof(PaceText), nameof(PaceBrush) })
+                                     nameof(Pace), nameof(PaceText), nameof(PaceBrush),
+                                     nameof(LedgerHeadline), nameof(LedgerCaption), nameof(LedgerBrush), nameof(LedgerTooltip) })
             Raise(name);
 
         ApplyAgents(next);

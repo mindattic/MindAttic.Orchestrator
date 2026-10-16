@@ -51,6 +51,12 @@ public sealed class HookScriptTests
         return (output, clock.Elapsed);
     }
 
+    private string[] GateLog()
+    {
+        var path = Path.Combine(Marks, AgentGate.GateLogName);
+        return File.Exists(path) ? File.ReadAllLines(path) : [];
+    }
+
     private void Status(object fields, DateTime? at = null, string source = "MindAttic.Orchestrator")
     {
         var body = JsonSerializer.SerializeToNode(fields)!.AsObject();
@@ -65,6 +71,7 @@ public sealed class HookScriptTests
         var call = new { tool_name = "Read", tool_input = new { file_path = "x" } };
         Status(new { pace_delay_seconds = 2 });
         Assert.That(Gate(call).Took, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(1.9)), "a live hold is waited out");
+        Assert.That(GateLog().Single(), Does.Contain("\"decision\": \"held\"").And.Contain("\"tool\": \"Read\""), "the hold is on the pace ledger's record");
 
         Status(new { pace_delay_seconds = 30 }, at: DateTime.UtcNow.AddMinutes(-10));
         Assert.That(Gate(call).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "stale: the orchestrator isn't running, nothing paces");
@@ -97,6 +104,7 @@ public sealed class HookScriptTests
         Status(new { stop = true, reset_time = "9:50 PM" });
         var blocked = Gate(Prompt("fix the login bug"), AgentGate.ContextScriptName).Output;
         Assert.That(blocked, Does.Contain("\"block\"").And.Contain("9:50 PM").And.Contain("no tokens were spent"));
+        Assert.That(GateLog().Single(), Does.Contain("\"decision\": \"prompt-answered\""), "the answered prompt is on the pace ledger's record");
         Assert.That(Gate(Prompt("/autopilot off"), AgentGate.ContextScriptName).Output, Does.Not.Contain("\"block\""));
 
         Status(new { });

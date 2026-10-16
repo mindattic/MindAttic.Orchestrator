@@ -38,6 +38,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         string? lastHold = null;
         (PaceMode, int)? lastPace = null;
         bool? lastHeldElsewhere = null;
+        var ledger = new PaceLedgerWatch(store, options.WorkspaceRoot, (level, line) => Say(level, line), (title, message, urgent) => Alert(title, message, urgent));
         var knownStale = new HashSet<string>(StringComparer.Ordinal);
         var knownStuck = new HashSet<string>(StringComparer.Ordinal);
         var lastStates = new Dictionary<string, RepoState>(StringComparer.OrdinalIgnoreCase);
@@ -69,6 +70,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"couldn't install the agent hooks (retrying next tick): {ex.Message}"); }
                 }
                 WatchHealth(autopilot);
+                try { ledger.Tick(DateTime.UtcNow); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"pace ledger: couldn't update it (retrying next minute): {ex.Message}"); }
                 foreach (var r in ReapIfDue())
                     Say(LogEventLevel.Warning, $"reaped pid {r.Process.Pid} ({r.Process.Name}): {r.Reason}" +
                         (string.IsNullOrWhiteSpace(r.Process.CommandLine) ? "" : $" — was running: {r.Process.CommandLine}"));

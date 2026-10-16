@@ -158,6 +158,17 @@ public static class AgentGate
             except Exception:
                 return 0
 
+        # Every hold of a second or more and every refusal at the stop goes to the pace ledger's event log (MAO-T166),
+        # so a window that went over can be traced to the calls around it.
+        def gate_log(decision, held):
+            try:
+                (Path.home() / ".claude" / "session-context").mkdir(parents=True, exist_ok=True)
+                with open(Path.home() / ".claude" / "session-context" / "{{GateLogName}}", "a", encoding="utf-8") as log:
+                    log.write(json.dumps({"at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), "decision": decision, "held": round(held, 1),
+                                          "tool": tool, "percent": status().get("percent_used")}) + "\n")
+            except Exception:
+                pass
+
         try:
             data = json.load(sys.stdin)
         except Exception:
@@ -270,6 +281,7 @@ public static class AgentGate
             while time.monotonic() - start < MAX_HOLD and status().get("stop"):
                 time.sleep(5)
             if status().get("stop"):
+                gate_log("refused", time.monotonic() - start)
                 refuse(status().get("stop_note") or "The 5-hour window is at its target: tool calls are refused until it resets. End your turn now.")
 
         # /unthrottle exempts one CLI (its process, so subagents and /clear included) from holds until it closes.
@@ -305,7 +317,12 @@ public static class AgentGate
             if left <= 0:
                 break
             time.sleep(min(left, 5))
+        if time.monotonic() - start >= 1:
+            gate_log("held", time.monotonic() - start)
         """.Replace("\r\n", "\n");
+
+    /// <summary>The pace gate's event log in <c>~/.claude/session-context</c>: one JSON line per hold or refusal.</summary>
+    public const string GateLogName = "pace-gate.jsonl";
 
     public const string ContextScriptName = "context-gate.py";
 
@@ -499,6 +516,13 @@ public static class AgentGate
             # the limit is never passed even by your own prompts. The orchestrator's control commands still go through.
             limits = orchestrator_status()
             if limits.get("stop") and not CONTROL.match((data.get("prompt") or "").strip()):
+                try:
+                    DIR.mkdir(parents=True, exist_ok=True)
+                    with open(DIR / "{{{GateLogName}}}", "a", encoding="utf-8") as log:
+                        log.write(json.dumps({"at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "decision": "prompt-answered",
+                                              "held": 0, "tool": None, "percent": limits.get("percent_used")}) + "\n")
+                except Exception:
+                    pass
                 print(json.dumps({"decision": "block", "reason": "Not sent, so no tokens were spent: the 5-hour window is at its target "
                     "(MindAttic.Orchestrator never lets it pass the limit). Typing works again when it resets at " +
                     str(limits.get("reset_time") or "the end of the window") + ". /autopilot, /throttle and /goal still go through."}))
