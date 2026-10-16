@@ -36,23 +36,27 @@ public static class ProcessReaper
     /// <summary>
     /// Which of <paramref name="processes"/> to kill, and why: pure logic over a snapshot so it's testable
     /// without touching real processes. A target process (one of <see cref="TargetNames"/>) is reaped when
-    /// either its ancestor chain breaks before reaching a live Claude CLI (its agent has exited), or it
-    /// does reach one but has grown past <see cref="MaxHandleCount"/> handles or <see cref="MaxAge"/> old.
-    /// A target process whose chain reaches no Claude CLI but also never breaks (a plain dev process, not
-    /// agent-spawned) is left alone.
+    /// either its ancestor chain breaks before reaching a live Claude CLI and it (or an ancestor up to the
+    /// break) was seen under a live Claude CLI on an earlier scan, so its agent has exited; or it does reach
+    /// one but has grown past <see cref="MaxHandleCount"/> handles or <see cref="MaxAge"/> old. Anything never
+    /// seen under an agent (a dev server or script you started yourself, from a terminal since closed) is left
+    /// alone. <paramref name="underAgent"/> is what earlier scans saw under a CLI; this one's are added to it.
     /// </summary>
-    public static IReadOnlyList<Reaped> Select(IReadOnlyList<ProcessInfo> processes, DateTime nowUtc)
+    public static IReadOnlyList<Reaped> Select(IReadOnlyList<ProcessInfo> processes, DateTime nowUtc, ISet<(int Pid, DateTime Start)> underAgent)
     {
         var byPid = processes.GroupBy(p => p.Pid).ToDictionary(g => g.Key, g => g.First());
         var reaped = new List<Reaped>();
         foreach (var p in processes)
         {
             if (!IsTarget(p.Name)) continue;
-            var (foundClaude, chainBroken) = WalkAncestors(p, byPid);
+            var (foundClaude, chainBroken, chain) = WalkAncestors(p, byPid);
+            if (foundClaude)
+                foreach (var c in chain) underAgent.Add((c.Pid, c.StartUtc));
             if (chainBroken && !foundClaude)
             {
-                reaped.Add(new Reaped(p, "its Claude CLI or agent has already exited"));
-                continue;
+                if (chain.Any(c => underAgent.Contains((c.Pid, c.StartUtc))))
+                    reaped.Add(new Reaped(p, "its Claude CLI or agent has already exited"));
+                continue; // never seen under an agent: not ours to kill
             }
             if (!foundClaude) continue; // ancestry reaches no agent at all: a plain dev process, leave it alone
             if (p.HandleCount > MaxHandleCount) reaped.Add(new Reaped(p, $"over {MaxHandleCount:N0} handles ({p.HandleCount:N0})"));
@@ -65,39 +69,51 @@ public static class ProcessReaper
 
     private static string Bare(string name) => name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? name[..^4] : name;
 
-    /// <summary>Walks up from <paramref name="start"/>'s parent: true/true if a live Claude CLI is found, true/false
-    /// (first tuple item) if found, or false/true once a recorded parent pid no longer has any process (it already
-    /// exited, breaking the chain). Gives up after <see cref="MaxAncestorHops"/> hops without resolving either way.</summary>
-    private static (bool FoundClaude, bool ChainBroken) WalkAncestors(ProcessInfo start, IReadOnlyDictionary<int, ProcessInfo> byPid)
+    /// <summary>Walks up from <paramref name="start"/>'s parent: found if a live Claude CLI is reached, broken once a
+    /// recorded parent pid no longer has its process (it exited), neither after <see cref="MaxAncestorHops"/> hops or at
+    /// the root. <c>Chain</c> is <paramref name="start"/> and the ancestors walked below the CLI or the break.</summary>
+    private static (bool FoundClaude, bool ChainBroken, List<ProcessInfo> Chain) WalkAncestors(ProcessInfo start, IReadOnlyDictionary<int, ProcessInfo> byPid)
     {
+        var chain = new List<ProcessInfo> { start };
         var child = start;
         for (var hop = 0; hop < MaxAncestorHops; hop++)
         {
             var pid = child.ParentPid;
-            if (pid == 0) return (false, false);
-            if (!byPid.TryGetValue(pid, out var parent)) return (false, true);
+            if (pid == 0) return (false, false, chain);
+            if (!byPid.TryGetValue(pid, out var parent)) return (false, true, chain);
             // Windows reuses ids: a "parent" younger than its child is another process that took the dead one's id.
-            if (parent.StartUtc != Unknown && child.StartUtc != Unknown && parent.StartUtc > child.StartUtc) return (false, true);
-            if (ConsoleTyper.IsClaude(Bare(parent.Name))) return (true, false);
+            if (parent.StartUtc != Unknown && child.StartUtc != Unknown && parent.StartUtc > child.StartUtc) return (false, true, chain);
+            if (ConsoleTyper.IsClaude(Bare(parent.Name))) return (true, false, chain);
+            chain.Add(parent);
             child = parent;
         }
-        return (false, false);
+        return (false, false, chain);
     }
+
+    /// <summary>Every process seen under a live Claude CLI by earlier scans (pid and start time, so a reused id isn't it).</summary>
+    private static readonly HashSet<(int Pid, DateTime Start)> SeenUnderAgent = [];
 
     /// <summary>Snapshots every process via WMI, kills the ones <see cref="Select"/> flags (the whole tree under
     /// each, so an orphaned shell takes its own still-running children with it), and returns what it killed.
     /// Best effort: a process that exits mid-kill, or WMI being unavailable, is swallowed rather than thrown.</summary>
-    public static IReadOnlyList<Reaped> ReapOnce(DateTime nowUtc) => ReapOnce(nowUtc, Snapshot, CommandLineOf, Kill);
+    public static IReadOnlyList<Reaped> ReapOnce(DateTime nowUtc)
+    {
+        lock (SeenUnderAgent) return ReapOnce(nowUtc, Snapshot, CommandLineOf, Kill, SeenUnderAgent);
+    }
 
     /// <summary>The scan lists processes without their command lines (reading one means opening the process and
     /// its memory, the costly part of a WMI process query); only the ones about to be killed have theirs fetched,
-    /// for the log, before they go.</summary>
-    internal static IReadOnlyList<Reaped> ReapOnce(DateTime nowUtc, Func<IReadOnlyList<ProcessInfo>> snapshot, Func<int, string?> commandLine, Action<int> kill)
+    /// for the log, before they go. <paramref name="underAgent"/> is kept to processes still alive.</summary>
+    internal static IReadOnlyList<Reaped> ReapOnce(DateTime nowUtc, Func<IReadOnlyList<ProcessInfo>> snapshot, Func<int, string?> commandLine, Action<int> kill,
+        ISet<(int Pid, DateTime Start)> underAgent)
     {
-        var reaped = Select(snapshot(), nowUtc)
+        var processes = snapshot();
+        if (processes.Count == 0) return []; // WMI failed: forget nothing, kill nothing
+        var reaped = Select(processes, nowUtc, underAgent)
             .Select(r => r with { Process = r.Process with { CommandLine = commandLine(r.Process.Pid) } })
             .ToList();
         foreach (var r in reaped) kill(r.Process.Pid);
+        underAgent.IntersectWith(processes.Select(p => (p.Pid, p.StartUtc)));
         return reaped;
     }
 

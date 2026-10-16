@@ -11,17 +11,47 @@ public sealed class ProcessReaperTests
     private static ProcessInfo P(int pid, string name, int parentPid, long handles = 100, DateTime? startUtc = null, string? cmd = null) =>
         new(pid, name, parentPid, handles, startUtc ?? Now, cmd ?? $"{name} ...");
 
+    /// <summary>What a scan picks, given the pids earlier scans saw under a live Claude CLI.</summary>
+    private static IReadOnlyList<Reaped> Pick(IReadOnlyList<ProcessInfo> processes, params int[] seenUnderAgent) =>
+        Select(processes, Now, processes.Where(p => seenUnderAgent.Contains(p.Pid)).Select(p => (p.Pid, p.StartUtc)).ToHashSet());
+
     [Test]
     public void A_tool_process_whose_parent_chain_is_gone_is_reaped_as_orphaned()
     {
         // find.exe's parent (a bash shell) already exited: pid 2 isn't in the snapshot at all.
         var processes = new[] { P(3, "find.exe", parentPid: 2, cmd: "find / -name *.log") };
 
-        var reaped = Select(processes, Now);
+        var reaped = Pick(processes, 3);
 
         Assert.That(reaped, Has.Count.EqualTo(1));
         Assert.That(reaped[0].Process.Pid, Is.EqualTo(3));
         Assert.That(reaped[0].Reason, Does.Contain("exited"));
+    }
+
+    [Test]
+    public void An_orphan_never_seen_under_an_agent_is_yours_and_left_alone()
+    {
+        // A node server started from a terminal you've since closed: orphaned, but no agent ever ran it (MAO-T118).
+        var processes = new[] { P(3, "node.exe", parentPid: 2, startUtc: Now.AddHours(-2)), P(4, "python.exe", parentPid: 2, startUtc: Now.AddHours(-2)) };
+        Assert.That(Pick(processes), Is.Empty);
+    }
+
+    [Test]
+    public void An_agents_tool_seen_on_one_scan_is_reaped_on_the_scan_after_its_agent_exits()
+    {
+        var seen = new HashSet<(int, DateTime)>();
+        var claude = P(1, "claude.exe", parentPid: 0, startUtc: Now.AddHours(-1));
+        var bash = P(2, "bash.exe", parentPid: 1, startUtc: Now.AddMinutes(-5));
+        var find = P(3, "find.exe", parentPid: 2, startUtc: Now.AddMinutes(-4));
+        var mine = P(9, "node.exe", parentPid: 8, startUtc: Now.AddHours(-3));
+        var killed = new List<int>();
+
+        ReapOnce(Now, () => [claude, bash, find, mine], _ => null, killed.Add, seen);
+        Assert.That(killed, Is.Empty, "attached and young");
+
+        ReapOnce(Now.AddMinutes(1), () => [find, mine], _ => null, killed.Add, seen); // the agent and its shell exited
+        Assert.That(killed, Is.EqualTo(new[] { 3 }), "the find it left behind goes; your own node stays");
+        Assert.That(seen, Is.EquivalentTo(new[] { (3, find.StartUtc) }), "what's gone is forgotten");
     }
 
     [Test]
@@ -34,7 +64,7 @@ public sealed class ProcessReaperTests
             P(3, "rg.exe", parentPid: 2, handles: 200, startUtc: Now.AddMinutes(-2)),
         };
 
-        Assert.That(Select(processes, Now), Is.Empty);
+        Assert.That(Pick(processes), Is.Empty);
     }
 
     [Test]
@@ -46,7 +76,7 @@ public sealed class ProcessReaperTests
             P(2, "claude.exe", parentPid: 0, startUtc: Now.AddMinutes(-1)),
             P(3, "find.exe", parentPid: 2, startUtc: Now.AddMinutes(-10)),
         };
-        Assert.That(Select(processes, Now).Select(r => r.Process.Pid), Is.EqualTo(new[] { 3 }));
+        Assert.That(Pick(processes, 3).Select(r => r.Process.Pid), Is.EqualTo(new[] { 3 }));
 
         var unknown = new[]
         {
@@ -54,7 +84,7 @@ public sealed class ProcessReaperTests
             P(3, "find.exe", parentPid: 2, startUtc: Now.AddMinutes(-10)),
             P(4, "git.exe", parentPid: 2, startUtc: Unknown),
         };
-        Assert.That(Select(unknown, Now), Is.Empty, "an unknown start is neither younger nor old");
+        Assert.That(Pick(unknown, 3, 4), Is.Empty, "an unknown start is neither younger nor old");
     }
 
     [Test]
@@ -67,7 +97,7 @@ public sealed class ProcessReaperTests
             P(3, "find.exe", parentPid: 2, handles: MaxHandleCount + 1, startUtc: Now.AddMinutes(-1)),
         };
 
-        var reaped = Select(processes, Now);
+        var reaped = Pick(processes);
 
         Assert.That(reaped, Has.Count.EqualTo(1));
         Assert.That(reaped[0].Process.Pid, Is.EqualTo(3));
@@ -83,7 +113,7 @@ public sealed class ProcessReaperTests
             P(2, "git.exe", parentPid: 1, handles: 50, startUtc: Now - MaxAge - TimeSpan.FromMinutes(1)),
         };
 
-        var reaped = Select(processes, Now);
+        var reaped = Pick(processes);
 
         Assert.That(reaped, Has.Count.EqualTo(1));
         Assert.That(reaped[0].Process.Pid, Is.EqualTo(2));
@@ -102,7 +132,7 @@ public sealed class ProcessReaperTests
             P(3, "git.exe", parentPid: 2, handles: MaxHandleCount + 1, startUtc: Now - MaxAge - TimeSpan.FromHours(1)),
         };
 
-        Assert.That(Select(processes, Now), Is.Empty);
+        Assert.That(Pick(processes), Is.Empty);
     }
 
     [Test]
@@ -114,7 +144,7 @@ public sealed class ProcessReaperTests
             P(2, "node.exe", parentPid: 1, handles: 50, startUtc: Now.AddMinutes(-2)),
         };
 
-        Assert.That(Select(processes, Now), Is.Empty);
+        Assert.That(Pick(processes), Is.Empty);
     }
 
     [Test]
@@ -122,7 +152,7 @@ public sealed class ProcessReaperTests
     {
         var processes = new[] { P(3, "notepad.exe", parentPid: 2, handles: MaxHandleCount + 1, startUtc: Now.AddYears(-1)) };
 
-        Assert.That(Select(processes, Now), Is.Empty);
+        Assert.That(Pick(processes), Is.Empty);
     }
 
     [Test]
@@ -140,7 +170,7 @@ public sealed class ProcessReaperTests
         var asked = new List<int>();
         var killed = new List<int>();
 
-        var reaped = ReapOnce(Now, () => processes, pid => { asked.Add(pid); return "find / -name x"; }, killed.Add);
+        var reaped = ReapOnce(Now, () => processes, pid => { asked.Add(pid); return "find / -name x"; }, killed.Add, new HashSet<(int, DateTime)> { (4, Now) });
 
         Assert.That(asked, Is.EqualTo(new[] { 4 }), "only the orphaned find");
         Assert.That(killed, Is.EqualTo(new[] { 4 }));
