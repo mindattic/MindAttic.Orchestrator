@@ -167,36 +167,14 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     // turn ends every second or two: 10s keeps typed turns counted well inside the 15s tick without refreshing nonstop.
     internal static readonly TimeSpan MinGap = TimeSpan.FromSeconds(10);
 
-    private DateTime lastSignal = SignalStamp();
+    private readonly RefreshWaiter waiter = new([RefreshSignal, ReportedUsage.DefaultPath], MinGap);
 
     /// <summary>
     /// Waits out <paramref name="interval"/>, but refreshes early when a turn ends anywhere (the context gate's
     /// <see cref="RefreshSignal"/>) or Claude's own usage report is rewritten, so what you type and every reply,
     /// tool calls or not, is in the pace within a couple of seconds rather than at the next tick.
     /// </summary>
-    private void WaitForNextRefresh(TimeSpan interval, CancellationToken cancel)
-    {
-        var until = DateTime.UtcNow + interval;
-        var earliest = DateTime.UtcNow + MinGap;
-        while (DateTime.UtcNow < until)
-        {
-            if (cancel.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(500))) return;
-            if (DateTime.UtcNow < earliest) continue;
-            var stamp = SignalStamp();
-            if (stamp == lastSignal) continue;
-            lastSignal = stamp;
-            return;
-        }
-        lastSignal = SignalStamp();
-    }
-
-    private static DateTime SignalStamp()
-    {
-        static DateTime Of(string path) { try { return File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default; } catch (IOException) { return default; } }
-        var a = Of(RefreshSignal);
-        var b = Of(ReportedUsage.DefaultPath);
-        return a > b ? a : b;
-    }
+    private void WaitForNextRefresh(TimeSpan interval, CancellationToken cancel) => waiter.Wait(interval, cancel);
 
     /// <summary>The scheduled audit: when the last one is older than <see cref="OrchestratorSettings.AuditEveryHours"/>, run it and report what's new.</summary>
     private void RunAuditIfDue(OrchestratorOptions options, OrchestratorSettings s)
