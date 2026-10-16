@@ -141,12 +141,12 @@ public sealed class ContextCyclerTests
             const string ask = "That's done. Shall I start the next one?";
 
             Assert.That(Gate(100, Stop("mine", ask)), Is.Empty, "no autopilot: a CLI you're using is never pushed on");
-            Gate(200, Typed("pilot", "/autopilot -repos=A"));
+            Gate(200, Typed("pilot", "/autopilot -repo=a*"));
             Assert.That(Gate(100, Stop("mine", ask)), Is.Empty, "autopilot in another CLI marks nothing here, though it's in A");
 
             var told = Gate(200, Stop("pilot", "PRS-T16 landed."));
-            Assert.That(told, Does.Contain("\"block\"").And.Contain("2 workable tickets remain (A-T2, A-T3)").And.Contain("orchestrator next --repos A --claim"),
-                "the autopilot CLI goes on to its next tickets (fixes only: A-T4 awaits approval; B isn't its repo)");
+            Assert.That(told, Does.Contain("\"block\"").And.Contain("2 workable tickets remain (A-T2, A-T3)").And.Contain("orchestrator next --repos \\\"a*\\\" --claim"),
+                "the autopilot CLI goes on to its next tickets (the wildcard a* names A; fixes only: A-T4 awaits approval; B isn't its repo)");
             Assert.That(Gate(200, Stop("pilot", "Blocked on a decision.")), Is.Empty, "stopped again without doing anything: let go");
 
             Gate(200, Typed("pilot", "/autopilot off"));
@@ -276,9 +276,15 @@ public sealed class ContextCyclerTests
             Typed(1, repo, "/autopilot");
             Assert.That(Mark(1), Is.EqualTo("A"), "this CLI's own repo, for this CLI only");
             Typed(2, ws, "/autopilot -repo=B");
-            Typed(2, ws, "/autopilot -repos=C,D on");
-            Assert.That((Mark(1), Mark(2)), Is.EqualTo(("A", "B,C,D")), "-repo and -repos both name repos; each CLI has its own list");
-            Typed(2, ws, "/autopilot off -repos=C");
+            Typed(2, ws, "/autopilot -repo=C,GTFO.* on");
+            Assert.That((Mark(1), Mark(2)), Is.EqualTo(("A", "B,C,GTFO.*")), "each CLI has its own list; a wildcard is kept as typed");
+            Typed(2, ws, "/autopilot off -repo=C");
+            Assert.That(Mark(2), Is.EqualTo("B,GTFO.*"));
+            Typed(2, ws, "/autopilot off -repos=GTFO.*");
+            Assert.That(Mark(2), Is.EqualTo("B,GTFO.*"), "-repos is gone: refused, nothing changed");
+            Typed(2, ws, "/autopilot off -repo=GTFO.*");
+            Assert.That(Mark(2), Is.EqualTo("B"));
+            Typed(2, ws, "/autopilot -repo=D");
             Assert.That(Mark(2), Is.EqualTo("B,D"));
             Typed(1, repo, "/autopilot off");
             Assert.That((Mark(1), Mark(2)), Is.EqualTo(((string?)null, "B,D")), "off is for this CLI only");

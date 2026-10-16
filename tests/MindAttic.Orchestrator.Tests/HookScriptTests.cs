@@ -220,19 +220,25 @@ public sealed class HookScriptTests
     }
 
     [Test]
-    public void Autopilot_takes_repo_or_repos_and_its_repos_are_this_clis_cross_repo_exception()
+    public void Autopilot_takes_repo_names_or_wildcards_and_its_repos_are_this_clis_cross_repo_exception()
     {
         var mark = Path.Combine(Marks, $"autopilot-{Cli}");
         object Prompt(string prompt) => new { hook_event_name = "UserPromptSubmit", session_id = "s1", prompt, cwd = ws };
         Gate(Prompt("/autopilot -repo=a,b on"), AgentGate.ContextScriptName);
         Assert.That(File.ReadAllText(mark), Is.EqualTo("a,b"));
-        Gate(Prompt("/autopilot -repos=MindAttic.Workflow"), AgentGate.ContextScriptName);
-        Assert.That(File.ReadAllText(mark), Is.EqualTo("a,b,MindAttic.Workflow"), "-repos works as -repo does");
+        Assert.That(Gate(Prompt("/autopilot -repos=MindAttic.Workflow"), AgentGate.ContextScriptName).Output,
+            Does.Contain("\"block\"").And.Contain("-repos is gone"), "the -repos alias is turned away, not guessed at");
+        Assert.That(File.ReadAllText(mark), Is.EqualTo("a,b"), "and changes nothing");
 
         // Its subagents edit and close tickets in the repos it's working, though this CLI sits in another repo.
         var uss = Path.Combine(ws, "UnitySolarSystem");
         var file = Path.Combine(ws, "MindAttic.Workflow", "src", "x.cs");
-        Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = file }, cwd = uss }).Output, Is.Empty);
+        Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = file }, cwd = uss }).Output, Does.Contain("\"deny\""), "not named yet");
+        Gate(Prompt("/autopilot -repo=MINDATTIC.*"), AgentGate.ContextScriptName);
+        Assert.That(File.ReadAllText(mark), Is.EqualTo("a,b,MINDATTIC.*"), "a wildcard is kept as typed");
+        Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = file }, cwd = uss }).Output, Is.Empty, "MindAttic.* names MindAttic.Workflow");
+        Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = Path.Combine(uss, "x.cs") }, cwd = Path.Combine(ws, "MindAttic.Workflow") }).Output,
+            Does.Contain("\"deny\""), "but not UnitySolarSystem");
         Gate(Prompt("/autopilot off"), AgentGate.ContextScriptName);
         Assert.That(File.Exists(mark), Is.False);
         Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = file }, cwd = uss }).Output, Does.Contain("\"deny\""), "off: back to its own repo");

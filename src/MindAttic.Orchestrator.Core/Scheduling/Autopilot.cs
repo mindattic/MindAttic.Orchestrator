@@ -95,7 +95,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         var repos = order is null ? []
             : everyRepo ? snapshot.Repos.Where(r => r.Path.Length > 0 && !r.Name.StartsWith('(') && r.OpenTickets.Count > 0).ToList()
             // Only the repos /autopilot was turned on for (each CLI adds its own), never every repo that has a CLI open.
-            : snapshot.Repos.Where(r => r.Path.Length > 0 && order.Contains(r.Name, StringComparer.OrdinalIgnoreCase)).ToList();
+            : snapshot.Repos.Where(r => r.Path.Length > 0 && Named(order, r.Name)).ToList();
         // Repos you've told it to skip, and ones whose own CLI you're working in by hand, get no new agents.
         var byHand = ByHand(nowUtc, snapshot, TimeSpan.FromMinutes(Math.Max(0, settings.AutopilotHandMinutes)));
         var alone = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -110,7 +110,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         }
         LeftAlone = alone;
         Repos =[.. repos.Select(r => r.Name).Order(StringComparer.OrdinalIgnoreCase)];
-        if (order is { Count: > 0 } && !everyRepo && order.Where(n => !snapshot.Repos.Any(r => Same(r.Name, n))).ToList() is { Count: > 0 } unknown)
+        if (order is { Count: > 0 } && !everyRepo && order.Where(n => !snapshot.Repos.Any(r => Named([n], r.Name))).ToList() is { Count: > 0 } unknown)
             Tell("unknown", $"autopilot: no repo named {string.Join(", ", unknown)} in the workspace");
 
         Paused = !settings.Autopilot ? "autopilot is switched off"
@@ -361,8 +361,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         makeWorktree ??= Dispatcher.EnsureWorktree;
         mainlineOf ??= Dispatcher.Mainline;
         if (plan.Pace is { Stop: true }) return ([], "the 5-hour window is at its target: nothing starts before it resets");
-        var every = repos.Contains("*");
-        bool Named(string repo) => every || repos.Contains(repo, StringComparer.OrdinalIgnoreCase);
+        bool Named(string repo) => Autopilot.Named(repos, repo);
         var room = plan.Pace?.RoomTokens;
         var open = plan.Queue.Where(q => Named(q.Repo) && q.RepoPath.Length > 0 && !q.IsAssigned && q.BlockedBy.Count == 0 &&
             !(room is { } left && q.Estimate is { } e && e.Fresh > left) &&
@@ -437,4 +436,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     }
 
     private static bool Same(string a, string b) => a.Equals(b, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Whether <paramref name="repo"/> is one of <paramref name="names"/>: a name, or a wildcard (<c>*</c>, <c>?</c>)
+    /// such as <c>GTFO.*</c> for every repo whose name starts <c>GTFO.</c> (MAO-T165); <c>*</c> alone is every repo.</summary>
+    public static bool Named(IEnumerable<string> names, string repo) =>
+        names.Any(n => System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(n, repo, ignoreCase: true));
 }

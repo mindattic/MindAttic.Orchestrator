@@ -214,6 +214,9 @@ public sealed class AutopilotTests
 
         var stopped = Planned() with { Pace = Planned().Pace! with { Stop = true } };
         Assert.That(Autopilot.Next(stopped, settings, store, ["*"], null, claim: false, Now, Make, _ => "main").Why, Does.Contain("at its target"));
+        Assert.That((Autopilot.Named(["GTFO.*"], "gtfo.Api"), Autopilot.Named(["GTFO.*"], "GTFO"), Autopilot.Named(["GTFO.*"], "MindAttic.GTFO.x"),
+            Autopilot.Named(["*"], "anything"), Autopilot.Named(["A", "B"], "b")), Is.EqualTo((true, false, false, true, true)),
+            "-repo=GTFO.* names every repo starting GTFO. (MAO-T165)");
     }
 
     [Test]

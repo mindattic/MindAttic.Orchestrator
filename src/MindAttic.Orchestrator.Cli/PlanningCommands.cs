@@ -147,7 +147,7 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
     public sealed class Settings : CommandSettings
     {
         [CommandOption("--repos <REPOS>")]
-        [Description("Repos to take tickets from, comma-separated (also --repo); \"*\" for every repo. Default: the repo of the current folder.")]
+        [Description("Repos to take tickets from, comma-separated (also --repo), wildcards allowed (\"GTFO.*\"); \"*\" for every repo. Default: the repo of the current folder.")]
         public string? Repos { get; init; }
 
         [CommandOption("--repo <REPOS>")]

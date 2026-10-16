@@ -101,15 +101,15 @@ public static class AgentGate
 
     internal const string AutopilotCommand = """
         ---
-        description: This CLI works the open tickets of its own repo (or -repo/-repos=A,B, or "all") through its own subagents, each in its own worktree, landing on main and closing the ticket, until none are left. /autopilot off stops it in this CLI; /autopilot off all in every CLI.
-        argument-hint: "[off|off all|all] [-repo=A,B | -repos=A,B]"
+        description: This CLI works the open tickets of its own repo (or -repo=A,B, wildcards like -repo=GTFO.*, or "all") through its own subagents, each in its own worktree, landing on main and closing the ticket, until none are left. /autopilot off stops it in this CLI; /autopilot off all in every CLI.
+        argument-hint: "[off|off all|all] [-repo=A,B | -repo=GTFO.*]"
         ---
-        The user ran /autopilot $ARGUMENTS in this CLI. MindAttic.Orchestrator's context gate has recorded it for this CLI only (no other CLI is affected), and while it's on, the repos named are this CLI's cross-repo exception so your subagents can work and close tickets there.
+        The user ran /autopilot $ARGUMENTS in this CLI. MindAttic.Orchestrator's context gate has recorded it for this CLI only (no other CLI is affected), and while it's on, the repos named (a wildcard such as GTFO.* names every repo it matches) are this CLI's cross-repo exception so your subagents can work and close tickets there.
 
-        If the arguments start with "off": reply with one short line confirming autopilot is off in this CLI (with -repo/-repos, just for those repos; "off all": in every CLI). Subagents already working finish their tickets. Then end your turn.
+        If the arguments start with "off": reply with one short line confirming autopilot is off in this CLI (with -repo, just for those repos; "off all": in every CLI). Subagents already working finish their tickets. Then end your turn.
 
         Otherwise you work the tickets yourself, through subagents, now:
-        1. Run `orchestrator next --repos <the repos: the -repo/-repos list, "*" for all, or this CLI's own repo when none are named> --claim`. It claims the next workable tickets (fixes and tickets the user approved, in queue order, as many as the pace allows right now), makes each its own git worktree, and prints each ticket's id and a full prompt.
+        1. Run `orchestrator next --repos "<repos>" --claim`, where <repos> is the -repo list as typed (wildcards included), * for all, or this CLI's own repo when none are named; keep the quotes so no shell expands a wildcard. It claims the next workable tickets (fixes and tickets the user approved, in queue order, as many as the pace allows right now), makes each its own git worktree, and prints each ticket's id and a full prompt.
         2. Start one subagent per ticket it printed, all in one message, each with exactly the prompt printed for it (a general-purpose subagent, in the foreground). Each works only in its worktree, commits, lands on the repo's main line and closes its ticket.
         3. When they've returned, say in one line per ticket what happened, and go back to step 1.
         4. Stop when `orchestrator next` hands out nothing (it says why: none left, waiting for approval, or the pace), and say so in one short line. Don't start anything else on your own. From then on the orchestrator works each of those repos' next open story (manual priority first, then smallest effort) in background agents of their own, each in its own git worktree: no window, nothing typed into any CLI, so every tab and checkout stays free for you. As many run at once as each repo's session limit and the pace allow; each commits, closes its ticket and lands its work on main, then the next starts. New stories only start while the 5-hour pace can afford them and the pace gate slows running agents, so the window gets used without hitting the limit. Repos whose CLIs open later join in; an agent that ends without closing its ticket gives it back and you get a "Needs you"; /autopilot off starts nothing new.
@@ -166,7 +166,7 @@ public static class AgentGate
 
         # A repo's window works only that repo (MAO-T95): its own folder and worktrees, and its own tickets. Another
         # repo's files and tickets belong to that repo's window, autopilot, or the General (workspace-root) session.
-        import os, re, sqlite3
+        import fnmatch, os, re, sqlite3
         {{WorkspacePython}}
 
         def ticket_repo(ticket_id):
@@ -204,7 +204,8 @@ public static class AgentGate
                     return False
                 if excepted is None:
                     excepted = allowed_here()
-                return "all" not in excepted and r.lower() not in excepted
+                # A name may be a wildcard (/autopilot -repo=GTFO.*): every repo it matches is excepted.
+                return "all" not in excepted and not any(fnmatch.fnmatchcase(r.lower(), p) for p in excepted)
             if tool in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
                 target = args.get("file_path") or args.get("notebook_path") or ""
                 if other(repo_of(target)):
@@ -342,9 +343,9 @@ public static class AgentGate
                 return []
 
         def workable(repos):
-            # The open fixes and approved tickets of repos ("*": every repo), in ticket order.
+            # The open fixes and approved tickets of repos (names or wildcards such as GTFO.*; "*": every repo), in ticket order.
             try:
-                import sqlite3
+                import fnmatch, sqlite3
                 db = sqlite3.connect(str(WS / "MindAttic.Workflow" / "data" / "workflow.db"))
                 rows = db.execute("SELECT id, type, repo FROM tickets WHERE status = 'open' ORDER BY ordinal").fetchall()
                 db.close()
@@ -355,7 +356,7 @@ public static class AgentGate
                 except Exception:
                     approved = set()
                 named = {r.lower() for r in repos}
-                return [r[0] for r in rows if ("*" in named or (r[2] or "").lower() in named) and
+                return [r[0] for r in rows if any(fnmatch.fnmatchcase((r[2] or "").lower(), n) for n in named) and
                         ((r[1] or "").lower() == "fix" or r[0].upper() in approved)]
             except Exception:
                 return []
@@ -374,7 +375,7 @@ public static class AgentGate
                 return None
             return ("Don't stop: /autopilot is on in this CLI for " + repo + ", and " + str(len(ids)) + " workable ticket" +
                     ("" if len(ids) == 1 else "s") + " remain (" + ", ".join(ids[:6]) + ("..." if len(ids) > 6 else "") + "). "
-                    "Run `orchestrator next --repos " + ",".join(repos) + " --claim` and hand each ticket it prints to a subagent with the "
+                    "Run `orchestrator next --repos \"" + ",".join(repos) + "\" --claim` and hand each ticket it prints to a subagent with the "
                     "prompt it prints (several at once, in one message), then repeat. End your turn only when it hands out nothing, "
                     "or you're blocked on a decision only the user can make, and then say plainly what it is.")
 
@@ -543,15 +544,21 @@ public static class AgentGate
             state.update(state="busy", at=now, warned=False, cwd=data.get("cwd"))
             typed = (data.get("prompt") or "").strip()
             prompt = typed.lower()
-            # /autopilot [off|all] [-repo|-repos=A,B]: THIS CLI works those repos' tickets through its own subagents (its own
-            # repo when none are named) until /autopilot off here. Nothing is marked for any other CLI.
+            # /autopilot [off|all] [-repo=A,B]: THIS CLI works those repos' tickets through its own subagents (its own
+            # repo when none are named) until /autopilot off here. Nothing is marked for any other CLI. A name may be a
+            # wildcard (-repo=GTFO.*), kept as typed and matched wherever the repos are read (MAO-T165).
+            if prompt.startswith("/autopilot") and re.search(r"-{1,2}repos\b", typed, re.I):
+                # The -repos alias is gone (it read as a different switch); say so rather than guess what was meant.
+                print(json.dumps({"decision": "block", "reason": "/autopilot takes -repo=A,B (wildcards too: -repo=GTFO.*); -repos is gone. "
+                    "Nothing changed: type it again with -repo."}))
+                sys.exit(0)
             if prompt.startswith("/autopilot"):
                 pid = my_pid()
                 mark = DIR / ("autopilot-" + str(pid))
                 args = typed[len("/autopilot"):].strip()
                 names = autopilot_repos(pid)
                 mine = repo_of(data.get("cwd") or "")
-                m = re.search(r"-{1,2}repos?\s*[=:]?\s*\[?([^\]]*)\]?", args, re.I)
+                m = re.search(r"-{1,2}repo\b\s*[=:]?\s*\[?([^\]]*)\]?", args, re.I)
                 named = [r.strip() for r in m.group(1).replace(" ", ",").split(",") if r.strip() and r.strip().lower() not in ("on", "off", "this", "all")] if m else ([mine] if mine else [])
                 lower = {n.lower() for n in named}
                 if re.match(r"off\b", args, re.I):
