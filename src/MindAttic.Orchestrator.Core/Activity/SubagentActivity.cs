@@ -6,7 +6,14 @@ using MindAttic.Orchestrator.Sessions;
 namespace MindAttic.Orchestrator.Activity;
 
 /// <summary>A subagent (the Agent tool) running right now, seen through its own transcript.</summary>
-public sealed record SubagentActivity(string AgentId, string ParentSessionId, string Type, DateTime StartedUtc, DateTime LastWriteUtc, TokenUsage Usage);
+public sealed record SubagentActivity(string AgentId, string ParentSessionId, string Type, DateTime StartedUtc, DateTime LastWriteUtc, TokenUsage Usage)
+{
+    /// <summary>What it was asked to do: the first line of its prompt.</summary>
+    public string? Task { get; init; }
+
+    /// <summary>Its latest tool call in plain words ("Reading Daemon.cs").</summary>
+    public string? Doing { get; init; }
+}
 
 /// <summary>
 /// Where a subagent's own transcript is: Claude Code writes it to <c>{projectsDir}/{project}/{parentSessionId}/subagents/
@@ -73,6 +80,7 @@ public sealed class SubagentActivityReader(string projectsDir)
         public DateTime? Start, End;
         public string Type = "subagent";
         public TokenUsage Usage;
+        public string? Task, Doing;
         public readonly HashSet<string> Counted = new(StringComparer.Ordinal);
     }
 
@@ -101,7 +109,7 @@ public sealed class SubagentActivityReader(string projectsDir)
             ReadAppended(file, tail);
             if (tail.Start is { } start)
                 result.Add(new SubagentActivity(id, Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(file))) ?? "",
-                    tail.Type, start, tail.End ?? start, tail.Usage));
+                    tail.Type, start, tail.End ?? start, tail.Usage) { Task = tail.Task, Doing = tail.Doing });
         }
         foreach (var gone in tails.Keys.Where(k => !reading.Contains(k)).ToList()) tails.Remove(gone);
         return result;
@@ -119,6 +127,7 @@ public sealed class SubagentActivityReader(string projectsDir)
                 tail.Start = tail.End = null;
                 tail.Type = "subagent";
                 tail.Usage = default;
+                tail.Task = tail.Doing = null;
                 tail.Counted.Clear();
             }
             if (stream.Length == tail.Offset) return;
@@ -169,6 +178,26 @@ public sealed class SubagentActivityReader(string projectsDir)
 
             if (root.TryGetProperty("attributionAgent", out var a) && a.ValueKind == JsonValueKind.String && a.GetString() is { Length: > 0 } t)
                 tail.Type = t;
+
+            // Its first user line is the prompt it was given; each tool_use block after is what it's doing now.
+            if (root.TryGetProperty("message", out var msg) && msg.ValueKind == JsonValueKind.Object && msg.TryGetProperty("content", out var content))
+            {
+                var role = root.TryGetProperty("type", out var r) && r.ValueKind == JsonValueKind.String ? r.GetString() : null;
+                if (role == "user" && tail.Task is null)
+                {
+                    var text = content.ValueKind == JsonValueKind.String ? content.GetString()
+                        : content.ValueKind == JsonValueKind.Array ? content.EnumerateArray()
+                            .Where(b => b.ValueKind == JsonValueKind.Object && b.TryGetProperty("type", out var bt) && bt.GetString() == "text")
+                            .Select(b => b.TryGetProperty("text", out var x) ? x.GetString() : null).FirstOrDefault(x => x is { Length: > 0 })
+                        : null;
+                    if (text is { Length: > 0 }) tail.Task = ToolCallText.FirstLine(text);
+                }
+                if (role == "assistant" && content.ValueKind == JsonValueKind.Array)
+                    foreach (var block in content.EnumerateArray())
+                        if (block.ValueKind == JsonValueKind.Object && block.TryGetProperty("type", out var bt) && bt.GetString() == "tool_use")
+                            tail.Doing = ToolCallText.Describe(block.TryGetProperty("name", out var n) ? n.GetString() ?? "?" : "?",
+                                block.TryGetProperty("input", out var i) ? i.GetRawText() : "");
+            }
 
             if (root.TryGetProperty("type", out var ty) && ty.ValueKind == JsonValueKind.String && ty.GetString() == "assistant" &&
                 root.TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.Object &&

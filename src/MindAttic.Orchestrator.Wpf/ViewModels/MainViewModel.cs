@@ -142,6 +142,7 @@ public sealed partial class MainViewModel : ObservableObject
     public int HostCount => snapshot?.LiveHosts ?? 0;
     public int TicketCount => snapshot?.OpenTickets ?? 0;
     public int RepoCount => snapshot?.Repos.Count(r => !r.Name.StartsWith('(')) ?? 0;
+    public string WorkspaceRoot => aggregator.Options.WorkspaceRoot;
     public string TokensToday => Formatting.Tokens(snapshot?.UsageToday.Total ?? 0);
     public string TokensDetail
     {
@@ -232,6 +233,7 @@ public sealed partial class MainViewModel : ObservableObject
     private void FocusOn(Focus next)
     {
         Focus = Focus == next ? Focus.All : next;
+        if (Focus != Focus.All) ViewChoice = "Repos"; // the cards filter the repo tiles, so show them
         Regroup();
     }
 

@@ -10,7 +10,7 @@ using MindAttic.Orchestrator.Settings;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
-public enum View { Repos, Queue, Audit, Agents }
+public enum View { Agents, Repos, Queue, Audit }
 
 /// <summary>Budget (phase 2), the cross-repo queue (phase 3) and the audit (phase 4).</summary>
 public sealed partial class MainViewModel
@@ -29,7 +29,7 @@ public sealed partial class MainViewModel
 
     private sealed class Seen { public DateTime LastSeenUtc { get; init; } }
     private View view;
-    private string viewChoice = "Repos";
+    private string viewChoice = "Agents";
     private bool isSettingsOpen;
     private bool isAuditing;
     private string auditInfo = "Not run yet.";
@@ -56,7 +56,8 @@ public sealed partial class MainViewModel
 
     // ── View switching ──────────────────────────────────────────────────────
 
-    public IReadOnlyList<string> ViewChoices { get; } = ["Repos", "Queue", "Audit", "Agents"];
+    /// <summary>Agents first: the live picture (each CLI with its subagents inside) is what the window opens on.</summary>
+    public IReadOnlyList<string> ViewChoices { get; } = ["Agents", "Repos", "Queue", "Audit"];
 
     public string ViewChoice
     {
@@ -64,7 +65,7 @@ public sealed partial class MainViewModel
         set
         {
             if (!Set(ref viewChoice, value)) return;
-            view = Enum.TryParse<View>(value, out var v) ? v : View.Repos;
+            view = Enum.TryParse<View>(value, out var v) ? v : View.Agents;
             Raise(nameof(IsReposView)); Raise(nameof(IsQueueView)); Raise(nameof(IsAuditView)); Raise(nameof(IsAgentsView)); Raise(nameof(ShowDetail));
         }
     }
@@ -183,6 +184,31 @@ public sealed partial class MainViewModel
 
     private LedgerWindow? LastOver => Ledger.LastOrDefault(w => w.Grade == WindowGrade.Over);
 
+    /// <summary>The ledger card read out: "9h since a window went over: open the pace ledger".</summary>
+    public string LedgerSpoken => $"{(LedgerHeadline == "never" ? "No window has gone over" : $"{LedgerHeadline} {LedgerCaption}")}: open the pace ledger";
+
+    private ICommand? showLedger;
+
+    /// <summary>Every window on record, newest first, in a window of its own (what <c>orchestrator ledger</c> prints).</summary>
+    public ICommand ShowLedgerCommand => showLedger ??= new RelayCommand(() =>
+    {
+        var rows = Ledger;
+        var lines = new List<string> { "Pace ledger: " + PaceLedger.Summary(rows, DateTime.UtcNow), "" };
+        lines.AddRange(rows.Reverse().Select(w =>
+            $"{w.StartUtc.ToLocalTime():ddd MMM d HH:mm}–{w.EndUtc.ToLocalTime():HH:mm}  {w.Grade.ToString().ToLowerInvariant(),-5}  " +
+            $"peak {(w.PeakPercent is { } p ? $"{p:0}%" : "–"),4}  {Formatting.Tokens(w.Fresh),6}  {w.Why}" +
+            (w.Held > 0 ? $" · {w.Held} calls held ({w.HeldMinutes:0.#}m)" : "") + (w.Refused > 0 ? $" · {w.Refused} refused" : "")));
+        var box = new System.Windows.Controls.TextBox
+        {
+            Text = string.Join(Environment.NewLine, lines), IsReadOnly = true, FontFamily = new FontFamily("Consolas"), FontSize = 13,
+            VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+        };
+        System.Windows.Automation.AutomationProperties.SetName(box, "Pace ledger");
+        new System.Windows.Window { Title = "Pace ledger", Width = 1000, Height = 650, Content = box,
+            Owner = System.Windows.Application.Current.MainWindow }.Show();
+    });
+
     public string LedgerHeadline => Ledger.Count == 0 ? "—" : LastOver is { } o ? Formatting.Span(DateTime.UtcNow - (o.LimitHitUtc ?? o.EndUtc)) : "never";
 
     public string LedgerCaption => Ledger.Count == 0 ? "no windows recorded yet"
@@ -252,6 +278,13 @@ public sealed partial class MainViewModel
 
     public ObservableCollection<AgentRowViewModel> Agents { get; } = [];
     public bool HasAgents => Agents.Count > 0;
+
+    /// <summary>Subagents running across every agent on the board.</summary>
+    public int SubagentCount => Agents.Sum(a => a.Subagents.Count);
+
+    public string AgentsSummary => Agents.Count == 0 ? "" :
+        $"{Agents.Count} agent{(Agents.Count == 1 ? "" : "s")} · {Agents.Count(a => a.State == MindAttic.Orchestrator.Activity.AgentState.Waiting)} need you · " +
+        $"{SubagentCount} subagent{(SubagentCount == 1 ? "" : "s")} running";
     public ICommand ShowTicketCommand { get; private set; } = null!;
 
     /// <summary>The ticket's full row and history: its sessions and the commits that mention it, from
@@ -275,10 +308,11 @@ public sealed partial class MainViewModel
 
     private void ApplyAgents(Snapshot next)
     {
-        Agents.SyncBy(next.Agents, r => r.SessionId, a => a.SessionId,
+        // Ones waiting on you first: that's what a glance at the board is for. Then the most recently active.
+        Agents.SyncBy([.. next.Agents.OrderBy(r => r.State != MindAttic.Orchestrator.Activity.AgentState.Waiting)], r => r.SessionId, a => a.SessionId,
             r => { var a = new AgentRowViewModel(r.SessionId); a.Update(r, TitleOf(r), next.TakenUtc); return a; },
             (a, r) => a.Update(r, TitleOf(r), next.TakenUtc));
-        Raise(nameof(HasAgents));
+        Raise(nameof(HasAgents)); Raise(nameof(SubagentCount)); Raise(nameof(AgentsSummary));
 
         string? TitleOf(AgentBoardRow r) => r.TicketId is not { Length: > 0 } id ? null
             : next.Repos.FirstOrDefault(repo => repo.Name == r.Repo)?.OpenTickets.FirstOrDefault(t => t.Id == id)?.Summary;
@@ -442,7 +476,7 @@ public sealed partial class MainViewModel
                                      nameof(BudgetDetail), nameof(BudgetTooltip), nameof(BudgetFill), nameof(BudgetBrush),
                                      nameof(BlockResetText), nameof(WeeklyHeadline), nameof(WeeklyCaption),
                                      nameof(Pace), nameof(PaceText), nameof(PaceBrush),
-                                     nameof(LedgerHeadline), nameof(LedgerCaption), nameof(LedgerBrush), nameof(LedgerTooltip) })
+                                     nameof(LedgerHeadline), nameof(LedgerCaption), nameof(LedgerBrush), nameof(LedgerTooltip), nameof(LedgerSpoken) })
             Raise(name);
 
         ApplyAgents(next);

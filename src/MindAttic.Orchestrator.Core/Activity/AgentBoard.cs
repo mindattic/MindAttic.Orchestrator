@@ -26,7 +26,12 @@ public sealed record AgentBoardRow(
     string StateDetail,
     bool IsAutopilot,
     TokenUsage Tokens,
-    IReadOnlyList<SubagentActivity> Subagents);
+    IReadOnlyList<SubagentActivity> Subagents)
+{
+    /// <summary>Its latest tool call in plain words, and when.</summary>
+    public string? Doing { get; init; }
+    public DateTime? DoingAtUtc { get; init; }
+}
 
 /// <summary>
 /// Builds the agent board: every live Claude session (a Launcher tab or a headless autopilot agent),
@@ -41,7 +46,8 @@ public static class AgentBoard
         IReadOnlyList<Assignment> assignments,
         IReadOnlyList<SubagentActivity> subagents,
         TimeSpan workingWindow,
-        DateTime nowUtc)
+        DateTime nowUtc,
+        IReadOnlyDictionary<string, bool>? live = null)
     {
         var byParent = subagents.ToLookup(s => s.ParentSessionId, StringComparer.Ordinal);
         var byTicket = assignments.DistinctBy(a => a.TicketId, StringComparer.OrdinalIgnoreCase).ToDictionary(a => a.TicketId, StringComparer.OrdinalIgnoreCase);
@@ -53,9 +59,12 @@ public static class AgentBoard
             foreach (var session in repo.Sessions)
             {
                 if (session.Provider != Providers.Claude || session.SessionId.Length == 0) continue;
-
-                var age = nowUtc - session.LastWriteUtc;
-                var working = age <= workingWindow;
+                // Given which CLIs are running, only theirs are on the board, and their own busy/idle says working or
+                // waiting; without it (tests, a one-off read), a transcript written within the working window counts.
+                bool working;
+                if (live is null) working = nowUtc - session.LastWriteUtc <= workingWindow;
+                else if (live.TryGetValue(session.SessionId, out var busy)) working = busy;
+                else continue;
                 var state = !working ? AgentState.Waiting : paceHolding ? AgentState.HeldByPace : AgentState.Working;
                 var detail = state switch
                 {
@@ -71,7 +80,7 @@ public static class AgentBoard
                     session.SessionId, repo.Name, session.TicketId, session.TicketType,
                     started, session.LastWriteUtc, state, detail,
                     assignment?.Pilot is not null, session.UsageToday,
-                    [.. byParent[session.SessionId]]));
+                    [.. byParent[session.SessionId]]) { Doing = session.Doing, DoingAtUtc = session.DoingAtUtc });
             }
         }
         return [.. rows.OrderByDescending(r => r.LastActivityUtc)];

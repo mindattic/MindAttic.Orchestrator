@@ -59,6 +59,10 @@ public sealed record TranscriptSession(string SessionId, string Cwd, DateTime La
     public string? TicketId { get; init; }
     public string? TicketType { get; init; }
 
+    /// <summary>Its latest tool call in plain words ("Editing Daemon.cs") and when it was made; null before its first.</summary>
+    public string? Doing { get; init; }
+    public DateTime? DoingAtUtc { get; init; }
+
     /// <summary>Set when the session keeps repeating the same tool call: likely stuck in a loop.</summary>
     public Activity.Loop? Loop { get; init; }
 

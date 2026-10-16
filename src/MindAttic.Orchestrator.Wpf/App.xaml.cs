@@ -16,6 +16,10 @@ namespace MindAttic.Orchestrator.Wpf;
 /// </summary>
 public partial class App : Application
 {
+    // WCAG 1.4.13: a tooltip stays up until the pointer or focus leaves or Esc is pressed, rather than vanishing after 5s.
+    static App() => System.Windows.Controls.ToolTipService.ShowDurationProperty.OverrideMetadata(
+        typeof(DependencyObject), new FrameworkPropertyMetadata(int.MaxValue));
+
     private Mutex? daemonMutex;
     private Tray? tray;
 

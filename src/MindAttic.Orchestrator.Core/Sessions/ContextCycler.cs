@@ -267,6 +267,33 @@ public sealed class ContextCycler(string? directory = null)
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
     }
 
+    /// <summary>
+    /// The sessions whose Claude CLI is running right now, each with whether its turn is running (true) or it's waiting
+    /// for you (false): the newest session of every live CLI process, from the context gate's <c>.state.json</c> files
+    /// written in the last day. A CLI that /clear-ed has several sessions; only its latest is the one on screen.
+    /// </summary>
+    public IReadOnlyDictionary<string, bool> LiveSessions(DateTime nowUtc)
+    {
+        if (!System.IO.Directory.Exists(Directory)) return new Dictionary<string, bool>();
+        var newest = new Dictionary<int, (string Session, DateTime At, bool Busy)>();
+        foreach (var file in System.IO.Directory.EnumerateFiles(Directory, "*.state.json"))
+        {
+            try
+            {
+                var written = File.GetLastWriteTimeUtc(file);
+                if (nowUtc - written > TimeSpan.FromDays(1)) continue;
+                using var doc = JsonDocument.Parse(File.ReadAllText(file));
+                var root = doc.RootElement;
+                if (!root.TryGetProperty("pid", out var p) || p.ValueKind != JsonValueKind.Number || !p.TryGetInt32(out var pid)) continue;
+                var busy = root.TryGetProperty("state", out var st) && st.GetString() == "busy";
+                var session = Path.GetFileName(file)[..^".state.json".Length];
+                if (!newest.TryGetValue(pid, out var seen) || written > seen.At) newest[pid] = (session, written, busy);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException) { }
+        }
+        return newest.Where(kv => IsClaude(kv.Key)).ToDictionary(kv => kv.Value.Session, kv => kv.Value.Busy, StringComparer.Ordinal);
+    }
+
     /// <summary>Whether <paramref name="pid"/> is a running Claude CLI.</summary>
     public static bool IsClaude(int pid)
     {

@@ -168,6 +168,8 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
                 TicketId = g.Select(s => s.TicketId).FirstOrDefault(id => id is not null) ?? TicketAttribution.FromWorktree(g.First().Cwd),
                 TicketType = g.Select(s => s.TicketType).FirstOrDefault(x => x is not null),
                 Loop = LoopDetector.Find(g.SelectMany(s => s.Tools).OrderBy(c => c.AtUtc).ToList()),
+                Doing = g.SelectMany(s => s.Tools).MaxBy(c => c.AtUtc) is { } last ? ToolCallText.Describe(last.Name, last.Input) : null,
+                DoingAtUtc = g.SelectMany(s => s.Tools).MaxBy(c => c.AtUtc)?.AtUtc,
             })];
     }
 

@@ -148,7 +148,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             rateLimitFile.Write(budget, pace);
 
         var runningSubagents = subagents.Poll(contextCycler, now);
-        var agentBoard = AgentBoard.Build(result, pace, Store.LoadAssignments(), runningSubagents, options.WorkingWindow, now);
+        var agentBoard = AgentBoard.Build(result, pace, Store.LoadAssignments(), runningSubagents, options.WorkingWindow, now, contextCycler.LiveSessions(now));
 
         var weekFrom = now.AddDays(-7);
         var providerUsage = new[] { (Providers.Claude, (IEnumerable<TranscriptSession>)allSessions) }

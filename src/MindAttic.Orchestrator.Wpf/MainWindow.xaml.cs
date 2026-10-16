@@ -1,6 +1,8 @@
 using System.Collections.Specialized;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Automation.Peers;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
@@ -34,6 +36,11 @@ public partial class MainWindow : Window
         CommandBindings.Add(new CommandBinding(WindowCommands.Escape, (_, _) => OnEscape()));
 
         model.Toasts.CollectionChanged += OnToastsChanged;
+        model.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MainViewModel.StatusMessage)) Announce(model.StatusMessage);
+            else if (e.PropertyName == nameof(MainViewModel.QueueMessage)) Announce(model.QueueMessage);
+        };
 
         timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = PollInterval };
         timer.Tick += async (_, _) =>
@@ -78,10 +85,22 @@ public partial class MainWindow : Window
         else model.Search = "";
     }
 
-    /// <summary>A session that needs you should be noticed even when this window is behind others.</summary>
+    /// <summary>Says <paramref name="text"/> through a screen reader without moving focus (WCAG 4.1.3, status messages):
+    /// the status bar's hidden live region takes the text and raises LiveRegionChanged.</summary>
+    private void Announce(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+        Announcer.Text = text;
+        (UIElementAutomationPeer.FromElement(Announcer) ?? UIElementAutomationPeer.CreatePeerForElement(Announcer))
+            ?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
+    }
+
+    /// <summary>A session that needs you should be noticed even when this window is behind others, and heard by a screen reader.</summary>
     private void OnToastsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (e.Action != NotifyCollectionChangedAction.Add || IsActive) return;
+        if (e.Action != NotifyCollectionChangedAction.Add) return;
+        if (e.NewItems?.Count > 0 && e.NewItems[0] is ToastViewModel toast) Announce($"{toast.Title}. {toast.Body}");
+        if (IsActive) return;
         var info = new FlashInfo
         {
             Size = (uint)Marshal.SizeOf<FlashInfo>(),

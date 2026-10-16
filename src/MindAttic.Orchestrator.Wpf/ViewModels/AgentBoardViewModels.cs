@@ -4,7 +4,7 @@ using MindAttic.Orchestrator.Activity;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
-/// <summary>One live Claude CLI or autopilot background agent, with its running subagents nested under it.</summary>
+/// <summary>One live Claude CLI or autopilot background agent, with its running subagents nested inside it.</summary>
 public sealed class AgentRowViewModel(string sessionId) : ObservableObject
 {
     private AgentBoardRow row = null!;
@@ -15,34 +15,56 @@ public sealed class AgentRowViewModel(string sessionId) : ObservableObject
     public string Repo => row.Repo;
     public string? TicketId => row.TicketId;
     public bool HasTicket => TicketId is { Length: > 0 };
+    public AgentState State => row.State;
 
-    /// <summary>"M.ORCH-T84: Agent board …" when the ticket's title is known, else just the id, else the repo's name.</summary>
-    public string Headline => TicketId is not { Length: > 0 } ? $"{Repo} (no ticket)"
+    /// <summary>"M.ORCH-T84: Agent board …" when the ticket's title is known, else just the id, else what it's for.</summary>
+    public string Headline => TicketId is not { Length: > 0 } ? "No ticket: working on what you typed"
         : ticketTitle is { Length: > 0 } ? $"{TicketId}: {ticketTitle}" : TicketId;
 
     public string Elapsed => Formatting.Span(nowUtc - row.StartedUtc);
-    public string Tokens => row.Tokens.Total == 0 ? "" : Formatting.Tokens(row.Tokens.Total);
+    public string Tokens => row.Tokens.Total == 0 ? "" : Formatting.Tokens(row.Tokens.Total) + " tokens today";
     public bool IsAutopilot => row.IsAutopilot;
-    public string Kind => IsAutopilot ? "background" : "CLI";
+    public string Kind => IsAutopilot ? "Autopilot agent" : "Claude CLI";
 
+    /// <summary>The state in words; colour only repeats it (WCAG 1.4.1).</summary>
     public string StateLabel => row.State switch
     {
         AgentState.Working => "Working",
         AgentState.HeldByPace => "Held by pace",
-        _ => "Waiting",
+        _ => "Needs you",
+    };
+
+    /// <summary>A Segoe MDL2 glyph per state, so the state reads without colour: play, pause, person.</summary>
+    public string StateGlyph => row.State switch
+    {
+        AgentState.Working => "",
+        AgentState.HeldByPace => "",
+        _ => "",
     };
 
     public Brush StateBrush => row.State switch
     {
         AgentState.Working => Palette.Working,
-        AgentState.HeldByPace => Palette.Waiting,
         _ => Palette.Waiting,
     };
 
-    public string StateDetail => row.StateDetail;
+    /// <summary>Its latest tool call and how long ago: "Editing Daemon.cs · 12s ago"; while waiting, what it stopped on.</summary>
+    public string Doing => row.Doing is not { } d ? ""
+        : row.State == AgentState.Waiting ? $"Stopped after: {d}" : $"Now: {d} · {Formatting.Ago(row.DoingAtUtc, nowUtc)}";
+
+    /// <summary>"Claude CLI · 3.2M tokens today", without a dangling separator when there's no count yet.</summary>
+    public string Meta => Tokens.Length == 0 ? Kind : $"{Kind} · {Tokens}";
+
+    /// <summary>Why it's held (the pace's note); empty otherwise.</summary>
+    public string HoldNote => row.State == AgentState.HeldByPace ? row.StateDetail : "";
 
     public ObservableCollection<SubagentRowViewModel> Subagents { get; } = [];
     public bool HasSubagents => Subagents.Count > 0;
+    public string SubagentsHeader => Subagents.Count switch { 0 => "No subagents running", 1 => "1 subagent", var n => $"{n} subagents" };
+
+    /// <summary>The whole card in one sentence, for a screen reader.</summary>
+    public string AccessibleName =>
+        $"{Repo}, {Kind}, {StateLabel}, {Headline}. {Doing}. {SubagentsHeader}.";
 
     public void Update(AgentBoardRow next, string? title, DateTime snapshotUtc)
     {
@@ -52,11 +74,10 @@ public sealed class AgentRowViewModel(string sessionId) : ObservableObject
         Subagents.SyncBy(next.Subagents, s => s.AgentId, r => r.AgentId,
             s => new SubagentRowViewModel(s, snapshotUtc), (r, s) => r.Update(s, snapshotUtc));
         Raise(string.Empty);
-        Raise(nameof(HasSubagents));
     }
 }
 
-/// <summary>One subagent running under an <see cref="AgentRowViewModel"/>: what kind, how long, what it's spent.</summary>
+/// <summary>One subagent running inside an <see cref="AgentRowViewModel"/>: what it was asked, what it's doing, how long, what it's spent.</summary>
 public sealed class SubagentRowViewModel(SubagentActivity subagent, DateTime nowUtc) : ObservableObject
 {
     private SubagentActivity subagent = subagent;
@@ -64,8 +85,12 @@ public sealed class SubagentRowViewModel(SubagentActivity subagent, DateTime now
 
     public string AgentId => subagent.AgentId;
     public string Type => subagent.Type;
+    public string Task => subagent.Task ?? "";
+    public string Doing => "Now: " + (subagent.Doing ?? "starting");
+    public string Meta => Tokens.Length == 0 ? Elapsed : $"{Elapsed} · {Tokens}";
     public string Elapsed => Formatting.Span(nowUtc - subagent.StartedUtc);
     public string Tokens => subagent.Usage.Total == 0 ? "" : Formatting.Tokens(subagent.Usage.Total);
+    public string AccessibleName => $"{Type} subagent, {Elapsed}: {Task}. Now: {Doing}.";
 
     public void Update(SubagentActivity next, DateTime snapshotUtc)
     {
