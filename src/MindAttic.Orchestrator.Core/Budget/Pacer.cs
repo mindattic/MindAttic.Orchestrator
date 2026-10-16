@@ -59,7 +59,7 @@ public sealed record Pace(
     public string WindDownNote => !WindDown || Stop ? "" :
         $"The {Governing ?? "5-hour"} window is past {Pacer.WindDownShare:P0} of its limit" + (ResetUtc is { } r ? $" (resets {r.ToLocalTime():h:mm tt})" : "") +
         ", and work stops outright at the target. Don't start anything you can't finish before then. If the task you're on " +
-        "won't finish, commit what's done, file the rest as a ticket (workflow ticket new --type <type> --summary \"...\"), and /quicksave.";
+        "won't finish, commit what's done and file the rest as a ticket (workflow ticket new --type <type> --summary \"...\").";
 
     /// <summary>What agents are told about the allowance at the start of each turn.</summary>
     public string SubagentNote => SubagentAllowance switch

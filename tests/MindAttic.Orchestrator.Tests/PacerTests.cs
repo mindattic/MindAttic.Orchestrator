@@ -241,7 +241,7 @@ public sealed class PacerTests
 
         var late = Pace(10.5, 1, s, E(10, 920));
         Assert.That((late.WindDown, late.Stop), Is.EqualTo((true, false)));
-        Assert.That(late.WindDownNote, Does.Contain("90%").And.Contains("workflow ticket new").And.Contains("/quicksave"));
+        Assert.That(late.WindDownNote, Does.Contain("90%").And.Contains("workflow ticket new").And.Not.Contain("/quicksave"));
 
         var spent = Pace(10.5, 1, s, E(10, 990));
         Assert.That(spent.Stop, Is.True, "99% is the target: nothing more is spent");

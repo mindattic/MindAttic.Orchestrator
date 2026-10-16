@@ -606,12 +606,8 @@ public static class AgentGate
                 if s.get("wind_down_note"):
                     state["wind_down_told"] = True
                     said.append(s["wind_down_note"])
-            used = load(DIR / (sid + ".json")).get("used_percentage") or 0
-            if not (state.get("warned") or used < PERCENT or state.get("goal")):
-                state["warned"] = True
-                said.append("Context is " + str(used) + "% full. Finish the step you're on, let running subagents finish and "
-                    "start no new ones, then end your turn with a short status. The orchestrator will /quicksave, "
-                    "/clear and /quickload this session so the work carries on with a fresh context.")
+            # No context warning any more: nothing quicksaves, clears or reloads a session for it (2026-10-16), so a turn
+            # is never told to stop for its context; Claude's own compaction handles a full one.
             if not said:
                 sys.exit(0)
             print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": " ".join(said)}}))

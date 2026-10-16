@@ -49,40 +49,29 @@ public sealed class ContextCyclerTests
             Assert.That(all, Has.Count.EqualTo(2), "state files aren't sessions of their own");
             Assert.That(all[0], Is.EqualTo(new SessionContext("abc", @"D:\W\A", 83, true, new DateTime(2026, 10, 15, 1, 59, 30, DateTimeKind.Utc))));
             Assert.That((all[1].Idle, all[1].Percent), Is.EqualTo((false, 5.0)), "no turn recorded yet: never idle");
-
-            var said = cycler.Tick([], new OrchestratorSettings(), Now);
-            Assert.That(said, Has.Count.EqualTo(1).And.Some.Contains("yourself"), "no tab to type into: you're told, once");
-            Assert.That(cycler.Tick([], new OrchestratorSettings(), Now), Is.Empty);
-            Assert.That(new ContextCycler(dir).Tick([], new OrchestratorSettings { ContextCycle = false }, Now), Is.Empty);
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
 
     [Test]
-    public void A_session_in_a_plain_terminal_is_typed_into_through_its_console_and_a_desktop_one_is_reported()
+    public void Nothing_ever_types_quicksave_clear_or_quickload_into_a_session()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "ctx-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
+        // Found live: at 80% context the daemon typed /quicksave and /clear into a chat the user was working in.
+        var src = Path.GetFullPath(Path.Combine(TestContext.CurrentContext.TestDirectory, "..", "..", "..", "..", "..", "src"));
+        var typing = Directory.EnumerateFiles(src, "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
+            // The dashboard's reply box sends only what you type yourself; nothing may send these on its own.
+            .Where(f => File.ReadAllText(f) is var t && (t.Contains("\"/quicksave\"") || t.Contains("\"/clear\"") || t.Contains("\"/quickload\"")))
+            .ToList();
+        Assert.That(typing, Is.Empty);
+        Assert.That(new OrchestratorSettings().ContextCycle, Is.False);
+
+        var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
         try
         {
-            foreach (var (id, pid) in new[] { ("cli", 111), ("app", 222) })
-            {
-                File.WriteAllText(Path.Combine(dir, id + ".json"), $$"""{"session_id":"{{id}}","cwd":"D:\\W\\{{id}}","used_percentage":90}""");
-                File.WriteAllText(Path.Combine(dir, id + ".state.json"), $$"""{"state":"idle","at":"2026-10-15T01:59:00Z","pid":{{pid}}}""");
-            }
-            var typed = new List<(int, string)>();
-            var cycler = new ContextCycler(dir)
-            {
-                // 111 is a CLI with a console; 222 is a desktop-app session with none. The fake stops the cycle at its first line.
-                Typer = (pid, text) => { if (text.Length > 0) typed.Add((pid, text)); return pid == 111 && text.Length == 0; },
-            };
-
-            var said = cycler.Tick([], new OrchestratorSettings(), Now);
-
-            Assert.That(said, Has.Some.Contains(@"D:\W\cli").And.Some.Contains("in its own terminal"));
-            Assert.That(said, Has.Some.Contains("desktop-app session").And.Some.Contains("yourself"));
-            SpinWait.SpinUntil(() => typed.Count > 0, 5000);
-            Assert.That(typed, Is.EqualTo(new[] { (111, "/quicksave") }));
+            Setup.AgentGate.Ensure(dir);
+            var gate = File.ReadAllText(Path.Combine(dir, "context-gate.py"));
+            Assert.That(gate, Does.Not.Contain("will /quicksave").And.Not.Contain("% full. Finish the step"), "no turn is told to stop for its context");
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
@@ -238,19 +227,14 @@ public sealed class ContextCyclerTests
             Assert.That(Gate(new { session_id = "g", hook_event_name = "PostToolUse" }), Is.Empty, "no wrap-up: ending the turn won't get it cycled");
             Gate(new { session_id = "g", hook_event_name = "Stop", cwd = @"D:\W\A" });
 
-            var cycler = new ContextCycler(ctx) { Typer = (_, _) => throw new AssertionException("nothing is typed into a /goal session") };
+            var cycler = new ContextCycler(ctx);
             Assert.That(cycler.Load().Single().Goal, Is.EqualTo("all the tests pass"));
-            var said = cycler.Tick([], new OrchestratorSettings(), DateTime.UtcNow.AddMinutes(1));
-            Assert.That(said, Has.One.Contains("running /goal \"all the tests pass\", so it isn't cycled"));
-            Assert.That(cycler.Tick([], new OrchestratorSettings(), DateTime.UtcNow.AddMinutes(2)), Is.Empty, "said once");
 
             // The goal met: Claude Code's stop summary naming it is the last entry (shape trimmed from a real run, MAO-T109).
             const string summary = """{"type":"system","subtype":"stop_hook_summary","hookCount":2,"hookInfos":[{"command":"python context-gate.py","durationMs":106},{"command":"all the tests pass","promptText":"all the tests pass","durationMs":1637}],"preventedContinuation":false}""";
             File.AppendAllText(transcript, summary + "\n" + """{"type":"last-prompt"}""" + "\n" + """{"type":"cost-state"}""" + "\n");
             Assert.That(ContextCycler.GoalFinished(transcript, "all the tests pass"), Is.True, "metadata after the summary doesn't count");
             Assert.That(ContextCycler.GoalFinished(transcript, "another goal"), Is.False);
-            Assert.That(new ContextCycler(ctx).Tick([], new OrchestratorSettings(), DateTime.UtcNow.AddMinutes(3)), Has.One.Contains("/quicksave, /clear and /quickload it yourself"),
-                "finished on its own: cycled as usual again (here, no console to type into)");
             File.AppendAllText(transcript, """{"type":"assistant","message":{"content":[{"type":"text","text":"Not yet: one test fails."}]}}""" + "\n");
             Assert.That(ContextCycler.GoalFinished(transcript, "all the tests pass"), Is.False, "the evaluator sent it back to work: still running");
             File.AppendAllText(transcript, summary + "\n");
@@ -259,8 +243,8 @@ public sealed class ContextCyclerTests
 
             Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "/goal all the tests pass", transcript_path = transcript });
             Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "/goal clear" });
-            Assert.That(new ContextCycler(ctx).Load().Single().Goal, Is.Null, "cleared: cycled as usual again");
-            Assert.That(Gate(new { session_id = "g", hook_event_name = "PostToolUse" }), Does.Contain("% full"));
+            Assert.That(new ContextCycler(ctx).Load().Single().Goal, Is.Null, "cleared");
+            Assert.That(Gate(new { session_id = "g", hook_event_name = "PostToolUse" }), Is.Empty, "no turn is ever told to stop for its context");
         }
         finally { Directory.Delete(dir, recursive: true); }
     }

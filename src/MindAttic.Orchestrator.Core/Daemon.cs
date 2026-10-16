@@ -79,11 +79,6 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     Say(LogEventLevel.Information, line);
                     if (line.StartsWith("keep-going: let the ", StringComparison.Ordinal)) Alert("Needs you", line["keep-going: ".Length..]);
                 }
-                foreach (var line in cycler.Tick([.. snapshot.Repos.SelectMany(r => r.Hosts)], s, DateTime.UtcNow))
-                {
-                    Say(LogEventLevel.Information, line);
-                    if (line.EndsWith("yourself", StringComparison.Ordinal)) Alert("Context nearly full", line);
-                }
 
                 // An agent finished its turn and is waiting on you: the alert worth leaving the desk for.
                 foreach (var repo in snapshot.Repos)

@@ -22,17 +22,17 @@ hitting the session limit, and never stalling on a full context. Pick what runs;
 
 | Piece | What it does | Where |
 | --- | --- | --- |
-| Daemon | runs at logon, refreshes every 15s: budget, pace, autopilot, context cycling | logon task `\MindAttic\Orchestrator\...`; log in Vault (below) |
+| Daemon | runs at logon, refreshes every 15s: budget, pace, autopilot | logon task `\MindAttic\Orchestrator\...`; log in Vault (below) |
 | Claude's count | 5-hour percent and reset straight from Claude Code, sized safely | `~/.claude/claude-usage.json` |
 | Pacing | caps new sessions so the window lands on 99% at its reset; the week is never paced | `rl-status.json` → `pace` |
 | Holding agents | every Claude CLI and subagent waits before each tool call while the draw won't last, 0s once it fits | `~/.claude/pace-gate.py` (PreToolUse hook) |
-| Wind-down | past 90% of the 5-hour window each turn is told (once more mid-turn if it crosses the line) to start only what it can finish before the stop, and to commit, file the rest as a ticket and `/quicksave` if its task won't finish; autopilot starts only stories whose cost estimate fits what's left | `rl-status.json` → `wind_down_note` |
+| Wind-down | past 90% of the 5-hour window each turn is told (once more mid-turn if it crosses the line) to start only what it can finish before the stop, and to commit and file the rest as a ticket if its task won't finish; autopilot starts only stories whose cost estimate fits what's left | `rl-status.json` → `wind_down_note` |
 | Never over | at the 99% target (or a limit) the status says `stop`: every tool call, in every CLI and `/unthrottle`d ones too, is held as long as a hook may wait and then refused, so usage can't pass the limit whatever the hold settings. A message you type then is answered at once by the hook (not sent, so nothing is spent; it says when typing works again), except `/autopilot`, `/throttle`, `/unthrottle`, `/crossrepo` and `/goal`. Below the stop, typing is never held; keep-going lets those turns end, and autopilot gives a stopped agent's story back to start again after the reset (its work stays in its worktree) | `rl-status.json` → `stop`, `stop_note` |
 | Subagent allowance | how many subagents may run at once across every CLI, worked out live from the pace (up to 16); each turn is told it, and a new subagent past it waits (counted as the daemon's live count plus any started since, so a subagent whose stop never arrived doesn't hold the rest) | `rl-status.json` → `subagent_allowance`, `subagents_running`; `settings --max-subagents 16` |
 | Unthrottle | `/unthrottle` exempts one CLI (its process, subagents and `/clear` included) from every hold until it closes; its usage still counts, so the others absorb it; `/throttle` ends it | `~/.claude/session-context/unthrottled-<pid>` |
 | Repo windows | a CLI opened in a repo works only that repo: `pace-gate.py` refuses edits to another repo's files, `workflow ticket close`/`correct` on another repo's tickets, and `git -C <other repo>` changes. Filing a ticket in another repo (`workflow ticket new --repo X`) is always allowed, since that's how work is handed over. The workspace-root (General) CLI may work anywhere; `/crossrepo A,B` (or `all`) lets one CLI into other repos until it closes, `/crossrepo off` ends it | `~/.claude/pace-gate.py`; `~/.claude/session-context/crossrepo-<pid>` |
 | Whole-drive guard | `find`/`rg`/`grep`/`fd` on a drive root or `~`, and a recursive `ls`/`dir`/`Get-ChildItem` there (`-R`, `/s`, or PowerShell's `-Recurse`/`-r` in any case), is refused: such a search never finishes and leaks handles until Windows freezes | `~/.claude/pace-gate.py` |
-| Context cycling | past 80% context: wrap up, then `/quicksave`, `/clear`, `/quickload` typed in; a session running `/goal` is left to Claude's own compaction until the goal is met or `/goal clear` (a `/clear` would end the goal); the pace gate holds `/goal` turns like any other | `~/.claude/context-gate.py` (prompt, tool, stop hooks) |
+| Context | nothing ever types `/quicksave`, `/clear` or `/quickload` into a session, and no turn is told to stop for its context: a full context is left to Claude's own compaction (automatic cycling cleared a session in use, 2026-10-16, so it was removed) | — |
 | Keep going | in a repo `/autopilot` is on for (and only there: a CLI you're just using is never pushed onto its repo's tickets), a CLI that ends its turn asking "shall I start the next one?", or that closed a ticket and stopped, while its repo still has open tickets is told to carry on; one that stops again straight after without doing anything is let go (it really needs you) and you get a *Needs you*; every nudge is logged to `~/.claude/session-context/keep-going.jsonl`, which the daemon reports in its log. Codex (its Stop hook) and Gemini (AfterAgent) CLIs are kept going the same way when they ask; Kimi has no end-of-turn hook, so a Kimi CLI can still stop to ask | `~/.claude/context-gate.py` (Stop hook; `~/.codex/hooks.json` Stop, `~/.gemini/settings.json` AfterAgent); `settings --keep-going false` |
 | Autopilot | the repos you turned it on for have their stories worked in parallel background agents, each in its own worktree, while the pace can afford them; repos waiting on the pace are listed for the statusline | `/autopilot` turns it on for the CLI it's typed into (that CLI's repo; each CLI adds its own); `/autopilot off` turns off that repo only, `/autopilot off all` everywhere; `-repo=A,B` names repos; `/autopilot all` is every repo with open stories; `~/.claude/autopilot-waiting.json` |
 
@@ -85,7 +85,7 @@ removes the task and shortcuts.
 
 The daemon is what makes budgets and pacing always on: it keeps `~/.claude/rl-status.json` and the pace
 (including the hold on running agents) current, installs and repairs the pace and context hooks,
-cycles full contexts, notices stale assignments, and runs autopilot's background agents. Only one runs (a named mutex),
+notices stale assignments, and runs autopilot's background agents. Only one runs (a named mutex),
 and only one process starts them (`dispatch.lock`): with the daemon running, an open
 dashboard shows proposals and leaves autopilot to it. The same lease decides who writes `rl-status.json` and
 builds the status snapshot: the holder publishes each one to `status-snapshot.json`, and every other dashboard
@@ -127,7 +127,7 @@ The same core drives a CLI (`dotnet run --project src/MindAttic.Orchestrator.Cli
 | `queue [--top 25] [--groom]` / `bump <ID> [--by n]` | the cross-repo ticket queue, what's proposed next, and why (estimate, stale, too big, blocked, reserved); `--groom` lists old untouched tickets; reprioritize |
 | `dispatch <ID> [--provider] [--worktree]` | start a session on a ticket |
 | `release <ID> [--remove-worktree]` | put a ticket back in the queue; remove its (clean) worktree |
-| `daemon [--interval 15]` | keep the budget file and pace fresh, cycle context, and run autopilot without the dashboard open |
+| `daemon [--interval 15]` | keep the budget file and pace fresh and run autopilot without the dashboard open |
 | `settings [--max-sessions n] [--autopilot false] [--throttle-agents true] [--max-delay 300] [--max-subagents 16] [--provider Claude\|Codex\|Gemini\|Kimi] [--stale-hours 12] [--quiet 22:00-07:00] [--repo-cap Repo=40] [--repo-sessions Repo=3] [--autopilot-skip A,B] [--hand-minutes 15] [--keep-going false] [--groom-days 30] [--notify URL] [--github-intake true]` | scheduler settings |
 | `audit [--latest]` | convention drift and cross-repo duplication |
 | `approve [<ID> ...] [--undo]` | only fixes are worked without asking; every other open ticket (feature, chore, docs) waits outside the queue, and for autopilot and keep-going, until you approve it. With no ids it lists what's waiting |
@@ -226,13 +226,9 @@ The same `pace-gate.py` is wired into Codex's, Gemini's and Kimi's own pre-tool-
 the same way (MAO-T50). Codex shows its own one-time "hooks need review" prompt in its TUI before a
 freshly added hook runs there; nothing types through that for you.
 
-**Context cycling.** The statusline also saves each session's context fill to
-`~/.claude/session-context/<session>.json`, and a second hook, `context-gate.py` (on prompt, tool and
-stop), records whether its turn is running and, once past 80% (`ContextCyclePercent`), tells the main
-agent to finish its step, let its subagents finish and end the turn. When that turn has ended, the
-daemon types `/quicksave`, waits for it, then `/clear` and `/quickload` into the session's Launcher tab,
-so it carries on from the handoff with a fresh context. A CLI in a plain terminal is typed into through its
-console (the hook records its process); a Claude desktop-app session has no console, so you get an alert instead.
+**Context.** The statusline saves each session's context fill to `~/.claude/session-context/<session>.json`, and
+`context-gate.py` records whether its turn is running; that's all. Nothing types into a session and no turn is told
+to stop for its context: a full one is left to Claude's own compaction.
 
 **3 · Scheduler.** Every open ticket across all repos in one queue: manual priority, then fixes
 before features before chores before docs, then oldest. Each refresh it proposes up to the free
@@ -317,8 +313,7 @@ files across repos, clusters them, and suggests a home (`mindattic-agent-standar
   local session log, so its sessions show as Launcher tabs but aren't counted.
 - A session started outside the Launcher is tracked, counted, held and context-cycled, but `send` and
   the dashboard's reply box only reach Launcher tabs.
-- The context cycle point (80%) and holding are set in the dashboard's Settings panel (or
-  `settings.json`: `ContextCyclePercent`, `ContextCycle`, `ThrottleAgents`, `MaxAgentDelaySeconds`);
+- Holding is set in the dashboard's Settings panel (or `settings.json`: `ThrottleAgents`, `MaxAgentDelaySeconds`);
   the CLI only has `--throttle-agents` and `--max-delay`.
 - Claude Code prunes transcripts after about 30 days; the budget history window is 7 days, which
   always covers the current week.
@@ -331,6 +326,5 @@ files across repos, clusters them, and suggests a home (`mindattic-agent-standar
   a CLI from holds, never from that stop.
 - A hold slows tool calls, not a long reply with no tool calls in it. Codex needs a one-time "trust
   this hook" click in its own TUI the first time its hold fires on a machine; nothing automates that.
-- Context cycling can't reach Claude desktop-app sessions (no console to type into); they get an alert.
 - Learned limits are in uncached tokens, and the token-to-limit ratio shifts with the model mix, so
   they're estimates, used only when Claude's own count isn't available.

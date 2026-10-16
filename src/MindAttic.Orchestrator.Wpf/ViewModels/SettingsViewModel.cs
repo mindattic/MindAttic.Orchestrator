@@ -74,7 +74,7 @@ public sealed class SettingsViewModel : ObservableObject
         {
             BlockBudget = block, WeeklyBudget = weekly, WeeklyReset = reset?.ToString(), WarnPercent = warn, MaxConcurrentSessions = max,
             DefaultProvider = Provider, Autopilot = Autopilot, Pacing = Pacing, PaceTargetPercent = target,
-            ThrottleAgents = ThrottleAgents, MaxAgentDelaySeconds = delay, ContextCycle = ContextCycle, ContextCyclePercent = cycleAt,
+            ThrottleAgents = ThrottleAgents, MaxAgentDelaySeconds = delay, ContextCycle = false,ContextCyclePercent = cycleAt,
         });
         Load();
         saved();

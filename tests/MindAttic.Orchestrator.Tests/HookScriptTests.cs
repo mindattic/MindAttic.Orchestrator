@@ -236,17 +236,14 @@ public sealed class HookScriptTests
     }
 
     [Test]
-    public void The_context_warning_comes_once_a_turn_and_never_under_a_goal()
+    public void A_full_context_never_tells_a_turn_to_stop()
     {
+        // Nothing quicksaves, clears or reloads a session for its context any more, so nothing tells it to wrap up either.
         Directory.CreateDirectory(Marks);
-        File.WriteAllText(Path.Combine(Marks, "s3.json"), """{ "used_percentage": 85 }""");
-        object Tool() => new { hook_event_name = "PostToolUse", session_id = "s3", cwd = ws, tool_input = new { command = "ls" } };
+        File.WriteAllText(Path.Combine(Marks, "s3.json"), """{ "used_percentage": 95 }""");
         Gate(new { hook_event_name = "UserPromptSubmit", session_id = "s3", prompt = "go", cwd = ws }, AgentGate.ContextScriptName);
-        Assert.That(Gate(Tool(), AgentGate.ContextScriptName).Output, Does.Contain("Context is 85% full"));
-        Assert.That(Gate(Tool(), AgentGate.ContextScriptName).Output, Is.Empty, "once per turn");
-
-        Gate(new { hook_event_name = "UserPromptSubmit", session_id = "s3", prompt = "/goal tests pass", cwd = ws }, AgentGate.ContextScriptName);
-        Assert.That(Gate(Tool(), AgentGate.ContextScriptName).Output, Is.Empty, "a /goal is left to Claude's own compaction");
+        Assert.That(Gate(new { hook_event_name = "PostToolUse", session_id = "s3", cwd = ws, tool_input = new { command = "ls" } },
+            AgentGate.ContextScriptName).Output, Is.Empty);
     }
 
     [Test]

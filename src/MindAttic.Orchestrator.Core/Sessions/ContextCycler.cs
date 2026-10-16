@@ -18,12 +18,8 @@ public sealed record SessionContext(string SessionId, string? Cwd, double Percen
 }
 
 /// <summary>
-/// Keeps agents from running out of context: once a Claude session in a Launcher tab is past
-/// <see cref="OrchestratorSettings.ContextCyclePercent"/> and its turn has ended (so its subagents are
-/// done; the context gate told it to wrap up), types <c>/quicksave</c>, waits for that turn to end,
-/// then <c>/clear</c> and <c>/quickload</c>, so it carries on from the handoff with a fresh context.
-/// A session in a plain terminal is typed into through its console (<see cref="ConsoleTyper"/>); one with
-/// no console (the Claude desktop app) can't be, so you're told instead.
+/// Reads what the context gate records about each session (its context fill, turn state, CLI process, /goal) and the
+/// marks it keeps (subagents, /autopilot, /crossrepo, /unthrottle, keep-going). It never types into a session.
 /// </summary>
 public sealed class ContextCycler(string? directory = null)
 {
@@ -33,53 +29,11 @@ public sealed class ContextCycler(string? directory = null)
     /// <summary>How long a turn has to have been over before cycling, so a quick follow-up isn't typed over.</summary>
     public static readonly TimeSpan Settle = TimeSpan.FromSeconds(10);
 
-    /// <summary>The longest /quicksave gets to write its handoff before the cycle gives up (without clearing).</summary>
-    public static readonly TimeSpan SaveTimeout = TimeSpan.FromMinutes(10);
-
-    /// <summary>Types a line into a console by process id; an empty line only checks it can. Replaceable for tests.</summary>
-    internal Func<int, string, bool> Typer { get; init; } = (pid, text) => text.Length == 0 ? ConsoleTyper.CanType(pid) : ConsoleTyper.Submit(pid, text);
-
-    /// <summary>Sessions to leave alone: autopilot's headless agents, which have no prompt to type /quicksave into.</summary>
+    /// <summary>Sessions to leave alone: autopilot's headless agents.</summary>
     public Func<int, bool> IsAgent { get; set; } = _ => false;
 
-    private readonly Dictionary<string, Task<string>> cycling = new(StringComparer.Ordinal);
-    private readonly HashSet<string> told = new(StringComparer.Ordinal);
-
-    /// <summary>Starts a cycle for every session that's due; returns what it did or couldn't do, and finished cycles' outcomes.</summary>
-    public IReadOnlyList<string> Tick(IReadOnlyList<HostSession> hosts, OrchestratorSettings settings, DateTime nowUtc)
-    {
-        var said = new List<string>();
-        foreach (var (id, task) in cycling.Where(c => c.Value.IsCompleted).ToList())
-        {
-            cycling.Remove(id);
-            said.Add(task.IsCompletedSuccessfully ? task.Result : $"context cycle for session {id} failed: {task.Exception?.InnerException?.Message}");
-        }
-        if (!settings.ContextCycle) return said;
-
-        foreach (var s in Load())
-        {
-            if (cycling.ContainsKey(s.SessionId) || !Due(s, settings.ContextCyclePercent, nowUtc) || (s.Pid is { } agent && IsAgent(agent))) continue;
-            // /clear would silently end a /goal; Claude's own compaction carries it on instead.
-            if (s.Goal is { } goal && !(s.Transcript is { } transcript && GoalFinished(transcript, goal)))
-            {
-                if (told.Add(s.SessionId)) said.Add($"session in {s.Cwd} is {s.Percent:0}% full of context but running /goal \"{goal}\", so it isn't cycled; Claude's own compaction carries it on");
-                continue;
-            }
-            Func<string, Task<bool>>? send = null;
-            var host = HostFor(s, hosts, out var why);
-            if (host is not null) send = text => SessionControl.SubmitAsync(host.PipeName, text);
-            else if (s.Pid is { } pid && Typer(pid, "")) send = text => Task.FromResult(Typer(pid, text));
-            else why = s.Pid is null ? why : "its console can't be typed into (a desktop-app session)";
-            if (send is null)
-            {
-                if (told.Add(s.SessionId)) said.Add($"session in {s.Cwd} is {s.Percent:0}% full of context but {why}: /quicksave, /clear and /quickload it yourself");
-                continue;
-            }
-            said.Add($"cycling the context of {s.Cwd} ({s.Percent:0}% full{(host is null ? ", in its own terminal" : "")}): /quicksave, /clear, /quickload");
-            cycling[s.SessionId] = Task.Run(() => CycleAsync(s, send));
-        }
-        return said;
-    }
+    // Nothing here types into a session any more: typing /quicksave, /clear and /quickload into a live chat at 80%
+    // cleared a session the user was working in (2026-10-16). Context is left to Claude's own compaction.
 
     /// <summary>
     /// Whether a <c>/goal</c> finished on its own: once its condition holds, the session's last entry is the stop summary
@@ -124,27 +78,6 @@ public sealed class ContextCycler(string? directory = null)
             string.Equals(Path.GetFullPath(d).TrimEnd('\\', '/'), target, StringComparison.OrdinalIgnoreCase)).ToList();
         if (matches.Count > 1) why = "more than one Claude tab is open there, so it can't tell which is which";
         return matches.Count == 1 ? matches[0] : null;
-    }
-
-    private async Task<string> CycleAsync(SessionContext s, Func<string, Task<bool>> send)
-    {
-        var sent = DateTime.UtcNow;
-        if (!await send("/quicksave"))
-            return $"couldn't reach the tab for {s.Cwd} to cycle its context";
-        // /quicksave is a turn of its own; its Stop marks the handoff written.
-        var deadline = sent + SaveTimeout;
-        while (DateTime.UtcNow < deadline)
-        {
-            await Task.Delay(TimeSpan.FromSeconds(5));
-            if (Read(s.SessionId) is { Idle: true } after && after.TurnUtc > sent) break;
-        }
-        if (DateTime.UtcNow >= deadline)
-            return $"{s.Cwd}: /quicksave didn't finish in {SaveTimeout.TotalMinutes:0} minutes, so its context was left as is";
-        await send("/clear");
-        await Task.Delay(TimeSpan.FromSeconds(5));
-        await send("/quickload");
-        Forget(s.SessionId); // /clear starts a new session id; this one is done
-        return $"{s.Cwd}: context cycled; it picks up from its handoff";
     }
 
     public IEnumerable<SessionContext> Load()
