@@ -203,11 +203,11 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
     {
         [CommandOption("--block <TOKENS>")]
         [Description("Uncached tokens per 5-hour block (0 clears it: measure against your peak block).")]
-        public long? Block { get; init; }
+        public string? Block { get; init; }
 
         [CommandOption("--weekly <TOKENS>")]
         [Description("Uncached tokens per week (0 clears it).")]
-        public long? Weekly { get; init; }
+        public string? Weekly { get; init; }
 
         [CommandOption("--weekly-reset <WHEN>")]
         [Description("When the week resets, local time: \"Mon 9:00\", \"Tue 5pm\". \"none\" makes the week a rolling 7 days.")]
@@ -244,14 +244,18 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
         }
         if (settings.Target is < 1 or > 100) { AnsiConsole.MarkupLine("[red]--target is a percent from 1 to 100.[/]"); return 1; }
         if (settings.Warn is < 1 or > 100) { AnsiConsole.MarkupLine("[red]--warn is a percent from 1 to 100.[/]"); return 1; }
+        // Token counts read as the README, the Settings panel and `reserve` take them: 20M, 500k, 1.5B, or a plain number.
+        long? blockTokens = null, weeklyTokens = null;
+        if (settings.Block is { } bt) { if (!TokenText.TryParse(bt, out var v)) { AnsiConsole.MarkupLine("[red]--block: a number like 20M, 500k or 0.[/]"); return 1; } blockTokens = v; }
+        if (settings.Weekly is { } wt) { if (!TokenText.TryParse(wt, out var v)) { AnsiConsole.MarkupLine("[red]--weekly: a number like 150M, 500k or 0.[/]"); return 1; } weeklyTokens = v; }
         if (settings.Block is not null || settings.Weekly is not null || settings.Warn is not null || settings.WeeklyReset is not null ||
             settings.Pace is not null || settings.Target is not null)
         {
             var s = store.LoadSettings();
             store.SaveSettings(s with
             {
-                BlockBudget = settings.Block is { } bl ? (bl > 0 ? bl : null) : s.BlockBudget,
-                WeeklyBudget = settings.Weekly is { } w ? (w > 0 ? w : null) : s.WeeklyBudget,
+                BlockBudget = blockTokens is { } bl ? (bl > 0 ? bl : null) : s.BlockBudget,
+                WeeklyBudget = weeklyTokens is { } w ? (w > 0 ? w : null) : s.WeeklyBudget,
                 WarnPercent = settings.Warn ?? s.WarnPercent,
                 WeeklyReset = settings.WeeklyReset is null ? s.WeeklyReset : reset?.ToString(),
                 Pacing = settings.Pace ?? s.Pacing,

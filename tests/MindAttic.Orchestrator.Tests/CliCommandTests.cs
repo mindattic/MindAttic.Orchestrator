@@ -172,6 +172,17 @@ public sealed class CliCommandTests
         Assert.That(output.ToString(), Does.Contain("[odd 3").And.Contain("[cap] 40%"));
     }
 
+    [Test]
+    public void Budget_takes_token_counts_as_the_readme_writes_them()
+    {
+        // Read as 20M, not refused by the option's type before the command runs (the --warn mistake stops it short of saving).
+        Assert.That(Run("budget", "--block", "20M", "--weekly", "1.5B", "--warn", "0"), Is.EqualTo(1));
+        Assert.That(output.ToString(), Does.Contain("--warn is a percent"));
+        Assert.That(Run("budget", "--weekly", "lots"), Is.EqualTo(1));
+        Assert.That(output.ToString(), Does.Contain("--weekly: a number like"));
+        Assert.That(File.Exists(SettingsFile), Is.False);
+    }
+
     [TestCase("0")]
     [TestCase("101")]
     [TestCase("-5")]
