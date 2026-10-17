@@ -283,6 +283,54 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void Agent_calls_sent_together_take_the_allowance_one_slot_at_a_time()
+    {
+        // M.ORCH-T197: a message of Agent calls ran the check together before any SubagentStart, so all got through.
+        Status(new { subagent_allowance = 1, subagents_running = 0 });
+        var agent = new { tool_name = "Agent", tool_input = new { prompt = "x" } };
+        var burst = Enumerable.Range(0, 4).Select(_ => Run(AgentGate.ScriptName, agent)).ToList();
+        try
+        {
+            Thread.Sleep(8_000);
+            Assert.That(burst.Count(p => p.HasExited), Is.EqualTo(1), "one free place lets one call through, the rest wait");
+            var slots = Path.Combine(Marks, AgentGate.SlotDirName);
+            Assert.That(Directory.GetFiles(slots), Has.Length.EqualTo(1), "the call let through holds its slot until it starts");
+
+            // Its SubagentStart turns the slot into the subagent's mark, which the count then sees instead.
+            Gate(new { hook_event_name = "SubagentStart", session_id = "s5", agent_id = "a1", cwd = ws }, AgentGate.ContextScriptName);
+            Assert.That(Directory.GetFiles(slots), Is.Empty);
+            Assert.That(File.Exists(Path.Combine(Marks, "subagents", "a1")), Is.True);
+            Thread.Sleep(7_000);
+            Assert.That(burst.Count(p => p.HasExited), Is.EqualTo(1), "the started subagent fills the allowance just as its slot did");
+        }
+        finally
+        {
+            foreach (var p in burst) { if (!p.HasExited) p.Kill(); p.Dispose(); }
+        }
+    }
+
+    [Test]
+    public void A_slot_whose_subagent_never_started_expires_and_frees_its_place()
+    {
+        Status(new { subagent_allowance = 1, subagents_running = 0 });
+        var slots = Path.Combine(Marks, AgentGate.SlotDirName);
+        Directory.CreateDirectory(slots);
+        var refused = Path.Combine(slots, "4242-1-1");
+        File.WriteAllText(refused, "");
+        var agent = new { tool_name = "Agent", tool_input = new { prompt = "x" } };
+        using (var held = Run(AgentGate.ScriptName, agent))
+        {
+            Assert.That(held.WaitForExit(7_000), Is.False, "a fresh slot fills the allowance of one");
+            held.Kill();
+        }
+
+        File.SetLastWriteTimeUtc(refused, DateTime.UtcNow.AddSeconds(-AgentGate.SlotLifeSeconds - 30));
+        Assert.That(Gate(agent).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "its call never ran: the slot is dropped");
+        Assert.That(File.Exists(refused), Is.False);
+        Assert.That(Directory.GetFiles(slots), Has.Length.EqualTo(1), "and the call let through holds its own");
+    }
+
+    [Test]
     public void Filing_a_ticket_for_another_repo_hands_it_off_but_closing_one_is_still_refused()
     {
         var uss = Path.Combine(ws, "UnitySolarSystem");

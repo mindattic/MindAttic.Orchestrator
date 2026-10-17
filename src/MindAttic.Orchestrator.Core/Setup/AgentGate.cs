@@ -347,8 +347,14 @@ public static class AgentGate
 
         # A new subagent waits while the allowance the pace works out is used up (all CLIs together); the
         # wait counts toward the same MAX_HOLD, and past it the subagent starts anyway: held, never refused.
+        # Agent calls sent in one message run this together, before any SubagentStart has marked one, so the check
+        # and the slot it lets through are one step under a lock (M.ORCH-T197: ~20 got past an allowance of 1-2).
+        # The slot counts until the context gate's SubagentStart turns it into the subagent's mark, or it expires.
+        slot = None
         if tool in ("Agent", "Task"):
             SUB = MARKS / "subagents"
+            SLOTS = MARKS / "{{SlotDirName}}"
+            LOCK = MARKS / "{{SlotDirName}}.lock"
             def running(s):
                 # The daemon's count leaves out marks whose stop never came; only marks newer than its count are added to it.
                 marks = list(SUB.iterdir()) if SUB.exists() else []
@@ -356,24 +362,97 @@ public static class AgentGate
                     return len(marks)
                 at = datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00")).timestamp()
                 return int(s["subagents_running"]) + sum(1 for m in marks if m.stat().st_mtime > at)
-            while time.monotonic() - start < MAX_HOLD:
-                s = status()
-                allowed = s.get("subagent_allowance")
+            def slots():
+                # Slots let through but not started yet; one whose start never came (the call was refused) is dropped.
+                held = 0
+                for f in (SLOTS.iterdir() if SLOTS.exists() else []):
+                    try:
+                        if time.time() - f.stat().st_mtime > {{SlotLifeSeconds}}:
+                            f.unlink()
+                        else:
+                            held += 1
+                    except Exception:
+                        pass
+                return held
+            def locked():
+                # One pace gate at a time decides; a lock left by a killed gate is broken after a few seconds.
+                MARKS.mkdir(parents=True, exist_ok=True)
+                give_up = time.monotonic() + 15
+                while time.monotonic() < give_up:
+                    try:
+                        os.close(os.open(str(LOCK), os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+                        return True
+                    except FileExistsError:
+                        try:
+                            if time.time() - LOCK.stat().st_mtime > 10:
+                                LOCK.unlink()
+                        except Exception:
+                            pass
+                    except Exception:
+                        return False
+                    time.sleep(0.05)
+                return False
+            def unlock():
                 try:
-                    if allowed is None or running(s) < allowed:
-                        break
+                    LOCK.unlink()
                 except Exception:
-                    break
+                    pass
+            def take():
+                try:
+                    SLOTS.mkdir(parents=True, exist_ok=True)
+                    path = SLOTS / (str(os.environ.get("MINDATTIC_CLI_PID") or cli_pid() or 0) + "-" + str(time.time_ns()) + "-" + str(os.getpid()))
+                    path.write_text("")
+                    return path
+                except Exception:
+                    return None
+            while True:
+                has_lock = locked()
+                try:
+                    s = status()
+                    allowed = s.get("subagent_allowance")
+                    try:
+                        go = allowed is None or running(s) + slots() < allowed
+                    except Exception:
+                        go = True
+                    if go or time.monotonic() - start >= MAX_HOLD:
+                        slot = take()
+                        break
+                finally:
+                    if has_lock:
+                        unlock()
                 time.sleep(5)
-        while True:
-            waited = time.monotonic() - start
-            left = min(delay(), MAX_HOLD) - waited
-            if left <= 0:
-                break
-            time.sleep(min(left, 5))
+        def release():
+            # A slot whose call never runs is given back at once, not left to expire.
+            try:
+                if slot is not None:
+                    slot.unlink()
+            except Exception:
+                pass
+        try:
+            while True:
+                waited = time.monotonic() - start
+                left = min(delay(), MAX_HOLD) - waited
+                if left <= 0:
+                    break
+                time.sleep(min(left, 5))
+        except BaseException:
+            release()  # killed or failed while held: the call doesn't run
+            raise
+        if slot is not None:
+            try:
+                os.utime(slot)  # its life starts when the call is let through, not when the slot was taken
+            except Exception:
+                pass
         if time.monotonic() - start >= 1:
             gate_log("held", time.monotonic() - start)
         """.Replace("\r\n", "\n");
+
+    /// <summary>Where the pace gate keeps a slot for each Agent call it let through until its SubagentStart marks it
+    /// (in <c>~/.claude/session-context</c>), so calls sent together can't all pass one free place (M.ORCH-T197).</summary>
+    public const string SlotDirName = "subagent-slots";
+
+    /// <summary>A slot whose SubagentStart hasn't come this long after its call was let through was never used.</summary>
+    public const int SlotLifeSeconds = 120;
 
     /// <summary>The pace gate's event log in <c>~/.claude/session-context</c>: one JSON line per hold or refusal.</summary>
     public const string GateLogName = "pace-gate.jsonl";
@@ -560,6 +639,14 @@ public static class AgentGate
                 mark = sub / re.sub(r"[^A-Za-z0-9_.-]", "_", str(data["agent_id"]))
                 if event == "SubagentStart":
                     mark.write_text(str(cli_pid() or ""))
+                    # The mark now counts it, so the slot the pace gate kept for its call is let go: this CLI's oldest.
+                    try:
+                        mine = str(my_pid() or 0) + "-"
+                        held = sorted((DIR / "{{{SlotDirName}}}").iterdir(), key=lambda f: (not f.name.startswith(mine), f.name))
+                        if held:
+                            held[0].unlink()
+                    except Exception:
+                        pass
                 elif mark.exists():
                     mark.unlink()
             sys.exit(0)
