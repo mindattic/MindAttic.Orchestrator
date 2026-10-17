@@ -323,6 +323,23 @@ public sealed class AutopilotTests
         Plan(snap) with { Pace = new Pace(PaceMode.Open, 6, 10_000, 0, 1_000, "5-hour", Now.AddHours(3), "On pace.") { SpareSessions = spare } };
 
     [Test]
+    public void The_prompt_closes_the_ticket_only_after_the_push_lands_with_the_landed_hash()
+    {
+        // M.ORCH-T178: push and close chained together let a rejected push still close the ticket on a pre-rebase hash.
+        var item = new QueueItem("A", @"D:\W\A", T("A-T1"), 0, null, false);
+        var prompt = Autopilot.PromptFor(item, @"D:\WT\A\A-T1", "orch/a-t1", "master");
+
+        var push = prompt.IndexOf("git push origin HEAD:master", StringComparison.Ordinal);
+        var retry = prompt.IndexOf("If the push is rejected because master moved, fetch, rebase and push again", StringComparison.Ordinal);
+        var onlyOnce = prompt.IndexOf("Only once the push has succeeded, as its own step", StringComparison.Ordinal);
+        var close = prompt.IndexOf("workflow ticket close A-T1 --ref", StringComparison.Ordinal);
+        Assert.That(new[] { push, retry, onlyOnce, close }, Has.All.GreaterThanOrEqualTo(0), prompt);
+        Assert.That(push < retry && retry < onlyOnce && onlyOnce < close, "push, retry on a rejection, then close as its own step");
+        Assert.That(prompt, Does.Contain("the commit hash as it landed on master"), "the ref is the landed hash, not the pre-rebase one");
+        Assert.That(prompt, Does.Contain("If you can't finish or land it, leave the ticket open"));
+    }
+
+    [Test]
     public void Repos_with_an_open_cli_get_parallel_background_agents_each_in_its_own_worktree_and_nothing_is_typed()
     {
         Cli(100, @"D:\W\A");
