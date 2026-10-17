@@ -367,6 +367,23 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void A_subagent_start_never_frees_another_clis_slot()
+    {
+        var slots = Path.Combine(Marks, AgentGate.SlotDirName);
+        Directory.CreateDirectory(slots);
+        var other = Path.Combine(slots, "999-1-1");
+        File.WriteAllText(other, "");
+
+        // This CLI took no slot (it's /unthrottle'd, or the call was exempt): another CLI's pending call keeps its place.
+        Gate(new { hook_event_name = "SubagentStart", session_id = "s6", agent_id = "a2", cwd = ws }, AgentGate.ContextScriptName);
+        Assert.That(File.Exists(other), Is.True);
+
+        File.WriteAllText(Path.Combine(slots, $"{Cli}-2-2"), "");
+        Gate(new { hook_event_name = "SubagentStart", session_id = "s6", agent_id = "a3", cwd = ws }, AgentGate.ContextScriptName);
+        Assert.That(Directory.GetFiles(slots).Select(Path.GetFileName), Is.EqualTo(new[] { "999-1-1" }), "its own slot is the one let go");
+    }
+
+    [Test]
     public void Filing_a_ticket_for_another_repo_hands_it_off_but_closing_one_is_still_refused()
     {
         var uss = Path.Combine(ws, "UnitySolarSystem");

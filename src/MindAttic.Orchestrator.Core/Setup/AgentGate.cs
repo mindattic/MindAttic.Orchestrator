@@ -826,10 +826,12 @@ public static class AgentGate
                 mark = sub / re.sub(r"[^A-Za-z0-9_.-]", "_", str(data["agent_id"]))
                 if event == "SubagentStart":
                     mark.write_text(str(cli_pid() or ""))
-                    # The mark now counts it, so the slot the pace gate kept for its call is let go: this CLI's oldest.
+                    # The mark now counts it, so the slot the pace gate kept for its call is let go: this CLI's oldest. Never
+                    # another CLI's: a subagent that took no slot (an /unthrottle'd CLI, an exempt turn) would free a place
+                    # still held for that CLI's pending call; a slot left over expires.
                     try:
                         mine = str(my_pid() or 0) + "-"
-                        held = sorted((DIR / "{{{SlotDirName}}}").iterdir(), key=lambda f: (not f.name.startswith(mine), f.name))
+                        held = sorted(f for f in (DIR / "{{{SlotDirName}}}").iterdir() if f.name.startswith(mine))
                         if held:
                             held[0].unlink()
                     except Exception:
