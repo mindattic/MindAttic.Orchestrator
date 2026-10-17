@@ -162,7 +162,8 @@ public sealed class DispatcherTests
     [Test]
     public void Dispatch_in_a_worktree_records_the_assignment_through_UpdateAssignments()
     {
-        store.SaveAssignments([Assign("B-T9", "B", @"C:\elsewhere", false), Assign("A-T1", "A", @"C:\stale", false)]);
+        var stale = Assign("A-T1", "A", @"C:\stale", false);
+        store.SaveAssignments([Assign("B-T9", "B", @"C:\elsewhere", false), stale]);
         var opened = new List<(string Title, string Directory, string Provider, string Prompt, bool Submit)>();
         var dispatcher = Make((title, directory, provider, prompt, submit) =>
         {
@@ -172,7 +173,7 @@ public sealed class DispatcherTests
             return (null, Task.FromResult(true));
         });
 
-        var result = dispatcher.Dispatch(Item("A-T1"), "Claude", useWorktree: true, submit: true);
+        var result = dispatcher.Dispatch(Item("A-T1") with { Assignment = stale, StaleSinceUtc = Now }, "Claude", useWorktree: true, submit: true);
 
         var tree = Path.Combine(wtRoot, "A", "A-T1");
         Assert.That(result.Ok, Is.True, result.Message);
@@ -207,6 +208,21 @@ public sealed class DispatcherTests
         var mine = store.LoadAssignments().Single();
         Assert.That((mine.Directory, mine.Worktree, mine.Provider), Is.EqualTo((repo, false, "Codex")));
         Assert.That(Directory.Exists(wtRoot), Is.False, "no worktree");
+    }
+
+    [Test]
+    public void A_ticket_claimed_elsewhere_since_the_plan_opens_no_tab_and_keeps_that_claim()
+    {
+        var claim = Assign("A-T1", "A", @"D:\WT\A\A-T1", true); // an /autopilot CLI's `next --claim`
+        store.SaveAssignments([claim]);
+        var opened = 0;
+        var dispatcher = Make((_, _, _, _, _) => { opened++; return (null, Task.FromResult(true)); });
+
+        var result = dispatcher.Dispatch(Item("A-T1"), "Claude", useWorktree: false); // the plan saw it unassigned
+
+        Assert.That((result.Ok, opened), Is.EqualTo((false, 0)));
+        Assert.That(result.Message, Does.Contain("claimed elsewhere"));
+        Assert.That(store.LoadAssignments(), Is.EqualTo(new[] { claim }));
     }
 
     [Test]

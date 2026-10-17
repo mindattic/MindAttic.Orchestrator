@@ -22,6 +22,10 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
     public Result Dispatch(QueueItem item, string provider, bool useWorktree, bool submit = false)
     {
         var settings = store.LoadSettings();
+        // The caller's plan may be seconds old: an /autopilot CLI's `next --claim` (or another window) may have taken the
+        // ticket since. Only the assignment the plan saw (a stale one) may be replaced.
+        bool ClaimedElsewhere(IEnumerable<Assignment> all) => all.Any(a => a.TicketId == item.Id && a != item.Assignment);
+        if (ClaimedElsewhere(store.LoadAssignments())) return new Result(false, $"{item.Id} was just claimed elsewhere; it isn't started twice.", null);
         var directory = item.RepoPath;
         if (useWorktree)
         {
@@ -35,11 +39,14 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         if (startError is not null) return new Result(false, startError, null);
 
         var assignment = new Assignment(item.Id, item.Repo, directory, provider, DateTime.UtcNow, useWorktree);
+        var raced = false;
         store.UpdateAssignments(all =>
         {
+            if (ClaimedElsewhere(all)) { raced = true; return; }
             all.RemoveAll(a => a.TicketId == item.Id);
             all.Add(assignment);
         });
+        if (raced) return new Result(false, $"{item.Id} was claimed elsewhere while its tab opened; close the tab just opened, the other claim stands.", null);
 
         var where = useWorktree ? $"worktree {directory} (branch {BranchFor(item.Id)})" : item.Repo;
         return new Result(true, $"Opened {provider} on {item.Id} in {where}. " + (!submit
