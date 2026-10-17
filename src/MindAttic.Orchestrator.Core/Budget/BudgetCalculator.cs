@@ -342,6 +342,10 @@ public sealed class RateLimitStatusWriter(string? path = null)
         var delay = pace?.AgentDelaySeconds ?? 0;
         if (delay > 0) body["pace_delay_seconds"] = delay;
         if (average >= 0.5) body["pace_delay_avg"] = Math.Round(average, 1);
+        // While this file is stale (a stalled or dead daemon) the gate keeps holding at its last pace until this reset,
+        // rather than letting every call through unheld (M.ORCH-T205).
+        if ((pace?.ResetUtc ?? status.CurrentBlock?.EndUtc) is { } windowReset)
+            body["window_reset"] = windowReset.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture) + "Z";
         var key = JsonSerializer.Serialize(body);
         // Readers show the file's age, so refresh it at least once a minute even when nothing changed.
         if (key == lastWritten && nowUtc - lastWrittenUtc < TimeSpan.FromMinutes(1)) return;
@@ -352,12 +356,51 @@ public sealed class RateLimitStatusWriter(string? path = null)
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path)!);
             var temp = Path + ".tmp";
             File.WriteAllText(temp, JsonSerializer.Serialize(body, new JsonSerializerOptions { WriteIndented = true }));
-            File.Move(temp, Path, overwrite: true);
+            Replace(temp);
             lastWritten = key;
             lastWrittenUtc = nowUtc;
+            FailingSinceUtc = null;
+            LastError = null;
         }
-        catch (IOException) { }
-        catch (UnauthorizedAccessException) { }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Not silent any more: the daemon reports it, since a file that can't be replaced goes stale (M.ORCH-T205).
+            FailingSinceUtc ??= nowUtc;
+            LastError = ex.Message;
+        }
+    }
+
+    /// <summary>Since when every write has failed (the file couldn't be replaced); null while writes land.</summary>
+    public DateTime? FailingSinceUtc { get; private set; }
+
+    /// <summary>Why the last write failed; null once one lands.</summary>
+    public string? LastError { get; private set; }
+
+    /// <summary>How long a replace is retried while the file is held open; tests shorten it.</summary>
+    internal TimeSpan ReplaceRetry { get; init; } = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// Moves <paramref name="temp"/> over the file, retrying while it's held open. Every pace gate re-reads this file every
+    /// few seconds while it holds a call, and Python opens it without delete sharing, so a replace that lands while any one
+    /// of them has it open fails. Under heavy load (dozens of held calls) one try after another failed and the file went
+    /// stale for minutes while the daemon kept ticking (M.ORCH-T205, 2026-10-17 04:47-04:52Z); one quick try was the whole
+    /// write, and its failure was swallowed.
+    /// </summary>
+    private void Replace(string temp)
+    {
+        var giveUp = DateTime.UtcNow + ReplaceRetry;
+        for (var wait = 10; ; wait = Math.Min(wait * 2, 100))
+        {
+            try
+            {
+                File.Move(temp, Path, overwrite: true);
+                return;
+            }
+            catch (Exception ex) when ((ex is IOException or UnauthorizedAccessException) && DateTime.UtcNow < giveUp)
+            {
+                Thread.Sleep(wait);
+            }
+        }
     }
 
     private static string Clock(DateTime utc) => utc.ToLocalTime().ToString("h:mm tt", CultureInfo.InvariantCulture);
@@ -383,8 +426,12 @@ public sealed class RateLimitStatusWriter(string? path = null)
                 return 0;
             var held = root.TryGetProperty("pace_delay_seconds", out var d) ? d.GetDouble() : 0;
             var average = root.TryGetProperty("pace_delay_avg", out var a) ? a.GetDouble() : 0;
-            // The gate ignores a stale file, so past that the agents weren't held at all.
-            var obeyed = Math.Clamp((nowUtc - at).TotalMinutes, 0, GateStale.TotalMinutes);
+            // The gate holds at a stale file's pace until its window resets (M.ORCH-T205), and ignores one without that
+            // reset once it's stale; past either the agents weren't held at all.
+            var trusted = root.TryGetProperty("window_reset", out var w) && w.ValueKind == JsonValueKind.String &&
+                DateTime.TryParse(w.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var reset)
+                ? Math.Max((reset - at).TotalMinutes, GateStale.TotalMinutes) : GateStale.TotalMinutes;
+            var obeyed = Math.Clamp((nowUtc - at).TotalMinutes, 0, trusted);
             var idle = Math.Max(0, (nowUtc - at).TotalMinutes - obeyed);
             var window = BudgetCalculator.ControlWindow.TotalMinutes;
             average += (held - average) * (1 - Math.Exp(-obeyed / window));

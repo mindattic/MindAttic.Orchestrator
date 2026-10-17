@@ -71,6 +71,54 @@ public sealed class RateLimitStatusWriterTests
             Is.EqualTo("2026-10-16T14:05:09"), "naive, and the same wall time as utcnow() would give");
     }
 
+    /// <summary>2026-10-17 04:47-04:52Z (M.ORCH-T205): with dozens of held calls each re-reading the file, the daemon's
+    /// one-shot replace kept landing while a gate had it open (Python opens without delete sharing), failed in silence,
+    /// and the file went stale for minutes while the daemon kept ticking.</summary>
+    [Test]
+    public void A_write_while_a_gate_has_the_file_open_waits_for_it_and_a_write_that_never_lands_is_reported()
+    {
+        var now = T0;
+        var writer = new RateLimitStatusWriter(path) { UtcNow = () => now, ReplaceRetry = TimeSpan.FromSeconds(1) };
+        writer.Write(Budgeted(), Paced() with { AgentDelaySeconds = 40 });
+
+        // A gate reading the file (read and write sharing, no delete) for a moment: the write waits it out and lands.
+        var reader = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        var closing = Task.Run(async () => { await Task.Delay(300); reader.Dispose(); });
+        now = T0.AddSeconds(20);
+        writer.Write(Budgeted(500), Paced() with { AgentDelaySeconds = 60 });
+        closing.Wait();
+        Assert.That(Read().GetProperty("timestamp").GetString(), Is.EqualTo("2026-10-13T10:30:20Z"), "written once the reader let go");
+        Assert.That(writer.FailingSinceUtc, Is.Null);
+
+        // Held open past every retry: not written, and said so rather than swallowed.
+        using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        {
+            now = T0.AddSeconds(40);
+            writer.Write(Budgeted(600), Paced() with { AgentDelaySeconds = 80 });
+            Assert.That(writer.FailingSinceUtc, Is.EqualTo(now));
+            Assert.That(writer.LastError, Is.Not.Null.And.Not.Empty);
+            now = T0.AddSeconds(60);
+            writer.Write(Budgeted(600), Paced() with { AgentDelaySeconds = 80 });
+            Assert.That(writer.FailingSinceUtc, Is.EqualTo(T0.AddSeconds(40)), "failing since the first that failed");
+        }
+        now = T0.AddSeconds(80);
+        writer.Write(Budgeted(600), Paced() with { AgentDelaySeconds = 80 });
+        Assert.That((writer.FailingSinceUtc, writer.LastError), Is.EqualTo(((DateTime?)null, (string?)null)), "the next write that lands clears it");
+        Assert.That(Read().GetProperty("pace_delay_seconds").GetDouble(), Is.EqualTo(80));
+    }
+
+    [Test]
+    public void The_file_says_when_its_window_resets_so_the_gates_hold_at_its_pace_while_it_is_stale()
+    {
+        new RateLimitStatusWriter(path) { UtcNow = () => T0 }.Write(Budgeted(), Paced() with { AgentDelaySeconds = 40 });
+        Assert.That(Read().GetProperty("window_reset").GetString(), Is.EqualTo("2026-10-13T15:00:00Z"), "the paced window's reset");
+
+        // The daemon reading its own file back after a stall: the stale minutes were held at that pace, not unheld.
+        var window = BudgetCalculator.ControlWindow.TotalMinutes;
+        Assert.That(new RateLimitStatusWriter(path).AgentDelay(T0.AddMinutes(10)), Is.EqualTo(40 * (1 - Math.Exp(-10 / window))).Within(1e-9),
+            "ten stale minutes inside the window count as held at 40s");
+    }
+
     [Test]
     public void The_file_is_rewritten_at_least_once_a_minute_when_nothing_changed()
     {

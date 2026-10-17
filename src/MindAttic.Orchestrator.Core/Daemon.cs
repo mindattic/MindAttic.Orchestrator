@@ -25,7 +25,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         var options = OrchestratorOptions.Load(store);
         using var lease = new DispatchLease(store.Directory);
         StatusAggregator aggregator = null!;
-        void Build() => aggregator = new StatusAggregator(options, store, new RateLimitStatusWriter(), lease);
+        var statusFile = new RateLimitStatusWriter();
+        void Build() => aggregator = new StatusAggregator(options, store, statusFile, lease);
         Build();
 
         Say(LogEventLevel.Information, $"daemon started (pid {Environment.ProcessId}, every {interval.TotalSeconds:0}s, workspace {options.WorkspaceRoot})");
@@ -41,8 +42,10 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         var knownStale = new HashSet<string>(StringComparer.Ordinal);
         var knownStuck = new HashSet<string>(StringComparer.Ordinal);
         var lastStates = new Dictionary<string, RepoState>(StringComparer.OrdinalIgnoreCase);
+        var tick = new TickTimer();
         while (!cancel.IsCancellationRequested)
         {
+            tick.Start();
             try
             {
                 // The dashboard's first run may pick the workspace after the logon task already started this.
@@ -53,17 +56,22 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     Say(LogEventLevel.Information, $"workspace is now {options.WorkspaceRoot}");
                 }
                 var snapshot = aggregator.Refresh();
+                tick.Lap("refresh");
+                ReportStatusFile(statusFile);
                 var s = store.LoadSettings();
                 var plan = Scheduler.Plan(snapshot, s, store.LoadAssignments());
                 notifyUrl = s.NotifyUrl;
 
                 EnsureHooks(s);
                 WatchHealth(autopilot);
+                tick.Lap("hooks and machine health");
                 try { ledger.Tick(DateTime.UtcNow); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"pace ledger: couldn't update it (retrying next minute): {ex.Message}"); }
+                tick.Lap("pace ledger");
                 foreach (var r in ReapIfDue())
                     Say(LogEventLevel.Warning, $"reaped pid {r.Process.Pid} ({r.Process.Name}): {r.Reason}" +
                         (string.IsNullOrWhiteSpace(r.Process.CommandLine) ? "" : $" — was running: {r.Process.CommandLine}"));
+                tick.Lap("process reaper");
 
                 cycler.PruneMarks();
                 foreach (var line in cycler.KeepGoingSince())
@@ -108,17 +116,22 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     Alert("Looks stuck", $"A session in {x.Repo} keeps repeating {x.Loop.Describe()}.", urgent: true);
                 }
                 knownStuck.IntersectWith(stuck.Select(x => x.SessionId + x.Loop.Tool + x.Loop.Input));
+                tick.Lap("keep-going and alerts");
 
                 RunAuditIfDue(options, s);
+                tick.Lap("audit");
                 SyncWorkflowDbIfDue(options);
+                tick.Lap("workflow db sync");
                 if (s.GitHubIntake && DateTime.UtcNow - intakeUtc >= TimeSpan.FromHours(1))
                 {
                     intakeUtc = DateTime.UtcNow;
                     foreach (var (repo, ticket) in Intake(options.WorkspaceRoot, gh: args => Tickets.GitHubIntake.Gh(Runner, Tickets.GitHubIntake.GhTimeout, args)))
                         Say(LogEventLevel.Information, $"filed {ticket.Id} in {repo} from GitHub: {ticket.Summary}");
                 }
+                tick.Lap("GitHub intake");
 
                 ReportAutopilot(autopilot.Tick(plan, snapshot, s, DateTime.UtcNow));
+                tick.Lap("autopilot");
                 // Keyed without its numbers: a hold whose percent ticks 93 → 94 is the same hold, not a new line (found live: 46 lines in 2h).
                 var pausedKey = autopilot.Paused is null ? null : Digits().Replace(autopilot.Paused, "#");
                 if (autopilot.On && pausedKey != lastPaused)
@@ -138,9 +151,68 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             {
                 Say(LogEventLevel.Error, $"refresh failed: {ex.Message}", ex);
             }
+            if (tick.Slow() is { } slow) Say(LogEventLevel.Warning, slow);
             WaitForNextRefresh(interval, cancel);
         }
         Say(LogEventLevel.Information, "daemon stopped");
+    }
+
+    private DateTime? reportedFailing;
+
+    /// <summary>Says once when <c>rl-status.json</c> stops being written (the gates then hold at its last pace) and once
+    /// when writes land again, rather than letting it go stale in silence (M.ORCH-T205).</summary>
+    internal void ReportStatusFile(RateLimitStatusWriter file)
+    {
+        if (file.FailingSinceUtc is { } since && reportedFailing != since && DateTime.UtcNow - since >= TickTimer.SlowTick / 2)
+        {
+            reportedFailing = since;
+            Say(LogEventLevel.Warning, $"couldn't write rl-status.json since {since.ToLocalTime():T} ({file.LastError}); " +
+                "the pace gates hold calls at the last pace it gave until it's written again");
+        }
+        else if (file.FailingSinceUtc is null && reportedFailing is not null)
+        {
+            reportedFailing = null;
+            Say(LogEventLevel.Information, "rl-status.json is being written again");
+        }
+    }
+
+    /// <summary>
+    /// Times each part of a tick. <c>rl-status.json</c> is written once a tick, so a tick that runs long leaves the pace
+    /// gates on a stale file; one past <see cref="SlowTick"/> is logged with where its time went, so a stall can be traced
+    /// to its step (M.ORCH-T205: no sample for 5 minutes and nothing said why).
+    /// </summary>
+    internal sealed class TickTimer(Func<DateTime>? clock = null)
+    {
+        /// <summary>A tick this long is a third of the way to the gates' stale line.</summary>
+        public static readonly TimeSpan SlowTick = RateLimitStatusWriter.GateStale / 3;
+
+        private readonly Func<DateTime> now = clock ?? (() => DateTime.UtcNow);
+        private readonly List<(string Name, TimeSpan Took)> laps = [];
+        private DateTime started, last;
+
+        public void Start()
+        {
+            laps.Clear();
+            started = last = now();
+        }
+
+        public void Lap(string name)
+        {
+            var at = now();
+            laps.Add((name, at - last));
+            last = at;
+        }
+
+        /// <summary>The line to log when the tick since <see cref="Start"/> ran past <see cref="SlowTick"/>; null otherwise.</summary>
+        public string? Slow()
+        {
+            var total = now() - started;
+            if (total < SlowTick) return null;
+            var parts = laps.Where(l => l.Took >= TimeSpan.FromSeconds(1)).OrderByDescending(l => l.Took)
+                .Select(l => $"{l.Name} {l.Took.TotalSeconds:0}s");
+            return $"a tick took {total.TotalSeconds:0}s ({string.Join(", ", parts.DefaultIfEmpty("no one step over a second"))}); " +
+                "rl-status.json isn't refreshed while a tick runs";
+        }
     }
 
     /// <summary>Installs the agent hooks; the default writes Claude's and the other providers'. A test's stands in for it.</summary>

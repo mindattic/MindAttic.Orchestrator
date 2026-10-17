@@ -301,8 +301,18 @@ public static class AgentGate
                 return {}
 
         def delay():
+            # The pace's hold. While the daemon is stalled or down (its file stale), the last pace it wrote still holds
+            # until the window it was worked out for resets (M.ORCH-T205: the daemon stalled for 4 minutes under heavy
+            # load at 88% and every call ran unheld until 96%); past that reset nothing is known, so nothing is held.
             try:
-                return float(status().get("pace_delay_seconds", 0))
+                s = status()
+                if s:
+                    return float(s.get("pace_delay_seconds", 0))
+                s = read_json(STATUS)
+                if s.get("source") != "MindAttic.Orchestrator" or not s.get("window_reset"):
+                    return 0
+                until = datetime.fromisoformat(str(s["window_reset"]).replace("Z", "+00:00")).timestamp()
+                return float(s.get("pace_delay_seconds", 0)) if time.time() < until else 0
             except Exception:
                 return 0
 

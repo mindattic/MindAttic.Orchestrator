@@ -116,7 +116,7 @@ public sealed class HookScriptTests
         Assert.That(GateLog().Single(), Does.Contain("\"decision\": \"held\"").And.Contain("\"tool\": \"Read\""), "the hold is on the pace ledger's record");
 
         Status(new { pace_delay_seconds = 30 }, at: DateTime.UtcNow.AddMinutes(-10));
-        Assert.That(Gate(call).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "stale: the orchestrator isn't running, nothing paces");
+        Assert.That(Gate(call).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "stale, and no window it was for: nothing paces");
 
         Status(new { pace_delay_seconds = 30 }, source: "something else");
         Assert.That(Gate(call).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "not the orchestrator's file");
@@ -795,6 +795,28 @@ public sealed class HookScriptTests
         File.WriteAllText(Path.Combine(Marks, $"unthrottled-{Cli}"), "x");
         Status(new { stop = true, pace_delay_seconds = 60 });
         Assert.That(GateHeld(ReadCall, 2).Output, Does.Contain("\"deny\""), "the stop holds and refuses it all the same");
+    }
+
+    /// <summary>2026-10-17 04:47-04:52Z (M.ORCH-T205): the daemon stalled under heavy load, its file went stale at 88%,
+    /// and every call ran unheld until 96%. A stalled daemon's last pace still holds until the window it was for resets.</summary>
+    [Test]
+    public void A_stalled_daemons_last_pace_holds_until_its_window_resets()
+    {
+        string Reset(TimeSpan from) => DateTime.UtcNow.Add(from).ToString("yyyy-MM-ddTHH:mm:ssZ");
+        Status(new { pace_delay_seconds = 3, window_reset = Reset(TimeSpan.FromHours(1)) }, at: DateTime.UtcNow.AddMinutes(-10));
+        Assert.That(Gate(ReadCall).Took, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(2.9)), "stale inside its window: held at its last pace");
+        Assert.That(GateLog().Last(), Does.Contain("\"decision\": \"held\""));
+
+        Status(new { pace_delay_seconds = 30, window_reset = Reset(TimeSpan.FromMinutes(-1)) }, at: DateTime.UtcNow.AddMinutes(-10));
+        Assert.That(Gate(ReadCall).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "its window has reset: nothing is known, nothing held");
+
+        Status(new { pace_delay_seconds = 30, window_reset = Reset(TimeSpan.FromHours(1)) }, at: DateTime.UtcNow.AddMinutes(-10), source: "something else");
+        Assert.That(Gate(ReadCall).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "not the orchestrator's file");
+
+        // The daemon comes back: its fresh word is the pace again at once.
+        Status(new { pace_delay_seconds = 60, window_reset = Reset(TimeSpan.FromHours(1)) }, at: DateTime.UtcNow.AddMinutes(-10));
+        var (_, took) = GateWhile(ReadCall, TimeSpan.FromSeconds(2), () => Status(new { pace_delay_seconds = 0, window_reset = Reset(TimeSpan.FromHours(1)) }));
+        Assert.That(took, Is.LessThan(TimeSpan.FromSeconds(10)));
     }
 
     [Test]

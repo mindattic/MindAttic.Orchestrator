@@ -263,4 +263,49 @@ public sealed class DaemonSafetyTests
         Assert.That(sw.Elapsed, Is.LessThan(TimeSpan.FromSeconds(4.5)));
         Assert.That((r.ExitCode, r.TimedOut), Is.EqualTo((0, true)), "its output was cut short, so it isn't taken as a success with none");
     }
+
+    // ---- rl-status.json kept fresh (M.ORCH-T205) ----
+
+    [Test]
+    public void A_tick_that_runs_long_is_logged_with_where_its_time_went()
+    {
+        var now = new DateTime(2026, 10, 17, 4, 47, 0, DateTimeKind.Utc);
+        var tick = new Daemon.TickTimer(() => now);
+        tick.Start();
+        now = now.AddSeconds(2); tick.Lap("refresh");
+        now = now.AddMilliseconds(200); tick.Lap("audit");
+        Assert.That(tick.Slow(), Is.Null, "a normal tick says nothing");
+
+        tick.Start();
+        now = now.AddSeconds(5); tick.Lap("refresh");
+        now = now.AddSeconds(130); tick.Lap("autopilot");
+        now = now.AddMilliseconds(300); tick.Lap("audit");
+        Assert.That(tick.Slow(), Does.StartWith("a tick took 135s (autopilot 130s, refresh 5s)").And.Contain("rl-status.json"));
+    }
+
+    [Test]
+    public void A_status_file_that_cant_be_written_is_said_once_and_its_recovery_once()
+    {
+        var path = Path.Combine(dir, "rl-status.json");
+        var budget = Budget.BudgetCalculator.Compute([new UsageEvent(DateTime.UtcNow, new TokenUsage(0, 0, 1_000_000, 400))],
+            new OrchestratorSettings { BlockBudget = 1000 }, DateTime.UtcNow, DateTime.UtcNow.Date);
+        var clock = DateTime.UtcNow.AddMinutes(-2);
+        var file = new Budget.RateLimitStatusWriter(path) { UtcNow = () => clock, ReplaceRetry = TimeSpan.FromMilliseconds(100) };
+        file.Write(budget);
+        var daemon = Make();
+        using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        {
+            clock = clock.AddSeconds(20);
+            file.Write(budget with { WeeklyPercent = 5 });
+            Assert.That(file.FailingSinceUtc, Is.Not.Null);
+            daemon.ReportStatusFile(file);
+            daemon.ReportStatusFile(file);
+        }
+        Assert.That(said.Count(x => x.Level == LogEventLevel.Warning && x.Line.StartsWith("couldn't write rl-status.json")), Is.EqualTo(1), "said once, not every tick");
+        clock = clock.AddSeconds(20);
+        file.Write(budget with { WeeklyPercent = 6 });
+        daemon.ReportStatusFile(file);
+        daemon.ReportStatusFile(file);
+        Assert.That(said.Count(x => x.Line == "rl-status.json is being written again"), Is.EqualTo(1));
+    }
 }
