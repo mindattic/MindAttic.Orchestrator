@@ -109,6 +109,17 @@ public sealed class ViewModelTests
     }
 
     [Test]
+    public void A_hand_edited_cycle_percent_no_field_shows_never_blocks_save()
+    {
+        var store = new JsonStore(dir);
+        store.SaveSettings(store.LoadSettings() with { ContextCyclePercent = 99 });
+        var vm = new SettingsViewModel(store, () => { });
+        vm.WarnPercent = "70";
+        vm.SaveCommand.Execute(null);
+        Assert.That((vm.Error, store.LoadSettings().WarnPercent), Is.EqualTo(("", 70)));
+    }
+
+    [Test]
     public void Saving_other_settings_never_rounds_a_budget_set_to_the_token()
     {
         var store = new JsonStore(dir);

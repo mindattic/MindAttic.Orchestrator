@@ -56,7 +56,8 @@ public sealed class SettingsViewModel : ObservableObject
         ThrottleAgents = s.ThrottleAgents;
         MaxDelay = s.MaxAgentDelaySeconds.ToString(CultureInfo.InvariantCulture);
         ContextCycle = s.ContextCycle;
-        ContextPercent = s.ContextCyclePercent.ToString(CultureInfo.InvariantCulture);
+        // No field shows it (context cycling is off), so an out-of-range hand edit mustn't make every Save fail on it.
+        ContextPercent = Math.Clamp(s.ContextCyclePercent, 10, 95).ToString(CultureInfo.InvariantCulture);
         ExemptCommands = string.Join(", ", s.ExemptCommands);
         Error = "";
     }
