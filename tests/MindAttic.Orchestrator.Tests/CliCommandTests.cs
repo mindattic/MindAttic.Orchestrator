@@ -52,6 +52,14 @@ public sealed class CliCommandTests
     }
 
     [Test]
+    public void Dispatch_and_start_take_only_a_provider_the_launcher_knows()
+    {
+        Assert.That(Ctx.Provider("claude"), Is.EqualTo("Claude"), "any casing, as its own name");
+        Assert.That(Ctx.Provider("codx"), Is.Null, "a typo would open a tab that dies at once while the ticket reads as assigned");
+        Assert.That(output.ToString(), Does.Contain("No provider \"codx\""));
+    }
+
+    [Test]
     public void The_store_directory_is_injectable()
     {
         Assert.That(Ctx.Store().Directory, Is.EqualTo(dir));

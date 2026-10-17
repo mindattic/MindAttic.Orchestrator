@@ -35,6 +35,15 @@ internal static class Ctx
 
     public static Dispatcher Dispatcher(JsonStore store) =>
         new(new SessionControl(OrchestratorOptions.Load()), store);
+
+    /// <summary>A typed --provider as its known name, or null (said in red) when the Launcher wouldn't start it: an unknown
+    /// one opens a tab that closes at once, while the ticket would read as assigned.</summary>
+    public static string? Provider(string typed)
+    {
+        if (SessionControl.Providers.FirstOrDefault(p => p.Equals(typed.Trim(), StringComparison.OrdinalIgnoreCase)) is { } known) return known;
+        AnsiConsole.MarkupLine($"[red]No provider \"{Markup.Escape(typed)}\"; use one of {Markup.Escape(string.Join(", ", SessionControl.Providers))}.[/]");
+        return null;
+    }
 }
 
 internal sealed class QueueCommand : Command<QueueCommand.Settings>
@@ -134,7 +143,8 @@ internal sealed class DispatchCommand : Command<DispatchCommand.Settings>
         if (item is null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(settings.Ticket)} isn't an open ticket.[/]"); return 1; }
         if (item.IsAssigned) { AnsiConsole.MarkupLine($"[yellow]{item.Id} is already assigned; release it first.[/]"); return 1; }
 
-        var r = Ctx.Dispatcher(store).Dispatch(item, settings.Provider ?? store.LoadSettings().DefaultProvider, settings.Worktree || item.NeedsWorktree);
+        if (Ctx.Provider(settings.Provider ?? store.LoadSettings().DefaultProvider) is not { } provider) return 1;
+        var r = Ctx.Dispatcher(store).Dispatch(item, provider, settings.Worktree || item.NeedsWorktree);
         AnsiConsole.MarkupLine(r.Ok ? Markup.Escape(r.Message) : $"[red]{Markup.Escape(r.Message)}[/]");
         return r.Ok ? 0 : 1;
     }

@@ -155,9 +155,10 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
         var options = OrchestratorOptions.Load();
         var repo = new MindAttic.Workflow.Workspace(options.WorkspaceRoot).Find(settings.Repo);
         if (repo is null) { AnsiConsole.MarkupLine($"[red]No repo named {Markup.Escape(settings.Repo)}.[/]"); return 1; }
-        var error = new SessionControl(options).Start(repo.Name, repo.Path, settings.Provider, settings.Prompt);
+        if (Ctx.Provider(settings.Provider) is not { } provider) return 1;
+        var error = new SessionControl(options).Start(repo.Name, repo.Path, provider, settings.Prompt);
         if (error is not null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(error)}[/]"); return 1; }
-        AnsiConsole.MarkupLine($"Started [bold]{settings.Provider}[/] in {Markup.Escape(repo.Name)}.");
+        AnsiConsole.MarkupLine($"Started [bold]{provider}[/] in {Markup.Escape(repo.Name)}.");
         return 0;
     }
 }
