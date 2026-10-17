@@ -589,6 +589,11 @@ public static class AgentGate
                 left = min(delay(), MAX_HOLD) - waited
                 if left <= 0:
                     break
+                if slot is not None:
+                    try:
+                        os.utime(slot)  # still held, not abandoned: other gates drop a slot past its life
+                    except Exception:
+                        pass
                 time.sleep(min(left, 5))
             hold_at_stop()  # the last word before the call runs
         except BaseException:

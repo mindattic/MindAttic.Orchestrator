@@ -349,6 +349,24 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void A_slot_held_by_a_pace_delay_stays_fresh_so_it_never_expires_while_its_call_waits()
+    {
+        Status(new { subagent_allowance = 4, subagents_running = 0, pace_delay_seconds = 60 });
+        var slots = Path.Combine(Marks, AgentGate.SlotDirName);
+        using var held = Run(AgentGate.ScriptName, new { tool_name = "Agent", tool_input = new { prompt = "x" } });
+        try
+        {
+            Assert.That(held.WaitForExit(2_000), Is.False, "held by the pace delay");
+            var slot = Directory.GetFiles(slots).Single();
+            File.SetLastWriteTimeUtc(slot, DateTime.UtcNow.AddSeconds(-AgentGate.SlotLifeSeconds + 5));
+            Thread.Sleep(6_000);
+            Assert.That(DateTime.UtcNow - File.GetLastWriteTimeUtc(slot), Is.LessThan(TimeSpan.FromSeconds(10)),
+                "a call still held past the slot's life keeps its slot; another gate would otherwise drop it");
+        }
+        finally { held.Kill(); }
+    }
+
+    [Test]
     public void Filing_a_ticket_for_another_repo_hands_it_off_but_closing_one_is_still_refused()
     {
         var uss = Path.Combine(ws, "UnitySolarSystem");
