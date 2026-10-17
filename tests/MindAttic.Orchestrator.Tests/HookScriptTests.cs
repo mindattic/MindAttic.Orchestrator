@@ -147,6 +147,26 @@ public sealed class HookScriptTests
         }));
 
     [Test]
+    public void At_claudes_own_line_with_the_daemon_down_keep_going_never_pushes_a_stop_back()
+    {
+        var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(db)!);
+        using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
+            "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal,type)'); " +
+            "d.execute(\"insert into tickets values('U.SPC-T1','UnitySolarSystem','open',1,'fix')\"); d.commit()", db }, UseShellExecute = false })!)
+            mk.WaitForExit(20_000);
+        var uss = Path.Combine(ws, "UnitySolarSystem");
+        Directory.CreateDirectory(Marks);
+        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem");
+        object Asking(string sid) => new { hook_event_name = "Stop", session_id = sid, cwd = uss, last_assistant_message = "Shall I start the next one?" };
+        Status(new { }, at: DateTime.UtcNow.AddMinutes(-10)); // the daemon died
+        Assert.That(Gate(Asking("k1"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\""), "under the line: told to carry on");
+
+        ClaudeReports(99);
+        Assert.That(Gate(Asking("k2"), AgentGate.ContextScriptName).Output, Is.Empty, "at Claude's own 99% the stop is let stop: another turn is spent past it");
+    }
+
+    [Test]
     public void With_the_daemon_down_claudes_own_percent_still_stops_every_call_at_the_line()
     {
         // The orchestrator's file is 10 minutes old: its daemon died. Before M.ORCH-T167 that meant no pacing and no stop at all.

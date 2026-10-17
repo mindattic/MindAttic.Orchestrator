@@ -879,10 +879,12 @@ public static class AgentGate
             insisted = state.get("nudged") and not state.get("worked")
             why = None
             limits = orchestrator_status()
-            # At the window's target nothing more may run, so a stop is never pushed back to work.
+            # At the window's target nothing more may run, so a stop is never pushed back to work: the orchestrator's stop,
+            # latched or fresh, or Claude's own percent at the line with the daemon down, as a typed prompt is held to.
+            stopped = bool(limits.get("stop")) or orchestrator_stop(limits) is not None or claude_stop() is not None
             # Only a CLI that typed /autopilot is kept going, on its own repos, while they have workable tickets.
             repos = autopilot_repos(my_pid())
-            if repos and KEEP_GOING and not limits.get("stop") and not state.get("goal"):
+            if repos and KEEP_GOING and not stopped and not state.get("goal"):
                 why = "autopilot"
             ids = workable(repos) if why and not no_subagent_room(limits, my_pid()) else []
             reason = keep_going(repos, ids, sid, why, insisted) if ids else None
