@@ -261,7 +261,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 ?? plan.Queue.FirstOrDefault(q => Same(q.Repo, a.Repo))?.RepoPath ?? a.Directory;
             var (closed, note) = a.Worktree ? Land(a, repoPath) : (!plan.Queue.Any(q => q.Id == a.TicketId), "");
             // Halted by the window's stop, it didn't fail: its work stays in its worktree and it carries on after the reset.
-            var halted = !closed && plan.Pace is { Stop: true };
+            var halted = !closed && plan.Stopped;
             if (!closed && !halted) parked.Add(a.TicketId);
             said.Add(closed
                 ? $"autopilot: finished {a.TicketId} in {a.Repo}{note}"
@@ -365,7 +365,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     {
         makeWorktree ??= Dispatcher.EnsureWorktree;
         mainlineOf ??= Dispatcher.Mainline;
-        if (plan.Pace is { Stop: true }) return ([], "the 5-hour window is at its target: nothing starts before it resets");
+        if (plan.Stopped) return ([], "the 5-hour window is at its target: nothing starts before it resets");
         // Past the wind-down line nothing new starts until the reset, estimate or not (M.ORCH-T254: five tickets whose
         // estimates each fit what was left went out at 96.6% as the reset neared and the allowance opened back up).
         if (!unthrottled && plan.Pace is { WindDown: true } wound) return ([], wound.WindDownHold);

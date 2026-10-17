@@ -235,6 +235,20 @@ public sealed class AutopilotTests
     }
 
     [Test]
+    public void With_pacing_off_the_windows_stop_still_hands_nothing_out()
+    {
+        // Unpaced, the plan keeps no pace; the stop (which doesn't depend on pacing) still has to reach `next --claim`.
+        var snap = Snap(("A", [T("A-T1")])) with { Pace = new Pace(PaceMode.Unpaced, 6, 0, 0, null, "5-hour", Now.AddHours(1), "Pacing is off.") { Stop = true } };
+        var plan = Scheduler.Plan(snap, new OrchestratorSettings { Pacing = false }, []);
+        Assert.That((plan.Pace, plan.Stopped), Is.EqualTo(((Pace?)null, true)));
+
+        var (handed, why) = Autopilot.Next(plan, new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: true, Now,
+            (repo, path, branch) => (true, path, ""), _ => "main");
+        Assert.That((handed.Count, why), Is.EqualTo((0, "the 5-hour window is at its target: nothing starts before it resets")));
+        Assert.That(store.LoadAssignments(), Is.Empty);
+    }
+
+    [Test]
     public void A_ticket_another_cli_claimed_first_is_passed_over_for_the_next_one()
     {
         var snap = Snap(("A", [T("A-T1"), T("A-T2")]));

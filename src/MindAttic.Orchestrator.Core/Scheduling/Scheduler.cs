@@ -53,6 +53,13 @@ public sealed record SchedulePlan(
     public int Cap { get; init; } = Slots;
     public Pace? Pace { get; init; }
 
+    /// <summary>The window is at its target: nothing new starts. <see cref="Pace"/> is only kept when pacing is on, but the
+    /// stop doesn't depend on pacing (the pace gate refuses every call either way).</summary>
+    public bool Stop { get; init; }
+
+    /// <summary>Whether nothing may start: the stop, read from the plan or its pace.</summary>
+    public bool Stopped => Stop || Pace is { Stop: true };
+
     /// <summary>Open tickets whose session went quiet without closing them; they're back in <see cref="Queue"/>.</summary>
     public IReadOnlyList<QueueItem> Stale { get; init; } = [];
 
@@ -233,7 +240,7 @@ public static partial class Scheduler
 
         return new SchedulePlan(queue, proposals, settings.MaxConcurrentSessions, occupied, hold, finished)
         {
-            Cap = cap, Pace = pace, Stale = [.. queue.Where(q => q.IsStale)], TooBig = tooBig,
+            Cap = cap, Pace = pace, Stop = snapshot.Pace is { Stop: true }, Stale = [.. queue.Where(q => q.IsStale)], TooBig = tooBig,
             Groom = [.. queue.Where(q => q.Old && q.Assignment is null)],
             AwaitingApproval = awaiting,
         };
