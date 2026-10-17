@@ -513,6 +513,31 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void A_stop_is_not_pushed_back_when_the_subagent_allowance_is_full_or_every_ticket_is_claimed()
+    {
+        // M.ORCH-T188: `orchestrator next --claim` hands out nothing then, so pushing back only looped.
+        AutopilotWithOpenFixes();
+        Status(new { subagent_allowance = 2, subagents_running = 2 });
+        Assert.That(Stopped("c1"), Is.Empty, "the allowance is full: next would hand out nothing");
+        Status(new { subagent_allowance = 3, subagents_running = 2 });
+        Assert.That(Reason(Stopped("c2")), Does.Contain("2 workable tickets remain"), "room for one more: kept going");
+
+        var assignments = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "assignments.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(assignments)!);
+        File.WriteAllText(assignments, """[ { "TicketId": "U.SPC-T1", "Repo": "UnitySolarSystem" } ]""");
+        Assert.That(Reason(Stopped("c3")), Does.Contain("1 workable ticket remain (U.SPC-T2)"), "a claimed ticket is being worked, not left");
+        File.WriteAllText(assignments, """[ { "TicketId": "U.SPC-T1" }, { "TicketId": "u.spc-t2" } ]""");
+        Assert.That(Stopped("c4"), Is.Empty, "every ticket is claimed by a running subagent");
+
+        // Running `orchestrator next` after a nudge isn't work: when it hands out nothing, the next stop is let go.
+        File.WriteAllText(assignments, "[]");
+        Turn("c5", "go");
+        Assert.That(Stopped("c5"), Does.Contain("\"block\""));
+        Ran("c5", "orchestrator next --repos \"UnitySolarSystem\" --claim");
+        Assert.That(Stopped("c5"), Is.Empty, "asking for work isn't doing it, so the insisted stop goes through");
+    }
+
+    [Test]
     public void The_wind_down_note_is_appended_to_a_nudge()
     {
         AutopilotWithOpenFixes();

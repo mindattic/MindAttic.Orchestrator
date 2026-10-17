@@ -550,11 +550,35 @@ public static class AgentGate
                     approved = {a.upper() for a in settings.get("Approved") or []}
                 except Exception:
                     approved = set()
+                # A ticket `orchestrator next --claim` already handed to a subagent is being worked: it isn't left (M.ORCH-T188).
+                try:
+                    claimed = {(a.get("TicketId") or "").upper() for a in json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" /
+                               "MindAttic.Orchestrator" / "assignments.json").read_text()) or []}
+                except Exception:
+                    claimed = set()
                 named = {r.lower() for r in repos}
                 return [r[0] for r in rows if any(fnmatch.fnmatchcase((r[2] or "").lower(), n) for n in named) and
-                        ((r[1] or "").lower() == "fix" or r[0].upper() in approved)]
+                        ((r[1] or "").lower() == "fix" or r[0].upper() in approved) and r[0].upper() not in claimed]
             except Exception:
                 return []
+
+        def no_subagent_room(limits, pid):
+            # The pace's subagent allowance is used up (all CLIs together), so `orchestrator next` would hand out nothing:
+            # pushing a stop back would only loop (M.ORCH-T188). An unthrottled CLI isn't held to it, as `next` isn't.
+            try:
+                allowed = limits.get("subagent_allowance")
+                if allowed is None or (pid and (DIR / ("unthrottled-" + str(pid))).exists()):
+                    return False
+                sub = DIR / "subagents"
+                marks = list(sub.iterdir()) if sub.exists() else []
+                if limits.get("subagents_running") is None:
+                    running = len(marks)
+                else:
+                    at = datetime.fromisoformat(limits["timestamp"].replace("Z", "+00:00")).timestamp()
+                    running = int(limits["subagents_running"]) + sum(1 for m in marks if m.stat().st_mtime > at)
+                return running >= int(allowed)
+            except Exception:
+                return False
 
         def keep_going(repos, ids, sid, why, insisted, provider="Claude"):
             repo = ", ".join(repos)
@@ -740,7 +764,7 @@ public static class AgentGate
             repos = autopilot_repos(my_pid())
             if repos and KEEP_GOING and not limits.get("stop") and not state.get("goal"):
                 why = "autopilot"
-            ids = workable(repos) if why else []
+            ids = workable(repos) if why and not no_subagent_room(limits, my_pid()) else []
             reason = keep_going(repos, ids, sid, why, insisted) if ids else None
             if reason and limits.get("wind_down_note"):
                 reason += " " + limits["wind_down_note"]
@@ -849,7 +873,9 @@ public static class AgentGate
                 print(json.dumps(out))
         elif event == "PostToolUse":
             touched = False
-            if state.get("nudged") and not state.get("worked"):
+            # Running `orchestrator next` only asks for work: when it hands out nothing, stopping again is insisting (M.ORCH-T188).
+            asked = re.search(r"\borchestrator(?:\.exe)?['\"]?\s+next\b", str((data.get("tool_input") or {}).get("command") or ""))
+            if state.get("nudged") and not state.get("worked") and not asked:
                 state["worked"] = touched = True  # it carried on after being told to
             # A ticket closed this turn: stopping right after it, with more open, is a stop keep-going catches.
             closed = re.search(r"\bworkflow(?:\.exe)?['\"]?\s+ticket\s+close\s+['\"]?((?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)",
