@@ -207,6 +207,17 @@ public sealed class PaceLedgerTests
         h.Store.SaveLimits([Hit(End.AddMinutes(30).AddSeconds(-3), End.AddHours(5))]);
         h.Watch.Tick(End.AddMinutes(33));
         Assert.That((h.Filed.Count, h.Alerts.Count(a => a.Title == "Ran out of tokens")), Is.EqualTo((1, 1)), "one wall, one alarm, one ticket");
+
+        // A restarted daemon remembers the walls it raised, and a wall hit while it was down is still news.
+        var restarted = new PaceLedgerWatch(h.Store, "unused", (_, _) => { }, (t, _, u) => h.Alerts.Add((t, u)))
+        {
+            EventsPath = h.Watch.EventsPath,
+            FileTicket = s => { h.Filed.Add(s); return "M.ORCH-T999"; },
+        };
+        h.Store.SaveLimits([Hit(End.AddMinutes(30).AddSeconds(-3), End.AddHours(5)), Hit(End.AddHours(5.5), End.AddHours(10))]);
+        restarted.Tick(End.AddHours(5.6));
+        Assert.That(h.Filed, Has.Count.EqualTo(2), "only the new wall");
+        Assert.That(h.Filed[1], Does.Contain(End.AddHours(10).ToString("yyyy-MM-ddTHH:mmZ")));
     }
 
     [Test]

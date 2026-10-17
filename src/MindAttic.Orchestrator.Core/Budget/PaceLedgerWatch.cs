@@ -94,7 +94,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
 
         void Save()
         {
-            try { store.Save("pace-alarms", alarmed!.Where(reset => nowUtc - reset < LimitCalibration.Keep).Order().ToList()); }
+            try { store.Save(AlarmsName, alarmed!.Where(reset => nowUtc - reset < LimitCalibration.Keep).Order().ToList()); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
     }
