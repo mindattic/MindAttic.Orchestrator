@@ -134,7 +134,7 @@ internal sealed class DispatchCommand : Command<DispatchCommand.Settings>
         if (item is null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(settings.Ticket)} isn't an open ticket.[/]"); return 1; }
         if (item.IsAssigned) { AnsiConsole.MarkupLine($"[yellow]{item.Id} is already assigned; release it first.[/]"); return 1; }
 
-        var r = Ctx.Dispatcher(store).Dispatch(item, settings.Provider ?? store.LoadSettings().DefaultProvider, settings.Worktree || item.RepoBusy);
+        var r = Ctx.Dispatcher(store).Dispatch(item, settings.Provider ?? store.LoadSettings().DefaultProvider, settings.Worktree || item.NeedsWorktree);
         AnsiConsole.MarkupLine(r.Ok ? Markup.Escape(r.Message) : $"[red]{Markup.Escape(r.Message)}[/]");
         return r.Ok ? 0 : 1;
     }

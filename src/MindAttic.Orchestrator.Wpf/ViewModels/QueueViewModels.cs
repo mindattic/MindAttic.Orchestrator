@@ -14,7 +14,7 @@ public sealed class QueueRowViewModel : ObservableObject
     public QueueRowViewModel(QueueItem item, MainViewModel owner)
     {
         this.item = item;
-        StartCommand = new RelayCommand(() => owner.Dispatch(this.item, this.proposal?.UseWorktree ?? this.item.RepoBusy), () => !this.item.IsAssigned);
+        StartCommand = new RelayCommand(() => owner.Dispatch(this.item, this.proposal?.UseWorktree ?? this.item.NeedsWorktree), () => !this.item.IsAssigned);
         UpCommand = new RelayCommand(() => owner.Bump(this.item.Id, +1));
         DownCommand = new RelayCommand(() => owner.Bump(this.item.Id, -1));
         ReleaseCommand = new RelayCommand(() => owner.Release(this.item.Id), () => this.item.IsAssigned);
@@ -31,7 +31,7 @@ public sealed class QueueRowViewModel : ObservableObject
     public bool IsAssigned => item.IsAssigned;
     public bool IsNext => proposal is not null;
     public string Reason => proposal?.Reason ?? "";
-    public string Where => proposal?.UseWorktree == true || (proposal is null && item.RepoBusy) ? "in a worktree" : "in the repo";
+    public string Where => proposal?.UseWorktree == true || (proposal is null && item.NeedsWorktree) ? "in a worktree" : "in the repo";
 
     public string Status => item switch
     {

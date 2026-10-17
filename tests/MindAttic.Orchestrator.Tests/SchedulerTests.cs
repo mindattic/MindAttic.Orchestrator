@@ -215,6 +215,9 @@ public sealed class SchedulerTests
         Assert.That(proposal.Item.Id, Is.EqualTo("A-T1"), "it keeps its place in line rather than sinking");
         Assert.That(proposal.UseWorktree, Is.True, "its partial work is in the worktree");
         Assert.That(proposal.Reason, Does.Contain("went quiet"));
+        Assert.That((item.RepoBusy, item.NeedsWorktree), Is.EqualTo((false, true)),
+            "started any other way (orchestrator dispatch, a queue row that isn't the proposal) it goes back there too");
+        Assert.That(plan.Queue.Single(q => q.Id == "A-T2").NeedsWorktree, Is.False, "a fresh ticket in a free repo starts in the repo");
     }
 
     [Test]

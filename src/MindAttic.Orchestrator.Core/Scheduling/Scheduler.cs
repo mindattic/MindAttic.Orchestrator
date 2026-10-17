@@ -31,6 +31,10 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
     /// <summary>Opened more than <see cref="OrchestratorSettings.GroomAfterDays"/> ago.</summary>
     public bool Old { get; init; }
     public bool IsAssigned => Assignment is not null && !IsStale;
+
+    /// <summary>Whether starting it takes a worktree: its repo has a session, or it went stale in a worktree, where its
+    /// partial work is. Every way of starting it (the proposal, the dashboard's Start, orchestrator dispatch) asks this.</summary>
+    public bool NeedsWorktree => RepoBusy || (IsStale && Assignment!.Worktree);
 }
 
 /// <summary>A ticket the scheduler thinks should start now, and how.</summary>
@@ -209,7 +213,7 @@ public static partial class Scheduler
             var why = reserved ? $"reserved {Formatting.Tokens(item.Reserved)}"
                 : item.Priority != 0 ? $"priority {item.Priority:+#;-#}" : $"oldest {item.Ticket.Type}";
             // A stale ticket that had a worktree goes back to it: its partial work is there.
-            var worktree = item.RepoBusy || (item.IsStale && item.Assignment!.Worktree);
+            var worktree = item.NeedsWorktree;
             if (item.IsStale) why += $"; its last session went quiet {Formatting.Ago(item.StaleSinceUtc, snapshot.TakenUtc)}";
             if (item.Estimate is { } cost) why += $"; {cost}";
             var clash = (snapshot.LinkedRepos.GetValueOrDefault(item.Repo) ?? (IEnumerable<string>)[])
