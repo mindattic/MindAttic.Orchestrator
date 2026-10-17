@@ -28,13 +28,19 @@ public sealed class ProcessRunner : IProcessRunner
         using var p = Process.Start(psi)!;
         var output = p.StandardOutput.ReadToEndAsync();
         var error = p.StandardError.ReadToEndAsync();
+        var started = Stopwatch.StartNew();
         if (!p.WaitForExit(timeout))
         {
             try { p.Kill(entireProcessTree: true); } catch (InvalidOperationException) { } // exited meanwhile
             // Not waiting on the pipes: something outside the tree may still hold them, and the caller is the daemon's loop.
             return ProcessResult.Killed;
         }
-        p.WaitForExit(); // flushes the async readers
+        // The readers end at the pipes' EOF, not at the process's exit: a grandchild that inherited them (and outlives it)
+        // would hold the daemon's loop forever, so the wait for them still counts against the timeout.
+        var left = timeout - started.Elapsed;
+        if (!Task.WaitAll([output, error], left > TimeSpan.Zero ? left : TimeSpan.Zero))
+            return new ProcessResult(p.ExitCode, output.IsCompletedSuccessfully ? output.Result : "",
+                error.IsCompletedSuccessfully ? error.Result : "", TimedOut: false);
         return new ProcessResult(p.ExitCode, output.Result, error.Result, TimedOut: false);
     }
 }

@@ -252,4 +252,15 @@ public sealed class DaemonSafetyTests
         Assert.That(r.Output.Trim(), Is.EqualTo("hi"));
         Assert.That(r.Error.Trim(), Is.EqualTo("oops"));
     }
+
+    [Test]
+    [Platform("Win")]
+    public void The_real_runner_does_not_wait_past_its_timeout_on_a_grandchild_holding_the_pipes()
+    {
+        // cmd exits at once, but the ping it started in the background inherited its stdout and holds it for ~6s.
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var r = ProcessRunner.Default.Run("cmd.exe", ["/c", "start /b ping -n 7 127.0.0.1"], TimeSpan.FromSeconds(2));
+        Assert.That(sw.Elapsed, Is.LessThan(TimeSpan.FromSeconds(4.5)));
+        Assert.That(r.ExitCode, Is.EqualTo(0));
+    }
 }
