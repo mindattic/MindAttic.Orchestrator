@@ -266,7 +266,8 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void FocusOn(Focus next)
     {
-        Focus = Focus == next ? Focus.All : next;
+        // A second click clears the filter only where it shows: from another view it opens Repos filtered again.
+        Focus = Focus == next && IsReposView ? Focus.All : next;
         if (Focus != Focus.All) ViewChoice = "Repos"; // the cards filter the repo tiles, so show them
         Regroup();
     }
