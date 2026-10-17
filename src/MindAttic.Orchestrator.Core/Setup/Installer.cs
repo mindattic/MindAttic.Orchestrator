@@ -52,8 +52,9 @@ public sealed class Installer
         exePath.Contains(@"\bin\Debug\", StringComparison.OrdinalIgnoreCase) ||
         exePath.Contains(@"\bin\Release\", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Whether two paths name the same file; an empty one (a shortcut with no icon set reports ",0") names none.</summary>
     public static bool SamePath(string a, string b) =>
-        string.Equals(Path.GetFullPath(a).TrimEnd('\\'), Path.GetFullPath(b).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase);
+        !string.IsNullOrWhiteSpace(a) && !string.IsNullOrWhiteSpace(b) && string.Equals(Path.GetFullPath(a).TrimEnd('\\'), Path.GetFullPath(b).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase);
 
     public bool IsInstalled(string runningExe) => SamePath(runningExe, InstalledExe);
 

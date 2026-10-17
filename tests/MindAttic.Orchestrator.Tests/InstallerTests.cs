@@ -27,6 +27,16 @@ public sealed class InstallerTests
         Assert.That(Installer.IsDevBuild(exe), Is.EqualTo(dev));
 
     [Test]
+    public void A_shortcut_with_no_icon_set_is_not_the_same_path_and_does_not_throw()
+    {
+        // WScript reports an unset IconLocation as ",0": its path part is empty (every shortcut made before M.ORCH-T190).
+        var exe = @"C:\Apps\MindAttic.Orchestrator\MindAttic.Orchestrator.exe";
+        Assert.That(Installer.SamePath(",0".Split(',')[0], exe), Is.False);
+        Assert.That(Installer.SamePath("", ""), Is.False);
+        Assert.That(Installer.SamePath(exe.ToUpperInvariant(), exe), Is.True);
+    }
+
+    [Test]
     public void Installs_to_the_house_folder_unless_a_copy_already_lives_elsewhere()
     {
         var root = Path.Combine(Path.GetTempPath(), "orch-install-" + Guid.NewGuid().ToString("N"));
