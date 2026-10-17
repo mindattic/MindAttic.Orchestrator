@@ -68,9 +68,14 @@ public partial class MainWindow : Window
 
     private void Retime()
     {
-        var interval = !Hidden ? PollInterval : model.HoldsLease ? HiddenHolderInterval : HiddenInterval;
+        var interval = RefreshInterval(Hidden, model.HoldsLease);
         if (timer.Interval != interval) timer.Interval = interval;
     }
+
+    /// <summary>How often to refresh: every 5s while shown; hidden, every 15s if this window holds the lease (it feeds
+    /// rl-status.json and autopilot), else every 60s, just enough for the tray's summary.</summary>
+    internal static TimeSpan RefreshInterval(bool hidden, bool holdsLease) =>
+        !hidden ? PollInterval : holdsLease ? HiddenHolderInterval : HiddenInterval;
 
     private bool wasHidden;
 

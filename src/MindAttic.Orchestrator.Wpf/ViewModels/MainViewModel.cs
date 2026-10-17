@@ -27,7 +27,7 @@ public sealed class TileGroupViewModel(string title, string hint, Brush accent) 
 
 public sealed class ToastViewModel(string title, string body, Brush accent, RepoTileViewModel? target)
 {
-    public DateTime CreatedUtc { get; } = DateTime.UtcNow;
+    public DateTime CreatedUtc { get; init; } = DateTime.UtcNow;
 
     /// <summary>How long it stays up; null uses the default two minutes.</summary>
     public TimeSpan? Lifetime { get; init; }
@@ -207,10 +207,7 @@ public sealed partial class MainViewModel : ObservableObject
             if (tiles[gone] == Selected) Selected = null;
             tiles.Remove(gone);
         }
-        foreach (var stale in Toasts.Where(t => DateTime.UtcNow - t.CreatedUtc > (t.Lifetime ?? ToastLifetime) ||
-                                                t.Target is { State: not RepoState.Waiting }).ToList())
-            Toasts.Remove(stale);
-        while (Toasts.Count > 4) Toasts.RemoveAt(Toasts.Count - 1);
+        PruneToasts(Toasts, DateTime.UtcNow);
 
         snapshot = next;
         Regroup();
@@ -219,6 +216,28 @@ public sealed partial class MainViewModel : ObservableObject
         Raise(nameof(TicketCount)); Raise(nameof(RepoCount)); Raise(nameof(TokensToday));
         Raise(nameof(TokensDetail)); Raise(nameof(Warnings)); Raise(nameof(HasWarnings));
     }
+
+    /// <summary>The most toasts shown at once; the oldest (last) go first.</summary>
+    internal const int MaxToasts = 4;
+
+    /// <summary>Drops toasts past their lifetime (two minutes unless set), those whose repo is no longer waiting on you,
+    /// and then the oldest past <see cref="MaxToasts"/>.</summary>
+    internal static void PruneToasts(IList<ToastViewModel> toasts, DateTime nowUtc)
+    {
+        foreach (var stale in toasts.Where(t => nowUtc - t.CreatedUtc > (t.Lifetime ?? ToastLifetime) ||
+                                                t.Target is { State: not RepoState.Waiting }).ToList())
+            toasts.Remove(stale);
+        while (toasts.Count > MaxToasts) toasts.RemoveAt(toasts.Count - 1);
+    }
+
+    /// <summary>Which groups show: a non-empty group in the focus (All shows every one), and Quiet only unfocused and
+    /// only with Show quiet ticked or a search typed.</summary>
+    internal static (bool Waiting, bool Working, bool Tickets, bool Quiet) GroupVisibility(
+        int waiting, int working, int tickets, int quiet, Focus focus, bool showQuiet, string search) =>
+        (waiting > 0 && focus is Focus.All or Focus.Waiting,
+         working > 0 && focus is Focus.All or Focus.Working,
+         tickets > 0 && focus is Focus.All or Focus.Tickets,
+         quiet > 0 && focus is Focus.All && (showQuiet || !string.IsNullOrWhiteSpace(search)));
 
     private void Regroup()
     {
@@ -232,11 +251,8 @@ public sealed partial class MainViewModel : ObservableObject
         Quiet.Tiles.ReorderTo([.. visible.Where(t => t.State == RepoState.Dormant && t.OpenTicketCount == 0)
             .OrderByDescending(t => t.Status?.LastActivityUtc ?? DateTime.MinValue).ThenBy(t => t.Name, StringComparer.OrdinalIgnoreCase)]);
 
-        var searching = !string.IsNullOrWhiteSpace(Search);
-        Waiting.IsVisible = Waiting.Count > 0 && Focus is Focus.All or Focus.Waiting;
-        Working.IsVisible = Working.Count > 0 && Focus is Focus.All or Focus.Working;
-        Tickets.IsVisible = Tickets.Count > 0 && Focus is Focus.All or Focus.Tickets;
-        Quiet.IsVisible = Quiet.Count > 0 && Focus is Focus.All && (ShowQuiet || searching);
+        (Waiting.IsVisible, Working.IsVisible, Tickets.IsVisible, Quiet.IsVisible) =
+            GroupVisibility(Waiting.Count, Working.Count, Tickets.Count, Quiet.Count, Focus, ShowQuiet, Search);
         foreach (var g in Groups) g.Touch();
         Raise(nameof(IsEmpty));
     }

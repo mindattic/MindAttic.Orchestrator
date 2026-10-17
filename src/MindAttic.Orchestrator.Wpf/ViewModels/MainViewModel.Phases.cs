@@ -409,9 +409,12 @@ public sealed partial class MainViewModel
     // ── Tray and HUD ────────────────────────────────────────────────────────
 
     /// <summary>The workspace in one line, for the tray tooltip and the HUD.</summary>
-    public string TraySummary => $"Budget {BudgetHeadline}" +
-        (Pace is { IsPaced: true } p ? $" · {p.Key}" : "") +
-        $" · {WaitingCount} need you · {WorkingCount} working";
+    public string TraySummary => TrayText(BudgetHeadline, Pace, WaitingCount, WorkingCount);
+
+    internal static string TrayText(string budgetHeadline, Pace? pace, int waiting, int working) =>
+        $"Budget {budgetHeadline}" +
+        (pace is { IsPaced: true } p ? $" · {p.Key}" : "") +
+        $" · {waiting} need you · {working} working";
 
     public bool AutopilotOn => store.LoadSettings().Autopilot;
 
@@ -436,13 +439,18 @@ public sealed partial class MainViewModel
     public void SelectRepo(string name)
     {
         ViewChoice = "Repos";
-        if (Waiting.Tiles.Concat(Working.Tiles).Concat(Tickets.Tiles).FirstOrDefault(t => t.Name == name) is { } tile) Selected = tile;
-        else if (tiles.GetValueOrDefault(name) is { } hidden)
-        {
-            Search = ""; // the tray asked for a repo the search box was hiding
-            Selected = hidden;
-        }
+        var (tile, clearSearch) = FindRepo(name, Waiting.Tiles.Concat(Working.Tiles).Concat(Tickets.Tiles), tiles);
+        if (clearSearch) Search = ""; // the tray asked for a repo the search box was hiding
+        if (tile is not null) Selected = tile;
     }
+
+    /// <summary>The tile to select for <paramref name="name"/>: one already shown as is, else a known one the search
+    /// (or Quiet being hidden) keeps out of view, which needs the search cleared; null for a repo nobody knows.</summary>
+    internal static (RepoTileViewModel? Tile, bool ClearSearch) FindRepo(
+        string name, IEnumerable<RepoTileViewModel> shown, IReadOnlyDictionary<string, RepoTileViewModel> known) =>
+        shown.FirstOrDefault(t => t.Name == name) is { } tile ? (tile, false)
+        : known.GetValueOrDefault(name) is { } hidden ? (hidden, true)
+        : (null, false);
 
     /// <summary>The ticket's sessions and commits in a window: what happened, without digging through Launcher history.</summary>
     public async void ShowDetails(Assignment a)
