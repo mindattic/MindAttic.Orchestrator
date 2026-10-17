@@ -1,3 +1,6 @@
+using System.Diagnostics;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using MindAttic.Orchestrator.Settings;
 using NUnit.Framework;
 
@@ -69,6 +72,48 @@ public sealed class JsonStoreTests
         File.WriteAllText(path, "[ { \"TicketId\": \"X-T1\", ");
         Assert.That(() => new JsonStore(dir).UpdateAssignments(all => all.Clear()), Throws.InstanceOf<InvalidDataException>());
         Assert.That(File.ReadAllText(path), Is.EqualTo("[ { \"TicketId\": \"X-T1\", "), "untouched for the next try");
+    }
+
+    [Test]
+    public void A_change_goes_ahead_unlocked_when_the_lock_is_held_past_5s_and_leaves_no_lock_file()
+    {
+        // A stuck holder mustn't stall every refresh: past 5s the change is made without the lock.
+        var store = new JsonStore(dir);
+        store.UpdateAssignments(all => all.Add(new Assignment("X-T1", "X", @"D:\W\X", "Claude", DateTime.UtcNow, true)));
+        Assert.That(Directory.GetFiles(dir).Select(Path.GetFileName), Is.EqualTo(new[] { "assignments.json" }), "DeleteOnClose: gone once released");
+
+        var lockPath = Path.Combine(dir, "assignments.json.lock");
+        var timer = Stopwatch.StartNew();
+        using (new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose))
+            store.UpdateAssignments(all => all.Add(new Assignment("X-T2", "X", @"D:\W\X", "Claude", DateTime.UtcNow, true)));
+        Assert.That(timer.Elapsed, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(4.9)).And.LessThan(TimeSpan.FromSeconds(30)), "waited out the 5s, then went ahead");
+        Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EqualTo(new[] { "X-T1", "X-T2" }));
+        Assert.That(File.Exists(lockPath), Is.False, "the lock file goes with its holder");
+    }
+
+    [Test]
+    public void A_file_this_account_may_not_read_loads_as_defaults_instead_of_throwing()
+    {
+        var store = new JsonStore(dir);
+        store.SaveSettings(new OrchestratorSettings { MaxConcurrentSessions = 9 });
+        var file = new FileInfo(Path.Combine(dir, "settings.json"));
+        var me = WindowsIdentity.GetCurrent().User!;
+        var deny = new FileSystemAccessRule(me, FileSystemRights.ReadData, AccessControlType.Deny);
+        var acl = file.GetAccessControl();
+        acl.AddAccessRule(deny);
+        file.SetAccessControl(acl);
+        try
+        {
+            Assert.That(() => File.ReadAllText(file.FullName), Throws.InstanceOf<UnauthorizedAccessException>(), "the setup really denies reading");
+            Assert.That(store.LoadSettings().MaxConcurrentSessions, Is.EqualTo(new OrchestratorSettings().MaxConcurrentSessions));
+        }
+        finally
+        {
+            acl = file.GetAccessControl();
+            acl.RemoveAccessRule(deny);
+            file.SetAccessControl(acl);
+        }
+        Assert.That(store.LoadSettings().MaxConcurrentSessions, Is.EqualTo(9), "readable again");
     }
 
     [Test]

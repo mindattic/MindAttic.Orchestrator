@@ -108,6 +108,40 @@ public sealed class WorkspaceBootstrapTests
         Assert.That(File.Exists(Path.Combine(ws, "MindAttic.Orchestrator", "should-not-run.txt")), Is.False);
     }
 
+    [Test]
+    public void One_slow_app_is_reported_as_timed_out_and_the_rest_still_install()
+    {
+        var ws = Path.Combine(dir, "ws");
+        App(ws, "Fast", "Set-Content -Path installed.txt -Value ok");
+        App(ws, "Slow", "Start-Sleep -Seconds 60");
+
+        var failed = WorkspaceBootstrap.InstallAppsAsync(ws, new SyncProgress([]), perApp: TimeSpan.FromSeconds(3)).GetAwaiter().GetResult();
+
+        Assert.That(failed, Is.EqualTo(new[] { "Slow: timed out" }));
+        Assert.That(File.Exists(Path.Combine(ws, "Fast", "installed.txt")));
+    }
+
+    [Test]
+    public void Cancelling_stops_the_install_instead_of_reporting_every_app_timed_out()
+    {
+        var ws = Path.Combine(dir, "ws");
+        App(ws, "A", "Start-Sleep -Seconds 60");
+        App(ws, "B", "Set-Content -Path ran.txt -Value x");
+        using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var timer = Stopwatch.StartNew();
+
+        Assert.That(() => WorkspaceBootstrap.InstallAppsAsync(ws, new SyncProgress([]), cancel: cancel.Token).GetAwaiter().GetResult(),
+            Throws.InstanceOf<OperationCanceledException>());
+        Assert.That(timer.Elapsed, Is.LessThan(TimeSpan.FromSeconds(30)), "stopped at the cancel, not the 15 minute limit");
+        Assert.That(File.Exists(Path.Combine(ws, "B", "ran.txt")), Is.False, "nothing after the cancel runs");
+    }
+
+    private static void App(string ws, string name, string script)
+    {
+        Directory.CreateDirectory(Path.Combine(ws, name));
+        File.WriteAllText(Path.Combine(ws, name, "deploy.ps1"), script);
+    }
+
     private sealed class SyncProgress(List<string> lines) : IProgress<string>
     {
         public void Report(string value) { lock (lines) lines.Add(value); }

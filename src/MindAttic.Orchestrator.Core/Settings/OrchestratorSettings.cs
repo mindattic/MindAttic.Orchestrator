@@ -167,7 +167,7 @@ public sealed class JsonStore(string? directory = null)
     /// <summary>How long a file another process has open (mid-save, mid-read) is retried before giving up.</summary>
     private static readonly TimeSpan Busy = TimeSpan.FromSeconds(1);
 
-    /// <summary>The file's contents, or defaults when it's missing, unreadable JSON, or locked past <see cref="Busy"/>.
+    /// <summary>The file's contents, or defaults when it's missing, unreadable JSON, access is denied, or locked past <see cref="Busy"/>.
     /// A briefly locked file is retried: callers load, change and save, so defaults here would be saved over the real file.</summary>
     public T Load<T>(string name) where T : new()
     {
@@ -176,6 +176,7 @@ public sealed class JsonStore(string? directory = null)
         try { return JsonSerializer.Deserialize<T>(Retry(() => File.ReadAllText(path)), Options) ?? new T(); }
         catch (JsonException) { return new T(); }
         catch (IOException) { return new T(); }
+        catch (UnauthorizedAccessException) { return new T(); } // denied, or still locked past Busy
     }
 
     public void Save<T>(string name, T value)
