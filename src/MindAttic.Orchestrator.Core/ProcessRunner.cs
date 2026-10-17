@@ -36,11 +36,12 @@ public sealed class ProcessRunner : IProcessRunner
             return ProcessResult.Killed;
         }
         // The readers end at the pipes' EOF, not at the process's exit: a grandchild that inherited them (and outlives it)
-        // would hold the daemon's loop forever, so the wait for them still counts against the timeout.
+        // would hold the daemon's loop forever, so the wait for them still counts against the timeout. Output cut short
+        // that way is reported as timed out, never as a success with nothing to say.
         var left = timeout - started.Elapsed;
         if (!Task.WaitAll([output, error], left > TimeSpan.Zero ? left : TimeSpan.Zero))
             return new ProcessResult(p.ExitCode, output.IsCompletedSuccessfully ? output.Result : "",
-                error.IsCompletedSuccessfully ? error.Result : "", TimedOut: false);
+                error.IsCompletedSuccessfully ? error.Result : "", TimedOut: true);
         return new ProcessResult(p.ExitCode, output.Result, error.Result, TimedOut: false);
     }
 }

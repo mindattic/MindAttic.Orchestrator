@@ -261,6 +261,6 @@ public sealed class DaemonSafetyTests
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var r = ProcessRunner.Default.Run("cmd.exe", ["/c", "start /b ping -n 7 127.0.0.1"], TimeSpan.FromSeconds(2));
         Assert.That(sw.Elapsed, Is.LessThan(TimeSpan.FromSeconds(4.5)));
-        Assert.That(r.ExitCode, Is.EqualTo(0));
+        Assert.That((r.ExitCode, r.TimedOut), Is.EqualTo((0, true)), "its output was cut short, so it isn't taken as a success with none");
     }
 }
