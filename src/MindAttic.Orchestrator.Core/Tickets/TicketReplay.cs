@@ -30,10 +30,36 @@ public static partial class TicketReplay
         {
             var folder = Path.GetFileName(Path.GetDirectoryName(file)) ?? "";
             var inWorktree = folder.Contains("worktrees", StringComparison.OrdinalIgnoreCase) && FolderSafe(folder).EndsWith(worktreeFolder, StringComparison.Ordinal);
-            if (!inWorktree && !Head(file).Contains(marker, StringComparison.Ordinal)) continue;
+            if (!inWorktree && !(Head(file) is var head && head.Contains(marker, StringComparison.Ordinal) && AskedFor(head, ticketId))) continue;
             if (Summarize(file) is { } s) found.Add(s);
         }
         return [.. found.OrderBy(s => s.StartUtc)];
+    }
+
+    /// <summary>Whether a prompt typed into the session (a user line's own text, not a tool's output or a tool call's input)
+    /// asks for <paramref name="ticketId"/>: an /autopilot CLI prints and hands out many tickets' prompts, but works none itself.</summary>
+    internal static bool AskedFor(string head, string ticketId)
+    {
+        foreach (var line in head.Split('\n'))
+        {
+            if (!line.Contains(TicketAttribution.PromptMarker, StringComparison.Ordinal)) continue;
+            try
+            {
+                using var doc = JsonDocument.Parse(line);
+                var root = doc.RootElement;
+                if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("type", out var t) || t.GetString() != "user" ||
+                    !root.TryGetProperty("message", out var m) || m.ValueKind != JsonValueKind.Object || !m.TryGetProperty("content", out var c))
+                    continue;
+                var texts = c.ValueKind == JsonValueKind.String ? [c.GetString() ?? ""]
+                    : c.ValueKind == JsonValueKind.Array ? c.EnumerateArray()
+                        .Where(b => b.ValueKind == JsonValueKind.Object && b.TryGetProperty("type", out var bt) && bt.GetString() == "text" && b.TryGetProperty("text", out _))
+                        .Select(b => b.GetProperty("text").GetString() ?? "").ToList()
+                    : new List<string>();
+                if (texts.Any(x => TicketAttribution.FromPrompt(x) is { } asked && asked.Id.Equals(ticketId, StringComparison.OrdinalIgnoreCase))) return true;
+            }
+            catch (JsonException) { } // the head's last line can be cut short
+        }
+        return false;
     }
 
     private static string FolderSafe(string name) => NonAlphanumeric().Replace(name, "-").ToUpperInvariant();

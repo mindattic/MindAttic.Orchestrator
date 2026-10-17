@@ -102,6 +102,14 @@ public sealed class TicketReplayTests
             ]);
             File.WriteAllLines(Path.Combine(dir, "D--W-Repo", "other.jsonl"), [User("Work on ticket RP-T70 (fix): something else.", "2026-10-14T09:00:00Z")]);
             File.WriteAllLines(Path.Combine(dir, "D--Projects-MindAttic-worktrees-Repo-RP-T7", "b.jsonl"), [User("carry on", "2026-10-14T11:00:00Z")]);
+            // An /autopilot CLI that handed RP-T7 out: the prompt is in its tool output and its Agent call, not asked of it.
+            File.WriteAllLines(Path.Combine(dir, "D--W-Repo", "pilot.jsonl"), [
+                User("/autopilot", "2026-10-14T09:30:00Z"),
+                JsonSerializer.Serialize(new { type = "user", timestamp = "2026-10-14T09:31:00Z", message = new { role = "user",
+                    content = new[] { new { type = "tool_result", content = "Work on ticket RP-T7 (fix): crash on save." } } } }),
+                JsonSerializer.Serialize(new { type = "assistant", timestamp = "2026-10-14T09:32:00Z", message = new { id = "m9",
+                    content = new[] { new { type = "tool_use", input = new { prompt = "Work on ticket RP-T7 (fix): crash on save." } } } } }),
+            ]);
 
             var sessions = TicketReplay.Sessions("RP-T7", dir);
 
