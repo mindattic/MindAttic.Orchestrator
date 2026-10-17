@@ -456,7 +456,11 @@ public sealed partial class MainViewModel
         AuditInfo = "Scanning every repo…";
         try { ShowAudit(await Task.Run(() => auditRunner.Run())); }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException) { AuditInfo = $"Audit failed: {ex.Message}"; }
-        finally { IsAuditing = false; }
+        finally
+        {
+            IsAuditing = false;
+            CommandManager.InvalidateRequerySuggested(); // the button's enabled state follows IsAuditing only when asked
+        }
     }
 
     private void ShowAudit(AuditReport report)
