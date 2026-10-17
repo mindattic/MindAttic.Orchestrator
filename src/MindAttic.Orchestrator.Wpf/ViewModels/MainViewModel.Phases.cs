@@ -320,7 +320,7 @@ public sealed partial class MainViewModel
         else queueLog.Error("{Action:l} failed: {Message:l}", action, r.Message);
     }
 
-    public void Bump(string ticketId, int by)
+    public void Bump(string ticketId, int by) => Guarded("Bump", () =>
     {
         var s = store.LoadSettings();
         var p = new Dictionary<string, int>(s.Priorities, StringComparer.Ordinal);
@@ -328,14 +328,26 @@ public sealed partial class MainViewModel
         if (next == 0) p.Remove(ticketId); else p[ticketId] = next;
         store.SaveSettings(s with { Priorities = p });
         if (snapshot is not null) ApplyPlan(snapshot);
-    }
+    });
 
-    public void Release(string ticketId)
+    public void Release(string ticketId) => Guarded("Release", () =>
     {
         dispatcher.Release(ticketId);
         QueueMessage = $"{ticketId} is back in the queue.";
         queueLog.Information("Released {Ticket:l}", ticketId);
         if (snapshot is not null) ApplyPlan(snapshot);
+    });
+
+    /// <summary>Runs a click's change to the shared files: one that can't be saved (locked past the store's retries, or
+    /// unreadable) is said in the queue line, not left to close the dashboard (and the status lease it may hold).</summary>
+    private void Guarded(string action, Action change)
+    {
+        try { change(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            QueueMessage = $"{action} failed: {ex.Message}";
+            OrchestratorLog.For("Dashboard").Error(ex, "{Action:l} failed", action);
+        }
     }
 
     // ── Tray and HUD ────────────────────────────────────────────────────────
@@ -352,13 +364,13 @@ public sealed partial class MainViewModel
 
     public IReadOnlyList<string> WaitingRepos => snapshot?.Repos.Where(r => r.State == RepoState.Waiting).Select(r => r.Name).ToList() ?? [];
 
-    public void ToggleAutopilot()
+    public void ToggleAutopilot() => Guarded("Autopilot", () =>
     {
         var s = store.LoadSettings();
         store.SaveSettings(s with { Autopilot = !s.Autopilot });
         queueLog.Information("Autopilot {State:l} from the tray", s.Autopilot ? "paused" : "resumed");
         Raise(nameof(AutopilotText));
-    }
+    });
 
     /// <summary>Starts the top proposal, if there is one; returns what it said.</summary>
     public string DispatchNext()
