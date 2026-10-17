@@ -103,9 +103,19 @@ public sealed class ContextCycler(string? directory = null)
             string? cwd = null;
             if (File.Exists(context))
             {
-                using var c = JsonDocument.Parse(File.ReadAllText(context));
-                percent = c.RootElement.TryGetProperty("used_percentage", out var p) && p.ValueKind == JsonValueKind.Number ? p.GetDouble() : 0;
-                cwd = c.RootElement.TryGetProperty("cwd", out var w) ? w.GetString() : null;
+                // The statusline rewrites this every redraw; a read that catches it mid-write mustn't drop the session's
+                // state file (its pid and busy state) with it, so it fails on its own and leaves 0% and no cwd.
+                try
+                {
+                    using var c = JsonDocument.Parse(ReadShared(context));
+                    percent = c.RootElement.TryGetProperty("used_percentage", out var p) && p.ValueKind == JsonValueKind.Number ? p.GetDouble() : 0;
+                    cwd = c.RootElement.TryGetProperty("cwd", out var w) && w.ValueKind == JsonValueKind.String ? w.GetString() : null;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
+                {
+                    percent = 0;
+                    cwd = null;
+                }
             }
             bool idle = false;
             int? pid = null;
@@ -129,6 +139,14 @@ public sealed class ContextCycler(string? directory = null)
         {
             return null;
         }
+    }
+
+    /// <summary>Reads a file another process may hold open for writing.</summary>
+    private static string ReadShared(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 
     private void Forget(string sessionId)

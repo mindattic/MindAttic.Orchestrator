@@ -184,6 +184,27 @@ public sealed class ContextCyclerMarksTests
     }
 
     [Test]
+    public void A_statusline_file_mid_write_does_not_drop_the_sessions_state()
+    {
+        File.WriteAllText(Path.Combine(dir, "abc.json"), """{"used_perc""");
+        File.WriteAllText(Path.Combine(dir, "abc.state.json"), """{"state":"busy","pid":42,"cwd":"D:\\x"}""");
+
+        var s = new ContextCycler(dir).Load().Single();
+
+        Assert.That((s.SessionId, s.Pid, s.Idle, s.Cwd, s.Percent), Is.EqualTo(("abc", (int?)42, false, @"D:\x", 0d)));
+    }
+
+    [Test]
+    public void A_statusline_file_held_open_for_writing_is_still_read()
+    {
+        var path = Path.Combine(dir, "abc.json");
+        File.WriteAllText(path, """{"used_percentage":37,"cwd":"D:\\x"}""");
+        using var writer = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+
+        Assert.That(new ContextCycler(dir).Load().Single().Percent, Is.EqualTo(37));
+    }
+
+    [Test]
     public void Prune_marks_without_a_folder_does_nothing()
     {
         Assert.DoesNotThrow(() => new ContextCycler(Path.Combine(dir, "nowhere")).PruneMarks());
