@@ -166,6 +166,24 @@ public sealed class ContextCyclerMarksTests
     }
 
     [Test]
+    public void Week_old_prune_keeps_a_running_clis_own_marks_and_drops_stale_session_files()
+    {
+        var keep = new[] { "autopilot-123", "unthrottled-123", "crossrepo-123", ContextCycler.AutopilotFile };
+        var drop = new[] { "old.json", "old.state.json" };
+        var now = DateTime.UtcNow;
+        foreach (var f in keep.Concat(drop))
+        {
+            File.WriteAllText(Path.Combine(dir, f), "x");
+            File.SetLastWriteTimeUtc(Path.Combine(dir, f), now - TimeSpan.FromDays(8));
+        }
+
+        new ContextCycler(dir).Prune(now);
+
+        Assert.That(Directory.GetFiles(dir).Select(Path.GetFileName).Order(), Is.EqualTo(keep.Order()),
+            "a CLI that typed /autopilot a week ago and is still running keeps it; PruneMarks drops it when the CLI closes");
+    }
+
+    [Test]
     public void Prune_marks_without_a_folder_does_nothing()
     {
         Assert.DoesNotThrow(() => new ContextCycler(Path.Combine(dir, "nowhere")).PruneMarks());

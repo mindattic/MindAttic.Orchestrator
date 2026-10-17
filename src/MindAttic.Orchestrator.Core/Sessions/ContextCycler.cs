@@ -310,7 +310,11 @@ public sealed class ContextCycler(string? directory = null)
     public void Prune(DateTime nowUtc)
     {
         if (!System.IO.Directory.Exists(Directory)) return;
-        foreach (var f in System.IO.Directory.EnumerateFiles(Directory).Where(f => Path.GetFileName(f) != AutopilotFile))
+        // A CLI's own /autopilot, /unthrottle and /crossrepo marks are written once and live as long as it does, however long
+        // that is; PruneMarks drops them when the CLI closes.
+        foreach (var f in System.IO.Directory.EnumerateFiles(Directory).Where(f => Path.GetFileName(f) is var n && n != AutopilotFile &&
+                     !n.StartsWith("unthrottled-", StringComparison.Ordinal) && !n.StartsWith("crossrepo-", StringComparison.Ordinal) &&
+                     !n.StartsWith("autopilot-", StringComparison.Ordinal)))
             try { if (nowUtc - File.GetLastWriteTimeUtc(f) > TimeSpan.FromDays(7)) File.Delete(f); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
