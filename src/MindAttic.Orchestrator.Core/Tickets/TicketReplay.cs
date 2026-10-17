@@ -14,7 +14,7 @@ public sealed record ReplaySession(string File, DateTime StartUtc, DateTime EndU
 /// (found by the dispatch prompt near the top of a transcript, or by the ticket's worktree folder) and
 /// the commits that mention its ID.
 /// </summary>
-public static class TicketReplay
+public static partial class TicketReplay
 {
     private const int HeadBytes = 64 * 1024;
 
@@ -22,17 +22,24 @@ public static class TicketReplay
     {
         if (!Directory.Exists(projectsDir)) return [];
         var marker = $"{TicketAttribution.PromptMarker}{ticketId} ";
-        var worktreeFolder = $"-{ticketId}".ToUpperInvariant();
+        // Claude names a project folder after its path with every non-alphanumeric turned into '-',
+        // so worktree ...\M.ORCH-T1 is folder ...-M-ORCH-T1: compare both sides that way.
+        var worktreeFolder = "-" + FolderSafe(ticketId);
         var found = new List<ReplaySession>();
         foreach (var file in Directory.EnumerateFiles(projectsDir, "*.jsonl", new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true }))
         {
             var folder = Path.GetFileName(Path.GetDirectoryName(file)) ?? "";
-            var inWorktree = folder.Contains("worktrees", StringComparison.OrdinalIgnoreCase) && folder.ToUpperInvariant().EndsWith(worktreeFolder, StringComparison.Ordinal);
+            var inWorktree = folder.Contains("worktrees", StringComparison.OrdinalIgnoreCase) && FolderSafe(folder).EndsWith(worktreeFolder, StringComparison.Ordinal);
             if (!inWorktree && !Head(file).Contains(marker, StringComparison.Ordinal)) continue;
             if (Summarize(file) is { } s) found.Add(s);
         }
         return [.. found.OrderBy(s => s.StartUtc)];
     }
+
+    private static string FolderSafe(string name) => NonAlphanumeric().Replace(name, "-").ToUpperInvariant();
+
+    [GeneratedRegex("[^A-Za-z0-9]")]
+    private static partial Regex NonAlphanumeric();
 
     private static string Head(string file)
     {

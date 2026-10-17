@@ -112,4 +112,33 @@ public sealed class TicketReplayTests
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
+
+    [Test]
+    public void A_dotted_ticket_matches_its_own_worktree_folder_but_not_a_longer_id()
+    {
+        // Claude names the folder for D:\Projects\MindAttic.worktrees\MindAttic.Orchestrator\M.ORCH-T1 with dots as dashes.
+        var dir = Path.Combine(Path.GetTempPath(), "orch-replay-folder-" + Guid.NewGuid().ToString("N"));
+        string Session(string folder, string at)
+        {
+            Directory.CreateDirectory(Path.Combine(dir, folder));
+            var file = Path.Combine(dir, folder, "s.jsonl");
+            File.WriteAllLines(file, [JsonSerializer.Serialize(new { type = "user", timestamp = at, message = new { role = "user", content = "carry on" } })]);
+            return file;
+        }
+        try
+        {
+            var mine = Session("D--Projects-MindAttic-worktrees-MindAttic-Orchestrator-M-ORCH-T1", "2026-10-14T10:00:00Z");
+            var dotted = Session("D--Projects-MindAttic.worktrees-MindAttic.Orchestrator-M.ORCH-T1", "2026-10-14T11:00:00Z");
+            Session("D--Projects-MindAttic-worktrees-MindAttic-Orchestrator-M-ORCH-T11", "2026-10-14T12:00:00Z");
+            Session("D--Projects-MindAttic-MindAttic-Orchestrator-M-ORCH-T1", "2026-10-14T13:00:00Z");
+
+            var sessions = TicketReplay.Sessions("M.ORCH-T1", dir);
+
+            Assert.That(sessions.Select(s => s.File), Is.EqualTo(new[] { mine, dotted }),
+                "its worktree folder either way it's spelled; not -M-ORCH-T11, and not a folder outside the worktrees");
+            Assert.That(TicketReplay.Sessions("M.ORCH-T11", dir), Has.Count.EqualTo(1));
+            Assert.That(TicketReplay.Sessions("M.ORCH-T1", Path.Combine(dir, "missing")), Is.Empty, "no projects folder: nothing");
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
 }

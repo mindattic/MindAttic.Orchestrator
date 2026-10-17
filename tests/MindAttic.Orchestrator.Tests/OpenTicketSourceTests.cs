@@ -71,4 +71,24 @@ public sealed class OpenTicketSourceTests
         Assert.That(source.OpenFor(b, warnings).Select(t => t.Id), Is.EqualTo(new[] { "B-T1" }), "B isn't migrated: its markdown");
         Assert.That(warnings, Is.Empty);
     }
+
+    [Test]
+    public void A_database_change_on_disk_is_picked_up_and_without_one_there_are_no_prerequisites()
+    {
+        var a = Repo("A", "A", "| A-T1 | 2026-10-01 | fix | open | one, blocked by A-T2 | — |\n| A-T2 | 2026-10-01 | fix | open | two | — |\n");
+        var source = new OpenTicketSource();
+        var warnings = new List<string>();
+        source.OpenFor(a, warnings);
+        Assert.That(source.Requires, Is.Empty, "the markdown carries no requires links");
+
+        var path = WorkflowDb.DefaultPath(root);
+        using (var db = WorkflowDb.Open(path)) db.Import([a]);
+        Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(new[] { "A-T1", "A-T2" }));
+        Assert.That(source.Requires["a-t1"], Is.EqualTo(new[] { "A-T2" }), "looked up without regard to case");
+
+        using (var db = WorkflowDb.Open(path)) db.Close("A-T1", reference: "done");
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(5));
+        Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(new[] { "A-T2" }), "re-read once the database changed");
+        Assert.That(warnings, Is.Empty);
+    }
 }
