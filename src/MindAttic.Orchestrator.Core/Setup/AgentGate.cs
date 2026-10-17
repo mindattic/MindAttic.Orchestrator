@@ -977,8 +977,8 @@ public static class AgentGate
                     # A repo this CLI covers only through "*" or a wildcard can't be switched off on its own: removing its name
                     # would change nothing and it would go on being worked, so say so and change nothing.
                     import fnmatch
-                    covered = [(n, p) for n in named if m and n.lower() not in {x.lower() for x in names}
-                               for p in names if fnmatch.fnmatchcase(n.lower(), p.lower())]
+                    covered = [(n, p) for n in named if m for p in names
+                               if p.lower() != n.lower() and fnmatch.fnmatchcase(n.lower(), p.lower())]
                     if covered and not re.match(r"off\s+all\b", args, re.I):
                         n, p = covered[0]
                         print(json.dumps({"decision": "block", "reason": n + " is worked here through /autopilot " +

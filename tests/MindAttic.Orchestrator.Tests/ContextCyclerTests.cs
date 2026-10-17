@@ -294,6 +294,11 @@ public sealed class ContextCyclerTests
             Assert.That(Typed(1, repo, "/autopilot off -repo=B"), Does.Contain("\"block\"").And.Contain("through /autopilot all"),
                 "B is worked through *: switching it off alone would change nothing, so it says so instead of seeming to");
             Assert.That(Mark(1), Is.EqualTo("*"));
+            Typed(4, ws, "/autopilot -repo=GTFO.*");
+            Typed(4, ws, "/autopilot -repo=GTFO.A");
+            Assert.That(Typed(4, ws, "/autopilot off -repo=GTFO.A"), Does.Contain("through /autopilot -repo=GTFO.*"),
+                "named and covered by a wildcard too: dropping the name alone would leave it worked");
+            Assert.That(Mark(4), Is.EqualTo("GTFO.*,GTFO.A"));
             Typed(3, ws, "/autopilot off all");
             Assert.That((Mark(1), Mark(2)), Is.EqualTo(((string?)null, (string?)null)), "off all: in every CLI");
             Assert.That(File.Exists(Path.Combine(ctx, "autopilot.order")), Is.False, "nothing workspace-wide any more");
