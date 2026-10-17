@@ -30,8 +30,13 @@ public partial class MainWindow : Window
 
         CommandBindings.Add(new CommandBinding(WindowCommands.FocusSearch, (_, _) =>
         {
-            SearchBox.Focus();
-            SearchBox.SelectAll();
+            // The search box is only shown in the Repos view, and a collapsed box can't take focus: show it first.
+            model.ShowViewCommand.Execute("Repos");
+            Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+            {
+                SearchBox.Focus();
+                SearchBox.SelectAll();
+            });
         }));
         CommandBindings.Add(new CommandBinding(WindowCommands.Escape, (_, _) => OnEscape()));
 
