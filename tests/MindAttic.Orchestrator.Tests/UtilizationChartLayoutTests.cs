@@ -52,7 +52,7 @@ public sealed class UtilizationChartLayoutTests
         var header = card.Parent!;
         Assert.That(header.Name, Is.EqualTo(p + "StackPanel"));
         var siblings = header.Elements().ToList();
-        Assert.That(siblings.IndexOf(card), Is.GreaterThan(siblings.FindIndex(e => e.Name == p + "WrapPanel")), "it sits under the tiles");
+        Assert.That(siblings.IndexOf(card), Is.GreaterThan(siblings.FindIndex(e => e.Name.LocalName == "AlignedGrid")), "it sits under the tiles");
         Assert.That(card.Attribute("Width"), Is.Null, "no fixed width: it stretches across the window");
         Assert.That(chart.Attribute("Width"), Is.Null);
         Assert.That(double.Parse((string)chart.Attribute("Height")!, System.Globalization.CultureInfo.InvariantCulture), Is.GreaterThanOrEqualTo(240));

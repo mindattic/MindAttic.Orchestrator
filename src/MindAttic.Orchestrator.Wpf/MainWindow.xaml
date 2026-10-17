@@ -62,9 +62,25 @@
 
         <!-- A header card: every one is a button, so keyboard users reach it and its tooltip (shown on focus too). -->
         <Style x:Key="SmallStat" TargetType="Button" BasedOn="{StaticResource StatCard}">
-            <Setter Property="MinWidth" Value="128" />
+            <!-- The AlignedGrid gives every tile the same width and the gaps between them; a tile carries no size or margin. -->
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Margin" Value="0" />
             <Setter Property="Padding" Value="14,0,16,0" />
             <Setter Property="AutomationProperties.HelpText" Value="{Binding ToolTip, RelativeSource={RelativeSource Self}}" />
+        </Style>
+
+        <!-- A body view (repos, queue, audit, agents): the same 24px gutters as the header and toolbar. While the vertical
+             scroll bar shows, it sits inside the right gutter instead of pushing the content in (M.ORCH-T192). -->
+        <Style x:Key="BodyScroll" TargetType="ScrollViewer">
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Padding" Value="24,0,24,16" />
+            <Style.Triggers>
+                <Trigger Property="ComputedVerticalScrollBarVisibility" Value="Visible">
+                    <Setter Property="Padding" Value="{x:Static local:Gutters.BesideScrollBar}" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
     </Window.Resources>
 
@@ -82,8 +98,11 @@
 
         <!-- Header, read left to right: the work (who needs you, who's working, their subagents, what's queued), then the
              tokens (this 5-hour window, the week, the pace ledger, today). Every card is a button that goes somewhere. -->
-        <StackPanel Grid.Row="0">
-        <WrapPanel Margin="24,18,24,0" AutomationProperties.Name="Summary">
+        <!-- The header owns the window's left/right gutter; nothing inside it adds its own, so the tiles and the chart
+             share both edges (M.ORCH-T192). The tiles are equal cells that together span the row at any width. -->
+        <StackPanel x:Name="Header" Grid.Row="0" Margin="24,18,24,0">
+        <local:AlignedGrid x:Name="StatTiles" MinItemWidth="160" Gap="10" RowGap="10" Balanced="True" UniformRows="True"
+                           AutomationProperties.Name="Summary">
             <Button Command="{Binding FocusCommand}" CommandParameter="Waiting" ToolTip="Repos whose agent stopped and is waiting for you. Shows only those."
                     AutomationProperties.Name="{Binding WaitingCount, StringFormat='{}{0} need you: show only those repos'}">
                 <Button.Style>
@@ -130,7 +149,6 @@
                     AutomationProperties.Name="{Binding TicketCount, StringFormat='{}{0} open tickets: show repos with tickets and no session'}">
                 <Button.Style>
                     <Style TargetType="Button" BasedOn="{StaticResource SmallStat}">
-                        <Setter Property="Margin" Value="0,0,28,0" />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding Focus}" Value="Tickets">
                                 <Setter Property="BorderBrush" Value="{x:Static vm:Palette.Tickets}" />
@@ -146,10 +164,10 @@
             </Button>
 
             <!-- Budget: the current 5-hour block. Click to set limits. -->
-            <Button Style="{StaticResource SmallStat}" MinWidth="220" Command="{Binding ToggleSettingsCommand}"
+            <Button Style="{StaticResource SmallStat}" HorizontalContentAlignment="Stretch" Command="{Binding ToggleSettingsCommand}"
                     ToolTip="{Binding BudgetTooltip}"
                     AutomationProperties.Name="{Binding BudgetHeadline, StringFormat='5-hour window {0} used: open budget settings'}">
-                <StackPanel Width="196">
+                <StackPanel>
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Left" Text="{Binding BudgetHeadline}" Style="{StaticResource StatValue}"
                                    Foreground="{Binding BudgetBrush}" />
@@ -165,9 +183,9 @@
                         </Border>
                     </Grid>
                     <!-- While pacing holds work back, that's the line that matters; the full detail stays in the tooltip. -->
-                    <TextBlock Text="{Binding BudgetDetail}" Style="{StaticResource McTileSubtitle}"
+                    <TextBlock Text="{Binding BudgetDetail}" Style="{StaticResource McTileSubtitle}" TextTrimming="CharacterEllipsis"
                                Visibility="{Binding PaceText, Converter={x:Static vm:Converters.EmptyToVisible}}" />
-                    <TextBlock Text="{Binding PaceText}" Style="{StaticResource McTileSubtitle}" Foreground="{Binding PaceBrush}"
+                    <TextBlock Text="{Binding PaceText}" Style="{StaticResource McTileSubtitle}" Foreground="{Binding PaceBrush}" TextTrimming="CharacterEllipsis"
                                Visibility="{Binding PaceText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 </StackPanel>
             </Button>
@@ -196,11 +214,11 @@
                     <TextBlock Text="{Binding TokensDetail}" Style="{StaticResource McTileSubtitle}" />
                 </StackPanel>
             </Button>
-        </WrapPanel>
+        </local:AlignedGrid>
         <!-- This 5-hour window's utilization (M.ORCH-T191): its own full-width row under the tiles, tall enough that the
              pace line straight to the target at the reset, the window's own line (red while over that pace, green under)
              and where the recent rate ends up are easy to read. The caption says it in words. -->
-        <Border x:Name="UtilizationCard" Style="{StaticResource Card}" Margin="24,0,24,12" HorizontalAlignment="Stretch"
+        <Border x:Name="UtilizationCard" Style="{StaticResource Card}" Margin="0,12,0,12" HorizontalAlignment="Stretch"
                 AutomationProperties.Name="{Binding UtilizationText, StringFormat='5-hour utilization: {0}'}"
                 Visibility="{Binding UtilizationText, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
             <StackPanel>
@@ -212,13 +230,13 @@
         </StackPanel>
 
         <!-- Toolbar -->
-        <Grid Grid.Row="1" Margin="24,8,24,10">
+        <Grid x:Name="Toolbar" Grid.Row="1" Margin="24,8,24,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <WrapPanel VerticalAlignment="Center">
-                <ListBox Style="{StaticResource PillChoice}" ItemsSource="{Binding ViewChoices}"
+                <ListBox Style="{StaticResource PillChoice}" ItemsSource="{Binding ViewChoices}" Padding="0"
                          SelectedItem="{Binding ViewChoice}" VerticalAlignment="Center" Margin="0,6,14,0"
                          AutomationProperties.Name="View" />
                 <Grid Width="300" Margin="0,0,10,0" VerticalAlignment="Center" Visibility="{Binding IsReposView, Converter={StaticResource Visible}}">
@@ -249,7 +267,7 @@
 
         <!-- Toasts: what just happened (a session finished its turn, the pace changed). Their own row, so they push the page
              down instead of covering whatever has keyboard focus (WCAG 2.4.11); MainWindow also reads each one out. -->
-        <ItemsControl Grid.Row="2" ItemsSource="{Binding Toasts}" Margin="24,0,24,6" Focusable="False" AutomationProperties.Name="Notifications">
+        <ItemsControl x:Name="ToastRow" Grid.Row="2" ItemsSource="{Binding Toasts}" Margin="24,0,24,6" Focusable="False" AutomationProperties.Name="Notifications">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
@@ -292,7 +310,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,0,14,16" Focusable="False"
+            <ScrollViewer x:Name="ReposBody" Style="{StaticResource BodyScroll}"
                           Visibility="{Binding IsReposView, Converter={StaticResource Visible}}">
                 <Grid>
                     <ItemsControl ItemsSource="{Binding Groups}" Focusable="False">
@@ -308,7 +326,7 @@
                                     <ItemsControl ItemsSource="{Binding Tiles}" ItemTemplate="{StaticResource TileTemplate}" Focusable="False">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <WrapPanel />
+                                                <local:AlignedGrid MinItemWidth="240" Gap="10" RowGap="10" UniformRows="True" />
                                             </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
                                     </ItemsControl>
@@ -520,7 +538,7 @@
             </Border>
 
             <!-- Queue view: every open ticket across the workspace, and what the scheduler proposes. -->
-            <ScrollViewer Grid.ColumnSpan="2" VerticalScrollBarVisibility="Auto" Padding="24,0,24,16" Focusable="False"
+            <ScrollViewer x:Name="QueueBody" Grid.ColumnSpan="2" Style="{StaticResource BodyScroll}"
                           Visibility="{Binding IsQueueView, Converter={StaticResource Visible}}">
                 <StackPanel MaxWidth="1200" HorizontalAlignment="Left">
                     <DockPanel>
@@ -666,7 +684,7 @@
             </ScrollViewer>
 
             <!-- Audit view: what's duplicated across repos and which shared agent files drifted. -->
-            <ScrollViewer Grid.ColumnSpan="2" VerticalScrollBarVisibility="Auto" Padding="24,0,24,16" Focusable="False"
+            <ScrollViewer x:Name="AuditBody" Grid.ColumnSpan="2" Style="{StaticResource BodyScroll}"
                           Visibility="{Binding IsAuditView, Converter={StaticResource Visible}}">
                 <StackPanel MaxWidth="1200" HorizontalAlignment="Left">
                     <DockPanel>
@@ -802,7 +820,7 @@
 
             <!-- Agent board: every Claude CLI and autopilot agent as a card, its running subagents inside it. Waiting-on-you
                  first. State is a word and a glyph as well as a colour (WCAG 1.4.1). -->
-            <ScrollViewer Grid.ColumnSpan="2" VerticalScrollBarVisibility="Auto" Padding="24,0,24,16" Focusable="False"
+            <ScrollViewer x:Name="AgentsBody" Grid.ColumnSpan="2" Style="{StaticResource BodyScroll}"
                           Visibility="{Binding IsAgentsView, Converter={StaticResource Visible}}">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,4,0,12">
@@ -817,14 +835,15 @@
                                    Style="{StaticResource Muted}" Margin="0,4,0,0" />
                     </StackPanel>
 
-                    <ItemsControl ItemsSource="{Binding Agents}" Focusable="False" AutomationProperties.Name="Agents">
+                    <ItemsControl x:Name="AgentCards" ItemsSource="{Binding Agents}" Focusable="False" AutomationProperties.Name="Agents">
                         <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                            <!-- Equal columns and gaps that fill the width, flush with the tiles' edges (M.ORCH-T192). -->
+                            <ItemsPanelTemplate><local:AlignedGrid MinItemWidth="420" Gap="12" RowGap="12" /></ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:AgentRowViewModel}">
                                 <Border Background="{StaticResource McSurface}" BorderBrush="{StaticResource McControlBorder}" BorderThickness="1"
-                                        CornerRadius="6" Width="460" Margin="0,0,12,12">
+                                        CornerRadius="6">
                                     <DockPanel>
                                         <!-- The state's colour down the left edge: a cue, never the only one. -->
                                         <Border DockPanel.Dock="Left" Width="5" Background="{Binding StateBrush}" CornerRadius="5,0,0,5" />

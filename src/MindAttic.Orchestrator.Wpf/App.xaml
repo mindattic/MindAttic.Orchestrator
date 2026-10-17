@@ -62,9 +62,9 @@
 
             <!-- A repo tile: McTileButton with room for a state bar, two lines and a token count. -->
             <Style x:Key="RepoTile" TargetType="Button" BasedOn="{StaticResource McTileButton}">
-                <Setter Property="Width" Value="256" />
+                <!-- No width or margin: the repo grid (an AlignedGrid) sizes every tile and the gaps between them. -->
                 <Setter Property="Height" Value="78" />
-                <Setter Property="Margin" Value="0,0,10,10" />
+                <Setter Property="Margin" Value="0" />
                 <Setter Property="Padding" Value="0" />
                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                 <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
