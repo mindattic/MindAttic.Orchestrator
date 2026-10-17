@@ -310,6 +310,9 @@ public sealed partial class MainViewModel
             QueueMessage = r.Message;
             Record(r, "Dispatch");
             await RefreshAsync();
+            // A refresh already under way returns at once above: the queue is replanned from the assignments now, so the row
+            // reads as assigned before the guard below lets go.
+            if (snapshot is not null) ApplyPlan(snapshot);
         }
         // async void: an escaped exception (a corrupt assignments.json, a locked file) would close the dashboard.
         catch (Exception ex) when (ex is not OutOfMemoryException)
