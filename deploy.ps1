@@ -122,12 +122,14 @@ if (Test-Stale $cliExe @($cliDir, $coreDir)) {
 
 # ── Install, as a double-click would ────────────────────────────────────────
 $installed = Find-Installed
-if ((Test-Path $artifact) -and ($built -or -not $installed)) {
+# Also when the installed copy isn't this build: an install that failed last time is retried, not called up to date.
+$outdated = $installed -and (Test-Path $artifact) -and ((Get-FileHash $artifact).Hash -ne (Get-FileHash $installed).Hash)
+if ((Test-Path $artifact) -and ($built -or -not $installed -or $outdated)) {
     Write-Host 'Installing (stops a running copy and its daemon; the daemon restarts from the new build)...' -ForegroundColor Cyan
     Stop-From 'orchestrator' $cliOut   # an old-layout daemon still running from the CLI folder
-    Start-Process -FilePath $artifact -ArgumentList '--install' -Wait
+    $install = Start-Process -FilePath $artifact -ArgumentList '--install' -Wait -PassThru
     $installed = Find-Installed
-    if ($installed) { Write-Host "Installed $installed" -ForegroundColor Green }
+    if ($install.ExitCode -eq 0 -and $installed) { Write-Host "Installed $installed" -ForegroundColor Green }
     else { Write-Host 'Install FAILED; see the log under %LOCALAPPDATA%\MindAttic\MindAttic.Orchestrator\logs.' -ForegroundColor Red; $failed = $true }
 } elseif (-not $failed) {
     Write-Host 'MindAttic.Orchestrator is up to date.' -ForegroundColor DarkGray

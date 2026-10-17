@@ -66,6 +66,8 @@ public partial class App : Application
             {
                 log.Error(ex, "Install failed");
                 Console.Error.WriteLine($"Install failed: {ex.Message}");
+                Shutdown(1); // deploy.ps1 reads the exit code: the old copy still being there isn't an install
+                return;
             }
             Shutdown();
             return;
