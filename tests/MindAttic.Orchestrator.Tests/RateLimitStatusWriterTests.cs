@@ -143,6 +143,21 @@ public sealed class RateLimitStatusWriterTests
     }
 
     [Test]
+    public void A_stop_with_no_known_5_hour_limit_still_reaches_the_pace_gate()
+    {
+        // A weekly wall while no 5-hour limit is known: the pace says stop, and the gate only hears it from this file.
+        var writer = new RateLimitStatusWriter(path) { UtcNow = () => T0 };
+        writer.Write(PeakOnly(), Paced(PaceMode.Over) with { Stop = true, Governing = "weekly" });
+        var root = Read();
+        Assert.That((root.GetProperty("stop").GetBoolean(), root.GetProperty("source").GetString()), Is.EqualTo((true, "MindAttic.Orchestrator")));
+        Assert.That(root.GetProperty("stop_note").GetString(), Does.Contain("weekly"));
+        Assert.That(root.TryGetProperty("tokens_remaining", out _), Is.False, "no limit known: no count against one");
+
+        writer.Write(PeakOnly(), Paced());
+        Assert.That(File.Exists(path), Is.False, "the stop lifted: withdrawn again");
+    }
+
+    [Test]
     public void A_peak_only_limit_removes_its_own_file_and_leaves_anyone_elses()
     {
         var writer = new RateLimitStatusWriter(path) { UtcNow = () => T0 };

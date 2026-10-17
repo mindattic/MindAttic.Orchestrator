@@ -276,8 +276,9 @@ public sealed class RateLimitStatusWriter(string? path = null)
     public void Write(BudgetStatus status, Pace? pace = null)
     {
         // The file means "this much of a limit is used". With no budget there's no limit to report,
-        // so withdraw a file this writer produced rather than leave stale numbers behind.
-        if (status.BlockLimitIsPeak)
+        // so withdraw a file this writer produced rather than leave stale numbers behind. A stop still has to reach the
+        // pace gate (a weekly wall, say, with no 5-hour limit known): then the file carries the stop and no numbers.
+        if (status.BlockLimitIsPeak && pace is not { Stop: true })
         {
             RemoveOwnFile();
             return;
@@ -299,6 +300,13 @@ public sealed class RateLimitStatusWriter(string? path = null)
             },
             ["source"] = "MindAttic.Orchestrator",
         };
+        if (status.BlockLimitIsPeak)
+        {
+            // Only here for the stop: no 5-hour limit is known to count against, and nothing more may be spent.
+            body["percent_used"] = 100.0;
+            body.Remove("tokens_remaining");
+            body.Remove("basis");
+        }
         if (status.WeeklyPercent is { } wp) body["weekly_percent"] = Math.Round(wp, 1);
         // pace-gate.py refuses tool calls while this is set (after holding them its longest), so nothing passes the limit;
         // written paced or not, since the stop doesn't depend on pacing.
