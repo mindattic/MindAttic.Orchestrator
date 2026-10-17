@@ -259,6 +259,9 @@ public sealed class PacerTests
             using var doc = JsonDocument.Parse(File.ReadAllText(path));
             Assert.That(doc.RootElement.GetProperty("stop").GetBoolean(), Is.True);
             Assert.That(doc.RootElement.GetProperty("stop_note").GetString(), Does.Contain("End your turn"));
+            if (spent.ResetUtc is { } until)
+                Assert.That(DateTime.Parse(doc.RootElement.GetProperty("stop_until").GetString()!, null, System.Globalization.DateTimeStyles.AdjustToUniversal),
+                    Is.EqualTo(until.ToUniversalTime()).Within(TimeSpan.FromSeconds(1)), "the hooks latch the stop until the window resets (M.ORCH-T196)");
 
             new RateLimitStatusWriter(path).Write(b, unpaced);
             using (var off = JsonDocument.Parse(File.ReadAllText(path)))

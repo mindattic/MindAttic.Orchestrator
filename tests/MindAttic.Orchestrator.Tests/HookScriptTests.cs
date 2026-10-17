@@ -135,7 +135,7 @@ public sealed class HookScriptTests
 
         Status(new { stop = false });
         Assert.That(Gate(new { tool_name = "Read", tool_input = new { file_path = "x" } }).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "lifted: runs at once");
-        Assert.That(File.ReadAllText(Path.Combine(Claude, AgentGate.ScriptName)), Does.Contain("refuse(status().get(\"stop_note\")"),
+        Assert.That(File.ReadAllText(Path.Combine(Claude, AgentGate.ScriptName)), Does.Contain("refuse(note)"),
             "past the longest hold it's refused, not let through");
     }
 
@@ -161,7 +161,8 @@ public sealed class HookScriptTests
         }
         Assert.That(File.ReadAllText(Path.Combine(Claude, AgentGate.ScriptName)), Does.Contain("claude_stop_note(own)"), "and refuses it saying why");
 
-        ClaudeReports(50);
+        ClaudeReports(50, resetUtc: DateTime.UtcNow.AddHours(2));
+        File.Delete(Path.Combine(Marks, AgentGate.StopLatchName)); // the window it was seen in has reset
         Assert.That(Gate(call).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "below the line it runs");
         ClaudeReports(99.5, resetUtc: DateTime.UtcNow.AddMinutes(-1));
         Assert.That(Gate(call).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "a window that already reset doesn't stop anything");
@@ -621,6 +622,57 @@ public sealed class HookScriptTests
         Assert.That(refused, Does.Contain("\"deny\"").And.Contain("9:50 PM"), "still at the stop past the longest hold: refused with the daemon's note");
         Assert.That(longest, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(1.9)).And.LessThan(TimeSpan.FromSeconds(15)), "held for MAX_HOLD first");
         Assert.That(GateLog().Last(), Does.Contain("\"decision\": \"refused\""));
+    }
+
+    /// <summary>The window of 2026-10-17 04:58Z (M.ORCH-T196): after the 99% stop, an idle session's statusline put Claude's
+    /// percent back to 85% once a minute, and the daemon stalled with its stop in a file that went stale; each time, every
+    /// call held at the stop went through. A stop once seen holds until its window resets.</summary>
+    [Test]
+    public void A_stop_seen_once_holds_until_the_reset_whatever_a_later_report_or_a_stalled_daemon_says()
+    {
+        Status(new { stop = false }, at: DateTime.UtcNow.AddMinutes(-10)); // the daemon has stalled
+        ClaudeReports(99);
+        Assert.That(GateHeld(ReadCall, 2).Output, Does.Contain("\"deny\""), "Claude at 99%: refused");
+        ClaudeReports(85); // an idle session's last response, stamped now, for the same window
+        Assert.That(GateHeld(ReadCall, 2).Output, Does.Contain("\"deny\""), "a lower report for the same window doesn't lift it");
+        ClaudeReports(10, resetUtc: DateTime.UtcNow.AddHours(5));
+        File.Delete(Path.Combine(Marks, AgentGate.StopLatchName));
+        Assert.That(GateHeld(ReadCall, 2).Output, Is.Empty, "a new window starts clear");
+
+        Status(new { stop = true, stop_note = "At the target until 9:50 PM. End your turn now.", stop_until = DateTime.UtcNow.AddHours(1).ToString("yyyy-MM-ddTHH:mm:ssZ") });
+        Assert.That(GateHeld(ReadCall, 2).Output, Does.Contain("\"deny\""), "the orchestrator's stop: refused");
+        Status(new { stop = true, stop_note = "At the target until 9:50 PM. End your turn now." }, at: DateTime.UtcNow.AddMinutes(-10));
+        Assert.That(GateHeld(ReadCall, 2).Output, Does.Contain("\"deny\"").And.Contain("9:50 PM"), "its daemon stalled and the file went stale: still refused");
+        File.WriteAllText(Path.Combine(Claude, "rl-status.json"), "{ half written");
+        Assert.That(GateHeld(ReadCall, 2).Output, Does.Contain("\"deny\""), "an unreadable file doesn't lift it either");
+
+        Status(new { stop = false });
+        Assert.That(GateHeld(ReadCall, 2).Output, Is.Empty, "the orchestrator lifting it, fresh, does");
+        Status(new { stop = false }, at: DateTime.UtcNow.AddMinutes(-10));
+        Assert.That(GateHeld(ReadCall, 2).Output, Is.Empty, "and the lifted stop stays lifted once the file is stale");
+    }
+
+    [Test]
+    public void A_stop_that_comes_on_while_a_call_is_held_for_the_pace_refuses_it_rather_than_letting_it_through()
+    {
+        Status(new { pace_delay_seconds = 60 });
+        var (output, took) = GateWhile(ReadCall, TimeSpan.FromSeconds(2),
+            () => Status(new { stop = true, pace_delay_seconds = 60, stop_note = "At the target until 9:50 PM. End your turn now." }), maxHold: 5);
+        Assert.That(output, Does.Contain("\"deny\"").And.Contain("9:50 PM"), "its pace wait ended at the stop: refused, not let through");
+        Assert.That(took, Is.LessThan(TimeSpan.FromSeconds(20)));
+        Assert.That(GateLog().Last(), Does.Contain("\"decision\": \"refused\""));
+    }
+
+    [Test]
+    public void A_stop_that_comes_on_while_a_subagent_waits_for_a_slot_refuses_it_and_gives_the_slot_back()
+    {
+        var agent = new { tool_name = "Agent", tool_input = new { prompt = "x" } };
+        Status(new { subagent_allowance = 0, subagents_running = 0 });
+        var (output, _) = GateWhile(agent, TimeSpan.FromSeconds(2),
+            () => Status(new { stop = true, subagent_allowance = 0, subagents_running = 0 }), maxHold: 5);
+        Assert.That(output, Does.Contain("\"deny\""), "past its wait at the stop: refused, never started over the line");
+        var slots = Path.Combine(Marks, AgentGate.SlotDirName);
+        Assert.That(Directory.Exists(slots) ? Directory.GetFiles(slots) : [], Is.Empty, "no slot left behind for a call that never ran");
     }
 
     [Test]

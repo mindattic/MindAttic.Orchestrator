@@ -57,27 +57,105 @@ public static class AgentGate
         """;
 
     /// <summary>
-    /// Python shared by both hooks (needs <c>json</c>, <c>time</c>, <c>datetime</c> and <c>Path</c>): the never-over line
+    /// Python shared by both hooks (needs <c>json</c>, <c>os</c>, <c>time</c>, <c>datetime</c> and <c>Path</c>): the never-over line
     /// without the orchestrator. While the daemon keeps <c>rl-status.json</c> fresh it decides the stop; if it dies or
     /// stalls, the hooks used to treat the stale file as "no pacing", so nothing stopped a window passing the limit.
     /// Claude Code's own 5-hour percent (the shared statusline saves it every minute) stands in, and a stale file is
     /// reported as the daemon being down (M.ORCH-T167).
+    /// <para>A stop, once seen, is latched until its window resets (<see cref="StopLatchName"/>, M.ORCH-T196). Every open
+    /// session's statusline rewrites <c>claude-usage.json</c> each minute with its own last percent, so an idle one turned
+    /// Claude's 99% back into 85% once a minute and every call held at the stop went through; and a daemon that stalled
+    /// right after writing its stop let the stop lapse with its file. Usage in a window never goes down, so neither can.</para>
     /// </summary>
     internal static string ClaudeUsagePython => $$"""
         STOP_PERCENT = {{StopPercent}}
-        def claude_stop():
-            # (percent, reset epoch) when Claude itself reports this window at the stop line; None otherwise.
+        LATCH = Path.home() / ".claude" / "session-context" / "{{StopLatchName}}"
+        def read_json(path):
+            # A file being replaced can't be opened for a moment on Windows: that's a retry, not a missing file.
+            for _ in range(20):
+                try:
+                    return json.loads(path.read_text())
+                except PermissionError:
+                    time.sleep(0.05)
+            raise PermissionError(str(path))
+        def latched(by):
+            # The stop latched by "claude" or "orchestrator" for a window that hasn't reset; None otherwise.
             try:
-                w = json.loads((Path.home() / ".claude" / "claude-usage.json").read_text())["rate_limits"]["five_hour"]
-                if float(w["used_percentage"]) >= STOP_PERCENT and float(w["resets_at"]) > time.time():
-                    return float(w["used_percentage"]), float(w["resets_at"])
+                l = read_json(LATCH).get(by)
+                if l and float(l["until"]) > time.time():
+                    return l
             except Exception:
                 pass
             return None
+        def latch(by, until, **fields):
+            # Records (or with until=None, clears) a stop seen for its window, so it holds until the reset whatever comes next.
+            try:
+                every = read_json(LATCH) if LATCH.exists() else {}
+            except Exception:
+                every = {}
+            old = every.get(by)
+            if until is None:
+                if old is None:
+                    return
+                every.pop(by)
+            else:
+                entry = dict(fields, until=float(until))
+                if old and old.get("until") == entry["until"] and float(old.get("percent") or 0) > float(entry.get("percent") or 0):
+                    entry["percent"] = old["percent"]
+                if old == entry:
+                    return
+                every[by] = entry
+            tmp = LATCH.with_name(LATCH.name + "." + str(os.getpid()) + ".tmp")
+            try:
+                LATCH.parent.mkdir(parents=True, exist_ok=True)
+                tmp.write_text(json.dumps(every))
+                for _ in range(20):
+                    try:
+                        os.replace(tmp, LATCH)
+                        return
+                    except PermissionError:
+                        time.sleep(0.05)
+            except Exception:
+                pass
+            try:
+                tmp.unlink()
+            except Exception:
+                pass
+        def claude_stop():
+            # (percent, reset epoch) when Claude itself reports this window at the stop line, now or earlier in the same
+            # window (an idle session's later, lower report doesn't lift it); None otherwise.
+            try:
+                w = read_json(Path.home() / ".claude" / "claude-usage.json")["rate_limits"]["five_hour"]
+                if float(w["used_percentage"]) >= STOP_PERCENT and float(w["resets_at"]) > time.time():
+                    latch("claude", float(w["resets_at"]), percent=float(w["used_percentage"]))
+                    return float(w["used_percentage"]), float(w["resets_at"])
+            except Exception:
+                pass
+            l = latched("claude")
+            return (float(l.get("percent") or STOP_PERCENT), float(l["until"])) if l else None
         def claude_stop_note(stop):
             reset = datetime.fromtimestamp(stop[1]).strftime("%I:%M %p").lstrip("0")
             return ("Claude reports " + str(int(stop[0])) + "% of the 5-hour window used and MindAttic.Orchestrator isn't running to pace it, "
                     "so tool calls are refused until it resets at " + reset + ". End your turn now.")
+        ORCHESTRATOR_STOP = "The 5-hour window is at its target: tool calls are refused until it resets. End your turn now."
+        def orchestrator_stop(s):
+            # The orchestrator's stop note, from its fresh rl-status.json s ({} when stale or unreadable) or latched from an
+            # earlier one until the window resets, so a daemon that stalls at the stop can't lift it; None when not stopped.
+            # A fresh file without the stop is the orchestrator lifting it, and ends the latch.
+            if s:
+                if not s.get("stop"):
+                    latch("orchestrator", None)
+                    return None
+                note = s.get("stop_note") or ORCHESTRATOR_STOP
+                try:
+                    until = datetime.fromisoformat(str(s["stop_until"]).replace("Z", "+00:00")).timestamp()
+                except Exception:
+                    old = latched("orchestrator")
+                    until = float(old["until"]) if old else time.time() + {{StopLatchFallbackSeconds}}
+                latch("orchestrator", until, note=note)
+                return note
+            l = latched("orchestrator")
+            return (l.get("note") or ORCHESTRATOR_STOP) if l else None
         def daemon_down():
             # Seconds since the orchestrator last wrote rl-status.json, once that's past what the gates trust; else None.
             try:
@@ -92,6 +170,12 @@ public static class AgentGate
 
     /// <summary>The percent of the 5-hour window at which every tool call is refused, whoever is counting.</summary>
     public const int StopPercent = 99;
+
+    /// <summary>Where the hooks latch a stop they've seen until its window resets (in <c>~/.claude/session-context</c>).</summary>
+    public const string StopLatchName = "stop-latch.json";
+
+    /// <summary>A stop from an orchestrator that didn't say when its window resets is latched this long.</summary>
+    public const int StopLatchFallbackSeconds = 600;
 
     /// <summary>Python shared by both hooks (needs <c>os</c> and <c>Path</c>): the workspace and which repo a folder is in,
     /// so the repo-window guard and keep-going can't disagree about it.</summary>
@@ -208,7 +292,7 @@ public static class AgentGate
 
         def status():
             try:
-                s = json.loads(STATUS.read_text())
+                s = read_json(STATUS)
                 if s.get("source") != "MindAttic.Orchestrator":
                     return {}
                 at = datetime.fromisoformat(s["timestamp"].replace("Z", ""))
@@ -371,17 +455,36 @@ public static class AgentGate
         # Never past the limit, whatever else is set (/unthrottle included): at the window's target a call is held as long
         # as a hook may wait, in case the reset or a lower count lifts it, then refused rather than let through.
         start = time.monotonic()
-        # The orchestrator's stop, or Claude's own percent at the line: a dead daemon can't switch the stop off (M.ORCH-T167).
-        def stopped():
-            return bool(status().get("stop")) or claude_stop() is not None
-        if stopped():
-            while time.monotonic() - start < MAX_HOLD and stopped():
+        slot = None
+        def release():
+            # A subagent slot whose call never runs is given back at once, not left to expire.
+            try:
+                if slot is not None:
+                    slot.unlink()
+            except Exception:
+                pass
+        # The orchestrator's stop, or Claude's own percent at the line: a dead daemon can't switch the stop off (M.ORCH-T167),
+        # and neither a stalled one nor an idle session's lower report lifts a stop already seen (latched, M.ORCH-T196).
+        def stop_note():
+            note = orchestrator_stop(status())
+            if note:
+                return note
+            own = claude_stop()
+            return claude_stop_note(own) if own else None
+        def hold_at_stop():
+            # Checked before every other hold and through each of them, so a call held for the pace delay or a subagent slot
+            # when the stop comes on is held on and refused, never let through once its wait ends (M.ORCH-T196: in the
+            # minutes after the 99% stop, calls already held each went through when their own wait ran out).
+            if stop_note() is None:
+                return
+            while time.monotonic() - start < MAX_HOLD and stop_note() is not None:
                 time.sleep(5)
-            if stopped():
+            note = stop_note()
+            if note is not None:
+                release()
                 gate_log("refused", time.monotonic() - start)
-                own = claude_stop()
-                refuse(status().get("stop_note") or (claude_stop_note(own) if own else
-                       "The 5-hour window is at its target: tool calls are refused until it resets. End your turn now."))
+                refuse(note)
+        hold_at_stop()
 
         # /unthrottle exempts one CLI (its process, so subagents and /clear included) from holds until it closes.
         MARKS = Path.home() / ".claude" / "session-context"
@@ -395,7 +498,6 @@ public static class AgentGate
         # Agent calls sent in one message run this together, before any SubagentStart has marked one, so the check
         # and the slot it lets through are one step under a lock (M.ORCH-T197: ~20 got past an allowance of 1-2).
         # The slot counts until the context gate's SubagentStart turns it into the subagent's mark, or it expires.
-        slot = None
         if tool in ("Agent", "Task"):
             SUB = MARKS / "subagents"
             SLOTS = MARKS / "{{SlotDirName}}"
@@ -466,22 +568,18 @@ public static class AgentGate
                     if has_lock:
                         unlock()
                 time.sleep(5)
-        def release():
-            # A slot whose call never runs is given back at once, not left to expire.
-            try:
-                if slot is not None:
-                    slot.unlink()
-            except Exception:
-                pass
+                hold_at_stop()
         try:
             while True:
+                hold_at_stop()
                 waited = time.monotonic() - start
                 left = min(delay(), MAX_HOLD) - waited
                 if left <= 0:
                     break
                 time.sleep(min(left, 5))
+            hold_at_stop()  # the last word before the call runs
         except BaseException:
-            release()  # killed or failed while held: the call doesn't run
+            release()  # killed, failed or refused while held: the call doesn't run
             raise
         if slot is not None:
             try:
@@ -729,6 +827,8 @@ public static class AgentGate
             # At the window's stop a typed message is answered at once by this, not by the model: nothing is spent, so
             # the limit is never passed even by your own prompts. The orchestrator's control commands still go through.
             limits = orchestrator_status()
+            if orchestrator_stop(limits) and not limits.get("stop"):
+                limits = dict(limits, stop=True)  # latched from before the daemon stalled (M.ORCH-T196)
             own = None if limits.get("stop") else claude_stop()
             if own:
                 limits = dict(limits, stop=True, percent_used=own[0], reset_time=datetime.fromtimestamp(own[1]).strftime("%I:%M %p").lstrip("0"))

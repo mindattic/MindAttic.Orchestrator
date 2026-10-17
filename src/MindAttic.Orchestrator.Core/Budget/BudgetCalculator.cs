@@ -308,6 +308,9 @@ public sealed class RateLimitStatusWriter(string? path = null)
             body["stop_note"] = $"The {pace.Governing ?? "5-hour"} window is at its target" +
                 (pace.ResetUtc is { } r ? $" until {Clock(r)}" : "") + "; no more tokens are spent before the reset, so tool calls are refused. " +
                 "End your turn now with one short line saying where you stopped; your uncommitted work stays where it is.";
+            // The hooks latch the stop until then, so a daemon that stalls once it's set can't lift it (M.ORCH-T196).
+            if (pace.ResetUtc is { } until)
+                body["stop_until"] = until.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture) + "Z";
         }
         if (pace is { IsPaced: true })
         {
