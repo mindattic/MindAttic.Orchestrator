@@ -25,6 +25,9 @@ public static class ReportedLimit
     {
         if (reported?.FiveHour is not { } w || samples.Any(s => s.AtUtc == reported.AtUtc)) return false;
         if (samples.Any(s => s.ResetUtc == w.ResetUtc && s.Percent > w.Percent)) return false;
+        // An idle tab keeps stamping its last response's window after that window reset: counted to the report's time, the
+        // next window's tokens would land in it and inflate the limit sized from it.
+        if (w.ResetUtc <= reported.AtUtc) return false;
         var start = w.ResetUtc - BudgetCalculator.BlockLength;
         var fresh = events.Where(e => e.AtUtc >= start && e.AtUtc <= reported.AtUtc).Sum(e => e.Usage.Fresh);
         samples.Add(new UsageSample(reported.AtUtc, w.Percent, w.ResetUtc, fresh));

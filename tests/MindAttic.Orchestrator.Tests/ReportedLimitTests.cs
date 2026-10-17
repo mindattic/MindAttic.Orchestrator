@@ -30,6 +30,16 @@ public sealed class ReportedLimitTests
     }
 
     [Test]
+    public void Record_skips_a_report_made_after_its_window_reset()
+    {
+        // An idle tab restamps its last response (97% of the 9:00-14:00 window) at 14:30: the next window's tokens aren't its.
+        var samples = new List<UsageSample>();
+        Assert.That(ReportedLimit.Record(samples, Report(97, 14.5), [E(14.2, 5_000)], Day.AddHours(14.5)), Is.False);
+        Assert.That(ReportedLimit.Record(samples, Report(97, 14), [], Day.AddHours(14)), Is.False, "at the reset it's already the next window");
+        Assert.That(samples, Is.Empty);
+    }
+
+    [Test]
     public void Record_ignores_a_missing_report_or_five_hour_window()
     {
         var samples = new List<UsageSample>();
