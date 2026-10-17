@@ -47,6 +47,15 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
     /// <summary>Claude's own usage report (claude-usage.json); null reads the real one. Replaceable for tests.</summary>
     internal string? ReportedUsagePath { get; init; }
+
+    /// <summary>Reads Claude's meter when no statusline has for a while and tokens are being spent. By default only a
+    /// process that writes the real rl-status.json under the status lease (the daemon, a dashboard) asks, and only for the
+    /// real claude-usage.json; tests set their own.</summary>
+    internal ClaudeMeterProbe? MeterProbe { get; init; }
+    private ClaudeMeterProbe? defaultProbe;
+    private ClaudeMeterProbe? Probe => MeterProbe ??
+        (ReportedUsagePath is null && statusLease is not null && rateLimitFile?.Path == new RateLimitStatusWriter().Path
+            ? defaultProbe ??= new ClaudeMeterProbe() : null);
     private DateTime auditStamp;
 
     // What the transcripts add up to only changes when they do (M.ORCH-T116): kept until the reader's version or the day moves.
@@ -140,6 +149,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         var events = claudeEvents;
         var calibration = Calibrate(allSessions, events, historyStartUtc, now);
         var reported = ReportedUsage.Load(now, ReportedUsagePath);
+        // No statusline reporting while tokens are spent (a CLI waiting on subagents): read Claude's meter directly (M.ORCH-T203).
+        if (Probe is { } probe && (statusLease is null || statusLease.IsHeld)) probe.Tick(reported?.AtUtc, events, now);
         var reportedLimit = ReportedLimitFrom(reported, events, now);
         reported = ReportedLimit.Highest(samples ?? [], reported, now);
         var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration,

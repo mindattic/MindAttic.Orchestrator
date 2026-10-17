@@ -1,0 +1,194 @@
+using System.Globalization;
+using System.Net.Http.Headers;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
+namespace MindAttic.Orchestrator.Budget;
+
+/// <summary>
+/// Reads Claude's meter itself when no statusline is reporting it while tokens are being spent (M.ORCH-T203).
+/// <c>claude-usage.json</c> is written by the statusline, and a statusline carries only its own session's last reply:
+/// a CLI waiting on foreground subagents spends millions of tokens through them while its statusline keeps stamping the
+/// percent from before they started, which the statusline (rightly) won't write over a higher one. The Oct 17 window
+/// went blind that way for 2h46m (every token in the gaps was a subagent's). So once the last report is
+/// <see cref="StaleAfter"/> old and the transcripts show tokens spent since it, the lease holder asks Claude's own usage
+/// endpoint (what <c>/usage</c> shows) and writes the answer to <c>claude-usage.json</c> in the statusline's format,
+/// where the samples, the budget and the pace hooks already read it.
+/// </summary>
+/// <remarks>Uses Claude Code's saved sign-in read-only: an expired token is skipped (Claude Code refreshes it), never
+/// refreshed here, since refreshing rotates the token Claude Code holds.</remarks>
+public sealed class ClaudeMeterProbe
+{
+    /// <summary>A report this old, with tokens spent since, is refreshed by asking Claude directly. Well inside the
+    /// pace ledger's <see cref="PaceLedger.MinGap"/>, so a window no longer goes blind while anything is spending.</summary>
+    public static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(4);
+
+    /// <summary>How long to wait after a failed ask (no sign-in, rejected, offline) before trying again.</summary>
+    public static readonly TimeSpan Backoff = TimeSpan.FromMinutes(15);
+
+    public const string Endpoint = "https://api.anthropic.com/api/oauth/usage";
+
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
+
+    public static string DefaultCredentialsPath { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", ".credentials.json");
+
+    /// <summary>Where the reading is written; the statusline's file by default.</summary>
+    public string UsagePath { get; init; } = ReportedUsage.DefaultPath;
+
+    public string CredentialsPath { get; init; } = DefaultCredentialsPath;
+
+    /// <summary>Gets Claude's usage JSON; null when it couldn't. Tests swap it.</summary>
+    internal Func<string, CancellationToken, Task<string?>> Fetch { get; init; } = FetchAsync;
+
+    private readonly object gate = new();
+    private DateTime nextUtc;
+
+    /// <summary>The ask in flight (or the last one), for tests to await.</summary>
+    internal Task Pending { get; private set; } = Task.CompletedTask;
+
+    /// <summary>What the last ask did, for the log and tests.</summary>
+    public string? LastResult { get; private set; }
+
+    /// <summary>Whether a fresh reading is needed: the last report (null when there is none) is
+    /// <see cref="StaleAfter"/> old and tokens were spent after it, the latest of them within <see cref="StaleAfter"/>.</summary>
+    public static bool Due(DateTime? reportedAtUtc, IReadOnlyList<UsageEvent> events, DateTime nowUtc)
+    {
+        if (reportedAtUtc is { } at && nowUtc - at < StaleAfter) return false;
+        var since = reportedAtUtc ?? nowUtc - BudgetCalculator.BlockLength;
+        for (var i = events.Count - 1; i >= 0; i--)
+        {
+            var e = events[i];
+            if (e.AtUtc > nowUtc) continue;
+            if (e.AtUtc <= since || nowUtc - e.AtUtc > StaleAfter) return false;
+            if (e.Usage.Fresh > 0) return true;
+        }
+        return false;
+    }
+
+    /// <summary>Starts an ask in the background when <see cref="Due"/> and none is in flight or backing off; returns
+    /// whether it started. The reading lands in <see cref="UsagePath"/> for the next refresh to pick up.</summary>
+    public bool Tick(DateTime? reportedAtUtc, IReadOnlyList<UsageEvent> events, DateTime nowUtc)
+    {
+        if (!Due(reportedAtUtc, events, nowUtc)) return false;
+        lock (gate)
+        {
+            if (!Pending.IsCompleted || nowUtc < nextUtc) return false;
+            nextUtc = nowUtc + StaleAfter;
+            Pending = Task.Run(() => AskAsync(nowUtc));
+        }
+        return true;
+    }
+
+    private async Task AskAsync(DateTime nowUtc)
+    {
+        string? token = null;
+        try { token = Token(CredentialsPath, DateTime.UtcNow); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { }
+        if (token is null)
+        {
+            Fail("no usable Claude sign-in to read the meter with");
+            return;
+        }
+        string? body;
+        try { body = await Fetch(token, CancellationToken.None).ConfigureAwait(false); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException) { body = null; }
+        if (body is null || Parse(body) is not { } reading)
+        {
+            Fail("Claude's usage endpoint gave no reading");
+            return;
+        }
+        try
+        {
+            Write(UsagePath, reading, DateTime.UtcNow);
+            LastResult = $"read Claude's meter: {reading.FiveHour?.Percent:0}% of the 5-hour window";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // A reader or the statusline had the file at that moment: try again at the next due tick, not after a backoff.
+            LastResult = $"couldn't write {Path.GetFileName(UsagePath)}: {ex.Message}";
+        }
+
+        void Fail(string why)
+        {
+            LastResult = why;
+            lock (gate) nextUtc = nowUtc + Backoff;
+        }
+    }
+
+    /// <summary>Claude Code's saved access token, or null when there's none or it has expired.</summary>
+    internal static string? Token(string path, DateTime nowUtc)
+    {
+        if (!File.Exists(path)) return null;
+        using var doc = JsonDocument.Parse(File.ReadAllText(path));
+        if (!doc.RootElement.TryGetProperty("claudeAiOauth", out var o) || o.ValueKind != JsonValueKind.Object ||
+            !o.TryGetProperty("accessToken", out var t) || t.ValueKind != JsonValueKind.String || t.GetString() is not { Length: > 0 } token)
+            return null;
+        if (o.TryGetProperty("expiresAt", out var x) && x.ValueKind == JsonValueKind.Number &&
+            DateTimeOffset.FromUnixTimeMilliseconds(x.GetInt64()).UtcDateTime <= nowUtc)
+            return null;
+        return token;
+    }
+
+    private static async Task<string?> FetchAsync(string token, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, Endpoint);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Headers.Add("anthropic-beta", "oauth-2025-04-20");
+        request.Headers.UserAgent.ParseAdd("MindAttic.Orchestrator");
+        using var response = await Http.SendAsync(request, ct).ConfigureAwait(false);
+        return response.IsSuccessStatusCode ? await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false) : null;
+    }
+
+    /// <summary>The endpoint's 5-hour and 7-day windows; null when it has no 5-hour one. Resets come back a fraction of a
+    /// second off the statusline's (20:29:59.89 for 20:30), so they're rounded to the minute to match its windows.</summary>
+    internal static ReportedUsage? Parse(string body)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var five = Window(doc.RootElement, "five_hour");
+            return five is null ? null : new ReportedUsage(five, Window(doc.RootElement, "seven_day"), default);
+        }
+        catch (JsonException) { return null; }
+
+        static ReportedWindow? Window(JsonElement root, string name) =>
+            root.TryGetProperty(name, out var w) && w.ValueKind == JsonValueKind.Object &&
+            w.TryGetProperty("utilization", out var u) && u.ValueKind == JsonValueKind.Number &&
+            w.TryGetProperty("resets_at", out var r) && r.ValueKind == JsonValueKind.String &&
+            DateTime.TryParse(r.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var reset)
+                ? new ReportedWindow(u.GetDouble(), new DateTime((reset.Ticks + TimeSpan.TicksPerMinute / 2) / TimeSpan.TicksPerMinute * TimeSpan.TicksPerMinute, DateTimeKind.Utc))
+                : null;
+    }
+
+    /// <summary>Writes <paramref name="reading"/> as the statusline does, stamped <paramref name="atUtc"/>. Usage never falls
+    /// within a window, so a higher percent already in the file for the same window is kept (with this, newer, time).</summary>
+    internal static void Write(string path, ReportedUsage reading, DateTime atUtc)
+    {
+        var five = reading.FiveHour!;
+        if (ReportedUsage.Load(atUtc, path)?.FiveHour is { } old && old.ResetUtc == five.ResetUtc && old.Percent > five.Percent)
+            five = old;
+        var limits = new JsonObject { ["five_hour"] = Node(five) };
+        if (reading.Week is { } week) limits["seven_day"] = Node(week);
+        var json = new JsonObject
+        {
+            ["rate_limits"] = limits,
+            ["at"] = atUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture),
+            ["source"] = "orchestrator",
+        }.ToJsonString();
+        var tmp = $"{path}.{Environment.ProcessId}.tmp";
+        File.WriteAllText(tmp, json);
+        try { File.Move(tmp, path, overwrite: true); }
+        catch
+        {
+            try { File.Delete(tmp); } catch (IOException) { }
+            throw;
+        }
+
+        static JsonObject Node(ReportedWindow w) => new()
+        {
+            ["used_percentage"] = w.Percent,
+            ["resets_at"] = new DateTimeOffset(w.ResetUtc).ToUnixTimeSeconds(),
+        };
+    }
+}

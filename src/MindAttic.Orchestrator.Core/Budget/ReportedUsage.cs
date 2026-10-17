@@ -119,7 +119,10 @@ public sealed record ReportedUsage(ReportedWindow? FiveHour, ReportedWindow? Wee
         {
             var file = path ?? DefaultPath;
             if (!File.Exists(file)) return null;
-            using var doc = JsonDocument.Parse(File.ReadAllText(file));
+            // Shared with delete: a statusline renaming its fresh report over this file mid-read must not fail (it left
+            // its .tmp behind and the reading was lost).
+            using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var doc = JsonDocument.Parse(stream);
             var root = doc.RootElement;
             if (!root.TryGetProperty("at", out var a) ||
                 !DateTime.TryParse(a.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var at) ||
