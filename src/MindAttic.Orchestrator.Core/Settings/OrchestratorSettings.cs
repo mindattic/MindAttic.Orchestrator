@@ -178,12 +178,26 @@ public sealed class JsonStore(string? directory = null)
     /// A briefly locked file is retried: callers load, change and save, so defaults here would be saved over the real file.</summary>
     public T Load<T>(string name) where T : new()
     {
+        TryLoad<T>(name, out var value);
+        return value;
+    }
+
+    /// <summary>Like <see cref="Load{T}"/>, but says whether the file was read: false (with defaults) when it exists and
+    /// couldn't be, so a caller holding an earlier copy keeps that rather than taking an empty one for the truth.</summary>
+    public bool TryLoad<T>(string name, out T value) where T : new()
+    {
         var path = PathOf(name);
-        if (!File.Exists(path)) return new T();
-        try { return JsonSerializer.Deserialize<T>(Retry(() => File.ReadAllText(path)), Options) ?? new T(); }
-        catch (JsonException) { return new T(); }
-        catch (IOException) { return new T(); }
-        catch (UnauthorizedAccessException) { return new T(); } // denied, or still locked past Busy
+        value = new T();
+        if (!File.Exists(path)) return true;
+        try
+        {
+            value = JsonSerializer.Deserialize<T>(Retry(() => File.ReadAllText(path)), Options) ?? new T();
+            return true;
+        }
+        catch (FileNotFoundException) { return true; } // removed since the check: missing, as above
+        catch (JsonException) { return false; }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; } // denied, or still locked past Busy
     }
 
     public void Save<T>(string name, T value)

@@ -281,6 +281,94 @@ public sealed class StatusAggregatorTests
         Assert.That(store.Load<List<UsageSample>>("usage-samples"), Has.Count.EqualTo(1), "not saved while locked");
     }
 
+    // M.ORCH-T245: once a minute from 04:37 to 04:58Z on Oct 17 an idle tab's statusline stamped its last reply from the
+    // window that reset at 00:10Z into claude-usage.json; that tick had no 5-hour window, so no limit: the pace went
+    // unpaced and rl-status.json was withdrawn, and every call the gate was holding went through at once.
+
+    private void Report(string path, double percent, DateTime resetUtc, DateTime atUtc) =>
+        File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(new
+        {
+            rate_limits = new { five_hour = new { used_percentage = percent, resets_at = new DateTimeOffset(resetUtc).ToUnixTimeSeconds() } },
+            at = atUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture),
+        }));
+
+    private (StatusAggregator Aggregator, string Report, string RlStatus) PacedOnReports()
+    {
+        Transcript("s1", Path.Combine(ws, "A"), TimeSpan.FromMinutes(2), 50_000, 60_000, 70_000);
+        var reportPath = Path.Combine(dir, "claude-usage.json");
+        var rlPath = Path.Combine(dir, "rl-status.json");
+        var aggregator = new StatusAggregator(new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null },
+            store, new RateLimitStatusWriter(rlPath))
+        {
+            ScanHosts = () => hosts, OtherProviders = new ProviderLogReader(Path.Combine(dir, "codex"), Path.Combine(dir, "gemini")), ReportedUsagePath = reportPath,
+        };
+        return (aggregator, reportPath, rlPath);
+    }
+
+    [Test]
+    public void An_idle_tabs_report_from_a_reset_window_keeps_the_limit_while_usage_samples_is_unreadable()
+    {
+        var (aggregator, reportPath, rlPath) = PacedOnReports();
+        var reset = Seconds(DateTime.UtcNow.AddMinutes(33));
+        var at = Seconds(DateTime.UtcNow.AddMinutes(-1));
+        store.Save("usage-samples", new List<UsageSample> { new(at.AddHours(-1), 60, reset, 100_000), new(at.AddMinutes(-1), 80, reset, 200_000) });
+        Report(reportPath, 82, reset, at);
+        var before = aggregator.Refresh();
+        Assert.That((before.Budget!.BlockLimitSource, before.Pace!.IsPaced), Is.EqualTo((LimitSource.Reported, true)));
+
+        // Another process's save caught mid-write (or held past the store's retries), and the idle tab's minute comes round.
+        var samplesPath = Path.Combine(store.Directory, "usage-samples.json");
+        File.WriteAllText(samplesPath, "[ {");
+        Report(reportPath, 96, Seconds(DateTime.UtcNow.AddHours(-4.5)), Seconds(DateTime.UtcNow));
+        var tick = aggregator.Refresh();
+
+        Assert.That((tick.Budget!.BlockLimitIsPeak, tick.Budget.BlockLimitSource, tick.Budget.BlockLimit),
+            Is.EqualTo((false, LimitSource.Reported, before.Budget.BlockLimit)), "the running window's limit, not none");
+        Assert.That(tick.Budget.CurrentBlock!.EndUtc, Is.EqualTo(reset), "counted against the window still running");
+        Assert.That(tick.Pace!.IsPaced, Is.True, "not 'unpaced: nothing to pace against'");
+        using (var rl = System.Text.Json.JsonDocument.Parse(File.ReadAllText(rlPath)))
+            Assert.That(rl.RootElement.TryGetProperty("percent_used", out _) && rl.RootElement.TryGetProperty("pace", out _), Is.True,
+                "rl-status.json still carries the percent and the pace for the gate");
+        Assert.That(File.ReadAllText(samplesPath), Is.EqualTo("[ {"), "the unreadable file isn't saved over with what this tick saw");
+    }
+
+    [Test]
+    public void A_report_with_no_running_5_hour_window_keeps_the_last_reports_window_while_it_runs()
+    {
+        var (aggregator, reportPath, _) = PacedOnReports();
+        var reset = Seconds(DateTime.UtcNow.AddMinutes(33));
+        Report(reportPath, 30, reset, Seconds(DateTime.UtcNow.AddMinutes(-1)));
+        var before = aggregator.Refresh().Budget!;
+        Assert.That(before.BlockLimitSource, Is.EqualTo(LimitSource.Reported));
+
+        // No sample of the running window to fall back on (the week's file is gone), and the idle tab's stale report.
+        File.Delete(Path.Combine(store.Directory, "usage-samples.json"));
+        Report(reportPath, 96, Seconds(DateTime.UtcNow.AddHours(-4.5)), Seconds(DateTime.UtcNow));
+        var tick = aggregator.Refresh();
+
+        Assert.That((tick.Budget!.BlockLimitIsPeak, tick.Budget.BlockLimitSource, tick.Budget.CurrentBlock!.EndUtc),
+            Is.EqualTo((false, LimitSource.Reported, reset)), "the last report's window is kept until it resets");
+        Assert.That(tick.Pace!.IsPaced, Is.True);
+    }
+
+    [Test]
+    public void A_usage_samples_file_unreadable_on_the_first_refresh_is_read_once_it_can_be_not_saved_over()
+    {
+        var (aggregator, reportPath, _) = PacedOnReports();
+        var reset = Seconds(DateTime.UtcNow.AddMinutes(33));
+        var at = Seconds(DateTime.UtcNow.AddMinutes(-1));
+        store.Save("usage-samples", new List<UsageSample> { new(at.AddHours(-1), 10, reset, 100_000) });
+        Report(reportPath, 30, reset, at);
+        var samplesPath = Path.Combine(store.Directory, "usage-samples.json");
+
+        using (new FileStream(samplesPath, FileMode.Open, FileAccess.Read, FileShare.None))
+            aggregator.Refresh();
+        aggregator.Refresh();
+
+        Assert.That(store.Load<List<UsageSample>>("usage-samples"), Has.Count.EqualTo(2),
+            "reread once free: the week plus this report, not this report alone over an empty week");
+    }
+
     [Test]
     public void A_one_off_aggregator_whose_lease_is_held_elsewhere_shows_the_published_snapshot_and_never_writes_rlstatus()
     {

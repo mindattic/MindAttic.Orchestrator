@@ -68,6 +68,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     private List<UsageSample>? samples;
     private DateTime samplesStamp;
     private long? samplesEstimate;
+    // The last report with a usable 5-hour window: carried while that window runs, so one tick without one never drops the limit.
+    private ReportedUsage? lastReported;
     private DateTime historySavedUtc;
     private IReadOnlyDictionary<string, IReadOnlySet<string>> links = new Dictionary<string, IReadOnlySet<string>>();
 
@@ -153,6 +155,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         if (Probe is { } probe && (statusLease is null || statusLease.IsHeld)) probe.Tick(reported?.AtUtc, events, now);
         var reportedLimit = ReportedLimitFrom(reported, events, now);
         reported = ReportedLimit.Highest(samples ?? [], reported, now);
+        reported = KeepWindow(reported, now);
         var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration,
             reported: reported, reportedLimit: reportedLimit);
 
@@ -222,7 +225,11 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         var stamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default;
         if (samples is null || stamp != samplesStamp)
         {
-            samples = Store.Load<List<UsageSample>>("usage-samples");
+            // A file another process holds past the store's retries (or catches mid-write) isn't an empty week: keep what was
+            // read before and try again next tick. Taken as empty, the running window's samples were gone for that tick (no
+            // 5-hour limit, so no pace, M.ORCH-T245), the stamp stopped it rereading, and the next sample saved over the week.
+            if (!Store.TryLoad<List<UsageSample>>("usage-samples", out var loaded)) return samplesEstimate;
+            samples = loaded;
             samplesStamp = stamp;
             samplesEstimate = ReportedLimit.Estimate(samples);
         }
@@ -239,6 +246,26 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
         return samplesEstimate;
+    }
+
+    /// <summary>
+    /// <paramref name="reported"/>, or, when it has no 5-hour window still running (an idle tab restamping its last reply
+    /// from a window that already reset, a report with no 5-hour part), the last one that had, while that window runs.
+    /// Without a 5-hour window the budget had no limit to count against, so the pace went unpaced for that tick and
+    /// rl-status.json was withdrawn: every call held at the pace went through at once (M.ORCH-T245, Oct 17 04:37-04:58Z,
+    /// once a minute as an idle tab's statusline redrew). The samples' running window covers this too; this keeps the
+    /// limit when they can't (not recorded yet, or unreadable).
+    /// </summary>
+    private ReportedUsage? KeepWindow(ReportedUsage? reported, DateTime now)
+    {
+        if (ReportedUsage.Usable(reported?.FiveHour, now) is not null)
+        {
+            lastReported = reported;
+            return reported;
+        }
+        if (lastReported?.FiveHour is not { } kept || kept.ResetUtc <= now) return reported;
+        return reported is null ? lastReported
+            : new ReportedUsage(kept, reported.Week, lastReported.AtUtc) { WeekAtUtc = reported.WeekAt };
     }
 
     private LimitCalibration Calibrate(IReadOnlyList<TranscriptSession> sessions, IReadOnlyList<UsageEvent> events, DateTime historyStartUtc, DateTime now)
