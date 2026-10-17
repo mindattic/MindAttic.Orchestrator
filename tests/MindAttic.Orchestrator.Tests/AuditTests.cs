@@ -1,3 +1,5 @@
+using System.Security.AccessControl;
+using System.Security.Principal;
 using MindAttic.Orchestrator.Audit;
 using NUnit.Framework;
 
@@ -132,6 +134,72 @@ public sealed class AuditTests
         Assert.That(latest.Missing, Is.EqualTo(report.Missing));
         Assert.That(latest.Duplicates.Select(g => (g.Identical, string.Join(",", g.Files.Select(f => $"{f.Repo}:{f.Path}")))),
             Is.EqualTo(report.Duplicates.Select(g => (g.Identical, string.Join(",", g.Files.Select(f => $"{f.Repo}:{f.Path}"))))));
+    }
+
+    [Test]
+    public void An_agent_file_that_cant_be_read_is_skipped_instead_of_failing_the_run()
+    {
+        var repos = new[] { "Alpha", "Beta", "Gamma", "Delta" }.Select(n => Repo(n, new()
+        {
+            [".claude/hooks/load.ps1"] = string.Format(Hook, n) + (n == "Delta" ? "Remove-Item -Recurse x\n" : ""),
+            [".claude/commands/quicksave.md"] = n == "Delta" ? "save it somewhere else" : "save",
+        })).ToArray();
+        var file = new FileInfo(Path.Combine(repos[3].Path, ".claude", "hooks", "load.ps1"));
+        var deny = new FileSystemAccessRule(WindowsIdentity.GetCurrent().User!, FileSystemRights.ReadData, AccessControlType.Deny);
+        var acl = file.GetAccessControl();
+        acl.AddAccessRule(deny);
+        file.SetAccessControl(acl);
+        try
+        {
+            Assert.That(() => File.ReadAllText(file.FullName), Throws.InstanceOf<UnauthorizedAccessException>(), "the setup really denies reading");
+
+            var (drift, _) = ConventionAudit.Run(repos);
+
+            var d = drift.Single();
+            Assert.That((d.Repo, d.File), Is.EqualTo(("Delta", ".claude/commands/quicksave.md")),
+                "the unreadable hook is left out; the same repo's readable files are still audited");
+        }
+        finally
+        {
+            acl = file.GetAccessControl();
+            acl.RemoveAccessRule(deny);
+            file.SetAccessControl(acl);
+        }
+    }
+
+    [TestCase(@"C:\W\A\.claude\commands\quicksave.md", "mindattic-agent-standard")]
+    [TestCase(@"C:\W\A\.claude\hooks\load.ps1", "mindattic-agent-standard")]
+    [TestCase("C:/W/A/.prose/commands/x.md", "mindattic-agent-standard")]
+    [TestCase(@"C:\W\A\Views\Main.xaml", "MindAttic.Components (WPF)")]
+    [TestCase(@"C:\W\A\Pages\Index.razor", "MindAttic.Components (web/Blazor)")]
+    [TestCase(@"C:\W\A\wwwroot\site.CSS", "MindAttic.Components (web/Blazor)")]
+    [TestCase(@"C:\W\A\app\main.tsx", "MindAttic.Components (web/Blazor)")]
+    [TestCase(@"C:\W\A\deploy.ps1", "MindAttic.Deploy or mindattic-agent-standard")]
+    [TestCase(@"C:\W\A\tools\Build.psm1", "MindAttic.Deploy or mindattic-agent-standard")]
+    [TestCase(@"C:\W\A\scripts\run.py", "a shared Python package")]
+    [TestCase(@"C:\W\A\src\Util.cs", "MindAttic.Helpers (or a new shared package)")]
+    public void Duplication_suggests_the_home_for_its_kind_of_file(string path, string home) =>
+        Assert.That(DuplicationAudit.HomeFor(path), Is.EqualTo(home));
+
+    [Test]
+    public void Run_saves_audit_json_and_latest_is_null_when_it_is_corrupt()
+    {
+        foreach (var name in new[] { "Alpha", "Beta" })
+            Directory.CreateDirectory(Path.Combine(Repo(name, new() { ["src/Util.cs"] = Code("Util") }).Path, ".git"));
+        var dir = Path.Combine(root, "store");
+        var runner = new AuditRunner(new OrchestratorOptions { WorkspaceRoot = root }, new MindAttic.Orchestrator.Settings.JsonStore(dir));
+
+        runner.Run();
+
+        var json = Path.Combine(dir, "audit.json");
+        Assert.That(File.Exists(json), Is.True, "the report is kept as audit.json");
+        Assert.That(runner.Latest(), Is.Not.Null);
+
+        File.WriteAllText(json, "{ \"RanUtc\": \"2026-10-17T00:00:00Z\", \"Drift\": [ trunc");
+        Assert.That(runner.Latest(), Is.Null, "half-written JSON reads as no audit, not an exception");
+
+        File.WriteAllText(json, "{}");
+        Assert.That(runner.Latest(), Is.Null, "a report with no run time isn't a report");
     }
 
     [Test]
