@@ -188,7 +188,9 @@ internal sealed class SendCommand : AsyncCommand<SendCommand.Settings>
         }
         var sent = 0;
         foreach (var h in repo.Hosts)
-            if (await SessionControl.SendAsync(h.PipeName, settings.Text, !settings.NoSubmit)) sent++;
+            // Text and Enter sent together read as a paste and leave the prompt unsent: Enter goes as a keystroke of its own.
+            if (settings.NoSubmit ? await SessionControl.SendAsync(h.PipeName, settings.Text, submit: false)
+                                  : await SessionControl.SubmitAsync(h.PipeName, settings.Text)) sent++;
         AnsiConsole.MarkupLine($"Delivered to {sent} of {repo.Hosts.Count} session(s).");
         return sent > 0 ? 0 : 1;
     }
