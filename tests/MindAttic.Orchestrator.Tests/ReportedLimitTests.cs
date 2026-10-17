@@ -162,6 +162,7 @@ public sealed class ReportedLimitTests
         Assert.That(raised!.FiveHour!.Percent, Is.EqualTo(35));
         Assert.That(raised.AtUtc, Is.EqualTo(Day.AddHours(10.6)), "local spend is added from the latest sample at that percent");
         Assert.That(raised.FiveHour.ResetUtc, Is.EqualTo(Reset));
+        Assert.That(raised.WeekAt, Is.EqualTo(Day.AddHours(11)), "the week still comes from the current report, and is sized as of its time");
         Assert.That(ReportedLimit.Highest(samples, Report(40, 11)), Is.EqualTo(Report(40, 11)), "a higher report stands");
         Assert.That(ReportedLimit.Highest(samples, null), Is.Null);
     }
@@ -177,6 +178,7 @@ public sealed class ReportedLimitTests
 
         Assert.That(raised!.FiveHour, Is.EqualTo(new ReportedWindow(36, Reset)));
         Assert.That(raised.AtUtc, Is.EqualTo(Day.AddHours(10.5)));
+        Assert.That(raised.WeekAt, Is.EqualTo(Day.AddHours(11)), "the week is the current report's");
         Assert.That(ReportedLimit.Highest(samples, null, now)!.FiveHour!.Percent, Is.EqualTo(36), "no report at all");
         Assert.That(ReportedLimit.Highest([], Report(26, 11, Reset.AddHours(-5)), now), Is.EqualTo(Report(26, 11, Reset.AddHours(-5))),
             "nothing recorded for the running window: left as it was");

@@ -66,12 +66,13 @@ public static class ReportedLimit
             var running = samples.Where(s => s.ResetUtc > now && s.AtUtc <= now)
                 .OrderByDescending(s => s.Percent).ThenByDescending(s => s.AtUtc).FirstOrDefault();
             if (running is not null)
-                return new ReportedUsage(new ReportedWindow(running.Percent, running.ResetUtc), reported?.Week, running.AtUtc);
+                return new ReportedUsage(new ReportedWindow(running.Percent, running.ResetUtc), reported?.Week, running.AtUtc)
+                    { WeekAtUtc = reported?.WeekAt };
         }
         if (reported?.FiveHour is not { } w) return reported;
         var best = samples.Where(s => s.ResetUtc == w.ResetUtc && s.Percent > w.Percent)
             .OrderByDescending(s => s.Percent).ThenByDescending(s => s.AtUtc).FirstOrDefault();
-        return best is null ? reported : reported with { FiveHour = w with { Percent = best.Percent }, AtUtc = best.AtUtc };
+        return best is null ? reported : reported with { FiveHour = w with { Percent = best.Percent }, AtUtc = best.AtUtc, WeekAtUtc = reported.WeekAt };
     }
 }
 
@@ -83,6 +84,14 @@ public static class ReportedLimit
 /// </summary>
 public sealed record ReportedUsage(ReportedWindow? FiveHour, ReportedWindow? Week, DateTime AtUtc)
 {
+    /// <summary>When <see cref="Week"/> was reported, where that differs from <see cref="AtUtc"/>: the 5-hour percent (and
+    /// its time) may be swapped for an older, higher sample by <see cref="ReportedLimit.Highest"/>, but the week still
+    /// comes from the current report, so its limit is sized by the tokens spent up to the current report's time.</summary>
+    public DateTime? WeekAtUtc { get; init; }
+
+    /// <summary>The time the weekly percent describes.</summary>
+    public DateTime WeekAt => WeekAtUtc ?? AtUtc;
+
     public static string DefaultPath { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "claude-usage.json");
 

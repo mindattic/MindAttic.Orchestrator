@@ -195,7 +195,7 @@ public static class BudgetCalculator
         var weeklyRefuted = learnedWeekly is { } lw && weeklyWall is null && week.Fresh > lw;
         if (weeklyRefuted) learnedWeekly = null;
         var (weeklySource, weeklyLimit) = settings.WeeklyBudget is > 0 ? (LimitSource.Manual, settings.WeeklyBudget)
-            : reportedWeek is { Percent: >= ReportedUsage.MinPercent } && ImpliedLimit(events, reportedWeek, TimeSpan.FromDays(7), reported?.AtUtc) is { } repW ? (LimitSource.Reported, repW)
+            : reportedWeek is { Percent: >= ReportedUsage.MinPercent } && ImpliedLimit(events, reportedWeek, TimeSpan.FromDays(7), reported?.WeekAt) is { } repW ? (LimitSource.Reported, repW)
             : learnedWeekly is { } limW ? (LimitSource.Learned, limW)
             : ((LimitSource?)null, (long?)null);
         double? weeklyPercent = reportedWeek is not null && settings.WeeklyBudget is not > 0 ? reportedWeek.Percent
