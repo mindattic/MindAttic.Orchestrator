@@ -283,13 +283,16 @@ public sealed partial class MainViewModel
     public string SlotsText => plan is null ? ""
         : plan.Cap < plan.Slots ? $"{plan.Occupied} sessions open · pacing allows {plan.Cap} of {plan.Slots}"
         : $"{plan.Occupied} sessions open · fills up to {plan.Slots}";
-    public string AutopilotText => (!autopilot.On
-            ? "Proposals wait for you. Type /autopilot in any CLI to have each open repo's stories worked in the background."
-            : autopilot.Repos.Count == 0 ? "Autopilot is on, but no Claude CLI is open in a repo it covers."
-            : autopilot.Paused is { } why ? $"Autopilot is on for {string.Join(", ", autopilot.Repos)} but holding: {why}."
-            : $"Autopilot is on for {string.Join(", ", autopilot.Repos)}, paced to the 5-hour window" + (autopilot.HeldElsewhere ? " (run by the background daemon)." : ".")) +
-        (autopilot.Working.Count == 0 ? "" : $" Working in the background: {string.Join(", ", autopilot.Working.Select(a => $"{a.TicketId} in {a.Repo}"))}.") +
-        (!autopilot.On || autopilot.LeftAlone.Count == 0 ? "" : $" Leaving alone: {string.Join(", ", autopilot.LeftAlone.Select(kv => $"{kv.Key} ({kv.Value})"))}.");
+    // /autopilot is on per CLI (its marks, M.ORCH-T164), as `orchestrator settings` reports it: the dashboard's own Autopilot
+    // has no order to read, so it always read as off.
+    public string AutopilotText => AutopilotLine(new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis()) +
+        (autopilot.Working.Count == 0 ? "" : $" Working in the background: {string.Join(", ", autopilot.Working.Select(a => $"{a.TicketId} in {a.Repo}"))}.");
+
+    internal static string AutopilotLine(IReadOnlyDictionary<int, IReadOnlyList<string>> clis) => clis.Count == 0
+        ? "Proposals wait for you. Type /autopilot in a CLI to have its repos' tickets worked by its own subagents."
+        : $"Autopilot is on in {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} for " +
+          string.Join(", ", clis.Values.SelectMany(r => r).Select(r => r == Autopilot.AllRepos ? "every repo" : r).Distinct(StringComparer.OrdinalIgnoreCase)) +
+          ", each through its own subagents, paced to the 5-hour window.";
     public string QueueMessage { get => queueMessage; private set => Set(ref queueMessage, value); }
     public int QueueCount => Queue.Count(q => !q.IsAssigned);
 

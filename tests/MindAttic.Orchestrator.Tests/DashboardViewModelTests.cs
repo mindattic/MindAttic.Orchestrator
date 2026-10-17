@@ -51,6 +51,16 @@ public sealed class DashboardViewModelTests
     public void A_focus_shows_only_its_own_group_and_never_quiet(Focus focus, bool waiting, bool working, bool tickets) =>
         Assert.That(MainViewModel.GroupVisibility(1, 1, 1, 1, focus, showQuiet: true, "x"), Is.EqualTo((waiting, working, tickets, false)));
 
+    // ── Autopilot line ──────────────────────────────────────────────────────
+
+    [Test]
+    public void The_queue_says_autopilot_is_on_from_the_clis_that_typed_it()
+    {
+        Assert.That(MainViewModel.AutopilotLine(new Dictionary<int, IReadOnlyList<string>>()), Does.StartWith("Proposals wait for you"));
+        var on = MainViewModel.AutopilotLine(new Dictionary<int, IReadOnlyList<string>> { [1] = ["Prose"], [2] = ["prose", "GTFO.*"], [3] = ["*"] });
+        Assert.That(on, Is.EqualTo("Autopilot is on in 3 CLIs for Prose, GTFO.*, every repo, each through its own subagents, paced to the 5-hour window."));
+    }
+
     // ── Toast pruning ───────────────────────────────────────────────────────
 
     [Test]
