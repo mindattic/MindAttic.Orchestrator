@@ -94,6 +94,20 @@ public sealed class BudgetReportedPathTests
     }
 
     [Test]
+    public void A_learned_limit_this_window_disproved_never_sizes_the_reported_one()
+    {
+        // Learned 5,000 from an old wall; this window has spent 7,000 with no wall, and Claude says 70% at 11:00 with no
+        // usage samples moved enough to size it yet: the window's own tokens over its percent size it, not the stale 5,000.
+        var learned = new LimitCalibration([new LimitObservation(LimitKind.Session, Day.AddDays(-2), Day.AddDays(-2).AddHours(1), 5_000)]);
+        var events = new[] { E(10.5, 7_000) };
+
+        var s = BudgetCalculator.Compute(events, new OrchestratorSettings(), Day.AddHours(11.5), Day, TimeZoneInfo.Utc,
+            learned: learned, reported: Report(70, 15, 11));
+
+        Assert.That((s.BlockLimitSource, s.BlockLimit, s.BlockLimitOutdated), Is.EqualTo((LimitSource.Reported, 9_859L, true)), "7,000 over 71%");
+    }
+
+    [Test]
     public void A_report_under_MinPercent_is_not_used_to_size_the_limit()
     {
         var events = new[] { E(10.5, 400) };

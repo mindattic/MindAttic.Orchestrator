@@ -137,20 +137,22 @@ public static class BudgetCalculator
                 inBlock.Count > 0 ? inBlock.Max(e => e.AtUtc) : sessionWall?.HitUtc ?? start);
         }
         var currentFresh = current?.Usage.Fresh ?? 0;
-        // With Claude's own percent, the limit's size comes from how the percent moved between reports
-        // (reportedLimit), else the learned one, else (5%+) this window's tokens over its percent.
-        var reportedLimit5h = reported5h is null ? null
-            : reportedLimit ?? learned?.Learned5h ?? (reported5h.Percent >= ReportedUsage.MinPercent ? ImpliedLimit(events, reported5h, BlockLength, reported?.AtUtc) : null);
-
-        // Without a budget, compare against the heaviest earlier block: "how hard am I going vs usual".
-        // It can pass 100%, and it isn't a limit, so it never warns or projects.
-        var peak = blocks.Where(b => b.EndUtc <= (current?.StartUtc ?? nowUtc)).Select(b => b.Usage.Fresh).DefaultIfEmpty(0).Max();
 
         // Limits move. Spending past a learned limit without hitting a wall proves it's out of date,
         // so drop it until the next hit relearns it rather than report a wall that isn't there.
         var learned5h = learned?.Learned5h;
         var blockRefuted = learned5h is { } l5 && sessionWall is null && currentFresh > l5;
         if (blockRefuted) learned5h = null;
+
+        // With Claude's own percent, the limit's size comes from how the percent moved between reports
+        // (reportedLimit), else the learned one (unless this window disproved it), else (5%+) this window's tokens over its percent.
+        var reportedLimit5h = reported5h is null ? null
+            : reportedLimit ?? learned5h ?? (reported5h.Percent >= ReportedUsage.MinPercent ? ImpliedLimit(events, reported5h, BlockLength, reported?.AtUtc) : null);
+
+        // Without a budget, compare against the heaviest earlier block: "how hard am I going vs usual".
+        // It can pass 100%, and it isn't a limit, so it never warns or projects.
+        var peak = blocks.Where(b => b.EndUtc <= (current?.StartUtc ?? nowUtc)).Select(b => b.Usage.Fresh).DefaultIfEmpty(0).Max();
+
         var (blockSource, blockLimit) = settings.BlockBudget is { } manual ? (LimitSource.Manual, manual)
             : reportedLimit5h is { } rep5 ? (LimitSource.Reported, rep5)
             : learned5h is { } lim5 ? (LimitSource.Learned, lim5)
