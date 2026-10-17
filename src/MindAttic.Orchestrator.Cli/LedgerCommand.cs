@@ -45,10 +45,10 @@ internal sealed class LedgerCommand : Command<LedgerCommand.Settings>
 
         if (settings.Csv is { } csv)
         {
-            var sb = new StringBuilder("start_utc,end_utc,grade,peak_percent,final_percent,uncached_tokens,samples,minutes_at_target,limit_hit_utc,weekly_hit_utc,held,held_minutes,refused,prompts_answered,blind_minutes,why\n");
+            var sb = new StringBuilder("start_utc,end_utc,grade,peak_percent,final_percent,uncached_tokens,samples,minutes_at_target,limit_hit_utc,weekly_hit_utc,held,held_minutes,refused,prompts_answered,blind_minutes,why,exempt\n");
             foreach (var w in rows)
                 sb.Append(CultureInfo.InvariantCulture,
-                    $"{w.StartUtc:O},{w.EndUtc:O},{w.Grade},{w.PeakPercent},{w.FinalPercent},{w.Fresh},{w.Samples},{w.MinutesAtTarget},{w.LimitHitUtc:O},{w.WeeklyHitUtc:O},{w.Held},{w.HeldMinutes},{w.Refused},{w.PromptsAnswered},{Math.Round(w.Blind.TotalMinutes)},\"{w.Why.Replace("\"", "\"\"")}\"\n");
+                    $"{w.StartUtc:O},{w.EndUtc:O},{w.Grade},{w.PeakPercent},{w.FinalPercent},{w.Fresh},{w.Samples},{w.MinutesAtTarget},{w.LimitHitUtc:O},{w.WeeklyHitUtc:O},{w.Held},{w.HeldMinutes},{w.Refused},{w.PromptsAnswered},{Math.Round(w.Blind.TotalMinutes)},\"{w.Why.Replace("\"", "\"\"")}\",{w.Exempt}\n");
             File.WriteAllText(csv, sb.ToString());
             AnsiConsole.MarkupLine($"Wrote {rows.Count} windows to {Markup.Escape(Path.GetFullPath(csv))}.");
         }
@@ -67,7 +67,7 @@ internal sealed class LedgerCommand : Command<LedgerCommand.Settings>
             w.FinalPercent is { } f ? $"{f:0}%" : "–",
             Formatting.Tokens(w.Fresh),
             w.MinutesAtTarget > 0 ? $"{w.MinutesAtTarget:0}m" : "",
-            w.Held > 0 ? $"{w.Held} ({w.HeldMinutes:0.#}m)" : "",
+            (w.Held > 0 ? $"{w.Held} ({w.HeldMinutes:0.#}m)" : "") + (w.Exempt > 0 ? $" +{w.Exempt} exempt" : ""),
             w.Refused + w.PromptsAnswered > 0 ? $"{w.Refused}" + (w.PromptsAnswered > 0 ? $" +{w.PromptsAnswered} typed" : "") : "",
             Markup.Escape(running is not null && w.Grade is WindowGrade.Ok or WindowGrade.Under ? $"at {w.FinalPercent:0}% so far" : w.Why),
         ];

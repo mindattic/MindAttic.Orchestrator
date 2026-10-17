@@ -10,7 +10,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly JsonStore store;
     private readonly Action saved;
     private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "",
-        maxDelay = "", contextPercent = "";
+        maxDelay = "", contextPercent = "", exemptCommands = "";
     private bool autopilot, pacing, throttleAgents, contextCycle;
 
     public SettingsViewModel(JsonStore store, Action saved)
@@ -34,6 +34,8 @@ public sealed class SettingsViewModel : ObservableObject
     public string MaxDelay { get => maxDelay; set => Set(ref maxDelay, value); }
     public bool ContextCycle { get => contextCycle; set => Set(ref contextCycle, value); }
     public string ContextPercent { get => contextPercent; set => Set(ref contextPercent, value); }
+    /// <summary>The commands exempt from pacing (M.ORCH-T198), comma-separated; blank exempts none.</summary>
+    public string ExemptCommands { get => exemptCommands; set => Set(ref exemptCommands, value); }
     public string Error { get => error; private set => Set(ref error, value); }
     public IReadOnlyList<string> Providers => Sessions.SessionControl.Providers;
     public string FilePath => System.IO.Path.Combine(store.Directory, "settings.json");
@@ -55,6 +57,7 @@ public sealed class SettingsViewModel : ObservableObject
         MaxDelay = s.MaxAgentDelaySeconds.ToString(CultureInfo.InvariantCulture);
         ContextCycle = s.ContextCycle;
         ContextPercent = s.ContextCyclePercent.ToString(CultureInfo.InvariantCulture);
+        ExemptCommands = string.Join(", ", s.ExemptCommands);
         Error = "";
     }
 
@@ -75,6 +78,7 @@ public sealed class SettingsViewModel : ObservableObject
             BlockBudget = block, WeeklyBudget = weekly, WeeklyReset = reset?.ToString(), WarnPercent = warn, MaxConcurrentSessions = max,
             DefaultProvider = Provider, Autopilot = Autopilot, Pacing = Pacing, PaceTargetPercent = target,
             ThrottleAgents = ThrottleAgents, MaxAgentDelaySeconds = delay, ContextCycle = false,ContextCyclePercent = cycleAt,
+            ExemptCommands = OrchestratorSettings.ParseCommands(ExemptCommands),
         });
         Load();
         saved();

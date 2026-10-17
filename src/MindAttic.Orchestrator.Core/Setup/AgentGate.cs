@@ -121,6 +121,27 @@ public static class AgentGate
             return None
         """;
 
+    /// <summary>Python shared by both hooks (needs <c>json</c>, <c>os</c>, <c>re</c> and <c>Path</c>): the commands exempt from
+    /// orchestration pacing (<see cref="Settings.OrchestratorSettings.ExemptCommands"/>), read live from the orchestrator's
+    /// settings.json so an edit applies to the next prompt, and which of them a prompt or Skill names (M.ORCH-T198).</summary>
+    internal static string ExemptPython => $$"""
+        EXEMPT_DEFAULT = [{{string.Join(", ", Settings.OrchestratorSettings.DefaultExemptCommands.Select(c => "\"" + c + "\""))}}]
+        def exempt_commands():
+            try:
+                names = json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "settings.json").read_text()).get("ExemptCommands")
+            except Exception:
+                names = None
+            if not isinstance(names, list):
+                names = EXEMPT_DEFAULT
+            return {str(n).strip().lstrip("/").lower() for n in names if str(n).strip().lstrip("/")}
+        def exempt_prompt(text):
+            # The exempt command a typed prompt starts with ("/deploy now" -> "/deploy"), or None.
+            m = re.match(r"\s*/([^\s/]+)(?:\s|$)", text or "")
+            return "/" + m.group(1).lower() if m and m.group(1).lower() in exempt_commands() else None
+        def exempt_skill(name):
+            return bool(name) and str(name).strip().lstrip("/").lower() in exempt_commands()
+        """;
+
     // The context gate acts on these when they're typed (UserPromptSubmit); the files make them real slash commands.
     internal const string UnthrottleCommand = """
         ---
@@ -321,6 +342,30 @@ public static class AgentGate
                 permissionDecisionReason="Searching a whole drive or the filesystem root is blocked: it never finishes and leaks handles until "
                 "Windows freezes. Search the specific folder instead (a repo under D:\\Projects\\MindAttic, or a known install folder), "
                 "or use the Glob/Grep tools with a path."))))
+            raise SystemExit(0)
+
+        # Exempt commands (M.ORCH-T198): a turn typed as one of them (the context gate marks its session state) and a Skill
+        # call naming one skip every pacing gate below: no pace delay, no subagent hold, no stop refusal. Each is logged as
+        # "exempt" and the daemon is told to recount, so the spend still lands in the pace at once.
+        {{ExemptPython}}
+        def exempt_turn():
+            sid = re.sub(r"[^A-Za-z0-9_.-]", "_", str(data.get("session_id") or ""))
+            if not sid:
+                return False
+            for _ in range(20):
+                try:
+                    return bool(json.loads((Path.home() / ".claude" / "session-context" / (sid + ".state.json")).read_text()).get("exempt"))
+                except PermissionError:
+                    time.sleep(0.05)
+                except Exception:
+                    return False
+            return False
+        if exempt_turn() or (tool == "Skill" and exempt_skill((data.get("tool_input") or {}).get("skill"))):
+            gate_log("exempt", 0)
+            try:
+                (Path.home() / ".claude" / "session-context" / "refresh.now").write_text(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ"))
+            except Exception:
+                pass
             raise SystemExit(0)
 
         # Never past the limit, whatever else is set (/unthrottle included): at the window's target a call is held as long
@@ -616,6 +661,8 @@ public static class AgentGate
 
         {{{ClaudeUsagePython}}}
 
+        {{{ExemptPython}}}
+
         def my_pid():
             return os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
 
@@ -661,7 +708,8 @@ public static class AgentGate
             own = None if limits.get("stop") else claude_stop()
             if own:
                 limits = dict(limits, stop=True, percent_used=own[0], reset_time=datetime.fromtimestamp(own[1]).strftime("%I:%M %p").lstrip("0"))
-            if limits.get("stop") and not CONTROL.match((data.get("prompt") or "").strip()):
+            # So do the exempt commands (M.ORCH-T198): their turns skip every Orchestrator gate.
+            if limits.get("stop") and not CONTROL.match((data.get("prompt") or "").strip()) and not exempt_prompt(data.get("prompt")):
                 try:
                     DIR.mkdir(parents=True, exist_ok=True)
                     with open(DIR / "{{{GateLogName}}}", "a", encoding="utf-8") as log:
@@ -678,6 +726,7 @@ public static class AgentGate
         state = load(state_file)
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         if event == "Stop":
+            state.pop("exempt", None)  # an exempt command's turn ends here, and with it the exemption (M.ORCH-T198)
             # The orchestrator keeps development going without you: a turn that ends asking whether to go on, or that
             # closed a ticket and stopped, while its repo still has open tickets is told to carry on. One that stops
             # again straight after without doing anything is let go (something there really needs you), and so is one
@@ -712,6 +761,12 @@ public static class AgentGate
             if data.get("transcript_path"):
                 state["transcript"] = data["transcript_path"]
             state.update(state="busy", at=now, warned=False, cwd=data.get("cwd"))
+            # A turn typed as an exempt command (/deploy, /run, ...) skips every pace gate until it stops (M.ORCH-T198).
+            exempt = exempt_prompt(data.get("prompt"))
+            if exempt:
+                state["exempt"] = exempt
+            else:
+                state.pop("exempt", None)
             typed = (data.get("prompt") or "").strip()
             prompt = typed.lower()
             # /autopilot [off|all] [-repo=A,B]: THIS CLI works those repos' tickets through its own subagents (its own

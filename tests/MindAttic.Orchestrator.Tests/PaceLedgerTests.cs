@@ -70,10 +70,12 @@ public sealed class PaceLedgerTests
             new(Start.AddHours(4.5), GateEvent.Held, 90, "Edit"),
             new(Start.AddHours(4.9), GateEvent.Refused, 300, "Bash"),
             new(Start.AddHours(4.95), GateEvent.PromptAnswered, 0, null),
+            new(Start.AddHours(4.96), GateEvent.Exempt, 0, "Bash"),
+            new(Start.AddHours(4.97), GateEvent.Exempt, 0, "Skill"),
             new(End.AddMinutes(1), GateEvent.Held, 60, "Bash"), // the next window's
         ];
         var w = PaceLedger.Build(End, Steady(99), [], events);
-        Assert.That((w.Held, w.HeldMinutes, w.Refused, w.PromptsAnswered), Is.EqualTo((2, 2.0, 1, 1)));
+        Assert.That((w.Held, w.HeldMinutes, w.Refused, w.PromptsAnswered, w.Exempt), Is.EqualTo((2, 2.0, 1, 1, 2)), "exempt calls are counted, never as holds");
     }
 
     [Test]

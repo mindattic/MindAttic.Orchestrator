@@ -959,6 +959,11 @@
                     <TextBlock Text="Longest hold per tool call (seconds)" Margin="0,10,0,4" />
                     <TextBox Style="{StaticResource McTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
                              Text="{Binding MaxDelay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Longest hold in seconds" />
+                    <TextBlock Text="Exempt from pacing" Margin="0,10,0,4" />
+                    <TextBox Style="{StaticResource McTextBox}" Height="32" Text="{Binding ExemptCommands, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Commands exempt from pacing" />
+                    <TextBlock Text="Slash commands, comma-separated. A turn typed as one of them (and a Skill call naming one) skips every pace gate: no hold, no subagent wait, no stop. Its spend still counts. Blank exempts none."
+                               Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
 
                     <TextBlock Text="SCHEDULER" Style="{StaticResource SectionLabel}" />
                     <TextBlock Text="Max concurrent sessions (working + waiting)" Margin="0,0,0,4" />

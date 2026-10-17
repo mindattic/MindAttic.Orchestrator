@@ -25,7 +25,8 @@ public sealed record MeterGap(DateTime FromUtc, DateTime ToUtc, long Fresh)
 /// <summary>One line of the pace gate's event log (<c>pace-gate.jsonl</c>): a held tool call, a refusal at the stop, or a typed prompt answered at the stop.</summary>
 public sealed record GateEvent(DateTime AtUtc, string Decision, double HeldSeconds, string? Tool)
 {
-    public const string Held = "held", Refused = "refused", PromptAnswered = "prompt-answered";
+    /// <summary><see cref="Exempt"/>: a call let straight through because its turn (or Skill) is an exempt command (M.ORCH-T198).</summary>
+    public const string Held = "held", Refused = "refused", PromptAnswered = "prompt-answered", Exempt = "exempt";
 }
 
 /// <summary>One finished 5-hour window as the ledger records it, for good.</summary>
@@ -45,7 +46,8 @@ public sealed record LedgerWindow(
     double HeldMinutes,
     int Refused,
     int PromptsAnswered,
-    IReadOnlyList<MeterGap> Gaps)
+    IReadOnlyList<MeterGap> Gaps,
+    int Exempt = 0)
 {
     public TimeSpan Blind => Gaps.Aggregate(TimeSpan.Zero, (t, g) => t + g.Length);
 }
@@ -116,7 +118,8 @@ public static class PaceLedger
             (WindowGrade.Ok, $"ended at {final:0}%");
         return new LedgerWindow(start, endUtc, grade, why, peak, final, fresh, mine.Count, Math.Round(atTarget, 1),
             hit?.HitUtc, weekly?.HitUtc, held.Count, Math.Round(held.Sum(e => e.HeldSeconds) / 60, 1),
-            gate.Count(e => e.Decision == GateEvent.Refused), gate.Count(e => e.Decision == GateEvent.PromptAnswered), gaps);
+            gate.Count(e => e.Decision == GateEvent.Refused), gate.Count(e => e.Decision == GateEvent.PromptAnswered), gaps,
+            gate.Count(e => e.Decision == GateEvent.Exempt));
     }
 
     /// <summary>

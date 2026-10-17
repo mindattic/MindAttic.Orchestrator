@@ -248,6 +248,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("Repos /autopilot never starts agents in, comma-separated: \"GTFO.EZ,Prose\"; \"none\" clears.")]
         public string? AutopilotSkip { get; init; }
 
+        [CommandOption("--exempt <COMMANDS>")]
+        [Description("Slash commands whose turns skip every pace gate (no hold, no subagent wait, no stop), comma-separated: \"/deploy,/run\"; \"none\" clears, \"default\" restores /throttle,/unthrottle,/deploy,/run.")]
+        public string? Exempt { get; init; }
+
         [CommandOption("--github-intake <ON>")]
         [Description("true: hourly, file GitHub issues labelled 'orchestrator' and CI failures on main as tickets.")]
         public bool? GitHubIntake { get; init; }
@@ -328,6 +332,19 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { AutopilotSkip = skip.Equals("none", StringComparison.OrdinalIgnoreCase) ? [] : [.. skip.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)] };
             changed = true;
         }
+        if (settings.Exempt is { } exempt)
+        {
+            s = s with
+            {
+                ExemptCommands = exempt.Trim().ToLowerInvariant() switch
+                {
+                    "none" => [],
+                    "default" => [.. OrchestratorSettings.DefaultExemptCommands],
+                    _ => OrchestratorSettings.ParseCommands(exempt),
+                },
+            };
+            changed = true;
+        }
         foreach (var (opt, isCap) in settings.RepoCap.Select(o => (o, true)).Concat(settings.RepoSessions.Select(o => (o, false))))
         {
             var parts = opt.Split('=', 2);
@@ -352,6 +369,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +
             (s.ThrottleAgents ? $" · running agents held up to {s.MaxAgentDelaySeconds}s per tool call when the burn won't last" : " · running agents never held") +
             $" · subagents: as many as the pace allows, at most {s.MaxSubagents}");
+        AnsiConsole.MarkupLine("  exempt from pacing (their turns skip every gate, spend still counted): " +
+            (s.ExemptCommands.Count > 0 ? Markup.Escape(string.Join(", ", s.ExemptCommands)) : "none"));
         AnsiConsole.MarkupLine($"  worktrees under {Markup.Escape(s.WorktreeRoot)} · {s.Priorities.Count} manual priorities · " +
             (s.StaleAfterHours > 0 ? $"assignments go stale after {s.StaleAfterHours}h quiet" : "assignments never go stale"));
         AnsiConsole.MarkupLine($"  quiet hours {(s.QuietHours.Count > 0 ? string.Join(", ", s.QuietHours) : "none")} · {s.MaxSessionsPerRepo} sessions per repo" +

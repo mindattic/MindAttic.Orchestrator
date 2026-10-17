@@ -36,6 +36,18 @@ public sealed record OrchestratorSettings
     /// wait before each tool call (the pace-gate hook), so they slow down instead of hitting the wall.</summary>
     public bool ThrottleAgents { get; init; } = true;
 
+    /// <summary>The slash commands exempt from orchestration pacing (M.ORCH-T198): a turn whose prompt starts with one skips
+    /// every Orchestrator gate (no pace delay, no subagent hold, no stop refusal) until it ends, and a Skill call naming one
+    /// is let through anywhere. The pace gate reads this live from settings.json; its spend is still counted.</summary>
+    public List<string> ExemptCommands { get; init; } = [.. DefaultExemptCommands];
+
+    public static IReadOnlyList<string> DefaultExemptCommands { get; } = ["/throttle", "/unthrottle", "/deploy", "/run"];
+
+    /// <summary>Normalizes typed command names ("deploy, /Run") to "/deploy", "/run"; blanks and repeats dropped.</summary>
+    public static List<string> ParseCommands(string text) =>
+        [.. text.Split([',', ' ', ';'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(c => "/" + c.TrimStart('/').ToLowerInvariant()).Where(c => c.Length > 1).Distinct()];
+
     /// <summary>The longest one tool call is held while throttling.</summary>
     public int MaxAgentDelaySeconds { get; init; } = 300;
 

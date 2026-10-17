@@ -651,4 +651,51 @@ public sealed class HookScriptTests
         Assert.That(Gate(Bash("workflow ticket correct M.WF-T7 --summary x")).Output, Does.Contain("\"deny\""), "correct is looked up the same way");
         Assert.That(Gate(Bash("workflow ticket close X.NOPE-T1 --ref x")).Output, Is.Empty, "a ticket the db doesn't know isn't refused");
     }
+
+    [Test]
+    public void An_exempt_commands_turn_skips_every_pace_gate_until_it_stops_and_is_logged_as_exempt()
+    {
+        // M.ORCH-T198: a turn typed as /deploy (a default exempt command) is let through at once: no delay, no subagent wait, no stop.
+        object Prompt(string prompt) => new { hook_event_name = "UserPromptSubmit", session_id = "e1", prompt, cwd = ws };
+        object Call(string tool) => new { tool_name = tool, session_id = "e1", tool_input = new { prompt = "x", file_path = "x" }, cwd = ws };
+        Status(new { stop = true, pace_delay_seconds = 60, subagent_allowance = 0, subagents_running = 3, reset_time = "9:50 PM" });
+        Assert.That(Gate(Prompt("/deploy now"), AgentGate.ContextScriptName).Output, Does.Not.Contain("\"block\""), "typed at the stop, it still goes through");
+        foreach (var tool in new[] { "Read", "Agent", "Bash" })
+        {
+            var (output, took) = Gate(Call(tool));
+            Assert.That((output, took < TimeSpan.FromSeconds(10)), Is.EqualTo(("", true)), $"{tool} runs at once inside the exempt turn");
+        }
+        Assert.That(GateLog().Count(l => l.Contains("\"decision\": \"exempt\"")), Is.EqualTo(3), "each exempt call is logged so its spend is counted");
+        Assert.That(Directory.Exists(Path.Combine(Marks, AgentGate.SlotDirName)) ? Directory.GetFiles(Path.Combine(Marks, AgentGate.SlotDirName)) : [], Is.Empty,
+            "an exempt Agent call takes no slot");
+
+        Gate(new { hook_event_name = "Stop", session_id = "e1", cwd = ws }, AgentGate.ContextScriptName);
+        Assert.That(GateHeld(Call("Read"), 2).Output, Does.Contain("\"deny\""), "the exemption ends when the turn stops");
+
+        Status(new { pace_delay_seconds = 60 });
+        Gate(Prompt("/deployment plan"), AgentGate.ContextScriptName);
+        using (var held = Run(AgentGate.ScriptName, Call("Read")))
+        {
+            Assert.That(held.WaitForExit(5_000), Is.False, "only the command itself, not a longer word that starts like it");
+            held.Kill();
+        }
+    }
+
+    [Test]
+    public void A_skill_naming_an_exempt_command_is_let_through_anywhere_and_the_list_comes_from_settings()
+    {
+        Status(new { stop = true, pace_delay_seconds = 60 });
+        object Skill(string skill) => new { tool_name = "Skill", session_id = "k1", tool_input = new { skill }, cwd = ws };
+        Assert.That(Gate(Skill("run")).Output, Is.Empty, "outside any exempt turn, the Skill call itself goes through");
+        Assert.That(GateLog().Single(), Does.Contain("\"decision\": \"exempt\"").And.Contain("\"tool\": \"Skill\""));
+        Assert.That(GateHeld(Skill("bughunt"), 2).Output, Does.Contain("\"deny\""), "a skill that isn't exempt is paced as ever");
+
+        var settings = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "settings.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
+        File.WriteAllText(settings, """{ "ExemptCommands": ["bughunt"] }""");
+        Assert.That(Gate(Skill("bughunt")).Output, Is.Empty, "the settings list is read live, with or without the slash");
+        Assert.That(GateHeld(Skill("run"), 2).Output, Does.Contain("\"deny\""), "and replaces the defaults");
+        Assert.That(Gate(new { hook_event_name = "UserPromptSubmit", session_id = "k2", prompt = "/deploy", cwd = ws }, AgentGate.ContextScriptName).Output,
+            Does.Contain("\"block\""), "/deploy is no longer exempt, so at the stop it's answered unsent");
+    }
 }
