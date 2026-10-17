@@ -94,6 +94,9 @@ public sealed partial class MainViewModel : ObservableObject
     public TileGroupViewModel Quiet { get; }
     public IReadOnlyList<TileGroupViewModel> Groups { get; }
     public ObservableCollection<ToastViewModel> Toasts { get; } = [];
+
+    /// <summary>The header's live clock, ticking every second on its own timer, not with the refresh (M.ORCH-T193).</summary>
+    public ClockViewModel Clock { get; } = new();
     public IReadOnlyList<string> Providers => SessionControl.Providers;
 
     public ICommand SelectCommand { get; }

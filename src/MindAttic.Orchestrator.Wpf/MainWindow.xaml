@@ -236,6 +236,8 @@
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="{Binding ZoomText}" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,12,0"
                            ToolTip="Ctrl+0 resets the zoom" />
+                <TextBlock Text="{Binding Clock.Text}" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" VerticalAlignment="Center" Margin="0,0,12,0"
+                           AutomationProperties.Name="Current time" ToolTip="Current time" />
                 <TextBlock Text="{Binding RefreshInfo}" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,12,0" />
                 <Button Style="{StaticResource McButton}" Command="{Binding RefreshCommand}" Content="Refresh" ToolTip="F5" />
                 <Button Style="{StaticResource McButton}" Command="{Binding ToggleSettingsCommand}" Content="Settings" Margin="8,0,0,0" />
