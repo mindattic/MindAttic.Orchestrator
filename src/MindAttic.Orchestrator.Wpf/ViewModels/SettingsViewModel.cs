@@ -44,8 +44,8 @@ public sealed class SettingsViewModel : ObservableObject
     public void Load()
     {
         var s = store.LoadSettings();
-        BlockBudget = s.BlockBudget is { } b ? Formatting.Tokens(b) : "";
-        WeeklyBudget = s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "";
+        BlockBudget = s.BlockBudget is { } b ? ExactTokens(b) : "";
+        WeeklyBudget = s.WeeklyBudget is { } w ? ExactTokens(w) : "";
         WeeklyReset = Budget.WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } reset ? reset.Display : "";
         WarnPercent = s.WarnPercent.ToString(CultureInfo.InvariantCulture);
         MaxSessions = s.MaxConcurrentSessions.ToString(CultureInfo.InvariantCulture);
@@ -82,6 +82,14 @@ public sealed class SettingsViewModel : ObservableObject
         });
         Load();
         saved();
+    }
+
+    /// <summary>The short form (20M) when it reads back as exactly <paramref name="tokens"/>, else every digit: the field is
+    /// saved as it reads, so a rounded 12.3M would quietly replace a budget of 12,345,678 at the next Save.</summary>
+    internal static string ExactTokens(long tokens)
+    {
+        var shortForm = Formatting.Tokens(tokens);
+        return TryTokens(shortForm, out var back) && back == tokens ? shortForm : tokens.ToString(CultureInfo.InvariantCulture);
     }
 
     /// <summary>Accepts 20000000, 20M, 1.5B, 500k; blank means "not set".</summary>

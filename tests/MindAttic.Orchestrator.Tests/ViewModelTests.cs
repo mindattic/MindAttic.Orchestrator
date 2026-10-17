@@ -78,6 +78,18 @@ public sealed class ViewModelTests
         Assert.That(vm.BlockBudget, Is.EqualTo("20M"), "reloaded from what was saved");
     }
 
+    [Test]
+    public void Saving_other_settings_never_rounds_a_budget_set_to_the_token()
+    {
+        var store = new JsonStore(dir);
+        store.SaveSettings(store.LoadSettings() with { BlockBudget = 12_345_678, WeeklyBudget = 1_234_567_890 });
+        var vm = new SettingsViewModel(store, () => { });
+        vm.Autopilot = !vm.Autopilot;
+        vm.SaveCommand.Execute(null);
+        var saved = store.LoadSettings();
+        Assert.That((vm.Error, saved.BlockBudget, saved.WeeklyBudget), Is.EqualTo(("", (long?)12_345_678, (long?)1_234_567_890)));
+    }
+
     private sealed class Row(string key, int value)
     {
         public string Key { get; } = key;
