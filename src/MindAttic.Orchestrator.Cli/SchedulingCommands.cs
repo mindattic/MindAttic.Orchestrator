@@ -140,6 +140,12 @@ internal sealed class DispatchCommand : Command<DispatchCommand.Settings>
     {
         var (_, store, _, plan) = Ctx.Load();
         var item = plan.Queue.FirstOrDefault(q => q.Id.Equals(settings.Ticket, StringComparison.OrdinalIgnoreCase));
+        if (item is null && plan.AwaitingApproval.FirstOrDefault(q => q.Id.Equals(settings.Ticket, StringComparison.OrdinalIgnoreCase)) is { } waiting)
+        {
+            // Open, but only fixes are worked without your yes: say that, not that the ticket doesn't exist.
+            AnsiConsole.MarkupLine($"[yellow]{waiting.Id} waits for your approval: orchestrator approve {waiting.Id}[/]");
+            return 1;
+        }
         if (item is null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(settings.Ticket)} isn't an open ticket.[/]"); return 1; }
         if (item.IsAssigned) { AnsiConsole.MarkupLine($"[yellow]{item.Id} is already assigned; release it first.[/]"); return 1; }
 
