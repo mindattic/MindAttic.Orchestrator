@@ -376,12 +376,17 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         // Past the wind-down line nothing new starts until the reset, estimate or not (M.ORCH-T254: five tickets whose
         // estimates each fit what was left went out at 96.6% as the reset neared and the allowance opened back up).
         if (!unthrottled && plan.Pace is { WindDown: true } wound) return ([], wound.WindDownHold);
+        // The switches the settings, the tray and the Settings panel offer apply to the CLIs that run /autopilot: Tick, which
+        // read them, starts nothing since M.ORCH-T164.
+        if (!settings.Autopilot) return ([], "autopilot is paused (orchestrator settings --autopilot true, or the tray, resumes it)");
+        if (QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is { } quiet) return ([], $"quiet hours ({quiet}): nothing starts until they end");
         bool Named(string repo) => Autopilot.Named(repos, repo);
         var room = unthrottled ? null : plan.Pace?.RoomTokens;
         var elsewhere = plan.Worked.Where(w => !(w.AgentId is null && self is not null && w.SessionId == self))
             .Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
         bool Busy(QueueItem q) => q.IsAssigned || elsewhere.Contains(q.Id) || (q.Assignment is { } a && pilotRunning(a));
-        var open = plan.Queue.Where(q => Named(q.Repo) && q.RepoPath.Length > 0 && !Busy(q) && q.BlockedBy.Count == 0 &&
+        var open = plan.Queue.Where(q => Named(q.Repo) && !settings.AutopilotSkip.Contains(q.Repo, StringComparer.OrdinalIgnoreCase) &&
+            q.RepoPath.Length > 0 && !Busy(q) && q.BlockedBy.Count == 0 &&
             !(room is { } left && q.Estimate is { } e && e.Fresh > left)).ToList();
         if (open.Count == 0)
         {

@@ -235,6 +235,22 @@ public sealed class AutopilotTests
     }
 
     [Test]
+    public void Pausing_autopilot_quiet_hours_and_a_skipped_repo_apply_to_the_clis_that_run_it()
+    {
+        var snap = Snap(("A", [T("A-T1")]), ("B", [T("B-T1")]));
+        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
+        (IReadOnlyList<Autopilot.Handout> Handed, string? Why) Next(OrchestratorSettings s) =>
+            Autopilot.Next(Paced(snap, 5), s with { WorktreeRoot = @"D:\WT" }, store, ["*"], null, claim: false, Now, Make, _ => "main");
+
+        Assert.That(Next(new() { Autopilot = false }).Why, Does.StartWith("autopilot is paused"), "the tray's Pause, settings --autopilot false");
+        var local = Now.ToLocalTime();
+        var quiet = $"{local.AddHours(-1):HH:mm}-{local.AddHours(1):HH:mm}";
+        Assert.That(Next(new() { QuietHours = [quiet] }).Why, Does.StartWith("quiet hours"));
+        Assert.That(Next(new() { AutopilotSkip = ["a"] }).Handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "B-T1" }), "a skipped repo isn't handed out under *");
+        Assert.That(store.LoadAssignments(), Is.Empty);
+    }
+
+    [Test]
     public void With_pacing_off_the_windows_stop_still_hands_nothing_out()
     {
         // Unpaced, the plan keeps no pace; the stop (which doesn't depend on pacing) still has to reach `next --claim`.
