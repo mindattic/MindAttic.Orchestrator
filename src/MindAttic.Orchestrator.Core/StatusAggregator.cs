@@ -187,7 +187,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         }
 
         var storedCosts = Store.LoadTicketCosts();
-        var costs = TicketCosts.Merge(storedCosts, TicketCosts.Observe(allSessions.Concat(providerSessions), Bucket), now);
+        var costs = TicketCosts.Merge(storedCosts, TicketCosts.Observe(allSessions.Concat(providerSessions), Bucket), now,
+            TicketCosts.Unticketed(allSessions.Concat(providerSessions)));
         if (!costs.SequenceEqual(storedCosts))
         {
             try { Store.SaveTicketCosts(costs); }

@@ -59,6 +59,11 @@ public sealed record TranscriptSession(string SessionId, string Cwd, DateTime La
     public string? TicketId { get; init; }
     public string? TicketType { get; init; }
 
+    /// <summary>Its subagents that were handed a ticket of their own (an /autopilot handout, M.ORCH-T252): their responses
+    /// are in <see cref="Events"/> (the CLI's limits count them) but their cost is their ticket's, not <see cref="TicketId"/>'s.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public IReadOnlyList<TicketedSubagent> TicketedSubagents { get; init; } = [];
+
     /// <summary>Its latest tool call in plain words ("Editing Daemon.cs") and when it was made; null before its first.</summary>
     public string? Doing { get; init; }
     public DateTime? DoingAtUtc { get; init; }
@@ -76,6 +81,9 @@ public sealed record TranscriptSession(string SessionId, string Cwd, DateTime La
     public TokenUsage UsageSince(DateTime utc) =>
         Events.Where(e => e.AtUtc >= utc).Aggregate(default(TokenUsage), (sum, e) => sum + e.Usage);
 }
+
+/// <summary>A session's subagent that works a ticket of its own, with every response it made in the reader's window.</summary>
+public sealed record TicketedSubagent(string AgentId, string TicketId, string? TicketType, string Cwd, IReadOnlyList<UsageEvent> Events);
 
 public sealed record RepoStatus(
     string Name,

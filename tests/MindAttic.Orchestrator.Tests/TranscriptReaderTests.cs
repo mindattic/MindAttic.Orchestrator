@@ -197,8 +197,8 @@ public sealed class TranscriptReaderTests
         var s = new TranscriptReader(dir).Poll(Since).Single();
 
         Assert.That((s.UsageSince(Since).Output, s.TicketId), Is.EqualTo((10, (string?)null)), "its usage is the session's, its ticket isn't");
-        Assert.That(TranscriptReader.IsSubagentTranscript(Path.Combine(sub, "agent-a.jsonl")), Is.True);
-        Assert.That(TranscriptReader.IsSubagentTranscript(File()), Is.False);
+        Assert.That(TranscriptReader.SubagentId(Path.Combine(sub, "agent-a.jsonl")), Is.EqualTo("agent-a"));
+        Assert.That(TranscriptReader.SubagentId(File()), Is.Null);
     }
 
     [Test]

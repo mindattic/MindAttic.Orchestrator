@@ -61,6 +61,89 @@ public sealed class TicketCostTests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
+    private static string UserLine(string session, string ts, string text) =>
+        System.Text.Json.JsonSerializer.Serialize(new { type = "user", timestamp = ts, sessionId = session, cwd = @"D:\W\Repo",
+            message = new { role = "user", content = text } });
+
+    private static string Response(string session, string id, string ts, int output) =>
+        System.Text.Json.JsonSerializer.Serialize(new { type = "assistant", timestamp = ts, sessionId = session, cwd = @"D:\W\Repo",
+            message = new { id, usage = new { input_tokens = 0, cache_creation_input_tokens = 0, cache_read_input_tokens = 0, output_tokens = output } } });
+
+    [Test]
+    public void A_subagents_ticket_is_charged_only_its_own_tokens_not_its_parent_clis_session()
+    {
+        // M.ORCH-T252: an /autopilot subagent's transcript shares its CLI's session id. The ticket its prompt named was stamped
+        // on the whole session, charging that ticket for the CLI's and every other subagent's tokens.
+        var dir = Path.Combine(Path.GetTempPath(), "orch-attr-" + Guid.NewGuid().ToString("N"));
+        var subs = Path.Combine(dir, "p", "s", "subagents");
+        Directory.CreateDirectory(subs);
+        try
+        {
+            File.WriteAllLines(Path.Combine(dir, "p", "s.jsonl"), [
+                UserLine("s", "2026-10-14T10:00:00Z", "/autopilot"),
+                Response("s", "m1", "2026-10-14T10:01:00Z", 1000),
+            ]);
+            File.WriteAllLines(Path.Combine(subs, "agent-a1.jsonl"), [
+                UserLine("s", "2026-10-14T10:02:00Z", "Work on ticket RP-T7 (fix): one. You have your own git worktree…"),
+                Response("s", "a1", "2026-10-14T10:03:00Z", 70),
+            ]);
+            File.WriteAllLines(Path.Combine(subs, "agent-b2.jsonl"), [
+                UserLine("s", "2026-10-14T10:02:00Z", "Work on ticket RP-T8 (feature): two. You have your own git worktree…"),
+                Response("s", "b1", "2026-10-14T10:04:00Z", 80),
+            ]);
+            File.WriteAllLines(Path.Combine(subs, "agent-c3.jsonl"), [
+                UserLine("s", "2026-10-14T10:02:00Z", "Find where the pacer reads its settings"),
+                Response("s", "c1", "2026-10-14T10:05:00Z", 5),
+            ]);
+
+            var s = new TranscriptReader(dir).Poll(Now.AddDays(-1)).Single();
+
+            Assert.That(s.TicketId, Is.Null, "the CLI wasn't dispatched on a ticket; only its subagents were");
+            Assert.That(s.UsageSince(Now.AddDays(-1)).Output, Is.EqualTo(1155), "the CLI's limits still count every subagent");
+            var costs = TicketCosts.Observe([s], _ => "Repo").OrderBy(c => c.TicketId).ToList();
+            Assert.That(costs.Select(c => (c.TicketId, c.Type, c.Fresh)),
+                Is.EqualTo(new[] { ("RP-T7", (string?)"fix", 70L), ("RP-T8", (string?)"feature", 80L) }));
+            Assert.That(costs.Select(c => c.SessionId), Is.EqualTo(new[] { "s/agent-a1", "s/agent-b2" }), "each subagent is its own cost entry");
+
+            // A cost stored by the old reader, charging RP-T7 for the whole session, is dropped once the session is seen again.
+            var stored = new SessionCost("s", "RP-T7", "fix", "Repo", 1155, Now.AddHours(-1));
+            var merged = TicketCosts.Merge([stored], costs, Now, TicketCosts.Unticketed([s]));
+            Assert.That(new TicketCosts(merged).Tickets.Single(t => t.TicketId == "RP-T7").Fresh, Is.EqualTo(70));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Test]
+    public void A_dispatched_session_is_charged_for_itself_but_not_for_a_subagent_on_another_ticket()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "orch-attr-" + Guid.NewGuid().ToString("N"));
+        var subs = Path.Combine(dir, "p", "s", "subagents");
+        Directory.CreateDirectory(subs);
+        try
+        {
+            File.WriteAllLines(Path.Combine(dir, "p", "s.jsonl"), [
+                UserLine("s", "2026-10-14T10:00:00Z", "Work on ticket RP-T1 (fix): the parent's own. When it's done…"),
+                Response("s", "m1", "2026-10-14T10:01:00Z", 300),
+            ]);
+            File.WriteAllLines(Path.Combine(subs, "agent-a1.jsonl"), [
+                UserLine("s", "2026-10-14T10:02:00Z", "Work on ticket RP-T7 (fix): one. You have your own git worktree…"),
+                Response("s", "a1", "2026-10-14T10:03:00Z", 70),
+            ]);
+            File.WriteAllLines(Path.Combine(subs, "agent-c3.jsonl"), [
+                UserLine("s", "2026-10-14T10:02:00Z", "Find where the pacer reads its settings"),
+                Response("s", "c1", "2026-10-14T10:05:00Z", 5),
+            ]);
+
+            var s = new TranscriptReader(dir).Poll(Now.AddDays(-1)).Single();
+
+            Assert.That((s.TicketId, s.TicketType), Is.EqualTo(("RP-T1", "fix")));
+            var costs = TicketCosts.Observe([s], _ => "Repo").ToDictionary(c => c.TicketId, c => c.Fresh);
+            Assert.That(costs, Is.EqualTo(new Dictionary<string, long> { ["RP-T1"] = 305, ["RP-T7"] = 70 }),
+                "a subagent without a ticket of its own is part of the parent's work");
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
     private static SessionCost S(string ticket, string type, string repo, long fresh, int day = 1) =>
         new(Guid.NewGuid().ToString(), ticket, type, repo, fresh, Now.AddDays(-day));
 

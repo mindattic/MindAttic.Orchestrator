@@ -51,6 +51,9 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
         public string? Model;
         public string? TicketId;
         public string? TicketType;
+        /// <summary>Set for a subagent's transcript (<c>&lt;session&gt;\subagents\agent-&lt;id&gt;.jsonl</c>): it shares its parent's
+        /// session id, but a ticket its prompt names is its own, not the parent's (M.ORCH-T252).</summary>
+        public string? AgentId;
         public DateTime LastWriteUtc;
         /// <summary>The length and timestamp its directory entry showed when last read; while both are unchanged and the
         /// file has been quiet a while, it isn't opened again (M.ORCH-T116).</summary>
@@ -100,7 +103,7 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
         {
             present.Add(info.FullName);
             if (!files.TryGetValue(info.FullName, out var state))
-                files[info.FullName] = state = new FileState();
+                files[info.FullName] = state = new FileState { AgentId = SubagentId(info.FullName) };
 
             try
             {
@@ -156,32 +159,34 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
 
         if (!changed && sessions is not null) return sessions;
         Version++;
-        // A subagent's transcript carries its parent's session id, so its usage is the parent CLI's; but its ticket is its
-        // own (an /autopilot handout's "Work on ticket X"), not the whole session's, which works many.
-        var subagents = files.Where(kv => IsSubagentTranscript(kv.Key)).Select(kv => kv.Value).ToHashSet();
         return sessions = [.. files.Values
             .Where(s => s.Cwd is not null)
             .GroupBy(s => s.SessionId ?? "")
-            .Select(g => new TranscriptSession(
-                g.Key,
-                g.OrderBy(s => s.SessionId is null).First().Cwd!,
-                g.Max(s => s.LastWriteUtc),
-                default,
-                g.OrderByDescending(s => s.LastWriteUtc).Select(s => s.Model).FirstOrDefault(m => m is not null))
+            .Select(g =>
             {
-                Events = [.. g.SelectMany(s => s.Events).OrderBy(e => e.AtUtc)],
-                Hits = [.. g.SelectMany(s => s.Hits).OrderBy(h => h.AtUtc)],
-                TicketId = g.Where(s => !subagents.Contains(s)).Select(s => s.TicketId).FirstOrDefault(id => id is not null) ?? TicketAttribution.FromWorktree(g.First().Cwd),
-                TicketType = g.Where(s => !subagents.Contains(s)).Select(s => s.TicketType).FirstOrDefault(x => x is not null),
-                Loop = LoopDetector.Find(g.SelectMany(s => s.Tools).OrderBy(c => c.AtUtc).ToList()),
-                Doing = g.SelectMany(s => s.Tools).MaxBy(c => c.AtUtc) is { } last ? ToolCallText.Describe(last.Name, last.Input) : null,
-                DoingAtUtc = g.SelectMany(s => s.Tools).MaxBy(c => c.AtUtc)?.AtUtc,
+                // A subagent handed a ticket (an /autopilot handout) names it in its own prompt: that ticket is the
+                // subagent's alone. Only the CLI's own transcript says which ticket the session itself works on (M.ORCH-T252).
+                var own = g.Where(s => s.AgentId is null).ToList();
+                var ticket = own.Select(s => (Id: s.TicketId, Type: s.TicketType)).FirstOrDefault(t => t.Id is not null);
+                return new TranscriptSession(
+                    g.Key,
+                    g.OrderBy(s => s.SessionId is null).ThenBy(s => s.AgentId is not null).First().Cwd!,
+                    g.Max(s => s.LastWriteUtc),
+                    default,
+                    g.OrderByDescending(s => s.LastWriteUtc).Select(s => s.Model).FirstOrDefault(m => m is not null))
+                {
+                    Events = [.. g.SelectMany(s => s.Events).OrderBy(e => e.AtUtc)],
+                    Hits = [.. g.SelectMany(s => s.Hits).OrderBy(h => h.AtUtc)],
+                    TicketId = ticket.Id ?? own.Select(s => TicketAttribution.FromWorktree(s.Cwd)).FirstOrDefault(id => id is not null),
+                    TicketType = ticket.Type,
+                    TicketedSubagents = [.. g.Where(s => s.AgentId is not null && s.TicketId is not null)
+                        .Select(s => new TicketedSubagent(s.AgentId!, s.TicketId!, s.TicketType, s.Cwd!, [.. s.Events.OrderBy(e => e.AtUtc)]))],
+                    Loop = LoopDetector.Find(g.SelectMany(s => s.Tools).OrderBy(c => c.AtUtc).ToList()),
+                    Doing = g.SelectMany(s => s.Tools).MaxBy(c => c.AtUtc) is { } last ? ToolCallText.Describe(last.Name, last.Input) : null,
+                    DoingAtUtc = g.SelectMany(s => s.Tools).MaxBy(c => c.AtUtc)?.AtUtc,
+                };
             })];
     }
-
-    /// <summary>Whether <paramref name="path"/> is a subagent's transcript (<c>&lt;session&gt;\subagentsgent-*.jsonl</c>).</summary>
-    internal static bool IsSubagentTranscript(string path) =>
-        Path.GetFileName(Path.GetDirectoryName(path)) is { } folder && folder.Equals("subagents", StringComparison.OrdinalIgnoreCase);
 
     private void Trim(DateTime sinceUtc)
     {
@@ -215,7 +220,7 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
             var state = new FileState
             {
                 Offset = f.Offset, Cwd = f.Cwd, SessionId = f.SessionId, Model = f.Model, TicketId = f.TicketId, TicketType = f.TicketType,
-                LastWriteUtc = f.LastWriteUtc, Restored = true,
+                LastWriteUtc = f.LastWriteUtc, Restored = true, AgentId = SubagentId(f.Path),
             };
             foreach (var e in f.Events)
                 if (e.Length == 5) state.Events.Add(new UsageEvent(new DateTime(e[0], DateTimeKind.Utc), new TokenUsage(e[1], e[2], e[3], e[4])));
@@ -250,6 +255,11 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
             try { File.Delete(temp); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
         }
     }
+
+    /// <summary>The agent id of a subagent's transcript (<c>...\subagents\agent-&lt;id&gt;.jsonl</c>); null for a CLI's own.</summary>
+    internal static string? SubagentId(string path) =>
+        Path.GetFileName(Path.GetDirectoryName(path)) is { } parent && parent.Equals("subagents", StringComparison.OrdinalIgnoreCase)
+            ? Path.GetFileNameWithoutExtension(path) : null;
 
     private IEnumerable<FileInfo> EnumerateTranscripts()
     {

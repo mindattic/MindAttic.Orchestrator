@@ -29,22 +29,46 @@ public sealed record TicketCosts(IReadOnlyList<SessionCost> Sessions)
             g.Sum(s => s.Fresh), g.Max(s => s.LastUtc), g.Count()))];
 
     /// <summary>Folds what the transcripts show now into the stored history.</summary>
-    public static List<SessionCost> Merge(IEnumerable<SessionCost> stored, IEnumerable<SessionCost> observed, DateTime nowUtc)
+    public static List<SessionCost> Merge(IEnumerable<SessionCost> stored, IEnumerable<SessionCost> observed, DateTime nowUtc,
+        IEnumerable<string>? unticketed = null)
     {
         var byId = new Dictionary<string, SessionCost>(StringComparer.Ordinal);
         foreach (var s in stored) byId[s.SessionId] = s;
+        foreach (var id in unticketed ?? []) byId.Remove(id);
         foreach (var s in observed)
             if (!byId.TryGetValue(s.SessionId, out var had) || s.Fresh > had.Fresh)
                 byId[s.SessionId] = s with { Type = s.Type ?? had?.Type };
         return [.. byId.Values.Where(s => s.LastUtc >= nowUtc - Keep).OrderBy(s => s.LastUtc)];
     }
 
-    /// <summary>The sessions that were dispatched on a ticket, with what they've spent so far.</summary>
-    public static IEnumerable<SessionCost> Observe(IEnumerable<TranscriptSession> sessions, Func<string?, string> repoOf) =>
-        sessions
-            .Where(s => s.TicketId is not null && s.Events.Count > 0)
-            .Select(s => new SessionCost(s.SessionId, s.TicketId!, s.TicketType, repoOf(s.Cwd),
-                s.Events.Sum(e => e.Usage.Fresh), s.Events[^1].AtUtc));
+    /// <summary>The sessions that were dispatched on a ticket, with what they've spent so far. A subagent handed its own
+    /// ticket (an /autopilot handout) is charged to that ticket alone, keyed <c>&lt;session&gt;/&lt;agent&gt;</c>; the CLI that
+    /// started it is charged only for the rest, and only when it was itself dispatched on a ticket (M.ORCH-T252).</summary>
+    public static IEnumerable<SessionCost> Observe(IEnumerable<TranscriptSession> sessions, Func<string?, string> repoOf)
+    {
+        foreach (var s in sessions)
+        {
+            foreach (var sub in s.TicketedSubagents.Where(a => a.Events.Count > 0))
+                yield return new SessionCost(SubagentKey(s.SessionId, sub.AgentId), sub.TicketId, sub.TicketType, repoOf(sub.Cwd),
+                    sub.Events.Sum(e => e.Usage.Fresh), sub.Events[^1].AtUtc);
+            if (s.TicketId is null) continue;
+            var theirs = s.TicketedSubagents.SelectMany(a => a.Events).ToHashSet();
+            var own = s.Events.Where(e => !theirs.Contains(e)).ToList();
+            if (own.Count > 0)
+                yield return new SessionCost(s.SessionId, s.TicketId, s.TicketType, repoOf(s.Cwd), own.Sum(e => e.Usage.Fresh), own[^1].AtUtc);
+        }
+    }
+
+    /// <summary>The cost key of a session's subagent: its own, so it never merges into its parent's.</summary>
+    public static string SubagentKey(string sessionId, string agentId) => $"{sessionId}/{agentId}";
+
+    /// <summary>
+    /// The ids of sessions the transcripts show weren't dispatched on a ticket. An entry stored for one was charged when the
+    /// reader stamped a subagent's ticket on its whole session (M.ORCH-T252); <see cref="Merge"/> drops it. Only a session read
+    /// within the window counts: one older than it is only scanned for whose it is, never for its ticket.
+    /// </summary>
+    public static IEnumerable<string> Unticketed(IEnumerable<TranscriptSession> sessions) =>
+        sessions.Where(s => s.TicketId is null && s.SessionId.Length > 0 && s.Events.Count > 0).Select(s => s.SessionId);
 
     public CostEstimate? Estimate(string repo, string type, string? excludeTicket = null)
     {
