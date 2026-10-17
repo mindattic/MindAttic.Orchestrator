@@ -6,9 +6,11 @@ namespace MindAttic.Orchestrator.Sessions;
 public static partial class ProcessTree
 {
     /// <summary>Whether <paramref name="ancestor"/> started <paramref name="pid"/>, directly or through processes between.</summary>
-    public static bool IsAncestor(int ancestor, int pid)
+    public static bool IsAncestor(int ancestor, int pid) => IsAncestor(ancestor, pid, Parents());
+
+    /// <summary>The same walk over a given child-to-parent map; it gives up after 16 steps, so a pid cycle ends.</summary>
+    internal static bool IsAncestor(int ancestor, int pid, IReadOnlyDictionary<int, int> parents)
     {
-        var parents = Parents();
         for (var i = 0; i < 16 && parents.TryGetValue(pid, out var parent) && parent != 0; i++)
         {
             if (parent == ancestor) return true;
