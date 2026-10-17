@@ -699,8 +699,11 @@ public static class AgentGate
                                "MindAttic.Orchestrator" / "assignments.json").read_text()) or []}
                 except Exception:
                     claimed = set()
-                # A claim gone stale is back in the queue, and `orchestrator next` hands it out again: it's work.
+                # A claim gone stale is back in the queue, and `orchestrator next` hands it out again: it's work. Only the
+                # running daemon's list counts: one left by a daemon that stopped may name a ticket claimed afresh since.
                 try:
+                    if not orchestrator_status():  # stale or missing: no daemon running to stand behind its list
+                        raise ValueError("no daemon")
                     claimed -= {(i or "").upper() for i in json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" /
                                 "MindAttic.Orchestrator" / "{{{Daemon.StaleTicketsName}}}.json").read_text()) or []}
                 except Exception:

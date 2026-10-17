@@ -196,6 +196,9 @@ public sealed class HookScriptTests
         Assert.That(Gate(Asking("s1"), AgentGate.ContextScriptName).Output, Is.Empty, "claimed and live: being worked");
         File.WriteAllText(Path.Combine(store, Daemon.StaleTicketsName + ".json"), """["U.SPC-T1"]""");
         Assert.That(Gate(Asking("s2"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\""), "its claim went stale: next hands it out again");
+        Status(new { }, at: DateTime.UtcNow.AddMinutes(-10));
+        Assert.That(Gate(Asking("s3"), AgentGate.ContextScriptName).Output, Is.Empty,
+            "a list left by a daemon that stopped isn't trusted: the ticket may have been claimed afresh since");
     }
 
     [Test]
