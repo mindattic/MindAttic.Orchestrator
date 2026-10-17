@@ -1,17 +1,86 @@
 # MindAttic.Orchestrator
 
-Keeps Claude agents working around the clock on the workspace's tickets, and spends each 5-hour usage window almost
-to its end (98% by default, adjustable) without ever reaching Claude's limit. Unused budget is lost when a window
-resets, and reaching the limit stops every session mid-step until it does, so the target is to land just under the
-limit exactly at the reset. Every 15 seconds the daemon reads Claude's own usage percent, works out the rate the
-rest of the window can sustain, and writes it where every Claude CLI's hooks read it. While the draw fits, more
-subagents may start, each on its own ticket in its own git worktree. While it runs ahead, new subagents wait and
-every tool call is held a little longer. Past 90% only work that can finish starts, and at the target nothing more
-is spent until the reset. The full explanation is in [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md).
+A Windows daemon, dashboard and CLI that keeps Claude agents working the workspace's tickets around the clock and spends each 5-hour usage window to just under its limit, never over.
 
-It's also one place to see and steer every agent session across the MindAttic workspace: which repos have an
-agent working, which sessions are waiting on you, how much of your token budget is gone, what work
-is queued, and what code and agent config has been copied or has drifted between repos.
+[![C#](https://img.shields.io/badge/C%23-.NET%2010-512BD4)](https://dotnet.microsoft.com/) [![Platform](https://img.shields.io/badge/platform-Windows%20WPF-0078D4)](https://learn.microsoft.com/dotnet/desktop/wpf/) [![License](https://img.shields.io/badge/license-all%20rights%20reserved-lightgrey)](#license) [![Status](https://img.shields.io/badge/status-in%20daily%20use-2ea44f)](docs/USER_STORIES.md)
+
+```text
+ Claude Code (every CLI, tab, subagent)                MindAttic.Orchestrator
+ ---------------------------------------               -------------------------------------------
+ statusline  --> ~/.claude/claude-usage.json  ---->    Daemon (logon task, every 15s)
+ transcripts --> ~/.claude/projects/**/*.jsonl ---->     measure: Claude's own 5-hour percent
+                                                         pace:    target left / hours to reset
+ hooks <------ ~/.claude/rl-status.json  <---------      steer:   allowance, hold, wind-down, stop
+   pace-gate.py    (before every tool call)
+   context-gate.py (prompt / turn end)                 Dashboard (WPF, tray)   CLI (orchestrator)
+                                                         status, budget, queue,  status, budget, queue,
+ /autopilot in a CLI --> orchestrator next --claim       agents, settings        next, ledger, audit ...
+   one subagent per ticket, each in its own git worktree, landing on main
+```
+
+## Why
+
+- Spend almost all of every 5-hour window: unused budget is gone at the reset, so the daemon paces to land at the target (98% by default) right as the window resets.
+- Never hit the wall: reaching Claude's limit stops every session mid-step, so at the target nothing more is spent, even if the daemon itself dies.
+- Leave tickets running overnight: type `/autopilot` in one CLI and it works its repo's tickets through subagents, each in its own worktree, landing each on `main` and closing it.
+- See every agent in one place: which repos are working, which sessions wait on you, what's queued, and how much budget is left.
+- Catch drift early: shared agent files that differ between repos, and code copied across repos, are found and listed.
+
+## Features
+
+**Pacing and the stop**
+
+- Reads Claude Code's own 5-hour and weekly percent every 15 seconds (sooner when a turn ends) and works out the sustainable rate to the reset.
+- A subagent allowance (up to 16 at once, across every CLI) grows while the draw fits and shrinks when it runs ahead.
+- A hold on every tool call in every Claude CLI (and Codex, Gemini and Kimi through their own hooks) slows a draw that runs ahead, and drops to 0 the moment it fits.
+- Wind-down past 90%: turns are told to start only what can finish, and autopilot hands out only tickets whose cost estimate fits.
+- A stop at the target that refuses tool calls and answers typed prompts unsent, with a fallback that still refuses at 99% if the daemon is down.
+- A pace ledger that grades every finished 5-hour window `ok`, `under`, `blind` or `over`, and files a fix ticket the moment a limit is hit.
+
+**Working tickets**
+
+- `/autopilot` in a CLI works its own repo's tickets (or `-repo=A,B`, wildcards like `-repo=GTFO.*`, or `all`) through its own subagents.
+- One queue of every open ticket across the workspace, with cost estimates learned from past tickets, blocking, token reservations and quiet hours.
+- Only fixes are worked without asking; features, chores and docs wait for `orchestrator approve`.
+- Repo windows: a CLI opened in a repo only edits that repo's files and closes that repo's tickets, unless you grant `/crossrepo`.
+
+**Dashboard**
+
+- Repo tiles grouped as Needs you, Working, Open tickets and Quiet, with a toast and taskbar flash when a repo starts waiting on you.
+- Stat tiles for the token budget, pace and tokens today, a full-width 5-hour utilization chart, and a live clock.
+- An agent board listing every live CLI and background agent with its ticket, state, tokens and running time, subagents nested under it.
+- Start a Claude, Codex, Gemini or Kimi tab in any repo, or reply to a live Launcher tab, from the detail pane.
+- Lives in the tray: closing hides it, a left click on the tray icon brings it back, and the tray menu has an always-on-top HUD strip.
+- A Settings panel for limits, the pace target, holds, the subagent cap, the provider and exempt commands.
+
+**Watching and safety**
+
+- Flags a session repeating the same tool call as *looks stuck*, and a ticket whose session went quiet as *stale*.
+- Samples the machine every 30 seconds and starts nothing while handles or memory run short.
+- Reaps tool processes orphaned by an agent that exited, and searches running past 30 minutes.
+- Refuses whole-drive searches and `git push` to `master` before they run.
+- Optional phone alerts through ntfy.sh or any plain-text webhook.
+
+## Quick start
+
+You need Windows and Claude Code. The released exe is self-contained, so no .NET install is needed to run it.
+
+1. Double-click `MindAttic.Orchestrator.exe`.
+2. If the workspace (default `D:\Projects\MindAttic`) is missing, pick **build one** or **point at one that's already here**.
+3. The dashboard opens, scans every repo and learns your limits from the last month of transcripts.
+4. In any Claude CLI inside a repo, type `/autopilot` to have it work that repo's tickets.
+
+From source (needs the .NET 10 SDK):
+
+```powershell
+.\deploy.ps1          # build artifacts\MindAttic.Orchestrator.exe (+ the CLI in C:\Apps\MindAttic.Orchestrator\Cli), then install it as a double-click would
+.\deploy.ps1 -Launch  # same, then open the dashboard
+dotnet run --project src/MindAttic.Orchestrator.Wpf   # a dev build: never installs itself
+```
+
+What you should see: the dashboard's repo tiles fill in, the token budget tile shows the current 5-hour percent and pace, and `orchestrator budget` prints the same from a terminal.
+
+## How it works
 
 It reads what already exists rather than adding new bookkeeping:
 
@@ -24,106 +93,68 @@ It reads what already exists rather than adding new bookkeeping:
 | `~/.claude/claude-usage.json` (written by the shared statusline) | Claude's own 5-hour and weekly percent used and reset times |
 | `~/.claude/session-context/*.json` (statusline + `context-gate.py`) | each session's context fill, whether its turn is running, and its CLI process |
 
-## How it runs, in one screen
-
-The goal: keep agents working all day and night, spending ~98% (the adjustable target) of every 5-hour window without ever
-hitting the session limit, and never stalling on a full context. Pick what runs; it handles the rest.
+The goal is to keep agents working all day and night, spending the target (98% by default, adjustable) of every 5-hour window without ever hitting the session limit. Pick what runs; it handles the rest. The full explanation is in [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md).
 
 | Piece | What it does | Where |
 | --- | --- | --- |
-| Daemon | runs at logon, refreshes every 15s: budget, pace, autopilot | logon task `\MindAttic\Orchestrator\...`; log in Vault (below) |
+| Daemon | runs at logon, refreshes every 15s: budget, pace, hooks, sweeps | logon task `\MindAttic\Orchestrator\...`; log in Vault (below) |
 | Claude's count | 5-hour percent and reset straight from Claude Code, sized safely | `~/.claude/claude-usage.json` |
 | Pacing | caps new sessions so the window lands on its target (98% by default) at its reset; the week is never paced | `rl-status.json` → `pace` |
 | Holding agents | every Claude CLI and subagent waits before each tool call while the draw won't last, 0s once it fits | `~/.claude/pace-gate.py` (PreToolUse hook) |
 | Wind-down | past 90% of the 5-hour window each turn is told (once more mid-turn if it crosses the line) to start only what it can finish before the stop, and to commit and file the rest as a ticket if its task won't finish; autopilot starts only stories whose cost estimate fits what's left | `rl-status.json` → `wind_down_note` |
-| Never over | if the daemon dies or stalls (`rl-status.json` over 3 minutes old) the stop still holds: both gates fall back to Claude's own 5-hour percent (`~/.claude/claude-usage.json`, refreshed by the statusline every 60s) and refuse at 99%, and every prompt you type shows a warning that the daemon is down and nothing else is paced until it's back. Otherwise, at the 99% target (or a limit) the status says `stop`: every tool call, in every CLI and `/unthrottle`d ones too, is held as long as a hook may wait and then refused, so usage can't pass the limit whatever the hold settings. A message you type then is answered at once by the hook (not sent, so nothing is spent; it says when typing works again), except `/autopilot`, `/throttle`, `/unthrottle`, `/crossrepo` and `/goal`. Below the stop, typing is never held; keep-going lets those turns end, and autopilot gives a stopped agent's story back to start again after the reset (its work stays in its worktree) | `rl-status.json` → `stop`, `stop_note` |
-| Pace ledger | proves the goal over time: every 5-hour window, once it resets, gets one permanent row graded `ok` (ended ≥95%, no hit), `under`, `blind` (Claude's meter went unseen ≥15 min while ≥2% of the window was spent, so the pace was estimating) or `over` (a 5-hour limit hit, or Claude reporting 100%), with its peak, end, minutes at 99%, the pace gate's holds and refusals and typed prompts answered at the stop. A new limit hit is raised the moment it's read (Error log, urgent alert, a fix ticket here with what the gate did in the 30 minutes before); a window closing over or blind does the same (one open blind ticket stands for all). The dashboard's third card shows the time since a window last went over | `%APPDATA%\MindAttic\MindAttic.Orchestrator\pace-ledger.jsonl`; gate events in `~/.claude/session-context/pace-gate.jsonl` (8 days); `orchestrator ledger` |
+| Never over | at the target (or a limit) the status says `stop`: every tool call, in every CLI and `/unthrottle`d ones too, is held as long as a hook may wait and then refused, so usage can't pass the limit whatever the hold settings. A message you type then is answered at once by the hook (not sent, so nothing is spent; it says when typing works again), except `/autopilot`, `/throttle`, `/unthrottle`, `/crossrepo`, `/goal` and the exempt commands. If the daemon dies or stalls (`rl-status.json` over 3 minutes old) the stop still holds: both gates fall back to Claude's own 5-hour percent (refreshed by the statusline every 60s) and refuse at 99%, and every prompt you type warns that the daemon is down. Below the stop, typing is never held | `rl-status.json` → `stop`, `stop_note` |
+| Pace ledger | every 5-hour window, once it resets, gets one permanent row graded `ok` (ended ≥95%, no hit), `under`, `blind` (Claude's meter went unseen ≥15 min while ≥2% of the window was spent) or `over` (a limit hit, or Claude reporting 100%), with its peak, end, minutes at 99%, the gate's holds and refusals and prompts answered at the stop. A new limit hit is raised the moment it's read (Error log, urgent alert, a fix ticket here with what the gate did in the 30 minutes before); a window closing over or blind does the same (one open blind ticket stands for all) | `%APPDATA%\MindAttic\MindAttic.Orchestrator\pace-ledger.jsonl`; gate events in `~/.claude/session-context/pace-gate.jsonl` (8 days); `orchestrator ledger` |
 | Subagent allowance | how many subagents may run at once across every CLI, worked out live from the pace (up to 16); each turn is told it, and a new subagent past it waits (counted as the daemon's live count plus any started since, so a subagent whose stop never arrived doesn't hold the rest) | `rl-status.json` → `subagent_allowance`, `subagents_running`; `settings --max-subagents 16` |
 | Unthrottle | `/unthrottle` exempts one CLI (its process, subagents and `/clear` included) from every hold until it closes; its usage still counts, so the others absorb it; `/throttle` ends it | `~/.claude/session-context/unthrottled-<pid>` |
 | Exempt commands | a turn typed as one of `ExemptCommands` (default `/throttle`, `/unthrottle`, `/deploy`, `/run`) skips every pace gate until it stops: no hold, no subagent wait, no stop refusal, and a typed one isn't answered unsent at the stop. A `Skill` call naming one goes through anywhere. Each such call is logged as `exempt` and counted, so its spend lands in the pace at once | `settings --exempt "/deploy,/run"` (`none`, `default`); the dashboard's Settings; the turn's mark in `~/.claude/session-context/<session>.state.json` → `exempt` |
 | Repo windows | a CLI opened in a repo works only that repo: `pace-gate.py` refuses edits to another repo's files, `workflow ticket close`/`correct` on another repo's tickets, and `git -C <other repo>` changes. Filing a ticket in another repo (`workflow ticket new --repo X`) is always allowed, since that's how work is handed over. The workspace-root (General) CLI may work anywhere; `/crossrepo A,B` (or `all`) lets one CLI into other repos until it closes, `/crossrepo off` ends it | `~/.claude/pace-gate.py`; `~/.claude/session-context/crossrepo-<pid>` |
-| No master pushes | every repo lands on `main` (the four master repos were renamed 2026-10-16), so `git push` to `master` is refused with a pointer to `HEAD:main`; it would only recreate a stray branch | `~/.claude/pace-gate.py` |
+| No master pushes | every repo lands on `main` (the four master repos were renamed 2026-10-16), so `git push` to `master` is refused with a pointer to `HEAD:main` | `~/.claude/pace-gate.py` |
 | Whole-drive guard | `find`/`rg`/`grep`/`fd` on a drive root or `~`, and a recursive `ls`/`dir`/`Get-ChildItem` there (`-R`, `/s`, or PowerShell's `-Recurse`/`-r` in any case), is refused: such a search never finishes and leaks handles until Windows freezes | `~/.claude/pace-gate.py` |
 | Context | nothing ever types `/quicksave`, `/clear` or `/quickload` into a session, and no turn is told to stop for its context: a full context is left to Claude's own compaction (automatic cycling cleared a session in use, 2026-10-16, so it was removed) | — |
-| Keep going | only the CLI `/autopilot` is on in, and only while its repos have workable tickets (fixes and approved ones): when its turn ends it's told to run `orchestrator next` again and carry on; one that stops again straight after without doing anything is let go. No other CLI is ever pushed onto tickets, whatever its repo. Logged to `~/.claude/session-context/keep-going.jsonl` | `~/.claude/context-gate.py` (Stop hook) |
-| Autopilot | the CLI you type it into works the tickets itself, through its own subagents: each takes one ticket in its own worktree, lands it on the repo's `main` and closes it, as many at once as the pace's subagent allowance has room for | `/autopilot` (this CLI's repo), `-repo=A,B` (wildcards too: `-repo=GTFO.*`), `all`; `/autopilot off` (this CLI), `/autopilot off all` (every CLI); `orchestrator next --repos A,B --claim` hands out the tickets |
+| Keep going | only the CLI `/autopilot` is on in, and only while its repos have workable tickets (fixes and approved ones): when its turn ends it's told to run `orchestrator next` again and carry on; one that stops again straight after without doing anything is let go. No other CLI is ever pushed onto tickets. Logged to `~/.claude/session-context/keep-going.jsonl` | `~/.claude/context-gate.py` (Stop hook) |
+| Autopilot | the CLI you type it into works the tickets itself, through its own subagents: each takes one ticket in its own worktree, lands it on the repo's `main` and closes it, as many at once as the subagent allowance has room for | `/autopilot` (this CLI's repo), `-repo=A,B` (wildcards too: `-repo=GTFO.*`), `all`; `/autopilot off` (this CLI), `/autopilot off all` (every CLI); `orchestrator next --repos A,B --claim` hands out the tickets |
 
-To run unattended: type `/autopilot` in a CLI. That CLI works its own repo's tickets (or `-repo=A,B`, a wildcard such as `-repo=GTFO.*` for every repo whose name starts `GTFO.`, or `all`) through its own subagents, and no other CLI is affected. It runs `orchestrator next --repos ... --claim`, which hands it the next workable tickets (fixes, and tickets you approved, in queue order: manual priority, then smallest effort), as many as the pace's subagent allowance has room for, each with its own git worktree from the repo's main line (branch `orch/<id>`) and a full prompt. It starts one subagent per ticket; each works only in its worktree, commits, rebases onto the repo's `main`, pushes and closes its ticket. When they return it asks for the next ones, and stops when `next` hands out nothing and says why (none left, waiting for your approval, or the pace). While it's on, the repos named are that CLI's cross-repo exception, so its subagents may edit and close tickets there. The daemon no longer starts headless agents of its own; it still reaps ones started before, and its hourly sweep removes the worktrees of finished tickets once landed. `/autopilot off` ends it in that CLI. To check on it:
-`orchestrator status` (sessions), `orchestrator budget` (percent, pace, hold), `orchestrator queue`.
-The hooks are written into your global `~/.claude/settings.json` by the daemon and dashboard, and
-rewritten if they go missing (a failed write, say while Claude Code has the file open, is retried on the
-next refresh). Both gates take the workspace from `MINDATTIC_WORKSPACE` (default `D:/Projects/MindAttic`)
-and treat `<workspace>.worktrees\<Repo>\...` as that repo's autopilot worktrees.
+The hooks are written into your global `~/.claude/settings.json` by the daemon and dashboard, and rewritten if they go missing (a failed write, say while Claude Code has the file open, is retried on the next refresh). Both gates take the workspace from `MINDATTIC_WORKSPACE` (default `D:/Projects/MindAttic`) and treat `<workspace>.worktrees\<Repo>\...` as that repo's autopilot worktrees.
+
+## Autopilot
+
+Type `/autopilot` in a CLI. That CLI works its own repo's tickets (or `-repo=A,B`, a wildcard such as `-repo=GTFO.*` for every repo whose name starts `GTFO.`, or `all`) through its own subagents, and no other CLI is affected.
+
+It runs `orchestrator next --repos ... --claim`, which hands it the next workable tickets (fixes, and tickets you approved, in queue order: manual priority, then smallest effort), as many as the subagent allowance has room for, each with its own git worktree from the repo's main line (branch `orch/<id>`) and a full prompt. It starts one subagent per ticket; each works only in its worktree, commits, rebases onto the repo's `main`, pushes and closes its ticket. When they return it asks for the next ones, and stops when `next` hands out nothing and says why (none left, waiting for your approval, or the pace).
+
+While it's on, the repos named are that CLI's cross-repo exception, so its subagents may edit and close tickets there. The daemon no longer starts headless agents of its own; it still reaps ones started before, and its hourly sweep removes the worktrees of finished tickets once landed. A story whose agent was stopped at the window's stop is given back to start again after the reset (its work stays in its worktree). `/autopilot off` ends it in that CLI.
+
+To check on it: `orchestrator status` (sessions), `orchestrator budget` (percent, pace, hold), `orchestrator queue`.
 
 ## Install
 
-There's no setup step. `MindAttic.Orchestrator.exe` is one self-contained file (no .NET needed):
-drop it anywhere and double-click it. The first run:
+There's no setup step. `MindAttic.Orchestrator.exe` is one self-contained file: drop it anywhere and double-click it. The first run:
 
-1. copies itself to `C:\Apps\MindAttic.Orchestrator` (per-user `%LOCALAPPDATA%\Programs` if `C:\Apps`
-   isn't writable) and hands over to that copy;
-2. if the workspace (default `D:\Projects\MindAttic`) is missing or empty, asks once: **build one**
-   (pick an empty folder; it clones the workspace root repo, `mindattic/codex-standard`, then every repo
-   listed in its `docs\workspace-repos.json`, four at a time, with a progress window) or **point at one
-   that's already here**. Repos that fail (offline, no access) are listed; opening it again clones only
-   what's missing;
-3. registers the logon task `\MindAttic\Orchestrator\Orchestrator daemon` (the same exe with `--daemon`: headless,
-   no window, no time limit) and starts it;
-4. makes Start menu and desktop shortcuts, then opens the dashboard, which scans every repo and learns
-   your limits from the last month of transcripts.
+1. copies itself to `C:\Apps\MindAttic.Orchestrator` (per-user `%LOCALAPPDATA%\Programs` if `C:\Apps` isn't writable) and hands over to that copy;
+2. if the workspace (default `D:\Projects\MindAttic`) is missing or empty, asks once: **build one** (pick an empty folder; it clones the workspace root repo, `mindattic/codex-standard`, then every repo listed in its `docs\workspace-repos.json`, four at a time, with a progress window) or **point at one that's already here**. Repos that fail (offline, no access) are listed; opening it again clones only what's missing;
+3. registers the logon task `\MindAttic\Orchestrator\Orchestrator daemon` (the same exe with `--daemon`: headless, no window, no time limit) and starts it;
+4. makes Start menu and desktop shortcuts, then opens the dashboard, which scans every repo and learns your limits from the last month of transcripts.
 
-Every later start checks the same things and repairs only what's missing or points elsewhere, so a
-moved exe, a deleted shortcut or a dead daemon fixes itself. Double-clicking a newer copy upgrades in
-place (the running daemon and dashboard are stopped and restarted). `MindAttic.Orchestrator.exe --uninstall`
-removes the task and shortcuts.
+Every later start checks the same things and repairs only what's missing or points elsewhere, so a moved exe, a deleted shortcut or a dead daemon fixes itself. Double-clicking a newer copy upgrades in place (the running daemon and dashboard are stopped and restarted). `MindAttic.Orchestrator.exe --uninstall` removes the task and shortcuts.
 
-The daemon is what makes budgets and pacing always on: it keeps `~/.claude/rl-status.json` and the pace
-(including the hold on running agents) current, installs and repairs the pace and context hooks,
-notices stale assignments, and runs autopilot's background agents. Only one runs (a named mutex),
-and only one process starts them (`dispatch.lock`): with the daemon running, an open
-dashboard shows proposals and leaves autopilot to it. The same lease decides who writes `rl-status.json` and
-builds the status snapshot: the holder publishes each one to `status-snapshot.json`, and every other dashboard
-window, and one-off CLI commands like `status` and `queue`, show that instead of reading the transcripts
-themselves (they build their own only when nothing fresh was published in the last minute, and never
-overwrite the holder's `rl-status.json`). A dashboard hidden in the tray refreshes every 60s instead of
-every 5s (every 15s while it's the one holding the lease) and catches up the moment it's shown.
+The daemon is what makes budgets and pacing always on: it keeps `~/.claude/rl-status.json` and the pace (including the hold on running agents) current, installs and repairs the pace and context hooks, notices stale assignments, reaps orphaned processes and sweeps landed worktrees. Only one runs (a named mutex), and only one process holds the dispatch lease (`dispatch.lock`). The same lease decides who writes `rl-status.json` and builds the status snapshot: the holder publishes each one to `status-snapshot.json`, and every other dashboard window, and one-off CLI commands like `status` and `queue`, show that instead of reading the transcripts themselves (they build their own only when nothing fresh was published in the last minute, and never overwrite the holder's `rl-status.json`). A dashboard hidden in the tray refreshes every 60s instead of every 5s (every 15s while it's the one holding the lease) and catches up the moment it's shown.
 
-From source:
+## Commands
 
-```powershell
-.\deploy.ps1          # build artifacts\MindAttic.Orchestrator.exe (+ the CLI in C:\Apps\MindAttic.Orchestrator\Cli), then install it as a double-click would
-.\deploy.ps1 -Launch  # same, then open the dashboard
-dotnet run --project src/MindAttic.Orchestrator.Wpf   # a dev build: never installs itself
-```
-
-Every process logs through [MindAttic.Log](../MindAttic.Log), the workspace's shared schema, to the
-standalone database Vault assigns it, `%APPDATA%\MindAttic\Logging\MindAttic.Orchestrator\MindAttic.Log.db`
-(`VaultPaths.LoggingDbPath`; open it with MindAttic.Log.Reader). The daemon records pace changes, holds, stale tickets, dispatches
-and failed refreshes; the dashboard records dispatches, releases and crashes; the CLI records crashes.
-Entries are tagged with a `Component` (`Daemon`, `Dashboard`, `Cli`) and a category.
-
-What's been read from the transcripts is cached in `%LOCALAPPDATA%\MindAttic\MindAttic.Orchestrator\transcripts.cache.json`
-(each file's read offset plus its parsed usage and limit hits; a few MB, saved at most once a minute),
-so a new process parses only what was written since: a CLI run takes under a second instead of ~4. Within a
-process, a transcript that's been quiet for 10 minutes and whose size and timestamp haven't moved isn't
-reopened on the next refresh (every one is rechecked every 5 minutes).
-When the 7-day window moves on at midnight, what fell out of it is trimmed rather than reread. Deleting
-the file is always safe; the next run rebuilds it.
-
-The same core drives a CLI (`dotnet run --project src/MindAttic.Orchestrator.Cli -- <command>`):
+The same core drives a CLI, deployed as `orchestrator.exe` in `C:\Apps\MindAttic.Orchestrator\Cli` (or `dotnet run --project src/MindAttic.Orchestrator.Cli -- <command>`):
 
 | Command | |
 | --- | --- |
 | `status [--all] [--json]` | every repo's state, sessions, open tickets, tokens today, budget line |
 | `start <Repo> [--provider] [--prompt]` | open a Launcher tab for a repo |
 | `send <Repo> "text" [--no-submit]` | type text + Enter (or just the text) into that repo's Launcher tab(s) |
-| `budget [--block 20M] [--weekly 150M] [--weekly-reset "Mon 9:00"] [--warn 80] [--pace true] [--target 99] [--hits] [--week]` | current 5-hour block, week and pace, and Codex/Gemini usage; set limits (`0` clears back to learned, `none` drops the reset); `--hits` lists the limit hits the learned limits come from; `--week` charts the week day by day and projects it against the weekly limit |
+| `budget [--block 20M] [--weekly 150M] [--weekly-reset "Mon 9:00"] [--warn 80] [--pace true] [--target 98] [--hits] [--week]` | current 5-hour block, week and pace, and Codex/Gemini usage; set limits (`0` clears back to learned, `none` drops the reset); `--hits` lists the limit hits the learned limits come from; `--week` charts the week day by day and projects it against the weekly limit |
 | `queue [--top 25] [--groom]` / `bump <ID> [--by n]` | the cross-repo ticket queue, what's proposed next, and why (estimate, stale, too big, blocked, reserved); `--groom` lists old untouched tickets; reprioritize |
 | `dispatch <ID> [--provider] [--worktree]` | start a session on a ticket |
 | `release <ID> [--remove-worktree]` | put a ticket back in the queue; remove its (clean) worktree |
-| `daemon [--interval 15]` | keep the budget file and pace fresh and run autopilot without the dashboard open |
-| `settings [--max-sessions n] [--autopilot false] [--throttle-agents true] [--max-delay 300] [--max-subagents 16] [--provider Claude\|Codex\|Gemini\|Kimi] [--stale-hours 12] [--quiet 22:00-07:00] [--repo-cap Repo=40] [--repo-sessions Repo=3] [--autopilot-skip A,B] [--hand-minutes 15] [--keep-going false] [--groom-days 30] [--notify URL] [--github-intake true]` | scheduler settings |
-| `audit [--latest]` | convention drift and cross-repo duplication |
+| `daemon [--interval 15]` | keep the budget file, pace and hooks fresh without the dashboard open |
+| `settings [--max-sessions n] [--autopilot false] [--throttle-agents true] [--max-delay 300] [--max-subagents 16] [--provider Claude] [--stale-hours 12] [--quiet 22:00-07:00] [--repo-cap Repo=40] [--repo-sessions Repo=3] [--autopilot-skip A,B] [--hand-minutes 15] [--keep-going false] [--exempt "/deploy,/run"] [--groom-days 30] [--notify URL] [--github-intake true]` | scheduler settings (`--provider` takes Claude, Codex, Gemini or Kimi) |
+| `audit [--latest] [--top n]` | convention drift and cross-repo duplication |
 | `approve [<ID> ...] [--undo]` | only fixes are worked without asking; every other open ticket (feature, chore, docs) waits outside the queue, and for autopilot and keep-going, until you approve it. With no ids it lists what's waiting |
 | `block <ID> --by <ID> [--clear]` / `reserve <ID> <tokens>` | make a ticket wait for others (or clear what it waits for); set tokens aside for a ticket. Ticket ids may be typed in any case |
 | `dryrun` / `next [--repos "A,B"] [--count n] [--claim]` | which CLIs have `/autopilot` on and what each would hand its subagents next; `next --claim` claims them (worktree, assignment, prompt) |
@@ -133,193 +164,119 @@ The same core drives a CLI (`dotnet run --project src/MindAttic.Orchestrator.Cli
 | `hygiene` | closed tickets that may not be done: no Ref cited, or a later ticket says it came back |
 | `intake [--dry-run]` | file GitHub issues labelled `orchestrator` and today's CI failures on main as tickets |
 | `workspace export` | write `docs\workspace-repos.json` in the workspace root repo from the repos on disk (commit and push it so new machines get them) |
-| `workspace build <folder> [--root URL] [--install-apps]` / `workspace install-apps` | clone the workspace root, then every repo it lists, into a folder; on a partial workspace, only what's missing |
+| `workspace build <folder> [--root URL] [--install-apps]` / `workspace install-apps` | clone the workspace root, then every repo it lists, into a folder; on a partial workspace, only what's missing; `install-apps` runs every other app's `deploy.ps1` |
 
 Starting sessions needs the deployed Launcher at `C:\Apps\MindAttic.Launcher\MindAttic.Launcher.exe`.
-Settings, assignments, learned limits (`limits.json`) and the last audit live in
-`%APPDATA%\MindAttic\MindAttic.Orchestrator`.
 
-## Phases
+## Configuration
 
-**0 · Status.** Each repo is one tile, grouped as *Needs you* (a session stopped and is waiting,
-longest wait first), *Working* (a transcript grew in the last 2 minutes), *Open tickets, no session*
-and *Quiet*. A toast and a taskbar flash fire when a repo goes Working → Needs you.
+Settings, assignments, learned limits (`limits.json`), ticket costs (`ticket-costs.json`), usage history (`usage-history.json`), the pace ledger and the last audit live in `%APPDATA%\MindAttic\MindAttic.Orchestrator`. Change them with `orchestrator settings` and `orchestrator budget`, or in the dashboard's Settings panel, which also holds the pace target, holding (`ThrottleAgents`, `MaxAgentDelaySeconds`) and the exempt commands.
 
-**1 · Session control.** Start a Claude/Codex/Gemini/Kimi tab in any repo (ticket text can pre-fill
-the prompt, sent only by you) and reply to a live Launcher tab
-from the detail pane.
+Every process logs through MindAttic.Log, the workspace's shared schema, to the standalone database Vault assigns it, `%APPDATA%\MindAttic\Logging\MindAttic.Orchestrator\MindAttic.Log.db` (`VaultPaths.LoggingDbPath`; open it with MindAttic.Log.Reader). The daemon records pace changes, holds, stale tickets, dispatches and failed refreshes; the dashboard records dispatches, releases and crashes; the CLI records crashes. Entries are tagged with a `Component` (`Daemon`, `Dashboard`, `Cli`) and a category.
 
-**2 · Budget.** Usage is grouped into 5-hour blocks (the window Claude's subscription limits reset
-on), starting at the first response after the previous block, rounded down to 10 minutes: that's
-where Claude Code's own reported resets land. The budget metric is *uncached* tokens (input + cache
-writes + output); cache reads are reported but excluded because they dominate raw totals.
+What's been read from the transcripts is cached in `%LOCALAPPDATA%\MindAttic\MindAttic.Orchestrator\transcripts.cache.json` (each file's read offset plus its parsed usage and limit hits; a few MB, saved at most once a minute), so a new process parses only what was written since: a CLI run takes under a second instead of about 4. Within a process, a transcript that's been quiet for 10 minutes and whose size and timestamp haven't moved isn't reopened on the next refresh (every one is rechecked every 5 minutes). When the 7-day window moves on at midnight, what fell out of it is trimmed rather than reread. Deleting the file is always safe; the next run rebuilds it.
 
-The limits are **learned**. Whenever Claude Code refuses a turn it writes `You've hit your session
-limit · resets 2pm (America/Chicago)` (or *weekly limit*) into the transcript. Each wall becomes one
-observation: the uncached tokens in that window up to the hit, plus the exact reset time. The learned
-limit is the median of the 5 most recent hits, so a raised limit takes over within a few hits. The
-first run reads the last 30 days to start from the hits you already have. While you're behind a
-wall, its reported reset replaces the estimated block end. A weekly hit's reset becomes the week's
-reset when you haven't set one. Spending past a learned limit with no wall means the limit went up,
-so it's retired until the next hit relearns it. A budget you set always overrides the learned one.
-The local count misses claude.ai and other machines, which makes the learned limit err low (pacing
-early) rather than high.
+## Budget and pacing
 
-With a limit (set or learned) you get percent used, burn rate, the projected time you'd hit it, a
-warning toast, and `~/.claude/rl-status.json` kept current for the `rl-check.py` prompt hook. With
-neither, the block is compared to your busiest block in the last 7 days as context only: it never
-warns, and no limit file is written. The week starts at the reset day and time you set (local time,
-e.g. `Mon 9:00 AM`), else the learned one, else it's a rolling 7 days.
+**Budget.** Usage is grouped into 5-hour blocks (the window Claude's subscription limits reset on), starting at the first response after the previous block, rounded down to 10 minutes: that's where Claude Code's own reported resets land. The budget metric is *uncached* tokens (input + cache writes + output); cache reads are reported but excluded because they dominate raw totals.
 
-**Claude's own count wins.** Claude Code hands the statusline its real usage (`rate_limits`: 5-hour
-and 7-day percent used and reset time); the shared statusline saves it to `~/.claude/claude-usage.json`
-and the orchestrator sizes each limit from it (what the window spent by then, over the percent taken a
-point high, since Claude reports whole percents, so the limit errs small and pacing never walks into
-the wall). Between reports the percent is the last report's plus what the transcripts recorded since, so
-everything is counted: what you type, every reply (tool calls or not), subagents, background agents. A
-report stays in use for its whole 5-hour window, so with only background agents running (they draw no
-statusline) the count carries on rather than falling back to a learned limit; the hooks also give the
-statusline a 60s `refreshInterval`, so any open tab, idle or not, keeps the real percent fresh. Set or
-learned limits apply only when there's no report for the current window (or it's under 5%, too coarse
-to size by). The daemon recounts on its 15s tick, and sooner (at most every 10s) whenever a turn or subagent
-ends anywhere or a new report lands (`~/.claude/session-context/refresh.now`).
+**Claude's own count wins.** Claude Code hands the statusline its real usage (`rate_limits`: 5-hour and 7-day percent used and reset time); the shared statusline saves it to `~/.claude/claude-usage.json` and the orchestrator sizes each limit from it (what the window spent by then, over the percent taken a point high, since Claude reports whole percents, so the limit errs small and pacing never walks into the wall). Between reports the percent is the last report's plus what the transcripts recorded since, so everything is counted: what you type, every reply, subagents, background agents. A report stays in use for its whole 5-hour window; the hooks also give the statusline a 60s `refreshInterval`, so any open tab, idle or not, keeps the real percent fresh. Set or learned limits apply only when there's no report for the current window (or it's under 5%, too coarse to size by). The daemon recounts on its 15s tick, and sooner (at most every 10s) whenever a turn or subagent ends anywhere or a new report lands (`~/.claude/session-context/refresh.now`).
 
-**Pacing** (on by default) aims to land on 99% of the 5-hour window right as it resets, instead of
-hitting the wall and waiting hours. The *sustainable rate* is what's left of the target divided by
-the hours to the reset. The weekly limit is shown, never paced: a week-long stretch would hold agents
-for days, and you manage the week yourself; only a real weekly wall stops new work. A session's cost
-is the last 30 minutes' burn divided by the sessions active in it (scaled up for any hold in force,
-since a held session burns less than it will once let go), or with none running, your median
-10-minute session burn over the past week. The session cap is how many such sessions fit the
-sustainable rate:
+**Learned limits.** Whenever Claude Code refuses a turn it writes `You've hit your session limit · resets 2pm (America/Chicago)` (or *weekly limit*) into the transcript. Each wall becomes one observation: the uncached tokens in that window up to the hit, plus the exact reset time. The learned limit is the median of the 5 most recent hits, so a raised limit takes over within a few hits. The first run reads the last 30 days to start from the hits you already have. While you're behind a wall, its reported reset replaces the estimated block end. A weekly hit's reset becomes the week's reset when you haven't set one. Spending past a learned limit with no wall means the limit went up, so it's retired until the next hit relearns it. A budget you set always overrides the learned one.
+
+With a limit (reported, set or learned) you get percent used, burn rate, the projected time you'd hit it, a warning toast, and `~/.claude/rl-status.json` kept current for the hooks. With none, the block is compared to your busiest block in the last 7 days as context only: it never warns, and no limit file is written. The week starts at the reset day and time you set (local time, e.g. `Mon 9:00 AM`), else the learned one, else it's a rolling 7 days.
+
+**Pacing** (on by default) aims to land on the target (98% by default, `budget --target` or the dashboard's Settings) of the 5-hour window right as it resets, instead of hitting the wall and waiting hours. The *sustainable rate* is what's left of the target divided by the hours to the reset. The weekly limit is shown, never paced: a week-long stretch would hold agents for days; only a real weekly wall stops new work. A session's cost is the last 30 minutes' burn divided by the sessions active in it (scaled up for any hold in force), or with none running, your median 10-minute session burn over the past week. The session cap is how many such sessions fit the sustainable rate:
 
 | Pace | When | Effect |
 | --- | --- | --- |
 | open | every slot fits | normal |
 | throttled | fewer than max fit | fewer new sessions; running ones aren't replaced as they finish |
-| coast | none fit, or the 99% target is spent | no new sessions |
+| coast | none fit, or the target is spent | no new sessions |
 | over | at a limit (reported or counted) | no new sessions |
 
-Near a reset with budget left, the sustainable rate climbs and the cap opens back up, so the leftover
-gets used.
+Near a reset with budget left, the sustainable rate climbs and the cap opens back up, so the leftover gets used.
 
-**Holding running agents.** Capping new sessions isn't enough when the ones already running (and
-their subagents) draw too fast, so the orchestrator installs `~/.claude/pace-gate.py` as a global
-Claude Code `PreToolUse` hook. Every Claude CLI on the machine, Launcher tab or not, subagents
-included, runs it before each tool call; it waits `pace_delay_seconds` from `rl-status.json`. The
-pacer sets that from the last 10 minutes' draw: if it would outrun what fits until the reset, each
-call waits long enough to bring it down (`20s × (draw ÷ sustainable − 1)`, up to 5 minutes); the
-moment it fits, it's 0, and a hold already waiting is let go within 5 seconds. The measured draw is
-corrected for the hold already in force, so releasing doesn't just bring the burst back. A file
-nobody has refreshed for 3 minutes is ignored, so a stopped daemon never slows anything.
-`settings --throttle-agents false` turns holding off; `--max-delay` caps it. `pace_note` is printed into
-each prompt too, so agents know to start subagents a few at a time.
+**Holding running agents.** Capping new sessions isn't enough when the ones already running (and their subagents) draw too fast, so the orchestrator installs `~/.claude/pace-gate.py` as a global Claude Code `PreToolUse` hook. Every Claude CLI on the machine, Launcher tab or not, subagents included, runs it before each tool call; it waits `pace_delay_seconds` from `rl-status.json`. The pacer sets that from the last 10 minutes' draw: if it would outrun what fits until the reset, each call waits `20s × (draw ÷ sustainable − 1)`, up to 5 minutes; the moment it fits, it's 0, and a hold already waiting is let go within 5 seconds. The measured draw is corrected for the hold already in force, so releasing doesn't just bring the burst back. `settings --throttle-agents false` turns holding off; `--max-delay` caps it. `pace_note` is printed into each prompt too, so agents know to start subagents a few at a time.
 
-The same `pace-gate.py` is wired into Codex's, Gemini's and Kimi's own pre-tool-call hook too (Codex's
-`PreToolUse` in `~/.codex/hooks.json`, Gemini's `BeforeTool` in `~/.gemini/settings.json`, Kimi's
-`PreToolUse` in `~/.kimi-code/config.toml`), so a Launcher tab on any of the four providers slows down
-the same way (M.ORCH-T50). Codex shows its own one-time "hooks need review" prompt in its TUI before a
-freshly added hook runs there; nothing types through that for you.
+The same `pace-gate.py` is wired into Codex's, Gemini's and Kimi's own pre-tool-call hook too (Codex's `PreToolUse` in `~/.codex/hooks.json`, Gemini's `BeforeTool` in `~/.gemini/settings.json`, Kimi's `PreToolUse` in `~/.kimi-code/config.toml`), so a Launcher tab on any of the four providers slows down the same way. Codex shows its own one-time "hooks need review" prompt in its TUI before a freshly added hook runs there; nothing types through that for you.
 
-**Context.** The statusline saves each session's context fill to `~/.claude/session-context/<session>.json`, and
-`context-gate.py` records whether its turn is running; that's all. Nothing types into a session and no turn is told
-to stop for its context: a full one is left to Claude's own compaction.
+**Context.** The statusline saves each session's context fill to `~/.claude/session-context/<session>.json`, and `context-gate.py` records whether its turn is running; that's all. Nothing types into a session and no turn is told to stop for its context: a full one is left to Claude's own compaction.
 
-**3 · Scheduler.** Every open ticket across all repos in one queue: manual priority, then fixes
-before features before chores before docs, then oldest. Each refresh it proposes up to the free
-session slots (one per repo) under the pace's session cap. It holds when the slots are full, the pace
-is coasting or over, or (with pacing off or nothing to pace against) the budget passes the warn line.
-Proposals wait for a click; the tab opens with the ticket pre-filled and unsent, and the prompt tells
-the agent to finish with `/commit` and `workflow ticket close <ID> --repo <Repo>`. To work unattended,
-`/autopilot` (above) works stories in background agents instead of opening tabs. A ticket for a repo that already has a session
-goes into a git worktree under `D:\Projects\MindAttic.worktrees\<Repo>\<ID>` on branch `orch/<id>`, so
-two agents never share a checkout. When the ticket closes, the queue offers to remove the worktree
-(git refuses if it has uncommitted changes; the branch is always kept).
+## Scheduler and queue
 
-A dispatched ticket stays assigned while there's any sign of life where it was dispatched: a transcript
-written under its directory, or a Launcher tab still open there. After `StaleAfterHours` (default 12;
-`settings --stale-hours`, 0 never) of neither, the session evidently ended without closing the ticket,
-so it goes back in the queue at its normal place, marked *stale*. The queue, `orchestrator queue` and
-the daemon log show it. Starting it again reuses its worktree, where the partial work is, and replaces
-the old assignment.
+Every open ticket across all repos is in one queue: manual priority, then fixes before features before chores before docs, then oldest. Each refresh it proposes up to the free session slots (one per repo) under the pace's session cap. It holds when the slots are full, the pace is coasting or over, or (with pacing off or nothing to pace against) the budget passes the warn line. Proposals wait for a click; the tab opens with the ticket pre-filled and unsent, and the prompt tells the agent to finish with `/commit` and `workflow ticket close <ID> --repo <Repo>`. To work unattended, use `/autopilot` (above). A ticket for a repo that already has a session goes into a git worktree under `D:\Projects\MindAttic.worktrees\<Repo>\<ID>` on branch `orch/<id>`, so two agents never share a checkout. When the ticket closes, the queue offers to remove the worktree (git refuses if it has uncommitted changes; the branch is always kept).
 
-**Ticket costs.** A dispatched session is tied to its ticket by the prompt the scheduler writes ("Work on
-ticket ID (type)") or by its worktree folder, so the orchestrator learns what tickets cost: every
-session's uncached tokens, kept per session for 180 days in `ticket-costs.json`. Each queued ticket
-gets an estimate: the median cost of the same type in the same repo (3+ done), else the same type, else
-all tickets. Proposals show it (`~1.2M (median of 5 fix tickets in Prose)`). When pacing is on and the
-estimate is more than what's left before the reset, the ticket isn't proposed but listed as *too big
-for now*: split it, or let it wait for the reset rather than run out of room halfway.
+A dispatched ticket stays assigned while there's any sign of life where it was dispatched: a transcript written under its directory, or a Launcher tab still open there. After `StaleAfterHours` (default 12; `settings --stale-hours`, 0 never) of neither, the session evidently ended without closing the ticket, so it goes back in the queue at its normal place, marked *stale*. Starting it again reuses its worktree, where the partial work is, and replaces the old assignment.
 
-**Steering the queue.** `orchestrator block X-T2 --by X-T1` (or "blocked by X-T1" in a ticket's summary)
-keeps a ticket out of proposals until its blockers close. `orchestrator reserve X-T5 2M` sets tokens aside:
-that ticket is proposed first and may start while pacing coasts (never past a limit), and everything
-else paces against what's left. `settings --quiet 22:00-07:00` pauses autopilot in those hours.
-`settings --repo-cap Prose=40` stops proposing work in a repo once it has spent 40% of the 5-hour limit
-in the current block; `--repo-sessions Prose=3` lets a repo run 3 sessions at once (default 2: the repo
-plus a worktree). A non-Claude default provider holds at 90% of its own reported 5-hour limit. Proposals
-in a repo that shares duplicated code (per the last audit) with a repo that has a session say so, since
-two agents fixing the same copied code is how conflicting edits happen. `queue --groom` lists open
-tickets over 30 days old that nobody is on. `orchestrator dryrun` prints what autopilot would start
-right now, without starting anything.
+**Ticket costs.** A dispatched session is tied to its ticket by the prompt the scheduler writes ("Work on ticket ID (type)") or by its worktree folder, so the orchestrator learns what tickets cost: every session's uncached tokens, kept per session for 180 days in `ticket-costs.json`. Each queued ticket gets an estimate: the median cost of the same type in the same repo (3+ done), else the same type, else all tickets. Proposals show it (`~1.2M (median of 5 fix tickets in Prose)`). When pacing is on and the estimate is more than what's left before the reset, the ticket isn't proposed but listed as *too big for now*.
 
-**Watching.** The daemon also flags a session that keeps repeating the identical tool call (5 of its last
-12, still writing) as *looks stuck*: in its log, as a dashboard toast and in `orchestrator status`. It
-audits the workspace every `AuditEveryHours` (24) and reports drift or duplication that's new since the
-last audit. With `settings --notify https://ntfy.sh/<topic>` (or any webhook that takes a plain-text
-POST), the moments worth leaving the desk for go to your phone: an agent finished and is waiting on you,
-pacing coasts or hits a limit, a session looks stuck, a ticket went stale, the audit found something.
-With `settings --github-intake true` it files GitHub issues labelled `orchestrator` and CI failures on
-main as tickets every hour (once each, marked `GH#n` / `CI#id`; nothing is written back to GitHub).
-Every 30 seconds it samples the machine (kernel handles, commit charge, free RAM): past a warn line (88%
-commit, under 2 GB free, 100k handles in one process) autopilot starts no agents, and past a danger line
-(95%, 0.75 GB, 250k) the alert is urgent. It names the worst offenders by what's short: memory users (and
-all Claude processes together) when it's memory, handle holders when it's handles. Going up is immediate;
-coming down is one level at a time and only once clear of the line (5 points of commit, 1 GB, a fifth of the
-handles), so it doesn't flap as agents come and go, and you're alerted once per escalation. Nothing is
-killed for it. Every 60 seconds it reaps tool processes (`find`, `rg`, `grep`, `git`, `bash`, `python`,
-`node`) left orphaned when their agent exited, ones still under an agent that pass 50,000 handles, and
-searches (`find`, `rg`, `grep`) running past 30 minutes; a long test run or build under an agent is left be. An orphan is only reaped if an earlier scan saw it (or the shell it ran
-in) under a live Claude CLI, so a dev server or script you started yourself is never touched. Git and `gh` calls made inside its loop give up after 2 minutes and
-1 minute and never wait on a credential prompt, so a network stall can't stop pacing.
+**Steering the queue.** `orchestrator block X-T2 --by X-T1` (or "blocked by X-T1" in a ticket's summary) keeps a ticket out of proposals until its blockers close. `orchestrator reserve X-T5 2M` sets tokens aside: that ticket is proposed first and may start while pacing coasts (never past a limit), and everything else paces against what's left. `settings --quiet 22:00-07:00` pauses autopilot in those hours. `settings --repo-cap Prose=40` stops proposing work in a repo once it has spent 40% of the 5-hour limit in the current block; `--repo-sessions Prose=3` lets a repo run 3 sessions at once (default 2: the repo plus a worktree). A non-Claude default provider holds at 90% of its own reported 5-hour limit. Proposals in a repo that shares duplicated code (per the last audit) with a repo that has a session say so. `queue --groom` lists open tickets over 30 days old that nobody is on. `orchestrator dryrun` prints what autopilot would start right now, without starting anything.
 
-**Dashboard extras.** A tray icon shows budget, pace and who needs you; its menu opens the dashboard,
-pauses or resumes autopilot, starts the next proposal, jumps to a waiting repo, and shows an
-always-on-top HUD strip. Minimizing hides the window to the tray. The agent board lists every live CLI and
-background agent (its ticket, state, tokens and running time) with its subagents nested under it. Opening it after an hour or more
-away starts with a *While you were away* summary. A finished ticket's *Details* shows its sessions and
-commits. Usage is kept by day for a year (`usage-history.json`), so `report` and the week projection
-reach past the 7 days of transcripts.
+## Watching
 
-**4 · Audit.** *Drift*: for each agent file most repos share (`.claude/commands`, hooks, skills,
-`.prose/commands`, `AGENTS.md`, `CLAUDE.md`), the version most repos have is canonical (repo name and
-path are ignored), and every other copy is listed as *drifted* or, under 30% alike, *custom*, with a
-diff button. *Missing*: shared files absent where 60%+ of agent-enabled repos have them.
-*Duplication*: a built-in copy/paste detector (6-line fingerprints over meaningful lines; generated
-code, migrations, build output and vendored libraries skipped) finds identical and near-identical
-files across repos, clusters them, and suggests a home (`mindattic-agent-standard`,
-`MindAttic.Components`, `MindAttic.Helpers`, `MindAttic.Deploy`).
+The daemon flags a session that keeps repeating the identical tool call (5 of its last 12, still writing) as *looks stuck*: in its log, as a dashboard toast and in `orchestrator status`. It audits the workspace every `AuditEveryHours` (24) and reports drift or duplication that's new since the last audit.
 
-## Limits
+With `settings --notify https://ntfy.sh/<topic>` (or any webhook that takes a plain-text POST), the moments worth leaving the desk for go to your phone: an agent finished and is waiting on you, pacing coasts or hits a limit, a session looks stuck, a ticket went stale, the audit found something. With `settings --github-intake true` it files GitHub issues labelled `orchestrator` and CI failures on main as tickets every hour (once each, marked `GH#n` / `CI#id`; nothing is written back to GitHub).
 
-- Budgets and pacing are Claude's (from Claude Code's own count, else learned from its limit hits). Codex
-  (`~/.codex/sessions`) and Gemini CLI (`~/.gemini/tmp/*/chats`) usage counts toward repo activity and
-  per-repo totals and is shown per provider, with Codex's own 5-hour/weekly percentages; Kimi writes no
-  local session log, so its sessions show as Launcher tabs but aren't counted.
-- A session started outside the Launcher is tracked, counted, held and context-cycled, but `send` and
-  the dashboard's reply box only reach Launcher tabs.
-- Holding is set in the dashboard's Settings panel (or `settings.json`: `ThrottleAgents`, `MaxAgentDelaySeconds`);
-  the CLI only has `--throttle-agents` and `--max-delay`.
-- Claude Code prunes transcripts after about 30 days; the budget history window is 7 days, which
-  always covers the current week.
-- The budget file only updates while the daemon or the dashboard is running, so pacing only steers
-  while one of them is; the logon task keeps the daemon up, and opening the dashboard restarts it if it died.
-- Building a workspace clones the repos; it doesn't install the other apps (Launcher etc.; M.ORCH-T44).
-  The repo list is only as current as the last `workspace export` that was pushed.
-- No hold lasts past 5 minutes per tool call (a subagent waiting on the allowance included): past it the call
-  goes ahead, held but never refused, except at the window's target, where it's refused. `/unthrottle` exempts
-  a CLI from holds, never from that stop.
-- A hold slows tool calls, not a long reply with no tool calls in it. Codex needs a one-time "trust
-  this hook" click in its own TUI the first time its hold fires on a machine; nothing automates that.
-- Learned limits are in uncached tokens, and the token-to-limit ratio shifts with the model mix, so
-  they're estimates, used only when Claude's own count isn't available.
+Every 30 seconds it samples the machine (kernel handles, commit charge, free RAM): past a warn line (88% commit, under 2 GB free, 100k handles in one process) autopilot starts no agents, and past a danger line (95%, 0.75 GB, 250k) the alert is urgent. It names the worst offenders by what's short: memory users (and all Claude processes together) when it's memory, handle holders when it's handles. Going up is immediate; coming down is one level at a time and only once clear of the line (5 points of commit, 1 GB, a fifth of the handles), so it doesn't flap as agents come and go, and you're alerted once per escalation. Nothing is killed for it.
+
+Every 60 seconds it reaps tool processes (`find`, `rg`, `grep`, `git`, `bash`, `python`, `node`) left orphaned when their agent exited, ones still under an agent that pass 50,000 handles, and searches (`find`, `rg`, `grep`) running past 30 minutes; a long test run or build under an agent is left be. An orphan is only reaped if an earlier scan saw it (or the shell it ran in) under a live Claude CLI, so a dev server or script you started yourself is never touched. Git and `gh` calls made inside its loop give up after 2 minutes and 1 minute and never wait on a credential prompt, so a network stall can't stop pacing.
+
+## Dashboard
+
+Each repo is one tile, grouped as *Needs you* (a session stopped and is waiting, longest wait first), *Working* (a transcript grew in the last 2 minutes), *Open tickets, no session* and *Quiet* (shown with *Show quiet repos* or a search). A toast and a taskbar flash fire when a repo goes Working → Needs you. A full-screen loader covers the window until the first refresh finishes. `F5` refreshes, `Ctrl+F` searches repos and tickets, `Ctrl +/−` zooms.
+
+The top row holds the stat tiles (token budget, tokens today and the rest, aligned to one size at every window width), then a full-width 5-hour utilization chart. The header shows a live clock next to Updated, Refresh and Settings. The agent board lists every live CLI and background agent (its ticket, state, tokens and running time) with its subagents nested under it. Opening it after an hour or more away starts with a *While you were away* summary. A finished ticket's *Details* shows its sessions and commits.
+
+From a repo's detail pane you can start a Claude, Codex, Gemini or Kimi tab (ticket text can pre-fill the prompt, sent only by you) and reply to a live Launcher tab.
+
+A tray icon shows budget, pace and who needs you. Closing the window hides it to the tray; a left click on the icon brings it back, and only the tray menu's Exit quits. The menu also opens the dashboard, pauses or resumes autopilot, starts the next proposal, jumps to a waiting repo, and shows an always-on-top HUD strip. Usage is kept by day for a year (`usage-history.json`), so `report` and the week projection reach past the 7 days of transcripts.
+
+## Audit
+
+*Drift*: for each agent file most repos share (`.claude/commands`, hooks, skills, `.prose/commands`, `AGENTS.md`, `CLAUDE.md`), the version most repos have is canonical (repo name and path are ignored), and every other copy is listed as *drifted* or, under 30% alike, *custom*, with a diff button. *Missing*: shared files absent where 60%+ of agent-enabled repos have them.
+
+*Duplication*: a built-in copy/paste detector (6-line fingerprints over meaningful lines; generated code, migrations, build output and vendored libraries skipped) finds identical and near-identical files across repos, clusters them, and suggests a home (`mindattic-agent-standard`, `MindAttic.Components`, `MindAttic.Helpers`, `MindAttic.Deploy`).
+
+## Project layout
+
+| Path | What's there |
+| --- | --- |
+| `src/MindAttic.Orchestrator.Core` | budget and pacing, the pace ledger, scheduling and autopilot, session discovery and control, activity readers, audit, installer and the hook scripts |
+| `src/MindAttic.Orchestrator.Wpf` | the dashboard, tray and daemon entry point (`MindAttic.Orchestrator.exe`) |
+| `src/MindAttic.Orchestrator.Cli` | the `orchestrator` CLI (Spectre.Console) |
+| `tests/MindAttic.Orchestrator.Tests` | NUnit tests for all of the above, including the Python hooks run for real |
+| `deploy.ps1` | build the single-file exe and the CLI, then install |
+
+It targets `net10.0-windows` and uses the MindAttic.Log, MindAttic.Vault, MindAttic.Workflow and MindAttic.Components.Wpf packages.
+
+## Testing
+
+```powershell
+dotnet test MindAttic.Orchestrator.slnx
+```
+
+## Limitations
+
+- Budgets and pacing are Claude's (from Claude Code's own count, else learned from its limit hits). Codex (`~/.codex/sessions`) and Gemini CLI (`~/.gemini/tmp/*/chats`) usage counts toward repo activity and per-repo totals and is shown per provider, with Codex's own 5-hour and weekly percentages; Kimi writes no local session log, so its sessions show as Launcher tabs but aren't counted.
+- A session started outside the Launcher is tracked, counted and held, but `send` and the dashboard's reply box only reach Launcher tabs.
+- Holding is set in the dashboard's Settings panel (or `settings.json`: `ThrottleAgents`, `MaxAgentDelaySeconds`); the CLI only has `--throttle-agents` and `--max-delay`.
+- Claude Code prunes transcripts after about 30 days; the budget history window is 7 days, which always covers the current week.
+- The budget file only updates while the daemon or the dashboard is running, so pacing only steers while one of them is; the logon task keeps the daemon up, and opening the dashboard restarts it if it died.
+- Building a workspace clones the repos; it doesn't install the other apps unless you pass `--install-apps` or run `workspace install-apps`. The repo list is only as current as the last `workspace export` that was pushed.
+- No hold lasts past 5 minutes per tool call (a subagent waiting on the allowance included): past it the call goes ahead, held but never refused, except at the window's stop, where it's refused. `/unthrottle` exempts a CLI from holds, never from that stop.
+- A hold slows tool calls, not a long reply with no tool calls in it. Codex needs a one-time "trust this hook" click in its own TUI the first time its hold fires on a machine; nothing automates that.
+- Learned limits are in uncached tokens, and the token-to-limit ratio shifts with the model mix, so they're estimates, used only when Claude's own count isn't available.
+
+## Documentation
+
+- [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md): how the measure, pace and steer loop works, and what happens when something fails.
+- [docs/USER_STORIES.md](docs/USER_STORIES.md): every ticket, open and closed (a view generated from the Workflow database).
+- [AGENTS.md](AGENTS.md): instructions for agents working in this repo.
+
+## License
+
+No license file: all rights reserved. Copyright (c) 2026 MindAttic.
+
+Part of [MindAttic](https://mindattic.com) — see more projects at [github.com/mindattic](https://github.com/mindattic). Related: [MindAttic.Workflow](https://github.com/mindattic/MindAttic.Workflow), [MindAttic.Launcher](https://github.com/mindattic/MindAttic.Launcher), [MindAttic.Log](https://github.com/mindattic/MindAttic.Log), [MindAttic.Vault](https://github.com/mindattic/MindAttic.Vault).
