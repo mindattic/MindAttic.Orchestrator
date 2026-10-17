@@ -204,13 +204,26 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     private void WaitForNextRefresh(TimeSpan interval, CancellationToken cancel) => waiter.Wait(interval, cancel);
 
     /// <summary>The scheduled audit: when the last one is older than <see cref="OrchestratorSettings.AuditEveryHours"/>, run it and report what's new.</summary>
+    private DateTime auditTriedUtc;
+
     private void RunAuditIfDue(OrchestratorOptions options, OrchestratorSettings s)
     {
         if (s.AuditEveryHours <= 0) return;
+        var every = TimeSpan.FromHours(s.AuditEveryHours);
         var runner = new Audit.AuditRunner(options, store);
         var before = runner.Latest();
-        if (before is not null && DateTime.UtcNow - before.RanUtc < TimeSpan.FromHours(s.AuditEveryHours)) return;
-        var after = runner.Run();
+        if (before is not null && DateTime.UtcNow - before.RanUtc < every) return;
+        // A run whose save failed isn't retried every tick (it scans the whole workspace), and the failure doesn't end
+        // the tick before autopilot's turn: it's said, and tried again when the next one is due.
+        if (DateTime.UtcNow - auditTriedUtc < every) return;
+        auditTriedUtc = DateTime.UtcNow;
+        Audit.AuditReport after;
+        try { after = runner.Run(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Say(LogEventLevel.Warning, $"audit: couldn't save it (trying again in {s.AuditEveryHours}h): {ex.Message}");
+            return;
+        }
         var news = Audit.AuditNews.Between(before, after);
         if (news.Any)
         {
