@@ -32,6 +32,16 @@ public sealed class PaceLedgerTests
         Assert.That(PaceLedger.Build(End, Steady(final), [], []).Grade, Is.EqualTo(grade));
 
     [Test]
+    public void The_running_windows_minutes_at_target_stop_at_now()
+    {
+        // At 99% from 2 hours in, an hour ago: an hour at the target so far, not the three left until the window ends.
+        var now = Start.AddHours(3);
+        List<UsageSample> samples = [new(Start.AddHours(1), 50, End, 5_000_000), new(Start.AddHours(2), 99, End, 9_900_000)];
+        Assert.That(PaceLedger.Current(samples, [], [], now)!.MinutesAtTarget, Is.EqualTo(60));
+        Assert.That(PaceLedger.Build(End, samples, [], []).MinutesAtTarget, Is.EqualTo(180), "a closed window counts to its end");
+    }
+
+    [Test]
     public void A_limit_hit_is_over_whatever_the_percent()
     {
         var w = PaceLedger.Build(End, Steady(80), [Hit(End.AddMinutes(-40), End)], []);

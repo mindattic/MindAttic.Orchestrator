@@ -79,7 +79,9 @@ public static class PaceLedger
     private static readonly JsonSerializerOptions Json = new() { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } };
 
     /// <summary>Grades one window from everything recorded about it. <paramref name="endUtc"/> is its reset.</summary>
-    public static LedgerWindow Build(DateTime endUtc, IEnumerable<UsageSample> samples, IEnumerable<LimitObservation> hits, IEnumerable<GateEvent> events)
+    /// <param name="nowUtc">For a window still running: minutes at the target are counted to now, not to its end.</param>
+    public static LedgerWindow Build(DateTime endUtc, IEnumerable<UsageSample> samples, IEnumerable<LimitObservation> hits, IEnumerable<GateEvent> events,
+        DateTime? nowUtc = null)
     {
         var start = endUtc - BudgetCalculator.BlockLength;
         var mine = samples.Where(s => Near(s.ResetUtc, endUtc)).OrderBy(s => s.AtUtc).ToList();
@@ -106,7 +108,7 @@ public static class PaceLedger
         var atTarget = 0.0;
         for (var i = 0; i < mine.Count; i++)
             if (mine[i].Percent >= TargetPercent)
-                atTarget += ((i + 1 < mine.Count ? mine[i + 1].AtUtc : endUtc) - mine[i].AtUtc).TotalMinutes;
+                atTarget += ((i + 1 < mine.Count ? mine[i + 1].AtUtc : nowUtc is { } n && n < endUtc ? n : endUtc) - mine[i].AtUtc).TotalMinutes;
 
         var held = gate.Where(e => e.Decision == GateEvent.Held).ToList();
         var (grade, why) =
@@ -152,7 +154,7 @@ public static class PaceLedger
 
     /// <summary>The window still running, graded as it stands; null when Claude hasn't reported it.</summary>
     public static LedgerWindow? Current(IReadOnlyList<UsageSample> samples, IReadOnlyList<LimitObservation> hits, IReadOnlyList<GateEvent> events, DateTime nowUtc) =>
-        samples.Where(s => s.ResetUtc > nowUtc).MaxBy(s => s.ResetUtc) is { } latest ? Build(latest.ResetUtc, samples, hits, events) : null;
+        samples.Where(s => s.ResetUtc > nowUtc).MaxBy(s => s.ResetUtc) is { } latest ? Build(latest.ResetUtc, samples, hits, events, nowUtc) : null;
 
     public static string Serialize(LedgerWindow w) => JsonSerializer.Serialize(w, Json);
 
