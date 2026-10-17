@@ -386,8 +386,11 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         if (more <= 0) return ([], "the pace has no room for another subagent right now; run it again in a few minutes");
 
         var handed = new List<Handout>();
-        foreach (var item in open.Take(more))
+        // Past one it can't have (another CLI claimed it first, or its worktree failed) to the next, until `more` are handed out.
+        var claimedElsewhere = 0;
+        foreach (var item in open)
         {
+            if (handed.Count >= more) break;
             if (!claim) { handed.Add(new Handout(item, null, null)); continue; }
             var branch = Dispatcher.BranchFor(item.Id);
             var (ok, tree, _) = makeWorktree(item.RepoPath, Path.Combine(settings.WorktreeRoot, item.Repo, item.Id), branch);
@@ -401,10 +404,12 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 all.RemoveAll(a => a.TicketId == item.Id);
                 all.Add(new Assignment(item.Id, item.Repo, tree, Providers.Claude, nowUtc, true));
             });
-            if (taken) continue;
+            if (taken) { claimedElsewhere++; continue; }
             handed.Add(new Handout(item, tree, PromptFor(item, tree, branch, mainlineOf(item.RepoPath))));
         }
-        return (handed, handed.Count == 0 ? "couldn't make a worktree for any of them (see orchestrator queue)" : null);
+        return (handed, handed.Count > 0 ? null
+            : claimedElsewhere > 0 ? "another CLI claimed them first; nothing else is ready"
+            : "couldn't make a worktree for any of them (see orchestrator queue)");
     }
 
     private const string NeedsYouPrefix = "autopilot: needs you: ";

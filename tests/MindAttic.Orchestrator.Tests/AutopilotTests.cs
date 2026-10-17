@@ -206,8 +206,9 @@ public sealed class AutopilotTests
         Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EquivalentTo(new[] { "A-T1", "A-T2" }), "claimed, so not handed out twice");
 
         // A second CLI whose plan was read before the first one's claim landed hands nothing out twice.
-        var (raced, _) = Autopilot.Next(before, settings, store, ["A"], null, claim: true, Now.AddSeconds(1), Make, _ => "master");
+        var (raced, whyRaced) = Autopilot.Next(before, settings, store, ["A"], null, claim: true, Now.AddSeconds(1), Make, _ => "master");
         Assert.That(raced, Is.Empty, "both were claimed by the first CLI between this plan and its claim");
+        Assert.That(whyRaced, Is.EqualTo("another CLI claimed them first; nothing else is ready"));
         Assert.That(store.LoadAssignments().Select(a => (a.TicketId, a.StartedUtc)), Is.EquivalentTo(new[] { ("A-T1", Now), ("A-T2", Now) }),
             "the first CLI's claims stand");
 
@@ -224,6 +225,20 @@ public sealed class AutopilotTests
         Assert.That((Autopilot.Named(["GTFO.*"], "gtfo.Api"), Autopilot.Named(["GTFO.*"], "GTFO"), Autopilot.Named(["GTFO.*"], "MindAttic.GTFO.x"),
             Autopilot.Named(["*"], "anything"), Autopilot.Named(["A", "B"], "b")), Is.EqualTo((true, false, false, true, true)),
             "-repo=GTFO.* names every repo starting GTFO. (M.ORCH-T165)");
+    }
+
+    [Test]
+    public void A_ticket_another_cli_claimed_first_is_passed_over_for_the_next_one()
+    {
+        var snap = Snap(("A", [T("A-T1"), T("A-T2")]));
+        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
+        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
+        var before = Paced(snap, 5);
+        store.UpdateAssignments(all => all.Add(new Assignment("A-T1", "A", @"D:\WT\A\A-T1", "Claude", Now, true))); // the other CLI
+
+        var (handed, why) = Autopilot.Next(before, settings, store, ["A"], 1, claim: true, Now.AddSeconds(1), Make, _ => "main");
+
+        Assert.That((handed.Select(h => h.Item.Id).Single(), why), Is.EqualTo(("A-T2", (string?)null)), "its one place goes to the next free ticket");
     }
 
     [Test]
