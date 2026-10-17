@@ -404,8 +404,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(workspaceRoot))
                 if (db is not null && db.Repos().Any(x => x.Name.Equals(repo.Name, StringComparison.OrdinalIgnoreCase)))
                 {
-                    if (dryRun) continue; // a dry run files nothing
-                    foreach (var t in Tickets.GitHubIntake.FileNew(db, repo.Name, items)) yield return (repo.Name, t);
+                    // A dry run files nothing, but still says what it would file.
+                    foreach (var t in Tickets.GitHubIntake.FileNew(db, repo.Name, items, dryRun)) yield return (repo.Name, t);
                     continue;
                 }
             var stories = MindAttic.Workflow.Tickets.StoryFile.Load(repo.StoriesPath);

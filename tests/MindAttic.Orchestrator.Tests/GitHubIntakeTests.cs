@@ -90,6 +90,9 @@ public sealed class GitHubIntakeTests
                     new IntakeItem("CI#987", "fix", "CI#987: build failed on main", "u987"),
                     new IntakeItem("GH#12", "fix", "GH#12: Crash", "u12"),
                 };
+                var preview = GitHubIntake.FileNew(db, "R", items, dryRun: true);
+                Assert.That(preview.Select(t => t.Summary), Is.EqualTo(new[] { "GH#12: Crash", "CI#987: build failed on main" }), "a dry run says what it would file");
+                Assert.That(db.Tickets("R"), Is.Empty, "and files nothing");
                 var first = GitHubIntake.FileNew(db, "R", items);
                 Assert.That(first.Select(t => t.Summary), Is.EqualTo(new[] { "GH#12: Crash", "CI#987: build failed on main" }), "a repeat in one batch is filed once");
                 Assert.That(GitHubIntake.FileNew(db, "R", items), Is.Empty, "already filed");

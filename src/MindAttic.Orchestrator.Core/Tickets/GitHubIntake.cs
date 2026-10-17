@@ -87,8 +87,9 @@ public static partial class GitHubIntake
         return filed;
     }
 
-    /// <summary>Adds the items no ticket in <paramref name="repo"/> mentions yet (by marker) to the Workflow database.</summary>
-    public static IReadOnlyList<Ticket> FileNew(MindAttic.Workflow.Data.WorkflowDb db, string repo, IEnumerable<IntakeItem> items)
+    /// <summary>Adds the items no ticket in <paramref name="repo"/> mentions yet (by marker) to the Workflow database; with
+    /// <paramref name="dryRun"/>, only says which it would add (ids unassigned), as the USER_STORIES.md path does.</summary>
+    public static IReadOnlyList<Ticket> FileNew(MindAttic.Workflow.Data.WorkflowDb db, string repo, IEnumerable<IntakeItem> items, bool dryRun = false)
     {
         var existing = db.Tickets(repo).Select(t => t.Ticket).ToList();
         var filed = new List<Ticket>();
@@ -96,7 +97,8 @@ public static partial class GitHubIntake
         {
             var marker = new Regex($@"{Regex.Escape(item.Marker)}\b");
             if (existing.Concat(filed).Any(t => marker.IsMatch(t.Summary))) continue;
-            filed.Add(db.Add(repo, item.Type, TicketRules.Open, item.Summary, item.Url));
+            filed.Add(dryRun ? new Ticket("(new)", DateTime.Now.ToString("yyyy-MM-dd"), item.Type, TicketRules.Open, item.Summary, item.Url)
+                : db.Add(repo, item.Type, TicketRules.Open, item.Summary, item.Url));
         }
         return filed;
     }
