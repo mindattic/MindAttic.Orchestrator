@@ -186,6 +186,10 @@ public sealed partial class MainViewModel : ObservableObject
         }
         finally
         {
+            // The first time, keep the loader up until the dashboard behind it has been laid out (layout runs at Render
+            // priority, ahead of Loaded), so it lifts on a finished window rather than one still drawing (M.ORCH-T200).
+            if (IsLoading && System.Windows.Application.Current?.Dispatcher is { } ui && ui.CheckAccess())
+                await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Loaded);
             refreshing = false;
             IsLoading = false;
         }
