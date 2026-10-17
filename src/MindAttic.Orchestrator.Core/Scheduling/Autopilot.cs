@@ -390,11 +390,16 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             var branch = Dispatcher.BranchFor(item.Id);
             var (ok, tree, _) = makeWorktree(item.RepoPath, Path.Combine(settings.WorktreeRoot, item.Repo, item.Id), branch);
             if (!ok) continue;
+            // The plan was read before the claim: another CLI's `next --claim` may have taken it since. The check and the
+            // claim are one step under the assignments lock; only the (stale) assignment the plan saw may be replaced.
+            var taken = false;
             store.UpdateAssignments(all =>
             {
+                if (all.Any(a => a.TicketId == item.Id && a != item.Assignment)) { taken = true; return; }
                 all.RemoveAll(a => a.TicketId == item.Id);
                 all.Add(new Assignment(item.Id, item.Repo, tree, Providers.Claude, nowUtc, true));
             });
+            if (taken) continue;
             handed.Add(new Handout(item, tree, PromptFor(item, tree, branch, mainlineOf(item.RepoPath))));
         }
         return (handed, handed.Count == 0 ? "couldn't make a worktree for any of them (see orchestrator queue)" : null);

@@ -197,12 +197,19 @@ public sealed class AutopilotTests
         (bool, string, string) Make(string repo, string path, string branch) { made.Add(path); return (true, path, ""); }
         SchedulePlan Planned() => Paced(snap, 5) with { Pace = Paced(snap, 5).Pace! with { SubagentAllowance = 4, Subagents = 2 } };
 
+        var before = Planned(); // what a second CLI read before this one's claim landed
         var (handed, why) = Autopilot.Next(Planned(), settings, store, ["A"], null, claim: true, Now, Make, _ => "master");
         Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T1", "A-T2" }), "A's fixes only (A-T3 awaits approval, B isn't named), up to the 2 the allowance has room for");
         Assert.That(why, Is.Null);
         Assert.That(made, Is.EqualTo(new[] { @"D:\WT\A\A-T1", @"D:\WT\A\A-T2" }));
         Assert.That(handed[0].Prompt, Does.Contain("Work on ticket A-T1").And.Contain("cd there first").And.Contain("HEAD:master").And.Contain("workflow ticket close A-T1"));
         Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EquivalentTo(new[] { "A-T1", "A-T2" }), "claimed, so not handed out twice");
+
+        // A second CLI whose plan was read before the first one's claim landed hands nothing out twice.
+        var (raced, _) = Autopilot.Next(before, settings, store, ["A"], null, claim: true, Now.AddSeconds(1), Make, _ => "master");
+        Assert.That(raced, Is.Empty, "both were claimed by the first CLI between this plan and its claim");
+        Assert.That(store.LoadAssignments().Select(a => (a.TicketId, a.StartedUtc)), Is.EquivalentTo(new[] { ("A-T1", Now), ("A-T2", Now) }),
+            "the first CLI's claims stand");
 
         var (again, whyAgain) = Autopilot.Next(Planned(), settings, store, ["A"], null, claim: true, Now, Make, _ => "main");
         Assert.That(again, Is.Empty);
