@@ -24,7 +24,7 @@ internal sealed class LedgerCommand : Command<LedgerCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        var store = new JsonStore();
+        var store = Ctx.Store();
         var now = DateTime.UtcNow;
         var samples = store.Load<List<UsageSample>>("usage-samples");
         var hits = store.LoadLimits();

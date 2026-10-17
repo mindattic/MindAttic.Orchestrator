@@ -21,7 +21,7 @@ internal sealed class AuditCommand : Command<AuditCommand.Settings>
     public override int Execute(CommandContext context, Settings settings)
     {
         var options = OrchestratorOptions.Load();
-        var runner = new AuditRunner(options, new JsonStore());
+        var runner = new AuditRunner(options, Ctx.Store());
         var report = settings.Latest ? runner.Latest() : runner.Run();
         if (report is null) { AnsiConsole.MarkupLine("[yellow]No saved audit yet; run without --latest.[/]"); return 1; }
 

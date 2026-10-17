@@ -22,7 +22,7 @@ internal sealed class BlockCommand : Command<BlockCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        var store = new JsonStore();
+        var store = Ctx.Store();
         var id = Ctx.Id(settings.Ticket);
         var by = settings.By.Select(Ctx.Id).ToList();
         // Once migrated, prerequisites are 'requires' links in the Workflow database, where every tool sees them.
@@ -73,7 +73,7 @@ internal sealed class ApproveCommand : Command<ApproveCommand.Settings>
             AnsiConsole.MarkupLine("[grey]orchestrator approve <ID> [[<ID> ...]] lets them be worked.[/]");
             return 0;
         }
-        var store = new JsonStore();
+        var store = Ctx.Store();
         var ids = settings.Tickets.Select(Ctx.Id).ToList();
         // A typo would be "approved" while the ticket you meant goes on waiting, so only ids the database knows count.
         using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(OrchestratorOptions.Load(store).WorkspaceRoot))
@@ -108,7 +108,7 @@ internal sealed class ReserveCommand : Command<ReserveCommand.Settings>
     public override int Execute(CommandContext context, Settings settings)
     {
         if (!TokenText.TryParse(settings.Tokens, out var tokens)) { AnsiConsole.MarkupLine("[red]Tokens: a number like 2M, 500k or 0.[/]"); return 1; }
-        var store = new JsonStore();
+        var store = Ctx.Store();
         var id = Ctx.Id(settings.Ticket);
         var s = store.LoadSettings();
         var map = new Dictionary<string, long>(s.Reservations, StringComparer.Ordinal);

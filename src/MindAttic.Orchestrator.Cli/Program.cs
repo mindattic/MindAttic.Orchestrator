@@ -10,41 +10,7 @@ using Spectre.Console.Cli;
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 OrchestratorLog.Start(args.FirstOrDefault() == "daemon" ? "Daemon" : "Cli");
 
-var app = new CommandApp();
-app.Configure(config =>
-{
-    config.SetApplicationName("orchestrator");
-    config.AddCommand<StatusCommand>("status").WithDescription("Every repo: state, live sessions, open tickets, tokens today.");
-    config.AddCommand<StartCommand>("start").WithDescription("Open an agent tab for a repo through the Launcher.");
-    config.AddCommand<SendCommand>("send").WithDescription("Type text into a live Launcher-hosted session.");
-    config.AddCommand<BudgetCommand>("budget").WithDescription("Token budget for the current 5-hour block and the week, and the pace; --block/--weekly/--warn/--pace/--target set them, --hits lists learned limits.");
-    config.AddCommand<QueueCommand>("queue").WithDescription("Every open ticket across the workspace, in the order the scheduler would start them.");
-    config.AddCommand<BumpCommand>("bump").WithDescription("Raise (or with a negative --by, lower) a ticket's priority.");
-    config.AddCommand<DispatchCommand>("dispatch").WithDescription("Start a session on a ticket (a worktree when its repo is busy).");
-    config.AddCommand<ReleaseCommand>("release").WithDescription("Return a ticket to the queue; --remove-worktree also deletes its clean worktree.");
-    config.AddCommand<DaemonCommand>("daemon").WithDescription("Keep the budget file fresh, cycle context, and run autopilot's background agents.");
-    config.AddCommand<SettingsCommand>("settings").WithDescription("Show or change scheduler settings.");
-    config.AddCommand<AuditCommand>("audit").WithDescription("Find drift in shared agent files and code duplicated across repos.");
-    config.AddCommand<BlockCommand>("block").WithDescription("Make a ticket wait for others (--by X-T1), or --clear it.");
-    config.AddCommand<NextCommand>("next").WithDescription("The next tickets a CLI running /autopilot hands its subagents (--claim: worktree, assignment and prompt).");
-    config.AddCommand<ApproveCommand>("approve").WithDescription("Approve tickets for work (fixes need none); with no ids, list what's waiting for your yes. --undo takes it back.");
-    config.AddCommand<ReserveCommand>("reserve").WithDescription("Set aside tokens for a ticket so background work can't spend them first (0 releases).");
-    config.AddCommand<DryRunCommand>("dryrun").WithDescription("Show what /autopilot would start right now, without starting anything.");
-    config.AddCommand<ShowCommand>("show").WithDescription("A ticket end to end: its row, the sessions that worked on it, and its commits (--diff for the full diff).");
-    config.AddCommand<HygieneCommand>("hygiene").WithDescription("Closed tickets that may not be done: no Ref cited, or a later ticket says it came back.");
-    config.AddCommand<IntakeCommand>("intake").WithDescription("File GitHub issues labelled orchestrator and CI failures on main as tickets (--dry-run to preview).");
-    config.AddCommand<ReportCommand>("report").WithDescription("Uncached tokens by week, repo, provider and ticket type; --csv writes it out.");
-    config.AddCommand<LedgerCommand>("ledger").WithDescription("Every 5-hour window graded against 99%-never-over (ok, under, blind, over) and the record so far; --csv writes it out. Exits 1 if one went over in --days.");
-    config.AddBranch("workspace", w =>
-    {
-        w.SetDescription("The workspace as a list of repos: export it, or build it on a new machine.");
-        w.AddCommand<WorkspaceExportCommand>("export").WithDescription("Write docs\\workspace-repos.json in the workspace root repo from the repos on disk.");
-        w.AddCommand<WorkspaceInstallAppsCommand>("install-apps").WithDescription("Run every app's deploy.ps1 in the workspace (not the orchestrator's own).");
-        w.AddCommand<WorkspaceBuildCommand>("build").WithDescription("Clone the workspace root, then every repo it lists, into a folder.");
-    });
-    // Let crashes reach the catch below so they're logged, not just printed.
-    config.PropagateExceptions();
-});
+var app = CliApp.Create();
 try
 {
     return app.Run(args);
@@ -65,6 +31,50 @@ finally
     OrchestratorLog.Stop();
 }
 
+/// <summary>Every command the CLI has, so tests can run them in-process (see <see cref="Ctx.StoreDirectory"/>).</summary>
+internal static class CliApp
+{
+    public static CommandApp Create()
+    {
+        var app = new CommandApp();
+        app.Configure(config =>
+        {
+            config.SetApplicationName("orchestrator");
+            config.AddCommand<StatusCommand>("status").WithDescription("Every repo: state, live sessions, open tickets, tokens today.");
+            config.AddCommand<StartCommand>("start").WithDescription("Open an agent tab for a repo through the Launcher.");
+            config.AddCommand<SendCommand>("send").WithDescription("Type text into a live Launcher-hosted session.");
+            config.AddCommand<BudgetCommand>("budget").WithDescription("Token budget for the current 5-hour block and the week, and the pace; --block/--weekly/--warn/--pace/--target set them, --hits lists learned limits.");
+            config.AddCommand<QueueCommand>("queue").WithDescription("Every open ticket across the workspace, in the order the scheduler would start them.");
+            config.AddCommand<BumpCommand>("bump").WithDescription("Raise (or with a negative --by, lower) a ticket's priority.");
+            config.AddCommand<DispatchCommand>("dispatch").WithDescription("Start a session on a ticket (a worktree when its repo is busy).");
+            config.AddCommand<ReleaseCommand>("release").WithDescription("Return a ticket to the queue; --remove-worktree also deletes its clean worktree.");
+            config.AddCommand<DaemonCommand>("daemon").WithDescription("Keep the budget file fresh, cycle context, and run autopilot's background agents.");
+            config.AddCommand<SettingsCommand>("settings").WithDescription("Show or change scheduler settings.");
+            config.AddCommand<AuditCommand>("audit").WithDescription("Find drift in shared agent files and code duplicated across repos.");
+            config.AddCommand<BlockCommand>("block").WithDescription("Make a ticket wait for others (--by X-T1), or --clear it.");
+            config.AddCommand<NextCommand>("next").WithDescription("The next tickets a CLI running /autopilot hands its subagents (--claim: worktree, assignment and prompt).");
+            config.AddCommand<ApproveCommand>("approve").WithDescription("Approve tickets for work (fixes need none); with no ids, list what's waiting for your yes. --undo takes it back.");
+            config.AddCommand<ReserveCommand>("reserve").WithDescription("Set aside tokens for a ticket so background work can't spend them first (0 releases).");
+            config.AddCommand<DryRunCommand>("dryrun").WithDescription("Show what /autopilot would start right now, without starting anything.");
+            config.AddCommand<ShowCommand>("show").WithDescription("A ticket end to end: its row, the sessions that worked on it, and its commits (--diff for the full diff).");
+            config.AddCommand<HygieneCommand>("hygiene").WithDescription("Closed tickets that may not be done: no Ref cited, or a later ticket says it came back.");
+            config.AddCommand<IntakeCommand>("intake").WithDescription("File GitHub issues labelled orchestrator and CI failures on main as tickets (--dry-run to preview).");
+            config.AddCommand<ReportCommand>("report").WithDescription("Uncached tokens by week, repo, provider and ticket type; --csv writes it out.");
+            config.AddCommand<LedgerCommand>("ledger").WithDescription("Every 5-hour window graded against 99%-never-over (ok, under, blind, over) and the record so far; --csv writes it out. Exits 1 if one went over in --days.");
+            config.AddBranch("workspace", w =>
+            {
+                w.SetDescription("The workspace as a list of repos: export it, or build it on a new machine.");
+                w.AddCommand<WorkspaceExportCommand>("export").WithDescription("Write docs\\workspace-repos.json in the workspace root repo from the repos on disk.");
+                w.AddCommand<WorkspaceInstallAppsCommand>("install-apps").WithDescription("Run every app's deploy.ps1 in the workspace (not the orchestrator's own).");
+                w.AddCommand<WorkspaceBuildCommand>("build").WithDescription("Clone the workspace root, then every repo it lists, into a folder.");
+            });
+            // Let crashes reach the catch below so they're logged, not just printed.
+            config.PropagateExceptions();
+        });
+        return app;
+    }
+}
+
 internal sealed class StatusCommand : Command<StatusCommand.Settings>
 {
     public sealed class Settings : CommandSettings
@@ -80,7 +90,7 @@ internal sealed class StatusCommand : Command<StatusCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        var store = new JsonStore();
+        var store = Ctx.Store();
         var snapshot = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter(), Ctx.Lease(store)).Refresh();
         if (settings.Json)
         {
@@ -220,7 +230,7 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        var store = new JsonStore();
+        var store = Ctx.Store();
         WeeklyReset? reset = null;
         if (settings.WeeklyReset is not null && !WeeklyReset.TryParse(settings.WeeklyReset, out reset))
         {

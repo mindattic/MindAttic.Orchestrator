@@ -11,7 +11,7 @@ internal static class Ctx
 {
     public static (StatusAggregator Aggregator, JsonStore Store, Snapshot Snapshot, SchedulePlan Plan) Load()
     {
-        var store = new JsonStore();
+        var store = Ctx.Store();
         var aggregator = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter(), Lease(store));
         var snapshot = aggregator.Refresh();
         var plan = Scheduler.Plan(snapshot, store.LoadSettings(), store.LoadAssignments());
@@ -20,12 +20,18 @@ internal static class Ctx
 
     /// <summary>The status lease the daemon and dashboards share: a one-off command only writes rl-status.json while
     /// nobody else holds it, so it never overwrites the running daemon's pace. Released when the command exits.</summary>
+    /// <summary>Where the store lives; null is the user's own (%APPDATA%). Tests point it at a temp folder.</summary>
+    public static string? StoreDirectory { get; set; }
+
+    /// <summary>The settings store every command reads and writes (<see cref="StoreDirectory"/>).</summary>
+    public static JsonStore Store() => new(StoreDirectory);
+
     public static DispatchLease Lease(JsonStore store) => new(store.Directory);
 
     /// <summary>A ticket id as stored and compared everywhere (upper case), so "m.orch-t5" isn't silently a different ticket.</summary>
     public static string Id(string typed) => typed.Trim().ToUpperInvariant();
 
-    public static OrchestratorSettings Settings => new JsonStore().LoadSettings();
+    public static OrchestratorSettings Settings => Ctx.Store().LoadSettings();
 
     public static Dispatcher Dispatcher(JsonStore store) =>
         new(new SessionControl(OrchestratorOptions.Load()), store);
@@ -94,7 +100,7 @@ internal sealed class BumpCommand : Command<BumpCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        var store = new JsonStore();
+        var store = Ctx.Store();
         var s = store.LoadSettings();
         var id = Ctx.Id(settings.Ticket);
         var priorities = new Dictionary<string, int>(s.Priorities, StringComparer.Ordinal);
@@ -147,7 +153,7 @@ internal sealed class ReleaseCommand : Command<ReleaseCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        var store = new JsonStore();
+        var store = Ctx.Store();
         var a = store.LoadAssignments().FirstOrDefault(x => x.TicketId.Equals(settings.Ticket, StringComparison.OrdinalIgnoreCase));
         if (a is null) { AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(settings.Ticket)} isn't assigned.[/]"); return 1; }
         var dispatcher = Ctx.Dispatcher(store);
@@ -182,7 +188,7 @@ internal sealed class DaemonCommand : Command<DaemonCommand.Settings>
         AnsiConsole.MarkupLine($"[grey]Ctrl+C to stop. Log: {Markup.Escape(OrchestratorLog.DbPath)}[/]");
         try
         {
-            new Daemon(new JsonStore(), (level, line) =>
+            new Daemon(Ctx.Store(), (level, line) =>
             {
                 var color = level switch { Serilog.Events.LogEventLevel.Error => "red", Serilog.Events.LogEventLevel.Warning => "yellow", _ => "default" };
                 AnsiConsole.MarkupLine($"[grey]{DateTime.Now:T}[/] [{color}]{Markup.Escape(line)}[/]");
@@ -270,7 +276,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             AnsiConsole.MarkupLine($"[red]No provider \"{Markup.Escape(typed)}\"; use one of {Markup.Escape(string.Join(", ", MindAttic.Orchestrator.Sessions.SessionControl.Providers))}.[/]");
             return 1;
         }
-        var store = new JsonStore();
+        var store = Ctx.Store();
         var s = store.LoadSettings();
         s = s with
         {
