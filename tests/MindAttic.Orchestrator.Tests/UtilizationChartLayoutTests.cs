@@ -57,4 +57,30 @@ public sealed class UtilizationChartLayoutTests
         Assert.That(chart.Attribute("Width"), Is.Null);
         Assert.That(double.Parse((string)chart.Attribute("Height")!, System.Globalization.CultureInfo.InvariantCulture), Is.GreaterThanOrEqualTo(240));
     }
+
+    // M.ORCH-T194: near the reset, 'now NN%' ran into 'NN% at reset'.
+    private static readonly Rect Plot = new(44, 10, 1344, 226);
+    private static readonly Size NowSize = new(62, 17), ResetSize = new(92, 17);
+
+    [Test]
+    public void Far_from_the_reset_now_keeps_its_usual_spot_above_right_of_the_dot()
+    {
+        var (now, reset) = UtilizationChart.PlaceEndLabels(new Point(800, 120), NowSize, new Point(Plot.Right, 60), ResetSize, Plot);
+        Assert.That(now.Left, Is.EqualTo(806));
+        Assert.That(now.Top + now.Height / 2, Is.EqualTo(102));
+        Assert.That(reset, Is.Not.Null);
+    }
+
+    [TestCase(1370, 80, 70)]   // now just before the reset, projection a little higher
+    [TestCase(1380, 60, 60)]   // flat: both at the same height
+    [TestCase(1340, 75, 65)]
+    [TestCase(1387, 12, 12)]   // pinned to the top edge
+    [TestCase(1300, 120, 118)]
+    public void Near_the_reset_the_now_label_and_the_projection_label_do_not_overlap(double nowX, double nowY, double endY)
+    {
+        var (now, reset) = UtilizationChart.PlaceEndLabels(new Point(nowX, nowY), NowSize, new Point(Plot.Right, endY), ResetSize, Plot);
+        if (reset is { } r) Assert.That(now.IntersectsWith(r), Is.False, $"now {now} overlaps reset {r}");
+        Assert.That(now.Left, Is.GreaterThanOrEqualTo(Plot.Left));
+        Assert.That(now.Right, Is.LessThanOrEqualTo(Plot.Right + 12), "now stays inside the chart");
+    }
 }

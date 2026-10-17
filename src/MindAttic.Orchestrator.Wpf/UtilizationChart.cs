@@ -92,8 +92,42 @@ public sealed class UtilizationChart : FrameworkElement
         var lands = u.ProjectedEndPercent > 100 ? Palette.Over : u.ProjectedEndPercent > u.TargetPercent ? Palette.Waiting : Palette.Working;
         dc.DrawLine(new Pen(lands, 2) { DashStyle = DashStyles.Dot }, now, end);
         dc.DrawEllipse(text, null, now, 4, 4);
-        Label($"now {u.NowPercent:0}%", text, new Point(now.X + 6, Math.Max(Top + 8, now.Y - 18)));
-        Label($"{u.ProjectedEndPercent:0}% at reset", lands, new Point(end.X - 4, Math.Max(Top + 8, end.Y - 12)), right: true);
+        var nowText = Text($"now {u.NowPercent:0}%", text);
+        var resetText = Text($"{u.ProjectedEndPercent:0}% at reset", lands);
+        var (nowAt, resetAt) = PlaceEndLabels(now, new Size(nowText.Width, nowText.Height), end, new Size(resetText.Width, resetText.Height),
+            new Rect(Left, Top, w, h));
+        dc.DrawText(nowText, nowAt.TopLeft);
+        if (resetAt is { } r) dc.DrawText(resetText, r.TopLeft);
+
+        FormattedText Text(string s, Brush b) => new(s, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), FontSize, b, dpi);
+    }
+
+    /// <summary>
+    /// Where the 'now NN%' and 'NN% at reset' labels go. The projection's label sits just left of the reset, above its
+    /// end; 'now' sits above and right of the dot. When now is close to the reset the two would overlap (M.ORCH-T194),
+    /// so 'now' tries the dot's other sides in turn, and if none of them is clear the projection's label is dropped
+    /// (the caption under the chart still says where the rate lands).
+    /// </summary>
+    internal static (Rect Now, Rect? Reset) PlaceEndLabels(Point now, Size nowSize, Point end, Size resetSize, Rect plot)
+    {
+        Rect At(double x, double y, Size s) => new(x, Math.Max(plot.Top, y - s.Height / 2), s.Width, s.Height);
+        var reset = At(end.X - 4 - resetSize.Width, Math.Max(plot.Top + 8, end.Y - 12), resetSize);
+        var aboveY = Math.Max(plot.Top + 8, now.Y - 18);
+        var belowY = now.Y + 18;
+        var candidates = new[]
+        {
+            At(now.X + 6, aboveY, nowSize),                  // above-right: the usual spot
+            At(now.X - 6 - nowSize.Width, aboveY, nowSize),  // above-left
+            At(now.X + 6, belowY, nowSize),                  // below-right
+            At(now.X - 6 - nowSize.Width, belowY, nowSize),  // below-left
+        };
+        var bounds = new Rect(plot.Left, plot.Top - 2, plot.Right + 8 - plot.Left, plot.Height + 4); // the right gutter may hold a few pixels
+        bool Fits(Rect r) => r.Left >= bounds.Left && r.Right <= bounds.Right && r.Top >= bounds.Top && r.Bottom <= bounds.Bottom;
+        var gap = Rect.Inflate(reset, 3, 1);
+        foreach (var c in candidates)
+            if (Fits(c) && !c.IntersectsWith(gap)) return (c, reset);
+        // Nowhere clear: keep 'now' (it's the fact; the projection is a guess) in the first spot that fits, and drop the other.
+        return (candidates.FirstOrDefault(Fits, candidates[1]), null);
     }
 
     private Brush Brush(string key, Brush fallback) => TryFindResource(key) as Brush ?? fallback;
