@@ -257,7 +257,7 @@ public sealed class ContextCyclerTests
         try
         {
             Setup.AgentGate.Ensure(dir);
-            void Typed(int cli, string cwd, string prompt)
+            string Typed(int cli, string cwd, string prompt)
             {
                 var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\"")
                     { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
@@ -267,8 +267,9 @@ public sealed class ContextCyclerTests
                 using var p = System.Diagnostics.Process.Start(psi)!;
                 p.StandardInput.Write(System.Text.Json.JsonSerializer.Serialize(new { session_id = "s" + cli, hook_event_name = "UserPromptSubmit", cwd, prompt }));
                 p.StandardInput.Close();
-                p.StandardOutput.ReadToEnd();
+                var output = p.StandardOutput.ReadToEnd();
                 Assert.That(p.WaitForExit(20_000), Is.True);
+                return output;
             }
             var ctx = Path.Combine(dir, ".claude", "session-context");
             string? Mark(int cli) => File.Exists(Path.Combine(ctx, $"autopilot-{cli}")) ? File.ReadAllText(Path.Combine(ctx, $"autopilot-{cli}")) : null;
@@ -289,6 +290,9 @@ public sealed class ContextCyclerTests
             Typed(1, repo, "/autopilot off");
             Assert.That((Mark(1), Mark(2)), Is.EqualTo(((string?)null, "B,D")), "off is for this CLI only");
             Typed(1, repo, "/autopilot all");
+            Assert.That(Mark(1), Is.EqualTo("*"));
+            Assert.That(Typed(1, repo, "/autopilot off -repo=B"), Does.Contain("\"block\"").And.Contain("through /autopilot all"),
+                "B is worked through *: switching it off alone would change nothing, so it says so instead of seeming to");
             Assert.That(Mark(1), Is.EqualTo("*"));
             Typed(3, ws, "/autopilot off all");
             Assert.That((Mark(1), Mark(2)), Is.EqualTo(((string?)null, (string?)null)), "off all: in every CLI");

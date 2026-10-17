@@ -974,6 +974,17 @@ public static class AgentGate
                 named = [r.strip() for r in m.group(1).replace(" ", ",").split(",") if r.strip() and r.strip().lower() not in ("on", "off", "this", "all")] if m else ([mine] if mine else [])
                 lower = {n.lower() for n in named}
                 if re.match(r"off\b", args, re.I):
+                    # A repo this CLI covers only through "*" or a wildcard can't be switched off on its own: removing its name
+                    # would change nothing and it would go on being worked, so say so and change nothing.
+                    import fnmatch
+                    covered = [(n, p) for n in named if m and n.lower() not in {x.lower() for x in names}
+                               for p in names if fnmatch.fnmatchcase(n.lower(), p.lower())]
+                    if covered and not re.match(r"off\s+all\b", args, re.I):
+                        n, p = covered[0]
+                        print(json.dumps({"decision": "block", "reason": n + " is worked here through /autopilot " +
+                            ("all" if p == "*" else "-repo=" + p) + ", so it can't be switched off on its own. Nothing changed: type "
+                            "/autopilot off, then /autopilot -repo= with the repos you do want."}))
+                        sys.exit(0)
                     names = [] if re.match(r"off\s+all\b", args, re.I) or not m else [n for n in names if n.lower() not in lower]
                 elif re.match(r"all\b", args, re.I):
                     names = ["*"]
