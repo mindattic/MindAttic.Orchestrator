@@ -59,7 +59,8 @@ public sealed class BuildWorkspaceWindow : Window
             Say("");
             Say($"Cloned {r.Cloned}, {r.AlreadyThere} already there, {r.Failed.Count} failed.");
             foreach (var f in r.Failed) Say("  " + f);
-            if (r.Failed.Count > 0) Say("Open the dashboard again later to retry; only what's missing gets cloned.");
+            // The dashboard only builds an empty folder, so the retry is the CLI's, which clones just what's missing.
+            if (r.Failed.Count > 0) Say($"To retry later: orchestrator workspace build \"{folder}\" (only what's missing gets cloned).");
             log.Information("Built the workspace in {Folder:l}: cloned {Cloned}, failed {Failed}", folder, r.Cloned, r.Failed.Count);
             var apps = WorkspaceBootstrap.Apps(folder);
             if (apps.Count > 0 && MessageBox.Show(this, $"Also install the {apps.Count} apps that have a deploy script?\n\n{string.Join(", ", apps)}",
