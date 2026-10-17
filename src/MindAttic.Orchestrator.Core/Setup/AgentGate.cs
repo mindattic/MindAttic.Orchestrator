@@ -774,7 +774,8 @@ public static class AgentGate
                 pass
 
         # Typed at the window's stop, these still go through: they're how you steer the orchestrator itself.
-        CONTROL = re.compile(r"/(autopilot|crossrepo|throttle|unthrottle|goal)\b", re.I)
+        # /goal goes through at the stop only to clear one: a new goal there would run turn after turn its refused calls can't finish.
+        CONTROL = re.compile(r"/(autopilot|crossrepo|throttle|unthrottle)\b|/goal\s*(?:$|(?:clear|off|stop)\b)", re.I)
 
         def goal_finished(transcript, goal):
             # A /goal ends on its own once its condition holds: the session's last entry is then the stop summary naming it
@@ -940,6 +941,13 @@ public static class AgentGate
             for k in ("nudged", "worked", "closed"):
                 state.pop(k, None)
             state.update(state="idle", at=now, pid=cli_pid(), cwd=data.get("cwd"))
+            if stopped and state.get("goal"):
+                # /goal's own Stop hook sends the turn back while its condition isn't met, and at the stop every tool call is
+                # refused, so it never is: each round would spend a turn past the line. continue:false outranks its block.
+                save(state_file, state)
+                print(json.dumps({"continue": False, "stopReason": "The 5-hour window is at its target, so /goal can't go on before it "
+                    "resets; the goal stays set (/goal clear drops it)."}))
+                sys.exit(0)
         elif event == "UserPromptSubmit":
             for k in ("nudged", "worked", "closed"):
                 state.pop(k, None)

@@ -176,6 +176,23 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void At_the_stop_a_goal_ends_its_turn_instead_of_looping_and_a_new_one_isnt_started()
+    {
+        object Typed(string sid, string prompt) => new { hook_event_name = "UserPromptSubmit", session_id = sid, prompt, cwd = ws };
+        Status(new { });
+        Gate(Typed("g1", "/goal all the tests pass"), AgentGate.ContextScriptName);
+
+        Status(new { stop = true });
+        var stop = Gate(new { hook_event_name = "Stop", session_id = "g1", cwd = ws }, AgentGate.ContextScriptName).Output;
+        Assert.That(stop, Does.Contain("\"continue\": false"), "the goal's own Stop hook would send it back to calls that are all refused");
+        Assert.That(Gate(Typed("g2", "/goal all the tests pass"), AgentGate.ContextScriptName).Output, Does.Contain("Not sent"),
+            "a new goal at the stop is a turn past the line");
+        Assert.That(Gate(Typed("g1", "/goal clear"), AgentGate.ContextScriptName).Output, Does.Not.Contain("Not sent"), "clearing one goes through");
+        Assert.That(Gate(new { hook_event_name = "Stop", session_id = "g3", cwd = ws }, AgentGate.ContextScriptName).Output, Is.Empty,
+            "no goal: an ordinary turn ending at the stop just ends");
+    }
+
+    [Test]
     public void A_claim_gone_stale_is_work_again_as_orchestrator_next_hands_it_out()
     {
         var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
