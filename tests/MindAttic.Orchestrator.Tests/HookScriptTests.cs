@@ -310,6 +310,23 @@ public sealed class HookScriptTests
         }
     }
 
+    /// <summary>M.ORCH-T201: past MAX_HOLD a held subagent used to start anyway, so on 2026-10-17 seven ran on an allowance of one.</summary>
+    [Test]
+    public void A_subagent_still_over_the_allowance_past_max_hold_is_refused_not_started()
+    {
+        Status(new { subagent_allowance = 1, subagents_running = 1 });
+        var agent = new { tool_name = "Agent", tool_input = new { prompt = "x" } };
+        var (output, took) = GateHeld(agent, 2);
+        Assert.That(output, Does.Contain("\"deny\"").And.Contain("allowance is full").And.Contain("slot frees"), "refused, told to try again later");
+        Assert.That(took, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(1.9)).And.LessThan(TimeSpan.FromSeconds(20)), "held for MAX_HOLD first");
+        Assert.That(GateLog().Last(), Does.Contain("\"decision\": \"refused\"").And.Contain("\"tool\": \"Agent\""));
+        var slots = Path.Combine(Marks, AgentGate.SlotDirName);
+        Assert.That(Directory.Exists(slots) ? Directory.GetFiles(slots) : [], Is.Empty, "no slot taken for a call that never ran");
+
+        Status(new { subagent_allowance = 2, subagents_running = 1 });
+        Assert.That(GateHeld(agent, 2).Output, Is.Empty, "with room it starts at once");
+    }
+
     [Test]
     public void A_slot_whose_subagent_never_started_expires_and_frees_its_place()
     {

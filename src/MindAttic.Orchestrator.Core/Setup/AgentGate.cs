@@ -493,8 +493,10 @@ public static class AgentGate
             if pid is not None and (MARKS / ("unthrottled-" + str(pid))).exists():
                 raise SystemExit(0)
 
-        # A new subagent waits while the allowance the pace works out is used up (all CLIs together); the
-        # wait counts toward the same MAX_HOLD, and past it the subagent starts anyway: held, never refused.
+        # A new subagent waits while the allowance the pace works out is used up (all CLIs together); the wait counts toward
+        # the same MAX_HOLD, and past it the call is refused, never let through over the allowance (M.ORCH-T201: letting it
+        # start anyway put 7 subagents on an allowance of 1, and a longer hold can't slow them: the cap stays under the
+        # 5-minute prompt-cache TTL subagents use).
         # Agent calls sent in one message run this together, before any SubagentStart has marked one, so the check
         # and the slot it lets through are one step under a lock (M.ORCH-T197: ~20 got past an allowance of 1-2).
         # The slot counts until the context gate's SubagentStart turns it into the subagent's mark, or it expires.
@@ -558,15 +560,21 @@ public static class AgentGate
                     s = status()
                     allowed = s.get("subagent_allowance")
                     try:
-                        go = allowed is None or running(s) + slots() < allowed
+                        busy = running(s) + slots() if allowed is not None else 0
+                        go = allowed is None or busy < allowed
                     except Exception:
                         go = True
-                    if go or time.monotonic() - start >= MAX_HOLD:
+                    if go:
                         slot = take()
                         break
                 finally:
                     if has_lock:
                         unlock()
+                if time.monotonic() - start >= MAX_HOLD:
+                    gate_log("refused", time.monotonic() - start)
+                    refuse("The subagent allowance is full (" + str(busy) + " running or starting, " + str(allowed) + " allowed across every CLI), "
+                           "so this subagent wasn't started. Don't start it now: work on in this turn, or end it, and try again after one "
+                           "of the running subagents finishes and a slot frees.")
                 time.sleep(5)
                 hold_at_stop()
         try:

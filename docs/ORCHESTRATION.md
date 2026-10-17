@@ -24,8 +24,8 @@ The daemon starts at logon and refreshes every 15 seconds, sooner when a turn en
 2. **Pace.** What's left of the target, divided by the hours until the reset, is the sustainable rate. The draw over
    the last few minutes, every session and subagent together, is compared with it.
 3. **Steer.** The result goes into `~/.claude/rl-status.json`, which the hooks in every Claude CLI read:
-   - *Subagent allowance:* how many subagents may run at once across all CLIs. A new one waits (never refused)
-     while the allowance is used up.
+   - *Subagent allowance:* how many subagents may run at once across all CLIs. A new one waits while the allowance
+     is used up, and is refused (try again once a slot frees) if it's still full after 5 minutes.
    - *Hold:* each tool call waits `20s × (demand ÷ sustainable − 1)`, up to 5 minutes, while the draw is over what
      the window can sustain. It's 0 as soon as the draw fits.
    - *Wind-down:* past 90% of the limit, agents are told to start only what they can finish, and to commit and
