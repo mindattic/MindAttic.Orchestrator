@@ -412,15 +412,20 @@ public static class AgentGate
             return re.sub(r"@([\"'])\s*\n.*?\n\1@", "", c, flags=re.S)
         def root_search(c, powershell):
             c = commands_only(c)
-            if not re.search(ROOT_SEARCH, c, re.I):
-                return False
-            # Listing a root is harmless; only a recursive listing walks the whole drive. PowerShell's parameters ignore
-            # case (-recurse, -r), but bash's `ls -r` only reverses the order.
-            if not re.match(r"^\s*(ls|dir|Get-ChildItem|gci)\b", c, re.I):
-                return True
-            if powershell or re.match(r"^\s*(Get-ChildItem|gci)\b", c, re.I):
-                return bool(re.search(r"\s-r(?:e(?:c(?:u(?:r(?:s(?:e)?)?)?)?)?)?\b|\s/s\b", c, re.I))
-            return bool(re.search(r"(\s-\w*R\w*\b|\s/s\b)", c))
+            # Each command naming a root is judged on its own: `ls && find / ...` is a search, `find . ; ls /` isn't.
+            for m in re.finditer(ROOT_SEARCH, c, re.I):
+                name = m.group(1).lower()
+                if name not in ("ls", "dir", "get-childitem", "gci"):
+                    return True
+                # Listing a root is harmless; only a recursive listing walks the whole drive. PowerShell's parameters ignore
+                # case (-recurse, -r), but bash's `ls -r` only reverses the order.
+                segment = re.split(r"[;&|\n]", c[m.start(1):], maxsplit=1)[0]
+                if powershell or name in ("get-childitem", "gci"):
+                    if re.search(r"\s-r(?:e(?:c(?:u(?:r(?:s(?:e)?)?)?)?)?)?\b|\s/s\b", segment, re.I):
+                        return True
+                elif re.search(r"(\s-\w*R\w*\b|\s/s\b)", segment):
+                    return True
+            return False
         if tool in ("Bash", "PowerShell") and root_search(cmd, tool == "PowerShell"):
             print(json.dumps(dict(hookSpecificOutput=dict(hookEventName="PreToolUse", permissionDecision="deny",
                 permissionDecisionReason="Searching a whole drive or the filesystem root is blocked: it never finishes and leaks handles until "

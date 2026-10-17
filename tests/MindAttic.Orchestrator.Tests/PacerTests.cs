@@ -301,6 +301,11 @@ public sealed class PacerTests
             Assert.That(Gate("PowerShell", "Get-ChildItem C:\\ -Recurse -Filter x"), Does.Contain("\"deny\""));
             foreach (var c in new[] { "find . -name x", "find /d/Projects/MindAttic/X -name y", "ls /", "echo find the root /" })
                 Assert.That(Gate("Bash", c), Is.Empty, c);
+            // Each command is judged on its own, not by how the whole line starts.
+            foreach (var c in new[] { "ls && find / -name x", "ls; find / -name x", "ls\nfind / -name x", "cd x && ls / -R" })
+                Assert.That(Gate("Bash", c), Does.Contain("\"deny\""), c);
+            foreach (var c in new[] { "find . -name x; ls /", "ls src -R; ls /", "cd x && ls /" })
+                Assert.That(Gate("Bash", c), Is.Empty, c);
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
