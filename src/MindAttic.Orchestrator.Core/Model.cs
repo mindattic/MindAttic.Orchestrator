@@ -64,6 +64,10 @@ public sealed record TranscriptSession(string SessionId, string Cwd, DateTime La
     [System.Text.Json.Serialization.JsonIgnore]
     public IReadOnlyList<TicketedSubagent> TicketedSubagents { get; init; } = [];
 
+    /// <summary>Tickets it (or one of its subagents) filed in the turn it's still in: an agent that files a ticket and then fixes
+    /// it is working it, though no assignment says so (M.ORCH-T255).</summary>
+    public IReadOnlyList<FiledTicket> Filing { get; init; } = [];
+
     /// <summary>Its latest tool call in plain words ("Editing Daemon.cs") and when it was made; null before its first.</summary>
     public string? Doing { get; init; }
     public DateTime? DoingAtUtc { get; init; }
@@ -81,6 +85,10 @@ public sealed record TranscriptSession(string SessionId, string Cwd, DateTime La
     public TokenUsage UsageSince(DateTime utc) =>
         Events.Where(e => e.AtUtc >= utc).Aggregate(default(TokenUsage), (sum, e) => sum + e.Usage);
 }
+
+/// <summary>A ticket a transcript filed with <c>workflow ticket new</c> in its current turn: the subagent that did (null for the
+/// CLI itself), and when that transcript was last written.</summary>
+public sealed record FiledTicket(string TicketId, string? AgentId, DateTime LastWriteUtc);
 
 /// <summary>A session's subagent that works a ticket of its own, with every response it made in the reader's window.</summary>
 public sealed record TicketedSubagent(string AgentId, string TicketId, string? TicketType, string Cwd, IReadOnlyList<UsageEvent> Events);

@@ -11,7 +11,7 @@ namespace MindAttic.Orchestrator.Activity;
 /// token ledger without any hook having to record anything. With a <c>cachePath</c>, what it has read
 /// survives restarts, so a new process parses only what was written since the last one.
 /// </summary>
-public sealed class TranscriptReader(string projectsDir, string? cachePath = null)
+public sealed partial class TranscriptReader(string projectsDir, string? cachePath = null)
 {
     private const int HeadScanLimit = 256 * 1024;
     private const int CacheVersion = 2;
@@ -25,6 +25,7 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
     internal static readonly TimeSpan FullCheckEvery = TimeSpan.FromMinutes(5);
     private static readonly byte[] UsageMarker = Encoding.UTF8.GetBytes("\"usage\"");
     private static readonly byte[] TicketMarker = Encoding.UTF8.GetBytes(TicketAttribution.PromptMarker);
+    private static readonly byte[] ToolResultMarker = Encoding.UTF8.GetBytes("\"tool_result\"");
 
     private readonly Dictionary<string, FileState> files = new(StringComparer.OrdinalIgnoreCase);
     private DateTime countingSinceUtc;
@@ -65,6 +66,10 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
         public readonly List<LimitHit> Hits = [];
         public readonly List<ToolCall> Tools = [];
         public readonly HashSet<string> CountedMessages = new(StringComparer.Ordinal);
+        /// <summary><c>workflow ticket new</c> calls whose output hasn't come back yet (their tool_use ids).</summary>
+        public readonly HashSet<string> PendingFiles = new(StringComparer.Ordinal);
+        /// <summary>Tickets this transcript filed in its current turn: an agent that files a ticket and fixes it is working it (M.ORCH-T255).</summary>
+        public readonly List<string> Filed = [];
     }
 
     /// <summary>
@@ -117,6 +122,8 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
                     }
                     state.Offset = 0;
                     state.Tools.Clear(); // read again from 0 when it's resumed: tool calls aren't de-duplicated like usage
+                    state.PendingFiles.Clear();
+                    state.Filed.Clear();
                     state.LastWriteUtc = info.LastWriteTimeUtc;
                 }
                 else
@@ -181,6 +188,7 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
                     TicketType = ticket.Type,
                     TicketedSubagents = [.. g.Where(s => s.AgentId is not null && s.TicketId is not null)
                         .Select(s => new TicketedSubagent(s.AgentId!, s.TicketId!, s.TicketType, s.Cwd!, [.. s.Events.OrderBy(e => e.AtUtc)]))],
+                    Filing = [.. g.SelectMany(s => s.Filed.Select(id => new FiledTicket(id, s.AgentId, s.LastWriteUtc)))],
                     Loop = LoopDetector.Find(g.SelectMany(s => s.Tools).OrderBy(c => c.AtUtc).ToList()),
                     Doing = g.SelectMany(s => s.Tools).MaxBy(c => c.AtUtc) is { } last ? ToolCallText.Describe(last.Name, last.Input) : null,
                     DoingAtUtc = g.SelectMany(s => s.Tools).MaxBy(c => c.AtUtc)?.AtUtc,
@@ -199,7 +207,7 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
 
     // Events as [ticks, input, cache write, cache read, output]: a third the size of named fields.
     private sealed record CachedFile(string Path, long Offset, string? Cwd, string? SessionId, string? Model, string? TicketId, string? TicketType, DateTime LastWriteUtc,
-        long[][] Events, LimitHit[] Hits, string[] Counted);
+        long[][] Events, LimitHit[] Hits, string[] Counted, string[]? Pending = null, string[]? Filed = null);
 
     private sealed record Cache(int Version, DateTime SinceUtc, List<CachedFile> Files);
 
@@ -226,6 +234,8 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
                 if (e.Length == 5) state.Events.Add(new UsageEvent(new DateTime(e[0], DateTimeKind.Utc), new TokenUsage(e[1], e[2], e[3], e[4])));
             state.Hits.AddRange(f.Hits);
             state.CountedMessages.UnionWith(f.Counted);
+            state.PendingFiles.UnionWith(f.Pending ?? []);
+            state.Filed.AddRange(f.Filed ?? []);
             files[f.Path] = state;
         }
         countingSinceUtc = cache.SinceUtc;
@@ -240,7 +250,7 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
         var cache = new Cache(CacheVersion, countingSinceUtc, [.. files.Select(kv => new CachedFile(
             kv.Key, kv.Value.Offset, kv.Value.Cwd, kv.Value.SessionId, kv.Value.Model, kv.Value.TicketId, kv.Value.TicketType, kv.Value.LastWriteUtc,
             [.. kv.Value.Events.Select(e => new[] { e.AtUtc.Ticks, e.Usage.Input, e.Usage.CacheCreation, e.Usage.CacheRead, e.Usage.Output })],
-            [.. kv.Value.Hits], [.. kv.Value.CountedMessages]))]);
+            [.. kv.Value.Hits], [.. kv.Value.CountedMessages], [.. kv.Value.PendingFiles], [.. kv.Value.Filed]))]);
         // The daemon, the dashboard and CLI runs share the cache: each writes a private temp file and
         // swaps it in whole, so a reader never sees half of one.
         var temp = $"{cachePath}.{Environment.ProcessId}.tmp";
@@ -291,6 +301,8 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
             state.Hits.Clear();
             state.Tools.Clear();
             state.CountedMessages.Clear();
+            state.PendingFiles.Clear();
+            state.Filed.Clear();
         }
         if (stream.Length == state.Offset) return false;
 
@@ -316,7 +328,8 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
             var line = consumed[..nl];
             consumed = consumed[(nl + 1)..];
             if (line.IsEmpty) continue;
-            if (state.Cwd is null || line.IndexOf(UsageMarker) >= 0 || (state.TicketId is null && line.IndexOf(TicketMarker) >= 0))
+            if (state.Cwd is null || line.IndexOf(UsageMarker) >= 0 || (state.TicketId is null && line.IndexOf(TicketMarker) >= 0) ||
+                (state.PendingFiles.Count > 0 && line.IndexOf(ToolResultMarker) >= 0))
                 Apply(Encoding.UTF8.GetString(line), state, sinceUtc);
         }
         state.Offset += end + 1;
@@ -346,9 +359,16 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
                 return;
             }
             if (!root.TryGetProperty("message", out var message) || message.ValueKind != JsonValueKind.Object) return;
+            if (sink.PendingFiles.Count > 0 && Str(root, "type") == "user") NoteFiled(message, sink);
             if (!message.TryGetProperty("usage", out var usage) || usage.ValueKind != JsonValueKind.Object) return;
             if (Str(message, "model") is { } model && !model.StartsWith('<')) sink.Model = model;
             RecordTools(message, root, sink);
+            // The turn is over: what it filed and didn't fix is left for whoever works the queue.
+            if (Str(message, "stop_reason") == "end_turn")
+            {
+                sink.PendingFiles.Clear();
+                sink.Filed.Clear();
+            }
 
             var at = Str(root, "timestamp") is { } ts &&
                 DateTime.TryParse(ts, null, System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var parsed)
@@ -377,7 +397,7 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
 
     private static void Apply(string line, FileState state, DateTime? countFrom)
     {
-        var sink = new TranscriptLineSink(state.CountedMessages, state.Events, state.Hits, state.Tools)
+        var sink = new TranscriptLineSink(state.CountedMessages, state.Events, state.Hits, state.Tools, state.PendingFiles, state.Filed)
         {
             Cwd = state.Cwd, SessionId = state.SessionId, Model = state.Model, TicketId = state.TicketId, TicketType = state.TicketType,
         };
@@ -400,7 +420,31 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
             if (block.ValueKind != JsonValueKind.Object || Str(block, "type") != "tool_use") continue;
             var input = block.TryGetProperty("input", out var i) ? i.GetRawText() : "";
             sink.Tools.Add(new ToolCall(at, Str(block, "name") ?? "?", input));
+            if (input.Contains(FileTicketCommand, StringComparison.Ordinal) && Str(block, "id") is { } toolId) sink.PendingFiles.Add(toolId);
             if (sink.Tools.Count > LoopDetector.Window * 2) sink.Tools.RemoveRange(0, sink.Tools.Count - LoopDetector.Window);
+        }
+    }
+
+    /// <summary>How an agent files a ticket; it prints the new ticket's id.</summary>
+    internal const string FileTicketCommand = "workflow ticket new";
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"^\s*(?<id>(?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)\s*$", System.Text.RegularExpressions.RegexOptions.Multiline)]
+    private static partial System.Text.RegularExpressions.Regex FiledId();
+
+    /// <summary>The output of a <c>workflow ticket new</c> call: the id it printed is a ticket this transcript filed.</summary>
+    private static void NoteFiled(JsonElement message, TranscriptLineSink sink)
+    {
+        if (!message.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.Array) return;
+        foreach (var block in content.EnumerateArray())
+        {
+            if (block.ValueKind != JsonValueKind.Object || Str(block, "type") != "tool_result" ||
+                Str(block, "tool_use_id") is not { } toolId || !sink.PendingFiles.Remove(toolId)) continue;
+            if (block.TryGetProperty("is_error", out var error) && error.ValueKind == JsonValueKind.True) continue;
+            var output = block.TryGetProperty("content", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() ?? ""
+                : block.TryGetProperty("content", out c) && c.ValueKind == JsonValueKind.Array ? string.Concat(c.EnumerateArray()
+                    .Where(b => b.ValueKind == JsonValueKind.Object).Select(b => Str(b, "text"))) : "";
+            foreach (var id in FiledId().Matches(output).Select(m => m.Groups["id"].Value.ToUpperInvariant()))
+                if (!sink.Filed.Contains(id)) sink.Filed.Add(id);
         }
     }
 
@@ -426,8 +470,11 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
 }
 
 /// <summary>The mutable fields one transcript line can update.</summary>
-internal sealed class TranscriptLineSink(HashSet<string> countedMessages, List<UsageEvent> events, List<LimitHit>? hits = null, List<ToolCall>? tools = null)
+internal sealed class TranscriptLineSink(HashSet<string> countedMessages, List<UsageEvent> events, List<LimitHit>? hits = null, List<ToolCall>? tools = null,
+    HashSet<string>? pendingFiles = null, List<string>? filed = null)
 {
+    public HashSet<string> PendingFiles { get; } = pendingFiles ?? new(StringComparer.Ordinal);
+    public List<string> Filed { get; } = filed ?? [];
     public string? Cwd { get; set; }
     public string? SessionId { get; set; }
     public string? Model { get; set; }

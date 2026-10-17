@@ -263,6 +263,60 @@ public sealed class AutopilotTests
     }
 
     [Test]
+    public void A_ticket_another_agent_is_working_is_not_handed_out()
+    {
+        // M.ORCH-T255: `next --claim` handed out M.ORCH-T250, T251 and T253 while the agent that filed each was fixing it, so
+        // three subagents redid the work and hit rebase conflicts.
+        var cli = new TranscriptSession("cli", @"D:\W\A", Now.AddMinutes(-1), default, null)
+        {
+            Filing = [new FiledTicket("A-T1", "agent-x", Now.AddMinutes(-2)), new FiledTicket("A-T2", null, Now.AddMinutes(-1)),
+                new FiledTicket("A-T6", "agent-y", Now.AddHours(-1))],
+        };
+        var other = new TranscriptSession("other", @"D:\W\A", Now.AddMinutes(-5), default, null)
+        {
+            TicketId = "A-T3", Filing = [new FiledTicket("A-T4", null, Now.AddMinutes(-5))],
+        };
+        var snap = Snap(("A", [T("A-T1"), T("A-T2"), T("A-T3"), T("A-T4"), T("A-T5"), T("A-T6")])) is var s0
+            ? s0 with { Repos = [s0.Repos[0] with { Sessions = [cli, other] }] } : null!;
+        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
+        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
+        var plan = Paced(snap, 5);
+
+        Assert.That(plan.Worked.Select(w => (w.TicketId, w.SessionId, w.AgentId)), Is.EquivalentTo(new[]
+        {
+            ("A-T1", "cli", (string?)"agent-x"), ("A-T2", "cli", null), ("A-T3", "other", null), ("A-T4", "other", null),
+        }), "A-T6's filer has been quiet an hour: it's the queue's again");
+        Assert.That(plan.Proposals.Select(p => p.Item.Id), Has.None.AnyOf("A-T1", "A-T2", "A-T3", "A-T4"));
+
+        var (handed, _) = Autopilot.Next(plan, settings, store, ["A"], 10, claim: false, Now, Make, _ => "main", self: "cli");
+        Assert.That(handed.Select(h => h.Item.Id), Is.EquivalentTo(new[] { "A-T2", "A-T5", "A-T6" }),
+            "not what the calling CLI's subagent filed and is fixing, nor another session's; what the calling CLI filed itself is its to hand out");
+
+        var onlyWorked = Paced(snap with { Repos = [snap.Repos[0] with { OpenTickets = [T("A-T1"), T("A-T3")] }] }, 5);
+        var (none, why) = Autopilot.Next(onlyWorked, settings, store, ["A"], 10, claim: true, Now, Make, _ => "main", self: "cli");
+        Assert.That((none.Count, why), Is.EqualTo((0, "2 already being worked; nothing else is ready")));
+        Assert.That(store.LoadAssignments().Select(a => a.TicketId), Has.None.AnyOf("A-T1", "A-T3"), "never claimed");
+    }
+
+    [Test]
+    public void A_stale_ticket_whose_background_agent_is_still_running_is_not_handed_out()
+    {
+        // M.ORCH-T255: a daemon background agent quiet past StaleAfterHours is still on its ticket while its process runs.
+        store.UpdateAssignments(all => all.Add(new Assignment("A-T1", "A", @"D:\WT\A\A-T1", "Claude", Now.AddHours(-30), true) { Pilot = 4242 }));
+        var plan = Paced(Snap(("A", [T("A-T1")])), 5);
+        Assert.That(plan.Queue.Single().IsStale, Is.True);
+        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
+
+        var (held, why) = Autopilot.Next(plan, new() { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: true, Now, Make, _ => "main",
+            pilotRunning: a => a.Pilot == 4242);
+        Assert.That((held.Count, why), Is.EqualTo((0, "1 already being worked; nothing else is ready")));
+
+        var (handed, _) = Autopilot.Next(plan, new() { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: true, Now, Make, _ => "main",
+            pilotRunning: _ => false);
+        Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T1" }), "once its agent is gone, the stale ticket is back in the queue");
+    }
+
+    [Test]
     public void An_unthrottled_cli_is_handed_tickets_past_the_subagent_allowance_room_and_wind_down_but_not_past_the_stop()
     {
         // M.ORCH-T195: /unthrottle reaches `orchestrator next --claim` as it reaches the pace gate's holds.

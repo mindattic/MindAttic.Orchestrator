@@ -201,6 +201,70 @@ public sealed class TranscriptReaderTests
         Assert.That(TranscriptReader.SubagentId(File()), Is.Null);
     }
 
+    private static string Call(string id, string toolId, string ts, string command) =>
+        System.Text.Json.JsonSerializer.Serialize(new
+        {
+            type = "assistant", timestamp = ts, sessionId = "s1", cwd = @"D:\Projects\X",
+            message = new
+            {
+                id, model = "claude-sonnet-5", stop_reason = "tool_use",
+                usage = new { input_tokens = 1, cache_creation_input_tokens = 0, cache_read_input_tokens = 0, output_tokens = 1 },
+                content = new[] { new { type = "tool_use", id = toolId, name = "PowerShell", input = new { command } } },
+            },
+        });
+
+    private static string Result(string toolId, string ts, string output) =>
+        System.Text.Json.JsonSerializer.Serialize(new
+        {
+            type = "user", timestamp = ts, sessionId = "s1", cwd = @"D:\Projects\X",
+            message = new { role = "user", content = new[] { new { tool_use_id = toolId, type = "tool_result", content = output, is_error = false } } },
+        });
+
+    private static string EndTurn(string id, string ts) =>
+        System.Text.Json.JsonSerializer.Serialize(new
+        {
+            type = "assistant", timestamp = ts, sessionId = "s1", cwd = @"D:\Projects\X",
+            message = new
+            {
+                id, model = "claude-sonnet-5", stop_reason = "end_turn",
+                usage = new { input_tokens = 1, cache_creation_input_tokens = 0, cache_read_input_tokens = 0, output_tokens = 1 },
+                content = new[] { new { type = "text", text = "Done." } },
+            },
+        });
+
+    [Test]
+    public void A_ticket_a_transcript_files_is_being_worked_by_it_until_its_turn_ends()
+    {
+        // M.ORCH-T255: a subagent that hit bugs filed M.ORCH-T250/T251/T253 and fixed them; `next --claim` handed each out again.
+        System.IO.File.WriteAllLines(File(), [
+            Call("m1", "tu1", "2026-10-13T12:00:00Z", "workflow ticket new --repo X --type fix --summary \"the parent files one too\""),
+            Result("tu1", "2026-10-13T12:00:01Z", "X-T8\nX: tickets OK (8)"),
+        ]);
+        var sub = Path.Combine(dir, "D--Projects-X", "s1", "subagents");
+        Directory.CreateDirectory(sub);
+        var agent = Path.Combine(sub, "agent-a.jsonl");
+        System.IO.File.WriteAllLines(agent, [
+            Call("m2", "tu2", "2026-10-13T12:00:00Z", "workflow ticket new --help"),
+            Result("tu2", "2026-10-13T12:00:01Z", "USAGE: workflow ticket new [OPTIONS]"),
+            Call("m3", "tu3", "2026-10-13T12:01:00Z", @"cd D:\Projects\X; workflow ticket new --repo X --type fix --summary ""a bug"""),
+            Result("tu3", "2026-10-13T12:01:01Z", "X-T9"),
+            Call("m4", "tu4", "2026-10-13T12:02:00Z", "git status"),
+            Result("tu4", "2026-10-13T12:02:01Z", "X-T10"),
+        ]);
+        var reader = new TranscriptReader(dir, Cache);
+
+        var filing = reader.Poll(Since).Single().Filing;
+        Assert.That(filing.Select(f => (f.TicketId, f.AgentId)), Is.EquivalentTo(new[] { ("X-T8", (string?)null), ("X-T9", "agent-a") }),
+            "the id each `workflow ticket new` printed, by whoever ran it; not --help's output nor another call's");
+
+        Assert.That(new TranscriptReader(dir, Cache).Poll(Since).Single().Filing, Has.Count.EqualTo(2), "a restarted reader still knows (from its cache)");
+
+        System.IO.File.AppendAllLines(agent, [EndTurn("m5", "2026-10-13T12:03:00Z")]);
+        TouchLater(agent);
+        Assert.That(reader.Poll(Since).Single().Filing.Select(f => f.TicketId), Is.EqualTo(new[] { "X-T8" }),
+            "once the subagent's turn is over, what it filed and left open is the queue's again");
+    }
+
     [Test]
     public void Old_transcripts_still_report_whose_they_are()
     {

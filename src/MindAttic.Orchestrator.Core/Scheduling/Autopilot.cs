@@ -357,12 +357,17 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// is handed out, <c>Why</c> says why. For an <paramref name="unthrottled"/> CLI (/unthrottle, M.ORCH-T195) the pace's
     /// subagent allowance, room and wind-down don't apply, as the pace gate skips its holds for it: it gets <paramref name="count"/>
     /// or <see cref="OrchestratorSettings.MaxConcurrentSessions"/>, and the daemon's next measurement holds everyone else to make up
-    /// for it. Only the window's hard stop still applies.
+    /// for it. Only the window's hard stop still applies. A ticket another agent is working isn't handed out (M.ORCH-T255): one in
+    /// <see cref="SchedulePlan.Worked"/> (filed this turn by an agent fixing it, or named in a live session's prompt or worktree),
+    /// except what the calling CLI <paramref name="self"/> itself filed, and one whose assignment went stale while the
+    /// background agent on it is still running.
     /// </summary>
     public static (IReadOnlyList<Handout> Handed, string? Why) Next(SchedulePlan plan, OrchestratorSettings settings, JsonStore store,
         IReadOnlyList<string> repos, int? count, bool claim, DateTime nowUtc,
-        Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree = null, Func<string, string>? mainlineOf = null, bool unthrottled = false)
+        Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree = null, Func<string, string>? mainlineOf = null, bool unthrottled = false,
+        string? self = null, Func<Assignment, bool>? pilotRunning = null)
     {
+        pilotRunning ??= a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc);
         makeWorktree ??= Dispatcher.EnsureWorktree;
         mainlineOf ??= Dispatcher.Mainline;
         if (plan.Stopped) return ([], "the 5-hour window is at its target: nothing starts before it resets");
@@ -371,12 +376,15 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         if (!unthrottled && plan.Pace is { WindDown: true } wound) return ([], wound.WindDownHold);
         bool Named(string repo) => Autopilot.Named(repos, repo);
         var room = unthrottled ? null : plan.Pace?.RoomTokens;
-        var open = plan.Queue.Where(q => Named(q.Repo) && q.RepoPath.Length > 0 && !q.IsAssigned && q.BlockedBy.Count == 0 &&
+        var elsewhere = plan.Worked.Where(w => !(w.AgentId is null && self is not null && w.SessionId == self))
+            .Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        bool Busy(QueueItem q) => q.IsAssigned || elsewhere.Contains(q.Id) || (q.Assignment is { } a && pilotRunning(a));
+        var open = plan.Queue.Where(q => Named(q.Repo) && q.RepoPath.Length > 0 && !Busy(q) && q.BlockedBy.Count == 0 &&
             !(room is { } left && q.Estimate is { } e && e.Fresh > left)).ToList();
         if (open.Count == 0)
         {
             var waiting = plan.AwaitingApproval.Count(q => Named(q.Repo));
-            var busy = plan.Queue.Count(q => Named(q.Repo) && q.IsAssigned);
+            var busy = plan.Queue.Count(q => Named(q.Repo) && Busy(q));
             return ([], waiting > 0 && busy == 0 ? $"none left that may be worked: {waiting} wait for your approval (orchestrator approve)"
                 : busy > 0 ? $"{busy} already being worked; nothing else is ready"
                 : "no open fixes or approved tickets left there");

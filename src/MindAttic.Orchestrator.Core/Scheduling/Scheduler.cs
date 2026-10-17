@@ -37,6 +37,10 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
     public bool NeedsWorktree => RepoBusy || (IsStale && Assignment!.Worktree);
 }
 
+/// <summary>An open ticket a live agent is working though no assignment says so (M.ORCH-T255): the session (and subagent,
+/// null for the CLI itself) that has it, and how it's known.</summary>
+public sealed record WorkedTicket(string TicketId, string SessionId, string? AgentId, string How);
+
 /// <summary>A ticket the scheduler thinks should start now, and how.</summary>
 public sealed record Proposal(QueueItem Item, bool UseWorktree, string Reason);
 
@@ -72,6 +76,10 @@ public sealed record SchedulePlan(
 
     /// <summary>Open tickets that aren't fixes and that you haven't approved: never proposed or started until you do.</summary>
     public IReadOnlyList<QueueItem> AwaitingApproval { get; init; } = [];
+
+    /// <summary>Tickets a live agent is working without an assignment (one it filed this turn and is fixing, or one its prompt
+    /// or worktree names): never proposed or handed out, or two agents fix the same thing (M.ORCH-T255).</summary>
+    public IReadOnlyList<WorkedTicket> Worked { get; init; } = [];
 }
 
 /// <summary>
@@ -196,13 +204,17 @@ public static partial class Scheduler
             queue.Count(q => q.Repo == repo && q.IsAssigned));
         var busy = snapshot.Repos.Where(x => x.State != RepoState.Dormant).Select(x => x.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        var worked = WorkedBy(snapshot);
+        var workedIds = worked.Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         var proposals = new List<Proposal>();
         var tooBig = new List<QueueItem>();
         var free = Math.Max(0, settings.MaxConcurrentSessions - occupied);
         var reposTaken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var item in queue)
         {
-            if (item.IsAssigned || item.RepoPath.Length == 0 || reposTaken.Contains(item.Repo) || item.BlockedBy.Count > 0) continue;
+            if (item.IsAssigned || item.RepoPath.Length == 0 || reposTaken.Contains(item.Repo) || item.BlockedBy.Count > 0 ||
+                workedIds.Contains(item.Id)) continue;
             var reserved = item.Reserved > 0;
             // A reserved ticket gets its slice even while pacing coasts or caps, never past a limit.
             if (reserved ? overLimit || proposals.Count >= free || pace?.RoomTokens < item.Reserved
@@ -242,8 +254,32 @@ public static partial class Scheduler
         {
             Cap = cap, Pace = pace, Stop = snapshot.Pace is { Stop: true }, Stale = [.. queue.Where(q => q.IsStale)], TooBig = tooBig,
             Groom = [.. queue.Where(q => q.Old && q.Assignment is null)],
-            AwaitingApproval = awaiting,
+            AwaitingApproval = awaiting, Worked = worked,
         };
+    }
+
+    /// <summary>How recently a transcript must have been written for its agent to count as still working what it has.</summary>
+    internal static readonly TimeSpan WorkingWithin = TimeSpan.FromMinutes(30);
+
+    /// <summary>
+    /// Open tickets live agents are working, assigned or not (M.ORCH-T255): one a session's transcript filed in the turn it's
+    /// still in (an agent that hits a bug files it and fixes it), and one a session or its subagent was started on (its
+    /// prompt or worktree names it). A transcript quiet for <see cref="WorkingWithin"/> no longer holds anything.
+    /// </summary>
+    internal static IReadOnlyList<WorkedTicket> WorkedBy(Snapshot snapshot)
+    {
+        var open = snapshot.Repos.SelectMany(r => r.OpenTickets).Select(t => t.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        bool Live(DateTime lastUtc) => snapshot.TakenUtc - lastUtc < WorkingWithin;
+        var worked = new List<WorkedTicket>();
+        foreach (var s in snapshot.Repos.SelectMany(r => r.Sessions).Where(s => s.Provider == Providers.Claude))
+        {
+            foreach (var f in s.Filing.Where(f => Live(f.LastWriteUtc)))
+                worked.Add(new(f.TicketId, s.SessionId, f.AgentId, f.AgentId is null ? "filed it this turn" : $"its subagent {f.AgentId} filed it"));
+            if (s.TicketId is { } own && Live(s.LastWriteUtc)) worked.Add(new(own, s.SessionId, null, "started on it"));
+            foreach (var sub in s.TicketedSubagents.Where(t => t.Events.Count > 0 && Live(t.Events[^1].AtUtc)))
+                worked.Add(new(sub.TicketId, s.SessionId, sub.AgentId, $"its subagent {sub.AgentId} was handed it"));
+        }
+        return [.. worked.Where(w => open.Contains(w.TicketId)).DistinctBy(w => (w.TicketId.ToUpperInvariant(), w.SessionId, w.AgentId))];
     }
 
     [GeneratedRegex(@"blocked by (?<id>(?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)", RegexOptions.IgnoreCase)]

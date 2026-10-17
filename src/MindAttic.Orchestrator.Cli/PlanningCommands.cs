@@ -127,12 +127,14 @@ internal sealed class DryRunCommand : Command
     public override int Execute(CommandContext context)
     {
         var (_, store, _, plan) = Ctx.Load();
-        var clis = new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis();
+        var cycler = new MindAttic.Orchestrator.Sessions.ContextCycler();
+        var clis = cycler.AutopilotClis();
         if (clis.Count == 0) { AnsiConsole.MarkupLine("[grey]/autopilot is off in every CLI; type /autopilot (optionally -repo=A,B) in the CLI that should work the tickets.[/]"); return 0; }
         foreach (var (pid, repos) in clis)
         {
             AnsiConsole.MarkupLine($"/autopilot is on in CLI {pid} for {Markup.Escape(string.Join(", ", repos))}:");
-            var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, null, claim: false, DateTime.UtcNow);
+            var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, null, claim: false, DateTime.UtcNow,
+                self: cycler.Load().FirstOrDefault(s => s.Pid == pid)?.SessionId);
             foreach (var h in handed) AnsiConsole.MarkupLine($"  next: {Markup.Escape(h.Item.Id)} in {Markup.Escape(h.Item.Repo)}: {Markup.Escape(h.Item.Ticket.Summary)}");
             if (why is not null) AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(why)}[/]");
         }
@@ -172,9 +174,13 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
         // The calling CLI, as the pace gate finds it: MINDATTIC_CLI_PID, else the claude.exe this runs under (M.ORCH-T195).
         var cli = int.TryParse(Environment.GetEnvironmentVariable("MINDATTIC_CLI_PID"), out var envPid) && envPid > 0 ? envPid
             : MindAttic.Orchestrator.Sessions.ProcessTree.ClaudeAncestor(Environment.ProcessId);
-        var unthrottled = cli is { } pid && new MindAttic.Orchestrator.Sessions.ContextCycler().IsUnthrottled(pid);
+        var cycler = new MindAttic.Orchestrator.Sessions.ContextCycler();
+        var unthrottled = cli is { } pid && cycler.IsUnthrottled(pid);
+        // What the calling CLI filed itself isn't held from its own subagents; what anyone else (its subagents included) filed
+        // and is fixing is (M.ORCH-T255).
+        var self = cli is { } me ? cycler.Load().FirstOrDefault(s => s.Pid == me)?.SessionId : null;
         var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, settings.Count, settings.Claim, DateTime.UtcNow,
-            unthrottled: unthrottled);
+            unthrottled: unthrottled, self: self);
         foreach (var h in handed)
         {
             Console.WriteLine($"=== {h.Item.Id} ({h.Item.Repo}, {h.Item.Ticket.Type}): {h.Item.Ticket.Summary}");
