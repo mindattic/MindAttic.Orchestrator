@@ -161,74 +161,6 @@ public sealed partial class MainViewModel
                $"weekly {Of(b.WeeklyLimitSource, b.WeeklyLimit, LimitKind.Weekly, b.WeeklyLimitOutdated)}.";
     }
 
-    // ── Pace ledger ─────────────────────────────────────────────────────────
-
-    private List<LedgerWindow> ledger = [];
-    private DateTime ledgerStamp;
-
-    /// <summary>The daemon's <c>pace-ledger.jsonl</c>, reread only when it has written to it.</summary>
-    private IReadOnlyList<LedgerWindow> Ledger
-    {
-        get
-        {
-            var path = Path.Combine(store.Directory, PaceLedger.FileName);
-            var stamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default;
-            if (stamp != ledgerStamp)
-            {
-                try { ledger = PaceLedger.Load(path); ledgerStamp = stamp; }
-                catch (IOException) { }
-            }
-            return ledger;
-        }
-    }
-
-    private LedgerWindow? LastOver => Ledger.LastOrDefault(w => w.Grade == WindowGrade.Over);
-
-    /// <summary>The ledger card read out: "9h since a window went over: open the pace ledger".</summary>
-    public string LedgerSpoken => $"{(LedgerHeadline == "never" ? "No window has gone over" : $"{LedgerHeadline} {LedgerCaption}")}: open the pace ledger";
-
-    private ICommand? showLedger;
-
-    /// <summary>Every window on record, newest first, in a window of its own (what <c>orchestrator ledger</c> prints).</summary>
-    public ICommand ShowLedgerCommand => showLedger ??= new RelayCommand(() =>
-    {
-        var rows = Ledger;
-        var lines = new List<string> { "Pace ledger: " + PaceLedger.Summary(rows, DateTime.UtcNow), "" };
-        lines.AddRange(rows.Reverse().Select(w =>
-            $"{w.StartUtc.ToLocalTime():ddd MMM d HH:mm}–{w.EndUtc.ToLocalTime():HH:mm}  {w.Grade.ToString().ToLowerInvariant(),-5}  " +
-            $"peak {(w.PeakPercent is { } p ? $"{p:0}%" : "–"),4}  {Formatting.Tokens(w.Fresh),6}  {w.Why}" +
-            (w.Held > 0 ? $" · {w.Held} calls held ({w.HeldMinutes:0.#}m)" : "") + (w.Refused > 0 ? $" · {w.Refused} refused" : "")));
-        var box = new System.Windows.Controls.TextBox
-        {
-            Text = string.Join(Environment.NewLine, lines), IsReadOnly = true, FontFamily = new FontFamily("Consolas"), FontSize = 13,
-            VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-        };
-        System.Windows.Automation.AutomationProperties.SetName(box, "Pace ledger");
-        new System.Windows.Window { Title = "Pace ledger", Width = 1000, Height = 650, Content = box,
-            Owner = System.Windows.Application.Current.MainWindow }.Show();
-    });
-
-    public string LedgerHeadline => Ledger.Count == 0 ? "—" : LastOver is { } o ? Formatting.Span(DateTime.UtcNow - (o.LimitHitUtc ?? o.EndUtc)) : "never";
-
-    public string LedgerCaption => Ledger.Count == 0 ? "no windows recorded yet"
-        : LastOver is null ? $"over in {Ledger.Count} windows" : "since a window went over";
-
-    public Brush LedgerBrush => LastOver is { } o && DateTime.UtcNow - (o.LimitHitUtc ?? o.EndUtc) < TimeSpan.FromDays(1) ? Palette.Over : Palette.Working;
-
-    public string LedgerTooltip
-    {
-        get
-        {
-            var rows = Ledger;
-            var lines = new List<string> { "Pace ledger: " + PaceLedger.Summary(rows, DateTime.UtcNow) };
-            lines.AddRange(rows.TakeLast(6).Reverse().Select(w =>
-                $"{w.EndUtc.ToLocalTime():ddd h:mm tt}  {w.Grade.ToString().ToLowerInvariant()}: {w.Why}" + (w.Held > 0 ? $" · {w.Held} calls held" : "")));
-            lines.Add("orchestrator ledger lists every window.");
-            return string.Join("\n", lines);
-        }
-    }
-
     // ── Pace ────────────────────────────────────────────────────────────────
 
     public Pace? Pace => snapshot?.Pace;
@@ -533,8 +465,7 @@ public sealed partial class MainViewModel
         foreach (var name in new[] { nameof(Budget), nameof(BudgetIsPeak), nameof(BudgetHeadline), nameof(BudgetCaption),
                                      nameof(BudgetDetail), nameof(BudgetTooltip), nameof(BudgetFill), nameof(BudgetBrush),
                                      nameof(BlockResetText), nameof(WeeklyHeadline), nameof(WeeklyCaption),
-                                     nameof(Pace), nameof(PaceText), nameof(PaceBrush), nameof(Utilization), nameof(UtilizationText),
-                                     nameof(LedgerHeadline), nameof(LedgerCaption), nameof(LedgerBrush), nameof(LedgerTooltip), nameof(LedgerSpoken) })
+                                     nameof(Pace), nameof(PaceText), nameof(PaceBrush), nameof(Utilization), nameof(UtilizationText) })
             Raise(name);
 
         ApplyAgents(next);

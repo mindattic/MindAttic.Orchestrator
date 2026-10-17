@@ -198,14 +198,6 @@
                     <TextBlock Text="{Binding WeeklyCaption}" Style="{StaticResource McTileSubtitle}" />
                 </StackPanel>
             </Button>
-            <!-- The pace ledger (M.ORCH-T166): how long since a 5-hour window last went over, from every window on record. -->
-            <Button Style="{StaticResource SmallStat}" Command="{Binding ShowLedgerCommand}" ToolTip="{Binding LedgerTooltip}"
-                    AutomationProperties.Name="{Binding LedgerSpoken}">
-                <StackPanel>
-                    <TextBlock Text="{Binding LedgerHeadline}" Style="{StaticResource StatValue}" Foreground="{Binding LedgerBrush}" />
-                    <TextBlock Text="{Binding LedgerCaption}" Style="{StaticResource McTileSubtitle}" />
-                </StackPanel>
-            </Button>
             <Button Style="{StaticResource SmallStat}" Command="{Binding ShowViewCommand}" CommandParameter="Repos"
                     ToolTip="Claude Code tokens since midnight, every session (cache reads included). Opens the repos, busiest first."
                     AutomationProperties.Name="{Binding TokensToday, StringFormat='{}{0} tokens today: open the repos'}">
