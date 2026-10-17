@@ -395,7 +395,7 @@ public static class AgentGate
         # branch on GitHub that triggers nothing (found live: an agent told to push main to a master repo made a stray main).
         if tool in ("Bash", "PowerShell"):
             for segment in re.split(r"[;\n|]|&&", str((data.get("tool_input") or {}).get("command") or "")):
-                if re.match(r"\s*(?:&\s*)?['\"]?git(?:\.exe)?['\"]?\s[^\n]*\bpush\b", segment) and re.search(r"(?:\s|:)master\b", segment) and not re.search(r"--delete\b", segment):
+                if re.match(r"\s*(?:&\s*)?['\"]?git(?:\.exe)?['\"]?\s[^\n]*\bpush\b", segment) and re.search(r"(?:\s|:)master(?![\w./-])", segment) and not re.search(r"--delete\b", segment):
                     refuse("Every MindAttic repo's main line is main now (renamed from master 2026-10-16); pushing master would "
                            "recreate a stray branch. Push main instead: git push origin HEAD:main.")
 
