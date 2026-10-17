@@ -201,9 +201,9 @@ public static partial class Scheduler
                 tooBig.Add(item);
                 continue;
             }
-            if (settings.RepoBudgetPercent.GetValueOrDefault(item.Repo) is > 0 and var pct && limit5h > 0 &&
+            if (OrchestratorSettings.ForRepo(settings.RepoBudgetPercent, item.Repo, 0) is > 0 and var pct && limit5h > 0 &&
                 RepoSpent(item.Repo) >= limit5h * pct / 100) continue;
-            if (Active(item.Repo) >= settings.RepoMaxSessions.GetValueOrDefault(item.Repo, settings.MaxSessionsPerRepo)) continue;
+            if (Active(item.Repo) >= OrchestratorSettings.ForRepo(settings.RepoMaxSessions, item.Repo, settings.MaxSessionsPerRepo)) continue;
 
             reposTaken.Add(item.Repo);
             var why = reserved ? $"reserved {Formatting.Tokens(item.Reserved)}"

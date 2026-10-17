@@ -149,7 +149,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 break;
             }
             // Worktrees keep agents apart, so a repo is only capped if you've capped it yourself.
-            if (inRepo[repo.Name] >= settings.RepoMaxSessions.GetValueOrDefault(repo.Name, int.MaxValue))
+            if (inRepo[repo.Name] >= OrchestratorSettings.ForRepo(settings.RepoMaxSessions, repo.Name, int.MaxValue))
             {
                 Tell(repo.Name, $"autopilot: {repo.Name} has {inRepo[repo.Name]} agents working, the cap you set for it (settings --repo-sessions)");
                 continue;

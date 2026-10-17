@@ -102,6 +102,13 @@ public sealed record OrchestratorSettings
 
     public Dictionary<string, int> RepoMaxSessions { get; init; } = [];
 
+    /// <summary><paramref name="repo"/>'s entry in a per-repo map, its name matched ignoring case as everywhere else repos are
+    /// named (typed as "prose", saved as such, it still applies to Prose); <paramref name="otherwise"/> when it has none.</summary>
+    public static int ForRepo(IReadOnlyDictionary<string, int> map, string repo, int otherwise) =>
+        map.TryGetValue(repo, out var exact) ? exact
+            : map.FirstOrDefault(kv => kv.Key.Equals(repo, StringComparison.OrdinalIgnoreCase)) is { Key: not null } kv ? kv.Value
+            : otherwise;
+
     /// <summary>Keep development going without you: a CLI whose turn ends asking whether to go on while its repo still has
     /// open tickets is told to carry on (the context gate's Stop hook). False lets it stop and ask.</summary>
     public bool KeepGoing { get; init; } = true;

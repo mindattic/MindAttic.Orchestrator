@@ -350,7 +350,9 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             var parts = opt.Split('=', 2);
             if (parts.Length != 2 || !int.TryParse(parts[1], out var n) || n < 0) { AnsiConsole.MarkupLine($"[red]Use REPO=NUMBER, not \"{Markup.Escape(opt)}\".[/]"); return 1; }
             var map = new Dictionary<string, int>(isCap ? s.RepoBudgetPercent : s.RepoMaxSessions, StringComparer.Ordinal);
-            if (n == 0) map.Remove(parts[0]); else map[parts[0]] = n;
+            // One entry per repo whatever the casing: "prose=0" clears a "Prose" cap, and "prose=1" replaces it.
+            foreach (var same in map.Keys.Where(k => k.Equals(parts[0], StringComparison.OrdinalIgnoreCase)).ToList()) map.Remove(same);
+            if (n != 0) map[parts[0]] = n;
             s = isCap ? s with { RepoBudgetPercent = map } : s with { RepoMaxSessions = map };
             changed = true;
         }

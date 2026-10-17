@@ -139,6 +139,21 @@ public sealed class CliCommandTests
     }
 
     [Test]
+    public void A_repo_cap_applies_and_clears_whatever_the_casing_typed()
+    {
+        Assert.That(Run("settings", "--repo-sessions", "Prose=2", "--repo-cap", "prose=40"), Is.Zero);
+        var s = Store.LoadSettings();
+        Assert.That((OrchestratorSettings.ForRepo(s.RepoMaxSessions, "Prose", 9), OrchestratorSettings.ForRepo(s.RepoBudgetPercent, "Prose", 0)),
+            Is.EqualTo((2, 40)), "prose=40 caps Prose");
+        Assert.That(OrchestratorSettings.ForRepo(s.RepoMaxSessions, "Other", 9), Is.EqualTo(9));
+
+        Assert.That(Run("settings", "--repo-sessions", "PROSE=0", "--repo-cap", "Prose=30"), Is.Zero);
+        s = Store.LoadSettings();
+        Assert.That((s.RepoMaxSessions.Count, s.RepoBudgetPercent.Single()), Is.EqualTo((0, new KeyValuePair<string, int>("Prose", 30))),
+            "PROSE=0 cleared Prose; Prose=30 replaced prose");
+    }
+
+    [Test]
     public void Settings_escapes_a_bracket_in_saved_values_when_it_prints_them()
     {
         // Unescaped, "[odd" would be read as a markup tag and the command would crash after saving.
