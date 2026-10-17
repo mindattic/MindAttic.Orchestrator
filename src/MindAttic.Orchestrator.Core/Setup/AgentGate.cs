@@ -775,7 +775,7 @@ public static class AgentGate
 
         # Typed at the window's stop, these still go through: they're how you steer the orchestrator itself.
         # /goal goes through at the stop only to clear one: a new goal there would run turn after turn its refused calls can't finish.
-        CONTROL = re.compile(r"/(autopilot|crossrepo|throttle|unthrottle)\b|/goal\s*(?:$|(?:clear|off|stop)\b)", re.I)
+        CONTROL = re.compile(r"/(autopilot|crossrepo|throttle|unthrottle)\b|/goal\s*(?:$|(?:clear|off|stop|reset|none|cancel)\b)", re.I)
 
         def goal_finished(transcript, goal):
             # A /goal ends on its own once its condition holds: the session's last entry is then the stop summary naming it
@@ -1016,9 +1016,10 @@ public static class AgentGate
             # marked and left to Claude's own compaction until /goal clear (M.ORCH-T93).
             if re.match(r"/goal\b", prompt):
                 args = typed[len("/goal"):].strip()
-                if not args or re.match(r"(clear|off|stop)\b", args, re.I):
+                # Claude Code clears a goal on any of these; a bare /goal only shows its status, and leaves it running.
+                if re.match(r"(clear|off|stop|reset|none|cancel)\b", args, re.I):
                     state.pop("goal", None)
-                else:
+                elif args:
                     state["goal"] = args
             # /crossrepo <A,B|all> lets this CLI work other repos too (the explicit exception to M.ORCH-T95); /crossrepo off ends it.
             if prompt.startswith("/crossrepo"):

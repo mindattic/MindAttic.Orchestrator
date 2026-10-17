@@ -202,6 +202,12 @@ public sealed class ContextCyclerTests
             Assert.That(new ContextCycler(ctx).Load().Single().Goal, Is.Null, "the gate unmarks a finished goal at the next prompt");
 
             Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "/goal all the tests pass", transcript_path = transcript });
+            File.AppendAllText(transcript, """{"type":"assistant","message":{"content":[{"type":"text","text":"Working on it."}]}}""" + "\n"); // the new goal runs
+            Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "/goal" });
+            Assert.That(new ContextCycler(ctx).Load().Single().Goal, Is.EqualTo("all the tests pass"), "a bare /goal only shows its status");
+            Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "/goal cancel" });
+            Assert.That(new ContextCycler(ctx).Load().Single().Goal, Is.Null, "cancel clears it, as Claude Code does (not a goal named 'cancel')");
+            Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "/goal all the tests pass", transcript_path = transcript });
             Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "/goal clear" });
             Assert.That(new ContextCycler(ctx).Load().Single().Goal, Is.Null, "cleared");
             Assert.That(Gate(new { session_id = "g", hook_event_name = "PostToolUse" }), Is.Empty, "no turn is ever told to stop for its context");
