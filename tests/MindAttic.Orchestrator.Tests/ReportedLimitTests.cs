@@ -131,4 +131,38 @@ public sealed class ReportedLimitTests
         Assert.That(ReportedLimit.Estimate([S(5, 10, 0, older), S(8, 50, 41_000, older), S(10, 10, 5_000), S(13, 30, 5_000)]),
             Is.EqualTo(100_000), "skipped for the older window that did spend");
     }
+    // Every open session's statusline rewrites claude-usage.json each minute with its own last response's percent,
+    // so an idle one stamps a stale, lower percent with the current time (M.ORCH-T179).
+    [Test]
+    public void Record_skips_a_report_below_one_already_recorded_for_its_window()
+    {
+        var samples = new List<UsageSample> { S(10, 35, 3_500) };
+
+        Assert.That(ReportedLimit.Record(samples, Report(12, 10.1), [], Day.AddHours(10.1)), Is.False, "stale, from an idle session");
+        Assert.That(ReportedLimit.Record(samples, Report(12, 10.2, Reset.AddHours(5)), [], Day.AddHours(10.2)), Is.True, "another window isn't compared");
+        Assert.That(ReportedLimit.Record(samples, Report(35, 10.3), [], Day.AddHours(10.3)), Is.True, "level is fine");
+    }
+
+    [Test]
+    public void Estimate_ignores_stale_dips_recorded_earlier()
+    {
+        // 10% to 30% over 2,000 tokens, then a stale 12% last: the dip isn't the window's end.
+        var samples = new List<UsageSample> { S(10, 10, 1_000), S(11, 30, 3_000), S(11.5, 12, 3_100) };
+
+        Assert.That(ReportedLimit.Estimate(samples), Is.EqualTo((long)(2_000 / (21 / 100.0))));
+    }
+
+    [Test]
+    public void Highest_raises_a_stale_report_to_the_highest_recorded_for_its_window()
+    {
+        var samples = new List<UsageSample> { S(10, 30, 0), S(10.5, 35, 0), S(10.6, 35, 0), S(10, 80, 0, Reset.AddHours(-5)) };
+
+        var raised = ReportedLimit.Highest(samples, Report(12, 11));
+
+        Assert.That(raised!.FiveHour!.Percent, Is.EqualTo(35));
+        Assert.That(raised.AtUtc, Is.EqualTo(Day.AddHours(10.6)), "local spend is added from the latest sample at that percent");
+        Assert.That(raised.FiveHour.ResetUtc, Is.EqualTo(Reset));
+        Assert.That(ReportedLimit.Highest(samples, Report(40, 11)), Is.EqualTo(Report(40, 11)), "a higher report stands");
+        Assert.That(ReportedLimit.Highest(samples, null), Is.Null);
+    }
 }

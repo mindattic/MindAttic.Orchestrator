@@ -154,19 +154,23 @@ public sealed class Installer
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), ShortcutName),
     ];
 
-    /// <summary>Start menu and desktop shortcuts to <paramref name="exe"/>; only (re)written when missing or pointing elsewhere.</summary>
+    /// <summary>Start menu and desktop shortcuts to <paramref name="exe"/>, showing its embedded icon; only (re)written
+    /// when missing, pointing elsewhere or taking their icon from elsewhere.</summary>
     public static string? EnsureShortcuts(string exe)
     {
         var shellType = Type.GetTypeFromProgID("WScript.Shell");
         if (shellType is null) return null;
         dynamic shell = Activator.CreateInstance(shellType)!;
+        var icon = exe + ",0";
         var made = 0;
         foreach (var path in ShortcutPaths())
         {
             dynamic link = shell.CreateShortcut(path);
-            if (File.Exists(path) && SamePath((string)link.TargetPath, exe)) continue;
+            if (File.Exists(path) && SamePath((string)link.TargetPath, exe)
+                && SamePath(((string)link.IconLocation).Split(',')[0], exe)) continue;
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             link.TargetPath = exe;
+            link.IconLocation = icon;
             link.WorkingDirectory = Path.GetDirectoryName(exe);
             link.Description = "Every agent session across the workspace: status, budget and pace, the ticket queue";
             link.Save();

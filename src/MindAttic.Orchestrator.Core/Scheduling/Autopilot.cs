@@ -233,7 +233,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         // Run headless (-p): the run ends with your last turn, so a subagent left running in the background is cut off with it.
         "Run any subagents in the foreground, never in the background. " +
         $"When it's done: run /commit, but don't push (the next step does). Land it on {item.Repo}'s main line, {mainline}: git fetch origin, git rebase origin/{mainline} (resolve any conflicts and rerun the tests), git push origin HEAD:{mainline}. " +
-        $"Then mark it finished: workflow ticket close {item.Id} --ref <the test or commit that proves it>. " +
+        // Found live (M.ORCH-T178): chained after the push, a rejected push (main moved) still closed the ticket, unlanded, on a pre-rebase hash.
+        $"If the push is rejected because {mainline} moved, fetch, rebase and push again. Only once the push has succeeded, as its own step, " +
+        $"mark it finished: workflow ticket close {item.Id} --ref <the test, or the commit hash as it landed on {mainline}>. " +
         "If you can't finish or land it, leave the ticket open and say why.";
 
     /// <summary>

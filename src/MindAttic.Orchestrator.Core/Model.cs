@@ -93,6 +93,9 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
 
     public Budget.Pace? Pace { get; init; }
 
+    /// <summary>This 5-hour window's utilization against its pace, for the dashboard's graph; null without a real limit.</summary>
+    public Budget.Utilization? Utilization { get; init; }
+
     /// <summary>Usage per provider (Claude, Codex, Gemini). Budgets and pacing are Claude's own; the others' are shown, not paced.</summary>
     public IReadOnlyList<ProviderUsage> ProviderUsage { get; init; } = [];
 

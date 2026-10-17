@@ -19,10 +19,12 @@ public static class ReportedLimit
     /// <summary>The smallest percent change to size a limit by: whole-percent reports are ±1 at each end.</summary>
     public const double MinDelta = 4;
 
-    /// <summary>Records <paramref name="reported"/> once (keyed by its time) and trims to a week.</summary>
+    /// <summary>Records <paramref name="reported"/> once (keyed by its time) and trims to a week. A report below one
+    /// already recorded for its window is stale (see <see cref="Highest"/>) and isn't recorded.</summary>
     public static bool Record(List<UsageSample> samples, ReportedUsage? reported, IReadOnlyList<UsageEvent> events, DateTime nowUtc)
     {
         if (reported?.FiveHour is not { } w || samples.Any(s => s.AtUtc == reported.AtUtc)) return false;
+        if (samples.Any(s => s.ResetUtc == w.ResetUtc && s.Percent > w.Percent)) return false;
         var start = w.ResetUtc - BudgetCalculator.BlockLength;
         var fresh = events.Where(e => e.AtUtc >= start && e.AtUtc <= reported.AtUtc).Sum(e => e.Usage.Fresh);
         samples.Add(new UsageSample(reported.AtUtc, w.Percent, w.ResetUtc, fresh));
@@ -36,13 +38,30 @@ public static class ReportedLimit
     {
         foreach (var window in samples.GroupBy(s => s.ResetUtc).OrderByDescending(g => g.Key))
         {
-            var ordered = window.OrderBy(s => s.AtUtc).ToList();
+            // Stale reports recorded before Record skipped them would end the window low; only rises count.
+            var ordered = new List<UsageSample>();
+            foreach (var s in window.OrderBy(s => s.AtUtc))
+                if (ordered.Count == 0 || s.Percent >= ordered[^1].Percent) ordered.Add(s);
             var (first, last) = (ordered[0], ordered[^1]);
             var delta = last.Percent - first.Percent;
             var spent = last.WindowFresh - first.WindowFresh;
             if (delta >= MinDelta && spent > 0) return (long)(spent / ((delta + 1) / 100));
         }
         return null;
+    }
+
+    /// <summary>
+    /// <paramref name="reported"/> with its 5-hour percent raised to the highest recorded for the same window (as of
+    /// that sample's time). Every open Claude session's statusline rewrites <c>claude-usage.json</c> each minute with
+    /// the percent from its own last API response, so an idle one stamps a stale, lower percent with the current time
+    /// (12% while the window was at 35%). Usage within a window never goes down, so the highest is the truest.
+    /// </summary>
+    public static ReportedUsage? Highest(IReadOnlyList<UsageSample> samples, ReportedUsage? reported)
+    {
+        if (reported?.FiveHour is not { } w) return reported;
+        var best = samples.Where(s => s.ResetUtc == w.ResetUtc && s.Percent > w.Percent)
+            .OrderByDescending(s => s.Percent).ThenByDescending(s => s.AtUtc).FirstOrDefault();
+        return best is null ? reported : reported with { FiveHour = w with { Percent = best.Percent }, AtUtc = best.AtUtc };
     }
 }
 

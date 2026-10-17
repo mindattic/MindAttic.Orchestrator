@@ -1,6 +1,15 @@
 # MindAttic.Orchestrator
 
-One place to see and steer every agent session across the MindAttic workspace: which repos have an
+Keeps Claude agents working around the clock on the workspace's tickets, and spends each 5-hour usage window almost
+to its end (98% by default, adjustable) without ever reaching Claude's limit. Unused budget is lost when a window
+resets, and reaching the limit stops every session mid-step until it does, so the target is to land just under the
+limit exactly at the reset. Every 15 seconds the daemon reads Claude's own usage percent, works out the rate the
+rest of the window can sustain, and writes it where every Claude CLI's hooks read it. While the draw fits, more
+subagents may start, each on its own ticket in its own git worktree. While it runs ahead, new subagents wait and
+every tool call is held a little longer. Past 90% only work that can finish starts, and at the target nothing more
+is spent until the reset. The full explanation is in [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md).
+
+It's also one place to see and steer every agent session across the MindAttic workspace: which repos have an
 agent working, which sessions are waiting on you, how much of your token budget is gone, what work
 is queued, and what code and agent config has been copied or has drifted between repos.
 
@@ -17,14 +26,14 @@ It reads what already exists rather than adding new bookkeeping:
 
 ## How it runs, in one screen
 
-The goal: keep agents working all day and night, spending ~99% of every 5-hour window without ever
+The goal: keep agents working all day and night, spending ~98% (the adjustable target) of every 5-hour window without ever
 hitting the session limit, and never stalling on a full context. Pick what runs; it handles the rest.
 
 | Piece | What it does | Where |
 | --- | --- | --- |
 | Daemon | runs at logon, refreshes every 15s: budget, pace, autopilot | logon task `\MindAttic\Orchestrator\...`; log in Vault (below) |
 | Claude's count | 5-hour percent and reset straight from Claude Code, sized safely | `~/.claude/claude-usage.json` |
-| Pacing | caps new sessions so the window lands on 99% at its reset; the week is never paced | `rl-status.json` → `pace` |
+| Pacing | caps new sessions so the window lands on its target (98% by default) at its reset; the week is never paced | `rl-status.json` → `pace` |
 | Holding agents | every Claude CLI and subagent waits before each tool call while the draw won't last, 0s once it fits | `~/.claude/pace-gate.py` (PreToolUse hook) |
 | Wind-down | past 90% of the 5-hour window each turn is told (once more mid-turn if it crosses the line) to start only what it can finish before the stop, and to commit and file the rest as a ticket if its task won't finish; autopilot starts only stories whose cost estimate fits what's left | `rl-status.json` → `wind_down_note` |
 | Never over | if the daemon dies or stalls (`rl-status.json` over 3 minutes old) the stop still holds: both gates fall back to Claude's own 5-hour percent (`~/.claude/claude-usage.json`, refreshed by the statusline every 60s) and refuse at 99%, and every prompt you type shows a warning that the daemon is down and nothing else is paced until it's back. Otherwise, at the 99% target (or a limit) the status says `stop`: every tool call, in every CLI and `/unthrottle`d ones too, is held as long as a hook may wait and then refused, so usage can't pass the limit whatever the hold settings. A message you type then is answered at once by the hook (not sent, so nothing is spent; it says when typing works again), except `/autopilot`, `/throttle`, `/unthrottle`, `/crossrepo` and `/goal`. Below the stop, typing is never held; keep-going lets those turns end, and autopilot gives a stopped agent's story back to start again after the reset (its work stays in its worktree) | `rl-status.json` → `stop`, `stop_note` |

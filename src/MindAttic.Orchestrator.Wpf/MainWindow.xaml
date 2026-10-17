@@ -3,9 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:mc="clr-namespace:MindAttic.Components.Wpf.Controls;assembly=MindAttic.Components.Wpf"
         xmlns:vm="clr-namespace:MindAttic.Orchestrator.Wpf.ViewModels"
+        xmlns:local="clr-namespace:MindAttic.Orchestrator.Wpf"
         mc:McWindow.DarkTitleBar="True"
         Title="MindAttic Orchestrator" Width="1480" Height="920" MinWidth="980" MinHeight="600"
-        WindowStartupLocation="CenterScreen"
+        WindowStartupLocation="CenterScreen" Icon="/logo.ico"
         Background="{StaticResource McChrome}" Foreground="{StaticResource McText}"
         FontFamily="Segoe UI" FontSize="13"
         TextOptions.TextFormattingMode="Display" UseLayoutRounding="True">
@@ -171,8 +172,8 @@
             </Button>
             <!-- Weekly: the other half of /status's picture; the 5-hour card never shows it on its own. -->
             <Button Style="{StaticResource SmallStat}" Command="{Binding ToggleSettingsCommand}"
-                    ToolTip="Claude's weekly usage percent, the same figure /status reports. Opens settings, where the weekly reset is set."
-                    AutomationProperties.Name="{Binding WeeklyHeadline, StringFormat='Week {0} used: open settings'}">
+                    ToolTip="How much of Claude's weekly limit is left (/status reports the used share). Opens settings, where the weekly reset is set."
+                    AutomationProperties.Name="{Binding WeeklyHeadline, StringFormat='Week {0}: open settings'}">
                 <StackPanel>
                     <TextBlock Text="{Binding WeeklyHeadline}" Style="{StaticResource StatValue}" />
                     <TextBlock Text="{Binding WeeklyCaption}" Style="{StaticResource McTileSubtitle}" />
@@ -194,6 +195,17 @@
                     <TextBlock Text="{Binding TokensDetail}" Style="{StaticResource McTileSubtitle}" />
                 </StackPanel>
             </Button>
+            <!-- This 5-hour window's utilization: the pace line straight to the target at the reset, the window's own line
+                 (red while over that pace, green under) and where the recent rate ends up. The caption says it in words. -->
+            <Border Style="{StaticResource Card}" Width="560" Margin="0,0,12,12"
+                    AutomationProperties.Name="{Binding UtilizationText, StringFormat='5-hour utilization: {0}'}"
+                    Visibility="{Binding UtilizationText, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
+                <StackPanel>
+                    <TextBlock Text="5-hour utilization" Style="{StaticResource SectionLabel}" />
+                    <local:UtilizationChart Data="{Binding Utilization}" Height="130" Margin="0,6,0,6" />
+                    <TextBlock Text="{Binding UtilizationText}" Style="{StaticResource McTileSubtitle}" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
         </WrapPanel>
 
         <!-- Toolbar -->

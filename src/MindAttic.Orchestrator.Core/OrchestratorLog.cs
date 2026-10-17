@@ -25,9 +25,12 @@ public static class OrchestratorLog
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MindAttic", Application, "logs");
 
     /// <summary>Points the static <see cref="Serilog.Log"/> at MindAttic.Log. Call once, at the entry point.</summary>
+    /// <summary>The log database every orchestrator process writes (open it with MindAttic.Log.Reader).</summary>
+    public static string DbPath => VaultPaths.LoggingDbPath(Application);
+
     public static void Start(string component)
     {
-        var dbPath = VaultPaths.LoggingDbPath(Application);
+        var dbPath = DbPath;
 
         // Phase 2: carry forward any rows left in Phase 1's rolled MindAttic.Log.<yyyy-MM>.db
         // files (LogFileRoller is retired), then remove the now-empty rolled files. Idempotent and

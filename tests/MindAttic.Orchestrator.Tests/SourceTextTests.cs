@@ -12,7 +12,8 @@ public sealed class SourceTextTests
     {
         // Found live (M.ORCH-T99): `orchestrator settings` printed "Â·" between every field.
         var root = TestContext.CurrentContext.TestDirectory;
-        while (!Directory.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
+        // A worktree has a .git file, not a folder (M.ORCH-T177).
+        while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         var bad = new[] { "src", "tests" }.SelectMany(d => Directory.EnumerateFiles(Path.Combine(root, d), "*.cs", SearchOption.AllDirectories))
             .Append(Path.Combine(root, "README.md"))
             .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))

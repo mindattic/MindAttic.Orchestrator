@@ -140,8 +140,10 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         var events = claudeEvents;
         var calibration = Calibrate(allSessions, events, historyStartUtc, now);
         var reported = ReportedUsage.Load(now, ReportedUsagePath);
+        var reportedLimit = ReportedLimitFrom(reported, events, now);
+        reported = ReportedLimit.Highest(samples ?? [], reported);
         var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration,
-            reported: reported, reportedLimit: ReportedLimitFrom(reported, events, now));
+            reported: reported, reportedLimit: reportedLimit);
 
         var recentFrom = now - BudgetCalculator.RecentWindow;
         var active = allSessions.Count(s => s.Events.Count > 0 && s.Events[^1].AtUtc >= recentFrom);
@@ -181,7 +183,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
 
-        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Requires = tickets.Requires, Agents = agentBoard };
+        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = UtilizationSeries.Build(samples ?? [], budget, settings.PaceTargetPercent, now), ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Requires = tickets.Requires, Agents = agentBoard };
 
         RepoStatus Repo(string name, string path, IReadOnlyList<MindAttic.Workflow.Tickets.Ticket> open)
         {

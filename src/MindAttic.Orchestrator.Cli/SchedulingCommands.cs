@@ -179,7 +179,7 @@ internal sealed class DaemonCommand : Command<DaemonCommand.Settings>
         using var stop = new CancellationTokenSource();
         ConsoleCancelEventHandler onCtrlC = (_, e) => { e.Cancel = true; stop.Cancel(); };
         Console.CancelKeyPress += onCtrlC;
-        AnsiConsole.MarkupLine($"[grey]Ctrl+C to stop. Log: {Markup.Escape(OrchestratorLog.Directory)}[/]");
+        AnsiConsole.MarkupLine($"[grey]Ctrl+C to stop. Log: {Markup.Escape(OrchestratorLog.DbPath)}[/]");
         try
         {
             new Daemon(new JsonStore(), (level, line) =>

@@ -106,10 +106,10 @@ public sealed partial class MainViewModel
         get
         {
             if (Budget is not { CurrentBlock: { } block } b)
-                return Budget is null ? "" : Budget.WeeklyPercent is { } wp ? $"week {wp:0}%" : $"{Formatting.Tokens(Budget.Today.Fresh)} uncached today";
+                return Budget is null ? "" : Budget.WeeklyPercent is { } wp ? $"week {Left(wp)}% left" : $"{Formatting.Tokens(Budget.Today.Fresh)} uncached today";
             var parts = new List<string> { $"resets {block.EndUtc.ToLocalTime():t}", $"{Formatting.Tokens((long)b.FreshPerHour)}/h" };
             if (b.ProjectedLimitUtc is { } at) parts.Add($"limit ~{at.ToLocalTime():t}");
-            if (b.WeeklyPercent is { } weekPercent) parts.Add($"week {weekPercent:0}%");
+            if (b.WeeklyPercent is { } weekPercent) parts.Add($"week {Left(weekPercent)}% left");
             return string.Join(" · ", parts);
         }
     }
@@ -262,16 +262,30 @@ public sealed partial class MainViewModel
         _ => Palette.Working,
     };
 
+    /// <summary>This 5-hour window against its pace, for the utilization graph.</summary>
+    public Utilization? Utilization => snapshot?.Utilization;
+
+    /// <summary>The graph in words (it's also the card's accessible name): where the window is against the pace line,
+    /// how long it ran over it, and where the recent rate ends up.</summary>
+    public string UtilizationText => Utilization is not { } u ? "" :
+        $"{u.NowPercent:0}% used, {(u.OverNow ? "over" : "under")} the pace line ({u.PaceAt(u.NowUtc):0}% by now)" +
+        (u.OverPace >= TimeSpan.FromMinutes(1) ? $"; over it for {(int)u.OverPace.TotalMinutes} min so far" : "") + ". " +
+        (u.HitsLimitUtc is { } hit ? $"At the recent rate it would reach 100% at {hit.ToLocalTime():t}, before the {u.EndUtc.ToLocalTime():t} reset."
+            : $"At the recent rate it ends near {u.ProjectedEndPercent:0}% at {u.EndUtc.ToLocalTime():t}; the target is {u.TargetPercent:0}%.");
+
     /// <summary>5-hour reset, for the agent board's header.</summary>
     public string BlockResetText => Budget?.CurrentBlock is { } b ? $"resets {b.EndUtc.ToLocalTime():t}" : "";
 
-    public string WeeklyHeadline => Budget?.WeeklyPercent is { } w ? $"{w:0}%" : "—";
+    /// <summary>What's left of the week, not what's used: "6%" read as the share left to stretch the rest of the week over.</summary>
+    public string WeeklyHeadline => Budget?.WeeklyPercent is { } w ? $"{Left(w)}% left" : "—";
+
+    private static string Left(double usedPercent) => Math.Max(0, 100 - usedPercent).ToString("0");
 
     public string WeeklyCaption => Budget switch
     {
         { WeeklyPercent: null } or null => "no weekly limit known yet",
-        { WeekResetUtc: { } r } => $"resets {r.ToLocalTime():ddd h:mm tt}",
-        _ => "rolling 7 days",
+        { WeekResetUtc: { } r, WeeklyPercent: { } u } => $"{u:0}% used · resets {r.ToLocalTime():ddd h:mm tt}",
+        { WeeklyPercent: { } u } => $"{u:0}% used · rolling 7 days",
     };
 
     // ── Agent board ─────────────────────────────────────────────────────────
@@ -291,19 +305,28 @@ public sealed partial class MainViewModel
     /// <c>docs/USER_STORIES.md</c> (the Workflow ticket database, once M.ORCH-T83 lands).</summary>
     public async void ShowTicketDetails(AgentRowViewModel a)
     {
-        if (a.TicketId is not { Length: > 0 } ticketId) return;
-        var repo = snapshot?.Repos.FirstOrDefault(r => r.Name == a.Repo);
-        var repoPath = repo?.Path ?? "";
-        var ticket = repo?.OpenTickets.FirstOrDefault(t => t.Id == ticketId);
-        var text = await Task.Run(() => MindAttic.Orchestrator.Tickets.TicketReplay.PlainReport(ticketId, repoPath, aggregator.Options.ClaudeProjectsDir, ticket));
-        var box = new System.Windows.Controls.TextBox
+        try
         {
-            Text = text, IsReadOnly = true, FontFamily = new FontFamily("Consolas"), FontSize = 12,
-            VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-        };
-        new System.Windows.Window { Title = $"{ticketId} in {a.Repo}", Width = 900, Height = 650, Content = box,
-            Owner = System.Windows.Application.Current.MainWindow }.Show();
+            if (a.TicketId is not { Length: > 0 } ticketId) return;
+            var repo = snapshot?.Repos.FirstOrDefault(r => r.Name == a.Repo);
+            var repoPath = repo?.Path ?? "";
+            var ticket = repo?.OpenTickets.FirstOrDefault(t => t.Id == ticketId);
+            var text = await Task.Run(() => MindAttic.Orchestrator.Tickets.TicketReplay.PlainReport(ticketId, repoPath, aggregator.Options.ClaudeProjectsDir, ticket));
+            var box = new System.Windows.Controls.TextBox
+            {
+                Text = text, IsReadOnly = true, FontFamily = new FontFamily("Consolas"), FontSize = 12,
+                VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+            };
+            new System.Windows.Window { Title = $"{ticketId} in {a.Repo}", Width = 900, Height = 650, Content = box,
+                Owner = System.Windows.Application.Current.MainWindow }.Show();
+        }
+        // async void: an escaped exception (a corrupt assignments.json, a locked file) would close the dashboard.
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            QueueMessage = $"Failed: {ex.Message}";
+            OrchestratorLog.For("Dashboard").Error(ex, "ShowTicketDetails failed");
+        }
     }
 
     private void ApplyAgents(Snapshot next)
@@ -340,12 +363,21 @@ public sealed partial class MainViewModel
 
     public async void Dispatch(QueueItem item, bool worktree)
     {
-        QueueMessage = $"Starting {item.Id}…";
-        var providerKey = store.LoadSettings().DefaultProvider;
-        var r = await Task.Run(() => dispatcher.Dispatch(item, providerKey, worktree));
-        QueueMessage = r.Message;
-        Record(r, "Dispatch");
-        await RefreshAsync();
+        try
+        {
+            QueueMessage = $"Starting {item.Id}…";
+            var providerKey = store.LoadSettings().DefaultProvider;
+            var r = await Task.Run(() => dispatcher.Dispatch(item, providerKey, worktree));
+            QueueMessage = r.Message;
+            Record(r, "Dispatch");
+            await RefreshAsync();
+        }
+        // async void: an escaped exception (a corrupt assignments.json, a locked file) would close the dashboard.
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            QueueMessage = $"Failed: {ex.Message}";
+            OrchestratorLog.For("Dashboard").Error(ex, "Dispatch failed");
+        }
     }
 
     private static readonly Serilog.ILogger queueLog = OrchestratorLog.For("Queue");
@@ -415,25 +447,43 @@ public sealed partial class MainViewModel
     /// <summary>The ticket's sessions and commits in a window: what happened, without digging through Launcher history.</summary>
     public async void ShowDetails(Assignment a)
     {
-        var repoPath = snapshot?.Repos.FirstOrDefault(r => r.Name == a.Repo)?.Path ?? a.Directory;
-        var text = await Task.Run(() => MindAttic.Orchestrator.Tickets.TicketReplay.PlainReport(a.TicketId, repoPath, aggregator.Options.ClaudeProjectsDir));
-        var box = new System.Windows.Controls.TextBox
+        try
         {
-            Text = text, IsReadOnly = true, FontFamily = new FontFamily("Consolas"), FontSize = 12,
-            VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-        };
-        new System.Windows.Window { Title = $"{a.TicketId} in {a.Repo}", Width = 900, Height = 650, Content = box,
-            Owner = System.Windows.Application.Current.MainWindow }.Show();
+            var repoPath = snapshot?.Repos.FirstOrDefault(r => r.Name == a.Repo)?.Path ?? a.Directory;
+            var text = await Task.Run(() => MindAttic.Orchestrator.Tickets.TicketReplay.PlainReport(a.TicketId, repoPath, aggregator.Options.ClaudeProjectsDir));
+            var box = new System.Windows.Controls.TextBox
+            {
+                Text = text, IsReadOnly = true, FontFamily = new FontFamily("Consolas"), FontSize = 12,
+                VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+            };
+            new System.Windows.Window { Title = $"{a.TicketId} in {a.Repo}", Width = 900, Height = 650, Content = box,
+                Owner = System.Windows.Application.Current.MainWindow }.Show();
+        }
+        // async void: an escaped exception (a corrupt assignments.json, a locked file) would close the dashboard.
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            QueueMessage = $"Failed: {ex.Message}";
+            OrchestratorLog.For("Dashboard").Error(ex, "ShowDetails failed");
+        }
     }
 
     public async void Finish(Assignment a)
     {
-        var repoPath = snapshot?.Repos.FirstOrDefault(r => r.Name == a.Repo)?.Path ?? "";
-        var r = await Task.Run(() => dispatcher.RemoveWorktree(a, repoPath));
-        QueueMessage = r.Message;
-        Record(r, "Remove worktree");
-        if (snapshot is not null) ApplyPlan(snapshot);
+        try
+        {
+            var repoPath = snapshot?.Repos.FirstOrDefault(r => r.Name == a.Repo)?.Path ?? "";
+            var r = await Task.Run(() => dispatcher.RemoveWorktree(a, repoPath));
+            QueueMessage = r.Message;
+            Record(r, "Remove worktree");
+            if (snapshot is not null) ApplyPlan(snapshot);
+        }
+        // async void: an escaped exception (a corrupt assignments.json, a locked file) would close the dashboard.
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            QueueMessage = $"Failed: {ex.Message}";
+            OrchestratorLog.For("Dashboard").Error(ex, "Finish failed");
+        }
     }
 
     // ── Audit ───────────────────────────────────────────────────────────────
@@ -475,7 +525,7 @@ public sealed partial class MainViewModel
         foreach (var name in new[] { nameof(Budget), nameof(BudgetIsPeak), nameof(BudgetHeadline), nameof(BudgetCaption),
                                      nameof(BudgetDetail), nameof(BudgetTooltip), nameof(BudgetFill), nameof(BudgetBrush),
                                      nameof(BlockResetText), nameof(WeeklyHeadline), nameof(WeeklyCaption),
-                                     nameof(Pace), nameof(PaceText), nameof(PaceBrush),
+                                     nameof(Pace), nameof(PaceText), nameof(PaceBrush), nameof(Utilization), nameof(UtilizationText),
                                      nameof(LedgerHeadline), nameof(LedgerCaption), nameof(LedgerBrush), nameof(LedgerTooltip), nameof(LedgerSpoken) })
             Raise(name);
 

@@ -30,7 +30,7 @@ public sealed record OrchestratorSettings
 
     /// <summary>How much of each limit pacing aims to use by the reset; the rest is margin for usage
     /// the orchestrator can't see (claude.ai, other machines).</summary>
-    public int PaceTargetPercent { get; init; } = 99;
+    public int PaceTargetPercent { get; init; } = 98;
 
     /// <summary>On: while the forecast says the burn won't last until the reset, running Claude Code agents
     /// wait before each tool call (the pace-gate hook), so they slow down instead of hitting the wall.</summary>
