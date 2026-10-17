@@ -152,6 +152,8 @@ public sealed class RateLimitStatusWriterTests
         Assert.That((root.GetProperty("stop").GetBoolean(), root.GetProperty("source").GetString()), Is.EqualTo((true, "MindAttic.Orchestrator")));
         Assert.That(root.GetProperty("stop_note").GetString(), Does.Contain("weekly"));
         Assert.That(root.TryGetProperty("tokens_remaining", out _), Is.False, "no limit known: no count against one");
+        Assert.That(root.GetProperty("reset_time").GetString(), Is.EqualTo(Day.AddHours(15).ToLocalTime().ToString("h:mm tt", System.Globalization.CultureInfo.InvariantCulture)),
+            "the stop's own reset");
 
         writer.Write(PeakOnly(), Paced());
         Assert.That(File.Exists(path), Is.False, "the stop lifted: withdrawn again");

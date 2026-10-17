@@ -304,6 +304,8 @@ public sealed class RateLimitStatusWriter(string? path = null)
         {
             // Only here for the stop: no 5-hour limit is known to count against, and nothing more may be spent.
             body["percent_used"] = 100.0;
+            // The stop's own reset (a weekly wall's), not a 5-hour block's end or "no active block".
+            if (pace?.ResetUtc is { } stopReset) body["reset_time"] = Clock(stopReset);
             body.Remove("tokens_remaining");
             body.Remove("basis");
         }
