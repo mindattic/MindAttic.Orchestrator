@@ -117,7 +117,12 @@ if (Test-Stale $cliExe @($cliDir, $coreDir)) {
     Write-Host "Publishing the CLI -> $cliOut" -ForegroundColor Cyan
     dotnet publish (Join-Path $cliDir 'MindAttic.Orchestrator.Cli.csproj') --configuration Release --output $cliOut | Out-Host
     if ($LASTEXITCODE -ne 0) { Write-Host 'Publishing the CLI FAILED.' -ForegroundColor Red; $failed = $true }
-    else { Write-Host "Deployed $cliExe" -ForegroundColor Green }
+    else {
+        # The apphost keeps its old time when only Core's method bodies changed (the CLI isn't recompiled), so Core would
+        # read newer than it on every later deploy, which would republish it and stop running CLIs each time.
+        (Get-Item $cliExe).LastWriteTimeUtc = [DateTime]::UtcNow
+        Write-Host "Deployed $cliExe" -ForegroundColor Green
+    }
 }
 
 # ── Install, as a double-click would ────────────────────────────────────────
