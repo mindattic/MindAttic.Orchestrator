@@ -156,6 +156,9 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
 
         if (!changed && sessions is not null) return sessions;
         Version++;
+        // A subagent's transcript carries its parent's session id, so its usage is the parent CLI's; but its ticket is its
+        // own (an /autopilot handout's "Work on ticket X"), not the whole session's, which works many.
+        var subagents = files.Where(kv => IsSubagentTranscript(kv.Key)).Select(kv => kv.Value).ToHashSet();
         return sessions = [.. files.Values
             .Where(s => s.Cwd is not null)
             .GroupBy(s => s.SessionId ?? "")
@@ -168,13 +171,17 @@ public sealed class TranscriptReader(string projectsDir, string? cachePath = nul
             {
                 Events = [.. g.SelectMany(s => s.Events).OrderBy(e => e.AtUtc)],
                 Hits = [.. g.SelectMany(s => s.Hits).OrderBy(h => h.AtUtc)],
-                TicketId = g.Select(s => s.TicketId).FirstOrDefault(id => id is not null) ?? TicketAttribution.FromWorktree(g.First().Cwd),
-                TicketType = g.Select(s => s.TicketType).FirstOrDefault(x => x is not null),
+                TicketId = g.Where(s => !subagents.Contains(s)).Select(s => s.TicketId).FirstOrDefault(id => id is not null) ?? TicketAttribution.FromWorktree(g.First().Cwd),
+                TicketType = g.Where(s => !subagents.Contains(s)).Select(s => s.TicketType).FirstOrDefault(x => x is not null),
                 Loop = LoopDetector.Find(g.SelectMany(s => s.Tools).OrderBy(c => c.AtUtc).ToList()),
                 Doing = g.SelectMany(s => s.Tools).MaxBy(c => c.AtUtc) is { } last ? ToolCallText.Describe(last.Name, last.Input) : null,
                 DoingAtUtc = g.SelectMany(s => s.Tools).MaxBy(c => c.AtUtc)?.AtUtc,
             })];
     }
+
+    /// <summary>Whether <paramref name="path"/> is a subagent's transcript (<c>&lt;session&gt;\subagentsgent-*.jsonl</c>).</summary>
+    internal static bool IsSubagentTranscript(string path) =>
+        Path.GetFileName(Path.GetDirectoryName(path)) is { } folder && folder.Equals("subagents", StringComparison.OrdinalIgnoreCase);
 
     private void Trim(DateTime sinceUtc)
     {

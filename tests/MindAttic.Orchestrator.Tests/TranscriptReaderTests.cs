@@ -183,6 +183,25 @@ public sealed class TranscriptReaderTests
     }
 
     [Test]
+    public void A_subagents_ticket_is_its_own_not_its_parent_sessions()
+    {
+        // /autopilot hands each subagent "Work on ticket X": the parent CLI works many, so it isn't stamped with the first.
+        System.IO.File.WriteAllLines(File(), [Line("m1", "2026-10-13T12:00:00Z", 1, 1)]);
+        var sub = Path.Combine(dir, "D--Projects-X", "s1", "subagents");
+        Directory.CreateDirectory(sub);
+        System.IO.File.WriteAllLines(Path.Combine(sub, "agent-a.jsonl"), [
+            System.Text.Json.JsonSerializer.Serialize(new { type = "user", timestamp = "2026-10-13T12:00:00Z", sessionId = "s1", cwd = @"D:\Projects\X",
+                message = new { role = "user", content = "Work on ticket X-T7 (fix): the thing." } }),
+            Line("m9", "2026-10-13T12:00:01Z", 1, 9)]);
+
+        var s = new TranscriptReader(dir).Poll(Since).Single();
+
+        Assert.That((s.UsageSince(Since).Output, s.TicketId), Is.EqualTo((10, (string?)null)), "its usage is the session's, its ticket isn't");
+        Assert.That(TranscriptReader.IsSubagentTranscript(Path.Combine(sub, "agent-a.jsonl")), Is.True);
+        Assert.That(TranscriptReader.IsSubagentTranscript(File()), Is.False);
+    }
+
+    [Test]
     public void Old_transcripts_still_report_whose_they_are()
     {
         System.IO.File.WriteAllLines(File(), [Line("m1", "2026-09-01T12:00:00Z", 1, 1)]);
