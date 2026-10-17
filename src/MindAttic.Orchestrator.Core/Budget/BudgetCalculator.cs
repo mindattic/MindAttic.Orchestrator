@@ -322,7 +322,14 @@ public sealed class RateLimitStatusWriter(string? path = null)
                 "End your turn now with one short line saying where you stopped; your uncommitted work stays where it is.";
             // The hooks latch the stop until then, so a daemon that stalls once it's set can't lift it (M.ORCH-T196).
             if (pace.ResetUtc is { } until)
+            {
                 body["stop_until"] = until.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture) + "Z";
+                // What a prompt refused at the stop is told: the stop's own window and reset (a weekly wall's can be days
+                // off), not the 5-hour block's end.
+                body["reset_time"] = until - UtcNow() > TimeSpan.FromDays(1)
+                    ? until.ToLocalTime().ToString("ddd h:mm tt", CultureInfo.InvariantCulture) : Clock(until);
+            }
+            body["stop_window"] = pace.Governing ?? "5-hour";
         }
         if (pace is { IsPaced: true })
         {

@@ -191,6 +191,17 @@ public sealed class RateLimitStatusWriterTests
     }
 
     [Test]
+    public void A_weekly_stop_tells_a_refused_prompt_its_own_window_and_reset_not_the_5_hour_blocks()
+    {
+        var writer = new RateLimitStatusWriter(path) { UtcNow = () => T0 };
+        var weeklyReset = Day.AddDays(3).AddHours(9);
+        writer.Write(Budgeted(), Paced(PaceMode.Over) with { Stop = true, Governing = "weekly", ResetUtc = weeklyReset });
+        var root = Read();
+        Assert.That((root.GetProperty("stop_window").GetString(), root.GetProperty("reset_time").GetString()),
+            Is.EqualTo(("weekly", weeklyReset.ToLocalTime().ToString("ddd h:mm tt", System.Globalization.CultureInfo.InvariantCulture))));
+    }
+
+    [Test]
     public void A_stop_with_no_known_5_hour_limit_still_reaches_the_pace_gate()
     {
         // A weekly wall while no 5-hour limit is known: the pace says stop, and the gate only hears it from this file.

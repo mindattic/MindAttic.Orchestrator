@@ -176,6 +176,14 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void A_prompt_refused_at_a_weekly_stop_names_the_week_and_its_reset()
+    {
+        Status(new { stop = true, stop_window = "weekly", reset_time = "Mon 9:00 AM" });
+        var said = Gate(new { hook_event_name = "UserPromptSubmit", session_id = "w9", prompt = "go on", cwd = ws }, AgentGate.ContextScriptName).Output;
+        Assert.That(said, Does.Contain("the weekly window is at its target").And.Contain("resets at Mon 9:00 AM"));
+    }
+
+    [Test]
     public void At_the_stop_a_goal_ends_its_turn_instead_of_looping_and_a_new_one_isnt_started()
     {
         object Typed(string sid, string prompt) => new { hook_event_name = "UserPromptSubmit", session_id = sid, prompt, cwd = ws };
