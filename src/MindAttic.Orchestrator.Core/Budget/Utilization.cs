@@ -35,7 +35,10 @@ public static class UtilizationSeries
     {
         if (b.BlockLimitIsPeak || b.BlockLimit <= 0 || b.CurrentBlock is not { } block) return null;
         var points = new List<UtilizationPoint> { new(block.StartUtc, 0) };
-        foreach (var s in samples.Where(s => s.ResetUtc == block.EndUtc && s.AtUtc >= block.StartUtc && s.AtUtc <= nowUtc).OrderBy(s => s.AtUtc))
+        // Behind a wall the block ends at the limit message's reset (whole minutes, local clock), not Claude's resets_at
+        // to the second: the same window when within 10 minutes, as the pace ledger takes it.
+        foreach (var s in samples.Where(s => Math.Abs((s.ResetUtc - block.EndUtc).TotalMinutes) <= 10 && s.AtUtc <= nowUtc &&
+                                             s.AtUtc >= block.StartUtc).OrderBy(s => s.AtUtc))
         {
             if (s.Percent < points[^1].Percent) continue;
             if (s.AtUtc - points[^1].AtUtc < MinSpacing && points.Count > 1) points[^1] = new(s.AtUtc, s.Percent);

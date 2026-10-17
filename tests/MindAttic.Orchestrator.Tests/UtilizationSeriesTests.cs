@@ -24,6 +24,14 @@ public sealed class UtilizationSeriesTests
     }
 
     [Test]
+    public void Behind_a_wall_samples_whose_reset_is_off_by_seconds_still_draw_the_line()
+    {
+        // The block ends at the limit message's whole-minute reset; Claude's resets_at carries seconds.
+        var u = UtilizationSeries.Build([S(1, 10, End.AddSeconds(37)), S(2, 35, End.AddSeconds(37))], Budget(37), 99, Start.AddHours(2.5))!;
+        Assert.That(u.Actual.Select(p => p.Percent), Is.EqualTo(new[] { 0, 10, 35, 37.0 }));
+    }
+
+    [Test]
     public void Pace_runs_straight_to_the_target_and_over_is_time_spent_above_it()
     {
         // Pace is 19.8% after 1h; 30% at 1h is over, 35% at 2h is under (39.6%).
