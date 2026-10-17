@@ -176,6 +176,29 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void A_claim_gone_stale_is_work_again_as_orchestrator_next_hands_it_out()
+    {
+        var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(db)!);
+        using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
+            "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal,type)'); " +
+            "d.execute(\"insert into tickets values('U.SPC-T1','UnitySolarSystem','open',1,'fix')\"); d.commit()", db }, UseShellExecute = false })!)
+            mk.WaitForExit(20_000);
+        var uss = Path.Combine(ws, "UnitySolarSystem");
+        Directory.CreateDirectory(Marks);
+        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem");
+        var store = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator");
+        Directory.CreateDirectory(store);
+        File.WriteAllText(Path.Combine(store, "assignments.json"), """[{"TicketId":"U.SPC-T1","Repo":"UnitySolarSystem"}]""");
+        object Asking(string sid) => new { hook_event_name = "Stop", session_id = sid, cwd = uss, last_assistant_message = "Shall I start the next one?" };
+        Status(new { });
+
+        Assert.That(Gate(Asking("s1"), AgentGate.ContextScriptName).Output, Is.Empty, "claimed and live: being worked");
+        File.WriteAllText(Path.Combine(store, Daemon.StaleTicketsName + ".json"), """["U.SPC-T1"]""");
+        Assert.That(Gate(Asking("s2"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\""), "its claim went stale: next hands it out again");
+    }
+
+    [Test]
     public void At_claudes_own_line_with_the_daemon_down_keep_going_never_pushes_a_stop_back()
     {
         var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");

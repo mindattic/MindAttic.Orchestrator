@@ -699,6 +699,12 @@ public static class AgentGate
                                "MindAttic.Orchestrator" / "assignments.json").read_text()) or []}
                 except Exception:
                     claimed = set()
+                # A claim gone stale is back in the queue, and `orchestrator next` hands it out again: it's work.
+                try:
+                    claimed -= {(i or "").upper() for i in json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" /
+                                "MindAttic.Orchestrator" / "{{{Daemon.StaleTicketsName}}}.json").read_text()) or []}
+                except Exception:
+                    pass
                 named = {r.lower() for r in repos}
                 return [r[0] for r in rows if any(fnmatch.fnmatchcase((r[2] or "").lower(), n) for n in named) and
                         ((r[1] or "").lower() == "fix" or r[0].upper() in approved) and r[0].upper() not in claimed and not blocked(r)]

@@ -108,6 +108,11 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     Alert("Stale ticket", $"{q.Id} in {q.Repo}: its session went quiet without closing it; it's back in the queue.");
                 }
                 knownStale.IntersectWith(plan.Stale.Select(q => q.Id));
+                // The context gate's keep-going reads which claims went stale: `orchestrator next` hands those out again.
+                var staleIds = plan.Stale.Select(q => q.Id).Order(StringComparer.Ordinal).ToList();
+                if (publishedStale is null || !staleIds.SequenceEqual(publishedStale))
+                    try { store.Save(StaleTicketsName, staleIds); publishedStale = staleIds; }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
 
                 var stuck = Activity.Watchdog.Stuck(snapshot);
                 foreach (var x in stuck.Where(x => knownStuck.Add(x.SessionId + x.Loop.Tool + x.Loop.Input)))
@@ -277,6 +282,10 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
     /// <summary>The scheduled audit: when the last one is older than <see cref="OrchestratorSettings.AuditEveryHours"/>, run it and report what's new.</summary>
     private DateTime auditTriedUtc;
+
+    /// <summary>The stale claims' ticket IDs, kept in the store for the context gate (see <see cref="Setup.AgentGate"/>'s workable()).</summary>
+    public const string StaleTicketsName = "stale-tickets";
+    private IReadOnlyList<string>? publishedStale;
 
     private void RunAuditIfDue(OrchestratorOptions options, OrchestratorSettings s)
     {
