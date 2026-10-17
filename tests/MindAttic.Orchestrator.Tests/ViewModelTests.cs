@@ -109,6 +109,20 @@ public sealed class ViewModelTests
     }
 
     [Test]
+    public void A_save_that_cant_write_settings_says_so_instead_of_throwing()
+    {
+        var store = new JsonStore(dir);
+        store.SaveSettings(store.LoadSettings());
+        var saves = 0;
+        var vm = new SettingsViewModel(store, () => saves++);
+        vm.WarnPercent = "70";
+        using (new FileStream(Path.Combine(dir, "settings.json"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            Assert.DoesNotThrow(() => vm.SaveCommand.Execute(null));
+        Assert.That((vm.Error, vm.WarnPercent, saves), Is.EqualTo((vm.Error, "70", 0)));
+        Assert.That(vm.Error, Does.StartWith("Couldn't save"));
+    }
+
+    [Test]
     public void A_hand_edited_cycle_percent_no_field_shows_never_blocks_save()
     {
         var store = new JsonStore(dir);

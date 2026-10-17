@@ -73,14 +73,23 @@ public sealed class SettingsViewModel : ObservableObject
         if (!int.TryParse(MaxDelay, out var delay) || delay is < 0 or > Setup.AgentGate.MaxHoldSeconds) { Error = $"Longest hold: 0 to {Setup.AgentGate.MaxHoldSeconds} seconds."; return; }
         if (!int.TryParse(ContextPercent, out var cycleAt) || cycleAt is < 10 or > 95) { Error = "Cycle context at: 10 to 95."; return; }
 
-        var s = store.LoadSettings();
-        store.SaveSettings(s with
+        try
         {
-            BlockBudget = block, WeeklyBudget = weekly, WeeklyReset = reset?.ToString(), WarnPercent = warn, MaxConcurrentSessions = max,
-            DefaultProvider = Provider, Autopilot = Autopilot, Pacing = Pacing, PaceTargetPercent = target,
-            ThrottleAgents = ThrottleAgents, MaxAgentDelaySeconds = delay, ContextCycle = false,ContextCyclePercent = cycleAt,
-            ExemptCommands = OrchestratorSettings.ParseCommands(ExemptCommands),
-        });
+            var s = store.LoadSettings();
+            store.SaveSettings(s with
+            {
+                BlockBudget = block, WeeklyBudget = weekly, WeeklyReset = reset?.ToString(), WarnPercent = warn, MaxConcurrentSessions = max,
+                DefaultProvider = Provider, Autopilot = Autopilot, Pacing = Pacing, PaceTargetPercent = target,
+                ThrottleAgents = ThrottleAgents, MaxAgentDelaySeconds = delay, ContextCycle = false,ContextCyclePercent = cycleAt,
+                ExemptCommands = OrchestratorSettings.ParseCommands(ExemptCommands),
+            });
+        }
+        // settings.json held past the store's retries: said here, not left to close the dashboard. The fields keep what was typed.
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            Error = $"Couldn't save: {ex.Message}";
+            return;
+        }
         Load();
         saved();
     }
