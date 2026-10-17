@@ -130,6 +130,19 @@ public sealed class DispatcherTests
     }
 
     [Test]
+    public void A_helper_outliving_git_with_its_pipes_does_not_hold_the_call_past_the_timeout()
+    {
+        // git exits at once, but what its alias left running in the background still holds its output.
+        Git(repo, "config", "alias.linger", "!sleep 8 &");
+        var clock = Stopwatch.StartNew();
+
+        var (code, output) = Dispatcher.Git(TimeSpan.FromSeconds(2), repo, "linger");
+
+        Assert.That(clock.Elapsed, Is.LessThan(TimeSpan.FromSeconds(6)));
+        Assert.That((code, output), Is.EqualTo((-1, "git linger took over 2s; stopped it")));
+    }
+
+    [Test]
     public void Git_never_waits_on_a_credential_prompt()
     {
         Git(repo, "config", "alias.prompt", "!echo prompt=$GIT_TERMINAL_PROMPT");

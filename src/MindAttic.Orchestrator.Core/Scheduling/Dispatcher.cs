@@ -164,11 +164,17 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
             using var p = Process.Start(psi)!;
             var stdout = p.StandardOutput.ReadToEndAsync();
             var stderr = p.StandardError.ReadToEndAsync();
+            var started = Stopwatch.StartNew();
+            var tookTooLong = (-1, $"git {string.Join(' ', args)} took over {timeout.TotalSeconds:0}s; stopped it");
             if (!p.WaitForExit(timeout))
             {
-                p.Kill(entireProcessTree: true);
-                return (-1, $"git {string.Join(' ', args)} took over {timeout.TotalSeconds:0}s; stopped it");
+                try { p.Kill(entireProcessTree: true); } catch (InvalidOperationException) { } // exited meanwhile
+                return tookTooLong;
             }
+            // The output ends at the pipes' EOF, not git's exit: a helper it started that outlives it (a credential
+            // helper during fetch) would hold the daemon's tick forever, so that wait counts against the timeout too.
+            var left = timeout - started.Elapsed;
+            if (!Task.WaitAll([stdout, stderr], left > TimeSpan.Zero ? left : TimeSpan.Zero)) return tookTooLong;
             return (p.ExitCode, stdout.Result + stderr.Result);
         }
         catch (System.ComponentModel.Win32Exception ex)
