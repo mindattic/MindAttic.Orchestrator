@@ -293,8 +293,15 @@ public sealed partial class MainViewModel
     public string QueueMessage { get => queueMessage; private set => Set(ref queueMessage, value); }
     public int QueueCount => Queue.Count(q => !q.IsAssigned);
 
+    /// <summary>Tickets being started now: the row shows them unassigned until the refresh after the start, and a second
+    /// click (or the tray's Start next) in that time would open a second agent on the same ticket.</summary>
+    private readonly HashSet<string> starting = new(StringComparer.OrdinalIgnoreCase);
+
+    public bool IsStarting(string ticketId) => starting.Contains(ticketId);
+
     public async void Dispatch(QueueItem item, bool worktree)
     {
+        if (!starting.Add(item.Id)) return;
         try
         {
             QueueMessage = $"Starting {item.Id}…";
@@ -309,6 +316,11 @@ public sealed partial class MainViewModel
         {
             QueueMessage = $"Failed: {ex.Message}";
             OrchestratorLog.For("Dashboard").Error(ex, "Dispatch failed");
+        }
+        finally
+        {
+            starting.Remove(item.Id);
+            CommandManager.InvalidateRequerySuggested();
         }
     }
 
@@ -375,7 +387,7 @@ public sealed partial class MainViewModel
     /// <summary>Starts the top proposal, if there is one; returns what it said.</summary>
     public string DispatchNext()
     {
-        if (plan?.Proposals.FirstOrDefault() is not { } p) return plan?.Hold ?? "Nothing is ready to start.";
+        if (plan?.Proposals.FirstOrDefault(p => !IsStarting(p.Item.Id)) is not { } p) return plan?.Hold ?? "Nothing is ready to start.";
         Dispatch(p.Item, p.UseWorktree);
         return $"Starting {p.Item.Id}…";
     }
