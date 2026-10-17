@@ -165,4 +165,21 @@ public sealed class ReportedLimitTests
         Assert.That(ReportedLimit.Highest(samples, Report(40, 11)), Is.EqualTo(Report(40, 11)), "a higher report stands");
         Assert.That(ReportedLimit.Highest(samples, null), Is.Null);
     }
+
+    [Test]
+    public void Highest_with_a_report_from_a_window_that_reset_uses_the_running_windows_highest_sample()
+    {
+        // An idle session last answered in the 4:00-9:00 window and keeps stamping it; the running window was at 36% (M.ORCH-T179).
+        var samples = new List<UsageSample> { S(10, 30, 0), S(10.5, 36, 0), S(10.6, 34, 0), S(8, 90, 0, Reset.AddHours(-5)) };
+        var now = Day.AddHours(11);
+
+        var raised = ReportedLimit.Highest(samples, Report(26, 11, Reset.AddHours(-5)), now);
+
+        Assert.That(raised!.FiveHour, Is.EqualTo(new ReportedWindow(36, Reset)));
+        Assert.That(raised.AtUtc, Is.EqualTo(Day.AddHours(10.5)));
+        Assert.That(ReportedLimit.Highest(samples, null, now)!.FiveHour!.Percent, Is.EqualTo(36), "no report at all");
+        Assert.That(ReportedLimit.Highest([], Report(26, 11, Reset.AddHours(-5)), now), Is.EqualTo(Report(26, 11, Reset.AddHours(-5))),
+            "nothing recorded for the running window: left as it was");
+        Assert.That(ReportedLimit.Highest(samples, Report(26, 11), now)!.FiveHour!.Percent, Is.EqualTo(36), "a stale report in the running window still rises");
+    }
 }

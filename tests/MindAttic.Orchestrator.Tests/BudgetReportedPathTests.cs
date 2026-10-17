@@ -111,4 +111,20 @@ public sealed class BudgetReportedPathTests
         Assert.That(sized.BlockLimitSource, Is.EqualTo(LimitSource.Reported), "a low percent is still the truth about what's used");
         Assert.That(sized.CurrentBlock!.Usage.Fresh, Is.EqualTo(500), "4% taken as 5% of a limit sized elsewhere");
     }
+
+    [Test]
+    public void A_manual_limit_never_shows_less_than_claudes_reported_percent()
+    {
+        // 2,600 local tokens of a 10,000 budget is 26%, but Claude said 36% (M.ORCH-T179): the percent is at least 36.
+        var events = new[] { E(10.2, 2600) };
+        var manual = BudgetCalculator.Compute(events, new OrchestratorSettings { BlockBudget = 10_000 }, Day.AddHours(12), Day, TimeZoneInfo.Utc,
+            reported: Report(36, 15, 11));
+        var ahead = BudgetCalculator.Compute([E(10.2, 5000)], new OrchestratorSettings { BlockBudget = 10_000 }, Day.AddHours(12), Day, TimeZoneInfo.Utc,
+            reported: Report(36, 15, 11));
+
+        Assert.That(manual.BlockLimitSource, Is.EqualTo(LimitSource.Manual));
+        Assert.That(manual.BlockPercent, Is.EqualTo(36).Within(0.001));
+        Assert.That(manual.BlockRemaining, Is.EqualTo(6_400));
+        Assert.That(ahead.BlockPercent, Is.EqualTo(50).Within(0.001), "a local count already past Claude's percent stands");
+    }
 }

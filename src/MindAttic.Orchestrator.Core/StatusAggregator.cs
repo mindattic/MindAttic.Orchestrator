@@ -141,7 +141,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         var calibration = Calibrate(allSessions, events, historyStartUtc, now);
         var reported = ReportedUsage.Load(now, ReportedUsagePath);
         var reportedLimit = ReportedLimitFrom(reported, events, now);
-        reported = ReportedLimit.Highest(samples ?? [], reported);
+        reported = ReportedLimit.Highest(samples ?? [], reported, now);
         var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration,
             reported: reported, reportedLimit: reportedLimit);
 

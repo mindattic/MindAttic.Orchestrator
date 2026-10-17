@@ -166,6 +166,14 @@ public static class BudgetCalculator
             currentFresh = (long)(Math.Min(100, reported5h.Percent + 1) / 100 * limit) + since;
             current = current with { Usage = new TokenUsage(currentFresh, 0, 0, 0) };
         }
+        // Whatever sized the limit (your budget, a learned one), Claude's own percent is what's already used in its
+        // window: the local count never shows less (it read 26% while Claude said 36%, M.ORCH-T179).
+        else if (!isPeak && limit > 0 && reported5h is not null && current is not null &&
+                 (long)(reported5h.Percent / 100 * limit) is var floor && floor > currentFresh)
+        {
+            currentFresh = floor;
+            current = current with { Usage = new TokenUsage(currentFresh, 0, 0, 0) };
+        }
         var blockPercent = limit > 0 ? 100.0 * currentFresh / limit : 0;
 
         // A configured reset day/time means the week restarts when Claude's does; failing that, the

@@ -55,9 +55,19 @@ public static class ReportedLimit
     /// that sample's time). Every open Claude session's statusline rewrites <c>claude-usage.json</c> each minute with
     /// the percent from its own last API response, so an idle one stamps a stale, lower percent with the current time
     /// (12% while the window was at 35%). Usage within a window never goes down, so the highest is the truest.
+    /// With <paramref name="nowUtc"/>, a report with no 5-hour window, or one from a window that already reset (an idle
+    /// session's last response came before it), is replaced by the highest recorded for the window still running, so
+    /// the budget doesn't drop to a learned limit between Claude's reports (M.ORCH-T179).
     /// </summary>
-    public static ReportedUsage? Highest(IReadOnlyList<UsageSample> samples, ReportedUsage? reported)
+    public static ReportedUsage? Highest(IReadOnlyList<UsageSample> samples, ReportedUsage? reported, DateTime? nowUtc = null)
     {
+        if (nowUtc is { } now && ReportedUsage.Usable(reported?.FiveHour, now) is null)
+        {
+            var running = samples.Where(s => s.ResetUtc > now && s.AtUtc <= now)
+                .OrderByDescending(s => s.Percent).ThenByDescending(s => s.AtUtc).FirstOrDefault();
+            if (running is not null)
+                return new ReportedUsage(new ReportedWindow(running.Percent, running.ResetUtc), reported?.Week, running.AtUtc);
+        }
         if (reported?.FiveHour is not { } w) return reported;
         var best = samples.Where(s => s.ResetUtc == w.ResetUtc && s.Percent > w.Percent)
             .OrderByDescending(s => s.Percent).ThenByDescending(s => s.AtUtc).FirstOrDefault();
