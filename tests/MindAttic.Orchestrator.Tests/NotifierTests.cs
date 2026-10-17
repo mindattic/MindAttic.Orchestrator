@@ -32,6 +32,36 @@ public sealed class NotifierTests
         Assert.That(await new Notifier().SendAsync("file:///c:/x", "x", "y"), Is.False, "only http(s)");
     }
 
+    [TestCase("ftp://example.com/topic")]
+    [TestCase("mailto:me@example.com")]
+    [TestCase("not a url")]
+    [TestCase("/relative/topic")]
+    [TestCase("   ")]
+    public async Task A_url_that_is_not_http_or_https_is_ignored(string url) =>
+        Assert.That(await new Notifier().SendAsync(url, "x", "y"), Is.False);
+
+    [Test]
+    public async Task Non_ascii_is_stripped_from_the_title_header_but_kept_in_the_body()
+    {
+        var (listener, url) = Listen();
+        using var _ = listener;
+        var received = Task.Run(async () =>
+        {
+            var ctx = await listener.GetContextAsync();
+            using var reader = new StreamReader(ctx.Request.InputStream);
+            var result = (ctx.Request.Headers["Title"], ctx.Request.Headers["Priority"], await reader.ReadToEndAsync());
+            ctx.Response.StatusCode = 200;
+            ctx.Response.Close();
+            return result;
+        });
+
+        var ok = await new Notifier().SendAsync(url, "Caf\u00e9 \u2014 done \u2713!", "Caf\u00e9 \u2014 done");
+
+        Assert.That(ok, Is.True);
+        Assert.That(await received, Is.EqualTo(("Caf  done !", (string?)null, "Caf\u00e9 \u2014 done")), "not urgent: no Priority header");
+        listener.Stop();
+    }
+
     private static (HttpListener Listener, string Url) Listen()
     {
         for (var attempt = 0; ; attempt++)

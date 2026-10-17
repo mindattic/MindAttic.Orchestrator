@@ -19,6 +19,23 @@ public sealed class MatchingTests
     public void Longest_containing_repo_wins(string dir, string expected) =>
         Assert.That(Matcher.Match(dir), Is.EqualTo(expected));
 
+    [TestCase(@"D:\", "drive")]
+    [TestCase(@"D:\Anything\Deeper", "drive")]
+    [TestCase(@"d:/anything", "drive")]
+    [TestCase(@"E:\Other", null)]
+    public void A_repo_at_a_drive_root_contains_the_whole_drive(string dir, string? expected) =>
+        Assert.That(new RepoMatcher([("drive", @"D:\")]).Match(dir), Is.EqualTo(expected));
+
+    [TestCase(@"D:\W\Repo", "Repo")]
+    [TestCase(@"D:\W\Repo\", "Repo")]
+    [TestCase(@"D:/W/Repo/src/", "Repo")]
+    [TestCase(@"D:\W\RepoX", null)]
+    public void A_trailing_slash_on_either_side_does_not_matter(string dir, string? expected)
+    {
+        Assert.That(new RepoMatcher([("Repo", @"D:\W\Repo\")]).Match(dir), Is.EqualTo(expected), "repo path with a trailing slash");
+        Assert.That(new RepoMatcher([("Repo", @"D:/W/Repo/")]).Match(dir), Is.EqualTo(expected), "and with forward slashes");
+    }
+
     [Test]
     public void Outside_every_repo_is_null() =>
         Assert.That(Matcher.Match(@"C:\Users\someone"), Is.Null);

@@ -21,6 +21,14 @@ public sealed class TicketCostTests
         Assert.That(TicketAttribution.FromWorktree(@"D:\Projects\MindAttic\Repo"), Is.Null);
     }
 
+    [TestCase(@"d:\projects\mindattic.worktrees\repo\rp-t7\src", "RP-T7")]
+    [TestCase(@"d:/projects/mindattic.worktrees/mindattic.orchestrator/m.orch-t150", "M.ORCH-T150")]
+    [TestCase(@"D:\Projects\MindAttic.worktrees\Repo\Rp-T7", "RP-T7")]
+    [TestCase(null, null)]
+    [TestCase(@"d:\projects\mindattic.worktrees\repo\rp-t7x", null)]
+    public void A_lower_case_worktree_path_still_names_the_ticket_in_upper_case(string? cwd, string? expected) =>
+        Assert.That(TicketAttribution.FromWorktree(cwd), Is.EqualTo(expected));
+
     [Test]
     public void A_family_code_with_a_dot_is_attributed_like_any_other()
     {

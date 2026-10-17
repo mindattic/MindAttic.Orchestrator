@@ -53,4 +53,18 @@ public sealed class WatchdogTests
 
         Assert.That(Watchdog.Stuck(snap).Select(x => x.SessionId), Is.EqualTo(new[] { "live" }));
     }
+
+    [Test]
+    public void A_session_last_written_exactly_at_the_recent_cutoff_still_counts()
+    {
+        var now = new DateTime(2026, 10, 14, 12, 0, 0, DateTimeKind.Utc);
+        var loop = new Loop("Bash", "{}", 6, now.AddHours(-1));
+        TranscriptSession S(string id, TimeSpan ago) => new(id, @"D:\W\A", now - ago, default, null) { Loop = loop };
+        var snap = new Snapshot(now, [new RepoStatus("A", @"D:\W\A", RepoState.Working, [],
+            [S("at", Watchdog.Recent), S("past", Watchdog.Recent + TimeSpan.FromSeconds(1)), S("inside", Watchdog.Recent - TimeSpan.FromSeconds(1)),
+             new("clean", @"D:\W\A", now, default, null)], [], now, default)], []);
+
+        Assert.That(Watchdog.Stuck(snap).Select(x => x.SessionId), Is.EqualTo(new[] { "at", "inside" }),
+            "the cutoff is inclusive; a second past it isn't news, and a session with no loop is never stuck");
+    }
 }

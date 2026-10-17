@@ -2,7 +2,10 @@ using MindAttic.Orchestrator.Scheduling;
 
 namespace MindAttic.Orchestrator;
 
-/// <summary>"While you were away": one paragraph on what happened since the dashboard was last open and what's waiting now.</summary>
+/// <summary>
+/// "While you were away": one paragraph on what happened since the dashboard was last open and what's waiting now.
+/// Nothing at all (nothing ran, closed, stalled or is waiting) gives no briefing rather than a "Nothing ran." toast.
+/// </summary>
 public static class Briefing
 {
     /// <summary>Away for less than this isn't worth a briefing.</summary>
@@ -31,6 +34,7 @@ public static class Briefing
         if (waiting.Count > 0) parts.Add($"Waiting on you: {string.Join(", ", waiting.Take(5))}{(waiting.Count > 5 ? $" and {waiting.Count - 5} more" : "")}.");
         if (plan.Stale.Count > 0) parts.Add($"{string.Join(", ", plan.Stale.Select(q => q.Id))} went stale and {(plan.Stale.Count == 1 ? "is" : "are")} back in the queue.");
         if (Activity.Watchdog.Stuck(snapshot) is { Count: > 0 } stuck) parts.Add($"A session in {string.Join(", ", stuck.Select(x => x.Repo).Distinct())} looks stuck.");
+        if (spent == 0 && parts.Count == 1) return null;
         if (snapshot.Pace is { IsPaced: true } pace) parts.Add($"Now: {pace.Note}");
 
         return $"Since {sinceUtc.ToLocalTime():ddd h:mm tt} ({Formatting.Span(away)} away): " + string.Join(" ", parts);

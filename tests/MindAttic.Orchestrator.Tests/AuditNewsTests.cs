@@ -29,6 +29,19 @@ public sealed class AuditNewsTests
     }
 
     [Test]
+    public void With_no_previous_report_nothing_is_news_however_much_the_audit_found()
+    {
+        var after = Report([Drift("A", "hook.ps1"), Drift("B", "hook.ps1")], [Dup("A", "B")]);
+
+        var news = AuditNews.Between(null, after);
+
+        Assert.That(news.Drift, Is.Empty);
+        Assert.That(news.Duplicates, Is.Empty);
+        Assert.That((news.Any, news.ToString()), Is.EqualTo((false, "")));
+        Assert.That(AuditNews.Between(null, Report([], [])).Any, Is.False);
+    }
+
+    [Test]
     public void The_news_line_says_one_or_many_and_names_at_most_three()
     {
         Assert.That(new AuditNews([Drift("A", "x.ps1")], [Dup("A", "B")]).ToString(),
