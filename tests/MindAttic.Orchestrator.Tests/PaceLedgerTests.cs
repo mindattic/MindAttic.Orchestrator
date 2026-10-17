@@ -194,6 +194,22 @@ public sealed class PaceLedgerTests
     }
 
     [Test]
+    public void An_earlier_sighting_of_a_wall_already_raised_is_not_a_second_hit()
+    {
+        var h = new Harness();
+        h.Store.SaveLimits([]);
+        h.Watch.Tick(End);
+        h.Store.SaveLimits([Hit(End.AddMinutes(30), End.AddHours(5))]);
+        h.Watch.Tick(End.AddMinutes(31));
+        Assert.That(h.Filed, Has.Count.EqualTo(1));
+
+        // Another session's message for the same wall, read later, moves the stored hit a few seconds earlier.
+        h.Store.SaveLimits([Hit(End.AddMinutes(30).AddSeconds(-3), End.AddHours(5))]);
+        h.Watch.Tick(End.AddMinutes(33));
+        Assert.That((h.Filed.Count, h.Alerts.Count(a => a.Title == "Ran out of tokens")), Is.EqualTo((1, 1)), "one wall, one alarm, one ticket");
+    }
+
+    [Test]
     public void A_blind_window_closing_live_files_one_ticket()
     {
         var h = new Harness();

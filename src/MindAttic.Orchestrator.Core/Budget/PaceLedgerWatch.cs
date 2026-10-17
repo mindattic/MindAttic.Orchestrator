@@ -28,7 +28,12 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
     internal Func<string, string?> FileTicket { get; set; } = null!;
 
     private DateTime checkedUtc;
+    /// <summary>The walls (5-hour limits, by when each resets) already raised. Keyed by the wall, not the hit's time: the
+    /// stored hit time moves to an earlier or better-covered sighting of the same wall, and that's not a second hit.</summary>
     private HashSet<DateTime>? alarmed;
+
+    /// <summary>Where the raised walls are remembered across restarts (M.ORCH-T172's fix replaced <c>pace-alarms</c>, which held hit times).</summary>
+    internal const string AlarmsName = "pace-alarm-walls";
 
     public void Tick(DateTime nowUtc)
     {
@@ -62,19 +67,19 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
     /// <summary>A 5-hour limit hit read from the transcripts is the failure the orchestrator exists to prevent: raise it at once.</summary>
     private void RaiseNewHits(List<LimitObservation> hits, DateTime nowUtc)
     {
-        var session = hits.Where(h => h.Kind == LimitKind.Session).Select(h => h.HitUtc).ToList();
+        var session = hits.Where(h => h.Kind == LimitKind.Session).ToList();
         if (alarmed is null)
         {
-            var saved = store.Load<List<DateTime>>("pace-alarms");
+            var saved = store.Load<List<DateTime>>(AlarmsName);
             // The first run knows every hit so far as history: only hits after it are news.
-            alarmed = System.IO.File.Exists(Path.Combine(store.Directory, "pace-alarms.json")) ? [.. saved] : [.. session];
+            alarmed = System.IO.File.Exists(Path.Combine(store.Directory, AlarmsName + ".json")) ? [.. saved] : [.. session.Select(h => h.ResetUtc)];
             if (saved.Count == 0) Save();
         }
-        var fresh = session.Where(h => !alarmed.Contains(h)).Order().ToList();
-        foreach (var hit in fresh)
+        var fresh = session.Where(h => !alarmed.Contains(h.ResetUtc)).OrderBy(h => h.HitUtc).ToList();
+        foreach (var o in fresh)
         {
-            alarmed.Add(hit);
-            var o = hits.First(h => h.Kind == LimitKind.Session && h.HitUtc == hit);
+            alarmed.Add(o.ResetUtc);
+            var hit = o.HitUtc;
             var around = PaceLedger.LoadEvents(EventsPath, hit - TimeSpan.FromMinutes(30)).Where(e => e.AtUtc <= hit + TimeSpan.FromMinutes(1)).ToList();
             var line = $"Agents ran out of tokens: the 5-hour limit was hit at {hit.ToLocalTime():t} ({Formatting.Ago(hit, nowUtc)}), " +
                        $"{Formatting.Tokens(o.FreshUsed)} uncached into the window, resetting {o.ResetUtc.ToLocalTime():t}. " +
@@ -83,13 +88,13 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
             say(LogEventLevel.Error, "pace ledger: " + line);
             alert("Ran out of tokens", line, true);
             if (nowUtc - hit <= Live)
-                Filed(FileTicket($"[pace-ledger hit {hit:yyyy-MM-ddTHH:mmZ}] {line} The orchestrator must never let this happen: find which draw got past the stop and close the hole."));
+                Filed(FileTicket($"[pace-ledger hit resetting {o.ResetUtc:yyyy-MM-ddTHH:mmZ}] {line} The orchestrator must never let this happen: find which draw got past the stop and close the hole."));
         }
         if (fresh.Count > 0) Save();
 
         void Save()
         {
-            try { store.Save("pace-alarms", alarmed!.Where(h => nowUtc - h < LimitCalibration.Keep).Order().ToList()); }
+            try { store.Save("pace-alarms", alarmed!.Where(reset => nowUtc - reset < LimitCalibration.Keep).Order().ToList()); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
     }
