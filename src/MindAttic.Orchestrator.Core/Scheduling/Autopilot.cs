@@ -77,7 +77,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
 
         var order = Order();
         On = order is not null;
-        HeldElsewhere = lease is not null && (On || store.LoadAssignments().Any(a => a.Log is not null)) && !lease.TryAcquire();
+        // Reaping and the hourly sweep (git fetch, merge, worktree remove) are the lease holder's whatever /autopilot's state:
+        // with the order unset (CLIs run autopilot now) the dashboard used to run them too, on its UI thread, beside the daemon.
+        HeldElsewhere = lease is not null && !lease.TryAcquire();
         if (!dryRun && !HeldElsewhere)
         {
             Reap(plan, snapshot, said);

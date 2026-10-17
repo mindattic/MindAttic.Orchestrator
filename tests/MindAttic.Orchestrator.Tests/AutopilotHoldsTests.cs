@@ -135,6 +135,27 @@ public sealed class AutopilotHoldsTests
     }
 
     [Test]
+    public void With_autopilot_off_here_the_lease_still_decides_who_reaps_and_sweeps()
+    {
+        // CLIs run /autopilot now, so the order is unset in the daemon and the dashboard alike: only the lease holder may
+        // reap and run the hourly sweep's git (the dashboard ran it on its UI thread beside the daemon).
+        order = null;
+        var snap = Snap(("A", [T("A-T1")]));
+        var leases = Path.Combine(dir, "lease");
+        using var daemon = new DispatchLease(leases);
+        Assert.That(daemon.TryAcquire(), Is.True);
+        using var mine = new DispatchLease(leases);
+        var pilot = Pilot(mine);
+
+        pilot.Tick(Paced(snap, 10), snap, Settings(), Now);
+        Assert.That((pilot.On, pilot.HeldElsewhere), Is.EqualTo((false, true)));
+
+        daemon.Dispose();
+        pilot.Tick(Paced(snap, 10), snap, Settings(), Now.AddMinutes(1));
+        Assert.That((pilot.HeldElsewhere, mine.IsHeld), Is.EqualTo((false, true)), "free: this process takes it and does the work");
+    }
+
+    [Test]
     public void Paused_names_switched_off_then_machine_health_then_quiet_hours_then_the_pace()
     {
         order = ["A"];
