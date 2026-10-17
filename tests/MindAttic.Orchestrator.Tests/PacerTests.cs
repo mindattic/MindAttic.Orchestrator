@@ -352,6 +352,10 @@ public sealed class PacerTests
                 "the PowerShell call form still counts (this scratch workspace has no database to look M.ORCH-T1 up in)");
             Assert.That(Gate(uss, "Bash", new { command = $"git -C {Path.Combine(ws, "MindAttic.Orchestrator")} commit -m x" }), Does.Contain("\"deny\""));
             Assert.That(Gate(uss, "Bash", new { command = $"git -C {Path.Combine(ws, "MindAttic.Orchestrator")} log -1" }), Is.Empty, "reading another repo is fine");
+            var orchRepo = Path.Combine(ws, "MindAttic.Orchestrator");
+            foreach (var read in new[] { $"git -C {orchRepo} log --oneline | grep -i commit", $"git -C {orchRepo} diff -- src/add.cs",
+                                         $"git -C {orchRepo} log -5 && git commit -am 'mine'" })
+                Assert.That(Gate(uss, "Bash", new { command = read }), Is.Empty, "a read of another repo, with a write word elsewhere: " + read);
             Assert.That(Gate(ws, "Edit", new { file_path = orch }), Is.Empty, "the General (workspace-root) window may work anywhere");
 
             // The explicit exception: /crossrepo marks this CLI (by process) as allowed into the repos named.

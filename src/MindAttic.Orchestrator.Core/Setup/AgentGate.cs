@@ -397,9 +397,12 @@ public static class AgentGate
                         if other(owner):
                             refuse(f"This window is for {here}; that ticket belongs to {owner}. Only {here}'s tickets are worked here: "
                                    f"leave {owner}'s to its own window, autopilot or the General session.")
-                for target in re.findall(r"\bgit\s+-C\s+['\"]?([^'\"\s]+)", command):
-                    if other(repo_of(target)) and re.search(r"\b(commit|push|add|rm|mv|reset|checkout|merge|rebase|stash)\b", command):
-                        refuse(f"This window is for {here}; git changes in {repo_of(target)} belong to that repo's window.")
+                # Only a write that `git -C` itself runs in the other repo: reading it is fine, and a word in a message, a file
+                # name or this repo's own git on the same line isn't that repo's change.
+                for segment in re.split(r"[;\n|]|&&", command):
+                    for target in re.findall(r"\bgit\s+-C\s+['\"]?([^'\"\s]+)['\"]?\s+(?:commit|push|add|rm|mv|reset|checkout|merge|rebase|stash)\b", segment):
+                        if other(repo_of(target)):
+                            refuse(f"This window is for {here}; git changes in {repo_of(target)} belong to that repo's window.")
 
         # Every repo lands on main (the master repos were renamed 2026-10-16): a push to master would only recreate a stray
         # branch on GitHub that triggers nothing (found live: an agent told to push main to a master repo made a stray main).
