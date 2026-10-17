@@ -82,6 +82,7 @@
 
         <!-- Header, read left to right: the work (who needs you, who's working, their subagents, what's queued), then the
              tokens (this 5-hour window, the week, the pace ledger, today). Every card is a button that goes somewhere. -->
+        <StackPanel Grid.Row="0">
         <WrapPanel Margin="24,18,24,0" AutomationProperties.Name="Summary">
             <Button Command="{Binding FocusCommand}" CommandParameter="Waiting" ToolTip="Repos whose agent stopped and is waiting for you. Shows only those."
                     AutomationProperties.Name="{Binding WaitingCount, StringFormat='{}{0} need you: show only those repos'}">
@@ -195,18 +196,20 @@
                     <TextBlock Text="{Binding TokensDetail}" Style="{StaticResource McTileSubtitle}" />
                 </StackPanel>
             </Button>
-            <!-- This 5-hour window's utilization: the pace line straight to the target at the reset, the window's own line
-                 (red while over that pace, green under) and where the recent rate ends up. The caption says it in words. -->
-            <Border Style="{StaticResource Card}" Width="560" Margin="0,0,12,12"
-                    AutomationProperties.Name="{Binding UtilizationText, StringFormat='5-hour utilization: {0}'}"
-                    Visibility="{Binding UtilizationText, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
-                <StackPanel>
-                    <TextBlock Text="5-hour utilization" Style="{StaticResource SectionLabel}" />
-                    <local:UtilizationChart Data="{Binding Utilization}" Height="130" Margin="0,6,0,6" />
-                    <TextBlock Text="{Binding UtilizationText}" Style="{StaticResource McTileSubtitle}" TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
         </WrapPanel>
+        <!-- This 5-hour window's utilization (M.ORCH-T191): its own full-width row under the tiles, tall enough that the
+             pace line straight to the target at the reset, the window's own line (red while over that pace, green under)
+             and where the recent rate ends up are easy to read. The caption says it in words. -->
+        <Border x:Name="UtilizationCard" Style="{StaticResource Card}" Margin="24,0,24,12" HorizontalAlignment="Stretch"
+                AutomationProperties.Name="{Binding UtilizationText, StringFormat='5-hour utilization: {0}'}"
+                Visibility="{Binding UtilizationText, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
+            <StackPanel>
+                <TextBlock Text="5-hour utilization" Style="{StaticResource SectionLabel}" />
+                <local:UtilizationChart Data="{Binding Utilization}" Height="260" Margin="0,8,0,8" />
+                <TextBlock Text="{Binding UtilizationText}" Style="{StaticResource McTileSubtitle}" FontSize="13" TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+        </StackPanel>
 
         <!-- Toolbar -->
         <Grid Grid.Row="1" Margin="24,8,24,10">
