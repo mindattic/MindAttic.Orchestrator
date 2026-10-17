@@ -658,14 +658,31 @@ public static class AgentGate
             try:
                 import fnmatch, sqlite3
                 db = sqlite3.connect(str(WS / "MindAttic.Workflow" / "data" / "workflow.db"))
-                rows = db.execute("SELECT id, type, repo FROM tickets WHERE status = 'open' ORDER BY ordinal").fetchall()
+                try:
+                    rows = db.execute("SELECT id, type, repo, summary FROM tickets WHERE status = 'open' ORDER BY ordinal").fetchall()
+                except sqlite3.OperationalError:  # a database from before tickets had summaries
+                    rows = [r + (None,) for r in db.execute("SELECT id, type, repo FROM tickets WHERE status = 'open' ORDER BY ordinal").fetchall()]
+                # A ticket waiting on another open one isn't handed out by `orchestrator next`, so it isn't work to push on
+                # to either: a 'requires' link, "blocked by X" in its summary, or settings' BlockedBy (as the scheduler reads them).
+                open_ids = {r[0].upper() for r in rows}
+                waits = {}
+                try:
+                    for f, t in db.execute("SELECT from_id, to_id FROM links WHERE kind = 'requires'").fetchall():
+                        waits.setdefault(f.upper(), set()).add(t.upper())
+                except Exception:
+                    pass
                 db.close()
                 # Only fixes and tickets the user approved are work (orchestrator approve); the rest wait for their yes.
                 try:
                     settings = json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "settings.json").read_text())
                     approved = {a.upper() for a in settings.get("Approved") or []}
                 except Exception:
-                    approved = set()
+                    settings, approved = {}, set()
+                for f, ts in (settings.get("BlockedBy") or {}).items():
+                    waits.setdefault(f.upper(), set()).update(t.upper() for t in ts or [])
+                def blocked(r):
+                    on = waits.get(r[0].upper(), set()) | {m.upper() for m in re.findall(r"blocked by ((?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)", r[3] or "", re.I)}
+                    return any(b != r[0].upper() and b in open_ids for b in on)
                 # A ticket `orchestrator next --claim` already handed to a subagent is being worked: it isn't left (M.ORCH-T188).
                 try:
                     claimed = {(a.get("TicketId") or "").upper() for a in json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" /
@@ -674,7 +691,7 @@ public static class AgentGate
                     claimed = set()
                 named = {r.lower() for r in repos}
                 return [r[0] for r in rows if any(fnmatch.fnmatchcase((r[2] or "").lower(), n) for n in named) and
-                        ((r[1] or "").lower() == "fix" or r[0].upper() in approved) and r[0].upper() not in claimed]
+                        ((r[1] or "").lower() == "fix" or r[0].upper() in approved) and r[0].upper() not in claimed and not blocked(r)]
             except Exception:
                 return []
 

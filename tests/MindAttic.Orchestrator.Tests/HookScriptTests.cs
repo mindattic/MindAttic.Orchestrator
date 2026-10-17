@@ -147,6 +147,35 @@ public sealed class HookScriptTests
         }));
 
     [Test]
+    public void A_ticket_waiting_on_another_open_one_is_not_work_to_push_on_to()
+    {
+        // `orchestrator next` hands out nothing blocked, so keep-going pushing back to it only spent a turn and raised "needs you".
+        var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(db)!);
+        void Sql(string sql)
+        {
+            using var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
+                "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.executescript(sys.argv[2]); d.commit()", db, sql }, UseShellExecute = false })!;
+            mk.WaitForExit(20_000);
+        }
+        Sql("create table tickets(id,repo,status,ordinal,type,summary); create table links(from_id,to_id,kind);" +
+            "insert into tickets values('U.SPC-T1','UnitySolarSystem','open',1,'fix','needs the API');" +
+            "insert into tickets values('U.SPC-T2','UnitySolarSystem','open',2,'feature','the API (not approved yet)');" +
+            "insert into links values('U.SPC-T1','U.SPC-T2','requires');");
+        var uss = Path.Combine(ws, "UnitySolarSystem");
+        Directory.CreateDirectory(Marks);
+        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem");
+        object Asking(string sid) => new { hook_event_name = "Stop", session_id = sid, cwd = uss, last_assistant_message = "Shall I start the next one?" };
+        Status(new { });
+
+        Assert.That(Gate(Asking("b1"), AgentGate.ContextScriptName).Output, Is.Empty, "its only fix requires an open ticket");
+        Sql("delete from links; update tickets set summary='blocked by U.SPC-T2 for now' where id='U.SPC-T1';");
+        Assert.That(Gate(Asking("b2"), AgentGate.ContextScriptName).Output, Is.Empty, "'blocked by' in its summary counts the same");
+        Sql("update tickets set status='closed' where id='U.SPC-T2';");
+        Assert.That(Gate(Asking("b3"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\""), "its blocker closed: it's work again");
+    }
+
+    [Test]
     public void At_claudes_own_line_with_the_daemon_down_keep_going_never_pushes_a_stop_back()
     {
         var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
