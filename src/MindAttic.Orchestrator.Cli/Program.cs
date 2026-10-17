@@ -15,8 +15,10 @@ try
 {
     return app.Run(args);
 }
-catch (Spectre.Console.Cli.CommandParseException ex)
+catch (Exception ex) when (ex is Spectre.Console.Cli.CommandParseException or Spectre.Console.Cli.CommandRuntimeException)
 {
+    // A typing mistake (an unknown flag, a missing argument, a value that isn't a number) is said in one line, not
+    // logged as a crash.
     AnsiConsole.MarkupLine($"[red]{Markup.Escape(ex.Message)}[/]");
     return 1;
 }

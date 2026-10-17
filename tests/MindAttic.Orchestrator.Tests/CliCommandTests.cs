@@ -45,6 +45,13 @@ public sealed class CliCommandTests
     private int Run(params string[] args) => CliApp.Create().Run(args);
 
     [Test]
+    public void A_missing_argument_is_a_runtime_exception_the_entry_point_reports_in_one_line()
+    {
+        // Program.cs catches parse and runtime exceptions as typing mistakes; anything else is logged as a crash.
+        Assert.Throws<Spectre.Console.Cli.CommandRuntimeException>(() => Run("dispatch"));
+    }
+
+    [Test]
     public void The_store_directory_is_injectable()
     {
         Assert.That(Ctx.Store().Directory, Is.EqualTo(dir));
