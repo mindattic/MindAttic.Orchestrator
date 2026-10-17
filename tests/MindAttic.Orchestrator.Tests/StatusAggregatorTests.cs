@@ -258,6 +258,30 @@ public sealed class StatusAggregatorTests
     }
 
     [Test]
+    public void A_locked_usage_samples_file_does_not_fail_the_refresh()
+    {
+        var options = new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null };
+        var reset = Seconds(DateTime.UtcNow.AddHours(3));
+        var at = Seconds(DateTime.UtcNow.AddMinutes(-1));
+        store.Save("usage-samples", new List<UsageSample> { new(at.AddHours(-1), 10, reset, 100_000) });
+        var reportPath = Path.Combine(dir, "claude-usage.json");
+        File.WriteAllText(reportPath, System.Text.Json.JsonSerializer.Serialize(new
+        {
+            rate_limits = new { five_hour = new { used_percentage = 30, resets_at = new DateTimeOffset(reset).ToUnixTimeSeconds() } },
+            at = at.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture),
+        }));
+        var aggregator = new StatusAggregator(options, store)
+        {
+            ScanHosts = () => [], OtherProviders = new ProviderLogReader(Path.Combine(dir, "codex"), Path.Combine(dir, "gemini")), ReportedUsagePath = reportPath,
+        };
+
+        // Another process holds it (an antivirus scan, the dashboard mid-save) past the store's retries.
+        using (new FileStream(Path.Combine(store.Directory, "usage-samples.json"), FileMode.Open, FileAccess.Read, FileShare.None))
+            Assert.That(aggregator.Refresh().Budget, Is.Not.Null, "the new report is kept in memory, the refresh goes on");
+        Assert.That(store.Load<List<UsageSample>>("usage-samples"), Has.Count.EqualTo(1), "not saved while locked");
+    }
+
+    [Test]
     public void A_one_off_aggregator_whose_lease_is_held_elsewhere_shows_the_published_snapshot_and_never_writes_rlstatus()
     {
         store.SaveSettings(new OrchestratorSettings { WorktreeRoot = worktrees, BlockBudget = 100_000 });

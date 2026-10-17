@@ -216,9 +216,15 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         }
         if (ReportedLimit.Record(samples, reported, events, now))
         {
-            Store.Save("usage-samples", samples);
-            samplesStamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default;
             samplesEstimate = ReportedLimit.Estimate(samples);
+            // Like every other save here, a locked file mustn't fail the whole refresh (no rl-status.json that tick);
+            // the sample stays in memory and goes out with the next one recorded.
+            try
+            {
+                Store.Save("usage-samples", samples);
+                samplesStamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
         return samplesEstimate;
     }
