@@ -61,6 +61,21 @@ public sealed class ProcessHelperTests
     }
 
     [Test]
+    public void The_claude_cli_a_command_runs_under_is_found_up_the_chain_as_the_gate_finds_it()
+    {
+        // M.ORCH-T195: `orchestrator next` finds its calling CLI so an /unthrottle mark reaches it.
+        var procs = new Dictionary<int, (int, string)>
+        {
+            [500] = (450, "orchestrator.exe"), [450] = (400, "bash.exe"), [400] = (300, "claude.exe"), [300] = (200, "pwsh.exe"),
+            [700] = (600, "orchestrator.exe"), [600] = (0, "claude.exe.old.2"), [900] = (4, "orchestrator.exe"), [4] = (0, "System"),
+        };
+        Assert.That(ProcessTree.ClaudeAncestor(500, procs), Is.EqualTo(400));
+        Assert.That(ProcessTree.ClaudeAncestor(700, procs), Is.EqualTo(600), "an updater-renamed claude.exe still counts");
+        Assert.That(ProcessTree.ClaudeAncestor(900, procs), Is.Null, "no CLI above it");
+        Assert.That(ProcessTree.ClaudeAncestor(12345, procs), Is.Null, "not in the snapshot");
+    }
+
+    [Test]
     public void A_parent_of_zero_ends_the_walk()
     {
         var parents = new Dictionary<int, int> { [400] = 0 };

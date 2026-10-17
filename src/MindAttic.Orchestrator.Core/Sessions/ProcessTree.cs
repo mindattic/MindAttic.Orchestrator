@@ -8,6 +8,21 @@ public static partial class ProcessTree
     /// <summary>Whether <paramref name="ancestor"/> started <paramref name="pid"/>, directly or through processes between.</summary>
     public static bool IsAncestor(int ancestor, int pid) => IsAncestor(ancestor, pid, Parents());
 
+    /// <summary>The Claude CLI (claude.exe, or claude.exe.old.N once the updater renames it) that started <paramref name="pid"/>,
+    /// directly or through processes between, as the gate's <c>cli_pid()</c> finds it; null when none did.</summary>
+    public static int? ClaudeAncestor(int pid) => ClaudeAncestor(pid, Processes());
+
+    /// <summary>The same walk over a given pid-to-(parent, exe name) map; it gives up after 8 steps, as the gate does.</summary>
+    internal static int? ClaudeAncestor(int pid, IReadOnlyDictionary<int, (int Parent, string Exe)> processes)
+    {
+        for (var i = 0; i < 8 && processes.TryGetValue(pid, out var p) && p.Parent != 0; i++)
+        {
+            pid = p.Parent;
+            if (processes.TryGetValue(pid, out var up) && up.Exe.StartsWith("claude.exe", StringComparison.OrdinalIgnoreCase)) return pid;
+        }
+        return null;
+    }
+
     /// <summary>The same walk over a given child-to-parent map; it gives up after 16 steps, so a pid cycle ends.</summary>
     internal static bool IsAncestor(int ancestor, int pid, IReadOnlyDictionary<int, int> parents)
     {
@@ -19,16 +34,18 @@ public static partial class ProcessTree
         return false;
     }
 
-    private static Dictionary<int, int> Parents()
+    private static Dictionary<int, int> Parents() => Processes().ToDictionary(p => p.Key, p => p.Value.Parent);
+
+    private static Dictionary<int, (int Parent, string Exe)> Processes()
     {
-        var parents = new Dictionary<int, int>();
+        var parents = new Dictionary<int, (int Parent, string Exe)>();
         var snap = CreateToolhelp32Snapshot(2 /* processes */, 0);
         if (snap == new IntPtr(-1)) return parents;
         try
         {
             var e = new PROCESSENTRY32W { dwSize = (uint)Marshal.SizeOf<PROCESSENTRY32W>() };
             for (var ok = Process32FirstW(snap, ref e); ok; ok = Process32NextW(snap, ref e))
-                parents[(int)e.th32ProcessID] = (int)e.th32ParentProcessID;
+                parents[(int)e.th32ProcessID] = ((int)e.th32ParentProcessID, e.szExeFile ?? "");
         }
         finally { CloseHandle(snap); }
         return parents;

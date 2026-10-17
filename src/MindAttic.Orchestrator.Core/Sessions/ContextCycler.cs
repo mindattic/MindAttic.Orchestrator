@@ -213,6 +213,9 @@ public sealed class ContextCycler(string? directory = null)
         : [.. System.IO.Directory.EnumerateFiles(Directory, "unthrottled-*")
             .Select(f => int.TryParse(Path.GetFileName(f)["unthrottled-".Length..], out var pid) ? pid : 0).Where(IsClaude)];
 
+    /// <summary>Whether the CLI <paramref name="pid"/> has an /unthrottle mark, the same check the pace gate makes before skipping its holds.</summary>
+    public bool IsUnthrottled(int pid) => File.Exists(Path.Combine(Directory, "unthrottled-" + pid));
+
     /// <summary>Where the context gate logs each time it kept a CLI going (or let one stop that insisted).</summary>
     public string KeepGoingLog => Path.Combine(Directory, "keep-going.jsonl");
 

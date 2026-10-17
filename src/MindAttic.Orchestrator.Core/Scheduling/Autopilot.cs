@@ -354,21 +354,24 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// approved, already the only ones in the queue) of <paramref name="repos"/> ("*": all) that nobody has, in queue order,
     /// as many as the pace's subagent allowance has room for (or <paramref name="count"/>). With <paramref name="claim"/>
     /// each gets its own worktree from the repo's main line and an assignment, so it isn't handed out twice; when nothing
-    /// is handed out, <c>Why</c> says why.
+    /// is handed out, <c>Why</c> says why. For an <paramref name="unthrottled"/> CLI (/unthrottle, M.ORCH-T195) the pace's
+    /// subagent allowance, room and wind-down don't apply, as the pace gate skips its holds for it: it gets <paramref name="count"/>
+    /// or <see cref="OrchestratorSettings.MaxConcurrentSessions"/>, and the daemon's next measurement holds everyone else to make up
+    /// for it. Only the window's hard stop still applies.
     /// </summary>
     public static (IReadOnlyList<Handout> Handed, string? Why) Next(SchedulePlan plan, OrchestratorSettings settings, JsonStore store,
         IReadOnlyList<string> repos, int? count, bool claim, DateTime nowUtc,
-        Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree = null, Func<string, string>? mainlineOf = null)
+        Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree = null, Func<string, string>? mainlineOf = null, bool unthrottled = false)
     {
         makeWorktree ??= Dispatcher.EnsureWorktree;
         mainlineOf ??= Dispatcher.Mainline;
         if (plan.Pace is { Stop: true }) return ([], "the 5-hour window is at its target: nothing starts before it resets");
         bool Named(string repo) => Autopilot.Named(repos, repo);
-        var room = plan.Pace?.RoomTokens;
+        var room = unthrottled ? null : plan.Pace?.RoomTokens;
         var open = plan.Queue.Where(q => Named(q.Repo) && q.RepoPath.Length > 0 && !q.IsAssigned && q.BlockedBy.Count == 0 &&
             !(room is { } left && q.Estimate is { } e && e.Fresh > left) &&
-            // Past the wind-down line only a ticket known to fit what's left starts.
-            !(plan.Pace is { WindDown: true } && q.Estimate is null)).ToList();
+            // Past the wind-down line only a ticket known to fit what's left starts (unless the CLI is unthrottled).
+            !(!unthrottled && plan.Pace is { WindDown: true } && q.Estimate is null)).ToList();
         if (open.Count == 0)
         {
             var waiting = plan.AwaitingApproval.Count(q => Named(q.Repo));
@@ -377,7 +380,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 : busy > 0 ? $"{busy} already being worked; nothing else is ready"
                 : "no open fixes or approved tickets left there");
         }
-        var more = count ?? (plan.Pace?.SubagentAllowance is { } allowed ? allowed - plan.Pace.Subagents : settings.MaxConcurrentSessions);
+        var more = count ?? (!unthrottled && plan.Pace?.SubagentAllowance is { } allowed ? allowed - plan.Pace.Subagents : settings.MaxConcurrentSessions);
         if (more <= 0) return ([], "the pace has no room for another subagent right now; run it again in a few minutes");
 
         var handed = new List<Handout>();

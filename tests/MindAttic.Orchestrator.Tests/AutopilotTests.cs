@@ -220,6 +220,34 @@ public sealed class AutopilotTests
     }
 
     [Test]
+    public void An_unthrottled_cli_is_handed_tickets_past_the_subagent_allowance_room_and_wind_down_but_not_past_the_stop()
+    {
+        // M.ORCH-T195: /unthrottle reaches `orchestrator next --claim` as it reaches the pace gate's holds.
+        var snap = Snap(("A", [T("A-T1"), T("A-T2"), T("A-T3")]));
+        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT", MaxConcurrentSessions = 2 };
+        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
+        var plan = Paced(snap, 5);
+        // A-T1 costs more than is left; A-T2 and A-T3 have no estimate, so past the wind-down line they'd wait.
+        plan = plan with
+        {
+            Queue = [.. plan.Queue.Select(q => q.Id == "A-T1" ? q with { Estimate = new CostEstimate(5_000_000, 3, "fixes") } : q)],
+            Pace = plan.Pace! with { SubagentAllowance = 2, Subagents = 2, RoomTokens = 1_000, WindDown = true },
+        };
+
+        var (held, why) = Autopilot.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main");
+        Assert.That(held, Is.Empty, "a throttled CLI gets nothing: no estimate fits, and past the wind-down line the rest wait");
+
+        var (handed, whyNot) = Autopilot.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", unthrottled: true);
+        Assert.That((handed.Count, whyNot), Is.EqualTo((2, (string?)null)), "MaxConcurrentSessions of them, whatever the allowance, room or wind-down");
+        Assert.That(Autopilot.Next(plan, settings, store, ["A"], 3, claim: false, Now, Make, _ => "main", unthrottled: true).Handed, Has.Count.EqualTo(3),
+            "--count is honoured as asked");
+
+        var stopped = plan with { Pace = plan.Pace! with { Stop = true } };
+        Assert.That(Autopilot.Next(stopped, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", unthrottled: true).Why,
+            Does.Contain("at its target"), "the window's hard stop still applies");
+    }
+
+    [Test]
     public void The_daemon_no_longer_starts_headless_agents_of_its_own()
     {
         var snap = Snap(("A", [T("A-T1")]));
