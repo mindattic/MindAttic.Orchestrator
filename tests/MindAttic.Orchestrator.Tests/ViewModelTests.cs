@@ -79,6 +79,36 @@ public sealed class ViewModelTests
     }
 
     [Test]
+    public async Task A_second_send_while_the_first_is_under_way_types_nothing_more()
+    {
+        var pipe = "orch-vm-" + Guid.NewGuid().ToString("N");
+        var received = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(6));
+        var server = Task.Run(async () =>
+        {
+            try
+            {
+                while (true)
+                {
+                    using var s = new System.IO.Pipes.NamedPipeServerStream(pipe, System.IO.Pipes.PipeDirection.In, 4,
+                        System.IO.Pipes.PipeTransmissionMode.Byte, System.IO.Pipes.PipeOptions.Asynchronous);
+                    await s.WaitForConnectionAsync(stop.Token);
+                    using var r = new StreamReader(s);
+                    received.Enqueue(await r.ReadToEndAsync(stop.Token));
+                }
+            }
+            catch (OperationCanceledException) { }
+        });
+        var row = new HostRowViewModel(new HostSession("Claude", 1, pipe, null)) { Draft = "hello" };
+        var first = row.SendAsync();
+        var second = row.SendAsync(); // a double click
+        await Task.WhenAll(first, second);
+        Assert.That((row.Draft, row.Sending), Is.EqualTo(("", false)));
+        await server;
+        Assert.That(received.Count(t => t == "hello"), Is.EqualTo(1), "the text is typed once");
+    }
+
+    [Test]
     public void Saving_other_settings_never_rounds_a_budget_set_to_the_token()
     {
         var store = new JsonStore(dir);

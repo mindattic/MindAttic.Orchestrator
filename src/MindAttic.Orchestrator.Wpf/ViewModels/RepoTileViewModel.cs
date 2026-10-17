@@ -109,7 +109,7 @@ public sealed class HostRowViewModel : ObservableObject
     public HostRowViewModel(HostSession host)
     {
         this.host = host;
-        SendCommand = new RelayCommand(async () => await SendAsync(), () => !string.IsNullOrWhiteSpace(Draft));
+        SendCommand = new RelayCommand(async () => await SendAsync(), () => !Sending && !string.IsNullOrWhiteSpace(Draft));
     }
 
     public string PipeName => host.PipeName;
@@ -125,12 +125,26 @@ public sealed class HostRowViewModel : ObservableObject
         Raise(nameof(Detail));
     }
 
-    private async Task SendAsync()
+    /// <summary>Set while a send is under way: Enter follows the text a second later, and a second click in that time
+    /// would type the text into the tab again.</summary>
+    internal bool Sending { get; private set; }
+
+    internal async Task SendAsync()
     {
-        var text = Draft;
-        var ok = await SessionControl.SubmitAsync(host.PipeName, text);
-        if (ok) Draft = "";
-        Feedback = ok ? "Sent." : "Couldn't reach that tab; it may have closed.";
+        if (Sending) return;
+        Sending = true;
+        try
+        {
+            var text = Draft;
+            var ok = await SessionControl.SubmitAsync(host.PipeName, text);
+            if (ok) Draft = "";
+            Feedback = ok ? "Sent." : "Couldn't reach that tab; it may have closed.";
+        }
+        finally
+        {
+            Sending = false;
+            CommandManager.InvalidateRequerySuggested();
+        }
     }
 }
 
