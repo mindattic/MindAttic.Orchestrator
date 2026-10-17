@@ -46,6 +46,8 @@ public sealed class AgentGateTests
 
         File.Delete(Path.Combine(Claude, "commands", "autopilot.md"));
         Assert.That(AgentGate.Ensure(Claude), Is.EqualTo("wrote autopilot.md"), "a missing command is written back");
+        // Since M.ORCH-T164 nothing works tickets in background agents: /autopilot mustn't tell the CLI something carries on.
+        Assert.That(AgentGate.AutopilotCommand, Does.Not.Contain("background agents of their own").And.Contain("this CLI's own subagents or nobody"));
     }
 
     [Test]
