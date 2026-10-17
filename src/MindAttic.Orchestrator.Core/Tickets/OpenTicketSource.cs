@@ -36,6 +36,9 @@ public sealed class OpenTicketSource
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
             warnings.Add($"{repo.Name}: {ex.Message}");
+            // Caught mid-write (or held by an editor or git): its last good read stands, not "no open tickets", which
+            // would read every claimed ticket as finished and let autopilot reap live assignments. Read again next time.
+            if (hit.Open is not null) return hit.Open;
             open = [];
         }
         cache[path] = (written, open);
