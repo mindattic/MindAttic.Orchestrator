@@ -700,12 +700,13 @@ public static class AgentGate
                 except Exception:
                     claimed = set()
                 # A claim gone stale is back in the queue, and `orchestrator next` hands it out again: it's work. Only the
-                # running daemon's list counts: one left by a daemon that stopped may name a ticket claimed afresh since.
+                # running daemon's list counts (it rewrites it each minute): one left by a daemon that stopped may name a
+                # ticket claimed afresh since.
                 try:
-                    if not orchestrator_status():  # stale or missing: no daemon running to stand behind its list
+                    stale = Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "{{{Daemon.StaleTicketsName}}}.json"
+                    if time.time() - stale.stat().st_mtime > {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}}:
                         raise ValueError("no daemon")
-                    claimed -= {(i or "").upper() for i in json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" /
-                                "MindAttic.Orchestrator" / "{{{Daemon.StaleTicketsName}}}.json").read_text()) or []}
+                    claimed -= {(i or "").upper() for i in json.loads(stale.read_text()) or []}
                 except Exception:
                     pass
                 named = {r.lower() for r in repos}
