@@ -64,7 +64,10 @@ public sealed class OpenTicketSource
             catch (Exception ex) when (ex is IOException or InvalidOperationException or Microsoft.Data.Sqlite.SqliteException)
             {
                 warnings.Add($"workflow database: {ex.Message}");
-                return null;
+                // A read that fails mid-write (the database locked) keeps the last good read rather than fall back to
+                // USER_STORIES.md, which can lag it: a ticket missing there reads as finished, and autopilot would reap
+                // its live assignment. The read is tried again next time, since the cached time still differs.
+                if (fromDb is not { } last || last.Path != path) return null;
             }
         }
         return fromDb!.Value.Repos.Contains(repo.Name) ? [.. fromDb.Value.Open[repo.Name]] : null;

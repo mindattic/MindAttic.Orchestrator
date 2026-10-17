@@ -91,4 +91,37 @@ public sealed class OpenTicketSourceTests
         Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(new[] { "A-T2" }), "re-read once the database changed");
         Assert.That(warnings, Is.Empty);
     }
+
+    [Test]
+    public void A_database_read_that_fails_keeps_the_last_good_read_not_the_markdown()
+    {
+        // The markdown lags the database: it still lists A-T1 open, and lacks A-T3, which autopilot is working.
+        var a = Repo("A", "A", "| A-T1 | 2026-10-01 | fix | open | one | — |\n");
+        var path = WorkflowDb.DefaultPath(root);
+        using (var db = WorkflowDb.Open(path))
+        {
+            db.Import([a]);
+            db.Close("A-T1", reference: "done");
+            db.Add("A", "fix", MindAttic.Workflow.Tickets.TicketRules.Open, "three", "—");
+        }
+        var source = new OpenTicketSource();
+        var warnings = new List<string>();
+        var good = source.OpenFor(a, warnings).Select(t => t.Id).ToList();
+        Assert.That(good, Has.Count.EqualTo(1).And.None.EqualTo("A-T1"));
+
+        SqliteConnection.ClearAllPools();
+        var saved = File.ReadAllBytes(path);
+        File.WriteAllText(path, "not a database: caught mid-write");
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(5));
+        Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(good), "the last good read, not the stale markdown");
+        Assert.That(warnings, Has.Count.EqualTo(1).And.Some.StartsWith("workflow database:"));
+
+        // WorkflowDb's constructor leaves its connection open when the schema read throws (a MindAttic.Workflow bug, filed
+        // there); only the finalizer lets the file go.
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        File.WriteAllBytes(path, saved);
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(10));
+        Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(good), "read again once it can be");
+    }
 }
