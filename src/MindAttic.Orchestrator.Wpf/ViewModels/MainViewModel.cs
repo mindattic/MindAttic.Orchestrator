@@ -82,7 +82,8 @@ public sealed partial class MainViewModel : ObservableObject
         {
             if (p is not ToastViewModel t) return;
             Toasts.Remove(t);
-            if (t.Target is not null) Select(t.Target);
+            // To the repo's detail, from whichever view: not Select, a toggle that only shows in the Repos view.
+            if (t.Target is not null) SelectRepo(t.Target.Name);
         });
         ClearSearchCommand = new RelayCommand(() => Search = "");
         InitPhases();
