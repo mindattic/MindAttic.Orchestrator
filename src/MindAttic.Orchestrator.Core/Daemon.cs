@@ -123,6 +123,10 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     Alert("Looks stuck", $"A session in {x.Repo} keeps repeating {x.Loop.Describe()}.", urgent: true);
                 }
                 knownStuck.IntersectWith(stuck.Select(x => x.SessionId + x.Loop.Tool + x.Loop.Input));
+
+                // An hour and half an hour before the reset: a window on course to end under its target with nothing for any
+                // CLI to work is said, never acted on (M.ORCH-T176).
+                ReportUnderTarget(snapshot, plan, cycler.AutopilotClis());
                 tick.Lap("keep-going and alerts");
 
                 RunAuditIfDue(options, s);
@@ -162,6 +166,16 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             WaitForNextRefresh(interval, cancel);
         }
         Say(LogEventLevel.Information, "daemon stopped");
+    }
+
+    private readonly UnderTarget underTarget = new();
+
+    /// <summary>Logs and raises the Needs-you alert when <see cref="UnderTarget"/> says one is due.</summary>
+    internal void ReportUnderTarget(Snapshot snapshot, SchedulePlan plan, IReadOnlyDictionary<int, IReadOnlyList<string>> autopilotClis)
+    {
+        if (underTarget.Check(snapshot, plan, autopilotClis, snapshot.TakenUtc) is not { } line) return;
+        Say(LogEventLevel.Warning, $"under target: {line}");
+        Alert("Needs you", line);
     }
 
     private DateTime? reportedFailing;
