@@ -139,9 +139,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         {
             if (!byName.TryGetValue(next.Repo, out var repo) || failed.Contains(repo.Name)) continue;
             if (next.IsAssigned || next.BlockedBy.Count > 0 || parked.Contains(next.Id) ||
-                (room is { } left && next.Estimate is { } e && e.Fresh > left) ||
-                // Past the wind-down line only a story known to fit what's left starts: one that can't finish before the stop waits for the reset.
-                (plan.Pace is { WindDown: true } && next.Estimate is null)) continue;
+                (room is { } left && next.Estimate is { } e && e.Fresh > left)) continue;
             if (more <= 0)
             {
                 Tell("cap", $"autopilot: {running} agent{(running == 1 ? "" : "s")} working; the pace has no room for another right now");
@@ -368,12 +366,13 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         makeWorktree ??= Dispatcher.EnsureWorktree;
         mainlineOf ??= Dispatcher.Mainline;
         if (plan.Pace is { Stop: true }) return ([], "the 5-hour window is at its target: nothing starts before it resets");
+        // Past the wind-down line nothing new starts until the reset, estimate or not (M.ORCH-T254: five tickets whose
+        // estimates each fit what was left went out at 96.6% as the reset neared and the allowance opened back up).
+        if (!unthrottled && plan.Pace is { WindDown: true } wound) return ([], wound.WindDownHold);
         bool Named(string repo) => Autopilot.Named(repos, repo);
         var room = unthrottled ? null : plan.Pace?.RoomTokens;
         var open = plan.Queue.Where(q => Named(q.Repo) && q.RepoPath.Length > 0 && !q.IsAssigned && q.BlockedBy.Count == 0 &&
-            !(room is { } left && q.Estimate is { } e && e.Fresh > left) &&
-            // Past the wind-down line only a ticket known to fit what's left starts (unless the CLI is unthrottled).
-            !(!unthrottled && plan.Pace is { WindDown: true } && q.Estimate is null)).ToList();
+            !(room is { } left && q.Estimate is { } e && e.Fresh > left)).ToList();
         if (open.Count == 0)
         {
             var waiting = plan.AwaitingApproval.Count(q => Named(q.Repo));
@@ -430,6 +429,8 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// <summary>Why the pace can't afford another story right now; null when it can.</summary>
     internal static string? PaceHold(SchedulePlan plan, Snapshot snapshot) =>
         plan.Pace is { Mode: PaceMode.Over or PaceMode.Coast } p ? $"pace: {p.Note}"
+        // Past the wind-down line no new story starts until the reset (M.ORCH-T254).
+        : plan.Pace is { WindDown: true } w ? $"pace: {w.WindDownHold}"
         : snapshot.Budget is { Level: BudgetLevel.Over } b ? $"budget at {b.WorstPercent:0}%"
         : null;
 

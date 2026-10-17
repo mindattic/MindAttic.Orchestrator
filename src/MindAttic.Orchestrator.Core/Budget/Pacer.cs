@@ -53,8 +53,14 @@ public sealed record Pace(
     public bool Stop { get; init; }
 
     /// <summary>The window is past <see cref="Pacer.WindDownShare"/> of its limit: agents start only what they can finish
-    /// before the stop, and file what they can't as a ticket; autopilot starts only stories whose estimate fits.</summary>
+    /// before the stop, and file what they can't as a ticket; autopilot starts no new ticket until the window resets
+    /// (M.ORCH-T254: tickets whose estimate fit what was left still went out, five at once as the reset neared).</summary>
     public bool WindDown { get; init; }
+
+    /// <summary>Why no new ticket starts past the wind-down line; empty when it isn't passed (or the window is stopped).</summary>
+    public string WindDownHold => !WindDown || Stop ? "" :
+        $"the {Governing ?? "5-hour"} window is past {Pacer.WindDownShare:P0} of its limit: no new ticket starts before it resets" +
+        (ResetUtc is { } r ? $" at {r.ToLocalTime():h:mm tt}" : "");
 
     public string WindDownNote => !WindDown || Stop ? "" :
         $"The {Governing ?? "5-hour"} window is past {Pacer.WindDownShare:P0} of its limit" + (ResetUtc is { } r ? $" (resets {r.ToLocalTime():h:mm tt})" : "") +
