@@ -370,7 +370,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         pilotRunning ??= a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc);
         makeWorktree ??= Dispatcher.EnsureWorktree;
         mainlineOf ??= Dispatcher.Mainline;
-        if (plan.Stopped) return ([], "the 5-hour window is at its target: nothing starts before it resets");
+        if (plan.Stopped)
+            return ([], $"the {plan.Pace?.Governing ?? "5-hour"} window is at its target: nothing starts before it resets" +
+                (plan.Pace?.ResetUtc is { } reset ? $" ({Formatting.ResetTime(reset, nowUtc)})" : ""));
         // Past the wind-down line nothing new starts until the reset, estimate or not (M.ORCH-T254: five tickets whose
         // estimates each fit what was left went out at 96.6% as the reset neared and the allowance opened back up).
         if (!unthrottled && plan.Pace is { WindDown: true } wound) return ([], wound.WindDownHold);

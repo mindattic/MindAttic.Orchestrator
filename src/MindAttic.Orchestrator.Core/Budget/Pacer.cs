@@ -121,8 +121,8 @@ public static class Pacer
         {
             var name = b.AtLimitKind == LimitKind.Weekly ? "weekly" : "5-hour";
             return new Pace(PaceMode.Over, 0, 0, recent, null, name, until,
-                $"At the {name} limit until {Clock(until)}.",
-                $"At the {name} limit until {Clock(until)}. Finish the current step and stop at a clean point.")
+                $"At the {name} limit until {Formatting.ResetTime(until, nowUtc)}.",
+                $"At the {name} limit until {Formatting.ResetTime(until, nowUtc)}. Finish the current step and stop at a clean point.")
             { SubagentAllowance = 0, Subagents = subagents, Stop = true };
         }
 
