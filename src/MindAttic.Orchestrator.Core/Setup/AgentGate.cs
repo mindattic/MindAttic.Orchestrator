@@ -905,7 +905,7 @@ public static class AgentGate
                     pass
                 print(json.dumps({"decision": "block", "reason": "Not sent, so no tokens were spent: the 5-hour window is at its target "
                     "(MindAttic.Orchestrator never lets it pass the limit). Typing works again when it resets at " +
-                    str(limits.get("reset_time") or "the end of the window") + ". /autopilot, /throttle and /goal still go through."}))
+                    str(limits.get("reset_time") or "the end of the window") + ". /autopilot, /throttle and /goal clear still go through."}))
                 sys.exit(0)
         DIR.mkdir(parents=True, exist_ok=True)
         state_file = DIR / (sid + ".state.json")
