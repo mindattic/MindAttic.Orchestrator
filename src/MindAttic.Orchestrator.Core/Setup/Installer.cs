@@ -47,10 +47,50 @@ public sealed class Installer
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return fallback; }
     }
 
-    /// <summary>A dev build (bin\Debug, bin\Release, dotnet run) never installs itself.</summary>
-    public static bool IsDevBuild(string exePath) =>
-        exePath.Contains(@"\bin\Debug\", StringComparison.OrdinalIgnoreCase) ||
-        exePath.Contains(@"\bin\Release\", StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// A dev or test build never installs itself on a double-click: bin\Debug, bin\Release, obj, anything
+    /// inside a git checkout or worktree (a repo's artifacts folder, a worktree's publish), a *.worktrees
+    /// folder, or the temp folder (an agent's scratch copy). Only <c>--install</c> installs those.
+    /// </summary>
+    public static bool IsDevBuild(string exePath) => IsDevBuild(exePath, Path.GetTempPath());
+
+    internal static bool IsDevBuild(string exePath, string tempDir)
+    {
+        if (exePath.Contains(@"\bin\Debug\", StringComparison.OrdinalIgnoreCase) ||
+            exePath.Contains(@"\bin\Release\", StringComparison.OrdinalIgnoreCase) ||
+            exePath.Contains(@"\obj\", StringComparison.OrdinalIgnoreCase) ||
+            exePath.Contains(@".worktrees\", StringComparison.OrdinalIgnoreCase))
+            return true;
+        string full;
+        try { full = Path.GetFullPath(exePath); }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { return false; }
+        if (!string.IsNullOrWhiteSpace(tempDir))
+        {
+            var temp = Path.GetFullPath(tempDir).TrimEnd('\\') + '\\';
+            if (full.StartsWith(temp, StringComparison.OrdinalIgnoreCase)) return true;
+        }
+        // A worktree's .git is a file, a checkout's a folder.
+        for (var dir = Path.GetDirectoryName(full); !string.IsNullOrEmpty(dir); dir = Path.GetDirectoryName(dir))
+        {
+            var git = Path.Combine(dir, ".git");
+            if (Directory.Exists(git) || File.Exists(git)) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Why <paramref name="runningExe"/> mustn't replace the installed copy, or null when it may: an
+    /// installed exe built later than this one is never downgraded (a copy keeps its build's write time).
+    /// </summary>
+    public string? WhyNotReplace(string runningExe)
+    {
+        if (IsInstalled(runningExe) || !File.Exists(InstalledExe)) return null;
+        var installed = File.GetLastWriteTimeUtc(InstalledExe);
+        var mine = File.GetLastWriteTimeUtc(runningExe);
+        return installed > mine
+            ? $"the installed {InstalledExe} ({installed.ToLocalTime():yyyy-MM-dd HH:mm}) is newer than this build ({mine.ToLocalTime():yyyy-MM-dd HH:mm})"
+            : null;
+    }
 
     /// <summary>Whether two paths name the same file; an empty one (a shortcut with no icon set reports ",0") names none.</summary>
     public static bool SamePath(string a, string b) =>
@@ -66,8 +106,9 @@ public sealed class Installer
     /// Copies <paramref name="runningExe"/> over the installed copy. An installed daemon or dashboard
     /// holds that file open, so they're stopped first (it's an upgrade; the daemon restarts after).
     /// </summary>
-    public void Install(string runningExe)
+    public void Install(string runningExe, bool force = false)
     {
+        if (!force && WhyNotReplace(runningExe) is { } why) throw new IOException($"Not installing: {why}. Pass --force to install it anyway.");
         Directory.CreateDirectory(InstallDir);
         StopInstalledCopies();
         File.Copy(runningExe, InstalledExe, overwrite: true);

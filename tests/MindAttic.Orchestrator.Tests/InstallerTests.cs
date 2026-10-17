@@ -21,10 +21,60 @@ public sealed class InstallerTests
     }
 
     [TestCase(@"D:\Projects\MindAttic\MindAttic.Orchestrator\src\MindAttic.Orchestrator.Wpf\bin\Debug\net10.0-windows\MindAttic.Orchestrator.exe", true)]
+    [TestCase(@"Z:\x\src\MindAttic.Orchestrator.Wpf\obj\Release\net10.0-windows\win-x64\MindAttic.Orchestrator.exe", true)]
+    [TestCase(@"Z:\Projects\MindAttic.worktrees\MindAttic.Orchestrator\M.ORCH-T200\artifacts\MindAttic.Orchestrator.exe", true)]
+    [TestCase(@"Z:\Temp\claude\scratchpad\orch-test\MindAttic.Orchestrator.exe", true)]
     [TestCase(@"C:\Users\me\Downloads\MindAttic.Orchestrator.exe", false)]
     [TestCase(@"C:\Apps\MindAttic.Orchestrator\MindAttic.Orchestrator.exe", false)]
     public void Dev_builds_never_install_themselves(string exe, bool dev) =>
-        Assert.That(Installer.IsDevBuild(exe), Is.EqualTo(dev));
+        Assert.That(Installer.IsDevBuild(exe, @"Z:\Temp\"), Is.EqualTo(dev));
+
+    [Test]
+    public void A_copy_inside_a_git_checkout_or_worktree_is_a_dev_build()
+    {
+        // M.ORCH-T225: a test build run from a worktree folder self-installed over C:\Apps.
+        var root = Path.Combine(Path.GetTempPath(), "orch-dev-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var checkout = Path.Combine(root, "Repo");
+            var worktree = Path.Combine(root, "Worktree");
+            Directory.CreateDirectory(Path.Combine(checkout, ".git"));
+            Directory.CreateDirectory(Path.Combine(worktree, "artifacts"));
+            File.WriteAllText(Path.Combine(worktree, ".git"), "gitdir: elsewhere");
+            var notTemp = Path.Combine(root, "not-temp");
+            Assert.That(Installer.IsDevBuild(Path.Combine(checkout, "artifacts", Installer.ExeName), notTemp), Is.True, "a checkout's .git folder");
+            Assert.That(Installer.IsDevBuild(Path.Combine(worktree, "artifacts", Installer.ExeName), notTemp), Is.True, "a worktree's .git file");
+            Assert.That(Installer.IsDevBuild(Path.Combine(root, "Downloads", Installer.ExeName), notTemp), Is.False, "no repo above it: a download");
+            Assert.That(Installer.IsDevBuild(Path.Combine(root, "Downloads", Installer.ExeName), root), Is.True, "under the temp folder: a scratch copy");
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Test]
+    public void A_newer_installed_exe_is_never_replaced_by_an_older_copy()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "orch-newer-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var installer = new Installer(Path.Combine(root, "Apps"));
+            var copy = Path.Combine(root, "Downloads", Installer.ExeName);
+            Directory.CreateDirectory(installer.InstallDir);
+            Directory.CreateDirectory(Path.GetDirectoryName(copy)!);
+            File.WriteAllText(installer.InstalledExe, "installed");
+            File.WriteAllText(copy, "copy");
+            Assert.That(installer.WhyNotReplace(installer.InstalledExe), Is.Null, "the installed copy itself");
+
+            File.SetLastWriteTimeUtc(installer.InstalledExe, DateTime.UtcNow);
+            File.SetLastWriteTimeUtc(copy, DateTime.UtcNow.AddHours(-1));
+            Assert.That(installer.WhyNotReplace(copy), Does.Contain("newer"));
+            Assert.Throws<IOException>(() => installer.Install(copy));
+            Assert.That(File.ReadAllText(installer.InstalledExe), Is.EqualTo("installed"), "the newer install is untouched");
+
+            File.SetLastWriteTimeUtc(copy, DateTime.UtcNow.AddHours(1));
+            Assert.That(installer.WhyNotReplace(copy), Is.Null, "a newer copy upgrades");
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
 
     [Test]
     public void A_shortcut_with_no_icon_set_is_not_the_same_path_and_does_not_throw()

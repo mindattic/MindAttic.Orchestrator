@@ -53,12 +53,13 @@ public partial class App : Application
 
         var self = Environment.ProcessPath!;
 
-        // What a double-click does, without the window: deploy.ps1 runs this after publishing.
+        // What a double-click does, without the window: deploy.ps1 runs this after publishing. The one way a
+        // dev or worktree build installs; it still won't replace a newer installed exe unless --force is passed too.
         if (e.Args.Contains("--install", StringComparer.OrdinalIgnoreCase))
         {
             try
             {
-                if (!installer.IsInstalled(self)) installer.Install(self);
+                if (!installer.IsInstalled(self)) installer.Install(self, force: e.Args.Contains("--force", StringComparer.OrdinalIgnoreCase));
                 log.Information("Installed {Exe:l}", installer.InstalledExe);
                 if (EnsureWorkspace(log)) RepairSetup(installer, installer.InstalledExe, log);
             }
@@ -73,10 +74,18 @@ public partial class App : Application
             return;
         }
 
+        // A dev, worktree or scratch build runs as itself and leaves the install alone (M.ORCH-T225): only a
+        // downloaded copy installs on a double-click, and never over a newer installed exe.
         var dev = Installer.IsDevBuild(self);
         if (!dev && !installer.IsInstalled(self))
         {
-            if (TryInstallAndHandOver(installer, self, log)) { Shutdown(); return; }
+            if (installer.WhyNotReplace(self) is { } why)
+            {
+                log.Information("Not installing {Self:l}: {Why:l}; starting the installed copy instead", self, why);
+                if (TryHandOver(installer, log)) { Shutdown(); return; }
+                dev = true; // couldn't start it: run from here, without repointing the daemon and shortcuts at this older copy
+            }
+            else if (TryInstallAndHandOver(installer, self, log)) { Shutdown(); return; }
         }
 
         if (!EnsureWorkspace(log)) { Shutdown(); return; }
@@ -114,7 +123,7 @@ public partial class App : Application
         }.Start();
     }
 
-    /// <summary>Running from a download folder (or an older copy): install there and start the installed copy instead.</summary>
+    /// <summary>Running from a download folder over an older install (or none): install there and start the installed copy instead.</summary>
     private static bool TryInstallAndHandOver(Installer installer, string self, Serilog.ILogger log)
     {
         try
@@ -129,6 +138,21 @@ public partial class App : Application
             log.Error(ex, "Installing to {Dir:l} failed; running from {Self:l}", installer.InstallDir, self);
             MessageBox.Show($"Couldn't install to {installer.InstallDir}: {ex.Message}\n\nRunning from here instead; the background daemon will point at this copy.",
                 "MindAttic Orchestrator", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+    }
+
+    /// <summary>An older copy run from elsewhere: start the newer installed copy instead of replacing it.</summary>
+    private static bool TryHandOver(Installer installer, Serilog.ILogger log)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(installer.InstalledExe) { UseShellExecute = true, WorkingDirectory = installer.InstallDir });
+            return true;
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            log.Error(ex, "Starting the installed {Exe:l} failed; running from here", installer.InstalledExe);
             return false;
         }
     }
