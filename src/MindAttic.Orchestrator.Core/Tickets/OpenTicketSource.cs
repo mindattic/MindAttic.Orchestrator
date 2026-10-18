@@ -38,8 +38,8 @@ public sealed class OpenTicketSource
             warnings.Add($"{repo.Name}: {ex.Message}");
             // Caught mid-write (or held by an editor or git): its last good read stands, not "no open tickets", which
             // would read every claimed ticket as finished and let autopilot reap live assignments. Read again next time.
-            if (hit.Open is not null) return hit.Open;
-            open = [];
+            // With no good read yet, nothing is cached either: cached under this write time it would stand until the file changed.
+            return hit.Open ?? [];
         }
         cache[path] = (written, open);
         return open;

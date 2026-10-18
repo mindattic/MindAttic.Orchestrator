@@ -69,6 +69,17 @@ public sealed class OpenTicketSourceTests
     }
 
     [Test]
+    public void A_first_markdown_read_that_fails_is_tried_again_not_kept_as_no_tickets()
+    {
+        var a = Repo("A", "A", "| A-T1 | 2026-10-01 | fix | open | one | — |\n");
+        var source = new OpenTicketSource();
+        var warnings = new List<string>();
+        using (new FileStream(a.StoriesPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) // held when the daemon starts
+            Assert.That(source.OpenFor(a, warnings), Is.Empty);
+        Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(new[] { "A-T1" }), "the same file, unchanged, read once it can be");
+    }
+
+    [Test]
     public void Once_migrated_it_reads_the_database_with_its_prerequisites_and_falls_back_for_repos_not_in_it()
     {
         var a = Repo("A", "A", "| A-T1 | 2026-10-01 | fix | open | one, blocked by A-T2 | — |\n| A-T2 | 2026-10-01 | fix | open | two | — |\n");
