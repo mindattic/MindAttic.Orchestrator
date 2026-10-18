@@ -73,7 +73,8 @@ public sealed partial class MainViewModel
         get => viewChoice;
         set
         {
-            if (!Set(ref viewChoice, value)) return;
+            // Ctrl+click on the selected pill deselects it: the window jumped to Agents with no pill lit (M.ORCH-T432).
+            if (value is null || !Set(ref viewChoice, value)) return;
             view = Enum.TryParse<View>(value, out var v) ? v : View.Agents;
             Raise(nameof(IsReposView)); Raise(nameof(IsQueueView)); Raise(nameof(IsAuditView)); Raise(nameof(IsAgentsView)); Raise(nameof(ShowDetail));
         }
