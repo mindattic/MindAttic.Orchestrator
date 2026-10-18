@@ -1495,7 +1495,7 @@ public static class AgentGate
         })
         {
             if (File.Exists(path) && File.ReadAllText(path) == body) continue;
-            File.WriteAllText(path, body);
+            WriteReplacing(path, body);
             did.Add("wrote " + Path.GetFileName(path));
         }
 
@@ -1520,9 +1520,7 @@ public static class AgentGate
         }
         if (changed)
         {
-            var temp = settingsPath + ".tmp";
-            File.WriteAllText(temp, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
-            File.Move(temp, settingsPath, overwrite: true);
+            WriteReplacing(settingsPath, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
             did.Add("registered the pace and context gate hooks");
         }
         return did.Count > 0 ? string.Join(", ", did) : null;
@@ -1577,10 +1575,22 @@ public static class AgentGate
         try { root = File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path)) as JsonObject : new JsonObject(); }
         catch (JsonException) { return null; }
         if (root is null || !AddHook(root, hookEvent, scriptName, command, timeout)) return null;
-        var temp = path + ".tmp";
-        File.WriteAllText(temp, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
-        File.Move(temp, path, overwrite: true);
+        WriteReplacing(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
         return $"wired {hookEvent} into {Path.GetFileName(path)}";
+    }
+
+    /// <summary>Puts <paramref name="text"/> in place whole: a hook started mid-write would run half a script (a SyntaxError
+    /// Claude Code shrugs off, so that call goes ungated), and the temp file is this writer's own, so the dashboard and the
+    /// daemon registering at once can't move or overwrite each other's.</summary>
+    private static void WriteReplacing(string path, string text)
+    {
+        var temp = $"{path}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            File.WriteAllText(temp, text);
+            File.Move(temp, path, overwrite: true);
+        }
+        finally { if (File.Exists(temp)) File.Delete(temp); }
     }
 
     /// <summary>Appends a <c>[[hooks]]</c> table to Kimi's <c>config.toml</c> (a plain text append: Kimi's own

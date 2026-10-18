@@ -63,6 +63,7 @@ public sealed class AgentGateTests
         Assert.That(ex.Message, Does.Contain("aren't registered").And.Contain("wrote pace-gate.py"), "the scripts are still written");
         Assert.That(File.Exists(Path.Combine(Claude, "pace-gate.py")), Is.True);
         Assert.That(File.Exists(Settings + ".tmp"), Is.False);
+        Assert.That(Directory.GetFiles(Claude, "*.tmp"), Is.Empty, "scripts are written whole and moved into place");
         Assert.Throws<IOException>(() => AgentGate.Ensure(Claude), "and it's said again next time, never claimed done");
 
         File.WriteAllText(Settings, "[1, 2]");
