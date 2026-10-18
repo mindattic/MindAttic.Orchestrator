@@ -209,7 +209,7 @@ public sealed class SubagentActivityReader(string projectsDir)
                             .Where(b => b.ValueKind == JsonValueKind.Object && b.TryGetProperty("type", out var bt) && bt.GetString() == "text")
                             .Select(b => b.TryGetProperty("text", out var x) ? x.GetString() : null).FirstOrDefault(x => x is { Length: > 0 })
                         : null;
-                    if (text is { Length: > 0 }) tail.Task = ToolCallText.FirstLine(text);
+                    if (text is { Length: > 0 }) tail.Task = ToolCallText.FirstLine(Directive(text));
                 }
                 if (role == "assistant" && content.ValueKind == JsonValueKind.Array)
                     foreach (var block in content.EnumerateArray())
@@ -234,6 +234,20 @@ public sealed class SubagentActivityReader(string projectsDir)
                 tail.Usage += used;
             }
         }
+    }
+
+    private const string ForkBoilerplateEnd = "</fork-boilerplate>";
+    private const string DirectivePrefix = "Your directive:";
+
+    /// <summary>A fork's prompt is Claude Code's <c>&lt;fork-boilerplate&gt;...&lt;/fork-boilerplate&gt;</c> wrapper and then
+    /// "Your directive: ..."; its task is the directive, not the wrapper's first line (M.ORCH-T324).</summary>
+    internal static string Directive(string prompt)
+    {
+        var end = prompt.IndexOf(ForkBoilerplateEnd, StringComparison.Ordinal);
+        if (end < 0 || !prompt.TrimStart().StartsWith("<fork-boilerplate>", StringComparison.Ordinal)) return prompt;
+        var rest = prompt[(end + ForkBoilerplateEnd.Length)..].TrimStart();
+        if (rest.StartsWith(DirectivePrefix, StringComparison.OrdinalIgnoreCase)) rest = rest[DirectivePrefix.Length..].TrimStart();
+        return rest.Length > 0 ? rest : prompt;
     }
 
     private static long Num(JsonElement e, string name) =>

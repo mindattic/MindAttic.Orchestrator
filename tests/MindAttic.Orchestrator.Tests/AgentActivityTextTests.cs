@@ -62,4 +62,26 @@ public sealed class AgentActivityTextTests
         var s = SubagentActivityReader.Running(new ContextCycler(sessionDir), projectsDir, new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc)).Single();
         Assert.That((s.Task, s.Doing), Is.EqualTo(("Find where the pace gate logs holds", "Reading AgentGate.cs")));
     }
+
+    [Test]
+    public void A_forks_task_is_its_directive_not_the_wrapper_claude_code_puts_before_it()
+    {
+        // M.ORCH-T324: a fork's prompt is a tool_result for the parent's Agent call, then the wrapper and the directive.
+        var sessionDir = Directory.CreateTempSubdirectory().FullName;
+        var projectsDir = Directory.CreateTempSubdirectory().FullName;
+        Directory.CreateDirectory(Path.Combine(sessionDir, "subagents"));
+        File.WriteAllText(Path.Combine(sessionDir, "subagents", "a1"), "");
+        var folder = Path.Combine(projectsDir, "proj", "session-1", "subagents");
+        Directory.CreateDirectory(folder);
+        File.WriteAllLines(Path.Combine(folder, "agent-a1.jsonl"),
+        [
+            """{"type":"fork-context-ref","agentId":"a1","parentSessionId":"session-1"}""",
+            """{"type":"user","timestamp":"2026-10-15T11:55:00Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":""},{"type":"text","text":"<fork-boilerplate>\nYou are a worker fork.\nHard rules:\n- one shot\n</fork-boilerplate>\n\nYour directive: Finish and land ticket X-T1 in its worktree.\nThen report."}]}}""",
+        ]);
+
+        var s = SubagentActivityReader.Running(new ContextCycler(sessionDir), projectsDir, new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc)).Single();
+        Assert.That(s.Task, Is.EqualTo("Finish and land ticket X-T1 in its worktree."));
+        Assert.That(SubagentActivityReader.Directive("Plain prompt </fork-boilerplate> mentioned"), Is.EqualTo("Plain prompt </fork-boilerplate> mentioned"),
+            "only a prompt that opens with the wrapper is unwrapped");
+    }
 }
