@@ -209,7 +209,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         if (WaitingPath is null) return;
         try
         {
-            var json = System.Text.Json.JsonSerializer.Serialize(new { repos, left_alone = LeftAlone, at = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ") });
+            var json = System.Text.Json.JsonSerializer.Serialize(new { repos, left_alone = LeftAlone, at = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture) });
             var tmp = $"{WaitingPath}.{Environment.ProcessId}.tmp";
             File.WriteAllText(tmp, json);
             File.Move(tmp, WaitingPath, overwrite: true);

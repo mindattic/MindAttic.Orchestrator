@@ -97,7 +97,7 @@ public static partial class GitHubIntake
         {
             var marker = new Regex($@"{Regex.Escape(item.Marker)}\b");
             if (existing.Concat(filed).Any(t => marker.IsMatch(t.Summary))) continue;
-            filed.Add(dryRun ? new Ticket("(new)", DateTime.Now.ToString("yyyy-MM-dd"), item.Type, TicketRules.Open, item.Summary, item.Url)
+            filed.Add(dryRun ? new Ticket("(new)", DateTime.Now.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), item.Type, TicketRules.Open, item.Summary, item.Url)
                 : db.Add(repo, item.Type, TicketRules.Open, item.Summary, item.Url));
         }
         return filed;

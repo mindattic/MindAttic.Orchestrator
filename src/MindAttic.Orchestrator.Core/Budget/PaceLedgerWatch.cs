@@ -97,7 +97,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
             say(LogEventLevel.Error, "pace ledger: " + line);
             alert("Ran out of tokens", line, true);
             if (nowUtc - hit <= Live)
-                Filed(FileTicket($"[pace-ledger hit resetting {o.ResetUtc:yyyy-MM-ddTHH:mmZ}] {line} The orchestrator must never let this happen: find which draw got past the stop and close the hole."));
+                Filed(FileTicket(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"[pace-ledger hit resetting {o.ResetUtc:yyyy-MM-ddTHH:mmZ}] {line} The orchestrator must never let this happen: find which draw got past the stop and close the hole.")));
         }
         if (fresh.Count > 0) Save();
 

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 
@@ -74,7 +75,9 @@ public sealed class ProviderLogReader(string codexSessionsDir, string geminiTmpD
         if (Directory.Exists(codexSessionsDir))
             for (var day = sinceUtc.ToLocalTime().Date.AddDays(-1); day <= DateTime.Now.Date; day = day.AddDays(1))
             {
-                var dir = Path.Combine(codexSessionsDir, day.ToString("yyyy"), day.ToString("MM"), day.ToString("dd"));
+                // Gregorian whatever the Windows language: th-TH's Buddhist calendar would look under 2569 (and never find one).
+                var dir = Path.Combine(codexSessionsDir, day.ToString("yyyy", CultureInfo.InvariantCulture), day.ToString("MM", CultureInfo.InvariantCulture),
+                    day.ToString("dd", CultureInfo.InvariantCulture));
                 if (!Directory.Exists(dir)) continue;
                 foreach (var f in List(() => Directory.GetFiles(dir, "*.jsonl"))) yield return (f, Providers.Codex, null);
             }
