@@ -427,6 +427,23 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void Claudes_own_stop_names_the_weekday_of_a_reset_tomorrow_under_a_day_off()
+    {
+        // M.ORCH-T407: "resets at 12:01 AM" reads as today's; it's tomorrow's, under 24 hours off.
+        Status(new { stop = false }, at: DateTime.UtcNow.AddMinutes(-10));
+        var reset = DateTime.Today.AddDays(1).AddMinutes(1);
+        File.WriteAllText(Path.Combine(Claude, "claude-usage.json"), JsonSerializer.Serialize(new
+        {
+            rate_limits = new { seven_day = new { used_percentage = 99, resets_at = new DateTimeOffset(reset).ToUnixTimeSeconds() } },
+            at = DateTime.UtcNow.AddMinutes(-1).ToString("yyyy-MM-ddTHH:mm:ssZ"),
+        }));
+
+        var said = Gate(new { hook_event_name = "UserPromptSubmit", session_id = "wk", prompt = "hi", cwd = ws }, AgentGate.ContextScriptName).Output;
+
+        Assert.That(said, Does.Contain($"{reset.ToString("ddd", System.Globalization.CultureInfo.InvariantCulture)} 12:01 AM"));
+    }
+
+    [Test]
     public void The_status_the_daemon_writes_in_the_second_of_a_switch_is_obeyed()
     {
         // M.ORCH-T325: rl-status.json's timestamp is cut to the second; the switch is dated to the fraction.

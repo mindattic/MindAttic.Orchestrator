@@ -318,9 +318,9 @@ public static class AgentGate
                 return "profile"
             return "api-key" if config_account(config) == "{{Budget.ClaudeAccount.ApiKey}}" else "{{Sessions.ContextCycler.SubscriptionAuth}}"
         def reset_text(epoch):
-            # The clock alone within a day; with the weekday when it's further off (a week's reset).
+            # The clock alone today; with the weekday on any other day, even under 24 hours off (M.ORCH-T407).
             at = datetime.fromtimestamp(epoch)
-            return at.strftime("%a %I:%M %p" if epoch - time.time() > 86400 else "%I:%M %p").replace(" 0", " ").lstrip("0")
+            return at.strftime("%a %I:%M %p" if at.date() != datetime.now().date() else "%I:%M %p").replace(" 0", " ").lstrip("0")
         def claude_stop_note(stop, running=False):
             # running: the daemon's status is fresh (it just hasn't stopped yet), so the note doesn't say it's down.
             window = stop[2] if len(stop) > 2 else "5-hour"
