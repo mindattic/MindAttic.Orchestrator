@@ -423,6 +423,23 @@ public sealed class TranscriptReaderTests
     }
 
     [Test]
+    public void A_ticket_filed_through_workflow_exe_or_its_quoted_path_is_seen_as_filed()
+    {
+        // M.ORCH-T444: PowerShell agents must call it `& workflow.exe ticket new`; only `workflow ticket new` was matched.
+        System.IO.File.WriteAllLines(File(), [
+            Call("m1", "tu1", "2026-10-13T12:00:00Z", "& workflow.exe ticket new --repo X --type fix --summary \"a bug\""),
+            Result("tu1", "2026-10-13T12:00:01Z", "X-T8"),
+            Call("m2", "tu2", "2026-10-13T12:00:10Z", @"& ""C:\Tools\workflow.exe"" ticket new --repo X --type fix --summary x"),
+            Result("tu2", "2026-10-13T12:00:11Z", "X-T9"),
+            Call("m3", "tu3", "2026-10-13T12:00:20Z", "workflow.exe ticket list"),
+            Result("tu3", "2026-10-13T12:00:21Z", "X-T10"),
+        ]);
+
+        Assert.That(new TranscriptReader(dir, Cache).Poll(Since).Single().Filing.Select(f => f.TicketId), Is.EquivalentTo(new[] { "X-T8", "X-T9" }));
+        Assert.That(TranscriptReader.FilesTicket("""{"command":"& \"C:\\Tools\\workflow.exe\" ticket new --type fix"}"""), Is.True, "as Claude Code writes the quote");
+    }
+
+    [Test]
     public void Old_transcripts_still_report_whose_they_are()
     {
         System.IO.File.WriteAllLines(File(), [Line("m1", "2026-09-01T12:00:00Z", 1, 1)]);

@@ -493,7 +493,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
             if (block.ValueKind != JsonValueKind.Object || Str(block, "type") != "tool_use") continue;
             var input = block.TryGetProperty("input", out var i) ? i.GetRawText() : "";
             sink.Tools.Add(new ToolCall(at, Str(block, "name") ?? "?", input));
-            if (input.Contains(FileTicketCommand, StringComparison.Ordinal) && Str(block, "id") is { } toolId) sink.PendingFiles.Add(toolId);
+            if (FilesTicket(input) && Str(block, "id") is { } toolId) sink.PendingFiles.Add(toolId);
             if (sink.Tools.Count > LoopDetector.Window * 2) sink.Tools.RemoveRange(0, sink.Tools.Count - LoopDetector.Window);
         }
     }
@@ -542,6 +542,14 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
 
     /// <summary>How an agent files a ticket; it prints the new ticket's id.</summary>
     internal const string FileTicketCommand = "workflow ticket new";
+
+    /// <summary>Whether a tool call's raw input runs <see cref="FileTicketCommand"/>, however it names the CLI: PowerShell agents
+    /// must call it <c>&amp; workflow.exe ticket new</c> (workflow is a PowerShell keyword), or by its quoted path (M.ORCH-T444).</summary>
+    internal static bool FilesTicket(string rawInput) => FileTicketCall().IsMatch(rawInput);
+
+    // The input is raw JSON: a quote after the path is written \" (or ").
+    [System.Text.RegularExpressions.GeneratedRegex(@"\bworkflow(?:\.exe)?(?:\\u0022|\\""|['""])?\s+ticket\s+new\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase)]
+    private static partial System.Text.RegularExpressions.Regex FileTicketCall();
 
     [System.Text.RegularExpressions.GeneratedRegex(@"^\s*(?<id>(?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)\s*$", System.Text.RegularExpressions.RegexOptions.Multiline)]
     private static partial System.Text.RegularExpressions.Regex FiledId();
