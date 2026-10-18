@@ -32,6 +32,8 @@ public sealed class CliHelperTests
     [TestCase("5X")]
     [TestCase("NaN")]
     [TestCase("Infinity")]
+    [TestCase("0.5")] // would round to 0: `budget --block 0.5` cleared the budget, `reserve X 0.3` released it
+    [TestCase("0.0004k")]
     public void Token_counts_refuse_empty_negative_and_junk(string text)
     {
         Assert.That(TokenText.TryParse(text, out var value), Is.False, text);

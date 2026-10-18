@@ -253,6 +253,8 @@ internal static class TokenText
         var scale = char.ToUpperInvariant(t[^1]) switch { 'K' => 1e3, 'M' => 1e6, 'B' => 1e9, _ => 1 };
         if (scale != 1) t = t[..^1];
         if (!double.TryParse(t, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var n) || !double.IsFinite(n) || n < 0) return false;
+        // Under one token would round to 0, which clears a budget or releases a reservation; only a plain 0 means that.
+        if (n * scale is > 0 and < 1) return false;
         value = (long)(n * scale);
         return true;
     }
