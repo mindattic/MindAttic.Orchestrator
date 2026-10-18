@@ -90,7 +90,12 @@ public static class PaceLedger
         var start = endUtc - BudgetCalculator.BlockLength;
         var mine = samples.Where(s => Near(s.ResetUtc, endUtc)).OrderBy(s => s.AtUtc).ToList();
         var owner = accountAt is not null && mine.Count > 0 ? accountAt(mine[^1].AtUtc) : null;
-        if (owner is not null) mine = [.. mine.Where(s => accountAt!(s.AtUtc) is not { } a || a == owner)];
+        if (owner is not null)
+        {
+            mine = [.. mine.Where(s => accountAt!(s.AtUtc) is not { } a || a == owner)];
+            // The old account's limit hit (the usual reason for the /login) isn't this window's either (M.ORCH-T365).
+            hits = [.. hits.Where(h => accountAt!(h.HitUtc) is not { } a || a == owner)];
+        }
         var hit = hits.Where(h => h.Kind == LimitKind.Session && (Near(h.ResetUtc, endUtc) || h.HitUtc >= start && h.HitUtc < endUtc)).MinBy(h => h.HitUtc);
         var weekly = hits.Where(h => h.Kind == LimitKind.Weekly && h.HitUtc >= start && h.HitUtc < endUtc).MinBy(h => h.HitUtc);
         var gate = events.Where(e => e.AtUtc >= start && e.AtUtc < endUtc).ToList();

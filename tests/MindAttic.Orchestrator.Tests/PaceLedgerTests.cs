@@ -61,6 +61,19 @@ public sealed class PaceLedgerTests
     }
 
     [Test]
+    public void The_old_accounts_limit_hit_doesnt_make_the_new_accounts_window_over()
+    {
+        // M.ORCH-T365: A hit its limit, so you signed in to B; A's hit fell inside B's window's span.
+        var login = Start.AddMinutes(10);
+        List<UsageSample> samples = [new(Start.AddHours(1), 20, End, 2_000_000), new(End.AddMinutes(-5), 60, End, 6_000_000)];
+        string? AccountAt(DateTime t) => t < login ? "a" : "b";
+
+        var w = PaceLedger.Build(End, samples, [Hit(Start.AddMinutes(5), Start.AddHours(2))], [], accountAt: AccountAt);
+
+        Assert.That((w.Grade, w.LimitHitUtc, w.Account), Is.EqualTo((WindowGrade.Under, (DateTime?)null, (string?)"b")));
+    }
+
+    [Test]
     public void After_a_login_mid_window_the_new_accounts_window_gets_its_own_row()
     {
         // M.ORCH-T345: A's window resets at End; B, signed in to three hours before, resets two hours later. Overlapping
