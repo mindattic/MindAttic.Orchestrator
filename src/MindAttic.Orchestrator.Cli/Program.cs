@@ -22,6 +22,13 @@ catch (Exception ex) when (ex is Spectre.Console.Cli.CommandParseException or Sp
     AnsiConsole.MarkupLine($"[red]{Markup.Escape(ex.Message)}[/]");
     return 1;
 }
+catch (InvalidDataException ex)
+{
+    // A store file that can't be read (settings.json with a hand edit's typo, or held past the retries) was left as it
+    // is rather than saved over: the message says so and what to do. Not a crash (M.ORCH-T332).
+    AnsiConsole.MarkupLine($"[red]{Markup.Escape(ex.Message)}[/]");
+    return 1;
+}
 catch (Exception ex)
 {
     OrchestratorLog.For("Cli").Fatal(ex, "orchestrator {Args:l} crashed", string.Join(' ', args));

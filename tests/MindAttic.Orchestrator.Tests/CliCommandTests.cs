@@ -52,6 +52,17 @@ public sealed class CliCommandTests
     }
 
     [Test]
+    public void An_unreadable_settings_json_is_an_invalid_data_exception_the_entry_point_reports_in_one_line()
+    {
+        // M.ORCH-T332: Program.cs says an InvalidDataException's message in one line; it used to log it as a crash.
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(SettingsFile, "{ oops");
+        var ex = Assert.Throws<InvalidDataException>(() => Run("bump", "M.ORCH-T5"));
+        Assert.That(ex!.Message, Does.Contain("couldn't be read").And.Contain("Fix or remove it"));
+        Assert.That(File.ReadAllText(SettingsFile), Is.EqualTo("{ oops"));
+    }
+
+    [Test]
     public void Dispatch_and_start_take_only_a_provider_the_launcher_knows()
     {
         Assert.That(Ctx.Provider("claude"), Is.EqualTo("Claude"), "any casing, as its own name");
