@@ -13,6 +13,7 @@ public sealed class StatusAggregatorTests
     private string worktrees = "";
     private JsonStore store = null!;
     private readonly List<HostSession> hosts = [];
+    private DateTime now;
 
     [SetUp]
     public void SetUp()
@@ -24,6 +25,7 @@ public sealed class StatusAggregatorTests
         store = new JsonStore(Path.Combine(dir, "store"));
         store.SaveSettings(new OrchestratorSettings { WorktreeRoot = worktrees });
         hosts.Clear();
+        now = DateTime.UtcNow;
         Repo("A", "| A-T1 | 2026-10-01 | fix | open | one | — |\n| A-T2 | 2026-10-01 | fix | closed | two | x |\n| A-T3 | 2026-10-02 | feature | open | three | — |\n");
         Repo("B", "");
     }
@@ -46,7 +48,7 @@ public sealed class StatusAggregatorTests
     {
         var folder = Path.Combine(projects, "p-" + id);
         Directory.CreateDirectory(folder);
-        var end = DateTime.UtcNow - ago;
+        var end = now - ago;
         var file = Path.Combine(folder, id + ".jsonl");
         File.WriteAllLines(file, outputs.Select((output, i) => System.Text.Json.JsonSerializer.Serialize(new
         {
@@ -62,10 +64,11 @@ public sealed class StatusAggregatorTests
         return written;
     }
 
-    /// <summary>These tests write turns up to an hour before the wall clock and count them as today's: in the hour after local
-    /// midnight they'd be yesterday's, so the test is inconclusive then rather than failing.</summary>
-    private static void TurnsAreToday() =>
-        Assume.That(DateTime.Now.TimeOfDay, Is.GreaterThan(TimeSpan.FromHours(1)), "the turns written would fall before local midnight");
+    /// <summary>These tests write turns up to an hour before "now" and count them as today's, so "now" is a fixed local noon
+    /// (yesterday's, so it's never ahead of the wall clock) rather than the wall clock: in the hour after local midnight the
+    /// turns would be yesterday's (M.ORCH-T310 skipped them then, hiding whatever broke in that hour).</summary>
+    private void TurnsAreToday() =>
+        now = DateTime.Today.AddDays(-1).AddHours(12).ToUniversalTime();
 
     private StatusAggregator Aggregator() => new(new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null }, store)
     {
@@ -81,7 +84,7 @@ public sealed class StatusAggregatorTests
         Transcript("s2", Path.Combine(worktrees, "A", "A-T1"), TimeSpan.FromMinutes(10), 5);
         hosts.Add(new HostSession("Claude", 42, "mindattic-host-claude-42", Path.Combine(ws, "B")));
 
-        var snap = Aggregator().Refresh();
+        var snap = Aggregator().Refresh(now);
 
         Assert.That(snap.Repos.Select(r => r.Name), Is.EqualTo(new[] { "A", "B" }), "no pseudo-repos: nothing ran at the root or outside");
         var a = snap.Repos.Single(r => r.Name == "A");
@@ -105,8 +108,8 @@ public sealed class StatusAggregatorTests
         TurnsAreToday();
         Transcript("s1", Path.Combine(ws, "A"), TimeSpan.FromMinutes(1), 10);
 
-        Assert.That(Aggregator().Refresh().Repos.Single(r => r.Name == "A").UsageToday.Output, Is.EqualTo(10));
-        var twoDaysOn = Aggregator().Refresh(DateTime.UtcNow.AddDays(2)).Repos.Single(r => r.Name == "A");
+        Assert.That(Aggregator().Refresh(now).Repos.Single(r => r.Name == "A").UsageToday.Output, Is.EqualTo(10));
+        var twoDaysOn = Aggregator().Refresh(now.AddDays(2)).Repos.Single(r => r.Name == "A");
         Assert.That(twoDaysOn.UsageToday.Output, Is.Zero, "two days later that turn isn't today's usage any more");
         Assert.That(twoDaysOn.Sessions, Has.Count.EqualTo(1), "still inside the week of history");
     }
@@ -466,7 +469,7 @@ public sealed class StatusAggregatorTests
     {
         var path = SignIn().StatePath;
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllText(path, $$"""{"account":"{{account}}","since":{{DateTimeOffset.UtcNow.Subtract(ago).ToUnixTimeSeconds()}}}""");
+        File.WriteAllText(path, $$"""{"account":"{{account}}","since":{{new DateTimeOffset(now - ago).ToUnixTimeSeconds()}}}""");
     }
 
     private ClaudeAccount SignIn() => new() { ConfigPath = Path.Combine(dir, ".claude.json"), StatePath = Path.Combine(dir, "session-context", ClaudeAccount.FileName) };
@@ -527,7 +530,7 @@ public sealed class StatusAggregatorTests
         File.WriteAllText(Path.Combine(dir, "session-context", "s2.state.json"), """{"state": "busy", "auth": "api-key"}""");
         SignedInSince("a", TimeSpan.FromHours(1));
 
-        var snap = Daemon(account).Refresh();
+        var snap = Daemon(account).Refresh(now);
 
         Assert.That(snap.Budget!.Today.Output, Is.EqualTo(100), "only the subscription's session counts");
         Assert.That(snap.Repos.Single(r => r.Name == "B").UsageToday.Output, Is.EqualTo(5_000), "the key's work still shows");
@@ -542,13 +545,13 @@ public sealed class StatusAggregatorTests
         Config("""{"oauthAccount":{"accountUuid":"a"}}""");
         var account = SignIn();
         Directory.CreateDirectory(Path.GetDirectoryName(account.StatePath)!);
-        long Ago(int minutes) => DateTimeOffset.UtcNow.AddMinutes(-minutes).ToUnixTimeSeconds();
+        long Ago(int minutes) => new DateTimeOffset(now.AddMinutes(-minutes)).ToUnixTimeSeconds();
         File.WriteAllText(account.StatePath, $$"""
             {"account":"a","since":{{Ago(10)}},"spans":[{"account":"a","from":{{Ago(120)}},"to":{{Ago(30)}}},
             {"account":"b","from":{{Ago(30)}},"to":{{Ago(10)}}},{"account":"a","from":{{Ago(10)}},"to":null}]}
             """);
 
-        Assert.That(Daemon(account).Refresh().Budget!.Today.Output, Is.EqualTo(300), "A's turns before B count again; B's don't");
+        Assert.That(Daemon(account).Refresh(now).Budget!.Today.Output, Is.EqualTo(300), "A's turns before B count again; B's don't");
     }
 
     [Test]
