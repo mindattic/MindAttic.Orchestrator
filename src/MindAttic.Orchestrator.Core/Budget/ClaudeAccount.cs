@@ -15,7 +15,7 @@ public sealed class ClaudeAccount
 {
     public const string FileName = "account.json";
 
-    /// <summary>Claude Code's own config, where the signed-in account is kept (<c>oauthAccount.accountUuid</c>).</summary>
+    /// <summary>Claude Code's own config, where the signed-in account is kept (<c>oauthAccount</c>, or an API key).</summary>
     public string ConfigPath { get; init; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude.json");
 
@@ -25,7 +25,7 @@ public sealed class ClaudeAccount
     private DateTime? switched;
 
     /// <summary>When the sign-in last moved to another account (the first time one is seen counts, so an install made
-    /// while already switched starts clean); null when no account is known (signed out, an API key).</summary>
+    /// while already switched starts clean); null when signed out. A move to or from an API key is a switch too.</summary>
     public DateTime? SwitchedAtUtc(DateTime nowUtc)
     {
         try
@@ -36,8 +36,17 @@ public sealed class ClaudeAccount
             configStamp = stamp;
             if (Current(ConfigPath) is not { } account) return switched = null;
             var seen = File.Exists(StatePath) ? JsonNode.Parse(File.ReadAllText(StatePath)) : null;
-            if (seen?["account"]?.GetValue<string>() == account && seen["since"]?.GetValue<double>() is { } since)
-                return switched = DateTime.UnixEpoch.AddSeconds(since);
+            if (seen?["account"]?.GetValue<string>() is { } was && seen["since"]?.GetValue<double>() is { } since)
+            {
+                var at = DateTime.UnixEpoch.AddSeconds(since);
+                if (was == account) return switched = at;
+                // A record from before the organization was part of the key is the same sign-in: keep its date.
+                if (account.StartsWith(was + "/", StringComparison.Ordinal) && !was.Contains('/'))
+                {
+                    Write(account, at);
+                    return switched = at;
+                }
+            }
             Write(account, nowUtc);
             return switched = nowUtc;
         }
@@ -47,16 +56,33 @@ public sealed class ClaudeAccount
         }
     }
 
-    /// <summary>The signed-in account's id from Claude Code's config, or null.</summary>
+    /// <summary>What an API-key sign-in reads as: no Claude subscription's windows are its.</summary>
+    public const string ApiKey = "api-key";
+
+    /// <summary>
+    /// The signed-in account from Claude Code's config, or null when signed out. A Claude login is its
+    /// <c>oauthAccount.accountUuid</c> and <c>organizationUuid</c> (one person's Max plan and their Team seat, or a Console
+    /// login, share the account id but not the limits); an API key (<c>primaryApiKey</c>, or an approved
+    /// <c>ANTHROPIC_API_KEY</c> with no Claude login) is <see cref="ApiKey"/>. It used to read as signed out, so moving
+    /// to an API key wasn't a switch and the Claude account's stop stayed latched. The pace hooks key the same way.
+    /// </summary>
     internal static string? Current(string configPath)
     {
         if (!File.Exists(configPath)) return null;
         using var stream = new FileStream(configPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         using var doc = JsonDocument.Parse(stream);
-        return doc.RootElement.TryGetProperty("oauthAccount", out var o) && o.ValueKind == JsonValueKind.Object &&
-               o.TryGetProperty("accountUuid", out var id) && id.ValueKind == JsonValueKind.String && id.GetString() is { Length: > 0 } s
-            ? s : null;
+        var root = doc.RootElement;
+        if (root.ValueKind != JsonValueKind.Object) return null;
+        if (root.TryGetProperty("oauthAccount", out var o) && o.ValueKind == JsonValueKind.Object && Text(o, "accountUuid") is { } id)
+            return Text(o, "organizationUuid") is { } org ? $"{id}/{org}" : id;
+        if (Text(root, "primaryApiKey") is not null) return ApiKey;
+        return root.TryGetProperty("customApiKeyResponses", out var r) && r.ValueKind == JsonValueKind.Object &&
+               r.TryGetProperty("approved", out var approved) && approved.ValueKind == JsonValueKind.Array && approved.GetArrayLength() > 0
+            ? ApiKey : null;
     }
+
+    private static string? Text(JsonElement e, string name) =>
+        e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String && v.GetString() is { Length: > 0 } s ? s : null;
 
     private void Write(string account, DateTime nowUtc)
     {

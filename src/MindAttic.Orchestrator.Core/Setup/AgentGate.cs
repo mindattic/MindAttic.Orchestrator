@@ -107,20 +107,34 @@ public static class AgentGate
                 return _switched[0]
             since = 0.0
             try:
-                text = (Path.home() / ".claude.json").read_text(encoding="utf-8", errors="ignore")
-                at = text.find('"oauthAccount"')
-                at = text.find('"accountUuid"', at) if at >= 0 else -1
+                # Keyed as ClaudeAccount.Current: a Claude login by account and organization, an API key as "{{Budget.ClaudeAccount.ApiKey}}".
+                config = json.loads((Path.home() / ".claude.json").read_text(encoding="utf-8", errors="ignore"))
+                text = lambda o, k: o.get(k) if isinstance(o, dict) and isinstance(o.get(k), str) and o.get(k) else None
+                oauth = config.get("oauthAccount")
                 account = None
-                if at >= 0:
-                    start = text.find('"', text.find(":", at) + 1) + 1
-                    account = text[start:text.find('"', start)] or None
+                if text(oauth, "accountUuid"):
+                    account = text(oauth, "accountUuid")
+                    if text(oauth, "organizationUuid"):
+                        account += "/" + text(oauth, "organizationUuid")
+                elif text(config, "primaryApiKey"):
+                    account = "{{Budget.ClaudeAccount.ApiKey}}"
+                else:
+                    responses = config.get("customApiKeyResponses")
+                    approved = responses.get("approved") if isinstance(responses, dict) else None
+                    if isinstance(approved, list) and approved:
+                        account = "{{Budget.ClaudeAccount.ApiKey}}"
                 if account:
                     try:
                         seen = read_json(ACCOUNT) if ACCOUNT.exists() else {}
                     except Exception:
                         seen = {}
-                    if seen.get("account") == account:
+                    was = seen.get("account")
+                    if was == account:
                         since = float(seen.get("since") or 0)
+                    elif isinstance(was, str) and "/" not in was and account.startswith(was + "/") and seen.get("since"):
+                        # Recorded before the organization was part of the key: the same sign-in, so keep its date.
+                        since = float(seen["since"])
+                        write_json(ACCOUNT, {"account": account, "since": since})
                     else:
                         since = time.time()
                         write_json(ACCOUNT, {"account": account, "since": since})
