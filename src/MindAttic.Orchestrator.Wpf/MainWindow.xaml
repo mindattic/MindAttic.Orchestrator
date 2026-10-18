@@ -974,7 +974,7 @@
                              AutomationProperties.Name="Dispatch provider" />
                     <ToggleButton Style="{StaticResource PillToggle}" IsChecked="{Binding Autopilot}" Margin="0,8,0,0" HorizontalAlignment="Left"
                                   Content="Autopilot" />
-                    <TextBlock Text="Type /autopilot in any CLI and every open Claude CLI in a repo (or, with -repo=a,b, only those repos' CLIs) gets its repo's next open story whenever it's idle, one at a time, while the 5-hour pace can afford it. No tabs open. Off here pauses it; /autopilot off ends it."
+                    <TextBlock Text="Type /autopilot in a CLI and that CLI works its repo's tickets (or -repo=a,b, or all) through its own subagents, each in its own worktree, as many at once as the pace allows; no other CLI is affected. Off here pauses it in every CLI; /autopilot off ends it in that one."
                                Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
 
                     <TextBlock Text="{Binding Error}" Foreground="{StaticResource McRec}" TextWrapping="Wrap" Margin="0,14,0,0" AutomationProperties.LiveSetting="Assertive"
