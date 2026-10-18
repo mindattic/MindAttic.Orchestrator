@@ -157,6 +157,8 @@ public sealed class CliCommandTests
 
             // M.ORCH-T331: a prerequisite set by hand before the migration is still in settings.json; --clear clears it too.
             Store.SaveSettings(Store.LoadSettings() with { BlockedBy = new() { ["A-T1"] = ["A-T3"], ["A-T2"] = ["A-T3"] } });
+            Assert.That(Run("block", "A-T1"), Is.Zero);
+            Assert.That(output.ToString(), Does.Contain("It still waits for A-T3 too"), "M.ORCH-T356: the hand-set one is said");
             Assert.That(Run("block", "A-T1", "--clear"), Is.Zero);
             Assert.That(Store.LoadSettings().BlockedBy.Keys, Is.EqualTo(new[] { "A-T2" }), "only the cleared ticket's");
             using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))

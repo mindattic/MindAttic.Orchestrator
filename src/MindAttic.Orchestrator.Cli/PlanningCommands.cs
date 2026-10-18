@@ -54,6 +54,9 @@ internal sealed class BlockCommand : Command<BlockCommand.Settings>
                 foreach (var prerequisite in by) db.AddLink(id, prerequisite, "requires", "orchestrator block");
                 var now = db.Requires(id);
                 AnsiConsole.MarkupLine(Markup.Escape(now.Count > 0 ? $"{id} requires {string.Join(", ", now)}." : $"{id} requires nothing."));
+                // One set by hand before the migration still holds it in the queue: said, not left out (M.ORCH-T356).
+                if (store.LoadSettings().BlockedBy.GetValueOrDefault(id) is { Count: > 0 } byHand)
+                    AnsiConsole.MarkupLine(Markup.Escape($"It still waits for {string.Join(", ", byHand)} too, set by hand before the Workflow database (block {id} --clear drops it)."));
                 return 0;
             }
         var s = store.LoadSettingsToChange();
