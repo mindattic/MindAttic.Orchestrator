@@ -93,10 +93,13 @@ public static partial class TicketReplay
         var prologue = forkCall is not null;
         try
         {
+            var copiedThrough = LastCopiedLine(file);
+            var index = -1;
             using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             using var reader = new StreamReader(stream);
             while (reader.ReadLine() is { } line)
             {
+                if (++index <= copiedThrough) continue;
                 JsonDocument doc;
                 try { doc = JsonDocument.Parse(line); } catch (JsonException) { continue; }
                 using (doc)
@@ -144,6 +147,31 @@ public static partial class TicketReplay
         }
         catch (IOException) { return null; }
         return start is null ? null : new ReplaySession(file, start.Value, end!.Value, fresh, prompts, Trim(last, 1500));
+    }
+
+    /// <summary>
+    /// The index of the last line of a background session's copy of the session it continues, or -1 (M.ORCH-T391). The copy opens
+    /// the transcript; only its responses carry the old session's <c>session_id</c> (<see cref="TranscriptReader.CopiedFromAnotherSession"/>),
+    /// its typed prompts carry none, so every line up to the last copied response is the copy, not only those.
+    /// </summary>
+    private static int LastCopiedLine(string file)
+    {
+        var last = -1;
+        var index = -1;
+        using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(stream);
+        while (reader.ReadLine() is { } line)
+        {
+            index++;
+            if (!line.Contains("\"session_id\"", StringComparison.Ordinal) || !line.Contains("\"bg\"", StringComparison.Ordinal)) continue;
+            try
+            {
+                using var doc = JsonDocument.Parse(line);
+                if (doc.RootElement.ValueKind == JsonValueKind.Object && TranscriptReader.CopiedFromAnotherSession(doc.RootElement)) last = index;
+            }
+            catch (JsonException) { }
+        }
+        return last;
     }
 
     /// <summary>Commits in the repo whose message mentions the ticket, newest first, with what they touched (or the full diff).</summary>

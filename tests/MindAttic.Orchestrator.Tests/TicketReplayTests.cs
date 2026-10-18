@@ -161,15 +161,24 @@ public sealed class TicketReplayTests
         Directory.CreateDirectory(folder);
         try
         {
+            // A typed prompt carries no session_id, copied or not (M.ORCH-T391): the copy's is the old session's all the same.
+            string Prompt(string text, string at) => JsonSerializer.Serialize(new Dictionary<string, object>
+            {
+                ["type"] = "user", ["timestamp"] = at, ["sessionId"] = "bg1", ["sessionKind"] = "bg",
+                ["message"] = new { role = "user", content = text },
+            });
             File.WriteAllLines(Path.Combine(folder, "bg1.jsonl"), [
+                Prompt("the old session's prompt", "2026-10-14T09:59:00Z"),
                 TranscriptReaderTests.SessionLine("m1", "2026-10-14T10:00:00Z", 100, "bg1", "s1", "bg"),
+                Prompt("carry on in the background", "2026-10-14T10:04:00Z"),
                 TranscriptReaderTests.SessionLine("m2", "2026-10-14T10:05:00Z", 7, "bg1", "bg1", "bg"),
             ]);
 
             var session = TicketReplay.Sessions("RP-T7", dir).Single();
 
             Assert.That(session.Fresh, Is.EqualTo(1 + 7), "its own response only");
-            Assert.That(session.StartUtc, Is.EqualTo(new DateTime(2026, 10, 14, 10, 5, 0, DateTimeKind.Utc)), "it starts where its own lines do");
+            Assert.That(session.StartUtc, Is.EqualTo(new DateTime(2026, 10, 14, 10, 4, 0, DateTimeKind.Utc)), "it starts where its own lines do");
+            Assert.That(session.Prompts, Is.EqualTo(new[] { "carry on in the background" }), "the copy's prompt is the old session's");
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
