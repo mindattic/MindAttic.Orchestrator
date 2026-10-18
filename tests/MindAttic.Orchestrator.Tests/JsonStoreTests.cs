@@ -75,6 +75,19 @@ public sealed class JsonStoreTests
     }
 
     [Test]
+    public void Settings_to_change_refuse_a_file_that_cant_be_read_instead_of_handing_out_defaults_to_save_over_it()
+    {
+        var store = new JsonStore(dir);
+        Assert.That(SameJson(store.LoadSettingsToChange(), new OrchestratorSettings()), Is.True, "missing: defaults");
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, "settings.json");
+        File.WriteAllText(path, """{ "BlockBudget": 20000000, }, """);
+        Assert.That(() => store.LoadSettingsToChange(), Throws.InstanceOf<InvalidDataException>(), "a hand edit's typo");
+        store.SaveSettings(new OrchestratorSettings { BlockBudget = 7 });
+        Assert.That(store.LoadSettingsToChange().BlockBudget, Is.EqualTo(7));
+    }
+
+    [Test]
     public void A_change_goes_ahead_unlocked_when_the_lock_is_held_past_5s_and_leaves_no_lock_file()
     {
         // A stuck holder mustn't stall every refresh: past 5s the change is made without the lock.

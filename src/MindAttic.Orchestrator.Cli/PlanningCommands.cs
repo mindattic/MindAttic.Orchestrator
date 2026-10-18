@@ -47,7 +47,7 @@ internal sealed class BlockCommand : Command<BlockCommand.Settings>
                 AnsiConsole.MarkupLine(Markup.Escape(now.Count > 0 ? $"{id} requires {string.Join(", ", now)}." : $"{id} requires nothing."));
                 return 0;
             }
-        var s = store.LoadSettings();
+        var s = store.LoadSettingsToChange();
         var map = new Dictionary<string, List<string>>(s.BlockedBy, StringComparer.Ordinal);
         if (settings.Clear) map.Remove(id);
         // --clear --by replaces them, as on the database; --by alone adds.
@@ -94,7 +94,7 @@ internal sealed class ApproveCommand : Command<ApproveCommand.Settings>
                 AnsiConsole.MarkupLine($"[red]No ticket {Markup.Escape(string.Join(", ", unknown))}; nothing was changed.[/]");
                 return 1;
             }
-        var s = store.LoadSettings();
+        var s = store.LoadSettingsToChange();
         var approved = s.Approved.Where(a => !ids.Contains(a, StringComparer.OrdinalIgnoreCase)).ToList();
         if (!settings.Undo) approved.AddRange(ids);
         store.SaveSettings(s with { Approved = approved });
@@ -122,7 +122,7 @@ internal sealed class ReserveCommand : Command<ReserveCommand.Settings>
         if (!TokenText.TryParse(settings.Tokens, out var tokens)) { AnsiConsole.MarkupLine("[red]Tokens: a number like 2M, 500k or 0.[/]"); return 1; }
         var store = Ctx.Store();
         var id = Ctx.Id(settings.Ticket);
-        var s = store.LoadSettings();
+        var s = store.LoadSettingsToChange();
         var map = new Dictionary<string, long>(s.Reservations, StringComparer.Ordinal);
         if (tokens <= 0) map.Remove(id); else map[id] = tokens;
         store.SaveSettings(s with { Reservations = map });

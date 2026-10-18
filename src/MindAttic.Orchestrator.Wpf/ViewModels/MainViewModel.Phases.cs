@@ -332,7 +332,7 @@ public sealed partial class MainViewModel
 
     public void Bump(string ticketId, int by) => Guarded("Bump", () =>
     {
-        var s = store.LoadSettings();
+        var s = store.LoadSettingsToChange();
         var p = new Dictionary<string, int>(s.Priorities, StringComparer.Ordinal);
         var next = p.GetValueOrDefault(ticketId) + by;
         if (next == 0) p.Remove(ticketId); else p[ticketId] = next;
@@ -376,7 +376,7 @@ public sealed partial class MainViewModel
 
     public void ToggleAutopilot() => Guarded("Autopilot", () =>
     {
-        var s = store.LoadSettings();
+        var s = store.LoadSettingsToChange();
         store.SaveSettings(s with { Autopilot = !s.Autopilot });
         queueLog.Information("Autopilot {State:l} from the tray", s.Autopilot ? "paused" : "resumed");
         Raise(nameof(AutopilotText));

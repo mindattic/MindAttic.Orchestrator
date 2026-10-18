@@ -251,7 +251,7 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
         if (settings.Block is not null || settings.Weekly is not null || settings.Warn is not null || settings.WeeklyReset is not null ||
             settings.Pace is not null || settings.Target is not null)
         {
-            var s = store.LoadSettings();
+            var s = store.LoadSettingsToChange();
             store.SaveSettings(s with
             {
                 BlockBudget = blockTokens is { } bl ? (bl > 0 ? bl : null) : s.BlockBudget,

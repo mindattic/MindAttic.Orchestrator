@@ -221,6 +221,12 @@ public sealed class JsonStore(string? directory = null)
     }
 
     public OrchestratorSettings LoadSettings() => Load<OrchestratorSettings>("settings");
+
+    /// <summary>The settings to change and save back: throws when <c>settings.json</c> is there but can't be read (a typo
+    /// from a hand edit, or held past the retries), where <see cref="LoadSettings"/>'s defaults would be saved over every
+    /// budget, approval, priority and reservation in it.</summary>
+    public OrchestratorSettings LoadSettingsToChange() => TryLoad<OrchestratorSettings>("settings", out var s) ? s
+        : throw new InvalidDataException($"{PathOf("settings")} couldn't be read; left as it is rather than saved over with defaults. Fix or remove it and try again.");
     public void SaveSettings(OrchestratorSettings s) => Save("settings", s);
     public List<Assignment> LoadAssignments() => Load<List<Assignment>>("assignments");
     public void SaveAssignments(List<Assignment> a) => Save("assignments", a);

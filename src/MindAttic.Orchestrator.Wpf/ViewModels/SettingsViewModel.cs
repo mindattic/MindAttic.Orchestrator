@@ -73,7 +73,7 @@ public sealed class SettingsViewModel : ObservableObject
 
         try
         {
-            var s = store.LoadSettings();
+            var s = store.LoadSettingsToChange();
             store.SaveSettings(s with
             {
                 BlockBudget = block, WeeklyBudget = weekly, WeeklyReset = reset?.ToString(), WarnPercent = warn, MaxConcurrentSessions = max,
@@ -83,7 +83,7 @@ public sealed class SettingsViewModel : ObservableObject
             });
         }
         // settings.json held past the store's retries: said here, not left to close the dashboard. The fields keep what was typed.
-        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException)
         {
             Error = $"Couldn't save: {ex.Message}";
             return;

@@ -110,7 +110,7 @@ internal sealed class BumpCommand : Command<BumpCommand.Settings>
     public override int Execute(CommandContext context, Settings settings)
     {
         var store = Ctx.Store();
-        var s = store.LoadSettings();
+        var s = store.LoadSettingsToChange();
         var id = Ctx.Id(settings.Ticket);
         var priorities = new Dictionary<string, int>(s.Priorities, StringComparer.Ordinal);
         var next = priorities.GetValueOrDefault(id) + settings.By;
@@ -297,7 +297,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             return 1;
         }
         var store = Ctx.Store();
-        var s = store.LoadSettings();
+        // Shown as defaults when settings.json can't be read, but never saved over it (that would wipe everything in it).
+        var readable = store.TryLoad<OrchestratorSettings>("settings", out var s);
         s = s with
         {
             MaxConcurrentSessions = settings.MaxSessions ?? s.MaxConcurrentSessions,
@@ -372,9 +373,13 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = isCap ? s with { RepoBudgetPercent = map } : s with { RepoMaxSessions = map };
             changed = true;
         }
+        changed |= settings.MaxSessions is not null || settings.Autopilot is not null || settings.Provider is not null || settings.StaleHours is not null;
+        if (changed && !readable)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(Path.Combine(store.Directory, "settings.json"))} couldn't be read, so nothing was saved over it. Fix or remove it and try again.[/]");
+            return 1;
+        }
         if (changed) store.SaveSettings(s);
-        if (settings.MaxSessions is not null || settings.Autopilot is not null || settings.Provider is not null || settings.StaleHours is not null)
-            store.SaveSettings(s);
 
         var clis = new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis();
         AnsiConsole.MarkupLine($"settings: {Markup.Escape(Path.Combine(store.Directory, "settings.json"))}");
