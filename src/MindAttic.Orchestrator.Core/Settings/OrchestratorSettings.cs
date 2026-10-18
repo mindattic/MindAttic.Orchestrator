@@ -32,6 +32,37 @@ public sealed record OrchestratorSettings
     /// the orchestrator can't see (claude.ai, other machines).</summary>
     public int PaceTargetPercent { get; init; } = 98;
 
+    /// <summary>The curve the 5-hour window is paced along (M.ORCH-T234): <see cref="LinearProfile"/> (the default) spreads what's
+    /// left of the target evenly to the reset; <see cref="FrontLoadedProfile"/> aims at <see cref="PaceTargetPercent"/> ×
+    /// elapsed^<see cref="PaceCurveK"/>, spending faster early and easing off toward the reset, and starts no new subagent past
+    /// <see cref="Budget.Pacer.FrontLoadedWindDownShare"/>. Read on every pace check, so a switch mid-window applies at once.</summary>
+    public string PaceProfile { get; init; } = LinearProfile;
+
+    /// <summary>The front-loaded curve's exponent: under 1 bends it up early (0.55 by default); 1 is a straight line.</summary>
+    public double PaceCurveK { get; init; } = 0.55;
+
+    public const string LinearProfile = "linear", FrontLoadedProfile = "front-loaded";
+
+    public static IReadOnlyList<string> PaceProfiles { get; } = [LinearProfile, FrontLoadedProfile];
+
+    /// <summary>A typed profile ("Front-Loaded", "frontloaded", "front") as saved, or null when it's neither.</summary>
+    public static string? ParsePaceProfile(string? text) =>
+        text?.Trim().ToLowerInvariant().Replace("-", "").Replace("_", "").Replace(" ", "") switch
+        {
+            "linear" => LinearProfile,
+            "frontloaded" or "front" => FrontLoadedProfile,
+            _ => null,
+        };
+
+    /// <summary>The front-loaded curve is on (anything else, a hand-edited typo included, paces linearly).</summary>
+    [JsonIgnore]
+    public bool FrontLoaded => ParsePaceProfile(PaceProfile) == FrontLoadedProfile;
+
+    /// <summary>The exponent the pace and the chart use: the front-loaded <see cref="PaceCurveK"/> (kept to 0.1–1, so the curve
+    /// never dips below the straight line), 1 for linear.</summary>
+    [JsonIgnore]
+    public double PaceExponent => FrontLoaded && double.IsFinite(PaceCurveK) ? Math.Clamp(PaceCurveK, 0.1, 1) : 1;
+
     /// <summary>On: while the forecast says the burn won't last until the reset, running Claude Code agents
     /// wait before each tool call (the pace-gate hook), so they slow down instead of hitting the wall.</summary>
     public bool ThrottleAgents { get; init; } = true;

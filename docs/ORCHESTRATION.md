@@ -22,7 +22,14 @@ The daemon starts at logon and refreshes every 15 seconds, sooner when a turn en
    report. The window's size in tokens is learned from how far Claude's percent moved while a known number of
    tokens was spent.
 2. **Pace.** What's left of the target, divided by the hours until the reset, is the sustainable rate. The draw over
-   the last few minutes, every session and subagent together, is compared with it.
+   the last few minutes, every session and subagent together, is compared with it. That is the `linear` pace profile,
+   the default. The `front-loaded` profile (`orchestrator settings --pace-profile front-loaded`, or the dashboard's
+   Settings) instead follows the curve target × elapsed^k (`--pace-curve-k`, 0.55 by default): the rate is whatever
+   reaches that curve 30 minutes from now, so it spends faster early and eases off. In the last 30 minutes it matches
+   the linear rate, and the curve never aims past the target. Above the curve, agents are held until it catches up.
+   That is a hold, not the stop: the stop comes only at the target. Past 85% it starts no new subagent or ticket. The
+   profile is read on every check, so a switch mid-window applies to the next call; going back to linear spreads
+   what's left evenly again. The utilization chart draws the active profile's curve.
 3. **Steer.** The result goes into `~/.claude/rl-status.json`, which the hooks in every Claude CLI read:
    - *Subagent allowance:* how many subagents may run at once across all CLIs. A new one waits while the allowance
      is used up, and is refused (try again once a slot frees) if it's still full after 5 minutes.

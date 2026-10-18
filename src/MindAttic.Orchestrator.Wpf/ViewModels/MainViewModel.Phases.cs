@@ -210,7 +210,7 @@ public sealed partial class MainViewModel
     /// <summary>The graph in words (it's also the card's accessible name): where the window is against the pace line,
     /// how long it ran over it, and where the recent rate ends up.</summary>
     public string UtilizationText => Utilization is not { } u ? "" :
-        $"{u.NowPercent:0}% used, {(u.OverNow ? "over" : "under")} the pace line ({u.PaceAt(u.NowUtc):0}% by now)" +
+        $"{u.NowPercent:0}% used, {(u.OverNow ? "over" : "under")} the {(u.Curved ? "front-loaded pace curve" : "pace line")} ({u.PaceAt(u.NowUtc):0}% by now)" +
         (u.OverPace >= TimeSpan.FromMinutes(1) ? $"; over it for {(int)u.OverPace.TotalMinutes} min so far" : "") + ". " +
         (u.HitsLimitUtc is { } hit ? $"At the recent rate it would reach 100% at {hit.ToLocalTime():t}, before the {u.EndUtc.ToLocalTime():t} reset."
             : $"At the recent rate it ends near {u.ProjectedEndPercent:0}% at {u.EndUtc.ToLocalTime():t}; the target is {u.TargetPercent:0}%.");

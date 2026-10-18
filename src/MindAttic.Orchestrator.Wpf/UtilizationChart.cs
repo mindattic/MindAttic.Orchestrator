@@ -7,7 +7,7 @@ using MindAttic.Orchestrator.Wpf.ViewModels;
 namespace MindAttic.Orchestrator.Wpf;
 
 /// <summary>
-/// The 5-hour window as a line: the pace line (dashed, straight to the target at the reset), the target itself, the
+/// The 5-hour window as a line: the pace line (dashed, to the target at the reset: straight, or the front-loaded curve), the target itself, the
 /// window's own utilization (red while above the pace line, green below) and, dotted, where the recent rate ends up.
 /// The caption under it says the same in words, so nothing is told by colour alone. It spans the dashboard's width
 /// under the stat tiles and is tall (M.ORCH-T191), so it has room for a gridline every 25%, a time on every hour and
@@ -72,10 +72,28 @@ public sealed class UtilizationChart : FrameworkElement
             dc.DrawText(f, new Point(x - f.Width / 2, labelY - f.Height / 2));
         }
 
-        // The target, and the pace line that reaches it exactly at the reset.
+        // The target, and the pace line that reaches it exactly at the reset: straight on the linear profile, the active
+        // profile's curve on the front-loaded one (M.ORCH-T234).
         dc.DrawLine(new Pen(accent, 1), P(u.StartUtc, u.TargetPercent), P(u.EndUtc, u.TargetPercent));
         Label($"{u.TargetPercent:0}% target", accent, new Point(Left + 6, P(u.StartUtc, u.TargetPercent).Y - 10));
-        dc.DrawLine(new Pen(muted, 1.5) { DashStyle = DashStyles.Dash }, P(u.StartUtc, 0), P(u.EndUtc, u.TargetPercent));
+        var pacePen = new Pen(muted, 1.5) { DashStyle = DashStyles.Dash };
+        if (!u.Curved) dc.DrawLine(pacePen, P(u.StartUtc, 0), P(u.EndUtc, u.TargetPercent));
+        else
+        {
+            const int steps = 60;
+            var curve = new StreamGeometry();
+            using (var g = curve.Open())
+            {
+                g.BeginFigure(P(u.StartUtc, 0), isFilled: false, isClosed: false);
+                for (var i = 1; i <= steps; i++)
+                {
+                    var at = u.StartUtc + (u.EndUtc - u.StartUtc) * ((double)i / steps);
+                    g.LineTo(P(at, u.PaceAt(at)), isStroked: true, isSmoothJoin: true);
+                }
+            }
+            curve.Freeze();
+            dc.DrawGeometry(null, pacePen, curve);
+        }
 
         // The window so far, each stretch coloured by whether it ended above the pace line.
         var over = new Pen(Palette.Over, 2.5);

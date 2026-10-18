@@ -10,7 +10,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly JsonStore store;
     private readonly Action saved;
     private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "",
-        maxDelay = "", contextPercent = "", exemptCommands = "";
+        maxDelay = "", contextPercent = "", exemptCommands = "", paceProfile = OrchestratorSettings.LinearProfile, paceCurveK = "";
     private bool autopilot, pacing, throttleAgents;
 
     public SettingsViewModel(JsonStore store, Action saved)
@@ -30,6 +30,11 @@ public sealed class SettingsViewModel : ObservableObject
     public bool Autopilot { get => autopilot; set => Set(ref autopilot, value); }
     public bool Pacing { get => pacing; set => Set(ref pacing, value); }
     public string PaceTarget { get => paceTarget; set => Set(ref paceTarget, value); }
+    /// <summary>The pace curve (M.ORCH-T234): linear or front-loaded; switchable mid-window.</summary>
+    public string PaceProfile { get => paceProfile; set => Set(ref paceProfile, value); }
+    public IReadOnlyList<string> PaceProfiles => OrchestratorSettings.PaceProfiles;
+    /// <summary>The front-loaded curve's exponent (0.1 to 1).</summary>
+    public string PaceCurveK { get => paceCurveK; set => Set(ref paceCurveK, value); }
     public bool ThrottleAgents { get => throttleAgents; set => Set(ref throttleAgents, value); }
     public string MaxDelay { get => maxDelay; set => Set(ref maxDelay, value); }
     public string ContextPercent { get => contextPercent; set => Set(ref contextPercent, value); }
@@ -46,13 +51,13 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>Every field as the panel read it. The CLI and agents change settings too while it's open (budget, pace,
     /// settings --max-sessions, --exempt): a Save writes only the fields edited here, not what it read back then (M.ORCH-T338).</summary>
-    private Fields loaded = new("", "", "", "", "", "", false, "", false, "", "", "");
+    private Fields loaded = new("", "", "", "", "", "", false, "", false, "", "", "", "", "");
 
     private sealed record Fields(string Block, string Weekly, string Reset, string Warn, string Max, string Provider, bool Pacing, string Target,
-        bool Throttle, string Delay, string Context, string Exempt);
+        bool Throttle, string Delay, string Context, string Exempt, string Profile, string CurveK);
 
     private Fields Current() => new(BlockBudget, WeeklyBudget, WeeklyReset, WarnPercent, MaxSessions, Provider, Pacing, PaceTarget,
-        ThrottleAgents, MaxDelay, ContextPercent, ExemptCommands);
+        ThrottleAgents, MaxDelay, ContextPercent, ExemptCommands, PaceProfile, PaceCurveK);
 
     public void Load()
     {
@@ -66,6 +71,8 @@ public sealed class SettingsViewModel : ObservableObject
         Autopilot = loadedAutopilot = s.Autopilot;
         Pacing = s.Pacing;
         PaceTarget = s.PaceTargetPercent.ToString(CultureInfo.InvariantCulture);
+        PaceProfile = OrchestratorSettings.ParsePaceProfile(s.PaceProfile) ?? OrchestratorSettings.LinearProfile;
+        PaceCurveK = s.PaceCurveK.ToString(CultureInfo.InvariantCulture);
         ThrottleAgents = s.ThrottleAgents;
         MaxDelay = s.MaxAgentDelaySeconds.ToString(CultureInfo.InvariantCulture);
         // No field shows it (context cycling is off), so an out-of-range hand edit mustn't make every Save fail on it.
@@ -86,6 +93,7 @@ public sealed class SettingsViewModel : ObservableObject
         if (!(int.TryParse(WarnPercent, out var warn) && warn is >= 1 and <= 100) && WarnPercent != was.Warn) { Error = "Warn at: 1 to 100."; return; }
         if (!(int.TryParse(MaxSessions, out var max) && max is >= 1 and <= 50) && MaxSessions != was.Max) { Error = "Max sessions: 1 to 50."; return; }
         if (!(int.TryParse(PaceTarget, out var target) && target is >= 1 and <= 100) && PaceTarget != was.Target) { Error = "Pace target: 1 to 100."; return; }
+        if (!(double.TryParse(PaceCurveK, NumberStyles.Float, CultureInfo.InvariantCulture, out var curveK) && curveK is >= 0.1 and <= 1) && PaceCurveK != was.CurveK) { Error = "Front-loaded curve exponent: 0.1 to 1."; return; }
         if (!(int.TryParse(MaxDelay, out var delay) && delay >= 0 && delay <= Setup.AgentGate.MaxHoldSeconds) && MaxDelay != was.Delay) { Error = $"Longest hold: 0 to {Setup.AgentGate.MaxHoldSeconds} seconds."; return; }
         if (!(int.TryParse(ContextPercent, out var cycleAt) && cycleAt is >= 10 and <= 95) && ContextPercent != was.Context) { Error = "Cycle context at: 10 to 95."; return; }
 
@@ -103,6 +111,8 @@ public sealed class SettingsViewModel : ObservableObject
                 Autopilot = Autopilot == loadedAutopilot ? s.Autopilot : Autopilot,
                 Pacing = Pacing == was.Pacing ? s.Pacing : Pacing,
                 PaceTargetPercent = PaceTarget == was.Target ? s.PaceTargetPercent : target,
+                PaceProfile = PaceProfile == was.Profile ? s.PaceProfile : OrchestratorSettings.ParsePaceProfile(PaceProfile) ?? OrchestratorSettings.LinearProfile,
+                PaceCurveK = PaceCurveK == was.CurveK ? s.PaceCurveK : curveK,
                 ThrottleAgents = ThrottleAgents == was.Throttle ? s.ThrottleAgents : ThrottleAgents,
                 MaxAgentDelaySeconds = MaxDelay == was.Delay ? s.MaxAgentDelaySeconds : delay,
                 ContextCyclePercent = ContextPercent == was.Context ? s.ContextCyclePercent : cycleAt,

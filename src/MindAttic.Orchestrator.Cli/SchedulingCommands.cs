@@ -252,6 +252,14 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [CommandOption("--provider <PROVIDER>")]
         public string? Provider { get; init; }
 
+        [CommandOption("--pace-profile <PROFILE>")]
+        [Description("linear (default): what's left of the target spread evenly to the reset; front-loaded: aim at target x elapsed^k (--pace-curve-k), faster early, and no new subagent or ticket past 85%. Applies at the next pace check, mid-window too.")]
+        public string? PaceProfile { get; init; }
+
+        [CommandOption("--pace-curve-k <K>")]
+        [Description("The front-loaded curve's exponent, 0.1 to 1 (default 0.55; lower front-loads more, 1 is a straight line).")]
+        public double? PaceCurveK { get; init; }
+
         [CommandOption("--quiet <WINDOWS>")]
         [Description("Local times autopilot pauses, comma-separated: \"22:00-07:00,12:00-13:00\"; \"none\" clears.")]
         public string? Quiet { get; init; }
@@ -312,6 +320,13 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             AnsiConsole.MarkupLine($"[red]No provider \"{Markup.Escape(typed)}\"; use one of {Markup.Escape(string.Join(", ", MindAttic.Orchestrator.Sessions.SessionControl.Providers))}.[/]");
             return 1;
         }
+        string? profile = null;
+        if (settings.PaceProfile is { } typedProfile && (profile = OrchestratorSettings.ParsePaceProfile(typedProfile)) is null)
+        {
+            AnsiConsole.MarkupLine($"[red]No pace profile \"{Markup.Escape(typedProfile)}\"; use {string.Join(" or ", OrchestratorSettings.PaceProfiles)}.[/]");
+            return 1;
+        }
+        if (settings.PaceCurveK is { } typedK && !(typedK is >= 0.1 and <= 1)) { AnsiConsole.MarkupLine("[red]--pace-curve-k is 0.1 to 1.[/]"); return 1; }
         var store = Ctx.Store();
         // Shown as defaults when settings.json can't be read, but never saved over it (that would wipe everything in it).
         var readable = store.TryLoad<OrchestratorSettings>("settings", out var s);
@@ -322,6 +337,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             DefaultProvider = provider ?? s.DefaultProvider,
             StaleAfterHours = settings.StaleHours ?? s.StaleAfterHours,
             GroomAfterDays = settings.GroomDays ?? s.GroomAfterDays,
+            PaceProfile = profile ?? s.PaceProfile,
+            PaceCurveK = settings.PaceCurveK ?? s.PaceCurveK,
         };
         if (settings.MaxDelay is < 0 or > MindAttic.Orchestrator.Setup.AgentGate.MaxHoldSeconds) { AnsiConsole.MarkupLine($"[red]--max-delay is 0 to {MindAttic.Orchestrator.Setup.AgentGate.MaxHoldSeconds}.[/]"); return 1; }
         s = s with
@@ -398,6 +415,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = isCap ? s with { RepoBudgetPercent = map } : s with { RepoMaxSessions = map };
             changed = true;
         }
+        changed |= profile is not null || settings.PaceCurveK is not null;
         changed |= settings.MaxSessions is not null || settings.Autopilot is not null || settings.Provider is not null || settings.StaleHours is not null;
         if (changed && !readable)
         {
@@ -420,6 +438,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (s.ResumeAfterReset ? " · a CLI stopped for a window is told to carry on once it resets" : " · you're alerted when a CLI stopped for a window could carry on after its reset"));
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (Claude's report, else learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (Claude's report, else learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display + " unless Claude reports another" : "as Claude reports, else learned, else rolling 7 days")} · warn at {s.WarnPercent}%");
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +
+            (s.FrontLoaded ? $" · profile front-loaded (target × elapsed^{s.PaceExponent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}; no new subagent or ticket past {MindAttic.Orchestrator.Budget.Pacer.FrontLoadedWindDownShare:P0})" : " · profile linear") +
             (s.ThrottleAgents ? $" · running agents held up to {s.MaxAgentDelaySeconds}s per tool call when the burn won't last" : " · running agents never held") +
             $" · subagents: as many as the pace allows, at most {s.MaxSubagents}");
         AnsiConsole.MarkupLine("  exempt from pacing (their turns skip every gate, spend still counted): " +

@@ -56,18 +56,25 @@ public sealed record Pace(
     /// passes the limit, whatever the hold settings.</summary>
     public bool Stop { get; init; }
 
-    /// <summary>The window is past <see cref="Pacer.WindDownShare"/> of its limit: agents start only what they can finish
+    /// <summary>The window is past <see cref="WindDownAt"/> of its limit: agents start only what they can finish
     /// before the stop, and file what they can't as a ticket; autopilot starts no new ticket until the window resets
     /// (M.ORCH-T254: tickets whose estimate fit what was left still went out, five at once as the reset neared).</summary>
     public bool WindDown { get; init; }
 
+    /// <summary>The share of the limit the wind-down starts at: <see cref="Pacer.WindDownShare"/>, or
+    /// <see cref="Pacer.FrontLoadedWindDownShare"/> on the front-loaded profile (which also starts no new subagent past it).</summary>
+    public double WindDownAt { get; init; } = Pacer.WindDownShare;
+
+    /// <summary>The profile the pace was worked out on (<see cref="OrchestratorSettings.PaceProfile"/>).</summary>
+    public string Profile { get; init; } = OrchestratorSettings.LinearProfile;
+
     /// <summary>Why no new ticket starts past the wind-down line; empty when it isn't passed (or the window is stopped).</summary>
     public string WindDownHold => !WindDown || Stop ? "" :
-        $"the {Governing ?? "5-hour"} window is past {Pacer.WindDownShare:P0} of its limit: no new ticket starts before it resets" +
+        $"the {Governing ?? "5-hour"} window is past {WindDownAt:P0} of its limit: no new ticket starts before it resets" +
         (ResetUtc is { } r ? $" at {r.ToLocalTime():h:mm tt}" : "");
 
     public string WindDownNote => !WindDown || Stop ? "" :
-        $"The {Governing ?? "5-hour"} window is past {Pacer.WindDownShare:P0} of its limit" + (ResetUtc is { } r ? $" (resets {r.ToLocalTime():h:mm tt})" : "") +
+        $"The {Governing ?? "5-hour"} window is past {WindDownAt:P0} of its limit" + (ResetUtc is { } r ? $" (resets {r.ToLocalTime():h:mm tt})" : "") +
         ", and work stops outright at the target. Don't start anything you can't finish before then. If the task you're on " +
         "won't finish, commit what's done and file the rest as a ticket (workflow ticket new --type <type> --summary \"...\").";
 
@@ -75,7 +82,7 @@ public sealed record Pace(
     public string SubagentNote => SubagentAllowance switch
     {
         null => "",
-        0 => $"Subagents: none new right now ({Note}). Finish with the {Subagents} running; a new one waits until there's room.",
+        0 => $"Subagents: none new right now ({(WindDown && !Stop && Profile == OrchestratorSettings.FrontLoadedProfile ? $"the {Governing ?? "5-hour"} window is past its {WindDownAt:P0} wind-down line" : Note)}). Finish with the {Subagents} running; a new one waits until there's room.",
         var a when a > Subagents => $"Subagents: up to {a} may run at once across all agents ({Subagents} running now). There's room under the 5-hour pace, " +
             "so hand independent pieces (searches, separate files, test runs, reviews) to parallel subagents rather than doing them one after another.",
         var a => $"Subagents: {a} at once across all agents ({Subagents} running now). Usage is ahead of the 5-hour pace, so don't start extra subagents; a new one waits for a free slot.",
@@ -92,7 +99,8 @@ public sealed record Pace(
 /// Steers spend so usage reaches <see cref="OrchestratorSettings.PaceTargetPercent"/> of each limit
 /// as the window resets, instead of hitting the wall early and waiting hours. For every window with a
 /// real limit (the 5-hour block, and the week once it has a limit and a reset), the sustainable rate
-/// is what's left of the target divided by the hours until reset; the tightest window governs. The
+/// is what's left of the target divided by the hours until reset, or on the front-loaded profile what
+/// keeps it on its curve (<see cref="SustainableRate"/>); the tightest window governs. The
 /// session cap is how many sessions at today's per-session burn fit in that rate. Near a reset with
 /// budget left the sustainable rate climbs, so the cap opens back up and the leftover gets used.
 /// </summary>
@@ -133,11 +141,11 @@ public static class Pacer
             { SubagentAllowance = 0, Subagents = subagents, Stop = true };
         }
 
-        var windows = new List<(string Name, long Limit, long Used, DateTime ResetUtc)>();
+        var windows = new List<(string Name, long Limit, long Used, DateTime StartUtc, DateTime ResetUtc)>();
         if (!b.BlockLimitIsPeak && b.BlockLimit > 0)
             windows.Add(b.CurrentBlock is { } block
-                ? ("5-hour", b.BlockLimit, block.Usage.Fresh, block.EndUtc)
-                : ("5-hour", b.BlockLimit, 0, nowUtc + BudgetCalculator.BlockLength));
+                ? ("5-hour", b.BlockLimit, block.Usage.Fresh, block.StartUtc, block.EndUtc)
+                : ("5-hour", b.BlockLimit, 0, nowUtc, nowUtc + BudgetCalculator.BlockLength));
         // The week is shown, never paced: spending each 5-hour window to its target is the goal, and a
         // week-long stretch would hold agents for days. Only a real weekly wall (above) stops new work.
         if (windows.Count == 0)
@@ -153,9 +161,15 @@ public static class Pacer
             { AgentDelaySeconds = AgentDelay(b.ControlFreshPerHour, 0, recentDelaySeconds, s), SubagentAllowance = 0, Subagents = subagents, Stop = true };
 
         var target = Math.Clamp(s.PaceTargetPercent, 1, 100) / 100.0;
+        var k = s.PaceExponent;
         var (gov, sustainable) = windows
-            .Select(w => (w, Rate: Math.Max(0, w.Limit * target - w.Used) / Math.Max((w.ResetUtc - nowUtc).TotalHours, 1.0 / 60)))
+            .Select(w => (w, Rate: SustainableRate(w.Limit, w.Used, target, w.StartUtc, w.ResetUtc, nowUtc, k)))
             .MinBy(x => x.Rate);
+        // At the target: nothing more is spent before the reset. Under the front-loaded curve the rate is also 0 while usage is
+        // above the curve, but that only holds agents until the curve catches up; it never stops them.
+        var atTarget = windows.Any(w => w.Used >= w.Limit * target);
+        var windDownAt = s.FrontLoaded ? FrontLoadedWindDownShare : WindDownShare;
+        var windDown = windows.Any(w => w.Used >= w.Limit * windDownAt);
 
         // What one more session costs: today's sessions if any are running, else your usual session. A
         // held session burns less than it will once let go, so judge it by what it would draw unheld.
@@ -177,8 +191,10 @@ public static class Pacer
         {
             PaceMode.Open => $"On pace: {rates}.",
             PaceMode.Throttled => $"Pacing: {rates}; capped at {cap} of {max} sessions.",
-            _ => sustainable <= 0
+            _ => atTarget
                 ? $"Coasting: the {gov.Name} window is at its {s.PaceTargetPercent}% target until {Clock(gov.ResetUtc)}; no new sessions."
+                : sustainable <= 0
+                ? $"Coasting: the {gov.Name} window is ahead of its front-loaded curve; held until the curve catches up (resets {Clock(gov.ResetUtc)})."
                 : $"Coasting: {rates}; not even one more session fits.",
         };
         var delay = AgentDelay(b.ControlFreshPerHour, sustainable, recentDelaySeconds, s);
@@ -188,15 +204,43 @@ public static class Pacer
         if (delay > 0) note += $" Agents held {delay:0}s per tool call.";
         var room = windows.Min(w => Math.Max(0, w.Limit * target - w.Used));
         var demand = Unheld(b.ControlFreshPerHour, recentDelaySeconds);
-        var allowance = SubagentAllowance(sustainable, demand, perSession, subagents, s.MaxSubagents);
+        // Front-loaded: past its wind-down line no new subagent starts at all (the ones running finish), however much the
+        // curve's rate would still pay for, so the last stretch to the target isn't overrun by a burst started late.
+        var allowance = s.FrontLoaded && windDown ? 0 : SubagentAllowance(sustainable, demand, perSession, subagents, s.MaxSubagents);
         return new Pace(mode, cap, sustainable, recent, perSession, gov.Name, gov.ResetUtc, note, agentNote)
         {
             RoomTokens = room, AgentDelaySeconds = delay, SubagentAllowance = allowance, Subagents = subagents,
             SpareSessions = SpareSessions(sustainable, demand, perSession),
-            Stop = sustainable <= 0,
-            WindDown = windows.Any(w => w.Used >= w.Limit * WindDownShare),
+            Stop = atTarget,
+            WindDown = windDown, WindDownAt = windDownAt,
+            Profile = s.FrontLoaded ? OrchestratorSettings.FrontLoadedProfile : OrchestratorSettings.LinearProfile,
         };
     }
+
+    /// <summary>
+    /// The uncached tokens per hour that keep a window on its pace curve. Linear (<paramref name="k"/> = 1): what's left of the
+    /// target spread evenly over the hours to the reset. Front-loaded (<paramref name="k"/> &lt; 1): the rate that reaches the
+    /// curve target × elapsed^k at <see cref="CurveHorizon"/> from now (the reset, once it's nearer), so it spends fast early and
+    /// eases off; the curve never passes the target, and over the last stretch it is the linear rate. 0 at the target, or while
+    /// usage is above the curve (held until the curve catches up).
+    /// </summary>
+    internal static double SustainableRate(double limit, double used, double target, DateTime startUtc, DateTime resetUtc, DateTime nowUtc, double k)
+    {
+        var left = Math.Max((resetUtc - nowUtc).TotalHours, 1.0 / 60);
+        var length = (resetUtc - startUtc).TotalHours;
+        if (k >= 1 || length <= 0) return Math.Max(0, limit * target - used) / left;
+        var horizon = Math.Min(CurveHorizon.TotalHours, left);
+        var at = Math.Clamp(((nowUtc - startUtc).TotalHours + horizon) / length, 0, 1);
+        return Math.Max(0, limit * target * Math.Pow(at, k) - used) / horizon;
+    }
+
+    /// <summary>How far ahead the front-loaded rate aims along its curve: short enough to follow the bend, long enough not to
+    /// swing with every reading.</summary>
+    public static readonly TimeSpan CurveHorizon = TimeSpan.FromMinutes(30);
+
+    /// <summary>On the front-loaded profile, past this share of the 5-hour limit no new subagent starts and no new ticket
+    /// either (the wind-down), since the curve leaves less slack near the target than the straight line does.</summary>
+    public const double FrontLoadedWindDownShare = 0.85;
 
     /// <summary>
     /// Sessions the spare rate pays for: (<paramref name="sustainable"/> − <paramref name="demand"/>) ÷ one session's
