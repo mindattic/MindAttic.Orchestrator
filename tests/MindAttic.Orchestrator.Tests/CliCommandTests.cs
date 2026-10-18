@@ -136,6 +136,8 @@ public sealed class CliCommandTests
                 Assert.That(Run("block", "A-T1", "--clear", "--by", by), Is.EqualTo(1), by);
                 Assert.That(output.ToString(), Does.Contain(said));
             }
+            Assert.That(Run("block", "A-T27", "--by", "A-T2"), Is.EqualTo(1), "the ticket blocked has to exist too");
+            Assert.That(output.ToString(), Does.Contain("no ticket A-T27"));
             using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
                 Assert.That(db.Requires("A-T1"), Is.EqualTo(new[] { "A-T2" }), "nothing changed: the --clear wasn't half-done");
         }

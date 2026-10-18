@@ -31,6 +31,7 @@ internal sealed class BlockCommand : Command<BlockCommand.Settings>
             {
                 // Checked before anything changes: a link the database refuses (to itself, or a cycle) used to throw half-way,
                 // a clear already done, and an id that doesn't exist was confirmed though nothing ever waits on it.
+                if (db.Ticket(id) is null) { AnsiConsole.MarkupLine($"[red]There's no ticket {Markup.Escape(id)}. Nothing changed.[/]"); return 1; }
                 foreach (var prerequisite in by)
                 {
                     var why = db.Ticket(prerequisite) is null ? $"there's no ticket {prerequisite}"
