@@ -231,6 +231,37 @@ public sealed class TranscriptReaderTests
     }
 
     [Test]
+    public void A_fork_a_subagent_started_doesnt_count_the_subagents_transcript_it_copied()
+    {
+        // M.ORCH-T348: no fork-context-ref line; the parent subagent's whole transcript is copied, up to the prompt answering
+        // the fork's Agent call, which its .meta.json names.
+        System.IO.File.WriteAllLines(File(), [Line("m1", "2026-10-13T12:00:00Z", 1, 1)]);
+        var sub = Path.Combine(dir, "D--Projects-X", "s1", "subagents");
+        Directory.CreateDirectory(sub);
+        string Prompt(string text, string? answering = null) => System.Text.Json.JsonSerializer.Serialize(new
+        {
+            type = "user", timestamp = "2026-10-13T12:00:00Z", sessionId = "s1", cwd = @"D:\Projects\X",
+            message = new
+            {
+                role = "user",
+                content = answering is null
+                    ? new object[] { new { type = "text", text } }
+                    : [new { type = "tool_result", tool_use_id = answering, content = "Fork started" }, new { type = "text", text }],
+            },
+        });
+        var parent = new[] { Prompt("Work on ticket X-T1 (fix): the parent's. When it's done…"), Line("p1", "2026-10-13T12:01:00Z", 1, 50) };
+        System.IO.File.WriteAllLines(Path.Combine(sub, "agent-a.jsonl"), parent);
+        System.IO.File.WriteAllText(Path.Combine(sub, "agent-f.meta.json"), """{"agentType":"fork","isFork":true,"toolUseId":"toolu_f","parentAgentId":"a"}""");
+        System.IO.File.WriteAllLines(Path.Combine(sub, "agent-f.jsonl"), [.. parent, Prompt("<fork-boilerplate>\n</fork-boilerplate>\n\nYour directive: look", "toolu_f"),
+            Line("f1", "2026-10-13T12:03:00Z", 1, 7)]);
+
+        var s = new TranscriptReader(dir).Poll(Since).Single();
+
+        Assert.That(s.UsageSince(Since).Output, Is.EqualTo(1 + 50 + 7), "the parent subagent's response once, and the fork's own");
+        Assert.That(s.TicketedSubagents.Select(t => t.AgentId), Is.EqualTo(new[] { "agent-a" }), "the copied prompt's ticket isn't the fork's");
+    }
+
+    [Test]
     public void A_subagents_ticket_is_its_own_not_its_parent_sessions()
     {
         // /autopilot hands each subagent "Work on ticket X": the parent CLI works many, so it isn't stamped with the first.

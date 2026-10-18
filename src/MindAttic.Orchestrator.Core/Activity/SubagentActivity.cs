@@ -84,8 +84,10 @@ public sealed class SubagentActivityReader(string projectsDir)
         public TokenUsage Usage;
         public string? Task, Doing;
         public readonly Dictionary<string, TokenUsage> Counted = new(StringComparer.Ordinal);
-        /// <summary>Between a fork's <c>fork-context-ref</c> line and its first prompt (M.ORCH-T323).</summary>
+        /// <summary>Before a fork's own first prompt: what it copied from its parent (M.ORCH-T323, M.ORCH-T348).</summary>
         public bool ForkPrologue;
+        /// <summary>The Agent call the fork answers (its meta's toolUseId); its prologue ends at the prompt answering it.</summary>
+        public string? ForkToolUseId;
     }
 
     private readonly Dictionary<string, Tail> tails = new(StringComparer.OrdinalIgnoreCase);
@@ -109,7 +111,11 @@ public sealed class SubagentActivityReader(string projectsDir)
         {
             if (SubagentTranscripts.Find(projectsDir, id) is not { } file) continue;
             reading.Add(file);
-            if (!tails.TryGetValue(file, out var tail)) tails[file] = tail = new Tail();
+            if (!tails.TryGetValue(file, out var tail))
+            {
+                tails[file] = tail = new Tail { ForkToolUseId = TranscriptReader.ForkToolUseId(file) };
+                tail.ForkPrologue = tail.ForkToolUseId is not null;
+            }
             ReadAppended(file, tail);
             if (tail.Start is { } start)
                 result.Add(new SubagentActivity(id, Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(file))) ?? "",
@@ -133,7 +139,7 @@ public sealed class SubagentActivityReader(string projectsDir)
                 tail.Usage = default;
                 tail.Task = tail.Doing = null;
                 tail.Counted.Clear();
-                tail.ForkPrologue = false;
+                tail.ForkPrologue = tail.ForkToolUseId is not null;
             }
             if (stream.Length == tail.Offset) return;
 
@@ -173,8 +179,9 @@ public sealed class SubagentActivityReader(string projectsDir)
             var root = doc.RootElement;
             if (root.ValueKind != JsonValueKind.Object) return;
 
-            // A fork's transcript opens with a fork-context-ref line and a copy of the parent's line that started it (its
-            // usage and Agent call are the parent's): nothing before the fork's first prompt is its own (M.ORCH-T323).
+            // A fork's transcript opens with a copy of its parent's: after a fork-context-ref line the line that started it, or
+            // (a fork a subagent started) that subagent's whole transcript. Nothing before the prompt answering the fork's
+            // Agent call is its own: not its usage, start, task or tool calls (M.ORCH-T323, M.ORCH-T348).
             var type = root.TryGetProperty("type", out var lineType) && lineType.ValueKind == JsonValueKind.String ? lineType.GetString() : null;
             if (type == "fork-context-ref")
             {
@@ -183,7 +190,7 @@ public sealed class SubagentActivityReader(string projectsDir)
             }
             if (tail.ForkPrologue)
             {
-                if (type != "user") return;
+                if (!TranscriptReader.EndsForkPrologue(root, tail.ForkToolUseId)) return;
                 tail.ForkPrologue = false;
             }
 
