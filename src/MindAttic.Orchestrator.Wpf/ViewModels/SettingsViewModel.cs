@@ -32,7 +32,8 @@ public sealed class SettingsViewModel : ObservableObject
     public bool Pacing { get => pacing; set => Set(ref pacing, value); }
     public string PaceTarget { get => paceTarget; set => Set(ref paceTarget, value); }
     /// <summary>The pace curve (M.ORCH-T234): linear or front-loaded; switchable mid-window.</summary>
-    public string PaceProfile { get => paceProfile; set => Set(ref paceProfile, value); }
+    // Ctrl+click deselects this pill too: Save stored linear in place of the profile you had (M.ORCH-T431).
+    public string PaceProfile { get => paceProfile; set { if (value is not null) Set(ref paceProfile, value); } }
     public IReadOnlyList<string> PaceProfiles => OrchestratorSettings.PaceProfiles;
     /// <summary>The front-loaded curve's exponent (0.1 to 1).</summary>
     public string PaceCurveK { get => paceCurveK; set => Set(ref paceCurveK, value); }

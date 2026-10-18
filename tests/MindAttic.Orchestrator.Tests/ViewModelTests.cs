@@ -160,6 +160,20 @@ public sealed class ViewModelTests
     }
 
     [Test]
+    public void Deselecting_the_pace_profile_pill_keeps_the_profile()
+    {
+        // M.ORCH-T431: Ctrl+click on the selected pill wrote null, and Save stored linear.
+        var store = new JsonStore(dir);
+        store.SaveSettings(store.LoadSettings() with { PaceProfile = OrchestratorSettings.FrontLoadedProfile });
+        var vm = new SettingsViewModel(store, () => { });
+        vm.PaceProfile = null!;
+        vm.WarnPercent = "70";
+        vm.SaveCommand.Execute(null);
+
+        Assert.That((vm.PaceProfile, store.LoadSettings().PaceProfile), Is.EqualTo((OrchestratorSettings.FrontLoadedProfile, OrchestratorSettings.FrontLoadedProfile)));
+    }
+
+    [Test]
     public void A_value_set_from_the_cli_outside_the_panels_range_doesnt_block_saving_other_fields()
     {
         // M.ORCH-T349: settings --max-sessions 60 made every Save fail on "Max sessions: 1 to 50".
