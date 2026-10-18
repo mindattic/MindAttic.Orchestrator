@@ -521,6 +521,29 @@ public sealed class HookScriptTests
         held.Kill();
     }
 
+    /// <summary>M.ORCH-T320: marks were compared with the file's whole-second timestamp, which stays up to a minute old,
+    /// so one the daemon had already counted was counted again and an Agent call held with a slot free.</summary>
+    [Test]
+    public void A_mark_the_daemons_count_saw_is_not_counted_again_though_newer_than_the_files_timestamp()
+    {
+        var sub = Path.Combine(Marks, "subagents");
+        Directory.CreateDirectory(sub);
+        var counted = Path.Combine(sub, "counted");
+        File.WriteAllText(counted, "");
+        var at = DateTime.UtcNow.AddSeconds(-30);
+        File.SetLastWriteTimeUtc(counted, at.AddSeconds(10)); // started after the file's timestamp, before the count
+        long Ns(string f) => (File.GetLastWriteTimeUtc(f).Ticks - DateTime.UnixEpoch.Ticks) * 100;
+        Status(new { subagent_allowance = 2, subagents_running = 1, subagents_seen_through_ns = Ns(counted) }, at: at);
+        var agent = new { tool_name = "Agent", tool_input = new { prompt = "x" } };
+        Assert.That(Gate(agent).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "the one running is counted once: a slot is free");
+
+        foreach (var f in Directory.GetFiles(Path.Combine(Marks, AgentGate.SlotDirName))) File.Delete(f);
+        File.WriteAllText(Path.Combine(sub, "fresh"), ""); // started after the count
+        using var held = Run(AgentGate.ScriptName, agent);
+        Assert.That(held.WaitForExit(7_000), Is.False, "one started since the count fills the allowance of two");
+        held.Kill();
+    }
+
     [Test]
     public void Agent_calls_sent_together_take_the_allowance_one_slot_at_a_time()
     {

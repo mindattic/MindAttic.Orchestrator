@@ -158,6 +158,39 @@ public sealed class RateLimitStatusWriterTests
         Assert.That(root.GetProperty("subagent_note").GetString(), Is.Not.Empty);
     }
 
+    /// <summary>M.ORCH-T320: the gates added marks newer than the whole-second timestamp, which stays up to a minute old
+    /// while the count doesn't change, so a mark the daemon had counted could be counted again.</summary>
+    [Test]
+    public void The_newest_mark_the_count_saw_is_written_to_the_file_times_precision_and_a_new_one_is_written_at_once()
+    {
+        var mark = path + ".mark";
+        try
+        {
+            File.WriteAllText(mark, "");
+            File.SetLastWriteTimeUtc(mark, T0.AddTicks(1_234_567)); // a fraction of a second past T0
+            var seen = File.GetLastWriteTimeUtc(mark);
+            var now = T0.AddSeconds(1);
+            var writer = new RateLimitStatusWriter(path) { UtcNow = () => now };
+            writer.Write(Budgeted(), Paced() with { SubagentAllowance = 3, Subagents = 1, SubagentsSeenThroughUtc = seen });
+            var ns = Read().GetProperty("subagents_seen_through_ns").GetInt64();
+            Assert.That(Python("import os,sys; print(os.stat(sys.argv[1]).st_mtime_ns)", mark), Is.EqualTo(ns.ToString()),
+                "the gates compare st_mtime_ns: the mark it saw is exactly as new, so not counted again");
+
+            // One subagent stopped and another started: the same count, but the new mark is seen, so it's written now.
+            now = T0.AddSeconds(10);
+            writer.Write(Budgeted(), Paced() with { SubagentAllowance = 3, Subagents = 1, SubagentsSeenThroughUtc = seen.AddSeconds(5) });
+            Assert.That(Read().GetProperty("timestamp").GetString(), Is.EqualTo("2026-10-13T10:30:10Z"), "not left a minute old");
+            Assert.That(Read().GetProperty("subagents_seen_through_ns").GetInt64(), Is.EqualTo(ns + 5_000_000_000L));
+
+            writer.Write(Budgeted(), Paced() with { SubagentAllowance = 3, Subagents = 0 });
+            Assert.That(Read().GetProperty("subagents_seen_through_ns").GetInt64(), Is.Zero, "no marks seen: every mark there is new");
+        }
+        finally
+        {
+            File.Delete(mark);
+        }
+    }
+
     [Test]
     public void Pace_delay_seconds_is_omitted_at_zero()
     {

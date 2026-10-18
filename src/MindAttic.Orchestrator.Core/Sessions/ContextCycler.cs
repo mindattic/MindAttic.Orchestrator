@@ -111,8 +111,26 @@ public sealed class ContextCycler(string? directory = null)
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "projects");
 
     /// <summary>Subagents running now across every CLI: marks whose CLI is still running and that aren't stale.</summary>
-    public int Subagents() => !System.IO.Directory.Exists(SubagentDirectory) ? 0
-        : System.IO.Directory.EnumerateFiles(SubagentDirectory).Count(f => SubagentAlive(f, DateTime.UtcNow, idle: true));
+    public int Subagents() => Subagents(out _);
+
+    /// <param name="seenThrough">The last-write time of the newest mark this count saw (counted or not); null when it saw
+    /// none. The gates add only marks newer than it to the count, so none the count already saw is counted twice
+    /// (M.ORCH-T320: they compared against rl-status.json's timestamp, cut to whole seconds and up to a minute old).</param>
+    public int Subagents(out DateTime? seenThrough)
+    {
+        seenThrough = null;
+        if (!System.IO.Directory.Exists(SubagentDirectory)) return 0;
+        var now = DateTime.UtcNow;
+        var count = 0;
+        foreach (var f in System.IO.Directory.EnumerateFiles(SubagentDirectory))
+        {
+            // A mark deleted since it was listed reads as 1601: it's gone, so it's nothing to see.
+            if (File.GetLastWriteTimeUtc(f) is var at && at > DateTime.UnixEpoch && (seenThrough is null || at > seenThrough))
+                seenThrough = at;
+            if (SubagentAlive(f, now, idle: true)) count++;
+        }
+        return count;
+    }
 
     /// <summary>The agent ids (mark file names) of subagents running now across every CLI.</summary>
     public IReadOnlyList<string> AliveSubagentIds(DateTime nowUtc) => !System.IO.Directory.Exists(SubagentDirectory) ? []

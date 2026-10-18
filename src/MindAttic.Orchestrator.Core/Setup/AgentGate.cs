@@ -730,6 +730,12 @@ public static class AgentGate
                 marks = list(SUB.iterdir()) if SUB.exists() else []
                 if s.get("subagents_running") is None:
                     return len(marks)
+                # Newer than the newest mark the count saw, to the file time's own precision (M.ORCH-T320: against the
+                # whole-second timestamp, up to a minute old, marks it had counted were counted again); an older daemon
+                # writes only the timestamp.
+                if s.get("subagents_seen_through_ns") is not None:
+                    seen = int(s["subagents_seen_through_ns"])
+                    return int(s["subagents_running"]) + sum(1 for m in marks if m.stat().st_mtime_ns > seen)
                 at = datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00")).timestamp()
                 return int(s["subagents_running"]) + sum(1 for m in marks if m.stat().st_mtime > at)
             def slots():
@@ -949,6 +955,10 @@ public static class AgentGate
                 marks = list(sub.iterdir()) if sub.exists() else []
                 if limits.get("subagents_running") is None:
                     running = len(marks)
+                elif limits.get("subagents_seen_through_ns") is not None:
+                    # Only marks newer than the newest the daemon's count saw (M.ORCH-T320), as the pace gate counts.
+                    seen = int(limits["subagents_seen_through_ns"])
+                    running = int(limits["subagents_running"]) + sum(1 for m in marks if m.stat().st_mtime_ns > seen)
                 else:
                     at = datetime.fromisoformat(limits["timestamp"].replace("Z", "+00:00")).timestamp()
                     running = int(limits["subagents_running"]) + sum(1 for m in marks if m.stat().st_mtime > at)

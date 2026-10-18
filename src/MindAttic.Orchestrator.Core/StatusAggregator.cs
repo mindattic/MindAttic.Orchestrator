@@ -207,8 +207,10 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
         var recentFrom = now - BudgetCalculator.RecentWindow;
         var active = subscriptionSessions.Count(s => s.Events.Count > 0 && s.Events[^1].AtUtc >= recentFrom);
+        DateTime? marksSeenThrough = null;
         var pace = Pacer.Compute(budget, active, typicalPerSession, settings, now,
-            rateLimitFile?.AgentDelay(now) ?? 0, rateLimitFile is null ? 0 : contextCycler.Subagents());
+            rateLimitFile?.AgentDelay(now) ?? 0, rateLimitFile is null ? 0 : contextCycler.Subagents(out marksSeenThrough));
+        pace = pace with { SubagentsSeenThroughUtc = marksSeenThrough };
         // An API key has no 5-hour or weekly window: nothing it spends is held against the subscription's learned limits.
         if (signIn is { IsApiKey: true })
         {

@@ -340,6 +340,12 @@ public sealed class RateLimitStatusWriter(string? path = null)
             {
                 body["subagent_allowance"] = allowed;
                 body["subagents_running"] = pace.Subagents;
+                // The gates add marks started since the count: those newer than the newest one it saw, to the 100 ns of
+                // the file times (st_mtime_ns), not the file's timestamp, which is cut to the second and only rewritten
+                // once a minute while nothing else changes, so marks already counted were counted again (M.ORCH-T320).
+                // It's part of the key, so a count that saw a new mark is always written.
+                body["subagents_seen_through_ns"] = pace.SubagentsSeenThroughUtc is { } seen
+                    ? (seen.ToUniversalTime().Ticks - DateTime.UnixEpoch.Ticks) * 100 : 0L;
                 body["subagent_note"] = pace.SubagentNote;
             }
         }
