@@ -107,6 +107,8 @@ public static partial class Scheduler
         ["fix"] = 3, ["feature"] = 2, ["chore"] = 1, ["docs"] = 0,
     };
 
+    private const int Century = 36_525;
+
     public static SchedulePlan Plan(Snapshot snapshot, OrchestratorSettings settings, IReadOnlyList<Assignment> assignments)
     {
         var assigned = assignments.ToDictionary(a => a.TicketId, StringComparer.Ordinal);
@@ -117,7 +119,8 @@ public static partial class Scheduler
         {
             if (a is null || settings.StaleAfterHours <= 0) return null;
             var last = LastActivityUtc(a, snapshot);
-            return snapshot.TakenUtc - last > TimeSpan.FromHours(settings.StaleAfterHours) ? last : null;
+            // Clamped to a century: a huge setting threw out of every plan, so out of every daemon tick (M.ORCH-T429).
+            return snapshot.TakenUtc - last > TimeSpan.FromHours(Math.Min(settings.StaleAfterHours, Century * 24)) ? last : null;
         }
 
         IReadOnlyList<string> Blockers(Ticket t) =>
@@ -128,7 +131,7 @@ public static partial class Scheduler
                 .Distinct(StringComparer.Ordinal)];
 
         var groomBefore = settings.GroomAfterDays > 0
-            ? DateOnly.FromDateTime(snapshot.TakenUtc.ToLocalTime().AddDays(-settings.GroomAfterDays))
+            ? DateOnly.FromDateTime(snapshot.TakenUtc.ToLocalTime().AddDays(-Math.Min(settings.GroomAfterDays, Century)))
             : DateOnly.MinValue;
         // The database's priority, clamped to what a queue item holds.
         int Priority(string id) => (int)Math.Clamp(snapshot.Priorities.GetValueOrDefault(id), int.MinValue, int.MaxValue);

@@ -263,6 +263,10 @@ public sealed class SchedulerTests
         Assert.That(tabOpen.Stale, Is.Empty, "a tab left open is you coming back to it");
         Assert.That(off.Stale, Is.Empty);
         Assert.That(working.Proposals.Single().Item.Id, Is.EqualTo("A-T2"));
+
+        // A huge setting threw out of every plan (M.ORCH-T429).
+        var huge = new OrchestratorSettings { StaleAfterHours = int.MaxValue, GroomAfterDays = int.MaxValue };
+        Assert.That(Scheduler.Plan(Activity(now, transcriptAt: now.AddHours(-30)), huge, [Quiet]).Stale, Is.Empty);
     }
 
     [Test]
