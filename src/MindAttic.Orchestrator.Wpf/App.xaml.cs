@@ -44,9 +44,9 @@ public partial class App : Application
         var installer = new Installer();
         if (e.Args.Contains("--uninstall", StringComparer.OrdinalIgnoreCase))
         {
-            installer.Uninstall();
-            log.Information("Uninstalled: removed the logon task and shortcuts");
-            MessageBox.Show($"The background daemon and the shortcuts are gone.\n\nTo finish, delete {installer.InstallDir}.",
+            var hooks = installer.Uninstall();
+            log.Information("Uninstalled: removed the logon task and shortcuts; hooks: {Hooks:l}", hooks ?? "none registered");
+            MessageBox.Show($"The background daemon, the shortcuts and the CLI hooks are gone.\n\nTo finish, delete {installer.InstallDir}.",
                 "MindAttic Orchestrator", MessageBoxButton.OK, MessageBoxImage.Information);
             Shutdown();
             return;

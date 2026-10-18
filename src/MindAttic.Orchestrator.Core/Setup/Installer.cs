@@ -235,13 +235,16 @@ public sealed class Installer
         return made == 0 ? null : $"made {made} shortcut{(made == 1 ? "" : "s")}";
     }
 
-    /// <summary>Removes the task, the shortcuts and the installed exe's companions; the running exe can't delete itself.</summary>
-    public void Uninstall()
+    /// <summary>Removes the task, the shortcuts, the installed exe's companions and the gate hooks it registered in every CLI's
+    /// settings (M.ORCH-T439); the running exe can't delete itself. Returns what was done to the hooks, or null when none were there.</summary>
+    public string? Uninstall()
     {
         StopInstalledCopies();
         Run("schtasks", "/Delete", "/TN", TaskName, "/F");
         foreach (var path in ShortcutPaths())
             try { File.Delete(path); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        // After the daemon is stopped, so it can't register them again.
+        return AgentGateRemoval.Remove();
     }
 
     private static string Escape(string s) => SecurityElement.Escape(s) ?? s;
