@@ -38,12 +38,13 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
     public void Tick(DateTime nowUtc)
     {
         if (nowUtc - checkedUtc < TimeSpan.FromMinutes(1)) return;
+        // Either file held past the store's retries reads as empty: a window graded from that is written for good (over
+        // with no hit, or blind), so the check waits for the next tick instead.
+        if (!store.TryLoad<List<UsageSample>>("usage-samples", out var samples) || !store.TryLoadLimits(out var hits)) return;
         var first = checkedUtc == default;
         checkedUtc = nowUtc;
         FileTicket ??= File;
 
-        var samples = store.Load<List<UsageSample>>("usage-samples");
-        var hits = store.LoadLimits();
         if (first && samples.Count > 0)
         {
             var last = samples.Max(s => s.AtUtc);
