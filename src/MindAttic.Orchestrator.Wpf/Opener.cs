@@ -36,8 +36,7 @@ public static class Opener
     {
         try
         {
-            var psi = new ProcessStartInfo("cmd.exe") { UseShellExecute = false, CreateNoWindow = true };
-            foreach (var a in new[] { "/c", "code", "--", path }) psi.ArgumentList.Add(a);
+            var psi = new ProcessStartInfo("cmd.exe", $"/c code -- {CmdQuoted(path)}") { UseShellExecute = false, CreateNoWindow = true };
             using var p = Process.Start(psi)!;
             if (p.WaitForExit(5000) && p.ExitCode == 0) return;
         }
@@ -50,8 +49,7 @@ public static class Opener
     {
         try
         {
-            var psi = new ProcessStartInfo("cmd.exe") { UseShellExecute = false, CreateNoWindow = true };
-            foreach (var a in new[] { "/c", "code", "--diff", left, right }) psi.ArgumentList.Add(a);
+            var psi = new ProcessStartInfo("cmd.exe", $"/c code --diff {CmdQuoted(left)} {CmdQuoted(right)}") { UseShellExecute = false, CreateNoWindow = true };
             using var p = Process.Start(psi)!;
             if (p.WaitForExit(5000) && p.ExitCode == 0) return;
         }
@@ -59,6 +57,10 @@ public static class Opener
         Open(left);
         Open(right);
     }
+
+    /// <summary>A path as cmd.exe must see it: always in quotes, since .NET quotes only one with a space and cmd splits an
+    /// unquoted <c>R&amp;D\hook.py</c> at the <c>&amp;</c> into a second command (a Windows path can't hold a quote).</summary>
+    internal static string CmdQuoted(string path) => $"\"{path}\"";
 
     private static void Start(string exe, string args)
     {
