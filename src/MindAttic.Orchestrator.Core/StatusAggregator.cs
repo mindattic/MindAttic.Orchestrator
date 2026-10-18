@@ -123,7 +123,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             Published.Read(DateTime.UtcNow) is { } shared && !ResetSince(shared, DateTime.UtcNow))
         {
             LastWasShared = true;
-            return WithLiveQueue(shared);
+            return WithLiveBilling(WithLiveQueue(shared), DateTime.UtcNow);
         }
         var snapshot = Build(nowUtc ?? DateTime.UtcNow);
         if (nowUtc is null && statusLease is { IsHeld: true }) Published.Write(snapshot);
@@ -159,6 +159,31 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or Microsoft.Data.Sqlite.SqliteException)
         {
             return shared; // the holder's, as read then: tried again next refresh
+        }
+    }
+
+    /// <summary>
+    /// <paramref name="shared"/> with billing as it is now once the mode was written after the holder built it (M.ORCH-T452): a
+    /// switch from this process (the dashboard's toggle, <c>orchestrator billing</c>) read back as the old mode for up to
+    /// <see cref="SnapshotFile.MaxAge"/>, snapping the toggle back and naming the old billing in the header.
+    /// </summary>
+    internal Snapshot WithLiveBilling(Snapshot shared, DateTime now)
+    {
+        try
+        {
+            var mode = BillingSwitch.ModeFile.Path;
+            if (!File.Exists(mode) || File.GetLastWriteTimeUtc(mode) < shared.TakenUtc) return shared;
+            var billing = BillingSwitch.Status([.. shared.Repos.SelectMany(r => r.Hosts)], now);
+            var bySession = billing.Clis.ToDictionary(c => c.SessionId, Billing.BillingText.Of, StringComparer.Ordinal);
+            return shared with
+            {
+                Billing = billing,
+                Agents = [.. shared.Agents.Select(a => bySession.TryGetValue(a.SessionId, out var b) ? a with { Billing = b } : a)],
+            };
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidOperationException)
+        {
+            return shared; // the holder's, as published: tried again next refresh
         }
     }
 

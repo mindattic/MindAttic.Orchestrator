@@ -218,6 +218,33 @@ public sealed class StatusAggregatorTests
     }
 
     [Test]
+    public void A_shown_snapshot_takes_billing_as_it_is_once_a_switch_was_made_after_it()
+    {
+        // M.ORCH-T452: the dashboard's toggle switched billing, then showed the daemon's snapshot from before the switch: the
+        // toggle snapped back to the old mode for up to a minute.
+        var contexts = Path.Combine(dir, "session-context");
+        Directory.CreateDirectory(contexts);
+        var config = Path.Combine(dir, ".claude.json");
+        File.WriteAllText(config, "{\"oauthAccount\": {\"accountUuid\": \"acct-1\", \"organizationUuid\": \"org-1\"}}");
+        Billing.BillingSwitch Billing() => new(contexts) { ConfigPath = config, VaultKey = () => "sk-ant-api03-0123456789abcdefghijWXYZ", IsAlive = _ => false };
+        StatusAggregator With(MindAttic.Orchestrator.Scheduling.DispatchLease lease) =>
+            new(new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null }, store,
+                new RateLimitStatusWriter(Path.Combine(dir, "rl-status.json")), lease)
+            { ScanHosts = () => hosts, OtherProviders = new ProviderLogReader(Path.Combine(dir, "codex"), Path.Combine(dir, "gemini")), BillingSwitch = Billing() };
+        using var daemonLease = new MindAttic.Orchestrator.Scheduling.DispatchLease(Path.Combine(dir, "store"));
+        using var windowLease = new MindAttic.Orchestrator.Scheduling.DispatchLease(Path.Combine(dir, "store"));
+        Assert.That(With(daemonLease).Refresh().Billing!.Mode, Is.EqualTo(MindAttic.Orchestrator.Billing.BillingModes.Team));
+
+        var window = With(windowLease);
+        Assert.That(window.Refresh().Billing!.Mode, Is.EqualTo(MindAttic.Orchestrator.Billing.BillingModes.Team), "nothing switched: the holder's");
+        Assert.That(window.BillingSwitch.Switch("api", "dashboard", [], DateTime.UtcNow).Error, Is.Null);
+        var shown = window.Refresh();
+
+        Assert.That(window.LastWasShared, Is.True);
+        Assert.That((shown.Billing!.Mode, shown.Billing.Headline), Is.EqualTo((MindAttic.Orchestrator.Billing.BillingModes.Api, "API KEY: sk-ant-...WXYZ")));
+    }
+
+    [Test]
     public void A_published_snapshot_reads_back_with_the_same_numbers_and_ages_out()
     {
         store.SaveSettings(new OrchestratorSettings { WorktreeRoot = worktrees, BlockBudget = 100_000 });
