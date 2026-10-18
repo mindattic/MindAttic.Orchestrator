@@ -176,6 +176,15 @@ public sealed class ViewModelTests
     }
 
     [Test]
+    public void An_empty_queue_names_the_tickets_waiting_for_approval()
+    {
+        // M.ORCH-T350: it said "No open tickets anywhere" while unapproved features were open.
+        Assert.That(MainViewModel.EmptyQueue(0), Does.StartWith("No open tickets anywhere"));
+        Assert.That(MainViewModel.EmptyQueue(2), Is.EqualTo("Nothing workable: 2 open tickets wait for your approval (orchestrator approve <ID>); fixes need none."));
+        Assert.That(MainViewModel.EmptyQueue(1), Does.Contain("1 open ticket waits"));
+    }
+
+    [Test]
     public void A_finished_row_follows_its_tickets_latest_assignment()
     {
         // M.ORCH-T341: the row kept the assignment it was built from, and its button acted on the old directory.

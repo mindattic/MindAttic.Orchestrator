@@ -608,7 +608,7 @@
                     <TextBlock Style="{StaticResource SectionLabel}">
                         <Run Text="QUEUE · " /><Run Text="{Binding QueueCount, Mode=OneWay}" /><Run Text=" waiting · reserved first, then priority, smallest estimate, fixes before features, oldest" />
                     </TextBlock>
-                    <TextBlock Text="No open tickets anywhere. Add one with: workflow ticket new">
+                    <TextBlock Text="{Binding EmptyQueueText, Mode=OneWay}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource Muted}">
                                 <Setter Property="Visibility" Value="Collapsed" />

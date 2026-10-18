@@ -299,6 +299,14 @@ public sealed partial class MainViewModel
     public string QueueMessage { get => queueMessage; private set => Set(ref queueMessage, value); }
     public int QueueCount => Queue.Count(q => !q.IsAssigned);
 
+    /// <summary>What an empty queue says: tickets waiting for approval are left out of it, so they're named, not "no open
+    /// tickets" (M.ORCH-T350).</summary>
+    public string EmptyQueueText => EmptyQueue(plan?.AwaitingApproval.Count ?? 0);
+
+    internal static string EmptyQueue(int awaitingApproval) => awaitingApproval == 0
+        ? "No open tickets anywhere. Add one with: workflow ticket new"
+        : $"Nothing workable: {awaitingApproval} open ticket{(awaitingApproval == 1 ? "" : "s")} wait{(awaitingApproval == 1 ? "s" : "")} for your approval (orchestrator approve <ID>); fixes need none.";
+
     /// <summary>Tickets being started now: the row shows them unassigned until the refresh after the start, and a second
     /// click (or the tray's Start next) in that time would open a second agent on the same ticket.</summary>
     private readonly HashSet<string> starting = new(StringComparer.OrdinalIgnoreCase);
@@ -591,7 +599,7 @@ public sealed partial class MainViewModel
         Proposals.ReorderTo([.. Queue.Where(q => q.IsNext)]);
         Finished.SyncBy(plan.Finished, a => a.TicketId, f => f.TicketId, a => new FinishedViewModel(a, this), (row, a) => row.Update(a));
 
-        foreach (var name in new[] { nameof(Hold), nameof(HasHold), nameof(SlotsText), nameof(AutopilotText), nameof(QueueCount) })
+        foreach (var name in new[] { nameof(Hold), nameof(HasHold), nameof(SlotsText), nameof(AutopilotText), nameof(QueueCount), nameof(EmptyQueueText) })
             Raise(name);
     }
 }
