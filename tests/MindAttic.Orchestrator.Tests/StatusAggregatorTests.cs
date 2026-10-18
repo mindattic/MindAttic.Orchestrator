@@ -62,6 +62,11 @@ public sealed class StatusAggregatorTests
         return written;
     }
 
+    /// <summary>These tests write turns up to an hour before the wall clock and count them as today's: in the hour after local
+    /// midnight they'd be yesterday's, so the test is inconclusive then rather than failing.</summary>
+    private static void TurnsAreToday() =>
+        Assume.That(DateTime.Now.TimeOfDay, Is.GreaterThan(TimeSpan.FromHours(1)), "the turns written would fall before local midnight");
+
     private StatusAggregator Aggregator() => new(new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null }, store)
     {
         ScanHosts = () => hosts,
@@ -71,6 +76,7 @@ public sealed class StatusAggregatorTests
     [Test]
     public void Sessions_in_a_repo_and_in_its_worktrees_are_credited_to_it_with_its_open_tickets_and_todays_usage()
     {
+        TurnsAreToday();
         var last = Transcript("s1", Path.Combine(ws, "A", "src"), TimeSpan.FromSeconds(30), 10, 20);
         Transcript("s2", Path.Combine(worktrees, "A", "A-T1"), TimeSpan.FromMinutes(10), 5);
         hosts.Add(new HostSession("Claude", 42, "mindattic-host-claude-42", Path.Combine(ws, "B")));
@@ -96,6 +102,7 @@ public sealed class StatusAggregatorTests
     [Test]
     public void Today_is_the_day_of_the_refresh_asked_for_not_the_wall_clocks()
     {
+        TurnsAreToday();
         Transcript("s1", Path.Combine(ws, "A"), TimeSpan.FromMinutes(1), 10);
 
         Assert.That(Aggregator().Refresh().Repos.Single(r => r.Name == "A").UsageToday.Output, Is.EqualTo(10));
@@ -510,6 +517,7 @@ public sealed class StatusAggregatorTests
     [Test]
     public void A_session_on_an_env_api_key_is_left_out_of_the_subscription_budget()
     {
+        TurnsAreToday();
         Transcript("s1", Path.Combine(ws, "A"), TimeSpan.FromMinutes(1), 100);
         Transcript("s2", Path.Combine(ws, "B"), TimeSpan.FromMinutes(1), 5_000);
         Config("""{"oauthAccount":{"accountUuid":"a"}}""");
@@ -528,6 +536,7 @@ public sealed class StatusAggregatorTests
     [Test]
     public void Going_back_to_an_account_counts_its_spend_from_before_the_other_one_again()
     {
+        TurnsAreToday();
         Transcript("s1", Path.Combine(ws, "A"), TimeSpan.FromMinutes(50), 100, 200);
         Transcript("s2", Path.Combine(ws, "B"), TimeSpan.FromMinutes(20), 7_000);
         Config("""{"oauthAccount":{"accountUuid":"a"}}""");
