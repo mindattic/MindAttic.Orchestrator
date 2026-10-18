@@ -59,8 +59,14 @@ public sealed class BuildWorkspaceWindow : Window
             Say("");
             Say($"Cloned {r.Cloned}, {r.AlreadyThere} already there, {r.Failed.Count} failed.");
             foreach (var f in r.Failed) Say("  " + f);
-            // The dashboard only builds an empty folder, so the retry is the CLI's, which clones just what's missing.
-            if (r.Failed.Count > 0) Say($"To retry later: orchestrator workspace build \"{folder}\" (only what's missing gets cloned).");
+            // The dashboard only builds an empty folder, and a machine set up from the exe has no orchestrator CLI: the retry
+            // that works anywhere is git itself, one line per repo that failed.
+            if (r.Failed.Count > 0 && WorkspaceBootstrap.Load(folder) is { } manifest)
+            {
+                Say("To retry one later:");
+                foreach (var repo in manifest.Repos.Where(m => r.Failed.Any(f => f.StartsWith(m.Name + ":", StringComparison.Ordinal))))
+                    Say($"  git clone {repo.Remote} \"{Path.Combine(folder, repo.Name)}\"");
+            }
             log.Information("Built the workspace in {Folder:l}: cloned {Cloned}, failed {Failed}", folder, r.Cloned, r.Failed.Count);
             var apps = WorkspaceBootstrap.Apps(folder);
             if (apps.Count > 0 && MessageBox.Show(this, $"Also install the {apps.Count} apps that have a deploy script?\n\n{string.Join(", ", apps)}",

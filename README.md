@@ -131,7 +131,7 @@ To check on it: `orchestrator status` (sessions), `orchestrator budget` (percent
 There's no setup step. `MindAttic.Orchestrator.exe` is one self-contained file: drop it anywhere and double-click it. The first run:
 
 1. copies itself to `C:\Apps\MindAttic.Orchestrator` (per-user `%LOCALAPPDATA%\Programs` if `C:\Apps` isn't writable) and hands over to that copy;
-2. if the workspace (default `D:\Projects\MindAttic`) is missing or empty, asks once: **build one** (pick an empty folder; it clones the workspace root repo, `mindattic/codex-standard`, then every repo listed in its `docs\workspace-repos.json`, four at a time, with a progress window) or **point at one that's already here**. Repos that fail (offline, no access) are listed; opening it again clones only what's missing;
+2. if the workspace (default `D:\Projects\MindAttic`) is missing or empty, asks once: **build one** (pick an empty folder; it clones the workspace root repo, `mindattic/codex-standard`, then every repo listed in its `docs\workspace-repos.json`, four at a time, with a progress window) or **point at one that's already here**. Repos that fail (offline, no access) are listed with the `git clone` line that retries each;
 3. registers the logon task `\MindAttic\Orchestrator\Orchestrator daemon` (the same exe with `--daemon`: headless, no window, no time limit) and starts it;
 4. makes Start menu and desktop shortcuts, then opens the dashboard, which scans every repo and learns your limits from the last month of transcripts.
 
