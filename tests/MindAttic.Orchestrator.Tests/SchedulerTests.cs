@@ -221,6 +221,23 @@ public sealed class SchedulerTests
     }
 
     [Test]
+    public void An_unapproved_ticket_whose_session_went_quiet_isnt_proposed_or_handed_out_again()
+    {
+        // M.ORCH-T383: dispatched, then approve --undo (or never approved); once stale it waits for your yes.
+        var now = DateTime.UtcNow;
+        var snap = new Snapshot(now, [new RepoStatus("A", @"D:\W\A", RepoState.Dormant, [],
+            [new TranscriptSession("s", Worktree, now.AddHours(-13), default, null)],
+            [T("A-T1", "feature")], now.AddHours(-13), default)], []);
+        var plan = Scheduler.Plan(snap, new OrchestratorSettings(), [Quiet]);
+
+        Assert.That(plan.Stale.Single().Id, Is.EqualTo("A-T1"), "still said to be stale");
+        Assert.That(plan.Proposals, Is.Empty);
+        var store = new MindAttic.Orchestrator.Settings.JsonStore(Path.Combine(Path.GetTempPath(), "orch-sched-" + Guid.NewGuid().ToString("N")));
+        var (handed, _) = Autopilot.Next(plan, new OrchestratorSettings(), store, ["A"], 5, claim: false, now, pilotRunning: _ => false);
+        Assert.That(handed, Is.Empty);
+    }
+
+    [Test]
     public void Recent_work_or_an_open_tab_keeps_the_assignment()
     {
         var now = DateTime.UtcNow;

@@ -222,8 +222,10 @@ public static partial class Scheduler
         var reposTaken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var item in queue)
         {
+            // An unapproved ticket is in the queue only while it's being worked (approved then, or taken back since): once its
+            // assignment goes stale it waits for your yes like any other, not proposed again (M.ORCH-T383).
             if (item.IsAssigned || item.RepoPath.Length == 0 || reposTaken.Contains(item.Repo) || item.BlockedBy.Count > 0 ||
-                workedIds.Contains(item.Id)) continue;
+                workedIds.Contains(item.Id) || !settings.MayWork(item.Ticket)) continue;
             var reserved = item.Reserved > 0;
             // A reserved ticket gets its slice even while pacing coasts or caps, never past a limit.
             if (reserved ? overLimit || proposals.Count >= free || pace?.RoomTokens < item.Reserved
