@@ -38,8 +38,9 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
 }
 
 /// <summary>An open ticket a live agent is working though no assignment says so (M.ORCH-T255): the session (and subagent,
-/// null for the CLI itself) that has it, and how it's known.</summary>
-public sealed record WorkedTicket(string TicketId, string SessionId, string? AgentId, string How);
+/// null for the CLI itself) that has it, and how it's known. <paramref name="Filed"/>: it's held because that transcript filed it
+/// this turn, the one hold the calling CLI itself is exempt from (M.ORCH-T328).</summary>
+public sealed record WorkedTicket(string TicketId, string SessionId, string? AgentId, string How, bool Filed = false);
 
 /// <summary>A ticket the scheduler thinks should start now, and how.</summary>
 public sealed record Proposal(QueueItem Item, bool UseWorktree, string Reason);
@@ -278,9 +279,10 @@ public static partial class Scheduler
         var worked = new List<WorkedTicket>();
         foreach (var s in snapshot.Repos.SelectMany(r => r.Sessions).Where(s => s.Provider == Providers.Claude))
         {
-            foreach (var f in s.Filing.Where(f => Live(f.LastWriteUtc)))
-                worked.Add(new(f.TicketId, s.SessionId, f.AgentId, f.AgentId is null ? "filed it this turn" : $"its subagent {f.AgentId} filed it"));
+            // Its own ticket first: a session that was started on a ticket and filed it too is working it, not just its filer.
             if (s.TicketId is { } own && Live(s.LastWriteUtc)) worked.Add(new(own, s.SessionId, null, "started on it"));
+            foreach (var f in s.Filing.Where(f => Live(f.LastWriteUtc)))
+                worked.Add(new(f.TicketId, s.SessionId, f.AgentId, f.AgentId is null ? "filed it this turn" : $"its subagent {f.AgentId} filed it", Filed: true));
             foreach (var sub in s.TicketedSubagents.Where(t => t.Events.Count > 0 && Live(t.Events[^1].AtUtc)))
                 worked.Add(new(sub.TicketId, s.SessionId, sub.AgentId, $"its subagent {sub.AgentId} was handed it"));
         }

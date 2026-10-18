@@ -379,7 +379,8 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         var room = unthrottled ? null : plan.Pace?.RoomTokens;
         // As the queue judges too big: a reserved ticket against the whole room, the rest against what isn't reserved.
         bool TooBigNow(QueueItem q) => (q.Reserved > 0 ? room : unthrottled ? null : plan.RoomForRest ?? room) is { } left && q.Estimate is { } e && e.Fresh > left;
-        var elsewhere = plan.Worked.Where(w => !(w.AgentId is null && self is not null && w.SessionId == self))
+        // Only what the calling CLI filed itself is free to it: the ticket it was started on is its own work (M.ORCH-T328).
+        var elsewhere = plan.Worked.Where(w => !(w.Filed && w.AgentId is null && self is not null && w.SessionId == self))
             .Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
         bool Busy(QueueItem q) => q.IsAssigned || elsewhere.Contains(q.Id) || (q.Assignment is { } a && pilotRunning(a));
         var open = plan.Queue.Where(q => Named(q.Repo) && !settings.AutopilotSkip.Contains(q.Repo, StringComparer.OrdinalIgnoreCase) &&

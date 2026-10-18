@@ -247,9 +247,12 @@ public sealed class HookScriptTests
         Assert.That(Asked("h1"), Does.Contain("\"block\""), "nothing held: it's work");
         // Written as the daemon writes it, so the names the hook reads are the ones it gets.
         new MindAttic.Orchestrator.Settings.JsonStore(store).Save(Daemon.AutopilotHoldsName,
-            new Daemon.AutopilotHolds(false, [new MindAttic.Orchestrator.Scheduling.WorkedTicket("U.SPC-T1", "other", null, "filed")], []));
+            new Daemon.AutopilotHolds(false, [new MindAttic.Orchestrator.Scheduling.WorkedTicket("U.SPC-T1", "other", null, "filed", Filed: true)], []));
         Assert.That(Asked("h2"), Is.Empty, "another live session filed it and is fixing it: next won't hand it out");
         Assert.That(Asked("other"), Does.Contain("\"block\""), "the session that filed it isn't held from it");
+        new MindAttic.Orchestrator.Settings.JsonStore(store).Save(Daemon.AutopilotHoldsName,
+            new Daemon.AutopilotHolds(false, [new MindAttic.Orchestrator.Scheduling.WorkedTicket("U.SPC-T1", "started", null, "started on it")], []));
+        Assert.That(Asked("started"), Is.Empty, "but the one it was started on is its own work, not one for its subagents (M.ORCH-T328)");
         File.WriteAllText(holds, """{"Quiet":true,"Worked":[],"LivePilot":[]}""");
         Assert.That(Asked("h3"), Is.Empty, "quiet hours");
         File.WriteAllText(holds, """{"Quiet":false,"Worked":[],"LivePilot":[]}""");

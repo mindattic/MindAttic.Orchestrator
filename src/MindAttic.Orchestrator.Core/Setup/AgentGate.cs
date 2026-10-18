@@ -929,7 +929,7 @@ public static class AgentGate
                 if holds.get("Quiet"):
                     return []
                 held = {(w.get("TicketId") or "").upper() for w in holds.get("Worked") or []
-                        if not (w.get("AgentId") is None and sid and w.get("SessionId") == sid)}
+                        if not (w.get("Filed") and w.get("AgentId") is None and sid and w.get("SessionId") == sid)}
                 held |= {(i or "").upper() for i in holds.get("LivePilot") or []}
                 try:
                     stale = Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "{{{Daemon.StaleTicketsName}}}.json"

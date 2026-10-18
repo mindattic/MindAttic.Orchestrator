@@ -328,6 +328,23 @@ public sealed class AutopilotTests
     }
 
     [Test]
+    public void The_ticket_the_calling_cli_was_started_on_is_not_handed_to_its_own_subagents()
+    {
+        // M.ORCH-T328: the calling CLI was exempt from every hold of its own, so the ticket its first prompt named went to a
+        // subagent of its own while it worked it too. Only what it filed itself is its to hand out.
+        var cli = new TranscriptSession("cli", @"D:\W\A", Now.AddMinutes(-1), default, null)
+        {
+            TicketId = "A-T1", Filing = [new FiledTicket("A-T2", null, Now.AddMinutes(-1))],
+        };
+        var snap = Snap(("A", [T("A-T1"), T("A-T2")])) is var s0 ? s0 with { Repos = [s0.Repos[0] with { Sessions = [cli] }] } : null!;
+        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
+
+        var (handed, _) = Autopilot.Next(Paced(snap, 5), new() { WorktreeRoot = @"D:\WT" }, store, ["A"], 10, claim: false, Now, Make, _ => "main", self: "cli");
+
+        Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T2" }));
+    }
+
+    [Test]
     public void A_stale_ticket_whose_background_agent_is_still_running_is_not_handed_out()
     {
         // M.ORCH-T255: a daemon background agent quiet past StaleAfterHours is still on its ticket while its process runs.
