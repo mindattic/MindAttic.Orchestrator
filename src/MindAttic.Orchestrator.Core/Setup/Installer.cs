@@ -115,7 +115,14 @@ public sealed class Installer
         if (!force && WhyNotReplace(runningExe) is { } why) throw new IOException($"Not installing: {why}. Pass --force to install it anyway.");
         Directory.CreateDirectory(InstallDir);
         StopInstalledCopies();
-        File.Copy(runningExe, InstalledExe, overwrite: true);
+        try { File.Copy(runningExe, InstalledExe, overwrite: true); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Stopped for nothing (the old exe still locked, say by an elevated dashboard): the old install's daemon runs
+            // again, or pacing and the hooks' holds stay off until the next logon (M.ORCH-T353).
+            if (!DaemonRunning()) Run("schtasks", "/Run", "/TN", TaskName);
+            throw;
+        }
     }
 
     public void StopInstalledCopies()
