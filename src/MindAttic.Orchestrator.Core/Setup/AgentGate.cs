@@ -636,16 +636,15 @@ public static class AgentGate
 
     /// <summary>
     /// The context gate: records each session's turn (busy on a prompt, idle on Stop) next to the
-    /// context fill the statusline saves, and once a turn tells the main agent its context is past
-    /// <paramref name="percent"/> so it wraps up and lets its subagents finish. The orchestrator then
-    /// cycles it (<see cref="Sessions.ContextCycler"/>). With <paramref name="keepGoing"/>, a turn that ends asking whether
+    /// context fill the statusline saves, so the orchestrator can cycle a session past <paramref name="percent"/>
+    /// once its turn is over (<see cref="Sessions.ContextCycler"/>). With <paramref name="keepGoing"/>, a turn that ends asking whether
     /// to go on while its repo still has open tickets is told to carry on (<see cref="Settings.OrchestratorSettings.KeepGoing"/>).
     /// </summary>
     internal static string ContextScript(int percent, bool keepGoing = true) => $$$"""
         #!/usr/bin/env python3
         # MindAttic.Orchestrator's context gate (written by the orchestrator; edits are overwritten).
-        # Records each session's turn state and warns the main agent once per turn when its context is
-        # past the cycle point, so it finishes cleanly before the orchestrator saves, clears and reloads it.
+        # Records each session's turn state, which the orchestrator reads to save, clear and reload a session
+        # whose context is past the cycle point once its turn is over.
         import json, os, re, sys, time
         from datetime import datetime, timezone
         from pathlib import Path
@@ -933,9 +932,8 @@ public static class AgentGate
             state.pop("exempt", None)  # an exempt command's turn ends here, and with it the exemption (M.ORCH-T198)
             # The orchestrator keeps development going without you: a turn that ends asking whether to go on, or that
             # closed a ticket and stopped, while its repo still has open tickets is told to carry on. One that stops
-            # again straight after without doing anything is let go (something there really needs you), and so is one
-            # past the cycle point. Each is logged to keep-going.jsonl, which the daemon reports.
-            used = load(DIR / (sid + ".json")).get("used_percentage") or 0
+            # again straight after without doing anything is let go (something there really needs you). Each is logged
+            # to keep-going.jsonl, which the daemon reports.
             insisted = state.get("nudged") and not state.get("worked")
             why = None
             limits = orchestrator_status()
