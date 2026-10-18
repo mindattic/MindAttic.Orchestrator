@@ -99,6 +99,9 @@ public static class Pacer
     /// <summary>Past this share of the 5-hour limit, only work that can finish before the stop starts.</summary>
     public const double WindDownShare = 0.90;
 
+    /// <summary>Why nothing is paced while the sign-in is an API key: it's billed per token, with no window to run into.</summary>
+    public const string ApiKeyNote = "API key: no 5-hour or weekly windows, so nothing is paced or stopped.";
+
     /// <param name="recentDelaySeconds">The agent delay averaged over the recent-rate window (see
     /// <see cref="RateLimitStatusWriter.AgentDelay"/>): what the measured rate was slowed by.</param>
     /// <param name="subagents">Subagents running now across every CLI (the context gate's SubagentStart/Stop marks).</param>

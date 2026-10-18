@@ -36,7 +36,11 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     private readonly Workspace workspace = new(options.WorkspaceRoot);
     private readonly OpenTicketSource tickets = new();
     private readonly TranscriptReader transcripts = new(options.ClaudeProjectsDir, options.TranscriptCache);
-    private readonly Sessions.ContextCycler contextCycler = new() { ProjectsDir = options.ClaudeProjectsDir };
+    private Sessions.ContextCycler? cycler;
+    private Sessions.ContextCycler contextCycler => cycler ??= new(SessionContextDir) { ProjectsDir = options.ClaudeProjectsDir };
+
+    /// <summary>Where the context gate keeps each session's state; null reads the real one. Replaceable for tests.</summary>
+    internal string? SessionContextDir { get; init; }
     private readonly SubagentActivityReader subagents = new(options.ClaudeProjectsDir);
 
     /// <summary>The Launcher tabs open now (a live pipe scan); replaceable for tests.</summary>
@@ -55,7 +59,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     private ClaudeMeterProbe? defaultProbe;
     private ClaudeMeterProbe? Probe => MeterProbe ??
         (ReportedUsagePath is null && statusLease is not null && rateLimitFile?.Path == new RateLimitStatusWriter().Path
-            ? defaultProbe ??= new ClaudeMeterProbe() : null);
+            ? defaultProbe ??= new ClaudeMeterProbe { AccountKey = () => ClaudeAccount.Current(new ClaudeAccount().ConfigPath) } : null);
     private DateTime auditStamp;
 
     /// <summary>Which Claude account is signed in, so a switch to another leaves the old one's usage behind. Like the
@@ -66,10 +70,13 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         (ReportedUsagePath is null && statusLease is not null && rateLimitFile?.Path == new RateLimitStatusWriter().Path
             ? defaultAccount ??= new ClaudeAccount() : null);
 
-    // What the transcripts add up to only changes when they do (M.ORCH-T116): kept until the reader's version or the day moves.
-    private (long Version, DateTime Today) claudeKey = (-1, default);
+    // What the transcripts add up to only changes when they do (M.ORCH-T116): kept until the reader's version, the day or the
+    // sessions billed elsewhere move.
+    private (long Version, DateTime Today, string OffSubscription) claudeKey = (-1, default, "");
     private List<TranscriptSession> claudeSessions = [];
+    private List<TranscriptSession> subscriptionSessions = [];
     private List<UsageEvent> claudeEvents = [];
+    private string? lastAccount;
     private double? typicalPerSession;
 
     // usage-samples.json, reread only when another process has written it since.
@@ -132,12 +139,17 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         // Claude's sessions drive the budget and pacing (its limits are Claude's); every provider's
         // count toward repo activity and per-repo totals.
         var polled = transcripts.Poll(historyStartUtc);
-        if (claudeKey != (transcripts.Version, startOfTodayUtc))
+        // A CLI on an API key, a gateway or a cloud provider spends none of the subscription's windows (the hooks record each
+        // session's auth): its tokens, limit hits and burn stay out of the budget and the pace, though its work still shows.
+        var offSubscription = contextCycler.OffSubscription();
+        var offKey = string.Join(",", offSubscription.Keys.Order(StringComparer.Ordinal));
+        if (claudeKey != (transcripts.Version, startOfTodayUtc, offKey))
         {
-            claudeKey = (transcripts.Version, startOfTodayUtc);
+            claudeKey = (transcripts.Version, startOfTodayUtc, offKey);
             claudeSessions = [.. polled.Select(s => s with { UsageToday = s.UsageSince(startOfTodayUtc) })];
-            claudeEvents = [.. claudeSessions.SelectMany(s => s.Events).OrderBy(e => e.AtUtc)];
-            typicalPerSession = Pacer.TypicalPerSession(claudeSessions.Select(s => s.Events), historyStartUtc);
+            subscriptionSessions = [.. claudeSessions.Where(s => s.SessionId is not { } id || !offSubscription.ContainsKey(id))];
+            claudeEvents = [.. subscriptionSessions.SelectMany(s => s.Events).OrderBy(e => e.AtUtc)];
+            typicalPerSession = Pacer.TypicalPerSession(subscriptionSessions.Select(s => s.Events), historyStartUtc);
         }
         var allSessions = claudeSessions;
         var providerSessions = OtherProviders.Poll(historyStartUtc)
@@ -157,31 +169,52 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         }
 
         var events = claudeEvents;
-        var calibration = Calibrate(allSessions, events, historyStartUtc, now);
+        var calibration = Calibrate(subscriptionSessions, events, historyStartUtc, now);
+        // Read before the sign-in, so a reading written just after a /login is judged against the new account, never
+        // confirmed as the old one's.
         var reported = ReportedUsage.Load(now, ReportedUsagePath);
-        // After a /login to another account, what the old one spent, reported or hit isn't this one's: its weekly stop
-        // kept every prompt refused though the new account had room. Hits stay for learning the limits; their walls go.
-        var switched = SignIn?.SwitchedAtUtc(now);
-        if (switched is not null)
+        // Only the current account's spans count: what another account spent, reported or hit isn't this one's (its weekly
+        // stop kept every prompt refused though the new account had room), and going back to an account picks its own up
+        // again. Hits stay for learning the limits; their walls go.
+        var signIn = SignIn?.Read(now);
+        var switchedNow = false;
+        if (signIn is not null)
         {
-            events = [.. events.Where(e => e.AtUtc >= switched)];
-            if (reported?.AtUtc < switched) reported = null;
-            if (lastReported?.AtUtc < switched) lastReported = null;
-            calibration = new LimitCalibration([.. calibration.Observations.Where(o => o.HitUtc >= switched || o.ResetUtc <= now)]);
+            if (signIn.Account != lastAccount)
+            {
+                switchedNow = lastAccount is not null;
+                lastAccount = signIn.Account;
+                lastReported = null;
+            }
+            events = [.. events.Where(e => signIn.Contains(e.AtUtc))];
+            if (reported is not null && (!signIn.Owns(reported) || reported.Account is null && signIn.Switched && !signIn.Contains(reported.AtUtc))) reported = null;
+            if (reported is not null) SignIn!.Confirm(signIn.Account, reported, now);
+            calibration = new LimitCalibration([.. calibration.Observations.Where(o => signIn.Contains(o.HitUtc) || o.ResetUtc <= now)]);
         }
         // No statusline reporting while tokens are spent (a CLI waiting on subagents): read Claude's meter directly (M.ORCH-T203).
-        if (Probe is { } probe && (statusLease is null || statusLease.IsHeld)) probe.Tick(reported?.AtUtc, events, now);
-        var reportedLimit = ReportedLimitFrom(reported, events, now);
-        if (switched is not null) samples?.RemoveAll(s => s.AtUtc < switched);
-        reported = ReportedLimit.Highest(samples ?? [], reported, now);
+        // An account just signed in to has no window of its own yet (every other CLI still shows the old one's): read it now.
+        if (Probe is { } probe && (statusLease is null || statusLease.IsHeld) && signIn?.IsApiKey != true)
+        {
+            if (switchedNow) probe.Reset();
+            probe.Tick(reported?.AtUtc, events, now, force: signIn is { Switched: true } && !signIn.HasWindow(now));
+        }
+        var reportedLimit = ReportedLimitFrom(reported, events, now, signIn);
+        List<UsageSample> mine = signIn is null ? samples ?? [] : [.. (samples ?? []).Where(s => signIn.Contains(s.AtUtc))];
+        reported = ReportedLimit.Highest(mine, reported, now);
         reported = KeepWindow(reported, now);
         var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration,
             reported: reported, reportedLimit: reportedLimit);
 
         var recentFrom = now - BudgetCalculator.RecentWindow;
-        var active = allSessions.Count(s => s.Events.Count > 0 && s.Events[^1].AtUtc >= recentFrom);
+        var active = subscriptionSessions.Count(s => s.Events.Count > 0 && s.Events[^1].AtUtc >= recentFrom);
         var pace = Pacer.Compute(budget, active, typicalPerSession, settings, now,
             rateLimitFile?.AgentDelay(now) ?? 0, rateLimitFile is null ? 0 : contextCycler.Subagents());
+        // An API key has no 5-hour or weekly window: nothing it spends is held against the subscription's learned limits.
+        if (signIn is { IsApiKey: true })
+        {
+            budget = BudgetCalculator.Compute(events, settings with { BlockBudget = null, WeeklyBudget = null }, now, startOfTodayUtc);
+            pace = new Pace(PaceMode.Unpaced, settings.MaxConcurrentSessions, 0, budget.RecentFreshPerHour, null, null, null, Pacer.ApiKeyNote);
+        }
         if (rateLimitFile is not null && (statusLease is null || statusLease.IsHeld || statusLease.TryAcquire()))
             rateLimitFile.Write(budget, pace);
 
@@ -217,7 +250,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
 
-        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = UtilizationSeries.Build(samples ?? [], budget, settings.PaceTargetPercent, now), ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Requires = tickets.Requires, Agents = agentBoard };
+        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = UtilizationSeries.Build(mine, budget, settings.PaceTargetPercent, now), ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Requires = tickets.Requires, Agents = agentBoard };
 
         RepoStatus Repo(string name, string path, IReadOnlyList<MindAttic.Workflow.Tickets.Ticket> open)
         {
@@ -238,7 +271,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// </summary>
     /// <summary>Keeps a week of Claude's 5-hour reports (with the local tokens behind each) in
     /// <c>usage-samples.json</c> and sizes the limit from how they moved; null until one window has moved enough.</summary>
-    private long? ReportedLimitFrom(ReportedUsage? reported, IReadOnlyList<UsageEvent> events, DateTime now)
+    /// <remarks>Every account's samples are kept; only <paramref name="signIn"/>'s size its limit.</remarks>
+    private long? ReportedLimitFrom(ReportedUsage? reported, IReadOnlyList<UsageEvent> events, DateTime now, SignInState? signIn)
     {
         var path = Path.Combine(Store.Directory, "usage-samples.json");
         var stamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default;
@@ -250,11 +284,11 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             if (!Store.TryLoad<List<UsageSample>>("usage-samples", out var loaded)) return samplesEstimate;
             samples = loaded;
             samplesStamp = stamp;
-            samplesEstimate = ReportedLimit.Estimate(samples);
         }
-        if (ReportedLimit.Record(samples, reported, events, now))
+        var recorded = ReportedLimit.Record(samples, reported, events, now);
+        samplesEstimate = ReportedLimit.Estimate(signIn is null ? samples : [.. samples.Where(s => signIn.Contains(s.AtUtc))]);
+        if (recorded)
         {
-            samplesEstimate = ReportedLimit.Estimate(samples);
             // Like every other save here, a locked file mustn't fail the whole refresh (no rl-status.json that tick);
             // the sample stays in memory and goes out with the next one recorded.
             try

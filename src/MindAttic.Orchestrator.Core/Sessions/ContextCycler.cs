@@ -249,6 +249,45 @@ public sealed class ContextCycler(string? directory = null)
         return newest.Where(kv => IsClaude(kv.Key)).ToDictionary(kv => kv.Value.Session, kv => kv.Value.Busy, StringComparer.Ordinal);
     }
 
+    /// <summary>What the context gate records for a session billed to the subscription (its <c>auth</c>); anything else is not.</summary>
+    public const string SubscriptionAuth = "subscription";
+
+    private readonly Dictionary<string, (DateTime Stamp, string? Auth)> auths = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// The sessions the context gate found billed elsewhere than the Claude subscription (an API key, a gateway, a cloud
+    /// provider: see <c>session_auth</c> in the hooks), with how. Hooks see each CLI's own environment and the daemon
+    /// doesn't, so this is how their tokens are left out of the subscription's windows. A session with no record counts.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> OffSubscription()
+    {
+        var found = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (!System.IO.Directory.Exists(Directory)) return found;
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var file in System.IO.Directory.EnumerateFiles(Directory, "*.state.json"))
+        {
+            var session = Path.GetFileName(file)[..^".state.json".Length];
+            seen.Add(session);
+            try
+            {
+                var stamp = File.GetLastWriteTimeUtc(file);
+                if (!auths.TryGetValue(session, out var known) || known.Stamp != stamp)
+                {
+                    using var doc = JsonDocument.Parse(ReadShared(file));
+                    known = (stamp, doc.RootElement.TryGetProperty("auth", out var a) && a.ValueKind == JsonValueKind.String ? a.GetString() : null);
+                    auths[session] = known;
+                }
+                if (known.Auth is { } auth && auth != SubscriptionAuth) found[session] = auth;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
+            {
+                if (auths.TryGetValue(session, out var known) && known.Auth is { } auth && auth != SubscriptionAuth) found[session] = auth;
+            }
+        }
+        foreach (var gone in auths.Keys.Where(k => !seen.Contains(k)).ToList()) auths.Remove(gone);
+        return found;
+    }
+
     /// <summary>Whether <paramref name="pid"/> is a running Claude CLI.</summary>
     public static bool IsClaude(int pid)
     {

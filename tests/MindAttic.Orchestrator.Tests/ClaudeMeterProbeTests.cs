@@ -124,4 +124,38 @@ public sealed class ClaudeMeterProbeTests
         Assert.That(File.Exists(probe.UsagePath), Is.False);
         Assert.That(probe.LastResult, Does.Contain("no reading"));
     }
+
+    [Test]
+    public async Task A_reading_is_tagged_with_the_account_it_was_read_for_and_none_is_taken_across_a_login()
+    {
+        var account = "a/max";
+        var probe = new ClaudeMeterProbe
+        {
+            UsagePath = Path.Combine(dir, "claude-usage.json"), CredentialsPath = Credentials(DateTime.UtcNow.AddHours(1)),
+            AccountKey = () => account, Fetch = (_, _) => Task.FromResult<string?>(Body),
+        };
+        Assert.That(probe.Tick(DateTime.UtcNow, [], Now, force: true), Is.True, "forced though nothing is stale");
+        await probe.Pending;
+        Assert.That(ReportedUsage.Load(DateTime.UtcNow, probe.UsagePath)!.Account, Is.EqualTo("a/max"));
+
+        File.Delete(probe.UsagePath);
+        probe.Reset();
+        var switching = new ClaudeMeterProbe
+        {
+            UsagePath = probe.UsagePath, CredentialsPath = probe.CredentialsPath,
+            AccountKey = () => account, Fetch = (_, _) => { account = "b/max"; return Task.FromResult<string?>(Body); },
+        };
+        switching.Tick(null, [], Now, force: true);
+        await switching.Pending;
+        Assert.That((File.Exists(probe.UsagePath), switching.LastResult), Is.EqualTo((false, "the Claude sign-in changed while reading the meter")),
+            "the token may have been the old account's");
+
+        account = ClaudeAccount.ApiKey;
+        var asked = false;
+        var keyed = new ClaudeMeterProbe { UsagePath = probe.UsagePath, CredentialsPath = probe.CredentialsPath, AccountKey = () => account,
+            Fetch = (_, _) => { asked = true; return Task.FromResult<string?>(Body); } };
+        keyed.Tick(null, [], Now, force: true);
+        await keyed.Pending;
+        Assert.That(asked, Is.False, "an API key has no subscription meter");
+    }
 }

@@ -95,6 +95,9 @@ public sealed record ReportedUsage(ReportedWindow? FiveHour, ReportedWindow? Wee
     /// <summary>The time the weekly percent describes.</summary>
     public DateTime WeekAt => WeekAtUtc ?? AtUtc;
 
+    /// <summary>The account the meter probe read this for (<see cref="ClaudeMeterProbe"/> tags its writes); null from a statusline.</summary>
+    public string? Account { get; init; }
+
     public static string DefaultPath { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "claude-usage.json");
 
@@ -128,7 +131,10 @@ public sealed record ReportedUsage(ReportedWindow? FiveHour, ReportedWindow? Wee
                 !DateTime.TryParse(a.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var at) ||
                 nowUtc - at > MaxAge || !root.TryGetProperty("rate_limits", out var limits))
                 return null;
-            return new ReportedUsage(Window(limits, "five_hour"), Window(limits, "seven_day"), at);
+            return new ReportedUsage(Window(limits, "five_hour"), Window(limits, "seven_day"), at)
+            {
+                Account = root.TryGetProperty("account", out var who) && who.ValueKind == JsonValueKind.String ? who.GetString() : null,
+            };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or FormatException)
         {

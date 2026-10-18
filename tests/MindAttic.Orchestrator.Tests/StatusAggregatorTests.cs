@@ -441,4 +441,150 @@ public sealed class StatusAggregatorTests
         aggregator.Refresh(t0.AddMinutes(5));
         Assert.That(Saved("B"), Is.EqualTo(shown), "5 minutes on: saved");
     }
+
+    // M.ORCH-T285: sign-in changes, as the daemon sees them.
+
+    private string Config(string json)
+    {
+        var path = Path.Combine(dir, ".claude.json");
+        File.WriteAllText(path, json);
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(Interlocked.Increment(ref configTick)));
+        return path;
+    }
+
+    private int configTick;
+
+    /// <summary>The account record as the version before spans wrote it: signed in to <paramref name="account"/> <paramref name="ago"/>.</summary>
+    private void SignedInSince(string account, TimeSpan ago)
+    {
+        var path = SignIn().StatePath;
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, $$"""{"account":"{{account}}","since":{{DateTimeOffset.UtcNow.Subtract(ago).ToUnixTimeSeconds()}}}""");
+    }
+
+    private ClaudeAccount SignIn() => new() { ConfigPath = Path.Combine(dir, ".claude.json"), StatePath = Path.Combine(dir, "session-context", ClaudeAccount.FileName) };
+
+    private StatusAggregator Daemon(ClaudeAccount account, string? rlPath = null, ClaudeMeterProbe? probe = null) =>
+        new(new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null }, store,
+            rlPath is null ? null : new RateLimitStatusWriter(rlPath))
+        {
+            ScanHosts = () => hosts, OtherProviders = new ProviderLogReader(Path.Combine(dir, "codex"), Path.Combine(dir, "gemini")),
+            ReportedUsagePath = Path.Combine(dir, "claude-usage.json"), Account = account, MeterProbe = probe,
+            SessionContextDir = Path.Combine(dir, "session-context"),
+        };
+
+    private void Usage(double fivePercent, DateTime fiveReset, double weekPercent, DateTime weekReset, string? account = null)
+    {
+        var body = new System.Text.Json.Nodes.JsonObject
+        {
+            ["rate_limits"] = new System.Text.Json.Nodes.JsonObject
+            {
+                ["five_hour"] = new System.Text.Json.Nodes.JsonObject { ["used_percentage"] = fivePercent, ["resets_at"] = new DateTimeOffset(fiveReset).ToUnixTimeSeconds() },
+                ["seven_day"] = new System.Text.Json.Nodes.JsonObject { ["used_percentage"] = weekPercent, ["resets_at"] = new DateTimeOffset(weekReset).ToUnixTimeSeconds() },
+            },
+            ["at"] = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture),
+        };
+        if (account is not null) body["account"] = account;
+        File.WriteAllText(Path.Combine(dir, "claude-usage.json"), body.ToJsonString());
+    }
+
+    [Test]
+    public void On_an_api_key_the_daemon_writes_no_stop_and_paces_nothing()
+    {
+        store.SaveSettings(new OrchestratorSettings { WorktreeRoot = worktrees, BlockBudget = 1_000 });
+        Transcript("s1", Path.Combine(ws, "A"), TimeSpan.FromMinutes(1), 50_000, 60_000);
+        var rlPath = Path.Combine(dir, "rl-status.json");
+
+        Config("""{"oauthAccount":{"accountUuid":"a","organizationUuid":"max"}}""");
+        SignedInSince("a/max", TimeSpan.FromHours(1));
+        var paced = Daemon(SignIn(), rlPath).Refresh();
+        Assert.That((paced.Pace!.Stop, File.ReadAllText(rlPath).Contains("\"stop\": true")), Is.EqualTo((true, true)), "the login is past its budget: stopped");
+
+        Config("""{"primaryApiKey":"sk-ant-x"}""");
+        var keyed = Daemon(SignIn(), rlPath).Refresh();
+        Assert.That((keyed.Pace!.IsPaced, keyed.Pace.Stop, keyed.Pace.Note, keyed.Pace.AgentDelaySeconds), Is.EqualTo((false, false, Pacer.ApiKeyNote, 0.0)));
+        Assert.That(keyed.Budget!.Level, Is.EqualTo(BudgetLevel.Ok), "orchestrator next's warn line doesn't hold it either");
+        Assert.That(!File.Exists(rlPath) || !File.ReadAllText(rlPath).Contains("\"stop\""), Is.True, "no stop for the hooks");
+    }
+
+    [Test]
+    public void A_session_on_an_env_api_key_is_left_out_of_the_subscription_budget()
+    {
+        Transcript("s1", Path.Combine(ws, "A"), TimeSpan.FromMinutes(1), 100);
+        Transcript("s2", Path.Combine(ws, "B"), TimeSpan.FromMinutes(1), 5_000);
+        Config("""{"oauthAccount":{"accountUuid":"a"}}""");
+        var account = SignIn();
+        Directory.CreateDirectory(Path.Combine(dir, "session-context"));
+        File.WriteAllText(Path.Combine(dir, "session-context", "s1.state.json"), """{"state": "busy", "auth": "subscription"}""");
+        File.WriteAllText(Path.Combine(dir, "session-context", "s2.state.json"), """{"state": "busy", "auth": "api-key"}""");
+        SignedInSince("a", TimeSpan.FromHours(1));
+
+        var snap = Daemon(account).Refresh();
+
+        Assert.That(snap.Budget!.Today.Output, Is.EqualTo(100), "only the subscription's session counts");
+        Assert.That(snap.Repos.Single(r => r.Name == "B").UsageToday.Output, Is.EqualTo(5_000), "the key's work still shows");
+    }
+
+    [Test]
+    public void Going_back_to_an_account_counts_its_spend_from_before_the_other_one_again()
+    {
+        Transcript("s1", Path.Combine(ws, "A"), TimeSpan.FromMinutes(50), 100, 200);
+        Transcript("s2", Path.Combine(ws, "B"), TimeSpan.FromMinutes(20), 7_000);
+        Config("""{"oauthAccount":{"accountUuid":"a"}}""");
+        var account = SignIn();
+        Directory.CreateDirectory(Path.GetDirectoryName(account.StatePath)!);
+        long Ago(int minutes) => DateTimeOffset.UtcNow.AddMinutes(-minutes).ToUnixTimeSeconds();
+        File.WriteAllText(account.StatePath, $$"""
+            {"account":"a","since":{{Ago(10)}},"spans":[{"account":"a","from":{{Ago(120)}},"to":{{Ago(30)}}},
+            {"account":"b","from":{{Ago(30)}},"to":{{Ago(10)}}},{"account":"a","from":{{Ago(10)}},"to":null}]}
+            """);
+
+        Assert.That(Daemon(account).Refresh().Budget!.Today.Output, Is.EqualTo(300), "A's turns before B count again; B's don't");
+    }
+
+    [Test]
+    public void After_a_switch_the_probe_reads_the_new_account_at_once_and_another_clis_stale_reading_is_ignored()
+    {
+        var aFive = Seconds(DateTime.UtcNow.AddHours(1));
+        var aWeek = Seconds(DateTime.UtcNow.AddDays(2));
+        var bFive = new DateTime(DateTime.UtcNow.AddHours(3).Ticks / TimeSpan.TicksPerMinute * TimeSpan.TicksPerMinute, DateTimeKind.Utc);
+        var bWeek = new DateTime(DateTime.UtcNow.AddDays(5).Ticks / TimeSpan.TicksPerMinute * TimeSpan.TicksPerMinute, DateTimeKind.Utc);
+        var credentials = Path.Combine(dir, ".credentials.json");
+        File.WriteAllText(credentials, $$$"""{"claudeAiOauth":{"accessToken":"tok","expiresAt":{{{DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeMilliseconds()}}}}}""");
+        var asked = 0;
+        var probe = new ClaudeMeterProbe
+        {
+            UsagePath = Path.Combine(dir, "claude-usage.json"), CredentialsPath = credentials,
+            AccountKey = () => ClaudeAccount.Current(Path.Combine(dir, ".claude.json")),
+            Fetch = (_, _) =>
+            {
+                asked++;
+                return Task.FromResult<string?>($$$"""{"five_hour":{"utilization":12.0,"resets_at":"{{{bFive:O}}}"},"seven_day":{"utilization":20.0,"resets_at":"{{{bWeek:O}}}"}}""");
+            },
+        };
+        Config("""{"oauthAccount":{"accountUuid":"a","organizationUuid":"max"}}""");
+        var account = SignIn();
+        var daemon = Daemon(account, probe: probe);
+        Usage(30, aFive, 99, aWeek);
+        Assert.That(daemon.Refresh().Budget!.WeeklyPercent, Is.EqualTo(99), "A's own reading");
+        Assert.That(asked, Is.Zero, "nothing spent, nothing stale: no ask");
+
+        Config("""{"oauthAccount":{"accountUuid":"b","organizationUuid":"max"}}""");
+        Usage(30, aFive, 99, aWeek); // another CLI restamps A's last reply
+        var switched = daemon.Refresh();
+        Assert.That(switched.Budget!.WeeklyPercent, Is.Not.EqualTo(99), "A's reading isn't B's");
+        probe.Pending.Wait();
+        Assert.That(asked, Is.EqualTo(1), "the switch was read at once, though nothing was stale");
+        Assert.That(File.ReadAllText(Path.Combine(dir, "claude-usage.json")), Does.Contain("\"account\":\"b/max\""), "tagged with the account it read");
+
+        var read = daemon.Refresh().Budget!;
+        Assert.That((read.WeeklyPercent, read.CurrentBlock!.EndUtc), Is.EqualTo(((double?)20, bFive)), "the probe's reading is B's");
+        Usage(30, aFive, 99, aWeek);
+        var stale = daemon.Refresh().Budget!;
+        Assert.That((stale.WeeklyPercent, stale.CurrentBlock!.EndUtc), Is.Not.EqualTo(((double?)99, aFive)), "A's restamped reading still isn't");
+        Assert.That(stale.CurrentBlock.EndUtc, Is.EqualTo(bFive), "B's window carries on");
+        Thread.Sleep(1100); // a statusline's stamp is to the second: not the second B was signed in to
+        Usage(15, bFive, 25, bWeek);
+        Assert.That(daemon.Refresh().Budget!.WeeklyPercent, Is.EqualTo(25), "B's statusline, its windows confirmed by the probe");
+    }
 }

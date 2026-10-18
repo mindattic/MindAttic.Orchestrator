@@ -38,6 +38,10 @@ public sealed class ClaudeMeterProbe
 
     public string CredentialsPath { get; init; } = DefaultCredentialsPath;
 
+    /// <summary>The account signed in now (<see cref="ClaudeAccount.Current"/>), which each reading is tagged with: after a
+    /// /login, only a reading tied to the new account is taken for it. Null tags nothing.</summary>
+    public Func<string?>? AccountKey { get; init; }
+
     /// <summary>Gets Claude's usage JSON; null when it couldn't. Tests swap it.</summary>
     internal Func<string, CancellationToken, Task<string?>> Fetch { get; init; } = FetchAsync;
 
@@ -68,9 +72,11 @@ public sealed class ClaudeMeterProbe
 
     /// <summary>Starts an ask in the background when <see cref="Due"/> and none is in flight or backing off; returns
     /// whether it started. The reading lands in <see cref="UsagePath"/> for the next refresh to pick up.</summary>
-    public bool Tick(DateTime? reportedAtUtc, IReadOnlyList<UsageEvent> events, DateTime nowUtc)
+    /// <param name="force">Ask whether or not it's due (still one at a time, and not while backing off): the account
+    /// just signed in to has no window confirmed yet.</param>
+    public bool Tick(DateTime? reportedAtUtc, IReadOnlyList<UsageEvent> events, DateTime nowUtc, bool force = false)
     {
-        if (!Due(reportedAtUtc, events, nowUtc)) return false;
+        if (!force && !Due(reportedAtUtc, events, nowUtc)) return false;
         lock (gate)
         {
             if (!Pending.IsCompleted || nowUtc < nextUtc) return false;
@@ -80,8 +86,21 @@ public sealed class ClaudeMeterProbe
         return true;
     }
 
+    /// <summary>Drops the wait after the last ask, so the next forced <see cref="Tick"/> asks at once: a switch to another
+    /// account is read within seconds, not after the old one's backoff.</summary>
+    public void Reset()
+    {
+        lock (gate) nextUtc = default;
+    }
+
     private async Task AskAsync(DateTime nowUtc)
     {
+        var account = Who();
+        if (account == ClaudeAccount.ApiKey)
+        {
+            Fail("an API key has no subscription meter to read");
+            return;
+        }
         string? token = null;
         try { token = Token(CredentialsPath, DateTime.UtcNow); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { }
@@ -98,15 +117,27 @@ public sealed class ClaudeMeterProbe
             Fail("Claude's usage endpoint gave no reading");
             return;
         }
+        // The credentials and the config are both rewritten by a /login: a token read just before one is the old account's.
+        if (Who() != account)
+        {
+            LastResult = "the Claude sign-in changed while reading the meter";
+            return;
+        }
         try
         {
-            Write(UsagePath, reading, DateTime.UtcNow);
+            Write(UsagePath, reading, DateTime.UtcNow, account);
             LastResult = $"read Claude's meter: {reading.FiveHour?.Percent:0}% of the 5-hour window";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // A reader or the statusline had the file at that moment: try again at the next due tick, not after a backoff.
             LastResult = $"couldn't write {Path.GetFileName(UsagePath)}: {ex.Message}";
+        }
+
+        string? Who()
+        {
+            try { return AccountKey?.Invoke(); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return null; }
         }
 
         void Fail(string why)
@@ -161,9 +192,10 @@ public sealed class ClaudeMeterProbe
                 : null;
     }
 
-    /// <summary>Writes <paramref name="reading"/> as the statusline does, stamped <paramref name="atUtc"/>. Usage never falls
-    /// within a window, so a higher percent already in the file for the same window is kept (with this, newer, time).</summary>
-    internal static void Write(string path, ReportedUsage reading, DateTime atUtc)
+    /// <summary>Writes <paramref name="reading"/> as the statusline does, stamped <paramref name="atUtc"/> and tagged with
+    /// <paramref name="account"/>. Usage never falls within a window, so a higher percent already in the file for the same
+    /// window is kept (with this, newer, time).</summary>
+    internal static void Write(string path, ReportedUsage reading, DateTime atUtc, string? account = null)
     {
         var five = reading.FiveHour!;
         if (ReportedUsage.Load(atUtc, path)?.FiveHour is { } old && old.ResetUtc == five.ResetUtc && old.Percent > five.Percent)
@@ -175,9 +207,10 @@ public sealed class ClaudeMeterProbe
             ["rate_limits"] = limits,
             ["at"] = atUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture),
             ["source"] = "orchestrator",
-        }.ToJsonString();
+        };
+        if (account is not null) json["account"] = account;
         var tmp = $"{path}.{Environment.ProcessId}.tmp";
-        File.WriteAllText(tmp, json);
+        File.WriteAllText(tmp, json.ToJsonString());
         try { File.Move(tmp, path, overwrite: true); }
         catch
         {

@@ -66,14 +66,18 @@ public static class AgentGate
     /// session's statusline rewrites <c>claude-usage.json</c> each minute with its own last percent, so an idle one turned
     /// Claude's 99% back into 85% once a minute and every call held at the stop went through; and a daemon that stalled
     /// right after writing its stop let the stop lapse with its file. Usage in a window never goes down, so neither can.</para>
-    /// <para>All of that is one account's usage. Once the Claude sign-in moves to another account (<see cref="Budget.ClaudeAccount"/>),
-    /// a latch, a report or an orchestrator status from before the switch is the old account's and holds nothing back: a
-    /// /login to an account with room left used to stay locked out at the old one's weekly stop until it reset.</para>
+    /// <para>All of that is one account's usage (<see cref="Budget.ClaudeAccount"/>). Only what's tied to the account signed in
+    /// now counts: a latch is kept per account, a <c>claude-usage.json</c> reading must be that account's once another has been
+    /// signed in, and an orchestrator status from before the switch is the old account's. A /login to an account with room
+    /// left used to stay locked out at the old one's weekly stop until it reset; going back to it brings its stop back.</para>
+    /// <para>A CLI billed elsewhere (an API key, a gateway, a cloud provider: <c>session_auth</c>) spends none of the
+    /// subscription's windows, so no stop or pace holds it.</para>
     /// </summary>
     internal static string ClaudeUsagePython => $$"""
         STOP_PERCENT = {{StopPercent}}
         LATCH = Path.home() / ".claude" / "session-context" / "{{StopLatchName}}"
         ACCOUNT = Path.home() / ".claude" / "session-context" / "{{Budget.ClaudeAccount.FileName}}"
+        HISTORY_KEPT = {{(int)Budget.ClaudeAccount.HistoryKept.TotalSeconds}}
         def read_json(path):
             # A file being replaced can't be opened for a moment on Windows: that's a retry, not a missing file.
             for _ in range(20):
@@ -99,86 +103,149 @@ public static class AgentGate
                 tmp.unlink()
             except Exception:
                 pass
-        _switched = []
-        def switched_at():
-            # When the Claude sign-in last moved to another account (epoch; 0 when it never has or isn't known). Usage, a
-            # latch or a pace from before it is the old account's: it doesn't hold this one back. Shared with the daemon.
-            if _switched:
-                return _switched[0]
-            since = 0.0
+        def claude_config():
             try:
-                # Keyed as ClaudeAccount.Current: a Claude login by account and organization, an API key as "{{Budget.ClaudeAccount.ApiKey}}".
                 config = json.loads((Path.home() / ".claude.json").read_text(encoding="utf-8", errors="ignore"))
-                text = lambda o, k: o.get(k) if isinstance(o, dict) and isinstance(o.get(k), str) and o.get(k) else None
-                oauth = config.get("oauthAccount")
-                account = None
-                if text(oauth, "accountUuid"):
-                    account = text(oauth, "accountUuid")
-                    if text(oauth, "organizationUuid"):
-                        account += "/" + text(oauth, "organizationUuid")
-                elif text(config, "primaryApiKey"):
-                    account = "{{Budget.ClaudeAccount.ApiKey}}"
-                else:
-                    responses = config.get("customApiKeyResponses")
-                    approved = responses.get("approved") if isinstance(responses, dict) else None
-                    if isinstance(approved, list) and approved:
-                        account = "{{Budget.ClaudeAccount.ApiKey}}"
-                if account:
-                    try:
-                        seen = read_json(ACCOUNT) if ACCOUNT.exists() else {}
-                    except Exception:
-                        seen = {}
-                    was = seen.get("account")
-                    if was == account:
-                        since = float(seen.get("since") or 0)
-                    elif isinstance(was, str) and "/" not in was and account.startswith(was + "/") and seen.get("since"):
-                        # Recorded before the organization was part of the key: the same sign-in, so keep its date.
-                        since = float(seen["since"])
-                        write_json(ACCOUNT, {"account": account, "since": since})
-                    else:
-                        since = time.time()
-                        write_json(ACCOUNT, {"account": account, "since": since})
+                return config if isinstance(config, dict) else {}
+            except Exception:
+                return {}
+        def config_account(config):
+            # Keyed as ClaudeAccount.Current: a Claude login by account and organization, an API key as "{{Budget.ClaudeAccount.ApiKey}}"; None signed out.
+            text = lambda o, k: o.get(k) if isinstance(o, dict) and isinstance(o.get(k), str) and o.get(k) else None
+            oauth = config.get("oauthAccount")
+            if text(oauth, "accountUuid"):
+                return text(oauth, "accountUuid") + ("/" + text(oauth, "organizationUuid") if text(oauth, "organizationUuid") else "")
+            if text(config, "primaryApiKey"):
+                return "{{Budget.ClaudeAccount.ApiKey}}"
+            responses = config.get("customApiKeyResponses")
+            approved = responses.get("approved") if isinstance(responses, dict) else None
+            return "{{Budget.ClaudeAccount.ApiKey}}" if isinstance(approved, list) and approved else None
+        _account = []
+        def account():
+            # (the account signed in, or the last one while signed out; the epochs [(from, to)] it was signed in; the record).
+            # A move to another account closes the last span and opens one for it; the daemon keeps the same record, so whichever
+            # sees a switch first dates it for both. ("", [], {}) when no account was ever seen.
+            if _account:
+                return _account[0]
+            result = ("", [], {})
+            try:
+                signed = config_account(claude_config())
+                try:
+                    seen = read_json(ACCOUNT) if ACCOUNT.exists() else {}
+                except Exception:
+                    seen = {}
+                spans = [dict(x) for x in seen.get("spans") or [] if isinstance(x, dict) and x.get("account") and x.get("from") is not None]
+                if not spans and seen.get("account") and seen.get("since"):
+                    spans = [{"account": seen["account"], "from": float(seen["since"]), "to": None}]  # recorded before spans were kept
+                current = spans[-1]["account"] if spans else None
+                changed = False
+                if signed and current and "/" not in current and signed.startswith(current + "/"):
+                    # Recorded before the organization was part of the key: the same sign-in, so keep its dates.
+                    for x in spans:
+                        if x["account"] == current:
+                            x["account"] = signed
+                    current, changed = signed, True
+                if signed and signed != current:
+                    now = time.time()
+                    if spans:
+                        spans[-1]["to"] = now
+                    spans = [x for x in spans if x.get("to") is None or now - float(x["to"]) <= HISTORY_KEPT]
+                    spans.append({"account": signed, "from": now, "to": None})
+                    current, changed = signed, True
+                if changed:
+                    seen.update(account=current, since=spans[-1]["from"], spans=spans)
+                    write_json(ACCOUNT, seen)
+                if current:
+                    result = (current, [(float(x["from"]), None if x.get("to") is None else float(x["to"])) for x in spans if x["account"] == current], seen)
             except Exception:
                 pass
-            _switched.append(since)
-            return since
+            _account.append(result)
+            return result
+        def switched_at():
+            # When the sign-in last moved to the current account (epoch; 0 when no account was ever seen).
+            spans = account()[1]
+            return spans[-1][0] if spans else 0.0
         def before_switch(stamp):
-            # Whether an ISO time (a report's or a status file's) is from before the sign-in moved to another account.
+            # Whether an ISO time (a report's or a status file's) is from before the sign-in moved to the current account; never
+            # before the first account seen (its first sight isn't a move from anything).
+            current, _, seen = account()
             since = switched_at()
-            if not since:
+            if not since or all(x.get("account") == current for x in seen.get("spans") or []):
                 return False
             try:
                 return datetime.fromisoformat(str(stamp).replace("Z", "+00:00")).timestamp() < since
             except Exception:
                 return True
+        def owns(usage):
+            # Whether a claude-usage.json reading is the current account's (ClaudeAccount.Owns). Every open CLI's statusline
+            # restamps its own last reply, so after a /login the others keep writing the old account's percent as new. Once
+            # another account has been signed in, only a reading the daemon's meter probe tagged with this account, or one whose
+            # windows were already confirmed for it, counts.
+            current, _, seen = account()
+            if usage.get("account"):
+                return usage["account"] == current
+            if not current or all(x.get("account") == current for x in seen.get("spans") or []):
+                return True
+            confirmed = seen.get("confirmed") if isinstance(seen.get("confirmed"), dict) else {}
+            mine = confirmed.get(current) if isinstance(confirmed.get(current), dict) else None
+            if not mine:
+                return False
+            limits = usage.get("rate_limits") or {}
+            reset = lambda w: float(w["resets_at"]) if isinstance(w, dict) and w.get("resets_at") is not None else None
+            same = lambda a, b: a is not None and b is not None and abs(float(a) - float(b)) < 90
+            five, week = reset(limits.get("five_hour")), reset(limits.get("seven_day"))
+            if same(five, mine.get("five_hour")) and (week is None or mine.get("seven_day") is None or same(week, mine["seven_day"])):
+                return True
+            return same(week, mine.get("seven_day")) and not any(same(week, (c or {}).get("seven_day")) for a, c in confirmed.items() if a != current and isinstance(c, dict))
         def latched(by):
-            # The stop latched by "claude" or "orchestrator" for a window that hasn't reset, on this account; None otherwise.
+            # The stop latched by "claude", "claude-week" or "orchestrator" for the current account, for a window that hasn't
+            # reset; None otherwise. Going back to an account brings its stop back while its window runs.
             try:
-                l = read_json(LATCH).get(by)
-                if l and float(l["until"]) > time.time() and float(l.get("epoch") or 0) == switched_at():
+                every = read_json(LATCH)
+                l = every.get(by + "@" + account()[0])
+                if l is None:
+                    # Latched before latches were kept per account: the current account's if dated from its current span.
+                    l = every.get(by)
+                    if l and (l.get("account") or float(l.get("epoch") or 0) != switched_at()):
+                        l = None
+                    elif l:
+                        # Moved to the account's key, so it still holds once this account is left and come back to.
+                        every[by + "@" + account()[0]] = dict(l, account=account()[0])
+                        every.pop(by)
+                        write_json(LATCH, every)
+                if l and float(l["until"]) > time.time():
                     return l
             except Exception:
                 pass
             return None
         def latch(by, until, **fields):
-            # Records (or with until=None, clears) a stop seen for its window, so it holds until the reset whatever comes next.
+            # Records (or with until=None, clears) a stop seen for the current account's window, so it holds until the reset
+            # whatever comes next. Latches whose window has reset are dropped.
             try:
                 every = read_json(LATCH) if LATCH.exists() else {}
             except Exception:
                 every = {}
-            old = every.get(by)
+            key = by + "@" + account()[0]
+            old = every.get(key)
+            legacy = every.get(by)
+            if legacy and not legacy.get("account") and float(legacy.get("epoch") or 0) == switched_at():
+                old = old or legacy
+                every.pop(by)
+            else:
+                legacy = None
             if until is None:
                 if old is None:
                     return
-                every.pop(by)
+                every.pop(key, None)
             else:
-                entry = dict(fields, until=float(until), epoch=switched_at())
-                if old and old.get("until") == entry["until"] and old.get("epoch") == entry["epoch"] and float(old.get("percent") or 0) > float(entry.get("percent") or 0):
+                entry = dict(fields, until=float(until), account=account()[0], epoch=switched_at())
+                if old and old.get("until") == entry["until"] and float(old.get("percent") or 0) > float(entry.get("percent") or 0):
                     entry["percent"] = old["percent"]
-                if old == entry:
+                if old == entry and not legacy:
                     return
-                every[by] = entry
-            write_json(LATCH, every)
+                every[key] = entry
+            now = time.time()
+            write_json(LATCH, {k: v for k, v in every.items() if isinstance(v, dict) and float(v.get("until") or 0) > now})
         def claude_stop():
             # (percent, reset epoch, window) when Claude itself reports a window at the stop line, now or earlier in the same
             # window (an idle session's later, lower report doesn't lift it); None otherwise. The week counts as much as the
@@ -186,7 +253,7 @@ public static class AgentGate
             windows = (("five_hour", "claude", "5-hour"), ("seven_day", "claude-week", "weekly"))
             try:
                 usage = read_json(Path.home() / ".claude" / "claude-usage.json")
-                limits = {} if before_switch(usage.get("at")) else usage["rate_limits"]
+                limits = usage["rate_limits"] if owns(usage) and (usage.get("account") or not before_switch(usage.get("at"))) else {}
                 for key, by, name in windows:
                     w = limits.get(key)
                     if w and float(w["used_percentage"]) >= STOP_PERCENT and float(w["resets_at"]) > time.time():
@@ -199,6 +266,53 @@ public static class AgentGate
                 if l:
                     return float(l.get("percent") or STOP_PERCENT), float(l["until"]), name
             return None
+        def flag(value):
+            return bool(value) and str(value).strip().lower() not in ("0", "false", "no", "off")
+        def session_auth(cwd=None):
+            # What this CLI is billed through, by Claude Code's own precedence (code.claude.com/docs/en/iam, "Authentication
+            # precedence"): a cloud provider, then ANTHROPIC_AUTH_TOKEN (a gateway), ANTHROPIC_API_KEY, apiKeyHelper,
+            # CLAUDE_CODE_OAUTH_TOKEN, an Anthropic profile, then the /login in ~/.claude.json. Hooks run inside claude.exe and see
+            # its environment, settings' env blocks included; the settings files are read too. Outside claude.exe (no CLAUDECODE:
+            # Codex, Gemini, Kimi) it's "subscription", paced as ever. CLAUDE_CODE_OAUTH_TOKEN is a subscription whose account
+            # can't be told from the token: it's paced as the config's account.
+            if os.environ.get("CLAUDECODE") != "1":
+                return "{{Sessions.ContextCycler.SubscriptionAuth}}"
+            settings = []
+            places = [Path.home() / ".claude" / "settings.json", Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "ClaudeCode" / "managed-settings.json"]
+            if cwd:
+                places += [Path(cwd) / ".claude" / "settings.json", Path(cwd) / ".claude" / "settings.local.json"]
+            for place in places:
+                try:
+                    found = json.loads(place.read_text(encoding="utf-8", errors="ignore"))
+                    if isinstance(found, dict):
+                        settings.append(found)
+                except Exception:
+                    pass
+            env = {}
+            for found in settings:
+                if isinstance(found.get("env"), dict):
+                    env.update({k: str(v) for k, v in found["env"].items()})
+            env.update(os.environ)
+            if any(flag(env.get(v)) for v in ("CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY",
+                                              "CLAUDE_CODE_USE_ANTHROPIC_AWS", "CLAUDE_CODE_USE_MANTLE")):
+                return "cloud"
+            if env.get("ANTHROPIC_AUTH_TOKEN"):
+                return "gateway"
+            config = claude_config()
+            key = env.get("ANTHROPIC_API_KEY")
+            if key:
+                # -p (and the SDK) always uses it; interactively only once approved (Claude Code remembers the key's last 20
+                # characters). A rejected key, or one still waiting for its answer, leaves the login in charge.
+                responses = config.get("customApiKeyResponses") if isinstance(config.get("customApiKeyResponses"), dict) else {}
+                if str(os.environ.get("CLAUDE_CODE_ENTRYPOINT") or "").startswith("sdk") or key[-20:] in (responses.get("approved") or []):
+                    return "api-key"
+            if any(found.get("apiKeyHelper") for found in settings):
+                return "helper"
+            if env.get("CLAUDE_CODE_OAUTH_TOKEN"):
+                return "{{Sessions.ContextCycler.SubscriptionAuth}}"
+            if env.get("ANTHROPIC_PROFILE") or (env.get("ANTHROPIC_FEDERATION_RULE_ID") and env.get("ANTHROPIC_ORGANIZATION_ID")):
+                return "profile"
+            return "api-key" if config_account(config) == "{{Budget.ClaudeAccount.ApiKey}}" else "{{Sessions.ContextCycler.SubscriptionAuth}}"
         def reset_text(epoch):
             # The clock alone within a day; with the weekday when it's further off (a week's reset).
             at = datetime.fromtimestamp(epoch)
@@ -539,6 +653,11 @@ public static class AgentGate
                 (Path.home() / ".claude" / "session-context" / "refresh.now").write_text(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ"))
             except Exception:
                 pass
+            raise SystemExit(0)
+
+        # A CLI billed to an API key, a gateway or a cloud provider spends none of the subscription's windows: no stop, latch,
+        # pace hold or subagent allowance is its to obey.
+        if session_auth(data.get("cwd")) != "{{Sessions.ContextCycler.SubscriptionAuth}}":
             raise SystemExit(0)
 
         # Never past the limit, whatever else is set (/unthrottle included): at the window's target a call is held as long
@@ -973,7 +1092,11 @@ public static class AgentGate
             poke()
         if not sid or data.get("agent_id"):
             sys.exit(0)  # subagents finish inside their parent's turn
-        if event == "UserPromptSubmit":
+        # Recorded in the session's state, so the daemon leaves a CLI billed elsewhere out of the subscription's budget; and
+        # nothing the subscription's windows decide holds it here.
+        auth = session_auth(data.get("cwd"))
+        paced = auth == "{{{Sessions.ContextCycler.SubscriptionAuth}}}"
+        if event == "UserPromptSubmit" and paced:
             # At the window's stop a typed message is answered at once by this, not by the model: nothing is spent, so
             # the limit is never passed even by your own prompts. The orchestrator's control commands still go through.
             limits = orchestrator_status()
@@ -1013,7 +1136,7 @@ public static class AgentGate
             limits = orchestrator_status()
             # At the window's target nothing more may run, so a stop is never pushed back to work: the orchestrator's stop,
             # latched or fresh, or Claude's own percent at the line with the daemon down, as a typed prompt is held to.
-            stopped = bool(limits.get("stop")) or orchestrator_stop(limits) is not None or claude_stop() is not None
+            stopped = paced and (bool(limits.get("stop")) or orchestrator_stop(limits) is not None or claude_stop() is not None)
             # Only a CLI that typed /autopilot is kept going, on its own repos, while they have workable tickets.
             repos = autopilot_repos(my_pid())
             if repos and KEEP_GOING and not stopped and not state.get("goal"):
@@ -1030,7 +1153,7 @@ public static class AgentGate
                 sys.exit(0)
             for k in ("nudged", "worked", "closed"):
                 state.pop(k, None)
-            state.update(state="idle", at=now, pid=cli_pid(), cwd=data.get("cwd"))
+            state.update(state="idle", at=now, pid=cli_pid(), cwd=data.get("cwd"), auth=auth)
             if stopped and state.get("goal"):
                 # /goal's own Stop hook sends the turn back while its condition isn't met, and at the stop every tool call is
                 # refused, so it never is: each round would spend a turn past the line. continue:false outranks its block.
@@ -1047,7 +1170,7 @@ public static class AgentGate
                 state["transcript"] = data["transcript_path"]
             # The CLI's process id from its first prompt on: `orchestrator next` finds the calling CLI's own session by it, and
             # a CLI whose every stop is pushed back (an /autopilot run) never reaches the Stop that used to record it.
-            state.update(state="busy", at=now, warned=False, cwd=data.get("cwd"), pid=cli_pid())
+            state.update(state="busy", at=now, warned=False, cwd=data.get("cwd"), pid=cli_pid(), auth=auth)
             # A turn typed as an exempt command (/deploy, /run, ...) skips every pace gate until it stops (M.ORCH-T198).
             exempt = exempt_prompt(data.get("prompt"))
             if exempt:

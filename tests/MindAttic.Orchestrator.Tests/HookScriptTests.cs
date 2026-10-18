@@ -38,6 +38,10 @@ public sealed class HookScriptTests
         psi.Environment["APPDATA"] = dir; // the orchestrator's settings (approvals) come from here, never this machine's
         psi.Environment["MINDATTIC_CLI_PID"] = Cli.ToString(); // as one CLI process, never the one running these tests
         psi.Environment["MINDATTIC_WORKSPACE"] = ws;
+        // Inside claude.exe on its /login, whatever the machine running the tests is signed in with.
+        foreach (var auth in AuthVariables) psi.Environment.Remove(auth);
+        psi.Environment["CLAUDECODE"] = "1";
+        psi.Environment["CLAUDE_CODE_ENTRYPOINT"] = "cli";
         foreach (var (k, v) in env ?? new Dictionary<string, string>()) psi.Environment[k] = v;
         var p = Process.Start(psi)!;
         p.StandardInput.Write(JsonSerializer.Serialize(input));
@@ -45,10 +49,18 @@ public sealed class HookScriptTests
         return p;
     }
 
-    private (string Output, TimeSpan Took) Gate(object input, string script = AgentGate.ScriptName, params string[] args)
+    private static readonly string[] AuthVariables =
+    [
+        "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY", "CLAUDE_CODE_USE_ANTHROPIC_AWS", "CLAUDE_CODE_USE_MANTLE",
+        "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_PROFILE", "ANTHROPIC_FEDERATION_RULE_ID", "ANTHROPIC_ORGANIZATION_ID",
+    ];
+
+    private (string Output, TimeSpan Took) Gate(object input, string script = AgentGate.ScriptName, params string[] args) => Gate(input, (IDictionary<string, string>?)null, script, args);
+
+    private (string Output, TimeSpan Took) Gate(object input, IDictionary<string, string>? env, string script = AgentGate.ScriptName, params string[] args)
     {
         var clock = Stopwatch.StartNew();
-        using var p = Run(script, input, args);
+        using var p = Run(script, input, env, args);
         var output = p.StandardOutput.ReadToEnd();
         Assert.That(p.WaitForExit(30_000), Is.True);
         return (output, clock.Elapsed);
@@ -1065,5 +1077,179 @@ public sealed class HookScriptTests
         Assert.That(GateHeld(Skill("run"), 2).Output, Does.Contain("\"deny\""), "and replaces the defaults");
         Assert.That(Gate(new { hook_event_name = "UserPromptSubmit", session_id = "k2", prompt = "/deploy", cwd = ws }, AgentGate.ContextScriptName).Output,
             Does.Contain("\"block\""), "/deploy is no longer exempt, so at the stop it's answered unsent");
+    }
+
+    // M.ORCH-T285: every combination of sign-in changes, with the daemon down so only the hooks' own record decides.
+
+    private const string AccountA = """{"oauthAccount":{"accountUuid":"account-a","organizationUuid":"max"}}""";
+    private const string AccountB = """{"oauthAccount":{"accountUuid":"account-b","organizationUuid":"team"}}""";
+
+    private void SignedIn(string config) => File.WriteAllText(Path.Combine(dir, ".claude.json"), config);
+
+    private static long Epoch(DateTime utc) => new DateTimeOffset(utc).ToUnixTimeSeconds();
+
+    private static readonly DateTime WeekReset = DateTime.UtcNow.AddDays(3);
+    private static readonly DateTime FiveReset = DateTime.UtcNow.AddHours(2);
+
+    /// <summary>A statusline's reading, stamped now: the week at <paramref name="weekPercent"/>, tagged when the probe wrote it.</summary>
+    private void Reading(double weekPercent, DateTime? weekReset = null, DateTime? fiveReset = null, string? account = null)
+    {
+        var body = new System.Text.Json.Nodes.JsonObject
+        {
+            ["rate_limits"] = new System.Text.Json.Nodes.JsonObject
+            {
+                ["five_hour"] = new System.Text.Json.Nodes.JsonObject { ["used_percentage"] = 40, ["resets_at"] = Epoch(fiveReset ?? FiveReset) },
+                ["seven_day"] = new System.Text.Json.Nodes.JsonObject { ["used_percentage"] = weekPercent, ["resets_at"] = Epoch(weekReset ?? WeekReset) },
+            },
+            ["at"] = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+        };
+        if (account is not null) body["account"] = account;
+        File.WriteAllText(Path.Combine(Claude, "claude-usage.json"), body.ToJsonString());
+    }
+
+    private bool PromptHeld(IDictionary<string, string>? env = null) =>
+        Gate(new { hook_event_name = "UserPromptSubmit", session_id = "acct", prompt = "hi", cwd = ws }, env, AgentGate.ContextScriptName).Output.Contains("Not sent");
+
+    private void DaemonDown() => Status(new { stop = false }, at: DateTime.UtcNow.AddMinutes(-10));
+
+    /// <summary>Signed in to A with A's week at 99%: the stop is seen and latched for A.</summary>
+    private void AAtItsWeeklyStop()
+    {
+        DaemonDown();
+        SignedIn(AccountA);
+        Reading(99);
+        Assert.That(PromptHeld(), Is.True, "A at 99% of its week");
+    }
+
+    [Test]
+    public void A_login_to_another_account_or_organization_leaves_the_old_ones_stop_behind_and_going_back_brings_it_back()
+    {
+        AAtItsWeeklyStop();
+
+        SignedIn(AccountB);
+        Assert.That(PromptHeld(), Is.False, "B isn't A: A's latch and reading hold nothing back");
+        Reading(99);
+        Assert.That(PromptHeld(), Is.False, "another CLI restamps A's last reply as new: it isn't B's, so it's ignored");
+
+        SignedIn(AccountA);
+        Assert.That(PromptHeld(), Is.True, "back on A inside its window: A's latch holds again");
+
+        SignedIn("""{"oauthAccount":{"accountUuid":"account-a","organizationUuid":"team"}}""");
+        Assert.That(PromptHeld(), Is.False, "the same person's other organization has limits of its own");
+    }
+
+    [Test]
+    public void Moving_to_the_configs_api_key_isnt_held_and_moving_back_holds_again()
+    {
+        AAtItsWeeklyStop();
+        SignedIn("""{"primaryApiKey":"sk-ant-x"}""");
+        Assert.That(PromptHeld(), Is.False, "an API key has no weekly window");
+        Status(new { stop = true, pace_delay_seconds = 60 });
+        Assert.That(Gate(ReadCall).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "nor does the orchestrator's stop or pace hold it");
+        DaemonDown();
+        SignedIn(AccountA);
+        Assert.That(PromptHeld(), Is.True, "back on A: its stop holds");
+    }
+
+    [Test]
+    public void Signing_out_isnt_a_switch_back_in_to_the_same_account_still_holds_and_to_another_doesnt()
+    {
+        AAtItsWeeklyStop();
+        SignedIn("""{"numStartups":4}""");
+        Assert.That(PromptHeld(), Is.True, "signed out: still A's stop");
+        SignedIn(AccountA);
+        Assert.That(PromptHeld(), Is.True, "back in to A: no switch, the stop holds");
+        SignedIn("""{"numStartups":4}""");
+        SignedIn(AccountB);
+        Assert.That(PromptHeld(), Is.False, "in to B: a switch");
+    }
+
+    [Test]
+    public void After_a_switch_only_a_reading_tied_to_the_new_account_stops_it()
+    {
+        AAtItsWeeklyStop();
+        SignedIn(AccountB);
+        var bWeek = DateTime.UtcNow.AddDays(5);
+        Reading(99, account: "account-a/max");
+        Assert.That(PromptHeld(), Is.False, "tagged with A");
+        Reading(99, weekReset: bWeek, fiveReset: DateTime.UtcNow.AddHours(1), account: "account-b/team");
+        Assert.That(PromptHeld(), Is.True, "the meter probe read B's own meter: B's week is at the line");
+
+        // The probe's reading confirmed B's windows (the daemon records them): B's statusline readings now count too.
+        File.Delete(Path.Combine(Marks, AgentGate.StopLatchName));
+        var record = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(Marks, Budget.ClaudeAccount.FileName)))!.AsObject();
+        record["confirmed"] = new System.Text.Json.Nodes.JsonObject
+        {
+            ["account-b/team"] = new System.Text.Json.Nodes.JsonObject { ["five_hour"] = Epoch(DateTime.UtcNow.AddHours(1)), ["seven_day"] = Epoch(bWeek) },
+            ["account-a/max"] = new System.Text.Json.Nodes.JsonObject { ["five_hour"] = Epoch(FiveReset), ["seven_day"] = Epoch(WeekReset) },
+        };
+        File.WriteAllText(Path.Combine(Marks, Budget.ClaudeAccount.FileName), record.ToJsonString());
+        Thread.Sleep(1100); // a statusline's stamp is to the second: not the second B was signed in to
+        Reading(99, weekReset: bWeek, fiveReset: DateTime.UtcNow.AddHours(1));
+        Assert.That(PromptHeld(), Is.True, "B's statusline, its windows confirmed");
+        File.Delete(Path.Combine(Marks, AgentGate.StopLatchName));
+        Reading(99, weekReset: bWeek, fiveReset: DateTime.UtcNow.AddHours(4));
+        Assert.That(PromptHeld(), Is.True, "B's next 5-hour window, known by B's own week");
+        File.Delete(Path.Combine(Marks, AgentGate.StopLatchName));
+        Reading(99);
+        Assert.That(PromptHeld(), Is.False, "A's windows, restamped by another CLI");
+    }
+
+    [Test]
+    public void A_record_and_latch_from_the_version_before_are_migrated_without_losing_the_date()
+    {
+        DaemonDown();
+        SignedIn(AccountA);
+        Directory.CreateDirectory(Marks);
+        var since = DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds();
+        File.WriteAllText(Path.Combine(Marks, Budget.ClaudeAccount.FileName), $$"""{"account":"account-a/max","since":{{since}}}""");
+        File.WriteAllText(Path.Combine(Marks, AgentGate.StopLatchName),
+            $$$"""{"claude-week":{"percent":99.0,"until":{{{Epoch(WeekReset)}}},"epoch":{{{since}}}}}""");
+        Assert.That(PromptHeld(), Is.True, "the old latch is the current account's: its epoch is the account's date");
+
+        SignedIn(AccountB);
+        Assert.That(PromptHeld(), Is.False);
+        var record = File.ReadAllText(Path.Combine(Marks, Budget.ClaudeAccount.FileName));
+        Assert.That(record, Does.Contain($"\"from\": {since}").And.Contain("account-b/team"), "A's span keeps its date");
+        SignedIn(AccountA);
+        Assert.That(PromptHeld(), Is.True, "A's latch, moved to A's key, holds again on the way back");
+    }
+
+    [Test]
+    public void A_cli_on_an_approved_api_key_a_gateway_a_cloud_provider_or_a_key_helper_is_never_held_by_the_subscription()
+    {
+        AAtItsWeeklyStop();
+        SignedIn("""{"oauthAccount":{"accountUuid":"account-a","organizationUuid":"max"},"customApiKeyResponses":{"approved":["abcdefghijklmnopqrst"],"rejected":["zyxwvutsrqponmlkjihg"]}}""");
+        Dictionary<string, string> Env(string name, string value) => new() { [name] = value };
+
+        Assert.That(PromptHeld(Env("ANTHROPIC_API_KEY", "sk-ant-api03-abcdefghijklmnopqrst")), Is.False, "an approved key is used instead of the login");
+        Assert.That(PromptHeld(Env("ANTHROPIC_API_KEY", "sk-ant-api03-zyxwvutsrqponmlkjihg")), Is.True, "a rejected one leaves the login in charge");
+        Assert.That(PromptHeld(new Dictionary<string, string> { ["ANTHROPIC_API_KEY"] = "sk-ant-api03-zyxwvutsrqponmlkjihg", ["CLAUDE_CODE_ENTRYPOINT"] = "sdk-cli" }), Is.False,
+            "-p always uses the key");
+        foreach (var cloud in new[] { "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY" })
+            Assert.That(PromptHeld(Env(cloud, "1")), Is.False, cloud);
+        Assert.That(PromptHeld(Env("CLAUDE_CODE_USE_BEDROCK", "0")), Is.True, "switched off is the login");
+        Assert.That(PromptHeld(Env("ANTHROPIC_AUTH_TOKEN", "gateway-token")), Is.False, "a gateway's token");
+        Assert.That(PromptHeld(Env("CLAUDE_CODE_OAUTH_TOKEN", "sk-ant-oat01-x")), Is.True, "a subscription token is paced as the config's account");
+
+        var settings = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(Claude, "settings.json")))!.AsObject();
+        settings["apiKeyHelper"] = "vault-key.cmd";
+        File.WriteAllText(Path.Combine(Claude, "settings.json"), settings.ToJsonString());
+        Assert.That(PromptHeld(), Is.False, "a key helper");
+        Assert.That(File.ReadAllText(Path.Combine(Marks, "acct.state.json")), Does.Contain("\"auth\": \"helper\""), "recorded for the daemon");
+    }
+
+    [Test]
+    public void The_pace_gate_holds_a_cli_on_its_login_but_not_one_on_an_approved_api_key()
+    {
+        SignedIn("""{"oauthAccount":{"accountUuid":"account-a"},"customApiKeyResponses":{"approved":["abcdefghijklmnopqrst"]}}""");
+        Status(new { stop = true });
+        using (var held = Run(AgentGate.ScriptName, ReadCall))
+        {
+            Assert.That(held.WaitForExit(5_000), Is.False, "the login is held at the stop");
+            held.Kill();
+        }
+        var keyed = Gate(ReadCall, new Dictionary<string, string> { ["ANTHROPIC_API_KEY"] = "sk-ant-api03-abcdefghijklmnopqrst" });
+        Assert.That((keyed.Output, keyed.Took < TimeSpan.FromSeconds(10)), Is.EqualTo(("", true)), "the key's calls run at once");
     }
 }
