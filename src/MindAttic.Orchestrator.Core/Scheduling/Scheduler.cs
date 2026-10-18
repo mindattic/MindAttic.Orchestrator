@@ -233,17 +233,20 @@ public static partial class Scheduler
         {
             // An unapproved ticket is in the queue only while it's being worked (approved then, or taken back since): once its
             // assignment goes stale it waits for your yes like any other, not proposed again (M.ORCH-T383).
-            if (item.IsAssigned || item.RepoPath.Length == 0 || reposTaken.Contains(item.Repo) || item.BlockedBy.Count > 0 ||
+            if (item.IsAssigned || item.RepoPath.Length == 0 || item.BlockedBy.Count > 0 ||
                 workedIds.Contains(item.Id) || !item.MayWork) continue;
             var reserved = item.Reserved > 0;
-            // A reserved ticket gets its slice even while pacing coasts or caps, never past a limit.
-            if (reserved ? overLimit || proposals.Count >= free || pace?.RoomTokens < item.Reserved
-                         : hold is not null || proposals.Count >= slots) continue;
+            // Too big is said of every one it's true of, held, past the slots or behind its repo's next one or not: the
+            // under-target warning counts an unmarked one as work a CLI could take (M.ORCH-T395).
             if (!reserved && roomForRest is { } room && item.Estimate is { } est && est.Fresh > room)
             {
                 tooBig.Add(item);
                 continue;
             }
+            if (reposTaken.Contains(item.Repo)) continue;
+            // A reserved ticket gets its slice even while pacing coasts or caps, never past a limit.
+            if (reserved ? overLimit || proposals.Count >= free || pace?.RoomTokens < item.Reserved
+                         : hold is not null || proposals.Count >= slots) continue;
             if (OrchestratorSettings.ForRepo(settings.RepoBudgetPercent, item.Repo, 0) is > 0 and var pct && limit5h > 0 &&
                 RepoSpent(item.Repo) >= limit5h * pct / 100) continue;
             if (Active(item.Repo) >= OrchestratorSettings.ForRepo(settings.RepoMaxSessions, item.Repo, settings.MaxSessionsPerRepo)) continue;

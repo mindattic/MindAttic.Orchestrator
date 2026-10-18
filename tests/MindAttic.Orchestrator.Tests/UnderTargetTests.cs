@@ -112,6 +112,24 @@ public sealed class UnderTargetTests
     }
 
     [Test]
+    public void A_ticket_too_big_for_what_is_left_is_marked_so_under_a_hold_too()
+    {
+        // M.ORCH-T395: the plan stopped short of the size check while holding, so it went unmarked and quieted the warning.
+        var at = End.AddMinutes(-40);
+        SessionCost Cost(string ticket) => new(Guid.NewGuid().ToString(), ticket, "fix", "X", 9_000, at.AddDays(-1));
+        var snap = Snap(at, 50, Repo("A", RepoState.Waiting, T("A-T1"))) with
+        {
+            Pace = new Pace(PaceMode.Coast, 4, 1000, 100, 100, "5-hour", End, "Coasting.") { RoomTokens = 2_000 },
+            Costs = new TicketCosts([Cost("X-T1"), Cost("X-T2"), Cost("X-T3")]),
+        };
+
+        var (line, plan) = Check(new UnderTarget(), snap);
+
+        Assert.That(plan.TooBig.Single().Id, Is.EqualTo("A-T1"));
+        Assert.That(line, Does.Contain("1 (A-T1) is estimated past what's left before the reset"));
+    }
+
+    [Test]
     public void The_daemon_raises_it_as_a_Needs_you_alert_and_logs_it()
     {
         var dir = Path.Combine(Path.GetTempPath(), "orch-under-" + Guid.NewGuid().ToString("N"));
