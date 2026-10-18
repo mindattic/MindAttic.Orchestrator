@@ -22,6 +22,7 @@ public partial class App : Application
 
     private Mutex? daemonMutex;
     private Tray? tray;
+    private EventWaitHandle? exitSignal;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -96,6 +97,9 @@ public partial class App : Application
         MainWindow = new MainWindow();
         MainWindow.Show();
         tray = new Tray(MainWindow, (ViewModels.MainViewModel)MainWindow.DataContext);
+        // An upgrade asks this dashboard to exit here: closing its window would only hide it to the tray.
+        exitSignal = new EventWaitHandle(false, EventResetMode.ManualReset, Installer.DashboardExitEvent(Environment.ProcessId));
+        ThreadPool.RegisterWaitForSingleObject(exitSignal, (_, _) => Dispatcher.BeginInvoke(() => tray?.Exit()), null, Timeout.Infinite, executeOnlyOnce: true);
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -103,6 +107,7 @@ public partial class App : Application
         tray?.Dispose();
         OrchestratorLog.Stop();
         daemonMutex?.Dispose();
+        exitSignal?.Dispose();
         base.OnExit(e);
     }
 

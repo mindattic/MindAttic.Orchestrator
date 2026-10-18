@@ -68,7 +68,14 @@ public sealed class Tray : IDisposable
         menu.Items.Add(waiting);
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add(hud is null ? "Show HUD" : "Hide HUD", null, (_, _) => ToggleHud());
-        menu.Items.Add("Exit", null, (_, _) => { exiting = true; Application.Current.Shutdown(); });
+        menu.Items.Add("Exit", null, (_, _) => Exit());
+    }
+
+    /// <summary>Quits for real: the tray's Exit, or an upgrade asking this dashboard to make way (<see cref="Setup.Installer.DashboardExitEvent"/>).</summary>
+    public void Exit()
+    {
+        exiting = true;
+        Application.Current.Shutdown();
     }
 
     private void ShowWindow() => Restore(window);
