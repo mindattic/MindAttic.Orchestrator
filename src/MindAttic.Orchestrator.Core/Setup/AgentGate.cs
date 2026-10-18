@@ -601,7 +601,7 @@ public static class AgentGate
         if tool in ("Bash", "PowerShell"):
             for segment in re.split(r"[;\n|]|&&", str((data.get("tool_input") or {}).get("command") or "")):
                 # push as git's own subcommand (after its global options), never the word inside a commit message
-                if re.match(r"\s*(?:&\s*)?['\"]?git(?:\.exe)?['\"]?(?:\s+(?:-C\s+(?:\"[^\"]*\"|'[^']*'|\S+)|-c\s+\S+|--?[\w-]+(?:=\S+)?))*\s+push\b", segment) and re.search(r"(?:\s|:)master(?![\w./-])", segment) and not re.search(r"--delete\b", segment):
+                if re.match(r"\s*(?:&\s*)?['\"]?git(?:\.exe)?['\"]?(?:\s+(?:-C\s+(?:\"[^\"]*\"|'[^']*'|\S+)|-c\s+\S+|--?[\w-]+(?:=\S+)?))*\s+push\b", segment) and re.search(r"(?:\s|:|\+|refs/heads/|['\"])master(?![\w./-])", segment) and not re.search(r"--delete\b", segment):
                     refuse("Every MindAttic repo's main line is main now (renamed from master 2026-10-16); pushing master would "
                            "recreate a stray branch. Push main instead: git push origin HEAD:main.")
 

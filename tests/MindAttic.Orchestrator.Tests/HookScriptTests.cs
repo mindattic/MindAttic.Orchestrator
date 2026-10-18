@@ -680,7 +680,9 @@ public sealed class HookScriptTests
     {
         object Bash(string command) => new { tool_name = "Bash", tool_input = new { command } };
         foreach (var c in new[] { "git push origin master", "git -C ../MindAttic.Ideas push origin master", "git push origin HEAD:master",
-                                  "cd x && git push -u origin master", "git push origin master:master", "git -c core.x=1 push origin master" })
+                                  "cd x && git push -u origin master", "git push origin master:master", "git -c core.x=1 push origin master",
+                                  // M.ORCH-T361: refspec forms that recreate it just the same
+                                  "git push origin HEAD:refs/heads/master", "git push origin +master", "git push origin \"master\"", "git push origin 'HEAD:master'" })
             Assert.That(Gate(Bash(c)).Output, Does.Contain("\"deny\"").And.Contain("HEAD:main"), c);
         foreach (var c in new[] { "git push origin main", "git push origin HEAD:main", "git log master..main", "git push origin --delete master",
                                   "echo 'git push origin master' > notes.txt", "git push origin master-fix", "git push origin HEAD:master.old",
