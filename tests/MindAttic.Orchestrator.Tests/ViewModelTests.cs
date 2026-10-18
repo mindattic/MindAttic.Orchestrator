@@ -35,6 +35,8 @@ public sealed class ViewModelTests
     [TestCase("lots")]
     [TestCase("NaN")]
     [TestCase("Infinity")]
+    [TestCase("0.5")]
+    [TestCase("0.0004k")]
     public void Token_fields_refuse_zero_negative_and_junk(string text) =>
         Assert.That(SettingsViewModel.TryTokens(text, out _), Is.False, text);
 

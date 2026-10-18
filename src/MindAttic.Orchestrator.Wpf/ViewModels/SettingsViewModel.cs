@@ -134,6 +134,8 @@ public sealed class SettingsViewModel : ObservableObject
         var scale = char.ToUpperInvariant(t[^1]) switch { 'K' => 1e3, 'M' => 1e6, 'B' => 1e9, _ => 1 };
         if (scale != 1) t = t[..^1];
         if (!double.TryParse(t, NumberStyles.Float, CultureInfo.InvariantCulture, out var n) || !double.IsFinite(n) || n <= 0) return false;
+        // Under one token (0.5, 0.0004k) would be saved as 0, which is refused as typed (M.ORCH-T339).
+        if (n * scale < 1) return false;
         value = (long)(n * scale);
         return true;
     }
