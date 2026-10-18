@@ -305,6 +305,27 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void With_the_daemon_down_claudes_own_weekly_percent_at_the_line_stops_too()
+    {
+        // The week at 99% (its wall locks you out for days), the 5 hours at 50%, the daemon dead.
+        Status(new { stop = false }, at: DateTime.UtcNow.AddMinutes(-10));
+        var weekReset = DateTime.UtcNow.AddDays(3);
+        File.WriteAllText(Path.Combine(Claude, "claude-usage.json"), JsonSerializer.Serialize(new
+        {
+            rate_limits = new
+            {
+                five_hour = new { used_percentage = 50, resets_at = new DateTimeOffset(DateTime.UtcNow.AddHours(2)).ToUnixTimeSeconds() },
+                seven_day = new { used_percentage = 99, resets_at = new DateTimeOffset(weekReset).ToUnixTimeSeconds() },
+            },
+            at = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+        }));
+        var refused = GateHeld(new { tool_name = "Read", tool_input = new { file_path = "x" } }, maxHold: 2).Output;
+        Assert.That(refused, Does.Contain("\"deny\"").And.Contain("of the weekly window used"));
+        var prompt = Gate(new { hook_event_name = "UserPromptSubmit", session_id = "wk", prompt = "carry on", cwd = ws }, AgentGate.ContextScriptName).Output;
+        Assert.That(prompt, Does.Contain("Not sent").And.Contain("the weekly window").And.Contain(weekReset.ToLocalTime().ToString("ddd", System.Globalization.CultureInfo.InvariantCulture)));
+    }
+
+    [Test]
     public void With_the_daemon_down_you_are_told_and_a_typed_prompt_at_claudes_own_line_is_answered_unsent()
     {
         object Prompt(string prompt) => new { hook_event_name = "UserPromptSubmit", session_id = "d1", prompt, cwd = ws };

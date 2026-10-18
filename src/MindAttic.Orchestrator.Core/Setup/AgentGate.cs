@@ -122,21 +122,32 @@ public static class AgentGate
             except Exception:
                 pass
         def claude_stop():
-            # (percent, reset epoch) when Claude itself reports this window at the stop line, now or earlier in the same
-            # window (an idle session's later, lower report doesn't lift it); None otherwise.
+            # (percent, reset epoch, window) when Claude itself reports a window at the stop line, now or earlier in the same
+            # window (an idle session's later, lower report doesn't lift it); None otherwise. The week counts as much as the
+            # 5 hours: a daemon that's down mustn't let a week at 99% run into a wall that locks you out for days.
+            windows = (("five_hour", "claude", "5-hour"), ("seven_day", "claude-week", "weekly"))
             try:
-                w = read_json(Path.home() / ".claude" / "claude-usage.json")["rate_limits"]["five_hour"]
-                if float(w["used_percentage"]) >= STOP_PERCENT and float(w["resets_at"]) > time.time():
-                    latch("claude", float(w["resets_at"]), percent=float(w["used_percentage"]))
-                    return float(w["used_percentage"]), float(w["resets_at"])
+                limits = read_json(Path.home() / ".claude" / "claude-usage.json")["rate_limits"]
+                for key, by, name in windows:
+                    w = limits.get(key)
+                    if w and float(w["used_percentage"]) >= STOP_PERCENT and float(w["resets_at"]) > time.time():
+                        latch(by, float(w["resets_at"]), percent=float(w["used_percentage"]))
+                        return float(w["used_percentage"]), float(w["resets_at"]), name
             except Exception:
                 pass
-            l = latched("claude")
-            return (float(l.get("percent") or STOP_PERCENT), float(l["until"])) if l else None
+            for key, by, name in windows:
+                l = latched(by)
+                if l:
+                    return float(l.get("percent") or STOP_PERCENT), float(l["until"]), name
+            return None
+        def reset_text(epoch):
+            # The clock alone within a day; with the weekday when it's further off (a week's reset).
+            at = datetime.fromtimestamp(epoch)
+            return at.strftime("%a %I:%M %p" if epoch - time.time() > 86400 else "%I:%M %p").replace(" 0", " ").lstrip("0")
         def claude_stop_note(stop):
-            reset = datetime.fromtimestamp(stop[1]).strftime("%I:%M %p").lstrip("0")
-            return ("Claude reports " + str(int(stop[0])) + "% of the 5-hour window used and MindAttic.Orchestrator isn't running to pace it, "
-                    "so tool calls are refused until it resets at " + reset + ". End your turn now.")
+            window = stop[2] if len(stop) > 2 else "5-hour"
+            return ("Claude reports " + str(int(stop[0])) + "% of the " + window + " window used and MindAttic.Orchestrator isn't running to pace it, "
+                    "so tool calls are refused until it resets at " + reset_text(stop[1]) + ". End your turn now.")
         ORCHESTRATOR_STOP = "The 5-hour window is at its target: tool calls are refused until it resets. End your turn now."
         def orchestrator_stop(s):
             # The orchestrator's stop note, from its fresh rl-status.json s ({} when stale or unreadable) or latched from an
@@ -910,7 +921,7 @@ public static class AgentGate
                 limits = dict(limits, stop=True)  # latched from before the daemon stalled (M.ORCH-T196)
             own = None if limits.get("stop") else claude_stop()
             if own:
-                limits = dict(limits, stop=True, percent_used=own[0], reset_time=datetime.fromtimestamp(own[1]).strftime("%I:%M %p").lstrip("0"))
+                limits = dict(limits, stop=True, percent_used=own[0], reset_time=reset_text(own[1]), stop_window=own[2])
             # So do the exempt commands (M.ORCH-T198): their turns skip every Orchestrator gate.
             if limits.get("stop") and not CONTROL.match((data.get("prompt") or "").strip()) and not exempt_prompt(data.get("prompt")):
                 try:
