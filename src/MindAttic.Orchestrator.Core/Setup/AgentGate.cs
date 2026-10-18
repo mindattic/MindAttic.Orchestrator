@@ -609,18 +609,26 @@ public static class AgentGate
         # Windows can't draw (found live: two `find /` held 660k handles and froze the desktop). Refuse it up front.
         import re
         cmd = str((data.get("tool_input") or {}).get("command") or "")
-        ROOT_SEARCH = (r"(?:^|[;&|(\n])\s*(?:\"[^\"]*[\\/]|'[^']*[\\/]|[^\s\"';&|]*[\\/])?(find|fd|rg|grep|ls|dir|Get-ChildItem|gci)(?:\.exe)?[\"']?"
+        ROOT_SEARCH = (r"(?:^|[;&|(\n])\s*(?:\"[^\"]*[\\/]|'[^']*[\\/]|[^\s\"';&|]*[\\/])?(find|fd|rg|grep|ls|dir|Get-ChildItem|gci|where)(?:\.exe)?[\"']?"
                        r"(?=\s)[^|;&\n]*?\s[\"']?(/|/[a-zA-Z]|[A-Za-z]:[\\/]?|~|\$HOME|\$env:USERPROFILE)[\"']?(?=\s|$|[;&|)])")
         # A heredoc's or here-string's body is data (a script, a file's text), not commands: `open(DIR / x)` in a Python
         # heredoc read as `dir /` (M.ORCH-T168). Each line of what's left starts a command, so `cd x` then `find /` is caught.
         def commands_only(c):
             c = re.sub(r"<<-?\s*([\"']?)(\w+)\1[^\n]*\n.*?\n\s*\2\s*(?=\n|$)", "", c, flags=re.S)
-            return re.sub(r"@([\"'])\s*\n.*?\n\1@", "", c, flags=re.S)
+            c = re.sub(r"@([\"'])\s*\n.*?\n\1@", "", c, flags=re.S)
+            # What cmd /c or powershell -c runs is a command too: `cmd /c dir C:\ /s` walks the drive all the same (M.ORCH-T362).
+            return re.sub(r"\b(?:cmd(?:\.exe)?\s+/[ck]|(?:powershell|pwsh)(?:\.exe)?(?:\s+-(?!c\b|command\b)\w+(?:\s+(?!-)\S+)?)*\s+-c(?:ommand)?)\s+[\"']?",
+                          "\n", c, flags=re.I)
         def root_search(c, powershell):
             c = commands_only(c)
             # Each command naming a root is judged on its own: `ls && find / ...` is a search, `find . ; ls /` isn't.
             for m in re.finditer(ROOT_SEARCH, c, re.I):
                 name = m.group(1).lower()
+                if name == "where":
+                    # where /r <dir> walks <dir>: only a root after /r is a whole-drive search (M.ORCH-T362).
+                    if re.search(r"\s/r\s+[\"']?(?:[A-Za-z]:[\\/]?|/|~)[\"']?(?=\s|$)", re.split(r"[;&|\n]", c[m.start(1):], maxsplit=1)[0], re.I):
+                        return True
+                    continue
                 if name not in ("ls", "dir", "get-childitem", "gci"):
                     return True
                 # Listing a root is harmless; only a recursive listing walks the whole drive. PowerShell's parameters ignore

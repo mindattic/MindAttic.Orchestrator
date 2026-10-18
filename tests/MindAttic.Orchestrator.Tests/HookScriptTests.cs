@@ -713,6 +713,19 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void A_whole_drive_walk_wrapped_in_cmd_or_powershell_or_through_where_is_refused()
+    {
+        // M.ORCH-T362: only a command at the start of a line was looked at.
+        object Bash(string command) => new { tool_name = "Bash", tool_input = new { command } };
+        foreach (var c in new[] { "cmd /c dir /s /b C:\\foo.exe", "cmd /c \"dir C:\\ /s /b\"", "powershell -c \"Get-ChildItem C:\\ -Recurse\"",
+                                  "powershell -NoProfile -Command \"gci C:\\ -r -Filter x\"", "where /r C:\\ python.exe", "where.exe /R \"D:\\\" x" })
+            Assert.That(Gate(Bash(c)).Output, Does.Contain("\"deny\""), c);
+        foreach (var c in new[] { "where python", "where /r . python.exe", "cmd /c dir C:\\", "powershell -c \"Get-ChildItem C:\\Users\\me -Recurse\"",
+                                  "powershell -NoProfile -File deploy.ps1" })
+            Assert.That(Gate(Bash(c)).Output, Does.Not.Contain("\"deny\""), c);
+    }
+
+    [Test]
     public void Autopilot_takes_repo_names_or_wildcards_and_its_repos_are_this_clis_cross_repo_exception()
     {
         var mark = Path.Combine(Marks, $"autopilot-{Cli}");
