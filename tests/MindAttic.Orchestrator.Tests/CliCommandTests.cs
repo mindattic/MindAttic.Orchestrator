@@ -163,6 +163,34 @@ public sealed class CliCommandTests
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
     }
 
+    /// <summary>M.ORCH-T389: once the move is made, a settings.json saved again with the old fields (by a process on an older
+    /// build) is not imported again, so a ticket un-approved in the database since stays un-approved; the fields are dropped.</summary>
+    [Test]
+    public void Settings_rewritten_with_the_old_fields_after_the_move_do_not_reapprove_a_ticket_unapproved_in_the_database()
+    {
+        var path = WorkspaceWithDb();
+        try
+        {
+            var workspace = Path.Combine(dir, "workspace");
+            Store.SaveSettings(Store.LoadSettings() with { Approved = ["A-T2"], Priorities = new() { ["A-T2"] = 3 } });
+            Assert.That(MindAttic.Orchestrator.Tickets.QueueImport.Run(Store, workspace), Is.EqualTo(new MindAttic.Orchestrator.Tickets.QueueImport.Result(1, 1)));
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+            {
+                Assert.That(MindAttic.Orchestrator.Tickets.QueueImport.IsDone(db.Path), Is.True, "the move is recorded in the database");
+                db.Unapprove("A-T2");
+                db.SetPriority("A-T2", 0);
+            }
+
+            // An older process saves its stale settings.json back, old fields and all.
+            Store.SaveSettings(Store.LoadSettings() with { Approved = ["A-T2"], Priorities = new() { ["A-T2"] = 3 } });
+            Assert.That(MindAttic.Orchestrator.Tickets.QueueImport.Run(Store, workspace), Is.Null, "not imported again");
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+                Assert.That(db.QueueState("A-T2"), Is.EqualTo(("proposed", 0L)));
+            Assert.That(File.ReadAllText(SettingsFile), Does.Not.Contain("\"Approved\"").And.Not.Contain("\"Priorities\""), "dropped again");
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
+    }
+
     [Test]
     public void Reserve_stores_the_ticket_id_upper_cased_and_0_releases_it()
     {
