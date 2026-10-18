@@ -1041,6 +1041,18 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void An_autopilot_list_outside_the_ansi_code_page_is_read_as_the_utf8_it_is_written_in()
+    {
+        // M.ORCH-T400: the marks are written as UTF-8 now; read in the ANSI code page, "Łódź" (0x81 in its bytes) failed the read,
+        // and /autopilot read as off in that CLI. (The write takes a claude.exe ancestor, which a test doesn't have.)
+        AutopilotWithOpenFixes();
+        Status(new { });
+        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem,Łódź", new System.Text.UTF8Encoding(false));
+
+        Assert.That(Stopped("x1"), Does.Contain("\"block\""), "still on /autopilot for UnitySolarSystem");
+    }
+
+    [Test]
     public void Keep_going_reads_the_workflow_database_MINDATTIC_WORKFLOW_DB_names()
     {
         // M.ORCH-T398: as the orchestrator and the workflow CLI do; the workspace's own (two open fixes) is not the one in use.

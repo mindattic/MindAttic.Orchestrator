@@ -565,7 +565,7 @@ public static class AgentGate
             found = set()
             for kind in ("crossrepo-", "autopilot-"):
                 try:
-                    found |= {r.strip().lower() for r in (Path.home() / ".claude" / "session-context" / (kind + str(pid))).read_text().split(",") if r.strip()} if pid else set()
+                    found |= {r.strip().lower() for r in (Path.home() / ".claude" / "session-context" / (kind + str(pid))).read_text(encoding="utf-8", errors="replace").split(",") if r.strip()} if pid else set()
                 except Exception:
                     pass
             return {"all" if r == "*" else r for r in found}
@@ -921,7 +921,7 @@ public static class AgentGate
             # What /autopilot typed in THIS CLI turned on (its repos, or "*"): it works them through its own subagents.
             # Never another CLI's: one you're using is never pushed onto tickets because its repo was named elsewhere.
             try:
-                return [n.strip() for n in (DIR / ("autopilot-" + str(pid))).read_text().split(",") if n.strip()] if pid else []
+                return [n.strip() for n in (DIR / ("autopilot-" + str(pid))).read_text(encoding="utf-8", errors="replace").split(",") if n.strip()] if pid else []
             except Exception:
                 return []
 
@@ -1386,7 +1386,7 @@ public static class AgentGate
                         except Exception:
                             pass
                 if pid and names:
-                    mark.write_text(",".join(names))
+                    mark.write_text(",".join(names), encoding="utf-8")
                 elif mark.exists():
                     mark.unlink()
             # /goal <condition> runs turn after turn until its condition holds; cycling would end it, so the session is
@@ -1409,7 +1409,7 @@ public static class AgentGate
                         if mark.exists():
                             mark.unlink()
                     else:
-                        mark.write_text(",".join(r.strip() for r in args.replace(" ", ",").split(",") if r.strip()))
+                        mark.write_text(",".join(r.strip() for r in args.replace(" ", ",").split(",") if r.strip()), encoding="utf-8")
             if prompt.startswith("/unthrottle") or prompt.startswith("/throttle"):
                 pid = cli_pid()
                 if pid is not None:
