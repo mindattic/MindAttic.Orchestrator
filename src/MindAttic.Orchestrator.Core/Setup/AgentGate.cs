@@ -846,8 +846,8 @@ public static class AgentGate
     /// <summary>
     /// The context gate: records each session's turn (busy on a prompt, idle on Stop) next to the
     /// context fill the statusline saves, so the orchestrator can cycle a session past <paramref name="percent"/>
-    /// once its turn is over (<see cref="Sessions.ContextCycler"/>). With <paramref name="keepGoing"/>, a turn that ends asking whether
-    /// to go on while its repo still has open tickets is told to carry on (<see cref="Settings.OrchestratorSettings.KeepGoing"/>).
+    /// once its turn is over (<see cref="Sessions.ContextCycler"/>). With <paramref name="keepGoing"/>, a turn that ends in a CLI that typed
+    /// /autopilot while its repos still have workable tickets is told to carry on (<see cref="Settings.OrchestratorSettings.KeepGoing"/>).
     /// </summary>
     internal static string ContextScript(int percent, bool keepGoing = true) => $$$"""
         #!/usr/bin/env python3
@@ -1084,8 +1084,8 @@ public static class AgentGate
         except Exception:
             sys.exit(0)
         sid, event = data.get("session_id"), data.get("hook_event_name")
-        # Codex (its Stop hook) and Gemini (AfterAgent) run this too, named on the command line: only keep-going applies
-        # to them (their sessions aren't Claude's to cycle), and their own stop_hook_active guards the second stop.
+        # Codex (its Stop hook) and Gemini (AfterAgent) run this too, named on the command line: nothing here applies to
+        # them (their sessions aren't Claude's to cycle, and only a Claude CLI that typed /autopilot is kept going).
         provider = sys.argv[1].capitalize() if len(sys.argv) > 1 else "Claude"
         if provider != "Claude":
             sys.exit(0)  # /autopilot runs in a Claude CLI; a Codex or Gemini CLI is never pushed onto tickets
@@ -1411,8 +1411,8 @@ public static class AgentGate
         if (MergeJsonHook(codexHooks, "PreToolUse", ScriptName, command, HookTimeoutSeconds) is { } c) did.Add("Codex: " + c);
         if (MergeJsonHook(geminiSettings, "BeforeTool", ScriptName, command, HookTimeoutSeconds * 1000) is { } g) did.Add("Gemini: " + g);
         if (AppendKimiHook(kimiConfigPath ?? KimiConfigPath, command, HookTimeoutSeconds)) did.Add("Kimi: wired PreToolUse into config.toml");
-        // Keep development going: Codex's Stop and Gemini's AfterAgent take the same "carry on" as Claude's Stop. Kimi
-        // has no end-of-turn hook, so its CLIs can stop to ask (README says so).
+        // Codex's Stop and Gemini's AfterAgent run the context gate too, but it leaves them be: only a Claude CLI that typed
+        // /autopilot is kept going. Kimi has no end-of-turn hook at all.
         var contextScript = Path.Combine(claudeDir ?? ClaudeDir, ContextScriptName);
         if (File.Exists(contextScript))
         {
