@@ -36,16 +36,17 @@ internal sealed class WorkspaceBuildCommand : AsyncCommand<WorkspaceBuildCommand
 
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
     {
-        var folder = Path.GetFullPath(settings.Folder);
         try
         {
+            var folder = Path.GetFullPath(settings.Folder);
             var r = await WorkspaceBootstrap.BuildAsync(folder, settings.Root, new Progress<string>(line => AnsiConsole.MarkupLine(Markup.Escape(line))));
             AnsiConsole.MarkupLine($"[green]Cloned {r.Cloned}[/], {r.AlreadyThere} already there, {(r.Failed.Count == 0 ? "none failed" : $"[red]{r.Failed.Count} failed[/]")}.");
             foreach (var f in r.Failed) AnsiConsole.MarkupLine($"  [red]{Markup.Escape(f)}[/]");
             var appsFailed = settings.InstallApps ? await WorkspaceInstallAppsCommand.Run(folder) : 0;
             return r.Failed.Count == 0 && appsFailed == 0 ? 0 : 1;
         }
-        catch (InvalidOperationException ex)
+        // An unusable folder (no such drive, no write access) is said in one line, not a stack trace.
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
             AnsiConsole.MarkupLine($"[red]{Markup.Escape(ex.Message)}[/]");
             return 1;
