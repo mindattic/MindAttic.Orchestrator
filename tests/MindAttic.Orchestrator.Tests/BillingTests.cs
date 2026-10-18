@@ -228,6 +228,19 @@ public sealed class BillingTests
         Assert.That(JsonDocument.Parse(sent.Single().Message).RootElement.GetProperty("billing").GetString(), Is.EqualTo("team"));
     }
 
+    [TestCase("\"customApiKeyResponses\": {\"approved\": [], \"rejected\": [\"TAIL\"]}")]
+    [TestCase("\"numStartups\": 1")]
+    public void A_key_that_wasnt_approved_isnt_dated_set_aside(string responses)
+    {
+        // M.ORCH-T450: a CLI started with the key in its environment billed the login all along; dating the key set aside
+        // would make it read as on the key (env-set-aside), unpaced, and asked to restart.
+        File.WriteAllText(ConfigPath, "{" + TeamLogin + ", " + responses.Replace("TAIL", KeyTail) + "}");
+        var result = Switch().Switch("team", "dashboard", [], DateTime.UtcNow);
+        Assert.That(result.Error, Is.Null);
+        Assert.That(ClaudeKeyChoice.Read(ConfigPath, KeyTail).Choice, Is.EqualTo(KeyChoice.Rejected));
+        Assert.That(File.Exists(Path.Combine(Contexts, AgentGate.ApiKeySetAsideName)), Is.False);
+    }
+
     [Test]
     public void The_api_key_cant_be_chosen_without_one_in_the_vault_and_nothing_is_changed()
     {

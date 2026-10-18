@@ -151,7 +151,10 @@ public sealed class BillingSwitch
             try
             {
                 // Dated first, as the context gate does: a CLI started on the key reads as still on it the moment the file changes.
-                if (to == BillingModes.Team) MarkSetAside(key, nowUtc);
+                // Only a key approved now is set aside: one already rejected, or never answered, was never what a CLI billed, and
+                // dating it would make every CLI started before now with it in its environment read as on the key (M.ORCH-T450).
+                if (to == BillingModes.Team && ClaudeKeyChoice.Read(ConfigPath, ClaudeKeyChoice.Tail(key)).Choice == KeyChoice.Approved)
+                    MarkSetAside(key, nowUtc);
                 var changed = ClaudeKeyChoice.Set(ConfigPath, ClaudeKeyChoice.Tail(key), approve: to == BillingModes.Api);
                 approvedNow = changed && to == BillingModes.Api;
                 lines.Add(to == BillingModes.Api
