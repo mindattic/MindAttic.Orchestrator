@@ -153,6 +153,28 @@ public sealed class TicketReplayTests
     }
 
     [Test]
+    public void A_background_sessions_copy_of_the_session_it_continues_isnt_counted_as_its_own()
+    {
+        // M.ORCH-T375: counted as the budget counts it, the copied history is the old session's, not the background one's.
+        var dir = Path.Combine(Path.GetTempPath(), "orch-replay-bg-" + Guid.NewGuid().ToString("N"));
+        var folder = Path.Combine(dir, "D--Projects-MindAttic-worktrees-Repo-RP-T7");
+        Directory.CreateDirectory(folder);
+        try
+        {
+            File.WriteAllLines(Path.Combine(folder, "bg1.jsonl"), [
+                TranscriptReaderTests.SessionLine("m1", "2026-10-14T10:00:00Z", 100, "bg1", "s1", "bg"),
+                TranscriptReaderTests.SessionLine("m2", "2026-10-14T10:05:00Z", 7, "bg1", "bg1", "bg"),
+            ]);
+
+            var session = TicketReplay.Sessions("RP-T7", dir).Single();
+
+            Assert.That(session.Fresh, Is.EqualTo(1 + 7), "its own response only");
+            Assert.That(session.StartUtc, Is.EqualTo(new DateTime(2026, 10, 14, 10, 5, 0, DateTimeKind.Utc)), "it starts where its own lines do");
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Test]
     public void A_dotted_ticket_matches_its_own_worktree_folder_but_not_a_longer_id()
     {
         // Claude names the folder for D:\Projects\MindAttic.worktrees\MindAttic.Orchestrator\M.ORCH-T1 with dots as dashes.

@@ -14,7 +14,7 @@ namespace MindAttic.Orchestrator.Activity;
 public sealed partial class TranscriptReader(string projectsDir, string? cachePath = null)
 {
     private const int HeadScanLimit = 256 * 1024;
-    private const int CacheVersion = 4;
+    private const int CacheVersion = 5;
     private static readonly TimeSpan SaveEvery = TimeSpan.FromMinutes(1);
 
     /// <summary>A file written this recently is opened every poll whatever its directory entry says (a file held open can
@@ -395,6 +395,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
                 if (!EndsForkPrologue(root, sink.ForkToolUseId)) return;
                 sink.ForkPrologue = false;
             }
+            if (CopiedFromAnotherSession(root)) return;
 
             if (countFrom is null) return;
             // The orchestrator's dispatch prompt names the ticket: that's what ties a session's cost to it.
@@ -514,6 +515,17 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
             content.ValueKind == JsonValueKind.Array && content.EnumerateArray().Any(b => b.ValueKind == JsonValueKind.Object &&
                 Str(b, "type") == "tool_result" && Str(b, "tool_use_id") == toolUseId);
     }
+
+    /// <summary>
+    /// Whether a line is a background session's copy of another session's history (M.ORCH-T375). A CLI session sent to the
+    /// background continues in a new transcript (<c>"sessionKind":"bg"</c>) that opens with the old one's lines copied over:
+    /// same uuids, timestamps and message ids, rewritten with the new <c>sessionId</c> but still carrying the old session's
+    /// <c>session_id</c>, so its responses were counted once in each transcript. A line's <c>session_id</c> differing from its
+    /// <c>sessionId</c> isn't enough on its own: a session's lines after a /clear or a resume carry the earlier session's (about
+    /// 16,000 real responses in 30 days), but those are never in a background transcript, whose own lines carry its own.
+    /// </summary>
+    internal static bool CopiedFromAnotherSession(JsonElement root) =>
+        Str(root, "sessionKind") == "bg" && Str(root, "session_id") is { Length: > 0 } from && Str(root, "sessionId") is { } own && from != own;
 
     /// <summary>How an agent files a ticket; it prints the new ticket's id.</summary>
     internal const string FileTicketCommand = "workflow ticket new";

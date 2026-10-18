@@ -113,6 +113,7 @@ public static partial class TicketReplay
                         if (!TranscriptReader.EndsForkPrologue(root, forkCall)) continue;
                         prologue = false;
                     }
+                    if (TranscriptReader.CopiedFromAnotherSession(root)) continue;
                     if (!root.TryGetProperty("message", out var m) || m.ValueKind != JsonValueKind.Object) continue;
                     if (root.TryGetProperty("timestamp", out var ts) && ts.ValueKind == JsonValueKind.String && DateTime.TryParse(ts.GetString(), null,
                             System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var at))

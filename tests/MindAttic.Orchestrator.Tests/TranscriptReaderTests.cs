@@ -200,6 +200,45 @@ public sealed class TranscriptReaderTests
         Assert.That(s.UsageSince(Since).Output, Is.EqualTo(10));
     }
 
+    // A line as Claude Code writes it with both ids: sessionId names the transcript, session_id the session the line was written in.
+    internal static string SessionLine(string id, string ts, int output, string sessionId, string sessionIdField, string? kind = null) =>
+        System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object?>
+        {
+            ["type"] = "assistant", ["timestamp"] = ts, ["sessionId"] = sessionId, ["session_id"] = sessionIdField, ["cwd"] = @"D:\Projects\X",
+            ["sessionKind"] = kind,
+            ["message"] = new
+            {
+                id, model = "claude-sonnet-5",
+                usage = new { input_tokens = 1, cache_creation_input_tokens = 0, cache_read_input_tokens = 0, output_tokens = output },
+                content = new[] { new { type = "tool_use", name = "Bash", input = new { command = "copied" } } },
+            },
+        }.Where(kv => kv.Value is not null).ToDictionary());
+
+    [Test]
+    public void A_background_sessions_copy_of_the_session_it_continues_isnt_counted_again()
+    {
+        // M.ORCH-T375 (trimmed from a real pair): a CLI session sent to the background goes on in a new transcript that opens
+        // with the old one's lines, rewritten with the new sessionId and "sessionKind":"bg" but still carrying the old session_id.
+        System.IO.File.WriteAllLines(File(), [
+            SessionLine("m1", "2026-10-13T12:00:00Z", 10, "s1", "s1"),
+            SessionLine("m2", "2026-10-13T12:01:00Z", 20, "s1", "s1"),
+        ]);
+        System.IO.File.WriteAllLines(File("bg1.jsonl"), [
+            SessionLine("m1", "2026-10-13T12:00:00Z", 10, "bg1", "s1", "bg"),
+            SessionLine("m2", "2026-10-13T12:01:00Z", 20, "bg1", "s1", "bg"),
+            SessionLine("m3", "2026-10-13T12:05:00Z", 300, "bg1", "bg1", "bg"),
+        ]);
+        // After a /clear the new transcript's own lines carry the earlier session's session_id: they're real, and counted.
+        System.IO.File.WriteAllLines(File("s2.jsonl"), [SessionLine("m4", "2026-10-13T12:06:00Z", 4000, "s2", "s1")]);
+
+        var sessions = new TranscriptReader(dir).Poll(Since).ToDictionary(s => s.SessionId);
+
+        Assert.That(sessions["s1"].UsageSince(Since).Output, Is.EqualTo(30));
+        Assert.That(sessions["bg1"].UsageSince(Since).Output, Is.EqualTo(300), "only the background session's own response");
+        Assert.That(sessions["bg1"].Events, Has.Count.EqualTo(1));
+        Assert.That(sessions["s2"].UsageSince(Since).Output, Is.EqualTo(4000), "a session_id differing from sessionId alone isn't a copy");
+    }
+
     [Test]
     public void A_forks_copy_of_the_parents_line_that_started_it_isnt_counted_again()
     {
