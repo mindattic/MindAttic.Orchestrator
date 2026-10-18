@@ -48,6 +48,7 @@ public sealed class PlanningTests
 
         Assert.That(Proposed(plan), Is.EqualTo(new[] { "B-T1" }));
         Assert.That(plan.Proposals.Single().Reason, Does.StartWith("reserved 2"));
+        Assert.That(plan.RoomForRest, Is.EqualTo(1_000), "what too big is measured against, and says is left");
 
         var over = new Snapshot(Now, snap.Repos, []) { Pace = new Pace(PaceMode.Over, 0, 0, 0, null, "5-hour", Now.AddHours(1), "Over.") { RoomTokens = 0 } };
         Assert.That(Scheduler.Plan(over, settings, []).Proposals, Is.Empty, "never past a limit");

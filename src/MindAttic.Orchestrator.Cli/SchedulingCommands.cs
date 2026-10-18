@@ -70,7 +70,7 @@ internal sealed class QueueCommand : Command<QueueCommand.Settings>
         if (plan.Groom.Count > 0)
             AnsiConsole.MarkupLine($"[grey]{plan.Groom.Count} open tickets are over {Ctx.Settings.GroomAfterDays} days old with nobody on them: `orchestrator queue --groom` lists them.[/]");
         foreach (var q in plan.TooBig)
-            AnsiConsole.MarkupLine($"[yellow]too big:[/] {q.Id} is {Markup.Escape(q.Estimate!.ToString())}, more than the {Formatting.Tokens((long)(plan.Pace?.RoomTokens ?? 0))} left before the reset: split it, or it waits for the reset");
+            AnsiConsole.MarkupLine($"[yellow]too big:[/] {q.Id} is {Markup.Escape(q.Estimate!.ToString())}, more than the {Formatting.Tokens((long)(plan.RoomForRest ?? 0))} left before the reset{(plan.RoomForRest < plan.Pace?.RoomTokens ? " that isn't reserved" : "")}: split it, or it waits for the reset");
         foreach (var q in plan.Stale)
             AnsiConsole.MarkupLine($"[yellow]stale:[/] {q.Id} was dispatched {Formatting.Ago(q.Assignment!.StartedUtc, DateTime.UtcNow)} but nothing has happened in {Markup.Escape(q.Assignment.Directory)} since {Formatting.Ago(q.StaleSinceUtc, DateTime.UtcNow)}; it's back in the queue");
         foreach (var f in plan.Finished)

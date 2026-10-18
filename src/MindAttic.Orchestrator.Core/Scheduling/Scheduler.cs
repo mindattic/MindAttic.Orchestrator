@@ -71,6 +71,9 @@ public sealed record SchedulePlan(
     /// the reset: better split, or started after it, than run out of room halfway.</summary>
     public IReadOnlyList<QueueItem> TooBig { get; init; } = [];
 
+    /// <summary>What's left before the reset once reservations are taken out: what <see cref="TooBig"/> is measured against.</summary>
+    public double? RoomForRest { get; init; }
+
     /// <summary>Old open tickets nobody is on: re-prioritize them, or close them as wont-do.</summary>
     public IReadOnlyList<QueueItem> Groom { get; init; } = [];
 
@@ -253,7 +256,7 @@ public static partial class Scheduler
 
         return new SchedulePlan(queue, proposals, settings.MaxConcurrentSessions, occupied, hold, finished)
         {
-            Cap = cap, Pace = pace, Stop = snapshot.Pace is { Stop: true }, Stale = [.. queue.Where(q => q.IsStale)], TooBig = tooBig,
+            Cap = cap, Pace = pace, Stop = snapshot.Pace is { Stop: true }, Stale = [.. queue.Where(q => q.IsStale)], TooBig = tooBig, RoomForRest = roomForRest,
             // Waiting for approval too: an old feature nobody approved is the likeliest to close as wont-do.
             Groom = [.. queue.Concat(awaiting).Where(q => q.Old && q.Assignment is null)],
             AwaitingApproval = awaiting, Worked = worked,
