@@ -108,7 +108,7 @@ public static class ProcessReaper
     /// <summary>The scan lists processes without their command lines (reading one means opening the process and
     /// its memory, the costly part of a WMI process query); only the ones about to be killed have theirs fetched,
     /// for the log, before they go. <paramref name="underAgent"/> is kept to processes still alive.</summary>
-    internal static IReadOnlyList<Reaped> ReapOnce(DateTime nowUtc, Func<IReadOnlyList<ProcessInfo>> snapshot, Func<int, string?> commandLine, Action<int> kill,
+    internal static IReadOnlyList<Reaped> ReapOnce(DateTime nowUtc, Func<IReadOnlyList<ProcessInfo>> snapshot, Func<int, string?> commandLine, Action<ProcessInfo> kill,
         ISet<(int Pid, DateTime Start)> underAgent)
     {
         var processes = snapshot();
@@ -116,14 +116,20 @@ public static class ProcessReaper
         var reaped = Select(processes, nowUtc, underAgent)
             .Select(r => r with { Process = r.Process with { CommandLine = commandLine(r.Process.Pid) } })
             .ToList();
-        foreach (var r in reaped) kill(r.Process.Pid);
+        foreach (var r in reaped) kill(r.Process);
         underAgent.IntersectWith(processes.Select(p => (p.Pid, p.StartUtc)));
         return reaped;
     }
 
-    private static void Kill(int pid)
+    private static void Kill(ProcessInfo target)
     {
-        try { using var p = Process.GetProcessById(pid); p.Kill(true); }
+        try
+        {
+            using var p = Process.GetProcessById(target.Pid);
+            // Its id may have gone to another process since the scan (it exited while command lines were read): not that one.
+            if (target.StartUtc != Unknown && !BackgroundAgent.SameStart(p.StartTime.ToUniversalTime(), target.StartUtc)) return;
+            p.Kill(true);
+        }
         // AggregateException: part of its tree couldn't be ended; the rest of the sweep still runs.
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or AggregateException) { }
     }

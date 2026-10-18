@@ -46,10 +46,10 @@ public sealed class ProcessReaperTests
         var mine = P(9, "node.exe", parentPid: 8, startUtc: Now.AddHours(-3));
         var killed = new List<int>();
 
-        ReapOnce(Now, () => [claude, bash, find, mine], _ => null, killed.Add, seen);
+        ReapOnce(Now, () => [claude, bash, find, mine], _ => null, p => killed.Add(p.Pid), seen);
         Assert.That(killed, Is.Empty, "attached and young");
 
-        ReapOnce(Now.AddMinutes(1), () => [find, mine], _ => null, killed.Add, seen); // the agent and its shell exited
+        ReapOnce(Now.AddMinutes(1), () => [find, mine], _ => null, p => killed.Add(p.Pid), seen); // the agent and its shell exited
         Assert.That(killed, Is.EqualTo(new[] { 3 }), "the find it left behind goes; your own node stays");
         Assert.That(seen, Is.EquivalentTo(new[] { (3, find.StartUtc) }), "what's gone is forgotten");
     }
@@ -172,7 +172,7 @@ public sealed class ProcessReaperTests
         var asked = new List<int>();
         var killed = new List<int>();
 
-        var reaped = ReapOnce(Now, () => processes, pid => { asked.Add(pid); return "find / -name x"; }, killed.Add, new HashSet<(int, DateTime)> { (4, Now) });
+        var reaped = ReapOnce(Now, () => processes, pid => { asked.Add(pid); return "find / -name x"; }, p => killed.Add(p.Pid), new HashSet<(int, DateTime)> { (4, Now) });
 
         Assert.That(asked, Is.EqualTo(new[] { 4 }), "only the orphaned find");
         Assert.That(killed, Is.EqualTo(new[] { 4 }));
