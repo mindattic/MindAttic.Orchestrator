@@ -21,9 +21,17 @@ public sealed class AuditRunner(OrchestratorOptions options, JsonStore store)
 
     public AuditReport? Latest()
     {
-        var r = store.Load<AuditHolder>(StoreName);
-        return r.RanUtc == default ? null
+        TryLatest(out var report);
+        return report;
+    }
+
+    /// <summary>Like <see cref="Latest"/>, but false when the file exists and couldn't be read.</summary>
+    public bool TryLatest(out AuditReport? report)
+    {
+        var read = store.TryLoad<AuditHolder>(StoreName, out var r);
+        report = r.RanUtc == default ? null
             : new AuditReport(r.RanUtc, r.Took, r.ReposScanned, r.FilesScanned, r.Drift, r.Missing, r.Duplicates);
+        return read;
     }
 
     // JsonStore needs a parameterless type to fall back to when the file is missing.

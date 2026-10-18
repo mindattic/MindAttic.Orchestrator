@@ -430,9 +430,11 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         var file = Path.Combine(Store.Directory, "audit.json");
         var stamp = File.Exists(file) ? File.GetLastWriteTimeUtc(file) : default;
         if (stamp == auditStamp) return links;
+        // Taken only once read: a failed read kept the map empty until the next audit, up to a day later (M.ORCH-T433).
+        if (!new Audit.AuditRunner(options, Store).TryLatest(out var latest)) return links;
         auditStamp = stamp;
         var map = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var group in new Audit.AuditRunner(options, Store).Latest()?.Duplicates ?? [])
+        foreach (var group in latest?.Duplicates ?? [])
         {
             var repos = group.Files.Select(f => f.Repo).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             foreach (var a in repos)
