@@ -48,9 +48,16 @@ public readonly record struct WeeklyReset(DayOfWeek Day, TimeOnly Time)
         var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, zone);
         var back = ((int)nowLocal.DayOfWeek - (int)Day + 7) % 7;
         var start = nowLocal.Date.AddDays(-back).Add(Time.ToTimeSpan());
-        if (start > nowLocal) start = start.AddDays(-7);
+        // Compared in UTC, not on the wall clock: in the fall-back hour's second pass a reset from its first pass reads later
+        // than now on the clock though it has happened, and the week was taken as last week's (M.ORCH-T455).
+        var startUtc = ToUtc(start, zone);
+        if (startUtc > nowUtc)
+        {
+            start = start.AddDays(-7);
+            startUtc = ToUtc(start, zone);
+        }
         // Convert each end separately so a DST change inside the week doesn't shift the reset hour.
-        return (ToUtc(start, zone), ToUtc(start.AddDays(7), zone));
+        return (startUtc, ToUtc(start.AddDays(7), zone));
     }
 
     private static DateTime ToUtc(DateTime local, TimeZoneInfo zone)

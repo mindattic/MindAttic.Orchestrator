@@ -90,6 +90,22 @@ public sealed class WeeklyResetTests
     }
 
     [Test]
+    public void In_the_fall_back_hours_second_pass_a_reset_from_its_first_pass_starts_this_week()
+    {
+        // 07:15Z is 01:15 CST, the second pass: on the clock 01:30 is still ahead, but it happened at 06:30Z (M.ORCH-T455).
+        var reset = new WeeklyReset(DayOfWeek.Sunday, new TimeOnly(1, 30));
+        var (start, next) = reset.Window(new DateTime(2026, 11, 1, 7, 15, 0, DateTimeKind.Utc), Central);
+
+        Assert.That(start, Is.EqualTo(new DateTime(2026, 11, 1, 6, 30, 0, DateTimeKind.Utc)));
+        Assert.That(next, Is.EqualTo(new DateTime(2026, 11, 8, 7, 30, 0, DateTimeKind.Utc)));
+
+        // 06:15Z is 01:15 CDT, the first pass: the reset is still ahead, so the week is last week's.
+        var (before, beforeNext) = reset.Window(new DateTime(2026, 11, 1, 6, 15, 0, DateTimeKind.Utc), Central);
+        Assert.That(before, Is.EqualTo(new DateTime(2026, 10, 25, 6, 30, 0, DateTimeKind.Utc)));
+        Assert.That(beforeNext, Is.EqualTo(new DateTime(2026, 11, 1, 6, 30, 0, DateTimeKind.Utc)));
+    }
+
+    [Test]
     public void Weekly_usage_restarts_at_the_reset_instead_of_rolling()
     {
         var now = new DateTime(2026, 10, 14, 17, 0, 0, DateTimeKind.Utc); // Wed noon CDT
