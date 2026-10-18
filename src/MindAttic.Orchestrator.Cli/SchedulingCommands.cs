@@ -151,7 +151,8 @@ internal sealed class DispatchCommand : Command<DispatchCommand.Settings>
     {
         var (_, store, _, plan) = Ctx.Load();
         var item = plan.Queue.FirstOrDefault(q => q.Id.Equals(settings.Ticket, StringComparison.OrdinalIgnoreCase));
-        if (item is null && plan.AwaitingApproval.FirstOrDefault(q => q.Id.Equals(settings.Ticket, StringComparison.OrdinalIgnoreCase)) is { } waiting)
+        // An unapproved one gone stale is still in the queue, and waits for your yes like the rest (M.ORCH-T394).
+        if (item is null or { IsAssigned: false, MayWork: false } && plan.AwaitingApproval.FirstOrDefault(q => q.Id.Equals(settings.Ticket, StringComparison.OrdinalIgnoreCase)) is { } waiting)
         {
             // Open, but only fixes are worked without your yes: say that, not that the ticket doesn't exist.
             AnsiConsole.MarkupLine($"[yellow]{waiting.Id} waits for your approval: orchestrator approve {waiting.Id}[/]");

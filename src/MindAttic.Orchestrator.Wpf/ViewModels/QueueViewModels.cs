@@ -14,7 +14,7 @@ public sealed class QueueRowViewModel : ObservableObject
     public QueueRowViewModel(QueueItem item, MainViewModel owner)
     {
         this.item = item;
-        StartCommand = new RelayCommand(() => owner.Dispatch(this.item, this.proposal?.UseWorktree ?? this.item.NeedsWorktree), () => !this.item.IsAssigned && !owner.IsStarting(this.item.Id));
+        StartCommand = new RelayCommand(() => owner.Dispatch(this.item, this.proposal?.UseWorktree ?? this.item.NeedsWorktree), () => !this.item.IsAssigned && this.item.MayWork && !owner.IsStarting(this.item.Id));
         UpCommand = new RelayCommand(() => owner.Bump(this.item.Id, +1));
         DownCommand = new RelayCommand(() => owner.Bump(this.item.Id, -1));
         ReleaseCommand = new RelayCommand(() => owner.Release(this.item.Id), () => this.item.IsAssigned);

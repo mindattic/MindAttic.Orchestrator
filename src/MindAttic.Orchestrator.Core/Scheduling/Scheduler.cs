@@ -134,9 +134,9 @@ public static partial class Scheduler
         int Priority(string id) => (int)Math.Clamp(snapshot.Priorities.GetValueOrDefault(id), int.MinValue, int.MaxValue);
         bool IsOld(Ticket t) => DateOnly.TryParse(t.Date, System.Globalization.CultureInfo.InvariantCulture, out var opened) && opened < groomBefore;
         // Only fixes and tickets you approved are work; the rest wait for your yes outside the queue (one already
-        // being worked stays, so its agent is still tracked).
+        // being worked stays, so its agent is still tracked). One whose assignment went stale waits for it too (M.ORCH-T394).
         var awaiting = snapshot.Repos
-            .SelectMany(r => r.OpenTickets.Where(t => !snapshot.MayWork(t) && !assigned.ContainsKey(t.Id))
+            .SelectMany(r => r.OpenTickets.Where(t => !snapshot.MayWork(t) && (assigned.GetValueOrDefault(t.Id) is not { } a || StaleSince(a) is not null))
                 .Select(t => new QueueItem(r.Name, r.Path, t, Priority(t.Id), null, false) { Old = IsOld(t), Approved = snapshot.Approved.Contains(t.Id) }))
             .OrderBy(q => q.Repo, StringComparer.OrdinalIgnoreCase).ThenBy(q => q.Ticket.Number ?? int.MaxValue)
             .ToList();

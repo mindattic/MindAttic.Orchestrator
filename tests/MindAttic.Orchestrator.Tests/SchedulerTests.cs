@@ -231,10 +231,17 @@ public sealed class SchedulerTests
         var plan = Scheduler.Plan(snap, new OrchestratorSettings(), [Quiet]);
 
         Assert.That(plan.Stale.Single().Id, Is.EqualTo("A-T1"), "still said to be stale");
+        Assert.That(plan.AwaitingApproval.Single().Id, Is.EqualTo("A-T1"), "and listed as waiting for your yes (M.ORCH-T394)");
         Assert.That(plan.Proposals, Is.Empty);
         var store = new MindAttic.Orchestrator.Settings.JsonStore(Path.Combine(Path.GetTempPath(), "orch-sched-" + Guid.NewGuid().ToString("N")));
         var (handed, _) = Autopilot.Next(plan, new OrchestratorSettings(), store, ["A"], 5, claim: false, now, pilotRunning: _ => false);
         Assert.That(handed, Is.Empty);
+
+        // While its session still works it, it's being worked, not waiting.
+        var working = new Snapshot(now, [new RepoStatus("A", @"D:\W\A", RepoState.Dormant, [],
+            [new TranscriptSession("s", Worktree, now.AddHours(-1), default, null)],
+            [T("A-T1", "feature")], now.AddHours(-1), default)], []);
+        Assert.That(Scheduler.Plan(working, new OrchestratorSettings(), [Quiet]).AwaitingApproval, Is.Empty);
     }
 
     [Test]
