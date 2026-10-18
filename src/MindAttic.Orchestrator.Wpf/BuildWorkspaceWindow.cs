@@ -43,7 +43,13 @@ public sealed class BuildWorkspaceWindow : Window
     }
 
     /// <summary>True when the workspace is there to use (some repos may have failed; they're listed and can be retried).</summary>
-    public static bool Run(string folder, Serilog.ILogger log) => new BuildWorkspaceWindow(folder, log).ShowDialog() == true;
+    /// Closed with the title bar's X once the build is done counts as done too: the repos are there either way.
+    public static bool Run(string folder, Serilog.ILogger log)
+    {
+        var window = new BuildWorkspaceWindow(folder, log);
+        window.ShowDialog();
+        return window.succeeded;
+    }
 
     private void Say(string line)
     {
