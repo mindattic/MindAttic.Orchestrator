@@ -65,6 +65,35 @@ public sealed class SubagentActivityTests
     }
 
     [Test]
+    public void A_response_written_as_lines_whose_output_grows_is_counted_once_at_its_last_lines_count()
+    {
+        // Claude Code writes a subagent's response one content block per line, its output_tokens growing (M.ORCH-T322).
+        var sessionDir = NewDir("ctx");
+        var projectsDir = NewDir("projects");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(sessionDir, "subagents"));
+            File.WriteAllText(Path.Combine(sessionDir, "subagents", "a1"), "");
+            var parentFolder = Path.Combine(projectsDir, "proj", "session-1", "subagents");
+            Directory.CreateDirectory(parentFolder);
+            static string Block(string id, long output) =>
+                "{\"type\":\"assistant\",\"timestamp\":\"2026-10-15T11:56:00Z\",\"message\":{\"id\":\"" + id +
+                "\",\"usage\":{\"input_tokens\":4,\"cache_creation_input_tokens\":2128,\"cache_read_input_tokens\":353355,\"output_tokens\":" + output + "}}}";
+            File.WriteAllLines(Path.Combine(parentFolder, "agent-a1.jsonl"),
+                [Line("user", "2026-10-15T11:55:00Z"), Block("m1", 42), Block("m1", 238), Block("m2", 5)]);
+
+            var usage = SubagentActivityReader.Running(new ContextCycler(sessionDir), projectsDir, Now).Single().Usage;
+
+            Assert.That(usage, Is.EqualTo(new TokenUsage(8, 4256, 706710, 243)));
+        }
+        finally
+        {
+            Directory.Delete(sessionDir, recursive: true);
+            Directory.Delete(projectsDir, recursive: true);
+        }
+    }
+
+    [Test]
     public void A_stopped_subagent_leaves_no_mark_and_so_isnt_reported()
     {
         var sessionDir = NewDir("ctx");

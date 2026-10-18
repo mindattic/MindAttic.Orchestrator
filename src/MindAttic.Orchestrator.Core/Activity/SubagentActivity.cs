@@ -83,7 +83,7 @@ public sealed class SubagentActivityReader(string projectsDir)
         public string Type = "subagent";
         public TokenUsage Usage;
         public string? Task, Doing;
-        public readonly HashSet<string> Counted = new(StringComparer.Ordinal);
+        public readonly Dictionary<string, TokenUsage> Counted = new(StringComparer.Ordinal);
     }
 
     private readonly Dictionary<string, Tail> tails = new(StringComparer.OrdinalIgnoreCase);
@@ -203,10 +203,18 @@ public sealed class SubagentActivityReader(string projectsDir)
 
             if (root.TryGetProperty("type", out var ty) && ty.ValueKind == JsonValueKind.String && ty.GetString() == "assistant" &&
                 root.TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.Object &&
-                m.TryGetProperty("usage", out var u) && u.ValueKind == JsonValueKind.Object &&
-                (!m.TryGetProperty("id", out var mid) || tail.Counted.Add(mid.ValueKind == JsonValueKind.String ? mid.GetString() ?? "" : mid.GetRawText())))
+                m.TryGetProperty("usage", out var u) && u.ValueKind == JsonValueKind.Object)
             {
-                tail.Usage += new TokenUsage(Num(u, "input_tokens"), Num(u, "cache_creation_input_tokens"), Num(u, "cache_read_input_tokens"), Num(u, "output_tokens"));
+                var used = new TokenUsage(Num(u, "input_tokens"), Num(u, "cache_creation_input_tokens"), Num(u, "cache_read_input_tokens"), Num(u, "output_tokens"));
+                // One response is several lines with the same id whose output_tokens grow: count it once, at its most (M.ORCH-T322).
+                if (m.TryGetProperty("id", out var mid))
+                {
+                    var key = mid.ValueKind == JsonValueKind.String ? mid.GetString() ?? "" : mid.GetRawText();
+                    var counted = tail.Counted.GetValueOrDefault(key);
+                    used = TranscriptReader.TokenUsageGrowth(counted, used);
+                    tail.Counted[key] = counted + used;
+                }
+                tail.Usage += used;
             }
         }
     }

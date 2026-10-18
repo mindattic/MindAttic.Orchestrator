@@ -14,7 +14,7 @@ namespace MindAttic.Orchestrator.Activity;
 public sealed partial class TranscriptReader(string projectsDir, string? cachePath = null)
 {
     private const int HeadScanLimit = 256 * 1024;
-    private const int CacheVersion = 2;
+    private const int CacheVersion = 3;
     private static readonly TimeSpan SaveEvery = TimeSpan.FromMinutes(1);
 
     /// <summary>A file written this recently is opened every poll whatever its directory entry says (a file held open can
@@ -65,7 +65,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
         public readonly List<UsageEvent> Events = [];
         public readonly List<LimitHit> Hits = [];
         public readonly List<ToolCall> Tools = [];
-        public readonly HashSet<string> CountedMessages = new(StringComparer.Ordinal);
+        public readonly Dictionary<string, TokenUsage> CountedMessages = new(StringComparer.Ordinal);
         /// <summary><c>workflow ticket new</c> calls whose output hasn't come back yet (their tool_use ids).</summary>
         public readonly HashSet<string> PendingFiles = new(StringComparer.Ordinal);
         /// <summary>Tickets this transcript filed in its current turn: an agent that files a ticket and fixes it is working it (M.ORCH-T255).</summary>
@@ -207,7 +207,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
 
     // Events as [ticks, input, cache write, cache read, output]: a third the size of named fields.
     private sealed record CachedFile(string Path, long Offset, string? Cwd, string? SessionId, string? Model, string? TicketId, string? TicketType, DateTime LastWriteUtc,
-        long[][] Events, LimitHit[] Hits, string[] Counted, string[]? Pending = null, string[]? Filed = null);
+        long[][] Events, LimitHit[] Hits, Dictionary<string, long[]> Counted, string[]? Pending = null, string[]? Filed = null);
 
     private sealed record Cache(int Version, DateTime SinceUtc, List<CachedFile> Files);
 
@@ -233,7 +233,8 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
             foreach (var e in f.Events)
                 if (e.Length == 5) state.Events.Add(new UsageEvent(new DateTime(e[0], DateTimeKind.Utc), new TokenUsage(e[1], e[2], e[3], e[4])));
             state.Hits.AddRange(f.Hits);
-            state.CountedMessages.UnionWith(f.Counted);
+            foreach (var (id, u) in f.Counted)
+                if (u.Length == 4) state.CountedMessages[id] = new TokenUsage(u[0], u[1], u[2], u[3]);
             state.PendingFiles.UnionWith(f.Pending ?? []);
             state.Filed.AddRange(f.Filed ?? []);
             files[f.Path] = state;
@@ -250,7 +251,8 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
         var cache = new Cache(CacheVersion, countingSinceUtc, [.. files.Select(kv => new CachedFile(
             kv.Key, kv.Value.Offset, kv.Value.Cwd, kv.Value.SessionId, kv.Value.Model, kv.Value.TicketId, kv.Value.TicketType, kv.Value.LastWriteUtc,
             [.. kv.Value.Events.Select(e => new[] { e.AtUtc.Ticks, e.Usage.Input, e.Usage.CacheCreation, e.Usage.CacheRead, e.Usage.Output })],
-            [.. kv.Value.Hits], [.. kv.Value.CountedMessages], [.. kv.Value.PendingFiles], [.. kv.Value.Filed]))]);
+            [.. kv.Value.Hits], kv.Value.CountedMessages.ToDictionary(c => c.Key, c => new[] { c.Value.Input, c.Value.CacheCreation, c.Value.CacheRead, c.Value.Output }),
+            [.. kv.Value.PendingFiles], [.. kv.Value.Filed]))]);
         // The daemon, the dashboard and CLI runs share the cache: each writes a private temp file and
         // swaps it in whole, so a reader never sees half of one.
         var temp = $"{cachePath}.{Environment.ProcessId}.tmp";
@@ -383,17 +385,34 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
                 return;
             }
 
-            // A response with several content blocks is written as several lines that repeat the
-            // same message id and usage; count it once.
-            if (Str(message, "id") is { } id && !sink.CountedMessages.Add(id)) return;
-
-            sink.Events.Add(new UsageEvent(at, new TokenUsage(
+            var used = new TokenUsage(
                 Num(usage, "input_tokens"),
                 Num(usage, "cache_creation_input_tokens"),
                 Num(usage, "cache_read_input_tokens"),
-                Num(usage, "output_tokens"))));
+                Num(usage, "output_tokens"));
+            if (Str(message, "id") is { } id)
+            {
+                // A response with several content blocks is written as several lines with the same message id. A CLI's own
+                // repeat the same usage, but a subagent's grow their output_tokens line by line and only the last has the
+                // whole count (M.ORCH-T322): count the response once, at the most any of its lines says.
+                if (sink.CountedMessages.TryGetValue(id, out var counted))
+                {
+                    var grown = TokenUsageGrowth(counted, used);
+                    if (grown == default) return;
+                    sink.CountedMessages[id] = counted + grown;
+                    sink.Events.Add(new UsageEvent(at, grown));
+                    return;
+                }
+                sink.CountedMessages[id] = used;
+            }
+            sink.Events.Add(new UsageEvent(at, used));
         }
     }
+
+    /// <summary>How much a later line of the same response adds to what its earlier lines were counted at (never less than none).</summary>
+    internal static TokenUsage TokenUsageGrowth(TokenUsage counted, TokenUsage line) => new(
+        Math.Max(0, line.Input - counted.Input), Math.Max(0, line.CacheCreation - counted.CacheCreation),
+        Math.Max(0, line.CacheRead - counted.CacheRead), Math.Max(0, line.Output - counted.Output));
 
     private static void Apply(string line, FileState state, DateTime? countFrom)
     {
@@ -470,7 +489,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
 }
 
 /// <summary>The mutable fields one transcript line can update.</summary>
-internal sealed class TranscriptLineSink(HashSet<string> countedMessages, List<UsageEvent> events, List<LimitHit>? hits = null, List<ToolCall>? tools = null,
+internal sealed class TranscriptLineSink(Dictionary<string, TokenUsage> countedMessages, List<UsageEvent> events, List<LimitHit>? hits = null, List<ToolCall>? tools = null,
     HashSet<string>? pendingFiles = null, List<string>? filed = null)
 {
     public HashSet<string> PendingFiles { get; } = pendingFiles ?? new(StringComparer.Ordinal);
@@ -480,7 +499,7 @@ internal sealed class TranscriptLineSink(HashSet<string> countedMessages, List<U
     public string? Model { get; set; }
     public string? TicketId { get; set; }
     public string? TicketType { get; set; }
-    public HashSet<string> CountedMessages { get; } = countedMessages;
+    public Dictionary<string, TokenUsage> CountedMessages { get; } = countedMessages;
     public List<UsageEvent> Events { get; } = events;
     public List<LimitHit> Hits { get; } = hits ?? [];
     public List<ToolCall> Tools { get; } = tools ?? [];

@@ -140,6 +140,24 @@ public sealed class TranscriptReaderTests
     }
 
     [Test]
+    public void A_response_whose_later_lines_grow_its_output_is_counted_at_its_last_lines_count_once()
+    {
+        // A subagent's transcript writes one line per content block, and its output_tokens grow from line to line (M.ORCH-T322).
+        System.IO.File.WriteAllLines(File(), [
+            Line("m1", "2026-10-13T12:00:00Z", 4, 42),
+            Line("m1", "2026-10-13T12:00:01Z", 4, 238),
+            Line("m1", "2026-10-13T12:00:01Z", 4, 238),
+        ]);
+        var reader = new TranscriptReader(dir, Cache);
+        Assert.That(reader.Poll(Since).Single().UsageSince(Since), Is.EqualTo(new TokenUsage(4, 10, 100, 238)));
+
+        System.IO.File.AppendAllLines(File(), [Line("m1", "2026-10-13T12:00:02Z", 4, 300)]);
+        Assert.That(reader.Poll(Since).Single().UsageSince(Since), Is.EqualTo(new TokenUsage(4, 10, 100, 300)), "a line read later still grows it");
+        Assert.That(new TranscriptReader(dir, Cache).Poll(Since).Single().UsageSince(Since), Is.EqualTo(new TokenUsage(4, 10, 100, 300)),
+            "a restarted reader's cache keeps what each response was counted at, so the new line only adds its growth");
+    }
+
+    [Test]
     public void Ignores_messages_before_the_boundary()
     {
         System.IO.File.WriteAllLines(File(), [
