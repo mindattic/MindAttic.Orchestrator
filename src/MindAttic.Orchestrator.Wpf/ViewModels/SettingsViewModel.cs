@@ -44,6 +44,16 @@ public sealed class SettingsViewModel : ObservableObject
     /// didn't touch the toggle mustn't put back what it read.</summary>
     private bool loadedAutopilot;
 
+    /// <summary>Every field as the panel read it. The CLI and agents change settings too while it's open (budget, pace,
+    /// settings --max-sessions, --exempt): a Save writes only the fields edited here, not what it read back then (M.ORCH-T338).</summary>
+    private Fields loaded = new("", "", "", "", "", "", false, "", false, "", "", "");
+
+    private sealed record Fields(string Block, string Weekly, string Reset, string Warn, string Max, string Provider, bool Pacing, string Target,
+        bool Throttle, string Delay, string Context, string Exempt);
+
+    private Fields Current() => new(BlockBudget, WeeklyBudget, WeeklyReset, WarnPercent, MaxSessions, Provider, Pacing, PaceTarget,
+        ThrottleAgents, MaxDelay, ContextPercent, ExemptCommands);
+
     public void Load()
     {
         var s = store.LoadSettings();
@@ -61,6 +71,7 @@ public sealed class SettingsViewModel : ObservableObject
         // No field shows it (context cycling is off), so an out-of-range hand edit mustn't make every Save fail on it.
         ContextPercent = Math.Clamp(s.ContextCyclePercent, 10, 95).ToString(CultureInfo.InvariantCulture);
         ExemptCommands = string.Join(", ", s.ExemptCommands);
+        loaded = Current();
         Error = "";
     }
 
@@ -78,12 +89,22 @@ public sealed class SettingsViewModel : ObservableObject
         try
         {
             var s = store.LoadSettingsToChange();
+            var was = loaded;
             store.SaveSettings(s with
             {
-                BlockBudget = block, WeeklyBudget = weekly, WeeklyReset = reset?.ToString(), WarnPercent = warn, MaxConcurrentSessions = max,
-                DefaultProvider = Provider, Autopilot = Autopilot == loadedAutopilot ? s.Autopilot : Autopilot, Pacing = Pacing, PaceTargetPercent = target,
-                ThrottleAgents = ThrottleAgents, MaxAgentDelaySeconds = delay, ContextCyclePercent = cycleAt,
-                ExemptCommands = OrchestratorSettings.ParseCommands(ExemptCommands),
+                BlockBudget = BlockBudget == was.Block ? s.BlockBudget : block,
+                WeeklyBudget = WeeklyBudget == was.Weekly ? s.WeeklyBudget : weekly,
+                WeeklyReset = WeeklyReset == was.Reset ? s.WeeklyReset : reset?.ToString(),
+                WarnPercent = WarnPercent == was.Warn ? s.WarnPercent : warn,
+                MaxConcurrentSessions = MaxSessions == was.Max ? s.MaxConcurrentSessions : max,
+                DefaultProvider = Provider == was.Provider ? s.DefaultProvider : Provider,
+                Autopilot = Autopilot == loadedAutopilot ? s.Autopilot : Autopilot,
+                Pacing = Pacing == was.Pacing ? s.Pacing : Pacing,
+                PaceTargetPercent = PaceTarget == was.Target ? s.PaceTargetPercent : target,
+                ThrottleAgents = ThrottleAgents == was.Throttle ? s.ThrottleAgents : ThrottleAgents,
+                MaxAgentDelaySeconds = MaxDelay == was.Delay ? s.MaxAgentDelaySeconds : delay,
+                ContextCyclePercent = ContextPercent == was.Context ? s.ContextCyclePercent : cycleAt,
+                ExemptCommands = ExemptCommands == was.Exempt ? s.ExemptCommands : OrchestratorSettings.ParseCommands(ExemptCommands),
             });
         }
         // settings.json held past the store's retries: said here, not left to close the dashboard. The fields keep what was typed.

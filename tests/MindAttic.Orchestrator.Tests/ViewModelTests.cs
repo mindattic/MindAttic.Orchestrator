@@ -139,6 +139,25 @@ public sealed class ViewModelTests
     }
 
     [Test]
+    public void Saving_the_panel_writes_only_the_fields_edited_in_it_not_what_it_read_before_the_cli_changed_others()
+    {
+        // M.ORCH-T338: every field was written back as the panel read it, undoing a change made from the CLI meanwhile.
+        var store = new JsonStore(dir);
+        store.SaveSettings(store.LoadSettings() with { BlockBudget = 20_000_000, MaxConcurrentSessions = 4, Pacing = true });
+        var vm = new SettingsViewModel(store, () => { });
+        // orchestrator budget --block 30M --pace off, settings --max-sessions 8 --exempt /do, while the panel is open
+        store.SaveSettings(store.LoadSettings() with { BlockBudget = 30_000_000, MaxConcurrentSessions = 8, Pacing = false, ExemptCommands = ["/do"] });
+
+        vm.WarnPercent = "70";
+        vm.SaveCommand.Execute(null);
+
+        var saved = store.LoadSettings();
+        Assert.That((vm.Error, saved.WarnPercent, saved.BlockBudget, saved.MaxConcurrentSessions, saved.Pacing, string.Join(",", saved.ExemptCommands)),
+            Is.EqualTo(("", 70, (long?)30_000_000, 8, false, "/do")));
+        Assert.That((vm.BlockBudget, vm.MaxSessions), Is.EqualTo(("30M", "8")), "and the panel shows what's saved now");
+    }
+
+    [Test]
     public void A_hand_edited_cycle_percent_no_field_shows_never_blocks_save()
     {
         var store = new JsonStore(dir);
