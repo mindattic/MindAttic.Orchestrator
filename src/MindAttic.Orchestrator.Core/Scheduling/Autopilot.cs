@@ -390,9 +390,12 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             !(room is { } left && q.Estimate is { } e && e.Fresh > left)).ToList();
         if (open.Count == 0)
         {
-            var waiting = plan.AwaitingApproval.Count(q => Named(q.Repo));
-            var busy = plan.Queue.Count(q => Named(q.Repo) && Busy(q));
-            return ([], waiting > 0 && busy == 0 ? $"none left that may be worked: {waiting} wait for your approval (orchestrator approve)"
+            bool Skipped(string repo) => settings.AutopilotSkip.Contains(repo, StringComparer.OrdinalIgnoreCase);
+            var skipped = plan.Queue.Where(q => Named(q.Repo) && Skipped(q.Repo)).Select(q => q.Repo).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var waiting = plan.AwaitingApproval.Count(q => Named(q.Repo) && !Skipped(q.Repo));
+            var busy = plan.Queue.Count(q => Named(q.Repo) && !Skipped(q.Repo) && Busy(q));
+            return ([], waiting == 0 && busy == 0 && skipped.Count > 0 ? $"{string.Join(", ", skipped)} set to be skipped (settings --autopilot-skip); nothing else is ready"
+                : waiting > 0 && busy == 0 ? $"none left that may be worked: {waiting} wait for your approval (orchestrator approve)"
                 : busy > 0 ? $"{busy} already being worked; nothing else is ready"
                 : "no open fixes or approved tickets left there");
         }

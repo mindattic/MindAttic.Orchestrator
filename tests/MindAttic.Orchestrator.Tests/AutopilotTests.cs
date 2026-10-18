@@ -247,6 +247,8 @@ public sealed class AutopilotTests
         var quiet = $"{local.AddHours(-1):HH:mm}-{local.AddHours(1):HH:mm}";
         Assert.That(Next(new() { QuietHours = [quiet] }).Why, Does.StartWith("quiet hours"));
         Assert.That(Next(new() { AutopilotSkip = ["a"] }).Handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "B-T1" }), "a skipped repo isn't handed out under *");
+        Assert.That(Next(new() { AutopilotSkip = ["a", "B"] }).Why, Does.StartWith("A, B set to be skipped").Or.StartWith("B, A set to be skipped"),
+            "says why, not 'no open fixes left'");
         Assert.That(store.LoadAssignments(), Is.Empty);
     }
 
