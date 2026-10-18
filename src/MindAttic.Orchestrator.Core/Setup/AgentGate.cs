@@ -532,7 +532,8 @@ public static class AgentGate
                 pass
 
         try:
-            data = json.load(sys.stdin)
+            # UTF-8 as Claude Code writes it, not the ANSI code page Python reads a pipe in on Windows (M.ORCH-T392).
+            data = json.loads(sys.stdin.buffer.read().decode("utf-8", errors="replace"))
         except Exception:
             data = {}
         tool = data.get("tool_name")
@@ -1191,7 +1192,8 @@ public static class AgentGate
             return os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
 
         try:
-            data = json.load(sys.stdin)
+            # UTF-8 as Claude Code writes it, not the ANSI code page Python reads a pipe in on Windows (M.ORCH-T392).
+            data = json.loads(sys.stdin.buffer.read().decode("utf-8", errors="replace"))
         except Exception:
             sys.exit(0)
         sid, event = data.get("session_id"), data.get("hook_event_name")

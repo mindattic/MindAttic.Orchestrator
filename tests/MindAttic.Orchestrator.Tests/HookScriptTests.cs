@@ -46,10 +46,13 @@ public sealed class HookScriptTests
         psi.Environment["CLAUDE_CODE_ENTRYPOINT"] = "cli";
         foreach (var (k, v) in env ?? new Dictionary<string, string>()) psi.Environment[k] = v;
         var p = Process.Start(psi)!;
-        p.StandardInput.Write(JsonSerializer.Serialize(input));
+        // Raw UTF-8, non-ASCII unescaped, as Claude Code writes it (M.ORCH-T392).
+        p.StandardInput.BaseStream.Write(JsonSerializer.SerializeToUtf8Bytes(input, Utf8Input));
         p.StandardInput.Close();
         return p;
     }
+
+    private static readonly JsonSerializerOptions Utf8Input = new() { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     private static readonly string[] AuthVariables =
     [
@@ -1034,6 +1037,25 @@ public sealed class HookScriptTests
         Turn("g2", "go");
         Assert.That(File.ReadAllText(Path.Combine(Marks, "g2.state.json")), Does.Not.Contain("ship it"), "goal_finished: the goal is gone");
         Assert.That(Stopped("g2"), Does.Contain("\"block\""), "so its stops are kept going again");
+    }
+
+    [Test]
+    public void A_goal_with_a_non_ascii_character_is_kept_as_typed_so_its_stop_summary_ends_it()
+    {
+        // Read in the ANSI code page, "café" was kept garbled and never matched the summary, so the goal never ended (M.ORCH-T392).
+        AutopilotWithOpenFixes();
+        Status(new { });
+        var transcript = Path.Combine(dir, "g3.jsonl");
+        File.WriteAllText(transcript, "");
+        Turn("g3", "/goal fix the café page", transcript);
+        using (var state = JsonDocument.Parse(File.ReadAllText(Path.Combine(Marks, "g3.state.json"))))
+            Assert.That(state.RootElement.GetProperty("goal").GetString(), Is.EqualTo("fix the café page"));
+
+        File.WriteAllLines(transcript, [
+            JsonSerializer.Serialize(new { type = "system", subtype = "stop_hook_summary", hookInfos = new[] { new { promptText = "fix the café page" } } }),
+        ], new System.Text.UTF8Encoding(false));
+        Turn("g3", "go");
+        Assert.That(Stopped("g3"), Does.Contain("\"block\""), "the goal ended, so its stops are kept going again");
     }
 
     [Test]
