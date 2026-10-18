@@ -18,14 +18,14 @@ internal static class Ctx
         return (aggregator, store, snapshot, plan);
     }
 
-    /// <summary>The status lease the daemon and dashboards share: a one-off command only writes rl-status.json while
-    /// nobody else holds it, so it never overwrites the running daemon's pace. Released when the command exits.</summary>
     /// <summary>Where the store lives; null is the user's own (%APPDATA%). Tests point it at a temp folder.</summary>
     public static string? StoreDirectory { get; set; }
 
     /// <summary>The settings store every command reads and writes (<see cref="StoreDirectory"/>).</summary>
     public static JsonStore Store() => new(StoreDirectory);
 
+    /// <summary>The status lease the daemon and dashboards share: a one-off command only writes rl-status.json while
+    /// nobody else holds it, so it never overwrites the running daemon's pace. Released when the command exits.</summary>
     public static DispatchLease Lease(JsonStore store) => new(store.Directory);
 
     /// <summary>A ticket id as stored and compared everywhere (upper case), so "m.orch-t5" isn't silently a different ticket.</summary>
@@ -375,7 +375,13 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         foreach (var (opt, isCap) in settings.RepoCap.Select(o => (o, true)).Concat(settings.RepoSessions.Select(o => (o, false))))
         {
             var parts = opt.Split('=', 2);
-            if (parts.Length != 2 || !int.TryParse(parts[1], out var n) || n < 0) { AnsiConsole.MarkupLine($"[red]Use REPO=NUMBER, not \"{Markup.Escape(opt)}\".[/]"); return 1; }
+            // A repo named, and a cap that's a share of the limit (over 100% it would never apply) (M.ORCH-T335).
+            if (parts.Length != 2 || parts[0].Trim().Length == 0 || !int.TryParse(parts[1], out var n) || n < 0 || (isCap && n > 100))
+            {
+                AnsiConsole.MarkupLine($"[red]Use REPO={(isCap ? "PERCENT (0-100)" : "NUMBER")}, not \"{Markup.Escape(opt)}\".[/]");
+                return 1;
+            }
+            parts[0] = parts[0].Trim();
             var map = new Dictionary<string, int>(isCap ? s.RepoBudgetPercent : s.RepoMaxSessions, StringComparer.Ordinal);
             // One entry per repo whatever the casing: "prose=0" clears a "Prose" cap, and "prose=1" replaces it.
             foreach (var same in map.Keys.Where(k => k.Equals(parts[0], StringComparison.OrdinalIgnoreCase)).ToList()) map.Remove(same);

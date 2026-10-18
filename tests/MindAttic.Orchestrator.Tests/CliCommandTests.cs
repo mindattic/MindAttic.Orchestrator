@@ -196,10 +196,13 @@ public sealed class CliCommandTests
     [TestCase("--repo-sessions", "Prose=x")]
     [TestCase("--repo-sessions", "Prose=-1")]
     [TestCase("--repo-cap", "Prose=")]
+    [TestCase("--repo-cap", "Prose=150")] // M.ORCH-T335: a share of the limit over 100% never applies
+    [TestCase("--repo-cap", "=40")]
+    [TestCase("--repo-sessions", " =3")]
     public void Settings_rejects_a_bad_REPO_equals_N_and_saves_nothing(string option, string value)
     {
         Assert.That(Run("settings", option, value), Is.EqualTo(1));
-        Assert.That(output.ToString(), Does.Contain("Use REPO=NUMBER"));
+        Assert.That(output.ToString(), Does.Contain("Use REPO="));
         Assert.That(File.Exists(SettingsFile), Is.False);
     }
 
