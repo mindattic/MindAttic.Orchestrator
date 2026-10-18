@@ -43,12 +43,35 @@ public sealed class AgentBoardTests
     public void A_recent_session_under_a_pace_hold_is_held_by_pace_not_plain_working()
     {
         var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-1), "M.ORCH-T1")) };
-        var pace = new Pace(PaceMode.Throttled, 1, 100, 100, null, "5-hour", Now.AddHours(1), "Paced to 1 session.");
+        var pace = new Pace(PaceMode.Throttled, 1, 100, 100, null, "5-hour", Now.AddHours(1), "Paced to 1 session.") { AgentDelaySeconds = 12 };
 
         var rows = AgentBoard.Build(repos, pace, [], [], WorkingWindow, Now);
 
         Assert.That(rows[0].State, Is.EqualTo(AgentState.HeldByPace));
         Assert.That(rows[0].StateDetail, Is.EqualTo(pace.Note));
+    }
+
+    [Test]
+    public void A_session_at_the_stop_is_held_by_pace()
+    {
+        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-1), "M.ORCH-T1")) };
+        var pace = new Pace(PaceMode.Coast, 0, 0, 100, null, "5-hour", Now.AddHours(1), "Coasting at the target.") { Stop = true };
+
+        var rows = AgentBoard.Build(repos, pace, [], [], WorkingWindow, Now);
+
+        Assert.That(rows[0].State, Is.EqualTo(AgentState.HeldByPace));
+    }
+
+    [Test]
+    public void A_throttled_pace_that_holds_no_calls_leaves_a_recent_session_working()
+    {
+        // Throttled only caps new sessions; with no per-call delay the gate holds nothing (M.ORCH-T440).
+        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-1), "M.ORCH-T1")) };
+        var pace = new Pace(PaceMode.Throttled, 1, 100, 100, null, "5-hour", Now.AddHours(1), "Paced to 1 session.");
+
+        var rows = AgentBoard.Build(repos, pace, [], [], WorkingWindow, Now);
+
+        Assert.That(rows[0].State, Is.EqualTo(AgentState.Working));
     }
 
     [Test]
