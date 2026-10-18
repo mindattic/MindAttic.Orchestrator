@@ -58,6 +58,14 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             ? defaultProbe ??= new ClaudeMeterProbe() : null);
     private DateTime auditStamp;
 
+    /// <summary>Which Claude account is signed in, so a switch to another leaves the old one's usage behind. Like the
+    /// probe, only the process writing the real rl-status.json watches the real sign-in by default; tests set their own.</summary>
+    internal ClaudeAccount? Account { get; init; }
+    private ClaudeAccount? defaultAccount;
+    private ClaudeAccount? SignIn => Account ??
+        (ReportedUsagePath is null && statusLease is not null && rateLimitFile?.Path == new RateLimitStatusWriter().Path
+            ? defaultAccount ??= new ClaudeAccount() : null);
+
     // What the transcripts add up to only changes when they do (M.ORCH-T116): kept until the reader's version or the day moves.
     private (long Version, DateTime Today) claudeKey = (-1, default);
     private List<TranscriptSession> claudeSessions = [];
@@ -151,9 +159,20 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         var events = claudeEvents;
         var calibration = Calibrate(allSessions, events, historyStartUtc, now);
         var reported = ReportedUsage.Load(now, ReportedUsagePath);
+        // After a /login to another account, what the old one spent, reported or hit isn't this one's: its weekly stop
+        // kept every prompt refused though the new account had room. Hits stay for learning the limits; their walls go.
+        var switched = SignIn?.SwitchedAtUtc(now);
+        if (switched is not null)
+        {
+            events = [.. events.Where(e => e.AtUtc >= switched)];
+            if (reported?.AtUtc < switched) reported = null;
+            if (lastReported?.AtUtc < switched) lastReported = null;
+            calibration = new LimitCalibration([.. calibration.Observations.Where(o => o.HitUtc >= switched || o.ResetUtc <= now)]);
+        }
         // No statusline reporting while tokens are spent (a CLI waiting on subagents): read Claude's meter directly (M.ORCH-T203).
         if (Probe is { } probe && (statusLease is null || statusLease.IsHeld)) probe.Tick(reported?.AtUtc, events, now);
         var reportedLimit = ReportedLimitFrom(reported, events, now);
+        if (switched is not null) samples?.RemoveAll(s => s.AtUtc < switched);
         reported = ReportedLimit.Highest(samples ?? [], reported, now);
         reported = KeepWindow(reported, now);
         var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration,

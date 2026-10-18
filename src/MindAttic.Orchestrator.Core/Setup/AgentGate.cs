@@ -66,10 +66,14 @@ public static class AgentGate
     /// session's statusline rewrites <c>claude-usage.json</c> each minute with its own last percent, so an idle one turned
     /// Claude's 99% back into 85% once a minute and every call held at the stop went through; and a daemon that stalled
     /// right after writing its stop let the stop lapse with its file. Usage in a window never goes down, so neither can.</para>
+    /// <para>All of that is one account's usage. Once the Claude sign-in moves to another account (<see cref="Budget.ClaudeAccount"/>),
+    /// a latch, a report or an orchestrator status from before the switch is the old account's and holds nothing back: a
+    /// /login to an account with room left used to stay locked out at the old one's weekly stop until it reset.</para>
     /// </summary>
     internal static string ClaudeUsagePython => $$"""
         STOP_PERCENT = {{StopPercent}}
         LATCH = Path.home() / ".claude" / "session-context" / "{{StopLatchName}}"
+        ACCOUNT = Path.home() / ".claude" / "session-context" / "{{Budget.ClaudeAccount.FileName}}"
         def read_json(path):
             # A file being replaced can't be opened for a moment on Windows: that's a retry, not a missing file.
             for _ in range(20):
@@ -78,11 +82,66 @@ public static class AgentGate
                 except PermissionError:
                     time.sleep(0.05)
             raise PermissionError(str(path))
+        def write_json(path, value):
+            tmp = path.with_name(path.name + "." + str(os.getpid()) + ".tmp")
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                tmp.write_text(json.dumps(value))
+                for _ in range(20):
+                    try:
+                        os.replace(tmp, path)
+                        return
+                    except PermissionError:
+                        time.sleep(0.05)
+            except Exception:
+                pass
+            try:
+                tmp.unlink()
+            except Exception:
+                pass
+        _switched = []
+        def switched_at():
+            # When the Claude sign-in last moved to another account (epoch; 0 when it never has or isn't known). Usage, a
+            # latch or a pace from before it is the old account's: it doesn't hold this one back. Shared with the daemon.
+            if _switched:
+                return _switched[0]
+            since = 0.0
+            try:
+                text = (Path.home() / ".claude.json").read_text(encoding="utf-8", errors="ignore")
+                at = text.find('"oauthAccount"')
+                at = text.find('"accountUuid"', at) if at >= 0 else -1
+                account = None
+                if at >= 0:
+                    start = text.find('"', text.find(":", at) + 1) + 1
+                    account = text[start:text.find('"', start)] or None
+                if account:
+                    try:
+                        seen = read_json(ACCOUNT) if ACCOUNT.exists() else {}
+                    except Exception:
+                        seen = {}
+                    if seen.get("account") == account:
+                        since = float(seen.get("since") or 0)
+                    else:
+                        since = time.time()
+                        write_json(ACCOUNT, {"account": account, "since": since})
+            except Exception:
+                pass
+            _switched.append(since)
+            return since
+        def before_switch(stamp):
+            # Whether an ISO time (a report's or a status file's) is from before the sign-in moved to another account.
+            since = switched_at()
+            if not since:
+                return False
+            try:
+                return datetime.fromisoformat(str(stamp).replace("Z", "+00:00")).timestamp() < since
+            except Exception:
+                return True
         def latched(by):
-            # The stop latched by "claude" or "orchestrator" for a window that hasn't reset; None otherwise.
+            # The stop latched by "claude" or "orchestrator" for a window that hasn't reset, on this account; None otherwise.
             try:
                 l = read_json(LATCH).get(by)
-                if l and float(l["until"]) > time.time():
+                if l and float(l["until"]) > time.time() and float(l.get("epoch") or 0) == switched_at():
                     return l
             except Exception:
                 pass
@@ -99,35 +158,21 @@ public static class AgentGate
                     return
                 every.pop(by)
             else:
-                entry = dict(fields, until=float(until))
-                if old and old.get("until") == entry["until"] and float(old.get("percent") or 0) > float(entry.get("percent") or 0):
+                entry = dict(fields, until=float(until), epoch=switched_at())
+                if old and old.get("until") == entry["until"] and old.get("epoch") == entry["epoch"] and float(old.get("percent") or 0) > float(entry.get("percent") or 0):
                     entry["percent"] = old["percent"]
                 if old == entry:
                     return
                 every[by] = entry
-            tmp = LATCH.with_name(LATCH.name + "." + str(os.getpid()) + ".tmp")
-            try:
-                LATCH.parent.mkdir(parents=True, exist_ok=True)
-                tmp.write_text(json.dumps(every))
-                for _ in range(20):
-                    try:
-                        os.replace(tmp, LATCH)
-                        return
-                    except PermissionError:
-                        time.sleep(0.05)
-            except Exception:
-                pass
-            try:
-                tmp.unlink()
-            except Exception:
-                pass
+            write_json(LATCH, every)
         def claude_stop():
             # (percent, reset epoch, window) when Claude itself reports a window at the stop line, now or earlier in the same
             # window (an idle session's later, lower report doesn't lift it); None otherwise. The week counts as much as the
             # 5 hours: a daemon that's down mustn't let a week at 99% run into a wall that locks you out for days.
             windows = (("five_hour", "claude", "5-hour"), ("seven_day", "claude-week", "weekly"))
             try:
-                limits = read_json(Path.home() / ".claude" / "claude-usage.json")["rate_limits"]
+                usage = read_json(Path.home() / ".claude" / "claude-usage.json")
+                limits = {} if before_switch(usage.get("at")) else usage["rate_limits"]
                 for key, by, name in windows:
                     w = limits.get(key)
                     if w and float(w["used_percentage"]) >= STOP_PERCENT and float(w["resets_at"]) > time.time():
@@ -304,7 +349,7 @@ public static class AgentGate
         def status():
             try:
                 s = read_json(STATUS)
-                if s.get("source") != "MindAttic.Orchestrator":
+                if s.get("source") != "MindAttic.Orchestrator" or before_switch(s["timestamp"]):
                     return {}
                 at = datetime.fromisoformat(s["timestamp"].replace("Z", ""))
                 return s if (datetime.utcnow() - at).total_seconds() <= STALE else {}
@@ -320,7 +365,7 @@ public static class AgentGate
                 if s:
                     return float(s.get("pace_delay_seconds", 0))
                 s = read_json(STATUS)
-                if s.get("source") != "MindAttic.Orchestrator" or not s.get("window_reset"):
+                if s.get("source") != "MindAttic.Orchestrator" or not s.get("window_reset") or before_switch(s.get("timestamp")):
                     return 0
                 until = datetime.fromisoformat(str(s["window_reset"]).replace("Z", "+00:00")).timestamp()
                 return float(s.get("pace_delay_seconds", 0)) if time.time() < until else 0
@@ -788,7 +833,8 @@ public static class AgentGate
             try:
                 s = json.loads((Path.home() / ".claude" / "rl-status.json").read_text())
                 age = (datetime.now(timezone.utc) - datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00"))).total_seconds()
-                return s if s.get("source") == "MindAttic.Orchestrator" and age <= {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}} else {}
+                fresh = age <= {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}} and not before_switch(s["timestamp"])
+                return s if s.get("source") == "MindAttic.Orchestrator" and fresh else {}
             except Exception:
                 return {}
 

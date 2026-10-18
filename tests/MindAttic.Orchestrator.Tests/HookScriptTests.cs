@@ -333,6 +333,28 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void After_a_login_to_another_account_the_old_accounts_weekly_stop_no_longer_holds_prompts()
+    {
+        // Signed in as A with A's week at 99%: the stop is latched, the daemon down.
+        Status(new { stop = false }, at: DateTime.UtcNow.AddMinutes(-10));
+        File.WriteAllText(Path.Combine(dir, ".claude.json"), """{"oauthAccount":{"accountUuid":"account-a"}}""");
+        Directory.CreateDirectory(Marks);
+        File.WriteAllText(Path.Combine(Marks, Budget.ClaudeAccount.FileName),
+            $$"""{"account":"account-a","since":{{DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds()}}}""");
+        File.WriteAllText(Path.Combine(Claude, "claude-usage.json"), JsonSerializer.Serialize(new
+        {
+            rate_limits = new { seven_day = new { used_percentage = 99, resets_at = new DateTimeOffset(DateTime.UtcNow.AddDays(3)).ToUnixTimeSeconds() } },
+            at = DateTime.UtcNow.AddMinutes(-1).ToString("yyyy-MM-ddTHH:mm:ssZ"),
+        }));
+        var prompt = new { hook_event_name = "UserPromptSubmit", session_id = "acct", prompt = "hi", cwd = ws };
+        Assert.That(Gate(prompt, AgentGate.ContextScriptName).Output, Does.Contain("Not sent"));
+
+        // /login as B: A's report and latch are A's, and B hasn't reported yet.
+        File.WriteAllText(Path.Combine(dir, ".claude.json"), """{"oauthAccount":{"accountUuid":"account-b"}}""");
+        Assert.That(Gate(prompt, AgentGate.ContextScriptName).Output, Does.Not.Contain("Not sent"));
+    }
+
+    [Test]
     public void A_cli_records_its_process_from_its_first_prompt()
     {
         // An /autopilot run's stops are all pushed back, so the Stop that used to record the pid never comes.
