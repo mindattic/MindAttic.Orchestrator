@@ -55,4 +55,26 @@ public sealed class UsageHistoryTests
         Assert.That(Burndown.Compute(budget, history, now, "b").Days.Sum(d => d.Fresh), Is.EqualTo(200));
         Assert.That(Burndown.Compute(budget, history, now).Days.Sum(d => d.Fresh), Is.EqualTo(40_210), "no account known: every subscription token");
     }
+
+    [Test]
+    public void The_first_bar_counts_from_the_reset_not_from_the_midnight_of_the_day_it_fell_on()
+    {
+        // M.ORCH-T388: after a 7:00 AM reset the first bar counted midnight to 7:00 too, which the week's total does not.
+        DateTime Local(int day, int hour) => new DateTime(2026, 10, day, hour, 0, 0, DateTimeKind.Local).ToUniversalTime();
+        var now = Local(14, 12);
+        var settings = new OrchestratorSettings { WeeklyBudget = 100_000, WeeklyReset = "Mon 07:00" };
+        UsageEvent Spent(DateTime at, long fresh) => new(at, new TokenUsage(0, 0, 0, fresh));
+        var events = new[] { Spent(Local(12, 5), 500), Spent(Local(12, 9), 70), Spent(Local(13, 10), 30) };
+        var budget = BudgetCalculator.Compute(events, settings, now, Local(14, 0), TimeZoneInfo.Local);
+        var session = new TranscriptSession("s", @"D:\W\A", now, default, null) { Events = events };
+
+        var history = UsageHistory.Observe([session], _ => "A", Local(7, 0), weekStartUtc: budget.WeekStartUtc).ToList();
+        var w = Burndown.Compute(budget, history, now);
+
+        Assert.That(budget.WeekStartUtc, Is.EqualTo(Local(12, 7)));
+        Assert.That(w.Days.Select(d => d.Fresh), Is.EqualTo(new[] { 70L, 30L, 0L }), "Monday from 7:00 on");
+        Assert.That(w.Days.Sum(d => d.Fresh), Is.EqualTo(w.Used));
+        Assert.That(history.Where(d => d.Day == new DateOnly(2026, 10, 12)).Select(d => (d.Fresh, d.BeforeUtc)),
+            Is.EquivalentTo(new[] { (500L, (DateTime?)Local(12, 7)), (70L, (DateTime?)null) }), "the day's whole spend still kept, for reports");
+    }
 }

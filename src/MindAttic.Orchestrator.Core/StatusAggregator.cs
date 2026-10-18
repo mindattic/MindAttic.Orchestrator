@@ -252,12 +252,13 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
         // A file held past the store's retries reads as empty: merged and saved, a year of history would be cut to the week.
         var historyRead = Store.TryLoadUsageHistory(out var storedHistory);
-        // Each Claude day is kept per account, and a session billed elsewhere apart, so the weekly bars count what the budget does.
+        // Each Claude day is kept per account, and a session billed elsewhere apart, and the reset day's tokens before the reset apart
+        // from those after it, so the weekly bars count what the budget does.
         string? AccountOf(TranscriptSession s, UsageEvent e) =>
             s.Provider != Providers.Claude ? null
             : s.SessionId is { } id && offSubscription.TryGetValue(id, out var auth) ? UsageHistory.BilledElsewhere + auth
             : signIn?.AccountAt(e.AtUtc);
-        var history = UsageHistory.Merge(storedHistory, UsageHistory.Observe(allSessions.Concat(providerSessions), Bucket, historyStartUtc, AccountOf),
+        var history = UsageHistory.Merge(storedHistory, UsageHistory.Observe(allSessions.Concat(providerSessions), Bucket, historyStartUtc, AccountOf, budget.WeekStartUtc),
             DateOnly.FromDateTime(startOfToday.AddDays(-HistoryDays)), DateOnly.FromDateTime(startOfToday));
         // Today's numbers grow every refresh; a few minutes' lag in the saved copy costs nothing.
         if (historyRead && now - historySavedUtc >= TimeSpan.FromMinutes(5) && !history.SequenceEqual(storedHistory))
