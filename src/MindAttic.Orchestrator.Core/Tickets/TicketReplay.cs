@@ -86,7 +86,11 @@ public static partial class TicketReplay
         long fresh = 0;
         var prompts = new List<string>();
         var last = "";
-        var counted = new HashSet<string>(StringComparer.Ordinal);
+        var counted = new Dictionary<string, TokenUsage>(StringComparer.Ordinal);
+        // Counted as the budget counts it (M.ORCH-T379): a fork's copy of the transcript it was started from isn't its own, and
+        // a response is counted at the most any of its lines says (a subagent's grow their output_tokens line by line).
+        var forkCall = TranscriptReader.SubagentId(file) is null ? null : TranscriptReader.ForkToolUseId(file);
+        var prologue = forkCall is not null;
         try
         {
             using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
@@ -98,7 +102,18 @@ public static partial class TicketReplay
                 using (doc)
                 {
                     var root = doc.RootElement;
-                    if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("message", out var m) || m.ValueKind != JsonValueKind.Object) continue;
+                    if (root.ValueKind != JsonValueKind.Object) continue;
+                    if (root.TryGetProperty("type", out var lineType) && lineType.ValueKind == JsonValueKind.String && lineType.GetString() == "fork-context-ref")
+                    {
+                        prologue = true;
+                        continue;
+                    }
+                    if (prologue)
+                    {
+                        if (!TranscriptReader.EndsForkPrologue(root, forkCall)) continue;
+                        prologue = false;
+                    }
+                    if (!root.TryGetProperty("message", out var m) || m.ValueKind != JsonValueKind.Object) continue;
                     if (root.TryGetProperty("timestamp", out var ts) && ts.ValueKind == JsonValueKind.String && DateTime.TryParse(ts.GetString(), null,
                             System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var at))
                     {
@@ -111,9 +126,17 @@ public static partial class TicketReplay
                     if (type == "assistant")
                     {
                         if (text.Length > 0) last = text;
-                        if (m.TryGetProperty("usage", out var u) && u.ValueKind == JsonValueKind.Object &&
-                            (!m.TryGetProperty("id", out var id) || counted.Add(id.GetString() ?? "")))
-                            fresh += Num(u, "input_tokens") + Num(u, "cache_creation_input_tokens") + Num(u, "output_tokens");
+                        if (m.TryGetProperty("usage", out var u) && u.ValueKind == JsonValueKind.Object)
+                        {
+                            var used = new TokenUsage(Num(u, "input_tokens"), Num(u, "cache_creation_input_tokens"), Num(u, "cache_read_input_tokens"), Num(u, "output_tokens"));
+                            if (m.TryGetProperty("id", out var id) && id.GetString() is { } key)
+                            {
+                                var before = counted.TryGetValue(key, out var c) ? c : default;
+                                used = TranscriptReader.TokenUsageGrowth(before, used);
+                                counted[key] = before + used;
+                            }
+                            fresh += used.Input + used.CacheCreation + used.Output;
+                        }
                     }
                 }
             }

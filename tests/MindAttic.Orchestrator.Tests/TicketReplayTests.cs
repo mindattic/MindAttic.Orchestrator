@@ -38,6 +38,37 @@ public sealed class TicketReplayTests
     }
 
     [Test]
+    public void A_sessions_cost_counts_a_response_at_its_largest_line_and_not_a_forks_copied_prologue()
+    {
+        // M.ORCH-T379: a subagent's lines of one response grow their output_tokens; a fork copies the subagent's transcript.
+        var projects = Path.Combine(Path.GetTempPath(), "orch-replay-cost-" + Guid.NewGuid().ToString("N"));
+        var sub = Path.Combine(projects, "D--Projects-X", "s1", "subagents");
+        Directory.CreateDirectory(sub);
+        try
+        {
+            static string User(string ts, object content) => JsonSerializer.Serialize(new { type = "user", timestamp = ts, message = new { role = "user", content } });
+            static string Reply(string id, string ts, long output) => JsonSerializer.Serialize(new
+            {
+                type = "assistant", timestamp = ts,
+                message = new { id, content = new[] { new { type = "text", text = "ok" } }, usage = new { input_tokens = 1, cache_creation_input_tokens = 0, output_tokens = output } },
+            });
+            var subagent = new[] { User("2026-10-13T12:00:00Z", "Work on ticket X-T7 (fix): the thing."), Reply("r1", "2026-10-13T12:00:01Z", 2), Reply("r1", "2026-10-13T12:00:02Z", 40) };
+            File.WriteAllLines(Path.Combine(sub, "agent-a.jsonl"), subagent);
+            File.WriteAllLines(Path.Combine(sub, "agent-f.jsonl"), [.. subagent,
+                User("2026-10-13T12:01:00Z", new object[] { new { type = "tool_result", tool_use_id = "toolu_f", content = "Fork started" }, new { type = "text", text = "the fork's own" } }),
+                Reply("f1", "2026-10-13T12:01:01Z", 5)]);
+            File.WriteAllText(Path.Combine(sub, "agent-f.meta.json"), """{"isFork":true,"toolUseId":"toolu_f"}""");
+
+            var sessions = TicketReplay.Sessions("X-T7", projects).ToDictionary(s => Path.GetFileName(s.File));
+
+            Assert.That(sessions["agent-a.jsonl"].Fresh, Is.EqualTo(41), "the response once, at its last line's 40 output");
+            Assert.That(sessions["agent-f.jsonl"].Fresh, Is.EqualTo(6), "the fork's own response only");
+            Assert.That(sessions["agent-f.jsonl"].Prompts, Is.EqualTo(new[] { "the fork's own" }));
+        }
+        finally { Directory.Delete(projects, recursive: true); }
+    }
+
+    [Test]
     public void Commits_matches_the_ticket_id_as_a_whole_word_not_a_substring()
     {
         var dir = Path.Combine(Path.GetTempPath(), "orch-replay-git-" + Guid.NewGuid().ToString("N"));
