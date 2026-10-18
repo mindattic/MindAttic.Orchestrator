@@ -723,6 +723,9 @@ public sealed class HookScriptTests
         Assert.That(File.Exists(Path.Combine(Marks, "subagents", "agent_1")), Is.True, "the id is made a safe file name");
         Gate(Event("SubagentStop"), AgentGate.ContextScriptName);
         Assert.That(File.Exists(Path.Combine(Marks, "subagents", "agent_1")), Is.False);
+
+        Gate(Event("SubagentStart"), new Dictionary<string, string> { ["ANTHROPIC_AUTH_TOKEN"] = "gateway-token" }, AgentGate.ContextScriptName);
+        Assert.That(File.Exists(Path.Combine(Marks, "subagents", "agent_1")), Is.False, "a gateway CLI's subagent doesn't fill the subscription's allowance");
     }
 
     [Test]

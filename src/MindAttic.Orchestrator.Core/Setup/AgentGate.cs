@@ -1087,6 +1087,10 @@ public static class AgentGate
                 sub.mkdir(parents=True, exist_ok=True)
                 mark = sub / re.sub(r"[^A-Za-z0-9_.-]", "_", str(data["agent_id"]))
                 if event == "SubagentStart":
+                    # A CLI billed to an API key, a gateway or a cloud provider takes no slot and spends none of the
+                    # subscription's windows: its subagents mustn't fill the subscription's allowance either.
+                    if session_auth(data.get("cwd")) != "{{{Sessions.ContextCycler.SubscriptionAuth}}}":
+                        sys.exit(0)
                     mark.write_text(str(cli_pid() or ""))
                     # The mark now counts it, so the slot the pace gate kept for its call is let go: this CLI's oldest. Never
                     # another CLI's: a subagent that took no slot (an /unthrottle'd CLI, an exempt turn) would free a place
