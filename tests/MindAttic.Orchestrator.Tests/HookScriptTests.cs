@@ -726,6 +726,22 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void A_switch_or_a_search_pattern_that_looks_like_a_root_is_not_a_whole_drive_search()
+    {
+        // M.ORCH-T364: find.exe's /i, dir's /s with a file pattern and grep's "/" were read as roots to walk.
+        object Bash(string command) => new { tool_name = "Bash", tool_input = new { command } };
+        object Ps(string command) => new { tool_name = "PowerShell", tool_input = new { command } };
+        foreach (var c in new[] { "tasklist | find /i \"claude\"", "Get-Process | Out-String | find /c \"dotnet\"", "wmic logicaldisk get caption | find \"C:\"",
+                                  "cmd /c dir /s /b *.csproj", "cmd /c \"dir /b /s *.sln\"" })
+            Assert.That(Gate(Ps(c)).Output, Does.Not.Contain("\"deny\""), c);
+        foreach (var c in new[] { "git ls-files | grep -v /", "git branch -r | grep \"/\"", "rg -l \"D:\" src", "grep -rn \"~\" docs" })
+            Assert.That(Gate(Bash(c)).Output, Does.Not.Contain("\"deny\""), c);
+        foreach (var c in new[] { "grep -r TODO /", "rg foo C:\\", "grep -e x -r /c", "find /c -name x.exe" })
+            Assert.That(Gate(Bash(c)).Output, Does.Contain("\"deny\""), c);
+        Assert.That(Gate(Ps("cmd /c dir /s /b C:\\foo.exe")).Output, Does.Contain("\"deny\""), "looks for foo.exe in every folder of C:");
+    }
+
+    [Test]
     public void Autopilot_takes_repo_names_or_wildcards_and_its_repos_are_this_clis_cross_repo_exception()
     {
         var mark = Path.Combine(Marks, $"autopilot-{Cli}");

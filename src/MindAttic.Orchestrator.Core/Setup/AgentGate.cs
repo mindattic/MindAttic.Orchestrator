@@ -619,21 +619,40 @@ public static class AgentGate
             # What cmd /c or powershell -c runs is a command too: `cmd /c dir C:\ /s` walks the drive all the same (M.ORCH-T362).
             return re.sub(r"\b(?:cmd(?:\.exe)?\s+/[ck]|(?:powershell|pwsh)(?:\.exe)?(?:\s+-(?!c\b|command\b)\w+(?:\s+(?!-)\S+)?)*\s+-c(?:ommand)?)\s+[\"']?",
                           "\n", c, flags=re.I)
+        def arguments(segment):
+            return [t[1:-1] if len(t) > 1 and t[0] == t[-1] and t[0] in "\"'" else t for t in re.findall(r"\"[^\"]*\"|'[^']*'|\S+", segment)][1:]
         def root_search(c, powershell):
             c = commands_only(c)
             # Each command naming a root is judged on its own: `ls && find / ...` is a search, `find . ; ls /` isn't.
             for m in re.finditer(ROOT_SEARCH, c, re.I):
                 name = m.group(1).lower()
+                segment = re.split(r"[;&|\n]", c[m.start(1):], maxsplit=1)[0]
                 if name == "where":
                     # where /r <dir> walks <dir>: only a root after /r is a whole-drive search (M.ORCH-T362).
-                    if re.search(r"\s/r\s+[\"']?(?:[A-Za-z]:[\\/]?|/|~)[\"']?(?=\s|$)", re.split(r"[;&|\n]", c[m.start(1):], maxsplit=1)[0], re.I):
+                    if re.search(r"\s/r\s+[\"']?(?:[A-Za-z]:[\\/]?|/|~)[\"']?(?=\s|$)", segment, re.I):
                         return True
+                    continue
+                # Only a path argument naming a root counts, never a switch or a search pattern (M.ORCH-T364): in PowerShell
+                # find is find.exe (/i is its case switch, and it reads only the files it's given), cmd's dir takes /s and
+                # /b, and grep's, rg's and fd's first argument is what they look for.
+                if powershell and name == "find":
+                    continue
+                args = arguments(segment)
+                paths = [a for a in args if not a.startswith("-") and not (name == "dir" and re.fullmatch(r"/[A-Za-z?]", a))]
+                if name in ("grep", "rg", "fd") and not any(a in ("-e", "-f", "--regexp", "--file") or a.startswith(("--regexp=", "--file=")) for a in args):
+                    paths = paths[1:]
+                unix = not powershell and name in ("find", "fd", "rg", "grep", "ls")
+                def is_root(a):
+                    return bool(re.fullmatch(r"/|[A-Za-z]:[\\/]?|~|\$HOME|\$env:USERPROFILE", a, re.I) or (unix and re.fullmatch(r"/[A-Za-z]", a)))
+                # `dir /s C:\x.exe` looks for x.exe in every folder of the drive.
+                def drive_pattern(a):
+                    return name == "dir" and bool(re.fullmatch(r"[A-Za-z]:[\\/][^\\/]*[.*?][^\\/]*", a))
+                if not any(is_root(a) or drive_pattern(a) for a in paths):
                     continue
                 if name not in ("ls", "dir", "get-childitem", "gci"):
                     return True
                 # Listing a root is harmless; only a recursive listing walks the whole drive. PowerShell's parameters ignore
                 # case (-recurse, -r), but bash's `ls -r` only reverses the order.
-                segment = re.split(r"[;&|\n]", c[m.start(1):], maxsplit=1)[0]
                 if powershell or name in ("get-childitem", "gci"):
                     if re.search(r"\s-r(?:e(?:c(?:u(?:r(?:s(?:e)?)?)?)?)?)?\b|\s/s\b", segment, re.I):
                         return True
