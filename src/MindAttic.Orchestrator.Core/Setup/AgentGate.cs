@@ -1370,6 +1370,26 @@ public static class AgentGate
             except Exception:
                 return []
 
+        def story_file_repos(repos):
+            # Whether a repo named (or matched by a wildcard) keeps its tickets in its own docs/USER_STORIES.md, not the
+            # Workflow database: workable() can't see those (their approvals live in settings' StoryApproved since
+            # M.ORCH-T441), so `orchestrator next`, which reads them, is asked instead (M.ORCH-T445).
+            try:
+                import fnmatch, sqlite3
+                try:
+                    db = sqlite3.connect(WORKFLOW_DB)
+                    try:
+                        held = {(r or "").lower() for (r,) in db.execute("SELECT DISTINCT repo FROM tickets").fetchall()}
+                    finally:
+                        db.close()
+                except Exception:
+                    held = set()
+                named = {r.lower() for r in repos}
+                return any(d.name.lower() not in held and any(fnmatch.fnmatchcase(d.name.lower(), n) for n in named) and
+                           (d / "docs" / "USER_STORIES.md").is_file() for d in WS.iterdir() if d.is_dir())
+            except Exception:
+                return False
+
         def no_subagent_room(limits, pid):
             # The pace's subagent allowance is used up (all CLIs together), so `orchestrator next` would hand out nothing:
             # pushing a stop back would only loop (M.ORCH-T188). An unthrottled CLI isn't held to it, as `next` isn't.
@@ -1679,9 +1699,11 @@ public static class AgentGate
             # Past the wind-down line `orchestrator next` starts nothing new before the reset (M.ORCH-T254), unless this CLI is
             # unthrottled: pushing the stop back would only spend a turn being told so.
             wound = bool(limits.get("wind_down_note")) and not (DIR / ("unthrottled-" + str(my_pid()))).exists()
-            ids = workable(repos, sid) if why and not wound and not no_subagent_room(limits, my_pid()) else []
-            if ids:
-                # Only what next would hand out: the count above is the cheap first look, next has the last word.
+            eligible = bool(why) and not wound and not no_subagent_room(limits, my_pid())
+            ids = workable(repos, sid) if eligible else []
+            if ids or (eligible and story_file_repos(repos)):
+                # Only what next would hand out: the count above is the cheap first look, next has the last word. A repo on
+                # its own USER_STORIES.md has tickets the count can't see, so next is asked for it even when the count is empty.
                 handed = next_hands_out(repos, my_pid())
                 if handed is not None:
                     ids = handed

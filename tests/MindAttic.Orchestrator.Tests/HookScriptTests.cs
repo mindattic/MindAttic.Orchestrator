@@ -310,6 +310,41 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void Keep_going_asks_orchestrator_next_for_a_repo_on_its_own_story_file()
+    {
+        // M.ORCH-T445: UnitySolarSystem keeps its tickets in docs/USER_STORIES.md, not the database, so the hook's own count
+        // never saw its approved tickets and let an /autopilot CLI stop with work left.
+        var uss = Path.Combine(ws, "UnitySolarSystem");
+        Directory.CreateDirectory(Path.Combine(uss, "docs"));
+        File.WriteAllText(Path.Combine(uss, "docs", "USER_STORIES.md"), "| U.SPC-T9 | 2026-10-18 | feature | open | A feature | — |\n");
+        Directory.CreateDirectory(Marks);
+        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem");
+        Status(new { });
+        var output = Path.Combine(dir, "next-out.txt");
+        var fake = Path.Combine(dir, "orchestrator.cmd");
+        File.WriteAllText(fake, $"@echo off\r\ntype \"{output}\"\r\nexit /b 0\r\n");
+        var env = new Dictionary<string, string> { ["MINDATTIC_ORCHESTRATOR"] = fake };
+        string Asked(string sid) => Gate(new { hook_event_name = "Stop", session_id = sid, cwd = uss, last_assistant_message = "Shall I start the next one?" },
+            env, AgentGate.ContextScriptName).Output;
+
+        File.WriteAllText(output, "=== U.SPC-T9 (UnitySolarSystem, feature): A feature\r\n");
+        Assert.That(Asked("s1"), Does.Contain("\"block\"").And.Contain("U.SPC-T9"), "next hands out the story-file ticket: it's work");
+
+        File.WriteAllText(output, "Nothing handed out: nothing is ready.\r\n");
+        Assert.That(Asked("s2"), Is.Empty, "next has nothing for it: let stop");
+
+        // Once the database holds the repo, its own count is the first look again (the story file is then generated).
+        var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(db)!);
+        using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
+            "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal,type)'); " +
+            "d.execute(\"insert into tickets values('U.SPC-T9','UnitySolarSystem','closed',1,'feature')\"); d.commit()", db }, UseShellExecute = false })!)
+            mk.WaitForExit(20_000);
+        File.WriteAllText(output, "=== U.SPC-T9 (UnitySolarSystem, feature): A feature\r\n");
+        Assert.That(Asked("s3"), Is.Empty, "a database repo with nothing workable isn't asked about");
+    }
+
+    [Test]
     public void A_claim_gone_stale_is_work_again_as_orchestrator_next_hands_it_out()
     {
         var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
