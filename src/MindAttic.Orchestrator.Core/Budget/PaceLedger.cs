@@ -123,7 +123,7 @@ public static class PaceLedger
 
         var held = gate.Where(e => e.Decision == GateEvent.Held).ToList();
         var (grade, why) =
-            hit is not null ? (WindowGrade.Over, $"hit the 5-hour limit at {hit.HitUtc.ToLocalTime():t}") :
+            hit is not null ? (WindowGrade.Over, $"hit the 5-hour limit at {Formatting.ResetTime(hit.HitUtc, hit.HitUtc)}") :
             peak >= 100 ? (WindowGrade.Over, "Claude reported 100%") :
             gaps.Count > 0 ? (WindowGrade.Blind, $"Claude's meter unseen for {Formatting.Span(gaps.Aggregate(TimeSpan.Zero, (t, g) => t + g.Length))} while {Formatting.Tokens(gaps.Sum(g => g.Fresh))} were spent") :
             final is null ? (WindowGrade.Under, "no reports from Claude's meter") :

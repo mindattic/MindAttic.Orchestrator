@@ -90,8 +90,8 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
             alarmed.Add(o.ResetUtc);
             var hit = o.HitUtc;
             var around = PaceLedger.LoadEvents(EventsPath, hit - TimeSpan.FromMinutes(30)).Where(e => e.AtUtc <= hit + TimeSpan.FromMinutes(1)).ToList();
-            var line = $"Agents ran out of tokens: the 5-hour limit was hit at {hit.ToLocalTime():t} ({Formatting.Ago(hit, nowUtc)}), " +
-                       $"{Formatting.Tokens(o.FreshUsed)} uncached into the window, resetting {o.ResetUtc.ToLocalTime():t}. " +
+            var line = $"Agents ran out of tokens: the 5-hour limit was hit at {Formatting.ResetTime(hit, nowUtc)} ({Formatting.Ago(hit, nowUtc)}), " +
+                       $"{Formatting.Tokens(o.FreshUsed)} uncached into the window, resetting {Formatting.ResetTime(o.ResetUtc, nowUtc)}. " +
                        $"In the 30 minutes before it the pace gate held {around.Count(e => e.Decision == GateEvent.Held)} calls " +
                        $"and refused {around.Count(e => e.Decision == GateEvent.Refused)}.";
             say(LogEventLevel.Error, "pace ledger: " + line);

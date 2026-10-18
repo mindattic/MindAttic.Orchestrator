@@ -233,6 +233,18 @@ public sealed class PacerTests
     }
 
     [Test]
+    public void A_reset_past_midnight_is_named_with_its_weekday_in_the_pace_note()
+    {
+        // M.ORCH-T410: at 11:30 PM, "until 2:00 AM" reads as today's.
+        var midnight = (new DateTime(2026, 10, 14, 0, 0, 0, DateTimeKind.Local).ToUniversalTime() - Day).TotalHours;
+        var start = midnight - 3; // 9:00 PM local: the window resets at 2:00 AM tomorrow
+        var pace = Pace(start + 2.5, 2, new OrchestratorSettings { BlockBudget = 1_000 }, E(start, 700));
+
+        Assert.That(pace.Mode, Is.Not.EqualTo(PaceMode.Open), pace.Note);
+        Assert.That(pace.Note, Does.Contain(Day.AddHours(start + 5).ToLocalTime().ToString("ddd h:mm tt", System.Globalization.CultureInfo.InvariantCulture)));
+    }
+
+    [Test]
     public void Past_90_percent_the_window_winds_down_and_at_its_target_everything_stops()
     {
         var s = new OrchestratorSettings { BlockBudget = 1_000 };

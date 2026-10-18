@@ -142,7 +142,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 var stuck = Activity.Watchdog.Stuck(snapshot);
                 foreach (var x in stuck.Where(x => knownStuck.Add(x.SessionId + x.Loop.Tool + x.Loop.Input)))
                 {
-                    Say(LogEventLevel.Warning, $"a session in {x.Repo} looks stuck, repeating {x.Loop.Describe()} since {x.Loop.SinceUtc.ToLocalTime():t}");
+                    Say(LogEventLevel.Warning, $"a session in {x.Repo} looks stuck, repeating {x.Loop.Describe()} since {Formatting.ResetTime(x.Loop.SinceUtc, DateTime.UtcNow)}");
                     Alert("Looks stuck", $"A session in {x.Repo} keeps repeating {x.Loop.Describe()}.", urgent: true);
                 }
                 knownStuck.IntersectWith(stuck.Select(x => x.SessionId + x.Loop.Tool + x.Loop.Input));

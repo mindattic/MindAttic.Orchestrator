@@ -159,8 +159,8 @@ public static class Pacer
         // slowest pace; if the limit was wrong, the learner retires it.
         if (windows.FirstOrDefault(w => w.Used >= w.Limit) is { Name: not null } spent)
             return new Pace(PaceMode.Over, 0, 0, recent, null, spent.Name, spent.ResetUtc,
-                $"Past the {spent.Name} limit until {Clock(spent.ResetUtc)}.",
-                $"Past the {spent.Name} limit until {Clock(spent.ResetUtc)}. Finish the current step and stop at a clean point.")
+                $"Past the {spent.Name} limit until {Clock(spent.ResetUtc, nowUtc)}.",
+                $"Past the {spent.Name} limit until {Clock(spent.ResetUtc, nowUtc)}. Finish the current step and stop at a clean point.")
             { AgentDelaySeconds = AgentDelay(b.ControlFreshPerHour, 0, recentDelaySeconds, s), SubagentAllowance = 0, Subagents = subagents, Stop = true };
 
         var target = Math.Clamp(s.PaceTargetPercent, 1, 100) / 100.0;
@@ -189,19 +189,19 @@ public static class Pacer
             : Math.Min(1, max); // no history at all: start one and measure it
 
         var mode = cap == 0 ? PaceMode.Coast : cap < max ? PaceMode.Throttled : PaceMode.Open;
-        var rates = $"{Formatting.Tokens((long)recent)}/h now, {Formatting.Tokens((long)sustainable)}/h fits the {gov.Name} window until {Clock(gov.ResetUtc)}";
+        var rates = $"{Formatting.Tokens((long)recent)}/h now, {Formatting.Tokens((long)sustainable)}/h fits the {gov.Name} window until {Clock(gov.ResetUtc, nowUtc)}";
         var note = mode switch
         {
             PaceMode.Open => $"On pace: {rates}.",
             PaceMode.Throttled => $"Pacing: {rates}; capped at {cap} of {max} sessions.",
             _ => atTarget
-                ? $"Coasting: the {gov.Name} window is at its {s.PaceTargetPercent}% target until {Clock(gov.ResetUtc)}; no new sessions."
+                ? $"Coasting: the {gov.Name} window is at its {s.PaceTargetPercent}% target until {Clock(gov.ResetUtc, nowUtc)}; no new sessions."
                 : sustainable <= 0
-                ? $"Coasting: the {gov.Name} window is ahead of its front-loaded curve; held until the curve catches up (resets {Clock(gov.ResetUtc)})."
+                ? $"Coasting: the {gov.Name} window is ahead of its front-loaded curve; held until the curve catches up (resets {Clock(gov.ResetUtc, nowUtc)})."
                 : $"Coasting: {rates}; not even one more session fits.",
         };
         var delay = AgentDelay(b.ControlFreshPerHour, sustainable, recentDelaySeconds, s);
-        var agentNote = $"Usage is running ahead of the {gov.Name} limit (resets {Clock(gov.ResetUtc)}); the orchestrator is stretching it" +
+        var agentNote = $"Usage is running ahead of the {gov.Name} limit (resets {Clock(gov.ResetUtc, nowUtc)}); the orchestrator is stretching it" +
                         (delay > 0 ? $" by holding each tool call about {delay:0}s" : "") +
                         ". Keep working normally; the subagent allowance says how many subagents may run at once.";
         if (delay > 0) note += $" Agents held {delay:0}s per tool call.";
@@ -311,5 +311,6 @@ public static class Pacer
         return rates[rates.Count / 2];
     }
 
-    private static string Clock(DateTime utc) => utc.ToLocalTime().ToString("h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
+    // With the weekday when it falls on another day: an 11:30 PM "until 2:00 AM" reads as today's (M.ORCH-T410).
+    private static string Clock(DateTime utc, DateTime nowUtc) => Formatting.ResetTime(utc, nowUtc);
 }
