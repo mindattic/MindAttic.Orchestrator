@@ -205,6 +205,17 @@ public sealed class ContextCyclerMarksTests
     }
 
     [Test]
+    public void A_cli_that_ran_clear_is_in_its_newest_session()
+    {
+        // "zzz" was before the /clear, "aaa" is now: by file name the old one comes first.
+        File.WriteAllText(Path.Combine(dir, "zzz.state.json"), """{"state":"idle","pid":42,"at":"2026-10-17T10:00:00Z"}""");
+        File.WriteAllText(Path.Combine(dir, "aaa.state.json"), """{"state":"busy","pid":42,"at":"2026-10-17T12:00:00Z"}""");
+        File.WriteAllText(Path.Combine(dir, "bbb.state.json"), """{"state":"busy","pid":7,"at":"2026-10-17T13:00:00Z"}""");
+        var cycler = new ContextCycler(dir);
+        Assert.That((cycler.LatestSessionOf(42), cycler.LatestSessionOf(99)), Is.EqualTo(("aaa", (string?)null)));
+    }
+
+    [Test]
     public void Prune_marks_without_a_folder_does_nothing()
     {
         Assert.DoesNotThrow(() => new ContextCycler(Path.Combine(dir, "nowhere")).PruneMarks());

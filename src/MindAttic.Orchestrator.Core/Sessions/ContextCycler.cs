@@ -92,6 +92,10 @@ public sealed class ContextCycler(string? directory = null)
             .ToList();
     }
 
+    /// <summary>The session a CLI is in now: its newest. A CLI that ran /clear keeps the state files of the sessions before,
+    /// all with its process id, and the first of those by file name is any of them.</summary>
+    public string? LatestSessionOf(int pid) => Load().Where(s => s.Pid == pid).MaxBy(s => s.TurnUtc)?.SessionId;
+
     internal SessionContext? Read(string sessionId)
     {
         try

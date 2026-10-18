@@ -144,7 +144,7 @@ internal sealed class DryRunCommand : Command
         {
             AnsiConsole.MarkupLine($"/autopilot is on in CLI {pid} for {Markup.Escape(string.Join(", ", repos))}:");
             var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, null, claim: false, DateTime.UtcNow,
-                self: cycler.Load().FirstOrDefault(s => s.Pid == pid)?.SessionId);
+                self: cycler.LatestSessionOf(pid));
             foreach (var h in handed) AnsiConsole.MarkupLine($"  next: {Markup.Escape(h.Item.Id)} in {Markup.Escape(h.Item.Repo)}: {Markup.Escape(h.Item.Ticket.Summary)}");
             if (why is not null) AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(why)}[/]");
         }
@@ -188,7 +188,7 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
         var unthrottled = cli is { } pid && cycler.IsUnthrottled(pid);
         // What the calling CLI filed itself isn't held from its own subagents; what anyone else (its subagents included) filed
         // and is fixing is (M.ORCH-T255).
-        var self = cli is { } me ? cycler.Load().FirstOrDefault(s => s.Pid == me)?.SessionId : null;
+        var self = cli is { } me ? cycler.LatestSessionOf(me) : null;
         var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, settings.Count, settings.Claim, DateTime.UtcNow,
             unthrottled: unthrottled, self: self);
         foreach (var h in handed)
