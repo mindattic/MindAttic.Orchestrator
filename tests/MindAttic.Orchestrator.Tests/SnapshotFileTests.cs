@@ -103,6 +103,47 @@ public sealed class SnapshotFileTests
     }
 
     [Test]
+    public void A_reader_of_the_snapshot_counts_only_the_signed_in_accounts_weekly_hits()
+    {
+        // The delegate doesn't travel, so the other account's weekly hits went into the reader's learned weekly limit and its
+        // "learned from N limit hits" (M.ORCH-T447).
+        var now = Now;
+        var mine = new MindAttic.Orchestrator.Budget.LimitObservation(LimitKind.Weekly, now.AddDays(-9), now.AddDays(-5), 40_000_000);
+        var theirs = new MindAttic.Orchestrator.Budget.LimitObservation(LimitKind.Weekly, now.AddDays(-3), now.AddDays(1), 90_000_000);
+        var session = new MindAttic.Orchestrator.Budget.LimitObservation(LimitKind.Session, now.AddHours(-1), now.AddHours(2), 5_000_000);
+        var built = new MindAttic.Orchestrator.Budget.LimitCalibration([mine, session, theirs]) { Mine = t => t != theirs.HitUtc };
+        var budget = new MindAttic.Orchestrator.Budget.BudgetStatus(null, 10_000_000, false, 40, default, default, null, null, 0, null, 90)
+        {
+            Calibration = built,
+        };
+        new SnapshotFile(path).Write(Sample(now) with { Budget = budget });
+
+        var read = new SnapshotFile(path).Read(now)!.Budget!.Calibration!;
+
+        Assert.That(read.Basis(LimitKind.Weekly), Is.EqualTo(built.Basis(LimitKind.Weekly)).And.EqualTo(1));
+        Assert.That(read.LearnedWeekly, Is.EqualTo(40_000_000));
+        Assert.That(read.LearnedWeeklyReset(TimeZoneInfo.Utc), Is.EqualTo(built.LearnedWeeklyReset(TimeZoneInfo.Utc)));
+        Assert.That(read.Basis(LimitKind.Session), Is.EqualTo(1), "session hits aren't filtered by account");
+    }
+
+    [Test]
+    public void A_snapshot_published_without_a_sign_in_still_counts_every_weekly_hit()
+    {
+        var now = Now;
+        var a = new MindAttic.Orchestrator.Budget.LimitObservation(LimitKind.Weekly, now.AddDays(-9), now.AddDays(-5), 40_000_000);
+        var b = new MindAttic.Orchestrator.Budget.LimitObservation(LimitKind.Weekly, now.AddDays(-3), now.AddDays(1), 90_000_000);
+        var budget = new MindAttic.Orchestrator.Budget.BudgetStatus(null, 10_000_000, false, 40, default, default, null, null, 0, null, 90)
+        {
+            Calibration = new MindAttic.Orchestrator.Budget.LimitCalibration([a, b]),
+        };
+        new SnapshotFile(path).Write(Sample(now) with { Budget = budget });
+
+        var read = new SnapshotFile(path).Read(now)!.Budget!.Calibration!;
+
+        Assert.That(read.Basis(LimitKind.Weekly), Is.EqualTo(2));
+    }
+
+    [Test]
     public void A_sessions_ticketed_subagents_read_back_so_readers_see_what_they_are_working()
     {
         var now = Now;

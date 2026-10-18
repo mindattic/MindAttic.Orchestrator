@@ -32,7 +32,21 @@ public sealed record LimitCalibration(IReadOnlyList<LimitObservation> Observatio
     [System.Text.Json.Serialization.JsonIgnore]
     public Func<DateTime, bool>? Mine { get; init; }
 
-    private bool Own(LimitObservation o) => o.Kind != LimitKind.Weekly || Mine is null || Mine(o.HitUtc);
+    private readonly IReadOnlyList<DateTime>? theirs;
+
+    /// <summary>The hit times of the weekly observations that were another account's: worked out from <see cref="Mine"/> by the
+    /// process that knows the sign-in, and what a process reading the published snapshot (which has no <see cref="Mine"/>)
+    /// filters by, or its learned weekly limit and hit counts took in every account's weekly hits (M.ORCH-T447).</summary>
+    public IReadOnlyList<DateTime>? Theirs
+    {
+        get => Mine is { } mine
+            ? [.. Observations.Where(o => o.Kind == LimitKind.Weekly && !mine(o.HitUtc)).Select(o => o.HitUtc)]
+            : theirs;
+        init => theirs = value;
+    }
+
+    private bool Own(LimitObservation o) => o.Kind != LimitKind.Weekly ||
+        (Mine is { } mine ? mine(o.HitUtc) : theirs is null || !theirs.Contains(o.HitUtc));
 
     /// <summary>How many hits the learned value for <paramref name="kind"/> is drawn from.</summary>
     public int Basis(LimitKind kind) => Usable(kind).Count();
