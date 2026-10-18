@@ -86,6 +86,23 @@ public sealed class SnapshotFileTests
     }
 
     [Test]
+    public void A_budget_whose_calibration_knows_the_signed_in_account_is_published()
+    {
+        // The account filter is a delegate, which JSON can't hold: it stays with the process that built the snapshot (M.ORCH-T390).
+        var now = Now;
+        var hit = new MindAttic.Orchestrator.Budget.LimitObservation(LimitKind.Session, now.AddHours(-1), now.AddHours(2), 5_000_000);
+        var budget = new MindAttic.Orchestrator.Budget.BudgetStatus(null, 10_000_000, false, 40, default, default, null, null, 0, null, 90)
+        {
+            Calibration = new MindAttic.Orchestrator.Budget.LimitCalibration([hit]) { Mine = _ => true },
+        };
+        new SnapshotFile(path).Write(Sample(now) with { Budget = budget });
+
+        var read = new SnapshotFile(path).Read(now);
+
+        Assert.That(read?.Budget?.Calibration?.Observations, Is.EqualTo(new[] { hit }));
+    }
+
+    [Test]
     public void A_sessions_ticketed_subagents_read_back_so_readers_see_what_they_are_working()
     {
         var now = Now;

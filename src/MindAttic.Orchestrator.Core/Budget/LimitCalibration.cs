@@ -27,7 +27,9 @@ public sealed record LimitCalibration(IReadOnlyList<LimitObservation> Observatio
     public long? LearnedWeekly => Median(LimitKind.Weekly);
 
     /// <summary>Whether a hit at this time was the signed-in account's (null: every hit is). Another account's week resets at its
-    /// own time and is sized by its own plan, so its weekly hits neither date nor size this account's week.</summary>
+    /// own time and is sized by its own plan, so its weekly hits neither date nor size this account's week. Left out of JSON: the
+    /// serializer refuses a delegate, and the calibration travels in the published snapshot (M.ORCH-T390).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
     public Func<DateTime, bool>? Mine { get; init; }
 
     private bool Own(LimitObservation o) => o.Kind != LimitKind.Weekly || Mine is null || Mine(o.HitUtc);
