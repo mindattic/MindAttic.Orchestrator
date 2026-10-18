@@ -47,7 +47,8 @@ public sealed record LedgerWindow(
     int Refused,
     int PromptsAnswered,
     IReadOnlyList<MeterGap> Gaps,
-    int Exempt = 0)
+    int Exempt = 0,
+    string? Account = null)
 {
     public TimeSpan Blind => Gaps.Aggregate(TimeSpan.Zero, (t, g) => t + g.Length);
 }
@@ -88,8 +89,8 @@ public static class PaceLedger
     {
         var start = endUtc - BudgetCalculator.BlockLength;
         var mine = samples.Where(s => Near(s.ResetUtc, endUtc)).OrderBy(s => s.AtUtc).ToList();
-        if (accountAt is not null && mine.Count > 0 && accountAt(mine[^1].AtUtc) is { } owner)
-            mine = [.. mine.Where(s => accountAt(s.AtUtc) is not { } a || a == owner)];
+        var owner = accountAt is not null && mine.Count > 0 ? accountAt(mine[^1].AtUtc) : null;
+        if (owner is not null) mine = [.. mine.Where(s => accountAt!(s.AtUtc) is not { } a || a == owner)];
         var hit = hits.Where(h => h.Kind == LimitKind.Session && (Near(h.ResetUtc, endUtc) || h.HitUtc >= start && h.HitUtc < endUtc)).MinBy(h => h.HitUtc);
         var weekly = hits.Where(h => h.Kind == LimitKind.Weekly && h.HitUtc >= start && h.HitUtc < endUtc).MinBy(h => h.HitUtc);
         var gate = events.Where(e => e.AtUtc >= start && e.AtUtc < endUtc).ToList();
@@ -126,7 +127,7 @@ public static class PaceLedger
         return new LedgerWindow(start, endUtc, grade, why, peak, final, fresh, mine.Count, Math.Round(atTarget, 1),
             hit?.HitUtc, weekly?.HitUtc, held.Count, Math.Round(held.Sum(e => e.HeldSeconds) / 60, 1),
             gate.Count(e => e.Decision == GateEvent.Refused), gate.Count(e => e.Decision == GateEvent.PromptAnswered), gaps,
-            gate.Count(e => e.Decision == GateEvent.Exempt));
+            gate.Count(e => e.Decision == GateEvent.Exempt), owner);
     }
 
     /// <summary>
@@ -140,13 +141,18 @@ public static class PaceLedger
             .Concat(hits.Where(h => h.Kind == LimitKind.Session).Select(h => h.ResetUtc))
             .Where(e => e + Settle <= nowUtc)
             .Order().ToList();
-        // A reset within a window already taken (recorded, or earlier in this pass) is that window seen again, not another.
-        var taken = recorded.Select(r => r.EndUtc).ToList();
+        // A reset within a window already taken (recorded, or earlier in this pass) is that window seen again, not another;
+        // but after a /login the new account's window overlaps the old one's by hours and is its own (M.ORCH-T345).
+        string? AccountOf(DateTime end) => accountAt is null ? null
+            : samples.Where(s => Near(s.ResetUtc, end)).MaxBy(s => s.AtUtc) is { } last ? accountAt(last.AtUtc) : null;
+        var taken = recorded.Select(r => (End: r.EndUtc, r.Account)).ToList();
         var due = new List<DateTime>();
-        foreach (var end in ends.Where(end => !taken.Any(t => Overlaps(end, t))))
+        foreach (var end in ends)
         {
+            var account = AccountOf(end);
+            if (taken.Any(t => Near(end, t.End) || Overlaps(end, t.End) && (account is null || t.Account is null || account == t.Account))) continue;
             due.Add(end);
-            taken.Add(end);
+            taken.Add((end, account));
         }
         return [.. due.Select(d => Build(d, samples, hits, events, accountAt: accountAt))];
     }

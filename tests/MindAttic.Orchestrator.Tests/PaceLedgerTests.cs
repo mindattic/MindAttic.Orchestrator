@@ -61,6 +61,28 @@ public sealed class PaceLedgerTests
     }
 
     [Test]
+    public void After_a_login_mid_window_the_new_accounts_window_gets_its_own_row()
+    {
+        // M.ORCH-T345: A's window resets at End; B, signed in to three hours before, resets two hours later. Overlapping
+        // by hours, B's was taken for A's seen again and never recorded.
+        var login = End.AddHours(-3);
+        var bEnd = End.AddHours(2);
+        List<UsageSample> samples =
+        [
+            new(End.AddHours(-4), 40, End, 4_000_000), new(login.AddMinutes(-5), 70, End, 7_000_000),
+            new(login.AddMinutes(10), 5, bEnd, 500_000), new(bEnd.AddMinutes(-10), 100, bEnd, 10_000_000),
+        ];
+        string? AccountAt(DateTime t) => t < login ? "a" : "b";
+
+        var first = PaceLedger.Due([], samples, [], [], End.AddMinutes(5), AccountAt);
+        Assert.That(first.Select(w => (w.EndUtc, w.Account)), Is.EqualTo(new[] { (End, (string?)"a") }));
+        var then = PaceLedger.Due(first, samples, [], [], bEnd.AddMinutes(5), AccountAt);
+        Assert.That(then.Select(w => (w.EndUtc, w.Account, w.Grade)), Is.EqualTo(new[] { (bEnd, (string?)"b", WindowGrade.Over) }));
+        Assert.That(PaceLedger.Due([.. first, .. then], samples, [], [], bEnd.AddMinutes(10), AccountAt), Is.Empty, "nothing twice");
+        Assert.That(PaceLedger.Due(first, samples, [], [], bEnd.AddMinutes(5)), Is.Empty, "with no sign-in record an overlap is the same window, as before");
+    }
+
+    [Test]
     public void A_limit_hit_is_over_whatever_the_percent()
     {
         var w = PaceLedger.Build(End, Steady(80), [Hit(End.AddMinutes(-40), End)], []);
