@@ -34,10 +34,9 @@ public sealed class Tray : IDisposable
             Text = "MindAttic Orchestrator",
             ContextMenuStrip = new Forms.ContextMenuStrip(),
         };
-        // One left click opens the dashboard (a double click is two of them); the right button is the menu (M.ORCH-T183).
-        icon.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) ShowWindow(); };
+        OpenOnClick(icon, ShowWindow);
         icon.ContextMenuStrip.Opening += (_, _) => BuildMenu();
-        window.StateChanged += (_, _) => { if (window.WindowState == WindowState.Minimized) window.Hide(); };
+        MinimizeToTray(window);
         CloseToTray(window, () => exiting);
 
         timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
@@ -74,6 +73,19 @@ public sealed class Tray : IDisposable
 
     private void ShowWindow() => Restore(window);
 
+    /// <summary>A left click or a double click on <paramref name="icon"/> opens the dashboard; the right button is the menu
+    /// (M.ORCH-T183, M.ORCH-T185). A double click raises one MouseClick and then a MouseDoubleClick, so both are wired:
+    /// restoring twice is harmless.</summary>
+    public static void OpenOnClick(Forms.NotifyIcon icon, Action open)
+    {
+        icon.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) open(); };
+        icon.MouseDoubleClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) open(); };
+    }
+
+    /// <summary>Minimizing <paramref name="window"/> hides it to the tray rather than leaving it on the taskbar.</summary>
+    public static void MinimizeToTray(Window window) =>
+        window.StateChanged += (_, _) => { if (window.WindowState == WindowState.Minimized) window.Hide(); };
+
     /// <summary>The close button hides <paramref name="window"/> to the tray instead of quitting (M.ORCH-T183): it closes
     /// for real only once <paramref name="exiting"/> says so (the tray's Exit). Windows ending the session closes it regardless.</summary>
     public static void CloseToTray(Window window, Func<bool> exiting) =>
@@ -84,12 +96,18 @@ public sealed class Tray : IDisposable
             window.Hide();
         };
 
-    /// <summary>Shows <paramref name="window"/> from the tray: visible, not minimized, in front.</summary>
+    /// <summary>Shows <paramref name="window"/> from the tray: visible, not minimized, in front. Activate alone can lose to
+    /// Windows' foreground lock and only flash the taskbar button when the dashboard is open behind other windows, so it's
+    /// raised above them for a moment first (M.ORCH-T185); it doesn't stay on top.</summary>
     public static void Restore(Window window)
     {
         window.Show();
         if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
+        var topmost = window.Topmost;
+        window.Topmost = true;
         window.Activate();
+        window.Topmost = topmost;
+        window.Focus();
     }
 
     private void ToggleHud()
