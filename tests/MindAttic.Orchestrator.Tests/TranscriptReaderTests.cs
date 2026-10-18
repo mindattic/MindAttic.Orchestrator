@@ -324,6 +324,8 @@ public sealed class TranscriptReaderTests
         System.IO.File.WriteAllText(Path.Combine(sub, "agent-a.meta.json"), """{"agentType":"general-purpose"}""");
         System.IO.File.WriteAllLines(Path.Combine(sub, "agent-f.jsonl"), [.. parent, Prompt("Your directive: look", "toolu_f"),
             Line("f1", "2026-10-13T12:03:00Z", 1, 7)]);
+        var written = DateTime.UtcNow.AddMinutes(-5);
+        foreach (var f in Directory.GetFiles(dir, "*.jsonl", SearchOption.AllDirectories)) System.IO.File.SetLastWriteTimeUtc(f, written);
         var reader = new TranscriptReader(dir);
         Assert.That(reader.Poll(Since).Single().UsageSince(Since).Output, Is.EqualTo(1 + 50 + 50 + 7), "no meta yet: the copy looks like its own");
         System.IO.File.WriteAllText(Path.Combine(sub, "agent-f.meta.json"), """{"agentType":"fork","isF""");
@@ -334,6 +336,7 @@ public sealed class TranscriptReaderTests
 
         Assert.That(s.UsageSince(Since).Output, Is.EqualTo(1 + 50 + 7), "once it's there, the parent subagent's response is counted once");
         Assert.That(s.TicketedSubagents.Select(t => t.AgentId), Is.EqualTo(new[] { "agent-a" }), "and the copied prompt's ticket isn't the fork's");
+        Assert.That(s.LastWriteUtc, Is.EqualTo(written), "reading it again from the start isn't writing just now: the session stays idle");
     }
 
     [Test]

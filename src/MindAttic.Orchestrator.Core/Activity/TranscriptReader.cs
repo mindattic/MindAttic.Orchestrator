@@ -144,7 +144,8 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
                     // A file Claude Code holds open can show a stale timestamp in the directory listing,
                     // so recent files are checked by their real length rather than trusted by mtime.
                     var known = state.LastWriteUtc != default && !state.Restored;
-                    if (state.AgentId is not null && !state.MetaRead) ReadMeta(info.FullName, state);
+                    // A fork found only now is read again from 0: that's its history again, not writing just now.
+                    if (state.AgentId is not null && !state.MetaRead && ReadMeta(info.FullName, state)) known = false;
                     LastPollOpened++;
                     var grew = ReadAppended(info.FullName, state, sinceUtc);
                     // Growth on a file we'd already read means "written just now"; the first read of a
@@ -305,15 +306,16 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
     /// knowing which Agent call it answers, is read again from the start: what it copied from the subagent that started it
     /// (that subagent's prompt, usage and tool calls) was taken as its own and counted a second time (M.ORCH-T378).
     /// </summary>
-    private static void ReadMeta(string path, FileState state)
+    /// <returns>True when it was found a fork just now, so it's read again from the start.</returns>
+    private static bool ReadMeta(string path, FileState state)
     {
-        if (!File.Exists(Path.ChangeExtension(path, ".meta.json"))) return;
+        if (!File.Exists(Path.ChangeExtension(path, ".meta.json"))) return false;
         // One caught mid-write (or held) is read again next time: taken for "not a fork" for good, its copied prologue would
         // count a second time.
-        if (state.ForkToolUseId is not null) { state.MetaRead = true; return; }
-        if (!TryForkToolUseId(path, out var read)) return;
+        if (state.ForkToolUseId is not null) { state.MetaRead = true; return false; }
+        if (!TryForkToolUseId(path, out var read)) return false;
         state.MetaRead = true;
-        if (read is not { } forkCall) return;
+        if (read is not { } forkCall) return false;
         state.ForkToolUseId = forkCall;
         state.ForkPrologue = true;
         state.Offset = 0;
@@ -324,6 +326,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
         state.PendingFiles.Clear();
         state.Filed.Clear();
         (state.TicketId, state.TicketType) = (null, null);
+        return true;
     }
 
     /// <summary>Parses complete lines appended since the last call; true when any were consumed.</summary>
