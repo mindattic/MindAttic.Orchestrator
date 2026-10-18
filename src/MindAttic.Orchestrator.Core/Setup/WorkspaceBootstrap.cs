@@ -58,13 +58,19 @@ public static class WorkspaceBootstrap
     {
         var path = Path.Combine(root, WorkspaceManifest.RelativePath);
         if (!File.Exists(path)) return null;
-        try { return JsonSerializer.Deserialize<WorkspaceManifest>(File.ReadAllText(path)); }
+        try
+        {
+            // Checked, not trusted: {} or "Repos": null is no manifest, and a repo missing its name or remote is
+            // listed as failed (IsSafeName), not a NullReferenceException mid-build (M.ORCH-T377).
+            var manifest = JsonSerializer.Deserialize<WorkspaceManifest>(File.ReadAllText(path));
+            return manifest?.Repos is null ? null : manifest with { Repos = manifest.Repos.Where(r => r is not null).ToList() };
+        }
         catch (JsonException) { return null; }
     }
 
     /// <summary>A repo folder name that can't escape the workspace: the manifest comes from a repo, so it's checked, not trusted.</summary>
-    public static bool IsSafeName(string name) =>
-        name.Length > 0 && name is not "." and not ".." && name.IndexOfAny(['\\', '/', ':']) < 0 &&
+    public static bool IsSafeName(string? name) =>
+        !string.IsNullOrEmpty(name) && name is not "." and not ".." && name.IndexOfAny(['\\', '/', ':']) < 0 &&
         name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
 
     /// <summary>
@@ -87,8 +93,10 @@ public static class WorkspaceBootstrap
         var manifest = Load(folder)
             ?? throw new InvalidOperationException($"The workspace root has no {WorkspaceManifest.RelativePath}; run `orchestrator workspace export` on a machine that has the workspace, and push it.");
 
-        var todo = manifest.Repos.Where(r => IsSafeName(r.Name) && !Directory.Exists(Path.Combine(folder, r.Name))).ToList();
-        var unsafeNames = manifest.Repos.Where(r => !IsSafeName(r.Name)).Select(r => $"{r.Name} (not a plain folder name)");
+        static bool Usable(ManifestRepo r) => IsSafeName(r.Name) && !string.IsNullOrWhiteSpace(r.Remote);
+        var todo = manifest.Repos.Where(r => Usable(r) && !Directory.Exists(Path.Combine(folder, r.Name))).ToList();
+        var unsafeNames = manifest.Repos.Where(r => !Usable(r))
+            .Select(r => IsSafeName(r.Name) ? $"{r.Name} (no remote to clone from)" : $"{r.Name ?? "(no name)"} (not a plain folder name)").ToList();
         var failed = new List<string>(unsafeNames);
         var done = 0;
         progress.Report($"{manifest.Repos.Count} repos in the workspace; {todo.Count} to clone.");

@@ -60,6 +60,32 @@ public sealed class WorkspaceBootstrapTests
     }
 
     [Test]
+    public void A_manifest_without_repos_or_with_a_repo_missing_its_name_or_remote_is_said_not_a_crash()
+    {
+        var target = Path.Combine(dir, "ws");
+        var empty = Repo("empty", path =>
+        {
+            Directory.CreateDirectory(Path.Combine(path, "docs"));
+            File.WriteAllText(Path.Combine(path, WorkspaceManifest.RelativePath), "{}");
+        });
+        Assert.ThrowsAsync<InvalidOperationException>(() => WorkspaceBootstrap.BuildAsync(target, empty, new SyncProgress([])),
+            "no repo list is the clear has-no-manifest error");
+
+        var a = Repo("A");
+        var partial = Repo("partial", path =>
+        {
+            Directory.CreateDirectory(Path.Combine(path, "docs"));
+            File.WriteAllText(Path.Combine(path, WorkspaceManifest.RelativePath),
+                $$"""{"Root":"x","Repos":[{"Name":"A","Remote":{{System.Text.Json.JsonSerializer.Serialize(a)}}},{"Remote":"x"},{"Name":"NoRemote"},null]}""");
+        });
+        var built = WorkspaceBootstrap.BuildAsync(Path.Combine(dir, "ws2"), partial, new SyncProgress([])).GetAwaiter().GetResult();
+
+        Assert.That(built.Cloned, Is.EqualTo(1));
+        Assert.That(built.Failed, Has.Count.EqualTo(2));
+        Assert.That(built.Failed, Has.Some.StartsWith("(no name)").And.Some.StartsWith("NoRemote (no remote"));
+    }
+
+    [Test]
     public void A_folder_with_other_things_in_it_is_left_alone()
     {
         var target = Path.Combine(dir, "busy");
