@@ -70,6 +70,12 @@ public sealed class AgentGateTests
         Assert.Throws<IOException>(() => AgentGate.Ensure(Claude), "JSON that isn't an object is left alone too");
         Assert.That(File.ReadAllText(Settings), Is.EqualTo("[1, 2]"));
 
+        // A repeated key used to escape as an ArgumentException on first access, out of every daemon tick (M.ORCH-T427).
+        const string twice = "{ \"hooks\": {}, \"hooks\": {} }";
+        File.WriteAllText(Settings, twice);
+        Assert.Throws<IOException>(() => AgentGate.Ensure(Claude), "a repeated key is unreadable JSON, said like any other");
+        Assert.That(File.ReadAllText(Settings), Is.EqualTo(twice));
+
         File.WriteAllText(Settings, "{}");
         Assert.That(AgentGate.Ensure(Claude), Does.Contain("registered"), "once it's readable the hooks go in");
     }
@@ -210,5 +216,8 @@ public sealed class AgentGateTests
         var did = Others();
         Assert.That(File.ReadAllText(Path.Combine(Codex, "hooks.json")), Is.EqualTo("not json {"));
         Assert.That(did, Does.Not.Contain("Codex").And.Contain("Gemini: wired BeforeTool"), "the others still get wired");
+
+        File.WriteAllText(Path.Combine(Codex, "hooks.json"), "{ \"hooks\": {}, \"hooks\": {} }");
+        Assert.That(Others(), Is.Null, "a repeated key is left alone, not thrown (M.ORCH-T427)");
     }
 }

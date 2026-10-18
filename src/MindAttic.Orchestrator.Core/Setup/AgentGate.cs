@@ -1501,7 +1501,7 @@ public static class AgentGate
 
         var settingsPath = Path.Combine(dir, "settings.json");
         JsonObject? root;
-        try { root = File.Exists(settingsPath) ? JsonNode.Parse(File.ReadAllText(settingsPath)) as JsonObject : new JsonObject(); }
+        try { root = File.Exists(settingsPath) ? JsonNode.Parse(File.ReadAllText(settingsPath), documentOptions: StrictKeys) as JsonObject : new JsonObject(); }
         catch (JsonException) { root = null; }
         // Unreadable (mid-rewrite by Claude Code, or broken): someone else's file is left alone, but it's said, not
         // reported as done, so the daemon tries again next tick instead of never registering the hooks (M.ORCH-T376).
@@ -1572,12 +1572,16 @@ public static class AgentGate
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         JsonObject? root;
-        try { root = File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path)) as JsonObject : new JsonObject(); }
+        try { root = File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path), documentOptions: StrictKeys) as JsonObject : new JsonObject(); }
         catch (JsonException) { return null; }
         if (root is null || !AddHook(root, hookEvent, scriptName, command, timeout)) return null;
         WriteReplacing(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
         return $"wired {hookEvent} into {Path.GetFileName(path)}";
     }
+
+    /// <summary>A repeated key (a hand edit; JavaScript keeps the last one) is a JsonException at parse, which the readers catch:
+    /// by default JsonNode only throws an ArgumentException on first access, which escaped every daemon tick (M.ORCH-T427).</summary>
+    private static readonly JsonDocumentOptions StrictKeys = new() { AllowDuplicateProperties = false };
 
     /// <summary>Puts <paramref name="text"/> in place whole: a hook started mid-write would run half a script (a SyntaxError
     /// Claude Code shrugs off, so that call goes ungated), and the temp file is this writer's own, so the dashboard and the
