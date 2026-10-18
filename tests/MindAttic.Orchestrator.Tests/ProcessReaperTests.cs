@@ -138,6 +138,32 @@ public sealed class ProcessReaperTests
     }
 
     [Test]
+    public void A_process_with_no_claude_exe_ancestor_is_never_reaped_on_any_scan()
+    {
+        // M.ORCH-T386: Adobe Creative Cloud's node.exe was killed at 2026-10-15 08:51Z by the first reaper (1e77272), which
+        // reaped any target whose parent had exited. Since c1b494f a process is reaped only if it, or an ancestor, ran under
+        // a live claude.exe. Creative Cloud's node never does, whether its launcher exited or not, however big or old it gets,
+        // with agents and their tools coming and going beside it, and even when it takes an exited agent tool's pid.
+        var seen = new HashSet<(int, DateTime)>();
+        var claude = P(1, "claude.exe", parentPid: 0, startUtc: Now.AddHours(-1));
+        var bash = P(2, "bash.exe", parentPid: 1, startUtc: Now.AddMinutes(-5));
+        var git = P(3, "git.exe", parentPid: 2, startUtc: Now.AddMinutes(-4));
+        var adobeService = P(20, "Adobe Desktop Service.exe", parentPid: 0, startUtc: Now.AddDays(-1));
+        var ccNode = P(21, "node.exe", parentPid: 20, handles: MaxHandleCount + 1, startUtc: Now.AddDays(-1));
+        var ccOrphan = P(22, "node.exe", parentPid: 19, handles: MaxHandleCount + 1, startUtc: Now.AddDays(-1)); // its launcher exited
+        var killed = new List<int>();
+
+        ReapOnce(Now, () => [claude, bash, git, adobeService, ccNode, ccOrphan], _ => null, p => killed.Add(p.Pid), seen);
+        ReapOnce(Now.AddMinutes(1), () => [adobeService, ccNode, ccOrphan], _ => null, p => killed.Add(p.Pid), seen);
+        // Windows hands the exited agent git's id to a new Creative Cloud node whose own parent has gone.
+        var reusedId = P(3, "node.exe", parentPid: 19, handles: MaxHandleCount + 1, startUtc: Now.AddMinutes(1).AddSeconds(30));
+        ReapOnce(Now.AddMinutes(2), () => [adobeService, ccNode, ccOrphan, reusedId], _ => null, p => killed.Add(p.Pid), seen);
+        ReapOnce(Now + MaxAge + TimeSpan.FromHours(1), () => [adobeService, ccNode, ccOrphan, reusedId], _ => null, p => killed.Add(p.Pid), seen);
+
+        Assert.That(killed, Is.Empty);
+    }
+
+    [Test]
     public void A_renamed_claude_exe_from_the_updater_still_counts_as_the_live_cli()
     {
         var processes = new[]
