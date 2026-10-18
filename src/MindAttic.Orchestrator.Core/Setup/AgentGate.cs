@@ -1445,12 +1445,26 @@ public static class AgentGate
     private static bool AppendKimiHook(string path, string command, int timeoutSeconds)
     {
         var existing = File.Exists(path) ? File.ReadAllText(path) : "";
-        if (existing.Contains(command, StringComparison.Ordinal)) return false;
+        // A TOML literal string ('...') can't hold an apostrophe (a profile like C:\Users\O'Brien): then it's a basic string,
+        // and an entry an earlier version wrote broken that way is mended in place (M.ORCH-T326).
+        var value = TomlString(command);
+        var broken = $"command = '{command}'";
+        if (command.Contains('\'') && existing.Contains(broken, StringComparison.Ordinal))
+        {
+            File.WriteAllText(path, existing.Replace(broken, "command = " + value, StringComparison.Ordinal));
+            return true;
+        }
+        if (existing.Contains(command, StringComparison.Ordinal) || existing.Contains(value, StringComparison.Ordinal)) return false;
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        var block = $"[[hooks]]\nevent = \"PreToolUse\"\ncommand = '{command}'\ntimeout = {timeoutSeconds}\n";
+        var block = $"[[hooks]]\nevent = \"PreToolUse\"\ncommand = {value}\ntimeout = {timeoutSeconds}\n";
         File.WriteAllText(path, (existing.Length > 0 ? existing.TrimEnd('\r', '\n') + "\n\n" : "") + block);
         return true;
     }
+
+    /// <summary><paramref name="text"/> as a TOML string: literal ('...') unless it holds an apostrophe, else basic ("...")
+    /// with its backslashes and double quotes escaped.</summary>
+    internal static string TomlString(string text) =>
+        !text.Contains('\'') ? $"'{text}'" : "\"" + text.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
 
     internal static string Command(string script) => $"python \"{script.Replace('\\', '/')}\"";
 

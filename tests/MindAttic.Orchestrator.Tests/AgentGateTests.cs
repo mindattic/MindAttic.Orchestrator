@@ -142,6 +142,26 @@ public sealed class AgentGateTests
     }
 
     [Test]
+    public void A_profile_path_with_an_apostrophe_is_written_to_kimis_config_as_a_valid_toml_string_and_a_broken_entry_mended()
+    {
+        // M.ORCH-T326: 'python "C:/Users/O'Brien/..."' ended the literal string at the apostrophe.
+        root = Path.Combine(Path.GetTempPath(), "orch-gate-O'Brien-" + Guid.NewGuid().ToString("N"));
+        AgentGate.Ensure(Claude);
+        var command = AgentGate.Command(Path.Combine(Claude, AgentGate.ScriptName));
+        var valid = "command = \"" + command.Replace("\"", "\\\"") + "\"\n";
+
+        Assert.That(Others(), Does.Contain("Kimi: wired PreToolUse into config.toml"));
+        Assert.That(File.ReadAllText(Kimi), Does.Contain(valid));
+        var once = File.ReadAllText(Kimi);
+        Others();
+        Assert.That(File.ReadAllText(Kimi), Is.EqualTo(once), "already wired: no second block");
+
+        File.WriteAllText(Kimi, $"model = \"k2\"\n\n[[hooks]]\nevent = \"PreToolUse\"\ncommand = '{command}'\ntimeout = 5\n");
+        Assert.That(Others(), Does.Contain("Kimi"));
+        Assert.That(File.ReadAllText(Kimi), Is.EqualTo($"model = \"k2\"\n\n[[hooks]]\nevent = \"PreToolUse\"\n{valid}timeout = 5\n"), "the broken entry is mended in place");
+    }
+
+    [Test]
     public void Existing_codex_and_gemini_hooks_survive()
     {
         AgentGate.Ensure(Claude);
