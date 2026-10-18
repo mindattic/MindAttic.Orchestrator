@@ -269,6 +269,11 @@ public sealed class PacerTests
         Assert.That(Pace(10.5, 1, s with { ThrottleAgents = false }, E(10, 990)).Stop, Is.True, "holds off or not, the stop stands");
         var unpaced = Pace(10.5, 1, s with { Pacing = false }, E(10, 990));
         Assert.That((unpaced.IsPaced, unpaced.Stop), Is.EqualTo((false, true)), "found in review: with pacing off nothing ever said stop");
+        // M.ORCH-T466: and its note says so, not only "Pacing is off." while every call is refused; the board holds it too.
+        Assert.That(unpaced.Note, Does.Contain("at its target").And.Contain("refused until it resets"));
+        Assert.That(Activity.AgentBoard.Build([new RepoStatus("A", @"D:\A", RepoState.Working, [], [new TranscriptSession("s1", @"D:\A", Day.AddHours(10.5), default, null)], [], null, default)],
+            unpaced, [], [], TimeSpan.FromMinutes(10), Day.AddHours(10.5))[0].State, Is.EqualTo(Activity.AgentState.HeldByPace));
+        Assert.That(Pace(10.5, 1, s with { Pacing = false }, E(10, 500)).Note, Is.EqualTo("Pacing is off."));
         Assert.That(Pace(10.5, 1, s with { Pacing = false }, E(10, 500)).Stop, Is.False);
         Assert.That(Pace(10.5, 1, s, E(10, 1_200)).Stop, Is.True, "past the limit");
 

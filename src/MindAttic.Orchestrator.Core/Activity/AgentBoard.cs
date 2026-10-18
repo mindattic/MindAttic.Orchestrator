@@ -55,8 +55,9 @@ public static class AgentBoard
         var byParent = subagents.ToLookup(s => s.ParentSessionId, StringComparer.Ordinal);
         var byTicket = assignments.DistinctBy(a => a.TicketId, StringComparer.OrdinalIgnoreCase).ToDictionary(a => a.TicketId, StringComparer.OrdinalIgnoreCase);
         // Held only when the gate really holds its tool calls (a per-call delay, or the stop): Throttled or Coast alone
-        // only cap new sessions, and every working CLI read Held by pace while running free (M.ORCH-T440).
-        var paceHolding = pace is { IsPaced: true } && (pace.AgentDelaySeconds > 0 || pace.Stop);
+        // only cap new sessions, and every working CLI read Held by pace while running free (M.ORCH-T440). The stop holds
+        // with pacing off too: it's written either way and the gate refuses every call (M.ORCH-T466).
+        var paceHolding = pace is { Stop: true } || pace is { IsPaced: true, AgentDelaySeconds: > 0 };
 
         var rows = new List<AgentBoardRow>();
         foreach (var repo in repos)

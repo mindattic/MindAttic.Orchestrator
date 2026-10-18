@@ -132,7 +132,11 @@ public static class Pacer
         {
             var spentOut = !b.BlockLimitIsPeak && b.BlockLimit > 0 && b.CurrentBlock is { } blk &&
                 blk.Usage.Fresh >= b.BlockLimit * Math.Clamp(s.PaceTargetPercent, 1, 100) / 100.0;
-            return new Pace(PaceMode.Unpaced, max, 0, recent, null, "5-hour", b.CurrentBlock?.EndUtc, "Pacing is off.") { Stop = spentOut };
+            // Said when it's so: "Pacing is off." alone read as nothing held while the gate refused every call (M.ORCH-T466).
+            var offNote = spentOut && b.CurrentBlock is { } end
+                ? $"Pacing is off, but the 5-hour window is at its target: tool calls are refused until it resets at {Formatting.ResetTime(end.EndUtc, nowUtc)}."
+                : "Pacing is off.";
+            return new Pace(PaceMode.Unpaced, max, 0, recent, null, "5-hour", b.CurrentBlock?.EndUtc, offNote) { Stop = spentOut };
         }
 
         if (b.AtLimitUntilUtc is { } until)
