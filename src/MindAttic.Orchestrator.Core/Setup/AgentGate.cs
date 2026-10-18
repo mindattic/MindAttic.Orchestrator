@@ -663,7 +663,96 @@ public static class AgentGate
             return bool(name) and str(name).strip().lstrip("/").lower() in exempt_commands()
         """;
 
-    // The context gate acts on these when they're typed (UserPromptSubmit); the files make them real slash commands.
+    /// <summary>Python shared by both hooks (needs <c>json</c>, <c>os</c>, <c>re</c>, <c>time</c>, <c>Path</c> and <c>repo_of</c>):
+    /// the per-CLI <c>crossrepo-&lt;pid&gt;</c> and <c>autopilot-&lt;pid&gt;</c> marks. The context gate writes them for a typed
+    /// /crossrepo or /autopilot, the pace gate for the same command called through the Skill tool, but only when the user's
+    /// own latest prompt asked for it (M.ORCH-T435): both are the user's choice, never the model's.</summary>
+    internal const string MarksPython = """
+        SESSION_MARKS = Path.home() / ".claude" / "session-context"
+        # What the user's typed prompt asks for by name ("use crossrepo for X", "turn auto-pilot on", or the command itself).
+        ASKS_FOR = {"crossrepo": re.compile(r"\bcross[\s_-]?repos?\b", re.I), "autopilot": re.compile(r"\bauto[\s_-]?pilot\b", re.I)}
+        def asked_for(prompt):
+            return sorted(k for k, r in ASKS_FOR.items() if r.search(prompt or ""))
+        def session_state(sid):
+            sid = re.sub(r"[^A-Za-z0-9_.-]", "_", str(sid or ""))
+            if not sid:
+                return {}
+            for _ in range(20):
+                try:
+                    return json.loads((SESSION_MARKS / (sid + ".state.json")).read_text()) or {}
+                except PermissionError:
+                    time.sleep(0.05)
+                except Exception:
+                    return {}
+            return {}
+        def autopilot_repos(pid):
+            # What /autopilot turned on in THIS CLI (its repos, or "*"): it works them through its own subagents.
+            # Never another CLI's: one you're using is never pushed onto tickets because its repo was named elsewhere.
+            try:
+                return [n.strip() for n in (SESSION_MARKS / ("autopilot-" + str(pid))).read_text(encoding="utf-8", errors="replace").split(",") if n.strip()] if pid else []
+            except Exception:
+                return []
+        def set_autopilot(pid, args, cwd):
+            # /autopilot [off|all] [-repo=A,B]: THIS CLI works those repos' tickets through its own subagents (its own
+            # repo when none are named) until /autopilot off here. Nothing is marked for any other CLI. A name may be a
+            # wildcard (-repo=GTFO.*), kept as typed and matched wherever the repos are read (M.ORCH-T165).
+            # Returns why nothing changed, or None once it's recorded.
+            import fnmatch
+            if re.search(r"-{1,2}repos\b", args, re.I):
+                # The -repos alias is gone (it read as a different switch); say so rather than guess what was meant.
+                return "/autopilot takes -repo=A,B (wildcards too: -repo=GTFO.*); -repos is gone. Nothing changed: type it again with -repo."
+            SESSION_MARKS.mkdir(parents=True, exist_ok=True)
+            mark = SESSION_MARKS / ("autopilot-" + str(pid))
+            names = autopilot_repos(pid)
+            mine = repo_of(cwd or "")
+            m = re.search(r"-{1,2}repo\b\s*[=:]?\s*\[?([^\]]*)\]?", args, re.I)
+            named = [r.strip() for r in m.group(1).replace(" ", ",").split(",") if r.strip() and r.strip().lower() not in ("on", "off", "this", "all")] if m else ([mine] if mine else [])
+            lower = {n.lower() for n in named}
+            if re.match(r"off\b", args, re.I):
+                # A repo this CLI covers only through "*" or a wildcard can't be switched off on its own: removing its name
+                # would change nothing and it would go on being worked, so say so and change nothing.
+                covered = [(n, p) for n in named if m for p in names
+                           if p.lower() != n.lower() and fnmatch.fnmatchcase(n.lower(), p.lower())]
+                if covered and not re.match(r"off\s+all\b", args, re.I):
+                    n, p = covered[0]
+                    return (n + " is worked here through /autopilot " + ("all" if p == "*" else "-repo=" + p) + ", so it can't be switched "
+                            "off on its own. Nothing changed: type /autopilot off, then /autopilot -repo= with the repos you do want.")
+                names = [] if re.match(r"off\s+all\b", args, re.I) or not m else [n for n in names if n.lower() not in lower]
+            elif re.match(r"all\b", args, re.I):
+                names = ["*"]
+            else:
+                names = [n for n in names if n != "*" and n.lower() not in lower] + named
+            try:
+                (SESSION_MARKS / "autopilot.order").unlink()  # the old workspace-wide list: nothing reads it any more
+            except Exception:
+                pass
+            if re.match(r"off\s+all\b", args, re.I):
+                for each in SESSION_MARKS.glob("autopilot-*"):  # off everywhere: every CLI's
+                    try:
+                        each.unlink()
+                    except Exception:
+                        pass
+            if pid and names:
+                mark.write_text(",".join(names), encoding="utf-8")
+            elif mark.exists():
+                mark.unlink()
+            return None
+        def set_crossrepo(pid, args):
+            # /crossrepo <A,B|all> lets this CLI work other repos too (the explicit exception to M.ORCH-T95); /crossrepo off ends it.
+            if not pid:
+                return None
+            SESSION_MARKS.mkdir(parents=True, exist_ok=True)
+            mark = SESSION_MARKS / ("crossrepo-" + str(pid))
+            if not args or re.match(r"off\b", args, re.I):
+                if mark.exists():
+                    mark.unlink()
+            else:
+                mark.write_text(",".join(r.strip() for r in args.replace(" ", ",").split(",") if r.strip()), encoding="utf-8")
+            return None
+        """;
+
+    // The context gate acts on these when they're typed (UserPromptSubmit), and the pace gate when the model calls them through the
+    // Skill tool after the user's own prompt asked for them (M.ORCH-T435); the files make them real slash commands.
     internal const string UnthrottleCommand = """
         ---
         description: Run this CLI unthrottled (no pace holds) until it closes, for when something has to get done fast.
@@ -683,7 +772,7 @@ public static class AgentGate
         description: This CLI works the open tickets of its own repo (or -repo=A,B, wildcards like -repo=GTFO.*, or "all") through its own subagents, each in its own worktree, landing on main and closing the ticket, until none are left. /autopilot off stops it in this CLI; /autopilot off all in every CLI.
         argument-hint: "[off|off all|all] [-repo=A,B | -repo=GTFO.*]"
         ---
-        The user ran /autopilot $ARGUMENTS in this CLI. MindAttic.Orchestrator's context gate has recorded it for this CLI only (no other CLI is affected), and while it's on, the repos named (a wildcard such as GTFO.* names every repo it matches) are this CLI's cross-repo exception so your subagents can work and close tickets there.
+        /autopilot $ARGUMENTS is running in this CLI. MindAttic.Orchestrator's gates record it for this CLI only (no other CLI is affected) when the user typed it, or when you called it through the Skill tool because the user's own latest prompt asked for autopilot; a Skill call the user didn't ask for is refused and records nothing, so never start it on your own. Once recorded, while it's on, the repos named (a wildcard such as GTFO.* names every repo it matches) are this CLI's cross-repo exception so your subagents can work and close tickets there.
 
         If the arguments start with "off": reply with one short line confirming autopilot is off in this CLI (with -repo, just for those repos; "off all": in every CLI). Subagents already working finish their tickets. Then end your turn.
 
@@ -699,7 +788,7 @@ public static class AgentGate
         description: Let this CLI work other repos too (the one exception to "a repo's window works only that repo"). /crossrepo off ends it.
         argument-hint: "<Repo,Repo|all|off>"
         ---
-        The user ran /crossrepo $ARGUMENTS. MindAttic.Orchestrator's context gate has recorded it for this CLI process, until it closes.
+        /crossrepo $ARGUMENTS is running in this CLI. MindAttic.Orchestrator's gates record it for this CLI process, until it closes, when the user typed it, or when you called it through the Skill tool because the user's own latest prompt asked for cross-repo work; a Skill call the user didn't ask for is refused and records nothing, so never start it on your own.
 
         If the arguments are empty or "off": reply with one short line confirming this window is back to its own repo only.
 
@@ -788,6 +877,25 @@ public static class AgentGate
         def refuse(why):
             print(json.dumps(dict(hookSpecificOutput=dict(hookEventName="PreToolUse", permissionDecision="deny", permissionDecisionReason=why))))
             raise SystemExit(0)
+
+        # /crossrepo and /autopilot called through the Skill tool (M.ORCH-T435): the model starts them when the user asks in words
+        # ("use crossrepo for X"), and the guard below refused every edit for want of the mark a typed command writes. They're
+        # the user's choice, never the model's: recorded exactly as typed only when the user's latest prompt asked for it (the
+        # context gate notes that), refused otherwise. Switching off is always safe, so it always goes through.
+        {{MarksPython}}
+        if tool == "Skill":
+            called = str((data.get("tool_input") or {}).get("skill") or "").strip().lstrip("/").lower().split(":")[-1]
+            if called in ("crossrepo", "autopilot"):
+                given = str((data.get("tool_input") or {}).get("args") or "").strip()
+                off = bool(re.match(r"off\b", given, re.I)) or (called == "crossrepo" and not given)
+                if not off and called not in (session_state(data.get("session_id")).get("asked") or []):
+                    refuse(f"/{called} is the user's to switch on, never yours: their latest prompt didn't ask for it, so nothing was "
+                           f"recorded. Ask the user to type " + ("/crossrepo <repos>" if called == "crossrepo" else "/autopilot") + " themselves.")
+                pid = os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
+                why = set_autopilot(pid, given, data.get("cwd") or "") if called == "autopilot" else set_crossrepo(pid, given)
+                if why:
+                    refuse(why)
+                raise SystemExit(0)
 
         # The one exception is explicit, per CLI and until it closes: /crossrepo <A,B|all> (the context gate writes the mark).
         def allowed_here():
@@ -1143,18 +1251,11 @@ public static class AgentGate
         PERCENT = {{{percent}}}
         KEEP_GOING = {{{(keepGoing ? "True" : "False")}}}
         {{{WorkspacePython}}}
+        {{{MarksPython}}}
 
         # A turn ending on one of these is asking for a go-ahead the orchestrator gives itself.
         ASKS = re.compile(r"\b(shall i|should i|do you want|want me to|would you like|ready for me to|ok(?:ay)? to (?:start|continue|proceed|go)|"
                           r"let me know (?:if|when|whether)|(?:go ahead|proceed|continue|carry on|keep going)\?)", re.I)
-
-        def autopilot_repos(pid):
-            # What /autopilot typed in THIS CLI turned on (its repos, or "*"): it works them through its own subagents.
-            # Never another CLI's: one you're using is never pushed onto tickets because its repo was named elsewhere.
-            try:
-                return [n.strip() for n in (DIR / ("autopilot-" + str(pid))).read_text(encoding="utf-8", errors="replace").split(",") if n.strip()] if pid else []
-            except Exception:
-                return []
 
         def workable(repos, sid=None):
             # The open fixes and approved tickets of repos (names or wildcards such as GTFO.*; "*": every repo), in ticket order.
@@ -1593,54 +1694,19 @@ public static class AgentGate
                 state.pop("exempt", None)
             typed = (data.get("prompt") or "").strip()
             prompt = typed.lower()
-            # /autopilot [off|all] [-repo=A,B]: THIS CLI works those repos' tickets through its own subagents (its own
-            # repo when none are named) until /autopilot off here. Nothing is marked for any other CLI. A name may be a
-            # wildcard (-repo=GTFO.*), kept as typed and matched wherever the repos are read (M.ORCH-T165).
-            if prompt.startswith("/autopilot") and re.search(r"-{1,2}repos\b", typed, re.I):
-                # The -repos alias is gone (it read as a different switch); say so rather than guess what was meant.
-                print(json.dumps({"decision": "block", "reason": "/autopilot takes -repo=A,B (wildcards too: -repo=GTFO.*); -repos is gone. "
-                    "Nothing changed: type it again with -repo."}))
-                sys.exit(0)
+            # Whether this prompt asks for cross-repo work or autopilot: the pace gate lets the model start either through the
+            # Skill tool only then, never on its own (M.ORCH-T435). Each prompt replaces the last one's note.
+            asked = asked_for(typed)
+            if asked:
+                state["asked"] = asked
+            else:
+                state.pop("asked", None)
+            # /autopilot (set_autopilot): THIS CLI works those repos' tickets through its own subagents until /autopilot off here.
             if prompt.startswith("/autopilot"):
-                pid = my_pid()
-                mark = DIR / ("autopilot-" + str(pid))
-                args = typed[len("/autopilot"):].strip()
-                names = autopilot_repos(pid)
-                mine = repo_of(data.get("cwd") or "")
-                m = re.search(r"-{1,2}repo\b\s*[=:]?\s*\[?([^\]]*)\]?", args, re.I)
-                named = [r.strip() for r in m.group(1).replace(" ", ",").split(",") if r.strip() and r.strip().lower() not in ("on", "off", "this", "all")] if m else ([mine] if mine else [])
-                lower = {n.lower() for n in named}
-                if re.match(r"off\b", args, re.I):
-                    # A repo this CLI covers only through "*" or a wildcard can't be switched off on its own: removing its name
-                    # would change nothing and it would go on being worked, so say so and change nothing.
-                    import fnmatch
-                    covered = [(n, p) for n in named if m for p in names
-                               if p.lower() != n.lower() and fnmatch.fnmatchcase(n.lower(), p.lower())]
-                    if covered and not re.match(r"off\s+all\b", args, re.I):
-                        n, p = covered[0]
-                        print(json.dumps({"decision": "block", "reason": n + " is worked here through /autopilot " +
-                            ("all" if p == "*" else "-repo=" + p) + ", so it can't be switched off on its own. Nothing changed: type "
-                            "/autopilot off, then /autopilot -repo= with the repos you do want."}))
-                        sys.exit(0)
-                    names = [] if re.match(r"off\s+all\b", args, re.I) or not m else [n for n in names if n.lower() not in lower]
-                elif re.match(r"all\b", args, re.I):
-                    names = ["*"]
-                else:
-                    names = [n for n in names if n != "*" and n.lower() not in lower] + named
-                try:
-                    (DIR / "autopilot.order").unlink()  # the old workspace-wide list: nothing reads it any more
-                except Exception:
-                    pass
-                if re.match(r"off\s+all\b", args, re.I):
-                    for other in DIR.glob("autopilot-*"):  # off everywhere: every CLI's
-                        try:
-                            other.unlink()
-                        except Exception:
-                            pass
-                if pid and names:
-                    mark.write_text(",".join(names), encoding="utf-8")
-                elif mark.exists():
-                    mark.unlink()
+                why = set_autopilot(my_pid(), typed[len("/autopilot"):].strip(), data.get("cwd") or "")
+                if why:
+                    print(json.dumps({"decision": "block", "reason": why}))
+                    sys.exit(0)
             # /goal <condition> runs turn after turn until its condition holds; cycling would end it, so the session is
             # marked and left to Claude's own compaction until /goal clear (M.ORCH-T93).
             if re.match(r"/goal\b", prompt):
@@ -1653,15 +1719,7 @@ public static class AgentGate
                     state["goal"] = args
             # /crossrepo <A,B|all> lets this CLI work other repos too (the explicit exception to M.ORCH-T95); /crossrepo off ends it.
             if prompt.startswith("/crossrepo"):
-                pid = cli_pid()
-                if pid is not None:
-                    mark = DIR / ("crossrepo-" + str(pid))
-                    args = typed[len("/crossrepo"):].strip()
-                    if not args or re.match(r"off\b", args, re.I):
-                        if mark.exists():
-                            mark.unlink()
-                    else:
-                        mark.write_text(",".join(r.strip() for r in args.replace(" ", ",").split(",") if r.strip()), encoding="utf-8")
+                set_crossrepo(my_pid(), typed[len("/crossrepo"):].strip())
             if prompt.startswith("/unthrottle") or prompt.startswith("/throttle"):
                 pid = cli_pid()
                 if pid is not None:

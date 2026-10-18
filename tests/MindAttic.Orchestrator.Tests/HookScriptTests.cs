@@ -871,6 +871,80 @@ public sealed class HookScriptTests
         Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = file }, cwd = uss }).Output, Does.Contain("\"deny\""), "off: back to its own repo");
     }
 
+    // ---- /crossrepo and /autopilot through the Skill tool (M.ORCH-T435): only when the user's own prompt asked ----
+
+    private object Said(string prompt) => new { hook_event_name = "UserPromptSubmit", session_id = "sk", prompt, cwd = Uss };
+    private object SkillCall(string skill, string args = "") => new { hook_event_name = "PreToolUse", session_id = "sk", tool_name = "Skill", tool_input = new { skill, args }, cwd = Uss };
+    private object EditIn(string repo) => new { tool_name = "Edit", tool_input = new { file_path = Path.Combine(ws, repo, "src", "x.cs") }, session_id = "sk", cwd = Uss };
+
+    [Test]
+    public void A_crossrepo_skill_call_the_user_asked_for_is_recorded_as_typed_and_the_guard_lets_its_edits_through()
+    {
+        Gate(Said("use cross-repo for MindAttic.Workflow and fix the parser there"), AgentGate.ContextScriptName);
+        Assert.That(Gate(SkillCall("crossrepo", "MindAttic.Workflow")).Output, Does.Not.Contain("\"deny\""));
+        Assert.That(File.ReadAllText(Path.Combine(Marks, $"crossrepo-{Cli}")), Is.EqualTo("MindAttic.Workflow"));
+        Assert.That(Gate(EditIn("MindAttic.Workflow")).Output, Is.Empty, "the guard reads the same mark");
+    }
+
+    [Test]
+    public void A_crossrepo_skill_call_the_user_never_asked_for_is_refused_and_records_nothing()
+    {
+        Gate(Said("fix the parser in MindAttic.Workflow"), AgentGate.ContextScriptName);
+        var refused = Gate(SkillCall("crossrepo", "MindAttic.Workflow")).Output;
+        Assert.That(refused, Does.Contain("\"deny\"").And.Contain("/crossrepo <repos>"));
+        Assert.That(File.Exists(Path.Combine(Marks, $"crossrepo-{Cli}")), Is.False);
+        Assert.That(Gate(EditIn("MindAttic.Workflow")).Output, Does.Contain("\"deny\"").And.Contain("This window is for UnitySolarSystem"));
+
+        // A plugin-style name is the same skill, and asking once doesn't carry over to the next prompt.
+        Gate(Said("crossrepo please"), AgentGate.ContextScriptName);
+        Gate(Said("now carry on"), AgentGate.ContextScriptName);
+        Assert.That(Gate(SkillCall("mindattic:crossrepo", "all")).Output, Does.Contain("\"deny\""), "the note is cleared at the next prompt");
+        Assert.That(File.Exists(Path.Combine(Marks, $"crossrepo-{Cli}")), Is.False);
+    }
+
+    [Test]
+    public void An_autopilot_skill_call_is_recorded_only_when_the_user_asked_for_autopilot()
+    {
+        var mark = Path.Combine(Marks, $"autopilot-{Cli}");
+        Gate(Said("work the Workflow tickets"), AgentGate.ContextScriptName);
+        Assert.That(Gate(SkillCall("autopilot", "-repo=MindAttic.Workflow")).Output, Does.Contain("\"deny\"").And.Contain("/autopilot"));
+        Assert.That(File.Exists(mark), Is.False);
+        Assert.That(Gate(EditIn("MindAttic.Workflow")).Output, Does.Contain("\"deny\""));
+
+        Gate(Said("turn auto pilot on for MindAttic.Workflow"), AgentGate.ContextScriptName);
+        Assert.That(Gate(SkillCall("autopilot", "-repo=MindAttic.Workflow")).Output, Does.Not.Contain("\"deny\""));
+        Assert.That(File.ReadAllText(mark), Is.EqualTo("MindAttic.Workflow"));
+        Assert.That(Gate(EditIn("MindAttic.Workflow")).Output, Is.Empty, "its repos are this CLI's exception, as typed /autopilot's are");
+        Assert.That(Gate(SkillCall("autopilot", "-repos=X")).Output, Does.Contain("\"deny\"").And.Contain("-repos is gone"), "the same rules as typed");
+        Assert.That(File.ReadAllText(mark), Is.EqualTo("MindAttic.Workflow"));
+    }
+
+    [Test]
+    public void Switching_crossrepo_or_autopilot_off_through_the_skill_tool_always_goes_through()
+    {
+        Directory.CreateDirectory(Marks);
+        File.WriteAllText(Path.Combine(Marks, $"crossrepo-{Cli}"), "all");
+        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem");
+        Gate(Said("that's enough for today"), AgentGate.ContextScriptName);
+        Assert.That(Gate(SkillCall("crossrepo", "off")).Output, Does.Not.Contain("\"deny\""));
+        Assert.That(Gate(SkillCall("autopilot", "off")).Output, Does.Not.Contain("\"deny\""));
+        Assert.That(File.Exists(Path.Combine(Marks, $"crossrepo-{Cli}")), Is.False);
+        Assert.That(File.Exists(Path.Combine(Marks, $"autopilot-{Cli}")), Is.False);
+        Assert.That(Gate(EditIn("MindAttic.Workflow")).Output, Does.Contain("\"deny\""));
+    }
+
+    [Test]
+    public void A_typed_crossrepo_still_marks_this_cli_and_off_ends_it()
+    {
+        var mark = Path.Combine(Marks, $"crossrepo-{Cli}");
+        Gate(Said("/crossrepo MindAttic.Workflow"), AgentGate.ContextScriptName);
+        Assert.That(File.ReadAllText(mark), Is.EqualTo("MindAttic.Workflow"));
+        Assert.That(Gate(EditIn("MindAttic.Workflow")).Output, Is.Empty);
+        Gate(Said("/crossrepo off"), AgentGate.ContextScriptName);
+        Assert.That(File.Exists(mark), Is.False);
+        Assert.That(Gate(EditIn("MindAttic.Workflow")).Output, Does.Contain("\"deny\""));
+    }
+
     [Test]
     public void A_turn_hears_the_subagent_note_only_from_a_fresh_orchestrator_file()
     {
