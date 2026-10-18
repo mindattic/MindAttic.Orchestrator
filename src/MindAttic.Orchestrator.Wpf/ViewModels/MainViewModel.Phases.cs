@@ -171,7 +171,8 @@ public sealed partial class MainViewModel
         null or { IsPaced: false } or { Mode: PaceMode.Open } => "",
         { Mode: PaceMode.Throttled } p => $"Paced to {p.SessionCap} of {store.LoadSettings().MaxConcurrentSessions} · resets {p.ResetUtc?.ToLocalTime():t}",
         { Mode: PaceMode.Coast } p => $"Coasting · resets {p.ResetUtc?.ToLocalTime():t}",
-        { } p => $"At the limit until {p.ResetUtc?.ToLocalTime():t}",
+        // Which limit, and its weekday when it's days off (a weekly wall), as the pace note agents see says it.
+        { } p => $"At the {p.Governing ?? "5-hour"} limit until {(p.ResetUtc is { } r ? Formatting.ResetTime(r, DateTime.UtcNow) : "the reset")}",
     };
 
     public Brush PaceBrush => Pace?.Mode switch
