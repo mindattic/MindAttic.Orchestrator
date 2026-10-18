@@ -74,6 +74,9 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
         public bool ForkPrologue;
         /// <summary>A fork's Agent call (its <c>.meta.json</c>'s toolUseId): its prologue ends at the prompt answering it (M.ORCH-T348).</summary>
         public string? ForkToolUseId;
+        /// <summary>Its <c>.meta.json</c> has been read. Claude Code often writes it minutes after the transcript (up to half an
+        /// hour), so until then a subagent's transcript is checked again each time it's read (M.ORCH-T378).</summary>
+        public bool MetaRead;
     }
 
     /// <summary>
@@ -112,11 +115,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
         {
             present.Add(info.FullName);
             if (!files.TryGetValue(info.FullName, out var state))
-            {
                 files[info.FullName] = state = new FileState { AgentId = SubagentId(info.FullName) };
-                if (state.AgentId is not null && ForkToolUseId(info.FullName) is { } forkCall)
-                    (state.ForkPrologue, state.ForkToolUseId) = (true, forkCall);
-            }
 
             try
             {
@@ -145,6 +144,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
                     // A file Claude Code holds open can show a stale timestamp in the directory listing,
                     // so recent files are checked by their real length rather than trusted by mtime.
                     var known = state.LastWriteUtc != default && !state.Restored;
+                    if (state.AgentId is not null && !state.MetaRead) ReadMeta(info.FullName, state);
                     LastPollOpened++;
                     var grew = ReadAppended(info.FullName, state, sinceUtc);
                     // Growth on a file we'd already read means "written just now"; the first read of a
@@ -298,6 +298,28 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
             if (line.Contains("\"cwd\"", StringComparison.Ordinal)) Apply(line, state, countFrom: null);
             if (state.Cwd is not null || read > HeadScanLimit) return;
         }
+    }
+
+    /// <summary>
+    /// Reads a subagent's <c>.meta.json</c> once it's there. A fork found only now, after its transcript was read without
+    /// knowing which Agent call it answers, is read again from the start: what it copied from the subagent that started it
+    /// (that subagent's prompt, usage and tool calls) was taken as its own and counted a second time (M.ORCH-T378).
+    /// </summary>
+    private static void ReadMeta(string path, FileState state)
+    {
+        if (!File.Exists(Path.ChangeExtension(path, ".meta.json"))) return;
+        state.MetaRead = true;
+        if (state.ForkToolUseId is not null || ForkToolUseId(path) is not { } forkCall) return;
+        state.ForkToolUseId = forkCall;
+        state.ForkPrologue = true;
+        state.Offset = 0;
+        state.Events.Clear();
+        state.Hits.Clear();
+        state.Tools.Clear();
+        state.CountedMessages.Clear();
+        state.PendingFiles.Clear();
+        state.Filed.Clear();
+        (state.TicketId, state.TicketType) = (null, null);
     }
 
     /// <summary>Parses complete lines appended since the last call; true when any were consumed.</summary>

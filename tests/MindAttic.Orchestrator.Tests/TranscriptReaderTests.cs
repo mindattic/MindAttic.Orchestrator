@@ -262,6 +262,40 @@ public sealed class TranscriptReaderTests
     }
 
     [Test]
+    public void A_forks_meta_written_after_its_transcript_was_read_has_the_copy_taken_back_out()
+    {
+        // M.ORCH-T378: Claude Code writes a fork's .meta.json up to half an hour after its transcript; read before then, the
+        // subagent's copied transcript looked like the fork's own.
+        System.IO.File.WriteAllLines(File(), [Line("m1", "2026-10-13T12:00:00Z", 1, 1)]);
+        var sub = Path.Combine(dir, "D--Projects-X", "s1", "subagents");
+        Directory.CreateDirectory(sub);
+        string Prompt(string text, string? answering = null) => System.Text.Json.JsonSerializer.Serialize(new
+        {
+            type = "user", timestamp = "2026-10-13T12:00:00Z", sessionId = "s1", cwd = @"D:\Projects\X",
+            message = new
+            {
+                role = "user",
+                content = answering is null
+                    ? new object[] { new { type = "text", text } }
+                    : [new { type = "tool_result", tool_use_id = answering, content = "Fork started" }, new { type = "text", text }],
+            },
+        });
+        var parent = new[] { Prompt("Work on ticket X-T1 (fix): the parent's. When it's done…"), Line("p1", "2026-10-13T12:01:00Z", 1, 50) };
+        System.IO.File.WriteAllLines(Path.Combine(sub, "agent-a.jsonl"), parent);
+        System.IO.File.WriteAllText(Path.Combine(sub, "agent-a.meta.json"), """{"agentType":"general-purpose"}""");
+        System.IO.File.WriteAllLines(Path.Combine(sub, "agent-f.jsonl"), [.. parent, Prompt("Your directive: look", "toolu_f"),
+            Line("f1", "2026-10-13T12:03:00Z", 1, 7)]);
+        var reader = new TranscriptReader(dir);
+        Assert.That(reader.Poll(Since).Single().UsageSince(Since).Output, Is.EqualTo(1 + 50 + 50 + 7), "no meta yet: the copy looks like its own");
+
+        System.IO.File.WriteAllText(Path.Combine(sub, "agent-f.meta.json"), """{"agentType":"fork","isFork":true,"toolUseId":"toolu_f","parentAgentId":"a"}""");
+        var s = reader.Poll(Since).Single();
+
+        Assert.That(s.UsageSince(Since).Output, Is.EqualTo(1 + 50 + 7), "once it's there, the parent subagent's response is counted once");
+        Assert.That(s.TicketedSubagents.Select(t => t.AgentId), Is.EqualTo(new[] { "agent-a" }), "and the copied prompt's ticket isn't the fork's");
+    }
+
+    [Test]
     public void A_subagents_ticket_is_its_own_not_its_parent_sessions()
     {
         // /autopilot hands each subagent "Work on ticket X": the parent CLI works many, so it isn't stamped with the first.

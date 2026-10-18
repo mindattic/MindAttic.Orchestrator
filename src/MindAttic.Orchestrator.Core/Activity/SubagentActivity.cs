@@ -88,6 +88,8 @@ public sealed class SubagentActivityReader(string projectsDir)
         public bool ForkPrologue;
         /// <summary>The Agent call the fork answers (its meta's toolUseId); its prologue ends at the prompt answering it.</summary>
         public string? ForkToolUseId;
+        /// <summary>Its <c>.meta.json</c> has been read; Claude Code often writes it well after the transcript (M.ORCH-T378).</summary>
+        public bool MetaRead;
     }
 
     private readonly Dictionary<string, Tail> tails = new(StringComparer.OrdinalIgnoreCase);
@@ -111,10 +113,14 @@ public sealed class SubagentActivityReader(string projectsDir)
         {
             if (SubagentTranscripts.Find(projectsDir, id) is not { } file) continue;
             reading.Add(file);
-            if (!tails.TryGetValue(file, out var tail))
+            if (!tails.TryGetValue(file, out var tail)) tails[file] = tail = new Tail();
+            if (!tail.MetaRead && File.Exists(Path.ChangeExtension(file, ".meta.json")))
             {
-                tails[file] = tail = new Tail { ForkToolUseId = TranscriptReader.ForkToolUseId(file) };
-                tail.ForkPrologue = tail.ForkToolUseId is not null;
+                // A fork learned of only now is read again from the start: what it copied from the subagent that started it
+                // isn't its own task, start or usage (M.ORCH-T378).
+                tail.MetaRead = true;
+                if (TranscriptReader.ForkToolUseId(file) is { } forkCall && tail.ForkToolUseId is null)
+                    tails[file] = tail = new Tail { MetaRead = true, ForkToolUseId = forkCall, ForkPrologue = true };
             }
             ReadAppended(file, tail);
             if (tail.Start is { } start)

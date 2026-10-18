@@ -125,6 +125,41 @@ public sealed class SubagentActivityTests
     }
 
     [Test]
+    public void A_fork_whose_meta_comes_late_is_read_again_without_the_subagent_transcript_it_copied()
+    {
+        // M.ORCH-T378: a fork a subagent started copies that subagent's transcript; its .meta.json can come minutes later.
+        var sessionDir = NewDir("ctx");
+        var projectsDir = NewDir("projects");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(sessionDir, "subagents"));
+            File.WriteAllText(Path.Combine(sessionDir, "subagents", "f1"), "");
+            var parentFolder = Path.Combine(projectsDir, "proj", "session-1", "subagents");
+            Directory.CreateDirectory(parentFolder);
+            File.WriteAllLines(Path.Combine(parentFolder, "agent-f1.jsonl"),
+            [
+                """{"type":"user","timestamp":"2026-10-15T11:40:00Z","message":{"content":"the parent subagent's task"}}""",
+                Line("assistant", "2026-10-15T11:41:00Z", usage: (1, 0, 0, 500)),
+                """{"type":"user","timestamp":"2026-10-15T11:55:00Z","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_f","content":"Fork started"},{"type":"text","text":"the fork's own"}]}}""",
+                Line("assistant", "2026-10-15T11:56:00Z", usage: (20, 0, 0, 10)),
+            ]);
+            var reader = new SubagentActivityReader(projectsDir);
+            var cycler = new ContextCycler(sessionDir);
+            Assert.That(reader.Poll(cycler, Now).Single().Usage.Output, Is.EqualTo(510), "no meta yet");
+
+            File.WriteAllText(Path.Combine(parentFolder, "agent-f1.meta.json"), """{"agentType":"fork","isFork":true,"toolUseId":"toolu_f"}""");
+            var s = reader.Poll(cycler, Now).Single();
+
+            Assert.That((s.Usage, s.StartedUtc, s.Task), Is.EqualTo((new TokenUsage(20, 0, 0, 10), new DateTime(2026, 10, 15, 11, 55, 0, DateTimeKind.Utc), "the fork's own")));
+        }
+        finally
+        {
+            Directory.Delete(sessionDir, recursive: true);
+            Directory.Delete(projectsDir, recursive: true);
+        }
+    }
+
+    [Test]
     public void A_stopped_subagent_leaves_no_mark_and_so_isnt_reported()
     {
         var sessionDir = NewDir("ctx");
