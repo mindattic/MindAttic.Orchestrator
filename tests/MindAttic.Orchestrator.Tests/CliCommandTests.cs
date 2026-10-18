@@ -138,6 +138,9 @@ public sealed class CliCommandTests
             }
             Assert.That(Run("block", "A-T27", "--by", "A-T2"), Is.EqualTo(1), "the ticket blocked has to exist too");
             Assert.That(output.ToString(), Does.Contain("no ticket A-T27"));
+            Assert.That((Run("bump", "A-T99"), Run("reserve", "A-T99", "2M")), Is.EqualTo((1, 1)), "a typo isn't bumped or reserved either");
+            Assert.That((Store.LoadSettings().Priorities.Count, Store.LoadSettings().Reservations.Count), Is.EqualTo((0, 0)));
+            Assert.That((Run("bump", "a-t2"), Run("reserve", "A-T2", "2M"), Run("reserve", "A-T99", "0")), Is.EqualTo((0, 0, 0)));
             using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
                 Assert.That(db.Requires("A-T1"), Is.EqualTo(new[] { "A-T2" }), "nothing changed: the --clear wasn't half-done");
         }

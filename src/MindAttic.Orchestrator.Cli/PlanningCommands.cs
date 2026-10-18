@@ -88,12 +88,7 @@ internal sealed class ApproveCommand : Command<ApproveCommand.Settings>
         var store = Ctx.Store();
         var ids = settings.Tickets.Select(Ctx.Id).ToList();
         // A typo would be "approved" while the ticket you meant goes on waiting, so only ids the database knows count.
-        using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(OrchestratorOptions.Load(store).WorkspaceRoot))
-            if (db is not null && ids.Where(id => db.Ticket(id) is null).ToList() is { Count: > 0 } unknown)
-            {
-                AnsiConsole.MarkupLine($"[red]No ticket {Markup.Escape(string.Join(", ", unknown))}; nothing was changed.[/]");
-                return 1;
-            }
+        if (Ctx.RefuseUnknown(store, ids)) return 1;
         var s = store.LoadSettingsToChange();
         var approved = s.Approved.Where(a => !ids.Contains(a, StringComparer.OrdinalIgnoreCase)).ToList();
         if (!settings.Undo) approved.AddRange(ids);
@@ -122,6 +117,8 @@ internal sealed class ReserveCommand : Command<ReserveCommand.Settings>
         if (!TokenText.TryParse(settings.Tokens, out var tokens)) { AnsiConsole.MarkupLine("[red]Tokens: a number like 2M, 500k or 0.[/]"); return 1; }
         var store = Ctx.Store();
         var id = Ctx.Id(settings.Ticket);
+        // Releasing one goes through whatever became of its ticket.
+        if (tokens > 0 && Ctx.RefuseUnknown(store, [id])) return 1;
         var s = store.LoadSettingsToChange();
         var map = new Dictionary<string, long>(s.Reservations, StringComparer.Ordinal);
         if (tokens <= 0) map.Remove(id); else map[id] = tokens;

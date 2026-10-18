@@ -31,6 +31,16 @@ internal static class Ctx
     /// <summary>A ticket id as stored and compared everywhere (upper case), so "m.orch-t5" isn't silently a different ticket.</summary>
     public static string Id(string typed) => typed.Trim().ToUpperInvariant();
 
+    /// <summary>True (said in red) when the workspace's database has no ticket for some of <paramref name="ids"/>: a typo would
+    /// be approved, bumped or reserved while the ticket you meant gets nothing. Unchecked before the workspace is migrated.</summary>
+    public static bool RefuseUnknown(JsonStore store, IEnumerable<string> ids)
+    {
+        using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(OrchestratorOptions.Load(store).WorkspaceRoot);
+        if (db is null || ids.Where(id => db.Ticket(id) is null).ToList() is not { Count: > 0 } unknown) return false;
+        AnsiConsole.MarkupLine($"[red]No ticket {Markup.Escape(string.Join(", ", unknown))}; nothing was changed.[/]");
+        return true;
+    }
+
     public static OrchestratorSettings Settings => Ctx.Store().LoadSettings();
 
     public static Dispatcher Dispatcher(JsonStore store) =>
@@ -112,6 +122,8 @@ internal sealed class BumpCommand : Command<BumpCommand.Settings>
         var store = Ctx.Store();
         var s = store.LoadSettingsToChange();
         var id = Ctx.Id(settings.Ticket);
+        // One already bumped may be taken back down whatever became of it.
+        if (!s.Priorities.ContainsKey(id) && Ctx.RefuseUnknown(store, [id])) return 1;
         var priorities = new Dictionary<string, int>(s.Priorities, StringComparer.Ordinal);
         var next = priorities.GetValueOrDefault(id) + settings.By;
         if (next == 0) priorities.Remove(id); else priorities[id] = next;
