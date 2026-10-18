@@ -389,9 +389,20 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             var skipped = plan.Queue.Where(q => Named(q.Repo) && Skipped(q.Repo)).Select(q => q.Repo).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             var waiting = plan.AwaitingApproval.Count(q => Named(q.Repo) && !Skipped(q.Repo));
             var busy = plan.Queue.Count(q => Named(q.Repo) && !Skipped(q.Repo) && Busy(q));
-            return ([], waiting == 0 && busy == 0 && skipped.Count > 0 ? $"{string.Join(", ", skipped)} set to be skipped (settings --autopilot-skip); nothing else is ready"
-                : waiting > 0 && busy == 0 ? $"none left that may be worked: {waiting} wait for your approval (orchestrator approve)"
-                : busy > 0 ? $"{busy} already being worked; nothing else is ready"
+            // Open but held back for a reason of their own: not "nothing left".
+            var free = plan.Queue.Where(q => Named(q.Repo) && !Skipped(q.Repo) && !Busy(q) && q.RepoPath.Length > 0).ToList();
+            var blocked = free.Count(q => q.BlockedBy.Count > 0);
+            var tooBig = free.Count(q => q.BlockedBy.Count == 0 && room is { } r && q.Estimate is { } est && est.Fresh > r);
+            return ([], waiting == 0 && busy == 0 && blocked == 0 && tooBig == 0 && skipped.Count > 0 ? $"{string.Join(", ", skipped)} set to be skipped (settings --autopilot-skip); nothing else is ready"
+                : waiting > 0 && busy == 0 && blocked == 0 && tooBig == 0 ? $"none left that may be worked: {waiting} wait for your approval (orchestrator approve)"
+                : busy > 0 && blocked == 0 && tooBig == 0 ? $"{busy} already being worked; nothing else is ready"
+                : blocked > 0 || tooBig > 0 ? "nothing ready: " + string.Join(", ", new[]
+                    {
+                        busy > 0 ? $"{busy} already being worked" : null,
+                        blocked > 0 ? $"{blocked} wait on other open tickets" : null,
+                        tooBig > 0 ? $"{tooBig} estimated past what's left before the reset" : null,
+                        waiting > 0 ? $"{waiting} wait for your approval" : null,
+                    }.OfType<string>())
                 : "no open fixes or approved tickets left there");
         }
         var more = count ?? (!unthrottled && plan.Pace?.SubagentAllowance is { } allowed ? allowed - plan.Pace.Subagents : settings.MaxConcurrentSessions);

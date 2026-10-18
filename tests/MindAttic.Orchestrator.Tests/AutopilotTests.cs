@@ -253,6 +253,17 @@ public sealed class AutopilotTests
     }
 
     [Test]
+    public void Open_tickets_held_back_are_said_so_not_reported_as_none_left()
+    {
+        var snap = Snap(("A", [new Ticket("A-T1", "2026-10-01", "fix", "open", "crash, blocked by A-T2", ""),
+                               new Ticket("A-T2", "2026-10-01", "feature", "open", "the API (not approved)", "")]));
+        var (handed, why) = Autopilot.Next(Paced(snap, 5), new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: false, Now,
+            (repo, path, branch) => (true, path, ""), _ => "main");
+        Assert.That(handed, Is.Empty);
+        Assert.That(why, Does.Contain("1 wait on other open tickets").And.Not.Contain("no open fixes"));
+    }
+
+    [Test]
     public void With_pacing_off_the_windows_stop_still_hands_nothing_out()
     {
         // Unpaced, the plan keeps no pace; the stop (which doesn't depend on pacing) still has to reach `next --claim`.
