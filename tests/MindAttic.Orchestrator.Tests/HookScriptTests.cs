@@ -1327,6 +1327,20 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void The_hooks_find_the_workspace_the_orchestrator_is_set_to()
+    {
+        // M.ORCH-T409: with the workspace anywhere but D:\Projects\MindAttic, the hooks found no repo and no tickets.
+        Tickets(("U.SPC-T1", "UnitySolarSystem"), ("M.WF-T7", "MindAttic.Workflow"));
+        var settings = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "settings.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
+        File.WriteAllText(settings, JsonSerializer.Serialize(new { WorkspaceRoot = ws }));
+        var close = new { tool_name = "Bash", tool_input = new { command = "workflow ticket close M.WF-T7 --ref abc123" }, cwd = Path.Combine(ws, "UnitySolarSystem") };
+
+        Assert.That(Gate(close, new Dictionary<string, string> { ["MINDATTIC_WORKSPACE"] = "" }).Output,
+            Does.Contain("\"deny\"").And.Contain("belongs to MindAttic.Workflow"), "settings.json's workspace, with no MINDATTIC_WORKSPACE");
+    }
+
+    [Test]
     public void An_exempt_commands_turn_skips_every_pace_gate_until_it_stops_and_is_logged_as_exempt()
     {
         // M.ORCH-T198: a turn typed as /deploy (a default exempt command) is let through at once: no delay, no subagent wait, no stop.

@@ -383,8 +383,19 @@ public static class AgentGate
     /// <summary>Python shared by both hooks (needs <c>os</c> and <c>Path</c>): the workspace and which repo a folder is in,
     /// so the repo-window guard and keep-going can't disagree about it.</summary>
     private const string WorkspacePython = """
-        WS = Path(os.environ.get("MINDATTIC_WORKSPACE", "D:/Projects/MindAttic"))
-        WT = WS.parent / (WS.name + ".worktrees")
+        # The folders the orchestrator is set to (settings.json's WorkspaceRoot and WorktreeRoot), not always the default ones
+        # (M.ORCH-T409); MINDATTIC_WORKSPACE still overrides both, its worktrees beside it as before.
+        def orchestrator_roots():
+            if os.environ.get("MINDATTIC_WORKSPACE"):
+                return (os.environ["MINDATTIC_WORKSPACE"], None)
+            try:
+                s = json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "settings.json").read_text(encoding="utf-8-sig"))
+                return (s.get("WorkspaceRoot") or None, s.get("WorktreeRoot") or None) if isinstance(s, dict) else (None, None)
+            except Exception:
+                return (None, None)
+        _ws_root, _wt_root = orchestrator_roots()
+        WS = Path(_ws_root or "D:/Projects/MindAttic")
+        WT = Path(_wt_root) if _wt_root else WS.parent / (WS.name + ".worktrees")
         # The Workflow database the orchestrator and the workflow CLI open: MINDATTIC_WORKFLOW_DB when set (M.ORCH-T398).
         WORKFLOW_DB = os.environ.get("MINDATTIC_WORKFLOW_DB") or str(WS / "MindAttic.Workflow" / "data" / "workflow.db")
 
