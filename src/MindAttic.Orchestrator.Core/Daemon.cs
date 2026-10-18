@@ -147,8 +147,17 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 if (s.GitHubIntake && DateTime.UtcNow - intakeUtc >= TimeSpan.FromHours(1))
                 {
                     intakeUtc = DateTime.UtcNow;
-                    foreach (var (repo, ticket) in Intake(options.WorkspaceRoot, gh: args => Tickets.GitHubIntake.Gh(Runner, Tickets.GitHubIntake.GhTimeout, args)))
-                        Say(LogEventLevel.Information, $"filed {ticket.Id} in {repo} from GitHub: {ticket.Summary}");
+                    // One repo's malformed story file or a locked database ends the intake, not the tick: autopilot's reap
+                    // and sweep below still run.
+                    try
+                    {
+                        foreach (var (repo, ticket) in Intake(options.WorkspaceRoot, gh: args => Tickets.GitHubIntake.Gh(Runner, Tickets.GitHubIntake.GhTimeout, args)))
+                            Say(LogEventLevel.Information, $"filed {ticket.Id} in {repo} from GitHub: {ticket.Summary}");
+                    }
+                    catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException or System.Data.Common.DbException)
+                    {
+                        Say(LogEventLevel.Warning, $"GitHub intake stopped: {ex.Message}", ex);
+                    }
                 }
                 tick.Lap("GitHub intake");
 
