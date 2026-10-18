@@ -139,7 +139,7 @@ if ((Test-Path $artifact) -and ($built -or -not $installed -or $outdated)) {
     $install = Start-Process -FilePath $artifact -ArgumentList '--install' -Wait -PassThru
     $installed = Find-Installed
     if ($install.ExitCode -eq 0 -and $installed) { Write-Host "Installed $installed" -ForegroundColor Green }
-    else { Write-Host 'Install FAILED; see the log under %LOCALAPPDATA%\MindAttic\MindAttic.Orchestrator\logs.' -ForegroundColor Red; $failed = $true }
+    else { Write-Host 'Install FAILED; see its log, %APPDATA%\MindAttic\Logging\MindAttic.Orchestrator\MindAttic.Log.db (MindAttic.Log.Reader opens it).' -ForegroundColor Red; $failed = $true }
 } elseif (-not $failed) {
     Write-Host 'MindAttic.Orchestrator is up to date.' -ForegroundColor DarkGray
 }
