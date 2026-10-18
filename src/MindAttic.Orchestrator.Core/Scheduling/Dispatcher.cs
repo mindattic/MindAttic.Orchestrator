@@ -115,7 +115,16 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
     internal static (bool Ok, string Path, string Error) EnsureWorktree(string repoPath, string path, string branch)
     {
         if (Directory.Exists(path) && (File.Exists(Path.Combine(path, ".git")) || Directory.Exists(Path.Combine(path, ".git"))))
+        {
+            // Reused as it is, unless it's clean and everything in it is already on the main line (the ticket landed, then
+            // was reopened or its claim went stale): then it moves up to the main line, not handed out days behind (M.ORCH-T367).
+            // As a commit: with no origin the start point is the repo's own HEAD, which inside the worktree would mean its own.
+            var current = Git(repoPath, "rev-parse", StartPoint(repoPath)).Output.Trim();
+            if (current.Length > 0 && Git(path, "status", "--porcelain").Output.Trim().Length == 0 &&
+                Git(path, "merge-base", "--is-ancestor", "HEAD", current).Code == 0)
+                Git(path, "merge", "--ff-only", "-q", current);
             return (true, path, "");
+        }
 
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         // A worktree folder deleted by hand is still registered with git, its branch "checked out" there, so adding it again

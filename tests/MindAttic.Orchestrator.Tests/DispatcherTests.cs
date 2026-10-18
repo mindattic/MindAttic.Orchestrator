@@ -81,6 +81,22 @@ public sealed class DispatcherTests
     }
 
     [Test]
+    public void A_clean_landed_worktree_handed_out_again_is_moved_up_to_the_main_line()
+    {
+        // M.ORCH-T367: its claim went stale (or the ticket reopened) while its worktree stayed, days behind main.
+        var tree = Path.Combine(wtRoot, "A", "A-T5");
+        Assert.That(Dispatcher.EnsureWorktree(repo, tree, "orch/a-t5").Ok, Is.True);
+        File.WriteAllText(Path.Combine(repo, "file.txt"), "main moved on\n");
+        Git(repo, "commit", "-qam", "later work on main");
+
+        var (ok, _, error) = Dispatcher.EnsureWorktree(repo, tree, "orch/a-t5");
+
+        Assert.That(ok, Is.True, error);
+        Assert.That(Head(tree), Is.EqualTo(Head(repo)), "fast-forwarded to the main line");
+        Assert.That(File.ReadAllText(Path.Combine(tree, "file.txt")), Is.EqualTo("main moved on\n"));
+    }
+
+    [Test]
     public void An_existing_branch_is_checked_out_not_recreated()
     {
         Git(repo, "switch", "-q", "-c", "orch/a-t2");
