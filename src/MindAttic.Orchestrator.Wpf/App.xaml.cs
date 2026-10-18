@@ -63,6 +63,11 @@ public partial class App : Application
                 if (!installer.IsInstalled(self)) installer.Install(self, force: e.Args.Contains("--force", StringComparer.OrdinalIgnoreCase));
                 log.Information("Installed {Exe:l}", installer.InstalledExe);
                 if (EnsureWorkspace(log)) RepairSetup(installer, installer.InstalledExe, log);
+                // The install stopped the daemon; with no workspace picked (the prompt cancelled) it still runs again from the
+                // new build, or pacing and the hooks' holds stay off until the next logon (M.ORCH-T370).
+                else if (!Installer.DaemonRunning())
+                    try { installer.EnsureDaemon(installer.InstalledExe); }
+                    catch (InvalidOperationException ex) { log.Error(ex, "Couldn't restart the daemon after the install"); }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
