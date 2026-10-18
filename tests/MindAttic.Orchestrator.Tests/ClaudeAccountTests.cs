@@ -142,6 +142,21 @@ public sealed class ClaudeAccountTests
         Assert.That(c.History.Select(s => s.Account), Is.EqualTo(new[] { "b", "c" }), "A's span closed ten days ago");
     }
 
+    [Test]
+    public void A_switch_ages_out_without_another_one()
+    {
+        var watching = Account();
+        SignIn("a", Now);
+        watching.Read(Now);
+        SignIn("b", Now.AddHours(1));
+        Assert.That(watching.Read(Now.AddHours(1))!.Switched, Is.True);
+        Assert.That(watching.Read(Now.AddDays(8))!.Switched, Is.True, "not yet past the history");
+        var b = Account().Read(Now.AddDays(9))!;
+        Assert.That((b.Switched, b.Since, b.History.Count), Is.EqualTo((false, Now.AddHours(1), 1)),
+            "A's span closed over eight days ago: an untagged reading is B's again, though B never switched away");
+        Assert.That(b.Owns(Reading(Now.AddDays(9).AddHours(2), null)), Is.True);
+    }
+
     private static ReportedUsage Reading(DateTime five, DateTime? week, string? account = null) =>
         new(new ReportedWindow(99, five), week is { } w ? new ReportedWindow(99, w) : null, Now) { Account = account };
 

@@ -103,9 +103,13 @@ public sealed class ClaudeAccount
             if (signedIn is { } now && now != current)
             {
                 if (spans.Count > 0) spans[^1] = spans[^1] with { To = nowUtc };
-                spans = [.. spans.Where(x => x.To is not { } to || nowUtc - to <= HistoryKept), new AccountSpan(now, nowUtc, null)];
+                spans = [.. spans, new AccountSpan(now, nowUtc, null)];
                 (current, changed) = (now, true);
             }
+            // A closed span ages out on every read, not only at the next switch: else Switched stays true for good after one
+            // /login, and once the current account's confirmed windows have reset no untagged reading is its again.
+            var kept = spans.Where(x => x.To is not { } to || nowUtc - to <= HistoryKept).ToList();
+            if (kept.Count > 0 && kept.Count != spans.Count) (spans, changed) = (kept, true);
             if (changed) Save(record, spans);
             return last = current is null ? null : new SignInState(current, spans, Confirmations(record));
         }

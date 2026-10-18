@@ -149,9 +149,12 @@ public static class AgentGate
                     now = time.time()
                     if spans:
                         spans[-1]["to"] = now
-                    spans = [x for x in spans if x.get("to") is None or now - float(x["to"]) <= HISTORY_KEPT]
                     spans.append({"account": signed, "from": now, "to": None})
                     current, changed = signed, True
+                # A closed span ages out on every read, not only at the next switch, or one /login counts as a switch for good.
+                kept = [x for x in spans if x.get("to") is None or time.time() - float(x["to"]) <= HISTORY_KEPT]
+                if kept and len(kept) != len(spans):
+                    spans, changed = kept, True
                 if changed:
                     seen.update(account=current, since=spans[-1]["from"], spans=spans)
                     write_json(ACCOUNT, seen)
