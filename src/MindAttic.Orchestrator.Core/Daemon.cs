@@ -113,7 +113,19 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 // Rewritten each minute even unchanged: the gate trusts it only while it's fresh, i.e. while this daemon runs
                 // (rl-status.json can't vouch for that: the dashboard keeps it fresh too).
                 if (publishedStale is null || !staleIds.SequenceEqual(publishedStale) || DateTime.UtcNow - publishedStaleUtc >= TimeSpan.FromMinutes(1))
-                    try { store.Save(StaleTicketsName, staleIds); publishedStale = staleIds; publishedStaleUtc = DateTime.UtcNow; }
+                    try
+                    {
+                        store.Save(StaleTicketsName, staleIds);
+                        // And what else `orchestrator next` holds back that keep-going can't see from the files it reads:
+                        // quiet hours, tickets another live session or subagent is working (M.ORCH-T255), and stale claims
+                        // whose background agent still runs.
+                        store.Save(AutopilotHoldsName, new AutopilotHolds(
+                            QuietHours.Active(s.QuietHours, DateTime.Now) is not null,
+                            [.. plan.Worked],
+                            [.. plan.Stale.Where(q => q.Assignment is { Pilot: { } p } a && Sessions.BackgroundAgent.IsRunning(p, a.PilotStartedUtc)).Select(q => q.Id)]));
+                        publishedStale = staleIds;
+                        publishedStaleUtc = DateTime.UtcNow;
+                    }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
 
                 var stuck = Activity.Watchdog.Stuck(snapshot);
@@ -301,6 +313,11 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
     /// <summary>The stale claims' ticket IDs, kept in the store for the context gate (see <see cref="Setup.AgentGate"/>'s workable()).</summary>
     public const string StaleTicketsName = "stale-tickets";
+
+    /// <summary>What else orchestrator next holds back, for the context gate's keep-going (rewritten with the stale list).</summary>
+    public const string AutopilotHoldsName = "autopilot-holds";
+
+    public sealed record AutopilotHolds(bool Quiet, IReadOnlyList<Scheduling.WorkedTicket> Worked, IReadOnlyList<string> LivePilot);
     private IReadOnlyList<string>? publishedStale;
     private DateTime publishedStaleUtc;
 

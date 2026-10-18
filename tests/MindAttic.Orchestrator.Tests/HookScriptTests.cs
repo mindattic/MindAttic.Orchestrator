@@ -201,6 +201,41 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void What_orchestrator_next_holds_back_isnt_work_to_push_on_to()
+    {
+        var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(db)!);
+        using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
+            "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal,type)'); " +
+            "d.execute(\"insert into tickets values('U.SPC-T1','UnitySolarSystem','open',1,'fix')\"); d.commit()", db }, UseShellExecute = false })!)
+            mk.WaitForExit(20_000);
+        var uss = Path.Combine(ws, "UnitySolarSystem");
+        Directory.CreateDirectory(Marks);
+        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem");
+        var store = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator");
+        Directory.CreateDirectory(store);
+        var holds = Path.Combine(store, Daemon.AutopilotHoldsName + ".json");
+        var settings = Path.Combine(store, "settings.json");
+        object Asking(string sid) => new { hook_event_name = "Stop", session_id = sid, cwd = uss, last_assistant_message = "Shall I start the next one?" };
+        Status(new { });
+        string Asked(string sid) => Gate(Asking(sid), AgentGate.ContextScriptName).Output;
+
+        Assert.That(Asked("h1"), Does.Contain("\"block\""), "nothing held: it's work");
+        // Written as the daemon writes it, so the names the hook reads are the ones it gets.
+        new MindAttic.Orchestrator.Settings.JsonStore(store).Save(Daemon.AutopilotHoldsName,
+            new Daemon.AutopilotHolds(false, [new MindAttic.Orchestrator.Scheduling.WorkedTicket("U.SPC-T1", "other", null, "filed")], []));
+        Assert.That(Asked("h2"), Is.Empty, "another live session filed it and is fixing it: next won't hand it out");
+        Assert.That(Asked("other"), Does.Contain("\"block\""), "the session that filed it isn't held from it");
+        File.WriteAllText(holds, """{"Quiet":true,"Worked":[],"LivePilot":[]}""");
+        Assert.That(Asked("h3"), Is.Empty, "quiet hours");
+        File.WriteAllText(holds, """{"Quiet":false,"Worked":[],"LivePilot":[]}""");
+        File.WriteAllText(settings, """{ "Autopilot": false }""");
+        Assert.That(Asked("h4"), Is.Empty, "autopilot paused");
+        File.WriteAllText(settings, """{ "AutopilotSkip": ["unitysolarsystem"] }""");
+        Assert.That(Asked("h5"), Is.Empty, "a skipped repo");
+    }
+
+    [Test]
     public void A_claim_gone_stale_is_work_again_as_orchestrator_next_hands_it_out()
     {
         var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");

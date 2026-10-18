@@ -667,7 +667,7 @@ public static class AgentGate
             except Exception:
                 return []
 
-        def workable(repos):
+        def workable(repos, sid=None):
             # The open fixes and approved tickets of repos (names or wildcards such as GTFO.*; "*": every repo), in ticket order.
             try:
                 import fnmatch, sqlite3
@@ -706,15 +706,33 @@ public static class AgentGate
                 # A claim gone stale is back in the queue, and `orchestrator next` hands it out again: it's work. Only the
                 # running daemon's list counts (it rewrites it each minute): one left by a daemon that stopped may name a
                 # ticket claimed afresh since.
+                # What `orchestrator next` itself holds back isn't work to push on to either: autopilot paused, quiet hours,
+                # a skipped repo, a ticket another live session or subagent is working, a stale claim whose agent still runs.
+                if settings.get("Autopilot") is False:
+                    return []
+                skip = {(x or "").lower() for x in settings.get("AutopilotSkip") or []}
+                holds = {}
+                try:
+                    hf = Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "{{{Daemon.AutopilotHoldsName}}}.json"
+                    if time.time() - hf.stat().st_mtime <= {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}}:
+                        holds = json.loads(hf.read_text()) or {}
+                except Exception:
+                    holds = {}
+                if holds.get("Quiet"):
+                    return []
+                held = {(w.get("TicketId") or "").upper() for w in holds.get("Worked") or []
+                        if not (w.get("AgentId") is None and sid and w.get("SessionId") == sid)}
+                held |= {(i or "").upper() for i in holds.get("LivePilot") or []}
                 try:
                     stale = Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "{{{Daemon.StaleTicketsName}}}.json"
                     if time.time() - stale.stat().st_mtime > {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}}:
                         raise ValueError("no daemon")
-                    claimed -= {(i or "").upper() for i in json.loads(stale.read_text()) or []}
+                    claimed -= {(i or "").upper() for i in json.loads(stale.read_text()) or []} - held
                 except Exception:
                     pass
+                claimed |= held
                 named = {r.lower() for r in repos}
-                return [r[0] for r in rows if any(fnmatch.fnmatchcase((r[2] or "").lower(), n) for n in named) and
+                return [r[0] for r in rows if any(fnmatch.fnmatchcase((r[2] or "").lower(), n) for n in named) and (r[2] or "").lower() not in skip and
                         ((r[1] or "").lower() == "fix" or r[0].upper() in approved) and r[0].upper() not in claimed and not blocked(r)]
             except Exception:
                 return []
@@ -928,7 +946,7 @@ public static class AgentGate
             repos = autopilot_repos(my_pid())
             if repos and KEEP_GOING and not stopped and not state.get("goal"):
                 why = "autopilot"
-            ids = workable(repos) if why and not no_subagent_room(limits, my_pid()) else []
+            ids = workable(repos, sid) if why and not no_subagent_room(limits, my_pid()) else []
             reason = keep_going(repos, ids, sid, why, insisted) if ids else None
             if reason and limits.get("wind_down_note"):
                 reason += " " + limits["wind_down_note"]
