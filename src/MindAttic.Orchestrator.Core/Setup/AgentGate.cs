@@ -272,15 +272,47 @@ public static class AgentGate
             return None
         def flag(value):
             return bool(value) and str(value).strip().lower() not in ("0", "false", "no", "off")
-        def session_auth(cwd=None):
-            # What this CLI is billed through, by Claude Code's own precedence (code.claude.com/docs/en/iam, "Authentication
-            # precedence"): a cloud provider, then ANTHROPIC_AUTH_TOKEN (a gateway), ANTHROPIC_API_KEY, apiKeyHelper,
-            # CLAUDE_CODE_OAUTH_TOKEN, an Anthropic profile, then the /login in ~/.claude.json. Hooks run inside claude.exe and see
-            # its environment, settings' env blocks included; the settings files are read too. Outside claude.exe (no CLAUDECODE:
-            # Codex, Gemini, Kimi) it's "subscription", paced as ever. CLAUDE_CODE_OAUTH_TOKEN is a subscription whose account
-            # can't be told from the token: it's paced as the config's account.
-            if os.environ.get("CLAUDECODE") != "1":
-                return "{{Sessions.ContextCycler.SubscriptionAuth}}"
+        KEY_SET_ASIDE = Path.home() / ".claude" / "session-context" / "{{ApiKeySetAsideName}}"
+        def key_mark(key):
+            # The record of a set-aside key names it by a hash of the 20 characters Claude Code keeps, never the key.
+            import hashlib
+            return hashlib.sha256(key[-20:].encode("utf-8")).hexdigest()[:16]
+        def process_started(pid):
+            # When a process started (epoch), or None when that can't be told.
+            try:
+                import ctypes
+                from ctypes import wintypes
+                k = ctypes.windll.kernel32
+                k.OpenProcess.restype = wintypes.HANDLE
+                k.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+                k.GetProcessTimes.argtypes = [wintypes.HANDLE] + [ctypes.POINTER(wintypes.FILETIME)] * 4
+                k.CloseHandle.argtypes = [wintypes.HANDLE]
+                h = k.OpenProcess(0x1000, False, int(pid))  # PROCESS_QUERY_LIMITED_INFORMATION
+                if not h:
+                    return None
+                try:
+                    t = [wintypes.FILETIME() for _ in range(4)]
+                    if not k.GetProcessTimes(h, *[ctypes.byref(x) for x in t]):
+                        return None
+                    return ((t[0].dwHighDateTime << 32) | t[0].dwLowDateTime) / 1e7 - 11644473600
+                finally:
+                    k.CloseHandle(h)
+            except Exception:
+                return None
+        def still_on_set_aside_key(key):
+            # The key was set aside while this CLI already ran on it (M.ORCH-T434): Claude Code settled on the key at its start,
+            # so it's what this CLI bills until it's closed and reopened.
+            try:
+                at = read_json(KEY_SET_ASIDE).get(key_mark(key)) if KEY_SET_ASIDE.exists() else None
+                if at is None:
+                    return False
+                pid = os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
+                started = process_started(pid) if pid else None
+                return started is not None and started < float(at)
+            except Exception:
+                return False
+        def auth_sources(cwd=None):
+            # (environment, settings files): this CLI's own environment over the settings' env blocks, and the settings read.
             settings = []
             places = [Path.home() / ".claude" / "settings.json", Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "ClaudeCode" / "managed-settings.json"]
             if cwd:
@@ -297,26 +329,52 @@ public static class AgentGate
                 if isinstance(found.get("env"), dict):
                     env.update({k: str(v) for k, v in found["env"].items()})
             env.update(os.environ)
-            if any(flag(env.get(v)) for v in ("CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY",
-                                              "CLAUDE_CODE_USE_ANTHROPIC_AWS", "CLAUDE_CODE_USE_MANTLE")):
-                return "cloud"
+            return env, settings
+        CLOUDS = (("CLAUDE_CODE_USE_BEDROCK", "Amazon Bedrock"), ("CLAUDE_CODE_USE_VERTEX", "Google Vertex AI"),
+                  ("CLAUDE_CODE_USE_FOUNDRY", "Microsoft Foundry"), ("CLAUDE_CODE_USE_ANTHROPIC_AWS", "Claude Platform on AWS"),
+                  ("CLAUDE_CODE_USE_MANTLE", None))
+        def billing(cwd=None):
+            # (auth, source): what this CLI is billed through, by Claude Code's own precedence (code.claude.com/docs/en/iam,
+            # "Authentication precedence"): a cloud provider, then ANTHROPIC_AUTH_TOKEN (a gateway), ANTHROPIC_API_KEY,
+            # apiKeyHelper, CLAUDE_CODE_OAUTH_TOKEN, an Anthropic profile, then the /login in ~/.claude.json. Hooks run inside
+            # claude.exe and see its environment, settings' env blocks included; the settings files are read too. Outside
+            # claude.exe (no CLAUDECODE: Codex, Gemini, Kimi) it's "subscription", paced as ever. CLAUDE_CODE_OAUTH_TOKEN is a
+            # subscription whose account can't be told from the token: it's paced as the config's account. source says how:
+            # the cloud's variable, "env-p" (-p's key), "env" (an approved key), "env-set-aside" (one set aside since this CLI
+            # started on it), "login", "token", "helper", the profile, or None.
+            if os.environ.get("CLAUDECODE") != "1":
+                return "{{Sessions.ContextCycler.SubscriptionAuth}}", None
+            env, settings = auth_sources(cwd)
+            for variable, _ in CLOUDS:
+                if flag(env.get(variable)):
+                    return "cloud", variable
             if env.get("ANTHROPIC_AUTH_TOKEN"):
-                return "gateway"
+                return "gateway", None
             config = claude_config()
             key = env.get("ANTHROPIC_API_KEY")
             if key:
                 # -p (and the SDK) always uses it; interactively only once approved (Claude Code remembers the key's last 20
-                # characters). A rejected key, or one still waiting for its answer, leaves the login in charge.
+                # characters). A rejected key, or one still waiting for its answer, leaves the login in charge, except in a CLI
+                # that started on it before it was set aside.
                 responses = config.get("customApiKeyResponses") if isinstance(config.get("customApiKeyResponses"), dict) else {}
-                if str(os.environ.get("CLAUDE_CODE_ENTRYPOINT") or "").startswith("sdk") or key[-20:] in (responses.get("approved") or []):
-                    return "api-key"
+                if str(os.environ.get("CLAUDE_CODE_ENTRYPOINT") or "").startswith("sdk"):
+                    return "api-key", "env-p"
+                listed = lambda k: responses.get(k) if isinstance(responses.get(k), list) else []
+                if key[-20:] in listed("approved"):
+                    return "api-key", "env"
+                if key[-20:] in listed("rejected") and still_on_set_aside_key(key):
+                    return "api-key", "env-set-aside"
             if any(found.get("apiKeyHelper") for found in settings):
-                return "helper"
+                return "helper", None
             if env.get("CLAUDE_CODE_OAUTH_TOKEN"):
-                return "{{Sessions.ContextCycler.SubscriptionAuth}}"
+                return "{{Sessions.ContextCycler.SubscriptionAuth}}", "token"
             if env.get("ANTHROPIC_PROFILE") or (env.get("ANTHROPIC_FEDERATION_RULE_ID") and env.get("ANTHROPIC_ORGANIZATION_ID")):
-                return "profile"
-            return "api-key" if config_account(config) == "{{Budget.ClaudeAccount.ApiKey}}" else "{{Sessions.ContextCycler.SubscriptionAuth}}"
+                return "profile", env.get("ANTHROPIC_PROFILE")
+            # A Console login (primaryApiKey, with its oauthAccount) bills the API, not a subscription.
+            console = isinstance(config.get("primaryApiKey"), str) and config.get("primaryApiKey")
+            return ("api-key" if console or config_account(config) == "{{Budget.ClaudeAccount.ApiKey}}" else "{{Sessions.ContextCycler.SubscriptionAuth}}"), "login"
+        def session_auth(cwd=None):
+            return billing(cwd)[0]
         def reset_text(epoch):
             # The clock alone today; with the weekday on any other day, even under 24 hours off (M.ORCH-T407).
             at = datetime.fromtimestamp(epoch)
@@ -376,6 +434,168 @@ public static class AgentGate
 
     /// <summary>Where the hooks latch a stop they've seen until its window resets (in <c>~/.claude/session-context</c>).</summary>
     public const string StopLatchName = "stop-latch.json";
+
+    /// <summary>When the context gate set each <c>ANTHROPIC_API_KEY</c> aside for a claude.ai login (in <c>~/.claude/session-context</c>,
+    /// keyed by a hash of the key's last 20 characters): a CLI started before then still bills the key until it's reopened.</summary>
+    public const string ApiKeySetAsideName = "api-key-set-aside.json";
+
+    /// <summary>
+    /// Python for the context gate (needs <c>json</c>, <c>os</c>, <c>re</c>, <c>time</c>, <c>Path</c> and <see cref="ClaudeUsagePython"/>):
+    /// the last sign-in decides what a CLI bills (M.ORCH-T434). With a claude.ai login in <c>~/.claude.json</c> (<c>oauthAccount</c>,
+    /// no <c>primaryApiKey</c>), an <c>ANTHROPIC_API_KEY</c> in a CLI's environment that was approved before the /login would
+    /// go on winning in every CLI started with it (Claude Code's precedence puts it above the login), so it's set aside the way
+    /// Claude Code records a "no" to it: its last 20 characters move from <c>customApiKeyResponses.approved</c> to
+    /// <c>.rejected</c>. A Console login, or no claude.ai login at all, leaves the key alone: the API is what was chosen. Each
+    /// CLI is told at its start what it bills, a warning when that's the key rather than the claude.ai login.
+    /// </summary>
+    private const string BillingPython = """
+        def top_level_value(text, name):
+            # (start, end, value) of a top-level key's value in a JSON object's text (the last, as JSON.parse keeps); None if absent.
+            dec, ws = json.JSONDecoder(), re.compile(r"[ \t\r\n]*")
+            i = ws.match(text, 0).end()
+            if text[i:i + 1] != "{":
+                return None
+            i = ws.match(text, i + 1).end()
+            found = None
+            while i < len(text) and text[i] != "}":
+                key, i = dec.raw_decode(text, i)
+                i = ws.match(text, i).end()
+                if text[i:i + 1] != ":":
+                    return None
+                i = ws.match(text, i + 1).end()
+                value, end = dec.raw_decode(text, i)
+                if key == name:
+                    found = (i, end, value)
+                i = ws.match(text, end).end()
+                if text[i:i + 1] == ",":
+                    i = ws.match(text, i + 1).end()
+            return found
+        def dumped_like(value, text, start, end):
+            # value as JSON laid out as the text it replaces was: Claude Code's two-space indent at that depth, its line endings.
+            old = text[start:end]
+            if "\n" not in old:
+                return json.dumps(value, ensure_ascii=False, separators=(", ", ": ") if ": " in old else (",", ":"))
+            newline = "\r\n" if "\r\n" in old else "\n"
+            line = text[text.rfind("\n", 0, start) + 1:start]
+            indent = line[:len(line) - len(line.lstrip(" \t"))]
+            inner = re.search(r"\n([ \t]*)\S", old)
+            step = inner.group(1)[len(indent):] if inner and len(inner.group(1)) > len(indent) else "  "
+            lines = json.dumps(value, ensure_ascii=False, indent=step).split("\n")
+            return lines[0] + "".join(newline + indent + l for l in lines[1:])
+        def set_aside_key(key):
+            # Moves the key's last 20 characters from customApiKeyResponses.approved to .rejected in ~/.claude.json; True when it
+            # did. That's Claude Code's own file, large and rewritten often: only that field's text changes, the rest is kept byte
+            # for byte, and it's put in place whole, re-read just before so a write Claude Code made meanwhile is never lost.
+            path, tail = Path.home() / ".claude.json", key[-20:]
+            for _ in range(5):
+                raw = None
+                for _ in range(20):
+                    try:
+                        raw = path.read_bytes()
+                        break
+                    except PermissionError:
+                        time.sleep(0.05)
+                if raw is None:
+                    return False
+                bom = raw.startswith(b"\xef\xbb\xbf")
+                text = raw[3 if bom else 0:].decode("utf-8")
+                span = top_level_value(text, "customApiKeyResponses")
+                if not span or not isinstance(span[2], dict) or not isinstance(span[2].get("approved"), list) or tail not in span[2]["approved"]:
+                    return False
+                value = dict(span[2])
+                rejected = value.get("rejected") if isinstance(value.get("rejected"), list) else []
+                value["approved"] = [x for x in value["approved"] if x != tail]
+                value["rejected"] = rejected + ([] if tail in rejected else [tail])
+                out = text[:span[0]] + dumped_like(value, text, span[0], span[1]) + text[span[1]:]
+                json.loads(out)
+                tmp = path.with_name(path.name + "." + str(os.getpid()) + ".tmp")
+                try:
+                    tmp.write_bytes((b"\xef\xbb\xbf" if bom else b"") + out.encode("utf-8"))
+                    for _ in range(20):
+                        try:
+                            if path.read_bytes() != raw:
+                                break  # Claude Code wrote it meanwhile: start over from its new text
+                            os.replace(tmp, path)
+                            return True
+                        except PermissionError:
+                            time.sleep(0.05)
+                    else:
+                        return False
+                finally:
+                    try:
+                        tmp.unlink()
+                    except Exception:
+                        pass
+            return False
+        def plan_name(oauth):
+            # The plan the config names (organizationType "claude_team": Claude Team); None when it names none.
+            kind = oauth.get("organizationType") if isinstance(oauth.get("organizationType"), str) else ""
+            return "Claude " + " ".join(w.capitalize() for w in kind[len("claude_"):].split("_") if w) if kind.startswith("claude_") and len(kind) > len("claude_") else None
+        def billing_check(cwd=None):
+            # (auth, line, warn) for a CLI starting: one [Billing] line naming what it bills. A claude.ai login sets an approved
+            # ANTHROPIC_API_KEY aside first; a CLI already running on it is warned to close and reopen.
+            auth, source = billing(cwd)
+            config = claude_config()
+            env, _ = auth_sources(cwd)
+            text = lambda o, k: o.get(k) if isinstance(o, dict) and isinstance(o.get(k), str) and o.get(k) else None
+            oauth = config.get("oauthAccount") if isinstance(config.get("oauthAccount"), dict) else {}
+            claude_ai = bool(text(oauth, "accountUuid")) and not text(config, "primaryApiKey")
+            who = (text(oauth, "emailAddress") or text(oauth, "accountUuid") or "") + (" (" + text(oauth, "organizationName") + ")" if text(oauth, "organizationName") else "")
+            plan = plan_name(oauth) if claude_ai else None
+            login = (plan or "the claude.ai login") + ": " + who
+            key = env.get("ANTHROPIC_API_KEY") or ""
+            keyed = "the API key in ANTHROPIC_API_KEY (…" + key[-4:] + ")"
+            if auth == "api-key" and source in ("env", "env-p", "env-set-aside") and claude_ai:
+                setaside = source == "env-set-aside"
+                if source in ("env", "env-p"):
+                    responses = config.get("customApiKeyResponses") if isinstance(config.get("customApiKeyResponses"), dict) else {}
+                    if isinstance(responses.get("approved"), list) and key[-20:] in responses["approved"]:
+                        try:
+                            # Dated first, so this CLI (started before it) reads as still on the key the moment the file changes.
+                            marks = read_json(KEY_SET_ASIDE) if KEY_SET_ASIDE.exists() else {}
+                            marks[key_mark(key)] = time.time()
+                            write_json(KEY_SET_ASIDE, marks)
+                        except Exception:
+                            pass
+                        try:
+                            setaside = set_aside_key(key)
+                        except Exception:
+                            setaside = False
+                    elif source == "env-p":
+                        setaside = True  # nothing approved to set aside: only -p uses it
+                line = "[Billing] Warning: this CLI bills " + keyed + ", not " + login + ", which is signed in."
+                if source == "env-p":
+                    line += (" -p always uses ANTHROPIC_API_KEY when it's set: remove it from the environment that starts this CLI so it bills " +
+                             (plan or "the claude.ai login") + ".")
+                elif setaside:
+                    line += " The key has now been set aside: close and reopen this CLI so it bills " + (plan or "the claude.ai login") + "."
+                else:
+                    line += (" The key couldn't be set aside in ~/.claude.json: turn off \"Use custom API key\" in /config, then close and "
+                             "reopen this CLI so it bills " + (plan or "the claude.ai login") + ".")
+                return auth, line, True
+            if auth == "cloud":
+                name = dict(CLOUDS).get(source)
+                line = "[Billing] This CLI bills " + (name + " (" + source + ")" if name else "the cloud provider " + str(source) + " selects") + "."
+            elif auth == "gateway":
+                url = env.get("ANTHROPIC_BASE_URL")
+                line = "[Billing] This CLI bills the LLM gateway " + ("at " + url + " " if url else "") + "through ANTHROPIC_AUTH_TOKEN."
+            elif auth == "helper":
+                line = "[Billing] This CLI bills the API key from apiKeyHelper."
+            elif auth == "profile":
+                line = "[Billing] This CLI bills the Anthropic profile " + (source + "." if source else "set by the federation variables.")
+            elif auth == "api-key" and source in ("env", "env-p", "env-set-aside"):
+                line = "[Billing] This CLI bills " + keyed + "."
+            elif auth == "api-key":
+                line = ("[Billing] This CLI bills the Anthropic Console API: " + who + "." if text(config, "primaryApiKey") and who
+                        else "[Billing] This CLI bills the Anthropic Console API." if text(config, "primaryApiKey") else "[Billing] This CLI bills an approved Anthropic API key.")
+            elif source == "token":
+                line = "[Billing] This CLI bills the Claude subscription in CLAUDE_CODE_OAUTH_TOKEN."
+            elif claude_ai:
+                line = "[Billing] This CLI bills " + login + "."
+            else:
+                line = "[Billing] This CLI isn't signed in to anything it can bill: run /login."
+            return auth, line, False
+        """;
 
     /// <summary>A stop from an orchestrator that didn't say when its window resets is latched this long.</summary>
     public const int StopLatchFallbackSeconds = 600;
@@ -1199,6 +1419,8 @@ public static class AgentGate
 
         {{{ClaudeUsagePython}}}
 
+        {{{BillingPython}}}
+
         {{{ExemptPython}}}
 
         def my_pid():
@@ -1208,6 +1430,8 @@ public static class AgentGate
             # UTF-8 as Claude Code writes it, not the ANSI code page Python reads a pipe in on Windows (M.ORCH-T392).
             data = json.loads(sys.stdin.buffer.read().decode("utf-8", errors="replace"))
         except Exception:
+            sys.exit(0)
+        if not isinstance(data, dict):
             sys.exit(0)
         sid, event = data.get("session_id"), data.get("hook_event_name")
         # Codex (its Stop hook) and Gemini (AfterAgent) run this too, named on the command line: nothing here applies to
@@ -1246,6 +1470,23 @@ public static class AgentGate
             poke()
         if not sid or data.get("agent_id"):
             sys.exit(0)  # subagents finish inside their parent's turn
+        if event == "SessionStart":
+            # Every CLI is told at its start what it bills (M.ORCH-T434), as Prose checks its hub first; recorded in the session's
+            # state for the daemon and the dashboard. Nothing here may hold up or fail the start: on any error it says nothing.
+            try:
+                auth, line, warn = billing_check(data.get("cwd"))
+            except Exception:
+                sys.exit(0)
+            try:
+                DIR.mkdir(parents=True, exist_ok=True)
+                state_file = DIR / (sid + ".state.json")
+                state = load(state_file)
+                state.update(auth=auth, billing=line, billing_warn=warn, pid=state.get("pid") or cli_pid(), cwd=state.get("cwd") or data.get("cwd"))
+                save(state_file, state)
+            except Exception:
+                pass
+            print(json.dumps({"systemMessage": line, "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": line}}))
+            sys.exit(0)
         # Recorded in the session's state, so the daemon leaves a CLI billed elsewhere out of the subscription's budget; and
         # nothing the subscription's windows decide holds it here.
         auth = session_auth(data.get("cwd"))
@@ -1434,11 +1675,23 @@ public static class AgentGate
             notes = [n for n in (s.get("subagent_note"), s.get("stop_note") or s.get("wind_down_note")) if n]
             state["wind_down_told"] = bool(s.get("wind_down_note") or s.get("stop_note"))
             out = {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": " ".join(notes)}} if notes else {}
+            # A CLI that started before its SessionStart hook was registered is checked on its first prompt instead, and told
+            # only when it's billing the key rather than the claude.ai login (M.ORCH-T434).
+            if "billing" not in state:
+                try:
+                    _, line, warn = billing_check(data.get("cwd"))
+                    state.update(billing=line, billing_warn=warn)
+                    if warn:
+                        out["systemMessage"] = line
+                        told = out.setdefault("hookSpecificOutput", {"hookEventName": "UserPromptSubmit", "additionalContext": ""})
+                        told["additionalContext"] = (told["additionalContext"] + " " + line).strip()
+                except Exception:
+                    pass
             # A dead or stalled daemon is said to you, on every prompt, until it's back (M.ORCH-T167): nothing is paced
             # meanwhile except Claude's own 99% stop.
             down = daemon_down()
             if down is not None:
-                out["systemMessage"] = ("MindAttic.Orchestrator hasn't updated the pace for " + str(int(down // 60)) + " min: its daemon "
+                out["systemMessage"] = ((out["systemMessage"] + " ") if out.get("systemMessage") else "") + ("MindAttic.Orchestrator hasn't updated the pace for " + str(int(down // 60)) + " min: its daemon "
                     "isn't running, so agents aren't being paced (only Claude's own " + str(STOP_PERCENT) + "% stop still holds). "
                     "Start it: C:\\Apps\\MindAttic.Orchestrator\\MindAttic.Orchestrator.exe")
             if out:
@@ -1509,7 +1762,7 @@ public static class AgentGate
             throw new IOException($"{settingsPath} isn't a JSON object it can read, so the pace and context gate hooks aren't registered; it's left as it is"
                 + (did.Count > 0 ? $" ({string.Join(", ", did)})" : ""));
         var changed = AddHook(root, "PreToolUse", ScriptName, Command(script), HookTimeoutSeconds);
-        foreach (var hookEvent in new[] { "PostToolUse", "Stop", "UserPromptSubmit", "SubagentStart", "SubagentStop" })
+        foreach (var hookEvent in new[] { "PostToolUse", "Stop", "UserPromptSubmit", "SubagentStart", "SubagentStop", "SessionStart" })
             changed |= AddHook(root, hookEvent, ContextScriptName, Command(contextScript), 10);
         // Claude's own usage reaches the orchestrator only through a statusline redraw; an idle tab redraws on this
         // timer too, so the real percent stays fresh while any tab is open (M.ORCH-T125).

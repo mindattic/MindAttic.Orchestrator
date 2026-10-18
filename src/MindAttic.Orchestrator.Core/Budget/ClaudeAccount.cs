@@ -158,7 +158,9 @@ public sealed class ClaudeAccount
     /// <c>oauthAccount.accountUuid</c> and <c>organizationUuid</c> (one person's Max plan and their Team seat, or a Console
     /// login, share the account id but not the limits); an API key (<c>primaryApiKey</c>, or an approved
     /// <c>ANTHROPIC_API_KEY</c> with no Claude login) is <see cref="ApiKey"/>. It used to read as signed out, so moving
-    /// to an API key wasn't a switch and the Claude account's stop stayed latched. The pace hooks key the same way.
+    /// to an API key wasn't a switch and the Claude account's stop stayed latched. The pace hooks key the same way. A key in
+    /// <c>customApiKeyResponses.rejected</c> (where the context gate sets an env key aside for a claude.ai login, M.ORCH-T434)
+    /// is no sign-in at all.
     /// </summary>
     internal static string? Current(string configPath)
     {

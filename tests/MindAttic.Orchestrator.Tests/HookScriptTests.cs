@@ -1561,4 +1561,156 @@ public sealed class HookScriptTests
         var keyed = Gate(ReadCall, new Dictionary<string, string> { ["ANTHROPIC_API_KEY"] = "sk-ant-api03-abcdefghijklmnopqrst" });
         Assert.That((keyed.Output, keyed.Took < TimeSpan.FromSeconds(10)), Is.EqualTo(("", true)), "the key's calls run at once");
     }
+
+    // M.ORCH-T434: the last sign-in decides what a CLI bills, and every CLI says so at its start.
+    private const string EnvKey = "sk-ant-api03-0123456789abcdefghijWXYZ";
+    private static string KeyTail => EnvKey[^20..];
+    private const string TeamLogin = "\"oauthAccount\":" + """{"accountUuid":"acct-1","organizationUuid":"org-1","emailAddress":"pdftransferjr@mindattic.com","organizationName":"MindAttic","organizationType":"claude_team"}""";
+
+    /// <summary>customApiKeyResponses with these tails, as a top-level member.</summary>
+    private static string KeyResponses(string[] approved, string[] rejected) =>
+        "\"customApiKeyResponses\":" + JsonSerializer.Serialize(new { approved, rejected });
+    private string ConfigPath => Path.Combine(dir, ".claude.json");
+
+    private static readonly object Starting = new { hook_event_name = "SessionStart", session_id = "s1", source = "startup", cwd = "." };
+
+    /// <summary>The SessionStart line, from this CLI's environment (the test host as the CLI, so it started before any set-aside).</summary>
+    private string StartLine(IDictionary<string, string>? env = null)
+    {
+        var all = new Dictionary<string, string> { ["MINDATTIC_CLI_PID"] = Environment.ProcessId.ToString() };
+        foreach (var (k, v) in env ?? new Dictionary<string, string>()) all[k] = v;
+        var output = Gate(Starting, all, AgentGate.ContextScriptName).Output;
+        using var doc = JsonDocument.Parse(output);
+        var line = doc.RootElement.GetProperty("systemMessage").GetString()!;
+        Assert.That(doc.RootElement.GetProperty("hookSpecificOutput").GetProperty("additionalContext").GetString(), Is.EqualTo(line));
+        return line;
+    }
+
+    private static Dictionary<string, string> WithKey => new() { ["ANTHROPIC_API_KEY"] = EnvKey };
+
+    private JsonElement Responses()
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllText(ConfigPath));
+        return doc.RootElement.GetProperty("customApiKeyResponses").Clone();
+    }
+
+    [Test]
+    public void Signed_in_to_claude_ai_an_approved_env_key_is_set_aside_and_the_start_warns_naming_the_account()
+    {
+        SignedIn("{" + TeamLogin + "," + KeyResponses([KeyTail], []) + "}");
+        var line = StartLine(WithKey);
+        Assert.That(line, Does.StartWith("[Billing] Warning: this CLI bills the API key in ANTHROPIC_API_KEY (\u2026WXYZ)")
+            .And.Contain("not Claude Team: pdftransferjr@mindattic.com (MindAttic), which is signed in")
+            .And.Contain("The key has now been set aside: close and reopen this CLI so it bills Claude Team.")
+            .And.Not.Contain(KeyTail));
+        var responses = Responses();
+        Assert.That(responses.GetProperty("approved").GetArrayLength(), Is.EqualTo(0));
+        Assert.That(responses.GetProperty("rejected")[0].GetString(), Is.EqualTo(KeyTail));
+        var state = File.ReadAllText(Path.Combine(Marks, "s1.state.json"));
+        Assert.That(state, Does.Contain("\"auth\": \"api-key\"").And.Contain("\"billing\": \"[Billing] Warning"), "recorded for the daemon and the dashboard");
+
+        // This CLI started on the key, so it still bills it until it's reopened: still kept out of the subscription's pace.
+        Assert.That(StartLine(WithKey), Does.Contain("The key has now been set aside"));
+        var prompt = new { hook_event_name = "UserPromptSubmit", session_id = "s1", prompt = "hi", cwd = ws };
+        Gate(prompt, new Dictionary<string, string>(WithKey) { ["MINDATTIC_CLI_PID"] = Environment.ProcessId.ToString() }, AgentGate.ContextScriptName);
+        Assert.That(File.ReadAllText(Path.Combine(Marks, "s1.state.json")), Does.Contain("\"auth\": \"api-key\""));
+    }
+
+    [Test]
+    public void A_cli_already_running_on_the_key_is_warned_on_its_first_prompt()
+    {
+        // Started before the SessionStart hook was registered: its first prompt sets the key aside and says so, once.
+        SignedIn("{" + TeamLogin + "," + KeyResponses([KeyTail], []) + "}");
+        var env = new Dictionary<string, string>(WithKey) { ["MINDATTIC_CLI_PID"] = Environment.ProcessId.ToString() };
+        var prompt = new { hook_event_name = "UserPromptSubmit", session_id = "old", prompt = "hi", cwd = ws };
+        var first = Gate(prompt, env, AgentGate.ContextScriptName).Output;
+        Assert.That(JsonDocument.Parse(first).RootElement.GetProperty("systemMessage").GetString(), Does.StartWith("[Billing] Warning"));
+        Assert.That(Responses().GetProperty("rejected")[0].GetString(), Is.EqualTo(KeyTail));
+        Assert.That(Gate(prompt, env, AgentGate.ContextScriptName).Output, Does.Not.Contain("[Billing]"), "said once");
+    }
+
+    [Test]
+    public void After_the_key_is_set_aside_a_new_cli_bills_claude_team()
+    {
+        SignedIn("{" + TeamLogin + "," + KeyResponses([], [KeyTail]) + "}");
+        var before = File.ReadAllText(ConfigPath);
+        Assert.That(StartLine(WithKey), Is.EqualTo("[Billing] This CLI bills Claude Team: pdftransferjr@mindattic.com (MindAttic)."));
+        Assert.That(File.ReadAllText(ConfigPath), Is.EqualTo(before));
+        Assert.That(File.ReadAllText(Path.Combine(Marks, "s1.state.json")), Does.Contain("\"auth\": \"subscription\""));
+    }
+
+    [Test]
+    public void A_console_login_keeps_the_env_key_and_bills_the_api()
+    {
+        SignedIn("""{"primaryApiKey":"sk-ant-console","oauthAccount":{"accountUuid":"acct-1","emailAddress":"dev@mindattic.com"},""" + KeyResponses([KeyTail], []) + "}");
+        var before = File.ReadAllText(ConfigPath);
+        Assert.That(StartLine(WithKey), Is.EqualTo("[Billing] This CLI bills the API key in ANTHROPIC_API_KEY (\u2026WXYZ)."));
+        Assert.That(File.ReadAllText(ConfigPath), Is.EqualTo(before), "the API is what was chosen");
+        Assert.That(StartLine(), Is.EqualTo("[Billing] This CLI bills the Anthropic Console API: dev@mindattic.com."));
+    }
+
+    [Test]
+    public void With_no_claude_ai_login_the_env_key_is_left_alone_and_billed()
+    {
+        SignedIn("{" + KeyResponses([KeyTail], []) + "}");
+        var before = File.ReadAllText(ConfigPath);
+        Assert.That(StartLine(WithKey), Is.EqualTo("[Billing] This CLI bills the API key in ANTHROPIC_API_KEY (\u2026WXYZ)."));
+        Assert.That(File.ReadAllText(ConfigPath), Is.EqualTo(before));
+        Assert.That(File.Exists(Path.Combine(Marks, AgentGate.ApiKeySetAsideName)), Is.False);
+    }
+
+    [Test]
+    public void A_cloud_provider_or_a_gateway_is_named()
+    {
+        SignedIn("{" + TeamLogin + "}");
+        Assert.That(StartLine(new Dictionary<string, string> { ["CLAUDE_CODE_USE_BEDROCK"] = "1", ["ANTHROPIC_API_KEY"] = EnvKey }),
+            Is.EqualTo("[Billing] This CLI bills Amazon Bedrock (CLAUDE_CODE_USE_BEDROCK)."));
+        Assert.That(StartLine(new Dictionary<string, string> { ["CLAUDE_CODE_USE_VERTEX"] = "1" }), Is.EqualTo("[Billing] This CLI bills Google Vertex AI (CLAUDE_CODE_USE_VERTEX)."));
+        Assert.That(StartLine(new Dictionary<string, string> { ["ANTHROPIC_AUTH_TOKEN"] = "t", ["ANTHROPIC_BASE_URL"] = "https://llm.example" }),
+            Is.EqualTo("[Billing] This CLI bills the LLM gateway at https://llm.example through ANTHROPIC_AUTH_TOKEN."));
+    }
+
+    [Test]
+    public void Setting_the_key_aside_changes_that_field_alone_and_keeps_the_rest_byte_for_byte()
+    {
+        var projects = string.Join(",\n", Enumerable.Range(0, 800).Select(i =>
+            $"    \"D:\\\\Projects\\\\Repo{i}\": {{\n      \"allowedTools\": [],\n      \"lastCost\": {i}.10,\n      \"lastDuration\": 1e-7,\n      \"big\": 12345678901234567890,\n      \"name\": \"caf\u00e9 \u2603 \\u00e9 {i}\"\n    }}"));
+        string Config(string responses) =>
+            "{\n  \"numStartups\": 2138,\n  \"autoUpdates\": false,\n  \"projects\": {\n" + projects + "\n  },\n" +
+            "  \"customApiKeyResponses\": " + responses + ",\n  " + TeamLogin + ",\n  \"tipsHistory\": {\n    \"a\": 1.0\n  }\n}";
+        var original = Config($"{{\n    \"approved\": [\n      \"other-tail-xxxxxxxxxx\",\n      \"{KeyTail}\"\n    ],\n    \"rejected\": []\n  }}");
+        var expected = Config($"{{\n    \"approved\": [\n      \"other-tail-xxxxxxxxxx\"\n    ],\n    \"rejected\": [\n      \"{KeyTail}\"\n    ]\n  }}");
+        File.WriteAllText(ConfigPath, original);
+        Assert.That(original.Length, Is.GreaterThan(100_000));
+        Assert.That(StartLine(WithKey), Does.Contain("The key has now been set aside"));
+        Assert.That(File.ReadAllText(ConfigPath), Is.EqualTo(expected));
+        Assert.That(Directory.GetFiles(dir, "*.tmp"), Is.Empty, "no temp file left behind");
+    }
+
+    [Test]
+    public void A_missing_or_garbled_config_never_fails_a_session_start()
+    {
+        foreach (var config in new string?[] { null, "{not json", "[]", """{"oauthAccount":"x","customApiKeyResponses":{"approved":"abc"}}""" })
+        {
+            if (config is null) File.Delete(ConfigPath); else File.WriteAllText(ConfigPath, config);
+            using var p = Run(AgentGate.ContextScriptName, Starting, WithKey);
+            var output = p.StandardOutput.ReadToEnd();
+            Assert.That(p.WaitForExit(30_000), Is.True);
+            Assert.That(p.ExitCode, Is.EqualTo(0), config ?? "missing");
+            if (output.Trim().Length > 0)
+                Assert.That(JsonDocument.Parse(output).RootElement.GetProperty("systemMessage").GetString(), Does.StartWith("[Billing]"));
+            if (config is not null) Assert.That(File.ReadAllText(ConfigPath), Is.EqualTo(config));
+        }
+        using var garbled = Run(AgentGate.ContextScriptName, "not an event");
+        Assert.That(garbled.StandardOutput.ReadToEnd(), Is.Empty);
+        Assert.That(garbled.WaitForExit(30_000) && garbled.ExitCode == 0, Is.True);
+    }
+
+    [Test]
+    public void The_session_start_hook_is_registered()
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(Claude, "settings.json")));
+        Assert.That(doc.RootElement.GetProperty("hooks").GetProperty("SessionStart")[0].GetProperty("hooks")[0].GetProperty("command").GetString(),
+            Does.Contain(AgentGate.ContextScriptName));
+    }
 }
