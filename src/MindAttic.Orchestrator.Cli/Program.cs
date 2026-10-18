@@ -221,7 +221,7 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
         public bool? Pace { get; init; }
 
         [CommandOption("--target <PERCENT>")]
-        [Description("How much of each limit pacing aims to use by the reset (default 95).")]
+        [Description("How much of each limit pacing aims to use by the reset (default 98).")]
         public int? Target { get; init; }
 
         [CommandOption("--week")]
