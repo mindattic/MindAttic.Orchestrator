@@ -559,6 +559,41 @@ public sealed class StatusAggregatorTests
     }
 
     [Test]
+    public void A_limit_hit_is_learned_from_the_tokens_of_the_account_that_hit_it()
+    {
+        // M.ORCH-T347: B's wall counted A's 4M spent in B's window during an hour signed in to A.
+        Transcript("a-work", Path.Combine(ws, "A"), TimeSpan.FromMinutes(150), 4_000_000);
+        Transcript("b-work", Path.Combine(ws, "B"), TimeSpan.FromMinutes(30), 1_000_000);
+        var hitAt = DateTime.UtcNow.AddMinutes(-10);
+        var reset = new DateTime(DateTime.UtcNow.AddHours(1).Ticks / TimeSpan.TicksPerMinute * TimeSpan.TicksPerMinute, DateTimeKind.Utc);
+        var folder = Path.Combine(projects, "p-hit");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "hit.jsonl"), System.Text.Json.JsonSerializer.Serialize(new
+        {
+            type = "assistant", timestamp = hitAt.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"), sessionId = "hit", cwd = Path.Combine(ws, "B"), error = "rate_limit",
+            message = new
+            {
+                id = "hit-1", model = "<synthetic>",
+                usage = new { input_tokens = 0, cache_creation_input_tokens = 0, cache_read_input_tokens = 0, output_tokens = 0 },
+                content = new[] { new { type = "text", text = $"You've hit your session limit · resets {reset.ToString("h:mmtt", System.Globalization.CultureInfo.InvariantCulture).ToLowerInvariant()} (UTC)" } },
+            },
+        }) + "\n");
+        Config("""{"oauthAccount":{"accountUuid":"b"}}""");
+        var account = SignIn();
+        Directory.CreateDirectory(Path.GetDirectoryName(account.StatePath)!);
+        long Ago(int minutes) => DateTimeOffset.UtcNow.AddMinutes(-minutes).ToUnixTimeSeconds();
+        File.WriteAllText(account.StatePath, $$"""
+            {"account":"b","since":{{Ago(120)}},"spans":[{"account":"b","from":{{Ago(240)}},"to":{{Ago(180)}}},
+            {"account":"a","from":{{Ago(180)}},"to":{{Ago(120)}}},{"account":"b","from":{{Ago(120)}},"to":null}]}
+            """);
+
+        Daemon(account).Refresh();
+
+        var wall = store.LoadLimits().Single(o => o.Kind == LimitKind.Session);
+        Assert.That(wall.FreshUsed, Is.EqualTo(1_000_001), "B's own tokens, not A's 4M too");
+    }
+
+    [Test]
     public void Going_back_to_an_account_counts_its_spend_from_before_the_other_one_again()
     {
         TurnsAreToday();

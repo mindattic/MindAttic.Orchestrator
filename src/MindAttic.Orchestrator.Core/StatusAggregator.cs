@@ -171,7 +171,6 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         }
 
         var events = claudeEvents;
-        var calibration = Calibrate(subscriptionSessions, events, historyStartUtc, now);
         // Read before the sign-in, so a reading written just after a /login is judged against the new account, never
         // confirmed as the old one's.
         var reported = ReportedUsage.Load(now, ReportedUsagePath);
@@ -179,6 +178,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         // stop kept every prompt refused though the new account had room), and going back to an account picks its own up
         // again. Hits stay for learning the limits; their walls go.
         var signIn = SignIn?.Read(now);
+        var calibration = Calibrate(subscriptionSessions, events, historyStartUtc, now, signIn?.History);
         var switchedNow = false;
         if (signIn is not null)
         {
@@ -326,20 +326,28 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             : new ReportedUsage(kept, reported.Week, lastReported.AtUtc) { WeekAtUtc = reported.WeekAt };
     }
 
-    private LimitCalibration Calibrate(IReadOnlyList<TranscriptSession> sessions, IReadOnlyList<UsageEvent> events, DateTime historyStartUtc, DateTime now)
+    private LimitCalibration Calibrate(IReadOnlyList<TranscriptSession> sessions, IReadOnlyList<UsageEvent> events, DateTime historyStartUtc, DateTime now,
+        IReadOnlyList<AccountSpan>? signIns = null)
     {
+        // A wall is learned from the tokens of the account that hit it, not every account's in its window: one signed in to
+        // for an hour of it would make the limit look bigger than it is (M.ORCH-T347).
+        string? AccountAt(DateTime utc) => signIns?.LastOrDefault(s => utc >= s.From && (s.To is not { } to || utc < to))?.Account;
+        IReadOnlyList<LimitObservation> Observe(IEnumerable<LimitHit> hits, IReadOnlyList<UsageEvent> evs, DateTime since) =>
+            signIns is not { Count: > 1 } ? LimitCalibration.Observe(hits, evs, since)
+            : [.. hits.GroupBy(h => AccountAt(h.AtUtc)).SelectMany(g => LimitCalibration.Observe(g,
+                g.Key is null ? evs : [.. evs.Where(e => AccountAt(e.AtUtc) == g.Key)], since)).OrderBy(o => o.HitUtc)];
         var read = Store.TryLoadLimits(out var stored);
         // Unreadable right now (held, or caught mid-write): the hits last read stand in, or the learned limit would go for this
         // refresh, the pace with it, and rl-status.json would be withdrawn as M.ORCH-T245's was (M.ORCH-T346).
         if (read) lastLimits = stored;
         else stored = lastLimits ?? [];
-        var observed = LimitCalibration.Observe(sessions.SelectMany(s => s.Hits), events, historyStartUtc);
+        var observed = Observe(sessions.SelectMany(s => s.Hits), events, historyStartUtc);
         if (!Store.HasLimits)
         {
             var since = now.AddDays(-BackfillDays);
             var old = new TranscriptReader(options.ClaudeProjectsDir).Poll(since);
             List<UsageEvent> oldEvents = [.. old.SelectMany(s => s.Events).OrderBy(e => e.AtUtc)];
-            observed = [.. observed, .. LimitCalibration.Observe(old.SelectMany(s => s.Hits), oldEvents, since)];
+            observed = [.. observed, .. Observe(old.SelectMany(s => s.Hits), oldEvents, since)];
         }
 
         var merged = LimitCalibration.Merge(stored, observed, now);
