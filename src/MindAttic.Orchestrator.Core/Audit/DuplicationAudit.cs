@@ -47,18 +47,22 @@ public static class DuplicationAudit
 
         var groups = new List<DuplicateGroup>();
         var claimed = new HashSet<int>();
+        // One copy of each identical group stays in the near-copy search: a drifted copy in a third repo is otherwise left
+        // with nothing to match and never reported (M.ORCH-T352).
+        var representatives = new HashSet<int>();
 
         // Identical copies first: the clearest extraction candidates.
         foreach (var g in sources.GroupBy(s => s.Whole).Where(g => g.Select(s => s.Repo).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1))
         {
             var files = g.ToList();
             foreach (var f in files) claimed.Add(f.Id);
+            representatives.Add(files[0].Id);
             groups.Add(new DuplicateGroup([.. files.Select(f => new DuplicateFile(f.Repo, f.Path, f.Lines))], true, 1, files[0].Lines, HomeFor(files[0].Path)));
         }
 
         // Near copies: count shared windows per cross-repo file pair through an inverted index.
         var index = new Dictionary<ulong, List<int>>();
-        foreach (var s in sources.Where(s => !claimed.Contains(s.Id)))
+        foreach (var s in sources.Where(s => !claimed.Contains(s.Id) || representatives.Contains(s.Id)))
             foreach (var w in s.Windows.Distinct())
                 (index.TryGetValue(w, out var list) ? list : index[w] = []).Add(s.Id);
 

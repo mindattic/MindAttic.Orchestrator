@@ -224,6 +224,23 @@ public sealed class AuditTests
     }
 
     [Test]
+    public void A_drifted_copy_of_a_file_two_repos_hold_identically_is_reported()
+    {
+        // M.ORCH-T352: the identical pair was left out of the near-copy search, so the third copy matched nothing.
+        var repos = new[]
+        {
+            Repo("One", new() { ["src/Util.cs"] = Code("Util") }),
+            Repo("Two", new() { ["lib2/Util.cs"] = Code("Util") }),
+            Repo("Three", new() { ["Helpers/Util.cs"] = Code("Util", extra: 6) }),
+        };
+
+        var (groups, _) = DuplicationAudit.Run(repos);
+
+        Assert.That(groups.Single(g => g.Identical).Files.Select(f => f.Repo), Is.EquivalentTo(new[] { "One", "Two" }));
+        Assert.That(groups.Where(g => !g.Identical).SelectMany(g => g.Files).Select(f => f.Repo), Does.Contain("Three"));
+    }
+
+    [Test]
     public void Near_copies_in_many_repos_cluster_into_one_finding()
     {
         var repos = Enumerable.Range(0, 4)
