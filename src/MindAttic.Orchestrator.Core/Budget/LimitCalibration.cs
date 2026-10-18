@@ -94,8 +94,11 @@ public static partial class LimitHitParser
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex Message();
 
+    /// <summary>The furthest a session limit's reset can be from the message, by the clock: its 5 hours, and one for a DST change.</summary>
+    private static readonly TimeSpan SessionResetReach = TimeSpan.FromHours(6);
+
     /// <summary>
-    /// A time with no date is the next occurrence after the message. A date with no year is this
+    /// A time with no date is the next occurrence after the message (a session reset just passed stays the one passed). A date with no year is this
     /// year's, or next year's when that's the only way it lands after the message.
     /// </summary>
     public static bool TryParse(string text, DateTime atUtc, out LimitHit hit)
@@ -124,7 +127,11 @@ public static partial class LimitHitParser
         else
         {
             reset = local.Date.AddHours(hour).AddMinutes(minute);
-            if (reset <= local) reset = reset.AddDays(1);
+            // A session window is 5 hours, so a session reset is never most of a day off: one the message was written just
+            // after (the refusal logged a second late, or a reset shown cut to the minute) is the one just passed, not
+            // tomorrow's, which would hold every CLI at the stop for a day (M.ORCH-T381). An hour's slack covers a DST change.
+            var kindIsSession = m.Groups["kind"].Value.Equals("session", StringComparison.OrdinalIgnoreCase);
+            if (reset <= local && (!kindIsSession || reset.AddDays(1) - local <= SessionResetReach)) reset = reset.AddDays(1);
         }
 
         while (zone.IsInvalidTime(reset)) reset = reset.AddMinutes(30);

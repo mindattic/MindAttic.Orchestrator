@@ -18,6 +18,10 @@ public sealed class LimitCalibrationTests
         TestName = "Same-day reset in the message's zone")]
     [TestCase("You've hit your session limit · resets 4:40am (America/Chicago)", "2026-10-14T04:00:00Z", "2026-10-14T09:40:00Z",
         TestName = "A time already past today is tomorrow's")]
+    [TestCase("You've hit your session limit · resets 2pm (America/Chicago)", "2026-10-13T19:00:02Z", "2026-10-13T19:00:00Z",
+        TestName = "A session reset the message was written just after is the one passed, not tomorrow's")]
+    [TestCase("You've hit your weekly limit · resets 2pm (America/Chicago)", "2026-10-13T19:00:02Z", "2026-10-14T19:00:00Z",
+        TestName = "A weekly reset with no date just passed is tomorrow's")]
     [TestCase("You've hit your session limit · resets 2pm (America/Chicago)", "2026-10-13T15:00:00Z", "2026-10-13T19:00:00Z",
         TestName = "Hour without minutes")]
     [TestCase("You've hit your weekly limit · resets Sep 24, 4pm (America/Chicago)", "2026-09-20T22:49:00Z", "2026-09-24T21:00:00Z",
