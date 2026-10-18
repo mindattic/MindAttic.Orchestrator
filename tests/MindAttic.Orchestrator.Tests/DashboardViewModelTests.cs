@@ -223,4 +223,36 @@ public sealed class DashboardViewModelTests
     [TestCase(true, false, 60)]
     public void Shown_refreshes_every_5s_hidden_every_15s_holding_the_lease_else_60s(bool hidden, bool holdsLease, int seconds) =>
         Assert.That(MainWindow.RefreshInterval(hidden, holdsLease), Is.EqualTo(TimeSpan.FromSeconds(seconds)));
+
+    // ── A scheduled audit picked up ─────────────────────────────────────────
+
+    [Test]
+    public void A_new_audit_whose_read_failed_is_picked_up_at_the_next_refresh_not_the_next_audit()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "orch-audit-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var store = new JsonStore(dir);
+            var runner = new MindAttic.Orchestrator.Audit.AuditRunner(new OrchestratorOptions { WorkspaceRoot = dir }, store);
+            var file = Path.Combine(dir, "audit.json");
+            var seen = default(DateTime);
+            Assert.That(MainViewModel.NewerAudit(runner, file, ref seen, null), Is.Null, "no audit yet");
+
+            // The daemon's audit lands, but this refresh can't read it (caught mid-replace, or half written).
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(file, "{ \"RanUtc\": \"2026-10-15T");
+            var stamp = new DateTime(2026, 10, 15, 13, 0, 0, DateTimeKind.Utc);
+            File.SetLastWriteTimeUtc(file, stamp);
+            Assert.That(MainViewModel.NewerAudit(runner, file, ref seen, null), Is.Null);
+            Assert.That(seen, Is.EqualTo(default(DateTime)), "not taken as seen");
+
+            // Readable at the next refresh, the file unchanged since: it's shown then.
+            store.Save("audit", new MindAttic.Orchestrator.Audit.AuditReport(Now, TimeSpan.FromSeconds(2), 3, 40, [], [], []));
+            File.SetLastWriteTimeUtc(file, stamp);
+            Assert.That(MainViewModel.NewerAudit(runner, file, ref seen, null)?.RanUtc, Is.EqualTo(Now));
+            Assert.That(seen, Is.EqualTo(stamp));
+            Assert.That(MainViewModel.NewerAudit(runner, file, ref seen, null), Is.Null, "once");
+        }
+        finally { if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true); }
+    }
 }
