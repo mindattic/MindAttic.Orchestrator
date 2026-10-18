@@ -601,5 +601,8 @@ public sealed partial class MainViewModel
 
         foreach (var name in new[] { nameof(Hold), nameof(HasHold), nameof(SlotsText), nameof(AutopilotText), nameof(QueueCount), nameof(EmptyQueueText) })
             Raise(name);
+        // A row's Start and Release are enabled by whether it's assigned, which the refresh just changed: WPF rechecks a
+        // command only on input, so the button shown would stay disabled until some unrelated click (M.ORCH-T351).
+        CommandManager.InvalidateRequerySuggested();
     }
 }
