@@ -813,6 +813,38 @@ public sealed class AutopilotTests
         Assert.That(Directory.Exists(tree), Is.False, "its worktree removed");
     }
 
+    [Test]
+    public void A_landed_clean_worktree_whose_ticket_the_database_doesnt_have_is_tidied()
+    {
+        // M.ORCH-T368: worktrees of an old prefix (USS- before U.SPC-) were reported unlanded after every start, and kept.
+        var origin = Path.Combine(dir, "origin.git");
+        var repo = Path.Combine(dir, "A");
+        Git(dir, "init", "-q", "--bare", "-b", "main", origin);
+        Git(dir, "clone", "-q", origin, repo);
+        Directory.CreateDirectory(Path.Combine(repo, "docs"));
+        File.WriteAllText(Path.Combine(repo, "docs", "USER_STORIES.md"),
+            "---\ncode: A\n---\n\n# A\n\n## Tickets\n\n| ID | Date | Type | Status | Summary | Ref |\n|---|---|---|---|---|---|\n| A-T1 | 2026-10-01 | fix | open | x | — |\n");
+        Git(repo, "add", ".");
+        Git(repo, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init");
+        Git(repo, "push", "-q", "origin", "HEAD:main");
+        try
+        {
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(MindAttic.Workflow.Data.WorkflowDb.DefaultPath(dir)))
+                db.Import([new MindAttic.Workflow.Repo("A", repo)]);
+            var tree = Path.Combine(dir, "wt", "OLD-T9");
+            Assert.That(Dispatcher.EnsureWorktree(repo, tree, "orch/old-t9").Ok);
+
+            var (closed, note) = Autopilot.LandOnMain(new Assignment("OLD-T9", "A", tree, "Claude", Now, true), repo);
+
+            Assert.That(closed, Is.True, note);
+            Assert.That(Directory.Exists(tree), Is.False, "tidied");
+            var open = Path.Combine(dir, "wt", "A-T1");
+            Assert.That(Dispatcher.EnsureWorktree(repo, open, "orch/a-t1").Ok);
+            Assert.That(Autopilot.LandOnMain(new Assignment("A-T1", "A", open, "Claude", Now, true), repo).Closed, Is.False, "a known open ticket isn't");
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
+    }
+
     private static void Git(string where, params string[] args)
     {
         var psi = new System.Diagnostics.ProcessStartInfo("git") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };

@@ -320,7 +320,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(Path.GetDirectoryName(repoPath)))
         {
             if (db is not null)
-                closed = db.Ticket(a.TicketId)?.Ticket.Status is "closed" or "wont-do";
+                // A ticket the database doesn't have (an old prefix, USS- before U.SPC-) isn't open work either: its worktree
+                // is tidied if it's landed and clean, not reported unlanded after every start (M.ORCH-T368).
+                closed = db.Ticket(a.TicketId) is not { } known || known.Ticket.Status is "closed" or "wont-do";
             else
             {
                 var (code, stories) = Dispatcher.Git(repoPath, "show", $"origin/{mainline}:docs/USER_STORIES.md");
