@@ -31,6 +31,34 @@ public sealed class InstallerTests
         Assert.That(Installer.TaskRuns(exported.Replace("o'brien", "someone"), exe), Is.False, "another exe is registered again");
     }
 
+    [Test]
+    public void The_logon_task_is_recognised_with_a_non_ascii_user_name_in_the_path()
+    {
+        // M.ORCH-T449: schtasks /Query /XML, piped, writes in its console's OEM code page (437 for a windowless daemon), not the
+        // UTF-16 it declares, and was read as UTF-8: the é never matched, and the task was registered again on every start.
+        const string exe = @"C:\Users\José Müller\AppData\Local\Programs\MindAttic.Orchestrator\MindAttic.Orchestrator.exe";
+        var xml = Installer.TaskXml(exe, @"PC\José Müller");
+        Assert.That(Installer.TaskRuns(xml, exe), Is.True, "the XML as Task Scheduler's API returns it, a string, matches");
+
+        System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+        var throughTheConsole = System.Text.Encoding.UTF8.GetString(System.Text.Encoding.GetEncoding(437).GetBytes(xml));
+        Assert.That(Installer.TaskRuns(throughTheConsole, exe), Is.False, "the old console round trip lost it: why the XML isn't read that way");
+    }
+
+    [TestCase(@"\MindAttic\Orchestrator\Orchestrator daemon", @"\MindAttic\Orchestrator", "Orchestrator daemon")]
+    [TestCase(@"\At the root", @"\", "At the root")]
+    [TestCase("No slash", @"\", "No slash")]
+    public void A_task_path_splits_into_its_folder_and_name(string path, string folder, string name) =>
+        Assert.That(Installer.SplitTaskPath(path), Is.EqualTo((folder, name)));
+
+    [Test]
+    public void A_task_that_isnt_registered_reads_as_none()
+    {
+        // Read-only: nothing is registered or deleted.
+        Assert.That(Installer.ReadTaskXml($@"\MindAttic\Orchestrator\No such task {Guid.NewGuid():N}"), Is.Null);
+        Assert.That(Installer.ReadTaskXml($@"\No such folder {Guid.NewGuid():N}\No such task"), Is.Null);
+    }
+
     [TestCase(@"D:\Projects\MindAttic\MindAttic.Orchestrator\src\MindAttic.Orchestrator.Wpf\bin\Debug\net10.0-windows\MindAttic.Orchestrator.exe", true)]
     [TestCase(@"Z:\x\src\MindAttic.Orchestrator.Wpf\obj\Release\net10.0-windows\win-x64\MindAttic.Orchestrator.exe", true)]
     [TestCase(@"Z:\Projects\MindAttic.worktrees\MindAttic.Orchestrator\M.ORCH-T200\artifacts\MindAttic.Orchestrator.exe", true)]

@@ -149,8 +149,7 @@ public sealed class Installer
     public string? EnsureDaemon(string exe)
     {
         string? did = null;
-        var (code, xml) = Run("schtasks", "/Query", "/TN", TaskName, "/XML");
-        if (code != 0 || !TaskRuns(xml, exe))
+        if (ReadTaskXml(TaskName) is not { } xml || !TaskRuns(xml, exe))
         {
             var file = Path.Combine(Path.GetTempPath(), $"mindattic-orchestrator-task-{Environment.ProcessId}.xml");
             try
@@ -255,6 +254,39 @@ public sealed class Installer
     internal static bool TaskRuns(string xml, string exe) => xml.Contains(DaemonArg, StringComparison.Ordinal) &&
         (xml.Contains(Escape(exe), StringComparison.OrdinalIgnoreCase) ||
          xml.Contains(exe.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;"), StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// The registered task's XML, or null when there's no such task. Read through the Task Scheduler's COM API, as a string,
+    /// never from <c>schtasks /Query /XML</c>: piped, that writes the XML in its console's code page (the OEM one, 437 or 850,
+    /// for a windowless daemon), not the UTF-16 it declares, so a path with é in it (C:\Users\José) came back as something
+    /// else, never matched, and the task was registered again on every start (M.ORCH-T449).
+    /// </summary>
+    internal static string? ReadTaskXml(string taskPath)
+    {
+        var (folder, name) = SplitTaskPath(taskPath);
+        var serviceType = Type.GetTypeFromProgID("Schedule.Service");
+        if (serviceType is null) return null;
+        object? service = null;
+        try
+        {
+            service = Activator.CreateInstance(serviceType)!;
+            dynamic scheduler = service;
+            scheduler.Connect();
+            dynamic task = scheduler.GetFolder(folder).GetTask(name);
+            return (string)task.Xml;
+        }
+        // Not registered (or its folder isn't): the COM call throws, as schtasks exited non-zero.
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or FileNotFoundException
+                                   or DirectoryNotFoundException or UnauthorizedAccessException) { return null; }
+        finally { if (service is not null && OperatingSystem.IsWindows()) System.Runtime.InteropServices.Marshal.FinalReleaseComObject(service); }
+    }
+
+    /// <summary>A task path (\MindAttic\Orchestrator\Orchestrator daemon) as its folder (\MindAttic\Orchestrator) and name.</summary>
+    internal static (string Folder, string Name) SplitTaskPath(string taskPath)
+    {
+        var slash = taskPath.LastIndexOf('\\');
+        return slash <= 0 ? (@"\", taskPath.TrimStart('\\')) : (taskPath[..slash], taskPath[(slash + 1)..]);
+    }
 
     private static (int Code, string Output) Run(string file, params string[] args)
     {
