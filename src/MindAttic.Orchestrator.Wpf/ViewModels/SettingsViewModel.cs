@@ -40,6 +40,10 @@ public sealed class SettingsViewModel : ObservableObject
     public string FilePath => System.IO.Path.Combine(store.Directory, "settings.json");
     public ICommand SaveCommand { get; }
 
+    /// <summary>Autopilot as the panel read it: the tray pauses and resumes it too while the panel is open, and a Save that
+    /// didn't touch the toggle mustn't put back what it read.</summary>
+    private bool loadedAutopilot;
+
     public void Load()
     {
         var s = store.LoadSettings();
@@ -49,7 +53,7 @@ public sealed class SettingsViewModel : ObservableObject
         WarnPercent = s.WarnPercent.ToString(CultureInfo.InvariantCulture);
         MaxSessions = s.MaxConcurrentSessions.ToString(CultureInfo.InvariantCulture);
         Provider = s.DefaultProvider;
-        Autopilot = s.Autopilot;
+        Autopilot = loadedAutopilot = s.Autopilot;
         Pacing = s.Pacing;
         PaceTarget = s.PaceTargetPercent.ToString(CultureInfo.InvariantCulture);
         ThrottleAgents = s.ThrottleAgents;
@@ -77,7 +81,7 @@ public sealed class SettingsViewModel : ObservableObject
             store.SaveSettings(s with
             {
                 BlockBudget = block, WeeklyBudget = weekly, WeeklyReset = reset?.ToString(), WarnPercent = warn, MaxConcurrentSessions = max,
-                DefaultProvider = Provider, Autopilot = Autopilot, Pacing = Pacing, PaceTargetPercent = target,
+                DefaultProvider = Provider, Autopilot = Autopilot == loadedAutopilot ? s.Autopilot : Autopilot, Pacing = Pacing, PaceTargetPercent = target,
                 ThrottleAgents = ThrottleAgents, MaxAgentDelaySeconds = delay, ContextCyclePercent = cycleAt,
                 ExemptCommands = OrchestratorSettings.ParseCommands(ExemptCommands),
             });
