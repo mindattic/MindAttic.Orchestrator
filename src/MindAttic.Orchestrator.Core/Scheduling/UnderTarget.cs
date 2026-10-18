@@ -55,7 +55,8 @@ public sealed class UnderTarget
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var autopiloted = autopilotClis.Values.SelectMany(r => r).ToList();
         var worked = plan.Worked.Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return plan.Queue.Where(q => !q.IsAssigned && q.BlockedBy.Count == 0 && q.RepoPath.Length > 0 && !worked.Contains(q.Id) &&
+        // An unapproved ticket stays in the queue while assigned; gone stale it waits for your yes, not for a CLI (M.ORCH-T393).
+        return plan.Queue.Where(q => !q.IsAssigned && q.MayWork && q.BlockedBy.Count == 0 && q.RepoPath.Length > 0 && !worked.Contains(q.Id) &&
                                      (withCli.Contains(q.Repo) || Autopilot.Named(autopiloted, q.Repo)));
     }
 

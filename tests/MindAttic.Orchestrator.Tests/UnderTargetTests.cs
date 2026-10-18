@@ -77,6 +77,19 @@ public sealed class UnderTargetTests
         Assert.That(Check(new UnderTarget(), blocked).Line, Is.Null);
     }
 
+    [Test]
+    public void An_unapproved_ticket_whose_assignment_went_stale_does_not_quiet_it()
+    {
+        // M.ORCH-T393: dispatched, then approve --undo; once stale nothing will start it, so it's no CLI's work.
+        var at = End.AddMinutes(-40);
+        var snap = Snap(at, 50, Repo("A", RepoState.Waiting, T("A-T1", "feature")));
+        var quiet = new Assignment("A-T1", "A", @"D:\Projects\MindAttic.worktrees\A\A-T1", "Claude", at.AddHours(-20), Worktree: true);
+        var plan = Scheduler.Plan(snap, new OrchestratorSettings(), [quiet]);
+
+        Assert.That(plan.Stale.Single().Id, Is.EqualTo("A-T1"), "still in the queue, stale");
+        Assert.That(new UnderTarget().Check(snap, plan, NoAutopilot, at), Does.Contain("would go unused"));
+    }
+
     /// <summary>M.ORCH-T373: a ticket estimated past what's left before the reset is one autopilot won't start, so it doesn't
     /// keep the warning quiet; the warning names it as one a person in an open CLI can still pick up, or split.</summary>
     [Test]
