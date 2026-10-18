@@ -242,6 +242,15 @@ public sealed class PacerTests
         var late = Pace(10.5, 1, s, E(10, 920));
         Assert.That((late.WindDown, late.Stop), Is.EqualTo((true, false)));
         Assert.That(late.WindDownNote, Does.Contain("90%").And.Contains("workflow ticket new").And.Not.Contain("/quicksave"));
+        // The same on any Windows language (M.ORCH-T404): de-DE would say "90 %" and drop AM/PM.
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("de-DE");
+            Assert.That(late.WindDownNote, Does.Contain("past 90% of its limit").And.Match(@"\(resets (\w{3} )?\d{1,2}:\d\d [AP]M\)"));
+            Assert.That(late.WindDownHold, Does.Contain("past 90% of its limit").And.Match(@" at (\w{3} )?\d{1,2}:\d\d [AP]M$"));
+        }
+        finally { System.Globalization.CultureInfo.CurrentCulture = culture; }
 
         var spent = Pace(10.5, 1, s, E(10, 990));
         Assert.That(spent.Stop, Is.True, "99% is the target: nothing more is spent");

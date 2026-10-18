@@ -70,11 +70,14 @@ public sealed record Pace(
 
     /// <summary>Why no new ticket starts past the wind-down line; empty when it isn't passed (or the window is stopped).</summary>
     public string WindDownHold => !WindDown || Stop ? "" :
-        $"the {Governing ?? "5-hour"} window is past {WindDownAt:P0} of its limit: no new ticket starts before it resets" +
-        (ResetUtc is { } r ? $" at {r.ToLocalTime():h:mm tt}" : "");
+        $"the {Governing ?? "5-hour"} window is past {WindDownPercent} of its limit: no new ticket starts before it resets" +
+        (ResetUtc is { } r ? $" at {Formatting.ResetTime(r, DateTime.UtcNow)}" : "");
+
+    // Written the same on any Windows language, as the rest of the notes are (M.ORCH-T404).
+    private string WindDownPercent => (WindDownAt * 100).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "%";
 
     public string WindDownNote => !WindDown || Stop ? "" :
-        $"The {Governing ?? "5-hour"} window is past {WindDownAt:P0} of its limit" + (ResetUtc is { } r ? $" (resets {r.ToLocalTime():h:mm tt})" : "") +
+        $"The {Governing ?? "5-hour"} window is past {WindDownPercent} of its limit" + (ResetUtc is { } r ? $" (resets {Formatting.ResetTime(r, DateTime.UtcNow)})" : "") +
         ", and work stops outright at the target. Don't start anything you can't finish before then. If the task you're on " +
         "won't finish, commit what's done and file the rest as a ticket (workflow ticket new --type <type> --summary \"...\").";
 
