@@ -392,15 +392,17 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         if (level == healthLevel) return;
         var offenders = sample.Offenders(why);
         if (level == Activity.HealthLevel.Ok)
-            Say(LogEventLevel.Information, "machine health is back to normal; autopilot can start agents again");
+            Say(LogEventLevel.Information, "machine health is back to normal");
         else
         {
             Say(level == Activity.HealthLevel.Danger ? LogEventLevel.Error : LogEventLevel.Warning,
-                $"machine health {level.ToString().ToLowerInvariant()}: {why} ({offenders}); autopilot starts no agents until it recovers");
+                // Said, not held: /autopilot CLIs hand out tickets through orchestrator next, which a busy machine doesn't
+                // stop (heavy load is the point), so the alert mustn't claim autopilot is holding (M.ORCH-T357).
+                $"machine health {level.ToString().ToLowerInvariant()}: {why} ({offenders})");
             // One alert per episode and per escalation: warn, then danger; not again for every step back down and up.
             if (level > alertedHealth)
                 Alert(level == Activity.HealthLevel.Danger ? "Machine in danger" : "Machine running low",
-                    $"{why}. {char.ToUpperInvariant(offenders[0])}{offenders[1..]}. Autopilot is holding.", urgent: level == Activity.HealthLevel.Danger);
+                    $"{why}. {char.ToUpperInvariant(offenders[0])}{offenders[1..]}.", urgent: level == Activity.HealthLevel.Danger);
         }
         alertedHealth = level == Activity.HealthLevel.Ok ? level : (Activity.HealthLevel)Math.Max((int)alertedHealth, (int)level);
         healthLevel = level;
