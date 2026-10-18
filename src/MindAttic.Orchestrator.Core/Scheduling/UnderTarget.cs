@@ -80,7 +80,8 @@ public sealed class UnderTarget
             ? "/autopilot is off in every CLI"
             : "/autopilot is on in " + string.Join("; ", autopilotClis.OrderBy(c => c.Key).Select(c =>
                 $"CLI {c.Key} for {string.Join(", ", c.Value.Select(r => r == Autopilot.AllRepos ? "every repo" : r))}"));
-        return $"The 5-hour window resets at {u.EndUtc.ToLocalTime():h:mm tt} (in {Math.Ceiling(left.TotalMinutes):0} min) and is on course to end at " +
+        // The clock as every other note writes it, on any Windows language (M.ORCH-T405).
+        return $"The 5-hour window resets at {Formatting.ResetTime(u.EndUtc, u.EndUtc - left)} (in {Math.Ceiling(left.TotalMinutes):0} min) and is on course to end at " +
                $"{u.ProjectedEndPercent:0}%, below {Percent:0}%: {unused} would go unused. {approval}. {autopilot}. Nothing is started or approved for you.";
     }
 

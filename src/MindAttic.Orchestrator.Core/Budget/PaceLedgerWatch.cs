@@ -111,9 +111,10 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
     private void Report(LedgerWindow w, DateTime nowUtc)
     {
         var live = nowUtc - w.EndUtc <= Live;
-        var line = $"window {w.StartUtc.ToLocalTime():MMM d h:mm tt}–{w.EndUtc.ToLocalTime():h:mm tt} closed {w.Grade.ToString().ToLowerInvariant()}: {w.Why}" +
-                   (w.PeakPercent is { } p ? $", peak {p:0}%" : "") +
-                   (w.Held > 0 ? $", {w.Held} calls held ({w.HeldMinutes:0.#} min)" : "") +
+        // Written the same on any Windows language: a 12-hour clock with no AM/PM can't be read (M.ORCH-T405).
+        var line = string.Create(System.Globalization.CultureInfo.InvariantCulture, $"window {w.StartUtc.ToLocalTime():MMM d h:mm tt}–{w.EndUtc.ToLocalTime():h:mm tt} closed {w.Grade.ToString().ToLowerInvariant()}: {w.Why}") +
+                   (w.PeakPercent is { } p ? FormattableString.Invariant($", peak {p:0}%") : "") +
+                   (w.Held > 0 ? FormattableString.Invariant($", {w.Held} calls held ({w.HeldMinutes:0.#} min)") : "") +
                    (w.Refused > 0 ? $", {w.Refused} refused" : "") +
                    (w.PromptsAnswered > 0 ? $", {w.PromptsAnswered} typed prompts answered at the stop" : "") +
                    (live ? "" : " (backfilled)");
@@ -126,7 +127,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
         if (w.Grade == WindowGrade.Over)
         {
             alert("Window went over", line, true);
-            Filed(FileTicket($"[pace-ledger over {w.EndUtc:yyyy-MM-ddTHH:mmZ}] Claude reported 100% in the 5-hour window ending {w.EndUtc.ToLocalTime():MMM d h:mm tt} without a limit hit being read: {line}. Find what got past the 99% stop."));
+            Filed(FileTicket(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"[pace-ledger over {w.EndUtc:yyyy-MM-ddTHH:mmZ}] Claude reported 100% in the 5-hour window ending {w.EndUtc.ToLocalTime():MMM d h:mm tt} without a limit hit being read: {line}. Find what got past the 99% stop.")));
             return;
         }
         // Blind windows recur until the cause is fixed, so one open ticket (and one alert) stands for all of them.

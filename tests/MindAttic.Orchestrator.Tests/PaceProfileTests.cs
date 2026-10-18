@@ -68,6 +68,16 @@ public sealed class PaceProfileTests
         Assert.That(front.SustainablePerHour, Is.GreaterThan(0));
         Assert.That((front.WindDown, front.WindDownAt, front.SubagentAllowance, front.Stop), Is.EqualTo((true, 0.85, (int?)0, false)));
         Assert.That(front.SubagentNote, Does.Contain("wind-down line"));
+        // Written the same on any Windows language (M.ORCH-T405): a culture with "85 %" percents doesn't change it.
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            var spaced = (System.Globalization.CultureInfo)System.Globalization.CultureInfo.GetCultureInfo("en-US").Clone();
+            spaced.NumberFormat.PercentPositivePattern = 0; // "85 %"
+            System.Globalization.CultureInfo.CurrentCulture = spaced;
+            Assert.That(front.SubagentNote, Does.Contain("past its 85% wind-down line"));
+        }
+        finally { System.Globalization.CultureInfo.CurrentCulture = culture; }
         Assert.That(front.WindDownHold, Does.Contain("85"));
 
         // Linear is untouched: its wind-down stays at 90%.

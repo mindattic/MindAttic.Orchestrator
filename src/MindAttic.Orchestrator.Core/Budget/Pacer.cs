@@ -85,7 +85,7 @@ public sealed record Pace(
     public string SubagentNote => SubagentAllowance switch
     {
         null => "",
-        0 => $"Subagents: none new right now ({(WindDown && !Stop && Profile == OrchestratorSettings.FrontLoadedProfile ? $"the {Governing ?? "5-hour"} window is past its {WindDownAt:P0} wind-down line" : Note)}). Finish with the {Subagents} running; a new one waits until there's room.",
+        0 => $"Subagents: none new right now ({(WindDown && !Stop && Profile == OrchestratorSettings.FrontLoadedProfile ? $"the {Governing ?? "5-hour"} window is past its {WindDownPercent} wind-down line" : Note)}). Finish with the {Subagents} running; a new one waits until there's room.",
         var a when a > Subagents => $"Subagents: up to {a} may run at once across all agents ({Subagents} running now). There's room under the 5-hour pace, " +
             "so hand independent pieces (searches, separate files, test runs, reviews) to parallel subagents rather than doing them one after another.",
         var a => $"Subagents: {a} at once across all agents ({Subagents} running now). Usage is ahead of the 5-hour pace, so don't start extra subagents; a new one waits for a free slot.",

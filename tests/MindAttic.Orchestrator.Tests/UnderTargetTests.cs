@@ -78,6 +78,22 @@ public sealed class UnderTargetTests
     }
 
     [Test]
+    public void The_reset_time_is_written_the_same_on_any_windows_language()
+    {
+        // M.ORCH-T405: a culture with no AM/PM designators printed "resets at 6:00  (in 40 min)".
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            var bare = (System.Globalization.CultureInfo)System.Globalization.CultureInfo.GetCultureInfo("en-US").Clone();
+            bare.DateTimeFormat.AMDesignator = bare.DateTimeFormat.PMDesignator = "";
+            System.Globalization.CultureInfo.CurrentCulture = bare;
+            var line = Check(new UnderTarget(), Snap(End.AddMinutes(-40), 50, Repo("A", RepoState.Dormant))).Line;
+            Assert.That(line, Does.Match(@"resets at \d{1,2}:\d\d [AP]M \(in 40 min\)"));
+        }
+        finally { System.Globalization.CultureInfo.CurrentCulture = culture; }
+    }
+
+    [Test]
     public void An_unapproved_ticket_whose_assignment_went_stale_does_not_quiet_it()
     {
         // M.ORCH-T393: dispatched, then approve --undo; once stale nothing will start it, so it's no CLI's work.
