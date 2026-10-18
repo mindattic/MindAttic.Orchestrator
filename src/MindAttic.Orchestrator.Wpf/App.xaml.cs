@@ -203,7 +203,15 @@ public partial class App : Application
         };
         if (dialog.ShowDialog() != true) return false;
         if (build && !BuildWorkspaceWindow.Run(dialog.FolderName, log)) return false;
-        store.SaveSettings(store.LoadSettings() with { WorkspaceRoot = dialog.FolderName });
+        // Not LoadSettings: a settings.json that can't be read would be saved over with defaults, every budget, priority,
+        // approval and reservation lost; and a save that fails is said, not a crash at startup (M.ORCH-T337).
+        try { store.SaveSettings(store.LoadSettingsToChange() with { WorkspaceRoot = dialog.FolderName }); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            log.Error(ex, "Couldn't save the workspace folder");
+            MessageBox.Show($"Couldn't save the workspace folder: {ex.Message}", "MindAttic Orchestrator", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
         log.Information("Workspace set to {Root:l}", dialog.FolderName);
         return true;
     }
