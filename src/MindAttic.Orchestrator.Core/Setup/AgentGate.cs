@@ -1572,7 +1572,7 @@ public static class AgentGate
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         JsonObject? root;
-        try { root = File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path), documentOptions: StrictKeys) as JsonObject : new JsonObject(); }
+        try { root = File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path), documentOptions: CommentedStrictKeys) as JsonObject : new JsonObject(); }
         catch (JsonException) { return null; }
         if (root is null || !AddHook(root, hookEvent, scriptName, command, timeout)) return null;
         WriteReplacing(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
@@ -1582,6 +1582,10 @@ public static class AgentGate
     /// <summary>A repeated key (a hand edit; JavaScript keeps the last one) is a JsonException at parse, which the readers catch:
     /// by default JsonNode only throws an ArgumentException on first access, which escaped every daemon tick (M.ORCH-T427).</summary>
     private static readonly JsonDocumentOptions StrictKeys = new() { AllowDuplicateProperties = false };
+
+    /// <summary>Gemini CLI reads its settings.json with comments stripped: one with a // comment was taken as unreadable and
+    /// skipped without a word, so Gemini's tool calls ran ungated (M.ORCH-T428). Its comments don't survive the rewrite.</summary>
+    private static readonly JsonDocumentOptions CommentedStrictKeys = new() { AllowDuplicateProperties = false, CommentHandling = JsonCommentHandling.Skip };
 
     /// <summary>Puts <paramref name="text"/> in place whole: a hook started mid-write would run half a script (a SyntaxError
     /// Claude Code shrugs off, so that call goes ungated), and the temp file is this writer's own, so the dashboard and the

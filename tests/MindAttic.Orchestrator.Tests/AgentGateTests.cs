@@ -220,4 +220,17 @@ public sealed class AgentGateTests
         File.WriteAllText(Path.Combine(Codex, "hooks.json"), "{ \"hooks\": {}, \"hooks\": {} }");
         Assert.That(Others(), Is.Null, "a repeated key is left alone, not thrown (M.ORCH-T427)");
     }
+
+    [Test]
+    public void A_gemini_settings_json_with_comments_still_gets_the_gate()
+    {
+        AgentGate.Ensure(Claude);
+        Directory.CreateDirectory(Gemini);
+        File.WriteAllText(Path.Combine(Gemini, "settings.json"), "{\n  // my theme\n  \"theme\": \"Dracula\" /* dark */\n}");
+
+        Assert.That(Others(), Does.Contain("Gemini: wired BeforeTool"), "Gemini strips comments, so the file is readable (M.ORCH-T428)");
+        var gemini = Json(Path.Combine(Gemini, "settings.json"));
+        Assert.That((string?)gemini["theme"], Is.EqualTo("Dracula"));
+        Assert.That(gemini["hooks"]!["BeforeTool"]!.ToJsonString(), Does.Contain(AgentGate.ScriptName));
+    }
 }
