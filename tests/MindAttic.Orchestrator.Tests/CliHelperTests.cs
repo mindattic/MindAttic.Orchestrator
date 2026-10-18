@@ -69,6 +69,22 @@ public sealed class CliHelperTests
         Assert.That(ReportCommand.WeekOf(new DateOnly(2026, 10, 11)), Is.EqualTo(new DateOnly(2026, 10, 5)), "Sunday ends the week before");
     }
 
+    [Test]
+    public void The_report_csv_adds_a_reset_days_tokens_before_the_reset_into_that_days_row()
+    {
+        // M.ORCH-T397: kept apart in the history, they came out as a second row that looked the same.
+        var day = new DateOnly(2026, 10, 15);
+        var (text, rows) = ReportCommand.Csv([
+            new DayUsage(day, "A", "claude", 100, "acct", Now.AddHours(-2)),
+            new DayUsage(day, "A", "claude", 50, "acct"),
+            new DayUsage(day, "B", "claude", 7, "acct"),
+        ]);
+
+        Assert.That(rows, Is.EqualTo(2));
+        Assert.That(text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Skip(1),
+            Is.EqualTo(new[] { "2026-10-12,2026-10-15,\"A\",claude,\"acct\",150", "2026-10-12,2026-10-15,\"B\",claude,\"acct\",7" }));
+    }
+
     private static BudgetStatus B(double percent, long limit = 20_000_000, bool peak = false, LimitSource source = LimitSource.Manual) =>
         new(new UsageBlock(Now.AddHours(-2), Now.AddHours(3), new TokenUsage((long)(limit * percent / 100), 0, 0, 0), Now), limit, peak, percent,
             default, new TokenUsage(4_000_000, 0, 0, 0), null, null, 0, null, 80) { BlockLimitSource = source, WeekStartUtc = Now.AddDays(-3) };

@@ -20,6 +20,21 @@ internal sealed class ReportCommand : Command<ReportCommand.Settings>
         public string? Csv { get; init; }
     }
 
+    /// <summary>The CSV of <paramref name="rows"/>, one row per day, repo, provider and account: a reset day's tokens before the
+    /// reset, kept apart in the history (<see cref="DayUsage.BeforeUtc"/>), are added in, not a second row that looks the same (M.ORCH-T397).</summary>
+    internal static (string Text, int Rows) Csv(IEnumerable<DayUsage> rows)
+    {
+        var sb = new StringBuilder("week,day,repo,provider,account,uncached_tokens\n");
+        var count = 0;
+        foreach (var g in rows.GroupBy(r => (r.Day, r.Repo, r.Provider, r.Account)))
+        {
+            var (day, repo, provider, account) = g.Key;
+            sb.Append(CultureInfo.InvariantCulture, $"{WeekOf(day):yyyy-MM-dd},{day:yyyy-MM-dd},\"{repo.Replace("\"", "\"\"")}\",{provider},\"{account?.Replace("\"", "\"\"")}\",{g.Sum(r => r.Fresh)}\n");
+            count++;
+        }
+        return (sb.ToString(), count);
+    }
+
     internal static DateOnly WeekOf(DateOnly d) => d.AddDays(-(((int)d.DayOfWeek + 6) % 7)); // Mondays
 
     public override int Execute(CommandContext context, Settings settings)
@@ -48,11 +63,9 @@ internal sealed class ReportCommand : Command<ReportCommand.Settings>
 
         if (settings.Csv is { } csv)
         {
-            var sb = new StringBuilder("week,day,repo,provider,account,uncached_tokens\n");
-            foreach (var r in rows)
-                sb.Append(CultureInfo.InvariantCulture, $"{WeekOf(r.Day):yyyy-MM-dd},{r.Day:yyyy-MM-dd},\"{r.Repo.Replace("\"", "\"\"")}\",{r.Provider},\"{r.Account?.Replace("\"", "\"\"")}\",{r.Fresh}\n");
-            File.WriteAllText(csv, sb.ToString());
-            AnsiConsole.MarkupLine($"Wrote {rows.Count} rows to {Markup.Escape(Path.GetFullPath(csv))}.");
+            var (text, count) = Csv(rows);
+            File.WriteAllText(csv, text);
+            AnsiConsole.MarkupLine($"Wrote {count} rows to {Markup.Escape(Path.GetFullPath(csv))}.");
         }
         return 0;
     }
