@@ -33,6 +33,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         var cycler = new ContextCycler();
         var autopilot = new Autopilot(store, cycler, lease) { WaitingPath = Autopilot.DefaultWaitingPath };
         var waker = new LimitWaker(cycler, store);
+        // One daemon wakes the CLIs: an `orchestrator daemon` run beside the logon one would type every resume twice.
+        using var wakeLease = new DispatchLease(store.Directory, LimitWaker.LeaseName);
         string? lastPaused = null;
         cycler.Prune(DateTime.UtcNow);
         var prunedUtc = DateTime.UtcNow;
@@ -89,7 +91,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     if (line.StartsWith("keep-going: let the ", StringComparison.Ordinal)) Alert("Needs you", line["keep-going: ".Length..]);
                 }
                 // A CLI that stopped for a window is told to carry on (or you're told it's waiting) once that window resets (M.ORCH-T256).
-                ReportWakes(waker.Tick(snapshot.Pace, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
+                if (wakeLease.TryAcquire())
+                    ReportWakes(waker.Tick(snapshot.Pace, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
 
                 // An agent finished its turn and is waiting on you: the alert worth leaving the desk for.
                 foreach (var repo in snapshot.Repos)

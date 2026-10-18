@@ -5,11 +5,12 @@ namespace MindAttic.Orchestrator.Scheduling;
 /// otherwise both type the same story into a CLI. It's a lock file held open with no sharing, so it's
 /// released when the holder exits, crashes included, and works from any thread.
 /// </summary>
-public sealed class DispatchLease(string directory) : IDisposable
+/// <param name="name">The lock file: another name is a lease of its own (the daemons' <see cref="Sessions.LimitWaker"/> takes one).</param>
+public sealed class DispatchLease(string directory, string name = "dispatch.lock") : IDisposable
 {
     private FileStream? held;
 
-    public string Path { get; } = System.IO.Path.Combine(directory, "dispatch.lock");
+    public string Path { get; } = System.IO.Path.Combine(directory, name);
 
     public bool IsHeld => held is not null;
 

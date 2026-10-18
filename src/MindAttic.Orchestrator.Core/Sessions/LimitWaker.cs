@@ -18,6 +18,9 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
     /// <summary>The stops already woken (session and reset), in the orchestrator's store.</summary>
     public const string WokenName = "limit-wakes";
 
+    /// <summary>The lock file only the daemon that wakes the CLIs holds (a <see cref="Scheduling.DispatchLease"/> of its own).</summary>
+    public const string LeaseName = "limit-wake.lock";
+
     /// <summary>How long past the reset before waking: the meter probe and the status catch up with the new window first.</summary>
     public static readonly TimeSpan Grace = TimeSpan.FromMinutes(1);
 
