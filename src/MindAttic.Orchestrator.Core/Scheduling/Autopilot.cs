@@ -428,7 +428,8 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         foreach (var item in open)
         {
             if (handed.Count >= more) break;
-            if (inRepo.GetValueOrDefault(item.Repo) >= OrchestratorSettings.ForRepo(settings.RepoMaxSessions, item.Repo, int.MaxValue))
+            if (plan.OverRepoCap.Contains(item.Repo) ||
+                inRepo.GetValueOrDefault(item.Repo) >= OrchestratorSettings.ForRepo(settings.RepoMaxSessions, item.Repo, int.MaxValue))
             {
                 capped.Add(item.Repo);
                 continue;
@@ -456,7 +457,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             inRepo[item.Repo] = inRepo.GetValueOrDefault(item.Repo) + 1;
         }
         return (handed, handed.Count > 0 ? null
-            : capped.Count > 0 ? $"{string.Join(", ", capped)} {(capped.Count == 1 ? "is" : "are")} at the cap you set (settings --repo-sessions); nothing else is ready"
+            : capped.Count > 0 ? $"{string.Join(", ", capped)} {(capped.Count == 1 ? "is" : "are")} at the cap you set (settings --repo-sessions or --repo-cap); nothing else is ready"
             : claimedElsewhere > 0 ? "another CLI claimed them first; nothing else is ready"
             : "couldn't make a worktree for any of them (see orchestrator queue)");
     }

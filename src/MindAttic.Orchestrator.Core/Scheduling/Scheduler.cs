@@ -84,6 +84,10 @@ public sealed record SchedulePlan(
     /// <summary>Tickets a live agent is working without an assignment (one it filed this turn and is fixing, or one its prompt
     /// or worktree names): never proposed or handed out, or two agents fix the same thing (M.ORCH-T255).</summary>
     public IReadOnlyList<WorkedTicket> Worked { get; init; } = [];
+
+    /// <summary>Repos that have spent their cap of the 5-hour limit this block (settings --repo-cap): nothing more starts
+    /// there, proposed or handed out (M.ORCH-T369).</summary>
+    public IReadOnlySet<string> OverRepoCap { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>
@@ -261,6 +265,9 @@ public static partial class Scheduler
             // Waiting for approval too: an old feature nobody approved is the likeliest to close as wont-do.
             Groom = [.. queue.Concat(awaiting).Where(q => q.Old && q.Assignment is null)],
             AwaitingApproval = awaiting, Worked = worked,
+            OverRepoCap = queue.Select(q => q.Repo).Distinct(StringComparer.OrdinalIgnoreCase)
+                .Where(r => OrchestratorSettings.ForRepo(settings.RepoBudgetPercent, r, 0) is > 0 and var pct && limit5h > 0 && RepoSpent(r) >= limit5h * pct / 100)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase),
         };
     }
 

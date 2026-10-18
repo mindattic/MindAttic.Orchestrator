@@ -370,7 +370,32 @@ public sealed class AutopilotTests
         Assert.That(handed.Select(h => h.Item.Id), Is.EquivalentTo(new[] { "A-T1", "A-T2", "B-T1" }));
 
         var (more, why) = Autopilot.Next(Paced(snap, 5), settings, store, ["A"], 10, claim: true, Now, Make, _ => "main");
-        Assert.That((more.Count, why), Is.EqualTo((0, "A is at the cap you set (settings --repo-sessions); nothing else is ready")), "its two are being worked");
+        Assert.That((more.Count, why), Is.EqualTo((0, "A is at the cap you set (settings --repo-sessions or --repo-cap); nothing else is ready")), "its two are being worked");
+    }
+
+    [Test]
+    public void Next_hands_nothing_more_to_a_repo_past_its_share_of_the_5_hour_limit()
+    {
+        // M.ORCH-T369: settings --repo-cap held only the dashboard's proposals; next --claim went on handing A out.
+        var blockStart = Now.AddHours(-2);
+        var spent = new TranscriptSession("s", @"D:\W\A", Now.AddMinutes(-5), default, null)
+        {
+            Events = [new UsageEvent(Now.AddMinutes(-30), new TokenUsage(0, 0, 0, 3_000_000))],
+        };
+        var snap = Snap(("A", [T("A-T1")]), ("B", [T("B-T1")])) is var s0
+            ? s0 with
+            {
+                Repos = [s0.Repos[0] with { Sessions = [spent] }, s0.Repos[1]],
+                Budget = new BudgetStatus(new UsageBlock(blockStart, blockStart.AddHours(5), default, Now), 10_000_000, false, 30, default, default, null, null, 0, null, 90),
+            }
+            : null!;
+        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT", RepoBudgetPercent = new() { ["A"] = 20 } };
+        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
+        var plan = Scheduler.Plan(snap, settings, store.LoadAssignments()) with { Pace = new Pace(PaceMode.Open, 6, 10_000, 0, 1_000, "5-hour", Now.AddHours(3), "On pace.") { SpareSessions = 5 } };
+
+        Assert.That(plan.OverRepoCap, Is.EquivalentTo(new[] { "A" }), "3M of a 10M limit is past A's 20%");
+        var (handed, _) = Autopilot.Next(plan, settings, store, ["*"], 10, claim: false, Now, Make, _ => "main");
+        Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "B-T1" }));
     }
 
     [Test]
