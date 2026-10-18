@@ -131,7 +131,11 @@ $installed = Find-Installed
 $outdated = $installed -and (Test-Path $artifact) -and ((Get-FileHash $artifact).Hash -ne (Get-FileHash $installed).Hash)
 if ((Test-Path $artifact) -and ($built -or -not $installed -or $outdated)) {
     Write-Host 'Installing (stops a running copy and its daemon; the daemon restarts from the new build)...' -ForegroundColor Cyan
-    Stop-From 'orchestrator' $cliOut   # an old-layout daemon still running from the CLI folder
+    # An old-layout daemon still running from the CLI folder; only it: a CLI call in flight (an /autopilot CLI's
+    # `orchestrator next --claim`) is left to finish, as a deploy that doesn't republish the CLI must.
+    Get-CimInstance Win32_Process -Filter "Name='orchestrator.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($cliOut, [System.StringComparison]::OrdinalIgnoreCase) -and $_.CommandLine -match '\sdaemon\b' } |
+        ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop } catch { } }
     $install = Start-Process -FilePath $artifact -ArgumentList '--install' -Wait -PassThru
     $installed = Find-Installed
     if ($install.ExitCode -eq 0 -and $installed) { Write-Host "Installed $installed" -ForegroundColor Green }
