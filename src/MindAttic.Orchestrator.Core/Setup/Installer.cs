@@ -143,7 +143,7 @@ public sealed class Installer
     {
         string? did = null;
         var (code, xml) = Run("schtasks", "/Query", "/TN", TaskName, "/XML");
-        if (code != 0 || !xml.Contains(Escape(exe), StringComparison.OrdinalIgnoreCase) || !xml.Contains(DaemonArg, StringComparison.Ordinal))
+        if (code != 0 || !TaskRuns(xml, exe))
         {
             var file = Path.Combine(Path.GetTempPath(), $"mindattic-orchestrator-task-{Environment.ProcessId}.xml");
             try
@@ -238,6 +238,13 @@ public sealed class Installer
     }
 
     private static string Escape(string s) => SecurityElement.Escape(s) ?? s;
+
+    /// <summary>Whether the task's exported XML runs <paramref name="exe"/> as the daemon. Task Scheduler's export escapes only
+    /// &amp;, &lt; and &gt; in text, never an apostrophe (C:\Users\o'brien), which <see cref="Escape"/> writes as &amp;apos;: looking
+    /// for that form alone never matched, so the task was registered again on every start (M.ORCH-T334).</summary>
+    internal static bool TaskRuns(string xml, string exe) => xml.Contains(DaemonArg, StringComparison.Ordinal) &&
+        (xml.Contains(Escape(exe), StringComparison.OrdinalIgnoreCase) ||
+         xml.Contains(exe.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;"), StringComparison.OrdinalIgnoreCase));
 
     private static (int Code, string Output) Run(string file, params string[] args)
     {

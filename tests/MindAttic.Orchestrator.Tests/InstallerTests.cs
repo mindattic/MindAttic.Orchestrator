@@ -20,6 +20,17 @@ public sealed class InstallerTests
         Assert.That(xml.Descendants(t + "LogonType").Single().Value, Is.EqualTo("InteractiveToken"), "autopilot types into CLIs on your desktop");
     }
 
+    [Test]
+    public void The_logon_task_is_recognised_as_task_scheduler_exports_it_with_an_apostrophe_or_ampersand_in_the_path()
+    {
+        // M.ORCH-T334: the export writes an apostrophe as is; only &, < and > are escaped.
+        const string exe = @"C:\Users\o'brien\AppData\Local\Programs\R&D\MindAttic.Orchestrator.exe";
+        var exported = $@"<Exec><Command>C:\Users\o'brien\AppData\Local\Programs\R&amp;D\MindAttic.Orchestrator.exe</Command><Arguments>{Installer.DaemonArg}</Arguments></Exec>";
+        Assert.That(Installer.TaskRuns(exported, exe), Is.True);
+        Assert.That(Installer.TaskRuns(Installer.TaskXml(exe, @"PC\o'brien"), exe), Is.True, "as written, too");
+        Assert.That(Installer.TaskRuns(exported.Replace("o'brien", "someone"), exe), Is.False, "another exe is registered again");
+    }
+
     [TestCase(@"D:\Projects\MindAttic\MindAttic.Orchestrator\src\MindAttic.Orchestrator.Wpf\bin\Debug\net10.0-windows\MindAttic.Orchestrator.exe", true)]
     [TestCase(@"Z:\x\src\MindAttic.Orchestrator.Wpf\obj\Release\net10.0-windows\win-x64\MindAttic.Orchestrator.exe", true)]
     [TestCase(@"Z:\Projects\MindAttic.worktrees\MindAttic.Orchestrator\M.ORCH-T200\artifacts\MindAttic.Orchestrator.exe", true)]
