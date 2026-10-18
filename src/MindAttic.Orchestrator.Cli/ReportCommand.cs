@@ -64,7 +64,13 @@ internal sealed class ReportCommand : Command<ReportCommand.Settings>
         if (settings.Csv is { } csv)
         {
             var (text, count) = Csv(rows);
-            File.WriteAllText(csv, text);
+            // A folder that isn't there or a file open in Excel is said in one line, not a crash.
+            try { File.WriteAllText(csv, text); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                AnsiConsole.MarkupLine($"[red]Couldn't write {Markup.Escape(csv)}: {Markup.Escape(ex.Message)}[/]");
+                return 1;
+            }
             AnsiConsole.MarkupLine($"Wrote {count} rows to {Markup.Escape(Path.GetFullPath(csv))}.");
         }
         return 0;

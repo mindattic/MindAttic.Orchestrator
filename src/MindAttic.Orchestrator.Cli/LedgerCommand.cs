@@ -50,7 +50,13 @@ internal sealed class LedgerCommand : Command<LedgerCommand.Settings>
             foreach (var w in rows)
                 sb.Append(CultureInfo.InvariantCulture,
                     $"{w.StartUtc:O},{w.EndUtc:O},{w.Grade},{w.PeakPercent},{w.FinalPercent},{w.Fresh},{w.Samples},{w.MinutesAtTarget},{w.LimitHitUtc:O},{w.WeeklyHitUtc:O},{w.Held},{w.HeldMinutes},{w.Refused},{w.PromptsAnswered},{Math.Round(w.Blind.TotalMinutes)},\"{w.Why.Replace("\"", "\"\"")}\",{w.Exempt}\n");
-            File.WriteAllText(csv, sb.ToString());
+            // A folder that isn't there or a file open in Excel is said in one line, not a crash (exit 2: 1 means a window went over).
+            try { File.WriteAllText(csv, sb.ToString()); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                AnsiConsole.MarkupLine($"[red]Couldn't write {Markup.Escape(csv)}: {Markup.Escape(ex.Message)}[/]");
+                return 2;
+            }
             AnsiConsole.MarkupLine($"Wrote {rows.Count} windows to {Markup.Escape(Path.GetFullPath(csv))}.");
         }
         return rows.Any(r => r.Grade == WindowGrade.Over && now - r.EndUtc <= TimeSpan.FromDays(Math.Max(1, settings.Days))) ? 1 : 0;
