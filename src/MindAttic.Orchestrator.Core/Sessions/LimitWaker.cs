@@ -44,9 +44,13 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
 
     private Dictionary<string, DateTime>? woken;
 
-    /// <summary>When the pace last stopped or wound down: a CLI whose own window reset while another still held it (the week
-    /// at its stop when the 5 hours reset) is woken when that one lifts, not forgotten for having waited.</summary>
-    private DateTime? heldUtc;
+    /// <summary>The last stretch the pace stopped or wound down without a break, as this process saw it: a CLI whose own window
+    /// reset inside it (the week at its stop when the 5 hours reset) is woken when it lifts, not forgotten for having waited.
+    /// Only a stop whose reset it covered: a stop already forgotten isn't brought back by a later window's wind-down.</summary>
+    private DateTime? holdStartUtc, heldUtc;
+
+    /// <summary>The tick before was held: a held tick after it continues that stretch rather than starting one.</summary>
+    private bool holding;
 
     /// <summary>What to wake now, woken: the newest session of each live CLI, idle, recorded as stopped for a window whose
     /// reset is at least <see cref="Grace"/> and at most <see cref="Forget"/> past (or the pace held on past it until lately), while <paramref name="pace"/> doesn't stop
@@ -55,9 +59,12 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
     {
         if (pace is { Stop: true } or { WindDown: true })
         {
+            if (!holding) holdStartUtc = nowUtc;
+            holding = true;
             heldUtc = nowUtc;
             return [];
         }
+        holding = false;
         woken ??= store.Load<Dictionary<string, DateTime>>(WokenName);
         var pruned = woken.Where(w => nowUtc - w.Value > Remember).Select(w => w.Key).ToList();
         foreach (var key in pruned) woken.Remove(key);
@@ -67,7 +74,7 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
             .GroupBy(c => c.Pid!.Value)
             .Select(g => g.MaxBy(c => c.TurnUtc)!)
             .Where(c => c is { Idle: true, LimitStop: { } stop } && nowUtc - stop.UntilUtc >= Grace &&
-                        nowUtc - (heldUtc is { } held && held > stop.UntilUtc ? held : stop.UntilUtc) <= Forget &&
+                        nowUtc - HeldPast(stop.UntilUtc) <= Forget &&
                         !woken.ContainsKey(Key(c)))
             .Where(c => IsAlive(c.Pid!.Value))
             .ToList();
@@ -100,6 +107,11 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         return wakes;
     }
+
+    /// <summary>What <see cref="Forget"/> counts from for a window that reset at <paramref name="untilUtc"/>: the end of the hold
+    /// that was on when it reset (within <see cref="Grace"/>), else the reset itself.</summary>
+    private DateTime HeldPast(DateTime untilUtc) =>
+        holdStartUtc is { } start && heldUtc is { } held && start <= untilUtc + Grace && held > untilUtc ? held : untilUtc;
 
     private async Task<bool> SafeSubmit(string pipe, string text)
     {

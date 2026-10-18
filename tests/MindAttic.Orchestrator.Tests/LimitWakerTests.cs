@@ -89,11 +89,23 @@ public sealed class LimitWakerTests
     {
         State("s1", 42, "idle", Now.AddHours(-1), until: Now.AddMinutes(-5));
         var waker = Waker();
+        Assert.That(waker.Tick(Open with { Stop = true, Governing = "weekly" }, [Tab], true, Now.AddMinutes(-6)), Is.Empty, "the week holds it from before the reset");
         Assert.That(waker.Tick(Open with { Stop = true, Governing = "weekly" }, [Tab], true, Now.AddHours(7)), Is.Empty, "the week holds it");
         Assert.That(waker.Tick(Open, [Tab], true, Now.AddHours(7).AddMinutes(1)).Single().Typed, Is.True, "the week lifted: woken");
 
         State("w1", 42, "idle", Now.AddMinutes(1), until: Now.AddHours(30), window: "weekly");
         Assert.That(waker.Tick(Open, [Tab], true, Now.AddHours(30).AddMinutes(2)).Single().Line, Does.Contain("weekly window reset"));
+    }
+
+    [Test]
+    public void A_stop_already_forgotten_isnt_brought_back_by_a_later_windows_wind_down()
+    {
+        State("s1", 42, "idle", Now.AddHours(-1), until: Now.AddMinutes(-5));
+        var waker = Waker();
+        Assert.That(waker.Tick(Open, [Tab], true, Now.AddHours(7)), Is.Empty, "the daemon was down through it: forgotten");
+        Assert.That(waker.Tick(Open with { WindDown = true }, [Tab], true, Now.AddHours(8)), Is.Empty);
+        Assert.That(waker.Tick(Open, [Tab], true, Now.AddHours(8).AddMinutes(1)), Is.Empty, "the next window's wind-down began long after its reset");
+        Assert.That(typed, Is.Empty);
     }
 
     [Test]
