@@ -160,6 +160,22 @@ public sealed class ViewModelTests
     }
 
     [Test]
+    public void A_value_set_from_the_cli_outside_the_panels_range_doesnt_block_saving_other_fields()
+    {
+        // M.ORCH-T349: settings --max-sessions 60 made every Save fail on "Max sessions: 1 to 50".
+        var store = new JsonStore(dir);
+        store.SaveSettings(store.LoadSettings() with { MaxConcurrentSessions = 60 });
+        var vm = new SettingsViewModel(store, () => { });
+        vm.BlockBudget = "30M";
+        vm.SaveCommand.Execute(null);
+        Assert.That((vm.Error, store.LoadSettings().BlockBudget, store.LoadSettings().MaxConcurrentSessions), Is.EqualTo(("", (long?)30_000_000, 60)));
+
+        vm.MaxSessions = "61";
+        vm.SaveCommand.Execute(null);
+        Assert.That(vm.Error, Does.StartWith("Max sessions: 1 to 50"), "typed in the panel, it's still checked");
+    }
+
+    [Test]
     public void A_finished_row_follows_its_tickets_latest_assignment()
     {
         // M.ORCH-T341: the row kept the assignment it was built from, and its button acted on the old directory.

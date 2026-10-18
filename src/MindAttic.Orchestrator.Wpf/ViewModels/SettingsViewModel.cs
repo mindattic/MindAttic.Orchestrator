@@ -77,19 +77,21 @@ public sealed class SettingsViewModel : ObservableObject
 
     private void Save()
     {
-        if (!TryTokens(BlockBudget, out var block)) { Error = "5-hour budget: a number like 20M, 500k or blank."; return; }
-        if (!TryTokens(WeeklyBudget, out var weekly)) { Error = "Weekly budget: a number like 150M or blank."; return; }
-        if (!Budget.WeeklyReset.TryParse(WeeklyReset, out var reset)) { Error = "Week resets: a day and a time like Mon 9:00 AM, or blank for a rolling 7 days."; return; }
-        if (!int.TryParse(WarnPercent, out var warn) || warn is < 1 or > 100) { Error = "Warn at: 1 to 100."; return; }
-        if (!int.TryParse(MaxSessions, out var max) || max is < 1 or > 50) { Error = "Max sessions: 1 to 50."; return; }
-        if (!int.TryParse(PaceTarget, out var target) || target is < 1 or > 100) { Error = "Pace target: 1 to 100."; return; }
-        if (!int.TryParse(MaxDelay, out var delay) || delay is < 0 or > Setup.AgentGate.MaxHoldSeconds) { Error = $"Longest hold: 0 to {Setup.AgentGate.MaxHoldSeconds} seconds."; return; }
-        if (!int.TryParse(ContextPercent, out var cycleAt) || cycleAt is < 10 or > 95) { Error = "Cycle context at: 10 to 95."; return; }
+        // Only what was edited here is checked, as only that is saved (M.ORCH-T338): a value the CLI set outside the panel's
+        // range (settings --max-sessions 60) mustn't make every Save fail on a field nobody touched (M.ORCH-T349).
+        var was = loaded;
+        if (!TryTokens(BlockBudget, out var block) && BlockBudget != was.Block) { Error = "5-hour budget: a number like 20M, 500k or blank."; return; }
+        if (!TryTokens(WeeklyBudget, out var weekly) && WeeklyBudget != was.Weekly) { Error = "Weekly budget: a number like 150M or blank."; return; }
+        if (!Budget.WeeklyReset.TryParse(WeeklyReset, out var reset) && WeeklyReset != was.Reset) { Error = "Week resets: a day and a time like Mon 9:00 AM, or blank for a rolling 7 days."; return; }
+        if (!(int.TryParse(WarnPercent, out var warn) && warn is >= 1 and <= 100) && WarnPercent != was.Warn) { Error = "Warn at: 1 to 100."; return; }
+        if (!(int.TryParse(MaxSessions, out var max) && max is >= 1 and <= 50) && MaxSessions != was.Max) { Error = "Max sessions: 1 to 50."; return; }
+        if (!(int.TryParse(PaceTarget, out var target) && target is >= 1 and <= 100) && PaceTarget != was.Target) { Error = "Pace target: 1 to 100."; return; }
+        if (!(int.TryParse(MaxDelay, out var delay) && delay >= 0 && delay <= Setup.AgentGate.MaxHoldSeconds) && MaxDelay != was.Delay) { Error = $"Longest hold: 0 to {Setup.AgentGate.MaxHoldSeconds} seconds."; return; }
+        if (!(int.TryParse(ContextPercent, out var cycleAt) && cycleAt is >= 10 and <= 95) && ContextPercent != was.Context) { Error = "Cycle context at: 10 to 95."; return; }
 
         try
         {
             var s = store.LoadSettingsToChange();
-            var was = loaded;
             store.SaveSettings(s with
             {
                 BlockBudget = BlockBudget == was.Block ? s.BlockBudget : block,
