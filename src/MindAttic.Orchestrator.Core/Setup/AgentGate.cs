@@ -375,7 +375,8 @@ public static class AgentGate
         def repo_of(path, worktrees=True):
             # A repo checkout under the workspace, or (with worktrees) one of autopilot's worktrees of it; None elsewhere.
             try:
-                p = Path(path).resolve()
+                # Git Bash's /d/Projects/... is D:/Projects/... (Windows Python would read it as a folder on this drive).
+                p = Path(re.sub(r"^/([a-zA-Z])(?=/|$)", r"\1:", str(path))).resolve()
             except Exception:
                 return None
             for base, in_ws in ((WS, True), (WT, False)):
@@ -589,7 +590,8 @@ public static class AgentGate
                 # Only a write that `git -C` itself runs in the other repo: reading it is fine, and a word in a message, a file
                 # name or this repo's own git on the same line isn't that repo's change.
                 for segment in re.split(r"[;\n|]|&&", command):
-                    for target in re.findall(r"\bgit\s+-C\s+['\"]?([^'\"\s]+)['\"]?\s+(?:commit|push|add|rm|mv|reset|checkout|merge|rebase|stash)\b", segment):
+                    for target in re.findall(r"\bgit\s+-C\s+['\"]?([^'\"\s]+)['\"]?(?:\s+-c\s+\S+|\s+--[\w-]+(?:=\S+)?)*\s+"
+                                         r"(?:commit|push|pull|add|rm|mv|reset|restore|checkout|switch|merge|rebase|cherry-pick|revert|am|apply|clean|tag|branch|worktree|stash(?!\s+(?:list|show)\b))\b", segment):
                         if other(repo_of(target)):
                             refuse(f"This window is for {here}; git changes in {repo_of(target)} belong to that repo's window.")
 

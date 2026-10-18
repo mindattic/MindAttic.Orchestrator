@@ -356,6 +356,11 @@ public sealed class PacerTests
             foreach (var read in new[] { $"git -C {orchRepo} log --oneline | grep -i commit", $"git -C {orchRepo} diff -- src/add.cs",
                                          $"git -C {orchRepo} log -5 && git commit -am 'mine'" })
                 Assert.That(Gate(uss, "Bash", new { command = read }), Is.Empty, "a read of another repo, with a write word elsewhere: " + read);
+            var bashPath = "/" + char.ToLowerInvariant(orchRepo[0]) + orchRepo[2..].Replace('\\', '/');
+            foreach (var write in new[] { $"git -C {bashPath} commit -am x", $"git -C {orchRepo} cherry-pick abc123", $"git -C {orchRepo} -c user.name=x commit -m y",
+                                          $"git -C {orchRepo} restore .", $"git -C {orchRepo} stash" })
+                Assert.That(Gate(uss, "Bash", new { command = write }), Does.Contain("\"deny\""), "another repo's change: " + write);
+            Assert.That(Gate(uss, "Bash", new { command = $"git -C {orchRepo} stash list" }), Is.Empty, "listing its stashes only reads");
             Assert.That(Gate(ws, "Edit", new { file_path = orch }), Is.Empty, "the General (workspace-root) window may work anywhere");
 
             // The explicit exception: /crossrepo marks this CLI (by process) as allowed into the repos named.
