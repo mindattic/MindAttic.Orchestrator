@@ -286,11 +286,13 @@ public sealed partial class MainViewModel
         : $"{plan.Occupied} sessions open · fills up to {plan.Slots}";
     // /autopilot is on per CLI (its marks, M.ORCH-T164), as `orchestrator settings` reports it: the dashboard's own Autopilot
     // has no order to read, so it always read as off.
-    public string AutopilotText => AutopilotLine(new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis()) +
+    public string AutopilotText => AutopilotLine(new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis(), store.LoadSettings().Autopilot) +
         (autopilot.Working.Count == 0 ? "" : $" Working in the background: {string.Join(", ", autopilot.Working.Select(a => $"{a.TicketId} in {a.Repo}"))}.");
 
-    internal static string AutopilotLine(IReadOnlyDictionary<int, IReadOnlyList<string>> clis) => clis.Count == 0
+    internal static string AutopilotLine(IReadOnlyDictionary<int, IReadOnlyList<string>> clis, bool on = true) => clis.Count == 0
         ? "Proposals wait for you. Type /autopilot in a CLI to have its repos' tickets worked by its own subagents."
+        // Paused from the tray or Settings: the CLIs' marks stay, but orchestrator next hands them nothing.
+        : !on ? $"Autopilot is paused: the {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} that typed /autopilot get no tickets until you resume it from the tray or Settings."
         : $"Autopilot is on in {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} for " +
           string.Join(", ", clis.Values.SelectMany(r => r).Select(r => r == Autopilot.AllRepos ? "every repo" : r).Distinct(StringComparer.OrdinalIgnoreCase)) +
           ", each through its own subagents, paced to the 5-hour window.";

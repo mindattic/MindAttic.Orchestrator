@@ -59,6 +59,8 @@ public sealed class DashboardViewModelTests
         Assert.That(MainViewModel.AutopilotLine(new Dictionary<int, IReadOnlyList<string>>()), Does.StartWith("Proposals wait for you"));
         var on = MainViewModel.AutopilotLine(new Dictionary<int, IReadOnlyList<string>> { [1] = ["Prose"], [2] = ["prose", "GTFO.*"], [3] = ["*"] });
         Assert.That(on, Is.EqualTo("Autopilot is on in 3 CLIs for Prose, GTFO.*, every repo, each through its own subagents, paced to the 5-hour window."));
+        Assert.That(MainViewModel.AutopilotLine(new Dictionary<int, IReadOnlyList<string>> { [1] = ["Prose"] }, on: false), Does.StartWith("Autopilot is paused"),
+            "paused from the tray or Settings, the CLIs that typed it get nothing");
     }
 
     // ── Toast pruning ───────────────────────────────────────────────────────
