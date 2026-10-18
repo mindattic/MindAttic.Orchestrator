@@ -57,16 +57,20 @@ public sealed class AgentGateTests
         const string broken = "{ \"hooks\": { oops, this isn't json";
         File.WriteAllText(Settings, broken);
 
-        var did = AgentGate.Ensure(Claude);
+        var ex = Assert.Throws<IOException>(() => AgentGate.Ensure(Claude), "not reported as done, so the daemon retries")!;
 
         Assert.That(File.ReadAllText(Settings), Is.EqualTo(broken), "someone else's file isn't touched");
-        Assert.That(did, Does.Contain("wrote pace-gate.py").And.Not.Contain("registered"), "the scripts are still written");
+        Assert.That(ex.Message, Does.Contain("aren't registered").And.Contain("wrote pace-gate.py"), "the scripts are still written");
+        Assert.That(File.Exists(Path.Combine(Claude, "pace-gate.py")), Is.True);
         Assert.That(File.Exists(Settings + ".tmp"), Is.False);
-        Assert.That(AgentGate.Ensure(Claude), Is.Null, "and nothing is claimed next time either");
+        Assert.Throws<IOException>(() => AgentGate.Ensure(Claude), "and it's said again next time, never claimed done");
 
         File.WriteAllText(Settings, "[1, 2]");
-        Assert.That(AgentGate.Ensure(Claude), Is.Null, "JSON that isn't an object is left alone too");
+        Assert.Throws<IOException>(() => AgentGate.Ensure(Claude), "JSON that isn't an object is left alone too");
         Assert.That(File.ReadAllText(Settings), Is.EqualTo("[1, 2]"));
+
+        File.WriteAllText(Settings, "{}");
+        Assert.That(AgentGate.Ensure(Claude), Does.Contain("registered"), "once it's readable the hooks go in");
     }
 
     [Test]

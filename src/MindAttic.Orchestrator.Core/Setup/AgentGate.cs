@@ -1377,7 +1377,8 @@ public static class AgentGate
         """.Replace("\r\n", "\n");
 
     /// <summary>Writes the scripts and registers their hooks when anything is missing or out of date.
-    /// Returns what it did, or null when everything was already in place.</summary>
+    /// Returns what it did, or null when everything was already in place. Throws <see cref="IOException"/> when
+    /// <c>settings.json</c> can't be read (it's left alone), so a caller tries again rather than taking the hooks as in place.</summary>
     public static string? Ensure(string? claudeDir = null, int contextPercent = 80, bool keepGoing = true)
     {
         var dir = claudeDir ?? ClaudeDir;
@@ -1404,7 +1405,11 @@ public static class AgentGate
         JsonObject? root;
         try { root = File.Exists(settingsPath) ? JsonNode.Parse(File.ReadAllText(settingsPath)) as JsonObject : new JsonObject(); }
         catch (JsonException) { root = null; }
-        if (root is null) return did.Count > 0 ? string.Join(", ", did) : null; // unreadable: leave someone else's file alone
+        // Unreadable (mid-rewrite by Claude Code, or broken): someone else's file is left alone, but it's said, not
+        // reported as done, so the daemon tries again next tick instead of never registering the hooks (M.ORCH-T376).
+        if (root is null)
+            throw new IOException($"{settingsPath} isn't a JSON object it can read, so the pace and context gate hooks aren't registered; it's left as it is"
+                + (did.Count > 0 ? $" ({string.Join(", ", did)})" : ""));
         var changed = AddHook(root, "PreToolUse", ScriptName, Command(script), HookTimeoutSeconds);
         foreach (var hookEvent in new[] { "PostToolUse", "Stop", "UserPromptSubmit", "SubagentStart", "SubagentStop" })
             changed |= AddHook(root, hookEvent, ContextScriptName, Command(contextScript), 10);
