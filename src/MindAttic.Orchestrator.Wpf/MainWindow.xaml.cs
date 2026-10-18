@@ -89,6 +89,7 @@ public partial class MainWindow : Window
         Retime();
         var shown = wasHidden && !Hidden;
         wasHidden = Hidden;
+        model.SetWatched(!Hidden);
         if (shown && IsLoaded) await model.RefreshAsync();
     }
 

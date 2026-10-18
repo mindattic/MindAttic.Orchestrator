@@ -26,6 +26,15 @@ public sealed partial class MainViewModel
     private DateTime auditFileStamp;
     private bool briefed;
     private DateTime seenSavedUtc;
+    private bool watched = true;
+
+    /// <summary>Whether the window is on screen. Hidden in the tray it keeps refreshing, but nobody is looking: you're not
+    /// "seen", and showing it again is a new open that may start with a "While you were away" summary.</summary>
+    public void SetWatched(bool shown)
+    {
+        if (shown && !watched) briefed = false;
+        watched = shown;
+    }
 
     private sealed class Seen { public DateTime LastSeenUtc { get; init; } }
     private View view;
@@ -555,6 +564,7 @@ public sealed partial class MainViewModel
     /// <summary>Once per open: if you've been away, say what happened. Then remember you're here.</summary>
     private void Brief(Snapshot next)
     {
+        if (!watched) return;
         if (!briefed && plan is not null)
         {
             briefed = true;
