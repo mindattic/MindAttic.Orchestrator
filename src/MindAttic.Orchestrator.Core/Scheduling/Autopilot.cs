@@ -271,7 +271,8 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     private DateTime sweptUtc;
 
     /// <summary>
-    /// Worktrees under <see cref="OrchestratorSettings.WorktreeRoot"/> that no agent is on and whose ticket is no longer
+    /// Worktrees under <see cref="OrchestratorSettings.WorktreeRoot"/> that no agent is on (no assignment, no tab open there, no
+    /// session written from there in <see cref="Scheduler.WorkingWithin"/>) and whose ticket is no longer
     /// open: landed, they're removed (as <see cref="Land"/> would have, had it not missed them, e.g. on a repo landing on
     /// master before that was understood); not landed, they're kept and named once, since the work is only there.
     /// </summary>
@@ -290,7 +291,11 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 var id = Path.GetFileName(tree);
                 // Only a ticket's own worktree (a .git file, not a full clone that ended up here) whose ticket is finished.
                 if (assigned.Contains(id) || open.Contains(id) || !File.Exists(Path.Combine(tree, ".git"))) continue;
-                var (landed, note) = Land(new Assignment(id.ToUpperInvariant(), repo.Name, tree, Providers.Claude, nowUtc, true), repo.Path);
+                // Nor one a tab is open in or a session wrote from lately: a tab's or a claim's assignment is gone as soon as its
+                // ticket closes, and the agent (or you, reviewing) may still be there (M.ORCH-T329).
+                var here = new Assignment(id.ToUpperInvariant(), repo.Name, tree, Providers.Claude, DateTime.MinValue, true);
+                if (snapshot.TakenUtc - Scheduler.LastActivityUtc(here, snapshot) < Scheduler.WorkingWithin) continue;
+                var (landed, note) = Land(here with { StartedUtc = nowUtc }, repo.Path);
                 if (landed) said.Add($"autopilot: tidied the finished worktree of {id} in {repo.Name}{note}");
                 else
                 {

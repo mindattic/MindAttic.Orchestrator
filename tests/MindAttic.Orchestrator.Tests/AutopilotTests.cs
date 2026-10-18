@@ -186,6 +186,37 @@ public sealed class AutopilotTests
     }
 
     [Test]
+    public void A_closed_tickets_worktree_with_a_tab_open_in_it_or_a_session_lately_written_from_it_is_not_swept()
+    {
+        // M.ORCH-T329: a tab's or claim's assignment is reaped as soon as its ticket closes, so the sweep saw nobody there.
+        var wt = Path.Combine(dir, "wt", "A");
+        foreach (var id in new[] { "A-T7", "A-T8", "A-T9" })
+        {
+            Directory.CreateDirectory(Path.Combine(wt, id, "src"));
+            File.WriteAllText(Path.Combine(wt, id, ".git"), "gitdir: x");
+            landed.Add(id);
+        }
+        Cli(100, @"D:\W\A");
+        var snap = Snap(("A", []));
+        snap = snap with
+        {
+            Repos = [snap.Repos[0] with
+            {
+                Hosts = [new HostSession("Claude", 7, "pipe", Path.Combine(wt, "A-T7"))],
+                Sessions =
+                [
+                    new TranscriptSession("recent", Path.Combine(wt, "A-T8", "src"), Now.AddMinutes(-5), default, null),
+                    new TranscriptSession("long-gone", Path.Combine(wt, "A-T9"), Now.AddHours(-2), default, null),
+                ],
+            }],
+        };
+
+        Pilot().Tick(Paced(snap, 0), snap, new() { WorktreeRoot = Path.Combine(dir, "wt") }, Now);
+
+        Assert.That(landedFrom.Keys, Is.EquivalentTo(new[] { "A-T9" }), "only the one nobody has been in for a while is tidied");
+    }
+
+    [Test]
     public void A_repo_whose_stories_all_wait_for_approval_says_so()
     {
         Cli(100, @"D:\W\A");
