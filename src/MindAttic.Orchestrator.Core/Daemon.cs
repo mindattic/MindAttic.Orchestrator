@@ -34,6 +34,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         var autopilot = new Autopilot(store, cycler, lease) { WaitingPath = Autopilot.DefaultWaitingPath };
         string? lastPaused = null;
         cycler.Prune(DateTime.UtcNow);
+        var prunedUtc = DateTime.UtcNow;
         string? lastHold = null;
         (PaceMode, int)? lastPace = null;
         bool? lastHeldElsewhere = null;
@@ -73,6 +74,12 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 tick.Lap("process reaper");
 
                 cycler.PruneMarks();
+                // Not only at start: the logon daemon runs for weeks (M.ORCH-T330).
+                if (DateTime.UtcNow - prunedUtc >= TimeSpan.FromDays(1))
+                {
+                    cycler.Prune(DateTime.UtcNow);
+                    prunedUtc = DateTime.UtcNow;
+                }
                 foreach (var line in cycler.KeepGoingSince())
                 {
                     Say(LogEventLevel.Information, line);
