@@ -90,6 +90,9 @@ public sealed class PlanningTests
         var plan = Scheduler.Plan(Snap(Repo("A", RepoState.Dormant, T("A-T1", date: "2026-08-01"), T("A-T2", date: "2026-10-12"))), new OrchestratorSettings(), []);
 
         Assert.That(plan.Groom.Select(q => q.Id), Is.EqualTo(new[] { "A-T1" }));
+
+        var unapproved = Scheduler.Plan(Snap(Repo("A", RepoState.Dormant, T("A-T3", date: "2026-08-01", type: "feature"))), new OrchestratorSettings(), []);
+        Assert.That(unapproved.Groom.Select(q => q.Id), Is.EqualTo(new[] { "A-T3" }), "an old feature still waiting for approval");
     }
 
     [Test]

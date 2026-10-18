@@ -116,11 +116,12 @@ public static partial class Scheduler
         var groomBefore = settings.GroomAfterDays > 0
             ? DateOnly.FromDateTime(snapshot.TakenUtc.ToLocalTime().AddDays(-settings.GroomAfterDays))
             : DateOnly.MinValue;
+        bool IsOld(Ticket t) => DateOnly.TryParse(t.Date, System.Globalization.CultureInfo.InvariantCulture, out var opened) && opened < groomBefore;
         // Only fixes and tickets you approved are work; the rest wait for your yes outside the queue (one already
         // being worked stays, so its agent is still tracked).
         var awaiting = snapshot.Repos
             .SelectMany(r => r.OpenTickets.Where(t => !settings.MayWork(t) && !assigned.ContainsKey(t.Id))
-                .Select(t => new QueueItem(r.Name, r.Path, t, settings.Priorities.GetValueOrDefault(t.Id), null, false)))
+                .Select(t => new QueueItem(r.Name, r.Path, t, settings.Priorities.GetValueOrDefault(t.Id), null, false) { Old = IsOld(t) }))
             .OrderBy(q => q.Repo, StringComparer.OrdinalIgnoreCase).ThenBy(q => q.Ticket.Number ?? int.MaxValue)
             .ToList();
         var queue = snapshot.Repos
@@ -134,7 +135,7 @@ public static partial class Scheduler
                     Estimate = snapshot.Costs.Estimate(r.Name, t.Type, t.Id),
                     Reserved = settings.Reservations.GetValueOrDefault(t.Id),
                     BlockedBy = Blockers(t),
-                    Old = DateOnly.TryParse(t.Date, System.Globalization.CultureInfo.InvariantCulture, out var opened) && opened < groomBefore,
+                    Old = IsOld(t),
                 }))
             .OrderBy(q => q.IsAssigned)
             .ThenByDescending(q => q.Reserved > 0)
@@ -253,7 +254,8 @@ public static partial class Scheduler
         return new SchedulePlan(queue, proposals, settings.MaxConcurrentSessions, occupied, hold, finished)
         {
             Cap = cap, Pace = pace, Stop = snapshot.Pace is { Stop: true }, Stale = [.. queue.Where(q => q.IsStale)], TooBig = tooBig,
-            Groom = [.. queue.Where(q => q.Old && q.Assignment is null)],
+            // Waiting for approval too: an old feature nobody approved is the likeliest to close as wont-do.
+            Groom = [.. queue.Concat(awaiting).Where(q => q.Old && q.Assignment is null)],
             AwaitingApproval = awaiting, Worked = worked,
         };
     }
