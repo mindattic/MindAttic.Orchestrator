@@ -122,9 +122,13 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         // would fail every time: let git forget worktrees whose folders are gone first.
         Git(repoPath, "worktree", "prune");
         var (exists, _) = Git(repoPath, "rev-parse", "--verify", "--quiet", "refs/heads/" + branch);
-        var (code, output) = exists == 0
+        var start = StartPoint(repoPath);
+        // A branch with work of its own is checked out as it is; one whose every commit is already on the main line (the
+        // ticket landed, was reopened and claimed again) starts over from it, not from where it landed weeks ago (M.ORCH-T360).
+        var landed = exists == 0 && Git(repoPath, "merge-base", "--is-ancestor", "refs/heads/" + branch, start).Code == 0;
+        var (code, output) = exists == 0 && !landed
             ? Git(repoPath, "worktree", "add", path, branch)
-            : Git(repoPath, "worktree", "add", "-b", branch, path, StartPoint(repoPath));
+            : Git(repoPath, "worktree", "add", landed ? "-B" : "-b", branch, path, start);
         return code == 0 ? (true, path, "") : (false, path, $"git worktree add failed: {output.Trim()}");
     }
 

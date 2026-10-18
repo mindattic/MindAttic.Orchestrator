@@ -99,6 +99,22 @@ public sealed class DispatcherTests
     }
 
     [Test]
+    public void A_landed_branch_claimed_again_starts_from_the_main_line_not_where_it_landed()
+    {
+        // M.ORCH-T360: the ticket's work landed, the main line moved on, the ticket was reopened and claimed again.
+        Git(repo, "branch", "orch/a-t4");
+        File.WriteAllText(Path.Combine(repo, "file.txt"), "main moved on\n");
+        Git(repo, "commit", "-qam", "later work on main");
+        var tree = Path.Combine(wtRoot, "A", "A-T4");
+
+        var (ok, _, error) = Dispatcher.EnsureWorktree(repo, tree, "orch/a-t4");
+
+        Assert.That(ok, Is.True, error);
+        Assert.That(Head(tree), Is.EqualTo(Head(repo)), "from the main line as it is now");
+        Assert.That(Dispatcher.Git(tree, "branch", "--show-current").Output.Trim(), Is.EqualTo("orch/a-t4"));
+    }
+
+    [Test]
     public void A_new_branch_is_created_from_HEAD_when_there_is_no_origin()
     {
         var tree = Path.Combine(wtRoot, "A", "A-T3");
