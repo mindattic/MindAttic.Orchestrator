@@ -174,6 +174,7 @@ public sealed partial class MainViewModel : ObservableObject
             var clock = Stopwatch.StartNew();
             var next = await Task.Run(() => aggregator.Refresh());
             Apply(next);
+            await TickAutopilotAsync(next);
             RefreshInfo = aggregator.LastWasShared
                 ? $"Updated {next.TakenUtc.ToLocalTime():T} · shared"
                 : $"Updated {DateTime.Now:T} · {clock.ElapsedMilliseconds} ms";

@@ -559,15 +559,27 @@ public sealed partial class MainViewModel
 
         ApplyPlan(next);
         Brief(next);
+    }
 
-        if (plan is not null)
-            foreach (var line in autopilot.Tick(plan, next, store.LoadSettings(), DateTime.UtcNow))
+    /// <summary>
+    /// Autopilot's tick, off the UI thread: holding the lease (no daemon running), this window reaps and runs the hourly
+    /// sweep, a git fetch and more per finished worktree that can take minutes, which froze the dashboard at its first
+    /// refresh and every hour after (M.ORCH-T382). The refresh stays in progress until it's done, so ticks never overlap.
+    /// </summary>
+    private async Task TickAutopilotAsync(Snapshot next)
+    {
+        if (plan is { } current)
+        {
+            var settings = store.LoadSettings();
+            foreach (var line in await Task.Run(() => autopilot.Tick(current, next, settings, DateTime.UtcNow)))
             {
                 QueueMessage = line;
                 queueLog.Information("{Line:l}", line);
                 if (Autopilot.NeedsYou(line) is { } needsYou)
                     Toasts.Insert(0, new ToastViewModel("Needs you", needsYou, Palette.Waiting, null));
             }
+            PruneToasts(Toasts, DateTime.UtcNow);
+        }
         Raise(nameof(AutopilotText));
     }
 
