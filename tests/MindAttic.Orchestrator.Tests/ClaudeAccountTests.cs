@@ -24,7 +24,7 @@ public sealed class ClaudeAccountTests
     private void SignIn(string id, DateTime stamp)
     {
         var path = Path.Combine(dir, ".claude.json");
-        File.WriteAllText(path, $$"""{"numStartups":3,"oauthAccount":{"accountUuid":"{{id}}","emailAddress":"x@y"}}""");
+        File.WriteAllText(path, $$$"""{"numStartups":3,"oauthAccount":{"accountUuid":"{{{id}}}","emailAddress":"x@y"}}""");
         File.SetLastWriteTimeUtc(path, stamp);
     }
 
