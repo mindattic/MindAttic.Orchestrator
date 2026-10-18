@@ -104,6 +104,9 @@ public sealed class CliCommandTests
         Assert.That(Run("block", "m.orch-t9", "--by", "m.orch-t8", "--by", "M.Orch-T8"), Is.Zero);
         Assert.That(Store.LoadSettings().BlockedBy["M.ORCH-T9"], Is.EqualTo(new[] { "M.ORCH-T8" }));
 
+        Assert.That(Run("block", "M.ORCH-T9", "--clear", "--by", "M.ORCH-T7"), Is.Zero);
+        Assert.That(Store.LoadSettings().BlockedBy["M.ORCH-T9"], Is.EqualTo(new[] { "M.ORCH-T7" }), "--clear --by replaces, as on the database");
+
         Assert.That(Run("block", "M.ORCH-T9", "--clear"), Is.Zero);
         Assert.That(Store.LoadSettings().BlockedBy, Does.Not.ContainKey("M.ORCH-T9"));
     }

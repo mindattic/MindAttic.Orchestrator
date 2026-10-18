@@ -49,7 +49,8 @@ internal sealed class BlockCommand : Command<BlockCommand.Settings>
         var s = store.LoadSettings();
         var map = new Dictionary<string, List<string>>(s.BlockedBy, StringComparer.Ordinal);
         if (settings.Clear) map.Remove(id);
-        else map[id] = [.. (map.GetValueOrDefault(id) ?? []).Concat(by).Distinct(StringComparer.Ordinal)];
+        // --clear --by replaces them, as on the database; --by alone adds.
+        if (by.Count > 0) map[id] = [.. (map.GetValueOrDefault(id) ?? []).Concat(by).Distinct(StringComparer.Ordinal)];
         store.SaveSettings(s with { BlockedBy = map });
         AnsiConsole.MarkupLine(Markup.Escape(map.GetValueOrDefault(id) is { Count: > 0 } waits
             ? $"{id} waits for {string.Join(", ", waits)}."
