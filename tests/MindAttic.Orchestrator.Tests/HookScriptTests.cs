@@ -1072,6 +1072,55 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void Claudes_weekly_99_percent_and_its_latch_end_at_the_weeks_reset()
+    {
+        var reset = DateTime.UtcNow.AddSeconds(10); // past the first refusal, which waits out one 5-second recheck
+        void Week(double percent) => File.WriteAllText(Path.Combine(Claude, "claude-usage.json"), JsonSerializer.Serialize(new
+        {
+            rate_limits = new
+            {
+                five_hour = new { used_percentage = 20, resets_at = new DateTimeOffset(DateTime.UtcNow.AddHours(3)).ToUnixTimeSeconds() },
+                seven_day = new { used_percentage = percent, resets_at = new DateTimeOffset(reset).ToUnixTimeSeconds() },
+            },
+            at = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+        }));
+        Status(new { stop = false }, at: DateTime.UtcNow.AddMinutes(-10)); // the daemon is down: Claude's own percent decides
+        Week(99);
+        Assert.That(GateHeld(ReadCall, 1).Output, Does.Contain("\"deny\"").And.Contain("weekly"));
+        Thread.Sleep(Math.Max(0, (int)(reset - DateTime.UtcNow).TotalMilliseconds) + 1500);
+        // Past the reset, the statusline still restamps the old week's 99% until a reply brings the new one.
+        Week(99);
+        Assert.That(GateHeld(ReadCall, 1).Output, Is.Empty, "neither the reading nor the claude-week latch outlives the week");
+    }
+
+    [Test]
+    public void A_fresh_status_from_before_its_window_reset_holds_nothing_after_it()
+    {
+        string At(int seconds) => DateTime.UtcNow.AddSeconds(seconds).ToString("yyyy-MM-ddTHH:mm:ssZ");
+        object Weekly(int reset) => new
+        {
+            stop = true, stop_window = "weekly", stop_note = "The weekly window is at its target. End your turn now.", stop_until = At(reset), window_reset = At(reset),
+            pace_delay_seconds = 60, subagent_allowance = 0, subagents_running = 0, wind_down_note = "Past 90%.",
+        };
+        // 6:59:50: the weekly stop until 7:00, latched.
+        Status(Weekly(10));
+        Assert.That(GateHeld(ReadCall, 2).Output, Does.Contain("\"deny\""));
+
+        // 7:00:10, before the daemon's next write: the file is still fresh, but everything in it was the old week's.
+        Status(Weekly(-10));
+        var (output, took) = GateHeld(ReadCall, 10);
+        Assert.That(output, Is.Empty, "no stop, and no hold at the old pace");
+        Assert.That(took, Is.LessThan(TimeSpan.FromSeconds(8)));
+        (output, took) = GateHeld(new { tool_name = "Agent", tool_input = new { prompt = "x" } }, 10);
+        Assert.That(output, Is.Empty, "the old window's subagent allowance holds no new one");
+        Assert.That(took, Is.LessThan(TimeSpan.FromSeconds(8)));
+        Assert.That(Gate(new { hook_event_name = "UserPromptSubmit", session_id = "r1", prompt = "go on", cwd = ws }, AgentGate.ContextScriptName).Output,
+            Does.Not.Contain("Not sent"));
+        var latch = Path.Combine(Marks, AgentGate.StopLatchName);
+        Assert.That(File.Exists(latch) ? File.ReadAllText(latch) : "", Does.Not.Contain("orchestrator@"), "the latch ended at its until");
+    }
+
+    [Test]
     public void A_stop_that_comes_on_while_a_call_is_held_for_the_pace_refuses_it_rather_than_letting_it_through()
     {
         Status(new { pace_delay_seconds = 60 });

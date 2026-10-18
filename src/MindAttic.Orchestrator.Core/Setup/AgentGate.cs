@@ -346,6 +346,19 @@ public static class AgentGate
                 return note
             l = latched("orchestrator")
             return (l.get("note") or ORCHESTRATOR_STOP) if l else None
+        def lapsed(s):
+            # A status worked out before its window reset holds nothing in the new one, though it's still fresh for up to a tick:
+            # past stop_until its stop, past window_reset its holds, wind-down and subagent allowance (M.ORCH-T387).
+            def passed(key):
+                try:
+                    return datetime.fromisoformat(str(s[key]).replace("Z", "+00:00")).timestamp() <= time.time()
+                except Exception:
+                    return False
+            if s.get("stop") and passed("stop_until"):
+                s = {k: v for k, v in s.items() if k not in ("stop", "stop_note", "stop_until", "stop_window")}
+            if passed("window_reset"):
+                s = {k: v for k, v in s.items() if k not in ("pace_delay_seconds", "pace_note", "wind_down_note", "subagent_allowance", "subagent_note")}
+            return s
         def daemon_down():
             # Seconds since the orchestrator last wrote rl-status.json, once that's past what the gates trust; else None.
             try:
@@ -487,7 +500,7 @@ public static class AgentGate
                 if s.get("source") != "MindAttic.Orchestrator" or before_switch(s["timestamp"], True):
                     return {}
                 at = datetime.fromisoformat(s["timestamp"].replace("Z", ""))
-                return s if (datetime.utcnow() - at).total_seconds() <= STALE else {}
+                return lapsed(s) if (datetime.utcnow() - at).total_seconds() <= STALE else {}
             except Exception:
                 return {}
 
@@ -1057,7 +1070,7 @@ public static class AgentGate
                 s = read_json(Path.home() / ".claude" / "rl-status.json")
                 age = (datetime.now(timezone.utc) - datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00"))).total_seconds()
                 fresh = age <= {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}} and not before_switch(s["timestamp"], True)
-                return s if s.get("source") == "MindAttic.Orchestrator" and fresh else {}
+                return lapsed(s) if s.get("source") == "MindAttic.Orchestrator" and fresh else {}
             except Exception:
                 return {}
 
