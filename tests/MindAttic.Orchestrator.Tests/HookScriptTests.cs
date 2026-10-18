@@ -377,6 +377,23 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void The_status_the_daemon_writes_in_the_second_of_a_switch_is_obeyed()
+    {
+        // M.ORCH-T325: rl-status.json's timestamp is cut to the second; the switch is dated to the fraction.
+        var second = DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        var switched = (second.ToUnixTimeMilliseconds() + 700) / 1000.0;
+        File.WriteAllText(Path.Combine(dir, ".claude.json"), """{"oauthAccount":{"accountUuid":"account-b"}}""");
+        Directory.CreateDirectory(Marks);
+        File.WriteAllText(Path.Combine(Marks, Budget.ClaudeAccount.FileName), $$"""
+            {"account":"account-b","since":{{switched}},"spans":[{"account":"account-a","from":{{switched - 86400}},"to":{{switched}}},
+            {"account":"account-b","from":{{switched}},"to":null}]}
+            """);
+        Status(new { pace_delay_seconds = 2 }, at: second.UtcDateTime);
+
+        Assert.That(Gate(ReadCall).Took, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(1.9)), "the new account's pace holds");
+    }
+
+    [Test]
     public void After_moving_to_an_api_key_the_claude_accounts_weekly_stop_no_longer_holds_prompts()
     {
         // Signed in to a Team seat with its week at 99% (recorded before the organization was keyed): the stop holds.

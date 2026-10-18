@@ -168,15 +168,16 @@ public static class AgentGate
             # When the sign-in last moved to the current account (epoch; 0 when no account was ever seen).
             spans = account()[1]
             return spans[-1][0] if spans else 0.0
-        def before_switch(stamp):
+        def before_switch(stamp, to_the_second=False):
             # Whether an ISO time (a report's or a status file's) is from before the sign-in moved to the current account; never
-            # before the first account seen (its first sight isn't a move from anything).
+            # before the first account seen (its first sight isn't a move from anything). rl-status.json's timestamp is cut to
+            # the second, so the status the daemon writes in the second of the switch isn't taken for an older one (M.ORCH-T325).
             current, _, seen = account()
             since = switched_at()
             if not since or all(x.get("account") == current for x in seen.get("spans") or []):
                 return False
             try:
-                return datetime.fromisoformat(str(stamp).replace("Z", "+00:00")).timestamp() < since
+                return datetime.fromisoformat(str(stamp).replace("Z", "+00:00")).timestamp() < (int(since) if to_the_second else since)
             except Exception:
                 return True
         def owns(usage):
@@ -483,7 +484,7 @@ public static class AgentGate
         def status():
             try:
                 s = read_json(STATUS)
-                if s.get("source") != "MindAttic.Orchestrator" or before_switch(s["timestamp"]):
+                if s.get("source") != "MindAttic.Orchestrator" or before_switch(s["timestamp"], True):
                     return {}
                 at = datetime.fromisoformat(s["timestamp"].replace("Z", ""))
                 return s if (datetime.utcnow() - at).total_seconds() <= STALE else {}
@@ -499,7 +500,7 @@ public static class AgentGate
                 if s:
                     return float(s.get("pace_delay_seconds", 0))
                 s = read_json(STATUS)
-                if s.get("source") != "MindAttic.Orchestrator" or not s.get("window_reset") or before_switch(s.get("timestamp")):
+                if s.get("source") != "MindAttic.Orchestrator" or not s.get("window_reset") or before_switch(s.get("timestamp"), True):
                     return 0
                 until = datetime.fromisoformat(str(s["window_reset"]).replace("Z", "+00:00")).timestamp()
                 return float(s.get("pace_delay_seconds", 0)) if time.time() < until else 0
@@ -989,7 +990,7 @@ public static class AgentGate
             try:
                 s = json.loads((Path.home() / ".claude" / "rl-status.json").read_text())
                 age = (datetime.now(timezone.utc) - datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00"))).total_seconds()
-                fresh = age <= {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}} and not before_switch(s["timestamp"])
+                fresh = age <= {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}} and not before_switch(s["timestamp"], True)
                 return s if s.get("source") == "MindAttic.Orchestrator" and fresh else {}
             except Exception:
                 return {}
