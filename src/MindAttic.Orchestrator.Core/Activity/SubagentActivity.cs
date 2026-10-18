@@ -84,6 +84,8 @@ public sealed class SubagentActivityReader(string projectsDir)
         public TokenUsage Usage;
         public string? Task, Doing;
         public readonly Dictionary<string, TokenUsage> Counted = new(StringComparer.Ordinal);
+        /// <summary>Between a fork's <c>fork-context-ref</c> line and its first prompt (M.ORCH-T323).</summary>
+        public bool ForkPrologue;
     }
 
     private readonly Dictionary<string, Tail> tails = new(StringComparer.OrdinalIgnoreCase);
@@ -131,6 +133,7 @@ public sealed class SubagentActivityReader(string projectsDir)
                 tail.Usage = default;
                 tail.Task = tail.Doing = null;
                 tail.Counted.Clear();
+                tail.ForkPrologue = false;
             }
             if (stream.Length == tail.Offset) return;
 
@@ -169,6 +172,20 @@ public sealed class SubagentActivityReader(string projectsDir)
         {
             var root = doc.RootElement;
             if (root.ValueKind != JsonValueKind.Object) return;
+
+            // A fork's transcript opens with a fork-context-ref line and a copy of the parent's line that started it (its
+            // usage and Agent call are the parent's): nothing before the fork's first prompt is its own (M.ORCH-T323).
+            var type = root.TryGetProperty("type", out var lineType) && lineType.ValueKind == JsonValueKind.String ? lineType.GetString() : null;
+            if (type == "fork-context-ref")
+            {
+                tail.ForkPrologue = true;
+                return;
+            }
+            if (tail.ForkPrologue)
+            {
+                if (type != "user") return;
+                tail.ForkPrologue = false;
+            }
 
             if (root.TryGetProperty("timestamp", out var ts) && ts.ValueKind == JsonValueKind.String &&
                 DateTime.TryParse(ts.GetString(), null,

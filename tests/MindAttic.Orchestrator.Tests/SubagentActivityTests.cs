@@ -94,6 +94,37 @@ public sealed class SubagentActivityTests
     }
 
     [Test]
+    public void A_forks_copy_of_its_parents_line_is_not_its_own_usage_start_or_tool_call()
+    {
+        // M.ORCH-T323: a fork's transcript opens with fork-context-ref and the parent's Agent call line, usage and all.
+        var sessionDir = NewDir("ctx");
+        var projectsDir = NewDir("projects");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(sessionDir, "subagents"));
+            File.WriteAllText(Path.Combine(sessionDir, "subagents", "a1"), "");
+            var parentFolder = Path.Combine(projectsDir, "proj", "session-1", "subagents");
+            Directory.CreateDirectory(parentFolder);
+            File.WriteAllLines(Path.Combine(parentFolder, "agent-a1.jsonl"),
+            [
+                """{"type":"fork-context-ref","agentId":"a1","parentSessionId":"session-1"}""",
+                """{"type":"assistant","timestamp":"2026-10-15T11:50:00Z","message":{"id":"p1","usage":{"input_tokens":1,"cache_creation_input_tokens":0,"cache_read_input_tokens":400000,"output_tokens":6000},"content":[{"type":"tool_use","name":"Agent","input":{"prompt":"go"}}]}}""",
+                Line("user", "2026-10-15T11:55:00Z"),
+                Line("assistant", "2026-10-15T11:56:00Z", attributionAgent: "fork", usage: (20, 0, 0, 10)),
+            ]);
+
+            var s = SubagentActivityReader.Running(new ContextCycler(sessionDir), projectsDir, Now).Single();
+
+            Assert.That((s.Usage, s.StartedUtc, s.Doing), Is.EqualTo((new TokenUsage(20, 0, 0, 10), new DateTime(2026, 10, 15, 11, 55, 0, DateTimeKind.Utc), (string?)null)));
+        }
+        finally
+        {
+            Directory.Delete(sessionDir, recursive: true);
+            Directory.Delete(projectsDir, recursive: true);
+        }
+    }
+
+    [Test]
     public void A_stopped_subagent_leaves_no_mark_and_so_isnt_reported()
     {
         var sessionDir = NewDir("ctx");

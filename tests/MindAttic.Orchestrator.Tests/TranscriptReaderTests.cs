@@ -201,6 +201,36 @@ public sealed class TranscriptReaderTests
     }
 
     [Test]
+    public void A_forks_copy_of_the_parents_line_that_started_it_isnt_counted_again()
+    {
+        // A fork's transcript opens with a fork-context-ref line, then the parent's Agent call line copied as is (M.ORCH-T323).
+        System.IO.File.WriteAllLines(File(), [Line("m1", "2026-10-13T12:00:00Z", 1, 1)]);
+        var sub = Path.Combine(dir, "D--Projects-X", "s1", "subagents");
+        Directory.CreateDirectory(sub);
+        var copy = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            type = "assistant", timestamp = "2026-10-13T12:00:00Z", agentId = "a",
+            message = new
+            {
+                id = "m1", model = "claude-sonnet-5",
+                usage = new { input_tokens = 1, cache_creation_input_tokens = 10, cache_read_input_tokens = 100, output_tokens = 1 },
+                content = new[] { new { type = "tool_use", id = "t1", name = "Agent", input = new { prompt = "go" } } },
+            },
+        });
+        System.IO.File.WriteAllLines(Path.Combine(sub, "agent-a.jsonl"), [
+            """{"type":"fork-context-ref","agentId":"a","parentSessionId":"s1"}""",
+            copy,
+            """{"type":"user","timestamp":"2026-10-13T12:00:01Z","sessionId":"s1","cwd":"D:\\Projects\\X","message":{"role":"user","content":"go"}}""",
+            Line("m9", "2026-10-13T12:00:02Z", 1, 9),
+        ]);
+
+        var s = new TranscriptReader(dir).Poll(Since).Single();
+
+        Assert.That(s.UsageSince(Since), Is.EqualTo(new TokenUsage(2, 20, 200, 10)), "the parent's response once, and the fork's own");
+        Assert.That(s.Doing, Is.Null, "the parent's Agent call isn't the fork's");
+    }
+
+    [Test]
     public void A_subagents_ticket_is_its_own_not_its_parent_sessions()
     {
         // /autopilot hands each subagent "Work on ticket X": the parent CLI works many, so it isn't stamped with the first.
