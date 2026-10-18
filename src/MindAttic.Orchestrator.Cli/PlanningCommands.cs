@@ -98,7 +98,8 @@ internal sealed class ApproveCommand : Command<ApproveCommand.Settings>
             return 0;
         }
         var store = Ctx.Store();
-        var ids = settings.Tickets.Select(Ctx.Id).ToList();
+        // Once each: the same ticket named twice (in any case) was a repeated key that crashed approve (M.ORCH-T456).
+        var ids = settings.Tickets.Select(Ctx.Id).Distinct(StringComparer.Ordinal).ToList();
         // Approval lives in the Workflow database's queue, where workflow ticket approve and the Workflow Desktop write it too and
         // the scheduler reads it (M.ORCH-T384); a ticket it doesn't hold (a repo still on its own USER_STORIES.md, or no database
         // yet) is approved in settings.json, which the scheduler reads beside it (M.ORCH-T441).

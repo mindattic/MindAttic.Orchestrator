@@ -124,6 +124,24 @@ public sealed class CliCommandTests
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
     }
 
+    /// <summary>M.ORCH-T456: the same ticket named twice (in any case) is approved once, not a crash that approves nothing.</summary>
+    [Test]
+    public void Approve_takes_the_same_ticket_named_twice()
+    {
+        var path = WorkspaceWithDb();
+        try
+        {
+            Assert.That(Run("approve", "A-T2", "a-t2"), Is.Zero, output.ToString());
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+                Assert.That(db.QueueState("A-T2").Item1, Is.EqualTo("approved"));
+            Assert.That(output.ToString(), Does.Contain("A-T2 approved"));
+            Assert.That(Run("approve", "A-T2", "A-T2", "--undo"), Is.Zero, output.ToString());
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+                Assert.That(db.QueueState("A-T2").Item1, Is.EqualTo("proposed"));
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
+    }
+
     [Test]
     public void Bump_and_approve_without_a_workflow_database_change_nothing()
     {
