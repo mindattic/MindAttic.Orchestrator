@@ -102,7 +102,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     {
                         foreach (var line in aggregator.BillingSwitch.Tick([.. snapshot.Repos.SelectMany(r => r.Hosts)], DateTime.UtcNow))
                         {
-                            var yours = line.StartsWith("the CLI in ", StringComparison.Ordinal) || line.StartsWith("couldn't ", StringComparison.Ordinal);
+                            var yours = Billing.BillingSwitch.NeedsYou(line);
                             Say(yours ? LogEventLevel.Warning : LogEventLevel.Information, $"billing: {line}");
                             if (yours) Alert("Needs you", line);
                         }

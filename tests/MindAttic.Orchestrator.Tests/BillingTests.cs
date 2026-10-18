@@ -318,6 +318,29 @@ public sealed class BillingTests
         Assert.That(ClaudeKeyChoice.Read(ConfigPath, KeyTail).Choice, Is.EqualTo(KeyChoice.Rejected));
     }
 
+    /// <summary>M.ORCH-T459: a switch back the daemon couldn't make leaves the API key billing, so it's said to you, not only logged.</summary>
+    [Test]
+    public void A_switch_back_the_daemon_couldnt_make_needs_you()
+    {
+        File.WriteAllText(ConfigPath, "{" + TeamLogin + ", \"customApiKeyResponses\": {\"approved\": [], \"rejected\": []}}");
+        var billing = Switch();
+        billing.Switch("api", "cli", [], DateTime.UtcNow);
+        // A /login to another account, with Claude Code's key choices in a shape the switch won't touch.
+        File.WriteAllText(ConfigPath, "{" + TeamLogin.Replace("org-1", "org-2") + ", \"customApiKeyResponses\": 5}");
+        var said = billing.Tick([], DateTime.UtcNow);
+        Assert.That(said, Has.Count.EqualTo(2));
+        Assert.That(said[1], Does.StartWith("Couldn't set Claude Code's choice"));
+        Assert.That(BillingSwitch.NeedsYou(said[0]), Is.False, "the switch itself is news, not a problem");
+        Assert.That(BillingSwitch.NeedsYou(said[1]), Is.True);
+        Assert.That(billing.ModeFile.Read()!.Mode, Is.EqualTo(BillingModes.Api), "billing is left as it was");
+
+        Assert.That(BillingSwitch.NeedsYou("There's no Claude key in the MindAttic Vault keyring, so nothing can bill the API key; billing is left as it was."), Is.True);
+        Assert.That(BillingSwitch.NeedsYou("Couldn't write billing.json: denied"), Is.True);
+        Assert.That(BillingSwitch.NeedsYou("couldn't ask the Launcher tab running the CLI in Prose (pid 1) to restart it"), Is.True);
+        Assert.That(BillingSwitch.NeedsYou("the CLI in Prose (pid 1) bills Claude Team and isn't in a Launcher tab"), Is.True);
+        Assert.That(BillingSwitch.NeedsYou("asked the Launcher to restart the CLI in Prose (pid 1)"), Is.False);
+    }
+
     [Test]
     public void A_key_choice_out_of_line_with_the_mode_is_put_back()
     {

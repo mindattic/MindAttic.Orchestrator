@@ -215,6 +215,14 @@ public sealed class BillingSwitch
 
     private DateTime? enforcedUtc;
 
+    /// <summary>Whether a line <see cref="Tick"/> said needs you: a CLI only you can restart, a tab that couldn't be asked, or a
+    /// switch that couldn't be made ("Couldn't set...", "Couldn't write...", "There's no ... key"), which leaves billing as it was
+    /// (M.ORCH-T459).</summary>
+    public static bool NeedsYou(string line) =>
+        line.StartsWith("the CLI in ", StringComparison.Ordinal) ||
+        line.StartsWith("couldn't ", StringComparison.OrdinalIgnoreCase) ||
+        line.StartsWith("There's no ", StringComparison.Ordinal);
+
     /// <summary>Asks the Launcher to restart each hosted CLI billing the other mode, and says each one outside it once.</summary>
     private List<string> RequestRestarts(IReadOnlyList<HostSession> hosts, DateTime nowUtc)
     {
