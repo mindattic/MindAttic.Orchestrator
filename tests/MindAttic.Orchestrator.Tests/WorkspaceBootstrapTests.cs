@@ -122,6 +122,20 @@ public sealed class WorkspaceBootstrapTests
     }
 
     [Test]
+    public void A_failed_app_whose_child_still_holds_its_output_is_reported_without_waiting_for_the_child()
+    {
+        // M.ORCH-T354: a build server the deploy started inherits its pipes; the failure was reported only once it exited.
+        var ws = Path.Combine(dir, "ws");
+        App(ws, "Bad", "cmd /c \"start /b /d %TEMP% powershell -NoProfile -Command Start-Sleep 25\"; exit 1");
+        var timer = Stopwatch.StartNew();
+
+        var failed = WorkspaceBootstrap.InstallAppsAsync(ws, new SyncProgress([])).GetAwaiter().GetResult();
+
+        Assert.That(failed.Single(), Does.StartWith("Bad:"));
+        Assert.That(timer.Elapsed, Is.LessThan(TimeSpan.FromSeconds(20)), "not held until the child exits");
+    }
+
+    [Test]
     public void Cancelling_stops_the_install_instead_of_reporting_every_app_timed_out()
     {
         var ws = Path.Combine(dir, "ws");

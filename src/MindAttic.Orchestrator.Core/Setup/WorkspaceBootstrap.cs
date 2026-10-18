@@ -116,6 +116,9 @@ public static class WorkspaceBootstrap
             .Select(Path.GetFileName)
             .Order(StringComparer.OrdinalIgnoreCase)!];
 
+    /// <summary>How long a failed app's output is waited for once it has exited (M.ORCH-T354).</summary>
+    internal static TimeSpan OutputGrace { get; set; } = TimeSpan.FromSeconds(5);
+
     /// <summary>
     /// Runs each app's deploy.ps1 (no -Launch, so nothing opens), one at a time since several build
     /// shared packages, with a time limit per app. Returns the apps that failed.
@@ -152,7 +155,11 @@ public static class WorkspaceBootstrap
                 if (p.ExitCode == 0) progress.Report($"    {app} installed");
                 else
                 {
-                    var last = ((await errors).Trim() is { Length: > 0 } e ? e : (await output).Trim()).Split('\n').LastOrDefault()?.Trim();
+                    // The pipes end at EOF, not at its exit: a build server it started (MSBuild nodes, VBCSCompiler) inherits
+                    // them and outlives it by minutes, so what's said comes from what arrived within a few seconds (M.ORCH-T354).
+                    var read = Task.WhenAll(output, errors);
+                    var last = await Task.WhenAny(read, Task.Delay(OutputGrace, cancel)) != read ? $"exit code {p.ExitCode}"
+                        : ((await errors).Trim() is { Length: > 0 } e ? e : (await output).Trim()).Split('\n').LastOrDefault()?.Trim();
                     failed.Add($"{app}: {last}");
                     progress.Report($"    {app} FAILED");
                 }
