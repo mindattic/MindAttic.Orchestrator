@@ -140,6 +140,15 @@ public sealed class TicketCostTests
             var costs = TicketCosts.Observe([s], _ => "Repo").ToDictionary(c => c.TicketId, c => c.Fresh);
             Assert.That(costs, Is.EqualTo(new Dictionary<string, long> { ["RP-T1"] = 305, ["RP-T7"] = 70 }),
                 "a subagent without a ticket of its own is part of the parent's work");
+
+            // M.ORCH-T344: the old reader stored RP-T1's whole session (RP-T7's subagent included); its own share replaces it.
+            var observed = TicketCosts.Observe([s], _ => "Repo").ToList();
+            var merged = new TicketCosts(TicketCosts.Merge([new SessionCost("s", "RP-T1", "fix", "Repo", 375, Now.AddHours(-1))], observed, Now));
+            Assert.That(merged.Tickets.ToDictionary(t => t.TicketId, t => t.Fresh), Is.EqualTo(new Dictionary<string, long> { ["RP-T1"] = 305, ["RP-T7"] = 70 }));
+            var agedOut = TicketCosts.Merge([new SessionCost("s", "RP-T1", "fix", "Repo", 900, Now.AddHours(-1))], observed, Now);
+            Assert.That(agedOut.Single(c => c.SessionId == "s").Fresh, Is.EqualTo(900), "more than both now show: older turns aged out, kept");
+            var own = TicketCosts.Merge([new SessionCost("s", "RP-T1", "fix", "Repo", 340, Now.AddHours(-1), OwnShare: true)], observed, Now);
+            Assert.That(own.Single(c => c.SessionId == "s").Fresh, Is.EqualTo(340), "a stored own share is never taken for the old whole-session one");
         }
         finally { Directory.Delete(dir, recursive: true); }
     }

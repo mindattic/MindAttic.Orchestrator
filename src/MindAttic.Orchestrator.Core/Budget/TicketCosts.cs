@@ -1,7 +1,8 @@
 namespace MindAttic.Orchestrator.Budget;
 
-/// <summary>What one session spent on one ticket (uncached tokens), as far as its transcript showed.</summary>
-public sealed record SessionCost(string SessionId, string TicketId, string? Type, string Repo, long Fresh, DateTime LastUtc);
+/// <summary>What one session spent on one ticket (uncached tokens), as far as its transcript showed. <paramref name="OwnShare"/>:
+/// a CLI's cost worked out without its ticketed subagents' tokens; one stored before M.ORCH-T252 has it false (M.ORCH-T344).</summary>
+public sealed record SessionCost(string SessionId, string TicketId, string? Type, string Repo, long Fresh, DateTime LastUtc, bool OwnShare = false);
 
 /// <summary>A ticket's cost: every session that worked on it, added up.</summary>
 public sealed record TicketCost(string TicketId, string? Type, string Repo, long Fresh, DateTime LastUtc, int Sessions);
@@ -35,8 +36,15 @@ public sealed record TicketCosts(IReadOnlyList<SessionCost> Sessions)
         var byId = new Dictionary<string, SessionCost>(StringComparer.Ordinal);
         foreach (var s in stored) byId[s.SessionId] = s;
         foreach (var id in unticketed ?? []) byId.Remove(id);
-        foreach (var s in observed)
-            if (!byId.TryGetValue(s.SessionId, out var had) || s.Fresh > had.Fresh)
+        var seen = observed.ToList();
+        // What a session's ticketed subagents are charged now: a ticketed CLI's cost stored before M.ORCH-T252 (not marked as
+        // its own share) was its whole session, theirs included. Its own share plus theirs covering that total means the stored
+        // one counted them twice, so its own share replaces it (M.ORCH-T344).
+        var subagents = seen.Where(s => s.SessionId.Contains('/')).GroupBy(s => s.SessionId[..s.SessionId.IndexOf('/')], StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.Sum(s => s.Fresh), StringComparer.Ordinal);
+        foreach (var s in seen)
+            if (!byId.TryGetValue(s.SessionId, out var had) || s.Fresh > had.Fresh ||
+                !had.OwnShare && s.OwnShare && subagents.TryGetValue(s.SessionId, out var theirs) && s.Fresh + theirs >= had.Fresh)
                 byId[s.SessionId] = s with { Type = s.Type ?? had?.Type };
         return [.. byId.Values.Where(s => s.LastUtc >= nowUtc - Keep).OrderBy(s => s.LastUtc)];
     }
@@ -55,7 +63,7 @@ public sealed record TicketCosts(IReadOnlyList<SessionCost> Sessions)
             var theirs = s.TicketedSubagents.SelectMany(a => a.Events).ToHashSet();
             var own = s.Events.Where(e => !theirs.Contains(e)).ToList();
             if (own.Count > 0)
-                yield return new SessionCost(s.SessionId, s.TicketId, s.TicketType, repoOf(s.Cwd), own.Sum(e => e.Usage.Fresh), own[^1].AtUtc);
+                yield return new SessionCost(s.SessionId, s.TicketId, s.TicketType, repoOf(s.Cwd), own.Sum(e => e.Usage.Fresh), own[^1].AtUtc, OwnShare: true);
         }
     }
 
