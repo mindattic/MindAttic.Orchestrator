@@ -323,8 +323,6 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             if (!off && !(Uri.TryCreate(notify, UriKind.Absolute, out var u) && u.Scheme is "https" or "http")) { AnsiConsole.MarkupLine("[red]--notify takes an http(s) URL, or none.[/]"); return 1; }
             s = s with { NotifyUrl = off ? null : notify };
             changed = true;
-            if (!off && new Notifier().SendAsync(notify, "MindAttic Orchestrator", "Alerts will arrive here.").GetAwaiter().GetResult())
-                AnsiConsole.MarkupLine("[green]Sent a test alert.[/]");
         }
         if (settings.Quiet is { } quiet)
         {
@@ -380,6 +378,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             return 1;
         }
         if (changed) store.SaveSettings(s);
+        // Only once it's saved: a later option refused, or a settings.json that can't be written over, saves nothing.
+        if (settings.Notify is not null && s.NotifyUrl is { } url &&
+            new Notifier().SendAsync(url, "MindAttic Orchestrator", "Alerts will arrive here.").GetAwaiter().GetResult())
+            AnsiConsole.MarkupLine("[green]Sent a test alert.[/]");
 
         var clis = new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis();
         AnsiConsole.MarkupLine($"settings: {Markup.Escape(Path.Combine(store.Directory, "settings.json"))}");
