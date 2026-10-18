@@ -143,6 +143,13 @@ public sealed class CliCommandTests
             Assert.That((Run("bump", "a-t2"), Run("reserve", "A-T2", "2M"), Run("reserve", "A-T99", "0")), Is.EqualTo((0, 0, 0)));
             using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
                 Assert.That(db.Requires("A-T1"), Is.EqualTo(new[] { "A-T2" }), "nothing changed: the --clear wasn't half-done");
+
+            // M.ORCH-T331: a prerequisite set by hand before the migration is still in settings.json; --clear clears it too.
+            Store.SaveSettings(Store.LoadSettings() with { BlockedBy = new() { ["A-T1"] = ["A-T3"], ["A-T2"] = ["A-T3"] } });
+            Assert.That(Run("block", "A-T1", "--clear"), Is.Zero);
+            Assert.That(Store.LoadSettings().BlockedBy.Keys, Is.EqualTo(new[] { "A-T2" }), "only the cleared ticket's");
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+                Assert.That(db.Requires("A-T1"), Is.Empty);
         }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
     }

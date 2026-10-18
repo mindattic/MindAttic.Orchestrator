@@ -41,7 +41,16 @@ internal sealed class BlockCommand : Command<BlockCommand.Settings>
                     if (why is not null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(why)}. Nothing changed.[/]"); return 1; }
                 }
                 if (settings.Clear)
+                {
                     foreach (var to in db.Requires(id)) db.RemoveLink(id, to, "requires");
+                    // One set by hand before the migration is still in settings.json, and the scheduler and the gates still
+                    // read it there: cleared too, or "requires nothing" wasn't so (M.ORCH-T331).
+                    if (store.LoadSettings().BlockedBy.ContainsKey(id))
+                    {
+                        var s0 = store.LoadSettingsToChange();
+                        store.SaveSettings(s0 with { BlockedBy = new Dictionary<string, List<string>>(s0.BlockedBy.Where(kv => kv.Key != id), StringComparer.Ordinal) });
+                    }
+                }
                 foreach (var prerequisite in by) db.AddLink(id, prerequisite, "requires", "orchestrator block");
                 var now = db.Requires(id);
                 AnsiConsole.MarkupLine(Markup.Escape(now.Count > 0 ? $"{id} requires {string.Join(", ", now)}." : $"{id} requires nothing."));
