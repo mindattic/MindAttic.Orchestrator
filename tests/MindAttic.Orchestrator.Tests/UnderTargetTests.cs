@@ -76,6 +76,27 @@ public sealed class UnderTargetTests
         Assert.That(Check(new UnderTarget(), blocked, new OrchestratorSettings { Approved = ["A-T2"] }).Line, Is.Null);
     }
 
+    /// <summary>M.ORCH-T373: a ticket estimated past what's left before the reset is one autopilot won't start, so it doesn't
+    /// keep the warning quiet; the warning names it as one a person in an open CLI can still pick up, or split.</summary>
+    [Test]
+    public void A_ticket_too_big_for_what_is_left_does_not_quiet_it_and_is_named()
+    {
+        var at = End.AddMinutes(-40);
+        SessionCost Cost(string ticket, long fresh) => new(Guid.NewGuid().ToString(), ticket, "fix", "X", fresh, at.AddDays(-1));
+        Snapshot WithCost(long fresh) => Snap(at, 50, Repo("A", RepoState.Waiting, T("A-T1"))) with
+        {
+            Pace = new Pace(PaceMode.Open, 4, 1000, 100, 100, "5-hour", End, "On pace.") { RoomTokens = 2_000 },
+            Costs = new TicketCosts([Cost("X-T1", fresh), Cost("X-T2", fresh), Cost("X-T3", fresh)]),
+        };
+
+        Assert.That(Check(new UnderTarget(), WithCost(500)).Line, Is.Null, "one that fits is work for the open CLI");
+        var (line, plan) = Check(new UnderTarget(), WithCost(9_000));
+        Assert.That(plan.TooBig.Single().Id, Is.EqualTo("A-T1"));
+        Assert.That(line, Does.Contain("No ticket waits for your approval, and no CLI has one autopilot would start"));
+        Assert.That(line, Does.Contain("1 (A-T1) is estimated past what's left before the reset, so autopilot won't start it: " +
+                                       "a person in an open CLI still can, or split it"));
+    }
+
     [Test]
     public void The_daemon_raises_it_as_a_Needs_you_alert_and_logs_it()
     {
