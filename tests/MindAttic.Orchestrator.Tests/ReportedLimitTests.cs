@@ -30,6 +30,17 @@ public sealed class ReportedLimitTests
     }
 
     [Test]
+    public void Another_accounts_higher_sample_for_the_same_reset_doesnt_make_this_ones_report_stale()
+    {
+        // Account A reached 80% of a window resetting at 14:00; after a /login at 11:00, B's window resets at 14:00 too.
+        var samples = new List<UsageSample> { S(10, 80, 1_000) };
+        bool B(DateTime at) => at >= Day.AddHours(11);
+        Assert.That(ReportedLimit.Record(samples, Report(5, 12), [], Day.AddHours(12), B), Is.True, "B's 5% is B's own first reading");
+        Assert.That(ReportedLimit.Record(samples, Report(4, 12.5), [], Day.AddHours(12.5), B), Is.False, "below B's own 5%: stale");
+        Assert.That(ReportedLimit.Record(samples, Report(6, 13), [], Day.AddHours(13)), Is.False, "without an account, every sample counts");
+    }
+
+    [Test]
     public void Record_skips_a_report_made_after_its_window_reset()
     {
         // An idle tab restamps its last response (97% of the 9:00-14:00 window) at 14:30: the next window's tokens aren't its.

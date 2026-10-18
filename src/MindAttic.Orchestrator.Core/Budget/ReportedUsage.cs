@@ -20,11 +20,13 @@ public static class ReportedLimit
     public const double MinDelta = 4;
 
     /// <summary>Records <paramref name="reported"/> once (keyed by its time) and trims to a week. A report below one
-    /// already recorded for its window is stale (see <see cref="Highest"/>) and isn't recorded.</summary>
-    public static bool Record(List<UsageSample> samples, ReportedUsage? reported, IReadOnlyList<UsageEvent> events, DateTime nowUtc)
+    /// already recorded for its window is stale (see <see cref="Highest"/>) and isn't recorded; only samples <paramref name="mine"/>
+    /// says are the current account's count for that, since another account's window may reset at the same time.</summary>
+    public static bool Record(List<UsageSample> samples, ReportedUsage? reported, IReadOnlyList<UsageEvent> events, DateTime nowUtc,
+        Func<DateTime, bool>? mine = null)
     {
         if (reported?.FiveHour is not { } w || samples.Any(s => s.AtUtc == reported.AtUtc)) return false;
-        if (samples.Any(s => s.ResetUtc == w.ResetUtc && s.Percent > w.Percent)) return false;
+        if (samples.Any(s => s.ResetUtc == w.ResetUtc && s.Percent > w.Percent && (mine is null || mine(s.AtUtc)))) return false;
         // An idle tab keeps stamping its last response's window after that window reset: counted to the report's time, the
         // next window's tokens would land in it and inflate the limit sized from it.
         if (w.ResetUtc <= reported.AtUtc) return false;

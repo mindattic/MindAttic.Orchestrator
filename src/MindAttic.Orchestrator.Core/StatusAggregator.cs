@@ -286,7 +286,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             samples = loaded;
             samplesStamp = stamp;
         }
-        var recorded = ReportedLimit.Record(samples, reported, events, now);
+        var recorded = ReportedLimit.Record(samples, reported, events, now, signIn is null ? null : signIn.Contains);
         samplesEstimate = ReportedLimit.Estimate(signIn is null ? samples : [.. samples.Where(s => signIn.Contains(s.AtUtc))]);
         if (recorded)
         {
