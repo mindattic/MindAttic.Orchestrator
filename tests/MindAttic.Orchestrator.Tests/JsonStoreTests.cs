@@ -75,6 +75,16 @@ public sealed class JsonStoreTests
     }
 
     [Test]
+    public void Merged_files_say_when_they_couldnt_be_read_so_the_merge_isnt_saved_over_them()
+    {
+        var store = new JsonStore(dir);
+        Assert.That(store.TryLoadLimits(out var none) && none.Count == 0, Is.True, "missing: nothing yet, fine to save");
+        Directory.CreateDirectory(dir);
+        foreach (var name in new[] { "limits", "usage-history", "ticket-costs" }) File.WriteAllText(Path.Combine(dir, name + ".json"), "[ {");
+        Assert.That((store.TryLoadLimits(out _), store.TryLoadUsageHistory(out _), store.TryLoadTicketCosts(out _)), Is.EqualTo((false, false, false)));
+    }
+
+    [Test]
     public void Settings_to_change_refuse_a_file_that_cant_be_read_instead_of_handing_out_defaults_to_save_over_it()
     {
         var store = new JsonStore(dir);

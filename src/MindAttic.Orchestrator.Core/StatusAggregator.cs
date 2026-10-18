@@ -230,21 +230,22 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
                 [.. OtherProviders.Limits.Where(l => l.Provider == p.Item1 && l.ResetsUtc > now)]))
             .ToList();
 
-        var storedHistory = Store.LoadUsageHistory();
+        // A file held past the store's retries reads as empty: merged and saved, a year of history would be cut to the week.
+        var historyRead = Store.TryLoadUsageHistory(out var storedHistory);
         var history = UsageHistory.Merge(storedHistory, UsageHistory.Observe(allSessions.Concat(providerSessions), Bucket, historyStartUtc),
             DateOnly.FromDateTime(startOfToday.AddDays(-HistoryDays)), DateOnly.FromDateTime(startOfToday));
         // Today's numbers grow every refresh; a few minutes' lag in the saved copy costs nothing.
-        if (now - historySavedUtc >= TimeSpan.FromMinutes(5) && !history.SequenceEqual(storedHistory))
+        if (historyRead && now - historySavedUtc >= TimeSpan.FromMinutes(5) && !history.SequenceEqual(storedHistory))
         {
             historySavedUtc = now;
             try { Store.SaveUsageHistory(history); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
 
-        var storedCosts = Store.LoadTicketCosts();
+        var costsRead = Store.TryLoadTicketCosts(out var storedCosts);
         var costs = TicketCosts.Merge(storedCosts, TicketCosts.Observe(allSessions.Concat(providerSessions), Bucket), now,
             TicketCosts.Unticketed(allSessions.Concat(providerSessions)));
-        if (!costs.SequenceEqual(storedCosts))
+        if (costsRead && !costs.SequenceEqual(storedCosts))
         {
             try { Store.SaveTicketCosts(costs); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
@@ -323,7 +324,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
     private LimitCalibration Calibrate(IReadOnlyList<TranscriptSession> sessions, IReadOnlyList<UsageEvent> events, DateTime historyStartUtc, DateTime now)
     {
-        var stored = Store.LoadLimits();
+        var read = Store.TryLoadLimits(out var stored);
         var observed = LimitCalibration.Observe(sessions.SelectMany(s => s.Hits), events, historyStartUtc);
         if (!Store.HasLimits)
         {
@@ -334,7 +335,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         }
 
         var merged = LimitCalibration.Merge(stored, observed, now);
-        if (!Store.HasLimits || !merged.SequenceEqual(stored))
+        if (read && (!Store.HasLimits || !merged.SequenceEqual(stored)))
         {
             try { Store.SaveLimits(merged); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }

@@ -70,7 +70,9 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
         var session = hits.Where(h => h.Kind == LimitKind.Session).ToList();
         if (alarmed is null)
         {
-            var saved = store.Load<List<DateTime>>(AlarmsName);
+            // Held past the store's retries it reads as empty, and every hit in limits.json would be raised again as new:
+            // try again next tick.
+            if (!store.TryLoad<List<DateTime>>(AlarmsName, out var saved)) return;
             // The first run knows every hit so far as history: only hits after it are news.
             alarmed = System.IO.File.Exists(Path.Combine(store.Directory, AlarmsName + ".json")) ? [.. saved] : [.. session.Select(h => h.ResetUtc)];
             if (saved.Count == 0) Save();

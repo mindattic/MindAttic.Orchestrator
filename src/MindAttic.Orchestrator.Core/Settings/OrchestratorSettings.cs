@@ -267,6 +267,11 @@ public sealed class JsonStore(string? directory = null)
     }
     public bool HasLimits => File.Exists(PathOf("limits"));
     public List<Budget.LimitObservation> LoadLimits() => Load<List<Budget.LimitObservation>>("limits");
+
+    // For a load, merge and save: false when the file is there but couldn't be read, so the merge isn't saved over it.
+    public bool TryLoadLimits(out List<Budget.LimitObservation> o) => TryLoad("limits", out o);
+    public bool TryLoadUsageHistory(out List<Budget.DayUsage> d) => TryLoad("usage-history", out d);
+    public bool TryLoadTicketCosts(out List<Budget.SessionCost> c) => TryLoad("ticket-costs", out c);
     public void SaveLimits(List<Budget.LimitObservation> o) => Save("limits", o);
     public List<Budget.DayUsage> LoadUsageHistory() => Load<List<Budget.DayUsage>>("usage-history");
     public void SaveUsageHistory(List<Budget.DayUsage> d) => Save("usage-history", d);
