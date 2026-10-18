@@ -160,6 +160,13 @@ public sealed partial class MainViewModel : ObservableObject
     public IReadOnlyList<string> Warnings => snapshot?.Warnings ?? [];
     public bool HasWarnings => Warnings.Count > 0;
 
+    /// <summary>The status bar's count of them: not only ticket files go wrong (billing, the approvals' move into the Workflow
+    /// database), and calling every one a ticket file problem sent you looking in the wrong place (M.ORCH-T465).</summary>
+    public string WarningsText => WarningLine(Warnings.Count);
+
+    internal static string WarningLine(int count) =>
+        count == 1 ? "1 problem reading the workspace, hover for details" : $"{count} problems reading the workspace, hover for details";
+
     private bool isLoading = true;
 
     /// <summary>True until the first refresh finishes, either way (a failure shows in RefreshInfo): the full-screen
@@ -243,7 +250,7 @@ public sealed partial class MainViewModel : ObservableObject
         PruneToasts(Toasts, DateTime.UtcNow);
         Raise(nameof(WorkingCount)); Raise(nameof(WaitingCount)); Raise(nameof(HostCount));
         Raise(nameof(TicketCount)); Raise(nameof(RepoCount)); Raise(nameof(TokensToday));
-        Raise(nameof(TokensDetail)); Raise(nameof(Warnings)); Raise(nameof(HasWarnings));
+        Raise(nameof(TokensDetail)); Raise(nameof(Warnings)); Raise(nameof(HasWarnings)); Raise(nameof(WarningsText));
     }
 
     /// <summary>The most toasts shown at once; the oldest (last) go first.</summary>

@@ -224,6 +224,21 @@ public sealed class DashboardViewModelTests
     public void Shown_refreshes_every_5s_hidden_every_15s_holding_the_lease_else_60s(bool hidden, bool holdsLease, int seconds) =>
         Assert.That(MainWindow.RefreshInterval(hidden, holdsLease), Is.EqualTo(TimeSpan.FromSeconds(seconds)));
 
+    // ── The status bar's warnings ───────────────────────────────────────────
+
+    [Test]
+    public void The_status_bar_counts_every_warning_without_calling_it_a_ticket_file_problem()
+    {
+        // M.ORCH-T465: a billing or approvals warning read "1 ticket file problem(s)".
+        Assert.That(MainViewModel.WarningLine(1), Is.EqualTo("1 problem reading the workspace, hover for details"));
+        Assert.That(MainViewModel.WarningLine(3), Is.EqualTo("3 problems reading the workspace, hover for details"));
+
+        var root = TestContext.CurrentContext.TestDirectory;
+        while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
+        Assert.That(xaml, Does.Contain("{Binding WarningsText").And.Not.Contain("ticket file problem"));
+    }
+
     // ── A change made while a refresh is built ──────────────────────────────
 
     [Test]

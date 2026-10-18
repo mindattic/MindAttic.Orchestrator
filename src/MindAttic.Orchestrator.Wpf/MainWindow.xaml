@@ -1025,7 +1025,7 @@
                     <TextBlock.ToolTip>
                         <ItemsControl ItemsSource="{Binding Warnings}" />
                     </TextBlock.ToolTip>
-                    <Run Text="{Binding Warnings.Count, Mode=OneWay}" /><Run Text=" ticket file problem(s), hover for details" />
+                    <Run Text="{Binding WarningsText, Mode=OneWay}" />
                 </TextBlock>
             </DockPanel>
         </Border>
