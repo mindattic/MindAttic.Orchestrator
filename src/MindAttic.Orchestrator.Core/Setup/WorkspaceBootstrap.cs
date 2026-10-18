@@ -144,7 +144,7 @@ public static class WorkspaceBootstrap
                 try { await p.WaitForExitAsync(timeout.Token); }
                 catch (OperationCanceledException)
                 {
-                    p.Kill(entireProcessTree: true);
+                    try { p.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or AggregateException) { } // exited, or part of the tree couldn't be ended
                     if (cancel.IsCancellationRequested) throw; // you cancelled: stop, rather than "time out" every app left
                     failed.Add($"{app}: timed out");
                     continue;

@@ -31,7 +31,8 @@ public sealed class ProcessRunner : IProcessRunner
         var started = Stopwatch.StartNew();
         if (!p.WaitForExit(timeout))
         {
-            try { p.Kill(entireProcessTree: true); } catch (InvalidOperationException) { } // exited meanwhile
+            // AggregateException: part of the tree couldn't be ended (protected, or exiting mid-kill); still killed as far as it goes.
+            try { p.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or AggregateException) { } // exited meanwhile
             // Not waiting on the pipes: something outside the tree may still hold them, and the caller is the daemon's loop.
             return ProcessResult.Killed;
         }

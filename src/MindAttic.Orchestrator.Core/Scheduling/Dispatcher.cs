@@ -178,7 +178,7 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
             var tookTooLong = (-1, $"git {string.Join(' ', args)} took over {timeout.TotalSeconds:0}s; stopped it");
             if (!p.WaitForExit(timeout))
             {
-                try { p.Kill(entireProcessTree: true); } catch (InvalidOperationException) { } // exited meanwhile
+                try { p.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or AggregateException) { } // exited meanwhile, or part of the tree couldn't be ended
                 return tookTooLong;
             }
             // The output ends at the pipes' EOF, not git's exit: a helper it started that outlives it (a credential

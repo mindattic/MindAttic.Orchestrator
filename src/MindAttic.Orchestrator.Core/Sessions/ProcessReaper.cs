@@ -124,7 +124,8 @@ public static class ProcessReaper
     private static void Kill(int pid)
     {
         try { using var p = Process.GetProcessById(pid); p.Kill(true); }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception) { }
+        // AggregateException: part of its tree couldn't be ended; the rest of the sweep still runs.
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or AggregateException) { }
     }
 
     private static IReadOnlyList<ProcessInfo> Snapshot()
