@@ -1166,7 +1166,10 @@ public static class AgentGate
                 # /goal's own Stop hook sends the turn back while its condition isn't met, and at the stop every tool call is
                 # refused, so it never is: each round would spend a turn past the line. continue:false outranks its block.
                 save(state_file, state)
-                print(json.dumps({"continue": False, "stopReason": "The 5-hour window is at its target, so /goal can't go on before it "
+                # The stop's own window: a weekly wall says so, as the refusal of a typed prompt does.
+                own = None if limits.get("stop_window") else claude_stop()
+                window = limits.get("stop_window") or (latched("orchestrator") or {}).get("window") or (own[2] if own else None) or "5-hour"
+                print(json.dumps({"continue": False, "stopReason": "The " + str(window) + " window is at its target, so /goal can't go on before it "
                     "resets; the goal stays set (/goal clear drops it)."}))
                 sys.exit(0)
         elif event == "UserPromptSubmit":

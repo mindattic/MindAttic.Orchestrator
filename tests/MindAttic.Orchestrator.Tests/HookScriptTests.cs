@@ -210,6 +210,11 @@ public sealed class HookScriptTests
         Status(new { stop = true });
         var stop = Gate(new { hook_event_name = "Stop", session_id = "g1", cwd = ws }, AgentGate.ContextScriptName).Output;
         Assert.That(stop, Does.Contain("\"continue\": false"), "the goal's own Stop hook would send it back to calls that are all refused");
+        Assert.That(stop, Does.Contain("The 5-hour window is at its target"));
+        Status(new { stop = true, stop_window = "weekly" });
+        Assert.That(Gate(new { hook_event_name = "Stop", session_id = "g1", cwd = ws }, AgentGate.ContextScriptName).Output,
+            Does.Contain("The weekly window is at its target"), "a weekly wall says so");
+        Status(new { stop = true });
         Assert.That(Gate(Typed("g2", "/goal all the tests pass"), AgentGate.ContextScriptName).Output, Does.Contain("Not sent").And.Contain("/goal clear still go through"),
             "a new goal at the stop is a turn past the line, and the refusal doesn't say /goal goes through");
         Assert.That(Gate(Typed("g2", "/goal clear all lint warnings"), AgentGate.ContextScriptName).Output, Does.Contain("Not sent"),
