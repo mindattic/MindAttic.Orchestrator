@@ -86,6 +86,22 @@ public sealed class SnapshotFileTests
     }
 
     [Test]
+    public void A_sessions_ticketed_subagents_read_back_so_readers_see_what_they_are_working()
+    {
+        var now = Now;
+        var sample = Sample(now);
+        var sub = new TicketedSubagent("agent1", "R-T7", "fix", @"D:\W\R1-T7", [new UsageEvent(now.AddMinutes(-1), new TokenUsage(1, 2, 3, 4))]);
+        var repos = sample.Repos.Select((r, i) => i == 1 ? r with { Sessions = [r.Sessions[0] with { TicketedSubagents = [sub] }, r.Sessions[1]] } : r).ToList();
+        new SnapshotFile(path).Write(sample with { Repos = repos });
+
+        var read = new SnapshotFile(path).Read(now)!;
+
+        var back = read.Repos[1].Sessions[0].TicketedSubagents.Single();
+        Assert.That((back.AgentId, back.TicketId, back.TicketType, back.Cwd, back.Events.Single()), Is.EqualTo((sub.AgentId, sub.TicketId, sub.TicketType, sub.Cwd, sub.Events[0])));
+        Assert.That(read.Repos[1].Sessions[1].TicketedSubagents, Is.Empty);
+    }
+
+    [Test]
     public void A_missing_file_reads_as_null() => Assert.That(new SnapshotFile(path).Read(Now), Is.Null);
 
     [Test]

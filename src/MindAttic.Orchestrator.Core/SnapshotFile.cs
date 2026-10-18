@@ -7,13 +7,13 @@ namespace MindAttic.Orchestrator;
 /// The last <see cref="Snapshot"/> the status lease holder built, for every other orchestrator process to show
 /// instead of building its own (M.ORCH-T115): each open dashboard window and the daemon used to poll every transcript,
 /// parse subagents, scan the Launcher's pipes and rewrite the transcript cache on its own timer. Written whole to a
-/// private temp file and swapped in, so a reader never sees half of one. Each session's usage events (which plain
-/// JSON leaves out) travel alongside, so what's worked out from them (a repo's spend this block, the "while you
-/// were away" summary) comes out the same as in the process that built it.
+/// private temp file and swapped in, so a reader never sees half of one. Each session's usage events and its ticketed
+/// subagents (which plain JSON leaves out) travel alongside, so what's worked out from them (a repo's spend this block,
+/// the "while you were away" summary, the tickets subagents are working) comes out the same as in the process that built it.
 /// </summary>
 public sealed class SnapshotFile(string path)
 {
-    public const int FormatVersion = 1;
+    public const int FormatVersion = 2;
 
     /// <summary>A published snapshot older than this is ignored (its writer stopped or hung) and the reader builds its own.</summary>
     public static readonly TimeSpan MaxAge = TimeSpan.FromMinutes(1);
@@ -31,17 +31,25 @@ public sealed class SnapshotFile(string path)
     private Snapshot? last;
 
     // Events per repo, per session, in snapshot order, as [ticks, input, cache write, cache read, output].
-    private sealed record Published(int Version, int Pid, Snapshot Snapshot, List<List<long[][]>> Events);
+    // Ticketed subagents per repo, per session, likewise (M.ORCH-T255 reads them to tell what a live subagent is working).
+    private sealed record Published(int Version, int Pid, Snapshot Snapshot, List<List<long[][]>> Events, List<List<PublishedSubagent[]>>? Subagents = null);
+
+    private sealed record PublishedSubagent(string AgentId, string TicketId, string? TicketType, string Cwd, long[][] Events);
+
+    private static long[] Pack(UsageEvent e) => [e.AtUtc.Ticks, e.Usage.Input, e.Usage.CacheCreation, e.Usage.CacheRead, e.Usage.Output];
+
+    private static UsageEvent Unpack(long[] e) => new(new DateTime(e[0], DateTimeKind.Utc), new TokenUsage(e[1], e[2], e[3], e[4]));
 
     public void Write(Snapshot snapshot)
     {
-        var events = snapshot.Repos.Select(r => r.Sessions.Select(s => s.Events
-            .Select(e => new[] { e.AtUtc.Ticks, e.Usage.Input, e.Usage.CacheCreation, e.Usage.CacheRead, e.Usage.Output }).ToArray()).ToList()).ToList();
+        var events = snapshot.Repos.Select(r => r.Sessions.Select(s => s.Events.Select(Pack).ToArray()).ToList()).ToList();
+        var subagents = snapshot.Repos.Select(r => r.Sessions.Select(s => s.TicketedSubagents
+            .Select(a => new PublishedSubagent(a.AgentId, a.TicketId, a.TicketType, a.Cwd, [.. a.Events.Select(Pack)])).ToArray()).ToList()).ToList();
         var temp = $"{Path}.{Environment.ProcessId}.tmp";
         try
         {
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path)!);
-            File.WriteAllBytes(temp, JsonSerializer.SerializeToUtf8Bytes(new Published(FormatVersion, Environment.ProcessId, snapshot, events), Json));
+            File.WriteAllBytes(temp, JsonSerializer.SerializeToUtf8Bytes(new Published(FormatVersion, Environment.ProcessId, snapshot, events, subagents), Json));
             File.Move(temp, Path, overwrite: true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -79,7 +87,9 @@ public sealed class SnapshotFile(string path)
         {
             Sessions = [.. r.Sessions.Select((x, j) => x with
             {
-                Events = [.. p.Events[i][j].Select(e => new UsageEvent(new DateTime(e[0], DateTimeKind.Utc), new TokenUsage(e[1], e[2], e[3], e[4])))],
+                Events = [.. p.Events[i][j].Select(Unpack)],
+                TicketedSubagents = p.Subagents is null ? [] : [.. p.Subagents[i][j].Select(a =>
+                    new TicketedSubagent(a.AgentId, a.TicketId, a.TicketType, a.Cwd, [.. a.Events.Select(Unpack)]))],
             })],
         }).ToList();
         // Lookups are case-insensitive where they're built; JSON brings back plain ordinal ones.
