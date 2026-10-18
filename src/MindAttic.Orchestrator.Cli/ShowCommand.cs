@@ -33,7 +33,7 @@ internal sealed class ShowCommand : Command<ShowCommand.Settings>
         AnsiConsole.MarkupLine($"  {Markup.Escape(t.Summary)}");
         if (t.Ref.Trim() is { Length: > 0 } r && r != "—") AnsiConsole.MarkupLine($"  [grey]Ref: {Markup.Escape(r)}[/]");
 
-        var sessions = TicketReplay.Sessions(id, options.ClaudeProjectsDir);
+        var sessions = TicketReplay.Sessions(id, options.ClaudeProjectsDir, Ctx.Store().LoadSettings().WorktreeRoot);
         AnsiConsole.MarkupLine(sessions.Count == 0 ? "\n[grey]No dispatched sessions found for it (only sessions the orchestrator started are tied to a ticket).[/]"
             : $"\n[bold]{sessions.Count} session{(sessions.Count == 1 ? "" : "s")}[/], {Formatting.Tokens(sessions.Sum(s => s.Fresh))} uncached");
         foreach (var s in sessions)

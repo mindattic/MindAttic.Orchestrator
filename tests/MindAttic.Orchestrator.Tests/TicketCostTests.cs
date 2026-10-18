@@ -29,6 +29,38 @@ public sealed class TicketCostTests
     public void A_lower_case_worktree_path_still_names_the_ticket_in_upper_case(string? cwd, string? expected) =>
         Assert.That(TicketAttribution.FromWorktree(cwd), Is.EqualTo(expected));
 
+    // M.ORCH-T446: only a folder named MindAttic.worktrees counted, so with a custom WorktreeRoot no session was tied to its ticket.
+    [TestCase(@"E:\WT\Repo\RP-T7\src", @"E:\WT", "RP-T7")]
+    [TestCase(@"e:/wt/mindattic.orchestrator/m.orch-t9", @"E:\WT\", "M.ORCH-T9")]
+    [TestCase(@"E:\WT\Repo\RP-T7", @"E:/WT", "RP-T7")]
+    [TestCase(@"E:\WT\Repo", @"E:\WT", null)]
+    [TestCase(@"E:\WT\Repo\notes", @"E:\WT", null)]
+    [TestCase(@"E:\WTX\Repo\RP-T7", @"E:\WT", null)]
+    [TestCase(@"E:\Other\Repo\RP-T7", @"E:\WT", null)]
+    [TestCase(@"D:\Projects\MindAttic.worktrees\Repo\RP-T7", @"E:\WT", "RP-T7")]
+    public void A_worktree_under_the_configured_WorktreeRoot_names_its_ticket(string cwd, string root, string? expected) =>
+        Assert.That(TicketAttribution.FromWorktree(cwd, root), Is.EqualTo(expected));
+
+    [Test]
+    public void A_transcript_in_a_worktree_under_a_custom_WorktreeRoot_is_tied_to_its_ticket()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "orch-attr-root-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(dir, "p"));
+        try
+        {
+            File.WriteAllLines(Path.Combine(dir, "p", "s.jsonl"), [
+                System.Text.Json.JsonSerializer.Serialize(new { type = "assistant", timestamp = "2026-10-14T10:01:00Z", sessionId = "s", cwd = @"E:\WT\Repo\RP-T7",
+                    message = new { id = "m1", usage = new { input_tokens = 5, cache_creation_input_tokens = 0, cache_read_input_tokens = 0, output_tokens = 95 } } }),
+            ]);
+            var reader = new TranscriptReader(dir);
+
+            Assert.That(reader.Poll(Now.AddDays(-1)).Single().TicketId, Is.Null, "no root set: E:\\WT isn't a worktree folder");
+            reader.WorktreeRoot = @"E:\WT";
+            Assert.That(reader.Poll(Now.AddDays(-1)).Single().TicketId, Is.EqualTo("RP-T7"), "setting the root ties the session it already read");
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
     [Test]
     public void A_family_code_with_a_dot_is_attributed_like_any_other()
     {

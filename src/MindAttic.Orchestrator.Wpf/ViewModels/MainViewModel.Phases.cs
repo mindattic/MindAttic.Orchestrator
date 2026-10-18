@@ -254,7 +254,8 @@ public sealed partial class MainViewModel
             var repo = snapshot?.Repos.FirstOrDefault(r => r.Name == a.Repo);
             var repoPath = repo?.Path ?? "";
             var ticket = repo?.OpenTickets.FirstOrDefault(t => t.Id == ticketId);
-            ShowText($"{ticketId} in {a.Repo}", await Task.Run(() => MindAttic.Orchestrator.Tickets.TicketReplay.PlainReport(ticketId, repoPath, aggregator.Options.ClaudeProjectsDir, ticket)));
+            ShowText($"{ticketId} in {a.Repo}", await Task.Run(() => MindAttic.Orchestrator.Tickets.TicketReplay.PlainReport(ticketId, repoPath, aggregator.Options.ClaudeProjectsDir, ticket,
+                store.LoadSettings().WorktreeRoot)));
         }
         // async void: an escaped exception (a corrupt assignments.json, a locked file) would close the dashboard.
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -442,7 +443,8 @@ public sealed partial class MainViewModel
         try
         {
             var repoPath = snapshot?.Repos.FirstOrDefault(r => r.Name == a.Repo)?.Path ?? a.Directory;
-            ShowText($"{a.TicketId} in {a.Repo}", await Task.Run(() => MindAttic.Orchestrator.Tickets.TicketReplay.PlainReport(a.TicketId, repoPath, aggregator.Options.ClaudeProjectsDir)));
+            ShowText($"{a.TicketId} in {a.Repo}", await Task.Run(() => MindAttic.Orchestrator.Tickets.TicketReplay.PlainReport(a.TicketId, repoPath, aggregator.Options.ClaudeProjectsDir,
+                worktreeRoot: store.LoadSettings().WorktreeRoot)));
         }
         // async void: an escaped exception (a corrupt assignments.json, a locked file) would close the dashboard.
         catch (Exception ex) when (ex is not OutOfMemoryException)

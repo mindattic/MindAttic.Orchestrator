@@ -35,6 +35,20 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
     private DateTime fullCheckUtc = DateTime.MinValue;
     private IReadOnlyList<TranscriptSession>? sessions;
 
+    /// <summary>settings.json's WorktreeRoot: a session working in a ticket's worktree under it is tied to that ticket, as one under
+    /// a MindAttic.worktrees folder always is (M.ORCH-T446).</summary>
+    public string? WorktreeRoot
+    {
+        get => worktreeRoot;
+        set
+        {
+            if (string.Equals(worktreeRoot, value, StringComparison.OrdinalIgnoreCase)) return;
+            worktreeRoot = value;
+            sessions = null; // attribute the sessions again on the next poll
+        }
+    }
+    private string? worktreeRoot;
+
     /// <summary>Bumped whenever a poll finds anything new; while it's unchanged, <see cref="Poll"/> returns the same sessions.</summary>
     public long Version { get; private set; }
 
@@ -193,7 +207,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
                 {
                     Events = [.. g.SelectMany(s => s.Events).OrderBy(e => e.AtUtc)],
                     Hits = [.. g.SelectMany(s => s.Hits).OrderBy(h => h.AtUtc)],
-                    TicketId = ticket.Id ?? own.Select(s => TicketAttribution.FromWorktree(s.Cwd)).FirstOrDefault(id => id is not null),
+                    TicketId = ticket.Id ?? own.Select(s => TicketAttribution.FromWorktree(s.Cwd, worktreeRoot)).FirstOrDefault(id => id is not null),
                     TicketType = ticket.Type,
                     TicketedSubagents = [.. g.Where(s => s.AgentId is not null && s.TicketId is not null)
                         .Select(s => new TicketedSubagent(s.AgentId!, s.TicketId!, s.TicketType, s.Cwd!, [.. s.Events.OrderBy(e => e.AtUtc)]))],

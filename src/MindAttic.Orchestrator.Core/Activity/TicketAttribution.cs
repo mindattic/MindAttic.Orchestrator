@@ -17,6 +17,24 @@ public static partial class TicketAttribution
     public static (string Id, string Type)? FromPrompt(string text) =>
         Prompt().Match(text) is { Success: true } m ? (m.Groups["id"].Value, m.Groups["type"].Value) : null;
 
-    public static string? FromWorktree(string? cwd) =>
-        cwd is not null && Worktree().Match(cwd) is { Success: true } m ? m.Groups["id"].Value.ToUpperInvariant() : null;
+    [GeneratedRegex(@"^(?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+$", RegexOptions.IgnoreCase)]
+    private static partial Regex TicketId();
+
+    /// <summary>
+    /// The ticket a session in <c>&lt;worktree root&gt;\&lt;repo&gt;\&lt;ticket&gt;</c> works on: under <paramref name="worktreeRoot"/>
+    /// (settings.json's WorktreeRoot) when given, else under any folder named MindAttic.worktrees, the default (M.ORCH-T446).
+    /// </summary>
+    public static string? FromWorktree(string? cwd, string? worktreeRoot = null)
+    {
+        if (cwd is null) return null;
+        if (!string.IsNullOrWhiteSpace(worktreeRoot))
+        {
+            var root = worktreeRoot.Replace('/', '\\').TrimEnd('\\') + '\\';
+            var path = cwd.Replace('/', '\\');
+            if (path.StartsWith(root, StringComparison.OrdinalIgnoreCase) &&
+                path[root.Length..].Split('\\', StringSplitOptions.RemoveEmptyEntries) is { Length: >= 2 } parts && TicketId().IsMatch(parts[1]))
+                return parts[1].ToUpperInvariant();
+        }
+        return Worktree().Match(cwd) is { Success: true } m ? m.Groups["id"].Value.ToUpperInvariant() : null;
+    }
 }

@@ -241,4 +241,28 @@ public sealed class TicketReplayTests
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
+
+    [Test]
+    public void A_session_in_a_ticket_worktree_under_a_custom_WorktreeRoot_worked_the_ticket()
+    {
+        // M.ORCH-T446: only a folder named *worktrees counted, so with settings.json's WorktreeRoot = E:\WT nothing did.
+        var dir = Path.Combine(Path.GetTempPath(), "orch-replay-root-" + Guid.NewGuid().ToString("N"));
+        string Session(string folder)
+        {
+            Directory.CreateDirectory(Path.Combine(dir, folder));
+            var file = Path.Combine(dir, folder, "s.jsonl");
+            File.WriteAllLines(file, [JsonSerializer.Serialize(new { type = "user", timestamp = "2026-10-14T10:00:00Z", message = new { role = "user", content = "carry on" } })]);
+            return file;
+        }
+        try
+        {
+            var mine = Session("E--WT-Repo-RP-T7");
+            Session("E--Elsewhere-Repo-RP-T7");
+
+            Assert.That(TicketReplay.Sessions("RP-T7", dir, @"E:\WT\").Select(s => s.File), Is.EqualTo(new[] { mine }),
+                "the ticket's worktree under the configured root, not a folder elsewhere that ends the same");
+            Assert.That(TicketReplay.Sessions("RP-T7", dir), Is.Empty, "without the setting, only a *worktrees folder counts");
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
 }

@@ -194,6 +194,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
         // Claude's sessions drive the budget and pacing (its limits are Claude's); every provider's
         // count toward repo activity and per-repo totals.
+        transcripts.WorktreeRoot = settings.WorktreeRoot;
         var polled = transcripts.Poll(historyStartUtc);
         // A CLI on an API key, a gateway or a cloud provider spends none of the subscription's windows (the hooks record each
         // session's auth): its tokens, limit hits and burn stay out of the budget and the pace, though its work still shows.

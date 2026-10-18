@@ -18,18 +18,24 @@ public static partial class TicketReplay
 {
     private const int HeadBytes = 64 * 1024;
 
-    public static IReadOnlyList<ReplaySession> Sessions(string ticketId, string projectsDir)
+    /// <param name="worktreeRoot">settings.json's WorktreeRoot: a session in the ticket's worktree under it worked the ticket, as one
+    /// under a folder named *worktrees always has (M.ORCH-T446).</param>
+    public static IReadOnlyList<ReplaySession> Sessions(string ticketId, string projectsDir, string? worktreeRoot = null)
     {
         if (!Directory.Exists(projectsDir)) return [];
         var marker = $"{TicketAttribution.PromptMarker}{ticketId} ";
         // Claude names a project folder after its path with every non-alphanumeric turned into '-',
         // so worktree ...\M.ORCH-T1 is folder ...-M-ORCH-T1: compare both sides that way.
         var worktreeFolder = "-" + FolderSafe(ticketId);
+        var rootFolder = string.IsNullOrWhiteSpace(worktreeRoot) ? null : FolderSafe(worktreeRoot.TrimEnd('\\', '/')) + "-";
         var found = new List<ReplaySession>();
         bool Worked(string file)
         {
             var folder = Path.GetFileName(Path.GetDirectoryName(file)) ?? "";
-            var inWorktree = folder.Contains("worktrees", StringComparison.OrdinalIgnoreCase) && FolderSafe(folder).EndsWith(worktreeFolder, StringComparison.Ordinal);
+            var safe = FolderSafe(folder);
+            var underRoot = folder.Contains("worktrees", StringComparison.OrdinalIgnoreCase) ||
+                            rootFolder is not null && safe.StartsWith(rootFolder, StringComparison.Ordinal);
+            var inWorktree = underRoot && safe.EndsWith(worktreeFolder, StringComparison.Ordinal);
             return inWorktree || Head(file) is var head && head.Contains(marker, StringComparison.Ordinal) && AskedFor(head, ticketId);
         }
         foreach (var file in Directory.EnumerateFiles(projectsDir, "*.jsonl", new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true }))
@@ -214,7 +220,8 @@ public static partial class TicketReplay
 
     /// <summary>The whole replay as plain text, for a window that just shows it. With <paramref name="ticket"/>,
     /// leads with its row (type, status, summary, ref) before the sessions and commits.</summary>
-    public static string PlainReport(string ticketId, string repoPath, string projectsDir, MindAttic.Workflow.Tickets.Ticket? ticket = null)
+    public static string PlainReport(string ticketId, string repoPath, string projectsDir, MindAttic.Workflow.Tickets.Ticket? ticket = null,
+        string? worktreeRoot = null)
     {
         var sb = new StringBuilder();
         if (ticket is { } t)
@@ -224,7 +231,7 @@ public static partial class TicketReplay
             if (t.Ref.Trim() is { Length: > 0 } r && r != "—") sb.AppendLine($"Ref: {r}");
             sb.AppendLine();
         }
-        var sessions = Sessions(ticketId, projectsDir);
+        var sessions = Sessions(ticketId, projectsDir, worktreeRoot);
         sb.AppendLine(sessions.Count == 0 ? "No dispatched sessions found (only sessions the orchestrator started are tied to a ticket)."
             : $"{sessions.Count} session(s), {Formatting.Tokens(sessions.Sum(s => s.Fresh))} uncached");
         foreach (var s in sessions)
