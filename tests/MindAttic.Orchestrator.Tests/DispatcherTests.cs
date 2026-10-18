@@ -52,6 +52,19 @@ public sealed class DispatcherTests
     // ---- EnsureWorktree ----
 
     [Test]
+    public void A_worktree_folder_deleted_by_hand_is_made_again_not_refused_for_good()
+    {
+        var tree = Path.Combine(wtRoot, "A", "A-T5");
+        Assert.That(Dispatcher.EnsureWorktree(repo, tree, "orch/a-t5").Ok, Is.True);
+        Directory.Delete(tree, recursive: true); // Explorer: git still has it registered, its branch checked out there
+
+        var (ok, path, error) = Dispatcher.EnsureWorktree(repo, tree, "orch/a-t5");
+
+        Assert.That(ok, Is.True, error);
+        Assert.That(Directory.Exists(Path.Combine(path, ".git")) || File.Exists(Path.Combine(path, ".git")), Is.True);
+    }
+
+    [Test]
     public void An_existing_worktree_is_reused_as_it_is()
     {
         var tree = Path.Combine(wtRoot, "A", "A-T1");

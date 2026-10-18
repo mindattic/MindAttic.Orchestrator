@@ -118,6 +118,9 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
             return (true, path, "");
 
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        // A worktree folder deleted by hand is still registered with git, its branch "checked out" there, so adding it again
+        // would fail every time: let git forget worktrees whose folders are gone first.
+        Git(repoPath, "worktree", "prune");
         var (exists, _) = Git(repoPath, "rev-parse", "--verify", "--quiet", "refs/heads/" + branch);
         var (code, output) = exists == 0
             ? Git(repoPath, "worktree", "add", path, branch)
