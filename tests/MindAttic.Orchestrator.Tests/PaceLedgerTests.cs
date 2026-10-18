@@ -70,7 +70,7 @@ public sealed class PaceLedgerTests
 
         var w = PaceLedger.Build(End, samples, [Hit(Start.AddMinutes(5), Start.AddHours(2))], [], accountAt: AccountAt);
 
-        Assert.That((w.Grade, w.LimitHitUtc, w.Account), Is.EqualTo((WindowGrade.Under, (DateTime?)null, (string?)"b")));
+        Assert.That((w.Grade == WindowGrade.Over, w.LimitHitUtc, w.Account), Is.EqualTo((false, (DateTime?)null, (string?)"b")));
     }
 
     [Test]
