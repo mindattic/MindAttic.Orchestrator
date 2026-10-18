@@ -26,19 +26,37 @@ public static partial class TicketReplay
         // so worktree ...\M.ORCH-T1 is folder ...-M-ORCH-T1: compare both sides that way.
         var worktreeFolder = "-" + FolderSafe(ticketId);
         var found = new List<ReplaySession>();
-        foreach (var file in Directory.EnumerateFiles(projectsDir, "*.jsonl", new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true }))
+        bool Worked(string file)
         {
             var folder = Path.GetFileName(Path.GetDirectoryName(file)) ?? "";
             var inWorktree = folder.Contains("worktrees", StringComparison.OrdinalIgnoreCase) && FolderSafe(folder).EndsWith(worktreeFolder, StringComparison.Ordinal);
-            if (!inWorktree && !(Head(file) is var head && head.Contains(marker, StringComparison.Ordinal) && AskedFor(head, ticketId))) continue;
+            return inWorktree || Head(file) is var head && head.Contains(marker, StringComparison.Ordinal) && AskedFor(head, ticketId);
+        }
+        foreach (var file in Directory.EnumerateFiles(projectsDir, "*.jsonl", new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true }))
+        {
+            // A session's own subagent (<project>\<session>\subagents\agent-*.jsonl) is charged to the session's ticket, as the
+            // budget charges it, unless it was handed a ticket of its own (M.ORCH-T406).
+            if (!Worked(file) && !(SessionOf(file) is { } session && Worked(session) && !Asks(Head(file), _ => true))) continue;
             if (Summarize(file) is { } s) found.Add(s);
         }
         return [.. found.OrderBy(s => s.StartUtc)];
     }
 
+    /// <summary>The transcript of the session a subagent's transcript belongs to; null when <paramref name="file"/> isn't a subagent's.</summary>
+    private static string? SessionOf(string file)
+    {
+        var dir = Path.GetDirectoryName(file);
+        if (!string.Equals(Path.GetFileName(dir), "subagents", StringComparison.OrdinalIgnoreCase)) return null;
+        var sessionDir = Path.GetDirectoryName(dir);
+        return Path.GetDirectoryName(sessionDir) is { } project ? Path.Combine(project, Path.GetFileName(sessionDir) + ".jsonl") : null;
+    }
+
     /// <summary>Whether a prompt typed into the session (a user line's own text, not a tool's output or a tool call's input)
     /// asks for <paramref name="ticketId"/>: an /autopilot CLI prints and hands out many tickets' prompts, but works none itself.</summary>
-    internal static bool AskedFor(string head, string ticketId)
+    internal static bool AskedFor(string head, string ticketId) => Asks(head, id => id.Equals(ticketId, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Whether a prompt typed into the session asks for any ticket matching <paramref name="match"/> (see <see cref="AskedFor"/>).</summary>
+    private static bool Asks(string head, Func<string, bool> match)
     {
         foreach (var line in head.Split('\n'))
         {
@@ -55,7 +73,7 @@ public static partial class TicketReplay
                         .Where(b => b.ValueKind == JsonValueKind.Object && b.TryGetProperty("type", out var bt) && bt.GetString() == "text" && b.TryGetProperty("text", out _))
                         .Select(b => b.GetProperty("text").GetString() ?? "").ToList()
                     : new List<string>();
-                if (texts.Any(x => TicketAttribution.FromPrompt(x) is { } asked && asked.Id.Equals(ticketId, StringComparison.OrdinalIgnoreCase))) return true;
+                if (texts.Any(x => TicketAttribution.FromPrompt(x) is { } asked && match(asked.Id))) return true;
             }
             catch (JsonException) { } // the head's last line can be cut short
         }

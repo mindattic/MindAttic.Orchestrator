@@ -69,6 +69,36 @@ public sealed class TicketReplayTests
     }
 
     [Test]
+    public void A_sessions_own_subagents_count_for_its_ticket_but_not_one_handed_a_ticket_of_its_own()
+    {
+        // M.ORCH-T406: a subagent's transcript sits in <session>\subagents, not the worktree's folder, and its prompt doesn't name
+        // the ticket; the budget charges it to the session's ticket all the same.
+        var projects = Path.Combine(Path.GetTempPath(), "orch-replay-subs-" + Guid.NewGuid().ToString("N"));
+        var folder = Path.Combine(projects, "D--Projects-MindAttic-worktrees-Repo-RP-T7");
+        var sub = Path.Combine(folder, "s1", "subagents");
+        Directory.CreateDirectory(sub);
+        try
+        {
+            static string User(string ts, string content) => JsonSerializer.Serialize(new { type = "user", timestamp = ts, message = new { role = "user", content } });
+            static string Reply(string id, string ts, long output) => JsonSerializer.Serialize(new
+            {
+                type = "assistant", timestamp = ts,
+                message = new { id, content = new[] { new { type = "text", text = "ok" } }, usage = new { input_tokens = 0, cache_creation_input_tokens = 0, output_tokens = output } },
+            });
+            File.WriteAllLines(Path.Combine(folder, "s1.jsonl"), [User("2026-10-14T10:00:00Z", "carry on"), Reply("p1", "2026-10-14T10:00:01Z", 10)]);
+            File.WriteAllLines(Path.Combine(sub, "agent-a.jsonl"), [User("2026-10-14T10:01:00Z", "Find the save code."), Reply("a1", "2026-10-14T10:01:01Z", 30)]);
+            File.WriteAllLines(Path.Combine(sub, "agent-b.jsonl"), [User("2026-10-14T10:02:00Z", "Work on ticket RP-T9 (fix): another."), Reply("b1", "2026-10-14T10:02:01Z", 70)]);
+
+            var sessions = TicketReplay.Sessions("RP-T7", projects);
+
+            Assert.That(sessions.Select(s => Path.GetFileName(s.File)), Is.EqualTo(new[] { "s1.jsonl", "agent-a.jsonl" }));
+            Assert.That(sessions.Sum(s => s.Fresh), Is.EqualTo(10 + 30));
+            Assert.That(TicketReplay.Sessions("RP-T9", projects).Single().File, Does.EndWith("agent-b.jsonl"), "its own ticket's");
+        }
+        finally { Directory.Delete(projects, recursive: true); }
+    }
+
+    [Test]
     public void Commits_matches_the_ticket_id_as_a_whole_word_not_a_substring()
     {
         var dir = Path.Combine(Path.GetTempPath(), "orch-replay-git-" + Guid.NewGuid().ToString("N"));
