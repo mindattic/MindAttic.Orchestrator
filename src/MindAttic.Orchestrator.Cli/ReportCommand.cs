@@ -48,9 +48,9 @@ internal sealed class ReportCommand : Command<ReportCommand.Settings>
 
         if (settings.Csv is { } csv)
         {
-            var sb = new StringBuilder("week,day,repo,provider,uncached_tokens\n");
+            var sb = new StringBuilder("week,day,repo,provider,account,uncached_tokens\n");
             foreach (var r in rows)
-                sb.Append(CultureInfo.InvariantCulture, $"{WeekOf(r.Day):yyyy-MM-dd},{r.Day:yyyy-MM-dd},\"{r.Repo.Replace("\"", "\"\"")}\",{r.Provider},{r.Fresh}\n");
+                sb.Append(CultureInfo.InvariantCulture, $"{WeekOf(r.Day):yyyy-MM-dd},{r.Day:yyyy-MM-dd},\"{r.Repo.Replace("\"", "\"\"")}\",{r.Provider},\"{r.Account?.Replace("\"", "\"\"")}\",{r.Fresh}\n");
             File.WriteAllText(csv, sb.ToString());
             AnsiConsole.MarkupLine($"Wrote {rows.Count} rows to {Markup.Escape(Path.GetFullPath(csv))}.");
         }

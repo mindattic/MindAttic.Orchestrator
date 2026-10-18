@@ -594,6 +594,34 @@ public sealed class StatusAggregatorTests
     }
 
     [Test]
+    public void The_weekly_bars_count_only_the_signed_in_accounts_subscription_tokens_as_the_weeks_total_does()
+    {
+        // M.ORCH-T372: the bars added every account's and every API-key CLI's tokens; the week's total only b's.
+        TurnsAreToday();
+        Transcript("a-work", Path.Combine(ws, "A"), TimeSpan.FromMinutes(150), 4_000);
+        Transcript("b-work", Path.Combine(ws, "B"), TimeSpan.FromMinutes(30), 1_000);
+        Transcript("key-work", Path.Combine(ws, "B"), TimeSpan.FromMinutes(20), 50_000);
+        Config("""{"oauthAccount":{"accountUuid":"b"}}""");
+        var account = SignIn();
+        Directory.CreateDirectory(Path.GetDirectoryName(account.StatePath)!);
+        File.WriteAllText(Path.Combine(dir, "session-context", "key-work.state.json"), """{"state": "busy", "auth": "api-key"}""");
+        long Ago(int minutes) => new DateTimeOffset(now.AddMinutes(-minutes)).ToUnixTimeSeconds();
+        File.WriteAllText(account.StatePath, $$"""
+            {"account":"b","since":{{Ago(120)}},"spans":[{"account":"a","from":{{Ago(240)}},"to":{{Ago(120)}}},
+            {"account":"b","from":{{Ago(120)}},"to":null}]}
+            """);
+
+        var snap = Daemon(account).Refresh(now);
+        var week = Burndown.Compute(snap.Budget!, snap.History, snap.TakenUtc, snap.Account);
+
+        Assert.That(snap.Account, Is.EqualTo("b"));
+        Assert.That((week.Days.Sum(d => d.Fresh), snap.Budget!.Week.Fresh), Is.EqualTo((1_001L, 1_001L)), "b's own tokens in both");
+        Assert.That(snap.History.Where(d => d.Provider == Providers.Claude).Select(d => (d.Account, d.Fresh)),
+            Is.EquivalentTo(new[] { ("a", 4_001L), ("b", 1_001L), (UsageHistory.BilledElsewhere + "api-key", 50_001L) }),
+            "kept per account, so the other's and the key's still show in reports");
+    }
+
+    [Test]
     public void Going_back_to_an_account_counts_its_spend_from_before_the_other_one_again()
     {
         TurnsAreToday();

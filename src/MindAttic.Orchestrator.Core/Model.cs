@@ -126,6 +126,10 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// <summary>Uncached usage by day, repo and provider, a year back (the transcripts only reach 7 days).</summary>
     public IReadOnlyList<Budget.DayUsage> History { get; init; } = [];
 
+    /// <summary>The Claude account the budget counts (<see cref="Budget.DayUsage.Account"/>'s key); null when no sign-in is known,
+    /// and the budget counts every subscription session.</summary>
+    public string? Account { get; init; }
+
     /// <summary>Repos that share duplicated code (from the last audit): editing them at once risks conflicting fixes.</summary>
     public IReadOnlyDictionary<string, IReadOnlySet<string>> LinkedRepos { get; init; } = new Dictionary<string, IReadOnlySet<string>>();
 

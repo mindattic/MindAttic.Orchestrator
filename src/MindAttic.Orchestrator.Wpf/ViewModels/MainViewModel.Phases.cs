@@ -142,7 +142,7 @@ public sealed partial class MainViewModel
                 LimitsLine(b),
             };
             if (Pace is { } p) lines.Add(p.Note);
-            if (snapshot is not null && Burndown.Compute(b, snapshot.History, snapshot.TakenUtc) is { } week)
+            if (snapshot is not null && Burndown.Compute(b, snapshot.History, snapshot.TakenUtc, snapshot.Account) is { } week)
                 lines.Add(week switch
                 {
                     { Limit: null } => $"Week: {Formatting.Tokens(week.Used)} at {Formatting.Tokens((long)(week.PerHour * 24))}/day (no weekly limit known yet).",

@@ -236,7 +236,12 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
         // A file held past the store's retries reads as empty: merged and saved, a year of history would be cut to the week.
         var historyRead = Store.TryLoadUsageHistory(out var storedHistory);
-        var history = UsageHistory.Merge(storedHistory, UsageHistory.Observe(allSessions.Concat(providerSessions), Bucket, historyStartUtc),
+        // Each Claude day is kept per account, and a session billed elsewhere apart, so the weekly bars count what the budget does.
+        string? AccountOf(TranscriptSession s, UsageEvent e) =>
+            s.Provider != Providers.Claude ? null
+            : s.SessionId is { } id && offSubscription.TryGetValue(id, out var auth) ? UsageHistory.BilledElsewhere + auth
+            : signIn?.AccountAt(e.AtUtc);
+        var history = UsageHistory.Merge(storedHistory, UsageHistory.Observe(allSessions.Concat(providerSessions), Bucket, historyStartUtc, AccountOf),
             DateOnly.FromDateTime(startOfToday.AddDays(-HistoryDays)), DateOnly.FromDateTime(startOfToday));
         // Today's numbers grow every refresh; a few minutes' lag in the saved copy costs nothing.
         if (historyRead && now - historySavedUtc >= TimeSpan.FromMinutes(5) && !history.SequenceEqual(storedHistory))
@@ -255,7 +260,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
 
-        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = UtilizationSeries.Build(mine, budget, settings.PaceTargetPercent, now), ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Requires = tickets.Requires, Agents = agentBoard };
+        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = UtilizationSeries.Build(mine, budget, settings.PaceTargetPercent, now), ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, Agents = agentBoard };
 
         RepoStatus Repo(string name, string path, IReadOnlyList<MindAttic.Workflow.Tickets.Ticket> open)
         {

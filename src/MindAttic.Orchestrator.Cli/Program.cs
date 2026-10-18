@@ -285,7 +285,7 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
                 string.Concat(p.Limits.OrderBy(l => l.Window).Select(l => $" · {l.Window} {l.UsedPercent:0}% (its own count, resets {l.ResetsUtc.ToLocalTime():ddd h:mm tt})")));
         if (snapshot.Pace is { } pace) AnsiConsole.MarkupLine($"  {PaceLine(pace)}");
         if (settings.Hits) WriteHits(b.Calibration);
-        if (settings.Week) WriteWeek(Burndown.Compute(b, snapshot.History, snapshot.TakenUtc));
+        if (settings.Week) WriteWeek(Burndown.Compute(b, snapshot.History, snapshot.TakenUtc, snapshot.Account));
         return 0;
     }
 
