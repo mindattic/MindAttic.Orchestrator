@@ -87,6 +87,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     private long? samplesEstimate;
     // The last report with a usable 5-hour window: carried while that window runs, so one tick without one never drops the limit.
     private ReportedUsage? lastReported;
+    private DateTime? probedReset;
     private DateTime historySavedUtc;
     private IReadOnlyDictionary<string, IReadOnlySet<string>> links = new Dictionary<string, IReadOnlySet<string>>();
 
@@ -112,7 +113,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     {
         LastWasShared = false;
         if (nowUtc is null && statusLease is not null && !statusLease.IsHeld && !statusLease.TryAcquire() &&
-            Published.Read(DateTime.UtcNow) is { } shared)
+            Published.Read(DateTime.UtcNow) is { } shared && !ResetSince(shared, DateTime.UtcNow))
         {
             LastWasShared = true;
             return shared;
@@ -198,14 +199,22 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             events = [.. events.Where(e => signIn.Contains(e.AtUtc))];
             if (reported is not null && (!signIn.Owns(reported) || reported.Account is null && signIn.Switched && !signIn.Contains(reported.AtUtc))) reported = null;
             if (reported is not null) SignIn!.Confirm(signIn.Account, reported, now);
-            calibration = new LimitCalibration([.. calibration.Observations.Where(o => signIn.Contains(o.HitUtc) || o.ResetUtc <= now)]);
+            calibration = new LimitCalibration([.. calibration.Observations.Where(o => signIn.Contains(o.HitUtc) || o.ResetUtc <= now)])
+                { Mine = t => !signIn.Others(t) };
         }
         // No statusline reporting while tokens are spent (a CLI waiting on subagents): read Claude's meter directly (M.ORCH-T203).
         // An account just signed in to has no window of its own yet (every other CLI still shows the old one's): read it now.
         if (Probe is { } probe && (statusLease is null || statusLease.IsHeld) && signIn?.IsApiKey != true)
         {
-            if (switchedNow) probe.Reset();
-            probe.Tick(reported?.AtUtc, events, now, force: signIn is { Switched: true } && !signIn.HasWindow(now));
+            // A window that reset since the last reading, with tokens spent in the new one: its percent is unknown until read,
+            // so read it now rather than after StaleAfter (or the last ask's wait) runs out.
+            var lapsed = ResetSinceReading(reported, now) is { } r && events.Count > 0 && events[^1].AtUtc >= r && events[^1].AtUtc <= now ? r : (DateTime?)null;
+            if (switchedNow || lapsed is { } l && l != probedReset)
+            {
+                probe.Reset();
+                probedReset = lapsed ?? probedReset;
+            }
+            probe.Tick(reported?.AtUtc, events, now, force: lapsed is not null || signIn is { Switched: true } && !signIn.HasWindow(now));
         }
         var reportedLimit = ReportedLimitFrom(reported, events, now, signIn);
         List<UsageSample> mine = signIn is null ? samples ?? [] : [.. (samples ?? []).Where(s => signIn.Contains(s.AtUtc))];
@@ -317,6 +326,17 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         }
         return samplesEstimate;
     }
+
+    /// <summary>The latest reset of <paramref name="reading"/>'s windows that came after it was read and has passed by now; null when none has.</summary>
+    internal static DateTime? ResetSinceReading(ReportedUsage? reading, DateTime now) =>
+        new[] { reading?.FiveHour, reading?.Week }.Where(w => w is not null && w.ResetUtc > reading!.AtUtc && w.ResetUtc <= now)
+            .Select(w => (DateTime?)w!.ResetUtc).Max();
+
+    /// <summary>Whether a window <paramref name="snapshot"/> was worked out for has reset since it was taken: its pace, stop and
+    /// room are the old window's.</summary>
+    internal static bool ResetSince(Snapshot snapshot, DateTime now) =>
+        new[] { snapshot.Pace?.ResetUtc, snapshot.Budget?.CurrentBlock?.EndUtc, snapshot.Budget?.WeekResetUtc, snapshot.Budget?.AtLimitUntilUtc }
+            .Any(r => r is { } at && at > snapshot.TakenUtc && at <= now);
 
     /// <summary>
     /// <paramref name="reported"/>, or, when it has no 5-hour window still running (an idle tab restamping its last reply

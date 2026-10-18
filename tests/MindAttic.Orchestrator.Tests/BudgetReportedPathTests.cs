@@ -80,17 +80,22 @@ public sealed class BudgetReportedPathTests
     }
 
     [Test]
-    public void A_report_past_its_reset_falls_back_to_the_learned_limit()
+    public void A_report_past_its_reset_starts_a_new_window_still_sized_by_its_reports()
     {
         var learned = new LimitCalibration([new LimitObservation(LimitKind.Session, Day.AddDays(-2), Day.AddDays(-2).AddHours(1), 5_000)]);
-        var events = new[] { E(10.5, 1000) };
+        var events = new[] { E(10.5, 1000), E(11.75, 400) };
 
         var s = BudgetCalculator.Compute(events, new OrchestratorSettings(), Day.AddHours(12), Day, TimeZoneInfo.Utc,
             learned: learned, reported: Report(60, 11.5, 11), reportedLimit: 10_000);
 
-        Assert.That((s.BlockLimitSource, s.BlockLimit), Is.EqualTo((LimitSource.Learned, 5_000L)));
-        Assert.That(s.CurrentBlock!.Usage.Fresh, Is.EqualTo(1_000), "local spend, not the stale percent");
-        Assert.That(s.BlockPercent, Is.EqualTo(20).Within(0.001));
+        // The limit didn't change with the reset: the last window's reports size it, not an older wall's 5,000 (M.ORCH-T387).
+        Assert.That((s.BlockLimitSource, s.BlockLimit), Is.EqualTo((LimitSource.Reported, 10_000L)));
+        Assert.That((s.CurrentBlock!.StartUtc, s.CurrentBlock.Usage.Fresh), Is.EqualTo((Day.AddHours(11) + TimeSpan.FromMinutes(40), 400L)),
+            "the new window from its first message: neither the stale percent nor the old window's 1,000");
+        Assert.That(s.BlockPercent, Is.EqualTo(4).Within(0.001));
+
+        s = BudgetCalculator.Compute(events, new OrchestratorSettings(), Day.AddHours(12), Day, TimeZoneInfo.Utc, learned: learned, reported: Report(60, 11.5, 11));
+        Assert.That((s.BlockLimitSource, s.BlockLimit), Is.EqualTo((LimitSource.Learned, 5_000L)), "with no reports to size it, the learned limit");
     }
 
     [Test]

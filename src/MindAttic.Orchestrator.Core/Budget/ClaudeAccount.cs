@@ -30,6 +30,9 @@ public sealed record SignInState(string Account, IReadOnlyList<AccountSpan> Hist
     /// <summary>The account signed in at <paramref name="utc"/>; null before the first span kept.</summary>
     public string? AccountAt(DateTime utc) => History.LastOrDefault(s => utc >= s.From && (s.To is not { } to || utc < to))?.Account;
 
+    /// <summary>Whether <paramref name="utc"/> falls in another account's span: before the first account seen, it's no one else's.</summary>
+    public bool Others(DateTime utc) => History.Any(s => s.Account != Account && utc >= s.From && (s.To is not { } to || utc < to));
+
     /// <summary>Whether a 5-hour window confirmed for this account is still running.</summary>
     public bool HasWindow(DateTime nowUtc) => Confirmed.GetValueOrDefault(Account)?.FiveHour > nowUtc;
 

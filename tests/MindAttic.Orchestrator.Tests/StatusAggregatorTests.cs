@@ -687,4 +687,40 @@ public sealed class StatusAggregatorTests
         Usage(15, bFive, 25, bWeek);
         Assert.That(daemon.Refresh().Budget!.WeeklyPercent, Is.EqualTo(25), "B's statusline, its windows confirmed by the probe");
     }
+
+    [Test]
+    public void Right_after_the_week_resets_the_probe_reads_the_new_week_at_once()
+    {
+        var reset = new DateTime(now.Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond, DateTimeKind.Utc).AddSeconds(-5);
+        var credentials = Path.Combine(dir, ".credentials.json");
+        File.WriteAllText(credentials, $$$"""{"claudeAiOauth":{"accessToken":"tok","expiresAt":{{{DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeMilliseconds()}}}}}""");
+        var asked = 0;
+        var probe = new ClaudeMeterProbe
+        {
+            UsagePath = Path.Combine(dir, "claude-usage.json"), CredentialsPath = credentials,
+            AccountKey = () => ClaudeAccount.Current(Path.Combine(dir, ".claude.json")),
+            Fetch = (_, _) =>
+            {
+                asked++;
+                return Task.FromResult<string?>($$$"""{"five_hour":{"utilization":31.0,"resets_at":"{{{reset.AddHours(4):O}}}"},"seven_day":{"utilization":0.0,"resets_at":"{{{reset.AddDays(7):O}}}"}}""");
+            },
+        };
+        Config("""{"oauthAccount":{"accountUuid":"a"}}""");
+        var daemon = Daemon(SignIn(), probe: probe);
+        // Read three minutes before the 7:00 reset (not stale yet), and a turn lands just after it.
+        File.WriteAllText(Path.Combine(dir, "claude-usage.json"), $$$"""
+            {"rate_limits":{"five_hour":{"used_percentage":30,"resets_at":{{{new DateTimeOffset(reset.AddHours(4)).ToUnixTimeSeconds()}}}},"seven_day":{"used_percentage":80,"resets_at":{{{new DateTimeOffset(reset).ToUnixTimeSeconds()}}}}},
+             "at":"{{{reset.AddMinutes(-3):yyyy-MM-ddTHH:mm:ssZ}}}"}
+            """);
+        Transcript("s1", Path.Combine(ws, "A"), TimeSpan.Zero, 100);
+
+        Assert.That(daemon.Refresh(reset.AddSeconds(-10)).Budget!.WeeklyPercent, Is.EqualTo(80));
+        Assert.That(asked, Is.Zero, "a reading two minutes old isn't stale");
+
+        var after = daemon.Refresh(reset.AddSeconds(10)).Budget!;
+        Assert.That((after.WeekStartUtc, after.WeeklyPercent), Is.Not.EqualTo((reset.AddDays(-7), (double?)80)), "the old week's 80% holds nothing");
+        probe.Pending.Wait();
+        Assert.That(asked, Is.EqualTo(1), "the new week was read at once");
+        Assert.That(daemon.Refresh(reset.AddSeconds(20)).Budget!.WeeklyPercent, Is.EqualTo(0), "the new week's own percent");
+    }
 }

@@ -26,6 +26,12 @@ public sealed record LimitCalibration(IReadOnlyList<LimitObservation> Observatio
     public long? Learned5h => Median(LimitKind.Session);
     public long? LearnedWeekly => Median(LimitKind.Weekly);
 
+    /// <summary>Whether a hit at this time was the signed-in account's (null: every hit is). Another account's week resets at its
+    /// own time and is sized by its own plan, so its weekly hits neither date nor size this account's week.</summary>
+    public Func<DateTime, bool>? Mine { get; init; }
+
+    private bool Own(LimitObservation o) => o.Kind != LimitKind.Weekly || Mine is null || Mine(o.HitUtc);
+
     /// <summary>How many hits the learned value for <paramref name="kind"/> is drawn from.</summary>
     public int Basis(LimitKind kind) => Usable(kind).Count();
 
@@ -37,14 +43,14 @@ public sealed record LimitCalibration(IReadOnlyList<LimitObservation> Observatio
     /// <summary>The weekly reset day and time your latest weekly hit reported, in local time.</summary>
     public WeeklyReset? LearnedWeeklyReset(TimeZoneInfo? zone = null)
     {
-        var last = Observations.Where(o => o.Kind == LimitKind.Weekly).MaxBy(o => o.HitUtc);
+        var last = Observations.Where(o => o.Kind == LimitKind.Weekly && Own(o)).MaxBy(o => o.HitUtc);
         if (last is null) return null;
         var local = TimeZoneInfo.ConvertTimeFromUtc(last.ResetUtc, zone ?? TimeZoneInfo.Local);
         return new WeeklyReset(local.DayOfWeek, TimeOnly.FromDateTime(local));
     }
 
     private IEnumerable<LimitObservation> Usable(LimitKind kind) => Observations
-        .Where(o => o.Kind == kind && o.Covered && o.FreshUsed > 0)
+        .Where(o => o.Kind == kind && o.Covered && o.FreshUsed > 0 && Own(o))
         .OrderByDescending(o => o.HitUtc)
         .Take(RecentHits);
 

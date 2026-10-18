@@ -136,6 +136,14 @@ public static class BudgetCalculator
             current = new UsageBlock(start, blockEnd, Sum(inBlock),
                 inBlock.Count > 0 ? inBlock.Max(e => e.AtUtc) : sessionWall?.HitUtc ?? start);
         }
+        // Claude's 5-hour window reset after its last reading: the block guessed from the transcripts can run on past it, carrying
+        // the old window's tokens into the new one until a reading comes. The new one starts at the first message after the reset.
+        var lapsed5h = reported5h is null && sessionWall is null && reported?.FiveHour is { } r5 && r5.ResetUtc <= nowUtc ? r5 : null;
+        if (lapsed5h is not null && current is not null && current.StartUtc < lapsed5h.ResetUtc)
+        {
+            var next = Blocks(events.Where(e => e.AtUtc >= lapsed5h.ResetUtc && e.AtUtc <= nowUtc));
+            current = next.Count > 0 && next[^1].IsActive(nowUtc) ? next[^1] : null;
+        }
         var currentFresh = current?.Usage.Fresh ?? 0;
 
         // Limits move. Spending past a learned limit without hitting a wall proves it's out of date,
@@ -146,7 +154,8 @@ public static class BudgetCalculator
 
         // With Claude's own percent, the limit's size comes from how the percent moved between reports
         // (reportedLimit), else the learned one (unless this window disproved it), else (5%+) this window's tokens over its percent.
-        var reportedLimit5h = reported5h is null ? null
+        // Just past the reset the size learned from the last window's reports still holds: the limit didn't change with it.
+        var reportedLimit5h = reported5h is null ? lapsed5h is null ? null : reportedLimit
             : reportedLimit ?? learned5h ?? (reported5h.Percent >= ReportedUsage.MinPercent ? ImpliedLimit(events, reported5h, BlockLength, reported?.AtUtc) : null);
 
         // Without a budget, compare against the heaviest earlier block: "how hard am I going vs usual".
@@ -187,6 +196,14 @@ public static class BudgetCalculator
         var reportedWeek = ReportedUsage.Usable(reported?.Week, nowUtc);
         if (reportedWeek is not null)
             (weekStart, weekReset) = (reportedWeek.ResetUtc - TimeSpan.FromDays(7), reportedWeek.ResetUtc);
+        // Claude's week reset after its last reading: the new week starts at that reset, never at a reset learned from older hits
+        // (maybe another account's) or a rolling 7 days that would count the old week's tokens into the new one.
+        else if (reported?.Week is { } lapsedWeek && lapsedWeek.ResetUtc <= nowUtc)
+        {
+            var from = lapsedWeek.ResetUtc;
+            while (from + TimeSpan.FromDays(7) <= nowUtc) from += TimeSpan.FromDays(7);
+            (weekStart, weekReset) = (from, from + TimeSpan.FromDays(7));
+        }
         else if ((resetSetting ?? learned?.LearnedWeeklyReset(zone)) is { } r)
             (weekStart, weekReset) = r.Window(nowUtc, zone);
         else
