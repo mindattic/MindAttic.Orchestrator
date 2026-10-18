@@ -429,7 +429,7 @@ public static class AgentGate
         EXEMPT_DEFAULT = [{{string.Join(", ", Settings.OrchestratorSettings.DefaultExemptCommands.Select(c => "\"" + c + "\""))}}]
         def exempt_commands():
             try:
-                names = json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "settings.json").read_text()).get("ExemptCommands")
+                names = json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "settings.json").read_text(encoding="utf-8-sig")).get("ExemptCommands")
             except Exception:
                 names = None
             if not isinstance(names, list):
@@ -962,7 +962,7 @@ public static class AgentGate
                     approved = set()
                 db.close()
                 try:
-                    settings = json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "settings.json").read_text())
+                    settings = json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "settings.json").read_text(encoding="utf-8-sig"))
                 except Exception:
                     settings = {}
                 for f, ts in (settings.get("BlockedBy") or {}).items():

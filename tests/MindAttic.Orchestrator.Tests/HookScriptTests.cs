@@ -1380,7 +1380,8 @@ public sealed class HookScriptTests
 
         var settings = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "settings.json");
         Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
-        File.WriteAllText(settings, """{ "ExemptCommands": ["bughunt"] }""");
+        // With a byte-order mark, as a hand edit in PowerShell 5.1 or Notepad saves it, read as the orchestrator reads it (M.ORCH-T411).
+        File.WriteAllText(settings, """{ "ExemptCommands": ["bughunt"] }""", new System.Text.UTF8Encoding(true));
         Assert.That(Gate(Skill("bughunt")).Output, Is.Empty, "the settings list is read live, with or without the slash");
         Assert.That(GateHeld(Skill("run"), 2).Output, Does.Contain("\"deny\""), "and replaces the defaults");
         Assert.That(Gate(new { hook_event_name = "UserPromptSubmit", session_id = "k2", prompt = "/deploy", cwd = ws }, AgentGate.ContextScriptName).Output,
