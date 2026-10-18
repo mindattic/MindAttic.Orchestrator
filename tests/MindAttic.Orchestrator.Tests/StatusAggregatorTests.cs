@@ -268,6 +268,28 @@ public sealed class StatusAggregatorTests
     }
 
     [Test]
+    public void A_limits_file_unreadable_for_a_refresh_keeps_the_learned_limit()
+    {
+        // M.ORCH-T346: read as no hits, the learned limit went, the pace with it, and rl-status.json was withdrawn.
+        Transcript("s1", Path.Combine(ws, "A"), TimeSpan.FromMinutes(2), 50_000);
+        var old = Seconds(DateTime.UtcNow.AddDays(-2));
+        store.SaveLimits([new LimitObservation(LimitKind.Session, old, old.AddHours(1), 9_000_000)]);
+        var aggregator = new StatusAggregator(new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null }, store)
+        {
+            ScanHosts = () => hosts, OtherProviders = new ProviderLogReader(Path.Combine(dir, "codex"), Path.Combine(dir, "gemini")),
+            ReportedUsagePath = Path.Combine(dir, "no-report.json"),
+        };
+        Assert.That(aggregator.Refresh().Budget!.BlockLimitSource, Is.EqualTo(LimitSource.Learned));
+
+        using (new FileStream(Path.Combine(store.Directory, "limits.json"), FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            var held = aggregator.Refresh(DateTime.UtcNow.AddSeconds(5)).Budget!;
+            Assert.That((held.BlockLimitSource, held.BlockLimit), Is.EqualTo((LimitSource.Learned, 9_000_000L)), "the hits last read stand in");
+        }
+        Assert.That(store.LoadLimits(), Has.Count.EqualTo(1), "and nothing was saved over it");
+    }
+
+    [Test]
     public void A_locked_usage_samples_file_does_not_fail_the_refresh()
     {
         var options = new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null };

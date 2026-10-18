@@ -77,6 +77,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     private List<TranscriptSession> subscriptionSessions = [];
     private List<UsageEvent> claudeEvents = [];
     private string? lastAccount;
+    /// <summary>The stored limit hits as last read: limits.json held past the store's retries for a refresh isn't no hits (M.ORCH-T346).</summary>
+    private List<LimitObservation>? lastLimits;
     private double? typicalPerSession;
 
     // usage-samples.json, reread only when another process has written it since.
@@ -327,6 +329,10 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     private LimitCalibration Calibrate(IReadOnlyList<TranscriptSession> sessions, IReadOnlyList<UsageEvent> events, DateTime historyStartUtc, DateTime now)
     {
         var read = Store.TryLoadLimits(out var stored);
+        // Unreadable right now (held, or caught mid-write): the hits last read stand in, or the learned limit would go for this
+        // refresh, the pace with it, and rl-status.json would be withdrawn as M.ORCH-T245's was (M.ORCH-T346).
+        if (read) lastLimits = stored;
+        else stored = lastLimits ?? [];
         var observed = LimitCalibration.Observe(sessions.SelectMany(s => s.Hits), events, historyStartUtc);
         if (!Store.HasLimits)
         {
