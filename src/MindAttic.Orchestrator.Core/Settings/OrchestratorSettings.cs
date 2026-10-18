@@ -235,8 +235,11 @@ public sealed class JsonStore(string? directory = null)
         var path = PathOf(name);
         // Each writer has its own temp file, so two saving at once can't move each other's half-written JSON into place.
         var temp = $"{path}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
-        File.WriteAllText(temp, JsonSerializer.Serialize(value, Options));
-        try { Retry(() => { File.Move(temp, path, overwrite: true); return true; }); }
+        try
+        {
+            File.WriteAllText(temp, JsonSerializer.Serialize(value, Options)); // a write cut short (disk full) leaves no temp behind
+            Retry(() => { File.Move(temp, path, overwrite: true); return true; });
+        }
         finally { if (File.Exists(temp)) File.Delete(temp); }
     }
 
