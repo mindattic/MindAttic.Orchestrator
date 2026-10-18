@@ -20,20 +20,24 @@ internal sealed class ShowCommand : Command<ShowCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        var options = OrchestratorOptions.Load();
-        var id = settings.Ticket.ToUpperInvariant();
-        var hit = new MindAttic.Workflow.Workspace(options.WorkspaceRoot).Repos()
-            .Where(r => File.Exists(r.StoriesPath))
-            .Select(r => (Repo: r, Ticket: WorkspaceTickets.All([r]).Select(x => x.Ticket).FirstOrDefault(t => t.Id == id)))
-            .FirstOrDefault(x => x.Ticket is not null);
-        if (hit.Ticket is null) { AnsiConsole.MarkupLine($"[red]No ticket {Markup.Escape(id)} in the workspace.[/]"); return 1; }
+        var store = Ctx.Store();
+        var options = OrchestratorOptions.Load(store);
+        var id = Ctx.Id(settings.Ticket);
+        // The Workflow database when it holds the ticket, else a story-file repo's USER_STORIES.md (M.ORCH-T461): the generated view
+        // lags the database until something renders it, so a ticket the orchestrator filed itself (the pace ledger's, GitHub
+        // intake's) read as "No ticket" for up to the daemon's next db sync, or for good with the daemon stopped.
+        MindAttic.Orchestrator.Tickets.TicketQueue.Found? hit;
+        using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(options.WorkspaceRoot))
+            hit = TicketQueue.Find(db, options.WorkspaceRoot, id);
+        if (hit is null) { AnsiConsole.MarkupLine($"[red]No ticket {Markup.Escape(id)} in the workspace.[/]"); return 1; }
+        var repoPath = new MindAttic.Workflow.Workspace(options.WorkspaceRoot).Find(hit.Repo)?.Path ?? "";
 
         var t = hit.Ticket;
-        AnsiConsole.MarkupLine($"[bold]{t.Id}[/] in {Markup.Escape(hit.Repo.Name)} · {t.Type} · [bold]{t.Status}[/] · opened {t.Date}");
+        AnsiConsole.MarkupLine($"[bold]{t.Id}[/] in {Markup.Escape(hit.Repo)} · {t.Type} · [bold]{t.Status}[/] · opened {t.Date}");
         AnsiConsole.MarkupLine($"  {Markup.Escape(t.Summary)}");
         if (t.Ref.Trim() is { Length: > 0 } r && r != "—") AnsiConsole.MarkupLine($"  [grey]Ref: {Markup.Escape(r)}[/]");
 
-        var sessions = TicketReplay.Sessions(id, options.ClaudeProjectsDir, Ctx.Store().LoadSettings().WorktreeRoot);
+        var sessions = TicketReplay.Sessions(id, options.ClaudeProjectsDir, store.LoadSettings().WorktreeRoot);
         AnsiConsole.MarkupLine(sessions.Count == 0 ? "\n[grey]No dispatched sessions found for it (only sessions the orchestrator started are tied to a ticket).[/]"
             : $"\n[bold]{sessions.Count} session{(sessions.Count == 1 ? "" : "s")}[/], {Formatting.Tokens(sessions.Sum(s => s.Fresh))} uncached");
         foreach (var s in sessions)
@@ -44,7 +48,7 @@ internal sealed class ShowCommand : Command<ShowCommand.Settings>
             if (s.LastReply.Length > 0) AnsiConsole.MarkupLine($"  [grey]last reply:[/] {Markup.Escape(s.LastReply)}");
         }
 
-        var commits = TicketReplay.Commits(id, hit.Repo.Path, settings.Diff);
+        var commits = TicketReplay.Commits(id, repoPath, settings.Diff);
         AnsiConsole.MarkupLine(commits.Length == 0 ? "\n[grey]No commits mention it.[/]" : "\n[bold]Commits[/]");
         if (commits.Length > 0) AnsiConsole.WriteLine(commits);
         return 0;

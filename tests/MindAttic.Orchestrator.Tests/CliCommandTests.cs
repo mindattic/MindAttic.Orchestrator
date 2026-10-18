@@ -142,6 +142,36 @@ public sealed class CliCommandTests
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
     }
 
+    /// <summary>M.ORCH-T461: show and hygiene read the Workflow database, not the USER_STORIES.md view, which lags it until
+    /// something renders it: a ticket the orchestrator filed itself (the pace ledger's, GitHub intake's) read as "No ticket".</summary>
+    [Test]
+    public void Show_and_hygiene_read_a_ticket_the_view_does_not_have_yet_from_the_database()
+    {
+        var path = WorkspaceWithDb();
+        StoryRepo();
+        try
+        {
+            string filed, closed;
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+            {
+                // Added as PaceLedgerWatch and GitHubIntake add them: straight into the database, the view not rendered.
+                filed = db.Add("A", "fix", "open", "filed by the pace ledger", "pace-ledger.jsonl").Id;
+                closed = db.Add("A", "fix", "closed", "closed with nothing cited", "—").Id;
+            }
+            var view = File.ReadAllText(Path.Combine(dir, "workspace", "A", "docs", "USER_STORIES.md"));
+            Assert.That(view, Does.Not.Contain(filed).And.Not.Contain(closed), "the view hasn't been rendered since");
+
+            Assert.That(Run("show", filed.ToLowerInvariant()), Is.Zero, output.ToString());
+            Assert.That(output.ToString(), Does.Contain("filed by the pace ledger").And.Not.Contain("No ticket"));
+            Assert.That(Run("show", "B-T1"), Is.Zero, "a story-file repo's ticket still shows: " + output);
+            Assert.That(output.ToString(), Does.Contain("B-T1"));
+
+            Assert.That(Run("hygiene"), Is.Zero, output.ToString());
+            Assert.That(output.ToString(), Does.Contain(closed));
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
+    }
+
     [Test]
     public void Bump_and_approve_without_a_workflow_database_change_nothing()
     {
