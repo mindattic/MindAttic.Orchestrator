@@ -38,6 +38,8 @@ public sealed class HookScriptTests
         psi.Environment["APPDATA"] = dir; // the orchestrator's settings (approvals) come from here, never this machine's
         psi.Environment["MINDATTIC_CLI_PID"] = Cli.ToString(); // as one CLI process, never the one running these tests
         psi.Environment["MINDATTIC_WORKSPACE"] = ws;
+        // Keep-going never asks this machine's orchestrator what `next` would hand out: none is found unless a test sets one.
+        psi.Environment["MINDATTIC_ORCHESTRATOR"] = Path.Combine(dir, "no-orchestrator.exe");
         // Inside claude.exe on its /login, whatever the machine running the tests is signed in with.
         foreach (var auth in AuthVariables) psi.Environment.Remove(auth);
         psi.Environment["CLAUDECODE"] = "1";
@@ -260,6 +262,47 @@ public sealed class HookScriptTests
         Assert.That(Asked("h4"), Is.Empty, "autopilot paused");
         File.WriteAllText(settings, """{ "AutopilotSkip": ["unitysolarsystem"] }""");
         Assert.That(Asked("h5"), Is.Empty, "a skipped repo");
+    }
+
+    [Test]
+    public void Keep_going_pushes_a_stop_back_only_for_what_orchestrator_next_would_hand_out()
+    {
+        // M.ORCH-T385: another live session filed U.SPC-T1 a moment ago. `next` held it back at once ("already being worked"),
+        // but the daemon's holds hadn't caught up, so every stop was sent back for it.
+        var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(db)!);
+        using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
+            "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal,type)'); " +
+            "d.execute(\"insert into tickets values('U.SPC-T1','UnitySolarSystem','open',1,'fix')\"); d.commit()", db }, UseShellExecute = false })!)
+            mk.WaitForExit(20_000);
+        var uss = Path.Combine(ws, "UnitySolarSystem");
+        Directory.CreateDirectory(Marks);
+        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem");
+        Status(new { });
+        // A stand-in for orchestrator.exe: records how it was asked and prints what `next` would.
+        var output = Path.Combine(dir, "next-out.txt");
+        var asked = Path.Combine(dir, "next-asked.txt");
+        var fake = Path.Combine(dir, "orchestrator.cmd");
+        var code = 0;
+        void Fake() => File.WriteAllText(fake, $"@echo off\r\necho %* %MINDATTIC_CLI_PID%> \"{asked}\"\r\ntype \"{output}\"\r\nexit /b {code}\r\n");
+        Fake();
+        var env = new Dictionary<string, string> { ["MINDATTIC_ORCHESTRATOR"] = fake };
+        string Asked(string sid) => Gate(new { hook_event_name = "Stop", session_id = sid, cwd = uss, last_assistant_message = "Shall I start the next one?" },
+            env, AgentGate.ContextScriptName).Output;
+
+        File.WriteAllText(output, "Nothing handed out: 1 already being worked; nothing else is ready.\r\n");
+        Assert.That(Asked("k1"), Is.Empty, "next holds it back, so the stop isn't sent back for it");
+        Assert.That(File.ReadAllText(asked).Trim(), Is.EqualTo($"next --repos UnitySolarSystem {Cli}"),
+            "asked as a dry run (nothing claimed), as this CLI, so what it filed itself stays its own");
+
+        File.WriteAllText(output, "=== U.SPC-T1 (UnitySolarSystem, fix): a bug\r\n");
+        var told = Asked("k2");
+        Assert.That(told, Does.Contain("\"block\"").And.Contain("U.SPC-T1"), "next would hand it out: it's work");
+
+        code = 1;
+        Fake();
+        File.WriteAllText(output, "");
+        Assert.That(Asked("k3"), Does.Contain("\"block\""), "next couldn't be asked: the hook's own count stands");
     }
 
     [Test]

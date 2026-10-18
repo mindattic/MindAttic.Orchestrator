@@ -1007,6 +1007,27 @@ public static class AgentGate
             except Exception:
                 return False
 
+        def next_hands_out(repos, pid):
+            # What `orchestrator next` itself would hand this CLI now (a dry run: nothing is claimed), so a stop is pushed back
+            # only for tickets it will get. The files workable() reads trail it: a ticket another live session filed a moment
+            # ago is held by next at once, but by the daemon's holds only after its next tick, and every stop until then was
+            # sent back for a ticket next refused (M.ORCH-T385). None when next can't be asked (not installed, failed, too slow):
+            # then workable()'s own count stands.
+            try:
+                import shutil, subprocess
+                exe = os.environ.get("MINDATTIC_ORCHESTRATOR") or shutil.which("orchestrator") or r"C:\Apps\MindAttic.Orchestrator\Cli\orchestrator.exe"
+                if not Path(exe).exists():
+                    return None
+                env = dict(os.environ)
+                if pid:
+                    env["MINDATTIC_CLI_PID"] = str(pid)  # this CLI, so what it filed itself stays its own (M.ORCH-T328)
+                r = subprocess.run([exe, "next", "--repos", ",".join(repos)], capture_output=True, text=True, encoding="utf-8",
+                                   errors="ignore", timeout=6, env=env, stdin=subprocess.DEVNULL)
+                ids = re.findall(r"^=== (\S+) \(", r.stdout or "", re.M)
+                return ids if r.returncode == 0 and (ids or "Nothing handed out" in (r.stdout or "")) else None
+            except Exception:
+                return None
+
         def keep_going(repos, ids, sid, why, insisted, provider="Claude"):
             repo = ", ".join(repos)
             # Logs it to keep-going.jsonl (the daemon reports it); the reason to give the agent, or None when it's let stop.
@@ -1214,6 +1235,11 @@ public static class AgentGate
             # unthrottled: pushing the stop back would only spend a turn being told so.
             wound = bool(limits.get("wind_down_note")) and not (DIR / ("unthrottled-" + str(my_pid()))).exists()
             ids = workable(repos, sid) if why and not wound and not no_subagent_room(limits, my_pid()) else []
+            if ids:
+                # Only what next would hand out: the count above is the cheap first look, next has the last word.
+                handed = next_hands_out(repos, my_pid())
+                if handed is not None:
+                    ids = handed
             reason = keep_going(repos, ids, sid, why, insisted) if ids else None
             if reason and limits.get("wind_down_note"):
                 reason += " " + limits["wind_down_note"]
