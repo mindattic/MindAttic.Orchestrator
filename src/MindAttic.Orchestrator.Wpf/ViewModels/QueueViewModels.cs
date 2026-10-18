@@ -68,4 +68,14 @@ public sealed class FinishedViewModel(Assignment assignment, MainViewModel owner
     public string ActionLabel => assignment.Worktree ? "Remove worktree" : "Clear";
     public ICommand ActionCommand { get; } = new RelayCommand(() => owner.Finish(assignment));
     public ICommand DetailsCommand { get; } = new RelayCommand(() => owner.ShowDetails(assignment));
+
+    /// <summary>The ticket's assignment as the latest refresh has it (reopened, dispatched again elsewhere and closed): its
+    /// text, its button and what they act on follow it (M.ORCH-T341).</summary>
+    public void Update(Assignment latest)
+    {
+        if (latest == assignment) return;
+        assignment = latest;
+        Raise(nameof(Text));
+        Raise(nameof(ActionLabel));
+    }
 }

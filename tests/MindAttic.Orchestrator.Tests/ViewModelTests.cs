@@ -160,6 +160,20 @@ public sealed class ViewModelTests
     }
 
     [Test]
+    public void A_finished_row_follows_its_tickets_latest_assignment()
+    {
+        // M.ORCH-T341: the row kept the assignment it was built from, and its button acted on the old directory.
+        var row = new FinishedViewModel(new Assignment("A-T1", "A", @"D:\W\A", "Claude", DateTime.UtcNow, false), null!);
+        var changed = new List<string?>();
+        row.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        row.Update(new Assignment("A-T1", "A", @"D:\WT\A\A-T1", "Claude", DateTime.UtcNow, true));
+
+        Assert.That((row.Text, row.ActionLabel), Is.EqualTo(($@"A-T1 in A is closed. Its worktree is still at D:\WT\A\A-T1.", "Remove worktree")));
+        Assert.That(changed, Is.EquivalentTo(new[] { nameof(row.Text), nameof(row.ActionLabel) }));
+    }
+
+    [Test]
     public void A_hand_edited_cycle_percent_no_field_shows_never_blocks_save()
     {
         var store = new JsonStore(dir);

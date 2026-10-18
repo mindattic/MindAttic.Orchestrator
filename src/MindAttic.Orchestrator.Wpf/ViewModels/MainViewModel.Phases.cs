@@ -589,7 +589,7 @@ public sealed partial class MainViewModel
             q => { var row = new QueueRowViewModel(q, this); row.Update(q, ++rank, proposals.GetValueOrDefault(q.Id)); return row; },
             (row, q) => row.Update(q, ++rank, proposals.GetValueOrDefault(q.Id)));
         Proposals.ReorderTo([.. Queue.Where(q => q.IsNext)]);
-        Finished.SyncBy(plan.Finished, a => a.TicketId, f => f.TicketId, a => new FinishedViewModel(a, this), (_, _) => { });
+        Finished.SyncBy(plan.Finished, a => a.TicketId, f => f.TicketId, a => new FinishedViewModel(a, this), (row, a) => row.Update(a));
 
         foreach (var name in new[] { nameof(Hold), nameof(HasHold), nameof(SlotsText), nameof(AutopilotText), nameof(QueueCount) })
             Raise(name);
