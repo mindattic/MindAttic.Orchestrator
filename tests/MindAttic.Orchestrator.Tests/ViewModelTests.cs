@@ -235,6 +235,22 @@ public sealed class ViewModelTests
         Assert.That((vm.Error, saved.BlockBudget, saved.WeeklyBudget), Is.EqualTo(("", (long?)12_345_678, (long?)1_234_567_890)));
     }
 
+    [Test]
+    public void A_quiet_repo_active_under_a_minute_ago_says_just_now_not_now_ago()
+    {
+        // M.ORCH-T463: the detail pane read "Quiet. Last agent activity now ago."
+        var now = new DateTime(2026, 10, 18, 12, 0, 0, DateTimeKind.Utc);
+        RepoTileViewModel Quiet(TimeSpan ago)
+        {
+            var tile = new RepoTileViewModel("A");
+            tile.Update(new RepoStatus("A", @"D:\A", RepoState.Dormant, [], [], [], now - ago, default), now);
+            return tile;
+        }
+
+        Assert.That(Quiet(TimeSpan.FromSeconds(20)).Headline, Is.EqualTo("Quiet. Last agent activity just now."));
+        Assert.That(Quiet(TimeSpan.FromMinutes(5)).Headline, Is.EqualTo("Quiet. Last agent activity 5m ago."));
+    }
+
     private sealed class Row(string key, int value)
     {
         public string Key { get; } = key;

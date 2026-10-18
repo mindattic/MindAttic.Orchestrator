@@ -57,6 +57,8 @@ public sealed class RepoTileViewModel(string name) : ObservableObject
                 RepoState.Working => "An agent is working right now.",
                 RepoState.Waiting when since is not null && since != "now" => $"Waiting on you for {since}.",
                 RepoState.Waiting => "A session is open and waiting on you.",
+                // Under a minute Span says "now", which read "now ago" (M.ORCH-T463).
+                _ when since == "now" => "Quiet. Last agent activity just now.",
                 _ when since is not null => $"Quiet. Last agent activity {since} ago.",
                 _ => "No agent activity on record.",
             };
