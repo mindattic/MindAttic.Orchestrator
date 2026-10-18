@@ -130,9 +130,99 @@ public sealed class CliCommandTests
         var workspace = Path.Combine(dir, "workspace");
         Directory.CreateDirectory(workspace);
         Store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = workspace });
-        Assert.That((Run("bump", "M.ORCH-T5"), Run("approve", "M.ORCH-T5")), Is.EqualTo((1, 1)));
-        Assert.That(output.ToString(), Does.Contain("no Workflow database"));
+        Assert.That((Run("bump", "M.ORCH-T5"), Run("approve", "M.ORCH-T5")), Is.EqualTo((1, 1)), "no repo has that ticket");
+        Assert.That(output.ToString(), Does.Contain("No ticket M.ORCH-T5"));
         Assert.That((Store.LoadSettings().Approved, Store.LoadSettings().Priorities), Is.EqualTo((null as List<string>, null as Dictionary<string, int>)));
+        Assert.That((Store.LoadSettings().StoryApproved, Store.LoadSettings().StoryPriorities), Is.EqualTo((new List<string>(), new Dictionary<string, long>())));
+    }
+
+    /// <summary>Repo <paramref name="name"/> on its own USER_STORIES.md (open B-T1 feature, B-T2 docs, B-T3 closed chore), not
+    /// imported into any database.</summary>
+    private string StoryRepo(string name = "B")
+    {
+        var repoDir = Path.Combine(dir, "workspace", name);
+        Directory.CreateDirectory(Path.Combine(repoDir, ".git"));
+        Directory.CreateDirectory(Path.Combine(repoDir, "docs"));
+        File.WriteAllText(Path.Combine(repoDir, "docs", "USER_STORIES.md"),
+            $"---\ncode: {name}\n---\n\n# {name}\n\n## Tickets\n\n| ID | Date | Type | Status | Summary | Ref |\n|---|---|---|---|---|---|\n" +
+            $"| {name}-T1 | 2026-10-01 | feature | open | one | - |\n| {name}-T2 | 2026-10-01 | docs | open | two | - |\n| {name}-T3 | 2026-10-01 | chore | closed | three | x |\n");
+        return repoDir;
+    }
+
+    /// <summary>M.ORCH-T441: ticket_queue only takes tickets in the Workflow database, so a repo still on its own USER_STORIES.md
+    /// had approve and bump refuse every ticket ("No ticket"), and its features, chores and docs waited for approval forever.
+    /// They're kept in settings.json for such a ticket now, where the scheduler reads them beside the database's queue.</summary>
+    [Test]
+    public void Approve_and_bump_work_for_a_repo_still_on_its_own_story_file()
+    {
+        var path = WorkspaceWithDb();
+        var repoDir = StoryRepo();
+        try
+        {
+            Assert.That(Run("approve", "b-t1"), Is.Zero, output.ToString());
+            Assert.That(Run("bump", "B-T1", "--by", "3"), Is.Zero, output.ToString());
+            Assert.That(output.ToString(), Does.Contain("B-T1 priority is now +3"));
+            Assert.That(Run("reserve", "B-T2", "1M"), Is.Zero, "reserve takes it too");
+            var s = Store.LoadSettings();
+            Assert.That((s.StoryApproved, s.StoryPriorities), Is.EqualTo((new List<string> { "B-T1" }, new Dictionary<string, long> { ["B-T1"] = 3 })));
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+                Assert.That(db.QueueStates().Keys, Has.None.StartsWith("B-"), "nothing of B's in the database's queue");
+
+            // What the scheduler makes of it: B-T1 is work, B-T2 still waits.
+            var snap = new Snapshot(DateTime.UtcNow,
+                [new RepoStatus("B", repoDir, RepoState.Dormant, [], [], [.. MindAttic.Workflow.Tickets.StoryFile.Load(Path.Combine(repoDir, "docs", "USER_STORIES.md")).Tickets.Where(t => t.Status == "open")], null, default)], []);
+            var plan = MindAttic.Orchestrator.Scheduling.Scheduler.Plan(snap, Store.LoadSettings(), []);
+            Assert.That((plan.Queue.Select(q => (q.Id, q.Priority)), plan.AwaitingApproval.Select(q => q.Id)),
+                Is.EqualTo((new[] { ("B-T1", 3) }, new[] { "B-T2" })));
+
+            Assert.That(Run("approve", "B-T3"), Is.EqualTo(1), "a closed ticket isn't approved");
+            Assert.That(output.ToString(), Does.Contain("B-T3 isn't open"));
+            Assert.That(Run("approve", "B-T9"), Is.EqualTo(1), "a typo isn't approved");
+            Assert.That(output.ToString(), Does.Contain("No ticket B-T9"));
+
+            Assert.That(Run("approve", "B-T1", "--undo"), Is.Zero);
+            Assert.That(Run("bump", "B-T1", "--by", "-3"), Is.Zero);
+            Assert.That((Store.LoadSettings().StoryApproved, Store.LoadSettings().StoryPriorities), Is.EqualTo((new List<string>(), new Dictionary<string, long>())));
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
+    }
+
+    [Test]
+    public void Approve_works_before_the_workspace_has_a_workflow_database()
+    {
+        Store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = Path.Combine(dir, "workspace") });
+        StoryRepo();
+        Assert.That(Run("approve", "B-T2"), Is.Zero, output.ToString());
+        Assert.That(Store.LoadSettings().StoryApproved, Is.EqualTo(new List<string> { "B-T2" }));
+    }
+
+    /// <summary>M.ORCH-T441: once the repo is brought into the database, its settings.json approvals and priorities move into the
+    /// database's queue (so workflow ticket approve --undo and the Workflow Desktop can take them back) and leave settings.json.</summary>
+    [Test]
+    public void Story_file_approvals_move_into_the_database_once_it_holds_the_ticket()
+    {
+        var path = WorkspaceWithDb();
+        var repoDir = StoryRepo();
+        try
+        {
+            Store.SaveSettings(Store.LoadSettings() with
+            {
+                StoryApproved = ["B-T1", "C-T1"],
+                StoryPriorities = new() { ["B-T2"] = 4, ["C-T1"] = 2 },
+            });
+            var workspace = Path.Combine(dir, "workspace");
+            Assert.That(MindAttic.Orchestrator.Tickets.TicketQueue.MoveIntoDatabase(Store, workspace), Is.Zero, "B isn't in the database yet");
+
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+                db.Import([new MindAttic.Workflow.Repo("B", repoDir)]);
+            Assert.That(MindAttic.Orchestrator.Tickets.TicketQueue.MoveIntoDatabase(Store, workspace), Is.EqualTo(2));
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+                Assert.That((db.QueueState("B-T1").Approval, db.QueueState("B-T2")), Is.EqualTo(("approved", ("proposed", 4L))));
+            var s = Store.LoadSettings();
+            Assert.That((s.StoryApproved, s.StoryPriorities), Is.EqualTo((new List<string> { "C-T1" }, new Dictionary<string, long> { ["C-T1"] = 2 })),
+                "what the database still doesn't hold stays");
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
     }
 
     /// <summary>M.ORCH-T384: settings.json's approvals and priorities move into the database's queue once, without overriding what

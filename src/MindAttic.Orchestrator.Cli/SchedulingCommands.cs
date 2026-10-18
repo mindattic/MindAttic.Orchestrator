@@ -35,8 +35,10 @@ internal static class Ctx
     /// be approved, bumped or reserved while the ticket you meant gets nothing. Unchecked before the workspace is migrated.</summary>
     public static bool RefuseUnknown(JsonStore store, IEnumerable<string> ids)
     {
-        using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(OrchestratorOptions.Load(store).WorkspaceRoot);
-        if (db is null || ids.Where(id => db.Ticket(id) is null).ToList() is not { Count: > 0 } unknown) return false;
+        var root = OrchestratorOptions.Load(store).WorkspaceRoot;
+        using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(root);
+        // A ticket of a repo still on its own USER_STORIES.md isn't in the database, but it's no typo (M.ORCH-T441).
+        if (db is null || ids.Where(id => MindAttic.Orchestrator.Tickets.TicketQueue.Find(db, root, id) is null).ToList() is not { Count: > 0 } unknown) return false;
         AnsiConsole.MarkupLine($"[red]No ticket {Markup.Escape(string.Join(", ", unknown))}; nothing was changed.[/]");
         return true;
     }
@@ -121,12 +123,16 @@ internal sealed class BumpCommand : Command<BumpCommand.Settings>
     {
         var store = Ctx.Store();
         var id = Ctx.Id(settings.Ticket);
-        // Priority lives in the Workflow database's queue, with approval, where every tool reads and writes it (M.ORCH-T384).
-        using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(OrchestratorOptions.Load(store).WorkspaceRoot);
-        if (db is null) { AnsiConsole.MarkupLine("[red]There's no Workflow database to keep priorities in (workflow db migrate makes one). Nothing changed.[/]"); return 1; }
-        if (Ctx.RefuseUnknown(store, [id])) return 1;
-        var next = db.QueueState(id).Priority + settings.By;
-        db.SetPriority(id, next);
+        // Priority lives in the Workflow database's queue, with approval, where every tool reads and writes it (M.ORCH-T384); a
+        // ticket it doesn't hold (a repo still on its own USER_STORIES.md) keeps it in settings.json (M.ORCH-T441).
+        var root = OrchestratorOptions.Load(store).WorkspaceRoot;
+        using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(root);
+        if (MindAttic.Orchestrator.Tickets.TicketQueue.Find(db, root, id) is null)
+        {
+            AnsiConsole.MarkupLine($"[red]No ticket {Markup.Escape(id)}; nothing was changed.[/]");
+            return 1;
+        }
+        var next = MindAttic.Orchestrator.Tickets.TicketQueue.Bump(store, db, id, settings.By);
         AnsiConsole.MarkupLine($"{Markup.Escape(id)} priority is now {next:+#;-#;0}.");
         return 0;
     }

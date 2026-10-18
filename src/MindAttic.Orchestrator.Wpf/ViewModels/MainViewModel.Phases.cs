@@ -353,13 +353,14 @@ public sealed partial class MainViewModel
 
     public void Bump(string ticketId, int by) => Guarded("Bump", () =>
     {
-        // Priority lives in the Workflow database's queue, where every tool reads and writes it (M.ORCH-T384).
-        using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(aggregator.Options.WorkspaceRoot)
-            ?? throw new InvalidDataException("there's no Workflow database to keep priorities in (workflow db migrate makes one)");
-        var next = db.QueueState(ticketId).Priority + by;
-        db.SetPriority(ticketId, next);
+        // Priority lives in the Workflow database's queue, where every tool reads and writes it (M.ORCH-T384); a ticket it doesn't
+        // hold (a repo still on its own USER_STORIES.md) keeps it in settings.json, which the plan reads too (M.ORCH-T441).
+        using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(aggregator.Options.WorkspaceRoot);
+        var inDb = db?.Ticket(ticketId) is not null;
+        var next = MindAttic.Orchestrator.Tickets.TicketQueue.Bump(store, db, ticketId, by);
         // Shown at once, not at the next refresh: the plan is made again over the snapshot with the new priority.
-        if (snapshot is not null)
+        if (!inDb) { if (snapshot is not null) ApplyPlan(snapshot); }
+        else if (snapshot is not null)
         {
             var p = new Dictionary<string, long>(snapshot.Priorities, StringComparer.OrdinalIgnoreCase);
             if (next == 0) p.Remove(ticketId); else p[ticketId] = next;

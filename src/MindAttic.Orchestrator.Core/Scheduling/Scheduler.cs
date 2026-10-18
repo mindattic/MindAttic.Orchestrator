@@ -31,7 +31,8 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
     /// <summary>Opened more than <see cref="OrchestratorSettings.GroomAfterDays"/> ago.</summary>
     public bool Old { get; init; }
 
-    /// <summary>Approved for work in the Workflow database's queue (<see cref="Snapshot.Approved"/>).</summary>
+    /// <summary>Approved for work: in the Workflow database's queue (<see cref="Snapshot.Approved"/>), or, for a ticket it doesn't
+    /// hold, in <see cref="OrchestratorSettings.StoryApproved"/>.</summary>
     public bool Approved { get; init; }
 
     /// <summary>Whether it may be worked: a fix, or approved.</summary>
@@ -133,18 +134,26 @@ public static partial class Scheduler
         var groomBefore = settings.GroomAfterDays > 0
             ? DateOnly.FromDateTime(snapshot.TakenUtc.ToLocalTime().AddDays(-Math.Min(settings.GroomAfterDays, Century)))
             : DateOnly.MinValue;
-        // The database's priority, clamped to what a queue item holds.
-        int Priority(string id) => (int)Math.Clamp(snapshot.Priorities.GetValueOrDefault(id), int.MinValue, int.MaxValue);
+        // Approval and priority from the database's queue, or, for a ticket it doesn't hold (a repo still on its own
+        // USER_STORIES.md), from settings.json, where TicketQueue writes them then (M.ORCH-T441).
+        var storyApproved = settings.StoryApproved.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var storyPriorities = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (id, priority) in settings.StoryPriorities) storyPriorities[id] = priority;
+        bool IsApproved(string id) => snapshot.Approved.Contains(id) || storyApproved.Contains(id);
+        bool MayWork(Ticket t) => t.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) || IsApproved(t.Id);
+        // Clamped to what a queue item holds.
+        int Priority(string id) => (int)Math.Clamp(snapshot.Priorities.TryGetValue(id, out var held) ? held : storyPriorities.GetValueOrDefault(id),
+            int.MinValue, int.MaxValue);
         bool IsOld(Ticket t) => DateOnly.TryParse(t.Date, System.Globalization.CultureInfo.InvariantCulture, out var opened) && opened < groomBefore;
         // Only fixes and tickets you approved are work; the rest wait for your yes outside the queue (one already
         // being worked stays, so its agent is still tracked). One whose assignment went stale waits for it too (M.ORCH-T394).
         var awaiting = snapshot.Repos
-            .SelectMany(r => r.OpenTickets.Where(t => !snapshot.MayWork(t) && (assigned.GetValueOrDefault(t.Id) is not { } a || StaleSince(a) is not null))
-                .Select(t => new QueueItem(r.Name, r.Path, t, Priority(t.Id), null, false) { Old = IsOld(t), Approved = snapshot.Approved.Contains(t.Id) }))
+            .SelectMany(r => r.OpenTickets.Where(t => !MayWork(t) && (assigned.GetValueOrDefault(t.Id) is not { } a || StaleSince(a) is not null))
+                .Select(t => new QueueItem(r.Name, r.Path, t, Priority(t.Id), null, false) { Old = IsOld(t), Approved = IsApproved(t.Id) }))
             .OrderBy(q => q.Repo, StringComparer.OrdinalIgnoreCase).ThenBy(q => q.Ticket.Number ?? int.MaxValue)
             .ToList();
         var queue = snapshot.Repos
-            .SelectMany(r => r.OpenTickets.Where(t => snapshot.MayWork(t) || assigned.ContainsKey(t.Id)).Select(t => new QueueItem(
+            .SelectMany(r => r.OpenTickets.Where(t => MayWork(t) || assigned.ContainsKey(t.Id)).Select(t => new QueueItem(
                 r.Name, r.Path, t,
                 Priority(t.Id),
                 assigned.GetValueOrDefault(t.Id),
@@ -155,7 +164,7 @@ public static partial class Scheduler
                     Reserved = settings.Reservations.GetValueOrDefault(t.Id),
                     BlockedBy = Blockers(t),
                     Old = IsOld(t),
-                    Approved = snapshot.Approved.Contains(t.Id),
+                    Approved = IsApproved(t.Id),
                 }))
             .OrderBy(q => q.IsAssigned)
             .ThenByDescending(q => q.Reserved > 0)

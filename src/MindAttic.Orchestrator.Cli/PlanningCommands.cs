@@ -99,20 +99,29 @@ internal sealed class ApproveCommand : Command<ApproveCommand.Settings>
         }
         var store = Ctx.Store();
         var ids = settings.Tickets.Select(Ctx.Id).ToList();
-        // Approval lives in the Workflow database's queue alone, where workflow ticket approve and the Workflow Desktop write it
-        // too and the scheduler reads it (M.ORCH-T384).
-        using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(OrchestratorOptions.Load(store).WorkspaceRoot);
-        if (db is null) { AnsiConsole.MarkupLine("[red]There's no Workflow database to approve tickets in (workflow db migrate makes one). Nothing changed.[/]"); return 1; }
-        // A typo would be "approved" while the ticket you meant goes on waiting, so only ids the database knows count.
-        if (Ctx.RefuseUnknown(store, ids)) return 1;
+        // Approval lives in the Workflow database's queue, where workflow ticket approve and the Workflow Desktop write it too and
+        // the scheduler reads it (M.ORCH-T384); a ticket it doesn't hold (a repo still on its own USER_STORIES.md, or no database
+        // yet) is approved in settings.json, which the scheduler reads beside it (M.ORCH-T441).
+        var root = OrchestratorOptions.Load(store).WorkspaceRoot;
+        using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(root);
+        var found = ids.ToDictionary(id => id, id => MindAttic.Orchestrator.Tickets.TicketQueue.Find(db, root, id));
+        // A typo would be "approved" while the ticket you meant goes on waiting, so only ids of real tickets count. Taking back
+        // one that settings.json holds for a ticket gone since still works.
+        var held = store.LoadSettings().StoryApproved;
+        if (found.Where(f => f.Value is null && !(settings.Undo && held.Contains(f.Key, StringComparer.OrdinalIgnoreCase))).Select(f => f.Key).ToList()
+            is { Count: > 0 } unknown)
+        {
+            AnsiConsole.MarkupLine($"[red]No ticket {Markup.Escape(string.Join(", ", unknown))}; nothing was changed.[/]");
+            return 1;
+        }
         // Checked before anything changes: only an open ticket can be approved.
-        if (!settings.Undo && ids.Where(id => db.Ticket(id)?.Ticket.Status != MindAttic.Workflow.Tickets.TicketRules.Open).ToList() is { Count: > 0 } shut)
+        if (!settings.Undo && ids.Where(id => found[id]!.Ticket.Status != MindAttic.Workflow.Tickets.TicketRules.Open).ToList() is { Count: > 0 } shut)
         {
             AnsiConsole.MarkupLine($"[red]{Markup.Escape(string.Join(", ", shut))} {(shut.Count == 1 ? "isn't" : "aren't")} open; nothing was changed.[/]");
             return 1;
         }
         foreach (var id in ids)
-            if (settings.Undo) db.Unapprove(id); else db.Approve(id);
+            MindAttic.Orchestrator.Tickets.TicketQueue.SetApproval(store, db, id, !settings.Undo);
         AnsiConsole.MarkupLine(Markup.Escape(settings.Undo
             ? $"{string.Join(", ", ids)} wait for approval again."
             : $"{string.Join(", ", ids)} approved: they join the queue in their order."));

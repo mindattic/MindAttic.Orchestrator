@@ -165,6 +165,13 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         {
             warnings.Add($"moving settings.json's approvals into the workflow database: {ex.Message} (tried again next refresh)");
         }
+        // So do those of tickets the database didn't hold when they were approved, once it holds them (M.ORCH-T441).
+        try { TicketQueue.MoveIntoDatabase(Store, workspace.Root); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException
+                                       or KeyNotFoundException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            warnings.Add($"moving settings.json's story-file approvals into the workflow database: {ex.Message} (tried again next refresh)");
+        }
         var settings = Store.LoadSettings();
         var repos = workspace.Repos();
 

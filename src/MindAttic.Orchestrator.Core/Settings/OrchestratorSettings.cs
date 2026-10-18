@@ -173,6 +173,16 @@ public sealed record OrchestratorSettings
     /// <summary>Manual priorities as settings.json kept them before the Workflow database (M.ORCH-T384): moved into
     /// <c>ticket_queue</c> once by <see cref="Tickets.QueueImport"/> and dropped here, like <see cref="Approved"/>.</summary>
     public Dictionary<string, int>? Priorities { get; init; }
+
+    /// <summary>Approved tickets the Workflow database doesn't hold: those of a repo still on its own <c>docs/USER_STORIES.md</c>
+    /// (or every ticket, before the workspace is migrated). <c>ticket_queue</c> only takes tickets in the database, so without
+    /// this such a repo's features, chores and docs could never be approved (M.ORCH-T441). Written by
+    /// <see cref="Tickets.TicketQueue"/>, read by the scheduler next to the database's queue, and moved into that queue by
+    /// <see cref="Tickets.TicketQueue.MoveIntoDatabase"/> once the database holds the ticket.</summary>
+    public List<string> StoryApproved { get; init; } = [];
+
+    /// <summary>Manual priorities of tickets the Workflow database doesn't hold, like <see cref="StoryApproved"/>.</summary>
+    public Dictionary<string, long> StoryPriorities { get; init; } = [];
 }
 
 /// <summary>A ticket the orchestrator has handed to a session.</summary>
