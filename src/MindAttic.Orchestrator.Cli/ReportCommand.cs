@@ -40,7 +40,7 @@ internal sealed class ReportCommand : Command<ReportCommand.Settings>
     public override int Execute(CommandContext context, Settings settings)
     {
         var (_, _, snapshot, _) = Ctx.Load();
-        var from = WeekOf(DateOnly.FromDateTime(DateTime.Now)).AddDays(-7 * (Math.Max(1, settings.Weeks) - 1));
+        var from = WeekOf(DateOnly.FromDateTime(DateTime.Now)).AddDays(-7 * (Math.Clamp(settings.Weeks, 1, 5200) - 1));
         var rows = snapshot.History.Where(d => d.Day >= from).ToList();
         var weeks = rows.Select(r => WeekOf(r.Day)).Distinct().Order().ToList();
 

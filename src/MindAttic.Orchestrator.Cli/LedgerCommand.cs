@@ -39,7 +39,7 @@ internal sealed class LedgerCommand : Command<LedgerCommand.Settings>
             .AddColumn("Window").AddColumn("Grade").AddColumn("Peak", c => c.RightAligned()).AddColumn("End", c => c.RightAligned())
             .AddColumn("Uncached", c => c.RightAligned()).AddColumn("At 99%", c => c.RightAligned()).AddColumn("Held", c => c.RightAligned())
             .AddColumn("Refused", c => c.RightAligned()).AddColumn("Why");
-        var from = now.AddDays(-Math.Max(1, settings.Days));
+        var from = now.AddDays(-Math.Clamp(settings.Days, 1, 36500));
         foreach (var w in rows.Where(r => r.EndUtc >= from)) table.AddRow(Row(w, null));
         if (PaceLedger.Current(samples, hits, events, now, accountAt) is { } current) table.AddRow(Row(current, "running"));
         AnsiConsole.Write(table);
@@ -59,7 +59,7 @@ internal sealed class LedgerCommand : Command<LedgerCommand.Settings>
             }
             AnsiConsole.MarkupLine($"Wrote {rows.Count} windows to {Markup.Escape(Path.GetFullPath(csv))}.");
         }
-        return rows.Any(r => r.Grade == WindowGrade.Over && now - r.EndUtc <= TimeSpan.FromDays(Math.Max(1, settings.Days))) ? 1 : 0;
+        return rows.Any(r => r.Grade == WindowGrade.Over && now - r.EndUtc <= TimeSpan.FromDays(Math.Clamp(settings.Days, 1, 36500))) ? 1 : 0;
     }
 
     private static string[] Row(LedgerWindow w, string? running)
