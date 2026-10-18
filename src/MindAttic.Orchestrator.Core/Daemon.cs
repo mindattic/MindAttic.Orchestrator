@@ -38,7 +38,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         string? lastHold = null;
         (PaceMode, int)? lastPace = null;
         bool? lastHeldElsewhere = null;
-        var ledger = new PaceLedgerWatch(store, options.WorkspaceRoot, (level, line) => Say(level, line), (title, message, urgent) => Alert(title, message, urgent));
+        var ledger = new PaceLedgerWatch(store, options.WorkspaceRoot, (level, line) => Say(level, line), (title, message, urgent) => Alert(title, message, urgent))
+            { Account = new ClaudeAccount() };
         var knownStale = new HashSet<string>(StringComparer.Ordinal);
         var knownStuck = new HashSet<string>(StringComparer.Ordinal);
         var lastStates = new Dictionary<string, RepoState>(StringComparer.OrdinalIgnoreCase);

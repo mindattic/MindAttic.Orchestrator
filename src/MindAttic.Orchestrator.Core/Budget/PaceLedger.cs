@@ -80,11 +80,16 @@ public static class PaceLedger
 
     /// <summary>Grades one window from everything recorded about it. <paramref name="endUtc"/> is its reset.</summary>
     /// <param name="nowUtc">For a window still running: minutes at the target are counted to now, not to its end.</param>
+    /// <param name="accountAt">Which Claude account was signed in at a time (null: unknown). Samples carry no account, and after
+    /// a /login the new account's window can reset within minutes of the old one's: the window is graded from the samples
+    /// of the account its last one was taken under, not both mixed (M.ORCH-T343).</param>
     public static LedgerWindow Build(DateTime endUtc, IEnumerable<UsageSample> samples, IEnumerable<LimitObservation> hits, IEnumerable<GateEvent> events,
-        DateTime? nowUtc = null)
+        DateTime? nowUtc = null, Func<DateTime, string?>? accountAt = null)
     {
         var start = endUtc - BudgetCalculator.BlockLength;
         var mine = samples.Where(s => Near(s.ResetUtc, endUtc)).OrderBy(s => s.AtUtc).ToList();
+        if (accountAt is not null && mine.Count > 0 && accountAt(mine[^1].AtUtc) is { } owner)
+            mine = [.. mine.Where(s => accountAt(s.AtUtc) is not { } a || a == owner)];
         var hit = hits.Where(h => h.Kind == LimitKind.Session && (Near(h.ResetUtc, endUtc) || h.HitUtc >= start && h.HitUtc < endUtc)).MinBy(h => h.HitUtc);
         var weekly = hits.Where(h => h.Kind == LimitKind.Weekly && h.HitUtc >= start && h.HitUtc < endUtc).MinBy(h => h.HitUtc);
         var gate = events.Where(e => e.AtUtc >= start && e.AtUtc < endUtc).ToList();
@@ -129,7 +134,7 @@ public static class PaceLedger
     /// oldest first: every window the samples saw, plus any limit hit's window from before the samples began.
     /// </summary>
     public static IReadOnlyList<LedgerWindow> Due(IReadOnlyList<LedgerWindow> recorded, IReadOnlyList<UsageSample> samples,
-        IReadOnlyList<LimitObservation> hits, IReadOnlyList<GateEvent> events, DateTime nowUtc)
+        IReadOnlyList<LimitObservation> hits, IReadOnlyList<GateEvent> events, DateTime nowUtc, Func<DateTime, string?>? accountAt = null)
     {
         var ends = samples.Select(s => s.ResetUtc)
             .Concat(hits.Where(h => h.Kind == LimitKind.Session).Select(h => h.ResetUtc))
@@ -143,7 +148,7 @@ public static class PaceLedger
             due.Add(end);
             taken.Add(end);
         }
-        return [.. due.Select(d => Build(d, samples, hits, events))];
+        return [.. due.Select(d => Build(d, samples, hits, events, accountAt: accountAt))];
     }
 
     // Two windows are the same one when their resets are within 10 minutes (Claude rounds resets to the 10 minutes).
@@ -153,8 +158,18 @@ public static class PaceLedger
     private static bool Overlaps(DateTime a, DateTime b) => Math.Abs((a - b).TotalMinutes) < BudgetCalculator.BlockLength.TotalMinutes - 10;
 
     /// <summary>The window still running, graded as it stands; null when Claude hasn't reported it.</summary>
-    public static LedgerWindow? Current(IReadOnlyList<UsageSample> samples, IReadOnlyList<LimitObservation> hits, IReadOnlyList<GateEvent> events, DateTime nowUtc) =>
-        samples.Where(s => s.ResetUtc > nowUtc).MaxBy(s => s.ResetUtc) is { } latest ? Build(latest.ResetUtc, samples, hits, events, nowUtc) : null;
+    public static LedgerWindow? Current(IReadOnlyList<UsageSample> samples, IReadOnlyList<LimitObservation> hits, IReadOnlyList<GateEvent> events, DateTime nowUtc,
+        Func<DateTime, string?>? accountAt = null) =>
+        samples.Where(s => s.ResetUtc > nowUtc).MaxBy(s => s.ResetUtc) is { } latest ? Build(latest.ResetUtc, samples, hits, events, nowUtc, accountAt) : null;
+
+    /// <summary>Which account the sign-in record says was signed in at a time; null before the first one seen or with no record.</summary>
+    public static Func<DateTime, string?> AccountAt(ClaudeAccount account, DateTime nowUtc)
+    {
+        IReadOnlyList<AccountSpan> history;
+        try { history = account.Read(nowUtc)?.History ?? []; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { history = []; }
+        return utc => history.LastOrDefault(s => utc >= s.From && (s.To is not { } to || utc < to))?.Account;
+    }
 
     public static string Serialize(LedgerWindow w) => JsonSerializer.Serialize(w, Json);
 

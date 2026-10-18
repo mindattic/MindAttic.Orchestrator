@@ -24,6 +24,9 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
     public static string DefaultEventsPath { get; } = Path.Combine(Setup.AgentGate.ClaudeDir, "session-context", Setup.AgentGate.GateLogName);
     public string EventsPath { get; init; } = DefaultEventsPath;
 
+    /// <summary>The sign-in record, so a window is graded from one account's samples (M.ORCH-T343); null (tests) grades them all.</summary>
+    public ClaudeAccount? Account { get; init; }
+
     /// <summary>Files tickets; tests swap it. Returns the new id, or null when none was filed.</summary>
     internal Func<string, string?> FileTicket { get; set; } = null!;
 
@@ -57,7 +60,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
 
         var recorded = PaceLedger.Load(LedgerPath);
         var events = PaceLedger.LoadEvents(EventsPath, nowUtc - KeepEvents);
-        var due = PaceLedger.Due(recorded, samples, hits, events, nowUtc);
+        var due = PaceLedger.Due(recorded, samples, hits, events, nowUtc, Account is null ? null : PaceLedger.AccountAt(Account, nowUtc));
         if (due.Count == 0) return;
         PaceLedger.Append(LedgerPath, due);
         foreach (var w in due) Report(w, nowUtc);

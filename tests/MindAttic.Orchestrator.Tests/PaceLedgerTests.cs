@@ -42,6 +42,25 @@ public sealed class PaceLedgerTests
     }
 
     [Test]
+    public void A_window_is_graded_from_one_accounts_samples_when_a_login_put_another_window_resetting_with_it()
+    {
+        // M.ORCH-T343: A's window at 99% until a /login an hour before the reset; B's own window resets 5 minutes later and
+        // ends at 60%. Mixed, it read peak 99 (A's), final 60 (B's).
+        var login = End.AddHours(-1);
+        List<UsageSample> samples =
+        [
+            new(End.AddHours(-3), 60, End, 6_000_000), new(End.AddHours(-1.5), 99, End, 9_900_000),
+            new(End.AddMinutes(-40), 30, End.AddMinutes(5), 2_000_000), new(End.AddMinutes(-5), 60, End.AddMinutes(5), 4_000_000),
+        ];
+        string? AccountAt(DateTime t) => t < login ? "a" : "b";
+
+        var b = PaceLedger.Build(End, samples, [], [], accountAt: AccountAt);
+        Assert.That((b.PeakPercent, b.FinalPercent, b.Samples), Is.EqualTo(((double?)60, (double?)60, 2)), "B's window, B's samples");
+        var mixed = PaceLedger.Build(End, samples, [], []);
+        Assert.That((mixed.PeakPercent, mixed.FinalPercent), Is.EqualTo(((double?)99, (double?)60)), "with no sign-in record nothing is told apart");
+    }
+
+    [Test]
     public void A_limit_hit_is_over_whatever_the_percent()
     {
         var w = PaceLedger.Build(End, Steady(80), [Hit(End.AddMinutes(-40), End)], []);

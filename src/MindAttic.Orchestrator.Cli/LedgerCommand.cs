@@ -30,8 +30,9 @@ internal sealed class LedgerCommand : Command<LedgerCommand.Settings>
         var hits = store.LoadLimits();
         var events = PaceLedger.LoadEvents(PaceLedgerWatch.DefaultEventsPath, now - PaceLedgerWatch.KeepEvents);
         var recorded = PaceLedger.Load(Path.Combine(store.Directory, PaceLedger.FileName));
+        var accountAt = PaceLedger.AccountAt(new ClaudeAccount(), now);
         // Windows the daemon hasn't closed yet (it closes them a minute after their reset) are shown as they'll be recorded.
-        List<LedgerWindow> rows = [.. recorded.Concat(PaceLedger.Due(recorded, samples, hits, events, now)).OrderBy(r => r.EndUtc)];
+        List<LedgerWindow> rows = [.. recorded.Concat(PaceLedger.Due(recorded, samples, hits, events, now, accountAt)).OrderBy(r => r.EndUtc)];
 
         AnsiConsole.MarkupLine($"[bold]Pace ledger[/]: {Markup.Escape(PaceLedger.Summary(rows, now))}");
         var table = new Table().Border(TableBorder.Rounded)
@@ -40,7 +41,7 @@ internal sealed class LedgerCommand : Command<LedgerCommand.Settings>
             .AddColumn("Refused", c => c.RightAligned()).AddColumn("Why");
         var from = now.AddDays(-Math.Max(1, settings.Days));
         foreach (var w in rows.Where(r => r.EndUtc >= from)) table.AddRow(Row(w, null));
-        if (PaceLedger.Current(samples, hits, events, now) is { } current) table.AddRow(Row(current, "running"));
+        if (PaceLedger.Current(samples, hits, events, now, accountAt) is { } current) table.AddRow(Row(current, "running"));
         AnsiConsole.Write(table);
 
         if (settings.Csv is { } csv)
