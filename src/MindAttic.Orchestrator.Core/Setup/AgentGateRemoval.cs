@@ -21,18 +21,30 @@ public static class AgentGateRemoval
     {
         var claude = claudeDir ?? AgentGate.ClaudeDir;
         var did = new List<string>();
-        foreach (var (name, path) in new[]
+        var files = new[]
         {
             ("Claude", Path.Combine(claude, "settings.json")),
             ("Codex", Path.Combine(codexDir ?? AgentGate.CodexDir, "hooks.json")),
             ("Gemini", Path.Combine(geminiDir ?? AgentGate.GeminiDir, "settings.json")),
-        })
+        };
+        foreach (var (name, path) in files)
             if (RemoveJsonHooks(path) is { } removed) did.Add($"{name}: {removed}");
-        if (RemoveKimiHooks(kimiConfigPath ?? AgentGate.KimiConfigPath)) did.Add("Kimi: removed the gate hooks from config.toml");
+        var kimi = kimiConfigPath ?? AgentGate.KimiConfigPath;
+        if (RemoveKimiHooks(kimi)) did.Add("Kimi: removed the gate hooks from config.toml");
 
         // The scripts carry "edits are overwritten", so they're the orchestrator's; a command file only while it's still ours word for word.
-        foreach (var script in Scripts)
-            if (TryDelete(Path.Combine(claude, script))) did.Add("deleted " + script);
+        // Kept while a settings file still runs them (one left for you to edit by hand, or one that couldn't be read): python
+        // exits 2 on a missing script, which Claude and Gemini take as a blocking hook, refusing every call (M.ORCH-T451).
+        var stillRun = files.Append(("Kimi", kimi)).Where(f => StillRunsAGate(f.Item2)).Select(f => f.Item1).ToList();
+        if (stillRun.Count > 0)
+        {
+            if (Scripts.Any(s => File.Exists(Path.Combine(claude, s))))
+                did.Add($"kept {string.Join(" and ", Scripts)}: {string.Join(", ", stillRun)} still {(stillRun.Count == 1 ? "runs" : "run")} them, " +
+                        "and a hook whose script is gone refuses every call; delete them once those hooks are out");
+        }
+        else
+            foreach (var script in Scripts)
+                if (TryDelete(Path.Combine(claude, script))) did.Add("deleted " + script);
         foreach (var (file, body) in new[]
         {
             ("unthrottle.md", AgentGate.UnthrottleCommand), ("throttle.md", AgentGate.ThrottleCommand),
@@ -132,6 +144,18 @@ public static class AgentGateRemoval
         var result = string.Join(newline, lines).TrimEnd('\r', '\n');
         Write(path, result.Length > 0 ? result + newline : "");
         return true;
+    }
+
+    /// <summary>Whether a settings file still names a gate script (or can't be read, so it may).</summary>
+    private static bool StillRunsAGate(string path)
+    {
+        try
+        {
+            if (!File.Exists(path)) return false;
+            var text = File.ReadAllText(path);
+            return Scripts.Any(s => text.Contains(s, StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return true; }
     }
 
     private static bool TryDelete(string path)

@@ -174,6 +174,30 @@ public sealed class AgentGateRemovalTests
     }
 
     [Test]
+    public void The_scripts_stay_while_a_settings_file_left_alone_still_runs_them()
+    {
+        // M.ORCH-T451: python exits 2 on a missing script, which Claude and Gemini take as a blocking hook: deleting the scripts
+        // under a hook uninstall couldn't take out refused every call in that CLI.
+        AgentGate.Ensure(Claude);
+        Directory.CreateDirectory(Gemini);
+        var gemini = Path.Combine(Gemini, "settings.json");
+        var unreadable = "{ \"theme\": \"a\", \"theme\": \"b\", \"hooks\": { \"BeforeTool\": [ { \"matcher\": \"\", \"hooks\": [ { \"type\": \"command\", " +
+                         "\"command\": \"python \\\"C:/x/pace-gate.py\\\"\" } ] } ] } }";
+        File.WriteAllText(gemini, unreadable);
+
+        var did = Remove();
+
+        Assert.That(File.ReadAllText(Settings), Does.Not.Contain(AgentGate.ScriptName), "Claude's hooks still come out");
+        Assert.That(File.ReadAllText(gemini), Is.EqualTo(unreadable));
+        Assert.That(File.Exists(Path.Combine(Claude, AgentGate.ScriptName)) && File.Exists(Path.Combine(Claude, AgentGate.ContextScriptName)), Is.True);
+        Assert.That(did, Does.Contain("kept pace-gate.py and context-gate.py: Gemini still runs them"));
+
+        File.WriteAllText(gemini, "{}");
+        Assert.That(Remove(), Does.Contain("deleted " + AgentGate.ScriptName), "once that hook is out, they go");
+        Assert.That(File.Exists(Path.Combine(Claude, AgentGate.ScriptName)), Is.False);
+    }
+
+    [Test]
     public void A_command_file_the_user_rewrote_is_kept()
     {
         AgentGate.Ensure(Claude);
