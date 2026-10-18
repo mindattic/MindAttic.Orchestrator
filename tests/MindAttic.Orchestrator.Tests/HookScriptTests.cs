@@ -178,8 +178,13 @@ public sealed class HookScriptTests
     [Test]
     public void A_prompt_refused_at_a_weekly_stop_names_the_week_and_its_reset()
     {
-        Status(new { stop = true, stop_window = "weekly", reset_time = "Mon 9:00 AM" });
+        Status(new { stop = true, stop_window = "weekly", reset_time = "Mon 9:00 AM", stop_until = DateTime.UtcNow.AddDays(3).ToString("yyyy-MM-ddTHH:mm:ssZ") });
         var said = Gate(new { hook_event_name = "UserPromptSubmit", session_id = "w9", prompt = "go on", cwd = ws }, AgentGate.ContextScriptName).Output;
+        Assert.That(said, Does.Contain("the weekly window is at its target").And.Contain("resets at Mon 9:00 AM"));
+
+        // The daemon stalls: the latched stop still says which window and when.
+        Status(new { stop = true, stop_window = "weekly", reset_time = "Mon 9:00 AM" }, at: DateTime.UtcNow.AddMinutes(-10));
+        said = Gate(new { hook_event_name = "UserPromptSubmit", session_id = "w9", prompt = "go on", cwd = ws }, AgentGate.ContextScriptName).Output;
         Assert.That(said, Does.Contain("the weekly window is at its target").And.Contain("resets at Mon 9:00 AM"));
     }
 

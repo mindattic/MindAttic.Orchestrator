@@ -163,7 +163,7 @@ public static class AgentGate
                 except Exception:
                     old = latched("orchestrator")
                     until = float(old["until"]) if old else time.time() + {{StopLatchFallbackSeconds}}
-                latch("orchestrator", until, note=note)
+                latch("orchestrator", until, note=note, window=s.get("stop_window"), reset_time=s.get("reset_time"))
                 return note
             l = latched("orchestrator")
             return (l.get("note") or ORCHESTRATOR_STOP) if l else None
@@ -918,7 +918,10 @@ public static class AgentGate
             # the limit is never passed even by your own prompts. The orchestrator's control commands still go through.
             limits = orchestrator_status()
             if orchestrator_stop(limits) and not limits.get("stop"):
-                limits = dict(limits, stop=True)  # latched from before the daemon stalled (M.ORCH-T196)
+                # Latched from before the daemon stalled (M.ORCH-T196): with its window and reset, so a weekly stop says so.
+                l = latched("orchestrator") or {}
+                limits = dict(limits, stop=True, stop_window=limits.get("stop_window") or l.get("window"),
+                              reset_time=limits.get("reset_time") or l.get("reset_time"))
             own = None if limits.get("stop") else claude_stop()
             if own:
                 limits = dict(limits, stop=True, percent_used=own[0], reset_time=reset_text(own[1]), stop_window=own[2])
