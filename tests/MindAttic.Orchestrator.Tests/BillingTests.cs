@@ -309,7 +309,11 @@ public sealed class BillingTests
         var billing = Switch();
         Assert.That(billing.Tick([Tab], DateTime.UtcNow), Is.Empty);
         Assert.That(sent, Is.Empty);
-        Assert.That(billing.Status([Tab], DateTime.UtcNow).Mode, Is.EqualTo(BillingModes.Api), "the Vault key approved");
+        var status = billing.Status([Tab], DateTime.UtcNow);
+        Assert.That(status.Mode, Is.EqualTo(BillingModes.Api), "the Vault key approved");
+        // M.ORCH-T453: it read "the Launcher is being asked to restart it", though nothing asks until a switch is made.
+        Assert.That((status.Clis.Single().Restart, status.Mismatched), Is.EqualTo(((string?)null, Array.Empty<CliBilling>())));
+        Assert.That(BillingText.Of(status.Clis.Single()), Is.EqualTo("Claude Team"));
     }
 
     // ── Status lines ────────────────────────────────────────────────────────

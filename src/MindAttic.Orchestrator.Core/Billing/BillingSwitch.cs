@@ -128,8 +128,10 @@ public sealed class BillingSwitch
             : login is null
                 ? ("Claude Team: not signed in", "No claude.ai account is signed in: run /login in a Claude CLI.")
                 : (login.Describe(), null);
-        var clis = LiveClis(hosts, nowUtc).Select(c => c.Bills is { } bills && bills != mode
-            ? c with { Restart = c.Host is null ? "manual" : state is null ? "pending"
+        // Until a switch writes a mode, nothing is enforced (Tick asks no Launcher tab), so no CLI is said to be restarting or
+        // to need restarting for a mode only read from Claude Code's config (M.ORCH-T453).
+        var clis = LiveClis(hosts, nowUtc).Select(c => state is not null && c.Bills is { } bills && bills != mode
+            ? c with { Restart = c.Host is null ? "manual"
                 : state.Requested.Contains(c.SessionId) ? "requested" : state.Refused.Contains(c.SessionId) ? "refused" : "pending" }
             : c).ToList();
         return new BillingStatus(mode, state?.SinceUtc, headline, clis) { Problem = problem };
