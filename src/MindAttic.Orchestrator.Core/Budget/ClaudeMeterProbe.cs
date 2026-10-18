@@ -47,6 +47,8 @@ public sealed class ClaudeMeterProbe
 
     private readonly object gate = new();
     private DateTime nextUtc;
+    /// <summary>Bumped by <see cref="Reset"/>: an ask started before it that then fails doesn't put the backoff back (M.ORCH-T342).</summary>
+    private int generation;
 
     /// <summary>The ask in flight (or the last one), for tests to await.</summary>
     internal Task Pending { get; private set; } = Task.CompletedTask;
@@ -81,7 +83,8 @@ public sealed class ClaudeMeterProbe
         {
             if (!Pending.IsCompleted || nowUtc < nextUtc) return false;
             nextUtc = nowUtc + StaleAfter;
-            Pending = Task.Run(() => AskAsync(nowUtc));
+            var asked = generation;
+            Pending = Task.Run(() => AskAsync(nowUtc, asked));
         }
         return true;
     }
@@ -90,10 +93,14 @@ public sealed class ClaudeMeterProbe
     /// account is read within seconds, not after the old one's backoff.</summary>
     public void Reset()
     {
-        lock (gate) nextUtc = default;
+        lock (gate)
+        {
+            nextUtc = default;
+            generation++;
+        }
     }
 
-    private async Task AskAsync(DateTime nowUtc)
+    private async Task AskAsync(DateTime nowUtc, int asked)
     {
         var account = Who();
         if (account == ClaudeAccount.ApiKey)
@@ -143,7 +150,9 @@ public sealed class ClaudeMeterProbe
         void Fail(string why)
         {
             LastResult = why;
-            lock (gate) nextUtc = nowUtc + Backoff;
+            // The old account's ask failing (its credentials mid-rewrite by the /login) mustn't hold off reading the new one.
+            lock (gate)
+                if (generation == asked) nextUtc = nowUtc + Backoff;
         }
     }
 

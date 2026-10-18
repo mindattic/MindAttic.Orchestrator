@@ -128,6 +128,22 @@ public sealed class ClaudeMeterProbeTests
     }
 
     [Test]
+    public async Task An_ask_that_fails_after_a_login_reset_it_doesnt_put_the_backoff_back()
+    {
+        // M.ORCH-T342: the old account's ask in flight at the /login failed and held the new account's forced ask off 15 minutes.
+        var release = new TaskCompletionSource<string?>();
+        var probe = Probe((_, _) => release.Task);
+        Assert.That(probe.Tick(null, [E(Now.AddMinutes(-1), 500)], Now), Is.True);
+
+        probe.Reset(); // the /login, while the ask is still out
+        release.SetResult(null); // and it fails
+        await probe.Pending;
+
+        Assert.That(probe.Tick(null, [], Now.AddSeconds(10), force: true), Is.True, "the new account is read at once");
+        await probe.Pending;
+    }
+
+    [Test]
     public async Task A_rejected_or_failed_ask_writes_nothing()
     {
         var probe = Probe((_, _) => Task.FromResult<string?>(null));
