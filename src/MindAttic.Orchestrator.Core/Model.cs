@@ -136,6 +136,17 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// <summary>Ticket → the tickets it requires (prerequisite links in the Workflow database).</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>> Requires { get; init; } = new Dictionary<string, IReadOnlyList<string>>();
 
+    /// <summary>Tickets approved for work in the Workflow database's queue. Fixes need no approval; any other open ticket
+    /// waits outside the queue until it's here, so no agent works a feature you didn't ask for (M.ORCH-T384).</summary>
+    public IReadOnlySet<string> Approved { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Ticket → its manual priority in the Workflow database's queue; higher runs sooner, missing means 0.</summary>
+    public IReadOnlyDictionary<string, long> Priorities { get; init; } = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Whether <paramref name="ticket"/> may be worked: a fix, or one approved in the database's queue.</summary>
+    public bool MayWork(Ticket ticket) =>
+        ticket.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) || Approved.Contains(ticket.Id);
+
     /// <summary>Every live Claude session and autopilot background agent, with its running subagents nested under it.</summary>
     public IReadOnlyList<Activity.AgentBoardRow> Agents { get; init; } = [];
 

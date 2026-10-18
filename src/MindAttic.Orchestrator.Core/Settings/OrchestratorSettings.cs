@@ -116,13 +116,10 @@ public sealed record OrchestratorSettings
     /// <summary>Repos <c>/autopilot</c> never starts agents in, even when named or their CLI is open.</summary>
     public List<string> AutopilotSkip { get; init; } = [];
 
-    /// <summary>Tickets you approved for work (<c>orchestrator approve</c>). Fixes need no approval; any other open
-    /// ticket waits outside the queue until it's here, so no agent works a feature you didn't ask for.</summary>
-    public List<string> Approved { get; init; } = [];
-
-    /// <summary>Whether <paramref name="ticket"/> may be worked: a fix, or one you approved.</summary>
-    public bool MayWork(MindAttic.Workflow.Tickets.Ticket ticket) =>
-        ticket.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) || Approved.Contains(ticket.Id, StringComparer.OrdinalIgnoreCase);
+    /// <summary>Approvals as settings.json kept them before the Workflow database's queue held them (M.ORCH-T384): read only by
+    /// <see cref="Tickets.QueueImport"/>, which moves them into <c>ticket_queue</c> once and drops them here. Approval is
+    /// read from and written to the database alone, where <c>workflow ticket approve</c> and the Workflow Desktop write it.</summary>
+    public List<string>? Approved { get; init; }
 
     /// <summary>Open tickets older than this many days with nobody on them are listed for grooming. 0 means never.</summary>
     public int GroomAfterDays { get; init; } = 30;
@@ -138,8 +135,9 @@ public sealed record OrchestratorSettings
     /// labelled "orchestrator" and CI runs that failed on main as tickets (see <see cref="Tickets.GitHubIntake"/>).</summary>
     public bool GitHubIntake { get; init; }
 
-    /// <summary>Manual priority per ticket ID; higher runs sooner. Missing means 0.</summary>
-    public Dictionary<string, int> Priorities { get; init; } = new(StringComparer.Ordinal);
+    /// <summary>Manual priorities as settings.json kept them before the Workflow database (M.ORCH-T384): moved into
+    /// <c>ticket_queue</c> once by <see cref="Tickets.QueueImport"/> and dropped here, like <see cref="Approved"/>.</summary>
+    public Dictionary<string, int>? Priorities { get; init; }
 }
 
 /// <summary>A ticket the orchestrator has handed to a session.</summary>
@@ -224,7 +222,7 @@ public sealed class JsonStore(string? directory = null)
 
     /// <summary>The settings to change and save back: throws when <c>settings.json</c> is there but can't be read (a typo
     /// from a hand edit, or held past the retries), where <see cref="LoadSettings"/>'s defaults would be saved over every
-    /// budget, approval, priority and reservation in it.</summary>
+    /// budget, block and reservation in it.</summary>
     public OrchestratorSettings LoadSettingsToChange() => TryLoad<OrchestratorSettings>("settings", out var s) ? s
         : throw new InvalidDataException($"{PathOf("settings")} couldn't be read; left as it is rather than saved over with defaults. Fix or remove it and try again.");
     public void SaveSettings(OrchestratorSettings s) => Save("settings", s);

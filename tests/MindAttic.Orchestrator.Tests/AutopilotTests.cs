@@ -72,10 +72,11 @@ public sealed class AutopilotTests
         // Found live: /autopilot all put all five spare sessions into Automata while a +70 story elsewhere waited.
         order = [Autopilot.AllRepos];
         var snap = Snap(("Automata", [T("AUT-T1"), T("AUT-T2"), T("AUT-T3")]), ("Launcher", [T("M.LNCH-T21")]));
-        var plan = Scheduler.Plan(snap, new() { Priorities = new() { ["M.LNCH-T21"] = 70 } }, store.LoadAssignments());
+        snap = snap with { Priorities = new Dictionary<string, long> { ["M.LNCH-T21"] = 70 } };
+        var plan = Scheduler.Plan(snap, new(), store.LoadAssignments());
         plan = plan with { Pace = new Pace(PaceMode.Open, 6, 10_000, 0, 1_000, "5-hour", Now.AddHours(3), "On pace.") { SpareSessions = 2 } };
 
-        Pilot().Tick(plan, snap, new() { WorktreeRoot = @"D:\WT", Priorities = new() { ["M.LNCH-T21"] = 70 } }, Now);
+        Pilot().Tick(plan, snap, new() { WorktreeRoot = @"D:\WT" }, Now);
 
         Assert.That(started.Select(s => s.Dir).First(), Is.EqualTo(@"D:\WT\Launcher\M.LNCH-T21"), "the prioritized story goes first");
         Assert.That(started, Has.Count.EqualTo(2));

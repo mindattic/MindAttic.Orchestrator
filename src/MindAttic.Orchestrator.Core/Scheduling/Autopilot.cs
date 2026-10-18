@@ -135,7 +135,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         foreach (var next in plan.Queue)
         {
             if (!byName.TryGetValue(next.Repo, out var repo) || failed.Contains(repo.Name)) continue;
-            if (next.IsAssigned || next.BlockedBy.Count > 0 || parked.Contains(next.Id) || !settings.MayWork(next.Ticket) ||
+            if (next.IsAssigned || next.BlockedBy.Count > 0 || parked.Contains(next.Id) || !next.MayWork ||
                 (room is { } left && next.Estimate is { } e && e.Fresh > left)) continue;
             if (more <= 0)
             {
@@ -394,7 +394,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         bool Busy(QueueItem q) => q.IsAssigned || elsewhere.Contains(q.Id) || (q.Assignment is { } a && pilotRunning(a));
         var open = plan.Queue.Where(q => Named(q.Repo) && !settings.AutopilotSkip.Contains(q.Repo, StringComparer.OrdinalIgnoreCase) &&
             q.RepoPath.Length > 0 && !Busy(q) && q.BlockedBy.Count == 0 &&
-            settings.MayWork(q.Ticket) && !TooBigNow(q)).ToList(); // a stale unapproved one waits for your yes (M.ORCH-T383)
+            q.MayWork && !TooBigNow(q)).ToList(); // a stale unapproved one waits for your yes (M.ORCH-T383)
         if (open.Count == 0)
         {
             bool Skipped(string repo) => settings.AutopilotSkip.Contains(repo, StringComparer.OrdinalIgnoreCase);

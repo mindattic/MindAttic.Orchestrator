@@ -70,10 +70,11 @@ public sealed class UnderTargetTests
         Assert.That(Check(new UnderTarget(), Snap(at, 50, Repo("A", RepoState.Dormant, T("A-T1")))).Line,
             Does.Contain("No ticket waits for your approval, and no CLI has one it could work"));
         // An approved ticket is work; one blocked by another open ticket isn't.
-        var s = new OrchestratorSettings { Approved = ["A-T2"], BlockedBy = new() { ["A-T2"] = ["C-T1"] } };
-        var blocked = Snap(at, 50, Repo("A", RepoState.Waiting, T("A-T2", "feature")), Repo("C", RepoState.Dormant, T("C-T1", "feature")));
+        var s = new OrchestratorSettings { BlockedBy = new() { ["A-T2"] = ["C-T1"] } };
+        var blocked = Snap(at, 50, Repo("A", RepoState.Waiting, T("A-T2", "feature")), Repo("C", RepoState.Dormant, T("C-T1", "feature")))
+            with { Approved = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "A-T2" } };
         Assert.That(Check(new UnderTarget(), blocked, s).Line, Does.Contain("1 waits for your approval (C-T1"));
-        Assert.That(Check(new UnderTarget(), blocked, new OrchestratorSettings { Approved = ["A-T2"] }).Line, Is.Null);
+        Assert.That(Check(new UnderTarget(), blocked).Line, Is.Null);
     }
 
     /// <summary>M.ORCH-T373: a ticket estimated past what's left before the reset is one autopilot won't start, so it doesn't

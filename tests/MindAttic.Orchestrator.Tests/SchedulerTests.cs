@@ -25,9 +25,9 @@ public sealed class SchedulerTests
         var snap = Snap(null,
             Repo("A", RepoState.Dormant, T("A-T1", "docs", "2026-01-01"), T("A-T2", "fix", "2026-09-01")),
             Repo("B", RepoState.Dormant, T("B-T1", "feature", "2026-02-01"), T("B-T2", "fix", "2026-08-01")));
-        var settings = new OrchestratorSettings { Priorities = new() { ["A-T1"] = 5 }, Approved = ["A-T1", "B-T1"] };
+        snap = snap with { Priorities = new Dictionary<string, long> { ["A-T1"] = 5 }, Approved = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "A-T1", "B-T1" } };
 
-        var plan = Scheduler.Plan(snap, settings, []);
+        var plan = Scheduler.Plan(snap, new OrchestratorSettings(), []);
 
         Assert.That(plan.Queue.Select(q => q.Id), Is.EqualTo(new[] { "A-T1", "B-T2", "A-T2", "B-T1" }));
     }
@@ -41,7 +41,7 @@ public sealed class SchedulerTests
         Assert.That(waiting.Queue.Select(q => q.Id), Is.EqualTo(new[] { "A-T2" }), "a fix needs no approval");
         Assert.That(waiting.AwaitingApproval.Select(q => q.Id), Is.EqualTo(new[] { "A-T1", "A-T3", "A-T4" }));
 
-        var approved = Scheduler.Plan(snap, new OrchestratorSettings { Approved = ["a-t3"] }, []);
+        var approved = Scheduler.Plan(snap with { Approved = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "a-t3" } }, new OrchestratorSettings(), []);
         Assert.That(approved.Queue.Select(q => q.Id), Is.EquivalentTo(new[] { "A-T2", "A-T3" }), "approved, in any case");
 
         var running = Scheduler.Plan(snap, new OrchestratorSettings(),
@@ -154,7 +154,7 @@ public sealed class SchedulerTests
 
         var plan = Scheduler.Plan(snap, new OrchestratorSettings(), []);
         Assert.That(plan.Queue.Select(q => q.Id), Is.EqualTo(new[] { "A-T1", "B-T1" }));
-        Assert.That(Scheduler.Plan(snap, new OrchestratorSettings { Priorities = new() { ["B-T1"] = 1 } }, []).Queue[0].Id, Is.EqualTo("B-T1"),
+        Assert.That(Scheduler.Plan(snap with { Priorities = new Dictionary<string, long> { ["B-T1"] = 1 } }, new OrchestratorSettings(), []).Queue[0].Id, Is.EqualTo("B-T1"),
             "priority still comes first");
         Assert.That(Scheduler.PromptFor(plan.Queue[0]), Does.Contain("/commit").And.Contains("workflow ticket close A-T1 --repo A"));
     }

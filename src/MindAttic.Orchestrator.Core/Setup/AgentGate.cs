@@ -927,13 +927,17 @@ public static class AgentGate
                         waits.setdefault(f.upper(), set()).add(t.upper())
                 except Exception:
                     pass
+                # Only fixes and tickets the user approved are work; the rest wait for their yes. Approval lives in the database's
+                # queue (orchestrator approve, workflow ticket approve, the Workflow Desktop), as the scheduler reads it (M.ORCH-T384).
+                try:
+                    approved = {a.upper() for (a,) in db.execute("SELECT ticket_id FROM ticket_queue WHERE approval = 'approved'").fetchall()}
+                except Exception:
+                    approved = set()
                 db.close()
-                # Only fixes and tickets the user approved are work (orchestrator approve); the rest wait for their yes.
                 try:
                     settings = json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "settings.json").read_text())
-                    approved = {a.upper() for a in settings.get("Approved") or []}
                 except Exception:
-                    settings, approved = {}, set()
+                    settings = {}
                 for f, ts in (settings.get("BlockedBy") or {}).items():
                     waits.setdefault(f.upper(), set()).update(t.upper() for t in ts or [])
                 def blocked(r):

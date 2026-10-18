@@ -25,9 +25,9 @@ public sealed class PlanningTests
     {
         var snap = Snap(Repo("A", RepoState.Dormant, T("A-T1"), T("A-T2", "needs the API, blocked by A-T1")),
                         Repo("B", RepoState.Dormant, T("B-T1")));
-        var settings = new OrchestratorSettings { BlockedBy = new() { ["B-T1"] = ["A-T1"] }, Priorities = new() { ["A-T2"] = 9, ["B-T1"] = 9 } };
+        var settings = new OrchestratorSettings { BlockedBy = new() { ["B-T1"] = ["A-T1"] } };
 
-        var plan = Scheduler.Plan(snap, settings, []);
+        var plan = Scheduler.Plan(snap with { Priorities = new Dictionary<string, long> { ["A-T2"] = 9, ["B-T1"] = 9 } }, settings, []);
 
         Assert.That(Proposed(plan), Is.EqualTo(new[] { "A-T1" }));
         Assert.That(plan.Queue.Single(q => q.Id == "A-T2").BlockedBy, Is.EqualTo(new[] { "A-T1" }), "from the summary");

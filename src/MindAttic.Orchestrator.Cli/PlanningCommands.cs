@@ -99,12 +99,20 @@ internal sealed class ApproveCommand : Command<ApproveCommand.Settings>
         }
         var store = Ctx.Store();
         var ids = settings.Tickets.Select(Ctx.Id).ToList();
+        // Approval lives in the Workflow database's queue alone, where workflow ticket approve and the Workflow Desktop write it
+        // too and the scheduler reads it (M.ORCH-T384).
+        using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(OrchestratorOptions.Load(store).WorkspaceRoot);
+        if (db is null) { AnsiConsole.MarkupLine("[red]There's no Workflow database to approve tickets in (workflow db migrate makes one). Nothing changed.[/]"); return 1; }
         // A typo would be "approved" while the ticket you meant goes on waiting, so only ids the database knows count.
         if (Ctx.RefuseUnknown(store, ids)) return 1;
-        var s = store.LoadSettingsToChange();
-        var approved = s.Approved.Where(a => !ids.Contains(a, StringComparer.OrdinalIgnoreCase)).ToList();
-        if (!settings.Undo) approved.AddRange(ids);
-        store.SaveSettings(s with { Approved = approved });
+        // Checked before anything changes: only an open ticket can be approved.
+        if (!settings.Undo && ids.Where(id => db.Ticket(id)?.Ticket.Status != MindAttic.Workflow.Tickets.TicketRules.Open).ToList() is { Count: > 0 } shut)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(string.Join(", ", shut))} {(shut.Count == 1 ? "isn't" : "aren't")} open; nothing was changed.[/]");
+            return 1;
+        }
+        foreach (var id in ids)
+            if (settings.Undo) db.Unapprove(id); else db.Approve(id);
         AnsiConsole.MarkupLine(Markup.Escape(settings.Undo
             ? $"{string.Join(", ", ids)} wait for approval again."
             : $"{string.Join(", ", ids)} approved: they join the queue in their order."));

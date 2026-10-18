@@ -57,7 +57,7 @@ public sealed class CliCommandTests
         // M.ORCH-T332: Program.cs says an InvalidDataException's message in one line; it used to log it as a crash.
         Directory.CreateDirectory(dir);
         File.WriteAllText(SettingsFile, "{ oops");
-        var ex = Assert.Throws<InvalidDataException>(() => Run("bump", "M.ORCH-T5"));
+        var ex = Assert.Throws<InvalidDataException>(() => Run("reserve", "M.ORCH-T5", "2M"));
         Assert.That(ex!.Message, Does.Contain("couldn't be read").And.Contain("Fix or remove it"));
         Assert.That(File.ReadAllText(SettingsFile), Is.EqualTo("{ oops"));
     }
@@ -76,15 +76,91 @@ public sealed class CliCommandTests
         Assert.That(Ctx.Store().Directory, Is.EqualTo(dir));
     }
 
-    [Test]
-    public void Bump_stores_the_ticket_id_upper_cased_and_a_return_to_zero_removes_it()
+    /// <summary>A workspace with repo A (open A-T1 fix, A-T2 feature, A-T3 closed feature) imported into its own Workflow database; the
+    /// database's path. Never the real workspace's.</summary>
+    private string WorkspaceWithDb()
     {
-        Assert.That(Run("bump", "m.orch-t5", "--by", "2"), Is.Zero);
-        Assert.That(Store.LoadSettings().Priorities, Is.EqualTo(new Dictionary<string, int> { ["M.ORCH-T5"] = 2 }));
-        Assert.That(output.ToString(), Does.Contain("M.ORCH-T5 priority is now +2"));
+        var workspace = Path.Combine(dir, "workspace");
+        var repoDir = Path.Combine(workspace, "A");
+        Directory.CreateDirectory(Path.Combine(repoDir, ".git"));
+        Directory.CreateDirectory(Path.Combine(repoDir, "docs"));
+        File.WriteAllText(Path.Combine(repoDir, "docs", "USER_STORIES.md"),
+            "---\ncode: A\n---\n\n# A\n\n## Tickets\n\n| ID | Date | Type | Status | Summary | Ref |\n|---|---|---|---|---|---|\n" +
+            "| A-T1 | 2026-10-01 | fix | open | one | — |\n| A-T2 | 2026-10-01 | feature | open | two | — |\n| A-T3 | 2026-10-01 | feature | closed | three | x |\n");
+        Store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = workspace });
+        var path = MindAttic.Workflow.Data.WorkflowDb.DefaultPath(workspace);
+        using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+            db.Import([new MindAttic.Workflow.Repo("A", repoDir)]);
+        return path;
+    }
 
-        Assert.That(Run("bump", "M.Orch-T5", "--by", "-2"), Is.Zero);
-        Assert.That(Store.LoadSettings().Priorities, Is.Empty);
+    /// <summary>M.ORCH-T384: priority and approval live in the Workflow database's queue, where workflow ticket approve and the
+    /// Workflow Desktop write them too, not in settings.json, which the scheduler alone read.</summary>
+    [Test]
+    public void Bump_and_approve_write_the_workflow_databases_queue_not_settings()
+    {
+        var path = WorkspaceWithDb();
+        try
+        {
+            Assert.That(Run("bump", "a-t2", "--by", "2"), Is.Zero);
+            Assert.That(output.ToString(), Does.Contain("A-T2 priority is now +2"));
+            Assert.That(Run("approve", "a-t2"), Is.Zero);
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+                Assert.That(db.QueueState("A-T2"), Is.EqualTo(("approved", 2L)));
+            // And what the scheduler reads: the snapshot's approvals and priorities come from that queue.
+            var source = new MindAttic.Orchestrator.Tickets.OpenTicketSource();
+            source.OpenFor(new MindAttic.Workflow.Repo("A", Path.Combine(dir, "workspace", "A")), new List<string>());
+            Assert.That((source.Approved.Contains("a-t2"), source.Priorities.GetValueOrDefault("A-T2")), Is.EqualTo((true, 2L)));
+            Assert.That((Store.LoadSettings().Approved, Store.LoadSettings().Priorities), Is.EqualTo((null as List<string>, null as Dictionary<string, int>)));
+
+            Assert.That(Run("bump", "A-T2", "--by", "-2"), Is.Zero);
+            Assert.That(Run("approve", "A-T2", "--undo"), Is.Zero);
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+                Assert.That(db.QueueState("A-T2"), Is.EqualTo(("proposed", 0L)));
+
+            Assert.That(Run("approve", "A-T3"), Is.EqualTo(1), "a closed ticket isn't approved");
+            Assert.That(output.ToString(), Does.Contain("A-T3 isn't open"));
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
+    }
+
+    [Test]
+    public void Bump_and_approve_without_a_workflow_database_change_nothing()
+    {
+        var workspace = Path.Combine(dir, "workspace");
+        Directory.CreateDirectory(workspace);
+        Store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = workspace });
+        Assert.That((Run("bump", "M.ORCH-T5"), Run("approve", "M.ORCH-T5")), Is.EqualTo((1, 1)));
+        Assert.That(output.ToString(), Does.Contain("no Workflow database"));
+        Assert.That((Store.LoadSettings().Approved, Store.LoadSettings().Priorities), Is.EqualTo((null as List<string>, null as Dictionary<string, int>)));
+    }
+
+    /// <summary>M.ORCH-T384: settings.json's approvals and priorities move into the database's queue once, without overriding what
+    /// the database already says, and leave settings.json.</summary>
+    [Test]
+    public void Settings_approvals_and_priorities_move_into_the_database_once_and_leave_settings()
+    {
+        var path = WorkspaceWithDb();
+        try
+        {
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path)) db.SetPriority("A-T1", 4);
+            Store.SaveSettings(Store.LoadSettings() with
+            {
+                Approved = ["a-t2", "A-T3", "A-T99"],
+                Priorities = new() { ["A-T1"] = 9, ["A-T2"] = 3, ["A-T99"] = 1 },
+            });
+            var raw = File.ReadAllText(SettingsFile);
+            Assert.That(raw, Does.Contain("\"Approved\""));
+
+            Assert.That(MindAttic.Orchestrator.Tickets.QueueImport.Run(Store, Path.Combine(dir, "workspace")),
+                Is.EqualTo(new MindAttic.Orchestrator.Tickets.QueueImport.Result(1, 1)), "A-T2 approved and prioritized; the closed A-T3, the unknown A-T99 and A-T1's own priority left");
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+                Assert.That((db.QueueState("A-T1"), db.QueueState("A-T2"), db.QueueState("A-T3").Approval),
+                    Is.EqualTo((("proposed", 4L), ("approved", 3L), "proposed")));
+            Assert.That(File.ReadAllText(SettingsFile), Does.Not.Contain("\"Approved\"").And.Not.Contain("\"Priorities\""), "dropped from settings.json");
+            Assert.That(MindAttic.Orchestrator.Tickets.QueueImport.Run(Store, Path.Combine(dir, "workspace")), Is.Null, "once");
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
     }
 
     [Test]
@@ -150,7 +226,7 @@ public sealed class CliCommandTests
             Assert.That(Run("block", "A-T27", "--by", "A-T2"), Is.EqualTo(1), "the ticket blocked has to exist too");
             Assert.That(output.ToString(), Does.Contain("no ticket A-T27"));
             Assert.That((Run("bump", "A-T99"), Run("reserve", "A-T99", "2M")), Is.EqualTo((1, 1)), "a typo isn't bumped or reserved either");
-            Assert.That((Store.LoadSettings().Priorities.Count, Store.LoadSettings().Reservations.Count), Is.EqualTo((0, 0)));
+            Assert.That((Store.LoadSettings().Priorities, Store.LoadSettings().Reservations.Count), Is.EqualTo((null as Dictionary<string, int>, 0)));
             Assert.That((Run("bump", "a-t2"), Run("reserve", "A-T2", "2M"), Run("reserve", "A-T99", "0")), Is.EqualTo((0, 0, 0)));
             using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
                 Assert.That(db.Requires("A-T1"), Is.EqualTo(new[] { "A-T2" }), "nothing changed: the --clear wasn't half-done");

@@ -351,12 +351,19 @@ public sealed partial class MainViewModel
 
     public void Bump(string ticketId, int by) => Guarded("Bump", () =>
     {
-        var s = store.LoadSettingsToChange();
-        var p = new Dictionary<string, int>(s.Priorities, StringComparer.Ordinal);
-        var next = p.GetValueOrDefault(ticketId) + by;
-        if (next == 0) p.Remove(ticketId); else p[ticketId] = next;
-        store.SaveSettings(s with { Priorities = p });
-        if (snapshot is not null) ApplyPlan(snapshot);
+        // Priority lives in the Workflow database's queue, where every tool reads and writes it (M.ORCH-T384).
+        using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(aggregator.Options.WorkspaceRoot)
+            ?? throw new InvalidDataException("there's no Workflow database to keep priorities in (workflow db migrate makes one)");
+        var next = db.QueueState(ticketId).Priority + by;
+        db.SetPriority(ticketId, next);
+        // Shown at once, not at the next refresh: the plan is made again over the snapshot with the new priority.
+        if (snapshot is not null)
+        {
+            var p = new Dictionary<string, long>(snapshot.Priorities, StringComparer.OrdinalIgnoreCase);
+            if (next == 0) p.Remove(ticketId); else p[ticketId] = next;
+            snapshot = snapshot with { Priorities = p };
+            ApplyPlan(snapshot);
+        }
     });
 
     public void Release(string ticketId) => Guarded("Release", () =>
@@ -372,7 +379,8 @@ public sealed partial class MainViewModel
     private void Guarded(string action, Action change)
     {
         try { change(); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException
+                                       or System.Data.Common.DbException or KeyNotFoundException)
         {
             QueueMessage = $"{action} failed: {ex.Message}";
             OrchestratorLog.For("Dashboard").Error(ex, "{Action:l} failed", action);

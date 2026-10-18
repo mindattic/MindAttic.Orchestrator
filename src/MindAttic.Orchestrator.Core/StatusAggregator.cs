@@ -124,8 +124,15 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
     private Snapshot Build(DateTime now)
     {
-        var settings = Store.LoadSettings();
         var warnings = new List<string>();
+        // Approvals and priorities settings.json still holds move into the database's queue first, once (M.ORCH-T384).
+        try { QueueImport.Run(Store, workspace.Root); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException
+                                       or Microsoft.Data.Sqlite.SqliteException)
+        {
+            warnings.Add($"moving settings.json's approvals into the workflow database: {ex.Message} (tried again next refresh)");
+        }
+        var settings = Store.LoadSettings();
         var repos = workspace.Repos();
 
         // Worktrees the scheduler creates live outside the workspace; credit them to their repo.
@@ -260,7 +267,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
 
-        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = UtilizationSeries.Build(mine, budget, settings.PaceTargetPercent, now), ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, Agents = agentBoard };
+        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = UtilizationSeries.Build(mine, budget, settings.PaceTargetPercent, now), ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, Approved = tickets.Approved, Priorities = tickets.Priorities, Agents = agentBoard };
 
         RepoStatus Repo(string name, string path, IReadOnlyList<MindAttic.Workflow.Tickets.Ticket> open)
         {

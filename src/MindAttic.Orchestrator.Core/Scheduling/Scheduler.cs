@@ -30,6 +30,12 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
 
     /// <summary>Opened more than <see cref="OrchestratorSettings.GroomAfterDays"/> ago.</summary>
     public bool Old { get; init; }
+
+    /// <summary>Approved for work in the Workflow database's queue (<see cref="Snapshot.Approved"/>).</summary>
+    public bool Approved { get; init; }
+
+    /// <summary>Whether it may be worked: a fix, or approved.</summary>
+    public bool MayWork => Approved || Ticket.Type.Equals("fix", StringComparison.OrdinalIgnoreCase);
     public bool IsAssigned => Assignment is not null && !IsStale;
 
     /// <summary>Whether starting it takes a worktree: its repo has a session, or it went stale in a worktree, where its
@@ -124,18 +130,20 @@ public static partial class Scheduler
         var groomBefore = settings.GroomAfterDays > 0
             ? DateOnly.FromDateTime(snapshot.TakenUtc.ToLocalTime().AddDays(-settings.GroomAfterDays))
             : DateOnly.MinValue;
+        // The database's priority, clamped to what a queue item holds.
+        int Priority(string id) => (int)Math.Clamp(snapshot.Priorities.GetValueOrDefault(id), int.MinValue, int.MaxValue);
         bool IsOld(Ticket t) => DateOnly.TryParse(t.Date, System.Globalization.CultureInfo.InvariantCulture, out var opened) && opened < groomBefore;
         // Only fixes and tickets you approved are work; the rest wait for your yes outside the queue (one already
         // being worked stays, so its agent is still tracked).
         var awaiting = snapshot.Repos
-            .SelectMany(r => r.OpenTickets.Where(t => !settings.MayWork(t) && !assigned.ContainsKey(t.Id))
-                .Select(t => new QueueItem(r.Name, r.Path, t, settings.Priorities.GetValueOrDefault(t.Id), null, false) { Old = IsOld(t) }))
+            .SelectMany(r => r.OpenTickets.Where(t => !snapshot.MayWork(t) && !assigned.ContainsKey(t.Id))
+                .Select(t => new QueueItem(r.Name, r.Path, t, Priority(t.Id), null, false) { Old = IsOld(t), Approved = snapshot.Approved.Contains(t.Id) }))
             .OrderBy(q => q.Repo, StringComparer.OrdinalIgnoreCase).ThenBy(q => q.Ticket.Number ?? int.MaxValue)
             .ToList();
         var queue = snapshot.Repos
-            .SelectMany(r => r.OpenTickets.Where(t => settings.MayWork(t) || assigned.ContainsKey(t.Id)).Select(t => new QueueItem(
+            .SelectMany(r => r.OpenTickets.Where(t => snapshot.MayWork(t) || assigned.ContainsKey(t.Id)).Select(t => new QueueItem(
                 r.Name, r.Path, t,
-                settings.Priorities.GetValueOrDefault(t.Id),
+                Priority(t.Id),
                 assigned.GetValueOrDefault(t.Id),
                 r.State != RepoState.Dormant)
                 {
@@ -144,6 +152,7 @@ public static partial class Scheduler
                     Reserved = settings.Reservations.GetValueOrDefault(t.Id),
                     BlockedBy = Blockers(t),
                     Old = IsOld(t),
+                    Approved = snapshot.Approved.Contains(t.Id),
                 }))
             .OrderBy(q => q.IsAssigned)
             .ThenByDescending(q => q.Reserved > 0)
@@ -225,7 +234,7 @@ public static partial class Scheduler
             // An unapproved ticket is in the queue only while it's being worked (approved then, or taken back since): once its
             // assignment goes stale it waits for your yes like any other, not proposed again (M.ORCH-T383).
             if (item.IsAssigned || item.RepoPath.Length == 0 || reposTaken.Contains(item.Repo) || item.BlockedBy.Count > 0 ||
-                workedIds.Contains(item.Id) || !settings.MayWork(item.Ticket)) continue;
+                workedIds.Contains(item.Id) || !item.MayWork) continue;
             var reserved = item.Reserved > 0;
             // A reserved ticket gets its slice even while pacing coasts or caps, never past a limit.
             if (reserved ? overLimit || proposals.Count >= free || pace?.RoomTokens < item.Reserved

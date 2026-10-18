@@ -203,6 +203,8 @@ public sealed class StatusAggregatorTests
             })],
             LinkedRepos = new Dictionary<string, IReadOnlySet<string>>(StringComparer.OrdinalIgnoreCase) { ["A"] = new HashSet<string>(["B"], StringComparer.OrdinalIgnoreCase) },
             Requires = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase) { ["A-T3"] = ["A-T1"] },
+            Approved = new HashSet<string>(["A-T2"], StringComparer.OrdinalIgnoreCase),
+            Priorities = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase) { ["A-T2"] = 7 },
             Agents = [new AgentBoardRow("s1", "A", "A-T1", "fix", built.TakenUtc, built.TakenUtc, AgentState.Working, "", false, new TokenUsage(1, 2, 3, 4),
                 [new SubagentActivity("x", "s1", "Explore", built.TakenUtc, built.TakenUtc, new TokenUsage(5, 6, 7, 8))])],
             Budget = built.Budget! with { Calibration = new LimitCalibration([new LimitObservation(LimitKind.Session, built.TakenUtc, built.TakenUtc.AddHours(1), 123)]) },
@@ -218,6 +220,7 @@ public sealed class StatusAggregatorTests
             "usage events travel too: a repo's spend this block is worked out from them");
         Assert.That(read.Repos.Single(r => r.Name == "A").Sessions.Sum(s => s.UsageSince(a.Sessions.Min(x => x.Events[0].AtUtc)).Output), Is.EqualTo(35));
         Assert.That((read.LinkedRepos["a"].Contains("b"), read.Requires["a-t3"].Single()), Is.EqualTo((true, "A-T1")), "lookups stay case-insensitive");
+        Assert.That((read.Approved.Contains("a-t2"), read.Priorities["a-t2"]), Is.EqualTo((true, 7L)), "the queue's approvals and priorities too (M.ORCH-T384)");
         Assert.That((read.Pace!.SessionCap, read.Budget!.BlockPercent, read.Budget.Level), Is.EqualTo((built.Pace!.SessionCap, built.Budget!.BlockPercent, built.Budget.Level)));
 
         Assert.That(new SnapshotFile(file.Path).Read(built.TakenUtc + SnapshotFile.MaxAge + TimeSpan.FromSeconds(1)), Is.Null,

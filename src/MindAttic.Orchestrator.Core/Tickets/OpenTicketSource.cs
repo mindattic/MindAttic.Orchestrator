@@ -6,7 +6,7 @@ namespace MindAttic.Orchestrator.Tickets;
 
 /// <summary>
 /// Open tickets per repo, and the prerequisites between tickets, from the Workflow database once the workspace
-/// is migrated (re-read only when the database changes on disk); a repo not in it falls back to its
+/// is migrated, with every ticket's approval and priority from its queue (re-read only when the database changes on disk); a repo not in it falls back to its
 /// <c>docs/USER_STORIES.md</c>, re-parsed only when that file changes.
 /// </summary>
 public sealed class OpenTicketSource
@@ -14,10 +14,18 @@ public sealed class OpenTicketSource
     private readonly Dictionary<string, (DateTime WriteUtc, IReadOnlyList<Ticket> Open)> cache =
         new(StringComparer.OrdinalIgnoreCase);
 
-    private (string Path, DateTime WriteUtc, ILookup<string, Ticket> Open, HashSet<string> Repos, IReadOnlyDictionary<string, IReadOnlyList<string>> Requires)? fromDb;
+    private (string Path, DateTime WriteUtc, ILookup<string, Ticket> Open, HashSet<string> Repos, IReadOnlyDictionary<string, IReadOnlyList<string>> Requires,
+        IReadOnlySet<string> Approved, IReadOnlyDictionary<string, long> Priorities)? fromDb;
 
     /// <summary>Ticket → the tickets it requires (prerequisite links in the database).</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>> Requires => fromDb?.Requires ?? new Dictionary<string, IReadOnlyList<string>>();
+
+    /// <summary>Tickets approved for work in the database's queue (<c>workflow ticket approve</c>, <c>orchestrator approve</c>,
+    /// the Workflow Desktop): the one store approval lives in (M.ORCH-T384).</summary>
+    public IReadOnlySet<string> Approved => fromDb?.Approved ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Ticket → its manual priority in the database's queue (higher runs sooner); missing means 0.</summary>
+    public IReadOnlyDictionary<string, long> Priorities => fromDb?.Priorities ?? new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlyList<Ticket> OpenFor(Repo repo, ICollection<string> warnings)
     {
@@ -60,9 +68,12 @@ public sealed class OpenTicketSource
                 var requires = db.AllLinks().Where(l => l.Kind == "requires")
                     .GroupBy(l => l.From, StringComparer.OrdinalIgnoreCase)
                     .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)[.. g.Select(l => l.To)], StringComparer.OrdinalIgnoreCase);
+                var queue = db.QueueStates();
                 fromDb = (path, written,
                     db.Tickets().Where(t => t.Ticket.Status == TicketRules.Open).ToLookup(t => t.Repo, t => t.Ticket, StringComparer.OrdinalIgnoreCase),
-                    db.Repos().Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase), requires);
+                    db.Repos().Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase), requires,
+                    queue.Where(q => q.Value.Approval == WorkflowDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
+                    queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase));
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or Microsoft.Data.Sqlite.SqliteException)
             {

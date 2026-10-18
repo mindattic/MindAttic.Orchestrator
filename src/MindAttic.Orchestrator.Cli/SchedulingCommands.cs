@@ -120,14 +120,13 @@ internal sealed class BumpCommand : Command<BumpCommand.Settings>
     public override int Execute(CommandContext context, Settings settings)
     {
         var store = Ctx.Store();
-        var s = store.LoadSettingsToChange();
         var id = Ctx.Id(settings.Ticket);
-        // One already bumped may be taken back down whatever became of it.
-        if (!s.Priorities.ContainsKey(id) && Ctx.RefuseUnknown(store, [id])) return 1;
-        var priorities = new Dictionary<string, int>(s.Priorities, StringComparer.Ordinal);
-        var next = priorities.GetValueOrDefault(id) + settings.By;
-        if (next == 0) priorities.Remove(id); else priorities[id] = next;
-        store.SaveSettings(s with { Priorities = priorities });
+        // Priority lives in the Workflow database's queue, with approval, where every tool reads and writes it (M.ORCH-T384).
+        using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(OrchestratorOptions.Load(store).WorkspaceRoot);
+        if (db is null) { AnsiConsole.MarkupLine("[red]There's no Workflow database to keep priorities in (workflow db migrate makes one). Nothing changed.[/]"); return 1; }
+        if (Ctx.RefuseUnknown(store, [id])) return 1;
+        var next = db.QueueState(id).Priority + settings.By;
+        db.SetPriority(id, next);
         AnsiConsole.MarkupLine($"{Markup.Escape(id)} priority is now {next:+#;-#;0}.");
         return 0;
     }
@@ -414,7 +413,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             $" · subagents: as many as the pace allows, at most {s.MaxSubagents}");
         AnsiConsole.MarkupLine("  exempt from pacing (their turns skip every gate, spend still counted): " +
             (s.ExemptCommands.Count > 0 ? Markup.Escape(string.Join(", ", s.ExemptCommands)) : "none"));
-        AnsiConsole.MarkupLine($"  worktrees under {Markup.Escape(s.WorktreeRoot)} · {s.Priorities.Count} manual priorities · " +
+        AnsiConsole.MarkupLine($"  worktrees under {Markup.Escape(s.WorktreeRoot)} · " +
             (s.StaleAfterHours > 0 ? $"assignments go stale after {s.StaleAfterHours}h quiet" : "assignments never go stale"));
         AnsiConsole.MarkupLine($"  quiet hours {(s.QuietHours.Count > 0 ? string.Join(", ", s.QuietHours) : "none")} · {s.MaxSessionsPerRepo} sessions per repo" +
             Markup.Escape(string.Concat(s.RepoMaxSessions.Select(kv => $", {kv.Key} {kv.Value}"))) +

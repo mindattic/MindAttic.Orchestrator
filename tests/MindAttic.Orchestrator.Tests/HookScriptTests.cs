@@ -558,7 +558,13 @@ public sealed class HookScriptTests
         var settings = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "settings.json");
         Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
         File.WriteAllText(settings, """{ "Approved": ["u.spc-t1"] }""");
-        Assert.That(Gate(Asking("w6"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\""), "approved (any case): it is");
+        Assert.That(Gate(Asking("w7"), AgentGate.ContextScriptName).Output, Is.Empty,
+            "settings.json's old approvals aren't read: approval lives in the database's queue (M.ORCH-T384)");
+        using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
+            "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table ticket_queue(ticket_id,approval,priority,updated)'); " +
+            "d.execute(\"insert into ticket_queue values('u.spc-t1','approved',0,'')\"); d.commit()", db }, UseShellExecute = false })!)
+            mk.WaitForExit(20_000);
+        Assert.That(Gate(Asking("w6"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\""), "approved in the database (any case): it is");
         Status(new { stop = true });
         Assert.That(Gate(Asking("w4"), AgentGate.ContextScriptName).Output, Is.Empty, "at the target, a stop is let stop");
     }
