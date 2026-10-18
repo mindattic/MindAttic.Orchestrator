@@ -229,8 +229,99 @@ public sealed class AgentGateTests
         File.WriteAllText(Path.Combine(Gemini, "settings.json"), "{\n  // my theme\n  \"theme\": \"Dracula\" /* dark */\n}");
 
         Assert.That(Others(), Does.Contain("Gemini: wired BeforeTool"), "Gemini strips comments, so the file is readable (M.ORCH-T428)");
-        var gemini = Json(Path.Combine(Gemini, "settings.json"));
+        var gemini = JsonWithComments(Path.Combine(Gemini, "settings.json"));
         Assert.That((string?)gemini["theme"], Is.EqualTo("Dracula"));
         Assert.That(gemini["hooks"]!["BeforeTool"]!.ToJsonString(), Does.Contain(AgentGate.ScriptName));
+    }
+
+    private static JsonNode JsonWithComments(string path) =>
+        JsonNode.Parse(File.ReadAllText(path), documentOptions: new System.Text.Json.JsonDocumentOptions { CommentHandling = System.Text.Json.JsonCommentHandling.Skip })!;
+
+    private string GeminiSettings => Path.Combine(Gemini, "settings.json");
+
+    [Test]
+    public void A_commented_gemini_settings_json_keeps_its_comments_and_layout_when_the_hooks_are_wired_in()
+    {
+        AgentGate.Ensure(Claude);
+        Directory.CreateDirectory(Gemini);
+        var original = "{\n    // my theme\n    \"theme\": \"Dracula\", /* dark */\n    \"ui\": { \"hideBanner\": true } // keep the banner off\n}\n";
+        File.WriteAllText(GeminiSettings, original);
+
+        var did = Others();
+        Assert.That(did, Does.Contain("Gemini: wired BeforeTool into settings.json, keeping its comments")
+            .And.Contain("Gemini: wired AfterAgent into settings.json, keeping its comments"));
+        var text = File.ReadAllText(GeminiSettings);
+        Assert.That(text, Does.StartWith("{\n    // my theme\n    \"theme\": \"Dracula\", /* dark */\n    \"ui\": { \"hideBanner\": true }, // keep the banner off\n"),
+            "every comment and line the user wrote is still there, only a comma added (M.ORCH-T442)");
+        Assert.That(text, Does.Contain("\n    \"hooks\": {\n        \"BeforeTool\": ["), "the hooks go in at the file's own four-space indent");
+        var gemini = JsonWithComments(GeminiSettings);
+        Assert.That((bool)gemini["ui"]!["hideBanner"]!, Is.True);
+        Assert.That((string)gemini["hooks"]!["BeforeTool"]![0]!["hooks"]![0]!["command"]!, Is.EqualTo(AgentGate.Command(Path.Combine(Claude, AgentGate.ScriptName))));
+        Assert.That((int)gemini["hooks"]!["BeforeTool"]![0]!["hooks"]![0]!["timeout"]!, Is.EqualTo(AgentGate.HookTimeoutSeconds * 1000));
+        Assert.That(gemini["hooks"]!["AfterAgent"]!.ToJsonString(), Does.Contain(AgentGate.ContextScriptName));
+
+        var stamp = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(GeminiSettings, stamp);
+        Assert.That(Others(), Is.Null, "already wired");
+        Assert.That(File.ReadAllText(GeminiSettings), Is.EqualTo(text));
+        Assert.That(File.GetLastWriteTimeUtc(GeminiSettings), Is.EqualTo(stamp), "hooks already in place: the file isn't rewritten at all");
+    }
+
+    [Test]
+    public void A_commented_gemini_hook_list_gets_the_gate_appended_and_a_stale_gate_entry_updated_in_place()
+    {
+        AgentGate.Ensure(Claude);
+        Directory.CreateDirectory(Gemini);
+        File.WriteAllText(GeminiSettings, """
+            {
+              "hooks": {
+                // mine runs first
+                "BeforeTool": [
+                  { "matcher": "", "hooks": [ { "type": "command", "command": "gemini-own.sh" } ] } // my own
+                ],
+                "AfterAgent": [
+                  /* an old gate */ { "matcher": "", "hooks": [ { "type": "command", "command": "python old/context-gate.py", "timeout": 1 } ] }
+                ]
+              }
+            }
+            """);
+
+        Assert.That(Others(), Does.Contain("Gemini: wired BeforeTool into settings.json, keeping its comments").And.Contain("Gemini: wired AfterAgent"));
+        var text = File.ReadAllText(GeminiSettings);
+        Assert.That(text, Does.Contain("// mine runs first").And.Contain("// my own").And.Contain("/* an old gate */"));
+        var gemini = JsonWithComments(GeminiSettings)["hooks"]!;
+        Assert.That(gemini["BeforeTool"]!.AsArray().Count, Is.EqualTo(2));
+        Assert.That(gemini["BeforeTool"]!.ToJsonString(), Does.Contain("gemini-own.sh").And.Contain(AgentGate.ScriptName));
+        Assert.That(gemini["AfterAgent"]!.AsArray().Count, Is.EqualTo(1), "the stale gate entry is updated, not doubled");
+        Assert.That((string)gemini["AfterAgent"]![0]!["hooks"]![0]!["command"]!, Is.EqualTo(AgentGate.Command(Path.Combine(Claude, AgentGate.ContextScriptName)) + " gemini"));
+        Assert.That((int)gemini["AfterAgent"]![0]!["hooks"]![0]!["timeout"]!, Is.EqualTo(10_000));
+        Assert.That(Others(), Is.Null, "a second run changes nothing");
+        Assert.That(File.ReadAllText(GeminiSettings), Is.EqualTo(text));
+    }
+
+    [Test]
+    public void A_commented_gemini_file_of_a_shape_that_cant_be_spliced_is_left_untouched_with_how_to_add_the_hook_by_hand()
+    {
+        AgentGate.Ensure(Claude);
+        Directory.CreateDirectory(Gemini);
+        var original = "{\n  // hooks as a list, not an object\n  \"hooks\": []\n}";
+        File.WriteAllText(GeminiSettings, original);
+
+        var did = Others();
+        Assert.That(File.ReadAllText(GeminiSettings), Is.EqualTo(original), "its comments aren't thrown away");
+        Assert.That(did, Does.Contain("Gemini: left settings.json untouched").And.Contain("add it by hand")
+            .And.Contain("\"hooks\" -> \"BeforeTool\"").And.Contain(AgentGate.ScriptName));
+    }
+
+    [Test]
+    public void An_empty_commented_gemini_object_gets_the_hooks()
+    {
+        AgentGate.Ensure(Claude);
+        Directory.CreateDirectory(Gemini);
+        File.WriteAllText(GeminiSettings, "{ /* nothing yet */ }");
+
+        Assert.That(Others(), Does.Contain("keeping its comments"));
+        Assert.That(File.ReadAllText(GeminiSettings), Does.Contain("/* nothing yet */"));
+        Assert.That(JsonWithComments(GeminiSettings)["hooks"]!["BeforeTool"]!.ToJsonString(), Does.Contain(AgentGate.ScriptName));
     }
 }

@@ -27,7 +27,7 @@ public static class AgentGateRemoval
             ("Codex", Path.Combine(codexDir ?? AgentGate.CodexDir, "hooks.json")),
             ("Gemini", Path.Combine(geminiDir ?? AgentGate.GeminiDir, "settings.json")),
         })
-            if (RemoveJsonHooks(path)) did.Add($"{name}: removed the gate hooks from {Path.GetFileName(path)}");
+            if (RemoveJsonHooks(path) is { } removed) did.Add($"{name}: {removed}");
         if (RemoveKimiHooks(kimiConfigPath ?? AgentGate.KimiConfigPath)) did.Add("Kimi: removed the gate hooks from config.toml");
 
         // The scripts carry "edits are overwritten", so they're the orchestrator's; a command file only while it's still ours word for word.
@@ -51,20 +51,24 @@ public static class AgentGateRemoval
         && Scripts.Any(s => command.Contains(s, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Takes the gate hooks out of a Claude/Codex/Gemini style <c>{"hooks": {event: [{matcher, hooks: [...]}]}}</c>
-    /// file; a matcher group, event or <c>hooks</c> object left empty by that goes too. True when it rewrote the file.</summary>
-    internal static bool RemoveJsonHooks(string path)
+    /// file; a matcher group, event or <c>hooks</c> object left empty by that goes too. A file with comments has them cut
+    /// out of its text so the comments survive, or, when that can't be done reliably, is left alone with a note saying what
+    /// to remove by hand (M.ORCH-T442). Null when it found nothing of the orchestrator's, else what it did.</summary>
+    internal static string? RemoveJsonHooks(string path)
     {
-        if (!File.Exists(path)) return false;
+        if (!File.Exists(path)) return null;
+        string text;
         JsonObject? root;
         try
         {
-            root = JsonNode.Parse(File.ReadAllText(path), documentOptions: new JsonDocumentOptions
+            text = File.ReadAllText(path);
+            root = JsonNode.Parse(text, documentOptions: new JsonDocumentOptions
             {
                 AllowDuplicateProperties = false, CommentHandling = JsonCommentHandling.Skip,
             }) as JsonObject;
         }
-        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException) { return false; }
-        if (root?["hooks"] is not JsonObject hooks) return false;
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException) { return null; }
+        if (root?["hooks"] is not JsonObject hooks) return null;
 
         var changed = false;
         foreach (var (hookEvent, node) in hooks.ToList())
@@ -83,10 +87,19 @@ public static class AgentGateRemoval
             if (here && groups.Count == 0) hooks.Remove(hookEvent);
             changed |= here;
         }
-        if (!changed) return false;
+        if (!changed) return null;
         if (hooks.Count == 0) root!.Remove("hooks");
+        var file = Path.GetFileName(path);
+        if (CommentedHookSplice.HasComments(text))
+        {
+            if (CommentedHookSplice.Unsplice(text, root!, Scripts) is not { } cut)
+                return $"left {file} untouched: it has comments, and the gate hooks can't be taken out here without losing them, so remove them " +
+                    $"by hand: under \"hooks\", every entry whose command runs {string.Join(" or ", Scripts)}";
+            Write(path, cut);
+            return $"removed the gate hooks from {file}, keeping its comments";
+        }
         Write(path, root!.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
-        return true;
+        return $"removed the gate hooks from {file}";
     }
 
     /// <summary>Takes each <c>[[hooks]]</c> table whose command runs a gate script out of Kimi's <c>config.toml</c>, with the

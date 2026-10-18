@@ -127,6 +127,53 @@ public sealed class AgentGateRemovalTests
     }
 
     [Test]
+    public void Uninstall_keeps_a_commented_gemini_settings_json_as_the_user_wrote_it()
+    {
+        // M.ORCH-T442: the removal parsed with comments skipped and wrote the result back, so every // comment went.
+        AgentGate.Ensure(Claude);
+        Directory.CreateDirectory(Gemini);
+        var gemini = Path.Combine(Gemini, "settings.json");
+        const string original = "{\n    // my theme\n    \"theme\": \"Dracula\", /* dark */\n    \"ui\": { \"hideBanner\": true } // keep the banner off\n}\n";
+        File.WriteAllText(gemini, original);
+        Assert.That(AgentGate.EnsureOtherProviders(Claude, Codex, Gemini, Kimi), Does.Contain("Gemini"));
+        Assert.That(File.ReadAllText(gemini), Does.Contain(AgentGate.ScriptName), "precondition: installed");
+
+        Assert.That(Remove(), Does.Contain("Gemini: removed the gate hooks from settings.json, keeping its comments"));
+        Assert.That(File.ReadAllText(gemini), Is.EqualTo(original), "install then uninstall gives back the user's file byte for byte");
+    }
+
+    [Test]
+    public void Uninstall_cuts_only_the_gate_out_of_a_commented_gemini_hook_list()
+    {
+        Directory.CreateDirectory(Gemini);
+        var gemini = Path.Combine(Gemini, "settings.json");
+        File.WriteAllText(gemini, """
+            {
+              "hooks": {
+                // mine runs first
+                "BeforeTool": [
+                  { "matcher": "", "hooks": [ { "type": "command", "command": "gemini-own.sh" } ] }, // my own
+                  { "matcher": "", "hooks": [ { "type": "command", "command": "python \"C:/x/pace-gate.py\"", "timeout": 330000 } ] }
+                ],
+                "AfterAgent": [
+                  { "matcher": "", "hooks": [ { "type": "command", "command": "python \"C:/x/context-gate.py\" gemini" } ] }
+                ]
+              } /* end of hooks */
+            }
+            """);
+
+        Assert.That(Remove(), Does.Contain("Gemini: removed the gate hooks from settings.json, keeping its comments"));
+        var text = File.ReadAllText(gemini);
+        Assert.That(text, Does.Contain("// mine runs first").And.Contain("// my own").And.Contain("/* end of hooks */"));
+        Assert.That(text, Does.Not.Contain(".py"));
+        var hooks = JsonNode.Parse(text, documentOptions: new System.Text.Json.JsonDocumentOptions { CommentHandling = System.Text.Json.JsonCommentHandling.Skip })!["hooks"]!;
+        Assert.That(hooks["BeforeTool"]!.AsArray(), Has.Count.EqualTo(1));
+        Assert.That((string?)hooks["BeforeTool"]![0]!["hooks"]![0]!["command"], Is.EqualTo("gemini-own.sh"));
+        Assert.That(hooks["AfterAgent"], Is.Null, "an event left empty goes");
+        Assert.That(Remove(), Is.Null, "nothing left to remove");
+    }
+
+    [Test]
     public void A_command_file_the_user_rewrote_is_kept()
     {
         AgentGate.Ensure(Claude);

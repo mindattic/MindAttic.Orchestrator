@@ -1917,14 +1917,23 @@ public static class AgentGate
 
     /// <summary>Adds <paramref name="hookEvent"/> to the JSON hook file at <paramref name="path"/> (created fresh if
     /// missing), reusing <see cref="AddHook"/>'s idempotent merge; null when already wired in or the file is
-    /// someone else's unreadable JSON.</summary>
+    /// someone else's unreadable JSON. A file with comments is edited in place so they survive, or, when that can't be
+    /// done reliably, left alone with a note saying how to add the hook by hand (M.ORCH-T442).</summary>
     private static string? MergeJsonHook(string path, string hookEvent, string scriptName, string command, int timeout)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var text = File.Exists(path) ? File.ReadAllText(path) : null;
         JsonObject? root;
-        try { root = File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path), documentOptions: CommentedStrictKeys) as JsonObject : new JsonObject(); }
+        try { root = text is not null ? JsonNode.Parse(text, documentOptions: CommentedStrictKeys) as JsonObject : new JsonObject(); }
         catch (JsonException) { return null; }
         if (root is null || !AddHook(root, hookEvent, scriptName, command, timeout)) return null;
+        if (text is not null && CommentedHookSplice.HasComments(text))
+        {
+            if (CommentedHookSplice.Splice(text, root, hookEvent, scriptName, command, timeout) is not { } spliced)
+                return CommentedHookSplice.ByHand(Path.GetFileName(path), hookEvent, scriptName, command, timeout);
+            WriteReplacing(path, spliced);
+            return $"wired {hookEvent} into {Path.GetFileName(path)}, keeping its comments";
+        }
         WriteReplacing(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
         return $"wired {hookEvent} into {Path.GetFileName(path)}";
     }
@@ -1934,7 +1943,7 @@ public static class AgentGate
     private static readonly JsonDocumentOptions StrictKeys = new() { AllowDuplicateProperties = false };
 
     /// <summary>Gemini CLI reads its settings.json with comments stripped: one with a // comment was taken as unreadable and
-    /// skipped without a word, so Gemini's tool calls ran ungated (M.ORCH-T428). Its comments don't survive the rewrite.</summary>
+    /// skipped without a word, so Gemini's tool calls ran ungated (M.ORCH-T428). Its comments are kept: see <see cref="CommentedHookSplice"/>.</summary>
     private static readonly JsonDocumentOptions CommentedStrictKeys = new() { AllowDuplicateProperties = false, CommentHandling = JsonCommentHandling.Skip };
 
     /// <summary>Puts <paramref name="text"/> in place whole: a hook started mid-write would run half a script (a SyntaxError
