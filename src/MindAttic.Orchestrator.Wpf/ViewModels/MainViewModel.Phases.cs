@@ -116,8 +116,8 @@ public sealed partial class MainViewModel
         {
             if (Budget is not { CurrentBlock: { } block } b)
                 return Budget is null ? "" : Budget.WeeklyPercent is { } wp ? $"week {Left(wp)}% left" : $"{Formatting.Tokens(Budget.Today.Fresh)} uncached today";
-            var parts = new List<string> { $"resets {block.EndUtc.ToLocalTime():t}", $"{Formatting.Tokens((long)b.FreshPerHour)}/h" };
-            if (b.ProjectedLimitUtc is { } at) parts.Add($"limit ~{at.ToLocalTime():t}");
+            var parts = new List<string> { $"resets {Formatting.ResetTime(block.EndUtc, DateTime.UtcNow)}", $"{Formatting.Tokens((long)b.FreshPerHour)}/h" };
+            if (b.ProjectedLimitUtc is { } at) parts.Add($"limit ~{Formatting.ResetTime(at, DateTime.UtcNow)}");
             if (b.WeeklyPercent is { } weekPercent) parts.Add($"week {Left(weekPercent)}% left");
             return string.Join(" · ", parts);
         }
@@ -213,11 +213,11 @@ public sealed partial class MainViewModel
     public string UtilizationText => Utilization is not { } u ? "" :
         $"{u.NowPercent:0}% used, {(u.OverNow ? "over" : "under")} the {(u.Curved ? "front-loaded pace curve" : "pace line")} ({u.PaceAt(u.NowUtc):0}% by now)" +
         (u.OverPace >= TimeSpan.FromMinutes(1) ? $"; over it for {(int)u.OverPace.TotalMinutes} min so far" : "") + ". " +
-        (u.HitsLimitUtc is { } hit ? $"At the recent rate it would reach 100% at {hit.ToLocalTime():t}, before the {u.EndUtc.ToLocalTime():t} reset."
-            : $"At the recent rate it ends near {u.ProjectedEndPercent:0}% at {u.EndUtc.ToLocalTime():t}; the target is {u.TargetPercent:0}%.");
+        (u.HitsLimitUtc is { } hit ? $"At the recent rate it would reach 100% at {Formatting.ResetTime(hit, u.NowUtc)}, before the {Formatting.ResetTime(u.EndUtc, u.NowUtc)} reset."
+            : $"At the recent rate it ends near {u.ProjectedEndPercent:0}% at {Formatting.ResetTime(u.EndUtc, u.NowUtc)}; the target is {u.TargetPercent:0}%.");
 
     /// <summary>5-hour reset, for the agent board's header.</summary>
-    public string BlockResetText => Budget?.CurrentBlock is { } b ? $"resets {b.EndUtc.ToLocalTime():t}" : "";
+    public string BlockResetText => Budget?.CurrentBlock is { } b ? $"resets {Formatting.ResetTime(b.EndUtc, DateTime.UtcNow)}" : "";
 
     /// <summary>What's left of the week, not what's used: "6%" read as the share left to stretch the rest of the week over.</summary>
     public string WeeklyHeadline => Budget?.WeeklyPercent is { } w ? $"{Left(w)}% left" : "—";
