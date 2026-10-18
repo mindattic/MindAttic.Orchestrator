@@ -90,8 +90,21 @@ public sealed class Tray : IDisposable
     }
 
     /// <summary>Minimizing <paramref name="window"/> hides it to the tray rather than leaving it on the taskbar.</summary>
-    public static void MinimizeToTray(Window window) =>
-        window.StateChanged += (_, _) => { if (window.WindowState == WindowState.Minimized) window.Hide(); };
+    public static void MinimizeToTray(Window window)
+    {
+        Unminimized(window).Value = window.WindowState == WindowState.Maximized ? WindowState.Maximized : WindowState.Normal;
+        window.StateChanged += (_, _) =>
+        {
+            if (window.WindowState == WindowState.Minimized) window.Hide();
+            else Unminimized(window).Value = window.WindowState;
+        };
+    }
+
+    /// <summary>The state each window had before it was minimized: the tray brings a maximized one back maximized (M.ORCH-T336).</summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Window, System.Runtime.CompilerServices.StrongBox<WindowState>> before = [];
+
+    private static System.Runtime.CompilerServices.StrongBox<WindowState> Unminimized(Window window) =>
+        before.GetValue(window, _ => new(WindowState.Normal));
 
     /// <summary>The close button hides <paramref name="window"/> to the tray instead of quitting (M.ORCH-T183): it closes
     /// for real only once <paramref name="exiting"/> says so (the tray's Exit). Windows ending the session closes it regardless.</summary>
@@ -109,7 +122,7 @@ public sealed class Tray : IDisposable
     public static void Restore(Window window)
     {
         window.Show();
-        if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
+        if (window.WindowState == WindowState.Minimized) window.WindowState = Unminimized(window).Value;
         var topmost = window.Topmost;
         window.Topmost = true;
         window.Activate();

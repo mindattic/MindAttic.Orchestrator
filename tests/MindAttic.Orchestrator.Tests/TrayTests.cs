@@ -98,6 +98,27 @@ public sealed class TrayTests
     }
 
     [Test]
+    public void A_maximized_dashboard_minimized_to_the_tray_comes_back_maximized()
+    {
+        // M.ORCH-T336: Restore set every minimized window to Normal.
+        var window = NewWindow();
+        Tray.MinimizeToTray(window);
+        window.Show();
+        window.WindowState = WindowState.Maximized;
+        window.WindowState = WindowState.Minimized;
+        Assert.That(window.IsVisible, Is.False);
+
+        Tray.Restore(window);
+        Assert.That((window.IsVisible, window.WindowState), Is.EqualTo((true, WindowState.Maximized)));
+
+        window.WindowState = WindowState.Normal;
+        window.WindowState = WindowState.Minimized;
+        Tray.Restore(window);
+        Assert.That(window.WindowState, Is.EqualTo(WindowState.Normal), "and a normal one normal");
+        window.Close();
+    }
+
+    [Test]
     public void Restoring_brings_the_dashboard_to_the_front_without_leaving_it_always_on_top()
     {
         var window = NewWindow();
