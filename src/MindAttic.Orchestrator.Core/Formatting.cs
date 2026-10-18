@@ -4,10 +4,11 @@ namespace MindAttic.Orchestrator;
 
 public static class Formatting
 {
-    /// <summary>When a limit resets, local time: the clock alone within a day, with the weekday when it's further off (a
-    /// weekly wall's reset can be days away, and "3:00 PM" alone reads as today).</summary>
+    /// <summary>When a limit resets, local time: the clock alone today, with the weekday on any other day (a weekly wall's
+    /// reset can be days away, and "3:00 PM" alone reads as today, even when it's tomorrow's, under a day off: M.ORCH-T403).</summary>
     public static string ResetTime(DateTime resetUtc, DateTime nowUtc) =>
-        resetUtc.ToLocalTime().ToString(resetUtc - nowUtc > TimeSpan.FromDays(1) ? "ddd h:mm tt" : "h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
+        resetUtc.ToLocalTime().ToString(resetUtc.ToLocalTime().Date != nowUtc.ToLocalTime().Date ? "ddd h:mm tt" : "h:mm tt",
+            System.Globalization.CultureInfo.InvariantCulture);
 
     // The thresholds are where the smaller unit would round up to 1000 (999,999 is "1M", not "1000k").
     public static string Tokens(long n) => n switch

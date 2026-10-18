@@ -50,9 +50,12 @@ public sealed class FormattingTests
     [Test]
     public void A_reset_days_off_names_its_weekday_and_one_today_only_its_time()
     {
-        var now = new DateTime(2026, 10, 15, 4, 0, 0, DateTimeKind.Utc);
+        // 3:00 PM local, whatever zone runs the tests.
+        var now = new DateTime(2026, 10, 15, 15, 0, 0, DateTimeKind.Local).ToUniversalTime();
         string Local(DateTime utc, string format) => utc.ToLocalTime().ToString(format, System.Globalization.CultureInfo.InvariantCulture);
         Assert.That(Formatting.ResetTime(now.AddHours(3), now), Is.EqualTo(Local(now.AddHours(3), "h:mm tt")));
         Assert.That(Formatting.ResetTime(now.AddDays(3), now), Is.EqualTo(Local(now.AddDays(3), "ddd h:mm tt")), "a weekly wall's reset, not 'today'");
+        Assert.That(Formatting.ResetTime(now.AddHours(23), now), Is.EqualTo(Local(now.AddHours(23), "ddd h:mm tt")),
+            "tomorrow's 2:00 PM, under a day off, isn't today's 2:00 PM (M.ORCH-T403)");
     }
 }
