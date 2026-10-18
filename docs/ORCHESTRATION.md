@@ -66,3 +66,78 @@ Claude actually reports stops new work.
   and that cause is stopped at its source: whole-drive searches are refused and runaway or orphaned agent tool
   processes are reaped. Memory commit has sat at 97-100% many times under full load without an agent crashing
   (M.ORCH-T374).
+
+## Billing
+
+Every Claude CLI bills one of two things, set by one switch (M.ORCH-T436): the **Claude Team** login
+(`pdftransferjr@mindattic.com`, org MindAttic), for everyday tokens, or the **API key** in the MindAttic Vault keyring
+(`LlmCredentialStore`, provider `Claude`), for emergencies only. The switch is the dashboard's billing pills,
+`orchestrator billing team|api`, or a `/login` to a claude.ai account: the last sign-in decides, so a /login to another
+account than the one signed in when the API key was chosen sets the mode back to Claude Team. The dashboard's header and
+`orchestrator status` say who's billed (`Claude Team: <email> (<org>)`, or `API KEY: sk-ant-...<last4>`, never more of the
+key) and what each open CLI bills.
+
+A switch:
+
+1. **Sets Claude Code's choice of the key.** The Vault key's last 20 characters go into `customApiKeyResponses.approved`
+   (API key) or `.rejected` (Claude Team) in `~/.claude.json`, out of the other list. Only that value's text changes;
+   every other byte of the file is kept, the old file is kept beside it as `~/.claude.json.billing-backup`, and the new one
+   is put in place whole, re-read first so a write Claude Code made meanwhile is never lost. Going to Claude Team also
+   dates the key in `~/.claude/session-context/api-key-set-aside.json` (by a hash, never the key), so a CLI started on it
+   still reads as billing it until it restarts. The daemon puts the choice back in line if it drifts from the mode (a
+   "yes" answered in a CLI's prompt).
+2. **Writes the mode** to `~/.claude/session-context/billing.json`, where the Launcher reads it to start each CLI and the
+   context gate reads it to tell each CLI at its start what it bills:
+
+   ```jsonc
+   {
+     "mode": "team",                 // "team" (Claude Team) or "api" (the Vault key)
+     "since": 1760803200.0,          // epoch seconds: when this mode was switched to
+     "login": "<accountUuid>/<organizationUuid>",  // the claude.ai login signed in then; a /login to another sets "team"
+     "by": "dashboard",              // "dashboard", "cli" or "login"
+     "requested": ["<session id>"],  // CLIs whose Launcher tab took a restart request for this mode
+     "refused": ["<session id>"],    // CLIs whose tab had no control pipe to take one
+     "approved_at": 1760803200.0     // when the switch approved the key (null if it already was): CLIs started before
+   }                                 //   then settled on the login at their start
+   ```
+
+3. **Asks the Launcher to restart each open hosted CLI that bills the other thing**, and flags every one outside the
+   Launcher (a plain terminal, an IDE) as needing a manual restart: in the dashboard, `orchestrator status`, the daemon's
+   log and a Needs-you alert. What a CLI bills is what its context gate recorded (`auth` in its session's
+   `.state.json`: `subscription` is Claude Team, `api-key` the key); one billing a cloud provider or a gateway is left
+   alone. The daemon asks again every 5 minutes a tab that couldn't be asked, and never asks a tab twice for one switch.
+
+### The Launcher's control pipe (for M.LNCH-T38)
+
+The request goes to the host, never into the CLI, on a pipe of its own beside the input pipe:
+
+- **Name:** `\.\pipe\mindattic-control-{provider}-{host pid}`: the provider lowercased (`claude`) and the
+  `MindAttic.Launcher.exe host` process id, the same pair as its input pipe `mindattic-host-{provider}-{pid}`. It's
+  outside the `mindattic-host-` prefix so the orchestrator's tab scan never takes it for a tab. A Launcher without it
+  (before M.LNCH-T38) simply isn't there: the orchestrator's 1-second connect fails and the CLI is flagged for a manual
+  restart, rather than a request being typed into the prompt box.
+- **Transport:** the orchestrator connects (`PipeDirection.Out`), writes one message and closes, as with the input pipe.
+  The server reads the connection to its end. Nothing is sent back.
+- **Message:** one UTF-8 JSON object on one line, ending in `\n`:
+
+  ```json
+  {"type":"restart-resume","reason":"billing","billing":"api","session":"<claude session id>","cliPid":4242,"cwd":"D:\Projects\Prose","requestedAt":"2026-10-18T16:00:00Z"}
+  ```
+
+  `type` is the only field every request has; ignore a `type` you don't know. `billing` is the mode the CLI is to bill
+  (`team` or `api`), `session` the Claude session to resume, `cliPid` the claude.exe the request is about, `cwd` the
+  folder it runs in.
+- **What the Launcher does:**
+  1. Act only if `cliPid` is still the CLI this tab runs; otherwise drop the request.
+  2. Wait for the CLI's next idle point: its turn has ended and it's waiting for input (the context gate's
+     `~/.claude/session-context/<session>.state.json` says `"state": "idle"`, or the host's own idle detection). Never
+     mid-turn, and never while a subagent of it runs.
+  3. Re-read `billing.json`. If its `mode` is no longer the request's `billing` (switched back meanwhile), drop the
+     request.
+  4. End the CLI and start `claude --resume <session>` in the same tab and folder, with the environment for the mode:
+     `team` with `ANTHROPIC_API_KEY` removed; `api` with `ANTHROPIC_API_KEY` set to the Vault's `Claude` key (Claude Code
+     uses it because the switch approved it).
+  5. A request for a session already restarting, or already restarted for the same mode, is a no-op: the orchestrator may
+     send one again after a daemon restart.
+- **Launching new CLIs:** every CLI the Launcher starts reads `billing.json` the same way (no file: keep today's rule, no
+  key while a claude.ai login is signed in).

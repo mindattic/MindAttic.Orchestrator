@@ -31,6 +31,9 @@ public sealed record AgentBoardRow(
     /// <summary>Its latest tool call in plain words, and when.</summary>
     public string? Doing { get; init; }
     public DateTime? DoingAtUtc { get; init; }
+
+    /// <summary>What its CLI bills, in words, and whether it's being restarted for the billing mode (M.ORCH-T436); null when unknown.</summary>
+    public string? Billing { get; init; }
 }
 
 /// <summary>

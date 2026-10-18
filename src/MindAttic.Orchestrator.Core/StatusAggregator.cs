@@ -41,6 +41,11 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
     /// <summary>Where the context gate keeps each session's state; null reads the real one. Replaceable for tests.</summary>
     internal string? SessionContextDir { get; init; }
+
+    private Billing.BillingSwitch? billingSwitch;
+
+    /// <summary>The billing switch (M.ORCH-T436) whose mode and CLIs each snapshot shows; the dashboard's toggle switches it.</summary>
+    public Billing.BillingSwitch BillingSwitch { get => billingSwitch ??= new(SessionContextDir); init => billingSwitch = value; }
     private readonly SubagentActivityReader subagents = new(options.ClaudeProjectsDir);
 
     /// <summary>The Launcher tabs open now (a live pipe scan); replaceable for tests.</summary>
@@ -283,6 +288,18 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
         var runningSubagents = subagents.Poll(contextCycler, now);
         var agentBoard = AgentBoard.Build(result, pace, Store.LoadAssignments(), runningSubagents, options.WorkingWindow, now, contextCycler.LiveSessions(now));
+        // Who's billed, and each CLI's own billing on its card (M.ORCH-T436); never the refresh's failure.
+        Billing.BillingStatus? billing = null;
+        try
+        {
+            billing = BillingSwitch.Status([.. result.SelectMany(r => r.Hosts)], now);
+            var bySession = billing.Clis.ToDictionary(c => c.SessionId, c => Billing.BillingText.Of(c), StringComparer.Ordinal);
+            agentBoard = [.. agentBoard.Select(a => bySession.TryGetValue(a.SessionId, out var b) ? a with { Billing = b } : a)];
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidOperationException)
+        {
+            warnings.Add($"billing: {ex.Message}");
+        }
 
         var weekFrom = now.AddDays(-7);
         var providerUsage = new[] { (Providers.Claude, (IEnumerable<TranscriptSession>)allSessions) }
@@ -320,7 +337,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
 
-        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = UtilizationSeries.Build(mine, budget, settings.PaceTargetPercent, now, settings.PaceExponent), ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, Approved = tickets.Approved, Priorities = tickets.Priorities, Agents = agentBoard };
+        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = UtilizationSeries.Build(mine, budget, settings.PaceTargetPercent, now, settings.PaceExponent), ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, Approved = tickets.Approved, Priorities = tickets.Priorities, Agents = agentBoard, Billing = billing };
 
         RepoStatus Repo(string name, string path, IReadOnlyList<MindAttic.Workflow.Tickets.Ticket> open)
         {

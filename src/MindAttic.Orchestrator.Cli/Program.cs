@@ -69,6 +69,7 @@ internal static class CliApp
             config.AddCommand<HygieneCommand>("hygiene").WithDescription("Closed tickets that may not be done: no Ref cited, or a later ticket says it came back.");
             config.AddCommand<IntakeCommand>("intake").WithDescription("File GitHub issues labelled orchestrator and CI failures on main as tickets (--dry-run to preview).");
             config.AddCommand<ReportCommand>("report").WithDescription("Uncached tokens by week, repo, provider and ticket type; --csv writes it out.");
+            config.AddCommand<BillingCommand>("billing").WithDescription("Who every CLI bills (Claude Team or the Vault's API key) and each open CLI's own billing; team or api switches every CLI.");
             config.AddCommand<LedgerCommand>("ledger").WithDescription("Every 5-hour window graded against 99%-never-over (ok, under, blind, over) and the record so far; --csv writes it out. Exits 1 if one went over in --days.");
             config.AddBranch("workspace", w =>
             {
@@ -114,6 +115,7 @@ internal sealed class StatusCommand : Command<StatusCommand.Settings>
             $"tokens today [bold]{Format.Tokens(usage.Total)}[/] ({Format.Tokens(usage.Fresh)} uncached, {Format.Tokens(usage.Output)} out)");
         if (snapshot.Budget is { } b) AnsiConsole.MarkupLine(BudgetCommand.Line(b, snapshot.TakenUtc));
         if (snapshot.Pace is { IsPaced: true } pace) AnsiConsole.MarkupLine(BudgetCommand.PaceLine(pace));
+        if (snapshot.Billing is { } billing) BillingCommand.Write(billing, snapshot.TakenUtc);
         foreach (var x in MindAttic.Orchestrator.Activity.Watchdog.Stuck(snapshot))
             AnsiConsole.MarkupLine($"[red]looks stuck:[/] a session in {Markup.Escape(x.Repo)} is repeating {Markup.Escape(x.Loop.Describe())} since {x.Loop.SinceUtc.ToLocalTime():t}");
 

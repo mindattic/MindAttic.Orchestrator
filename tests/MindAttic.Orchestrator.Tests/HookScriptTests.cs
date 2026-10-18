@@ -1787,4 +1787,44 @@ public sealed class HookScriptTests
         Assert.That(doc.RootElement.GetProperty("hooks").GetProperty("SessionStart")[0].GetProperty("hooks")[0].GetProperty("command").GetString(),
             Does.Contain(AgentGate.ContextScriptName));
     }
+
+    // M.ORCH-T436: the context gate follows the billing switch's mode.
+    private void BillingMode(string mode, string login, double? approvedAt = null)
+    {
+        Directory.CreateDirectory(Marks);
+        File.WriteAllText(Path.Combine(Marks, MindAttic.Orchestrator.Billing.BillingModeFile.FileName),
+            JsonSerializer.Serialize(new { mode, since = 1.0, login, by = "cli", requested = Array.Empty<string>(), refused = Array.Empty<string>(), approved_at = approvedAt }));
+    }
+
+    [Test]
+    public void On_the_api_key_mode_an_approved_env_key_is_kept_and_a_cli_on_the_login_is_the_one_warned()
+    {
+        SignedIn("{" + TeamLogin + "," + KeyResponses([KeyTail], []) + "}");
+        BillingMode("api", "acct-1/org-1");
+        var before = File.ReadAllText(ConfigPath);
+        Assert.That(StartLine(WithKey), Does.StartWith("[Billing] This CLI bills the API key in ANTHROPIC_API_KEY (…WXYZ). Billing is set to the API key, for emergencies only"));
+        Assert.That(File.ReadAllText(ConfigPath), Is.EqualTo(before), "the key is what was chosen: not set aside");
+        Assert.That(StartLine(), Does.StartWith("[Billing] Warning: billing is set to the API key, but this CLI bills Claude Team: pdftransferjr@mindattic.com (MindAttic)."));
+    }
+
+    [Test]
+    public void A_cli_started_before_the_switch_approved_the_key_still_bills_the_login()
+    {
+        SignedIn("{" + TeamLogin + "," + KeyResponses([KeyTail], []) + "}");
+        BillingMode("api", "acct-1/org-1", approvedAt: DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 60.0);
+        Assert.That(StartLine(WithKey), Does.StartWith("[Billing] Warning: billing is set to the API key, but this CLI bills Claude Team"));
+        Assert.That(File.ReadAllText(Path.Combine(Marks, "s1.state.json")), Does.Contain("\"auth\": \"subscription\""));
+    }
+
+    [Test]
+    public void A_login_to_another_claude_ai_account_sets_the_mode_back_to_claude_team_and_the_key_aside()
+    {
+        SignedIn("{" + TeamLogin + "," + KeyResponses([KeyTail], []) + "}");
+        BillingMode("api", "acct-1/org-before");
+        Assert.That(StartLine(WithKey), Does.Contain("The key has now been set aside"));
+        using var mode = JsonDocument.Parse(File.ReadAllText(Path.Combine(Marks, MindAttic.Orchestrator.Billing.BillingModeFile.FileName)));
+        Assert.That((mode.RootElement.GetProperty("mode").GetString(), mode.RootElement.GetProperty("by").GetString(), mode.RootElement.GetProperty("login").GetString()),
+            Is.EqualTo(("team", "login", "acct-1/org-1")));
+        Assert.That(Responses().GetProperty("rejected")[0].GetString(), Is.EqualTo(KeyTail));
+    }
 }

@@ -311,6 +311,27 @@ public static class AgentGate
                 return started is not None and started < float(at)
             except Exception:
                 return False
+        BILLING = Path.home() / ".claude" / "session-context" / "{{Billing.BillingModeFile.FileName}}"
+        def billing_mode():
+            # The billing mode the orchestrator's switch set (M.ORCH-T436): {"mode": "team"|"api", "since", "login", ...}; {} when
+            # no switch was ever made, and the last sign-in alone decides, as before.
+            try:
+                mode = read_json(BILLING) if BILLING.exists() else {}
+                return mode if isinstance(mode, dict) and mode.get("mode") in ("{{Billing.BillingModes.Team}}", "{{Billing.BillingModes.Api}}") else {}
+            except Exception:
+                return {}
+        def approved_since_start():
+            # The switch to the API key approved the key after this CLI started: Claude Code settled on the login at its start, so
+            # that's what it bills until it's restarted.
+            try:
+                at = billing_mode().get("approved_at")
+                if at is None:
+                    return False
+                pid = os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
+                started = process_started(pid) if pid else None
+                return started is not None and started < float(at)
+            except Exception:
+                return False
         def auth_sources(cwd=None):
             # (environment, settings files): this CLI's own environment over the settings' env blocks, and the settings read.
             settings = []
@@ -355,12 +376,13 @@ public static class AgentGate
             if key:
                 # -p (and the SDK) always uses it; interactively only once approved (Claude Code remembers the key's last 20
                 # characters). A rejected key, or one still waiting for its answer, leaves the login in charge, except in a CLI
-                # that started on it before it was set aside.
+                # that started on it before it was set aside; an approved one leaves it too in a CLI that started before the
+                # billing switch approved it (M.ORCH-T436).
                 responses = config.get("customApiKeyResponses") if isinstance(config.get("customApiKeyResponses"), dict) else {}
                 if str(os.environ.get("CLAUDE_CODE_ENTRYPOINT") or "").startswith("sdk"):
                     return "api-key", "env-p"
                 listed = lambda k: responses.get(k) if isinstance(responses.get(k), list) else []
-                if key[-20:] in listed("approved"):
+                if key[-20:] in listed("approved") and not approved_since_start():
                     return "api-key", "env"
                 if key[-20:] in listed("rejected") and still_on_set_aside_key(key):
                     return "api-key", "env-set-aside"
@@ -447,6 +469,9 @@ public static class AgentGate
     /// Claude Code records a "no" to it: its last 20 characters move from <c>customApiKeyResponses.approved</c> to
     /// <c>.rejected</c>. A Console login, or no claude.ai login at all, leaves the key alone: the API is what was chosen. Each
     /// CLI is told at its start what it bills, a warning when that's the key rather than the claude.ai login.
+    /// <para>The billing switch (<see cref="Billing.BillingSwitch"/>, M.ORCH-T436) is followed: with its mode on the API key the
+    /// key is what was chosen, so it's left approved and a CLI on the login is the one warned, until a /login to another
+    /// claude.ai account than the one signed in at the switch, which sets the mode back to Claude Team.</para>
     /// </summary>
     private const string BillingPython = """
         def top_level_value(text, name):
@@ -533,19 +558,26 @@ public static class AgentGate
             return "Claude " + " ".join(w.capitalize() for w in kind[len("claude_"):].split("_") if w) if kind.startswith("claude_") and len(kind) > len("claude_") else None
         def billing_check(cwd=None):
             # (auth, line, warn) for a CLI starting: one [Billing] line naming what it bills. A claude.ai login sets an approved
-            # ANTHROPIC_API_KEY aside first; a CLI already running on it is warned to close and reopen.
-            auth, source = billing(cwd)
+            # ANTHROPIC_API_KEY aside first; a CLI already running on it is warned to close and reopen. With the billing switch
+            # on the API key (M.ORCH-T436) the key is what was chosen: it's left approved, and a CLI on the login is warned
+            # instead; until a /login to another claude.ai account than the one signed in then, which switches back to Claude Team.
             config = claude_config()
-            env, _ = auth_sources(cwd)
             text = lambda o, k: o.get(k) if isinstance(o, dict) and isinstance(o.get(k), str) and o.get(k) else None
             oauth = config.get("oauthAccount") if isinstance(config.get("oauthAccount"), dict) else {}
             claude_ai = bool(text(oauth, "accountUuid")) and not text(config, "primaryApiKey")
+            mode = billing_mode()
+            if mode.get("mode") == "api" and claude_ai and config_account(config) != mode.get("login"):
+                mode = dict(mode, mode="team", since=time.time(), login=config_account(config), by="login", requested=[], refused=[], approved_at=None)
+                write_json(BILLING, mode)
+            api_mode = mode.get("mode") == "api"
+            auth, source = billing(cwd)
+            env, _ = auth_sources(cwd)
             who = (text(oauth, "emailAddress") or text(oauth, "accountUuid") or "") + (" (" + text(oauth, "organizationName") + ")" if text(oauth, "organizationName") else "")
             plan = plan_name(oauth) if claude_ai else None
             login = (plan or "the claude.ai login") + ": " + who
             key = env.get("ANTHROPIC_API_KEY") or ""
             keyed = "the API key in ANTHROPIC_API_KEY (…" + key[-4:] + ")"
-            if auth == "api-key" and source in ("env", "env-p", "env-set-aside") and claude_ai:
+            if auth == "api-key" and source in ("env", "env-p", "env-set-aside") and claude_ai and not api_mode:
                 setaside = source == "env-set-aside"
                 if source in ("env", "env-p"):
                     responses = config.get("customApiKeyResponses") if isinstance(config.get("customApiKeyResponses"), dict) else {}
@@ -585,11 +617,18 @@ public static class AgentGate
                 line = "[Billing] This CLI bills the Anthropic profile " + (source + "." if source else "set by the federation variables.")
             elif auth == "api-key" and source in ("env", "env-p", "env-set-aside"):
                 line = "[Billing] This CLI bills " + keyed + "."
+                if api_mode:
+                    line += (" Billing is set to the API key, for emergencies only: 'orchestrator billing team' (or the dashboard's toggle)"
+                             " switches every CLI back to Claude Team.")
             elif auth == "api-key":
                 line = ("[Billing] This CLI bills the Anthropic Console API: " + who + "." if text(config, "primaryApiKey") and who
                         else "[Billing] This CLI bills the Anthropic Console API." if text(config, "primaryApiKey") else "[Billing] This CLI bills an approved Anthropic API key.")
             elif source == "token":
                 line = "[Billing] This CLI bills the Claude subscription in CLAUDE_CODE_OAUTH_TOKEN."
+            elif claude_ai and api_mode:
+                line = ("[Billing] Warning: billing is set to the API key, but this CLI bills " + login + ". A Launcher tab restarts it"
+                        " at its next idle point; outside the Launcher, close it and reopen it with ANTHROPIC_API_KEY set to the Vault key.")
+                return auth, line, True
             elif claude_ai:
                 line = "[Billing] This CLI bills " + login + "."
             else:

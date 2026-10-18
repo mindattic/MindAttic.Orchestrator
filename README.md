@@ -146,7 +146,8 @@ The same core drives a CLI, deployed as `orchestrator.exe` in `C:\Apps\MindAttic
 
 | Command | |
 | --- | --- |
-| `status [--all] [--json]` | every repo's state, sessions, open tickets, tokens today, budget line |
+| `status [--all] [--json]` | every repo's state, sessions, open tickets, tokens today, budget line, who's billed and each open CLI's own billing |
+| `billing [team\|api]` | who every CLI bills: `Claude Team: <email> (<org>)` or `API KEY: sk-ant-...<last4>` (masked), and each open CLI's own billing; `team` or `api` switches every CLI (see [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md#billing)) |
 | `start <Repo> [--provider] [--prompt]` | open a Launcher tab for a repo |
 | `send <Repo> "text" [--no-submit]` | type text + Enter (or just the text) into that repo's Launcher tab(s) |
 | `budget [--block 20M] [--weekly 150M] [--weekly-reset "Mon 9:00"] [--warn 80] [--pace true] [--target 98] [--hits] [--week]` | current 5-hour block, week and pace, and Codex/Gemini usage; set limits (`0` clears back to learned, `none` drops the reset); `--hits` lists the limit hits the learned limits come from; `--week` charts the week day by day and projects it against the weekly limit |

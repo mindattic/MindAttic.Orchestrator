@@ -93,7 +93,25 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 }
                 // A CLI that stopped for a window is told to carry on (or you're told it's waiting) once that window resets (M.ORCH-T256).
                 if (wakeLease.TryAcquire())
+                {
                     ReportWakes(waker.Tick(snapshot.Pace, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
+                    // The billing switch (M.ORCH-T436): a /login to another claude.ai account switches back to Claude Team, and each
+                    // open CLI billing the other mode is asked to restart (one daemon asks, as one wakes); one only you can
+                    // restart is said to you.
+                    try
+                    {
+                        foreach (var line in aggregator.BillingSwitch.Tick([.. snapshot.Repos.SelectMany(r => r.Hosts)], DateTime.UtcNow))
+                        {
+                            var yours = line.StartsWith("the CLI in ", StringComparison.Ordinal) || line.StartsWith("couldn't ", StringComparison.Ordinal);
+                            Say(yours ? LogEventLevel.Warning : LogEventLevel.Information, $"billing: {line}");
+                            if (yours) Alert("Needs you", line);
+                        }
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidDataException)
+                    {
+                        Say(LogEventLevel.Warning, $"billing: {ex.Message}");
+                    }
+                }
 
                 // An agent finished its turn and is waiting on you: the alert worth leaving the desk for.
                 foreach (var repo in snapshot.Repos)

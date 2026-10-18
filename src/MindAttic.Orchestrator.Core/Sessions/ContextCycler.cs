@@ -337,8 +337,9 @@ public sealed class ContextCycler(string? directory = null)
     {
         if (!System.IO.Directory.Exists(Directory)) return;
         // A CLI's own /autopilot, /unthrottle and /crossrepo marks are written once and live as long as it does, however long
-        // that is; PruneMarks drops them when the CLI closes.
+        // that is; PruneMarks drops them when the CLI closes. The billing mode holds until it's switched, however long (M.ORCH-T436).
         foreach (var f in System.IO.Directory.EnumerateFiles(Directory).Where(f => Path.GetFileName(f) is var n && n != AutopilotFile &&
+                     n != Billing.BillingModeFile.FileName &&
                      !n.StartsWith("unthrottled-", StringComparison.Ordinal) && !n.StartsWith("crossrepo-", StringComparison.Ordinal) &&
                      !n.StartsWith("autopilot-", StringComparison.Ordinal)))
             try { if (nowUtc - File.GetLastWriteTimeUtc(f) > TimeSpan.FromDays(7)) File.Delete(f); }

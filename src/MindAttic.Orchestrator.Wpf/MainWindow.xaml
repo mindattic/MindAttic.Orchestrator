@@ -101,6 +101,21 @@
         <!-- The header owns the window's left/right gutter; nothing inside it adds its own, so the tiles and the chart
              share both edges (M.ORCH-T192). The tiles are equal cells that together span the row at any width. -->
         <StackPanel x:Name="Header" Grid.Row="0" Margin="24,18,24,0">
+        <!-- Who's billed (M.ORCH-T436): Claude Team for everyday tokens, the Vault's API key (masked) for emergencies only. The
+             pills switch every CLI; the line under it says which open CLIs still bill the other thing, and which only you can
+             restart. The tooltip lists each CLI's own billing. -->
+        <DockPanel x:Name="BillingRow" Margin="0,0,0,10" Visibility="{Binding BillingHeadline, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
+            <ListBox DockPanel.Dock="Right" Style="{StaticResource PillChoice}" ItemsSource="{Binding BillingChoices}" Padding="0"
+                     SelectedItem="{Binding BillingChoice}" VerticalAlignment="Center" Margin="12,0,0,0"
+                     AutomationProperties.Name="Billing for every CLI"
+                     ToolTip="Switch every CLI: Claude Team (everyday) or the MindAttic Vault's API key (emergencies only). Open Launcher tabs restart with claude --resume at their next idle point." />
+            <StackPanel VerticalAlignment="Center" ToolTip="{Binding BillingClis}">
+                <TextBlock Text="{Binding BillingHeadline}" FontWeight="SemiBold" Foreground="{Binding BillingBrush}" TextTrimming="CharacterEllipsis"
+                           AutomationProperties.Name="{Binding BillingHeadline}" />
+                <TextBlock Text="{Binding BillingDetail}" Style="{StaticResource McTileSubtitle}" TextWrapping="Wrap"
+                           Visibility="{Binding BillingDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+            </StackPanel>
+        </DockPanel>
         <local:AlignedGrid x:Name="StatTiles" MinItemWidth="160" Gap="10" RowGap="10" Balanced="True" UniformRows="True"
                            AutomationProperties.Name="Summary">
             <Button Command="{Binding FocusCommand}" CommandParameter="Waiting" ToolTip="Repos whose agent stopped and is waiting for you. Shows only those."

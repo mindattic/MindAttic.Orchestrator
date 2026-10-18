@@ -52,8 +52,11 @@ public sealed class AgentRowViewModel(string sessionId) : ObservableObject
     public string Doing => row.Doing is not { } d ? ""
         : row.State == AgentState.Waiting ? $"Stopped after: {d}" : $"Now: {d} · {Formatting.Ago(row.DoingAtUtc, nowUtc)}";
 
-    /// <summary>"Claude CLI · 3.2M tokens today", without a dangling separator when there's no count yet.</summary>
-    public string Meta => Tokens.Length == 0 ? Kind : $"{Kind} · {Tokens}";
+    /// <summary>What its CLI bills (M.ORCH-T436): "Claude Team", or "API key: the Launcher restarts it…" while it bills the other thing.</summary>
+    public string Billing => row.Billing ?? "";
+
+    /// <summary>"Claude CLI · Claude Team · 3.2M tokens today", without a dangling separator for a part not known yet.</summary>
+    public string Meta => string.Join(" · ", new[] { Kind, Billing, Tokens }.Where(p => p.Length > 0));
 
     /// <summary>Why it's held (the pace's note); empty otherwise.</summary>
     public string HoldNote => row.State == AgentState.HeldByPace ? row.StateDetail : "";
@@ -64,7 +67,7 @@ public sealed class AgentRowViewModel(string sessionId) : ObservableObject
 
     /// <summary>The whole card in one sentence, for a screen reader.</summary>
     public string AccessibleName =>
-        $"{Repo}, {Kind}, {StateLabel}, {Headline}. {Doing}. {SubagentsHeader}.";
+        $"{Repo}, {Kind}, {StateLabel}, {Headline}. {Doing}. {(Billing.Length > 0 ? $"Bills {Billing}. " : "")}{SubagentsHeader}.";
 
     public void Update(AgentBoardRow next, string? title, DateTime snapshotUtc)
     {

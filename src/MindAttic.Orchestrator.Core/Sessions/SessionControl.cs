@@ -70,6 +70,14 @@ public sealed class SessionControl(OrchestratorOptions options)
         }
     }
 
+    /// <summary>A Launcher tab's control pipe (M.LNCH-T38): requests to the host itself, never typed into the CLI. Apart from
+    /// the input pipe, so a Launcher without one (from before it) is simply not there, rather than typing a request into the
+    /// prompt box; and named outside <see cref="HostSessionScanner.PipeNamePrefix"/>, so it's never taken for a tab of its own.</summary>
+    public const string ControlPipePrefix = "mindattic-control-";
+
+    /// <summary>The control pipe of <paramref name="host"/>: <c>mindattic-control-{provider}-{host pid}</c>.</summary>
+    public static string ControlPipeName(HostSession host) => $"{ControlPipePrefix}{host.Provider.ToLowerInvariant()}-{host.ProcessId}";
+
     /// <summary>How long typed text settles before Enter is pressed on its own.</summary>
     public static readonly TimeSpan EnterAfter = TimeSpan.FromSeconds(1);
 
