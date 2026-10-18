@@ -245,8 +245,7 @@ public static class BudgetCalculator
             }
             else if (!isPeak && perHour > 0)
             {
-                var at = nowUtc + TimeSpan.FromHours((limit - currentFresh) / perHour);
-                if (at < current.EndUtc) projected = at;
+                projected = Projection.Before(nowUtc, (limit - currentFresh) / perHour, current.EndUtc);
             }
         }
 

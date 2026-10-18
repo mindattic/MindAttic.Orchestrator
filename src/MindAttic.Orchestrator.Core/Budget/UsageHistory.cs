@@ -80,7 +80,7 @@ public sealed record Burndown(
         var hours = Math.Max(24, (nowUtc - budget.WeekStartUtc).TotalHours);
         var perHour = used / hours;
         DateTime? exhausted = budget.WeeklyLimit is > 0 and var limit && perHour > 0
-            ? nowUtc + TimeSpan.FromHours(Math.Max(0, limit - used) / perHour)
+            ? Projection.After(nowUtc, Math.Max(0, limit - used) / perHour)
             : null;
         return new Burndown(days, used, budget.WeeklyLimit, budget.WeekResetUtc, perHour, exhausted);
     }

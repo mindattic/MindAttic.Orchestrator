@@ -27,7 +27,7 @@ public sealed record Utilization(DateTime StartUtc, DateTime EndUtc, DateTime No
 
     /// <summary>When the recent rate reaches 100%, if that's before the reset.</summary>
     public DateTime? HitsLimitUtc => NowPercent >= 100 ? NowUtc
-        : PercentPerHour > 0 && NowUtc + TimeSpan.FromHours((100 - NowPercent) / PercentPerHour) is var at && at < EndUtc ? at : null;
+        : PercentPerHour > 0 ? Projection.Before(NowUtc, (100 - NowPercent) / PercentPerHour, EndUtc) : null;
 }
 
 public static class UtilizationSeries
