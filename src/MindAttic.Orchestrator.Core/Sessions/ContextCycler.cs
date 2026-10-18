@@ -197,7 +197,8 @@ public sealed class ContextCycler(string? directory = null)
     {
         try
         {
-            if (!File.Exists(KeepGoingLog)) { keepGoingRead ??= 0; return []; }
+            // Gone (pruned after a quiet week): whatever log the hook starts next is all new, not read from the old one's end (M.ORCH-T380).
+            if (!File.Exists(KeepGoingLog)) { keepGoingRead = 0; return []; }
             using var f = new FileStream(KeepGoingLog, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             if (keepGoingRead is not { } from || from > f.Length) { keepGoingRead = f.Length; return []; }
             f.Seek(from, SeekOrigin.Begin);

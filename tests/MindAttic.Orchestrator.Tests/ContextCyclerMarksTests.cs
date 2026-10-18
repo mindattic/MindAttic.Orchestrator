@@ -98,6 +98,21 @@ public sealed class ContextCyclerMarksTests
     }
 
     [Test]
+    public void A_keep_going_log_pruned_and_started_again_is_read_from_its_start()
+    {
+        // M.ORCH-T380: the old log's end was kept, so the new, shorter one was taken as shrunk and its first lines skipped.
+        var cycler = new ContextCycler(dir);
+        File.WriteAllText(cycler.KeepGoingLog, Line("carry on", "A", "stopped early", 3) + Line("carry on", "A", "stopped early", 3));
+        cycler.KeepGoingSince();
+        File.Delete(cycler.KeepGoingLog);
+        Assert.That(cycler.KeepGoingSince(), Is.Empty);
+
+        File.WriteAllText(cycler.KeepGoingLog, Line("let stop", "B", "stopped twice", 1));
+
+        Assert.That(cycler.KeepGoingSince(), Has.Count.EqualTo(1).And.Some.Contains("let the CLI in B stop"));
+    }
+
+    [Test]
     public void A_keep_going_line_still_being_written_waits_for_the_next_read()
     {
         var cycler = new ContextCycler(dir);
