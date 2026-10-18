@@ -35,6 +35,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         var waker = new LimitWaker(cycler, store);
         // One daemon wakes the CLIs: an `orchestrator daemon` run beside the logon one would type every resume twice.
         using var wakeLease = new DispatchLease(store.Directory, LimitWaker.LeaseName);
+        using var ledgerLease = new DispatchLease(store.Directory, PaceLedgerWatch.LeaseName);
         string? lastPaused = null;
         cycler.Prune(DateTime.UtcNow);
         var prunedUtc = DateTime.UtcNow;
@@ -70,7 +71,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 EnsureHooks(s);
                 WatchHealth(autopilot);
                 tick.Lap("hooks and machine health");
-                try { ledger.Tick(DateTime.UtcNow); }
+                try { if (ledgerLease.TryAcquire()) ledger.Tick(DateTime.UtcNow); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"pace ledger: couldn't update it (retrying next minute): {ex.Message}"); }
                 tick.Lap("pace ledger");
                 foreach (var r in ReapIfDue())

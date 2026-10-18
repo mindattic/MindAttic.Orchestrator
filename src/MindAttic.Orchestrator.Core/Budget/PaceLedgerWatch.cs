@@ -14,6 +14,10 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
 {
     public const string Repo = "MindAttic.Orchestrator";
 
+    /// <summary>The lease one daemon holds to keep the ledger: each daemon loads the raised walls once, so a second one beside
+    /// the logon daemon would raise every hit again (a second urgent alert) and could append a window twice.</summary>
+    public const string LeaseName = "pace-ledger.lock";
+
     /// <summary>A window that closes later than this after its reset was closed by a backfill, not live.</summary>
     internal static readonly TimeSpan Live = TimeSpan.FromHours(6);
 
