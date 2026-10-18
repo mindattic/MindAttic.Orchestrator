@@ -59,6 +59,14 @@ public sealed record BudgetStatus(
     public DateTime? AtLimitUntilUtc { get; init; }
     public LimitKind? AtLimitKind { get; init; }
 
+    /// <summary>Claude's own weekly report while it's at or past <see cref="Setup.AgentGate.StopPercent"/>, until its reset:
+    /// the point the hooks refuse every tool call at, so the pace stops there too (M.ORCH-T438). The week is still never
+    /// paced below it.</summary>
+    public ReportedWindow? WeeklyStop { get; init; }
+
+    /// <summary>Whether Claude's reported week is at the stop line as of <paramref name="nowUtc"/> (its reset not passed).</summary>
+    public bool WeeklyStopped(DateTime nowUtc) => WeeklyStop is { } w && w.ResetUtc > nowUtc;
+
     public LimitCalibration? Calibration { get; init; }
 
     /// <summary>This window already spent more than the learned limit without hitting a wall, so the
@@ -253,6 +261,7 @@ public static class BudgetCalculator
             ControlFreshPerHour = events.Where(e => e.AtUtc >= nowUtc - ControlWindow && e.AtUtc <= nowUtc).Sum(e => e.Usage.Fresh) / ControlWindow.TotalHours,
             AtLimitUntilUtc = wall?.ResetUtc,
             AtLimitKind = wall?.Kind,
+            WeeklyStop = reportedWeek is { Percent: >= Setup.AgentGate.StopPercent } ? reportedWeek : null,
             Calibration = learned,
             BlockLimitOutdated = blockRefuted,
             WeeklyLimitOutdated = weeklyRefuted,

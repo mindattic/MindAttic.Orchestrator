@@ -87,6 +87,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     private long? samplesEstimate;
     // The last report with a usable 5-hour window: carried while that window runs, so one tick without one never drops the limit.
     private ReportedUsage? lastReported;
+    // Claude's week at the stop line, held until its reset as the hooks latch it (M.ORCH-T438).
+    private ReportedWindow? weekStop;
     private DateTime? probedReset;
     private DateTime historySavedUtc;
     private IReadOnlyDictionary<string, IReadOnlySet<string>> links = new Dictionary<string, IReadOnlySet<string>>();
@@ -234,6 +236,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
                 switchedNow = lastAccount is not null;
                 lastAccount = signIn.Account;
                 lastReported = null;
+                weekStop = null;
             }
             events = [.. events.Where(e => signIn.Contains(e.AtUtc))];
             if (reported is not null && (!signIn.Owns(reported) || reported.Account is null && signIn.Switched && !signIn.Contains(reported.AtUtc))) reported = null;
@@ -261,6 +264,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         reported = KeepWindow(reported, now);
         var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration,
             reported: reported, reportedLimit: reportedLimit);
+        budget = HoldWeeklyStop(budget, now);
 
         var recentFrom = now - BudgetCalculator.RecentWindow;
         var active = subscriptionSessions.Count(s => s.Events.Count > 0 && s.Events[^1].AtUtc >= recentFrom);
@@ -386,6 +390,21 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// once a minute as an idle tab's statusline redrew). The samples' running window covers this too; this keeps the
     /// limit when they can't (not recorded yet, or unreadable).
     /// </summary>
+    /// <summary>
+    /// <paramref name="budget"/> with Claude's week at the stop line held until its reset (M.ORCH-T438). The hooks latch that
+    /// stop the moment they see it; every open session's statusline restamps its own last, lower weekly percent each minute, and
+    /// a report older than <see cref="ReportedUsage.MaxAge"/> drops out, so without the hold the daemon would lift the stop
+    /// (and hand out tickets) while every tool call is still refused. Usage in a week never goes down.
+    /// </summary>
+    internal BudgetStatus HoldWeeklyStop(BudgetStatus budget, DateTime now)
+    {
+        if (weekStop is { } held && held.ResetUtc <= now) weekStop = null;
+        if (budget.WeeklyStopped(now) && budget.WeeklyStop is { } seen &&
+            (weekStop is null || seen.ResetUtc != weekStop.ResetUtc || seen.Percent >= weekStop.Percent))
+            weekStop = seen;
+        return weekStop is null ? budget : budget with { WeeklyStop = weekStop };
+    }
+
     private ReportedUsage? KeepWindow(ReportedUsage? reported, DateTime now)
     {
         if (ReportedUsage.Usable(reported?.FiveHour, now) is not null)

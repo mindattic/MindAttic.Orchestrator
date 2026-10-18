@@ -128,7 +128,7 @@ public static class Pacer
 
         // The stop never depends on pacing being on: a wall Claude reported, or a known 5-hour limit spent to its target,
         // stops everything either way (found in review: with pacing off nothing ever said stop).
-        if (!s.Pacing && b.AtLimitUntilUtc is null)
+        if (!s.Pacing && b.AtLimitUntilUtc is null && !b.WeeklyStopped(nowUtc))
         {
             var spentOut = !b.BlockLimitIsPeak && b.BlockLimit > 0 && b.CurrentBlock is { } blk &&
                 blk.Usage.Fresh >= b.BlockLimit * Math.Clamp(s.PaceTargetPercent, 1, 100) / 100.0;
@@ -144,13 +144,26 @@ public static class Pacer
             { SubagentAllowance = 0, Subagents = subagents, Stop = true };
         }
 
+        // Claude reports the week at the stop line: the hooks refuse every tool call from here to the weekly reset, so nothing
+        // may be handed out or said to be on pace (M.ORCH-T438). A hard stop only, at the hooks' own line; below it the week
+        // is never paced.
+        if (b.WeeklyStopped(nowUtc) && b.WeeklyStop is { } weekStop)
+        {
+            var at = $"Claude reports the week at {weekStop.Percent.ToString("0", System.Globalization.CultureInfo.InvariantCulture)}%";
+            return new Pace(PaceMode.Over, 0, 0, recent, null, "weekly", weekStop.ResetUtc,
+                $"{at}: stopped at the weekly limit until {Formatting.ResetTime(weekStop.ResetUtc, nowUtc)}.",
+                $"{at}: at the weekly limit until {Formatting.ResetTime(weekStop.ResetUtc, nowUtc)}. Finish the current step and stop at a clean point.")
+            { SubagentAllowance = 0, Subagents = subagents, Stop = true };
+        }
+
         var windows = new List<(string Name, long Limit, long Used, DateTime StartUtc, DateTime ResetUtc)>();
         if (!b.BlockLimitIsPeak && b.BlockLimit > 0)
             windows.Add(b.CurrentBlock is { } block
                 ? ("5-hour", b.BlockLimit, block.Usage.Fresh, block.StartUtc, block.EndUtc)
                 : ("5-hour", b.BlockLimit, 0, nowUtc, nowUtc + BudgetCalculator.BlockLength));
         // The week is shown, never paced: spending each 5-hour window to its target is the goal, and a
-        // week-long stretch would hold agents for days. Only a real weekly wall (above) stops new work.
+        // week-long stretch would hold agents for days. Only a real weekly wall, or Claude's week at the hooks' stop line
+        // (both above), stops new work.
         if (windows.Count == 0)
             return new Pace(PaceMode.Unpaced, max, 0, recent, null, null, null,
                 "Nothing to pace against yet: set a budget, or one is learned the first time you hit a limit.");
