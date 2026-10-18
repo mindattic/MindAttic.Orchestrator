@@ -194,11 +194,12 @@ public sealed class ClaudeMeterProbe
 
     /// <summary>Writes <paramref name="reading"/> as the statusline does, stamped <paramref name="atUtc"/> and tagged with
     /// <paramref name="account"/>. Usage never falls within a window, so a higher percent already in the file for the same
-    /// window is kept (with this, newer, time).</summary>
+    /// window is kept (with this, newer, time), when it's the same account's: an untagged statusline reading may be another
+    /// account's whose window happens to reset at the same minute, and its percent would be written tagged as this one's.</summary>
     internal static void Write(string path, ReportedUsage reading, DateTime atUtc, string? account = null)
     {
         var five = reading.FiveHour!;
-        if (ReportedUsage.Load(atUtc, path)?.FiveHour is { } old && old.ResetUtc == five.ResetUtc && old.Percent > five.Percent)
+        if (ReportedUsage.Load(atUtc, path) is { FiveHour: { } old } was && was.Account == account && old.ResetUtc == five.ResetUtc && old.Percent > five.Percent)
             five = old;
         var limits = new JsonObject { ["five_hour"] = Node(five) };
         if (reading.Week is { } week) limits["seven_day"] = Node(week);

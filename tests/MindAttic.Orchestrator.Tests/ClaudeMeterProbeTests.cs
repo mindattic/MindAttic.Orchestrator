@@ -96,6 +96,20 @@ public sealed class ClaudeMeterProbeTests
     }
 
     [Test]
+    public void Another_accounts_higher_percent_for_the_same_reset_isnt_written_as_this_ones()
+    {
+        var path = Path.Combine(dir, "claude-usage.json");
+        var reset = new DateTimeOffset(2026, 10, 17, 15, 30, 0, TimeSpan.Zero).ToUnixTimeSeconds();
+        // Another CLI's statusline still restamps the old account's 99% after the /login to B.
+        File.WriteAllText(path, $$$"""{"rate_limits":{"five_hour":{"used_percentage":99,"resets_at":{{{reset}}}}},"at":"{{{DateTime.UtcNow.AddMinutes(-1):yyyy-MM-ddTHH:mm:ssZ}}}"}""");
+
+        ClaudeMeterProbe.Write(path, ClaudeMeterProbe.Parse(Body)!, DateTime.UtcNow, "b/max");
+
+        var read = ReportedUsage.Load(DateTime.UtcNow, path)!;
+        Assert.That((read.FiveHour!.Percent, read.Account), Is.EqualTo((11d, "b/max")));
+    }
+
+    [Test]
     public async Task An_expired_sign_in_is_never_used_or_refreshed_and_the_ask_backs_off()
     {
         var asked = 0;
