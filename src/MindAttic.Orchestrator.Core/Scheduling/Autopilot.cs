@@ -45,7 +45,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// <summary>Why no new agent starts right now (switched off, quiet hours, the pace), if that's so.</summary>
     public string? Paused { get; private set; }
 
-    /// <summary>Set by the daemon while the machine is short of handles or memory (<see cref="Activity.MachineHealth"/>): no new agent starts.</summary>
+    /// <summary>Set by the daemon while the machine is short of handles or memory (<see cref="Activity.MachineHealth"/>). It holds only this
+    /// class's own starting in <see cref="Tick"/>, which runs only when <see cref="Order"/> names repos; <c>orchestrator next</c>
+    /// never reads it.</summary>
     public string? HealthHold { get; set; }
 
     /// <summary>Whether <c>/autopilot</c> is on (until <c>/autopilot off</c>).</summary>

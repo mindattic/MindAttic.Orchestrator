@@ -380,7 +380,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
     /// <summary>
     /// Every 30 seconds, samples handles, commit charge and free RAM. A change of level is logged and alerted with the
-    /// worst offenders, and while it isn't OK autopilot starts no agents.
+    /// worst offenders. Nothing is held for it (see <see cref="Activity.MachineHealth"/>); it only names the hold in
+    /// <see cref="Autopilot.Paused"/>, for the daemon's own starting that nothing in production uses.
     /// </summary>
     private void WatchHealth(Autopilot autopilot)
     {

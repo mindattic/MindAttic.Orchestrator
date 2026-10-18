@@ -30,8 +30,13 @@ public sealed record HealthSample(long TotalHandles, double CommitPercent, doubl
 /// <summary>
 /// Watches the machine the agents run on. Found live: two orphaned <c>find /</c> searches held 660k handles and the
 /// desktop froze while CPU sat idle, so CPU says nothing; kernel handles, commit charge and free RAM do. Past the warn
-/// line autopilot starts no agents and you're alerted with the worst offenders; past the danger line too. Nothing is
-/// killed for it (the <see cref="Sessions.ProcessReaper"/> kills runaway agent-spawned processes on its own rules).
+/// line, and again past the danger line, you're alerted with the worst offenders. Nothing is held for it: <c>orchestrator
+/// next</c>, which /autopilot CLIs use, never reads it (M.ORCH-T357), and heavy load is the point. Nothing is killed
+/// for it either (the <see cref="Sessions.ProcessReaper"/> kills runaway agent-spawned processes on its own rules).
+/// M.ORCH-T374 looked for a crash a hold would have prevented and found none. The 660k-handle freeze is the only wedge
+/// on record, and its cause is stopped at the source (the pace gate refuses whole-drive searches, the reaper kills
+/// orphaned and runaway tool processes); no handle warning has fired since. Commit hit 97-100% often under full load
+/// (lghub_agent and GTFO held most of it) and no agent tool call or Claude CLI failed for memory.
 /// </summary>
 public static partial class MachineHealth
 {

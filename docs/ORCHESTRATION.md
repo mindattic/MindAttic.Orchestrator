@@ -54,4 +54,8 @@ Claude actually reports stops new work.
   and refuse at 99%, and every typed prompt warns that the daemon is down.
 - **An agent dies:** tool processes it left behind (searches, shells) are killed within a minute, and its ticket goes
   back to the queue for you.
-- **The machine runs short** of handles or memory: autopilot starts nothing until it recovers.
+- **The machine runs short** of handles or memory: you're alerted with who's using it, and nothing is held (heavy
+  load is the point). The one freeze ever seen came from leaked handles (two orphaned `find /` runs, 660k handles),
+  and that cause is stopped at its source: whole-drive searches are refused and runaway or orphaned agent tool
+  processes are reaped. Memory commit has sat at 97-100% many times under full load without an agent crashing
+  (M.ORCH-T374).
