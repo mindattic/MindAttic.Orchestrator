@@ -112,7 +112,7 @@ internal sealed class StatusCommand : Command<StatusCommand.Settings>
             $"[bold]{snapshot.Repos.Count}[/] repos · [green]{snapshot.Working} working[/] · [yellow]{snapshot.Waiting} waiting[/] · " +
             $"{snapshot.LiveHosts} hosted tabs · {snapshot.OpenTickets} open tickets · " +
             $"tokens today [bold]{Format.Tokens(usage.Total)}[/] ({Format.Tokens(usage.Fresh)} uncached, {Format.Tokens(usage.Output)} out)");
-        if (snapshot.Budget is { } b) AnsiConsole.MarkupLine(BudgetCommand.Line(b));
+        if (snapshot.Budget is { } b) AnsiConsole.MarkupLine(BudgetCommand.Line(b, snapshot.TakenUtc));
         if (snapshot.Pace is { IsPaced: true } pace) AnsiConsole.MarkupLine(BudgetCommand.PaceLine(pace));
         foreach (var x in MindAttic.Orchestrator.Activity.Watchdog.Stuck(snapshot))
             AnsiConsole.MarkupLine($"[red]looks stuck:[/] a session in {Markup.Escape(x.Repo)} is repeating {Markup.Escape(x.Loop.Describe())} since {x.Loop.SinceUtc.ToLocalTime():t}");
@@ -273,10 +273,8 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
         // Built here (not the daemon's published copy) so a budget just changed above shows at once.
         var snapshot = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter(), Ctx.Lease(store)).Refresh(DateTime.UtcNow);
         var b = snapshot.Budget!;
-        AnsiConsole.MarkupLine(Line(b));
-        if (b.CurrentBlock is { } block)
-            AnsiConsole.MarkupLine($"  block {block.StartUtc.ToLocalTime():t}–{block.EndUtc.ToLocalTime():t} · burning {Format.Tokens((long)b.RecentFreshPerHour)}/h now, {Format.Tokens((long)b.FreshPerHour)}/h this block" +
-                (b.ProjectedLimitUtc is { } p ? $" · [red]limit at this pace: {p.ToLocalTime():t}[/]" : ""));
+        AnsiConsole.MarkupLine(Line(b, snapshot.TakenUtc));
+        if (b.CurrentBlock is { } block) AnsiConsole.MarkupLine(BlockLine(b, block, snapshot.TakenUtc));
         AnsiConsole.MarkupLine($"  today {Format.Tokens(b.Today.Fresh)} uncached ({Format.Tokens(b.Today.CacheRead)} cache reads)");
         AnsiConsole.MarkupLine($"  {WeekLine(b)}");
         AnsiConsole.MarkupLine($"  limits: {Markup.Escape(SourceLine(b))}");
@@ -288,6 +286,11 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
         if (settings.Week) WriteWeek(Burndown.Compute(b, snapshot.History, snapshot.TakenUtc, snapshot.Account));
         return 0;
     }
+
+    /// <summary>The block's span and burn rate; a time on another day (a block begun before midnight, a reset or limit after it) names its weekday (M.ORCH-T437).</summary>
+    public static string BlockLine(BudgetStatus b, UsageBlock block, DateTime nowUtc) =>
+        $"  block {Formatting.ResetTime(block.StartUtc, nowUtc)}–{Formatting.ResetTime(block.EndUtc, nowUtc)} · burning {Format.Tokens((long)b.RecentFreshPerHour)}/h now, {Format.Tokens((long)b.FreshPerHour)}/h this block" +
+        (b.ProjectedLimitUtc is { } p ? $" · [red]limit at this pace: {Formatting.ResetTime(p, nowUtc)}[/]" : "");
 
     public static string PaceLine(Pace pace)
     {
@@ -342,15 +345,16 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
             : $"last 7 days {used} [grey]· rolling: set the real reset with --weekly-reset \"Mon 9:00\"[/]";
     }
 
-    public static string Line(BudgetStatus b)
+    /// <param name="nowUtc">When the times are read: one on another day names its weekday (M.ORCH-T437).</param>
+    public static string Line(BudgetStatus b, DateTime nowUtc)
     {
         if (b.CurrentBlock is not { } block) return "[grey]budget: no active 5-hour block[/]";
-        var used = $"{Format.Tokens(block.Usage.Fresh)} uncached this block, resets {block.EndUtc.ToLocalTime():t}";
+        var used = $"{Format.Tokens(block.Usage.Fresh)} uncached this block, resets {Formatting.ResetTime(block.EndUtc, nowUtc)}";
         if (b.BlockLimitIsPeak)
             return $"[aqua]this block is at {b.BlockPercent:0}% of your heaviest block in 7 days[/] ({used}) [grey]· no budget set: `orchestrator budget --block <tokens>`[/]";
         var color = b.Level switch { BudgetLevel.Over => "red", BudgetLevel.Warn => "yellow", _ => "green" };
         var what = b.BlockLimitSource switch { LimitSource.Learned => "learned 5h limit", LimitSource.Reported => "5h limit (Claude's count)", _ => "5h budget" };
-        var wall = b.AtLimitUntilUtc is { } until ? $" [red]· at the {(b.AtLimitKind == LimitKind.Weekly ? "weekly" : "5-hour")} limit until {Formatting.ResetTime(until, DateTime.UtcNow)}[/]" : "";
+        var wall = b.AtLimitUntilUtc is { } until ? $" [red]· at the {(b.AtLimitKind == LimitKind.Weekly ? "weekly" : "5-hour")} limit until {Formatting.ResetTime(until, nowUtc)}[/]" : "";
         return $"[{color}]budget: {b.BlockPercent:0}% of your {what}[/] ({Format.Tokens(block.Usage.Fresh)} of {Format.Tokens(b.BlockLimit)}; {used}){wall}";
     }
 }

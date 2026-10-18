@@ -91,25 +91,41 @@ public sealed class CliHelperTests
         new(new UsageBlock(Now.AddHours(-2), Now.AddHours(3), new TokenUsage((long)(limit * percent / 100), 0, 0, 0), Now), limit, peak, percent,
             default, new TokenUsage(4_000_000, 0, 0, 0), null, null, 0, null, 80) { BlockLimitSource = source, WeekStartUtc = Now.AddDays(-3) };
 
-    private static string T(DateTime utc) => $"{utc.ToLocalTime():t}";
+    private static string T(DateTime utc) => utc.ToLocalTime().ToString("h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
 
     [Test]
     public void The_budget_line_for_no_block_peak_manual_learned_reported_and_at_the_limit()
     {
         var reset = T(Now.AddHours(3));
-        Assert.That(BudgetCommand.Line(B(10) with { CurrentBlock = null }), Is.EqualTo("[grey]budget: no active 5-hour block[/]"));
-        Assert.That(BudgetCommand.Line(B(40, peak: true, source: LimitSource.Peak)),
+        Assert.That(BudgetCommand.Line(B(10) with { CurrentBlock = null }, Now), Is.EqualTo("[grey]budget: no active 5-hour block[/]"));
+        Assert.That(BudgetCommand.Line(B(40, peak: true, source: LimitSource.Peak), Now),
             Is.EqualTo($"[aqua]this block is at 40% of your heaviest block in 7 days[/] (8M uncached this block, resets {reset}) [grey]· no budget set: `orchestrator budget --block <tokens>`[/]"));
-        Assert.That(BudgetCommand.Line(B(50)), Is.EqualTo($"[green]budget: 50% of your 5h budget[/] (10M of 20M; 10M uncached this block, resets {reset})"));
-        Assert.That(BudgetCommand.Line(B(85, source: LimitSource.Learned)), Does.StartWith("[yellow]budget: 85% of your learned 5h limit[/]"), "past the warn line");
-        Assert.That(BudgetCommand.Line(B(30, source: LimitSource.Reported)), Does.StartWith("[green]budget: 30% of your 5h limit (Claude's count)[/]"));
+        Assert.That(BudgetCommand.Line(B(50), Now), Is.EqualTo($"[green]budget: 50% of your 5h budget[/] (10M of 20M; 10M uncached this block, resets {reset})"));
+        Assert.That(BudgetCommand.Line(B(85, source: LimitSource.Learned), Now), Does.StartWith("[yellow]budget: 85% of your learned 5h limit[/]"), "past the warn line");
+        Assert.That(BudgetCommand.Line(B(30, source: LimitSource.Reported), Now), Does.StartWith("[green]budget: 30% of your 5h limit (Claude's count)[/]"));
 
         var until = Now.AddDays(2);
-        Assert.That(BudgetCommand.Line(B(30) with { AtLimitUntilUtc = until, AtLimitKind = LimitKind.Weekly }),
-            Does.StartWith("[red]budget: 30%").And.EndWith($" [red]· at the weekly limit until {Formatting.ResetTime(until, DateTime.UtcNow)}[/]"), "behind a wall: red whatever the percent");
-        Assert.That(Formatting.ResetTime(until, DateTime.UtcNow), Does.StartWith(until.ToLocalTime().ToString("ddd ", System.Globalization.CultureInfo.InvariantCulture)),
+        Assert.That(BudgetCommand.Line(B(30) with { AtLimitUntilUtc = until, AtLimitKind = LimitKind.Weekly }, Now),
+            Does.StartWith("[red]budget: 30%").And.EndWith($" [red]· at the weekly limit until {Formatting.ResetTime(until, Now)}[/]"), "behind a wall: red whatever the percent");
+        Assert.That(Formatting.ResetTime(until, Now), Does.StartWith(until.ToLocalTime().ToString("ddd ", System.Globalization.CultureInfo.InvariantCulture)),
             "another day's: its weekday, not a bare time read as today's (M.ORCH-T408)");
-        Assert.That(BudgetCommand.Line(B(30) with { AtLimitUntilUtc = until, AtLimitKind = LimitKind.Session }), Does.Contain("at the 5-hour limit"));
+        Assert.That(BudgetCommand.Line(B(30) with { AtLimitUntilUtc = until, AtLimitKind = LimitKind.Session }, Now), Does.Contain("at the 5-hour limit"));
+    }
+
+    [Test]
+    public void The_budget_and_block_lines_name_the_weekday_of_a_time_on_another_day()
+    {
+        // M.ORCH-T437: read late in the evening, a block that resets after midnight said "resets 2:30 AM", read as today's.
+        var lateLocal = new DateTime(2026, 10, 15, 23, 30, 0, DateTimeKind.Local);
+        var now = lateLocal.ToUniversalTime();
+        var block = new UsageBlock(now.AddHours(-2), now.AddHours(3), new TokenUsage(10_000_000, 0, 0, 0), now);
+        var b = B(50) with { CurrentBlock = block, ProjectedLimitUtc = now.AddHours(2) };
+        var reset = now.AddHours(3).ToLocalTime().ToString("ddd h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
+        var limit = now.AddHours(2).ToLocalTime().ToString("ddd h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
+        var start = now.AddHours(-2).ToLocalTime().ToString("h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
+
+        Assert.That(BudgetCommand.Line(b, now), Does.Contain($"resets {reset})"));
+        Assert.That(BudgetCommand.BlockLine(b, block, now), Does.StartWith($"  block {start}–{reset} ·").And.Contain($"limit at this pace: {limit}[/]"));
     }
 
     [Test]
