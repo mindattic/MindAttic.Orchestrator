@@ -38,6 +38,7 @@ public sealed class HookScriptTests
         psi.Environment["APPDATA"] = dir; // the orchestrator's settings (approvals) come from here, never this machine's
         psi.Environment["MINDATTIC_CLI_PID"] = Cli.ToString(); // as one CLI process, never the one running these tests
         psi.Environment["MINDATTIC_WORKSPACE"] = ws;
+        psi.Environment.Remove("MINDATTIC_WORKFLOW_DB"); // the scratch workspace's database, never one this machine names
         // Keep-going never asks this machine's orchestrator what `next` would hand out: none is found unless a test sets one.
         psi.Environment["MINDATTIC_ORCHESTRATOR"] = Path.Combine(dir, "no-orchestrator.exe");
         // Inside claude.exe on its /login, whatever the machine running the tests is signed in with.
@@ -1037,6 +1038,26 @@ public sealed class HookScriptTests
         Turn("g2", "go");
         Assert.That(File.ReadAllText(Path.Combine(Marks, "g2.state.json")), Does.Not.Contain("ship it"), "goal_finished: the goal is gone");
         Assert.That(Stopped("g2"), Does.Contain("\"block\""), "so its stops are kept going again");
+    }
+
+    [Test]
+    public void Keep_going_reads_the_workflow_database_MINDATTIC_WORKFLOW_DB_names()
+    {
+        // M.ORCH-T398: as the orchestrator and the workflow CLI do; the workspace's own (two open fixes) is not the one in use.
+        AutopilotWithOpenFixes();
+        Status(new { });
+        var elsewhere = Path.Combine(dir, "elsewhere.db");
+        using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
+            "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal,type)'); d.commit()", elsewhere },
+            UseShellExecute = false })!)
+            Assert.That(mk.WaitForExit(20_000), Is.True);
+        var env = new Dictionary<string, string> { ["MINDATTIC_WORKFLOW_DB"] = elsewhere };
+        Gate(new { hook_event_name = "UserPromptSubmit", session_id = "w1", prompt = "go", cwd = Uss }, env, AgentGate.ContextScriptName);
+
+        var stop = Gate(new { hook_event_name = "Stop", session_id = "w1", cwd = Uss, last_assistant_message = "Done." }, env, AgentGate.ContextScriptName).Output;
+
+        Assert.That(stop, Does.Not.Contain("\"block\""), "no open ticket in the database in use: nothing to keep going on");
+        Assert.That(Stopped("w2"), Does.Contain("\"block\""), "without it, the workspace's database and its open fixes");
     }
 
     [Test]

@@ -385,6 +385,8 @@ public static class AgentGate
     private const string WorkspacePython = """
         WS = Path(os.environ.get("MINDATTIC_WORKSPACE", "D:/Projects/MindAttic"))
         WT = WS.parent / (WS.name + ".worktrees")
+        # The Workflow database the orchestrator and the workflow CLI open: MINDATTIC_WORKFLOW_DB when set (M.ORCH-T398).
+        WORKFLOW_DB = os.environ.get("MINDATTIC_WORKFLOW_DB") or str(WS / "MindAttic.Workflow" / "data" / "workflow.db")
 
         def repo_of(path, worktrees=True):
             # A repo checkout under the workspace, or (with worktrees) one of autopilot's worktrees of it; None elsewhere.
@@ -545,7 +547,7 @@ public static class AgentGate
 
         def ticket_repo(ticket_id):
             try:
-                db = sqlite3.connect(str(WS / "MindAttic.Workflow" / "data" / "workflow.db"))
+                db = sqlite3.connect(WORKFLOW_DB)
                 row = db.execute("SELECT repo FROM tickets WHERE id = ? COLLATE NOCASE", (ticket_id,)).fetchone()
                 db.close()
                 return row[0] if row else None
@@ -927,7 +929,7 @@ public static class AgentGate
             # The open fixes and approved tickets of repos (names or wildcards such as GTFO.*; "*": every repo), in ticket order.
             try:
                 import fnmatch, sqlite3
-                db = sqlite3.connect(str(WS / "MindAttic.Workflow" / "data" / "workflow.db"))
+                db = sqlite3.connect(WORKFLOW_DB)
                 try:
                     rows = db.execute("SELECT id, type, repo, summary FROM tickets WHERE status = 'open' ORDER BY ordinal").fetchall()
                 except sqlite3.OperationalError:  # a database from before tickets had summaries
