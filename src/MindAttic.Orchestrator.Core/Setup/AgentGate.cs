@@ -1152,7 +1152,10 @@ public static class AgentGate
             repos = autopilot_repos(my_pid())
             if repos and KEEP_GOING and not stopped and not state.get("goal"):
                 why = "autopilot"
-            ids = workable(repos, sid) if why and not no_subagent_room(limits, my_pid()) else []
+            # Past the wind-down line `orchestrator next` starts nothing new before the reset (M.ORCH-T254), unless this CLI is
+            # unthrottled: pushing the stop back would only spend a turn being told so.
+            wound = bool(limits.get("wind_down_note")) and not (DIR / ("unthrottled-" + str(my_pid()))).exists()
+            ids = workable(repos, sid) if why and not wound and not no_subagent_room(limits, my_pid()) else []
             reason = keep_going(repos, ids, sid, why, insisted) if ids else None
             if reason and limits.get("wind_down_note"):
                 reason += " " + limits["wind_down_note"]

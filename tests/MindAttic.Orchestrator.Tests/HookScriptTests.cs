@@ -830,10 +830,12 @@ public sealed class HookScriptTests
     }
 
     [Test]
-    public void The_wind_down_note_is_appended_to_a_nudge()
+    public void Past_the_wind_down_line_only_an_unthrottled_cli_is_nudged_and_hears_the_note()
     {
         AutopilotWithOpenFixes();
         Status(new { wind_down_note = "Past 90%: finish or file it." });
+        Assert.That(Stopped("k1"), Is.Empty, "orchestrator next starts nothing new past the line (M.ORCH-T254): a nudge would only waste a turn");
+        File.WriteAllText(Path.Combine(Marks, $"unthrottled-{Cli}"), "x");
         var reason = Reason(Stopped("k2"));
         Assert.That(reason, Does.StartWith("Don't stop").And.EndWith(" Past 90%: finish or file it."), "after the carry-on, so the agent hears both");
 
