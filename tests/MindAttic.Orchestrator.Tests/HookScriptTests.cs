@@ -319,7 +319,7 @@ public sealed class HookScriptTests
             Assert.That(held.WaitForExit(7_000), Is.False, "Claude at 99% holds the call (then refuses it), daemon or not");
             held.Kill();
         }
-        Assert.That(File.ReadAllText(Path.Combine(Claude, AgentGate.ScriptName)), Does.Contain("claude_stop_note(own)"), "and refuses it saying why");
+        Assert.That(File.ReadAllText(Path.Combine(Claude, AgentGate.ScriptName)), Does.Contain("claude_stop_note(own, running=bool(s))"), "and refuses it saying why");
 
         ClaudeReports(50, resetUtc: DateTime.UtcNow.AddHours(2));
         File.Delete(Path.Combine(Marks, AgentGate.StopLatchName)); // the window it was seen in has reset
@@ -344,7 +344,12 @@ public sealed class HookScriptTests
             at = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
         }));
         var refused = GateHeld(new { tool_name = "Read", tool_input = new { file_path = "x" } }, maxHold: 2).Output;
-        Assert.That(refused, Does.Contain("\"deny\"").And.Contain("of the weekly window used"));
+        Assert.That(refused, Does.Contain("\"deny\"").And.Contain("of the weekly window used").And.Contain("isn't running"));
+        Status(new { stop = false });
+        Assert.That(GateHeld(new { tool_name = "Read", tool_input = new { file_path = "x" } }, maxHold: 2).Output,
+            Does.Contain("\"deny\"").And.Contain("of the weekly window used").And.Not.Contain("isn't running"),
+            "the daemon is up (it just hasn't stopped yet): still refused at Claude's own line, but not said to be down");
+        Status(new { stop = false }, at: DateTime.UtcNow.AddMinutes(-10));
         var prompt = Gate(new { hook_event_name = "UserPromptSubmit", session_id = "wk", prompt = "carry on", cwd = ws }, AgentGate.ContextScriptName).Output;
         Assert.That(prompt, Does.Contain("Not sent").And.Contain("the weekly window").And.Contain(weekReset.ToLocalTime().ToString("ddd", System.Globalization.CultureInfo.InvariantCulture)));
     }

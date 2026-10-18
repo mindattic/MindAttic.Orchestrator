@@ -320,9 +320,11 @@ public static class AgentGate
             # The clock alone within a day; with the weekday when it's further off (a week's reset).
             at = datetime.fromtimestamp(epoch)
             return at.strftime("%a %I:%M %p" if epoch - time.time() > 86400 else "%I:%M %p").replace(" 0", " ").lstrip("0")
-        def claude_stop_note(stop):
+        def claude_stop_note(stop, running=False):
+            # running: the daemon's status is fresh (it just hasn't stopped yet), so the note doesn't say it's down.
             window = stop[2] if len(stop) > 2 else "5-hour"
-            return ("Claude reports " + str(int(stop[0])) + "% of the " + window + " window used and MindAttic.Orchestrator isn't running to pace it, "
+            return ("Claude reports " + str(int(stop[0])) + "% of the " + window + " window used" +
+                    ("" if running else " and MindAttic.Orchestrator isn't running to pace it") + ", "
                     "so tool calls are refused until it resets at " + reset_text(stop[1]) + ". End your turn now.")
         ORCHESTRATOR_STOP = "The 5-hour window is at its target: tool calls are refused until it resets. End your turn now."
         def orchestrator_stop(s):
@@ -677,11 +679,12 @@ public static class AgentGate
         # The orchestrator's stop, or Claude's own percent at the line: a dead daemon can't switch the stop off (M.ORCH-T167),
         # and neither a stalled one nor an idle session's lower report lifts a stop already seen (latched, M.ORCH-T196).
         def stop_note():
-            note = orchestrator_stop(status())
+            s = status()
+            note = orchestrator_stop(s)
             if note:
                 return note
             own = claude_stop()
-            return claude_stop_note(own) if own else None
+            return claude_stop_note(own, running=bool(s)) if own else None
         def hold_at_stop():
             # Checked before every other hold and through each of them, so a call held for the pace delay or a subagent slot
             # when the stop comes on is held on and refused, never let through once its wait ends (M.ORCH-T196: in the
