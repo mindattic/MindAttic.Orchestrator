@@ -359,6 +359,21 @@ public sealed class AutopilotTests
     }
 
     [Test]
+    public void Next_hands_a_repo_no_more_than_the_sessions_you_capped_it_at()
+    {
+        // M.ORCH-T358: settings --repo-sessions was enforced only by the retired Tick; next --claim handed out all four.
+        var snap = Snap(("A", [T("A-T1"), T("A-T2"), T("A-T3"), T("A-T4")]), ("B", [T("B-T1")]));
+        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT", RepoMaxSessions = new() { ["A"] = 2 } };
+        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
+
+        var (handed, _) = Autopilot.Next(Paced(snap, 5), settings, store, ["*"], 10, claim: true, Now, Make, _ => "main");
+        Assert.That(handed.Select(h => h.Item.Id), Is.EquivalentTo(new[] { "A-T1", "A-T2", "B-T1" }));
+
+        var (more, why) = Autopilot.Next(Paced(snap, 5), settings, store, ["A"], 10, claim: true, Now, Make, _ => "main");
+        Assert.That((more.Count, why), Is.EqualTo((0, "A is at the cap you set (settings --repo-sessions); nothing else is ready")), "its two are being worked");
+    }
+
+    [Test]
     public void The_ticket_the_calling_cli_was_started_on_is_not_handed_to_its_own_subagents()
     {
         // M.ORCH-T328: the calling CLI was exempt from every hold of its own, so the ticket its first prompt named went to a

@@ -419,10 +419,24 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         var handed = new List<Handout>();
         // Past one it can't have (another CLI claimed it first, or its worktree failed) to the next, until `more` are handed out.
         var claimedElsewhere = 0;
+        // A repo you capped (settings --repo-sessions) gets no more than that at once, counting what's already being worked
+        // there: worktrees keep agents apart, so only a cap you set applies (M.ORCH-T358).
+        var inRepo = plan.Queue.Where(Busy).GroupBy(q => q.Repo, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+        var capped = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var item in open)
         {
             if (handed.Count >= more) break;
-            if (!claim) { handed.Add(new Handout(item, null, null)); continue; }
+            if (inRepo.GetValueOrDefault(item.Repo) >= OrchestratorSettings.ForRepo(settings.RepoMaxSessions, item.Repo, int.MaxValue))
+            {
+                capped.Add(item.Repo);
+                continue;
+            }
+            if (!claim)
+            {
+                handed.Add(new Handout(item, null, null));
+                inRepo[item.Repo] = inRepo.GetValueOrDefault(item.Repo) + 1;
+                continue;
+            }
             var branch = Dispatcher.BranchFor(item.Id);
             var (ok, tree, _) = makeWorktree(item.RepoPath, Path.Combine(settings.WorktreeRoot, item.Repo, item.Id), branch);
             if (!ok) continue;
@@ -437,8 +451,10 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             });
             if (taken) { claimedElsewhere++; continue; }
             handed.Add(new Handout(item, tree, PromptFor(item, tree, branch, mainlineOf(item.RepoPath))));
+            inRepo[item.Repo] = inRepo.GetValueOrDefault(item.Repo) + 1;
         }
         return (handed, handed.Count > 0 ? null
+            : capped.Count > 0 ? $"{string.Join(", ", capped)} {(capped.Count == 1 ? "is" : "are")} at the cap you set (settings --repo-sessions); nothing else is ready"
             : claimedElsewhere > 0 ? "another CLI claimed them first; nothing else is ready"
             : "couldn't make a worktree for any of them (see orchestrator queue)");
     }
