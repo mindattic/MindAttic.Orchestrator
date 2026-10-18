@@ -239,8 +239,9 @@ public sealed class BillingSwitch
         if (due.Count == 0) return lines;
         var sends = due.Select(c => (Cli: c, Sent: SafeSend(c.Host!, RestartResumeMessage(c, state.Mode, nowUtc)))).ToList();
         Task.WaitAll([.. sends.Select(s => s.Sent)]);
-        var requested = state.Requested.ToList();
+        var requested = new List<string>();
         var refused = state.Refused.ToList();
+        var newlyRefused = new List<string>();
         foreach (var (c, sent) in sends)
         {
             asked[c.SessionId + "@" + stamp] = nowUtc;
@@ -253,11 +254,22 @@ public sealed class BillingSwitch
             else if (!refused.Contains(c.SessionId))
             {
                 refused.Add(c.SessionId);
+                newlyRefused.Add(c.SessionId);
                 lines.Add($"couldn't ask the Launcher tab running the CLI in {c.Where} (pid {c.Pid}) to restart it (no control pipe: a Launcher from before " +
                           $"M.LNCH-T38?): close it and reopen it (claude --resume {c.SessionId}) to bill {name}");
             }
         }
-        try { ModeFile.Write(state with { Requested = requested, Refused = refused }); }
+        // Sending can take seconds: re-read the mode file and record only onto the same switch. One made meanwhile (the context
+        // gate's, after a /login) is never overwritten with this pass's older mode, and what it recorded is kept (M.ORCH-T454).
+        if (ModeFile.Read() is not { } current || current.Mode != state.Mode || current.SinceUtc != state.SinceUtc) return lines;
+        try
+        {
+            ModeFile.Write(current with
+            {
+                Requested = [.. current.Requested.Union(requested, StringComparer.Ordinal)],
+                Refused = [.. current.Refused.Union(newlyRefused, StringComparer.Ordinal).Except(requested, StringComparer.Ordinal)],
+            });
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         return lines;
     }

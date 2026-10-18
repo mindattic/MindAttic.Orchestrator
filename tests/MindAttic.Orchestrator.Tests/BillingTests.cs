@@ -210,6 +210,43 @@ public sealed class BillingTests
     }
 
     [Test]
+    public void A_switch_made_while_restart_requests_are_sent_is_never_overwritten_with_the_older_mode()
+    {
+        // M.ORCH-T454: sending takes seconds; the context gate switching back to Claude Team meanwhile (a /login) was overwritten
+        // by the requests' bookkeeping, written from the copy read before sending.
+        File.WriteAllText(ConfigPath, "{" + TeamLogin + ", \"customApiKeyResponses\": {\"approved\": [\"" + KeyTail + "\"], \"rejected\": []}}");
+        Cli(100, "hosted", "subscription", @"D:\Projects\Prose");
+        var file = new BillingModeFile(Path.Combine(Contexts, BillingModeFile.FileName));
+        var since = new DateTime(2026, 10, 18, 16, 0, 0, DateTimeKind.Utc);
+        file.Write(new BillingState(BillingModes.Api, since, "acct-1/org-1", "cli"));
+        var back = new BillingState(BillingModes.Team, since.AddSeconds(2), "acct-2/org-2", "login") { Refused = ["elsewhere"] };
+        var racing = new BillingSwitch(Contexts)
+        {
+            ConfigPath = ConfigPath, VaultKey = () => Key, IsAlive = _ => true,
+            HostOf = (pid, hosts) => pid == 100 ? hosts.FirstOrDefault() : null,
+            Send = (_, _) => { file.Write(back); return Task.FromResult(true); },
+        };
+
+        racing.Tick([Tab], since.AddMinutes(1));
+
+        var read = file.Read()!;
+        Assert.That((read.Mode, read.SinceUtc, read.By, read.Requested, read.Refused),
+            Is.EqualTo((BillingModes.Team, back.SinceUtc, "login", Array.Empty<string>(), new[] { "elsewhere" })), "the newer switch stands as written");
+
+        // On the same switch, what was recorded meanwhile is kept beside this pass's requests.
+        file.Write(new BillingState(BillingModes.Api, since, "acct-1/org-1", "cli"));
+        var same = new BillingSwitch(Contexts)
+        {
+            ConfigPath = ConfigPath, VaultKey = () => Key, IsAlive = _ => true,
+            HostOf = (pid, hosts) => pid == 100 ? hosts.FirstOrDefault() : null,
+            Send = (_, _) => { file.Write(file.Read()! with { Refused = ["other"] }); return Task.FromResult(true); },
+        };
+        same.Tick([Tab], since.AddMinutes(1));
+        read = file.Read()!;
+        Assert.That((read.Mode, read.Requested, read.Refused), Is.EqualTo((BillingModes.Api, new[] { "hosted" }, new[] { "other" })));
+    }
+
+    [Test]
     public void Switching_to_claude_team_sets_the_key_aside_dated_for_the_clis_still_on_it()
     {
         File.WriteAllText(ConfigPath, "{" + TeamLogin + ", \"customApiKeyResponses\": {\"approved\": [\"" + KeyTail + "\"], \"rejected\": []}}");
