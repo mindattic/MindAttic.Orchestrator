@@ -187,7 +187,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         }
         if (!paceBound)
             foreach (var repo in repos.Where(r => inRepo[r.Name] == 0 && !failed.Contains(r.Name)))
-                Tell(repo.Name, plan.Queue.Any(q => Same(q.Repo, repo.Name) && !q.IsAssigned)
+                Tell(repo.Name, plan.Queue.Any(q => Same(q.Repo, repo.Name) && !q.IsAssigned && q.MayWork) // a stale unapproved one waits for approval (M.ORCH-T401)
                     ? $"autopilot: {repo.Name}'s open stories are blocked, parked or too big for what's left before the reset"
                     : plan.AwaitingApproval.Count(q => Same(q.Repo, repo.Name)) is > 0 and var waiting
                         ? $"autopilot: {repo.Name}'s {waiting} open stor{(waiting == 1 ? "y waits" : "ies wait")} for your approval (orchestrator approve)"
@@ -402,7 +402,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             var waiting = plan.AwaitingApproval.Count(q => Named(q.Repo) && !Skipped(q.Repo));
             var busy = plan.Queue.Count(q => Named(q.Repo) && !Skipped(q.Repo) && Busy(q));
             // Open but held back for a reason of their own: not "nothing left".
-            var free = plan.Queue.Where(q => Named(q.Repo) && !Skipped(q.Repo) && !Busy(q) && q.RepoPath.Length > 0).ToList();
+            var free = plan.Queue.Where(q => Named(q.Repo) && !Skipped(q.Repo) && !Busy(q) && q.RepoPath.Length > 0 && q.MayWork).ToList(); // an unapproved one is counted as waiting (M.ORCH-T401)
             var blocked = free.Count(q => q.BlockedBy.Count > 0);
             var tooBig = free.Count(q => q.BlockedBy.Count == 0 && TooBigNow(q));
             return ([], waiting == 0 && busy == 0 && blocked == 0 && tooBig == 0 && skipped.Count > 0 ? $"{string.Join(", ", skipped)} set to be skipped (settings --autopilot-skip); nothing else is ready"
