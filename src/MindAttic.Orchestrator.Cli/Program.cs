@@ -209,7 +209,7 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
     public sealed class Settings : CommandSettings
     {
         [CommandOption("--block <TOKENS>")]
-        [Description("Uncached tokens per 5-hour block (0 clears it: measure against your peak block).")]
+        [Description("Uncached tokens per 5-hour block (0 clears it: Claude's reported limit, else the learned one, else your peak block).")]
         public string? Block { get; init; }
 
         [CommandOption("--weekly <TOKENS>")]
@@ -217,7 +217,7 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
         public string? Weekly { get; init; }
 
         [CommandOption("--weekly-reset <WHEN>")]
-        [Description("When the week resets, local time: \"Mon 9:00\", \"Tue 5pm\". \"none\" makes the week a rolling 7 days.")]
+        [Description("When the week resets, local time: \"Mon 9:00\", \"Tue 5pm\". \"none\" clears it. Claude's own reported reset comes first; then this, the learned one, or a rolling 7 days.")]
         public string? WeeklyReset { get; init; }
 
         [CommandOption("--warn <PERCENT>")]

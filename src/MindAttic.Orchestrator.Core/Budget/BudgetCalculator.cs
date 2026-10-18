@@ -178,8 +178,8 @@ public static class BudgetCalculator
         }
         var blockPercent = limit > 0 ? 100.0 * currentFresh / limit : 0;
 
-        // A configured reset day/time means the week restarts when Claude's does; failing that, the
-        // reset your last weekly hit reported; otherwise it rolls. An unparseable setting is skipped
+        // The week Claude itself reports (its seven_day reset) comes first; failing that, the configured reset
+        // day/time, then the one your weekly hits taught; otherwise it rolls. An unparseable setting is skipped
         // rather than failing the whole refresh.
         DateTime weekStart;
         DateTime? weekReset = null;
