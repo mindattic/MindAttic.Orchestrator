@@ -326,6 +326,8 @@ public sealed class TranscriptReaderTests
             Line("f1", "2026-10-13T12:03:00Z", 1, 7)]);
         var reader = new TranscriptReader(dir);
         Assert.That(reader.Poll(Since).Single().UsageSince(Since).Output, Is.EqualTo(1 + 50 + 50 + 7), "no meta yet: the copy looks like its own");
+        System.IO.File.WriteAllText(Path.Combine(sub, "agent-f.meta.json"), """{"agentType":"fork","isF""");
+        Assert.That(reader.Poll(Since).Single().UsageSince(Since).Output, Is.EqualTo(1 + 50 + 50 + 7), "caught half written: read again next time");
 
         System.IO.File.WriteAllText(Path.Combine(sub, "agent-f.meta.json"), """{"agentType":"fork","isFork":true,"toolUseId":"toolu_f","parentAgentId":"a"}""");
         var s = reader.Poll(Since).Single();

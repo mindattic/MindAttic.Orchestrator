@@ -114,12 +114,13 @@ public sealed class SubagentActivityReader(string projectsDir)
             if (SubagentTranscripts.Find(projectsDir, id) is not { } file) continue;
             reading.Add(file);
             if (!tails.TryGetValue(file, out var tail)) tails[file] = tail = new Tail();
-            if (!tail.MetaRead && File.Exists(Path.ChangeExtension(file, ".meta.json")))
+            // A meta caught mid-write is read again next poll, not taken for "not a fork" for good.
+            if (!tail.MetaRead && File.Exists(Path.ChangeExtension(file, ".meta.json")) && TranscriptReader.TryForkToolUseId(file, out var read))
             {
                 // A fork learned of only now is read again from the start: what it copied from the subagent that started it
                 // isn't its own task, start or usage (M.ORCH-T378).
                 tail.MetaRead = true;
-                if (TranscriptReader.ForkToolUseId(file) is { } forkCall && tail.ForkToolUseId is null)
+                if (read is { } forkCall && tail.ForkToolUseId is null)
                     tails[file] = tail = new Tail { MetaRead = true, ForkToolUseId = forkCall, ForkPrologue = true };
             }
             ReadAppended(file, tail);

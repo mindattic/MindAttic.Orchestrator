@@ -308,8 +308,12 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
     private static void ReadMeta(string path, FileState state)
     {
         if (!File.Exists(Path.ChangeExtension(path, ".meta.json"))) return;
+        // One caught mid-write (or held) is read again next time: taken for "not a fork" for good, its copied prologue would
+        // count a second time.
+        if (state.ForkToolUseId is not null) { state.MetaRead = true; return; }
+        if (!TryForkToolUseId(path, out var read)) return;
         state.MetaRead = true;
-        if (state.ForkToolUseId is not null || ForkToolUseId(path) is not { } forkCall) return;
+        if (read is not { } forkCall) return;
         state.ForkToolUseId = forkCall;
         state.ForkPrologue = true;
         state.Offset = 0;
@@ -493,16 +497,22 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
 
     /// <summary>The Agent call a fork answers, from its <c>agent-&lt;id&gt;.meta.json</c> (<c>isFork</c>, <c>toolUseId</c>); null for
     /// any other transcript, or one whose meta can't be read.</summary>
-    internal static string? ForkToolUseId(string transcriptPath)
+    internal static string? ForkToolUseId(string transcriptPath) => TryForkToolUseId(transcriptPath, out var id) ? id : null;
+
+    /// <summary>Like <see cref="ForkToolUseId"/>, but false when the meta couldn't be read (missing, held, or caught half
+    /// written), so a caller that reads it once can try again rather than take it for "not a fork".</summary>
+    internal static bool TryForkToolUseId(string transcriptPath, out string? forkCall)
     {
+        forkCall = null;
         try
         {
             using var doc = JsonDocument.Parse(File.ReadAllBytes(Path.ChangeExtension(transcriptPath, ".meta.json")));
             var root = doc.RootElement;
-            return root.ValueKind == JsonValueKind.Object && root.TryGetProperty("isFork", out var fork) && fork.ValueKind == JsonValueKind.True &&
+            forkCall = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("isFork", out var fork) && fork.ValueKind == JsonValueKind.True &&
                 Str(root, "toolUseId") is { Length: > 0 } id ? id : null;
+            return true;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return null; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return false; }
     }
 
     /// <summary>Whether a fork's line is its own first prompt: the user line answering <paramref name="toolUseId"/> (or, not

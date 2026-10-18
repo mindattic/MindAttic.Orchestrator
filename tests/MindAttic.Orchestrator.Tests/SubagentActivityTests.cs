@@ -146,6 +146,8 @@ public sealed class SubagentActivityTests
             var reader = new SubagentActivityReader(projectsDir);
             var cycler = new ContextCycler(sessionDir);
             Assert.That(reader.Poll(cycler, Now).Single().Usage.Output, Is.EqualTo(510), "no meta yet");
+            File.WriteAllText(Path.Combine(parentFolder, "agent-f1.meta.json"), """{"agentType":"fork","isF""");
+            Assert.That(reader.Poll(cycler, Now).Single().Usage.Output, Is.EqualTo(510), "caught half written: read again next poll");
 
             File.WriteAllText(Path.Combine(parentFolder, "agent-f1.meta.json"), """{"agentType":"fork","isFork":true,"toolUseId":"toolu_f"}""");
             var s = reader.Poll(cycler, Now).Single();
