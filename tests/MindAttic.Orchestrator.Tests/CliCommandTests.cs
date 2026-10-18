@@ -109,6 +109,37 @@ public sealed class CliCommandTests
     }
 
     [Test]
+    public void Block_on_the_database_refuses_a_missing_id_itself_or_a_cycle_before_changing_anything()
+    {
+        var workspace = Path.Combine(dir, "workspace");
+        var repoDir = Path.Combine(workspace, "A");
+        Directory.CreateDirectory(Path.Combine(repoDir, ".git"));
+        Directory.CreateDirectory(Path.Combine(repoDir, "docs"));
+        File.WriteAllText(Path.Combine(repoDir, "docs", "USER_STORIES.md"),
+            "---\ncode: A\n---\n\n# A\n\n## Tickets\n\n| ID | Date | Type | Status | Summary | Ref |\n|---|---|---|---|---|---|\n" +
+            "| A-T1 | 2026-10-01 | fix | open | one | — |\n| A-T2 | 2026-10-01 | fix | open | two | — |\n| A-T3 | 2026-10-01 | fix | open | three | — |\n");
+        Store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = workspace });
+        var path = MindAttic.Workflow.Data.WorkflowDb.DefaultPath(workspace);
+        try
+        {
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+            {
+                db.Import([new MindAttic.Workflow.Repo("A", repoDir)]);
+                db.AddLink("A-T1", "A-T2", "requires");
+                db.AddLink("A-T3", "A-T1", "requires");
+            }
+            foreach (var (by, said) in new[] { ("A-T99", "no ticket A-T99"), ("A-T1", "can't require itself"), ("A-T3", "would be a cycle") })
+            {
+                Assert.That(Run("block", "A-T1", "--clear", "--by", by), Is.EqualTo(1), by);
+                Assert.That(output.ToString(), Does.Contain(said));
+            }
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+                Assert.That(db.Requires("A-T1"), Is.EqualTo(new[] { "A-T2" }), "nothing changed: the --clear wasn't half-done");
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
+    }
+
+    [Test]
     public void Settings_rejects_an_unknown_provider_and_saves_nothing()
     {
         Assert.That(Run("settings", "--provider", "Clippy"), Is.EqualTo(1));

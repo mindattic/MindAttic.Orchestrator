@@ -29,6 +29,16 @@ internal sealed class BlockCommand : Command<BlockCommand.Settings>
         using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(OrchestratorOptions.Load(store).WorkspaceRoot))
             if (db is not null)
             {
+                // Checked before anything changes: a link the database refuses (to itself, or a cycle) used to throw half-way,
+                // a clear already done, and an id that doesn't exist was confirmed though nothing ever waits on it.
+                foreach (var prerequisite in by)
+                {
+                    var why = db.Ticket(prerequisite) is null ? $"there's no ticket {prerequisite}"
+                        : prerequisite.Equals(id, StringComparison.OrdinalIgnoreCase) ? $"{id} can't require itself"
+                        : db.Requires(prerequisite, transitive: true).Contains(id, StringComparer.OrdinalIgnoreCase) ? $"{prerequisite} already (indirectly) requires {id}; that would be a cycle"
+                        : null;
+                    if (why is not null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(why)}. Nothing changed.[/]"); return 1; }
+                }
                 if (settings.Clear)
                     foreach (var to in db.Requires(id)) db.RemoveLink(id, to, "requires");
                 foreach (var prerequisite in by) db.AddLink(id, prerequisite, "requires", "orchestrator block");
