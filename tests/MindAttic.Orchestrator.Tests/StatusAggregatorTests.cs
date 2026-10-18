@@ -187,6 +187,37 @@ public sealed class StatusAggregatorTests
     }
 
     [Test]
+    public void A_shown_snapshot_takes_approvals_and_priorities_from_the_database_as_they_are_now()
+    {
+        // M.ORCH-T396: approve then dispatch read the holder's snapshot from before the approval, up to a minute old.
+        var db = MindAttic.Workflow.Data.WorkflowDb.DefaultPath(ws);
+        using (var w = MindAttic.Workflow.Data.WorkflowDb.Open(db))
+            w.Import([new MindAttic.Workflow.Repo("A", Path.Combine(ws, "A")), new MindAttic.Workflow.Repo("B", Path.Combine(ws, "B"))]);
+        try
+        {
+            StatusAggregator With(MindAttic.Orchestrator.Scheduling.DispatchLease lease) =>
+                new(new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null }, store,
+                    new RateLimitStatusWriter(Path.Combine(dir, "rl-status.json")), lease)
+                { ScanHosts = () => hosts, OtherProviders = new ProviderLogReader(Path.Combine(dir, "codex"), Path.Combine(dir, "gemini")) };
+            using var daemonLease = new MindAttic.Orchestrator.Scheduling.DispatchLease(Path.Combine(dir, "store"));
+            using var windowLease = new MindAttic.Orchestrator.Scheduling.DispatchLease(Path.Combine(dir, "store"));
+            Assert.That(With(daemonLease).Refresh().Approved, Is.Empty);
+
+            using (var w = MindAttic.Workflow.Data.WorkflowDb.Open(db))
+            {
+                w.Approve("A-T3");
+                w.SetPriority("A-T3", 3);
+            }
+            var window = With(windowLease);
+            var shown = window.Refresh();
+
+            Assert.That(window.LastWasShared, Is.True);
+            Assert.That((shown.Approved.Contains("a-t3"), shown.Priorities.GetValueOrDefault("A-T3")), Is.EqualTo((true, 3L)));
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
+    }
+
+    [Test]
     public void A_published_snapshot_reads_back_with_the_same_numbers_and_ages_out()
     {
         store.SaveSettings(new OrchestratorSettings { WorktreeRoot = worktrees, BlockBudget = 100_000 });

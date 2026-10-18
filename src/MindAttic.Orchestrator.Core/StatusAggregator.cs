@@ -116,11 +116,43 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             Published.Read(DateTime.UtcNow) is { } shared && !ResetSince(shared, DateTime.UtcNow))
         {
             LastWasShared = true;
-            return shared;
+            return WithLiveQueue(shared);
         }
         var snapshot = Build(nowUtc ?? DateTime.UtcNow);
         if (nowUtc is null && statusLease is { IsHeld: true }) Published.Write(snapshot);
         return snapshot;
+    }
+
+    // The Workflow database's queue as last read, by its write time (M.ORCH-T396).
+    private (string Path, DateTime WriteUtc, IReadOnlySet<string> Approved, IReadOnlyDictionary<string, long> Priorities)? liveQueue;
+
+    /// <summary>
+    /// <paramref name="shared"/> with approvals and priorities as the Workflow database's queue holds them now (M.ORCH-T396): the
+    /// holder's snapshot can be up to <see cref="SnapshotFile.MaxAge"/> old, and a ticket just approved (orchestrator approve, then
+    /// dispatch) or bumped would read as it was, where settings.json was read live before. Reread only when the database changes.
+    /// </summary>
+    internal Snapshot WithLiveQueue(Snapshot shared)
+    {
+        var path = MindAttic.Workflow.Data.WorkflowDb.DefaultPath(workspace.Root);
+        try
+        {
+            if (!File.Exists(path)) return shared;
+            var written = File.GetLastWriteTimeUtc(path);
+            if (liveQueue is not { } last || last.Path != path || last.WriteUtc != written)
+            {
+                using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(workspace.Root);
+                if (db is null) return shared;
+                var queue = db.QueueStates();
+                liveQueue = (path, written,
+                    queue.Where(q => q.Value.Approval == MindAttic.Workflow.Data.WorkflowDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
+                    queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase));
+            }
+            return shared with { Approved = liveQueue.Value.Approved, Priorities = liveQueue.Value.Priorities };
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            return shared; // the holder's, as read then: tried again next refresh
+        }
     }
 
     private Snapshot Build(DateTime now)
