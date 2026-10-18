@@ -57,6 +57,10 @@ public readonly record struct WeeklyReset(DayOfWeek Day, TimeOnly Time)
     {
         // A reset time that falls in a spring-forward gap doesn't exist; use the first moment after it.
         while (zone.IsInvalidTime(local)) local = local.AddMinutes(30);
+        // One in the fall-back hour happens twice; the reset is the first. ConvertTimeToUtc takes the second, which put the
+        // week's start up to an hour after now during that hour, so the week counted nothing (M.ORCH-T430).
+        if (zone.IsAmbiguousTime(local))
+            return DateTime.SpecifyKind(local - zone.GetAmbiguousTimeOffsets(local).Max(), DateTimeKind.Utc);
         return TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(local, DateTimeKind.Unspecified), zone);
     }
 }

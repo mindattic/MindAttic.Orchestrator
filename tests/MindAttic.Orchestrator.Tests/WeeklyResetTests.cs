@@ -78,6 +78,18 @@ public sealed class WeeklyResetTests
     }
 
     [Test]
+    public void A_reset_in_the_repeated_fall_back_hour_is_its_first_pass()
+    {
+        // 2026-11-01 01:30 happens at 06:30Z (CDT) and again at 07:30Z (CST): at 06:45Z the week started at 06:30Z (M.ORCH-T430).
+        var reset = new WeeklyReset(DayOfWeek.Sunday, new TimeOnly(1, 30));
+        var now = new DateTime(2026, 11, 1, 6, 45, 0, DateTimeKind.Utc);
+        var (start, _) = reset.Window(now, Central);
+
+        Assert.That(start, Is.EqualTo(new DateTime(2026, 11, 1, 6, 30, 0, DateTimeKind.Utc)));
+        Assert.That(start, Is.LessThanOrEqualTo(now));
+    }
+
+    [Test]
     public void Weekly_usage_restarts_at_the_reset_instead_of_rolling()
     {
         var now = new DateTime(2026, 10, 14, 17, 0, 0, DateTimeKind.Utc); // Wed noon CDT
