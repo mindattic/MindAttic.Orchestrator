@@ -303,4 +303,4 @@ _Nothing recorded yet._
 | M.ORCH-T280 | 2026-10-17 | fix | closed | A CLI whose first prompt is /autopilot never recorded its process id (only a let-through Stop did, and keep-going pushes every one back), so orchestrator next couldn't find its own session | f9d05e5 |
 | M.ORCH-T281 | 2026-10-17 | fix | closed | orchestrator next said no open fixes or approved tickets were left when they were only held back (blocked by another open ticket, or estimated past what's left before the reset) | 3403045 |
 | M.ORCH-T282 | 2026-10-17 | fix | closed | A ticket's worktree folder deleted by hand blocked it for good: git still had it registered with its branch checked out, so every worktree add failed | ef62377 |
-| M.ORCH-T283 | 2026-10-17 | fix | open | ClaudeAccountTests raw string literal doesn't compile (CS9007) | — |
+| M.ORCH-T283 | 2026-10-17 | fix | closed | ClaudeAccountTests raw string literal doesn't compile (CS9007) | eba640d |
