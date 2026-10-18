@@ -570,6 +570,41 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void A_turn_that_ends_held_by_a_window_is_recorded_for_the_daemon_to_wake_and_a_new_prompt_clears_it()
+    {
+        JsonElement? Held(string sid)
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(Marks, sid + ".state.json")));
+            return doc.RootElement.TryGetProperty("limit_stop", out var l) ? l.Clone() : null;
+        }
+        object Ends(string sid, string said) => new { hook_event_name = "Stop", session_id = sid, cwd = ws, last_assistant_message = said };
+        var reset = DateTime.UtcNow.AddHours(2);
+        var week = DateTime.UtcNow.AddDays(2);
+
+        Status(new { stop = true, stop_window = "5-hour", stop_until = reset.ToString("yyyy-MM-ddTHH:mm:ssZ") });
+        Gate(Ends("h1", "Stopped where the refusals began."), AgentGate.ContextScriptName);
+        Assert.That(Held("h1")!.Value.GetProperty("until").GetDouble(), Is.EqualTo(Epoch(reset)).Within(1), "at the stop: held until its reset");
+        Assert.That(Held("h1")!.Value.GetProperty("window").GetString(), Is.EqualTo("5-hour"));
+
+        Status(new { stop = true, stop_window = "weekly", stop_until = week.ToString("yyyy-MM-ddTHH:mm:ssZ") });
+        Gate(Ends("h2", "Stopped."), AgentGate.ContextScriptName);
+        Assert.That(Held("h2")!.Value.GetProperty("window").GetString(), Is.EqualTo("weekly"), "a weekly stop is held until the week resets");
+
+        Status(new { wind_down_note = "Past 90%.", window_reset = reset.ToString("yyyy-MM-ddTHH:mm:ssZ") });
+        Gate(Ends("h3", "Handoff saved: continue after 3:30 PM with the docket review."), AgentGate.ContextScriptName);
+        Assert.That(Held("h3")!.Value.GetProperty("until").GetDouble(), Is.EqualTo(Epoch(reset)).Within(1), "past the wind-down line, leaving work for the reset");
+        Gate(Ends("h4", "All done: the tests pass and it's pushed."), AgentGate.ContextScriptName);
+        Assert.That(Held("h4"), Is.Null, "past the wind-down line with nothing left for the reset: not waiting on it");
+
+        Status(new { });
+        Gate(Ends("h5", "Stopping until the limit resets."), AgentGate.ContextScriptName);
+        Assert.That(Held("h5"), Is.Null, "nothing holds the window: not waiting on it");
+
+        Gate(new { hook_event_name = "UserPromptSubmit", session_id = "h3", prompt = "carry on", cwd = ws }, AgentGate.ContextScriptName);
+        Assert.That(Held("h3"), Is.Null, "a new prompt (the daemon's resume, or yours) is the CLI going on");
+    }
+
+    [Test]
     public void A_new_subagent_counts_the_daemons_live_subagents_not_marks_whose_stop_never_came()
     {
         var sub = Path.Combine(Marks, "subagents");

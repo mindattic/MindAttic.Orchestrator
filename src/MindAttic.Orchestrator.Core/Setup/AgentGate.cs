@@ -1083,6 +1083,38 @@ public static class AgentGate
             except Exception:
                 pass
 
+        # A turn ending past the wind-down line that says it leaves work for the reset ("continue after 3:30 PM", "once the
+        # limit resets"): it's waiting on the window, not done (M.ORCH-T256).
+        LEFT_FOR_RESET = re.compile(r"\b(?:resets?|limit|wind[- ]?down|5-hour|weekly|continue\s+(?:after|once|when)|after\s+\d{1,2}(?::\d{2})?\s*[ap]\.?m\b)", re.I)
+
+        def iso_epoch(text):
+            try:
+                return datetime.fromisoformat(str(text).replace("Z", "+00:00")).timestamp()
+            except Exception:
+                return None
+
+        def limit_held(limits, data, now):
+            # {"until", "window", "at"} when this turn ended held by a window: at its stop (the orchestrator's, fresh or latched,
+            # or Claude's own line), or past the wind-down line saying it leaves work for after the reset; None otherwise. The
+            # daemon types a resume into the CLI (or asks you to) once that window has reset (M.ORCH-T256: a CLI that stopped
+            # at 94% sat idle past the reset until its author noticed).
+            until = window = None
+            if limits.get("stop"):
+                until, window = iso_epoch(limits.get("stop_until")), limits.get("stop_window")
+            if until is None:
+                l = latched("orchestrator")
+                if l:
+                    until, window = float(l["until"]), window or l.get("window")
+            if until is None:
+                own = claude_stop()
+                if own:
+                    until, window = own[1], own[2]
+            if until is None and limits.get("wind_down_note") and LEFT_FOR_RESET.search(last_said(data)):
+                until, window = iso_epoch(limits.get("window_reset")), "5-hour"
+            if until is None or until <= time.time():
+                return None
+            return {"until": until, "window": window or "5-hour", "at": now}
+
         # Typed at the window's stop, these still go through: they're how you steer the orchestrator itself.
         # /goal goes through at the stop only to clear one: a new goal there would run turn after turn its refused calls can't finish.
         CONTROL = re.compile(r"/(autopilot|crossrepo|throttle|unthrottle)\b|/goal\s*(?:(?:clear|off|stop|reset|none|cancel)\s*)?$", re.I)
@@ -1269,6 +1301,13 @@ public static class AgentGate
             for k in ("nudged", "worked", "closed"):
                 state.pop(k, None)
             state.update(state="idle", at=now, pid=cli_pid(), cwd=data.get("cwd"), auth=auth)
+            # Held by a window (its stop, or the wind-down with work left for the reset): the daemon wakes it once that window
+            # resets. Any other end of a turn isn't waiting on anything.
+            held = limit_held(limits, data, now) if paced and (stopped or limits.get("wind_down_note")) else None
+            if held:
+                state["limit_stop"] = held
+            else:
+                state.pop("limit_stop", None)
             if stopped and state.get("goal"):
                 # /goal's own Stop hook sends the turn back while its condition isn't met, and at the stop every tool call is
                 # refused, so it never is: each round would spend a turn past the line. continue:false outranks its block.
@@ -1280,7 +1319,8 @@ public static class AgentGate
                     "resets; the goal stays set (/goal clear drops it)."}))
                 sys.exit(0)
         elif event == "UserPromptSubmit":
-            for k in ("nudged", "worked", "closed"):
+            # A new prompt (yours, or the daemon's resume after the reset) is the CLI going on: it's no longer waiting on a window.
+            for k in ("nudged", "worked", "closed", "limit_stop"):
                 state.pop(k, None)
             if state.get("goal") and goal_finished(state.get("transcript"), state["goal"]):
                 state.pop("goal", None)

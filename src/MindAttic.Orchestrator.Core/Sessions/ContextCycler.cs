@@ -12,7 +12,14 @@ public sealed record SessionContext(string SessionId, string? Cwd, double Percen
 
     /// <summary>The condition of a <c>/goal</c> running in the session (the context gate records it, <c>/goal clear</c> ends it); null when none.</summary>
     public string? Goal { get; init; }
+
+    /// <summary>The window this session's last turn stopped for (the context gate's <c>limit_stop</c>: at its stop, or past the
+    /// wind-down line with work left for the reset), and when that window resets; null when it isn't waiting on one.</summary>
+    public LimitStop? LimitStop { get; init; }
 }
+
+/// <summary>A turn that ended held by a window: which one (<c>5-hour</c> or <c>weekly</c>), when it resets, and when it stopped.</summary>
+public sealed record LimitStop(string Window, DateTime UntilUtc, DateTime StoppedUtc);
 
 /// <summary>
 /// Reads what the context gate records about each session (its context fill, turn state, CLI process, /goal) and the
@@ -67,6 +74,7 @@ public sealed class ContextCycler(string? directory = null)
             bool idle = false;
             int? pid = null;
             string? goal = null;
+            LimitStop? limitStop = null;
             var turn = DateTime.MinValue;
             if (File.Exists(state))
             {
@@ -78,8 +86,16 @@ public sealed class ContextCycler(string? directory = null)
                 if (t.RootElement.TryGetProperty("pid", out var pp) && pp.ValueKind == JsonValueKind.Number) pid = pp.GetInt32();
                 if (t.RootElement.TryGetProperty("goal", out var g) && g.ValueKind == JsonValueKind.String) goal = g.GetString();
                 if (cwd is null && t.RootElement.TryGetProperty("cwd", out var tc) && tc.ValueKind == JsonValueKind.String) cwd = tc.GetString();
+                if (t.RootElement.TryGetProperty("limit_stop", out var ls) && ls.ValueKind == JsonValueKind.Object &&
+                    ls.TryGetProperty("until", out var u) && u.ValueKind == JsonValueKind.Number)
+                {
+                    var stopped = ls.TryGetProperty("at", out var sa) && sa.ValueKind == JsonValueKind.String &&
+                        DateTime.TryParse(sa.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var s) ? s : turn;
+                    limitStop = new LimitStop(ls.TryGetProperty("window", out var lw) && lw.ValueKind == JsonValueKind.String ? lw.GetString()! : "5-hour",
+                        DateTime.UnixEpoch.AddSeconds(u.GetDouble()), stopped);
+                }
             }
-            return new SessionContext(sessionId, cwd, percent, idle, turn) { Pid = pid, Goal = goal };
+            return new SessionContext(sessionId, cwd, percent, idle, turn) { Pid = pid, Goal = goal, LimitStop = limitStop };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
         {

@@ -32,6 +32,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         Say(LogEventLevel.Information, $"daemon started (pid {Environment.ProcessId}, every {interval.TotalSeconds:0}s, workspace {options.WorkspaceRoot})");
         var cycler = new ContextCycler();
         var autopilot = new Autopilot(store, cycler, lease) { WaitingPath = Autopilot.DefaultWaitingPath };
+        var waker = new LimitWaker(cycler, store);
         string? lastPaused = null;
         cycler.Prune(DateTime.UtcNow);
         var prunedUtc = DateTime.UtcNow;
@@ -87,6 +88,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     Say(LogEventLevel.Information, line);
                     if (line.StartsWith("keep-going: let the ", StringComparison.Ordinal)) Alert("Needs you", line["keep-going: ".Length..]);
                 }
+                // A CLI that stopped for a window is told to carry on (or you're told it's waiting) once that window resets (M.ORCH-T256).
+                ReportWakes(waker.Tick(snapshot.Pace, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
 
                 // An agent finished its turn and is waiting on you: the alert worth leaving the desk for.
                 foreach (var repo in snapshot.Repos)
@@ -195,6 +198,16 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             WaitForNextRefresh(interval, cancel);
         }
         Say(LogEventLevel.Information, "daemon stopped");
+    }
+
+    /// <summary>Logs each CLI woken after its window reset; one it couldn't type into raises the Needs-you alert instead.</summary>
+    internal void ReportWakes(IEnumerable<LimitWaker.Wake> wakes)
+    {
+        foreach (var w in wakes)
+        {
+            Say(w.Typed ? LogEventLevel.Information : LogEventLevel.Warning, w.Line);
+            if (!w.Typed) Alert("Needs you", w.Line);
+        }
     }
 
     private readonly UnderTarget underTarget = new();

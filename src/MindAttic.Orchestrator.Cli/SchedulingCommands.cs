@@ -267,6 +267,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("true (default): a CLI that typed /autopilot and ends its turn while its repos have workable tickets is told to carry on; false lets it stop.")]
         public bool? KeepGoing { get; init; }
 
+        [CommandOption("--resume-after-reset <ON>")]
+        [Description("true (default): once the window a CLI stopped for resets, a resume prompt is typed into its Launcher tab; false only alerts you that it's waiting.")]
+        public bool? ResumeAfterReset { get; init; }
+
         [CommandOption("--hand-minutes <N>")]
         [Description("Kept for older setups; it has no effect now: /autopilot hands tickets to the typing CLI's own subagents, each in its own worktree.")]
         public int? HandMinutes { get; init; }
@@ -353,6 +357,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { KeepGoing = keep };
             changed = true;
         }
+        if (settings.ResumeAfterReset is { } resume)
+        {
+            s = s with { ResumeAfterReset = resume };
+            changed = true;
+        }
         if (settings.AutopilotSkip is { } skip)
         {
             s = s with { AutopilotSkip = skip.Equals("none", StringComparison.OrdinalIgnoreCase) ? [] : [.. skip.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)] };
@@ -406,7 +415,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (clis.Count == 0 ? "off in every CLI (type /autopilot in the CLI that should work tickets)"
                 : (s.Autopilot ? "[green]on[/] in " : "[yellow]paused[/] (--autopilot true resumes it) in ") +
                   Markup.Escape(string.Join("; ", clis.Select(c => $"CLI {c.Key} for {string.Join(", ", c.Value)}")))) +
-            (s.KeepGoing ? " · /autopilot CLIs keep going through their workable tickets without asking" : " · /autopilot CLIs may stop between tickets"));
+            (s.KeepGoing ? " · /autopilot CLIs keep going through their workable tickets without asking" : " · /autopilot CLIs may stop between tickets") +
+            (s.ResumeAfterReset ? " · a CLI stopped for a window is told to carry on once it resets" : " · you're alerted when a CLI stopped for a window could carry on after its reset"));
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (Claude's report, else learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (Claude's report, else learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display + " unless Claude reports another" : "as Claude reports, else learned, else rolling 7 days")} · warn at {s.WarnPercent}%");
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +
             (s.ThrottleAgents ? $" · running agents held up to {s.MaxAgentDelaySeconds}s per tool call when the burn won't last" : " · running agents never held") +
