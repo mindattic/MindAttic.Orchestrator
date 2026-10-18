@@ -224,6 +224,31 @@ public sealed class DashboardViewModelTests
     public void Shown_refreshes_every_5s_hidden_every_15s_holding_the_lease_else_60s(bool hidden, bool holdsLease, int seconds) =>
         Assert.That(MainWindow.RefreshInterval(hidden, holdsLease), Is.EqualTo(TimeSpan.FromSeconds(seconds)));
 
+    // ── A change made while a refresh is built ──────────────────────────────
+
+    [Test]
+    public async Task A_snapshot_built_across_a_billing_switch_or_bump_is_built_again_not_applied()
+    {
+        var changes = 0;
+        var builds = 0;
+        // The billing switch lands while the first build is reading the old mode.
+        var mode = await MainViewModel.BuiltAfterChanges(() =>
+        {
+            builds++;
+            var read = changes == 0 ? "team" : "api";
+            if (builds == 1) changes++;
+            return Task.FromResult(read);
+        }, () => changes);
+        Assert.That((mode, builds), Is.EqualTo(("api", 2)));
+
+        builds = 0;
+        Assert.That(await MainViewModel.BuiltAfterChanges(() => Task.FromResult(++builds), () => changes), Is.EqualTo(1), "nothing changed: built once");
+
+        builds = 0;
+        Assert.That(await MainViewModel.BuiltAfterChanges(() => { changes++; return Task.FromResult(++builds); }, () => changes, tries: 3), Is.EqualTo(3),
+            "changes that never stop still give a snapshot, after a few tries");
+    }
+
     // ── A scheduled audit picked up ─────────────────────────────────────────
 
     [Test]

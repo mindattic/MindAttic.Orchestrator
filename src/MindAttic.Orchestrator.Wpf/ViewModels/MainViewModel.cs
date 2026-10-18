@@ -173,7 +173,7 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             var clock = Stopwatch.StartNew();
-            var next = await Task.Run(() => aggregator.Refresh());
+            var next = await BuiltAfterChanges(() => Task.Run(() => aggregator.Refresh()), () => localChanges);
             Apply(next);
             await TickAutopilotAsync(next);
             RefreshInfo = aggregator.LastWasShared
@@ -195,6 +195,27 @@ public sealed partial class MainViewModel : ObservableObject
                 await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Loaded);
             refreshing = false;
             IsLoading = false;
+        }
+    }
+
+    /// <summary>Counts the changes made here that a snapshot reads back (a billing switch, a priority bump).</summary>
+    private int localChanges;
+
+    /// <summary>A change made here is in every snapshot built from now on.</summary>
+    private void NoteLocalChange() => localChanges++;
+
+    /// <summary>
+    /// A snapshot built after the last change made here: one whose build began before a billing switch or a bump landed read
+    /// the old mode or priority, and applied after it snapped the toggle and the header back to the old billing, or the row
+    /// back to its old place, until the next refresh (M.ORCH-T462). Built again then, a few times at most.
+    /// </summary>
+    internal static async Task<T> BuiltAfterChanges<T>(Func<Task<T>> build, Func<int> changes, int tries = 3)
+    {
+        while (true)
+        {
+            var before = changes();
+            var built = await build();
+            if (changes() == before || --tries <= 0) return built;
         }
     }
 

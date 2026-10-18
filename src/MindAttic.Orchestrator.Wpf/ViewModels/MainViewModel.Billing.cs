@@ -100,6 +100,8 @@ public sealed partial class MainViewModel
         }
         finally
         {
+            // A refresh built while it was switching read the old mode: it's built again, not applied (M.ORCH-T462).
+            NoteLocalChange();
             switchingBilling = false;
             if (billing is not null) billingChoice = billing.Mode == BillingModes.Api ? ApiChoice : TeamChoice;
             Raise(nameof(BillingChoice)); Raise(nameof(BillingHeadline)); Raise(nameof(BillingBrush)); Raise(nameof(BillingDetail)); Raise(nameof(BillingClis));

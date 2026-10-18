@@ -359,6 +359,7 @@ public sealed partial class MainViewModel
         using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(aggregator.Options.WorkspaceRoot);
         var inDb = db?.Ticket(ticketId) is not null;
         var next = MindAttic.Orchestrator.Tickets.TicketQueue.Bump(store, db, ticketId, by);
+        NoteLocalChange();
         // Shown at once, not at the next refresh: the plan is made again over the snapshot with the new priority.
         if (!inDb) { if (snapshot is not null) ApplyPlan(snapshot); }
         else if (snapshot is not null)
