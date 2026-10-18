@@ -87,7 +87,7 @@ public static class ProcessReaper
             if (!byPid.TryGetValue(pid, out var parent)) return (false, true, chain);
             // Windows reuses ids: a "parent" younger than its child is another process that took the dead one's id.
             if (parent.StartUtc != Unknown && child.StartUtc != Unknown && parent.StartUtc > child.StartUtc) return (false, true, chain);
-            if (ConsoleTyper.IsClaude(Bare(parent.Name))) return (true, false, chain);
+            if (Providers.IsClaudeProcess(Bare(parent.Name))) return (true, false, chain);
             chain.Add(parent);
             child = parent;
         }

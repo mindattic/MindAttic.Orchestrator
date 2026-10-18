@@ -32,7 +32,6 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         Say(LogEventLevel.Information, $"daemon started (pid {Environment.ProcessId}, every {interval.TotalSeconds:0}s, workspace {options.WorkspaceRoot})");
         var cycler = new ContextCycler();
         var autopilot = new Autopilot(store, cycler, lease) { WaitingPath = Autopilot.DefaultWaitingPath };
-        cycler.IsAgent = autopilot.IsAgent;
         string? lastPaused = null;
         cycler.Prune(DateTime.UtcNow);
         string? lastHold = null;

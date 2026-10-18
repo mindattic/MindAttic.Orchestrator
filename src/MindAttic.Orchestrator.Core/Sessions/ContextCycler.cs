@@ -12,9 +12,6 @@ public sealed record SessionContext(string SessionId, string? Cwd, double Percen
 
     /// <summary>The condition of a <c>/goal</c> running in the session (the context gate records it, <c>/goal clear</c> ends it); null when none.</summary>
     public string? Goal { get; init; }
-
-    /// <summary>The session's transcript (recorded by the context gate), to tell when a <c>/goal</c> has finished on its own.</summary>
-    public string? Transcript { get; init; }
 }
 
 /// <summary>
@@ -25,60 +22,6 @@ public sealed class ContextCycler(string? directory = null)
 {
     public string Directory { get; } = directory ?? Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "session-context");
-
-    /// <summary>How long a turn has to have been over before cycling, so a quick follow-up isn't typed over.</summary>
-    public static readonly TimeSpan Settle = TimeSpan.FromSeconds(10);
-
-    /// <summary>Sessions to leave alone: autopilot's headless agents.</summary>
-    public Func<int, bool> IsAgent { get; set; } = _ => false;
-
-    // Nothing here types into a session any more: typing /quicksave, /clear and /quickload into a live chat at 80%
-    // cleared a session the user was working in (2026-10-16). Context is left to Claude's own compaction.
-
-    /// <summary>
-    /// Whether a <c>/goal</c> finished on its own: once its condition holds, the session's last entry is the stop summary
-    /// naming it (an unmet goal keeps the turn going, so more follows). The context gate can't see this at the Stop
-    /// itself, because the summary is written after its hook runs (M.ORCH-T109).
-    /// </summary>
-    internal static bool GoalFinished(string transcript, string goal)
-    {
-        try
-        {
-            using var f = new FileStream(transcript, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            f.Seek(Math.Max(0, f.Length - 64 * 1024), SeekOrigin.Begin);
-            foreach (var line in new StreamReader(f).ReadToEnd().Split('\n').Reverse())
-            {
-                JsonDocument doc;
-                try { doc = JsonDocument.Parse(line); } catch (JsonException) { continue; }
-                using (doc)
-                {
-                    var r = doc.RootElement;
-                    if (r.ValueKind != JsonValueKind.Object || !r.TryGetProperty("type", out var type) || type.GetString() is not ("assistant" or "user" or "system")) continue;
-                    return r.TryGetProperty("subtype", out var sub) && sub.GetString() == "stop_hook_summary" &&
-                        r.TryGetProperty("hookInfos", out var hooks) && hooks.ValueKind == JsonValueKind.Array &&
-                        hooks.EnumerateArray().Any(h => h.TryGetProperty("promptText", out var p) && p.GetString() == goal);
-                }
-            }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { }
-        return false;
-    }
-
-    /// <summary>Past the cycle point with its turn over long enough that nothing is still running.</summary>
-    public static bool Due(SessionContext s, int percent, DateTime nowUtc) =>
-        s.Percent >= percent && s.Idle && nowUtc - s.TurnUtc >= Settle;
-
-    /// <summary>The one Claude Launcher tab rooted where the session runs; null (and why) when there's none or it's ambiguous.</summary>
-    internal static HostSession? HostFor(SessionContext s, IEnumerable<HostSession> hosts, out string why)
-    {
-        why = "it isn't in a Launcher tab the orchestrator can type into";
-        if (s.Cwd is null) return null;
-        var target = Path.GetFullPath(s.Cwd).TrimEnd('\\', '/');
-        var matches = hosts.Where(h => h.Provider == Providers.Claude && h.WorkingDirectory is { } d &&
-            string.Equals(Path.GetFullPath(d).TrimEnd('\\', '/'), target, StringComparison.OrdinalIgnoreCase)).ToList();
-        if (matches.Count > 1) why = "more than one Claude tab is open there, so it can't tell which is which";
-        return matches.Count == 1 ? matches[0] : null;
-    }
 
     public IEnumerable<SessionContext> Load()
     {
@@ -123,7 +66,7 @@ public sealed class ContextCycler(string? directory = null)
             }
             bool idle = false;
             int? pid = null;
-            string? goal = null, transcript = null;
+            string? goal = null;
             var turn = DateTime.MinValue;
             if (File.Exists(state))
             {
@@ -134,10 +77,9 @@ public sealed class ContextCycler(string? directory = null)
                     turn = when;
                 if (t.RootElement.TryGetProperty("pid", out var pp) && pp.ValueKind == JsonValueKind.Number) pid = pp.GetInt32();
                 if (t.RootElement.TryGetProperty("goal", out var g) && g.ValueKind == JsonValueKind.String) goal = g.GetString();
-                if (t.RootElement.TryGetProperty("transcript", out var tp) && tp.ValueKind == JsonValueKind.String) transcript = tp.GetString();
                 if (cwd is null && t.RootElement.TryGetProperty("cwd", out var tc) && tc.ValueKind == JsonValueKind.String) cwd = tc.GetString();
             }
-            return new SessionContext(sessionId, cwd, percent, idle, turn) { Pid = pid, Goal = goal, Transcript = transcript };
+            return new SessionContext(sessionId, cwd, percent, idle, turn) { Pid = pid, Goal = goal };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
         {
@@ -151,13 +93,6 @@ public sealed class ContextCycler(string? directory = null)
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
-    }
-
-    private void Forget(string sessionId)
-    {
-        foreach (var suffix in new[] { ".json", ".state.json" })
-            try { File.Delete(Path.Combine(Directory, sessionId + suffix)); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
     /// <summary>Where the context gate marks each running subagent (SubagentStart writes its CLI's process id, SubagentStop removes it).</summary>
@@ -229,11 +164,6 @@ public sealed class ContextCycler(string? directory = null)
         try { return File.ReadAllText(path); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return ""; }
     }
-
-    /// <summary>The CLIs running unthrottled right now (by process id).</summary>
-    public IReadOnlyList<int> Unthrottled() => !System.IO.Directory.Exists(Directory) ? []
-        : [.. System.IO.Directory.EnumerateFiles(Directory, "unthrottled-*")
-            .Select(f => int.TryParse(Path.GetFileName(f)["unthrottled-".Length..], out var pid) ? pid : 0).Where(IsClaude)];
 
     /// <summary>Whether the CLI <paramref name="pid"/> has an /unthrottle mark, the same check the pace gate makes before skipping its holds.</summary>
     public bool IsUnthrottled(int pid) => File.Exists(Path.Combine(Directory, "unthrottled-" + pid));
@@ -323,7 +253,7 @@ public sealed class ContextCycler(string? directory = null)
     public static bool IsClaude(int pid)
     {
         if (pid <= 0) return false;
-        try { using var p = System.Diagnostics.Process.GetProcessById(pid); return ConsoleTyper.IsClaude(p.ProcessName); }
+        try { using var p = System.Diagnostics.Process.GetProcessById(pid); return Providers.IsClaudeProcess(p.ProcessName); }
         catch (ArgumentException) { return false; }
         catch (InvalidOperationException) { return false; }
     }

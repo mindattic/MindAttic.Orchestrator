@@ -5,16 +5,11 @@ using MindAttic.Orchestrator.Settings;
 namespace MindAttic.Orchestrator.Scheduling;
 
 /// <summary>
-/// <c>/autopilot</c>, typed in any CLI, works the repos that have an open Claude CLI (or, with
-/// <c>-repo=a,b</c>, those repos whether or not one is open): each repo's next open story (queue order:
-/// priority, then smallest effort first) goes to a headless background Claude in its own git worktree of that
-/// repo, so no tab is opened, nothing is typed into a CLI you may be using, and no checkout is edited under
-/// anyone. Agents run in parallel up to the repo's session limit and, in total, the pace's session cap, so as
-/// much runs at once as the window allows; a new one only starts
-/// while the 5-hour pace can afford it, and the pace gate holds the running ones, so the window is spent
-/// to its target without running into the limit. An agent that exits without closing its ticket gives the
-/// ticket back and says so. <c>/autopilot off</c> starts nothing new. With a <see cref="DispatchLease"/>, only
-/// the process holding it starts agents.
+/// The daemon's side of autopilot. <c>/autopilot</c> runs inside the CLI it's typed into, as that CLI's subagents
+/// (<c>orchestrator next --claim</c>); here the lease holder (<see cref="DispatchLease"/>) reaps headless background
+/// agents started before that (M.ORCH-T164), giving back a ticket one left unclosed, sweeps the worktrees of landed
+/// tickets, and works out why autopilot would wait (switched off, quiet hours, machine health, the pace). The
+/// starting half of <see cref="Tick"/> runs only when <see cref="Order"/> names repos, which nothing in production does.
 /// </summary>
 public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchLease? lease = null)
 {

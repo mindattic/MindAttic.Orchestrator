@@ -55,10 +55,6 @@ public sealed record OrchestratorSettings
     /// the allowance is worked out live from the pace (<see cref="Budget.Pace.SubagentAllowance"/>).</summary>
     public int MaxSubagents { get; init; } = 16;
 
-    /// <summary>No longer used: nothing types /quicksave, /clear or /quickload into a session (it cleared a session the
-    /// user was working in, 2026-10-16). Kept so an existing settings.json still reads.</summary>
-    public bool ContextCycle { get; init; }
-
     /// <summary>Context fill at which a session is wrapped up and cycled; high enough to use most of the
     /// window, low enough that the wrap-up turn fits before Claude Code compacts on its own.</summary>
     public int ContextCyclePercent { get; init; } = 80;

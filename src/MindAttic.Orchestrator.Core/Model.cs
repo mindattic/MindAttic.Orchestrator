@@ -35,6 +35,11 @@ public static class Providers
     public const string Claude = "Claude";
     public const string Codex = "Codex";
     public const string Gemini = "Gemini";
+
+    /// <summary>The Claude CLI's process name: <c>claude</c>, or <c>claude.exe.old.…</c> once its auto-updater has renamed the
+    /// running binary to put a new one in place (the CLI keeps running under the old name until it restarts).</summary>
+    public static bool IsClaudeProcess(string processName) =>
+        processName.Equals("claude", StringComparison.OrdinalIgnoreCase) || processName.StartsWith("claude.exe.", StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>A limit a provider reports about itself (Codex logs its own used percent per window).</summary>

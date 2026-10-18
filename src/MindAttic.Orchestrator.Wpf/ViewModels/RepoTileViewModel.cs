@@ -17,11 +17,8 @@ public sealed class RepoTileViewModel(string name) : ObservableObject
     public string Path => status?.Path ?? "";
     public bool HasFolder => Path.Length > 0;
     public RepoState State => status?.State ?? RepoState.Dormant;
-    public bool IsWorking => State == RepoState.Working;
-    public bool IsWaiting => State == RepoState.Waiting;
     public int OpenTicketCount => status?.OpenTickets.Count ?? 0;
     public long TokensToday => status?.UsageToday.Total ?? 0;
-    public bool IsPseudo => Name.StartsWith('(');
 
     public Brush Accent => Palette.For(State, OpenTicketCount > 0);
 
@@ -76,7 +73,6 @@ public sealed class RepoTileViewModel(string name) : ObservableObject
     public string UsageCacheWrite => Formatting.Tokens(status?.UsageToday.CacheCreation ?? 0);
     public string UsageCacheRead => Formatting.Tokens(status?.UsageToday.CacheRead ?? 0);
     public string UsageOutput => Formatting.Tokens(status?.UsageToday.Output ?? 0);
-    public string UsageTotal => Formatting.Tokens(TokensToday);
     public bool HasUsage => TokensToday > 0;
 
     public bool Matches(string search) =>

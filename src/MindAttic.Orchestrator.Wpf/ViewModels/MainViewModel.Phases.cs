@@ -233,8 +233,7 @@ public sealed partial class MainViewModel
         $"{SubagentCount} subagent{(SubagentCount == 1 ? "" : "s")} running";
     public ICommand ShowTicketCommand { get; private set; } = null!;
 
-    /// <summary>The ticket's full row and history: its sessions and the commits that mention it, from
-    /// <c>docs/USER_STORIES.md</c> (the Workflow ticket database, once M.ORCH-T83 lands).</summary>
+    /// <summary>The ticket's row (when it's open) and history: its sessions and the commits that mention it.</summary>
     public async void ShowTicketDetails(AgentRowViewModel a)
     {
         try
@@ -243,15 +242,7 @@ public sealed partial class MainViewModel
             var repo = snapshot?.Repos.FirstOrDefault(r => r.Name == a.Repo);
             var repoPath = repo?.Path ?? "";
             var ticket = repo?.OpenTickets.FirstOrDefault(t => t.Id == ticketId);
-            var text = await Task.Run(() => MindAttic.Orchestrator.Tickets.TicketReplay.PlainReport(ticketId, repoPath, aggregator.Options.ClaudeProjectsDir, ticket));
-            var box = new System.Windows.Controls.TextBox
-            {
-                Text = text, IsReadOnly = true, FontFamily = new FontFamily("Consolas"), FontSize = 12,
-                VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-            };
-            new System.Windows.Window { Title = $"{ticketId} in {a.Repo}", Width = 900, Height = 650, Content = box,
-                Owner = System.Windows.Application.Current.MainWindow }.Show();
+            ShowText($"{ticketId} in {a.Repo}", await Task.Run(() => MindAttic.Orchestrator.Tickets.TicketReplay.PlainReport(ticketId, repoPath, aggregator.Options.ClaudeProjectsDir, ticket)));
         }
         // async void: an escaped exception (a corrupt assignments.json, a locked file) would close the dashboard.
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -420,15 +411,7 @@ public sealed partial class MainViewModel
         try
         {
             var repoPath = snapshot?.Repos.FirstOrDefault(r => r.Name == a.Repo)?.Path ?? a.Directory;
-            var text = await Task.Run(() => MindAttic.Orchestrator.Tickets.TicketReplay.PlainReport(a.TicketId, repoPath, aggregator.Options.ClaudeProjectsDir));
-            var box = new System.Windows.Controls.TextBox
-            {
-                Text = text, IsReadOnly = true, FontFamily = new FontFamily("Consolas"), FontSize = 12,
-                VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-            };
-            new System.Windows.Window { Title = $"{a.TicketId} in {a.Repo}", Width = 900, Height = 650, Content = box,
-                Owner = System.Windows.Application.Current.MainWindow }.Show();
+            ShowText($"{a.TicketId} in {a.Repo}", await Task.Run(() => MindAttic.Orchestrator.Tickets.TicketReplay.PlainReport(a.TicketId, repoPath, aggregator.Options.ClaudeProjectsDir)));
         }
         // async void: an escaped exception (a corrupt assignments.json, a locked file) would close the dashboard.
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -437,6 +420,19 @@ public sealed partial class MainViewModel
             OrchestratorLog.For("Dashboard").Error(ex, "ShowDetails failed");
         }
     }
+
+    /// <summary>A read-only window that shows <paramref name="text"/> in a monospaced, scrollable box.</summary>
+    private static void ShowText(string title, string text) =>
+        new System.Windows.Window
+        {
+            Title = title, Width = 900, Height = 650, Owner = System.Windows.Application.Current.MainWindow,
+            Content = new System.Windows.Controls.TextBox
+            {
+                Text = text, IsReadOnly = true, FontFamily = new FontFamily("Consolas"), FontSize = 12,
+                VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+            },
+        }.Show();
 
     public async void Finish(Assignment a)
     {

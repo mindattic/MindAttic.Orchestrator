@@ -11,7 +11,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly Action saved;
     private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "",
         maxDelay = "", contextPercent = "", exemptCommands = "";
-    private bool autopilot, pacing, throttleAgents, contextCycle;
+    private bool autopilot, pacing, throttleAgents;
 
     public SettingsViewModel(JsonStore store, Action saved)
     {
@@ -32,7 +32,6 @@ public sealed class SettingsViewModel : ObservableObject
     public string PaceTarget { get => paceTarget; set => Set(ref paceTarget, value); }
     public bool ThrottleAgents { get => throttleAgents; set => Set(ref throttleAgents, value); }
     public string MaxDelay { get => maxDelay; set => Set(ref maxDelay, value); }
-    public bool ContextCycle { get => contextCycle; set => Set(ref contextCycle, value); }
     public string ContextPercent { get => contextPercent; set => Set(ref contextPercent, value); }
     /// <summary>The commands exempt from pacing (M.ORCH-T198), comma-separated; blank exempts none.</summary>
     public string ExemptCommands { get => exemptCommands; set => Set(ref exemptCommands, value); }
@@ -55,7 +54,6 @@ public sealed class SettingsViewModel : ObservableObject
         PaceTarget = s.PaceTargetPercent.ToString(CultureInfo.InvariantCulture);
         ThrottleAgents = s.ThrottleAgents;
         MaxDelay = s.MaxAgentDelaySeconds.ToString(CultureInfo.InvariantCulture);
-        ContextCycle = s.ContextCycle;
         // No field shows it (context cycling is off), so an out-of-range hand edit mustn't make every Save fail on it.
         ContextPercent = Math.Clamp(s.ContextCyclePercent, 10, 95).ToString(CultureInfo.InvariantCulture);
         ExemptCommands = string.Join(", ", s.ExemptCommands);
@@ -80,7 +78,7 @@ public sealed class SettingsViewModel : ObservableObject
             {
                 BlockBudget = block, WeeklyBudget = weekly, WeeklyReset = reset?.ToString(), WarnPercent = warn, MaxConcurrentSessions = max,
                 DefaultProvider = Provider, Autopilot = Autopilot, Pacing = Pacing, PaceTargetPercent = target,
-                ThrottleAgents = ThrottleAgents, MaxAgentDelaySeconds = delay, ContextCycle = false,ContextCyclePercent = cycleAt,
+                ThrottleAgents = ThrottleAgents, MaxAgentDelaySeconds = delay, ContextCyclePercent = cycleAt,
                 ExemptCommands = OrchestratorSettings.ParseCommands(ExemptCommands),
             });
         }

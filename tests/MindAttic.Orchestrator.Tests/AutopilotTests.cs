@@ -770,8 +770,8 @@ public sealed class AutopilotTests
     [Test]
     public void A_cli_the_updater_renamed_still_counts_as_claude()
     {
-        Assert.That(ConsoleTyper.IsClaude("claude"), Is.True);
-        Assert.That(ConsoleTyper.IsClaude("claude.exe.old.1791946834302.10372"), Is.True, "found live: the updater renames the running binary");
-        Assert.That(ConsoleTyper.IsClaude("claudia"), Is.False);
+        Assert.That(Providers.IsClaudeProcess("claude"), Is.True);
+        Assert.That(Providers.IsClaudeProcess("claude.exe.old.1791946834302.10372"), Is.True, "found live: the updater renames the running binary");
+        Assert.That(Providers.IsClaudeProcess("claudia"), Is.False);
     }
 }

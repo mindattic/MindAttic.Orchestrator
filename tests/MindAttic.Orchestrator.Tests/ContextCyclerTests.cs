@@ -9,30 +9,6 @@ public sealed class ContextCyclerTests
     private static readonly DateTime Now = new(2026, 10, 15, 2, 0, 0, DateTimeKind.Utc);
 
     [Test]
-    public void A_session_is_cycled_only_past_the_point_and_after_its_turn_has_settled()
-    {
-        SessionContext S(double percent, bool idle, double secondsAgo) => new("s", @"D:\W\A", percent, idle, Now.AddSeconds(-secondsAgo));
-
-        Assert.That(ContextCycler.Due(S(85, idle: true, 30), 80, Now), Is.True);
-        Assert.That(ContextCycler.Due(S(70, idle: true, 30), 80, Now), Is.False, "room left: keep using it");
-        Assert.That(ContextCycler.Due(S(85, idle: false, 30), 80, Now), Is.False, "mid-turn: its subagents may still be running");
-        Assert.That(ContextCycler.Due(S(85, idle: true, 2), 80, Now), Is.False, "just stopped: give a follow-up a moment");
-    }
-
-    [Test]
-    public void It_only_types_into_the_one_claude_tab_rooted_where_the_session_runs()
-    {
-        var s = new SessionContext("s", @"D:\W\A", 85, true, Now);
-        HostSession H(int pid, string provider, string dir) => new(provider, pid, "pipe-" + pid, dir);
-
-        Assert.That(ContextCycler.HostFor(s, [H(1, "Claude", @"D:\W\B"), H(2, "Claude", @"d:\w\a\"), H(3, "Codex", @"D:\W\A")], out _)?.ProcessId, Is.EqualTo(2));
-        Assert.That(ContextCycler.HostFor(s, [H(1, "Claude", @"D:\W\B")], out var none), Is.Null);
-        Assert.That(none, Does.Contain("isn't in a Launcher tab"), "a plain terminal can't be typed into");
-        Assert.That(ContextCycler.HostFor(s, [H(1, "Claude", @"D:\W\A"), H(2, "Claude", @"D:\W\A")], out var two), Is.Null);
-        Assert.That(two, Does.Contain("more than one"), "two tabs in one folder: don't guess");
-    }
-
-    [Test]
     public void It_reads_what_the_statusline_and_the_context_gate_save()
     {
         var dir = Path.Combine(Path.GetTempPath(), "ctx-" + Guid.NewGuid().ToString("N"));
@@ -64,7 +40,6 @@ public sealed class ContextCyclerTests
             .Where(f => File.ReadAllText(f) is var t && (t.Contains("\"/quicksave\"") || t.Contains("\"/clear\"") || t.Contains("\"/quickload\"")))
             .ToList();
         Assert.That(typing, Is.Empty);
-        Assert.That(new OrchestratorSettings().ContextCycle, Is.False);
 
         var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
         try
@@ -193,11 +168,6 @@ public sealed class ContextCyclerTests
             // The goal met: Claude Code's stop summary naming it is the last entry (shape trimmed from a real run, M.ORCH-T109).
             const string summary = """{"type":"system","subtype":"stop_hook_summary","hookCount":2,"hookInfos":[{"command":"python context-gate.py","durationMs":106},{"command":"all the tests pass","promptText":"all the tests pass","durationMs":1637}],"preventedContinuation":false}""";
             File.AppendAllText(transcript, summary + "\n" + """{"type":"last-prompt"}""" + "\n" + """{"type":"cost-state"}""" + "\n");
-            Assert.That(ContextCycler.GoalFinished(transcript, "all the tests pass"), Is.True, "metadata after the summary doesn't count");
-            Assert.That(ContextCycler.GoalFinished(transcript, "another goal"), Is.False);
-            File.AppendAllText(transcript, """{"type":"assistant","message":{"content":[{"type":"text","text":"Not yet: one test fails."}]}}""" + "\n");
-            Assert.That(ContextCycler.GoalFinished(transcript, "all the tests pass"), Is.False, "the evaluator sent it back to work: still running");
-            File.AppendAllText(transcript, summary + "\n");
             Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "thanks", transcript_path = transcript });
             Assert.That(new ContextCycler(ctx).Load().Single().Goal, Is.Null, "the gate unmarks a finished goal at the next prompt");
 
