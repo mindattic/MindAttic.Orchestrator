@@ -982,7 +982,9 @@ public static class AgentGate
                 state.pop("goal", None)
             if data.get("transcript_path"):
                 state["transcript"] = data["transcript_path"]
-            state.update(state="busy", at=now, warned=False, cwd=data.get("cwd"))
+            # The CLI's process id from its first prompt on: `orchestrator next` finds the calling CLI's own session by it, and
+            # a CLI whose every stop is pushed back (an /autopilot run) never reaches the Stop that used to record it.
+            state.update(state="busy", at=now, warned=False, cwd=data.get("cwd"), pid=cli_pid())
             # A turn typed as an exempt command (/deploy, /run, ...) skips every pace gate until it stops (M.ORCH-T198).
             exempt = exempt_prompt(data.get("prompt"))
             if exempt:

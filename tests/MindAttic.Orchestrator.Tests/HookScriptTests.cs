@@ -326,6 +326,14 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void A_cli_records_its_process_from_its_first_prompt()
+    {
+        // An /autopilot run's stops are all pushed back, so the Stop that used to record the pid never comes.
+        Gate(new { hook_event_name = "UserPromptSubmit", session_id = "p1", prompt = "/autopilot", cwd = ws }, AgentGate.ContextScriptName);
+        Assert.That(File.ReadAllText(Path.Combine(Marks, "p1.state.json")), Does.Contain("\"pid\""));
+    }
+
+    [Test]
     public void With_the_daemon_down_you_are_told_and_a_typed_prompt_at_claudes_own_line_is_answered_unsent()
     {
         object Prompt(string prompt) => new { hook_event_name = "UserPromptSubmit", session_id = "d1", prompt, cwd = ws };
