@@ -24,6 +24,9 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
     public static string DefaultEventsPath { get; } = Path.Combine(Setup.AgentGate.ClaudeDir, "session-context", Setup.AgentGate.GateLogName);
     public string EventsPath { get; init; } = DefaultEventsPath;
 
+    /// <summary>Where its tickets are filed: the daemon moves it when the dashboard's first run picks another workspace (M.ORCH-T359).</summary>
+    public string WorkspaceRoot { get; set; } = workspaceRoot;
+
     /// <summary>The sign-in record, so a window is graded from one account's samples (M.ORCH-T343); null (tests) grades them all.</summary>
     public ClaudeAccount? Account { get; init; }
 
@@ -143,7 +146,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
         var marker = summary[..(summary.IndexOf(']') + 1)];
         try
         {
-            using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(workspaceRoot);
+            using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(WorkspaceRoot);
             if (db is null) return null;
             if (db.Tickets(Repo).Any(t => t.Ticket.Status == TicketRules.Open && t.Ticket.Summary.Contains(marker, StringComparison.Ordinal))) return null;
             return db.Add(Repo, "fix", TicketRules.Open, summary, PaceLedger.FileName).Id;

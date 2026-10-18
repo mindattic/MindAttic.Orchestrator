@@ -54,6 +54,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 {
                     options = latest;
                     Build();
+                    ledger.WorkspaceRoot = options.WorkspaceRoot;
                     Say(LogEventLevel.Information, $"workspace is now {options.WorkspaceRoot}");
                 }
                 var snapshot = aggregator.Refresh();
