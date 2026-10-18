@@ -433,11 +433,12 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// in the MindAttic.Workflow repo and pushes, so tickets are backed up and reach other machines.
     /// </summary>
     private void SyncWorkflowDbIfDue(OrchestratorOptions options) =>
-        SyncWorkflowDbIfDue(MindAttic.Workflow.Data.WorkflowDb.DefaultPath(options.WorkspaceRoot), DateTime.UtcNow);
+        SyncWorkflowDbIfDue(MindAttic.Workflow.Data.WorkflowDb.DefaultPath(options.WorkspaceRoot), DateTime.UtcNow, options.WorkspaceRoot);
 
     /// <summary>The sync for the database at <paramref name="path"/>. One that runs past <see cref="SyncTimeout"/> is killed and
-    /// logged, and the database isn't counted as synced, so the next try (10 minutes on) runs it again.</summary>
-    internal void SyncWorkflowDbIfDue(string path, DateTime nowUtc)
+    /// logged, and the database isn't counted as synced, so the next try (10 minutes on) runs it again. The sync is told
+    /// <paramref name="root"/>, the workspace the database was checked in: the Workflow CLI's own default is D:\Projects\MindAttic (M.ORCH-T402).</summary>
+    internal void SyncWorkflowDbIfDue(string path, DateTime nowUtc, string? root = null)
     {
         if (!File.Exists(path) || nowUtc - syncTriedUtc < TimeSpan.FromMinutes(10)) return;
         var written = File.GetLastWriteTimeUtc(path);
@@ -445,7 +446,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         syncTriedUtc = nowUtc;
         try
         {
-            var r = Runner.Run("workflow", ["db", "sync"], SyncTimeout);
+            var r = Runner.Run("workflow", root is { Length: > 0 } ? ["db", "sync", "--root", root] : ["db", "sync"], SyncTimeout);
             if (r.TimedOut) { Say(LogEventLevel.Warning, $"workflow db sync took over {SyncTimeout.TotalSeconds:0}s; stopped it (retrying in 10 minutes)"); return; }
             if (r.ExitCode == 0) syncedDbWriteUtc = written;
             Say(r.ExitCode == 0 ? LogEventLevel.Information : LogEventLevel.Warning, $"workflow db sync: {(r.Output + r.Error).Trim()}");

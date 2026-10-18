@@ -158,10 +158,10 @@ public sealed class DaemonSafetyTests
         var db = Db();
         var now = DateTime.UtcNow;
 
-        daemon.SyncWorkflowDbIfDue(db, now);
+        daemon.SyncWorkflowDbIfDue(db, now, @"C:\src\Elsewhere");
         Assert.That(runner.Calls, Has.Count.EqualTo(1));
         Assert.That(runner.Calls[0].File, Is.EqualTo("workflow"));
-        Assert.That(runner.Calls[0].Args, Is.EqualTo(new[] { "db", "sync" }));
+        Assert.That(runner.Calls[0].Args, Is.EqualTo(new[] { "db", "sync", "--root", @"C:\src\Elsewhere" }), "the orchestrator's workspace, not the CLI's default (M.ORCH-T402)");
         Assert.That(runner.Calls[0].Timeout, Is.EqualTo(TimeSpan.FromSeconds(7)));
         Assert.That(said, Has.Some.Matches<(LogEventLevel Level, string Line)>(x =>
             x.Level == LogEventLevel.Warning && x.Line.Contains("workflow db sync took over 7s; stopped it")));
