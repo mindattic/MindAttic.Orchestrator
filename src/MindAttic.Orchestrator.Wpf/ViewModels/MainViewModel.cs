@@ -212,11 +212,11 @@ public sealed partial class MainViewModel : ObservableObject
             if (tiles[gone] == Selected) Selected = null;
             tiles.Remove(gone);
         }
-        PruneToasts(Toasts, DateTime.UtcNow);
-
         snapshot = next;
         Regroup();
         ApplyPhases(next);
+        // After the phases' own toasts (pace, budget, stuck, audit, Needs you), or they'd go past the cap (M.ORCH-T340).
+        PruneToasts(Toasts, DateTime.UtcNow);
         Raise(nameof(WorkingCount)); Raise(nameof(WaitingCount)); Raise(nameof(HostCount));
         Raise(nameof(TicketCount)); Raise(nameof(RepoCount)); Raise(nameof(TokensToday));
         Raise(nameof(TokensDetail)); Raise(nameof(Warnings)); Raise(nameof(HasWarnings));
