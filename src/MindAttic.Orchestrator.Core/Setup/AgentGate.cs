@@ -803,7 +803,7 @@ public static class AgentGate
 
         # Typed at the window's stop, these still go through: they're how you steer the orchestrator itself.
         # /goal goes through at the stop only to clear one: a new goal there would run turn after turn its refused calls can't finish.
-        CONTROL = re.compile(r"/(autopilot|crossrepo|throttle|unthrottle)\b|/goal\s*(?:$|(?:clear|off|stop|reset|none|cancel)\b)", re.I)
+        CONTROL = re.compile(r"/(autopilot|crossrepo|throttle|unthrottle)\b|/goal\s*(?:(?:clear|off|stop|reset|none|cancel)\s*)?$", re.I)
 
         def goal_finished(transcript, goal):
             # A /goal ends on its own once its condition holds: the session's last entry is then the stop summary naming it
@@ -1046,7 +1046,8 @@ public static class AgentGate
             if re.match(r"/goal\b", prompt):
                 args = typed[len("/goal"):].strip()
                 # Claude Code clears a goal on any of these; a bare /goal only shows its status, and leaves it running.
-                if re.match(r"(clear|off|stop|reset|none|cancel)\b", args, re.I):
+                # Only the word alone: "/goal clear all lint warnings" sets a new goal in Claude Code, as it does here.
+                if re.fullmatch(r"(clear|off|stop|reset|none|cancel)", args, re.I):
                     state.pop("goal", None)
                 elif args:
                     state["goal"] = args

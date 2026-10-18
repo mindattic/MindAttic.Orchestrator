@@ -177,6 +177,8 @@ public sealed class ContextCyclerTests
             Assert.That(new ContextCycler(ctx).Load().Single().Goal, Is.EqualTo("all the tests pass"), "a bare /goal only shows its status");
             Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "/goal cancel" });
             Assert.That(new ContextCycler(ctx).Load().Single().Goal, Is.Null, "cancel clears it, as Claude Code does (not a goal named 'cancel')");
+            Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "/goal clear all lint warnings", transcript_path = transcript });
+            Assert.That(new ContextCycler(ctx).Load().Single().Goal, Is.EqualTo("clear all lint warnings"), "only the word alone clears; with more it's a new goal, as in Claude Code");
             Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "/goal all the tests pass", transcript_path = transcript });
             Gate(new { session_id = "g", hook_event_name = "UserPromptSubmit", cwd = @"D:\W\A", prompt = "/goal clear" });
             Assert.That(new ContextCycler(ctx).Load().Single().Goal, Is.Null, "cleared");

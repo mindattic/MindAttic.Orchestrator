@@ -195,6 +195,8 @@ public sealed class HookScriptTests
         Assert.That(stop, Does.Contain("\"continue\": false"), "the goal's own Stop hook would send it back to calls that are all refused");
         Assert.That(Gate(Typed("g2", "/goal all the tests pass"), AgentGate.ContextScriptName).Output, Does.Contain("Not sent").And.Contain("/goal clear still go through"),
             "a new goal at the stop is a turn past the line, and the refusal doesn't say /goal goes through");
+        Assert.That(Gate(Typed("g2", "/goal clear all lint warnings"), AgentGate.ContextScriptName).Output, Does.Contain("Not sent"),
+            "a new goal that starts with a clear word is still a new goal");
         Assert.That(Gate(Typed("g1", "/goal clear"), AgentGate.ContextScriptName).Output, Does.Not.Contain("Not sent"), "clearing one goes through");
         Assert.That(Gate(new { hook_event_name = "Stop", session_id = "g3", cwd = ws }, AgentGate.ContextScriptName).Output, Is.Empty,
             "no goal: an ordinary turn ending at the stop just ends");
