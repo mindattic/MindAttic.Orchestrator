@@ -108,6 +108,18 @@ public sealed class BillingTests
         Assert.That((File.Exists(file), File.Exists(stale)), Is.EqualTo((true, false)));
     }
 
+    /// <summary>M.ORCH-T457: a CLI started on a key before it was set aside bills it until it's reopened, however long that is, so
+    /// when it was set aside outlives the weekly prune.</summary>
+    [Test]
+    public void When_a_key_was_set_aside_outlives_the_weekly_prune()
+    {
+        var file = Path.Combine(Contexts, Setup.AgentGate.ApiKeySetAsideName);
+        File.WriteAllText(file, "{\"0123456789abcdef\": 1700000000}");
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddDays(-30));
+        new ContextCycler(Contexts).Prune(DateTime.UtcNow);
+        Assert.That(File.Exists(file), Is.True);
+    }
+
     // ── ~/.claude.json (a temp copy) ────────────────────────────────────────
 
     [Test]
