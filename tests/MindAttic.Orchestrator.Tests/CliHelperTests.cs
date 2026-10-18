@@ -34,6 +34,8 @@ public sealed class CliHelperTests
     [TestCase("Infinity")]
     [TestCase("0.5")] // would round to 0: `budget --block 0.5` cleared the budget, `reserve X 0.3` released it
     [TestCase("0.0004k")]
+    [TestCase("1e30")] // was long.MaxValue: two such reservations overflowed the scheduler's sum (M.ORCH-T458)
+    [TestCase("9999999999999B")]
     public void Token_counts_refuse_empty_negative_and_junk(string text)
     {
         Assert.That(TokenText.TryParse(text, out var value), Is.False, text);

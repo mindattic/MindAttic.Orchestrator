@@ -254,6 +254,9 @@ internal sealed class IntakeCommand : Command<IntakeCommand.Settings>
 
 internal static class TokenText
 {
+    /// <summary>The most tokens that can be typed: a quadrillion, far past any limit, with room for thousands of them summed.</summary>
+    public const double MaxTokens = 1e15;
+
     /// <summary>20000000, 20M, 1.5B, 500k.</summary>
     public static bool TryParse(string text, out long value)
     {
@@ -265,6 +268,9 @@ internal static class TokenText
         if (!double.TryParse(t, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var n) || !double.IsFinite(n) || n < 0) return false;
         // Under one token would round to 0, which clears a budget or releases a reservation; only a plain 0 means that.
         if (n * scale is > 0 and < 1) return false;
+        // Past a quadrillion is a typo, not a budget: it was taken as long.MaxValue, and two such reservations overflowed the
+        // scheduler's sum of them, so every plan threw (M.ORCH-T458).
+        if (n * scale > MaxTokens) return false;
         value = (long)(n * scale);
         return true;
     }
