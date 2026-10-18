@@ -689,6 +689,11 @@ public static class AgentGate
             if stop_note() is None:
                 return
             while time.monotonic() - start < MAX_HOLD and stop_note() is not None:
+                if slot is not None:
+                    try:
+                        os.utime(slot)  # still held: other gates drop a slot past its life, and the call would go through uncounted
+                    except Exception:
+                        pass
                 time.sleep(5)
             note = stop_note()
             if note is not None:
