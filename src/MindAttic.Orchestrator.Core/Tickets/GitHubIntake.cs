@@ -53,10 +53,13 @@ public static partial class GitHubIntake
             {
                 var labels = issue.TryGetProperty("labels", out var l) && l.ValueKind == JsonValueKind.Array
                     ? l.EnumerateArray().Select(x => x.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "").ToList() : [];
-                var type = labels.Any(x => x.Equals("bug", StringComparison.OrdinalIgnoreCase)) ? "fix"
-                    : labels.Any(x => x is "enhancement" or "feature") ? "feature"
-                    : labels.Any(x => x is "documentation" or "docs") ? "docs"
-                    : labels.Any(x => x == "chore") ? "chore" : "fix";
+                // Any case, as GitHub's own labels go ("Feature", "Enhancement"): only "bug" was, so a feature filed as a fix
+                // was worked without your approval (M.ORCH-T443).
+                bool Has(params string[] names) => labels.Any(x => names.Any(n => x.Equals(n, StringComparison.OrdinalIgnoreCase)));
+                var type = Has("bug") ? "fix"
+                    : Has("enhancement", "feature") ? "feature"
+                    : Has("documentation", "docs") ? "docs"
+                    : Has("chore") ? "chore" : "fix";
                 var number = issue.GetProperty("number").GetInt32();
                 items.Add(new IntakeItem($"GH#{number}", type, $"GH#{number}: {Str(issue, "title")}", Str(issue, "url")));
             }

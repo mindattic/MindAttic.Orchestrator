@@ -45,6 +45,23 @@ public sealed class GitHubIntakeTests
     }
 
     [Test]
+    public void Reads_an_issues_type_label_in_any_case()
+    {
+        // M.ORCH-T443: only "bug" was read in any case; "Feature" fell through to fix, which is worked without approval.
+        (int, string) Gh(string[] args) => args[0] == "issue" ? (0, """
+            [{"number":1,"title":"a","labels":[{"name":"Feature"}],"url":"u1"},
+             {"number":2,"title":"b","labels":[{"name":"Enhancement"}],"url":"u2"},
+             {"number":3,"title":"c","labels":[{"name":"Documentation"}],"url":"u3"},
+             {"number":4,"title":"d","labels":[{"name":"DOCS"}],"url":"u4"},
+             {"number":5,"title":"e","labels":[{"name":"Chore"}],"url":"u5"},
+             {"number":6,"title":"f","labels":[{"name":"BUG"},{"name":"Feature"}],"url":"u6"}]
+            """) : (1, "");
+
+        Assert.That(GitHubIntake.Find("o/r", Gh, Now).Select(i => i.Type),
+            Is.EqualTo(new[] { "feature", "feature", "docs", "docs", "chore", "fix" }));
+    }
+
+    [Test]
     public void Keeps_a_failure_on_master_within_a_day_and_skips_one_a_minute_past_it_or_off_the_main_line()
     {
         (int, string) Gh(string[] args) => args[0] switch
