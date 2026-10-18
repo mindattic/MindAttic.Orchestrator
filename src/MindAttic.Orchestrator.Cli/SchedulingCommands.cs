@@ -265,11 +265,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         public string[] RepoSessions { get; init; } = [];
 
         [CommandOption("--keep-going <ON>")]
-        [Description("true (default): a CLI that ends its turn asking whether to go on while its repo has open tickets is told to carry on; false lets it ask.")]
+        [Description("true (default): a CLI that typed /autopilot and ends its turn while its repos have workable tickets is told to carry on; false lets it stop.")]
         public bool? KeepGoing { get; init; }
 
         [CommandOption("--hand-minutes <N>")]
-        [Description("Minutes after a repo's own CLI last ended a turn that autopilot still leaves the repo to you (default 15; 0: only while mid-turn).")]
+        [Description("Kept for older setups; it has no effect now: /autopilot hands tickets to the typing CLI's own subagents, each in its own worktree.")]
         public int? HandMinutes { get; init; }
 
         [CommandOption("--autopilot-skip <REPOS>")]
@@ -407,9 +407,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (clis.Count == 0 ? "off in every CLI (type /autopilot in the CLI that should work tickets)"
                 : (s.Autopilot ? "[green]on[/] in " : "[yellow]paused[/] (--autopilot true resumes it) in ") +
                   Markup.Escape(string.Join("; ", clis.Select(c => $"CLI {c.Key} for {string.Join(", ", c.Value)}")))) +
-            $", leaving a repo to you {(s.AutopilotHandMinutes > 0 ? $"until its CLI has been idle {s.AutopilotHandMinutes} min" : "only while its CLI is mid-turn")}" +
-            (s.KeepGoing ? " · CLIs keep going through their open tickets without asking" : " · CLIs may stop to ask between tickets"));
-        AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display : "learned, or rolling 7 days")} · warn at {s.WarnPercent}%");
+            (s.KeepGoing ? " · /autopilot CLIs keep going through their workable tickets without asking" : " · /autopilot CLIs may stop between tickets"));
+        AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (Claude's report, else learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (Claude's report, else learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display + " unless Claude reports another" : "as Claude reports, else learned, else rolling 7 days")} · warn at {s.WarnPercent}%");
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +
             (s.ThrottleAgents ? $" · running agents held up to {s.MaxAgentDelaySeconds}s per tool call when the burn won't last" : " · running agents never held") +
             $" · subagents: as many as the pace allows, at most {s.MaxSubagents}");

@@ -929,7 +929,7 @@
                     </DockPanel>
 
                     <TextBlock Text="TOKEN BUDGET" Style="{StaticResource SectionLabel}" />
-                    <TextBlock Text="Uncached tokens (input + cache writes + output). Accepts 20M, 500k, 1.5B. Leave blank to use the limits learned from the times you actually hit the wall."
+                    <TextBlock Text="Uncached tokens (input + cache writes + output). Accepts 20M, 500k, 1.5B. Leave blank to use Claude's own reported limit, or else the limits learned from the times you actually hit the wall."
                                Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8" />
                     <TextBlock Text="Per 5-hour block" Margin="0,4,0,4" />
                     <TextBox Style="{StaticResource McTextBox}" Height="32" Text="{Binding BlockBudget, UpdateSourceTrigger=PropertyChanged}"
@@ -940,7 +940,7 @@
                     <TextBlock Text="Week resets (local time)" Margin="0,10,0,4" />
                     <TextBox Style="{StaticResource McTextBox}" Height="32" Width="160" HorizontalAlignment="Left"
                              Text="{Binding WeeklyReset, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Weekly reset day and time" />
-                    <TextBlock Text="When Claude's weekly limit restarts, e.g. Mon 9:00 AM or Tue 5pm. Blank uses the reset your last weekly limit hit reported, or a rolling 7 days before you've had one."
+                    <TextBlock Text="When Claude's weekly limit restarts, e.g. Mon 9:00 AM or Tue 5pm. Claude's own reported reset comes first; blank uses the reset your last weekly limit hit reported, or a rolling 7 days before you've had one."
                                Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
                     <TextBlock Text="Warn at (%)" Margin="0,10,0,4" />
                     <TextBox Style="{StaticResource McTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
