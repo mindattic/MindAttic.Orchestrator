@@ -377,12 +377,14 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         if (QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is { } quiet) return ([], $"quiet hours ({quiet}): nothing starts until they end");
         bool Named(string repo) => Autopilot.Named(repos, repo);
         var room = unthrottled ? null : plan.Pace?.RoomTokens;
+        // As the queue judges too big: a reserved ticket against the whole room, the rest against what isn't reserved.
+        bool TooBigNow(QueueItem q) => (q.Reserved > 0 ? room : unthrottled ? null : plan.RoomForRest ?? room) is { } left && q.Estimate is { } e && e.Fresh > left;
         var elsewhere = plan.Worked.Where(w => !(w.AgentId is null && self is not null && w.SessionId == self))
             .Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
         bool Busy(QueueItem q) => q.IsAssigned || elsewhere.Contains(q.Id) || (q.Assignment is { } a && pilotRunning(a));
         var open = plan.Queue.Where(q => Named(q.Repo) && !settings.AutopilotSkip.Contains(q.Repo, StringComparer.OrdinalIgnoreCase) &&
             q.RepoPath.Length > 0 && !Busy(q) && q.BlockedBy.Count == 0 &&
-            !(room is { } left && q.Estimate is { } e && e.Fresh > left)).ToList();
+            !TooBigNow(q)).ToList();
         if (open.Count == 0)
         {
             bool Skipped(string repo) => settings.AutopilotSkip.Contains(repo, StringComparer.OrdinalIgnoreCase);
@@ -392,7 +394,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             // Open but held back for a reason of their own: not "nothing left".
             var free = plan.Queue.Where(q => Named(q.Repo) && !Skipped(q.Repo) && !Busy(q) && q.RepoPath.Length > 0).ToList();
             var blocked = free.Count(q => q.BlockedBy.Count > 0);
-            var tooBig = free.Count(q => q.BlockedBy.Count == 0 && room is { } r && q.Estimate is { } est && est.Fresh > r);
+            var tooBig = free.Count(q => q.BlockedBy.Count == 0 && TooBigNow(q));
             return ([], waiting == 0 && busy == 0 && blocked == 0 && tooBig == 0 && skipped.Count > 0 ? $"{string.Join(", ", skipped)} set to be skipped (settings --autopilot-skip); nothing else is ready"
                 : waiting > 0 && busy == 0 && blocked == 0 && tooBig == 0 ? $"none left that may be worked: {waiting} wait for your approval (orchestrator approve)"
                 : busy > 0 && blocked == 0 && tooBig == 0 ? $"{busy} already being worked; nothing else is ready"

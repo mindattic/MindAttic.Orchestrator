@@ -477,6 +477,24 @@ public sealed class AutopilotTests
         Plan(snap) with { Pace = new Pace(PaceMode.Open, 6, 10_000, 0, 1_000, "5-hour", Now.AddHours(3), "On pace.") { SpareSessions = spare } };
 
     [Test]
+    public void Next_judges_a_ticket_too_big_against_what_isnt_reserved_as_the_queue_does()
+    {
+        var snap = Snap(("A", [T("A-T1")]), ("B", [T("B-T1")])) with
+        {
+            Pace = new Pace(PaceMode.Open, 6, 10_000, 0, 1_000, "5-hour", Now.AddHours(3), "On pace.") { SpareSessions = 5, RoomTokens = 3_000 },
+        };
+        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT", Reservations = new() { ["B-T1"] = 2_000 } };
+        var plan = Scheduler.Plan(snap, settings, []);
+        plan = plan with { Queue = [.. plan.Queue.Select(q => q.Id == "A-T1" ? q with { Estimate = new CostEstimate(1_500, 3, "fixes") } : q)] };
+        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
+
+        var (handed, why) = Autopilot.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main");
+
+        Assert.That(handed, Is.Empty, "1.5k fits the 3k left but not the 1k that B-T1's reservation leaves");
+        Assert.That(why, Does.Contain("estimated past what's left"));
+    }
+
+    [Test]
     public void The_prompt_closes_the_ticket_only_after_the_push_lands_with_the_landed_hash()
     {
         // M.ORCH-T178: push and close chained together let a rejected push still close the ticket on a pre-rebase hash.
