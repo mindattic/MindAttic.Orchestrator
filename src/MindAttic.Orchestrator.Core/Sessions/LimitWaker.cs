@@ -78,7 +78,7 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
             var sends = due.Select(c =>
             {
                 var host = type ? HostOf(c.Pid!.Value, hosts) : null;
-                return (Context: c, Host: host, Sent: host is null ? Task.FromResult(false) : SafeSubmit(host.PipeName, ResumePrompt(c.LimitStop!)));
+                return (Context: c, Host: host, Sent: host is null ? Task.FromResult(false) : SafeSubmit(host.PipeName, ResumePrompt(c.LimitStop!, nowUtc)));
             }).ToList();
             Task.WaitAll([.. sends.Select(s => s.Sent)]);
             foreach (var (c, host, sent) in sends)
@@ -86,10 +86,10 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
                 var stop = c.LimitStop!;
                 var where = Where(c.Cwd);
                 var typed = sent.Result;
-                var reset = Clock(stop.UntilUtc);
+                var reset = Clock(stop.UntilUtc, nowUtc);
                 var line = typed
-                    ? $"after the {stop.Window} window reset at {reset}, told the CLI in {where} (it stopped for the limit at {Clock(stop.StoppedUtc)}) to carry on"
-                    : $"The {stop.Window} window reset at {reset}: the CLI in {where} stopped for it at {Clock(stop.StoppedUtc)} and is still idle. Tell it to carry on (" +
+                    ? $"after the {stop.Window} window reset at {reset}, told the CLI in {where} (it stopped for the limit at {Clock(stop.StoppedUtc, nowUtc)}) to carry on"
+                    : $"The {stop.Window} window reset at {reset}: the CLI in {where} stopped for it at {Clock(stop.StoppedUtc, nowUtc)} and is still idle. Tell it to carry on (" +
                       (!type ? "resume-after-reset is off" : host is null ? "it isn't in a Launcher tab the orchestrator can type into" : "typing into its tab failed") + ").";
                 wakes.Add(new Wake(c.SessionId, where, stop, typed, line));
                 woken[Key(c)] = stop.UntilUtc;
@@ -112,13 +112,14 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
 
     /// <summary>What the CLI is typed once its window has reset: one line (a line break would be a new line in the prompt box,
     /// not Enter) that says the window's back and to carry on with what it left for the reset, or say there's nothing.</summary>
-    public static string ResumePrompt(LimitStop stop) =>
-        $"The {stop.Window} window you stopped for reset at {Clock(stop.UntilUtc)}, so there's room to work again. Carry on with what you " +
+    public static string ResumePrompt(LimitStop stop, DateTime nowUtc) =>
+        $"The {stop.Window} window you stopped for reset at {Clock(stop.UntilUtc, nowUtc)}, so there's room to work again. Carry on with what you " +
         "stopped for the limit: whatever your last message or handoff left for after the reset. If nothing was left, say so in one short line and end your turn.";
 
     /// <summary>The folder the CLI runs in, by name (a repo, or a worktree's ticket); "an unknown folder" when not recorded.</summary>
     internal static string Where(string? cwd) =>
         string.IsNullOrWhiteSpace(cwd) ? "an unknown folder" : Path.GetFileName(cwd.TrimEnd('\\', '/')) is { Length: > 0 } name ? name : cwd;
 
-    private static string Clock(DateTime utc) => utc.ToLocalTime().ToString("h:mm tt", CultureInfo.InvariantCulture);
+    // With the weekday when it falls on another day: a weekly stop days back, or a 5-hour one before midnight, read as today's.
+    private static string Clock(DateTime utc, DateTime nowUtc) => Formatting.ResetTime(utc, nowUtc);
 }

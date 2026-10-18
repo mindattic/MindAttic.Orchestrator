@@ -114,6 +114,17 @@ public sealed class LimitWakerTests
     }
 
     [Test]
+    public void A_stop_or_reset_on_another_day_is_said_with_its_weekday()
+    {
+        State("w1", 77, "idle", Now.AddDays(-3), until: Now.AddMinutes(-5), window: "weekly");
+        var stopped = Now.AddDays(-3).ToLocalTime().ToString("ddd h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
+        Assert.That(Waker().Tick(Open, [Tab], true, Now).Single().Line, Does.Contain($"stopped for it at {stopped} "),
+            "a weekly stop days back isn't read as today's");
+        var reset = new LimitStop("5-hour", Now.AddHours(-26), Now.AddHours(-30));
+        Assert.That(LimitWaker.ResumePrompt(reset, Now), Does.Contain(Now.AddHours(-26).ToLocalTime().ToString("ddd h:mm tt", System.Globalization.CultureInfo.InvariantCulture)));
+    }
+
+    [Test]
     public void The_daemon_alerts_only_for_a_cli_it_couldnt_type_into()
     {
         var alerts = new List<string>();
