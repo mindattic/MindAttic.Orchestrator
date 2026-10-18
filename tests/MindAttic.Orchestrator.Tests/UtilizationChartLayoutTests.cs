@@ -58,6 +58,43 @@ public sealed class UtilizationChartLayoutTests
         Assert.That(double.Parse((string)chart.Attribute("Height")!, System.Globalization.CultureInfo.InvariantCulture), Is.GreaterThanOrEqualTo(240));
     }
 
+    // M.ORCH-T464: the hour marks stepped the local clock across a clock change.
+    private static readonly TimeZoneInfo Central = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time");
+
+    private static string[] Marks(DateTime startUtc, DateTime endUtc, TimeZoneInfo zone) =>
+        [.. UtilizationChart.HourTicks(startUtc, endUtc, zone).Select(t => TimeZoneInfo.ConvertTimeFromUtc(t, zone).ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture) + "@" + t.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture))];
+
+    [Test]
+    public void Hour_marks_fall_on_every_whole_local_hour_between_start_and_reset()
+    {
+        // 14:20Z to 19:20Z on an ordinary day in Chicago (CDT, UTC-5): 10:00 to 14:00 local, never the ends.
+        Assert.That(Marks(new DateTime(2026, 10, 16, 14, 20, 0, DateTimeKind.Utc), new DateTime(2026, 10, 16, 19, 20, 0, DateTimeKind.Utc), Central),
+            Is.EqualTo(new[] { "10:00@15:00", "11:00@16:00", "12:00@17:00", "13:00@18:00", "14:00@19:00" }));
+        // A window starting on the hour doesn't mark its own start.
+        Assert.That(Marks(new DateTime(2026, 10, 16, 15, 0, 0, DateTimeKind.Utc), new DateTime(2026, 10, 16, 17, 0, 0, DateTimeKind.Utc), Central),
+            Is.EqualTo(new[] { "11:00@16:00" }));
+        // A half-hour zone marks its own hours, at :30 UTC.
+        var india = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
+        Assert.That(Marks(new DateTime(2026, 10, 16, 4, 0, 0, DateTimeKind.Utc), new DateTime(2026, 10, 16, 6, 0, 0, DateTimeKind.Utc), india),
+            Is.EqualTo(new[] { "10:00@04:30", "11:00@05:30" }));
+    }
+
+    [Test]
+    public void Across_the_spring_forward_no_two_hour_marks_share_a_place()
+    {
+        // 2027-03-14 in Chicago: 2:00 AM CST becomes 3:00 AM CDT at 08:00Z. The window runs 05:30Z to 10:30Z.
+        Assert.That(Marks(new DateTime(2027, 3, 14, 5, 30, 0, DateTimeKind.Utc), new DateTime(2027, 3, 14, 10, 30, 0, DateTimeKind.Utc), Central),
+            Is.EqualTo(new[] { "00:00@06:00", "01:00@07:00", "03:00@08:00", "04:00@09:00", "05:00@10:00" }));
+    }
+
+    [Test]
+    public void Across_the_fall_back_both_one_oclocks_are_marked()
+    {
+        // 2026-11-01 in Chicago: 1:00 AM CDT (06:00Z), then 1:00 AM CST again at 07:00Z.
+        Assert.That(Marks(new DateTime(2026, 11, 1, 4, 30, 0, DateTimeKind.Utc), new DateTime(2026, 11, 1, 9, 30, 0, DateTimeKind.Utc), Central),
+            Is.EqualTo(new[] { "00:00@05:00", "01:00@06:00", "01:00@07:00", "02:00@08:00", "03:00@09:00" }));
+    }
+
     // M.ORCH-T194: near the reset, 'now NN%' ran into 'NN% at reset'.
     private static readonly Rect Plot = new(44, 10, 1344, 226);
     private static readonly Size NowSize = new(62, 17), ResetSize = new(92, 17);

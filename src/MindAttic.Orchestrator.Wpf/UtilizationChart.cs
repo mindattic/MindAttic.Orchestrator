@@ -60,15 +60,12 @@ public sealed class UtilizationChart : FrameworkElement
         Label(u.StartUtc.ToLocalTime().ToString("t"), muted, new Point(Left, labelY));
         Label(u.EndUtc.ToLocalTime().ToString("t"), muted, new Point(ActualWidth - Right, labelY), right: true);
         var hourPen = new Pen(grid, 0.5) { DashStyle = DashStyles.Dot };
-        var hour = u.StartUtc.ToLocalTime();
-        hour = new DateTime(hour.Year, hour.Month, hour.Day, hour.Hour, 0, 0, hour.Kind).AddHours(1);
-        for (; hour.ToUniversalTime() < u.EndUtc; hour = hour.AddHours(1))
+        foreach (var at in HourTicks(u.StartUtc, u.EndUtc, TimeZoneInfo.Local))
         {
-            var at = hour.ToUniversalTime();
             var x = P(at, 0).X;
             if (x - Left < 48 || ActualWidth - Right - x < 48) continue; // leave the start and reset labels room
             dc.DrawLine(hourPen, new Point(x, Top), new Point(x, Top + h));
-            var f = new FormattedText(hour.ToString("t"), CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), FontSize, muted, dpi);
+            var f = new FormattedText(TimeZoneInfo.ConvertTimeFromUtc(at, TimeZoneInfo.Local).ToString("t"), CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), FontSize, muted, dpi);
             dc.DrawText(f, new Point(x - f.Width / 2, labelY - f.Height / 2));
         }
 
@@ -118,6 +115,20 @@ public sealed class UtilizationChart : FrameworkElement
         if (resetAt is { } r) dc.DrawText(resetText, r.TopLeft);
 
         FormattedText Text(string s, Brush b) => new(s, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), FontSize, b, dpi);
+    }
+
+    /// <summary>
+    /// Every whole hour on <paramref name="zone"/>'s clock strictly between <paramref name="startUtc"/> and
+    /// <paramref name="endUtc"/>, as UTC instants. Stepped in UTC, a quarter hour at a time (every zone's offset is whole
+    /// quarters): stepping the local clock a window across a clock change drew the spring-forward's missing 2:00 on top of
+    /// 3:00, two labels in one place, and left out the fall-back's first 1:00 (M.ORCH-T464).
+    /// </summary>
+    internal static IEnumerable<DateTime> HourTicks(DateTime startUtc, DateTime endUtc, TimeZoneInfo zone)
+    {
+        var quarter = TimeSpan.FromMinutes(15);
+        var t = new DateTime(startUtc.Ticks - startUtc.Ticks % quarter.Ticks, DateTimeKind.Utc);
+        for (; t < endUtc; t += quarter)
+            if (t > startUtc && TimeZoneInfo.ConvertTimeFromUtc(t, zone).Minute == 0) yield return t;
     }
 
     /// <summary>
