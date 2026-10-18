@@ -132,7 +132,8 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     public bool HasSelection => Selected is not null;
-    public string Provider { get => provider; set => Set(ref provider, value); }
+    // Ctrl+click on the selected pill deselects it, writing null: Start would crash the dashboard on it.
+    public string Provider { get => provider; set { if (value is not null) Set(ref provider, value); } }
     public string Prompt { get => prompt; set => Set(ref prompt, value); }
     public string StatusMessage { get => statusMessage; private set => Set(ref statusMessage, value); }
     public string RefreshInfo { get => refreshInfo; private set => Set(ref refreshInfo, value); }

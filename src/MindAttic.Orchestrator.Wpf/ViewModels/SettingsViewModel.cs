@@ -26,7 +26,8 @@ public sealed class SettingsViewModel : ObservableObject
     public string WeeklyReset { get => weeklyReset; set => Set(ref weeklyReset, value); }
     public string WarnPercent { get => warnPercent; set => Set(ref warnPercent, value); }
     public string MaxSessions { get => maxSessions; set => Set(ref maxSessions, value); }
-    public string Provider { get => provider; set => Set(ref provider, value); }
+    // Ctrl+click on the selected pill deselects it, writing null: Save would store no default provider.
+    public string Provider { get => provider; set { if (value is not null) Set(ref provider, value); } }
     public bool Autopilot { get => autopilot; set => Set(ref autopilot, value); }
     public bool Pacing { get => pacing; set => Set(ref pacing, value); }
     public string PaceTarget { get => paceTarget; set => Set(ref paceTarget, value); }
