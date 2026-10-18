@@ -994,9 +994,10 @@ public static class AgentGate
                     "or you're blocked on a decision only the user can make, and then say plainly what it is.")
 
         def orchestrator_status():
-            # rl-status.json while the orchestrator keeps it fresh; {} when it's stale or someone else's.
+            # rl-status.json while the orchestrator keeps it fresh; {} when it's stale or someone else's. Read as the pace gate
+            # reads it, retried while the daemon is replacing it: once, a Stop then saw no status at all (M.ORCH-T363).
             try:
-                s = json.loads((Path.home() / ".claude" / "rl-status.json").read_text())
+                s = read_json(Path.home() / ".claude" / "rl-status.json")
                 age = (datetime.now(timezone.utc) - datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00"))).total_seconds()
                 fresh = age <= {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}} and not before_switch(s["timestamp"], True)
                 return s if s.get("source") == "MindAttic.Orchestrator" and fresh else {}
