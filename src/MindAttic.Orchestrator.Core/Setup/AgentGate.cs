@@ -753,6 +753,13 @@ public static class AgentGate
             SUB = MARKS / "subagents"
             SLOTS = MARKS / "{{SlotDirName}}"
             LOCK = MARKS / "{{SlotDirName}}.lock"
+            def mark_ns(m):
+                # A mark whose subagent stops (or the daemon prunes) while it's counted is gone, not a reason to stop
+                # counting: then the allowance didn't hold at all (M.ORCH-T366).
+                try:
+                    return m.stat().st_mtime_ns
+                except OSError:
+                    return -1
             def running(s):
                 # The daemon's count leaves out marks whose stop never came; only marks newer than its count are added to it.
                 marks = list(SUB.iterdir()) if SUB.exists() else []
@@ -763,9 +770,9 @@ public static class AgentGate
                 # writes only the timestamp.
                 if s.get("subagents_seen_through_ns") is not None:
                     seen = int(s["subagents_seen_through_ns"])
-                    return int(s["subagents_running"]) + sum(1 for m in marks if m.stat().st_mtime_ns > seen)
+                    return int(s["subagents_running"]) + sum(1 for m in marks if mark_ns(m) > seen)
                 at = datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00")).timestamp()
-                return int(s["subagents_running"]) + sum(1 for m in marks if m.stat().st_mtime > at)
+                return int(s["subagents_running"]) + sum(1 for m in marks if mark_ns(m) / 1e9 > at)
             def slots():
                 # Slots let through but not started yet; one whose start never came (the call was refused) is dropped.
                 held = 0
@@ -981,15 +988,21 @@ public static class AgentGate
                     return False
                 sub = DIR / "subagents"
                 marks = list(sub.iterdir()) if sub.exists() else []
+                def mark_ns(m):
+                    # Gone while counted (its stop came): not counted, rather than the whole check giving up (M.ORCH-T366).
+                    try:
+                        return m.stat().st_mtime_ns
+                    except OSError:
+                        return -1
                 if limits.get("subagents_running") is None:
                     running = len(marks)
                 elif limits.get("subagents_seen_through_ns") is not None:
                     # Only marks newer than the newest the daemon's count saw (M.ORCH-T320), as the pace gate counts.
                     seen = int(limits["subagents_seen_through_ns"])
-                    running = int(limits["subagents_running"]) + sum(1 for m in marks if m.stat().st_mtime_ns > seen)
+                    running = int(limits["subagents_running"]) + sum(1 for m in marks if mark_ns(m) > seen)
                 else:
                     at = datetime.fromisoformat(limits["timestamp"].replace("Z", "+00:00")).timestamp()
-                    running = int(limits["subagents_running"]) + sum(1 for m in marks if m.stat().st_mtime > at)
+                    running = int(limits["subagents_running"]) + sum(1 for m in marks if mark_ns(m) / 1e9 > at)
                 return running >= int(allowed)
             except Exception:
                 return False
