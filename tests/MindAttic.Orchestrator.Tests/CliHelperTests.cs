@@ -104,7 +104,9 @@ public sealed class CliHelperTests
 
         var until = Now.AddDays(2);
         Assert.That(BudgetCommand.Line(B(30) with { AtLimitUntilUtc = until, AtLimitKind = LimitKind.Weekly }),
-            Does.StartWith("[red]budget: 30%").And.EndWith($" [red]· at the weekly limit until {T(until)}[/]"), "behind a wall: red whatever the percent");
+            Does.StartWith("[red]budget: 30%").And.EndWith($" [red]· at the weekly limit until {Formatting.ResetTime(until, DateTime.UtcNow)}[/]"), "behind a wall: red whatever the percent");
+        Assert.That(Formatting.ResetTime(until, DateTime.UtcNow), Does.StartWith(until.ToLocalTime().ToString("ddd ", System.Globalization.CultureInfo.InvariantCulture)),
+            "another day's: its weekday, not a bare time read as today's (M.ORCH-T408)");
         Assert.That(BudgetCommand.Line(B(30) with { AtLimitUntilUtc = until, AtLimitKind = LimitKind.Session }), Does.Contain("at the 5-hour limit"));
     }
 
