@@ -80,6 +80,12 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 tick.Lap("process reaper");
 
                 cycler.PruneMarks();
+                try
+                {
+                    CliRoster.Write(cycler.Directory,
+                        CliRoster.Build(cycler, aggregator.BillingSwitch, [.. snapshot.Repos.SelectMany(r => r.Hosts)], DateTime.UtcNow), DateTime.UtcNow);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"CLI roster: couldn't write it: {ex.Message}"); }
                 // Not only at start: the logon daemon runs for weeks (M.ORCH-T330).
                 if (DateTime.UtcNow - prunedUtc >= TimeSpan.FromDays(1))
                 {
