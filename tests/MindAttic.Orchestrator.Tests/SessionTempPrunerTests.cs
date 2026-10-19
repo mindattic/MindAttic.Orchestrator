@@ -76,6 +76,19 @@ public sealed class SessionTempPrunerTests
     }
 
     [Test]
+    public void An_ended_sessions_folder_holding_a_read_only_file_is_deleted()
+    {
+        var dir = Session("D--Projects-A", "66666666-6666-6666-6666-666666666666", 40);
+        var readOnly = Path.Combine(dir, "scratchpad", "repo", ".git", "objects", "ab", "cdef");
+        Directory.CreateDirectory(Path.GetDirectoryName(readOnly)!);
+        File.WriteAllBytes(readOnly, new byte[2]);
+        File.SetAttributes(readOnly, FileAttributes.ReadOnly);
+
+        Assert.That(SessionTempPruner.Prune(root, _ => false, DateTime.UtcNow), Is.EqualTo((1, 42L)));
+        Assert.That(Directory.Exists(dir), Is.False, "a read-only file isn't one in use");
+    }
+
+    [Test]
     public void No_claude_temp_folder_prunes_nothing() =>
         Assert.That(SessionTempPruner.Prune(Path.Combine(root, "missing"), _ => false, DateTime.UtcNow), Is.EqualTo((0, 0L)));
 }

@@ -39,11 +39,17 @@ public static class SessionTempPruner
                         false => true,
                         null => nowUtc - LastWrite(dir, files) >= UnknownQuietLife,
                     };
+                    if (!ended) continue;
+                    // A read-only file (a git checkout's objects, build output) can't be opened for writing nor deleted:
+                    // clear the flag first, so only a file another process holds keeps the folder (M.ORCH-T482).
+                    foreach (var f in files) ClearReadOnly(f);
                     // A background command still writing its output holds the file open: that folder waits for the next look.
-                    if (!ended || files.Any(InUse)) continue;
+                    if (files.Any(InUse)) continue;
+                    // Summed before the delete: a FileInfo that's been refreshed (clearing its flag does) can't be read after.
+                    var size = files.Sum(f => f.Length);
                     Directory.Delete(dir, recursive: true);
                     folders++;
-                    bytes += files.Sum(f => f.Length);
+                    bytes += size;
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
             }
@@ -61,6 +67,12 @@ public static class SessionTempPruner
 
     private static DateTime LastWrite(string dir, FileInfo[] files) =>
         files.Select(f => f.LastWriteTimeUtc).Append(Directory.GetLastWriteTimeUtc(dir)).Max();
+
+    private static void ClearReadOnly(FileInfo file)
+    {
+        try { if (file.IsReadOnly) file.IsReadOnly = false; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
 
     private static bool InUse(FileInfo file)
     {
