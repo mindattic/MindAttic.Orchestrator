@@ -220,16 +220,16 @@ public sealed partial class MainViewModel
     /// <summary>5-hour reset, for the agent board's header.</summary>
     public string BlockResetText => Budget?.CurrentBlock is { } b ? $"resets {Formatting.ResetTime(b.EndUtc, DateTime.UtcNow)}" : "";
 
-    /// <summary>What's left of the week, not what's used: "6%" read as the share left to stretch the rest of the week over.</summary>
-    public string WeeklyHeadline => Budget?.WeeklyPercent is { } w ? $"{Left(w)}% left" : "—";
+    /// <summary>How much of the week is used, matching the 5-hour gauge; the caption gives what's left.</summary>
+    public string WeeklyHeadline => Budget?.WeeklyPercent is { } w ? $"{w:0}% used" : "—";
 
     private static string Left(double usedPercent) => Math.Max(0, 100 - usedPercent).ToString("0");
 
     public string WeeklyCaption => Budget switch
     {
         { WeeklyPercent: null } or null => "no weekly limit known yet",
-        { WeekResetUtc: { } r, WeeklyPercent: { } u } => $"{u:0}% used · resets {r.ToLocalTime():ddd h:mm tt}",
-        { WeeklyPercent: { } u } => $"{u:0}% used · rolling 7 days",
+        { WeekResetUtc: { } r, WeeklyPercent: { } u } => $"{Left(u)}% left · resets {r.ToLocalTime():ddd h:mm tt}",
+        { WeeklyPercent: { } u } => $"{Left(u)}% left · rolling 7 days",
     };
 
     // ── Agent board ─────────────────────────────────────────────────────────
