@@ -984,6 +984,57 @@ public sealed class HookScriptTests
         Assert.That(Gate(EditIn("MindAttic.Workflow")).Output, Does.Contain("\"deny\""));
     }
 
+    // ---- /pacing on|off replaces /unthrottle and /throttle (M.ORCH-T483) ----
+
+    [Test]
+    public void A_new_cli_is_paced_by_default_and_a_bare_pacing_says_so_unsent()
+    {
+        var status = Gate(Said("/pacing"), AgentGate.ContextScriptName).Output;
+        Assert.That(status, Does.Contain("\"block\"").And.Contain("Pacing is on in this CLI (the default)"), "answered by the hook, not sent");
+        Assert.That(File.Exists(Path.Combine(Marks, $"unthrottled-{Cli}")), Is.False, "asking changes nothing");
+        Status(new { pace_delay_seconds = 3 });
+        Assert.That(Gate(ReadCall).Took, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(2.9)), "a new CLI is held to the pace");
+    }
+
+    [Test]
+    public void Pacing_off_lifts_this_clis_holds_until_pacing_on_and_a_bare_pacing_reports_each()
+    {
+        var mark = Path.Combine(Marks, $"unthrottled-{Cli}");
+        Assert.That(Gate(Said("/pacing off"), AgentGate.ContextScriptName).Output, Does.Not.Contain("\"block\""), "on/off go through to be confirmed");
+        Assert.That(File.Exists(mark), Is.True);
+        Assert.That(Gate(Said("/pacing"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\"").And.Contain("Pacing is off in this CLI"));
+        Status(new { pace_delay_seconds = 60 });
+        Assert.That(Gate(ReadCall).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "off: no pace hold");
+
+        Gate(Said("/pacing on"), AgentGate.ContextScriptName);
+        Assert.That(File.Exists(mark), Is.False);
+        Assert.That(Gate(Said("/pacing"), AgentGate.ContextScriptName).Output, Does.Contain("Pacing is on in this CLI"));
+        Status(new { pace_delay_seconds = 3 });
+        Assert.That(Gate(ReadCall).Took, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(2.9)), "on again: held to the pace");
+    }
+
+    [Test]
+    public void Pacing_off_still_stops_at_the_target_and_an_unknown_argument_changes_nothing()
+    {
+        Gate(Said("/pacing off"), AgentGate.ContextScriptName);
+        Status(new { stop = true, pace_delay_seconds = 60 });
+        Assert.That(GateHeld(ReadCall, 2).Output, Does.Contain("\"deny\""), "the stop holds and refuses it all the same");
+        Assert.That(Gate(Said("/pacing on"), AgentGate.ContextScriptName).Output, Does.Not.Contain("no tokens were spent"), "typed at the stop, it still goes through");
+        Assert.That(File.Exists(Path.Combine(Marks, $"unthrottled-{Cli}")), Is.False);
+
+        Assert.That(Gate(Said("/pacing maybe"), AgentGate.ContextScriptName).Output, Does.Contain("/pacing takes on or off; nothing changed"));
+        Assert.That(File.Exists(Path.Combine(Marks, $"unthrottled-{Cli}")), Is.False);
+    }
+
+    [Test]
+    public void The_retired_throttle_commands_do_nothing()
+    {
+        Gate(Said("/unthrottle"), AgentGate.ContextScriptName);
+        Assert.That(File.Exists(Path.Combine(Marks, $"unthrottled-{Cli}")), Is.False, "/unthrottle is gone, with no redirect");
+        Assert.That(File.Exists(Path.Combine(Claude, "commands", "unthrottle.md")) || File.Exists(Path.Combine(Claude, "commands", "throttle.md")), Is.False);
+        Assert.That(File.Exists(Path.Combine(Claude, "commands", "pacing.md")), Is.True);
+    }
+
     [Test]
     public void A_turn_hears_the_subagent_note_only_from_a_fresh_orchestrator_file()
     {

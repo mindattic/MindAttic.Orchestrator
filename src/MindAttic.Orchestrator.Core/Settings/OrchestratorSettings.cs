@@ -70,9 +70,14 @@ public sealed record OrchestratorSettings
     /// <summary>The slash commands exempt from orchestration pacing (M.ORCH-T198): a turn whose prompt starts with one skips
     /// every Orchestrator gate (no pace delay, no subagent hold, no stop refusal) until it ends, and a Skill call naming one
     /// is let through anywhere. The pace gate reads this live from settings.json; its spend is still counted.</summary>
-    public List<string> ExemptCommands { get; init; } = [.. DefaultExemptCommands];
+    // A saved list still naming the retired /throttle or /unthrottle reads as /pacing, which replaced them (M.ORCH-T483).
+    public List<string> ExemptCommands { get => exemptCommands; init => exemptCommands = RenameRetired(value); }
+    private readonly List<string> exemptCommands = [.. DefaultExemptCommands];
 
-    public static IReadOnlyList<string> DefaultExemptCommands { get; } = ["/throttle", "/unthrottle", "/deploy", "/run"];
+    public static IReadOnlyList<string> DefaultExemptCommands { get; } = ["/pacing", "/deploy", "/run"];
+
+    private static List<string> RenameRetired(List<string>? commands) =>
+        commands is null ? [] : [.. commands.Select(c => c?.Trim().TrimStart('/').ToLowerInvariant() is "throttle" or "unthrottle" ? "/pacing" : c!).Distinct()];
 
     /// <summary>Normalizes typed command names ("deploy, /Run") to "/deploy", "/run"; blanks and repeats dropped.</summary>
     public static List<string> ParseCommands(string text) =>

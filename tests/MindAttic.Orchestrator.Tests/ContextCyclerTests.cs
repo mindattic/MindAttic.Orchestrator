@@ -62,11 +62,11 @@ public sealed class ContextCyclerTests
             var hooks = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(dir, "settings.json")))!["hooks"]!;
             foreach (var hookEvent in new[] { "PostToolUse", "Stop", "UserPromptSubmit" })
                 Assert.That(hooks[hookEvent]!.ToJsonString(), Does.Contain("context-gate.py"), hookEvent);
-            Assert.That(File.ReadAllText(Path.Combine(dir, "context-gate.py")), Does.Contain("PERCENT = 75").And.Contains("/unthrottle"));
+            Assert.That(File.ReadAllText(Path.Combine(dir, "context-gate.py")), Does.Contain("PERCENT = 75").And.Contains("/pacing"));
             Assert.That(File.ReadAllText(Path.Combine(dir, "pace-gate.py")), Does.Contain("def cli_pid").And.Contains("unthrottled-"),
-                "the pace gate lets an /unthrottle'd CLI through");
-            Assert.That(File.Exists(Path.Combine(dir, "commands", "unthrottle.md")) && File.Exists(Path.Combine(dir, "commands", "throttle.md")),
-                "both are real user-level slash commands");
+                "the pace gate lets a CLI with /pacing off through");
+            Assert.That(File.Exists(Path.Combine(dir, "commands", "pacing.md")), "a real user-level slash command");
+            Assert.That(File.Exists(Path.Combine(dir, "commands", "unthrottle.md")) || File.Exists(Path.Combine(dir, "commands", "throttle.md")), Is.False);
 
             Assert.That(Setup.AgentGate.Ensure(dir, contextPercent: 75), Is.Null, "unchanged: nothing rewritten");
             Assert.That(Setup.AgentGate.Ensure(dir, contextPercent: 85), Is.EqualTo("wrote context-gate.py"), "a new cycle point rewrites only the script");

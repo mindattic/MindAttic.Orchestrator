@@ -52,7 +52,7 @@ public sealed record Pace(
     public DateTime? SubagentsSeenThroughUtc { get; init; }
 
     /// <summary>The window is at its target or a limit: nothing more may be spent before the reset. The pace gate then
-    /// refuses tool calls (every CLI, /unthrottle included) rather than letting a held call through, so usage never
+    /// refuses tool calls (every CLI, /pacing off included) rather than letting a held call through, so usage never
     /// passes the limit, whatever the hold settings.</summary>
     public bool Stop { get; init; }
 

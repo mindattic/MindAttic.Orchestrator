@@ -23,7 +23,7 @@ public sealed record LimitStop(string Window, DateTime UntilUtc, DateTime Stoppe
 
 /// <summary>
 /// Reads what the context gate records about each session (its context fill, turn state, CLI process, /goal) and the
-/// marks it keeps (subagents, /autopilot, /crossrepo, /unthrottle, keep-going). It never types into a session.
+/// marks it keeps (subagents, /autopilot, /crossrepo, /pacing off, keep-going). It never types into a session.
 /// </summary>
 public sealed class ContextCycler(string? directory = null)
 {
@@ -169,7 +169,7 @@ public sealed class ContextCycler(string? directory = null)
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
     }
 
-    /// <summary>Drops /unthrottle marks whose CLI has closed, so a reused process id never inherits one, and
+    /// <summary>Drops /pacing off marks whose CLI has closed, so a reused process id never inherits one, and
     /// subagent marks whose stop never came.</summary>
     public void PruneMarks()
     {
@@ -199,7 +199,7 @@ public sealed class ContextCycler(string? directory = null)
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return ""; }
     }
 
-    /// <summary>Whether the CLI <paramref name="pid"/> has an /unthrottle mark, the same check the pace gate makes before skipping its holds.</summary>
+    /// <summary>Whether the CLI <paramref name="pid"/> has a /pacing off mark, the same check the pace gate makes before skipping its holds.</summary>
     public bool IsUnthrottled(int pid) => File.Exists(Path.Combine(Directory, "unthrottled-" + pid));
 
     /// <summary>Where the context gate logs each time it kept a CLI going (or let one stop that insisted).</summary>
@@ -353,7 +353,7 @@ public sealed class ContextCycler(string? directory = null)
     public void Prune(DateTime nowUtc)
     {
         if (!System.IO.Directory.Exists(Directory)) return;
-        // A CLI's own /autopilot, /autopilot off, /unthrottle and /crossrepo marks are written once and live as long as it does,
+        // A CLI's own /autopilot, /autopilot off, /pacing off and /crossrepo marks are written once and live as long as it does,
         // however long that is; PruneMarks drops them when the CLI closes. A week-old noautopilot mark dropped here let the default
         // switch /autopilot back on in a CLI where it was typed off (M.ORCH-T484). The billing mode holds until it's switched,
         // however long (M.ORCH-T436), and when a key was set aside is needed as long as a CLI started on it before then runs,

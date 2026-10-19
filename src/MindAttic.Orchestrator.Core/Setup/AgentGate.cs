@@ -693,7 +693,9 @@ public static class AgentGate
                 names = None
             if not isinstance(names, list):
                 names = EXEMPT_DEFAULT
-            return {str(n).strip().lstrip("/").lower() for n in names if str(n).strip().lstrip("/")}
+            # /throttle and /unthrottle are gone: a list still naming them means /pacing, which replaced them (M.ORCH-T483).
+            names = {str(n).strip().lstrip("/").lower() for n in names if str(n).strip().lstrip("/")}
+            return {"pacing" if n in ("throttle", "unthrottle") else n for n in names}
         def exempt_prompt(text):
             # The exempt command a typed prompt starts with ("/deploy now" -> "/deploy"), or None.
             m = re.match(r"\s*/([^\s/]+)(?:\s|$)", text or "")
@@ -815,19 +817,50 @@ public static class AgentGate
 
     // The context gate acts on these when they're typed (UserPromptSubmit), and the pace gate when the model calls them through the
     // Skill tool after the user's own prompt asked for them (M.ORCH-T435); the files make them real slash commands.
-    internal const string UnthrottleCommand = """
+    internal const string PacingCommand = """
         ---
-        description: Run this CLI unthrottled (no pace holds) until it closes, for when something has to get done fast.
+        description: "/pacing off runs this CLI without pace holds until it closes or /pacing on (the default for every new CLI); a bare /pacing says which this CLI is on. The 99% and weekly stops still apply."
+        argument-hint: "[on|off]"
         ---
-        MindAttic.Orchestrator's context gate has exempted this CLI process from pace holds, subagents included, until the CLI closes or you run /throttle. Its usage still counts toward the 5-hour pace, so other CLIs absorb the slowdown. Reply with one short line confirming this CLI is now unthrottled, then carry on with whatever was asked.
+        /pacing $ARGUMENTS was typed in this CLI, and MindAttic.Orchestrator's context gate has recorded it for this CLI process only. With off: no pace holds (subagents included) until the CLI closes or /pacing on is typed; its usage still counts toward the 5-hour pace, so other CLIs absorb it, and the stop at the window's target and the weekly stop still apply. With on: this CLI is held to the pace again. Reply with one short line confirming which, then carry on with whatever was asked.
         """;
 
-    internal const string ThrottleCommand = """
-        ---
-        description: Put this CLI back under the orchestrator's pace holds after /unthrottle.
-        ---
-        MindAttic.Orchestrator's context gate has put this CLI process back under pace holds. Reply with one short line confirming this CLI is paced again.
-        """;
+    /// <summary>The /unthrottle and /throttle command files earlier versions wrote, word for word: /pacing replaced them
+    /// (M.ORCH-T483), so a copy still exactly ours is deleted, and one the user rewrote is left alone.</summary>
+    internal static readonly (string File, string Body)[] RetiredCommands =
+    [
+        ("unthrottle.md", """
+            ---
+            description: Run this CLI unthrottled (no pace holds) until it closes, for when something has to get done fast.
+            ---
+            MindAttic.Orchestrator's context gate has exempted this CLI process from pace holds, subagents included, until the CLI closes or you run /throttle. Its usage still counts toward the 5-hour pace, so other CLIs absorb the slowdown. Reply with one short line confirming this CLI is now unthrottled, then carry on with whatever was asked.
+            """),
+        ("throttle.md", """
+            ---
+            description: Put this CLI back under the orchestrator's pace holds after /unthrottle.
+            ---
+            MindAttic.Orchestrator's context gate has put this CLI process back under pace holds. Reply with one short line confirming this CLI is paced again.
+            """),
+    ];
+
+    /// <summary>Deletes a retired command file in <paramref name="commandsDir"/> that's still exactly ours; returns what went.</summary>
+    internal static IEnumerable<string> DeleteRetiredCommands(string commandsDir)
+    {
+        foreach (var (file, body) in RetiredCommands)
+        {
+            var path = Path.Combine(commandsDir, file);
+            bool gone;
+            try { gone = File.Exists(path) && File.ReadAllText(path) == body && TryDeleteFile(path); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { gone = false; }
+            if (gone) yield return "deleted commands/" + file;
+        }
+    }
+
+    private static bool TryDeleteFile(string path)
+    {
+        try { File.Delete(path); return true; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
+    }
 
     internal static readonly string WorkCommand = AutopilotCommand
         .Replace("description: This CLI works", "description: The same as /autopilot. This CLI works")
@@ -1118,7 +1151,7 @@ public static class AgentGate
         if session_auth(data.get("cwd")) != "{{Sessions.ContextCycler.SubscriptionAuth}}":
             raise SystemExit(0)
 
-        # Never past the limit, whatever else is set (/unthrottle included): at the window's target a call is held as long
+        # Never past the limit, whatever else is set (/pacing off included): at the window's target a call is held as long
         # as a hook may wait, in case the reset or a lower count lifts it, then refused rather than let through.
         start = time.monotonic()
         slot = None
@@ -1158,7 +1191,7 @@ public static class AgentGate
                 refuse(note)
         hold_at_stop()
 
-        # /unthrottle exempts one CLI (its process, so subagents and /clear included) from holds until it closes.
+        # /pacing off exempts one CLI (its process, so subagents and /clear included) from holds until it closes or /pacing on (M.ORCH-T483).
         MARKS = Path.home() / ".claude" / "session-context"
         if MARKS.exists() and any(MARKS.glob("unthrottled-*")):
             pid = os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
@@ -1540,7 +1573,7 @@ public static class AgentGate
 
         # Typed at the window's stop, these still go through: they're how you steer the orchestrator itself.
         # /goal goes through at the stop only to clear one: a new goal there would run turn after turn its refused calls can't finish.
-        CONTROL = re.compile(r"/(autopilot|work|crossrepo|throttle|unthrottle)\b|/goal\s*(?:(?:clear|off|stop|reset|none|cancel)\s*)?$", re.I)
+        CONTROL = re.compile(r"/(autopilot|work|crossrepo|pacing)\b|/goal\s*(?:(?:clear|off|stop|reset|none|cancel)\s*)?$", re.I)
 
         def goal_finished(transcript, goal):
             # A /goal ends on its own once its condition holds: the session's last entry is then the stop summary naming it
@@ -1643,7 +1676,7 @@ public static class AgentGate
                         sys.exit(0)
                     mark.write_text(str(cli_pid() or ""))
                     # The mark now counts it, so the slot the pace gate kept for its call is let go: this CLI's oldest. Never
-                    # another CLI's: a subagent that took no slot (an /unthrottle'd CLI, an exempt turn) would free a place
+                    # another CLI's: a subagent that took no slot (a CLI with /pacing off, an exempt turn) would free a place
                     # still held for that CLI's pending call; a slot left over expires.
                     try:
                         mine = str(my_pid() or 0) + "-"
@@ -1704,7 +1737,7 @@ public static class AgentGate
                     pass
                 print(json.dumps({"decision": "block", "reason": "Not sent, so no tokens were spent: the " + str(limits.get("stop_window") or "5-hour") + " window is at its target "
                     "(MindAttic.Orchestrator never lets it pass the limit). Typing works again when it resets at " +
-                    str(limits.get("reset_time") or "the end of the window") + ". /autopilot, /throttle and /goal clear still go through."}))
+                    str(limits.get("reset_time") or "the end of the window") + ". /autopilot, /pacing and /goal clear still go through."}))
                 sys.exit(0)
         DIR.mkdir(parents=True, exist_ok=True)
         state_file = DIR / (sid + ".state.json")
@@ -1819,14 +1852,30 @@ public static class AgentGate
             # /crossrepo <A,B|all> lets this CLI work other repos too (the explicit exception to M.ORCH-T95); /crossrepo off ends it.
             if prompt.startswith("/crossrepo"):
                 set_crossrepo(my_pid(), typed[len("/crossrepo"):].strip())
-            if prompt.startswith("/unthrottle") or prompt.startswith("/throttle"):
-                pid = cli_pid()
-                if pid is not None:
-                    mark = DIR / ("unthrottled-" + str(pid))
-                    if prompt.startswith("/unthrottle"):
-                        mark.write_text(now)
-                    elif mark.exists():
+            # /pacing off runs THIS CLI (its process, so subagents and /clear included) without pace holds until it closes or
+            # /pacing on; on is every new CLI's default. A bare /pacing says which, answered here unsent (M.ORCH-T483).
+            # The stop at the window's target and the weekly stop hold either way.
+            if re.match(r"/pacing\b", prompt):
+                pid = my_pid()
+                arg = prompt[len("/pacing"):].strip()
+                mark = DIR / ("unthrottled-" + str(pid)) if pid else None
+                if mark is not None and arg == "off":
+                    mark.write_text(now)
+                elif mark is not None and arg == "on":
+                    if mark.exists():
                         mark.unlink()
+                else:
+                    if mark is None:
+                        why = "Pacing: this CLI's process couldn't be found, so its pacing can't be read or changed."
+                    elif mark.exists():
+                        why = ("Pacing is off in this CLI: no pace holds until it closes or you type /pacing on. "
+                               "The stop at the window's target and the weekly stop still apply.")
+                    else:
+                        why = "Pacing is on in this CLI (the default): its tool calls are held to the pace. /pacing off lifts the holds until it closes."
+                    if arg:
+                        why = "/pacing takes on or off; nothing changed. " + why
+                    print(json.dumps({"decision": "block", "reason": why}))
+                    sys.exit(0)
             # Each turn starts knowing how many subagents the pace allows right now, and whether the window is winding down.
             s = orchestrator_status()
             notes = [n for n in (s.get("subagent_note"), s.get("stop_note") or s.get("wind_down_note")) if n]
@@ -1899,7 +1948,7 @@ public static class AgentGate
         foreach (var (path, body) in new[]
         {
             (script, Script), (contextScript, ContextScript(contextPercent, keepGoing)),
-            (Path.Combine(dir, "commands", "unthrottle.md"), UnthrottleCommand), (Path.Combine(dir, "commands", "throttle.md"), ThrottleCommand),
+            (Path.Combine(dir, "commands", "pacing.md"), PacingCommand),
             (Path.Combine(dir, "commands", "autopilot.md"), AutopilotCommand),
             (Path.Combine(dir, "commands", "work.md"), WorkCommand),
             (Path.Combine(dir, "commands", "crossrepo.md"), CrossRepoCommand),
@@ -1909,6 +1958,7 @@ public static class AgentGate
             WriteReplacing(path, body);
             did.Add("wrote " + Path.GetFileName(path));
         }
+        did.AddRange(DeleteRetiredCommands(Path.Combine(dir, "commands")));
 
         var settingsPath = Path.Combine(dir, "settings.json");
         JsonObject? root;
@@ -1945,7 +1995,7 @@ public static class AgentGate
     /// Wires the same <c>pace-gate.py</c> into Codex's, Gemini's and Kimi's own pre-tool-call hook, so the
     /// pacer's hold slows their tool calls too, not just Claude's: Codex's <c>PreToolUse</c> in
     /// <c>~/.codex/hooks.json</c>, Gemini's <c>BeforeTool</c> in <c>~/.gemini/settings.json</c>, Kimi's
-    /// <c>PreToolUse</c> in <c>~/.kimi-code/config.toml</c>. The script's own CLI-walk and /unthrottle check
+    /// <c>PreToolUse</c> in <c>~/.kimi-code/config.toml</c>. The script's own CLI-walk and /pacing off check
     /// only ever match a <c>claude.exe</c> parent, so under these three it just falls through to the plain
     /// wait on <c>pace_delay_seconds</c>, same as it gives Claude. Codex still shows its own one-time "hooks
     /// need review" prompt in its TUI before a freshly added hook runs the first time; nothing types through

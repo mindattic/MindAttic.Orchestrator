@@ -358,7 +358,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// approved, already the only ones in the queue) of <paramref name="repos"/> ("*": all) that nobody has, in queue order,
     /// as many as the pace's subagent allowance has room for (or <paramref name="count"/>). With <paramref name="claim"/>
     /// each gets its own worktree from the repo's main line and an assignment, so it isn't handed out twice; when nothing
-    /// is handed out, <c>Why</c> says why. For an <paramref name="unthrottled"/> CLI (/unthrottle, M.ORCH-T195) the pace's
+    /// is handed out, <c>Why</c> says why. For an <paramref name="unthrottled"/> CLI (/pacing off, M.ORCH-T195/T483) the pace's
     /// subagent allowance, room and wind-down don't apply, as the pace gate skips its holds for it: it gets <paramref name="count"/>
     /// or <see cref="OrchestratorSettings.MaxConcurrentSessions"/>, and the daemon's next measurement holds everyone else to make up
     /// for it. Only the window's hard stop still applies. A ticket another agent is working isn't handed out (M.ORCH-T255): one in

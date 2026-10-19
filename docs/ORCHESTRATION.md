@@ -54,7 +54,7 @@ The daemon starts at logon and refreshes every 15 seconds, sooner when a turn en
    - *Wind-down:* past 90% of the limit, agents are told to start only what they can finish, and to commit and
      file the rest as a ticket. Autopilot starts no new ticket until the window resets.
    - *Stop:* at the target, every tool call is refused and every typed prompt is answered without being sent, so
-     nothing more is spent until the reset. The orchestrator's own commands (`/autopilot`, `/throttle`) still work.
+     nothing more is spent until the reset. The orchestrator's own commands (`/autopilot`, `/pacing`) still work.
 
 ## Scaling up and down
 

@@ -299,7 +299,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         public string? AutopilotSkip { get; init; }
 
         [CommandOption("--exempt <COMMANDS>")]
-        [Description("Slash commands whose turns skip every pace gate (no hold, no subagent wait, no stop), comma-separated: \"/deploy,/run\"; \"none\" clears, \"default\" restores /throttle,/unthrottle,/deploy,/run.")]
+        [Description("Slash commands whose turns skip every pace gate (no hold, no subagent wait, no stop), comma-separated: \"/deploy,/run\"; \"none\" clears, \"default\" restores /pacing,/deploy,/run.")]
         public string? Exempt { get; init; }
 
         [CommandOption("--github-intake <ON>")]

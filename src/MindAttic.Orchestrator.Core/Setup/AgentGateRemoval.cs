@@ -47,7 +47,7 @@ public static class AgentGateRemoval
                 if (TryDelete(Path.Combine(claude, script))) did.Add("deleted " + script);
         foreach (var (file, body) in new[]
         {
-            ("unthrottle.md", AgentGate.UnthrottleCommand), ("throttle.md", AgentGate.ThrottleCommand),
+            ("pacing.md", AgentGate.PacingCommand),
             ("autopilot.md", AgentGate.AutopilotCommand), ("work.md", AgentGate.WorkCommand), ("crossrepo.md", AgentGate.CrossRepoCommand),
         })
         {
@@ -55,6 +55,7 @@ public static class AgentGateRemoval
             try { if (File.Exists(path) && File.ReadAllText(path) == body && TryDelete(path)) did.Add("deleted commands/" + file); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
+        did.AddRange(AgentGate.DeleteRetiredCommands(Path.Combine(claude, "commands")));
         return did.Count > 0 ? string.Join(", ", did) : null;
     }
 

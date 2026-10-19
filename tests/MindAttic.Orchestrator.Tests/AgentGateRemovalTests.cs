@@ -208,5 +208,23 @@ public sealed class AgentGateRemovalTests
 
         Assert.That(File.ReadAllText(autopilot), Is.EqualTo("my own autopilot"));
         Assert.That(File.Exists(Path.Combine(Claude, "commands", "throttle.md")), Is.False);
+        Assert.That(File.Exists(Path.Combine(Claude, "commands", "pacing.md")), Is.False);
+    }
+
+    [Test]
+    public void The_retired_throttle_command_files_go_when_still_ours_and_stay_when_rewritten()
+    {
+        // M.ORCH-T483: /pacing replaced /unthrottle and /throttle; an install that wrote them loses them on the next Ensure.
+        var commands = Path.Combine(Claude, "commands");
+        Directory.CreateDirectory(commands);
+        var (unthrottle, ours) = AgentGate.RetiredCommands[0];
+        File.WriteAllText(Path.Combine(commands, unthrottle), ours);
+        File.WriteAllText(Path.Combine(commands, "throttle.md"), "my own throttle");
+
+        Assert.That(AgentGate.Ensure(Claude), Does.Contain("deleted commands/unthrottle.md"));
+
+        Assert.That(File.Exists(Path.Combine(commands, unthrottle)), Is.False);
+        Assert.That(File.ReadAllText(Path.Combine(commands, "throttle.md")), Is.EqualTo("my own throttle"));
+        Assert.That(File.Exists(Path.Combine(commands, "pacing.md")), Is.True);
     }
 }
