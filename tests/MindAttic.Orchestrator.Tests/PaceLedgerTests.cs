@@ -9,6 +9,10 @@ public sealed class PaceLedgerTests
 {
     private static readonly DateTime End = new(2026, 10, 15, 21, 50, 0, DateTimeKind.Utc);
     private static DateTime Start => End - BudgetCalculator.BlockLength;
+    private readonly TempDirs temp = new();
+
+    [TearDown]
+    public void TearDown() => temp.DeleteAll();
 
     // A report every 5 minutes through the window, climbing to `final` percent at 100k tokens a percent.
     private static List<UsageSample> Steady(double final, DateTime? end = null)
@@ -160,7 +164,7 @@ public sealed class PaceLedgerTests
     [Test]
     public void The_ledger_round_trips_and_skips_a_torn_line()
     {
-        var dir = Directory.CreateTempSubdirectory().FullName;
+        var dir = temp.New();
         var path = Path.Combine(dir, PaceLedger.FileName);
         var w = PaceLedger.Build(End, Steady(98).Where(s => s.AtUtc < Start.AddHours(1) || s.AtUtc > Start.AddHours(3)).ToList(), [], []);
         PaceLedger.Append(path, [w]);
@@ -173,7 +177,7 @@ public sealed class PaceLedgerTests
     [Test]
     public void Reads_the_gates_log_and_trims_what_the_ledger_has_counted()
     {
-        var path = Path.Combine(Directory.CreateTempSubdirectory().FullName, "pace-gate.jsonl");
+        var path = Path.Combine(temp.New(), "pace-gate.jsonl");
         File.WriteAllLines(path,
         [
             """{"at": "2026-10-01T00:00:00Z", "decision": "held", "held": 12.5, "tool": "Bash", "percent": 90}""",
@@ -200,14 +204,15 @@ public sealed class PaceLedgerTests
 
     private sealed class Harness
     {
-        public readonly JsonStore Store = new(Directory.CreateTempSubdirectory().FullName);
+        public readonly JsonStore Store;
         public readonly List<(LogEventLevel Level, string Line)> Said = [];
         public readonly List<(string Title, bool Urgent)> Alerts = [];
         public readonly List<string> Filed = [];
         public readonly PaceLedgerWatch Watch;
 
-        public Harness()
+        public Harness(string dir)
         {
+            Store = new JsonStore(dir);
             Watch = new PaceLedgerWatch(Store, "unused", (l, s) => Said.Add((l, s)), (t, _, u) => Alerts.Add((t, u)))
             {
                 EventsPath = Path.Combine(Store.Directory, "pace-gate.jsonl"),
@@ -219,7 +224,7 @@ public sealed class PaceLedgerTests
     [Test]
     public void A_new_limit_hit_is_raised_and_ticketed_at_once_but_history_is_only_recorded()
     {
-        var h = new Harness();
+        var h = new Harness(temp.New());
         var old = End.AddDays(-3);
         h.Store.SaveLimits([Hit(old.AddMinutes(-20), old)]);
         h.Store.Save("usage-samples", Steady(60, End.AddHours(5)));
@@ -250,7 +255,7 @@ public sealed class PaceLedgerTests
     [Test]
     public void An_earlier_sighting_of_a_wall_already_raised_is_not_a_second_hit()
     {
-        var h = new Harness();
+        var h = new Harness(temp.New());
         h.Store.SaveLimits([]);
         h.Watch.Tick(End);
         h.Store.SaveLimits([Hit(End.AddMinutes(30), End.AddHours(5))]);
@@ -277,7 +282,7 @@ public sealed class PaceLedgerTests
     [Test]
     public void A_blind_window_closing_live_files_one_ticket()
     {
-        var h = new Harness();
+        var h = new Harness(temp.New());
         h.Store.Save("usage-samples", Steady(98).Where(s => s.AtUtc < Start.AddHours(1) || s.AtUtc > Start.AddHours(3)).ToList());
         h.Watch.Tick(End.AddMinutes(5));
         Assert.That(h.Filed.Single(), Does.StartWith("[pace-ledger blind]"));

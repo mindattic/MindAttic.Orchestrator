@@ -47,12 +47,8 @@ public sealed class LandOnMainTests
     [TearDown]
     public void TearDown()
     {
-        try
-        {
-            foreach (var f in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)) File.SetAttributes(f, FileAttributes.Normal);
-            Directory.Delete(dir, true);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        // M.ORCH-T470: a delete that fails is a folder of git repos left in %TEMP% every run, so it's retried, then reported.
+        if (dir.Length > 0 && !TempDirs.Delete(dir)) Assert.Fail($"Couldn't delete the test's git repos at {dir}");
     }
 
     [Test]

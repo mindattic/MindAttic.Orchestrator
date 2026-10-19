@@ -8,6 +8,11 @@ namespace MindAttic.Orchestrator.Tests;
 /// <summary>What the agent board says each CLI and subagent is doing, and which CLIs it shows (M.ORCH-T169).</summary>
 public sealed class AgentActivityTextTests
 {
+    private readonly TempDirs temp = new();
+
+    [TearDown]
+    public void TearDown() => temp.DeleteAll();
+
     [TestCase("Edit", """{"file_path":"D:\\x\\src\\Daemon.cs","old_string":"a"}""", "Editing Daemon.cs")]
     [TestCase("Read", """{"file_path":"/c/x/README.md"}""", "Reading README.md")]
     [TestCase("Bash", """{"command":"dotnet test\nmore","description":"Run the tests"}""", "Run the tests")]
@@ -26,7 +31,7 @@ public sealed class AgentActivityTextTests
     [Test]
     public void Only_running_clis_are_on_the_board_each_with_its_latest_session_and_its_own_busy_or_idle()
     {
-        var dir = Directory.CreateTempSubdirectory().FullName;
+        var dir = temp.New();
         var me = Environment.ProcessId; // not a Claude CLI, so nothing of this test's own is live...
         File.WriteAllText(Path.Combine(dir, "old.state.json"), $$"""{"state":"busy","pid":{{me}}}""");
         var cycler = new ContextCycler(dir);
@@ -45,8 +50,8 @@ public sealed class AgentActivityTextTests
     [Test]
     public void A_subagent_says_what_it_was_asked_and_what_its_doing()
     {
-        var sessionDir = Directory.CreateTempSubdirectory().FullName;
-        var projectsDir = Directory.CreateTempSubdirectory().FullName;
+        var sessionDir = temp.New();
+        var projectsDir = temp.New();
         Directory.CreateDirectory(Path.Combine(sessionDir, "subagents"));
         File.WriteAllText(Path.Combine(sessionDir, "subagents", "a1"), "");
         var folder = Path.Combine(projectsDir, "proj", "session-1", "subagents");
@@ -67,8 +72,8 @@ public sealed class AgentActivityTextTests
     public void A_forks_task_is_its_directive_not_the_wrapper_claude_code_puts_before_it()
     {
         // M.ORCH-T324: a fork's prompt is a tool_result for the parent's Agent call, then the wrapper and the directive.
-        var sessionDir = Directory.CreateTempSubdirectory().FullName;
-        var projectsDir = Directory.CreateTempSubdirectory().FullName;
+        var sessionDir = temp.New();
+        var projectsDir = temp.New();
         Directory.CreateDirectory(Path.Combine(sessionDir, "subagents"));
         File.WriteAllText(Path.Combine(sessionDir, "subagents", "a1"), "");
         var folder = Path.Combine(projectsDir, "proj", "session-1", "subagents");
