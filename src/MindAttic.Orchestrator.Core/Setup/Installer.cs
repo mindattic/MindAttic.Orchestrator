@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Security;
 using System.Text;
 
 namespace MindAttic.Orchestrator.Setup;
@@ -7,13 +6,17 @@ namespace MindAttic.Orchestrator.Setup;
 /// <summary>
 /// Makes the single exe self-installing: drop it anywhere and double-click it. Run from outside the
 /// install folder, it copies itself in and hands over to that copy. Every start of the installed copy
-/// then checks (cheaply) that the logon daemon task and the shortcuts exist and point at it, and fixes
-/// whatever doesn't, so there is no setup step, and a moved or upgraded exe repairs itself.
+/// then checks (cheaply) that the daemon is running and the shortcuts exist and point at it, and fixes
+/// whatever doesn't, so there is no setup step, and a moved or upgraded exe repairs itself. Starting the
+/// daemon at logon and keeping it running is MindAttic.WatchDog's job (its Orchestrator.Daemon job, M.WD-T5,
+/// runs this exe with <see cref="DaemonArg"/>); this exe no longer registers a scheduled task of its own (M.ORCH-T475).
 /// </summary>
 public sealed class Installer
 {
     public const string ExeName = "MindAttic.Orchestrator.exe";
-    public const string TaskName = @"\MindAttic\Orchestrator\Orchestrator daemon";
+    /// <summary>The logon task this exe registered before WatchDog took the daemon over (M.ORCH-T475). Never registered
+    /// now; still ended on an upgrade and deleted on an uninstall, for a machine that has it yet.</summary>
+    public const string LegacyTaskName = @"\MindAttic\Orchestrator\Orchestrator daemon";
     public const string DaemonArg = "--daemon";
     public const string ShortcutName = "MindAttic Orchestrator.lnk";
 
@@ -120,14 +123,14 @@ public sealed class Installer
         {
             // Stopped for nothing (the old exe still locked, say by an elevated dashboard): the old install's daemon runs
             // again, or pacing and the hooks' holds stay off until the next logon (M.ORCH-T353).
-            if (!DaemonRunning()) Run("schtasks", "/Run", "/TN", TaskName);
+            if (!DaemonRunning()) StartDaemon(InstalledExe);
             throw;
         }
     }
 
     public void StopInstalledCopies()
     {
-        Run("schtasks", "/End", "/TN", TaskName);
+        Run("schtasks", "/End", "/TN", LegacyTaskName);
         foreach (var p in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(ExeName)))
         {
             try
@@ -144,64 +147,29 @@ public sealed class Installer
         }
     }
 
-    /// <summary>Registers the logon task when it's missing or runs something else; starts the daemon if it isn't running.
-    /// Returns what it did, or null when everything was already in place.</summary>
+    /// <summary>Starts the daemon from <paramref name="exe"/> when none is running, as WatchDog would at logon: after an upgrade
+    /// stopped it, pacing and the hooks' holds don't stay off until the next logon. Registers nothing (M.ORCH-T475).
+    /// Returns what it did, or null when one was already up.</summary>
     public string? EnsureDaemon(string exe)
     {
-        string? did = null;
-        if (ReadTaskXml(TaskName) is not { } xml || !TaskRuns(xml, exe))
-        {
-            var file = Path.Combine(Path.GetTempPath(), $"mindattic-orchestrator-task-{Environment.ProcessId}.xml");
-            try
-            {
-                File.WriteAllText(file, TaskXml(exe, $@"{Environment.UserDomainName}\{Environment.UserName}"), Encoding.Unicode);
-                var (created, output) = Run("schtasks", "/Create", "/TN", TaskName, "/XML", file, "/F");
-                if (created != 0) throw new InvalidOperationException($"Couldn't register the logon task: {output.Trim()}");
-                did = "registered the logon daemon";
-            }
-            finally { File.Delete(file); }
-        }
-        if (!DaemonRunning())
-        {
-            Run("schtasks", "/Run", "/TN", TaskName);
-            did = did is null ? "started the daemon" : did + " and started it";
-        }
-        return did;
+        if (DaemonRunning()) return null;
+        StartDaemon(exe);
+        return "started the daemon";
     }
 
-    /// <summary>
-    /// The logon task: the daemon as you, at logon, with no time limit (Task Scheduler's default kills
-    /// tasks after 3 days), restarted if it fails, and one at a time.
-    /// </summary>
-    public static string TaskXml(string exe, string user) => $"""
-        <?xml version="1.0" encoding="UTF-16"?>
-        <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
-          <RegistrationInfo>
-            <Description>Keeps MindAttic.Orchestrator's budget, pace and autopilot running. Installed by MindAttic.Orchestrator.exe; it repairs this task whenever it starts.</Description>
-          </RegistrationInfo>
-          <Triggers>
-            <LogonTrigger><Enabled>true</Enabled><UserId>{Escape(user)}</UserId></LogonTrigger>
-          </Triggers>
-          <Principals>
-            <Principal id="Author"><UserId>{Escape(user)}</UserId><LogonType>InteractiveToken</LogonType><RunLevel>LeastPrivilege</RunLevel></Principal>
-          </Principals>
-          <Settings>
-            <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
-            <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
-            <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
-            <StartWhenAvailable>true</StartWhenAvailable>
-            <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
-            <RestartOnFailure><Interval>PT1M</Interval><Count>3</Count></RestartOnFailure>
-          </Settings>
-          <Actions Context="Author">
-            <Exec>
-              <Command>{Escape(exe)}</Command>
-              <Arguments>{DaemonArg}</Arguments>
-              <WorkingDirectory>{Escape(Path.GetDirectoryName(exe)!)}</WorkingDirectory>
-            </Exec>
-          </Actions>
-        </Task>
-        """;
+    /// <summary>How the daemon is started: <paramref name="exe"/> <see cref="DaemonArg"/>, from its own folder, windowless.</summary>
+    public static ProcessStartInfo DaemonStartInfo(string exe)
+    {
+        var psi = new ProcessStartInfo(exe) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Path.GetDirectoryName(exe)! };
+        psi.ArgumentList.Add(DaemonArg);
+        return psi;
+    }
+
+    private static void StartDaemon(string exe)
+    {
+        try { Process.Start(DaemonStartInfo(exe))?.Dispose(); }
+        catch (System.ComponentModel.Win32Exception ex) { throw new InvalidOperationException($"Couldn't start the daemon: {ex.Message}", ex); }
+    }
 
     public static IReadOnlyList<string> ShortcutPaths() =>
     [
@@ -234,58 +202,16 @@ public sealed class Installer
         return made == 0 ? null : $"made {made} shortcut{(made == 1 ? "" : "s")}";
     }
 
-    /// <summary>Removes the task, the shortcuts, the installed exe's companions and the gate hooks it registered in every CLI's
+    /// <summary>Removes the legacy logon task (if it's still there), the shortcuts, the installed exe's companions and the gate hooks it registered in every CLI's
     /// settings (M.ORCH-T439); the running exe can't delete itself. Returns what was done to the hooks, or null when none were there.</summary>
     public string? Uninstall()
     {
         StopInstalledCopies();
-        Run("schtasks", "/Delete", "/TN", TaskName, "/F");
+        Run("schtasks", "/Delete", "/TN", LegacyTaskName, "/F");
         foreach (var path in ShortcutPaths())
             try { File.Delete(path); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         // After the daemon is stopped, so it can't register them again.
         return AgentGateRemoval.Remove();
-    }
-
-    private static string Escape(string s) => SecurityElement.Escape(s) ?? s;
-
-    /// <summary>Whether the task's exported XML runs <paramref name="exe"/> as the daemon. Task Scheduler's export escapes only
-    /// &amp;, &lt; and &gt; in text, never an apostrophe (C:\Users\o'brien), which <see cref="Escape"/> writes as &amp;apos;: looking
-    /// for that form alone never matched, so the task was registered again on every start (M.ORCH-T334).</summary>
-    internal static bool TaskRuns(string xml, string exe) => xml.Contains(DaemonArg, StringComparison.Ordinal) &&
-        (xml.Contains(Escape(exe), StringComparison.OrdinalIgnoreCase) ||
-         xml.Contains(exe.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;"), StringComparison.OrdinalIgnoreCase));
-
-    /// <summary>
-    /// The registered task's XML, or null when there's no such task. Read through the Task Scheduler's COM API, as a string,
-    /// never from <c>schtasks /Query /XML</c>: piped, that writes the XML in its console's code page (the OEM one, 437 or 850,
-    /// for a windowless daemon), not the UTF-16 it declares, so a path with é in it (C:\Users\José) came back as something
-    /// else, never matched, and the task was registered again on every start (M.ORCH-T449).
-    /// </summary>
-    internal static string? ReadTaskXml(string taskPath)
-    {
-        var (folder, name) = SplitTaskPath(taskPath);
-        var serviceType = Type.GetTypeFromProgID("Schedule.Service");
-        if (serviceType is null) return null;
-        object? service = null;
-        try
-        {
-            service = Activator.CreateInstance(serviceType)!;
-            dynamic scheduler = service;
-            scheduler.Connect();
-            dynamic task = scheduler.GetFolder(folder).GetTask(name);
-            return (string)task.Xml;
-        }
-        // Not registered (or its folder isn't): the COM call throws, as schtasks exited non-zero.
-        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or FileNotFoundException
-                                   or DirectoryNotFoundException or UnauthorizedAccessException) { return null; }
-        finally { if (service is not null && OperatingSystem.IsWindows()) System.Runtime.InteropServices.Marshal.FinalReleaseComObject(service); }
-    }
-
-    /// <summary>A task path (\MindAttic\Orchestrator\Orchestrator daemon) as its folder (\MindAttic\Orchestrator) and name.</summary>
-    internal static (string Folder, string Name) SplitTaskPath(string taskPath)
-    {
-        var slash = taskPath.LastIndexOf('\\');
-        return slash <= 0 ? (@"\", taskPath.TrimStart('\\')) : (taskPath[..slash], taskPath[(slash + 1)..]);
     }
 
     private static (int Code, string Output) Run(string file, params string[] args)

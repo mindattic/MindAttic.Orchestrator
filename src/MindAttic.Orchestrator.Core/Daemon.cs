@@ -8,7 +8,7 @@ using Serilog.Events;
 namespace MindAttic.Orchestrator;
 
 /// <summary>
-/// The always-on loop the logon task runs: keeps <c>rl-status.json</c> and the pace current, notices
+/// The always-on loop WatchDog's Orchestrator.Daemon job runs at logon: keeps <c>rl-status.json</c> and the pace current, notices
 /// stale assignments, cycles context, and feeds the CLIs where /autopilot is on (holding <see cref="DispatchLease"/>). Every
 /// event goes to MindAttic.Log; <c>echo</c> also gets it when someone is watching (the CLI's console).
 /// Runs until cancelled; a failed refresh is logged and retried, since nobody sees a headless crash.
@@ -53,7 +53,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             tick.Start();
             try
             {
-                // The dashboard's first run may pick the workspace after the logon task already started this.
+                // The dashboard's first run may pick the workspace after WatchDog already started this.
                 if (OrchestratorOptions.Load(store) is { } latest && latest.WorkspaceRoot != options.WorkspaceRoot)
                 {
                     options = latest;

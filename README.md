@@ -7,7 +7,7 @@ A Windows daemon, dashboard and CLI that keeps Claude agents working the workspa
 ```text
  Claude Code (every CLI, tab, subagent)                MindAttic.Orchestrator
  ---------------------------------------               -------------------------------------------
- statusline  --> ~/.claude/claude-usage.json  ---->    Daemon (logon task, every 15s)
+ statusline  --> ~/.claude/claude-usage.json  ---->    Daemon (WatchDog job, every 15s)
  transcripts --> ~/.claude/projects/**/*.jsonl ---->     measure: Claude's own 5-hour percent
                                                          pace:    target left / hours to reset
  hooks <------ ~/.claude/rl-status.json  <---------      steer:   allowance, hold, wind-down, stop
@@ -98,7 +98,7 @@ The goal is to keep agents working all day and night, spending the target (98% b
 
 | Piece | What it does | Where |
 | --- | --- | --- |
-| Daemon | runs at logon, refreshes every 15s: budget, pace, hooks, sweeps | logon task `\MindAttic\Orchestrator\...`; log in Vault (below) |
+| Daemon | runs at logon, refreshes every 15s: budget, pace, hooks, sweeps | WatchDog's `Orchestrator.Daemon` job (at logon, kept running); log in Vault (below) |
 | Claude's count | 5-hour percent and reset straight from Claude Code, sized safely | `~/.claude/claude-usage.json` |
 | Pacing | caps new sessions so the window lands on its target (98% by default) at its reset; the week is never paced | `rl-status.json` → `pace` |
 | Holding agents | every Claude CLI and subagent waits before each tool call while the draw won't last, 0s once it fits. If the daemon stalls or dies (`rl-status.json` over 3 minutes old) calls are still held at the last pace it wrote until that window resets, and the daemon logs a write that keeps failing (a gate holding the file open) and any tick over a minute with where its time went | `~/.claude/pace-gate.py` (PreToolUse hook); `rl-status.json` → `pace_delay_seconds`, `window_reset` |
@@ -134,10 +134,10 @@ There's no setup step. `MindAttic.Orchestrator.exe` is one self-contained file: 
 
 1. copies itself to `C:\Apps\MindAttic.Orchestrator` (per-user `%LOCALAPPDATA%\Programs` if `C:\Apps` isn't writable) and hands over to that copy;
 2. if the workspace (default `D:\Projects\MindAttic`) is missing or empty, asks once: **build one** (pick an empty folder; it clones the workspace root repo, `mindattic/codex-standard`, then every repo listed in its `docs\workspace-repos.json`, four at a time, with a progress window) or **point at one that's already here**. Repos that fail (offline, no access) are listed with the `git clone` line that retries each;
-3. registers the logon task `\MindAttic\Orchestrator\Orchestrator daemon` (the same exe with `--daemon`: headless, no window, no time limit) and starts it;
+3. starts the daemon (the same exe with `--daemon`: headless, no window) if it isn't running. Starting it at logon and keeping it running is [MindAttic.WatchDog](../MindAttic.WatchDog)'s `Orchestrator.Daemon` job; the exe registers no scheduled task of its own (M.ORCH-T475);
 4. makes Start menu and desktop shortcuts, then opens the dashboard, which scans every repo and learns your limits from the last month of transcripts.
 
-Every later start checks the same things and repairs only what's missing or points elsewhere, so a moved exe, a deleted shortcut or a dead daemon fixes itself. Double-clicking a newer copy upgrades in place (the running daemon and dashboard are stopped and restarted); an older one starts the installed copy instead of replacing it. A dev or test build (under `bin\` or `obj\`, inside a git checkout or worktree, a `*.worktrees` folder, or the temp folder) runs as itself and leaves the install, daemon and shortcuts alone; only `--install` installs it (`--install --force` to replace a newer installed exe). `MindAttic.Orchestrator.exe --uninstall` removes the task and shortcuts.
+Every later start checks the same things and repairs only what's missing or points elsewhere, so a moved exe, a deleted shortcut or a dead daemon fixes itself. Double-clicking a newer copy upgrades in place (the running daemon and dashboard are stopped and restarted); an older one starts the installed copy instead of replacing it. A dev or test build (under `bin\` or `obj\`, inside a git checkout or worktree, a `*.worktrees` folder, or the temp folder) runs as itself and leaves the install, daemon and shortcuts alone; only `--install` installs it (`--install --force` to replace a newer installed exe). `MindAttic.Orchestrator.exe --uninstall` removes the shortcuts and hooks (and the old `\MindAttic\Orchestrator\Orchestrator daemon` task, if an older install left one); WatchDog's job is removed in WatchDog.
 
 The daemon is what makes budgets and pacing always on: it keeps `~/.claude/rl-status.json` and the pace (including the hold on running agents) current, installs and repairs the pace and context hooks, notices stale assignments, reaps orphaned processes and sweeps landed worktrees. Only one runs (a named mutex), and only one process holds the dispatch lease (`dispatch.lock`). The same lease decides who writes `rl-status.json` and builds the status snapshot: the holder publishes each one to `status-snapshot.json`, and every other dashboard window, and one-off CLI commands like `status` and `queue`, show that instead of reading the transcripts themselves (they build their own only when nothing fresh was published in the last minute, and never overwrite the holder's `rl-status.json`). A dashboard hidden in the tray refreshes every 60s instead of every 5s (every 15s while it's the one holding the lease) and catches up the moment it's shown.
 
@@ -270,7 +270,7 @@ dotnet test MindAttic.Orchestrator.slnx
 - A session started outside the Launcher is tracked, counted and held, but `send` and the dashboard's reply box only reach Launcher tabs.
 - Holding is set in the dashboard's Settings panel (or `settings.json`: `ThrottleAgents`, `MaxAgentDelaySeconds`); the CLI only has `--throttle-agents` and `--max-delay`.
 - Claude Code prunes transcripts after about 30 days; the budget history window is 7 days, which always covers the current week.
-- The budget file only updates while the daemon or the dashboard is running, so pacing only steers while one of them is; the logon task keeps the daemon up, and opening the dashboard restarts it if it died.
+- The budget file only updates while the daemon or the dashboard is running, so pacing only steers while one of them is; WatchDog's job keeps the daemon up, and opening the dashboard restarts it if it died.
 - Building a workspace clones the repos; it doesn't install the other apps unless you pass `--install-apps` or run `workspace install-apps`. The repo list is only as current as the last `workspace export` that was pushed.
 - No hold lasts past 5 minutes per tool call: past it the call goes ahead, held but never refused, except at the window's stop and for a subagent still waiting on a full allowance, where it's refused (the subagent is tried again once a slot frees, never started over the allowance). `/unthrottle` exempts a CLI from holds, never from that stop.
 - A hold slows tool calls, not a long reply with no tool calls in it. Codex needs a one-time "trust this hook" click in its own TUI the first time its hold fires on a machine; nothing automates that.

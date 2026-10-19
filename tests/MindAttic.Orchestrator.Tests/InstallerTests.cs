@@ -1,4 +1,3 @@
-using System.Xml.Linq;
 using MindAttic.Orchestrator.Settings;
 using MindAttic.Orchestrator.Setup;
 using NUnit.Framework;
@@ -8,55 +7,22 @@ namespace MindAttic.Orchestrator.Tests;
 public sealed class InstallerTests
 {
     [Test]
-    public void The_logon_task_runs_the_daemon_as_you_forever()
+    public void The_daemon_is_started_from_the_exe_with_the_daemon_arg_and_no_window()
     {
-        var xml = XDocument.Parse(Installer.TaskXml(@"C:\Apps\Mind & Attic\MindAttic.Orchestrator.exe", @"PC\ryan"));
-        XNamespace t = "http://schemas.microsoft.com/windows/2004/02/mit/task";
-
-        Assert.That(xml.Descendants(t + "Command").Single().Value, Is.EqualTo(@"C:\Apps\Mind & Attic\MindAttic.Orchestrator.exe"), "escaped, so odd paths survive");
-        Assert.That(xml.Descendants(t + "Arguments").Single().Value, Is.EqualTo(Installer.DaemonArg));
-        Assert.That(xml.Descendants(t + "LogonTrigger").Single().Element(t + "UserId")!.Value, Is.EqualTo(@"PC\ryan"));
-        Assert.That(xml.Descendants(t + "ExecutionTimeLimit").Single().Value, Is.EqualTo("PT0S"), "Task Scheduler's default would kill it after 3 days");
-        Assert.That(xml.Descendants(t + "LogonType").Single().Value, Is.EqualTo("InteractiveToken"), "autopilot types into CLIs on your desktop");
+        // M.ORCH-T475: WatchDog's Orchestrator.Daemon job starts it at logon; the exe only starts one itself after an upgrade.
+        var psi = Installer.DaemonStartInfo(@"C:\Apps\Mind & Attic\MindAttic.Orchestrator.exe");
+        Assert.That(psi.FileName, Is.EqualTo(@"C:\Apps\Mind & Attic\MindAttic.Orchestrator.exe"));
+        Assert.That(psi.ArgumentList, Is.EqualTo(new[] { Installer.DaemonArg }));
+        Assert.That(psi.WorkingDirectory, Is.EqualTo(@"C:\Apps\Mind & Attic"));
+        Assert.That(psi.CreateNoWindow, Is.True);
     }
 
     [Test]
-    public void The_logon_task_is_recognised_as_task_scheduler_exports_it_with_an_apostrophe_or_ampersand_in_the_path()
+    public void No_logon_task_is_registered_any_more()
     {
-        // M.ORCH-T334: the export writes an apostrophe as is; only &, < and > are escaped.
-        const string exe = @"C:\Users\o'brien\AppData\Local\Programs\R&D\MindAttic.Orchestrator.exe";
-        var exported = $@"<Exec><Command>C:\Users\o'brien\AppData\Local\Programs\R&amp;D\MindAttic.Orchestrator.exe</Command><Arguments>{Installer.DaemonArg}</Arguments></Exec>";
-        Assert.That(Installer.TaskRuns(exported, exe), Is.True);
-        Assert.That(Installer.TaskRuns(Installer.TaskXml(exe, @"PC\o'brien"), exe), Is.True, "as written, too");
-        Assert.That(Installer.TaskRuns(exported.Replace("o'brien", "someone"), exe), Is.False, "another exe is registered again");
-    }
-
-    [Test]
-    public void The_logon_task_is_recognised_with_a_non_ascii_user_name_in_the_path()
-    {
-        // M.ORCH-T449: schtasks /Query /XML, piped, writes in its console's OEM code page (437 for a windowless daemon), not the
-        // UTF-16 it declares, and was read as UTF-8: the é never matched, and the task was registered again on every start.
-        const string exe = @"C:\Users\José Müller\AppData\Local\Programs\MindAttic.Orchestrator\MindAttic.Orchestrator.exe";
-        var xml = Installer.TaskXml(exe, @"PC\José Müller");
-        Assert.That(Installer.TaskRuns(xml, exe), Is.True, "the XML as Task Scheduler's API returns it, a string, matches");
-
-        System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
-        var throughTheConsole = System.Text.Encoding.UTF8.GetString(System.Text.Encoding.GetEncoding(437).GetBytes(xml));
-        Assert.That(Installer.TaskRuns(throughTheConsole, exe), Is.False, "the old console round trip lost it: why the XML isn't read that way");
-    }
-
-    [TestCase(@"\MindAttic\Orchestrator\Orchestrator daemon", @"\MindAttic\Orchestrator", "Orchestrator daemon")]
-    [TestCase(@"\At the root", @"\", "At the root")]
-    [TestCase("No slash", @"\", "No slash")]
-    public void A_task_path_splits_into_its_folder_and_name(string path, string folder, string name) =>
-        Assert.That(Installer.SplitTaskPath(path), Is.EqualTo((folder, name)));
-
-    [Test]
-    public void A_task_that_isnt_registered_reads_as_none()
-    {
-        // Read-only: nothing is registered or deleted.
-        Assert.That(Installer.ReadTaskXml($@"\MindAttic\Orchestrator\No such task {Guid.NewGuid():N}"), Is.Null);
-        Assert.That(Installer.ReadTaskXml($@"\No such folder {Guid.NewGuid():N}\No such task"), Is.Null);
+        // M.ORCH-T475: the task (and its XML) is gone; only its name is kept, to end and delete one an older install left.
+        Assert.That(typeof(Installer).GetMethod("TaskXml"), Is.Null);
+        Assert.That(Installer.LegacyTaskName, Is.EqualTo(@"\MindAttic\Orchestrator\Orchestrator daemon"));
     }
 
     [TestCase(@"D:\Projects\MindAttic\MindAttic.Orchestrator\src\MindAttic.Orchestrator.Wpf\bin\Debug\net10.0-windows\MindAttic.Orchestrator.exe", true)]
