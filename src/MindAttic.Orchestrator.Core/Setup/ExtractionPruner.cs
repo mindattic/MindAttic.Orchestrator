@@ -19,19 +19,27 @@ public static class ExtractionPruner
         var (folders, bytes) = (0, 0L);
         foreach (var dir in Directory.GetDirectories(appDir))
         {
-            // A running build holds its DLLs open, and Windows won't rename a folder with an open file in it: a folder
-            // that moves is one nothing is using, and deleting it can't pull a library out from under a live process.
-            var doomed = dir.EndsWith(".prune", StringComparison.OrdinalIgnoreCase) ? dir : dir + ".prune";
             try
             {
-                if (doomed != dir) Directory.Move(dir, doomed);
-                var size = new DirectoryInfo(doomed).EnumerateFiles("*", SearchOption.AllDirectories).Sum(f => f.Length);
-                Directory.Delete(doomed, recursive: true);
+                var files = new DirectoryInfo(dir).GetFiles("*", SearchOption.AllDirectories);
+                if (files.Any(InUse)) continue;
+                Directory.Delete(dir, recursive: true);
                 folders++;
-                bytes += size;
+                bytes += files.Sum(f => f.Length);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
         return (folders, bytes);
+    }
+
+    // A loaded DLL is mapped with delete sharing, so its folder can still be renamed or partly deleted; it can't be opened for writing.
+    private static bool InUse(FileInfo file)
+    {
+        try
+        {
+            using var _ = file.Open(FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return true; }
     }
 }
