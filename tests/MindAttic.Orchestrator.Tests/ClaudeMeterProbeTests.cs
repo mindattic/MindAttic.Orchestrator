@@ -50,6 +50,41 @@ public sealed class ClaudeMeterProbeTests
     }
 
     [Test]
+    public void The_meter_is_seen_when_the_running_window_was_last_read_not_when_an_idle_tab_restamped_the_file()
+    {
+        // M.ORCH-T479: Oct 19 06:20-11:20Z went unseen 1h55m while 3.5M were spent: idle tabs restamped claude-usage.json
+        // every minute with their last reply from the window that had reset (or a lower percent), so the report was never stale.
+        var reset = Now.AddHours(4);
+        var samples = new[] { new UsageSample(Now.AddMinutes(-35), 1, reset, 27_843) };
+        var oldWindow = new ReportedUsage(new ReportedWindow(95, Now.AddMinutes(-40)), null, Now.AddSeconds(-20));
+        var lower = new ReportedUsage(new ReportedWindow(0, reset), null, Now.AddSeconds(-20));
+        var live = new ReportedUsage(new ReportedWindow(6, reset), null, Now.AddSeconds(-20));
+        var spending = new[] { E(Now.AddMinutes(-1), 500) };
+
+        Assert.That(ClaudeMeterProbe.SeenAt(oldWindow, samples, Now), Is.EqualTo(Now.AddMinutes(-35)), "the reset window's restamp isn't a reading");
+        Assert.That(ClaudeMeterProbe.Due(ClaudeMeterProbe.SeenAt(oldWindow, samples, Now), spending, Now), Is.True, "so the probe asks");
+        Assert.That(ClaudeMeterProbe.SeenAt(lower, samples, Now), Is.EqualTo(Now.AddMinutes(-35)), "nor a lower percent for the running one");
+        Assert.That(ClaudeMeterProbe.SeenAt(live, samples, Now), Is.EqualTo(Now.AddSeconds(-20)), "a real reading is seen when it was taken");
+        Assert.That(ClaudeMeterProbe.SeenAt(oldWindow, [], Now), Is.Null, "no reading of the running window at all");
+    }
+
+    [Test]
+    public void The_probes_reading_stands_where_a_statusline_wrote_over_it_with_less()
+    {
+        var reset = Now.AddHours(4);
+        var probed = new ReportedUsage(new ReportedWindow(6, reset), null, Now.AddMinutes(-1));
+        var oldWindow = new ReportedUsage(new ReportedWindow(95, Now.AddMinutes(-40)), null, Now);
+        var lower = new ReportedUsage(new ReportedWindow(1, reset), null, Now);
+        var higher = new ReportedUsage(new ReportedWindow(7, reset), null, Now);
+
+        Assert.That(ClaudeMeterProbe.Fresher(oldWindow, probed, Now), Is.SameAs(probed));
+        Assert.That(ClaudeMeterProbe.Fresher(null, probed, Now), Is.SameAs(probed));
+        Assert.That(ClaudeMeterProbe.Fresher(lower, probed, Now), Is.SameAs(probed));
+        Assert.That(ClaudeMeterProbe.Fresher(higher, probed, Now), Is.SameAs(higher), "a newer, higher reading wins");
+        Assert.That(ClaudeMeterProbe.Fresher(lower, probed with { FiveHour = new ReportedWindow(6, Now.AddMinutes(-1)) }, Now), Is.SameAs(lower), "a probe reading whose window reset is no use");
+    }
+
+    [Test]
     public void Parse_rounds_the_endpoints_reset_to_the_statuslines_minute()
     {
         var r = ClaudeMeterProbe.Parse(Body)!;

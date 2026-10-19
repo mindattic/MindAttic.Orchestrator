@@ -747,6 +747,45 @@ public sealed class StatusAggregatorTests
     }
 
     [Test]
+    public void An_idle_tab_restamping_the_reset_windows_reply_doesnt_keep_the_probe_from_reading_and_cant_write_over_its_reading()
+    {
+        // M.ORCH-T479: Oct 19 06:20-11:20Z went unseen 1h55m while 3.5M were spent. Idle tabs' statuslines restamped
+        // claude-usage.json each minute with their last reply, from the window that had reset, so the report never got stale
+        // enough to ask; and a reading the probe wrote could be written over before the next refresh read it.
+        var at = Seconds(DateTime.UtcNow);
+        var reset = new DateTime(at.AddHours(4).Ticks / TimeSpan.TicksPerMinute * TimeSpan.TicksPerMinute, DateTimeKind.Utc);
+        var weekReset = new DateTime(at.AddDays(3).Ticks / TimeSpan.TicksPerMinute * TimeSpan.TicksPerMinute, DateTimeKind.Utc);
+        var credentials = Path.Combine(dir, ".credentials.json");
+        File.WriteAllText(credentials, $$$"""{"claudeAiOauth":{"accessToken":"tok","expiresAt":{{{DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeMilliseconds()}}}}}""");
+        var asked = 0;
+        var probe = new ClaudeMeterProbe
+        {
+            UsagePath = Path.Combine(dir, "claude-usage.json"), CredentialsPath = credentials,
+            AccountKey = () => ClaudeAccount.Current(Path.Combine(dir, ".claude.json")),
+            Fetch = (_, _) =>
+            {
+                asked++;
+                return Task.FromResult<string?>($$$"""{"five_hour":{"utilization":6.0,"resets_at":"{{{reset:O}}}"},"seven_day":{"utilization":60.0,"resets_at":"{{{weekReset:O}}}"}}""");
+            },
+        };
+        Config("""{"oauthAccount":{"accountUuid":"a"}}""");
+        SignedInSince("a", TimeSpan.FromHours(6));
+        var daemon = Daemon(SignIn(), probe: probe);
+        store.Save("usage-samples", new List<UsageSample> { new(at.AddMinutes(-35), 1, reset, 27_843) });
+        Transcript("s1", Path.Combine(ws, "A"), TimeSpan.Zero, 500_000);
+        Usage(95, at.AddMinutes(-40), 50, weekReset); // stamped just now, from the window that reset 40 minutes ago
+
+        daemon.Refresh();
+        probe.Pending.Wait();
+        Assert.That(asked, Is.EqualTo(1), "the running window was last read 35 minutes ago while tokens are spent: read it");
+
+        Usage(95, at.AddMinutes(-40), 50, weekReset); // and an idle tab writes over the probe's reading
+        var read = daemon.Refresh().Budget!;
+        Assert.That((read.WeeklyPercent, read.CurrentBlock!.EndUtc), Is.EqualTo(((double?)60, reset)), "the probe's reading stands");
+        Assert.That(store.Load<List<UsageSample>>("usage-samples").Select(s => s.Percent), Is.EqualTo(new[] { 1.0, 6.0 }), "and is sampled");
+    }
+
+    [Test]
     public void Right_after_the_week_resets_the_probe_reads_the_new_week_at_once()
     {
         var reset = new DateTime(now.Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond, DateTimeKind.Utc).AddSeconds(-5);

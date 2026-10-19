@@ -258,6 +258,10 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         // stop kept every prompt refused though the new account had room), and going back to an account picks its own up
         // again. Hits stay for learning the limits; their walls go.
         var signIn = SignIn?.Read(now);
+        // The probe's last reading, where a statusline wrote over it before this refresh read it (M.ORCH-T479); only the
+        // signed-in account's.
+        if (Probe?.LastReading is { } probed && (signIn is null || signIn.Owns(probed)))
+            reported = ClaudeMeterProbe.Fresher(reported, probed, now);
         var calibration = Calibrate(subscriptionSessions, events, historyStartUtc, now, signIn?.History);
         var switchedNow = false;
         if (signIn is not null)
@@ -287,7 +291,9 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
                 probe.Reset();
                 probedReset = lapsed ?? probedReset;
             }
-            probe.Tick(reported?.AtUtc, events, now, force: lapsed is not null || signIn is { Switched: true } && !signIn.HasWindow(now));
+            // Seen when the running window was last read, not when a statusline last restamped the file (M.ORCH-T479).
+            var seen = ClaudeMeterProbe.SeenAt(reported, signIn is null ? samples ?? [] : (samples ?? []).Where(s => signIn.Contains(s.AtUtc)), now);
+            probe.Tick(seen, events, now, force: lapsed is not null || signIn is { Switched: true } && !signIn.HasWindow(now));
         }
         var reportedLimit = ReportedLimitFrom(reported, events, now, signIn);
         List<UsageSample> mine = signIn is null ? samples ?? [] : [.. (samples ?? []).Where(s => signIn.Contains(s.AtUtc))];

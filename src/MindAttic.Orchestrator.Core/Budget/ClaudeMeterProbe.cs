@@ -56,6 +56,12 @@ public sealed class ClaudeMeterProbe
     /// <summary>What the last ask did, for the log and tests.</summary>
     public string? LastResult { get; private set; }
 
+    /// <summary>The last reading written (as written, with its time and account); null before one. Every open CLI's statusline
+    /// rewrites <see cref="UsagePath"/> each minute, an idle one with its last reply from a window that already reset, so the
+    /// written reading could be gone before the next refresh read it (M.ORCH-T479): the refresh takes it from here too
+    /// (<see cref="Fresher"/>).</summary>
+    public ReportedUsage? LastReading { get; private set; }
+
     /// <summary>Whether a fresh reading is needed: the last report (null when there is none) is
     /// <see cref="StaleAfter"/> old and tokens were spent after it, the latest of them within <see cref="StaleAfter"/>.</summary>
     public static bool Due(DateTime? reportedAtUtc, IReadOnlyList<UsageEvent> events, DateTime nowUtc)
@@ -70,6 +76,33 @@ public sealed class ClaudeMeterProbe
             if (e.Usage.Fresh > 0) return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// When Claude's meter was last seen for the window still running, for <see cref="Due"/> (M.ORCH-T479): the report's time
+    /// only when it is a reading of that window no lower than one already recorded for it. Every open CLI's statusline
+    /// restamps <c>claude-usage.json</c> each minute, an idle one with its last reply from a window that already reset (or a
+    /// lower percent), so the report's own time stayed under <see cref="StaleAfter"/> and the probe never asked: the Oct 19
+    /// 06:20-11:20Z window went unseen for 1h55m while 3.5M were spent. Otherwise the latest sample of the running window;
+    /// null when there is none.
+    /// </summary>
+    public static DateTime? SeenAt(ReportedUsage? reported, IEnumerable<UsageSample> samples, DateTime nowUtc)
+    {
+        var running = samples.Where(s => s.ResetUtc > nowUtc && s.AtUtc <= nowUtc).ToList();
+        if (ReportedUsage.Usable(reported?.FiveHour, nowUtc) is { } w &&
+            !running.Any(s => s.ResetUtc == w.ResetUtc && s.Percent > w.Percent))
+            return reported!.AtUtc;
+        return running.Count == 0 ? null : running.Max(s => s.AtUtc);
+    }
+
+    /// <summary><paramref name="probed"/> (the probe's last reading) where it says more about the running window than
+    /// <paramref name="file"/> (what <c>claude-usage.json</c> holds now): the file has no running 5-hour window, or a lower
+    /// percent for the same one. Otherwise the file.</summary>
+    public static ReportedUsage? Fresher(ReportedUsage? file, ReportedUsage? probed, DateTime nowUtc)
+    {
+        if (ReportedUsage.Usable(probed?.FiveHour, nowUtc) is not { } p) return file;
+        if (ReportedUsage.Usable(file?.FiveHour, nowUtc) is not { } f) return probed;
+        return f.ResetUtc == p.ResetUtc && p.Percent > f.Percent ? probed : file;
     }
 
     /// <summary>Starts an ask in the background when <see cref="Due"/> and none is in flight or backing off; returns
@@ -132,7 +165,7 @@ public sealed class ClaudeMeterProbe
         }
         try
         {
-            Write(UsagePath, reading, DateTime.UtcNow, account);
+            LastReading = Write(UsagePath, reading, DateTime.UtcNow, account);
             LastResult = $"read Claude's meter: {reading.FiveHour?.Percent:0}% of the 5-hour window";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -205,7 +238,7 @@ public sealed class ClaudeMeterProbe
     /// <paramref name="account"/>. Usage never falls within a window, so a higher percent already in the file for the same
     /// window is kept (with this, newer, time), when it's the same account's: an untagged statusline reading may be another
     /// account's whose window happens to reset at the same minute, and its percent would be written tagged as this one's.</summary>
-    internal static void Write(string path, ReportedUsage reading, DateTime atUtc, string? account = null)
+    internal static ReportedUsage Write(string path, ReportedUsage reading, DateTime atUtc, string? account = null)
     {
         var five = reading.FiveHour!;
         if (ReportedUsage.Load(atUtc, path) is { FiveHour: { } old } was && was.Account == account && old.ResetUtc == five.ResetUtc && old.Percent > five.Percent)
@@ -227,6 +260,7 @@ public sealed class ClaudeMeterProbe
             try { File.Delete(tmp); } catch (IOException) { }
             throw;
         }
+        return new ReportedUsage(five, reading.Week, atUtc) { Account = account };
 
         static JsonObject Node(ReportedWindow w) => new()
         {
