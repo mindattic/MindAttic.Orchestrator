@@ -30,6 +30,22 @@ The daemon starts at logon and refreshes every 15 seconds, sooner when a turn en
    That is a hold, not the stop: the stop comes only at the target. Past 85% it starts no new subagent or ticket. The
    profile is read on every check, so a switch mid-window applies to the next call; going back to linear spreads
    what's left evenly again. The utilization chart draws the active profile's curve.
+
+   *Front-loaded spike (M.ORCH-T399).* Front-loaded ran from 2026-10-18 17:19Z with k 0.55 and target 98%, and
+   nothing else changed. Results come from `pace-ledger.jsonl`, `usage-samples.json` and `pace-gate.jsonl`. The
+   subagents running at each crossing come from the subagent transcripts' first and last timestamps.
+
+   | Window (UTC) | Peak | Final | Over 98 | Limit hit | Min at target | Refused | Subagents at 85% / 95% |
+   |---|---|---|---|---|---|---|---|
+   | 10-18 20:20 to 10-19 01:20 | 65 | 65 | 0 | none | 0 | 4 (Agent, 16 to 27%) | not reached / not reached |
+   | 10-19 01:20 to 06:20 | 95 | 95 | 0 | none | 0 | 42 (Agent; 5 past 85%) | 2 (U.SPC-T49 bug hunt, started 157 min before; a bughunt subagent, started 25 min before) / 0 |
+   | 10-19 06:20 to 11:20 | 49 | 49 | 0 | none | 0 | 0 | not reached / not reached (graded Blind: meter unseen 1h55m) |
+   | 10-19 14:30 to 19:30 | 96 | 96 | 0 | none | 0 | 15 (Agent, 38 to 76%) | 3 (GG-T97, GG-T100, GG-T110, all started 46 min before at about 76%) / 2 (GG-T97, GG-T110) |
+
+   No window passed 99%. The highest peak was 96%, there was no overshoot, and no limit was hit. The 85% rule held:
+   every subagent running past 85% had started before 85%, and later Agent calls were refused. Front-loaded stays as
+   an option. No window reached the 98% target. The 65% and 49% windows were short on demand, not held back:
+   pacing held agents for 47 minutes and 1 minute in those windows.
 3. **Steer.** The result goes into `~/.claude/rl-status.json`, which the hooks in every Claude CLI read:
    - *Subagent allowance:* how many subagents may run at once across all CLIs. A new one waits while the allowance
      is used up, and is refused (try again once a slot frees) if it's still full after 5 minutes.
