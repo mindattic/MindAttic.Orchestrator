@@ -131,6 +131,13 @@ public partial class App : Application
         {
             IsBackground = true, Name = "Daemon",
         }.Start();
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            var (folders, bytes) = ExtractionPruner.Prune(ExtractionPruner.BaseDir(), Path.GetFileNameWithoutExtension(Environment.ProcessPath!));
+            if (folders > 0)
+                OrchestratorLog.For("Daemon").Information("Deleted {Folders} old builds' unpacked files ({MB:N0} MB) from {Dir:l}",
+                    folders, bytes / 1048576.0, ExtractionPruner.BaseDir());
+        });
     }
 
     /// <summary>Running from a download folder over an older install (or none): install there and start the installed copy instead.</summary>
