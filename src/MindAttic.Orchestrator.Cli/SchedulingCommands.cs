@@ -244,6 +244,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("false pauses every CLI where /autopilot is on (their marks stay); true lets them go again.")]
         public bool? Autopilot { get; init; }
 
+        [CommandOption("--autopilot-by-default <ON>")]
+        [Description("true (default): every Claude CLI starts with /autopilot on for its own repo until /autopilot off is typed in it; false: only where /autopilot is typed.")]
+        public bool? AutopilotByDefault { get; init; }
+
         [CommandOption("--throttle-agents <ON>")]
         [Description("true: while the burn won't last until the reset, running Claude agents wait before each tool call (up to --max-delay seconds).")]
         public bool? ThrottleAgents { get; init; }
@@ -376,6 +380,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { AutopilotHandMinutes = hand };
             changed = true;
         }
+        if (settings.AutopilotByDefault is { } byDefault)
+        {
+            s = s with { AutopilotByDefault = byDefault };
+            changed = true;
+        }
         if (settings.KeepGoing is { } keep)
         {
             s = s with { KeepGoing = keep };
@@ -437,9 +446,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         var clis = new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis();
         AnsiConsole.MarkupLine($"settings: {Markup.Escape(Path.Combine(store.Directory, "settings.json"))}");
         AnsiConsole.MarkupLine($"  max sessions {s.MaxConcurrentSessions} · provider {Markup.Escape(s.DefaultProvider)} · autopilot " +
-            (clis.Count == 0 ? "off in every CLI (type /autopilot in the CLI that should work tickets)"
+            (clis.Count == 0 ? (s.AutopilotByDefault ? "on by default, in no CLI yet (each gets it at its start or next prompt)" : "off in every CLI (type /autopilot in the CLI that should work tickets)")
                 : (s.Autopilot ? "[green]on[/] in " : "[yellow]paused[/] (--autopilot true resumes it) in ") +
                   Markup.Escape(string.Join("; ", clis.Select(c => $"CLI {c.Key} for {string.Join(", ", c.Value)}")))) +
+            (s.AutopilotByDefault ? " · on by default in every new CLI (/autopilot off opts one out)" : "") +
             (s.KeepGoing ? " · /autopilot CLIs keep going through their workable tickets without asking" : " · /autopilot CLIs may stop between tickets") +
             (s.ResumeAfterReset ? " · a CLI stopped for a window is told to carry on once it resets" : " · you're alerted when a CLI stopped for a window could carry on after its reset"));
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (Claude's report, else learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (Claude's report, else learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display + " unless Claude reports another" : "as Claude reports, else learned, else rolling 7 days")} · warn at {s.WarnPercent}%");

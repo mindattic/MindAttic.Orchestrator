@@ -147,7 +147,7 @@ public sealed class ContextCyclerMarksTests
         var keep = new[] { "abc.json", "abc.state.json", ContextCycler.AutopilotFile, "keep-going.jsonl" };
         var drop = new[]
         {
-            $"crossrepo-{NotClaude}", $"unthrottled-{NotClaude}", $"autopilot-{NotClaude}",
+            $"crossrepo-{NotClaude}", $"unthrottled-{NotClaude}", $"autopilot-{NotClaude}", $"noautopilot-{NotClaude}",
             "crossrepo-0", "unthrottled-notapid", "autopilot-",
         };
         foreach (var f in keep.Concat(drop)) File.WriteAllText(Path.Combine(dir, f), "x");

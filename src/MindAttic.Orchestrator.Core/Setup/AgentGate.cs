@@ -766,16 +766,39 @@ public static class AgentGate
             except Exception:
                 pass
             if re.match(r"off\s+all\b", args, re.I):
-                for each in SESSION_MARKS.glob("autopilot-*"):  # off everywhere: every CLI's
+                for each in SESSION_MARKS.glob("autopilot-*"):  # off everywhere: every CLI's, kept off past the default
                     try:
+                        (SESSION_MARKS / ("no" + each.name)).write_text("", encoding="utf-8")
                         each.unlink()
                     except Exception:
                         pass
+            off = SESSION_MARKS / ("noautopilot-" + str(pid))
             if pid and names:
                 mark.write_text(",".join(names), encoding="utf-8")
-            elif mark.exists():
-                mark.unlink()
+                if off.exists():
+                    off.unlink()
+            else:
+                if mark.exists():
+                    mark.unlink()
+                if pid and re.match(r"off\b", args, re.I):
+                    off.write_text("", encoding="utf-8")
             return None
+        def autopilot_by_default(pid, cwd):
+            # /autopilot is on by default (M.ORCH-T476): a Claude CLI with no mark gets one for its own repo, unless /autopilot
+            # off was typed in it (its noautopilot mark), AutopilotByDefault is false, or the repo is in AutopilotSkip.
+            if not pid or (SESSION_MARKS / ("autopilot-" + str(pid))).exists() or (SESSION_MARKS / ("noautopilot-" + str(pid))).exists():
+                return
+            try:
+                s = json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "settings.json").read_text(encoding="utf-8-sig"))
+            except Exception:
+                s = {}
+            if s.get("AutopilotByDefault") is False:
+                return
+            mine = repo_of(cwd or "")
+            if not mine or mine.lower() in {(x or "").lower() for x in s.get("AutopilotSkip") or []}:
+                return
+            SESSION_MARKS.mkdir(parents=True, exist_ok=True)
+            (SESSION_MARKS / ("autopilot-" + str(pid))).write_text(mine, encoding="utf-8")
         def set_crossrepo(pid, args):
             # /crossrepo <A,B|all> lets this CLI work other repos too (the explicit exception to M.ORCH-T95); /crossrepo off ends it.
             if not pid:
@@ -1643,6 +1666,7 @@ public static class AgentGate
                 state = load(state_file)
                 state.update(auth=auth, billing=line, billing_warn=warn, pid=state.get("pid") or cli_pid(), cwd=state.get("cwd") or data.get("cwd"))
                 save(state_file, state)
+                autopilot_by_default(state["pid"], data.get("cwd"))
             except Exception:
                 pass
             print(json.dumps({"systemMessage": line, "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": line}}))
@@ -1762,6 +1786,12 @@ public static class AgentGate
                 state["asked"] = asked
             else:
                 state.pop("asked", None)
+            # On by default, so a CLI open before the default (or before its SessionStart hook) gets it here; a typed /autopilot
+            # off below then removes it and keeps it off.
+            try:
+                autopilot_by_default(my_pid(), data.get("cwd") or "")
+            except Exception:
+                pass
             # /autopilot (set_autopilot): THIS CLI works those repos' tickets through its own subagents until /autopilot off here.
             if prompt.startswith("/autopilot"):
                 why = set_autopilot(my_pid(), typed[len("/autopilot"):].strip(), data.get("cwd") or "")

@@ -177,7 +177,7 @@ public sealed class ContextCycler(string? directory = null)
             foreach (var f in System.IO.Directory.EnumerateFiles(SubagentDirectory).Where(f => !SubagentAlive(f, DateTime.UtcNow, idle: false)))
                 try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         if (!System.IO.Directory.Exists(Directory)) return;
-        foreach (var prefix in new[] { "unthrottled-", "crossrepo-", "autopilot-" })
+        foreach (var prefix in new[] { "unthrottled-", "crossrepo-", "autopilot-", "noautopilot-" })
             foreach (var f in System.IO.Directory.EnumerateFiles(Directory, prefix + "*"))
             {
                 var alive = int.TryParse(Path.GetFileName(f)[prefix.Length..], out var pid) && IsClaude(pid);

@@ -941,6 +941,10 @@ public sealed class HookScriptTests
     public void An_autopilot_skill_call_is_recorded_only_when_the_user_asked_for_autopilot()
     {
         var mark = Path.Combine(Marks, $"autopilot-{Cli}");
+        // Off by default here, so the mark is only what the Skill call records (on by default, a prompt marks the CLI's own repo).
+        var settings = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "settings.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
+        File.WriteAllText(settings, """{"AutopilotByDefault":false}""");
         Gate(Said("work the Workflow tickets"), AgentGate.ContextScriptName);
         Assert.That(Gate(SkillCall("autopilot", "-repo=MindAttic.Workflow")).Output, Does.Contain("\"deny\"").And.Contain("/autopilot"));
         Assert.That(File.Exists(mark), Is.False);

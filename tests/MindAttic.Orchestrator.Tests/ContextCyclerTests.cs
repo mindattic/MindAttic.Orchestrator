@@ -284,6 +284,61 @@ public sealed class ContextCyclerTests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
+    [Test]
+    public void Autopilot_is_on_by_default_for_each_clis_own_repo_until_it_is_turned_off_there()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
+        var ws = Path.Combine(dir, "ws");
+        string RepoDir(string name) { var r = Path.Combine(ws, name); Directory.CreateDirectory(Path.Combine(r, ".git")); return r; }
+        var (a, b, skipped) = (RepoDir("A"), RepoDir("B"), RepoDir("Skipped"));
+        var settings = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "settings.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
+        File.WriteAllText(settings, """{"AutopilotSkip":["skipped"]}""");
+        try
+        {
+            Setup.AgentGate.Ensure(dir);
+            void Hook(int cli, string cwd, string hookEvent, string prompt = "")
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\"")
+                    { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
+                psi.Environment["USERPROFILE"] = dir;
+                psi.Environment["APPDATA"] = dir;
+                psi.Environment["MINDATTIC_WORKSPACE"] = ws;
+                psi.Environment["MINDATTIC_CLI_PID"] = cli.ToString();
+                using var p = System.Diagnostics.Process.Start(psi)!;
+                p.StandardInput.Write(System.Text.Json.JsonSerializer.Serialize(new { session_id = "s" + cli, hook_event_name = hookEvent, cwd, prompt }));
+                p.StandardInput.Close();
+                p.StandardOutput.ReadToEnd();
+                Assert.That(p.WaitForExit(20_000), Is.True);
+            }
+            var ctx = Path.Combine(dir, ".claude", "session-context");
+            string? Mark(int cli) => File.Exists(Path.Combine(ctx, $"autopilot-{cli}")) ? File.ReadAllText(Path.Combine(ctx, $"autopilot-{cli}")) : null;
+
+            Hook(1, a, "UserPromptSubmit", "fix the build");
+            Hook(2, b, "UserPromptSubmit", "hello");
+            Assert.That((Mark(1), Mark(2)), Is.EqualTo(("A", "B")), "each CLI is on for its own repo, nobody typed /autopilot");
+
+            Hook(1, a, "UserPromptSubmit", "/autopilot off");
+            Hook(1, a, "UserPromptSubmit", "next thing");
+            Assert.That(Mark(1), Is.Null, "off stays off: the default doesn't switch it back on at the next prompt");
+            Hook(1, a, "UserPromptSubmit", "/autopilot");
+            Assert.That(Mark(1), Is.EqualTo("A"), "typed again: on");
+
+            Hook(3, b, "UserPromptSubmit", "/autopilot off all");
+            Hook(2, b, "UserPromptSubmit", "carry on");
+            Assert.That((Mark(1), Mark(2), Mark(3)), Is.EqualTo(((string?)null, (string?)null, (string?)null)), "off all keeps every CLI off, the one typing it too");
+
+            Hook(4, skipped, "UserPromptSubmit", "hi");
+            Hook(5, ws, "UserPromptSubmit", "hi");
+            Assert.That((Mark(4), Mark(5)), Is.EqualTo(((string?)null, (string?)null)), "a skipped repo, and no repo at all, get nothing");
+
+            File.WriteAllText(settings, """{"AutopilotByDefault":false}""");
+            Hook(6, a, "UserPromptSubmit", "hi");
+            Assert.That(Mark(6), Is.Null, "the default switched off: only a typed /autopilot turns it on");
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
     private static void Python(string script)
     {
         var psi = new System.Diagnostics.ProcessStartInfo("python", "-I -") { RedirectStandardInput = true, RedirectStandardError = true, UseShellExecute = false };
