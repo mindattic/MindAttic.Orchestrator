@@ -246,6 +246,7 @@ public sealed partial class MainViewModel : ObservableObject
         Regroup();
         ApplyPhases(next);
         ApplyBilling(next);
+        ApplyReminders(DateTime.UtcNow);
         // After the phases' own toasts (pace, budget, stuck, audit, Needs you), or they'd go past the cap (M.ORCH-T340).
         PruneToasts(Toasts, DateTime.UtcNow);
         Raise(nameof(WorkingCount)); Raise(nameof(WaitingCount)); Raise(nameof(HostCount));

@@ -36,6 +36,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         // One daemon wakes the CLIs: an `orchestrator daemon` run beside the logon one would type every resume twice.
         using var wakeLease = new DispatchLease(store.Directory, LimitWaker.LeaseName);
         using var ledgerLease = new DispatchLease(store.Directory, PaceLedgerWatch.LeaseName);
+        using var remindLease = new DispatchLease(store.Directory, Reminders.ReminderSender.LeaseName);
+        var reminders = new Reminders.ReminderSender(store, new Reminders.PsstClient(Runner), (level, line) => Say(level, line), (title, message, urgent) => Alert(title, message, urgent));
         string? lastPaused = null;
         cycler.Prune(DateTime.UtcNow);
         var prunedUtc = DateTime.UtcNow;
@@ -178,10 +180,14 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 }
                 knownStuck.IntersectWith(stuck.Select(x => x.SessionId + x.Loop.Tool + x.Loop.Input));
 
+                // Beside the watchdog: every reminder due, missed ones too (the machine slept), is texted through Psst (M.ORCH-T477).
+                try { if (remindLease.TryAcquire()) reminders.Tick(DateTime.UtcNow); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"reminders: {ex.Message}"); }
+
                 // An hour and half an hour before the reset: a window on course to end under its target with nothing for any
                 // CLI to work is said, never acted on (M.ORCH-T176).
                 ReportUnderTarget(snapshot, plan, cycler.AutopilotClis());
-                tick.Lap("keep-going and alerts");
+                tick.Lap("keep-going, alerts and reminders");
 
                 RunAuditIfDue(options, s);
                 tick.Lap("audit");
