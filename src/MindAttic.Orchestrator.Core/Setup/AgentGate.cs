@@ -711,7 +711,8 @@ public static class AgentGate
     internal const string MarksPython = """
         SESSION_MARKS = Path.home() / ".claude" / "session-context"
         # What the user's typed prompt asks for by name ("use crossrepo for X", "turn auto-pilot on", or the command itself).
-        ASKS_FOR = {"crossrepo": re.compile(r"\bcross[\s_-]?repos?\b", re.I), "autopilot": re.compile(r"\bauto[\s_-]?pilot\b|/work\b", re.I)}
+        ASKS_FOR = {"crossrepo": re.compile(r"\bcross[\s_-]?repos?\b", re.I), "autopilot": re.compile(r"\bauto[\s_-]?pilot\b|/work\b", re.I),
+                    "handoff": re.compile(r"\bhand[\s_-]?off\b", re.I)}
         def asked_for(prompt):
             return sorted(k for k, r in ASKS_FOR.items() if r.search(prompt or ""))
         def session_state(sid):
@@ -813,6 +814,96 @@ public static class AgentGate
             else:
                 mark.write_text(",".join(r.strip() for r in args.replace(" ", ",").split(",") if r.strip()), encoding="utf-8")
             return None
+        # /handoff (M.ORCH-T481): one mark for every CLI (Sessions.Handoff reads and writes the same file). While it's winding down
+        # or quiet nothing new starts; each CLI quicksaves (handoff-saved-<pid>); the first start after the switch marks it resumed.
+        HANDOFF = SESSION_MARKS / "handoff.json"
+        # The shared runner's save, as /quicksave runs it.
+        QUICKSAVE = re.compile(r"prose-agent\.ps1['\"]?\s+(?:-Command\s+)?save\b", re.I)
+        def utc_stamp():
+            return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        def handoff():
+            for _ in range(20):
+                try:
+                    h = json.loads(HANDOFF.read_text(encoding="utf-8"))
+                    return h if isinstance(h, dict) and h.get("state") in ("winding", "quiet", "resumed") else None
+                except PermissionError:
+                    time.sleep(0.05)
+                except Exception:
+                    return None
+            return None
+        def handing_off():
+            # The mark while it holds new work back (winding down, or quiet until the switch); None otherwise.
+            h = handoff()
+            return h if h and h.get("state") in ("winding", "quiet") else None
+        def write_handoff(h):
+            SESSION_MARKS.mkdir(parents=True, exist_ok=True)
+            tmp = HANDOFF.with_name(HANDOFF.name + "." + str(os.getpid()) + ".tmp")
+            tmp.write_text(json.dumps(h, indent=2), encoding="utf-8")
+            for _ in range(20):
+                try:
+                    os.replace(tmp, HANDOFF)
+                    return
+                except PermissionError:
+                    time.sleep(0.05)
+        def clear_handoff(mark_too=True):
+            # /handoff off, or a new handoff starting: the mark (unless kept) and every CLI's saved and restored marks go.
+            for f in list(SESSION_MARKS.glob("handoff-saved-*")) + list(SESSION_MARKS.glob("handoff-restored-*")) + ([HANDOFF] if mark_too else []):
+                try:
+                    f.unlink()
+                except Exception:
+                    pass
+        def start_handoff(by, cwd=None):
+            # Starts a handoff unless one already holds, recording every CLI's /autopilot (on with its repos, or typed off) by the
+            # repo and folder it runs in, so the CLI that starts there on the new account gets it back. True when it started one.
+            if handing_off():
+                return False
+            clear_handoff(False)
+            cwds = {}
+            for f in SESSION_MARKS.glob("*.state.json"):
+                try:
+                    s, at = json.loads(f.read_text()), f.stat().st_mtime
+                except Exception:
+                    continue
+                if isinstance(s, dict) and s.get("pid") and (str(s["pid"]) not in cwds or at > cwds[str(s["pid"])][0]):
+                    cwds[str(s["pid"])] = (at, s.get("cwd"))
+            if by and cwd:
+                cwds[str(by)] = (float("inf"), cwd)  # the CLI starting it is where it's typed now
+            clis = {}
+            for f in SESSION_MARKS.glob("autopilot-*"):
+                pid = f.name[len("autopilot-"):]
+                try:
+                    if pid.isdigit():
+                        clis[pid] = {"repos": ",".join(n.strip() for n in f.read_text(encoding="utf-8", errors="replace").split(",") if n.strip()), "off": False}
+                except Exception:
+                    pass
+            for f in SESSION_MARKS.glob("noautopilot-*"):
+                pid = f.name[len("noautopilot-"):]
+                if pid.isdigit() and pid not in clis:
+                    clis[pid] = {"repos": "", "off": True}
+            entries = []
+            for pid in sorted(clis, key=int):
+                cwd = cwds.get(pid, (0, None))[1]
+                entries.append(dict(pid=int(pid), repo=repo_of(cwd) if cwd else None, cwd=cwd, **clis[pid]))
+            try:
+                signed = account()[0]
+            except Exception:
+                signed = ""
+            write_handoff({"state": "winding", "started": utc_stamp(), "by": int(by) if str(by or "").isdigit() else None,
+                           "account": signed, "quiet_at": None, "resumed_at": None, "autopilot": entries})
+            return True
+        def handoff_saved(pid):
+            return bool(pid) and (SESSION_MARKS / ("handoff-saved-" + str(pid))).exists()
+        def mark_handoff_saved(pid, repo):
+            if pid:
+                SESSION_MARKS.mkdir(parents=True, exist_ok=True)
+                (SESSION_MARKS / ("handoff-saved-" + str(pid))).write_text(repo or "", encoding="utf-8")
+        def handoff_save_told(repo):
+            # What a CLI is told when its turn ends during a handoff without having saved.
+            return ("A handoff is under way (/handoff): every CLI is winding down for an account switch, and nothing new starts. Quicksave "
+                    "this repo's handoff now, exactly as /quicksave does: compose Task, Decisions, State and Next for what this CLI was doing "
+                    "and run the shared runner's save from this CLI's folder (& <workspace root>\\mindattic-agent-standard\\prose-agent.ps1 save "
+                    "-RepoRoot (Get-Location) -Task '...' -Decisions '...' -State '...' -Next '...'). Then say exactly \"" + repo +
+                    " quiet, handoff saved\" and end your turn. Start no ticket or subagent.")
         """;
 
     // The context gate acts on these when they're typed (UserPromptSubmit), and the pace gate when the model calls them through the
@@ -880,6 +971,25 @@ public static class AgentGate
         2. Start one subagent per ticket it printed, all in one message, each with exactly the prompt printed for it (a general-purpose subagent, in the foreground). Each works only in its worktree, commits, lands on the repo's main line and closes its ticket.
         3. When they've returned, say in one line per ticket what happened, and go back to step 1.
         4. Stop when `orchestrator next` hands out nothing (it says why: none left, waiting for approval, or the pace), and say so in one short line. Don't start anything else on your own. Nothing works these tickets in the background: it's this CLI's own subagents or nobody. Autopilot stays on here, so when this turn ends while the repos still have workable tickets and the pace has room, the orchestrator sends this CLI back to step 1; /autopilot off stops that.
+        """;
+
+    internal const string HandoffCommand = """
+        ---
+        description: Wind every CLI down for an account switch and pick up after it. Nothing new starts, what's working finishes, lands and closes, each CLI quicksaves its repo's handoff, and you're told when it's all quiet. /handoff off cancels it; /handoff status lists what's still working.
+        argument-hint: "[off|status]"
+        ---
+        /handoff $ARGUMENTS is running in this CLI. MindAttic.Orchestrator's gates record it for every CLI when the user typed it, or when you called it through the Skill tool because the user's own latest prompt asked for a handoff; a Skill call the user didn't ask for is refused and records nothing, so never start it on your own.
+
+        If the arguments start with "off" or "cancel": reply with one short line confirming the handoff is cancelled and new work starts again. Then end your turn.
+
+        If the arguments are "status": run `orchestrator handoff status` and show what it prints. Then end your turn.
+
+        Otherwise a handoff is under way in every CLI: `orchestrator next` hands out nothing, autopilot sends no CLI back for work, no new subagent starts, and tickets claimed for a subagent that never started go back to the queue. In this CLI:
+        1. Start no ticket or subagent. If subagents of yours are still working, let them finish, land and close their tickets.
+        2. Then quicksave this repo's handoff exactly as /quicksave does: compose Task, Decisions, State and Next for what this CLI was doing, and run the shared runner's save from this CLI's folder: `& <workspace root>\mindattic-agent-standard\prose-agent.ps1 save -RepoRoot (Get-Location) -Task '...' -Decisions '...' -State '...' -Next '...'` (the workspace root is the folder this repo sits in; single-quote the strings, doubling any ' inside).
+        3. Then say exactly "<repo> quiet, handoff saved", <repo> being this CLI's repo, and end your turn.
+
+        The orchestrator's daemon says "All quiet, safe to switch accounts" once nothing is working in any CLI. On the new account each CLI's start loads its handoff (as /quickload does) and gets its /autopilot back; memories are local files, so they carry over.
         """;
 
     internal const string CrossRepoCommand = """
@@ -985,6 +1095,17 @@ public static class AgentGate
         if tool == "Skill":
             called = str((data.get("tool_input") or {}).get("skill") or "").strip().lstrip("/").lower().split(":")[-1]
             called = "autopilot" if called == "work" else called  # /work is /autopilot's alias
+            if called == "handoff":
+                # /handoff (M.ORCH-T481) through the Skill tool: the user's to start, like /autopilot; off and status always go through.
+                given = str((data.get("tool_input") or {}).get("args") or "").strip()
+                if re.match(r"(off|cancel)\b", given, re.I):
+                    clear_handoff()
+                elif not re.match(r"status\b", given, re.I):
+                    if "handoff" not in (session_state(data.get("session_id")).get("asked") or []):
+                        refuse("/handoff is the user's to start, never yours: their latest prompt didn't ask for a handoff, so nothing was "
+                               "recorded. Ask the user to type /handoff themselves.")
+                    start_handoff(os.environ.get("MINDATTIC_CLI_PID") or cli_pid(), data.get("cwd"))
+                raise SystemExit(0)
             if called in ("crossrepo", "autopilot"):
                 given = str((data.get("tool_input") or {}).get("args") or "").strip()
                 off = bool(re.match(r"off\b", given, re.I)) or (called == "crossrepo" and not given)
@@ -996,6 +1117,11 @@ public static class AgentGate
                 if why:
                     refuse(why)
                 raise SystemExit(0)
+
+        # While a /handoff winds every CLI down for an account switch, no new subagent starts: the ones working finish (M.ORCH-T481).
+        if tool in ("Agent", "Task") and handing_off():
+            refuse("A handoff is under way (/handoff): every CLI is winding down for an account switch, so no new subagent starts. "
+                   "Let the ones already working finish, then quicksave this repo's handoff as /handoff says, and end your turn.")
 
         # The one exception is explicit, per CLI and until it closes: /crossrepo <A,B|all> (the context gate writes the mark).
         def allowed_here():
@@ -1120,6 +1246,12 @@ public static class AgentGate
                 permissionDecisionReason="Searching a whole drive or the filesystem root is blocked: it never finishes and leaks handles until "
                 "Windows freezes. Search the specific folder instead (a repo under D:\\Projects\\MindAttic, or a known install folder), "
                 "or use the Glob/Grep tools with a path."))))
+            raise SystemExit(0)
+
+        # During a handoff the quicksave itself always goes through, at the window's stop too: a handoff is often for the account
+        # that's run out, and every CLI's work would be lost to the switch (M.ORCH-T481).
+        if tool in ("Bash", "PowerShell") and QUICKSAVE.search(cmd) and handing_off():
+            gate_log("exempt", 0)
             raise SystemExit(0)
 
         # Exempt commands (M.ORCH-T198): a turn typed as one of them (the context gate marks its session state) and a Skill
@@ -1403,7 +1535,7 @@ public static class AgentGate
                 # ticket claimed afresh since.
                 # What `orchestrator next` itself holds back isn't work to push on to either: autopilot paused, quiet hours,
                 # a skipped repo, a ticket another live session or subagent is working, a stale claim whose agent still runs.
-                if settings.get("Autopilot") is False:
+                if settings.get("Autopilot") is False or handing_off():
                     return []
                 skip = {(x or "").lower() for x in settings.get("AutopilotSkip") or []}
                 holds = {}
@@ -1519,6 +1651,54 @@ public static class AgentGate
                     "prompt it prints (several at once, in one message), then repeat. End your turn only when it hands out nothing, "
                     "or you're blocked on a decision only the user can make, and then say plainly what it is.")
 
+        def restore_autopilot(pid, cwd, h):
+            # The /autopilot a CLI in this repo had before the switch, given back to this one (each recorded CLI's to one new CLI,
+            # the one in the same folder first): "off" when it was typed off, the command when it was on, None when none was recorded.
+            mine = repo_of(cwd or "")
+            if not pid or not mine:
+                return None
+            entries = [e for e in h.get("autopilot") or [] if isinstance(e, dict)]
+            same = lambda e: os.path.normcase(os.path.normpath(str(e.get("cwd") or ""))) == os.path.normcase(os.path.normpath(str(cwd)))
+            for i in sorted(range(len(entries)), key=lambda i: 0 if same(entries[i]) else 1):
+                e = entries[i]
+                if str(e.get("repo") or "").lower() != mine.lower():
+                    continue
+                try:
+                    os.close(os.open(str(DIR / ("handoff-restored-" + str(i))), os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+                except FileExistsError:
+                    continue  # another CLI starting here already took it
+                on, off = DIR / ("autopilot-" + str(pid)), DIR / ("noautopilot-" + str(pid))
+                if e.get("off"):
+                    off.write_text("", encoding="utf-8")
+                    if on.exists():
+                        on.unlink()
+                    return "off"
+                if e.get("repos"):
+                    on.write_text(str(e["repos"]), encoding="utf-8")
+                    if off.exists():
+                        off.unlink()
+                    return "/autopilot " + ("all" if e["repos"] == "*" else "-repo=" + str(e["repos"]))
+            return None
+
+        def load_handoff(cwd, h):
+            # The handoff this folder's CLI quicksaved for the switch, loaded as /quickload loads it (the shared runner's load, which
+            # archives it); None when none was saved here since the handoff began, or it can't be loaded in time.
+            try:
+                import subprocess
+                session = Path(cwd) / ".prose" / "agent-session.json"
+                saved = str(json.loads(session.read_text(encoding="utf-8-sig")).get("updatedAt") or "")
+                at = lambda t: datetime.fromisoformat(re.sub(r"(\.\d{6})\d+", r"\1", str(t)).replace("Z", "+00:00")).timestamp()
+                if at(saved) < at(h.get("started")):
+                    return None
+                runner = WS / "mindattic-agent-standard" / "prose-agent.ps1"
+                if not runner.exists():
+                    return None
+                r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(runner), "load", "-RepoRoot", str(cwd)],
+                                   capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=7, stdin=subprocess.DEVNULL)
+                return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
+            except Exception:
+                return None
+
         def orchestrator_status():
             # rl-status.json while the orchestrator keeps it fresh; {} when it's stale or someone else's. Read as the pace gate
             # reads it, retried while the daemon is replacing it: once, a Stop then saw no status at all (M.ORCH-T363).
@@ -1573,7 +1753,7 @@ public static class AgentGate
 
         # Typed at the window's stop, these still go through: they're how you steer the orchestrator itself.
         # /goal goes through at the stop only to clear one: a new goal there would run turn after turn its refused calls can't finish.
-        CONTROL = re.compile(r"/(autopilot|work|crossrepo|pacing)\b|/goal\s*(?:(?:clear|off|stop|reset|none|cancel)\s*)?$", re.I)
+        CONTROL = re.compile(r"/(autopilot|work|crossrepo|pacing|handoff)\b|/goal\s*(?:(?:clear|off|stop|reset|none|cancel)\s*)?$", re.I)
 
         def goal_finished(transcript, goal):
             # A /goal ends on its own once its condition holds: the session's last entry is then the stop summary naming it
@@ -1699,15 +1879,39 @@ public static class AgentGate
                 auth, line, warn = billing_check(data.get("cwd"))
             except Exception:
                 sys.exit(0)
+            handoff_note = None
             try:
                 DIR.mkdir(parents=True, exist_ok=True)
                 state_file = DIR / (sid + ".state.json")
                 state = load(state_file)
                 state.update(auth=auth, billing=line, billing_warn=warn, pid=state.get("pid") or cli_pid(), cwd=state.get("cwd") or data.get("cwd"))
                 save(state_file, state)
+                # After a /handoff (M.ORCH-T481): the first start once it's quiet clears the hold (new work starts again), and each
+                # start gets back its repo's /autopilot and loads the handoff its CLI saved there, before the default could switch it.
+                h = handoff()
+                if h and h.get("state") == "quiet":
+                    h = dict(h, state="resumed", resumed_at=utc_stamp())
+                    write_handoff(h)
+                if h and h.get("state") == "resumed":
+                    restored = restore_autopilot(my_pid(), data.get("cwd"), h)
+                    loaded = load_handoff(data.get("cwd"), h)
+                    said = ["[Handoff] Picked up after the account switch."]
+                    if restored == "off":
+                        said.append("/autopilot stays off in this CLI, as it was before.")
+                    elif restored:
+                        said.append(restored + " is back on in this CLI, as it was before.")
+                    if loaded:
+                        said.append("This CLI's handoff is loaded, as /quickload loads it: confirm in one line what you're resuming, then pick up its "
+                                    "Task, honour its Decisions and continue from its Next without re-asking anything settled.\n" + loaded)
+                    if len(said) > 1:
+                        handoff_note = " ".join(said)
                 autopilot_by_default(state["pid"], data.get("cwd"))
             except Exception:
                 pass
+            if handoff_note:
+                print(json.dumps({"systemMessage": line + "\n" + handoff_note.split("\n")[0],
+                                  "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": line + "\n" + handoff_note}}))
+                sys.exit(0)
             print(json.dumps({"systemMessage": line, "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": line}}))
             sys.exit(0)
         # Recorded in the session's state, so the daemon leaves a CLI billed elsewhere out of the subscription's budget; and
@@ -1755,8 +1959,15 @@ public static class AgentGate
             # At the window's target nothing more may run, so a stop is never pushed back to work: the orchestrator's stop,
             # latched or fresh, or Claude's own percent at the line with the daemon down, as a typed prompt is held to.
             stopped = paced and (bool(limits.get("stop")) or orchestrator_stop(limits) is not None or claude_stop() is not None)
+            # A handoff (M.ORCH-T481): no CLI is sent back for work; one whose turn ends without having quicksaved is told to, once.
+            winding = handing_off()
+            if winding and winding.get("state") == "winding" and not handoff_saved(my_pid()) and not state.get("handoff_told"):
+                state["handoff_told"] = True
+                save(state_file, state)
+                print(json.dumps({"decision": "block", "reason": handoff_save_told(repo_of(data.get("cwd") or "") or Path(str(data.get("cwd") or ".")).name)}))
+                sys.exit(0)
             # Only a CLI that typed /autopilot is kept going, on its own repos, while they have workable tickets.
-            repos = autopilot_repos(my_pid())
+            repos = [] if winding else autopilot_repos(my_pid())
             if repos and KEEP_GOING and not stopped and not state.get("goal"):
                 why = "autopilot"
             # Past the wind-down line `orchestrator next` starts nothing new before the reset (M.ORCH-T254), unless this CLI is
@@ -1801,7 +2012,7 @@ public static class AgentGate
                 sys.exit(0)
         elif event == "UserPromptSubmit":
             # A new prompt (yours, or the daemon's resume after the reset) is the CLI going on: it's no longer waiting on a window.
-            for k in ("nudged", "worked", "closed", "limit_stop"):
+            for k in ("nudged", "worked", "closed", "limit_stop", "handoff_told"):
                 state.pop(k, None)
             if state.get("goal") and goal_finished(state.get("transcript"), state["goal"]):
                 state.pop("goal", None)
@@ -1839,6 +2050,25 @@ public static class AgentGate
                 if why:
                     print(json.dumps({"decision": "block", "reason": why}))
                     sys.exit(0)
+            # /handoff (M.ORCH-T481) winds every CLI down for an account switch; /handoff off cancels it; /handoff status only asks.
+            # Its turn quicksaves, so it skips every pace gate as an exempt command's does, at the window's stop too.
+            handing = None
+            if re.match(r"/handoff\b", prompt):
+                args = typed[len("/handoff"):].strip()
+                if re.match(r"(off|cancel)\b", args, re.I):
+                    clear_handoff()
+                elif not re.match(r"status\b", args, re.I):
+                    start_handoff(my_pid(), data.get("cwd"))
+                    state["exempt"] = "/handoff"
+            else:
+                handing = handing_off()
+                # Quiet, and this CLI is now signed in to another account (a /login rather than a restart): the switch is made.
+                try:
+                    if handing and handing.get("state") == "quiet" and handing.get("account") and account()[0] and account()[0] != handing["account"]:
+                        write_handoff(dict(handing, state="resumed", resumed_at=utc_stamp()))
+                        handing = None
+                except Exception:
+                    pass
             # /goal <condition> runs turn after turn until its condition holds; cycling would end it, so the session is
             # marked and left to Claude's own compaction until /goal clear (M.ORCH-T93).
             if re.match(r"/goal\b", prompt):
@@ -1879,6 +2109,9 @@ public static class AgentGate
             # Each turn starts knowing how many subagents the pace allows right now, and whether the window is winding down.
             s = orchestrator_status()
             notes = [n for n in (s.get("subagent_note"), s.get("stop_note") or s.get("wind_down_note")) if n]
+            if handing:
+                notes.append("A handoff is under way (/handoff): every CLI is winding down for an account switch, so start no ticket or "
+                             "subagent; when this turn's work is done, quicksave this repo's handoff as /handoff says. /handoff off cancels it.")
             state["wind_down_told"] = bool(s.get("wind_down_note") or s.get("stop_note"))
             out = {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": " ".join(notes)}} if notes else {}
             # A CLI that started before its SessionStart hook was registered is checked on its first prompt instead, and told
@@ -1904,6 +2137,12 @@ public static class AgentGate
                 print(json.dumps(out))
         elif event == "PostToolUse":
             touched = False
+            # The quicksave a handoff asks for: this CLI's saved (M.ORCH-T481).
+            try:
+                if QUICKSAVE.search(str((data.get("tool_input") or {}).get("command") or "")) and handing_off():
+                    mark_handoff_saved(my_pid(), repo_of(data.get("cwd") or "") or Path(str(data.get("cwd") or ".")).name)
+            except Exception:
+                pass
             # Running `orchestrator next` only asks for work: when it hands out nothing, stopping again is insisting (M.ORCH-T188).
             asked = re.search(r"\borchestrator(?:\.exe)?['\"]?\s+next\b", str((data.get("tool_input") or {}).get("command") or ""))
             if state.get("nudged") and not state.get("worked") and not asked:
@@ -1952,6 +2191,7 @@ public static class AgentGate
             (Path.Combine(dir, "commands", "autopilot.md"), AutopilotCommand),
             (Path.Combine(dir, "commands", "work.md"), WorkCommand),
             (Path.Combine(dir, "commands", "crossrepo.md"), CrossRepoCommand),
+            (Path.Combine(dir, "commands", "handoff.md"), HandoffCommand),
         })
         {
             if (File.Exists(path) && File.ReadAllText(path) == body) continue;

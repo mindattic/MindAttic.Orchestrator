@@ -261,6 +261,10 @@ public sealed class AutopilotTests
 
         var stopped = Planned() with { Pace = Planned().Pace! with { Stop = true } };
         Assert.That(Autopilot.Next(stopped, settings, store, ["*"], null, claim: false, Now, Make, _ => "main").Why, Does.Contain("at its target"));
+        // M.ORCH-T481: while a /handoff winds every CLI down, nothing is handed out, unthrottled or not, and nothing is claimed.
+        var handingOff = Autopilot.Next(Planned(), settings, store, ["*"], null, claim: true, Now, Make, _ => "main", unthrottled: true, handingOff: true);
+        Assert.That((handingOff.Handed.Count, handingOff.Why), Is.EqualTo((0, MindAttic.Orchestrator.Sessions.Handoff.HoldReason)));
+        Assert.That(handingOff.Why, Does.StartWith("handing off"));
         Assert.That((Autopilot.Named(["GTFO.*"], "gtfo.Api"), Autopilot.Named(["GTFO.*"], "GTFO"), Autopilot.Named(["GTFO.*"], "MindAttic.GTFO.x"),
             Autopilot.Named(["*"], "anything"), Autopilot.Named(["A", "B"], "b")), Is.EqualTo((true, false, false, true, true)),
             "-repo=GTFO.* names every repo starting GTFO. (M.ORCH-T165)");

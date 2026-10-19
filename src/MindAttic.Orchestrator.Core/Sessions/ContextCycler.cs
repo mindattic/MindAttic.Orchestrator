@@ -152,6 +152,10 @@ public sealed class ContextCycler(string? directory = null)
     public IReadOnlyList<string> AliveSubagentIds(DateTime nowUtc) => !System.IO.Directory.Exists(SubagentDirectory) ? []
         : [.. System.IO.Directory.EnumerateFiles(SubagentDirectory).Where(f => SubagentAlive(f, nowUtc, idle: true)).Select(f => Path.GetFileName(f))];
 
+    /// <summary>The subagents running now, each with the CLI that runs it (its mark's process id; null when none was recorded).</summary>
+    public IReadOnlyList<(string Agent, int? Cli)> AliveSubagents(DateTime nowUtc) => [.. AliveSubagentIds(nowUtc).Select(id =>
+        (id, int.TryParse(ReadOrEmpty(Path.Combine(SubagentDirectory, id)).Trim(), out var pid) && pid > 0 ? pid : (int?)null))];
+
     /// <param name="idle">Also count one whose transcript has gone quiet (<see cref="SubagentIdleLife"/>) as stopped. The mark
     /// itself is only deleted by the old rules (its CLI closed, or <see cref="SubagentMarkLife"/>), so a quiet one that
     /// turns out to be alive counts again as soon as it writes.</param>
@@ -361,7 +365,9 @@ public sealed class ContextCycler(string? directory = null)
         foreach (var f in System.IO.Directory.EnumerateFiles(Directory).Where(f => Path.GetFileName(f) is var n && n != AutopilotFile &&
                      n != Billing.BillingModeFile.FileName && n != Setup.AgentGate.ApiKeySetAsideName &&
                      !n.StartsWith("unthrottled-", StringComparison.Ordinal) && !n.StartsWith("crossrepo-", StringComparison.Ordinal) &&
-                     !n.StartsWith("autopilot-", StringComparison.Ordinal) && !n.StartsWith("noautopilot-", StringComparison.Ordinal)))
+                     !n.StartsWith("autopilot-", StringComparison.Ordinal) && !n.StartsWith("noautopilot-", StringComparison.Ordinal) &&
+                     // A handoff waits as long as the switch does, and its saved and restored marks go with it (M.ORCH-T481).
+                     n != Handoff.FileName && !n.StartsWith(Handoff.SavedPrefix, StringComparison.Ordinal) && !n.StartsWith(Handoff.RestoredPrefix, StringComparison.Ordinal)))
             try { if (nowUtc - File.GetLastWriteTimeUtc(f) > TimeSpan.FromDays(7)) File.Delete(f); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }

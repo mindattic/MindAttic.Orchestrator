@@ -71,6 +71,7 @@ internal static class CliApp
             config.AddCommand<ReportCommand>("report").WithDescription("Uncached tokens by week, repo, provider and ticket type; --csv writes it out.");
             config.AddCommand<BillingCommand>("billing").WithDescription("Who every CLI bills (Claude Team or the Vault's API key) and each open CLI's own billing; team or api switches every CLI.");
             config.AddCommand<ClisCommand>("clis").WithDescription("Every open Claude CLI and whether /autopilot is on in it (the roster the daemon keeps in clis.json).");
+            config.AddCommand<HandoffCommand>("handoff").WithDescription("/handoff from here: status (default) lists what's still working; on winds every CLI down for an account switch; off cancels it.");
             config.AddCommand<LedgerCommand>("ledger").WithDescription("Every 5-hour window graded against 99%-never-over (ok, under, blind, over) and the record so far; --csv writes it out. Exits 1 if one went over in --days.");
             config.AddCommand<RemindCommand>("remind").WithDescription("Save a reminder the daemon texts through Psst when it's due (\"<text>\" --at \"tomorrow 9am\" [--to <contact>]); --list, --cancel <id>.");
             config.AddBranch("workspace", w =>

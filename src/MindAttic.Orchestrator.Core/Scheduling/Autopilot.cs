@@ -364,13 +364,15 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// for it. Only the window's hard stop still applies. A ticket another agent is working isn't handed out (M.ORCH-T255): one in
     /// <see cref="SchedulePlan.Worked"/> (filed this turn by an agent fixing it, or named in a live session's prompt or worktree),
     /// except what the calling CLI <paramref name="self"/> itself filed, and one whose assignment went stale while the
-    /// background agent on it is still running.
+    /// background agent on it is still running. While a /handoff holds (<paramref name="handingOff"/>) nothing is handed out.
     /// </summary>
     public static (IReadOnlyList<Handout> Handed, string? Why) Next(SchedulePlan plan, OrchestratorSettings settings, JsonStore store,
         IReadOnlyList<string> repos, int? count, bool claim, DateTime nowUtc,
         Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree = null, Func<string, string>? mainlineOf = null, bool unthrottled = false,
-        string? self = null, Func<Assignment, bool>? pilotRunning = null)
+        string? self = null, Func<Assignment, bool>? pilotRunning = null, bool handingOff = false)
     {
+        // /handoff (M.ORCH-T481): every CLI is winding down for an account switch, so nothing new is handed out, unthrottled or not.
+        if (handingOff) return ([], Handoff.HoldReason);
         pilotRunning ??= a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc);
         makeWorktree ??= Dispatcher.EnsureWorktree;
         mainlineOf ??= Dispatcher.Mainline;
