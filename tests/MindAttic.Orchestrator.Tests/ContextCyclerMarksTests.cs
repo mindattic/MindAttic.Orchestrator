@@ -183,7 +183,8 @@ public sealed class ContextCyclerMarksTests
     [Test]
     public void Week_old_prune_keeps_a_running_clis_own_marks_and_drops_stale_session_files()
     {
-        var keep = new[] { "autopilot-123", "unthrottled-123", "crossrepo-123", ContextCycler.AutopilotFile };
+        // noautopilot-: /autopilot off typed in it a week ago stays off, not switched back on by the default (M.ORCH-T484).
+        var keep = new[] { "autopilot-123", "noautopilot-456", "unthrottled-123", "crossrepo-123", ContextCycler.AutopilotFile };
         var drop = new[] { "old.json", "old.state.json" };
         var now = DateTime.UtcNow;
         foreach (var f in keep.Concat(drop))

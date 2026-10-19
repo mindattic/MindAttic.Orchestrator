@@ -353,13 +353,15 @@ public sealed class ContextCycler(string? directory = null)
     public void Prune(DateTime nowUtc)
     {
         if (!System.IO.Directory.Exists(Directory)) return;
-        // A CLI's own /autopilot, /unthrottle and /crossrepo marks are written once and live as long as it does, however long
-        // that is; PruneMarks drops them when the CLI closes. The billing mode holds until it's switched, however long (M.ORCH-T436),
-        // and when a key was set aside is needed as long as a CLI started on it before then runs, however long (M.ORCH-T457).
+        // A CLI's own /autopilot, /autopilot off, /unthrottle and /crossrepo marks are written once and live as long as it does,
+        // however long that is; PruneMarks drops them when the CLI closes. A week-old noautopilot mark dropped here let the default
+        // switch /autopilot back on in a CLI where it was typed off (M.ORCH-T484). The billing mode holds until it's switched,
+        // however long (M.ORCH-T436), and when a key was set aside is needed as long as a CLI started on it before then runs,
+        // however long (M.ORCH-T457).
         foreach (var f in System.IO.Directory.EnumerateFiles(Directory).Where(f => Path.GetFileName(f) is var n && n != AutopilotFile &&
                      n != Billing.BillingModeFile.FileName && n != Setup.AgentGate.ApiKeySetAsideName &&
                      !n.StartsWith("unthrottled-", StringComparison.Ordinal) && !n.StartsWith("crossrepo-", StringComparison.Ordinal) &&
-                     !n.StartsWith("autopilot-", StringComparison.Ordinal)))
+                     !n.StartsWith("autopilot-", StringComparison.Ordinal) && !n.StartsWith("noautopilot-", StringComparison.Ordinal)))
             try { if (nowUtc - File.GetLastWriteTimeUtc(f) > TimeSpan.FromDays(7)) File.Delete(f); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
