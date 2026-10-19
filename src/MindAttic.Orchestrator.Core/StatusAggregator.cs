@@ -300,7 +300,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         reported = ReportedLimit.Highest(mine, reported, now);
         reported = KeepWindow(reported, now);
         var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration,
-            reported: reported, reportedLimit: reportedLimit);
+            reported: reported, reportedLimit: reportedLimit, ledgerFromUtc: signIn?.LedgerFrom);
         budget = HoldWeeklyStop(budget, now);
 
         var recentFrom = now - BudgetCalculator.RecentWindow;

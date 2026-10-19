@@ -74,6 +74,10 @@ public sealed record BudgetStatus(
     public bool BlockLimitOutdated { get; init; }
     public bool WeeklyLimitOutdated { get; init; }
 
+    /// <summary>Claude reported the week's percent, but the token ledger starts part way through that week (it restarts at a
+    /// /login account switch), so no weekly limit was sized from it: the percent stands alone (M.ORCH-T485).</summary>
+    public bool WeeklyLedgerPartial { get; init; }
+
     public long BlockRemaining => Math.Max(0, BlockLimit - (CurrentBlock?.Usage.Fresh ?? 0));
 
     /// <summary>Where <see cref="Week"/> starts counting: the last weekly reset, or 7 days ago.</summary>
@@ -129,7 +133,8 @@ public static class BudgetCalculator
     /// neither, the 5-hour block is compared to your busiest block as context only.
     /// </summary>
     public static BudgetStatus Compute(IReadOnlyList<UsageEvent> events, OrchestratorSettings settings, DateTime nowUtc, DateTime startOfTodayUtc,
-        TimeZoneInfo? zone = null, LimitCalibration? learned = null, ReportedUsage? reported = null, long? reportedLimit = null)
+        TimeZoneInfo? zone = null, LimitCalibration? learned = null, ReportedUsage? reported = null, long? reportedLimit = null,
+        DateTime? ledgerFromUtc = null)
     {
         var blocks = Blocks(events);
         var current = blocks.Count > 0 && blocks[^1].IsActive(nowUtc) ? blocks[^1] : null;
@@ -164,7 +169,7 @@ public static class BudgetCalculator
         // (reportedLimit), else the learned one (unless this window disproved it), else (5%+) this window's tokens over its percent.
         // Just past the reset the size learned from the last window's reports still holds: the limit didn't change with it.
         var reportedLimit5h = reported5h is null ? lapsed5h is null ? null : reportedLimit
-            : reportedLimit ?? learned5h ?? (reported5h.Percent >= ReportedUsage.MinPercent ? ImpliedLimit(events, reported5h, BlockLength, reported?.AtUtc) : null);
+            : reportedLimit ?? learned5h ?? (reported5h.Percent >= ReportedUsage.MinPercent ? ImpliedLimit(events, reported5h, BlockLength, reported?.AtUtc, ledgerFromUtc) : null);
 
         // Without a budget, compare against the heaviest earlier block: "how hard am I going vs usual".
         // It can pass 100%, and it isn't a limit, so it never warns or projects.
@@ -221,8 +226,11 @@ public static class BudgetCalculator
         var learnedWeekly = learned?.LearnedWeekly;
         var weeklyRefuted = learnedWeekly is { } lw && weeklyWall is null && week.Fresh > lw;
         if (weeklyRefuted) learnedWeekly = null;
+        // A ledger that starts after the week did (it restarts at a /login) holds only part of what the percent measured:
+        // 43.5k against 77% sized the week at 11.5k, under the 5-hour limit. The percent then stands alone (M.ORCH-T485).
+        var weeklyLedgerPartial = reportedWeek is not null && !Covers(ledgerFromUtc, reportedWeek.ResetUtc - TimeSpan.FromDays(7));
         var (weeklySource, weeklyLimit) = settings.WeeklyBudget is > 0 ? (LimitSource.Manual, settings.WeeklyBudget)
-            : reportedWeek is { Percent: >= ReportedUsage.MinPercent } && ImpliedLimit(events, reportedWeek, TimeSpan.FromDays(7), reported?.WeekAt) is { } repW ? (LimitSource.Reported, repW)
+            : reportedWeek is { Percent: >= ReportedUsage.MinPercent } && ImpliedLimit(events, reportedWeek, TimeSpan.FromDays(7), reported?.WeekAt, ledgerFromUtc) is { } repW ? (LimitSource.Reported, repW)
             : learnedWeekly is { } limW ? (LimitSource.Learned, limW)
             : ((LimitSource?)null, (long?)null);
         double? weeklyPercent = reportedWeek is not null && settings.WeeklyBudget is not > 0 ? reportedWeek.Percent
@@ -264,20 +272,26 @@ public static class BudgetCalculator
             Calibration = learned,
             BlockLimitOutdated = blockRefuted,
             WeeklyLimitOutdated = weeklyRefuted,
+            WeeklyLedgerPartial = weeklyLedgerPartial && weeklySource is null,
         };
     }
 
     /// <summary>A window's limit in tokens from Claude's own percent: what the window had spent by the
     /// report, over the fraction it said that was. Claude reports whole percents, so the fraction is
     /// taken a point high: the limit errs small (by under 1% near the end), never large enough to walk
-    /// into the wall. Null when there's nothing to size it by.</summary>
-    internal static long? ImpliedLimit(IEnumerable<UsageEvent> events, ReportedWindow? window, TimeSpan length, DateTime? reportedAtUtc)
+    /// into the wall. Null when there's nothing to size it by, or when the ledger (from <paramref name="ledgerFromUtc"/>) starts
+    /// after the window did: the tokens it holds are only part of what the percent measured (M.ORCH-T485).</summary>
+    internal static long? ImpliedLimit(IEnumerable<UsageEvent> events, ReportedWindow? window, TimeSpan length, DateTime? reportedAtUtc,
+        DateTime? ledgerFromUtc = null)
     {
         if (window is null || reportedAtUtc is not { } at) return null;
         var start = window.ResetUtc - length;
+        if (!Covers(ledgerFromUtc, start)) return null;
         var spent = events.Where(e => e.AtUtc >= start && e.AtUtc <= at).Sum(e => e.Usage.Fresh);
         return spent > 0 ? (long)(spent / ((window.Percent + 1) / 100)) : null;
     }
+
+    private static bool Covers(DateTime? ledgerFromUtc, DateTime windowStartUtc) => ledgerFromUtc is not { } from || from <= windowStartUtc;
 
     private static TokenUsage Sum(IEnumerable<UsageEvent> events) =>
         events.Aggregate(default(TokenUsage), (s, e) => s + e.Usage);

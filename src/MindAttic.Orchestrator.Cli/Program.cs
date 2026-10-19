@@ -308,6 +308,7 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
             LimitSource.Manual => $"{Format.Tokens(limit ?? 0)} (set)",
             LimitSource.Reported => $"{Format.Tokens(limit ?? 0)} (from Claude's own usage percent)",
             LimitSource.Learned => $"{Format.Tokens(limit ?? 0)} (learned from {b.Calibration?.Basis(kind)} limit hits)",
+            _ when kind == LimitKind.Weekly && b.WeeklyLedgerPartial => "Claude's percent alone (the token ledger starts at the account switch, part way through the week)",
             _ when outdated => $"relearning (already past the {Format.Tokens(old ?? 0)} learned earlier, with no wall)",
             _ => "none",
         };

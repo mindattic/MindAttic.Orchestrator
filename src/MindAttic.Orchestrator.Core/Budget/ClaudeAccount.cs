@@ -21,6 +21,10 @@ public sealed record SignInState(string Account, IReadOnlyList<AccountSpan> Hist
 
     public bool IsApiKey => Account == ClaudeAccount.ApiKey;
 
+    /// <summary>Where this account's token ledger starts: the start of its earliest span kept. Only its spans' tokens are
+    /// counted, so a window that began before this is only partly in the ledger (M.ORCH-T485).</summary>
+    public DateTime LedgerFrom => History.Where(s => s.Account == Account).Min(s => s.From);
+
     /// <summary>Whether another account was signed in within the history: until it ages out, a reading has to be tied to this one.</summary>
     public bool Switched => History.Any(s => s.Account != Account);
 

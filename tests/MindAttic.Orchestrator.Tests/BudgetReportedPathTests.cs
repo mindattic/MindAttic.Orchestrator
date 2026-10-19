@@ -146,4 +146,44 @@ public sealed class BudgetReportedPathTests
         Assert.That(manual.BlockRemaining, Is.EqualTo(6_400));
         Assert.That(ahead.BlockPercent, Is.EqualTo(50).Within(0.001), "a local count already past Claude's percent stands");
     }
+
+    [Test]
+    public void A_ledger_restarted_part_way_through_the_week_sizes_no_weekly_limit_and_the_percent_stands_alone()
+    {
+        // The week began 3 days ago; a /login 2 hours ago restarted the ledger, so its 43.5k is only what the new account spent
+        // since, not the 77% Claude reports for the whole week. Sized from it, the week read 11.5k (M.ORCH-T485).
+        var now = Day.AddHours(12);
+        var switchedAt = Day.AddHours(10);
+        var events = new[] { new UsageEvent(Day.AddHours(10.5), new TokenUsage(0, 0, 0, 43_500)) };
+        var reported = new ReportedUsage(null, new ReportedWindow(77, Day.AddDays(4)), Day.AddHours(11.5));
+
+        var s = BudgetCalculator.Compute(events, new OrchestratorSettings(), now, Day, TimeZoneInfo.Utc,
+            reported: reported, ledgerFromUtc: switchedAt);
+
+        Assert.That(s.WeeklyLimit, Is.Null, "no limit sized from part of the week");
+        Assert.That(s.WeeklyLimitSource, Is.Null);
+        Assert.That(s.WeeklyPercent, Is.EqualTo(77), "Claude's own percent still shows");
+        Assert.That(s.WeeklyLedgerPartial, Is.True);
+        Assert.That(BudgetCalculator.ImpliedLimit(events, reported.Week, TimeSpan.FromDays(7), reported.AtUtc, switchedAt), Is.Null);
+
+        var whole = BudgetCalculator.Compute(events, new OrchestratorSettings(), now, Day, TimeZoneInfo.Utc,
+            reported: reported, ledgerFromUtc: Day.AddDays(-4));
+        Assert.That(whole.WeeklyLimitSource, Is.EqualTo(LimitSource.Reported), "a ledger spanning the week still sizes it");
+        Assert.That(whole.WeeklyLedgerPartial, Is.False);
+    }
+
+    [Test]
+    public void A_ledger_restarted_part_way_through_the_week_keeps_the_learned_weekly_limit()
+    {
+        var now = Day.AddHours(12);
+        var events = new[] { new UsageEvent(Day.AddHours(10.5), new TokenUsage(0, 0, 0, 43_500)) };
+        var reported = new ReportedUsage(null, new ReportedWindow(77, Day.AddDays(4)), Day.AddHours(11.5));
+        var learned = new LimitCalibration([new LimitObservation(LimitKind.Weekly, Day.AddDays(-10), Day.AddDays(-9), 400_000_000)]);
+
+        var s = BudgetCalculator.Compute(events, new OrchestratorSettings(), now, Day, TimeZoneInfo.Utc,
+            learned: learned, reported: reported, ledgerFromUtc: Day.AddHours(10));
+
+        Assert.That((s.WeeklyLimitSource, s.WeeklyLimit), Is.EqualTo(((LimitSource?)LimitSource.Learned, (long?)400_000_000)));
+        Assert.That(s.WeeklyLedgerPartial, Is.False);
+    }
 }
