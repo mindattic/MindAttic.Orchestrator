@@ -70,7 +70,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
                 EnsureHooks(s);
                 WatchHealth(autopilot);
-                tick.Lap("hooks and machine health");
+                WatchDisk(s);
+                tick.Lap("hooks, machine health and disk space");
                 try { if (ledgerLease.TryAcquire()) ledger.Tick(DateTime.UtcNow); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"pace ledger: couldn't update it (retrying next minute): {ex.Message}"); }
                 tick.Lap("pace ledger");
@@ -452,6 +453,37 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     }
 
     private Activity.HealthLevel alertedHealth;
+
+    private readonly Activity.DiskWatch disk = new();
+
+    /// <summary>Reads free space on the drives to watch; a test's stands in for the real drives.</summary>
+    internal Func<OrchestratorSettings, IReadOnlyList<Activity.DriveFree>> ReadDrives { get; init; } =
+        s => Activity.DiskWatch.Read(Activity.DiskWatch.Roots(s.WorktreeRoot));
+
+    /// <summary>The %TEMP% whose biggest folders, and whose claude folder's biggest files, a disk alert names.</summary>
+    internal string TempDir { get; init; } = Path.GetTempPath();
+
+    /// <summary>
+    /// Every tick, reads free space on the system drive and the worktree root's (a drive read is cheap). Below
+    /// <see cref="OrchestratorSettings.DiskWarnGb"/> it alerts, naming what fills %TEMP%, so a runaway writer is caught while
+    /// it's still writing (M.ORCH-T471); %TEMP% is only walked when there's an alert to send.
+    /// </summary>
+    internal void WatchDisk(OrchestratorSettings s)
+    {
+        if (s.DiskWarnGb <= 0) return;
+        if (disk.Observe(ReadDrives(s), s.DiskWarnGb, Math.Min(s.DiskCriticalGb, s.DiskWarnGb)) is not { } e) return;
+        if (e.Alert)
+        {
+            var text = Activity.DiskWatch.Describe(e, s.DiskWarnGb, s.DiskCriticalGb,
+                Activity.DiskWatch.LargestFolders(TempDir), Activity.DiskWatch.LargestFiles(Path.Combine(TempDir, "claude")));
+            Say(e.Level == Activity.HealthLevel.Danger ? LogEventLevel.Error : LogEventLevel.Warning, $"disk space low: {text}");
+            Alert(e.Level == Activity.HealthLevel.Danger ? "Disk almost full" : "Disk space low", text, urgent: e.Level == Activity.HealthLevel.Danger);
+        }
+        else if (e.Changed)
+            Say(LogEventLevel.Information, e.Level == Activity.HealthLevel.Ok
+                ? $"disk space is back to normal ({e.Drive.Root} has {e.Drive.FreeGb:0.0} GB free)"
+                : $"disk space is still low but recovering ({e.Drive.Root} has {e.Drive.FreeGb:0.0} GB free)");
+    }
 
     private DateTime syncedDbWriteUtc;
     private DateTime syncTriedUtc;

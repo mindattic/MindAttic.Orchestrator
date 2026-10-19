@@ -171,6 +171,13 @@ public sealed record OrchestratorSettings
     /// <summary>Hours between audits the daemon runs by itself (it alerts on anything new). 0 means only on demand.</summary>
     public int AuditEveryHours { get; init; } = 24;
 
+    /// <summary>Free GB on the system drive (or the <see cref="WorktreeRoot"/>'s drive) under which the daemon alerts with the
+    /// biggest folders in %TEMP% and the biggest files agents left under %TEMP%\claude (M.ORCH-T471). 0 turns the watch off.</summary>
+    public double DiskWarnGb { get; init; } = 20;
+
+    /// <summary>Free GB under which the disk alert is urgent (see <see cref="Activity.DiskWatch"/>).</summary>
+    public double DiskCriticalGb { get; init; } = 5;
+
     /// <summary>Off by default, since it writes tickets into every repo's log: hourly, file GitHub issues
     /// labelled "orchestrator" and CI runs that failed on main as tickets (see <see cref="Tickets.GitHubIntake"/>).</summary>
     public bool GitHubIntake { get; init; }
