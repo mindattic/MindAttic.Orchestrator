@@ -1437,6 +1437,10 @@ public sealed class HookScriptTests
             "this repo's own ticket; the IDs in --ref and --summary are just text");
         Assert.That(Gate(Bash("workflow ticket correct M.WF-T7 --summary x")).Output, Does.Contain("\"deny\""), "correct is looked up the same way");
         Assert.That(Gate(Bash("workflow ticket close X.NOPE-T1 --ref x")).Output, Is.Empty, "a ticket the db doesn't know isn't refused");
+        // M.ORCH-T468: the lookup ignores case, so the ID and the command name must too (Windows runs Workflow.exe all the same).
+        Assert.That(Gate(Bash("workflow ticket close m.wf-t7 --ref abc")).Output, Does.Contain("\"deny\""), "a lower-case ID");
+        Assert.That(Gate(Bash("& Workflow.exe ticket close M.WF-T7 --ref abc")).Output, Does.Contain("\"deny\""), "the command name in any case");
+        Assert.That(Gate(Bash("workflow ticket close u.spc-t1 --ref abc")).Output, Is.Empty, "this repo's own ticket in lower case");
     }
 
     [Test]

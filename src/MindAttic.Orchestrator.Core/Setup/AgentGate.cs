@@ -997,14 +997,15 @@ public static class AgentGate
                 command = str(args.get("command") or "")
                 # Only a segment that IS a workflow ticket command counts: the words inside a message or a string don't.
                 for segment in re.split(r"[;\n|]|&&", command):
-                    called = re.match(r"\s*(?:&\s*)?['\"]?workflow(?:\.exe)?['\"]?\s+ticket\s+(close|correct)\b\s*(.*)", segment)
+                    # Any case, as Windows runs it and the ticket lookup matches it (M.ORCH-T468).
+                    called = re.match(r"\s*(?:&\s*)?['\"]?workflow(?:\.exe)?['\"]?\s+ticket\s+(close|correct)\b\s*(.*)", segment, re.I)
                     if not called:
                         continue  # filing a new ticket in another repo is how work is handed to it, so `new` is never refused
                     action = called.group(2)
                     named = re.search(r"--repo[\s=]+['\"]?([^\s'\"]+)", action)
                     owners = [named.group(1)] if named else []
                     # The ticket a close/correct acts on is its first argument; IDs in --summary or --ref are just text.
-                    first = re.match(r"['\"]?((?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)\b", action.strip())
+                    first = re.match(r"['\"]?((?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)\b", action.strip(), re.I)
                     owners += [ticket_repo(first.group(1))] if first else []
                     for owner in owners:
                         if other(owner):
