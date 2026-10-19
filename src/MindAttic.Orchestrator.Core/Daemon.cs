@@ -79,6 +79,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     Say(LogEventLevel.Warning, $"reaped pid {r.Process.Pid} ({r.Process.Name}): {r.Reason}" +
                         (string.IsNullOrWhiteSpace(r.Process.CommandLine) ? "" : $" — was running: {r.Process.CommandLine}"));
                 tick.Lap("process reaper");
+                PruneSessionTempIfDue(cycler);
+                tick.Lap("ended sessions' temp folders");
 
                 cycler.PruneMarks();
                 try
@@ -415,6 +417,19 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         if (DateTime.UtcNow - reapedUtc < Sessions.ProcessReaper.Every) return [];
         reapedUtc = DateTime.UtcNow;
         return Sessions.ProcessReaper.ReapOnce(reapedUtc);
+    }
+
+    private DateTime? sessionTempPrunedUtc;
+
+    /// <summary>On start and every <see cref="SessionTempPruner.Every"/> after, deletes the %TEMP%\claude folders of sessions
+    /// that have ended (M.ORCH-T473): Claude Code leaves each one's scratchpad and background-command logs there for good.</summary>
+    private void PruneSessionTempIfDue(ContextCycler cycler)
+    {
+        if (sessionTempPrunedUtc is { } at && DateTime.UtcNow - at < SessionTempPruner.Every) return;
+        sessionTempPrunedUtc = DateTime.UtcNow;
+        var dir = Path.Combine(TempDir, "claude");
+        var (folders, bytes) = SessionTempPruner.Prune(dir, cycler.SessionRunning, DateTime.UtcNow);
+        if (folders > 0) Say(LogEventLevel.Information, $"deleted {folders} ended sessions' folders under {dir} ({bytes / 1048576.0:0.#} MB)");
     }
 
     private Activity.HealthLevel healthLevel;

@@ -58,6 +58,7 @@ A Windows daemon, dashboard and CLI that keeps Claude agents working the workspa
 - Flags a session repeating the same tool call as *looks stuck*, and a ticket whose session went quiet as *stale*.
 - Samples the machine every 30 seconds and starts nothing while handles or memory run short.
 - Reaps tool processes orphaned by an agent that exited, and searches running past 30 minutes.
+- Deletes an ended session's `%TEMP%\claude\<project>\<session>` folder (its scratchpad and background-command logs), on start and every 10 minutes.
 - Refuses whole-drive searches and `git push` to `master` before they run.
 - Optional phone alerts through ntfy.sh or any plain-text webhook.
 

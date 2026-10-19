@@ -284,6 +284,23 @@ public sealed class ContextCycler(string? directory = null)
         return newest.Where(kv => IsClaude(kv.Key)).ToDictionary(kv => kv.Value.Session, kv => kv.Value.Busy, StringComparer.Ordinal);
     }
 
+    /// <summary>Whether <paramref name="sessionId"/>'s Claude CLI is still running, by the process id the context gate
+    /// recorded for it (any session of a CLI that /clear-ed counts while the CLI does); null when none was recorded.</summary>
+    public bool? SessionRunning(string sessionId)
+    {
+        try
+        {
+            var state = Path.Combine(Directory, sessionId + ".state.json");
+            if (!File.Exists(state)) return null;
+            using var doc = JsonDocument.Parse(ReadShared(state));
+            return doc.RootElement.TryGetProperty("pid", out var p) && p.ValueKind == JsonValueKind.Number && p.TryGetInt32(out var pid)
+                ? IsClaude(pid)
+                : null;
+        }
+        // Caught mid-write: not known this time, and a folder whose session isn't known is only judged by how long it's been quiet.
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException) { return null; }
+    }
+
     /// <summary>What the context gate records for a session billed to the subscription (its <c>auth</c>); anything else is not.</summary>
     public const string SubscriptionAuth = "subscription";
 
