@@ -369,10 +369,11 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     public static (IReadOnlyList<Handout> Handed, string? Why) Next(SchedulePlan plan, OrchestratorSettings settings, JsonStore store,
         IReadOnlyList<string> repos, int? count, bool claim, DateTime nowUtc,
         Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree = null, Func<string, string>? mainlineOf = null, bool unthrottled = false,
-        string? self = null, Func<Assignment, bool>? pilotRunning = null, bool handingOff = false)
+        string? self = null, Func<Assignment, bool>? pilotRunning = null, bool handingOff = false, Func<string, string, bool>? stillOpen = null)
     {
         // /handoff (M.ORCH-T481): every CLI is winding down for an account switch, so nothing new is handed out, unthrottled or not.
         if (handingOff) return ([], Handoff.HoldReason);
+        stillOpen ??= StillOpen;
         pilotRunning ??= a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc);
         makeWorktree ??= Dispatcher.EnsureWorktree;
         mainlineOf ??= Dispatcher.Mainline;
@@ -425,6 +426,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         var handed = new List<Handout>();
         // Past one it can't have (another CLI claimed it first, or its worktree failed) to the next, until `more` are handed out.
         var claimedElsewhere = 0;
+        var closedSince = 0;
         // A repo you capped (settings --repo-sessions) gets no more than that at once, counting what's already being worked
         // there: worktrees keep agents apart, so only a cap you set applies (M.ORCH-T358).
         var inRepo = plan.Queue.Where(Busy).GroupBy(q => q.Repo, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
@@ -444,6 +446,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 inRepo[item.Repo] = inRepo.GetValueOrDefault(item.Repo) + 1;
                 continue;
             }
+            // The plan's ticket list may be older than a `workflow ticket close` made a second ago: one closed since isn't
+            // handed out (or given a worktree) to be worked twice (M.ORCH-T489).
+            if (!stillOpen(item.RepoPath, item.Id)) { closedSince++; continue; }
             var branch = Dispatcher.BranchFor(item.Id);
             var (ok, tree, _) = makeWorktree(item.RepoPath, Path.Combine(settings.WorktreeRoot, item.Repo, item.Id), branch);
             if (!ok) continue;
@@ -463,7 +468,26 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         return (handed, handed.Count > 0 ? null
             : capped.Count > 0 ? $"{string.Join(", ", capped)} {(capped.Count == 1 ? "is" : "are")} at the cap you set (settings --repo-sessions or --repo-cap); nothing else is ready"
             : claimedElsewhere > 0 ? "another CLI claimed them first; nothing else is ready"
+            : closedSince > 0 ? "they were closed since the queue was read; nothing else is ready"
             : "couldn't make a worktree for any of them (see orchestrator queue)");
+    }
+
+    /// <summary>Whether ticket <paramref name="id"/> of the repo at <paramref name="repoPath"/> is still open right now: in the
+    /// workflow database once the workspace is migrated, else in the repo's <c>docs/USER_STORIES.md</c>. True when that can't
+    /// be read (the plan's own read stands).</summary>
+    internal static bool StillOpen(string repoPath, string id)
+    {
+        try
+        {
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(Path.GetDirectoryName(repoPath)))
+                if (db?.Ticket(id) is { } known) return known.Ticket.Status == MindAttic.Workflow.Tickets.TicketRules.Open;
+            var stories = Path.Combine(repoPath, "docs", "USER_STORIES.md");
+            return !File.Exists(stories) || !ClosedIn(File.ReadAllText(stories), id);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            return true;
+        }
     }
 
     private const string NeedsYouPrefix = "autopilot: needs you: ";

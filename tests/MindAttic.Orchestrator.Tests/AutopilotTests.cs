@@ -271,6 +271,43 @@ public sealed class AutopilotTests
     }
 
     [Test]
+    public void A_ticket_closed_after_the_queue_was_read_is_not_claimed_or_given_a_worktree()
+    {
+        // M.ORCH-T489: `next --claim` handed out M.ORCH-T488, and made its worktree, a second after `workflow ticket close`
+        // had closed it: the plan's ticket list was older than the close. The claim checks the database at that moment.
+        var repo = Path.Combine(dir, "A");
+        Directory.CreateDirectory(Path.Combine(repo, "docs"));
+        File.WriteAllText(Path.Combine(repo, "docs", "USER_STORIES.md"),
+            "---\ncode: A\n---\n\n# A\n\n## Tickets\n\n| ID | Date | Type | Status | Summary | Ref |\n|---|---|---|---|---|---|\n" +
+            "| A-T1 | 2026-10-01 | fix | open | x | — |\n| A-T2 | 2026-10-01 | fix | open | y | — |\n");
+        try
+        {
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(MindAttic.Workflow.Data.WorkflowDb.DefaultPath(dir)))
+                db.Import([new MindAttic.Workflow.Repo("A", repo)]);
+            var snap = new Snapshot(Now, [new RepoStatus("A", repo, RepoState.Dormant, [], [], [T("A-T1"), T("A-T2")], null, default)], []);
+            var plan = Paced(snap, 5); // read while both were open
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(MindAttic.Workflow.Data.WorkflowDb.DefaultPath(dir)))
+                db.Close("A-T1", reference: "done");
+            Assert.That((Autopilot.StillOpen(repo, "A-T1"), Autopilot.StillOpen(repo, "a-t2")), Is.EqualTo((false, true)));
+
+            var made = new List<string>();
+            (bool, string, string) Make(string r, string path, string branch) { made.Add(path); return (true, path, ""); }
+            var settings = new OrchestratorSettings { WorktreeRoot = Path.Combine(dir, "wt") };
+            var (handed, why) = Autopilot.Next(plan, settings, store, ["A"], 1, claim: true, Now, Make, _ => "main", pilotRunning: _ => false);
+            Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T2" }), "the closed one is passed over for the next");
+            Assert.That(made, Is.EqualTo(new[] { Path.Combine(dir, "wt", "A", "A-T2") }), "no worktree for the closed one");
+            Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EqualTo(new[] { "A-T2" }));
+
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(MindAttic.Workflow.Data.WorkflowDb.DefaultPath(dir)))
+                db.Close("A-T2", reference: "done");
+            var (none, whyNone) = Autopilot.Next(plan with { }, settings, new JsonStore(Path.Combine(dir, "store2")), ["A"], 1, claim: true, Now, Make, _ => "main",
+                pilotRunning: _ => false);
+            Assert.That((none.Count, whyNone), Is.EqualTo((0, "they were closed since the queue was read; nothing else is ready")));
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
+    }
+
+    [Test]
     public void Pausing_autopilot_quiet_hours_and_a_skipped_repo_apply_to_the_clis_that_run_it()
     {
         var snap = Snap(("A", [T("A-T1")]), ("B", [T("B-T1")]));
