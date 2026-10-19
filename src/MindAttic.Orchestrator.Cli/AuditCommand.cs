@@ -20,10 +20,27 @@ internal sealed class AuditCommand : Command<AuditCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        var options = OrchestratorOptions.Load();
-        var runner = new AuditRunner(options, Ctx.Store());
-        var report = settings.Latest ? runner.Latest() : runner.Run();
-        if (report is null) { AnsiConsole.MarkupLine("[yellow]No saved audit yet; run without --latest.[/]"); return 1; }
+        var store = Ctx.Store();
+        var options = OrchestratorOptions.Load(store);
+        var runner = new AuditRunner(options, store);
+        AuditReport? report;
+        string? saveError = null;
+        if (settings.Latest)
+        {
+            // An audit.json that's there but can't be read (held, a bad edit) isn't "no audit yet" (M.ORCH-T467).
+            if (!runner.TryLatest(out report))
+            {
+                AnsiConsole.MarkupLine($"[red]{Markup.Escape(runner.FilePath)} couldn't be read (held by another process, or not valid JSON); run without --latest to scan again.[/]");
+                return 1;
+            }
+            if (report is null) { AnsiConsole.MarkupLine("[yellow]No saved audit yet; run without --latest.[/]"); return 1; }
+        }
+        else
+        {
+            // A report that can't be saved (audit.json held, disk full) is still shown, with why, not a crash (M.ORCH-T467).
+            report = runner.Scan();
+            runner.TrySave(report, out saveError);
+        }
 
         string Rel(string p) => Path.GetRelativePath(options.WorkspaceRoot, p);
         AnsiConsole.MarkupLine($"Audit of {report.ReposScanned} repos, {report.FilesScanned} source files, {report.Took.TotalSeconds:0.0}s ({report.RanUtc.ToLocalTime():g})");
@@ -43,6 +60,12 @@ internal sealed class AuditCommand : Command<AuditCommand.Settings>
             AnsiConsole.MarkupLine($"  {kind}, ~{g.SharedLines} lines → [aqua]{Markup.Escape(g.SuggestedHome)}[/]");
             foreach (var f in g.Files.Take(4)) AnsiConsole.MarkupLine($"    [grey]{Markup.Escape(Rel(f.Path))}[/]");
             if (g.Files.Count > 4) AnsiConsole.MarkupLine($"    [grey]+{g.Files.Count - 4} more[/]");
+        }
+        if (saveError is not null)
+        {
+            AnsiConsole.MarkupLine($"\n[red]Couldn't save this report to {Markup.Escape(runner.FilePath)}: {Markup.Escape(saveError)}[/]");
+            AnsiConsole.MarkupLine("[grey]--latest and the daemon still have the previous one.[/]");
+            return 1;
         }
         return 0;
     }

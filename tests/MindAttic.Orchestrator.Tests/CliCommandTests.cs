@@ -63,6 +63,29 @@ public sealed class CliCommandTests
     }
 
     [Test]
+    public void Audit_says_in_one_line_when_its_report_cant_be_saved_and_still_shows_it()
+    {
+        // M.ORCH-T467: store.Save's IOException reached Program.cs as a crash (stack trace, Fatal log); only the daemon caught it.
+        var workspace = Path.Combine(dir, "workspace");
+        Directory.CreateDirectory(workspace);
+        Store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = workspace });
+        var auditFile = Path.Combine(dir, "audit.json");
+        File.WriteAllText(auditFile, "{}");
+        using (new FileStream(auditFile, FileMode.Open, FileAccess.Read, FileShare.None))
+            Assert.That(Run("audit"), Is.EqualTo(1));
+        Assert.That(output.ToString(), Does.Contain("Audit of 0 repos").And.Contain("Couldn't save this report"));
+    }
+
+    [Test]
+    public void Audit_latest_says_an_unreadable_audit_json_couldnt_be_read_not_that_there_is_none()
+    {
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "audit.json"), "{ oops");
+        Assert.That(Run("audit", "--latest"), Is.EqualTo(1));
+        Assert.That(output.ToString(), Does.Contain("couldn't be read").And.Not.Contain("No saved audit yet"));
+    }
+
+    [Test]
     public void Dispatch_and_start_take_only_a_provider_the_launcher_knows()
     {
         Assert.That(Ctx.Provider("claude"), Is.EqualTo("Claude"), "any casing, as its own name");

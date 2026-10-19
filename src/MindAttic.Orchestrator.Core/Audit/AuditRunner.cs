@@ -8,15 +8,38 @@ public sealed class AuditRunner(OrchestratorOptions options, JsonStore store)
 {
     private const string StoreName = "audit";
 
+    /// <summary>Where the latest report is kept (<c>audit.json</c> in the store).</summary>
+    public string FilePath => Path.Combine(store.Directory, StoreName + ".json");
+
+    /// <summary>Scans and saves; throws <see cref="IOException"/> or <see cref="UnauthorizedAccessException"/> when the
+    /// report can't be saved (held, disk full). <see cref="Scan"/> and <see cref="TrySave"/> keep the report when it can't.</summary>
     public AuditReport Run(CancellationToken ct = default)
+    {
+        var report = Scan(ct);
+        store.Save(StoreName, report);
+        return report;
+    }
+
+    /// <summary>Both tiers over the workspace, without saving.</summary>
+    public AuditReport Scan(CancellationToken ct = default)
     {
         var clock = Stopwatch.StartNew();
         var repos = new MindAttic.Workflow.Workspace(options.WorkspaceRoot).Repos().Select(r => (r.Name, r.Path)).ToList();
         var (drift, missing) = ConventionAudit.Run(repos);
         var (duplicates, files) = DuplicationAudit.Run(repos, ct);
-        var report = new AuditReport(DateTime.UtcNow, clock.Elapsed, repos.Count, files, drift, missing, duplicates);
-        store.Save(StoreName, report);
-        return report;
+        return new AuditReport(DateTime.UtcNow, clock.Elapsed, repos.Count, files, drift, missing, duplicates);
+    }
+
+    /// <summary>Saves the report as the latest; false with the reason when <c>audit.json</c> can't be written (M.ORCH-T467).</summary>
+    public bool TrySave(AuditReport report, out string? error)
+    {
+        error = null;
+        try { store.Save(StoreName, report); return true; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            error = ex.Message;
+            return false;
+        }
     }
 
     public AuditReport? Latest()
