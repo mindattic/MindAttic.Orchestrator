@@ -1808,6 +1808,25 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void After_a_login_to_another_account_the_next_prompt_says_the_new_billing_line_once()
+    {
+        // M.ORCH-T486: the line from the CLI's start named the old account until the CLI was reopened.
+        SignedIn("{" + TeamLogin + "}");
+        Assert.That(StartLine(), Is.EqualTo("[Billing] This CLI bills Claude Team: pdftransferjr@mindattic.com (MindAttic)."));
+        var env = new Dictionary<string, string> { ["MINDATTIC_CLI_PID"] = Environment.ProcessId.ToString() };
+        var prompt = new { hook_event_name = "UserPromptSubmit", session_id = "s1", prompt = "hi", cwd = ws };
+        Assert.That(Gate(prompt, env, AgentGate.ContextScriptName).Output, Does.Not.Contain("[Billing]"), "same account: nothing to say");
+
+        SignedIn("""{"oauthAccount":{"accountUuid":"acct-2","organizationUuid":"org-2","emailAddress":"ohleo199@mindattic.com","organizationName":"Leo","organizationType":"claude_max"}}""");
+        var switched = Gate(prompt, env, AgentGate.ContextScriptName).Output;
+        Assert.That(JsonDocument.Parse(switched).RootElement.GetProperty("systemMessage").GetString(),
+            Is.EqualTo("[Billing] This CLI bills Claude Max: ohleo199@mindattic.com (Leo)."));
+        Assert.That(File.ReadAllText(Path.Combine(Marks, "s1.state.json")), Does.Contain("ohleo199@mindattic.com"), "recorded for the dashboard");
+        Assert.That(Gate(prompt, env, AgentGate.ContextScriptName).Output, Does.Not.Contain("[Billing]"), "said once");
+        Assert.That(StartLine(), Does.Contain("ohleo199@mindattic.com"), "a CLI starting (or resumed) now names the new account");
+    }
+
+    [Test]
     public void A_console_login_keeps_the_env_key_and_bills_the_api()
     {
         SignedIn("""{"primaryApiKey":"sk-ant-console","oauthAccount":{"accountUuid":"acct-1","emailAddress":"dev@mindattic.com"},""" + KeyResponses([KeyTail], []) + "}");

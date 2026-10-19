@@ -293,7 +293,10 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             }
             // Seen when the running window was last read, not when a statusline last restamped the file (M.ORCH-T479).
             var seen = ClaudeMeterProbe.SeenAt(reported, signIn is null ? samples ?? [] : (samples ?? []).Where(s => signIn.Contains(s.AtUtc)), now);
-            probe.Tick(seen, events, now, force: lapsed is not null || signIn is { Switched: true } && !signIn.HasWindow(now));
+            // A sign-in that just moved is read at once, even back to an account whose window is confirmed: claude-usage.json
+            // holds the old account's last reading until a CLI replies, minutes on, and the budget, dashboard and statusline
+            // showed nothing of the new one's meter until then (M.ORCH-T486).
+            probe.Tick(seen, events, now, force: switchedNow || lapsed is not null || signIn is { Switched: true } && !signIn.HasWindow(now));
         }
         var reportedLimit = ReportedLimitFrom(reported, events, now, signIn);
         List<UsageSample> mine = signIn is null ? samples ?? [] : [.. (samples ?? []).Where(s => signIn.Contains(s.AtUtc))];

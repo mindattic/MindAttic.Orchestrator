@@ -747,6 +747,101 @@ public sealed class StatusAggregatorTests
     }
 
     [Test]
+    public void A_login_to_another_account_moves_everything_to_it_at_once_without_a_restart()
+    {
+        // M.ORCH-T486 (and M.ORCH-T485's weekly limit): one daemon, never restarted, sees a /login from A (at its weekly stop,
+        // with a 5-hour limit learned from its own wall) to B. Everything follows B at once, and nothing pairs one account's
+        // meter with the other's tokens.
+        var aFive = Seconds(DateTime.UtcNow.AddHours(2));
+        var aWeek = Seconds(DateTime.UtcNow.AddDays(2));
+        var bFive = new DateTime(DateTime.UtcNow.AddHours(4).Ticks / TimeSpan.TicksPerMinute * TimeSpan.TicksPerMinute, DateTimeKind.Utc);
+        var bWeek = new DateTime(DateTime.UtcNow.AddDays(5).Ticks / TimeSpan.TicksPerMinute * TimeSpan.TicksPerMinute, DateTimeKind.Utc);
+        // A's wall two days ago, with 3M of A's tokens in its window: A's learned 5-hour limit.
+        Transcript("a-old", Path.Combine(ws, "A"), TimeSpan.FromDays(2) + TimeSpan.FromMinutes(5), 3_000_000);
+        var hitAt = now.AddDays(-2);
+        var hitReset = new DateTime(hitAt.AddHours(1).Ticks / TimeSpan.TicksPerMinute * TimeSpan.TicksPerMinute, DateTimeKind.Utc);
+        var folder = Path.Combine(projects, "p-hit");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "hit.jsonl"), System.Text.Json.JsonSerializer.Serialize(new
+        {
+            type = "assistant", timestamp = hitAt.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"), sessionId = "hit", cwd = Path.Combine(ws, "A"), error = "rate_limit",
+            message = new
+            {
+                id = "hit-1", model = "<synthetic>",
+                usage = new { input_tokens = 0, cache_creation_input_tokens = 0, cache_read_input_tokens = 0, output_tokens = 0 },
+                content = new[] { new { type = "text", text = $"You've hit your session limit · resets {hitReset.ToString("h:mmtt", System.Globalization.CultureInfo.InvariantCulture).ToLowerInvariant()} (UTC)" } },
+            },
+        }) + "\n");
+        Transcript("a-work", Path.Combine(ws, "A"), TimeSpan.FromMinutes(40), 500_000, 500_000);
+
+        var credentials = Path.Combine(dir, ".credentials.json");
+        File.WriteAllText(credentials, $$$"""{"claudeAiOauth":{"accessToken":"tok","expiresAt":{{{DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeMilliseconds()}}}}}""");
+        var asked = 0;
+        var probe = new ClaudeMeterProbe
+        {
+            UsagePath = Path.Combine(dir, "claude-usage.json"), CredentialsPath = credentials,
+            AccountKey = () => ClaudeAccount.Current(Path.Combine(dir, ".claude.json")),
+            Fetch = (_, _) =>
+            {
+                asked++;
+                return Task.FromResult<string?>($$$"""{"five_hour":{"utilization":10.0,"resets_at":"{{{bFive:O}}}"},"seven_day":{"utilization":77.0,"resets_at":"{{{bWeek:O}}}"}}""");
+            },
+        };
+        var rlPath = Path.Combine(dir, "rl-status.json");
+        var config = Config("""{"oauthAccount":{"accountUuid":"a","organizationUuid":"max","emailAddress":"a@example.com"}}""");
+        SignedInSince("a/max", TimeSpan.FromDays(3));
+        var daemon = new StatusAggregator(new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null }, store,
+            new RateLimitStatusWriter(rlPath))
+        {
+            ScanHosts = () => hosts, OtherProviders = new ProviderLogReader(Path.Combine(dir, "codex"), Path.Combine(dir, "gemini")),
+            ReportedUsagePath = Path.Combine(dir, "claude-usage.json"), Account = SignIn(), MeterProbe = probe,
+            SessionContextDir = Path.Combine(dir, "session-context"),
+            BillingSwitch = new Billing.BillingSwitch(Path.Combine(dir, "session-context")) { ConfigPath = config, VaultKey = () => null, IsAlive = _ => false },
+        };
+
+        // A: its own reading, its weekly stop, its learned limit.
+        Usage(40, aFive, 99, aWeek);
+        var a = daemon.Refresh();
+        var aLearned = store.LoadLimits().Single(o => o.Kind == LimitKind.Session).FreshUsed;
+        Assert.That(aLearned, Is.EqualTo(3_000_001L), "A's wall, sized by A's tokens");
+        Assert.That((a.Account, a.Budget!.WeeklyPercent, a.Budget.WeekResetUtc, a.Budget.BlockLimit), Is.EqualTo(("a/max", (double?)99, (DateTime?)aWeek, aLearned)));
+        Assert.That((a.Pace!.Stop, File.ReadAllText(rlPath).Contains("\"stop\": true")), Is.EqualTo((true, true)), "A is at its weekly stop");
+        Assert.That(a.Billing!.Headline, Does.Contain("a@example.com"));
+        Assert.That(asked, Is.Zero, "A's reading is fresh: no ask");
+
+        // The /login. Another CLI's statusline restamps A's last reply as new.
+        Config("""{"oauthAccount":{"accountUuid":"b","organizationUuid":"max","emailAddress":"b@example.com"}}""");
+        Usage(40, aFive, 99, aWeek);
+        var switched = daemon.Refresh();
+        Assert.That(switched.Account, Is.EqualTo("b/max"));
+        Assert.That(switched.Budget!.WeeklyPercent, Is.Not.EqualTo(99), "A's percent isn't B's");
+        Assert.That(switched.Budget.Week.Fresh, Is.Zero, "B's ledger: none of A's tokens");
+        Assert.That(switched.Budget.BlockLimit, Is.Not.EqualTo(aLearned), "A's learned limit doesn't size B's window");
+        Assert.That(switched.Pace!.Stop, Is.False, "A's weekly stop doesn't hold B");
+        Assert.That(!File.Exists(rlPath) || !File.ReadAllText(rlPath).Contains("\"stop\""), Is.True, "nor do the hooks get it");
+        Assert.That(switched.Billing!.Headline, Does.Contain("b@example.com"), "the dashboard's billing names B");
+        probe.Pending.Wait();
+        Assert.That(asked, Is.EqualTo(1), "B's meter is read the moment the switch is seen, not when a CLI next replies");
+        Assert.That(File.ReadAllText(Path.Combine(dir, "claude-usage.json")), Does.Contain("\"account\":\"b/max\""), "and written tagged with B");
+
+        // B spends 43.5k after the switch: 77% of B's week is mostly what B spent before this machine's ledger began.
+        Thread.Sleep(1100);
+        now = DateTime.UtcNow;
+        Transcript("b-work", Path.Combine(ws, "B"), TimeSpan.Zero, 43_499);
+        var b = daemon.Refresh();
+        var budget = b.Budget!;
+        Assert.That((b.Account, budget.WeeklyPercent, budget.WeekResetUtc, budget.CurrentBlock!.EndUtc), Is.EqualTo(("b/max", (double?)77, (DateTime?)bWeek, bFive)),
+            "B's own percents and resets");
+        Assert.That(budget.Week.Fresh, Is.EqualTo(43_500L), "B's tokens alone");
+        Assert.That((budget.WeeklyLimit, budget.WeeklyLedgerPartial), Is.EqualTo(((long?)null, true)),
+            "no weekly limit from 43.5k against 77% (it read 'weekly 11.5k', M.ORCH-T485): the percent stands alone");
+        Assert.That(budget.BlockLimit, Is.Not.EqualTo(aLearned), "B's 10% isn't counted against A's limit");
+        Assert.That(b.Pace!.Stop, Is.False);
+        Assert.That(Burndown.Compute(budget, b.History, b.TakenUtc, b.Account).Days.Sum(d => d.Fresh), Is.EqualTo(43_500L), "the dashboard's week is B's");
+        Assert.That(asked, Is.EqualTo(1), "B's reading stands: no second ask");
+    }
+
+    [Test]
     public void An_idle_tab_restamping_the_reset_windows_reply_doesnt_keep_the_probe_from_reading_and_cant_write_over_its_reading()
     {
         // M.ORCH-T479: Oct 19 06:20-11:20Z went unseen 1h55m while 3.5M were spent. Idle tabs' statuslines restamped

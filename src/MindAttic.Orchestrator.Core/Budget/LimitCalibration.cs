@@ -27,26 +27,27 @@ public sealed record LimitCalibration(IReadOnlyList<LimitObservation> Observatio
     public long? LearnedWeekly => Median(LimitKind.Weekly);
 
     /// <summary>Whether a hit at this time was the signed-in account's (null: every hit is). Another account's week resets at its
-    /// own time and is sized by its own plan, so its weekly hits neither date nor size this account's week. Left out of JSON: the
-    /// serializer refuses a delegate, and the calibration travels in the published snapshot (M.ORCH-T390).</summary>
+    /// own time and is sized by its own plan, so its weekly hits neither date nor size this account's week; nor do its 5-hour
+    /// hits size this account's 5-hour window: after a /login its learned limit was paired with the new account's percent
+    /// (M.ORCH-T486). Left out of JSON: the serializer refuses a delegate, and the calibration travels in the published
+    /// snapshot (M.ORCH-T390).</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public Func<DateTime, bool>? Mine { get; init; }
 
     private readonly IReadOnlyList<DateTime>? theirs;
 
-    /// <summary>The hit times of the weekly observations that were another account's: worked out from <see cref="Mine"/> by the
+    /// <summary>The hit times of the observations that were another account's: worked out from <see cref="Mine"/> by the
     /// process that knows the sign-in, and what a process reading the published snapshot (which has no <see cref="Mine"/>)
-    /// filters by, or its learned weekly limit and hit counts took in every account's weekly hits (M.ORCH-T447).</summary>
+    /// filters by, or its learned limits and hit counts took in every account's hits (M.ORCH-T447, M.ORCH-T486).</summary>
     public IReadOnlyList<DateTime>? Theirs
     {
         get => Mine is { } mine
-            ? [.. Observations.Where(o => o.Kind == LimitKind.Weekly && !mine(o.HitUtc)).Select(o => o.HitUtc)]
+            ? [.. Observations.Where(o => !mine(o.HitUtc)).Select(o => o.HitUtc)]
             : theirs;
         init => theirs = value;
     }
 
-    private bool Own(LimitObservation o) => o.Kind != LimitKind.Weekly ||
-        (Mine is { } mine ? mine(o.HitUtc) : theirs is null || !theirs.Contains(o.HitUtc));
+    private bool Own(LimitObservation o) => Mine is { } mine ? mine(o.HitUtc) : theirs is null || !theirs.Contains(o.HitUtc);
 
     /// <summary>How many hits the learned value for <paramref name="kind"/> is drawn from.</summary>
     public int Basis(LimitKind kind) => Usable(kind).Count();

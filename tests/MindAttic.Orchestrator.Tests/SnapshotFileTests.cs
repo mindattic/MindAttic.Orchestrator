@@ -111,7 +111,9 @@ public sealed class SnapshotFileTests
         var mine = new MindAttic.Orchestrator.Budget.LimitObservation(LimitKind.Weekly, now.AddDays(-9), now.AddDays(-5), 40_000_000);
         var theirs = new MindAttic.Orchestrator.Budget.LimitObservation(LimitKind.Weekly, now.AddDays(-3), now.AddDays(1), 90_000_000);
         var session = new MindAttic.Orchestrator.Budget.LimitObservation(LimitKind.Session, now.AddHours(-1), now.AddHours(2), 5_000_000);
-        var built = new MindAttic.Orchestrator.Budget.LimitCalibration([mine, session, theirs]) { Mine = t => t != theirs.HitUtc };
+        var theirSession = new MindAttic.Orchestrator.Budget.LimitObservation(LimitKind.Session, now.AddDays(-2), now.AddDays(-2).AddHours(3), 1_000_000);
+        var built = new MindAttic.Orchestrator.Budget.LimitCalibration([mine, theirSession, session, theirs])
+            { Mine = t => t != theirs.HitUtc && t != theirSession.HitUtc };
         var budget = new MindAttic.Orchestrator.Budget.BudgetStatus(null, 10_000_000, false, 40, default, default, null, null, 0, null, 90)
         {
             Calibration = built,
@@ -123,7 +125,8 @@ public sealed class SnapshotFileTests
         Assert.That(read.Basis(LimitKind.Weekly), Is.EqualTo(built.Basis(LimitKind.Weekly)).And.EqualTo(1));
         Assert.That(read.LearnedWeekly, Is.EqualTo(40_000_000));
         Assert.That(read.LearnedWeeklyReset(TimeZoneInfo.Utc), Is.EqualTo(built.LearnedWeeklyReset(TimeZoneInfo.Utc)));
-        Assert.That(read.Basis(LimitKind.Session), Is.EqualTo(1), "session hits aren't filtered by account");
+        Assert.That((read.Basis(LimitKind.Session), read.Learned5h), Is.EqualTo((1, (long?)5_000_000)),
+            "nor does the other account's 5-hour hit size this one's window (M.ORCH-T486)");
     }
 
     [Test]

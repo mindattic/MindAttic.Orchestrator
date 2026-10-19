@@ -391,12 +391,13 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     // turn ends every second or two: 10s keeps typed turns counted well inside the 15s tick without refreshing nonstop.
     internal static readonly TimeSpan MinGap = TimeSpan.FromSeconds(10);
 
-    private readonly RefreshWaiter waiter = new([RefreshSignal, ReportedUsage.DefaultPath], MinGap);
+    private readonly RefreshWaiter waiter = new([RefreshSignal, ReportedUsage.DefaultPath, new ClaudeAccount().ConfigPath, new ClaudeAccount().StatePath], MinGap);
 
     /// <summary>
     /// Waits out <paramref name="interval"/>, but refreshes early when a turn ends anywhere (the context gate's
     /// <see cref="RefreshSignal"/>) or Claude's own usage report is rewritten, so what you type and every reply,
-    /// tool calls or not, is in the pace within a couple of seconds rather than at the next tick.
+    /// tool calls or not, is in the pace within a couple of seconds rather than at the next tick; and when Claude Code's config
+    /// or the sign-in record changes, so a /login is seen (and the new account's meter read) at once (M.ORCH-T486).
     /// </summary>
     private void WaitForNextRefresh(TimeSpan interval, CancellationToken cancel) => waiter.Wait(interval, cancel);
 

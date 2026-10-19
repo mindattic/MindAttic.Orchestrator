@@ -1884,7 +1884,8 @@ public static class AgentGate
                 DIR.mkdir(parents=True, exist_ok=True)
                 state_file = DIR / (sid + ".state.json")
                 state = load(state_file)
-                state.update(auth=auth, billing=line, billing_warn=warn, pid=state.get("pid") or cli_pid(), cwd=state.get("cwd") or data.get("cwd"))
+                state.update(auth=auth, billing=line, billing_warn=warn, billing_account=config_account(claude_config()) or "",
+                             pid=state.get("pid") or cli_pid(), cwd=state.get("cwd") or data.get("cwd"))
                 save(state_file, state)
                 # After a /handoff (M.ORCH-T481): the first start once it's quiet clears the hold (new work starts again), and each
                 # start gets back its repo's /autopilot and loads the handoff its CLI saved there, before the default could switch it.
@@ -2116,11 +2117,31 @@ public static class AgentGate
             out = {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": " ".join(notes)}} if notes else {}
             # A CLI that started before its SessionStart hook was registered is checked on its first prompt instead, and told
             # only when it's billing the key rather than the claude.ai login (M.ORCH-T434).
+            # After a /login to another account the line from its start names the old one: the first prompt since says the new
+            # line, once (M.ORCH-T486). A state from before the account was recorded beside the line just records it.
+            signed = None
+            try:
+                signed = config_account(claude_config()) or ""
+            except Exception:
+                pass
             if "billing" not in state:
                 try:
                     _, line, warn = billing_check(data.get("cwd"))
-                    state.update(billing=line, billing_warn=warn)
+                    state.update(billing=line, billing_warn=warn, billing_account=signed)
                     if warn:
+                        out["systemMessage"] = line
+                        told = out.setdefault("hookSpecificOutput", {"hookEventName": "UserPromptSubmit", "additionalContext": ""})
+                        told["additionalContext"] = (told["additionalContext"] + " " + line).strip()
+                except Exception:
+                    pass
+            elif signed is not None and state.get("billing_account") is None:
+                state["billing_account"] = signed
+            elif signed is not None and state.get("billing_account") != signed:
+                try:
+                    auth, line, warn = billing_check(data.get("cwd"))
+                    was = state.get("billing")
+                    state.update(auth=auth, billing=line, billing_warn=warn, billing_account=signed)
+                    if line != was:
                         out["systemMessage"] = line
                         told = out.setdefault("hookSpecificOutput", {"hookEventName": "UserPromptSubmit", "additionalContext": ""})
                         told["additionalContext"] = (told["additionalContext"] + " " + line).strip()
