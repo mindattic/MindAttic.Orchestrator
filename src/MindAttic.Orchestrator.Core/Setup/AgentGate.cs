@@ -709,7 +709,7 @@ public static class AgentGate
     internal const string MarksPython = """
         SESSION_MARKS = Path.home() / ".claude" / "session-context"
         # What the user's typed prompt asks for by name ("use crossrepo for X", "turn auto-pilot on", or the command itself).
-        ASKS_FOR = {"crossrepo": re.compile(r"\bcross[\s_-]?repos?\b", re.I), "autopilot": re.compile(r"\bauto[\s_-]?pilot\b", re.I)}
+        ASKS_FOR = {"crossrepo": re.compile(r"\bcross[\s_-]?repos?\b", re.I), "autopilot": re.compile(r"\bauto[\s_-]?pilot\b|/work\b", re.I)}
         def asked_for(prompt):
             return sorted(k for k, r in ASKS_FOR.items() if r.search(prompt or ""))
         def session_state(sid):
@@ -829,6 +829,10 @@ public static class AgentGate
         MindAttic.Orchestrator's context gate has put this CLI process back under pace holds. Reply with one short line confirming this CLI is paced again.
         """;
 
+    internal static readonly string WorkCommand = AutopilotCommand
+        .Replace("description: This CLI works", "description: The same as /autopilot. This CLI works")
+        .Replace("/autopilot $ARGUMENTS is running", "/work $ARGUMENTS (the same as /autopilot $ARGUMENTS) is running");
+
     internal const string AutopilotCommand = """
         ---
         description: This CLI works the open tickets of its own repo (or -repo=A,B, wildcards like -repo=GTFO.*, or "all") through its own subagents, each in its own worktree, landing on main and closing the ticket, until none are left. /autopilot off stops it in this CLI; /autopilot off all in every CLI.
@@ -947,6 +951,7 @@ public static class AgentGate
         {{MarksPython}}
         if tool == "Skill":
             called = str((data.get("tool_input") or {}).get("skill") or "").strip().lstrip("/").lower().split(":")[-1]
+            called = "autopilot" if called == "work" else called  # /work is /autopilot's alias
             if called in ("crossrepo", "autopilot"):
                 given = str((data.get("tool_input") or {}).get("args") or "").strip()
                 off = bool(re.match(r"off\b", given, re.I)) or (called == "crossrepo" and not given)
@@ -1534,7 +1539,7 @@ public static class AgentGate
 
         # Typed at the window's stop, these still go through: they're how you steer the orchestrator itself.
         # /goal goes through at the stop only to clear one: a new goal there would run turn after turn its refused calls can't finish.
-        CONTROL = re.compile(r"/(autopilot|crossrepo|throttle|unthrottle)\b|/goal\s*(?:(?:clear|off|stop|reset|none|cancel)\s*)?$", re.I)
+        CONTROL = re.compile(r"/(autopilot|work|crossrepo|throttle|unthrottle)\b|/goal\s*(?:(?:clear|off|stop|reset|none|cancel)\s*)?$", re.I)
 
         def goal_finished(transcript, goal):
             # A /goal ends on its own once its condition holds: the session's last entry is then the stop summary naming it
@@ -1793,8 +1798,10 @@ public static class AgentGate
             except Exception:
                 pass
             # /autopilot (set_autopilot): THIS CLI works those repos' tickets through its own subagents until /autopilot off here.
-            if prompt.startswith("/autopilot"):
-                why = set_autopilot(my_pid(), typed[len("/autopilot"):].strip(), data.get("cwd") or "")
+            # /work is its alias; not /workflow or /worktree.
+            command = "/autopilot" if prompt.startswith("/autopilot") else "/work" if re.match(r"/work\b", prompt) else None
+            if command:
+                why = set_autopilot(my_pid(), typed[len(command):].strip(), data.get("cwd") or "")
                 if why:
                     print(json.dumps({"decision": "block", "reason": why}))
                     sys.exit(0)
@@ -1893,6 +1900,7 @@ public static class AgentGate
             (script, Script), (contextScript, ContextScript(contextPercent, keepGoing)),
             (Path.Combine(dir, "commands", "unthrottle.md"), UnthrottleCommand), (Path.Combine(dir, "commands", "throttle.md"), ThrottleCommand),
             (Path.Combine(dir, "commands", "autopilot.md"), AutopilotCommand),
+            (Path.Combine(dir, "commands", "work.md"), WorkCommand),
             (Path.Combine(dir, "commands", "crossrepo.md"), CrossRepoCommand),
         })
         {

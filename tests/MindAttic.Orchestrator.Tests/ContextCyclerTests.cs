@@ -339,6 +339,51 @@ public sealed class ContextCyclerTests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
+    [Test]
+    public void Work_is_autopilot_by_another_name_and_workflow_is_not_it()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
+        var ws = Path.Combine(dir, "ws");
+        var repo = Path.Combine(ws, "A");
+        Directory.CreateDirectory(Path.Combine(repo, ".git"));
+        var settings = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "settings.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
+        File.WriteAllText(settings, """{"AutopilotByDefault":false}""");
+        try
+        {
+            Setup.AgentGate.Ensure(dir);
+            void Typed(string prompt)
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\"")
+                    { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
+                psi.Environment["USERPROFILE"] = dir;
+                psi.Environment["APPDATA"] = dir;
+                psi.Environment["MINDATTIC_WORKSPACE"] = ws;
+                psi.Environment["MINDATTIC_CLI_PID"] = "7";
+                using var p = System.Diagnostics.Process.Start(psi)!;
+                p.StandardInput.Write(System.Text.Json.JsonSerializer.Serialize(new { session_id = "s7", hook_event_name = "UserPromptSubmit", cwd = repo, prompt }));
+                p.StandardInput.Close();
+                p.StandardOutput.ReadToEnd();
+                Assert.That(p.WaitForExit(20_000), Is.True);
+            }
+            var mark = Path.Combine(dir, ".claude", "session-context", "autopilot-7");
+
+            Typed("/workflow ticket list --status open");
+            Assert.That(File.Exists(mark), Is.False, "/workflow isn't /work");
+            Typed("/work");
+            Assert.That(File.ReadAllText(mark), Is.EqualTo("A"), "on for this CLI's repo, as /autopilot");
+            Typed("/work off");
+            Assert.That(File.Exists(mark), Is.False);
+            Typed("/work -repo=B");
+            Typed("/autopilot -repo=C");
+            Assert.That(File.ReadAllText(mark), Is.EqualTo("B,C"), "one switch under either name");
+
+            var command = File.ReadAllText(Path.Combine(dir, "commands", "work.md"));
+            Assert.That(command, Does.Contain("The same as /autopilot").And.Contain("orchestrator next"));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
     private static void Python(string script)
     {
         var psi = new System.Diagnostics.ProcessStartInfo("python", "-I -") { RedirectStandardInput = true, RedirectStandardError = true, UseShellExecute = false };
