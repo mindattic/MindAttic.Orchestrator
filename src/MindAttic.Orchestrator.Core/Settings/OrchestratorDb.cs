@@ -354,6 +354,16 @@ public sealed class OrchestratorDb(string path)
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
+    /// <summary>Runs <paramref name="action"/> holding the database's write lock (BEGIN IMMEDIATE), so no other process's write is
+    /// mid-flight and none starts until it returns: the file is whole while git reads it (M.ORCH-T536). Nothing is written.</summary>
+    public T HoldingWrites<T>(Func<T> action)
+    {
+        using var connection = Open();
+        using var tx = connection.BeginTransaction(deferred: false);
+        try { return action(); }
+        finally { tx.Rollback(); }
+    }
+
     // ---- one state row, for the stores kept outside JsonStore (M.ORCH-T526) ----
 
     /// <summary><paramref name="name"/>'s <c>state</c> value and when it was written; null when none is kept.</summary>

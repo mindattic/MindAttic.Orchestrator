@@ -622,7 +622,10 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             if (head.ExitCode == 0 && Same(head.Output, dump)) { orchestratorDbSynced = dump; return; }
             try
             {
-                var add = Git(["add", "--", .. files]);
+                // Staged under the database's write lock, so the commit never takes a write's half-applied pages (M.ORCH-T536).
+                ProcessResult add;
+                try { add = new Settings.OrchestratorDb(dbPath).HoldingWrites(() => Git(["add", "--", .. files])); }
+                catch (Microsoft.Data.Sqlite.SqliteException ex) { throw new InvalidOperationException("couldn't lock the database: " + ex.Message); }
                 if (add.ExitCode != 0 || add.TimedOut) throw new InvalidOperationException("git add failed: " + (add.Output + add.Error).Trim());
                 var commit = Git(["commit", "-q", "-m", OrchestratorDbSyncSubject, "--", .. files]);
                 if (commit.ExitCode != 0 || commit.TimedOut) throw new InvalidOperationException("git commit failed: " + (commit.Output + commit.Error).Trim());

@@ -184,7 +184,7 @@ public sealed class DaemonSafetyTests
         var repo = Path.Combine(dir, "MindAttic.Orchestrator");
         Directory.CreateDirectory(Path.Combine(repo, "data"));
         var dbPath = Path.Combine(repo, "data", "orchestrator.db");
-        File.WriteAllText(dbPath, "db");
+        new OrchestratorDb(dbPath).Dump(); // a real database: the sync locks it
         File.WriteAllText(Path.Combine(repo, "data", "orchestrator.sql"), "-- dump\nINSERT 1;\n");
         var committedDump = "-- dump\r\n";
         var runner = new FakeRunner(c => c.Args.Contains("show") ? new ProcessResult(0, committedDump, "", false) : new ProcessResult(0, "", "", false));
@@ -221,12 +221,40 @@ public sealed class DaemonSafetyTests
         var repo = Path.Combine(dir, "MindAttic.Orchestrator");
         Directory.CreateDirectory(Path.Combine(repo, "data"));
         var dbPath = Path.Combine(repo, "data", "orchestrator.db");
-        File.WriteAllText(dbPath, "db");
+        new OrchestratorDb(dbPath).Dump(); // a real database: the sync locks it
         File.WriteAllText(Path.Combine(repo, "data", "orchestrator.sql"), "-- new\n");
         var runner = new FakeRunner(c => c.Args.Contains("commit") ? new ProcessResult(1, "", "hook refused", false) : new ProcessResult(0, "-- old\n", "", false));
         Make(runner: runner).SyncOrchestratorDbIfDue(repo, dbPath, DateTime.UtcNow);
         Assert.That(runner.Calls[^1].Args, Is.EqualTo(new[] { "-C", repo, "reset", "-q", "--", "data/orchestrator.db", "data/orchestrator.sql" }));
         Assert.That(said, Has.Some.Matches<(LogEventLevel Level, string Line)>(x => x.Line.Contains("git commit failed: hook refused")));
+    }
+
+    [Test]
+    public void The_orchestrator_db_is_staged_holding_its_write_lock()
+    {
+        // M.ORCH-T536: git add read the file while the daemon and hooks could be mid-write, so a commit could take half a write.
+        var repo = Path.Combine(dir, "MindAttic.Orchestrator");
+        Directory.CreateDirectory(Path.Combine(repo, "data"));
+        var dbPath = Path.Combine(repo, "data", "orchestrator.db");
+        new OrchestratorDb(dbPath).Dump();
+        File.WriteAllText(Path.Combine(repo, "data", "orchestrator.sql"), "-- new\n");
+        bool? writeBlocked = null;
+        var runner = new FakeRunner(c =>
+        {
+            if (c.Args.Contains("add"))
+            {
+                using var other = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath};Pooling=False;Default Timeout=1");
+                other.Open();
+                OrchestratorDb.Execute(other, "PRAGMA busy_timeout = 0;");
+                try { OrchestratorDb.Execute(other, "BEGIN IMMEDIATE; ROLLBACK;"); writeBlocked = false; }
+                catch (Microsoft.Data.Sqlite.SqliteException) { writeBlocked = true; }
+            }
+            return c.Args.Contains("show") ? new ProcessResult(0, "-- old\n", "", false) : new ProcessResult(0, "", "", false);
+        });
+        Make(runner: runner).SyncOrchestratorDbIfDue(repo, dbPath, DateTime.UtcNow);
+        Assert.That(writeBlocked, Is.True, "no other write can run while git stages the database");
+        Assert.That(runner.Calls.Select(c => c.Args[2]), Is.EqualTo(new[] { "show", "add", "commit", "push" }));
+        Assert.DoesNotThrow(() => new OrchestratorDb(dbPath).SaveState("after", "{}"), "the lock is let go once it's staged");
     }
 
     [Test]
