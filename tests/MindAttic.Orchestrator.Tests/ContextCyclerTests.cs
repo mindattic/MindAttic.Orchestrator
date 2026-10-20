@@ -285,15 +285,13 @@ public sealed class ContextCyclerTests
     }
 
     [Test]
-    public void Autopilot_is_on_by_default_for_each_clis_own_repo_until_it_is_turned_off_there()
+    public void A_freshly_opened_cli_starts_with_autopilot_off_until_it_is_typed_there()
     {
+        // M.ORCH-T522 reverses M.ORCH-T476's on-by-default: no CLI works tickets until /autopilot is typed in it.
         var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
         var ws = Path.Combine(dir, "ws");
         string RepoDir(string name) { var r = Path.Combine(ws, name); Directory.CreateDirectory(Path.Combine(r, ".git")); return r; }
-        var (a, b, skipped) = (RepoDir("A"), RepoDir("B"), RepoDir("Skipped"));
-        var settings = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "settings.json");
-        Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
-        File.WriteAllText(settings, """{"AutopilotSkip":["skipped"]}""");
+        var (a, b) = (RepoDir("A"), RepoDir("B"));
         try
         {
             Setup.AgentGate.Ensure(dir);
@@ -314,27 +312,26 @@ public sealed class ContextCyclerTests
             var ctx = Path.Combine(dir, ".claude", "session-context");
             string? Mark(int cli) => File.Exists(Path.Combine(ctx, $"autopilot-{cli}")) ? File.ReadAllText(Path.Combine(ctx, $"autopilot-{cli}")) : null;
 
+            Hook(1, a, "SessionStart");
             Hook(1, a, "UserPromptSubmit", "fix the build");
+            Hook(2, b, "SessionStart");
             Hook(2, b, "UserPromptSubmit", "hello");
-            Assert.That((Mark(1), Mark(2)), Is.EqualTo(("A", "B")), "each CLI is on for its own repo, nobody typed /autopilot");
+            Assert.That((Mark(1), Mark(2)), Is.EqualTo(((string?)null, (string?)null)), "opened and prompted, but nobody typed /autopilot: off");
+
+            Hook(1, a, "UserPromptSubmit", "/autopilot");
+            Assert.That((Mark(1), Mark(2)), Is.EqualTo(("A", (string?)null)), "typed in one CLI: on there, for its own repo, and only there");
+            Hook(1, a, "UserPromptSubmit", "next thing");
+            Assert.That(Mark(1), Is.EqualTo("A"), "stays on across prompts");
 
             Hook(1, a, "UserPromptSubmit", "/autopilot off");
-            Hook(1, a, "UserPromptSubmit", "next thing");
-            Assert.That(Mark(1), Is.Null, "off stays off: the default doesn't switch it back on at the next prompt");
-            Hook(1, a, "UserPromptSubmit", "/autopilot");
-            Assert.That(Mark(1), Is.EqualTo("A"), "typed again: on");
+            Hook(1, a, "UserPromptSubmit", "carry on");
+            Assert.That(Mark(1), Is.Null, "/autopilot off still stops it");
 
+            Hook(1, a, "UserPromptSubmit", "/autopilot");
+            Hook(2, b, "UserPromptSubmit", "/autopilot");
             Hook(3, b, "UserPromptSubmit", "/autopilot off all");
             Hook(2, b, "UserPromptSubmit", "carry on");
-            Assert.That((Mark(1), Mark(2), Mark(3)), Is.EqualTo(((string?)null, (string?)null, (string?)null)), "off all keeps every CLI off, the one typing it too");
-
-            Hook(4, skipped, "UserPromptSubmit", "hi");
-            Hook(5, ws, "UserPromptSubmit", "hi");
-            Assert.That((Mark(4), Mark(5)), Is.EqualTo(((string?)null, (string?)null)), "a skipped repo, and no repo at all, get nothing");
-
-            File.WriteAllText(settings, """{"AutopilotByDefault":false}""");
-            Hook(6, a, "UserPromptSubmit", "hi");
-            Assert.That(Mark(6), Is.Null, "the default switched off: only a typed /autopilot turns it on");
+            Assert.That((Mark(1), Mark(2), Mark(3)), Is.EqualTo(((string?)null, (string?)null, (string?)null)), "off all stops every CLI");
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
@@ -346,9 +343,6 @@ public sealed class ContextCyclerTests
         var ws = Path.Combine(dir, "ws");
         var repo = Path.Combine(ws, "A");
         Directory.CreateDirectory(Path.Combine(repo, ".git"));
-        var settings = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "settings.json");
-        Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
-        File.WriteAllText(settings, """{"AutopilotByDefault":false}""");
         try
         {
             Setup.AgentGate.Ensure(dir);

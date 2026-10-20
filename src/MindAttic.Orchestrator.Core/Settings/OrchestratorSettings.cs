@@ -102,11 +102,6 @@ public sealed record OrchestratorSettings
     /// repos' next story whenever it's idle and the pace allows; off pauses all of them (their marks stay).</summary>
     public bool Autopilot { get; init; } = true;
 
-    /// <summary>On: every Claude CLI starts with <c>/autopilot</c> on for its own repo (the hooks mark it at its start or next
-    /// prompt) until <c>/autopilot off</c> is typed in it; repos in <see cref="AutopilotSkip"/> are left off. Pacing holds
-    /// every CLI under the limit either way; this is what keeps them working up to it.</summary>
-    public bool AutopilotByDefault { get; init; } = true;
-
     /// <summary>Hours without a transcript write or open tab where a ticket was dispatched before it
     /// goes back in the queue as stale. 0 keeps assignments until the ticket closes or is released.</summary>
     public int StaleAfterHours { get; init; } = 12;

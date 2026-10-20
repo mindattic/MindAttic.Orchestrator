@@ -972,10 +972,6 @@ public sealed class HookScriptTests
     public void An_autopilot_skill_call_is_recorded_only_when_the_user_asked_for_autopilot()
     {
         var mark = Path.Combine(Marks, $"autopilot-{Cli}");
-        // Off by default here, so the mark is only what the Skill call records (on by default, a prompt marks the CLI's own repo).
-        var settings = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "settings.json");
-        Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
-        File.WriteAllText(settings, """{"AutopilotByDefault":false}""");
         Gate(Said("work the Workflow tickets"), AgentGate.ContextScriptName);
         Assert.That(Gate(SkillCall("autopilot", "-repo=MindAttic.Workflow")).Output, Does.Contain("\"deny\"").And.Contain("/autopilot"));
         Assert.That(File.Exists(mark), Is.False);
@@ -1985,13 +1981,14 @@ public sealed class HookScriptTests
     {
         Tickets(("U.SPC-T1", "UnitySolarSystem"));
         Status(new { });
+        Gate(Said("/autopilot"), AgentGate.ContextScriptName);
         Gate(Said("/handoff"), AgentGate.ContextScriptName);
         using (var h = JsonDocument.Parse(File.ReadAllText(HandoffMark)))
         {
             Assert.That(h.RootElement.GetProperty("state").GetString(), Is.EqualTo("winding"));
             var cli = h.RootElement.GetProperty("autopilot").EnumerateArray().Single();
             Assert.That((cli.GetProperty("pid").GetInt32(), cli.GetProperty("repo").GetString(), cli.GetProperty("repos").GetString(), cli.GetProperty("off").GetBoolean()),
-                Is.EqualTo((Cli, "UnitySolarSystem", "UnitySolarSystem", false)), "this CLI's /autopilot (on by default for its repo) is recorded for after the switch");
+                Is.EqualTo((Cli, "UnitySolarSystem", "UnitySolarSystem", false)), "this CLI's /autopilot (typed, for its repo) is recorded for after the switch");
         }
         Assert.That(File.ReadAllText(Path.Combine(Marks, "sk.state.json")), Does.Contain("\"exempt\": \"/handoff\""), "its turn quicksaves past every pace gate");
         Assert.That(MindAttic.Orchestrator.Sessions.Handoff.Read(Marks)!.Holds, Is.True, "the orchestrator reads the same mark");
@@ -2074,11 +2071,11 @@ public sealed class HookScriptTests
         var second = Context(workflow, "5002");
         Assert.That(second, Does.Contain("/autopilot stays off"));
         Assert.That((File.Exists(Path.Combine(Marks, "noautopilot-5002")), File.Exists(Path.Combine(Marks, "autopilot-5002"))), Is.EqualTo((true, false)),
-            "typed off before the switch, so the default doesn't switch it on");
+            "typed off before the switch, so it stays off");
 
         var third = Context(Uss, "5003");
         Assert.That(third, Does.Not.Contain("[Handoff]"), "the one recorded CLI there went to the first, and its handoff was loaded there");
-        Assert.That(File.Exists(Path.Combine(Marks, "autopilot-5003")), Is.False, "nothing restored to it: only the default applies");
+        Assert.That(File.Exists(Path.Combine(Marks, "autopilot-5003")), Is.False, "nothing restored to it: it starts off, as every new CLI does");
     }
 
     [Test]
