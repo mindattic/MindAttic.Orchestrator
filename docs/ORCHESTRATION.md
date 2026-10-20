@@ -115,7 +115,7 @@ A switch:
    (API key) or `.rejected` (Claude Team) in `~/.claude.json`, out of the other list. Only that value's text changes;
    every other byte of the file is kept, the old file is kept beside it as `~/.claude.json.billing-backup`, and the new one
    is put in place whole, re-read first so a write Claude Code made meanwhile is never lost. Going to Claude Team also
-   dates the key in `~/.claude/session-context/api-key-set-aside.json` (by a hash, never the key), so a CLI started on it
+   dates the key in `~/.claude/session-context/api-key-set-aside.json` (by a hash, never the key; the hooks read it into `data/orchestrator.db`'s `api-key-set-aside` state row and keep it as .bak, M.ORCH-T528), so a CLI started on it
    still reads as billing it until it restarts. The daemon puts the choice back in line if it drifts from the mode (a
    "yes" answered in a CLI's prompt).
 2. **Writes the mode** to `~/.claude/session-context/billing.json`, where the Launcher reads it to start each CLI and the

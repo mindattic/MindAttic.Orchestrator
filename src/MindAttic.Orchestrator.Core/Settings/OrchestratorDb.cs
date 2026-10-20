@@ -187,7 +187,9 @@ public sealed class OrchestratorDb(string path)
     /// the dashboard was last looked at, the pace status the hooks read (rl-status) and the roster of open CLIs. They're
     /// still in the .db, which is committed whenever the dump changes.</summary>
     internal static readonly string[] Volatile =
-        [Daemon.AutopilotHoldsName, Daemon.StaleTicketsName, "dashboard-seen", Budget.RateLimitStatusWriter.StateName, Sessions.CliRoster.StateName];
+        [Daemon.AutopilotHoldsName, Daemon.StaleTicketsName, "dashboard-seen", Budget.RateLimitStatusWriter.StateName, Sessions.CliRoster.StateName,
+         // The hooks' own marks (M.ORCH-T528): written by every CLI's hooks, never history worth a commit.
+         Setup.AgentGate.StopLatchStateName, Setup.AgentGate.ApiKeySetAsideStateName];
 
     /// <summary>Every table, with the order the dump lists its rows in: by key, so a change shows up as a few lines in its diff.</summary>
     private static readonly (string Table, string Order, string Where)[] Tables =

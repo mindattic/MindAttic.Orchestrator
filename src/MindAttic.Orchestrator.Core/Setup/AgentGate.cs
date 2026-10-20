@@ -228,9 +228,10 @@ public static class AgentGate
             return same(week, mine.get("seven_day")) and not any(same(week, (c or {}).get("seven_day")) for a, c in confirmed.items() if a != current and isinstance(c, dict))
         def latched(by):
             # The stop latched by "claude", "claude-week" or "orchestrator" for the current account, for a window that hasn't
-            # reset; None otherwise. Going back to an account brings its stop back while its window runs.
+            # reset; None otherwise. Going back to an account brings its stop back while its window runs. The latches are the
+            # orchestrator database's stop-latch state row (M.ORCH-T528), with stop-latch.json as hook_mark reads it.
             try:
-                every = read_json(LATCH)
+                every = hook_mark("{{StopLatchStateName}}", LATCH)
                 l = every.get(by + "@" + account()[0])
                 if l is None:
                     # Latched before latches were kept per account: the current account's if dated from its current span.
@@ -239,9 +240,13 @@ public static class AgentGate
                         l = None
                     elif l:
                         # Moved to the account's key, so it still holds once this account is left and come back to.
-                        every[by + "@" + account()[0]] = dict(l, account=account()[0])
-                        every.pop(by)
-                        write_json(LATCH, every)
+                        def move(every):
+                            old = every.pop(by, None)
+                            if old is None:
+                                return None
+                            every[by + "@" + account()[0]] = dict(old, account=account()[0])
+                            return every
+                        change_hook_mark("{{StopLatchStateName}}", LATCH, move)
                 if l and float(l["until"]) > time.time():
                     return l
             except Exception:
@@ -249,32 +254,33 @@ public static class AgentGate
             return None
         def latch(by, until, **fields):
             # Records (or with until=None, clears) a stop seen for the current account's window, so it holds until the reset
-            # whatever comes next. Latches whose window has reset are dropped.
+            # whatever comes next. Latches whose window has reset are dropped. One write transaction on the stop-latch row.
+            def change(every):
+                key = by + "@" + account()[0]
+                old = every.get(key)
+                legacy = every.get(by)
+                if legacy and not legacy.get("account") and float(legacy.get("epoch") or 0) == switched_at():
+                    old = old or legacy
+                    every.pop(by)
+                else:
+                    legacy = None
+                if until is None:
+                    if old is None:
+                        return None
+                    every.pop(key, None)
+                else:
+                    entry = dict(fields, until=float(until), account=account()[0], epoch=switched_at())
+                    if old and old.get("until") == entry["until"] and float(old.get("percent") or 0) > float(entry.get("percent") or 0):
+                        entry["percent"] = old["percent"]
+                    if old == entry and not legacy:
+                        return None
+                    every[key] = entry
+                now = time.time()
+                return {k: v for k, v in every.items() if isinstance(v, dict) and float(v.get("until") or 0) > now}
             try:
-                every = read_json(LATCH) if LATCH.exists() else {}
+                change_hook_mark("{{StopLatchStateName}}", LATCH, change)
             except Exception:
-                every = {}
-            key = by + "@" + account()[0]
-            old = every.get(key)
-            legacy = every.get(by)
-            if legacy and not legacy.get("account") and float(legacy.get("epoch") or 0) == switched_at():
-                old = old or legacy
-                every.pop(by)
-            else:
-                legacy = None
-            if until is None:
-                if old is None:
-                    return
-                every.pop(key, None)
-            else:
-                entry = dict(fields, until=float(until), account=account()[0], epoch=switched_at())
-                if old and old.get("until") == entry["until"] and float(old.get("percent") or 0) > float(entry.get("percent") or 0):
-                    entry["percent"] = old["percent"]
-                if old == entry and not legacy:
-                    return
-                every[key] = entry
-            now = time.time()
-            write_json(LATCH, {k: v for k, v in every.items() if isinstance(v, dict) and float(v.get("until") or 0) > now})
+                pass
         def claude_stop():
             # (percent, reset epoch, window) when Claude itself reports a window at the stop line, now or earlier in the same
             # window (an idle session's later, lower report doesn't lift it); None otherwise. The week counts as much as the
@@ -328,7 +334,7 @@ public static class AgentGate
             # The key was set aside while this CLI already ran on it (M.ORCH-T434): Claude Code settled on the key at its start,
             # so it's what this CLI bills until it's closed and reopened.
             try:
-                at = read_json(KEY_SET_ASIDE).get(key_mark(key)) if KEY_SET_ASIDE.exists() else None
+                at = hook_mark("{{ApiKeySetAsideStateName}}", KEY_SET_ASIDE).get(key_mark(key))
                 if at is None:
                     return False
                 pid = os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
@@ -486,6 +492,13 @@ public static class AgentGate
     /// keyed by a hash of the key's last 20 characters): a CLI started before then still bills the key until it's reopened.</summary>
     public const string ApiKeySetAsideName = "api-key-set-aside.json";
 
+    /// <summary>The <c>state</c> rows of the orchestrator's database the hooks keep the stop latch and the key set-asides in
+    /// (M.ORCH-T528), written through stdlib sqlite3 and left out of the dump; <see cref="StopLatchName"/> and
+    /// <see cref="ApiKeySetAsideName"/> are read in once (kept as .bak) and written again only while the database is held,
+    /// missing or older. The context gate's billing check names the set-aside row literally (its Python isn't interpolated).</summary>
+    public const string StopLatchStateName = "stop-latch";
+    public const string ApiKeySetAsideStateName = "api-key-set-aside";
+
     /// <summary>
     /// Python for the context gate (needs <c>json</c>, <c>os</c>, <c>re</c>, <c>time</c>, <c>Path</c> and <see cref="ClaudeUsagePython"/>):
     /// the last sign-in decides what a CLI bills (M.ORCH-T434). With a claude.ai login in <c>~/.claude.json</c> (<c>oauthAccount</c>,
@@ -609,9 +622,9 @@ public static class AgentGate
                     if isinstance(responses.get("approved"), list) and key[-20:] in responses["approved"]:
                         try:
                             # Dated first, so this CLI (started before it) reads as still on the key the moment the file changes.
-                            marks = read_json(KEY_SET_ASIDE) if KEY_SET_ASIDE.exists() else {}
-                            marks[key_mark(key)] = time.time()
-                            write_json(KEY_SET_ASIDE, marks)
+                            # The orchestrator database's api-key-set-aside row (M.ORCH-T528), else the file as before.
+                            at = time.time()
+                            change_hook_mark("api-key-set-aside", KEY_SET_ASIDE, lambda marks: dict(marks, **{key_mark(key): at}))
                         except Exception:
                             pass
                         try:
@@ -753,6 +766,106 @@ public static class AgentGate
                     log.write(json.dumps({"at": at, "decision": decision, "held": held, "tool": tool, "percent": percent}) + "\n")
             except Exception:
                 pass
+        def state_tx(timeout=2):
+            # The orchestrator's database with a write transaction open on it, for a mark the hooks keep as a state row
+            # (M.ORCH-T528); None when it isn't there, is from before the state table, or stays held past timeout seconds.
+            try:
+                import sqlite3
+                if not os.path.isfile(ORCH_DB):
+                    return None
+                db = sqlite3.connect(ORCH_DB, timeout=timeout, isolation_level=None)
+            except Exception:
+                return None
+            try:
+                db.execute("BEGIN IMMEDIATE")
+                db.execute("SELECT 1 FROM state LIMIT 0")
+                return db
+            except Exception:
+                db.close()
+                return None
+        def mark_file(path):
+            # A mark's old JSON object file; {} when there's none (or it can't be read).
+            try:
+                for _ in range(20):
+                    try:
+                        value = json.loads(path.read_text(encoding="utf-8-sig"))
+                        return value if isinstance(value, dict) else {}
+                    except PermissionError:
+                        time.sleep(0.05)
+            except Exception:
+                pass
+            return {}
+        _marks_read = {}
+        def hook_mark(name, path):
+            # A mark the hooks keep (the stop latch, when a key was set aside: M.ORCH-T528): its state row in the orchestrator's
+            # database, with the entries of its old file over it, a file being one no hook has read in yet or one a hook kept
+            # while the database was held (newer, so it wins). The file is read first: a write reading it in commits the row
+            # before it moves the file aside, so a hook reading meanwhile sees the entries in one or the other.
+            # A database held by another write (it's read on every call) isn't waited on long: the row this hook read last stands in.
+            found = mark_file(path)
+            value = {}
+            # One that was held a moment ago isn't asked again for a few seconds (a check reads several marks).
+            rows = None
+            if time.monotonic() - _marks_read.get("", -60.0) > 5:
+                rows = orch_rows("SELECT value FROM state WHERE name = ?", (name,), timeout=1)
+                if rows is None and os.path.isfile(ORCH_DB):
+                    _marks_read[""] = time.monotonic()
+            if rows:
+                try:
+                    v = json.loads(rows[0][0])
+                    value = v if isinstance(v, dict) else {}
+                except Exception:
+                    pass
+                _marks_read[name] = value
+            elif rows is None:
+                value = dict(_marks_read.get(name) or {})
+            else:
+                _marks_read[name] = {}
+            value.update(found)
+            return json.loads(json.dumps(value))
+        def change_hook_mark(name, path, change):
+            # Applies change (a function of the mark's entries returning the new entries, or None for no change) as one write
+            # transaction on its state row, reading its old file in (kept as .bak) the first time. While the database is held
+            # past a short wait, missing or from before the state table, the file is written as before, and read in later.
+            # Nothing is written when change has nothing to do.
+            if change(json.loads(json.dumps(hook_mark(name, path)))) is None and not path.exists():
+                return
+            db = state_tx()
+            if db is not None:
+                try:
+                    rows = db.execute("SELECT value FROM state WHERE name = ?", (name,)).fetchall()
+                    value = {}
+                    if rows:
+                        try:
+                            v = json.loads(rows[0][0])
+                            value = v if isinstance(v, dict) else {}
+                        except Exception:
+                            pass
+                    had_file = path.exists()
+                    value.update(mark_file(path))
+                    new = change(json.loads(json.dumps(value)))
+                    if new is None and not had_file:
+                        db.execute("ROLLBACK")
+                        return
+                    db.execute("INSERT OR REPLACE INTO state (name, value, written_at) VALUES (?, ?, ?)",
+                               (name, json.dumps(value if new is None else new), time.time()))
+                    db.execute("COMMIT")
+                    if had_file:
+                        try:
+                            os.replace(path, path.with_name(path.name + ".bak"))
+                        except Exception:
+                            pass
+                    return
+                except Exception:
+                    try:
+                        db.execute("ROLLBACK")
+                    except Exception:
+                        pass
+                finally:
+                    db.close()
+            new = change(json.loads(json.dumps(hook_mark(name, path))))
+            if new is not None:
+                write_json(path, new)
         def slot_db(timeout=3):
             # The orchestrator's database with a write transaction open on it, for the subagent slots and wants (M.ORCH-T527):
             # a pace gate's check and the slot it takes are one transaction, so Agent calls sent together queue on SQLite's
