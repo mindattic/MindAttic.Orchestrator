@@ -47,7 +47,8 @@ public static partial class GitHubIntake
     public static IReadOnlyList<IntakeItem> Find(string slug, Func<string[], (int Code, string Output)> gh, DateTime nowUtc)
     {
         var items = new List<IntakeItem>();
-        var (code, json) = gh(["issue", "list", "--repo", slug, "--label", Label, "--state", "open", "--json", "number,title,labels,url"]);
+        // gh returns 30 unless told otherwise: issue 31 on was never filed (M.ORCH-T548).
+        var (code, json) = gh(["issue", "list", "--repo", slug, "--label", Label, "--state", "open", "--limit", "1000", "--json", "number,title,labels,url"]);
         if (code == 0)
             foreach (var issue in Parse(json))
             {
@@ -64,16 +65,22 @@ public static partial class GitHubIntake
                 items.Add(new IntakeItem($"GH#{number}", type, $"GH#{number}: {Str(issue, "title")}", Str(issue, "url")));
             }
 
-        (code, json) = gh(["run", "list", "--repo", slug, "--status", "failure", "--limit", "10", "--json", "databaseId,name,headBranch,createdAt,url"]);
-        if (code == 0)
+        // Asked per main line: one --limit over every branch let feature-branch failures hide one on main (M.ORCH-T548).
+        var seen = new HashSet<long>();
+        foreach (var mainline in new[] { "main", "master" })
+        {
+            (code, json) = gh(["run", "list", "--repo", slug, "--branch", mainline, "--status", "failure", "--limit", "100", "--json", "databaseId,name,headBranch,createdAt,url"]);
+            if (code != 0) continue;
             foreach (var run in Parse(json))
             {
                 var branch = Str(run, "headBranch");
                 if (branch is not ("main" or "master")) continue;
                 if (!DateTime.TryParse(Str(run, "createdAt"), null, System.Globalization.DateTimeStyles.AdjustToUniversal, out var at) || nowUtc - at > TimeSpan.FromDays(1)) continue;
                 var id = run.GetProperty("databaseId").GetInt64();
+                if (!seen.Add(id)) continue;
                 items.Add(new IntakeItem($"CI#{id}", "fix", $"CI#{id}: {Str(run, "name")} failed on {branch}", Str(run, "url")));
             }
+        }
         return items;
     }
 

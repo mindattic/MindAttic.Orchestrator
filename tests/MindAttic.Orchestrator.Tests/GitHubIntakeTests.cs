@@ -84,6 +84,30 @@ public sealed class GitHubIntakeTests
     }
 
     [Test]
+    public void Reads_past_gh_default_page_and_a_main_failure_behind_branch_failures()
+    {
+        // M.ORCH-T548: gh issue list returns 30 unless told otherwise, and gh run list --limit 10 spanned every branch before
+        // the main/master filter, so ten feature-branch failures hid one on main. The fake answers as gh does.
+        static string? Flag(string[] args, string name) => Array.IndexOf(args, name) is >= 0 and var i && i + 1 < args.Length ? args[i + 1] : null;
+        (int, string) Gh(string[] args)
+        {
+            var limit = Flag(args, "--limit") is { } l ? int.Parse(l) : args[0] == "issue" ? 30 : 20;
+            if (args[0] == "issue")
+                return (0, "[" + string.Join(",", Enumerable.Range(1, 40).Take(limit)
+                    .Select(n => $$"""{"number":{{n}},"title":"t{{n}}","labels":[{"name":"bug"}],"url":"u{{n}}"}""")) + "]");
+            var runs = Enumerable.Range(1, 12).Select(n => (Id: n, Branch: "feature-" + n)).Append((Id: 99, Branch: "main"))
+                .Where(r => Flag(args, "--branch") is not { } b || r.Branch == b).Take(limit);
+            return (0, "[" + string.Join(",", runs.Select(r =>
+                $$"""{"databaseId":{{r.Id}},"name":"build","headBranch":"{{r.Branch}}","createdAt":"2026-10-14T09:00:00Z","url":"u"}""")) + "]");
+        }
+
+        var markers = GitHubIntake.Find("o/r", Gh, Now).Select(i => i.Marker).ToList();
+
+        Assert.That(markers.Count(m => m.StartsWith("GH#")), Is.EqualTo(40), "every labelled issue, not gh's first 30");
+        Assert.That(markers.Where(m => m.StartsWith("CI#")), Is.EqualTo(new[] { "CI#99" }), "the main failure behind twelve branch failures, once");
+    }
+
+    [Test]
     public void Files_each_marker_once_in_the_database_and_GH1_is_not_GH12()
     {
         var root = Path.Combine(Path.GetTempPath(), "orch-intake-" + Guid.NewGuid().ToString("N"));
