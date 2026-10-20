@@ -2,6 +2,7 @@ using System.IO;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using System.Windows.Media;
+using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Activity;
 using MindAttic.Orchestrator.Audit;
 using MindAttic.Orchestrator.Budget;

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using System.Windows.Media;
+using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Workflow.Tickets;
 

@@ -22,13 +22,8 @@ public static class UtilizationChartData
     /// <summary>The brushes the chart's data is drawn in.</summary>
     public sealed record ChartBrushes(Brush Accent, Brush Good, Brush Warn, Brush Bad);
 
-    /// <summary>The theme's McAccent, McGood, McWarn and McBad, or the dashboard's own palette outside the app (tests).</summary>
-    public static ChartBrushes ThemeBrushes()
-    {
-        Brush Find(string key, Brush fallback) => Application.Current?.TryFindResource(key) as Brush ?? fallback;
-        return new(Find("McAccent", Brushes.SteelBlue), Find("McGood", Palette.Working),
-            Find("McWarn", Palette.Waiting), Find("McBad", Palette.Over));
-    }
+    /// <summary>The theme's McAccent, McGood, McWarn and McBad (the library theme's own outside the app, in tests).</summary>
+    public static ChartBrushes ThemeBrushes() => new(Palette.Accent, Palette.Working, Palette.Waiting, Palette.Over);
 
     /// <summary>What the chart draws for <paramref name="u"/>.</summary>
     public static McLineChartData From(Utilization u, ChartBrushes brushes)

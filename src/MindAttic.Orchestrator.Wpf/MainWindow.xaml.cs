@@ -29,6 +29,8 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = model;
+        // Scales the window's content and binds Ctrl+Plus / Ctrl+Minus / Ctrl+0 on the window, wherever focus is.
+        model.Zoom.Attach(Root, this);
 
         CommandBindings.Add(new CommandBinding(WindowCommands.FocusSearch, (_, _) =>
         {

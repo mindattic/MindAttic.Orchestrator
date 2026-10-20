@@ -7,7 +7,7 @@
         mc:McWindow.DarkTitleBar="True"
         Title="MindAttic Orchestrator" Width="1480" Height="920" MinWidth="980" MinHeight="600"
         WindowStartupLocation="CenterScreen" Icon="/logo.ico"
-        Background="{StaticResource McChrome}" Foreground="{StaticResource McText}"
+        Background="{DynamicResource McChrome}" Foreground="{DynamicResource McText}"
         FontFamily="Segoe UI" FontSize="13"
         TextOptions.TextFormattingMode="Display" UseLayoutRounding="True">
 
@@ -15,12 +15,7 @@
         <KeyBinding Key="F5" Command="{Binding RefreshCommand}" />
         <KeyBinding Key="F" Modifiers="Control" Command="{x:Static vm:WindowCommands.FocusSearch}" />
         <KeyBinding Key="Escape" Command="{x:Static vm:WindowCommands.Escape}" />
-        <KeyBinding Key="OemPlus" Modifiers="Control" Command="{Binding ZoomInCommand}" />
-        <KeyBinding Key="Add" Modifiers="Control" Command="{Binding ZoomInCommand}" />
-        <KeyBinding Key="OemMinus" Modifiers="Control" Command="{Binding ZoomOutCommand}" />
-        <KeyBinding Key="Subtract" Modifiers="Control" Command="{Binding ZoomOutCommand}" />
-        <KeyBinding Key="D0" Modifiers="Control" Command="{Binding ZoomResetCommand}" />
-        <KeyBinding Key="NumPad0" Modifiers="Control" Command="{Binding ZoomResetCommand}" />
+        <!-- Ctrl+Plus / Ctrl+Minus / Ctrl+0 (main row and number pad) are the library's ZoomLevel's, added in MainWindow.xaml.cs. -->
     </Window.InputBindings>
 
     <Window.Resources>
@@ -84,10 +79,7 @@
         </Style>
     </Window.Resources>
 
-    <Grid>
-        <Grid.LayoutTransform>
-            <ScaleTransform ScaleX="{Binding Zoom}" ScaleY="{Binding Zoom}" />
-        </Grid.LayoutTransform>
+    <Grid x:Name="Root">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -160,14 +152,14 @@
                     <Style TargetType="Button" BasedOn="{StaticResource McSmallStat}">
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding Focus}" Value="Waiting">
-                                <Setter Property="BorderBrush" Value="{x:Static vm:Palette.Waiting}" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource McWarn}" />
                                 <Setter Property="BorderThickness" Value="2" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
                 </Button.Style>
                 <StackPanel>
-                    <TextBlock Text="{Binding WaitingCount}" Style="{StaticResource StatValue}" Foreground="{x:Static vm:Palette.Waiting}" />
+                    <TextBlock Text="{Binding WaitingCount}" Style="{StaticResource StatValue}" Foreground="{DynamicResource McWarn}" />
                     <TextBlock Text="Need you" Style="{StaticResource McTileSubtitle}" />
                 </StackPanel>
             </Button>
@@ -177,14 +169,14 @@
                     <Style TargetType="Button" BasedOn="{StaticResource McSmallStat}">
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding Focus}" Value="Working">
-                                <Setter Property="BorderBrush" Value="{x:Static vm:Palette.Working}" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource McGood}" />
                                 <Setter Property="BorderThickness" Value="2" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
                 </Button.Style>
                 <StackPanel>
-                    <TextBlock Text="{Binding WorkingCount}" Style="{StaticResource StatValue}" Foreground="{x:Static vm:Palette.Working}" />
+                    <TextBlock Text="{Binding WorkingCount}" Style="{StaticResource StatValue}" Foreground="{DynamicResource McGood}" />
                     <TextBlock Text="Working" Style="{StaticResource McTileSubtitle}" />
                 </StackPanel>
             </Button>
@@ -202,14 +194,14 @@
                     <Style TargetType="Button" BasedOn="{StaticResource McSmallStat}">
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding Focus}" Value="Tickets">
-                                <Setter Property="BorderBrush" Value="{x:Static vm:Palette.Tickets}" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource McLink}" />
                                 <Setter Property="BorderThickness" Value="2" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
                 </Button.Style>
                 <StackPanel>
-                    <TextBlock Text="{Binding TicketCount}" Style="{StaticResource StatValue}" Foreground="{x:Static vm:Palette.Tickets}" />
+                    <TextBlock Text="{Binding TicketCount}" Style="{StaticResource StatValue}" Foreground="{DynamicResource McLink}" />
                     <TextBlock Text="Open tickets" Style="{StaticResource McTileSubtitle}" />
                 </StackPanel>
             </Button>
@@ -288,7 +280,7 @@
                               Visibility="{Binding IsReposView, Converter={StaticResource Visible}}" />
             </WrapPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="{Binding ZoomText}" Style="{StaticResource McMutedText}" VerticalAlignment="Center" Margin="0,0,12,0"
+                <TextBlock Text="{Binding Zoom.Text}" Style="{StaticResource McMutedText}" VerticalAlignment="Center" Margin="0,0,12,0"
                            ToolTip="Ctrl+0 resets the zoom" />
             </StackPanel>
         </Grid>
@@ -344,7 +336,7 @@
             </ScrollViewer>
 
             <!-- Detail pane: the window's own McChrome, set off by its left border, so its McCards stand out from it. -->
-            <Border x:Name="DetailPane" Grid.Column="1" Width="420" Background="{StaticResource McChrome}" BorderBrush="{StaticResource McChromeBorder}" BorderThickness="1,0,0,0"
+            <Border x:Name="DetailPane" Grid.Column="1" Width="420" Background="{DynamicResource McChrome}" BorderBrush="{DynamicResource McChromeBorder}" BorderThickness="1,0,0,0"
                     Visibility="{Binding ShowDetail, Converter={StaticResource Visible}}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,16,20,20" DataContext="{Binding}">
                     <StackPanel>
@@ -359,7 +351,7 @@
                                 Command="{Binding OpenFolderCommand}" ToolTip="Open in Explorer"
                                 AutomationProperties.Name="{Binding Selected.Path, StringFormat='Open {0} in Explorer'}"
                                 Visibility="{Binding Selected.HasFolder, Converter={StaticResource Visible}}">
-                            <TextBlock Text="{Binding Selected.Path}" FontSize="11" Foreground="{StaticResource McMuted}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Selected.Path}" FontSize="11" Foreground="{DynamicResource McMuted}" TextTrimming="CharacterEllipsis" />
                         </Button>
 
                         <Border Style="{StaticResource McCard}" Margin="0,14,0,0" BorderBrush="{Binding Selected.Accent}">
@@ -385,7 +377,7 @@
                             <TextBlock Text="Opens a Launcher tab rooted here. The prompt is pre-filled, not sent."
                                        Style="{StaticResource McMutedText}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,10,0" />
                         </DockPanel>
-                        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="0,8,0,0" Foreground="{StaticResource McFocus}" />
+                        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="0,8,0,0" Foreground="{DynamicResource McFocus}" />
 
                         <!-- Live tabs -->
                         <StackPanel>
@@ -455,8 +447,8 @@
                                                     <TextBlock VerticalAlignment="Center">
                                                         <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding Id}"
                                                                    AutomationProperties.Name="{Binding Id, StringFormat='{}{0}: open it in Workflow'}"><Run Text="{Binding Id, Mode=OneWay}" /></Hyperlink>
-                                                        <Run Text="  " /><Run Text="{Binding Type, Mode=OneWay}" Foreground="{StaticResource McMuted}" />
-                                                        <Run Text="  " /><Run Text="{Binding Date, Mode=OneWay}" Foreground="{StaticResource McMuted}" />
+                                                        <Run Text="  " /><Run Text="{Binding Type, Mode=OneWay}" Foreground="{DynamicResource McMuted}" />
+                                                        <Run Text="  " /><Run Text="{Binding Date, Mode=OneWay}" Foreground="{DynamicResource McMuted}" />
                                                     </TextBlock>
                                                 </DockPanel>
                                                 <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="0,6,0,0" />
@@ -536,9 +528,9 @@
                         <TextBlock Text="{Binding AutopilotText}" Style="{StaticResource McMutedText}" TextWrapping="Wrap" />
                     </DockPanel>
 
-                    <Border Style="{StaticResource McCard}" Margin="0,12,0,0" BorderBrush="{x:Static vm:Palette.Waiting}"
+                    <Border Style="{StaticResource McCard}" Margin="0,12,0,0" BorderBrush="{DynamicResource McWarn}"
                             Visibility="{Binding HasHold, Converter={StaticResource Visible}}">
-                        <TextBlock Text="{Binding Hold}" Foreground="{x:Static vm:Palette.Waiting}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Hold}" Foreground="{DynamicResource McWarn}" TextWrapping="Wrap" />
                     </Border>
                     <!-- Reminders the daemon texts through Psst when they're due (orchestrator remind, M.ORCH-T477). -->
                     <Border Style="{StaticResource McCard}" Margin="0,12,0,0"
@@ -555,14 +547,14 @@
                             <TextBlock Text="orchestrator remind --cancel &lt;id&gt; drops one." Style="{StaticResource McMutedText}" FontSize="11" Margin="0,4,0,0" />
                         </StackPanel>
                     </Border>
-                    <TextBlock Text="{Binding QueueMessage}" Foreground="{StaticResource McFocus}" TextWrapping="Wrap" Margin="0,10,0,0"
+                    <TextBlock Text="{Binding QueueMessage}" Foreground="{DynamicResource McFocus}" TextWrapping="Wrap" Margin="0,10,0,0"
                                Visibility="{Binding QueueMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
 
                     <!-- Finished work: closed tickets whose assignment or worktree is still around. -->
                     <ItemsControl ItemsSource="{Binding Finished}" Focusable="False" Margin="0,10,0,0">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:FinishedViewModel}">
-                                <Border Style="{StaticResource McCard}" BorderBrush="{x:Static vm:Palette.Working}">
+                                <Border Style="{StaticResource McCard}" BorderBrush="{DynamicResource McGood}">
                                     <DockPanel>
                                         <Button DockPanel.Dock="Right" Style="{StaticResource McButton}" Padding="12,5"
                                                 Content="{Binding ActionLabel}" Command="{Binding ActionCommand}"
@@ -598,13 +590,13 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type vm:QueueRowViewModel}">
-                                    <Border Style="{StaticResource McCard}" Width="370" Margin="0,0,10,10" BorderBrush="{x:Static vm:Palette.Working}">
+                                    <Border Style="{StaticResource McCard}" Width="370" Margin="0,0,10,10" BorderBrush="{DynamicResource McGood}">
                                         <StackPanel>
                                             <TextBlock>
-                                                <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding Id}" Foreground="{x:Static vm:Palette.Working}"
+                                                <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding Id}" Foreground="{DynamicResource McGood}"
                                                            AutomationProperties.Name="{Binding Id, StringFormat='{}{0}: open it in Workflow'}"><Run Text="{Binding Id, Mode=OneWay}" /></Hyperlink>
                                                 <Run Text="  " /><Run Text="{Binding Repo, Mode=OneWay}" FontWeight="SemiBold" />
-                                                <Run Text="  " /><Run Text="{Binding Type, Mode=OneWay}" Foreground="{StaticResource McMuted}" />
+                                                <Run Text="  " /><Run Text="{Binding Type, Mode=OneWay}" Foreground="{DynamicResource McMuted}" />
                                             </TextBlock>
                                             <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="0,6,0,0" MaxHeight="54" TextTrimming="CharacterEllipsis" />
                                             <DockPanel Margin="0,10,0,0">
@@ -674,8 +666,8 @@
                                         </TextBlock>
                                         <TextBlock Grid.Column="3" Text="{Binding Repo}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                         <TextBlock Grid.Column="4" VerticalAlignment="Center">
-                                            <Run Text="{Binding Type, Mode=OneWay}" Foreground="{StaticResource McMuted}" />
-                                            <Run Text="{Binding Priority, Mode=OneWay}" Foreground="{x:Static vm:Palette.Waiting}" FontWeight="SemiBold" />
+                                            <Run Text="{Binding Type, Mode=OneWay}" Foreground="{DynamicResource McMuted}" />
+                                            <Run Text="{Binding Priority, Mode=OneWay}" Foreground="{DynamicResource McWarn}" FontWeight="SemiBold" />
                                         </TextBlock>
                                         <TextBlock Grid.Column="5" Text="{Binding Summary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
                                                    ToolTip="{Binding Summary}" Margin="0,0,12,0" />
@@ -722,10 +714,10 @@
                                             <TextBlock Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
-                                                        <Setter Property="Foreground" Value="{x:Static vm:Palette.Waiting}" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource McWarn}" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding Identical}" Value="True">
-                                                                <Setter Property="Foreground" Value="{x:Static vm:Palette.Working}" />
+                                                                <Setter Property="Foreground" Value="{DynamicResource McGood}" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
@@ -747,8 +739,8 @@
                                                             </MultiBinding>
                                                         </AutomationProperties.Name>
                                                         <TextBlock TextTrimming="CharacterEllipsis">
-                                                            <Run Text="{Binding Repo, Mode=OneWay}" Foreground="{StaticResource McText}" />
-                                                            <Run Text="{Binding RelativePath, Mode=OneWay}" Foreground="{StaticResource McMuted}" />
+                                                            <Run Text="{Binding Repo, Mode=OneWay}" Foreground="{DynamicResource McText}" />
+                                                            <Run Text="{Binding RelativePath, Mode=OneWay}" Foreground="{DynamicResource McMuted}" />
                                                         </TextBlock>
                                                     </Button>
                                                 </DataTemplate>
@@ -780,10 +772,10 @@
                                         <TextBlock Text="{Binding Kind}" FontWeight="SemiBold" VerticalAlignment="Center">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
-                                                    <Setter Property="Foreground" Value="{x:Static vm:Palette.Waiting}" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource McWarn}" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsCustom}" Value="True">
-                                                            <Setter Property="Foreground" Value="{StaticResource McMuted}" />
+                                                            <Setter Property="Foreground" Value="{DynamicResource McMuted}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -814,7 +806,7 @@
                                         <StackPanel>
                                             <TextBlock>
                                                 <Run Text="{Binding File, Mode=OneWay}" FontFamily="Cascadia Mono, Consolas" />
-                                                <Run Text="  " /><Run Text="{Binding Detail, Mode=OneWay}" Foreground="{StaticResource McMuted}" />
+                                                <Run Text="  " /><Run Text="{Binding Detail, Mode=OneWay}" Foreground="{DynamicResource McMuted}" />
                                             </TextBlock>
                                             <TextBlock Text="{Binding Repos}" TextWrapping="Wrap" Margin="0,4,0,0" Style="{StaticResource McMutedText}" />
                                         </StackPanel>
@@ -890,14 +882,14 @@
                                             </DockPanel>
                                             <TextBlock Text="{Binding Doing}" Margin="0,6,0,0" TextWrapping="Wrap" MaxHeight="38" TextTrimming="CharacterEllipsis"
                                                        Visibility="{Binding Doing, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                                            <TextBlock Text="{Binding HoldNote}" Foreground="{x:Static vm:Palette.Waiting}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
+                                            <TextBlock Text="{Binding HoldNote}" Foreground="{DynamicResource McWarn}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
                                                        Visibility="{Binding HoldNote, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                                             <!-- The tickets this CLI claimed, only its own (M.ORCH-T532). -->
                                             <TextBlock Text="{Binding Claims}" Style="{StaticResource McMutedText}" Margin="0,4,0,0" TextWrapping="Wrap"
                                                        Visibility="{Binding Claims, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
 
                                             <!-- Its subagents, inside it. -->
-                                            <Border x:Name="SubagentPanel" Style="{StaticResource McCard}" Background="{StaticResource McChrome}" Padding="10,8" Margin="0,10,0,0"
+                                            <Border x:Name="SubagentPanel" Style="{StaticResource McCard}" Background="{DynamicResource McChrome}" Padding="10,8" Margin="0,10,0,0"
                                                     Visibility="{Binding HasSubagents, Converter={StaticResource Visible}}">
                                                 <StackPanel>
                                                     <TextBlock Text="{Binding SubagentsHeader}" Style="{StaticResource McSectionLabel}" Margin="0,0,0,6" />
@@ -937,7 +929,7 @@
         </Grid>
 
         <!-- Status bar -->
-        <Border Grid.Row="4" BorderBrush="{StaticResource McChromeBorder}" BorderThickness="0,1,0,0" Padding="24,6">
+        <Border Grid.Row="4" BorderBrush="{DynamicResource McChromeBorder}" BorderThickness="0,1,0,0" Padding="24,6">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Right" Style="{StaticResource McMutedText}"
                            Text="F5 refresh · Ctrl+F search · Ctrl +/− zoom · Esc close" />
@@ -945,7 +937,7 @@
                     <Run Text="{Binding RepoCount, Mode=OneWay}" /><Run Text=" repos under " /><Run Text="{Binding WorkspaceRoot, Mode=OneWay}" />
                 </TextBlock>
                 <TextBlock x:Name="Announcer" DockPanel.Dock="Left" Width="0" Height="0" Opacity="0" AutomationProperties.LiveSetting="Polite" />
-                <TextBlock Foreground="{StaticResource McBad}" Visibility="{Binding HasWarnings, Converter={StaticResource Visible}}">
+                <TextBlock Foreground="{DynamicResource McBad}" Visibility="{Binding HasWarnings, Converter={StaticResource Visible}}">
                     <TextBlock.ToolTip>
                         <ItemsControl ItemsSource="{Binding Warnings}" />
                     </TextBlock.ToolTip>
@@ -955,7 +947,7 @@
         </Border>
 
         <!-- Covers every row until the first refresh lands (M.ORCH-T184). -->
-        <Border x:Name="Loader" Grid.RowSpan="5" Panel.ZIndex="100" Background="{StaticResource McChrome}"
+        <Border x:Name="Loader" Grid.RowSpan="5" Panel.ZIndex="100" Background="{DynamicResource McChrome}"
                 Visibility="{Binding IsLoading, Converter={StaticResource Visible}}"
                 AutomationProperties.Name="Loading the dashboard" AutomationProperties.LiveSetting="Polite">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -1033,7 +1025,7 @@
                 <TextBlock Text="Type /autopilot in a CLI and that CLI works its repo's tickets (or -repo=a,b, or all) through its own subagents, each in its own worktree, as many at once as the pace allows; no other CLI is affected. Off here pauses it in every CLI; /autopilot off ends it in that one."
                            Style="{StaticResource McMutedText}" TextWrapping="Wrap" Margin="0,6,0,0" />
 
-                <TextBlock Text="{Binding Error}" Foreground="{StaticResource McBad}" TextWrapping="Wrap" Margin="0,14,0,0" AutomationProperties.LiveSetting="Assertive"
+                <TextBlock Text="{Binding Error}" Foreground="{DynamicResource McBad}" TextWrapping="Wrap" Margin="0,14,0,0" AutomationProperties.LiveSetting="Assertive"
                            Visibility="{Binding Error, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
             </StackPanel>
             <mc:McModal.Footer>

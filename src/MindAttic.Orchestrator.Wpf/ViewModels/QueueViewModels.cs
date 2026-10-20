@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Settings;
 

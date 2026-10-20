@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows.Input;
 using System.Windows.Media;
+using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Sessions;
@@ -99,6 +100,10 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>The header's live clock, ticking every second on its own timer, not with the refresh (M.ORCH-T193).</summary>
     public ClockViewModel Clock { get; } = new();
+
+    /// <summary>The window's zoom, 80-200% (WCAG 1.4.4): the library's ZoomLevel, which MainWindow attaches to its content
+    /// with Ctrl+Plus / Ctrl+Minus / Ctrl+0; the tiles and cards wrap and the views scroll, so nothing is cut off as it grows.</summary>
+    public ZoomLevel Zoom { get; } = new();
     public IReadOnlyList<string> Providers => SessionControl.Providers;
 
     public ICommand SelectCommand { get; }

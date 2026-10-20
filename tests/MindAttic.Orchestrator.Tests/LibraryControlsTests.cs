@@ -4,9 +4,10 @@ using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
 
-/// <summary>The dashboard is made of MindAttic.Components.Wpf controls (M.ORCH-T499, finished in M.ORCH-T531): every button
+/// <summary>The dashboard is made of MindAttic.Components.Wpf controls (M.ORCH-T499, M.ORCH-T531, M.ORCH-T181): every button
 /// takes one of the library's styles, the toasts, badges, progress bars, spinner, placeholders, links, message boxes, chart,
-/// cards, pills, focus ring and text styles are the library's, and nothing hand-built creeps back.</summary>
+/// cards, pills, focus ring, text styles, colours, view model base, commands, zoom, persistent tooltips and high contrast are
+/// the library's, and nothing hand-built creeps back.</summary>
 public sealed class LibraryControlsTests
 {
     private static readonly XNamespace P = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
@@ -51,32 +52,104 @@ public sealed class LibraryControlsTests
         foreach (var root in new[] { Window(), App() })
         {
             Assert.That(root.Descendants().Where(e => e.Name.LocalName == "ControlTemplate"), Is.Empty, "a template is a hand-built control");
-            // App.xaml keeps one colour of its own: the text fields' 3:1 outline (WCAG 1.4.11), which the library's is not.
-            var colours = root.Descendants().Attributes().Where(a => Regex.IsMatch(a.Value, "^#[0-9A-Fa-f]{6,8}$"))
-                .Where(a => (string?)a.Parent!.Attribute(X + "Key") != "FieldBorder");
+            // Not even an AA override: the library's palette meets WCAG 2.2 AA by itself (M.COMP-T11).
+            var colours = root.Descendants().Attributes().Where(a => Regex.IsMatch(a.Value, "^#[0-9A-Fa-f]{6,8}$"));
             Assert.That(colours.Select(a => $"{a.Parent!.Name.LocalName}.{a.Name}={a.Value}"), Is.Empty);
         }
-        Assert.That((string?)Named(Window(), "DetailPane").Attribute("Background"), Is.EqualTo("{StaticResource McChrome}"));
+        Assert.That((string?)Named(Window(), "DetailPane").Attribute("Background"), Is.EqualTo("{DynamicResource McChrome}"));
     }
 
     [Test]
-    public void App_xaml_keeps_only_the_repo_tile_and_the_field_outline_of_its_own()
+    public void App_xaml_keeps_only_the_repo_tile_of_its_own()
     {
         var keys = App().Descendants().Select(e => (string?)e.Attribute(X + "Key")).OfType<string>().ToList();
 
-        Assert.That(keys, Is.EquivalentTo(new[] { "Visible", "FieldBorder", "McTextBox", "McTextArea", "RepoTile" }));
-        // The two text box styles only re-outline the library's own.
-        foreach (var key in new[] { "McTextBox", "McTextArea" })
-        {
-            var style = App().Descendants(P + "Style").Single(s => (string?)s.Attribute(X + "Key") == key);
-            Assert.That((string?)style.Attribute("BasedOn"), Is.EqualTo($"{{StaticResource {key}}}"));
-            Assert.That(style.Elements(P + "Setter").Select(s => (string?)s.Attribute("Property")), Is.EqualTo(new[] { "BorderBrush" }));
-        }
+        // No FieldBorder, McTextBox or McTextArea override: the library's McFieldBorder outline is 3:1 (M.COMP-T11).
+        Assert.That(keys, Is.EquivalentTo(new[] { "Visible", "RepoTile" }));
 
         // The old copies are gone, and nothing refers to them.
         var window = File.ReadAllText(Wpf("MainWindow.xaml"));
-        foreach (var old in new[] { "FocusRing", "Heading", "SectionLabel", "Muted", "StatCard", "SmallStat", "Card", "PillChoice", "PillToggle", "PulseDot", "McRec" })
+        foreach (var old in new[] { "FocusRing", "Heading", "SectionLabel", "Muted", "StatCard", "SmallStat", "Card", "PillChoice", "PillToggle", "PulseDot", "McRec", "FieldBorder" })
+        {
             Assert.That(window, Does.Not.Contain($"{{StaticResource {old}}}"), old);
+            Assert.That(window, Does.Not.Contain($"{{DynamicResource {old}}}"), old);
+        }
+    }
+
+    /// <summary>The theme's brushes (not its styles), which McHighContrast re-keys.</summary>
+    private static readonly string[] PaletteKeys =
+    [
+        "McChrome", "McChromeBorder", "McSurface", "McHover", "McText", "McMuted", "McRec", "McStar", "McControlBorder", "McFieldBorder",
+        "McFocus", "McAccent", "McAccentHover", "McOnAccent", "McTileHover", "McGood", "McWarn", "McBad", "McLink", "McChartGrid",
+    ];
+
+    [Test]
+    public void The_window_takes_every_colour_from_the_theme_dynamically_so_high_contrast_reaches_it()
+    {
+        var window = File.ReadAllText(Wpf("MainWindow.xaml"));
+
+        Assert.That(window, Does.Not.Contain("vm:Palette."), "a state colour is the theme's McGood, McWarn, McLink, McMuted or McBad");
+        foreach (var key in PaletteKeys)
+            Assert.That(window, Does.Not.Contain($"{{StaticResource {key}}}"), $"{key}: a StaticResource keeps the dark colour under high contrast");
+        Assert.That(window, Does.Contain("{DynamicResource McGood}"));
+        Assert.That(window, Does.Contain("{DynamicResource McWarn}"));
+
+        // The view models' state brushes are the theme's too, read when asked: no colour of the dashboard's own.
+        var palette = File.ReadAllText(Wpf(Path.Combine("ViewModels", "Palette.cs")));
+        Assert.That(Regex.IsMatch(palette, @"Color\.From|0x[0-9A-Fa-f]{2}\b|#[0-9A-Fa-f]{6}|new SolidColorBrush"), Is.False, "Palette defines a colour of its own");
+        foreach (var key in new[] { "McGood", "McWarn", "McLink", "McMuted", "McBad" })
+            Assert.That(palette, Does.Contain($"\"{key}\""), key);
+        Assert.That(File.ReadAllText(Wpf("UtilizationChartData.cs")), Does.Not.Contain("Brushes."));
+    }
+
+    [Test]
+    public void The_state_brushes_are_the_themes_good_warn_link_muted_and_bad()
+    {
+        _ = System.IO.Packaging.PackUriHelper.UriSchemePack; // registers pack:// outside an Application
+        var theme = (System.Windows.ResourceDictionary)System.Windows.Application.LoadComponent(
+            new Uri("/MindAttic.Components.Wpf;component/Theme.xaml", UriKind.Relative));
+        static System.Windows.Media.Color Colour(object brush) => ((System.Windows.Media.SolidColorBrush)brush).Color;
+
+        Assert.That(Colour(MindAttic.Orchestrator.Wpf.ViewModels.Palette.Working), Is.EqualTo(Colour(theme["McGood"])));
+        Assert.That(Colour(MindAttic.Orchestrator.Wpf.ViewModels.Palette.Waiting), Is.EqualTo(Colour(theme["McWarn"])));
+        Assert.That(Colour(MindAttic.Orchestrator.Wpf.ViewModels.Palette.Tickets), Is.EqualTo(Colour(theme["McLink"])));
+        Assert.That(Colour(MindAttic.Orchestrator.Wpf.ViewModels.Palette.Quiet), Is.EqualTo(Colour(theme["McMuted"])));
+        Assert.That(Colour(MindAttic.Orchestrator.Wpf.ViewModels.Palette.Over), Is.EqualTo(Colour(theme["McBad"])));
+        Assert.That(MindAttic.Orchestrator.Wpf.ViewModels.Palette.Working.IsFrozen, Is.True, "usable from any thread outside the app");
+    }
+
+    [Test]
+    public void The_view_model_base_commands_zoom_tooltips_and_high_contrast_are_the_librarys()
+    {
+        Assert.That(File.Exists(Wpf(Path.Combine("ViewModels", "Mvvm.cs"))), Is.False);
+        Assert.That(File.Exists(Wpf(Path.Combine("ViewModels", "MainViewModel.Zoom.cs"))), Is.False);
+
+        var sources = Directory.EnumerateFiles(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf"), "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Split(Path.DirectorySeparatorChar).Any(d => d is "bin" or "obj"))
+            .ToDictionary(f => Path.GetFileName(f), File.ReadAllText);
+        foreach (var (file, text) in sources)
+        {
+            Assert.That(Regex.IsMatch(text, @"\b(class|record)\s+(ObservableObject|RelayCommand|CollectionSync|ZoomLevel)\b"), Is.False, $"{file} copies a library Mvvm type");
+            Assert.That(text, Does.Not.Contain("ShowDurationProperty"), $"{file}: McToolTips.KeepOpen keeps tooltips up");
+            Assert.That(text, Does.Not.Contain("SystemParameters.HighContrast"), $"{file}: McHighContrast follows high contrast");
+            Assert.That(text, Does.Not.Contain("ScaleTransform"), $"{file}: ZoomLevel.Attach scales the window");
+        }
+
+        var app = sources["App.xaml.cs"];
+        Assert.That(app, Does.Contain("McToolTips.KeepOpen()"));
+        Assert.That(app, Does.Contain("McHighContrast.Track(this"));
+        Assert.That(sources["MainViewModel.cs"], Does.Contain("public ZoomLevel Zoom { get; }"));
+        Assert.That(sources["MainWindow.xaml.cs"], Does.Contain("model.Zoom.Attach(Root, this)"));
+
+        // The zoom keys and scale are ZoomLevel's, not the window's own; its status text is ZoomLevel's.
+        var window = Window();
+        Assert.That(window.Descendants(P + "KeyBinding").Select(k => (string?)k.Attribute("Command")).OfType<string>().Where(c => c.Contains("Zoom")), Is.Empty);
+        Assert.That(window.Descendants().Where(e => e.Name.LocalName.EndsWith(".LayoutTransform")), Is.Empty);
+        Assert.That(window.Descendants(P + "TextBlock").Count(t => (string?)t.Attribute("Text") == "{Binding Zoom.Text}"), Is.EqualTo(1));
+
+        var csproj = XDocument.Load(Wpf("MindAttic.Orchestrator.Wpf.csproj"));
+        var version = (string?)csproj.Descendants("PackageReference").Single(r => (string?)r.Attribute("Include") == "MindAttic.Components.Wpf").Attribute("Version");
+        Assert.That(int.Parse(version!.Split('.')[0]), Is.GreaterThanOrEqualTo(18), "Mvvm, ZoomLevel, McToolTips and McHighContrast arrived in 18.0.0");
     }
 
     [Test]
@@ -142,7 +215,7 @@ public sealed class LibraryControlsTests
         bool McCardStyled(XElement b) => (string?)b.Attribute("Style") == "{StaticResource McCard}"
             || (string?)b.Element(P + "Border.Style")?.Element(P + "Style")?.Attribute("BasedOn") == "{StaticResource McCard}";
         var handMade = window.Descendants(P + "Border")
-            .Where(b => b.Attribute("CornerRadius") is not null && ((string?)b.Attribute("Background"))?.StartsWith("{StaticResource Mc") == true)
+            .Where(b => b.Attribute("CornerRadius") is not null && Regex.IsMatch((string?)b.Attribute("Background") ?? "", @"^\{(Static|Dynamic)Resource Mc"))
             .Where(b => !McCardStyled(b));
         Assert.That(handMade.Select(b => b.ToString()), Is.Empty);
     }
@@ -195,7 +268,7 @@ public sealed class LibraryControlsTests
             .Concat(window.Descendants().Select(e => (string?)e.Attribute(X + "Key")).OfType<string>())
             .ToHashSet();
 
-        var named = window.Descendants().Attributes().SelectMany(a => Regex.Matches(a.Value, @"\{StaticResource (\w+)\}").Select(m => m.Groups[1].Value))
+        var named = window.Descendants().Attributes().SelectMany(a => Regex.Matches(a.Value, @"\{(?:Static|Dynamic)Resource (\w+)\}").Select(m => m.Groups[1].Value))
             .Distinct().ToList();
         Assert.That(named, Is.Not.Empty);
         Assert.That(named.Where(k => !keys.Contains(k)), Is.Empty);

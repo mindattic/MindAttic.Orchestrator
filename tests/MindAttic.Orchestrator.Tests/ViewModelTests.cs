@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Settings;
 using MindAttic.Orchestrator.Wpf.ViewModels;
 using NUnit.Framework;

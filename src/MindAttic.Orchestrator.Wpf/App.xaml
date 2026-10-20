@@ -3,22 +3,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
         <ResourceDictionary>
-            <!-- Every control, text style, card, pill, focus ring, chart and scroll bar comes from MindAttic.Components.Wpf
-                 (M.ORCH-T499, M.ORCH-T531). Only the repo tile and the text fields' outline below are the dashboard's own. -->
+            <!-- Every control, text style, card, pill, focus ring, chart, scroll bar and colour comes from MindAttic.Components.Wpf
+                 (M.ORCH-T499, M.ORCH-T531, M.ORCH-T181), whose palette meets WCAG 2.2 AA by itself (the text fields' 3:1
+                 McFieldBorder outline, McRec at 4.5:1) and follows Windows high contrast. Only the repo tile is the dashboard's own. -->
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/MindAttic.Components.Wpf;component/Theme.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="Visible" />
-
-            <!-- WCAG 2.2 AA: a text field's outline at the theme's #34363E is 1.2:1; it needs 3:1 to show where to type (1.4.11). -->
-            <SolidColorBrush x:Key="FieldBorder" Color="#FF8A8C96" />
-            <Style x:Key="McTextBox" TargetType="TextBox" BasedOn="{StaticResource McTextBox}">
-                <Setter Property="BorderBrush" Value="{StaticResource FieldBorder}" />
-            </Style>
-            <Style x:Key="McTextArea" TargetType="TextBox" BasedOn="{StaticResource McTextArea}">
-                <Setter Property="BorderBrush" Value="{StaticResource FieldBorder}" />
-            </Style>
 
             <!-- A repo tile: McTileButton with room for a state bar, two lines and a token count. -->
             <Style x:Key="RepoTile" TargetType="Button" BasedOn="{StaticResource McTileButton}">

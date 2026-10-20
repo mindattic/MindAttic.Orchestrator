@@ -1,4 +1,5 @@
 using System.Windows.Threading;
+using MindAttic.Components.Wpf.Mvvm;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 

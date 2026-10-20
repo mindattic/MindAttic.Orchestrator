@@ -19,12 +19,12 @@ namespace MindAttic.Orchestrator.Wpf;
 public partial class App : Application
 {
     // WCAG 1.4.13: a tooltip stays up until the pointer or focus leaves or Esc is pressed, rather than vanishing after 5s.
-    static App() => System.Windows.Controls.ToolTipService.ShowDurationProperty.OverrideMetadata(
-        typeof(DependencyObject), new FrameworkPropertyMetadata(int.MaxValue));
+    static App() => McToolTips.KeepOpen();
 
     private Mutex? daemonMutex;
     private EventWaitHandle? exitSignal;
     private SingleInstance? instance;
+    private IDisposable? highContrast;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -36,6 +36,11 @@ public partial class App : Application
             RunDaemon();
             return;
         }
+
+        // Windows' high-contrast theme swaps the system colours into every theme brush, live (--high-contrast forces it, to
+        // check the colours without changing Windows). The dashboard's state colours are the theme's McGood, McWarn, McLink,
+        // McBad and McMuted (ViewModels/Palette.cs), so it registers no keys of its own.
+        highContrast = McHighContrast.Track(this, force: e.Args.Contains("--high-contrast", StringComparer.OrdinalIgnoreCase));
 
         OrchestratorLog.Start("Dashboard");
         var log = OrchestratorLog.For("Dashboard");
@@ -129,6 +134,7 @@ public partial class App : Application
         daemonMutex?.Dispose();
         exitSignal?.Dispose();
         instance?.Dispose();
+        highContrast?.Dispose();
         base.OnExit(e);
     }
 
