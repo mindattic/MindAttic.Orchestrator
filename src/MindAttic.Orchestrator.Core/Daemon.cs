@@ -583,7 +583,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     private DateTime orchestratorDbTriedUtc;
 
     /// <summary>The commit subject of <see cref="SyncOrchestratorDbIfDue"/>: the ticket that put the database in the repo.</summary>
-    internal const string OrchestratorDbSyncSubject = "Sync data/orchestrator.db: the account roster's latest readings (M.ORCH-T490)";
+    internal const string OrchestratorDbSyncSubject = "Sync data/orchestrator.db: the account roster, meter readings, pace ledger, usage history and ticket costs (M.ORCH-T494)";
 
     /// <summary>
     /// Every 10 minutes, when <c>data/orchestrator.sql</c> (rewritten with each change to the database) differs from the commit's,

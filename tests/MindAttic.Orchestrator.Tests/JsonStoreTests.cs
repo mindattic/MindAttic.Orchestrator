@@ -80,8 +80,8 @@ public sealed class JsonStoreTests
         var store = new JsonStore(dir);
         Assert.That(store.TryLoadLimits(out var none) && none.Count == 0, Is.True, "missing: nothing yet, fine to save");
         Directory.CreateDirectory(dir);
-        foreach (var name in new[] { "limits", "usage-history", "ticket-costs" }) File.WriteAllText(Path.Combine(dir, name + ".json"), "[ {");
-        Assert.That((store.TryLoadLimits(out _), store.TryLoadUsageHistory(out _), store.TryLoadTicketCosts(out _)), Is.EqualTo((false, false, false)));
+        File.WriteAllText(Path.Combine(dir, "limits.json"), "[ {");
+        Assert.That(store.TryLoadLimits(out _), Is.False);
     }
 
     [Test]

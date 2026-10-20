@@ -46,7 +46,7 @@ public sealed record TicketCosts(IReadOnlyList<SessionCost> Sessions)
             if (!byId.TryGetValue(s.SessionId, out var had) || s.Fresh > had.Fresh ||
                 !had.OwnShare && s.OwnShare && subagents.TryGetValue(s.SessionId, out var theirs) && s.Fresh + theirs >= had.Fresh)
                 byId[s.SessionId] = s with { Type = s.Type ?? had?.Type };
-        return [.. byId.Values.Where(s => s.LastUtc >= nowUtc - Keep).OrderBy(s => s.LastUtc)];
+        return [.. byId.Values.Where(s => s.LastUtc >= nowUtc - Keep).OrderBy(s => s.LastUtc).ThenBy(s => s.SessionId, StringComparer.Ordinal)];
     }
 
     /// <summary>The sessions that were dispatched on a ticket, with what they've spent so far. A subagent handed its own

@@ -54,14 +54,15 @@ public sealed record LedgerWindow(
 }
 
 /// <summary>
-/// The pace ledger (M.ORCH-T166): one permanent row per 5-hour window in <c>pace-ledger.jsonl</c>, graded against the
-/// goal, so "agents never run out of tokens" is something measured over time rather than assumed. Built from what
-/// is already recorded: Claude's own percent (<c>usage-samples.json</c>), the limit hits read from transcripts
+/// The pace ledger (M.ORCH-T166): one permanent row per 5-hour window in orchestrator.db's <c>pace_ledger</c> (M.ORCH-T494; it
+/// was <c>pace-ledger.jsonl</c>), graded against the goal, so "agents never run out of tokens" is something measured over time
+/// rather than assumed. Built from what is already recorded: Claude's own percent (<c>usage_samples</c>), the limit hits read from transcripts
 /// (<c>limits.json</c>) and the pace gate's holds and refusals (<c>pace-gate.jsonl</c>).
 /// </summary>
 public static class PaceLedger
 {
-    public const string FileName = "pace-ledger.jsonl";
+    /// <summary>Where the ledger is kept, as the tickets it files cite it.</summary>
+    public const string Ref = "data/orchestrator.db pace_ledger";
 
     /// <summary>A window ending here or above, with no hit, met the goal (99% is the target; whole-percent reports and a
     /// last turn that ends just short make a few points under it the same result).</summary>
@@ -184,7 +185,8 @@ public static class PaceLedger
 
     public static string Serialize(LedgerWindow w) => JsonSerializer.Serialize(w, Json);
 
-    /// <summary>Every row in the ledger file, oldest first; a torn or unreadable line is skipped.</summary>
+    /// <summary>Every row in a <c>pace-ledger.jsonl</c> as the ledger was kept before orchestrator.db (read once by
+    /// <see cref="Settings.OrchestratorHistory.ImportJson"/>), oldest first; a torn or unreadable line is skipped.</summary>
     public static List<LedgerWindow> Load(string path)
     {
         var rows = new List<LedgerWindow>();
@@ -196,9 +198,6 @@ public static class PaceLedger
         }
         return [.. rows.OrderBy(r => r.EndUtc)];
     }
-
-    public static void Append(string path, IEnumerable<LedgerWindow> windows) =>
-        File.AppendAllLines(path, windows.Select(Serialize));
 
     /// <summary>The pace gate's events since <paramref name="sinceUtc"/>; a torn line (a hook mid-write) is skipped.</summary>
     public static List<GateEvent> LoadEvents(string path, DateTime sinceUtc)

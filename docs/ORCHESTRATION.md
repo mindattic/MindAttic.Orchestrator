@@ -32,7 +32,7 @@ The daemon starts at logon and refreshes every 15 seconds, sooner when a turn en
    what's left evenly again. The utilization chart draws the active profile's curve.
 
    *Front-loaded spike (M.ORCH-T399).* Front-loaded ran from 2026-10-18 17:19Z with k 0.55 and target 98%, and
-   nothing else changed. Results come from `pace-ledger.jsonl`, `usage-samples.json` and `pace-gate.jsonl`. The
+   nothing else changed. Results come from the pace ledger, Claude's meter readings (then `pace-ledger.jsonl` and `usage-samples.json`, now orchestrator.db's `pace_ledger` and `usage_samples`) and `pace-gate.jsonl`. The
    subagents running at each crossing come from the subagent transcripts' first and last timestamps.
 
    | Window (UTC) | Peak | Final | Over 98 | Limit hit | Min at target | Refused | Subagents at 85% / 95% |

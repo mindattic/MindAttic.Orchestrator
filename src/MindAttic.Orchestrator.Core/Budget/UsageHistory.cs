@@ -42,9 +42,12 @@ public static class UsageHistory
 
     /// <summary>Replaces every day on or after <paramref name="windowStart"/> with what the transcripts show now; keeps the rest.</summary>
     public static List<DayUsage> Merge(IEnumerable<DayUsage> stored, IEnumerable<DayUsage> observed, DateOnly windowStart, DateOnly today) =>
-        [.. stored.Where(d => d.Day < windowStart && d.Day > today.AddDays(-(int)Keep.TotalDays))
-            .Concat(observed.Where(d => d.Day >= windowStart))
-            .OrderBy(d => d.Day).ThenBy(d => d.Repo, StringComparer.OrdinalIgnoreCase).ThenBy(d => d.Provider, StringComparer.Ordinal)
+        Order(stored.Where(d => d.Day < windowStart && d.Day > today.AddDays(-(int)Keep.TotalDays))
+            .Concat(observed.Where(d => d.Day >= windowStart)));
+
+    /// <summary>The order the history is kept and compared in: by day, repo, provider, account, then the reset it came before.</summary>
+    public static List<DayUsage> Order(IEnumerable<DayUsage> days) =>
+        [.. days.OrderBy(d => d.Day).ThenBy(d => d.Repo, StringComparer.OrdinalIgnoreCase).ThenBy(d => d.Provider, StringComparer.Ordinal)
             .ThenBy(d => d.Account, StringComparer.Ordinal).ThenBy(d => d.BeforeUtc)];
 }
 

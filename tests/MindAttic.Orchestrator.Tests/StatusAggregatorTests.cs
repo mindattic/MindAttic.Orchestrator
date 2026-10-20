@@ -98,8 +98,8 @@ public sealed class StatusAggregatorTests
         Assert.That((b.State, b.Hosts.Single().ProcessId, b.LastActivityUtc, b.OpenTickets.Count), Is.EqualTo((RepoState.Waiting, 42, (DateTime?)null, 0)),
             "a tab open with nothing written: waiting on you");
 
-        Assert.That(store.LoadUsageHistory().Where(d => d.Repo == "A").Sum(d => d.Fresh), Is.GreaterThan(0), "today's usage is saved for the history");
-        Assert.That(store.LoadTicketCosts().Single().TicketId, Is.EqualTo("A-T1"), "the worktree's session is charged to its ticket");
+        Assert.That(History.LoadUsageHistory().Where(d => d.Repo == "A").Sum(d => d.Fresh), Is.GreaterThan(0), "today's usage is saved for the history");
+        Assert.That(History.LoadTicketCosts().Single().TicketId, Is.EqualTo("A-T1"), "the worktree's session is charged to its ticket");
     }
 
     [Test]
@@ -292,6 +292,29 @@ public sealed class StatusAggregatorTests
             new RateLimitStatusWriter(rlPath), lease)
         { ScanHosts = () => hosts, OtherProviders = new ProviderLogReader(Path.Combine(dir, "codex"), Path.Combine(dir, "gemini")) };
 
+    /// <summary>The scratch orchestrator.db every aggregator here uses (OrchestratorDbPerTest points the default at it).</summary>
+    private static OrchestratorDb History => new(OrchestratorDb.DefaultPath());
+
+    /// <summary>Another process's write holding the database: every read and write here gives up after a short busy timeout.</summary>
+    private static IDisposable HoldDb()
+    {
+        var before = OrchestratorDb.BusyTimeoutMs;
+        OrchestratorDb.BusyTimeoutMs = 100;
+        var connection = History.Open();
+        OrchestratorDb.Execute(connection, "BEGIN EXCLUSIVE;");
+        return new Held(() =>
+        {
+            OrchestratorDb.Execute(connection, "ROLLBACK;");
+            connection.Dispose();
+            OrchestratorDb.BusyTimeoutMs = before;
+        });
+    }
+
+    private sealed class Held(Action release) : IDisposable
+    {
+        public void Dispose() => release();
+    }
+
     private static DateTime Seconds(DateTime t) => new(t.Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond, DateTimeKind.Utc);
 
     [Test]
@@ -300,13 +323,13 @@ public sealed class StatusAggregatorTests
         // It used to skip usage-samples.json without a store (if (store is null) return null), so a one-off CLI run
         // fell back to a learned or peak limit while the daemon sized it from Claude's own reports (MAO-T121).
         var options = new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null };
-        Assert.That(new StatusAggregator(options).Store.Directory, Is.EqualTo(new JsonStore().Directory),
-            "no store given: it reads and keeps usage-samples.json where the daemon and dashboard do");
+        Assert.That((new StatusAggregator(options).Db.Path, new StatusAggregator(options, store).Db.Path), Is.EqualTo((History.Path, History.Path)),
+            "store or no store: it reads and keeps the meter readings in the orchestrator.db the daemon and dashboard do");
 
         var reset = Seconds(DateTime.UtcNow.AddHours(3));
         var at = Seconds(DateTime.UtcNow.AddMinutes(-1));
         List<UsageSample> samples = [new(at.AddHours(-1), 10, reset, 100_000), new(at, 30, reset, 300_000)];
-        store.Save("usage-samples", samples);
+        History.AddUsageSamples(samples, DateTime.MinValue);
         var reportPath = Path.Combine(dir, "claude-usage.json");
         File.WriteAllText(reportPath, System.Text.Json.JsonSerializer.Serialize(new
         {
@@ -325,7 +348,7 @@ public sealed class StatusAggregatorTests
             "sized from how Claude's percent moved between the saved samples");
         Assert.That((again.BlockLimitSource, again.BlockLimit), Is.EqualTo((budget.BlockLimitSource, budget.BlockLimit)),
             "any aggregator over that store directory sizes it the same");
-        Assert.That(store.Load<List<UsageSample>>("usage-samples"), Has.Count.EqualTo(2), "a report already sampled isn't recorded twice");
+        Assert.That(History.LoadUsageSamples(), Has.Count.EqualTo(2), "a report already sampled isn't recorded twice");
     }
 
     [Test]
@@ -351,12 +374,12 @@ public sealed class StatusAggregatorTests
     }
 
     [Test]
-    public void A_locked_usage_samples_file_does_not_fail_the_refresh()
+    public void A_held_database_does_not_fail_the_refresh()
     {
         var options = new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null };
         var reset = Seconds(DateTime.UtcNow.AddHours(3));
         var at = Seconds(DateTime.UtcNow.AddMinutes(-1));
-        store.Save("usage-samples", new List<UsageSample> { new(at.AddHours(-1), 10, reset, 100_000) });
+        History.AddUsageSamples([new(at.AddHours(-1), 10, reset, 100_000)], DateTime.MinValue);
         var reportPath = Path.Combine(dir, "claude-usage.json");
         File.WriteAllText(reportPath, System.Text.Json.JsonSerializer.Serialize(new
         {
@@ -368,10 +391,10 @@ public sealed class StatusAggregatorTests
             ScanHosts = () => [], OtherProviders = new ProviderLogReader(Path.Combine(dir, "codex"), Path.Combine(dir, "gemini")), ReportedUsagePath = reportPath,
         };
 
-        // Another process holds it (an antivirus scan, the dashboard mid-save) past the store's retries.
-        using (new FileStream(Path.Combine(store.Directory, "usage-samples.json"), FileMode.Open, FileAccess.Read, FileShare.None))
-            Assert.That(aggregator.Refresh().Budget, Is.Not.Null, "the new report is kept in memory, the refresh goes on");
-        Assert.That(store.Load<List<UsageSample>>("usage-samples"), Has.Count.EqualTo(1), "not saved while locked");
+        // Another process holds it (a long write, git committing the file) past the busy timeout.
+        using (HoldDb())
+            Assert.That(aggregator.Refresh().Budget, Is.Not.Null, "the refresh goes on");
+        Assert.That(History.LoadUsageSamples(), Has.Count.EqualTo(1), "not saved while held");
     }
 
     // M.ORCH-T245: once a minute from 04:37 to 04:58Z on Oct 17 an idle tab's statusline stamped its last reply from the
@@ -404,16 +427,16 @@ public sealed class StatusAggregatorTests
         var (aggregator, reportPath, rlPath) = PacedOnReports();
         var reset = Seconds(DateTime.UtcNow.AddMinutes(33));
         var at = Seconds(DateTime.UtcNow.AddMinutes(-1));
-        store.Save("usage-samples", new List<UsageSample> { new(at.AddHours(-1), 60, reset, 100_000), new(at.AddMinutes(-1), 80, reset, 200_000) });
+        History.AddUsageSamples([new(at.AddHours(-1), 60, reset, 100_000), new(at.AddMinutes(-1), 80, reset, 200_000)], DateTime.MinValue);
         Report(reportPath, 82, reset, at);
         var before = aggregator.Refresh();
         Assert.That((before.Budget!.BlockLimitSource, before.Pace!.IsPaced), Is.EqualTo((LimitSource.Reported, true)));
 
-        // Another process's save caught mid-write (or held past the store's retries), and the idle tab's minute comes round.
-        var samplesPath = Path.Combine(store.Directory, "usage-samples.json");
-        File.WriteAllText(samplesPath, "[ {");
+        // Another process holds the database past the busy timeout, and the idle tab's minute comes round.
+        var kept = History.LoadUsageSamples();
         Report(reportPath, 96, Seconds(DateTime.UtcNow.AddHours(-4.5)), Seconds(DateTime.UtcNow));
-        var tick = aggregator.Refresh();
+        Snapshot tick;
+        using (HoldDb()) tick = aggregator.Refresh();
 
         Assert.That((tick.Budget!.BlockLimitIsPeak, tick.Budget.BlockLimitSource, tick.Budget.BlockLimit),
             Is.EqualTo((false, LimitSource.Reported, before.Budget.BlockLimit)), "the running window's limit, not none");
@@ -422,7 +445,7 @@ public sealed class StatusAggregatorTests
         using (var rl = System.Text.Json.JsonDocument.Parse(File.ReadAllText(rlPath)))
             Assert.That(rl.RootElement.TryGetProperty("percent_used", out _) && rl.RootElement.TryGetProperty("pace", out _), Is.True,
                 "rl-status.json still carries the percent and the pace for the gate");
-        Assert.That(File.ReadAllText(samplesPath), Is.EqualTo("[ {"), "the unreadable file isn't saved over with what this tick saw");
+        Assert.That(History.LoadUsageSamples(), Is.EqualTo(kept), "nothing this tick saw is saved over the readings");
     }
 
     [Test]
@@ -434,8 +457,8 @@ public sealed class StatusAggregatorTests
         var before = aggregator.Refresh().Budget!;
         Assert.That(before.BlockLimitSource, Is.EqualTo(LimitSource.Reported));
 
-        // No sample of the running window to fall back on (the week's file is gone), and the idle tab's stale report.
-        File.Delete(Path.Combine(store.Directory, "usage-samples.json"));
+        // No sample of the running window to fall back on (the week's readings are gone), and the idle tab's stale report.
+        using (var c = History.Open()) OrchestratorDb.Execute(c, "DELETE FROM usage_samples;");
         Report(reportPath, 96, Seconds(DateTime.UtcNow.AddHours(-4.5)), Seconds(DateTime.UtcNow));
         var tick = aggregator.Refresh();
 
@@ -445,20 +468,19 @@ public sealed class StatusAggregatorTests
     }
 
     [Test]
-    public void A_usage_samples_file_unreadable_on_the_first_refresh_is_read_once_it_can_be_not_saved_over()
+    public void Usage_samples_unreadable_on_the_first_refresh_are_read_once_they_can_be_not_saved_over()
     {
         var (aggregator, reportPath, _) = PacedOnReports();
         var reset = Seconds(DateTime.UtcNow.AddMinutes(33));
         var at = Seconds(DateTime.UtcNow.AddMinutes(-1));
-        store.Save("usage-samples", new List<UsageSample> { new(at.AddHours(-1), 10, reset, 100_000) });
+        History.AddUsageSamples([new(at.AddHours(-1), 10, reset, 100_000)], DateTime.MinValue);
         Report(reportPath, 30, reset, at);
-        var samplesPath = Path.Combine(store.Directory, "usage-samples.json");
 
-        using (new FileStream(samplesPath, FileMode.Open, FileAccess.Read, FileShare.None))
+        using (HoldDb())
             aggregator.Refresh();
         aggregator.Refresh();
 
-        Assert.That(store.Load<List<UsageSample>>("usage-samples"), Has.Count.EqualTo(2),
+        Assert.That(History.LoadUsageSamples(), Has.Count.EqualTo(2),
             "reread once free: the week plus this report, not this report alone over an empty week");
     }
 
@@ -519,7 +541,7 @@ public sealed class StatusAggregatorTests
     public void Usage_history_is_saved_at_most_every_5_minutes()
     {
         Transcript("s1", Path.Combine(ws, "A"), TimeSpan.FromMinutes(1), 10);
-        long Saved(string repo) => store.LoadUsageHistory().Where(d => d.Repo == repo).Sum(d => d.Fresh);
+        long Saved(string repo) => History.LoadUsageHistory().Where(d => d.Repo == repo).Sum(d => d.Fresh);
         var aggregator = Aggregator();
         var t0 = DateTime.UtcNow;
 
@@ -866,7 +888,7 @@ public sealed class StatusAggregatorTests
         Config("""{"oauthAccount":{"accountUuid":"a"}}""");
         SignedInSince("a", TimeSpan.FromHours(6));
         var daemon = Daemon(SignIn(), probe: probe);
-        store.Save("usage-samples", new List<UsageSample> { new(at.AddMinutes(-35), 1, reset, 27_843) });
+        History.AddUsageSamples([new(at.AddMinutes(-35), 1, reset, 27_843)], DateTime.MinValue);
         Transcript("s1", Path.Combine(ws, "A"), TimeSpan.Zero, 500_000);
         Usage(95, at.AddMinutes(-40), 50, weekReset); // stamped just now, from the window that reset 40 minutes ago
 
@@ -877,7 +899,7 @@ public sealed class StatusAggregatorTests
         Usage(95, at.AddMinutes(-40), 50, weekReset); // and an idle tab writes over the probe's reading
         var read = daemon.Refresh().Budget!;
         Assert.That((read.WeeklyPercent, read.CurrentBlock!.EndUtc), Is.EqualTo(((double?)60, reset)), "the probe's reading stands");
-        Assert.That(store.Load<List<UsageSample>>("usage-samples").Select(s => s.Percent), Is.EqualTo(new[] { 1.0, 6.0 }), "and is sampled");
+        Assert.That(History.LoadUsageSamples().Select(s => s.Percent), Is.EqualTo(new[] { 1.0, 6.0 }), "and is sampled");
     }
 
     [Test]

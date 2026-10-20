@@ -49,10 +49,70 @@ public sealed class OrchestratorDb(string path)
             signed_in_at      REAL
         );
         """,
+        // 2: the orchestrator's history, moved out of JSON files (M.ORCH-T494; see OrchestratorHistory). Times are ISO-8601 UTC
+        // text, days yyyy-MM-dd. A unique index on each row's key makes the one-time import from the old files safe to repeat.
+        """
+        CREATE TABLE usage_samples (
+            at           TEXT PRIMARY KEY,
+            percent      REAL NOT NULL,
+            reset        TEXT NOT NULL,
+            window_fresh INTEGER NOT NULL
+        );
+        CREATE TABLE pace_ledger (
+            end_utc           TEXT NOT NULL,
+            account           TEXT,
+            start_utc         TEXT NOT NULL,
+            grade             TEXT NOT NULL,
+            why               TEXT NOT NULL,
+            peak_percent      REAL,
+            final_percent     REAL,
+            fresh             INTEGER NOT NULL,
+            samples           INTEGER NOT NULL,
+            minutes_at_target REAL NOT NULL,
+            limit_hit_utc     TEXT,
+            weekly_hit_utc    TEXT,
+            held              INTEGER NOT NULL,
+            held_minutes      REAL NOT NULL,
+            refused           INTEGER NOT NULL,
+            prompts_answered  INTEGER NOT NULL,
+            exempt            INTEGER NOT NULL,
+            gaps              TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX pace_ledger_window ON pace_ledger (end_utc, IFNULL(account, ''));
+        CREATE TABLE usage_history (
+            day        TEXT NOT NULL,
+            repo       TEXT NOT NULL,
+            provider   TEXT NOT NULL,
+            account    TEXT,
+            before_utc TEXT,
+            fresh      INTEGER NOT NULL
+        );
+        CREATE UNIQUE INDEX usage_history_key ON usage_history (day, repo, provider, IFNULL(account, ''), IFNULL(before_utc, ''));
+        CREATE TABLE ticket_costs (
+            session_id TEXT PRIMARY KEY,
+            ticket_id  TEXT NOT NULL,
+            type       TEXT,
+            repo       TEXT NOT NULL,
+            fresh      INTEGER NOT NULL,
+            last_utc   TEXT NOT NULL,
+            own_share  INTEGER NOT NULL
+        );
+        """,
     ];
 
-    /// <summary>Every table, with the order the dump lists its rows in.</summary>
-    private static readonly (string Table, string Order)[] Tables = [("accounts", "id")];
+    /// <summary>Every table, with the order the dump lists its rows in: by key, so a change shows up as a few lines in its diff.</summary>
+    private static readonly (string Table, string Order)[] Tables =
+    [
+        ("accounts", "id"),
+        ("usage_samples", "at"),
+        ("pace_ledger", "end_utc, account"),
+        ("usage_history", "day, repo, provider, account, before_utc"),
+        ("ticket_costs", "session_id"),
+    ];
+
+    /// <summary>How long a connection waits for another process's write before giving up with SQLITE_BUSY; tests shorten it.
+    /// Microsoft.Data.Sqlite also retries a busy command until its own timeout (30 s by default), so that's held to the same.</summary>
+    internal static int BusyTimeoutMs { get; set; } = 5000;
 
     public static int Version => Migrations.Length;
 
@@ -61,11 +121,16 @@ public sealed class OrchestratorDb(string path)
     public SqliteConnection Open()
     {
         Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path)!);
-        var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = Path, Pooling = false }.ToString());
+        var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = Path,
+            Pooling = false,
+            DefaultTimeout = Math.Max(1, (BusyTimeoutMs + 999) / 1000),
+        }.ToString());
         try
         {
             connection.Open();
-            Execute(connection, "PRAGMA busy_timeout = 5000; PRAGMA journal_mode = DELETE;");
+            Execute(connection, $"PRAGMA busy_timeout = {BusyTimeoutMs}; PRAGMA journal_mode = DELETE;");
             Migrate(connection);
             return connection;
         }
@@ -115,9 +180,30 @@ public sealed class OrchestratorDb(string path)
     {
         try { if (File.Exists(DumpPath) && File.ReadAllText(DumpPath) == dump) return; }
         catch (IOException) { }
-        var temp = DumpPath + ".tmp";
-        File.WriteAllText(temp, dump, new UTF8Encoding(false));
-        File.Move(temp, DumpPath, overwrite: true);
+        // Each writer its own temp file, so two processes writing at once can't move each other's half-written text into place.
+        var temp = $"{DumpPath}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            File.WriteAllText(temp, dump, new UTF8Encoding(false));
+            File.Move(temp, DumpPath, overwrite: true);
+        }
+        finally { if (File.Exists(temp)) File.Delete(temp); }
+    }
+
+    /// <summary>
+    /// Runs <paramref name="change"/> in one write transaction (taken at once, so writers queue on the busy timeout rather than
+    /// fail at commit), then rewrites the dump from what it committed. A dump that can't be written now (the file held) is left
+    /// for the next change: the .db is the store.
+    /// </summary>
+    public void Write(Action<SqliteConnection, SqliteTransaction> change)
+    {
+        using var connection = Open();
+        using var tx = connection.BeginTransaction(deferred: false);
+        change(connection, tx);
+        var dump = Dump(connection, tx);
+        tx.Commit();
+        try { WriteDump(dump); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
     private static void Migrate(SqliteConnection connection)

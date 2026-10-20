@@ -26,10 +26,12 @@ internal sealed class LedgerCommand : Command<LedgerCommand.Settings>
     {
         var store = Ctx.Store();
         var now = DateTime.UtcNow;
-        var samples = store.Load<List<UsageSample>>("usage-samples");
+        var db = new OrchestratorDb(OrchestratorDb.DefaultPath(OrchestratorOptions.Load(store).WorkspaceRoot));
+        db.ImportJson(store.Directory);
+        var samples = db.LoadUsageSamples();
         var hits = store.LoadLimits();
         var events = PaceLedger.LoadEvents(PaceLedgerWatch.DefaultEventsPath, now - PaceLedgerWatch.KeepEvents);
-        var recorded = PaceLedger.Load(Path.Combine(store.Directory, PaceLedger.FileName));
+        var recorded = db.LoadLedger();
         var accountAt = PaceLedger.AccountAt(new ClaudeAccount(), now);
         // Windows the daemon hasn't closed yet (it closes them a minute after their reset) are shown as they'll be recorded.
         List<LedgerWindow> rows = [.. recorded.Concat(PaceLedger.Due(recorded, samples, hits, events, now, accountAt)).OrderBy(r => r.EndUtc)];

@@ -162,12 +162,24 @@ public sealed class PaceLedgerTests
     }
 
     [Test]
-    public void The_ledger_round_trips_and_skips_a_torn_line()
+    public void The_ledger_round_trips_through_the_database_once_per_window()
     {
-        var dir = temp.New();
-        var path = Path.Combine(dir, PaceLedger.FileName);
+        var db = new OrchestratorDb(Path.Combine(temp.New(), "orchestrator.db"));
+        var w = PaceLedger.Build(End, Steady(98).Where(s => s.AtUtc < Start.AddHours(1) || s.AtUtc > Start.AddHours(3)).ToList(), [], []) with { Account = "a" };
+        db.AppendLedger([w]);
+        db.AppendLedger([w with { Why = "again" }]);
+        var back = db.LoadLedger().Single();
+        Assert.That(back with { Gaps = w.Gaps }, Is.EqualTo(w), "every field comes back as it went in");
+        Assert.That(back.Gaps, Is.EqualTo(w.Gaps));
+        Assert.That(back.Grade, Is.EqualTo(WindowGrade.Blind));
+    }
+
+    [Test]
+    public void The_old_ledger_file_is_read_with_a_torn_line_skipped()
+    {
+        var path = Path.Combine(temp.New(), OrchestratorHistory.LedgerFile);
         var w = PaceLedger.Build(End, Steady(98).Where(s => s.AtUtc < Start.AddHours(1) || s.AtUtc > Start.AddHours(3)).ToList(), [], []);
-        PaceLedger.Append(path, [w]);
+        File.WriteAllLines(path, [PaceLedger.Serialize(w)]);
         File.AppendAllText(path, "{\"StartUtc\":\"2026-");
         var back = PaceLedger.Load(path);
         Assert.That(back, Has.Count.EqualTo(1));
@@ -227,11 +239,11 @@ public sealed class PaceLedgerTests
         var h = new Harness(temp.New());
         var old = End.AddDays(-3);
         h.Store.SaveLimits([Hit(old.AddMinutes(-20), old)]);
-        h.Store.Save("usage-samples", Steady(60, End.AddHours(5)));
+        h.Watch.Db.AddUsageSamples(Steady(60, End.AddHours(5)), DateTime.MinValue);
 
         h.Watch.Tick(End);
         Assert.That(h.Filed, Is.Empty, "a hit from before the ledger is history");
-        Assert.That(PaceLedger.Load(h.Watch.LedgerPath).Single().Grade, Is.EqualTo(WindowGrade.Over), "but it's on the record");
+        Assert.That(h.Watch.Db.LoadLedger().Single().Grade, Is.EqualTo(WindowGrade.Over), "but it's on the record");
 
         // A test limit hit appears in the transcripts.
         h.Store.SaveLimits([Hit(old.AddMinutes(-20), old), Hit(End.AddMinutes(30), End.AddHours(5))]);
@@ -249,7 +261,7 @@ public sealed class PaceLedgerTests
         };
         watch.Tick(End.AddHours(5).AddMinutes(5));
         Assert.That(h.Filed, Has.Count.EqualTo(1));
-        Assert.That(PaceLedger.Load(h.Watch.LedgerPath).Last().Grade, Is.EqualTo(WindowGrade.Over));
+        Assert.That(h.Watch.Db.LoadLedger().Last().Grade, Is.EqualTo(WindowGrade.Over));
     }
 
     [Test]
@@ -283,7 +295,7 @@ public sealed class PaceLedgerTests
     public void A_blind_window_closing_live_files_one_ticket()
     {
         var h = new Harness(temp.New());
-        h.Store.Save("usage-samples", Steady(98).Where(s => s.AtUtc < Start.AddHours(1) || s.AtUtc > Start.AddHours(3)).ToList());
+        h.Watch.Db.AddUsageSamples(Steady(98).Where(s => s.AtUtc < Start.AddHours(1) || s.AtUtc > Start.AddHours(3)).ToList(), DateTime.MinValue);
         h.Watch.Tick(End.AddMinutes(5));
         Assert.That(h.Filed.Single(), Does.StartWith("[pace-ledger blind]"));
         Assert.That(h.Alerts.Single().Title, Is.EqualTo("Pace was blind"));

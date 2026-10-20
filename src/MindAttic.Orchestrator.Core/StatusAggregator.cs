@@ -86,9 +86,11 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     private List<LimitObservation>? lastLimits;
     private double? typicalPerSession;
 
-    // usage-samples.json, reread only when another process has written it since.
+    // Claude's meter readings (orchestrator.db's usage_samples, M.ORCH-T494), reread only when another process has added some
+    // since; those recorded here that couldn't be written yet go out with the next.
     private List<UsageSample>? samples;
-    private DateTime samplesStamp;
+    private (long Count, long Last) samplesStamp;
+    private readonly List<UsageSample> unsavedSamples = [];
     private long? samplesEstimate;
     // The last report with a usable 5-hour window: carried while that window runs, so one tick without one never drops the limit.
     private ReportedUsage? lastReported;
@@ -199,6 +201,12 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     private Snapshot Build(DateTime now)
     {
         var warnings = new List<string>();
+        // The history JSON files (meter readings, pace ledger, usage by day, ticket costs) move into orchestrator.db once (M.ORCH-T494).
+        try { Db.ImportJson(Store.Directory); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            warnings.Add($"history import: {ex.Message}");
+        }
         // Approvals and priorities settings.json still holds move into the database's queue first, once (M.ORCH-T384).
         try { QueueImport.Run(Store, workspace.Root); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException
@@ -365,8 +373,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
                 [.. OtherProviders.Limits.Where(l => l.Provider == p.Item1 && l.ResetsUtc > now)]))
             .ToList();
 
-        // A file held past the store's retries reads as empty: merged and saved, a year of history would be cut to the week.
-        var historyRead = Store.TryLoadUsageHistory(out var storedHistory);
+        // A database held past its busy timeout reads as empty: merged and saved, a year of history would be cut to the week.
+        var historyRead = Db.TryLoadUsageHistory(out var storedHistory);
         // Each Claude day is kept per account, and a session billed elsewhere apart, and the reset day's tokens before the reset apart
         // from those after it, so the weekly bars count what the budget does.
         string? AccountOf(TranscriptSession s, UsageEvent e) =>
@@ -379,17 +387,17 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         if (historyRead && now - historySavedUtc >= TimeSpan.FromMinutes(5) && !history.SequenceEqual(storedHistory))
         {
             historySavedUtc = now;
-            try { Store.SaveUsageHistory(history); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            try { Db.SaveUsageHistory(history); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { }
         }
 
-        var costsRead = Store.TryLoadTicketCosts(out var storedCosts);
+        var costsRead = Db.TryLoadTicketCosts(out var storedCosts);
         var costs = TicketCosts.Merge(storedCosts, TicketCosts.Observe(allSessions.Concat(providerSessions), Bucket), now,
             TicketCosts.Unticketed(allSessions.Concat(providerSessions)));
         if (costsRead && !costs.SequenceEqual(storedCosts))
         {
-            try { Store.SaveTicketCosts(costs); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            try { Db.SaveTicketCosts(costs); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { }
         }
 
         return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = UtilizationSeries.Build(mine, budget, settings.PaceTargetPercent, now, settings.PaceExponent), ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, Approved = tickets.Approved, Priorities = tickets.Priorities, Agents = agentBoard, Billing = billing };
@@ -412,33 +420,34 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// month once, so limits are learned from hits you already had rather than the next one.
     /// </summary>
     /// <summary>Keeps a week of Claude's 5-hour reports (with the local tokens behind each) in
-    /// <c>usage-samples.json</c> and sizes the limit from how they moved; null until one window has moved enough.</summary>
+    /// orchestrator.db's <c>usage_samples</c> and sizes the limit from how they moved; null until one window has moved enough.</summary>
     /// <remarks>Every account's samples are kept; only <paramref name="signIn"/>'s size its limit.</remarks>
     private long? ReportedLimitFrom(ReportedUsage? reported, IReadOnlyList<UsageEvent> events, DateTime now, SignInState? signIn)
     {
-        var path = Path.Combine(Store.Directory, "usage-samples.json");
-        var stamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default;
-        if (samples is null || stamp != samplesStamp)
+        var stamped = Db.TryUsageSamplesStamp(out var stamp);
+        if (samples is null || stamped && stamp != samplesStamp)
         {
-            // A file another process holds past the store's retries (or catches mid-write) isn't an empty week: keep what was
-            // read before and try again next tick. Taken as empty, the running window's samples were gone for that tick (no
-            // 5-hour limit, so no pace, M.ORCH-T245), the stamp stopped it rereading, and the next sample saved over the week.
-            if (!Store.TryLoad<List<UsageSample>>("usage-samples", out var loaded)) return samplesEstimate;
-            samples = loaded;
+            // A database another process holds past the busy timeout isn't an empty week: keep what was read before and try
+            // again next tick. Taken as empty, the running window's samples were gone for that tick (no 5-hour limit, so no
+            // pace, M.ORCH-T245).
+            if (!stamped || !Db.TryLoadUsageSamples(out var loaded)) return samplesEstimate;
+            samples = [.. loaded.Concat(unsavedSamples.Where(u => loaded.All(s => s.AtUtc != u.AtUtc))).OrderBy(s => s.AtUtc)];
             samplesStamp = stamp;
         }
         var recorded = ReportedLimit.Record(samples, reported, events, now, signIn is null ? null : signIn.Contains);
         samplesEstimate = ReportedLimit.Estimate(signIn is null ? samples : [.. samples.Where(s => signIn.Contains(s.AtUtc))]);
         if (recorded)
         {
-            // Like every other save here, a locked file mustn't fail the whole refresh (no rl-status.json that tick);
-            // the sample stays in memory and goes out with the next one recorded.
+            unsavedSamples.Add(samples.Last(s => s.AtUtc == reported!.AtUtc));
+            // Like every other save here, a held database mustn't fail the whole refresh (no rl-status.json that tick); the
+            // sample stays in memory and goes out with the next one recorded.
             try
             {
-                Store.Save("usage-samples", samples);
-                samplesStamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default;
+                Db.AddUsageSamples(unsavedSamples, now - OrchestratorHistory.KeepSamples);
+                unsavedSamples.Clear();
+                if (Db.TryUsageSamplesStamp(out var saved)) samplesStamp = saved;
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { }
         }
         return samplesEstimate;
     }

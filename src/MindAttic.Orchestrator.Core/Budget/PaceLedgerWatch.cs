@@ -6,7 +6,7 @@ namespace MindAttic.Orchestrator.Budget;
 
 /// <summary>
 /// The daemon's side of the pace ledger (M.ORCH-T166). Once a minute it closes every 5-hour window that has ended into
-/// <c>pace-ledger.jsonl</c>; a new 5-hour limit hit is raised the moment it's read (Error in the log, an urgent alert and
+/// orchestrator.db's <c>pace_ledger</c> (M.ORCH-T494); a new 5-hour limit hit is raised the moment it's read (Error in the log, an urgent alert and
 /// a fix ticket in this repo with what the pace gate did around it), and a window that closes over or blind is too.
 /// Windows backfilled from before the ledger existed are only recorded: their tickets would be history, not news.
 /// </summary>
@@ -15,7 +15,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
     public const string Repo = "MindAttic.Orchestrator";
 
     /// <summary>The lease one daemon holds to keep the ledger: each daemon loads the raised walls once, so a second one beside
-    /// the logon daemon would raise every hit again (a second urgent alert) and could append a window twice.</summary>
+    /// the logon daemon would raise every hit again (a second urgent alert). (A window can't be recorded twice: the table keys it.)</summary>
     public const string LeaseName = "pace-ledger.lock";
 
     /// <summary>A window that closes later than this after its reset was closed by a backfill, not live.</summary>
@@ -24,7 +24,14 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
     /// <summary>How long the pace gate's raw events are kept once counted (the ledger keeps the counts for good).</summary>
     public static readonly TimeSpan KeepEvents = TimeSpan.FromDays(8);
 
-    public string LedgerPath => Path.Combine(store.Directory, PaceLedger.FileName);
+    private OrchestratorDb? db;
+
+    /// <summary>Where the ledger and the meter readings it's graded from are kept: the workspace's orchestrator.db.</summary>
+    public OrchestratorDb Db
+    {
+        get => db ??= new OrchestratorDb(OrchestratorDb.DefaultPath(WorkspaceRoot));
+        init => db = value;
+    }
     public static string DefaultEventsPath { get; } = Path.Combine(Setup.AgentGate.ClaudeDir, "session-context", Setup.AgentGate.GateLogName);
     public string EventsPath { get; init; } = DefaultEventsPath;
 
@@ -48,9 +55,11 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
     public void Tick(DateTime nowUtc)
     {
         if (nowUtc - checkedUtc < TimeSpan.FromMinutes(1)) return;
-        // Either file held past the store's retries reads as empty: a window graded from that is written for good (over
-        // with no hit, or blind), so the check waits for the next tick instead.
-        if (!store.TryLoad<List<UsageSample>>("usage-samples", out var samples) || !store.TryLoadLimits(out var hits)) return;
+        // A held database or limits file reads as empty: a window graded from that is written for good (over with no hit, or
+        // blind), so the check waits for the next tick instead.
+        try { Db.ImportJson(store.Directory); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
+        if (!Db.TryLoadUsageSamples(out var samples) || !store.TryLoadLimits(out var hits)) return;
         var first = checkedUtc == default;
         checkedUtc = nowUtc;
         FileTicket ??= File;
@@ -65,11 +74,14 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
 
         RaiseNewHits(hits, nowUtc);
 
-        var recorded = PaceLedger.Load(LedgerPath);
+        List<LedgerWindow> recorded;
+        try { recorded = Db.LoadLedger(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
         var events = PaceLedger.LoadEvents(EventsPath, nowUtc - KeepEvents);
         var due = PaceLedger.Due(recorded, samples, hits, events, nowUtc, Account is null ? null : PaceLedger.AccountAt(Account, nowUtc));
         if (due.Count == 0) return;
-        PaceLedger.Append(LedgerPath, due);
+        try { Db.AppendLedger(due); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
         foreach (var w in due) Report(w, nowUtc);
         try { PaceLedger.TrimEvents(EventsPath, nowUtc - KeepEvents); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
@@ -154,7 +166,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
             using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(WorkspaceRoot);
             if (db is null) return null;
             if (db.Tickets(Repo).Any(t => t.Ticket.Status == TicketRules.Open && t.Ticket.Summary.Contains(marker, StringComparison.Ordinal))) return null;
-            return db.Add(Repo, "fix", TicketRules.Open, summary, PaceLedger.FileName).Id;
+            return db.Add(Repo, "fix", TicketRules.Open, summary, PaceLedger.Ref).Id;
         }
         catch (Exception ex)
         {
