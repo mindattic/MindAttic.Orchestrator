@@ -230,6 +230,39 @@ public sealed class DaemonSafetyTests
     }
 
     [Test]
+    public void A_failed_push_of_the_orchestrator_db_is_tried_again()
+    {
+        // M.ORCH-T538: the dump counted as synced even when the push failed, so a quiet db stayed unpushed.
+        var repo = Path.Combine(dir, "MindAttic.Orchestrator");
+        Directory.CreateDirectory(Path.Combine(repo, "data"));
+        var dbPath = Path.Combine(repo, "data", "orchestrator.db");
+        new OrchestratorDb(dbPath).Dump();
+        File.WriteAllText(Path.Combine(repo, "data", "orchestrator.sql"), "-- new\n");
+        var committed = "-- old\n";
+        var pushes = 0;
+        var runner = new FakeRunner(c =>
+        {
+            if (c.Args.Contains("commit")) committed = "-- new\n";
+            if (c.Args.Contains("push")) return ++pushes == 1 ? new ProcessResult(1, "", "network down", false) : new ProcessResult(0, "", "", false);
+            return c.Args.Contains("show") ? new ProcessResult(0, committed, "", false) : new ProcessResult(0, "", "", false);
+        });
+        var daemon = Make(runner: runner);
+        var now = DateTime.UtcNow;
+
+        daemon.SyncOrchestratorDbIfDue(repo, dbPath, now);
+        Assert.That(pushes, Is.EqualTo(1));
+        Assert.That(said.Last().Line, Does.Contain("push failed"));
+
+        daemon.SyncOrchestratorDbIfDue(repo, dbPath, now.AddMinutes(11));
+        Assert.That(pushes, Is.EqualTo(2), "the committed but unpushed db is pushed on the next try");
+        Assert.That(runner.Calls.Count(c => c.Args.Contains("commit")), Is.EqualTo(1), "not committed again");
+        Assert.That(said.Last(), Is.EqualTo((LogEventLevel.Information, "orchestrator db sync: pushed data/orchestrator.db")));
+
+        daemon.SyncOrchestratorDbIfDue(repo, dbPath, now.AddMinutes(22));
+        Assert.That(pushes, Is.EqualTo(2), "once pushed, an unchanged dump isn't pushed again");
+    }
+
+    [Test]
     public void The_orchestrator_db_is_staged_holding_its_write_lock()
     {
         // M.ORCH-T536: git add read the file while the daemon and hooks could be mid-write, so a commit could take half a write.

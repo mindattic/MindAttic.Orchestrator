@@ -591,6 +591,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     }
 
     private string? orchestratorDbSynced;
+    private bool orchestratorDbUnpushed;
     private DateTime orchestratorDbTriedUtc;
 
     /// <summary>The commit subject of <see cref="SyncOrchestratorDbIfDue"/>: the ticket that put the database in the repo.</summary>
@@ -619,7 +620,13 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         try
         {
             var head = Git("show", "HEAD:" + Settings.OrchestratorDb.DumpRelativePath);
-            if (head.ExitCode == 0 && Same(head.Output, dump)) { orchestratorDbSynced = dump; return; }
+            if (head.ExitCode == 0 && Same(head.Output, dump))
+            {
+                // Committed already; a commit whose push failed is pushed again until one lands (M.ORCH-T538).
+                if (orchestratorDbUnpushed) Push(retry: true);
+                else orchestratorDbSynced = dump;
+                return;
+            }
             try
             {
                 // Staged under the database's write lock, so the commit never takes a write's half-applied pages (M.ORCH-T536).
@@ -636,13 +643,20 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 Say(LogEventLevel.Warning, $"orchestrator db sync: {ex.Message}");
                 return;
             }
-            orchestratorDbSynced = dump;
-            var push = Git("push", "-q");
-            Say(push.ExitCode == 0 ? LogEventLevel.Information : LogEventLevel.Warning,
-                push.ExitCode == 0 ? "orchestrator db sync: committed and pushed data/orchestrator.db"
-                    : $"orchestrator db sync: committed data/orchestrator.db; push failed (it goes with the next push): {(push.Output + push.Error).Trim()}");
+            Push(retry: false);
         }
         catch (System.ComponentModel.Win32Exception ex) { Say(LogEventLevel.Warning, $"couldn't run git for the orchestrator db sync: {ex.Message}"); }
+        // Only a push that lands counts the dump as synced (M.ORCH-T538): a failed one is tried again on the next try.
+        void Push(bool retry)
+        {
+            var push = Git("push", "-q");
+            var ok = push.ExitCode == 0 && !push.TimedOut;
+            orchestratorDbUnpushed = !ok;
+            if (ok) orchestratorDbSynced = dump;
+            Say(ok ? LogEventLevel.Information : LogEventLevel.Warning,
+                ok ? (retry ? "orchestrator db sync: pushed data/orchestrator.db" : "orchestrator db sync: committed and pushed data/orchestrator.db")
+                    : $"orchestrator db sync: committed data/orchestrator.db; push failed (retrying in 10 minutes): {(push.Output + push.Error).Trim()}");
+        }
         // git may hand the committed text back with CRLF (core.autocrlf).
         static bool Same(string a, string b) => a.ReplaceLineEndings("\n") == b.ReplaceLineEndings("\n");
     }
