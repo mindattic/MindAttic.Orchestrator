@@ -40,6 +40,20 @@ public sealed class HandoffTests
         Handoff.Write(cycler.Directory, new HandoffMark(Handoff.Winding, Handoff.Stamp(started ?? Now.AddMinutes(-10)), 1, "acct", null, null, []));
 
     [Test]
+    public void Reading_a_mark_file_never_creates_the_database()
+    {
+        // M.ORCH-T541: Read -> ReadIn saved or deleted the row, which created orchestrator.db where none was.
+        var db = OrchestratorDb.StatePath(dir);
+        Assert.That(File.Exists(db), Is.False);
+        File.WriteAllText(Path.Combine(cycler.Directory, Handoff.FileName), "{\"State\":\"off\"}");
+        Assert.That(Handoff.Read(cycler.Directory), Is.Null);
+        File.WriteAllText(Path.Combine(cycler.Directory, Handoff.FileName),
+            System.Text.Json.JsonSerializer.Serialize(new HandoffMark(Handoff.Winding, Handoff.Stamp(Now), 1, "acct", null, null, [])));
+        Assert.That(Handoff.Read(cycler.Directory)?.State, Is.EqualTo(Handoff.Winding), "the file is read as it is");
+        Assert.That(File.Exists(db), Is.False, "a read never creates the database");
+    }
+
+    [Test]
     public void Start_writes_a_winding_mark_once_and_off_clears_it_with_every_clis_saved_mark()
     {
         Assert.That((Handoff.Read(cycler.Directory), Handoff.Holding(cycler.Directory)), Is.EqualTo(((HandoffMark?)null, false)));

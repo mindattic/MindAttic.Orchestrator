@@ -47,6 +47,31 @@ public sealed class LimitWakerTests
     private static Pace Open => new(PaceMode.Open, 4, 1, 0, null, "5-hour", Now.AddHours(5), "On pace.");
 
     [Test]
+    public void A_held_database_is_not_taken_for_no_remembered_wakes()
+    {
+        // M.ORCH-T541: a busy load read as an empty list, so the stop was said again and the next save overwrote the memory.
+        State("s1", 42, "idle", Now.AddHours(-1), until: Now.AddMinutes(-5));
+        Assert.That(Waker().Tick(Open, [Tab], type: true, Now), Has.Count.EqualTo(1));
+        State("s2", 43, "idle", Now.AddHours(-1), until: Now.AddMinutes(-5), cwd: @"D:\Projects\MindAttic\Other");
+
+        var before = OrchestratorDb.BusyTimeoutMs;
+        OrchestratorDb.BusyTimeoutMs = 100;
+        var restarted = Waker();
+        try
+        {
+            using var held = store.Db.Open();
+            OrchestratorDb.Execute(held, "BEGIN EXCLUSIVE;");
+            Assert.That(restarted.Tick(Open, [Tab], type: true, Now.AddMinutes(1)), Is.Empty, "nothing woken without the remembered wakes");
+            OrchestratorDb.Execute(held, "ROLLBACK;");
+        }
+        finally { OrchestratorDb.BusyTimeoutMs = before; }
+
+        Assert.That(restarted.Tick(Open, [Tab], type: true, Now.AddMinutes(2)).Select(w => w.SessionId), Is.EqualTo(new[] { "s2" }));
+        Assert.That(Waker().Tick(Open, [Tab], type: true, Now.AddMinutes(3)), Is.Empty, "both remembered across a restart");
+        Assert.That(typed, Has.Count.EqualTo(1), "s1 typed once; s2 isn't in a tab, only said");
+    }
+
+    [Test]
     public void Once_the_window_resets_a_cli_in_a_launcher_tab_is_typed_a_resume_once()
     {
         State("s1", 42, "idle", Now.AddHours(-1), until: Now.AddMinutes(-5));

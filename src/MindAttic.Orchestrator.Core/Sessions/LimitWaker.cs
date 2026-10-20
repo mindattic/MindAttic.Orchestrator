@@ -68,7 +68,13 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
             return [];
         }
         holding = false;
-        woken ??= store.Load<Dictionary<string, DateTime>>(WokenName);
+        // A load that failed (the database held) isn't an empty list: nothing is woken or saved until the remembered wakes are
+        // read, so they're neither said again nor saved over (M.ORCH-T541).
+        if (woken is null)
+        {
+            if (!store.TryLoad<Dictionary<string, DateTime>>(WokenName, out var remembered)) return [];
+            woken = remembered;
+        }
         var pruned = woken.Where(w => nowUtc - w.Value > Remember).Select(w => w.Key).ToList();
         foreach (var key in pruned) woken.Remove(key);
 

@@ -124,10 +124,13 @@ public static class Handoff
 
     /// <summary>Reads <paramref name="path"/> (a mark from before the database, or one a hook kept while it was held) into the
     /// handoff row and keeps it as .bak. It's moved aside first, so a hook writing a newer file meanwhile isn't lost; while the
-    /// database can't take it, it's put back (unless a newer one took its place).</summary>
+    /// database can't take it, it's put back (unless a newer one took its place). Nothing happens without a database: a read
+    /// never creates it (M.ORCH-T541), and the file is read as it is.</summary>
     private static void ReadIn(string path)
     {
         if (!File.Exists(path)) return;
+        var db = Db();
+        if (!File.Exists(db.Path)) return;
         var claim = $"{path}.{Environment.ProcessId}.{Guid.NewGuid():N}.reading";
         try { File.Move(path, claim); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return; }
@@ -136,8 +139,8 @@ public static class Handoff
             var text = File.ReadAllText(claim);
             HandoffMark? mark = null;
             try { mark = JsonSerializer.Deserialize<HandoffMark>(text); } catch (JsonException) { }
-            if (mark?.State is Winding or Quiet or Resumed) Db().SaveState(StateName, JsonSerializer.Serialize(mark, Json));
-            else Db().DeleteState(StateName); // cleared while the database was held
+            if (mark?.State is Winding or Quiet or Resumed) db.SaveState(StateName, JsonSerializer.Serialize(mark, Json));
+            else db.DeleteState(StateName); // cleared while the database was held
             File.Move(claim, path + ".bak", overwrite: true);
         }
         catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException)
