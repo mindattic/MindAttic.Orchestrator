@@ -226,9 +226,13 @@ public sealed class ProviderLogReaderTests
         File.WriteAllLines(Path.Combine(locked, "chats", "session-1.jsonl"), [GeminiReply(now, "r9", 900)]);
 
         IReadOnlyList<TranscriptSession> sessions = [];
+        var reader = Reader();
         using (new FileStream(Path.Combine(locked, ".project_root"), FileMode.Open, FileAccess.Read, FileShare.None))
-            Assert.DoesNotThrow(() => sessions = Reader().Poll(now.AddDays(-1)));
+            Assert.DoesNotThrow(() => sessions = reader.Poll(now.AddDays(-1)));
         Assert.That(sessions.Select(s => s.Cwd), Is.EqualTo(new[] { @"d:\w\good" }), "with no readable cwd the locked project's chat isn't counted");
+
+        // M.ORCH-T518: the folder was read only when the chat was first seen, so it stayed uncounted until the window moved on.
+        Assert.That(reader.Poll(now.AddDays(-1)).Select(s => s.Cwd), Is.EquivalentTo(new[] { @"d:\w\good", @"d:\w\locked" }), "counted once it can be read");
     }
 
     private static string CodexLimits(DateTime at, double fiveHour, double week, DateTime fiveHourReset, DateTime weekReset) =>

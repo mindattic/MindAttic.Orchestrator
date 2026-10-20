@@ -47,6 +47,8 @@ public sealed class ProviderLogReader(string codexSessionsDir, string geminiTmpD
         {
             present.Add(path);
             if (!files.TryGetValue(path, out var state)) files[path] = state = new FileState { Provider = provider, Cwd = cwd };
+            // A Gemini project's .project_root missing or held at the first look is read again: the chat isn't dropped for good.
+            state.Cwd ??= cwd;
             try
             {
                 var info = new FileInfo(path);
