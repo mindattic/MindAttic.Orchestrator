@@ -1,6 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using MindAttic.Workflow.Tickets;
+using MindAttic.Tickets.Log;
 
 namespace MindAttic.Orchestrator.Tickets;
 
@@ -97,9 +97,9 @@ public static partial class GitHubIntake
         return filed;
     }
 
-    /// <summary>Adds the items no ticket in <paramref name="repo"/> mentions yet (by marker) to the Workflow database; with
+    /// <summary>Adds the items no ticket in <paramref name="repo"/> mentions yet (by marker) to the ticket database; with
     /// <paramref name="dryRun"/>, only says which it would add (ids unassigned), as the USER_STORIES.md path does.</summary>
-    public static IReadOnlyList<Ticket> FileNew(MindAttic.Workflow.Data.WorkflowDb db, string repo, IEnumerable<IntakeItem> items, bool dryRun = false)
+    public static IReadOnlyList<Ticket> FileNew(MindAttic.Tickets.Data.TicketsDb db, string repo, IEnumerable<IntakeItem> items, bool dryRun = false)
     {
         var existing = db.Tickets(repo).Select(t => t.Ticket).ToList();
         var filed = new List<Ticket>();

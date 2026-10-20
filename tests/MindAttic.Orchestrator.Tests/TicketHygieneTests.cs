@@ -1,5 +1,5 @@
 using MindAttic.Orchestrator.Tickets;
-using MindAttic.Workflow.Tickets;
+using MindAttic.Tickets.Log;
 using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;

@@ -25,9 +25,9 @@ internal sealed class BlockCommand : Command<BlockCommand.Settings>
         var store = Ctx.Store();
         var id = Ctx.Id(settings.Ticket);
         var by = settings.By.Select(Ctx.Id).ToList();
-        // Once migrated, prerequisites are 'requires' links in the Workflow database, where every tool sees them.
+        // Once migrated, prerequisites are 'requires' links in the ticket database, where every tool sees them.
         var root = OrchestratorOptions.Load(store).WorkspaceRoot;
-        using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(root))
+        using (var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(root))
             if (db is not null && (db.Ticket(id) is null || by.Any(b => db.Ticket(b) is null)))
             {
                 // A ticket of a repo still on its own USER_STORIES.md isn't in the database, so it can't be linked there: it's
@@ -69,7 +69,7 @@ internal sealed class BlockCommand : Command<BlockCommand.Settings>
                 AnsiConsole.MarkupLine(Markup.Escape(now.Count > 0 ? $"{id} requires {string.Join(", ", now)}." : $"{id} requires nothing."));
                 // One set by hand before the migration still holds it in the queue: said, not left out (M.ORCH-T356).
                 if (store.LoadSettings().BlockedBy.GetValueOrDefault(id) is { Count: > 0 } byHand)
-                    AnsiConsole.MarkupLine(Markup.Escape($"It still waits for {string.Join(", ", byHand)} too, set by hand before the Workflow database (block {id} --clear drops it)."));
+                    AnsiConsole.MarkupLine(Markup.Escape($"It still waits for {string.Join(", ", byHand)} too, set by hand before the ticket database (block {id} --clear drops it)."));
                 return 0;
             }
         var s = store.LoadSettingsToChange();
@@ -113,11 +113,11 @@ internal sealed class ApproveCommand : Command<ApproveCommand.Settings>
         var store = Ctx.Store();
         // Once each: the same ticket named twice (in any case) was a repeated key that crashed approve (M.ORCH-T456).
         var ids = settings.Tickets.Select(Ctx.Id).Distinct(StringComparer.Ordinal).ToList();
-        // Approval lives in the Workflow database's queue, where workflow ticket approve and the Workflow Desktop write it too and
+        // Approval lives in the ticket database's queue, where tickets ticket approve and the Tickets Desktop write it too and
         // the scheduler reads it (M.ORCH-T384); a ticket it doesn't hold (a repo still on its own USER_STORIES.md, or no database
         // yet) is approved in settings.json, which the scheduler reads beside it (M.ORCH-T441).
         var root = OrchestratorOptions.Load(store).WorkspaceRoot;
-        using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(root);
+        using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(root);
         var found = ids.ToDictionary(id => id, id => MindAttic.Orchestrator.Tickets.TicketQueue.Find(db, root, id));
         // A typo would be "approved" while the ticket you meant goes on waiting, so only ids of real tickets count. Taking back
         // one that settings.json holds for a ticket gone since still works.
@@ -129,7 +129,7 @@ internal sealed class ApproveCommand : Command<ApproveCommand.Settings>
             return 1;
         }
         // Checked before anything changes: only an open ticket can be approved.
-        if (!settings.Undo && ids.Where(id => found[id]!.Ticket.Status != MindAttic.Workflow.Tickets.TicketRules.Open).ToList() is { Count: > 0 } shut)
+        if (!settings.Undo && ids.Where(id => found[id]!.Ticket.Status != MindAttic.Tickets.Log.TicketRules.Open).ToList() is { Count: > 0 } shut)
         {
             AnsiConsole.MarkupLine($"[red]{Markup.Escape(string.Join(", ", shut))} {(shut.Count == 1 ? "isn't" : "aren't")} open; nothing was changed.[/]");
             return 1;

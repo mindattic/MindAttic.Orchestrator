@@ -21,8 +21,8 @@ public sealed class LandOnMainTests
     [SetUp]
     public void SetUp()
     {
-        // With the workflow database's env var set, LandOnMain would read the ticket's status from that database instead.
-        Assume.That(Environment.GetEnvironmentVariable(MindAttic.Workflow.Data.WorkflowDb.EnvVar), Is.Null.Or.Empty);
+        // With the ticket database's env var set, LandOnMain would read the ticket's status from that database instead.
+        Assume.That(Environment.GetEnvironmentVariable(MindAttic.Tickets.Data.TicketsDb.EnvVar), Is.Null.Or.Empty);
         dir = Path.Combine(Path.GetTempPath(), "orch-land-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         origin = Path.Combine(dir, "origin.git");

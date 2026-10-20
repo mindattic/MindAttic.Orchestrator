@@ -1,13 +1,13 @@
 using MindAttic.Orchestrator.Settings;
-using MindAttic.Workflow.Data;
-using MindAttic.Workflow.Tickets;
+using MindAttic.Tickets.Data;
+using MindAttic.Tickets.Log;
 
 namespace MindAttic.Orchestrator.Tickets;
 
 /// <summary>
-/// Moves the approvals and priorities settings.json kept into the Workflow database's queue (<c>ticket_queue</c>), once, and
+/// Moves the approvals and priorities settings.json kept into the ticket database's queue (<c>ticket_queue</c>), once, and
 /// drops them from settings.json (M.ORCH-T384). Approval used to live in two stores that never agreed: the scheduler read
-/// settings.json while <c>workflow ticket approve</c> and the Workflow Desktop wrote the database, so a ticket approved there
+/// settings.json while <c>tickets ticket approve</c> and the Tickets Desktop wrote the database, so a ticket approved there
 /// waited for approval forever. The database is the one store now, and records that the move was made (<see cref="DoneKey"/>).
 /// </summary>
 public static class QueueImport
@@ -28,7 +28,7 @@ public static class QueueImport
     {
         var settings = store.LoadSettings();
         if (settings.Approved is null && settings.Priorities is null) return null;
-        using var db = WorkflowDb.OpenIfMigrated(workspaceRoot);
+        using var db = TicketsDb.OpenIfMigrated(workspaceRoot);
         if (db is null) return null;
         Result? result = null;
         if (!IsDone(db.Path))
@@ -62,7 +62,7 @@ public static class QueueImport
         cmd.ExecuteNonQuery();
     }
 
-    // The Workflow library has no API for its meta table; a connection of our own, set up as it sets up its own (no pooling,
+    // The MindAttic.Tickets library has no API for its meta table; a connection of our own, set up as it sets up its own (no pooling,
     // so the file is closed on Dispose, and the same busy timeout).
     private static Microsoft.Data.Sqlite.SqliteConnection Connect(string dbPath)
     {
@@ -79,12 +79,12 @@ public static class QueueImport
     /// what the database already says: only a proposed open ticket is approved (a rejected one stays rejected, a closed one
     /// needs none), and only a ticket still at priority 0 takes the settings' priority. Ids the database doesn't know are dropped.
     /// </summary>
-    public static Result Import(WorkflowDb db, IEnumerable<string> approved, IReadOnlyDictionary<string, int> priorities)
+    public static Result Import(TicketsDb db, IEnumerable<string> approved, IReadOnlyDictionary<string, int> priorities)
     {
         int approvals = 0, prioritized = 0;
         foreach (var id in approved.Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            if (db.Ticket(id)?.Ticket is not { Status: TicketRules.Open } t || db.QueueState(t.Id).Approval != WorkflowDb.Proposed) continue;
+            if (db.Ticket(id)?.Ticket is not { Status: TicketRules.Open } t || db.QueueState(t.Id).Approval != TicketsDb.Proposed) continue;
             db.Approve(t.Id);
             approvals++;
         }

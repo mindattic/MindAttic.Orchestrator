@@ -4,7 +4,7 @@ using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Settings;
 using MindAttic.Orchestrator.Wpf;
 using MindAttic.Orchestrator.Wpf.ViewModels;
-using MindAttic.Workflow.Tickets;
+using MindAttic.Tickets.Log;
 using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;

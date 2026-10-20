@@ -362,7 +362,7 @@ public sealed class JsonStoreTests
         var scratch = Environment.GetEnvironmentVariable(OrchestratorDb.EnvVar);
         var worktree = Path.Combine(Path.GetDirectoryName(dir)!, "MindAttic.worktrees", "MindAttic.Orchestrator", "M.ORCH-T1");
         Directory.CreateDirectory(Path.Combine(worktree, "data"));
-        var main = Path.Combine(MindAttic.Workflow.Workspace.DefaultRoot, "MindAttic.Orchestrator");
+        var main = Path.Combine(MindAttic.Tickets.Workspace.DefaultRoot, "MindAttic.Orchestrator");
         var expected = Directory.Exists(main) ? Path.Combine(main, "data", "orchestrator.db") : Path.Combine(dir, "orchestrator.db");
         var before = Environment.CurrentDirectory;
         try

@@ -190,9 +190,9 @@ public sealed class StatusAggregatorTests
     public void A_shown_snapshot_takes_approvals_and_priorities_from_the_database_as_they_are_now()
     {
         // M.ORCH-T396: approve then dispatch read the holder's snapshot from before the approval, up to a minute old.
-        var db = MindAttic.Workflow.Data.WorkflowDb.DefaultPath(ws);
-        using (var w = MindAttic.Workflow.Data.WorkflowDb.Open(db))
-            w.Import([new MindAttic.Workflow.Repo("A", Path.Combine(ws, "A")), new MindAttic.Workflow.Repo("B", Path.Combine(ws, "B"))]);
+        var db = MindAttic.Tickets.Data.TicketsDb.DefaultPath(ws);
+        using (var w = MindAttic.Tickets.Data.TicketsDb.Open(db))
+            w.Import([new MindAttic.Tickets.Repo("A", Path.Combine(ws, "A")), new MindAttic.Tickets.Repo("B", Path.Combine(ws, "B"))]);
         try
         {
             StatusAggregator With(MindAttic.Orchestrator.Scheduling.DispatchLease lease) =>
@@ -203,7 +203,7 @@ public sealed class StatusAggregatorTests
             using var windowLease = new MindAttic.Orchestrator.Scheduling.DispatchLease(Path.Combine(dir, "store"));
             Assert.That(With(daemonLease).Refresh().Approved, Is.Empty);
 
-            using (var w = MindAttic.Workflow.Data.WorkflowDb.Open(db))
+            using (var w = MindAttic.Tickets.Data.TicketsDb.Open(db))
             {
                 w.Approve("A-T3");
                 w.SetPriority("A-T3", 3);

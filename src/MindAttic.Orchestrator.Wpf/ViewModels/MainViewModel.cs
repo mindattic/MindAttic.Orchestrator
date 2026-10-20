@@ -87,7 +87,7 @@ public sealed partial class MainViewModel : ObservableObject
             if (t.Target is not null) SelectRepo(t.Target.Name);
         });
         ClearSearchCommand = new RelayCommand(() => Search = "");
-        OpenInWorkflowCommand = new RelayCommand(p => OpenInWorkflow(p as string));
+        OpenInTicketsCommand = new RelayCommand(p => OpenInTickets(p as string));
         InitPhases();
     }
 
@@ -113,14 +113,14 @@ public sealed partial class MainViewModel : ObservableObject
     public ICommand OpenFolderCommand { get; }
     public ICommand UseTicketCommand { get; }
 
-    /// <summary>A ticket id anywhere in the window opens that ticket in Workflow Desktop, to view, approve, prioritize or
+    /// <summary>A ticket id anywhere in the window opens that ticket in Tickets Desktop, to view, approve, prioritize or
     /// close it there (M.ORCH-T500); the parameter is the id.</summary>
-    public ICommand OpenInWorkflowCommand { get; }
+    public ICommand OpenInTicketsCommand { get; }
 
-    private void OpenInWorkflow(string? ticketId)
+    private void OpenInTickets(string? ticketId)
     {
-        if (MindAttic.Orchestrator.Tickets.WorkflowDesktop.Open(ticketId, aggregator.Options) is { } error)
-            Toasts.Insert(0, new ToastViewModel("Couldn't open it in Workflow", error, Palette.Over, null));
+        if (MindAttic.Orchestrator.Tickets.TicketsDesktop.Open(ticketId, aggregator.Options) is { } error)
+            Toasts.Insert(0, new ToastViewModel("Couldn't open it in Tickets Desktop", error, Palette.Over, null));
     }
     public ICommand DismissToastCommand { get; }
     public ICommand OpenToastCommand { get; }
@@ -176,7 +176,7 @@ public sealed partial class MainViewModel : ObservableObject
     public IReadOnlyList<string> Warnings => snapshot?.Warnings ?? [];
     public bool HasWarnings => Warnings.Count > 0;
 
-    /// <summary>The status bar's count of them: not only ticket files go wrong (billing, the approvals' move into the Workflow
+    /// <summary>The status bar's count of them: not only ticket files go wrong (billing, the approvals' move into the ticket
     /// database), and calling every one a ticket file problem sent you looking in the wrong place (M.ORCH-T465).</summary>
     public string WarningsText => WarningLine(Warnings.Count);
 

@@ -120,13 +120,13 @@ public sealed class ContextCyclerTests
         var ws = Path.Combine(dir, "ws");
         var repo = Path.Combine(ws, "A");
         Directory.CreateDirectory(Path.Combine(repo, ".git"));
-        var data = Path.Combine(ws, "MindAttic.Workflow", "data");
+        var data = Path.Combine(ws, "MindAttic.Tickets", "data");
         Directory.CreateDirectory(data);
         try
         {
             Python($"""
                 import sqlite3
-                d = sqlite3.connect(r"{Path.Combine(data, "workflow.db")}")
+                d = sqlite3.connect(r"{Path.Combine(data, "Tickets.db")}")
                 d.execute("CREATE TABLE tickets (id TEXT PRIMARY KEY, repo TEXT, status TEXT, ordinal INTEGER, type TEXT)")
                 d.executemany("INSERT INTO tickets VALUES (?, ?, ?, ?, ?)", [("A-T1", "A", "closed", 1, "fix"), ("A-T2", "A", "open", 2, "fix"),
                     ("A-T3", "A", "open", 3, "fix"), ("A-T4", "A", "open", 4, "feature"), ("B-T1", "B", "open", 5, "fix")])

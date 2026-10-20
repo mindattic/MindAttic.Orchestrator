@@ -709,7 +709,7 @@ public static class AgentGate
         def orchestrator_db():
             if os.environ.get("{{Settings.OrchestratorDb.EnvVar}}"):
                 return os.environ["{{Settings.OrchestratorDb.EnvVar}}"]
-            repo = Path(r"{{MindAttic.Workflow.Workspace.DefaultRoot}}") / "MindAttic.Orchestrator"
+            repo = Path(r"{{MindAttic.Tickets.Workspace.DefaultRoot}}") / "MindAttic.Orchestrator"
             if repo.is_dir():
                 return str(repo / "data" / "orchestrator.db")
             return str(ORCH_DIR / "orchestrator.db")
@@ -1225,12 +1225,17 @@ public static class AgentGate
         _ws_root, _wt_root = orchestrator_roots()
         WS = Path(_ws_root or "D:/Projects/MindAttic")
         WT = Path(_wt_root) if _wt_root else WS.parent / (WS.name + ".worktrees")
-        # The Workflow database the orchestrator and the workflow CLI open: MINDATTIC_WORKFLOW_DB when set (M.ORCH-T398).
-        WORKFLOW_DB = os.environ.get("MINDATTIC_WORKFLOW_DB") or str(WS / "MindAttic.Workflow" / "data" / "workflow.db")
-        def workflow_db():
-            # The Workflow database opened read-only: a missing one raises instead of being created empty (M.ORCH-T546).
+        # The ticket database the orchestrator and the tickets CLI open (M.ORCH-T398): MINDATTIC_TICKETS_DB when set (or
+        # MINDATTIC_WORKFLOW_DB, its name before the rename), else MindAttic.Tickets\data\Tickets.db, in the MindAttic.Workflow
+        # folder while only that one exists, as TicketsDb.DefaultPath/HomeFolder find it (M.ORCH-T564).
+        def tickets_home():
+            return "MindAttic.Workflow" if not (WS / "MindAttic.Tickets").is_dir() and (WS / "MindAttic.Workflow").is_dir() else "MindAttic.Tickets"
+        TICKETS_DB = (os.environ.get("MINDATTIC_TICKETS_DB") or os.environ.get("MINDATTIC_WORKFLOW_DB")
+                      or str(WS / tickets_home() / "data" / "Tickets.db"))
+        def tickets_db():
+            # The ticket database opened read-only: a missing one raises instead of being created empty (M.ORCH-T546).
             import sqlite3
-            return sqlite3.connect(Path(os.path.abspath(WORKFLOW_DB)).as_uri() + "?mode=ro", uri=True)
+            return sqlite3.connect(Path(os.path.abspath(TICKETS_DB)).as_uri() + "?mode=ro", uri=True)
 
         def repo_of(path, worktrees=True):
             # A repo checkout under the workspace, or (with worktrees) one of autopilot's worktrees of it; None elsewhere.
@@ -1524,7 +1529,7 @@ public static class AgentGate
 
     internal const string AllocateCommand = """
         ---
-        description: Auto-allocates the open Workflow tickets of this CLI's repo (or -repo=A,B, wildcards like -repo=GTFO.*, or "all") to its own subagents whenever one has a free slot, each in its own worktree, landing on main and closing the ticket, until none are left. /allocate off stops it in this CLI; /allocate off all in every CLI.
+        description: Auto-allocates the open tickets of this CLI's repo (or -repo=A,B, wildcards like -repo=GTFO.*, or "all") to its own subagents whenever one has a free slot, each in its own worktree, landing on main and closing the ticket, until none are left. /allocate off stops it in this CLI; /allocate off all in every CLI.
         argument-hint: "[off|off all|all] [-repo=A,B | -repo=GTFO.*]"
         ---
         /allocate $ARGUMENTS is running in this CLI. MindAttic.Orchestrator's gates record it for this CLI only (no other CLI is affected) when the user typed it, or when you called it through the Skill tool because the user's own latest prompt asked for it; a Skill call the user didn't ask for is refused and records nothing, so never start it on your own. Once recorded, while it's on, the repos named (a wildcard such as GTFO.* names every repo it matches) are this CLI's cross-repo exception so your subagents can work and close tickets there.
@@ -1637,7 +1642,7 @@ public static class AgentGate
 
         def ticket_repo(ticket_id):
             try:
-                db = workflow_db()
+                db = tickets_db()
                 row = db.execute("SELECT repo FROM tickets WHERE id = ? COLLATE NOCASE", (ticket_id,)).fetchone()
                 db.close()
                 return row[0] if row else None
@@ -1712,13 +1717,13 @@ public static class AgentGate
                 target = args.get("file_path") or args.get("notebook_path") or ""
                 if other(repo_of(target)):
                     refuse(f"This window is for {here}; {target} belongs to {repo_of(target)}. Work {repo_of(target)} in its own window "
-                           f"(or autopilot, or the General session), or file a ticket for it: workflow ticket new --repo {repo_of(target)} ...")
+                           f"(or autopilot, or the General session), or file a ticket for it: tickets ticket new --repo {repo_of(target)} ...")
             if tool in ("Bash", "PowerShell"):
                 command = str(args.get("command") or "")
-                # Only a segment that IS a workflow ticket command counts: the words inside a message or a string don't.
+                # Only a segment that IS a ticket command (tickets, or the legacy workflow shim) counts: the words inside a message or a string don't.
                 for segment in re.split(r"[;\n|]|&&", command):
                     # Any case, as Windows runs it and the ticket lookup matches it (M.ORCH-T468).
-                    called = re.match(r"\s*(?:&\s*)?['\"]?workflow(?:\.exe)?['\"]?\s+ticket\s+(close|correct)\b\s*(.*)", segment, re.I)
+                    called = re.match(r"\s*(?:&\s*)?['\"]?(?:tickets|workflow)(?:\.exe)?['\"]?\s+ticket\s+(close|correct)\b\s*(.*)", segment, re.I)
                     if not called:
                         continue  # filing a new ticket in another repo is how work is handed to it, so `new` is never refused
                     action = called.group(2)
@@ -2170,7 +2175,7 @@ public static class AgentGate
             # The open fixes and approved tickets of repos (names or wildcards such as GTFO.*; "*": every repo), in ticket order.
             try:
                 import fnmatch, sqlite3
-                db = workflow_db()
+                db = tickets_db()
                 try:
                     rows = db.execute("SELECT id, type, repo, summary FROM tickets WHERE status = 'open' ORDER BY ordinal").fetchall()
                 except sqlite3.OperationalError:  # a database from before tickets had summaries
@@ -2185,7 +2190,7 @@ public static class AgentGate
                 except Exception:
                     pass
                 # Only fixes and tickets the user approved are work; the rest wait for their yes. Approval lives in the database's
-                # queue (orchestrator approve, workflow ticket approve, the Workflow Desktop), as the scheduler reads it (M.ORCH-T384).
+                # queue (orchestrator approve, tickets ticket approve, the Tickets Desktop), as the scheduler reads it (M.ORCH-T384).
                 try:
                     approved = {a.upper() for (a,) in db.execute("SELECT ticket_id FROM ticket_queue WHERE approval = 'approved'").fetchall()}
                 except Exception:
@@ -2230,12 +2235,12 @@ public static class AgentGate
 
         def story_file_repos(repos):
             # Whether a repo named (or matched by a wildcard) keeps its tickets in its own docs/USER_STORIES.md, not the
-            # Workflow database: workable() can't see those (their approvals live in settings' StoryApproved since
+            # ticket database: workable() can't see those (their approvals live in settings' StoryApproved since
             # M.ORCH-T441), so `orchestrator next`, which reads them, is asked instead (M.ORCH-T445).
             try:
                 import fnmatch, sqlite3
                 try:
-                    db = workflow_db()
+                    db = tickets_db()
                     try:
                         held = {(r or "").lower() for (r,) in db.execute("SELECT DISTINCT repo FROM tickets").fetchall()}
                     finally:
@@ -2811,7 +2816,7 @@ public static class AgentGate
             if state.get("nudged") and not state.get("worked") and not asked:
                 state["worked"] = touched = True  # it carried on after being told to
             # A ticket closed this turn: stopping right after it, with more open, is a stop keep-going catches.
-            closed = re.search(r"\bworkflow(?:\.exe)?['\"]?\s+ticket\s+close\s+['\"]?((?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)",
+            closed = re.search(r"\b(?:tickets|workflow)(?:\.exe)?['\"]?\s+ticket\s+close\s+['\"]?((?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)",
                                str((data.get("tool_input") or {}).get("command") or ""))
             if closed and closed.group(1) not in state.get("closed", []):
                 state["closed"] = state.get("closed", []) + [closed.group(1)]

@@ -120,7 +120,7 @@ public sealed class InstallerTests
         var store = new JsonStore(dir);
         try
         {
-            Assert.That(OrchestratorOptions.Load(store).WorkspaceRoot, Is.EqualTo(MindAttic.Workflow.Workspace.DefaultRoot));
+            Assert.That(OrchestratorOptions.Load(store).WorkspaceRoot, Is.EqualTo(MindAttic.Tickets.Workspace.DefaultRoot));
             store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = @"E:\Code" });
             Assert.That(OrchestratorOptions.Load(store).WorkspaceRoot, Is.EqualTo(@"E:\Code"));
         }
@@ -136,7 +136,7 @@ public sealed class InstallerTests
         try
         {
             Assert.That(OrchestratorOptions.TryLoad(store, out var none), Is.True, "no file yet: the default is the choice");
-            Assert.That(none.WorkspaceRoot, Is.EqualTo(MindAttic.Workflow.Workspace.DefaultRoot));
+            Assert.That(none.WorkspaceRoot, Is.EqualTo(MindAttic.Tickets.Workspace.DefaultRoot));
             store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = @"E:\Code" });
             Assert.That((OrchestratorOptions.TryLoad(store, out var picked), picked.WorkspaceRoot), Is.EqualTo((true, @"E:\Code")));
             // Settings that can't be read: a garbled row, as a hand-edited settings.json's typo once was.

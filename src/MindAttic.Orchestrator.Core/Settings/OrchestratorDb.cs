@@ -6,7 +6,7 @@ namespace MindAttic.Orchestrator.Settings;
 
 /// <summary>
 /// The orchestrator's SQLite database (M.ORCH-T490), kept in the MindAttic.Orchestrator repo and committed, as
-/// MindAttic.Workflow keeps <c>data/workflow.db</c>: <c>&lt;workspace&gt;\MindAttic.Orchestrator\data\orchestrator.db</c>, or the
+/// MindAttic.Tickets keeps <c>data/Tickets.db</c>: <c>&lt;workspace&gt;\MindAttic.Orchestrator\data\orchestrator.db</c>, or the
 /// file <see cref="EnvVar"/> names, so every process and worktree uses the main checkout's copy. Rollback journal (not WAL),
 /// so the .db file alone holds every committed write and git commits it whole; <c>data/orchestrator.sql</c> beside it is a
 /// readable dump (<see cref="Dump"/>) so its changes show up as text diffs. The schema is versioned by <c>PRAGMA user_version</c>:
@@ -23,7 +23,7 @@ public sealed class OrchestratorDb(string path)
     /// <c>MindAttic.Orchestrator\data\orchestrator.db</c> under <paramref name="workspaceRoot"/> (never a worktree's).</summary>
     public static string DefaultPath(string? workspaceRoot = null) =>
         Environment.GetEnvironmentVariable(EnvVar) is { Length: > 0 } env ? env
-            : System.IO.Path.Combine(workspaceRoot ?? MindAttic.Workflow.Workspace.DefaultRoot, "MindAttic.Orchestrator",
+            : System.IO.Path.Combine(workspaceRoot ?? MindAttic.Tickets.Workspace.DefaultRoot, "MindAttic.Orchestrator",
                 RelativePath.Replace('/', System.IO.Path.DirectorySeparatorChar));
 
     /// <summary>
@@ -35,8 +35,8 @@ public sealed class OrchestratorDb(string path)
     /// </summary>
     public static string StatePath(string fallbackDirectory) =>
         Environment.GetEnvironmentVariable(EnvVar) is { Length: > 0 } env ? env
-            : System.IO.Directory.Exists(System.IO.Path.Combine(MindAttic.Workflow.Workspace.DefaultRoot, "MindAttic.Orchestrator"))
-                ? DefaultPath(MindAttic.Workflow.Workspace.DefaultRoot)
+            : System.IO.Directory.Exists(System.IO.Path.Combine(MindAttic.Tickets.Workspace.DefaultRoot, "MindAttic.Orchestrator"))
+                ? DefaultPath(MindAttic.Tickets.Workspace.DefaultRoot)
                 : System.IO.Path.Combine(fallbackDirectory, "orchestrator.db");
 
     /// <summary>The one database every process opens (M.ORCH-T535): <see cref="StatePath"/> with the live store's folder as the

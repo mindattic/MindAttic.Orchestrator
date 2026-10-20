@@ -7,7 +7,7 @@ using Serilog.Events;
 namespace MindAttic.Orchestrator.Tests;
 
 /// <summary>The daemon loop's safety: hook installs that fail are retried, only real "needs you" lines alert, and a hung
-/// <c>workflow db sync</c> or <c>gh</c> is killed and logged instead of stalling the loop.</summary>
+/// <c>tickets db sync</c> or <c>gh</c> is killed and logged instead of stalling the loop.</summary>
 public sealed class DaemonSafetyTests
 {
     private string dir = null!;
@@ -140,11 +140,11 @@ public sealed class DaemonSafetyTests
         Assert.That(said, Has.Count.EqualTo(4), "every line is still logged");
     }
 
-    // ---- workflow db sync ----
+    // ---- tickets db sync ----
 
     private string Db()
     {
-        var path = Path.Combine(dir, "workflow.db");
+        var path = Path.Combine(dir, "Tickets.db");
         File.WriteAllText(path, "db");
         return path;
     }
@@ -158,23 +158,23 @@ public sealed class DaemonSafetyTests
         var db = Db();
         var now = DateTime.UtcNow;
 
-        daemon.SyncWorkflowDbIfDue(db, now, @"C:\src\Elsewhere");
+        daemon.SyncTicketsDbIfDue(db, now, @"C:\src\Elsewhere");
         Assert.That(runner.Calls, Has.Count.EqualTo(1));
-        Assert.That(runner.Calls[0].File, Is.EqualTo("workflow"));
+        Assert.That(runner.Calls[0].File, Is.EqualTo("tickets"));
         Assert.That(runner.Calls[0].Args, Is.EqualTo(new[] { "db", "sync", "--root", @"C:\src\Elsewhere" }), "the orchestrator's workspace, not the CLI's default (M.ORCH-T402)");
         Assert.That(runner.Calls[0].Timeout, Is.EqualTo(TimeSpan.FromSeconds(7)));
         Assert.That(said, Has.Some.Matches<(LogEventLevel Level, string Line)>(x =>
-            x.Level == LogEventLevel.Warning && x.Line.Contains("workflow db sync took over 7s; stopped it")));
+            x.Level == LogEventLevel.Warning && x.Line.Contains("tickets db sync took over 7s; stopped it")));
 
-        daemon.SyncWorkflowDbIfDue(db, now.AddMinutes(5));
+        daemon.SyncTicketsDbIfDue(db, now.AddMinutes(5));
         Assert.That(runner.Calls, Has.Count.EqualTo(1), "tries stay 10 minutes apart");
 
         timedOut = false;
-        daemon.SyncWorkflowDbIfDue(db, now.AddMinutes(11));
+        daemon.SyncTicketsDbIfDue(db, now.AddMinutes(11));
         Assert.That(runner.Calls, Has.Count.EqualTo(2), "the killed sync didn't count the database as synced");
-        Assert.That(said.Last(), Is.EqualTo((LogEventLevel.Information, "workflow db sync: pushed")));
+        Assert.That(said.Last(), Is.EqualTo((LogEventLevel.Information, "tickets db sync: pushed")));
 
-        daemon.SyncWorkflowDbIfDue(db, now.AddMinutes(30));
+        daemon.SyncTicketsDbIfDue(db, now.AddMinutes(30));
         Assert.That(runner.Calls, Has.Count.EqualTo(2), "an unchanged database isn't synced again");
     }
 
@@ -291,14 +291,26 @@ public sealed class DaemonSafetyTests
     }
 
     [Test]
-    public void A_missing_workflow_cli_is_logged_not_thrown()
+    public void A_missing_tickets_cli_is_logged_not_thrown()
     {
-        var daemon = Make(runner: new FakeRunner(_ => throw new System.ComponentModel.Win32Exception("not found")));
-        Assert.DoesNotThrow(() => daemon.SyncWorkflowDbIfDue(Db(), DateTime.UtcNow));
-        Assert.That(said, Has.Some.Matches<(LogEventLevel Level, string Line)>(x => x.Line.StartsWith("couldn't run 'workflow db sync'")));
+        var runner = new FakeRunner(_ => throw new System.ComponentModel.Win32Exception("not found"));
+        var daemon = Make(runner: runner);
+        Assert.DoesNotThrow(() => daemon.SyncTicketsDbIfDue(Db(), DateTime.UtcNow));
+        Assert.That(runner.Calls.Select(c => c.File), Is.EqualTo(new[] { "tickets", "workflow" }), "the legacy shim is tried before giving up");
+        Assert.That(said, Has.Some.Matches<(LogEventLevel Level, string Line)>(x => x.Line.StartsWith("couldn't run 'tickets db sync'")));
     }
 
-    /// <summary>Stands in for <c>workflow</c>: runs a real child that would write <paramref name="marker"/> after a couple of seconds.</summary>
+    [Test]
+    public void The_legacy_workflow_cli_syncs_where_tickets_isnt_installed_yet()
+    {
+        // M.ORCH-T564: MindAttic.Workflow became MindAttic.Tickets; a machine that still has only `workflow` keeps syncing.
+        var runner = new FakeRunner(c => c.File == "tickets" ? throw new System.ComponentModel.Win32Exception("not found") : new ProcessResult(0, "pushed", "", false));
+        Make(runner: runner).SyncTicketsDbIfDue(Db(), DateTime.UtcNow);
+        Assert.That(runner.Calls.Select(c => c.File), Is.EqualTo(new[] { "tickets", "workflow" }));
+        Assert.That(said.Last(), Is.EqualTo((LogEventLevel.Information, "tickets db sync: pushed")));
+    }
+
+    /// <summary>Stands in for <c>tickets</c>: runs a real child that would write <paramref name="marker"/> after a couple of seconds.</summary>
     private static IProcessRunner Hung(string marker) => new FakeRunner(c =>
         ProcessRunner.Default.Run("cmd.exe", ["/c", $"ping -n 3 127.0.0.1 >nul & echo late> {marker}"], c.Timeout));
 
@@ -310,7 +322,7 @@ public sealed class DaemonSafetyTests
         var daemon = Make(runner: Hung(marker), syncTimeout: TimeSpan.FromMilliseconds(300));
 
         var sw = Stopwatch.StartNew();
-        daemon.SyncWorkflowDbIfDue(Db(), DateTime.UtcNow);
+        daemon.SyncTicketsDbIfDue(Db(), DateTime.UtcNow);
         Assert.That(sw.Elapsed, Is.LessThan(TimeSpan.FromSeconds(1.5)), "the loop got control back at the timeout");
         Assert.That(said, Has.Some.Matches<(LogEventLevel Level, string Line)>(x => x.Line.Contains("stopped it")));
 

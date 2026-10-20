@@ -220,7 +220,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
 
     /// <summary>
     /// The story's prompt for an agent in its own worktree. It starts like <see cref="Scheduler.PromptFor"/> (so its
-    /// session is tied to the ticket), lands the branch on main itself, then closes the ticket in the Workflow
+    /// session is tied to the ticket), lands the branch on main itself, then closes the ticket in the ticket
     /// database (the same database from any folder, worktrees included).
     /// </summary>
     internal static string PromptFor(QueueItem item, string worktree, string branch, string mainline = "main") =>
@@ -232,11 +232,11 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         $"When it's done: run /commit, but don't push (the next step does). Land it on {item.Repo}'s main line, {mainline}: git fetch origin, git rebase origin/{mainline} (resolve any conflicts and rerun the tests), git push origin HEAD:{mainline}. " +
         // Found live (M.ORCH-T178): chained after the push, a rejected push (main moved) still closed the ticket, unlanded, on a pre-rebase hash.
         $"If the push is rejected because {mainline} moved, fetch, rebase and push again. Only once the push has succeeded, as its own step, " +
-        $"mark it finished: workflow ticket close {item.Id} --ref <the test, or the commit hash as it landed on {mainline}>. " +
+        $"mark it finished: tickets ticket close {item.Id} --ref <the test, or the commit hash as it landed on {mainline}>. " +
         "If you can't finish or land it, leave the ticket open and say why.";
 
     /// <summary>
-    /// Agents that exited. A worktree agent is done when its ticket is closed (in the Workflow database, or on origin/main
+    /// Agents that exited. A worktree agent is done when its ticket is closed (in the ticket database, or on origin/main
     /// before the migration) and its branch is on origin/main: then your checkout is fast-forwarded (git refuses if that
     /// would touch your own changes) and the worktree removed (git keeps it if anything there is uncommitted). Otherwise
     /// the ticket goes back in the queue, parked for you.
@@ -326,7 +326,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         // finished stories, and one agent told to push HEAD:main created a stray main branch.
         var mainline = Dispatcher.Mainline(repoPath);
         bool closed;
-        using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(Path.GetDirectoryName(repoPath)))
+        using (var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(Path.GetDirectoryName(repoPath)))
         {
             if (db?.Ticket(a.TicketId) is { } known) closed = known.Ticket.Status is "closed" or "wont-do";
             else if (db is not null && db.Repos().Any(r => Same(r.Name, a.Repo)))
@@ -491,7 +491,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 inRepo[item.Repo] = inRepo.GetValueOrDefault(item.Repo) + 1;
                 continue;
             }
-            // The plan's ticket list may be older than a `workflow ticket close` made a second ago: one closed since isn't
+            // The plan's ticket list may be older than a `tickets ticket close` made a second ago: one closed since isn't
             // handed out (or given a worktree) to be worked twice (M.ORCH-T489).
             if (!stillOpen(item.RepoPath, item.Id)) { closedSince++; continue; }
             var branch = Dispatcher.BranchFor(item.Id);
@@ -529,14 +529,14 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     }
 
     /// <summary>Whether ticket <paramref name="id"/> of the repo at <paramref name="repoPath"/> is still open right now: in the
-    /// workflow database once the workspace is migrated, else in the repo's <c>docs/USER_STORIES.md</c>. True when that can't
+    /// ticket database once the workspace is migrated, else in the repo's <c>docs/USER_STORIES.md</c>. True when that can't
     /// be read (the plan's own read stands).</summary>
     internal static bool StillOpen(string repoPath, string id)
     {
         try
         {
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(Path.GetDirectoryName(repoPath)))
-                if (db?.Ticket(id) is { } known) return known.Ticket.Status == MindAttic.Workflow.Tickets.TicketRules.Open;
+            using (var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(Path.GetDirectoryName(repoPath)))
+                if (db?.Ticket(id) is { } known) return known.Ticket.Status == MindAttic.Tickets.Log.TicketRules.Open;
             var stories = Path.Combine(repoPath, "docs", "USER_STORIES.md");
             return !File.Exists(stories) || !ClosedIn(File.ReadAllText(stories), id);
         }

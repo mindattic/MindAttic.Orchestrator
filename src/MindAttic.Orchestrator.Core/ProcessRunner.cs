@@ -8,7 +8,7 @@ public sealed record ProcessResult(int ExitCode, string Output, string Error, bo
     public static ProcessResult Killed { get; } = new(-1, "", "", TimedOut: true);
 }
 
-/// <summary>Runs a command to completion or its timeout; the daemon's seam for <c>workflow db sync</c> and <c>gh</c>.</summary>
+/// <summary>Runs a command to completion or its timeout; the daemon's seam for <c>tickets db sync</c> and <c>gh</c>.</summary>
 public interface IProcessRunner
 {
     /// <summary>Runs <paramref name="file"/> with <paramref name="args"/>; past <paramref name="timeout"/> the whole tree is killed and

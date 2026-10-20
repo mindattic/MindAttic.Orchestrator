@@ -220,7 +220,7 @@ public static partial class TicketReplay
 
     /// <summary>The whole replay as plain text, for a window that just shows it. With <paramref name="ticket"/>,
     /// leads with its row (type, status, summary, ref) before the sessions and commits.</summary>
-    public static string PlainReport(string ticketId, string repoPath, string projectsDir, MindAttic.Workflow.Tickets.Ticket? ticket = null,
+    public static string PlainReport(string ticketId, string repoPath, string projectsDir, MindAttic.Tickets.Log.Ticket? ticket = null,
         string? worktreeRoot = null)
     {
         var sb = new StringBuilder();

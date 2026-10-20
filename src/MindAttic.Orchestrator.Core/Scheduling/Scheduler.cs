@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Settings;
-using MindAttic.Workflow.Tickets;
+using MindAttic.Tickets.Log;
 
 namespace MindAttic.Orchestrator.Scheduling;
 
@@ -31,7 +31,7 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
     /// <summary>Opened more than <see cref="OrchestratorSettings.GroomAfterDays"/> ago.</summary>
     public bool Old { get; init; }
 
-    /// <summary>Approved for work: in the Workflow database's queue (<see cref="Snapshot.Approved"/>), or, for a ticket it doesn't
+    /// <summary>Approved for work: in the ticket database's queue (<see cref="Snapshot.Approved"/>), or, for a ticket it doesn't
     /// hold, in <see cref="OrchestratorSettings.StoryApproved"/>.</summary>
     public bool Approved { get; init; }
 
@@ -353,5 +353,5 @@ public static partial class Scheduler
     /// <summary>The opening prompt for a ticket: what to do, and how to mark it done.</summary>
     public static string PromptFor(QueueItem item) =>
         $"Work on ticket {item.Id} ({item.Ticket.Type}): {item.Ticket.Summary} " +
-        $"When it's done: run /commit (it commits only what you changed), then mark it finished with: workflow ticket close {item.Id} --repo {item.Repo} --ref \"<the test or commit that proves it>\"";
+        $"When it's done: run /commit (it commits only what you changed), then mark it finished with: tickets ticket close {item.Id} --repo {item.Repo} --ref \"<the test or commit that proves it>\"";
 }

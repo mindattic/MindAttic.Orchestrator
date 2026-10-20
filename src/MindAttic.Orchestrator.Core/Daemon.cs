@@ -207,11 +207,11 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
                 RunAuditIfDue(options, s);
                 tick.Lap("audit");
-                SyncWorkflowDbIfDue(options);
+                SyncTicketsDbIfDue(options);
                 // The database everything writes (M.ORCH-T535), committed in the checkout that holds it.
                 if (Settings.OrchestratorDb.LivePath is var live && Settings.OrchestratorDb.RepoOf(live) is { } dbRepo)
                     SyncOrchestratorDbIfDue(dbRepo, live, DateTime.UtcNow);
-                tick.Lap("workflow db sync");
+                tick.Lap("tickets db sync");
                 if (s.GitHubIntake && DateTime.UtcNow - intakeUtc >= TimeSpan.FromHours(1))
                 {
                     intakeUtc = DateTime.UtcNow;
@@ -372,10 +372,10 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     internal Func<int, bool, IEnumerable<string?>> InstallHooks { get; init; } = (percent, keepGoing) =>
         [Setup.AgentGate.Ensure(contextPercent: percent, keepGoing: keepGoing), Setup.AgentGate.EnsureOtherProviders()];
 
-    /// <summary>Runs <c>workflow db sync</c> and <c>gh</c>; a test's stands in for the real one.</summary>
+    /// <summary>Runs <c>tickets db sync</c> and <c>gh</c>; a test's stands in for the real one.</summary>
     internal IProcessRunner Runner { get; init; } = ProcessRunner.Default;
 
-    /// <summary>How long <c>workflow db sync</c> may run before it's killed, so a hung push can't stall the loop.</summary>
+    /// <summary>How long <c>tickets db sync</c> may run before it's killed, so a hung push can't stall the loop.</summary>
     internal TimeSpan SyncTimeout { get; init; } = TimeSpan.FromMinutes(2);
 
     /// <summary>Where alerts go; null sends them through the <see cref="Notifier"/>. A test's records them.</summary>
@@ -561,33 +561,40 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 : $"disk space is still low but recovering ({e.Drive.Root} has {e.Drive.FreeGb:0.0} GB free)");
     }
 
+    /// <summary>The CLI that syncs the ticket database, and its name before the rename (M.ORCH-T564), tried when it isn't installed.</summary>
+    internal const string TicketsCli = "tickets", LegacyTicketsCli = "workflow";
+
     private DateTime syncedDbWriteUtc;
     private DateTime syncTriedUtc;
 
     /// <summary>
-    /// Every 10 minutes, when the Workflow database has changed since the last sync, commits it (and its readable dump)
-    /// in the MindAttic.Workflow repo and pushes, so tickets are backed up and reach other machines.
+    /// Every 10 minutes, when the ticket database has changed since the last sync, commits it (and its readable dump)
+    /// in the MindAttic.Tickets repo and pushes, so tickets are backed up and reach other machines.
     /// </summary>
-    private void SyncWorkflowDbIfDue(OrchestratorOptions options) =>
-        SyncWorkflowDbIfDue(MindAttic.Workflow.Data.WorkflowDb.DefaultPath(options.WorkspaceRoot), DateTime.UtcNow, options.WorkspaceRoot);
+    private void SyncTicketsDbIfDue(OrchestratorOptions options) =>
+        SyncTicketsDbIfDue(MindAttic.Tickets.Data.TicketsDb.DefaultPath(options.WorkspaceRoot), DateTime.UtcNow, options.WorkspaceRoot);
 
     /// <summary>The sync for the database at <paramref name="path"/>. One that runs past <see cref="SyncTimeout"/> is killed and
     /// logged, and the database isn't counted as synced, so the next try (10 minutes on) runs it again. The sync is told
-    /// <paramref name="root"/>, the workspace the database was checked in: the Workflow CLI's own default is D:\Projects\MindAttic (M.ORCH-T402).</summary>
-    internal void SyncWorkflowDbIfDue(string path, DateTime nowUtc, string? root = null)
+    /// <paramref name="root"/>, the workspace the database was checked in: the tickets CLI's own default is D:\Projects\MindAttic (M.ORCH-T402).</summary>
+    internal void SyncTicketsDbIfDue(string path, DateTime nowUtc, string? root = null)
     {
         if (!File.Exists(path) || nowUtc - syncTriedUtc < TimeSpan.FromMinutes(10)) return;
         var written = File.GetLastWriteTimeUtc(path);
         if (written == syncedDbWriteUtc) return;
         syncTriedUtc = nowUtc;
+        string[] args = root is { Length: > 0 } ? ["db", "sync", "--root", root] : ["db", "sync"];
         try
         {
-            var r = Runner.Run("workflow", root is { Length: > 0 } ? ["db", "sync", "--root", root] : ["db", "sync"], SyncTimeout);
-            if (r.TimedOut) { Say(LogEventLevel.Warning, $"workflow db sync took over {SyncTimeout.TotalSeconds:0}s; stopped it (retrying in 10 minutes)"); return; }
+            ProcessResult r;
+            // The tickets CLI; the legacy workflow shim where only that is installed yet (M.ORCH-T564).
+            try { r = Runner.Run(TicketsCli, args, SyncTimeout); }
+            catch (System.ComponentModel.Win32Exception) { r = Runner.Run(LegacyTicketsCli, args, SyncTimeout); }
+            if (r.TimedOut) { Say(LogEventLevel.Warning, $"tickets db sync took over {SyncTimeout.TotalSeconds:0}s; stopped it (retrying in 10 minutes)"); return; }
             if (r.ExitCode == 0) syncedDbWriteUtc = written;
-            Say(r.ExitCode == 0 ? LogEventLevel.Information : LogEventLevel.Warning, $"workflow db sync: {(r.Output + r.Error).Trim()}");
+            Say(r.ExitCode == 0 ? LogEventLevel.Information : LogEventLevel.Warning, $"tickets db sync: {(r.Output + r.Error).Trim()}");
         }
-        catch (System.ComponentModel.Win32Exception ex) { Say(LogEventLevel.Warning, $"couldn't run 'workflow db sync': {ex.Message}"); }
+        catch (System.ComponentModel.Win32Exception ex) { Say(LogEventLevel.Warning, $"couldn't run 'tickets db sync': {ex.Message}"); }
     }
 
     private string? orchestratorDbSynced;
@@ -600,7 +607,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// <summary>
     /// Every 10 minutes, when <c>data/orchestrator.sql</c> (rewritten with each change to the database) differs from the commit's,
     /// commits <c>data/orchestrator.db</c> and the dump in the main checkout at <paramref name="repo"/> and pushes, as
-    /// <c>workflow db sync</c> does for workflow.db (M.ORCH-T490). Only those two paths go in the commit (other staged work is
+    /// <c>tickets db sync</c> does for Tickets.db (M.ORCH-T490). Only those two paths go in the commit (other staged work is
     /// left as it was), and a commit that doesn't land unstages them. A database <see cref="Settings.OrchestratorDb.EnvVar"/> (<paramref name="dbPath"/>)
     /// moves elsewhere isn't committed.
     /// </summary>
@@ -662,25 +669,25 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     }
 
     /// <summary>Files new GitHub issues and CI failures as tickets in every repo that has a GitHub origin.</summary>
-    public static IEnumerable<(string Repo, MindAttic.Workflow.Tickets.Ticket Ticket)> Intake(string workspaceRoot, bool dryRun = false,
+    public static IEnumerable<(string Repo, MindAttic.Tickets.Log.Ticket Ticket)> Intake(string workspaceRoot, bool dryRun = false,
         Func<string[], (int Code, string Output)>? gh = null)
     {
         gh ??= Tickets.GitHubIntake.Gh;
         var remotes = Setup.WorkspaceBootstrap.Export(workspaceRoot).Repos.ToDictionary(m => m.Name, m => m.Remote, StringComparer.OrdinalIgnoreCase);
-        foreach (var repo in new MindAttic.Workflow.Workspace(workspaceRoot).Repos().Where(r => File.Exists(r.StoriesPath)))
+        foreach (var repo in new MindAttic.Tickets.Workspace(workspaceRoot).Repos().Where(r => File.Exists(r.StoriesPath)))
         {
             var remote = remotes.GetValueOrDefault(repo.Name);
             if (remote is null || Tickets.GitHubIntake.Slug(remote) is not { } slug) continue;
             var items = Tickets.GitHubIntake.Find(slug, gh, DateTime.UtcNow);
             if (items.Count == 0) continue;
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(workspaceRoot))
+            using (var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(workspaceRoot))
                 if (db is not null && db.Repos().Any(x => x.Name.Equals(repo.Name, StringComparison.OrdinalIgnoreCase)))
                 {
                     // A dry run files nothing, but still says what it would file.
                     foreach (var t in Tickets.GitHubIntake.FileNew(db, repo.Name, items, dryRun)) yield return (repo.Name, t);
                     continue;
                 }
-            var stories = MindAttic.Workflow.Tickets.StoryFile.Load(repo.StoriesPath);
+            var stories = MindAttic.Tickets.Log.StoryFile.Load(repo.StoriesPath);
             var filed = Tickets.GitHubIntake.FileNew(stories, items);
             if (filed.Count > 0 && !dryRun) stories.Save();
             foreach (var t in filed) yield return (repo.Name, t);

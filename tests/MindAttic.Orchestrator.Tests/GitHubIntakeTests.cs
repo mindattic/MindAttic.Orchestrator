@@ -1,5 +1,5 @@
 using MindAttic.Orchestrator.Tickets;
-using MindAttic.Workflow.Tickets;
+using MindAttic.Tickets.Log;
 using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
@@ -114,15 +114,15 @@ public sealed class GitHubIntakeTests
         Directory.CreateDirectory(root);
         try
         {
-            MindAttic.Workflow.Repo Repo(string name, string code)
+            MindAttic.Tickets.Repo Repo(string name, string code)
             {
                 var dir = Path.Combine(root, name);
                 Directory.CreateDirectory(Path.Combine(dir, ".git"));
                 Directory.CreateDirectory(Path.Combine(dir, "docs"));
                 File.WriteAllText(Path.Combine(dir, "docs", "USER_STORIES.md"), StoryFile.NewFileText(name, code, "2026-10-14"));
-                return new MindAttic.Workflow.Repo(name, dir);
+                return new MindAttic.Tickets.Repo(name, dir);
             }
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(MindAttic.Workflow.Data.WorkflowDb.DefaultPath(root)))
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(MindAttic.Tickets.Data.TicketsDb.DefaultPath(root)))
             {
                 db.Import([Repo("R", "RP"), Repo("S", "SP")]);
                 var items = new[]

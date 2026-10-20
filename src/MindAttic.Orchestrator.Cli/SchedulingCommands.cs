@@ -36,7 +36,7 @@ internal static class Ctx
     public static bool RefuseUnknown(JsonStore store, IEnumerable<string> ids)
     {
         var root = OrchestratorOptions.Load(store).WorkspaceRoot;
-        using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(root);
+        using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(root);
         // A ticket of a repo still on its own USER_STORIES.md isn't in the database, but it's no typo (M.ORCH-T441).
         if (db is null || ids.Where(id => MindAttic.Orchestrator.Tickets.TicketQueue.Find(db, root, id) is null).ToList() is not { Count: > 0 } unknown) return false;
         AnsiConsole.MarkupLine($"[red]No ticket {Markup.Escape(string.Join(", ", unknown))}; nothing was changed.[/]");
@@ -123,10 +123,10 @@ internal sealed class BumpCommand : Command<BumpCommand.Settings>
     {
         var store = Ctx.Store();
         var id = Ctx.Id(settings.Ticket);
-        // Priority lives in the Workflow database's queue, with approval, where every tool reads and writes it (M.ORCH-T384); a
+        // Priority lives in the ticket database's queue, with approval, where every tool reads and writes it (M.ORCH-T384); a
         // ticket it doesn't hold (a repo still on its own USER_STORIES.md) keeps it in settings.json (M.ORCH-T441).
         var root = OrchestratorOptions.Load(store).WorkspaceRoot;
-        using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(root);
+        using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(root);
         if (MindAttic.Orchestrator.Tickets.TicketQueue.Find(db, root, id) is null)
         {
             AnsiConsole.MarkupLine($"[red]No ticket {Markup.Escape(id)}; nothing was changed.[/]");
@@ -197,7 +197,7 @@ internal sealed class ReleaseCommand : Command<ReleaseCommand.Settings>
             AnsiConsole.MarkupLine($"{a.TicketId} is back in the queue.");
             return 0;
         }
-        var repo = new MindAttic.Workflow.Workspace(OrchestratorOptions.Load().WorkspaceRoot).Find(a.Repo);
+        var repo = new MindAttic.Tickets.Workspace(OrchestratorOptions.Load().WorkspaceRoot).Find(a.Repo);
         if (repo is null) { AnsiConsole.MarkupLine($"[red]Repo {Markup.Escape(a.Repo)} not found.[/]"); return 1; }
         var r = dispatcher.RemoveWorktree(a, repo.Path);
         AnsiConsole.MarkupLine(r.Ok ? Markup.Escape(r.Message) : $"[red]{Markup.Escape(r.Message)}[/]");

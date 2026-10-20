@@ -2,7 +2,7 @@ using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
-using MindAttic.Workflow.Tickets;
+using MindAttic.Tickets.Log;
 using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
@@ -262,7 +262,7 @@ public sealed class AutopilotTests
         Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T1", "A-T2" }), "A's fixes only (A-T3 awaits approval, B isn't named), up to the 2 the allowance has room for");
         Assert.That(why, Is.Null);
         Assert.That(made, Is.EqualTo(new[] { @"D:\WT\A\A-T1", @"D:\WT\A\A-T2" }));
-        Assert.That(handed[0].Prompt, Does.Contain("Work on ticket A-T1").And.Contain("cd there first").And.Contain("HEAD:master").And.Contain("workflow ticket close A-T1"));
+        Assert.That(handed[0].Prompt, Does.Contain("Work on ticket A-T1").And.Contain("cd there first").And.Contain("HEAD:master").And.Contain("tickets ticket close A-T1"));
         Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EquivalentTo(new[] { "A-T1", "A-T2" }), "claimed, so not handed out twice");
 
         // A second CLI whose plan was read before the first one's claim landed hands nothing out twice.
@@ -324,7 +324,7 @@ public sealed class AutopilotTests
     [Test]
     public void A_ticket_closed_after_the_queue_was_read_is_not_claimed_or_given_a_worktree()
     {
-        // M.ORCH-T489: `next --claim` handed out M.ORCH-T488, and made its worktree, a second after `workflow ticket close`
+        // M.ORCH-T489: `next --claim` handed out M.ORCH-T488, and made its worktree, a second after `tickets ticket close`
         // had closed it: the plan's ticket list was older than the close. The claim checks the database at that moment.
         var repo = Path.Combine(dir, "A");
         Directory.CreateDirectory(Path.Combine(repo, "docs"));
@@ -333,11 +333,11 @@ public sealed class AutopilotTests
             "| A-T1 | 2026-10-01 | fix | open | x | — |\n| A-T2 | 2026-10-01 | fix | open | y | — |\n");
         try
         {
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(MindAttic.Workflow.Data.WorkflowDb.DefaultPath(dir)))
-                db.Import([new MindAttic.Workflow.Repo("A", repo)]);
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(MindAttic.Tickets.Data.TicketsDb.DefaultPath(dir)))
+                db.Import([new MindAttic.Tickets.Repo("A", repo)]);
             var snap = new Snapshot(Now, [new RepoStatus("A", repo, RepoState.Dormant, [], [], [T("A-T1"), T("A-T2")], null, default)], []);
             var plan = Paced(snap, 5); // read while both were open
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(MindAttic.Workflow.Data.WorkflowDb.DefaultPath(dir)))
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(MindAttic.Tickets.Data.TicketsDb.DefaultPath(dir)))
                 db.Close("A-T1", reference: "done");
             Assert.That((Autopilot.StillOpen(repo, "A-T1"), Autopilot.StillOpen(repo, "a-t2")), Is.EqualTo((false, true)));
 
@@ -349,7 +349,7 @@ public sealed class AutopilotTests
             Assert.That(made, Is.EqualTo(new[] { Path.Combine(dir, "wt", "A", "A-T2") }), "no worktree for the closed one");
             Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EqualTo(new[] { "A-T2" }));
 
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(MindAttic.Workflow.Data.WorkflowDb.DefaultPath(dir)))
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(MindAttic.Tickets.Data.TicketsDb.DefaultPath(dir)))
                 db.Close("A-T2", reference: "done");
             var (none, whyNone) = Autopilot.Next(plan with { }, settings, new JsonStore(Path.Combine(dir, "store2")), ["A"], 1, claim: true, Now, Make, _ => "main",
                 pilotRunning: _ => false);
@@ -709,7 +709,7 @@ public sealed class AutopilotTests
         var push = prompt.IndexOf("git push origin HEAD:master", StringComparison.Ordinal);
         var retry = prompt.IndexOf("If the push is rejected because master moved, fetch, rebase and push again", StringComparison.Ordinal);
         var onlyOnce = prompt.IndexOf("Only once the push has succeeded, as its own step", StringComparison.Ordinal);
-        var close = prompt.IndexOf("workflow ticket close A-T1 --ref", StringComparison.Ordinal);
+        var close = prompt.IndexOf("tickets ticket close A-T1 --ref", StringComparison.Ordinal);
         Assert.That(new[] { push, retry, onlyOnce, close }, Has.All.GreaterThanOrEqualTo(0), prompt);
         Assert.That(push < retry && retry < onlyOnce && onlyOnce < close, "push, retry on a rejection, then close as its own step");
         Assert.That(prompt, Does.Contain("the commit hash as it landed on master"), "the ref is the landed hash, not the pre-rebase one");
@@ -732,7 +732,7 @@ public sealed class AutopilotTests
             (@"D:\WT\B\B-T1", "Work on ticket B-T1"),
         }), "with room, all of A's stories run at once, each in its worktree; C has no CLI open");
         Assert.That(started[0].Prompt, Does.Contain("own git worktree").And.Contains("branch orch/a-t1").And.Contains("/commit")
-            .And.Contains("git push origin HEAD:main").And.Contains("workflow ticket close A-T1 --ref"));
+            .And.Contains("git push origin HEAD:main").And.Contains("tickets ticket close A-T1 --ref"));
         Assert.That(started[0].Log, Does.StartWith(Path.Combine(dir, "logs")).And.Contains("T1-"));
         Assert.That(said, Has.Some.Contains("in the background"));
         var a = store.LoadAssignments().Single(x => x.TicketId == "A-T1");
@@ -971,8 +971,8 @@ public sealed class AutopilotTests
         Git(repo, "push", "-q", "origin", "HEAD:main");
         try
         {
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(MindAttic.Workflow.Data.WorkflowDb.DefaultPath(dir)))
-                db.Import([new MindAttic.Workflow.Repo("A", repo)]);
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(MindAttic.Tickets.Data.TicketsDb.DefaultPath(dir)))
+                db.Import([new MindAttic.Tickets.Repo("A", repo)]);
             var tree = Path.Combine(dir, "wt", "OLD-T9");
             Assert.That(Dispatcher.EnsureWorktree(repo, tree, "orch/old-t9").Ok);
 
@@ -990,7 +990,7 @@ public sealed class AutopilotTests
     [Test]
     public void A_repo_the_database_doesnt_hold_has_its_tickets_read_from_its_user_stories()
     {
-        // M.ORCH-T551: once the Workflow db existed, every ticket of a repo still on USER_STORIES.md read as closed, so Reap
+        // M.ORCH-T551: once the ticket database existed, every ticket of a repo still on USER_STORIES.md read as closed, so Reap
         // called an open ticket finished, removed its worktree and dropped its assignment, then handed it out again.
         const string head = "---\ncode: {0}\n---\n\n# {0}\n\n## Tickets\n\n| ID | Date | Type | Status | Summary | Ref |\n|---|---|---|---|---|---|\n";
         string Repo(string name, string status)
@@ -1010,8 +1010,8 @@ public sealed class AutopilotTests
         var a = Repo("A", "open");
         try
         {
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(MindAttic.Workflow.Data.WorkflowDb.DefaultPath(dir)))
-                db.Import([new MindAttic.Workflow.Repo("B", inDb)]); // A isn't migrated yet
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(MindAttic.Tickets.Data.TicketsDb.DefaultPath(dir)))
+                db.Import([new MindAttic.Tickets.Repo("B", inDb)]); // A isn't migrated yet
             var tree = Path.Combine(dir, "wt", "A-T1");
             Assert.That(Dispatcher.EnsureWorktree(a, tree, "orch/a-t1").Ok);
             var assignment = new Assignment("A-T1", "A", tree, "Claude", Now, true);
