@@ -23,7 +23,7 @@ public sealed record LimitStop(string Window, DateTime UntilUtc, DateTime Stoppe
 
 /// <summary>
 /// Reads what the context gate records about each session (its context fill, turn state, CLI process, /goal) and the
-/// marks it keeps (subagents, /autopilot, /crossrepo, /pacing off, keep-going). It never types into a session.
+/// marks it keeps (subagents, /allocate, /crossrepo, /pacing off, keep-going). It never types into a session.
 /// </summary>
 public sealed class ContextCycler(string? directory = null)
 {
@@ -195,7 +195,7 @@ public sealed class ContextCycler(string? directory = null)
         if (System.IO.Directory.Exists(SubagentDirectory))
             foreach (var f in System.IO.Directory.EnumerateFiles(SubagentDirectory).Where(f => !SubagentAlive(f, DateTime.UtcNow, idle: false)))
                 try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
-        // The /autopilot and /crossrepo marks a hook kept as files while the database was held (or from before it) are read in
+        // The /allocate and /crossrepo marks a hook kept as files while the database was held (or from before it) are read in
         // first (M.ORCH-T528), then a closed CLI's rows go with its files.
         CliMarks.ReadIn(Directory);
         CliMarks.Prune(IsClaude);
@@ -213,7 +213,7 @@ public sealed class ContextCycler(string? directory = null)
             }
     }
 
-    /// <summary>The CLIs /autopilot is on in (by process id), and the repos each works through its own subagents ("*": all):
+    /// <summary>The CLIs /allocate is on in (by process id), and the repos each works through its own subagents ("*": all):
     /// their <c>cli_marks</c> rows, or <c>autopilot-&lt;pid&gt;</c> files not read in yet (<see cref="CliMarks"/>).</summary>
     public IReadOnlyDictionary<int, IReadOnlyList<string>> AutopilotClis() => CliMarks.Read(Directory, CliMarks.Autopilot)
         .Where(x => IsClaude(x.Key))
@@ -267,10 +267,10 @@ public sealed class ContextCycler(string? directory = null)
         }
     }
 
-    /// <summary>The standing <c>/autopilot</c> order the context gate writes: the file is there while it's on.</summary>
+    /// <summary>The standing <c>/allocate</c> order the context gate writes: the file is there while it's on.</summary>
     public const string AutopilotFile = "autopilot.order";
 
-    /// <summary>Null while <c>/autopilot</c> is off; otherwise the repos whose CLIs it works (<c>-repo=a,b</c>), empty for every open one.</summary>
+    /// <summary>Null while <c>/allocate</c> is off; otherwise the repos whose CLIs it works (<c>-repo=a,b</c>), empty for every open one.</summary>
     public IReadOnlyList<string>? AutopilotOrder()
     {
         try
@@ -380,9 +380,9 @@ public sealed class ContextCycler(string? directory = null)
     {
         SessionStates.Prune(nowUtc - TimeSpan.FromDays(7)); // their rows go with their files (M.ORCH-T528)
         if (!System.IO.Directory.Exists(Directory)) return;
-        // A CLI's own /autopilot, /autopilot off, /pacing off and /crossrepo marks are written once and live as long as it does,
+        // A CLI's own /allocate, /allocate off, /pacing off and /crossrepo marks are written once and live as long as it does,
         // however long that is; PruneMarks drops them when the CLI closes. A week-old noautopilot mark dropped here let the default
-        // switch /autopilot back on in a CLI where it was typed off (M.ORCH-T484). The billing mode holds until it's switched,
+        // switch /allocate back on in a CLI where it was typed off (M.ORCH-T484). The billing mode holds until it's switched,
         // however long (M.ORCH-T436), and when a key was set aside is needed as long as a CLI started on it before then runs,
         // however long (M.ORCH-T457).
         foreach (var f in System.IO.Directory.EnumerateFiles(Directory).Where(f => Path.GetFileName(f) is var n && n != AutopilotFile &&

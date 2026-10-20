@@ -58,7 +58,7 @@ public static partial class TicketReplay
     }
 
     /// <summary>Whether a prompt typed into the session (a user line's own text, not a tool's output or a tool call's input)
-    /// asks for <paramref name="ticketId"/>: an /autopilot CLI prints and hands out many tickets' prompts, but works none itself.</summary>
+    /// asks for <paramref name="ticketId"/>: an /allocate CLI prints and hands out many tickets' prompts, but works none itself.</summary>
     internal static bool AskedFor(string head, string ticketId) => Asks(head, id => id.Equals(ticketId, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Whether a prompt typed into the session asks for any ticket matching <paramref name="match"/> (see <see cref="AskedFor"/>).</summary>

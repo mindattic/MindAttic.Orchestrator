@@ -5,7 +5,7 @@ using Microsoft.Data.Sqlite;
 namespace MindAttic.Orchestrator.Scheduling;
 
 /// <summary>
-/// Lets only one orchestrator process feed the /autopilot CLIs: the logon daemon and an open dashboard would
+/// Lets only one orchestrator process feed the /allocate CLIs: the logon daemon and an open dashboard would
 /// otherwise both type the same story into a CLI. It's a row of orchestrator.db's <c>leases</c> (M.ORCH-T526; it was a lock
 /// file held open with no sharing) naming the process that holds it, by pid and start time: one that exited or crashed holds
 /// nothing, so the next to ask takes it over, and a reused pid isn't taken for the holder. Taken in one write transaction, so

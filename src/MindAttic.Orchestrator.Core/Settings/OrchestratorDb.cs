@@ -196,7 +196,7 @@ public sealed class OrchestratorDb(string path)
             PRIMARY KEY (cli, gate_pid)
         );
         """,
-        // 6: each CLI's /autopilot, /autopilot off and /crossrepo marks (M.ORCH-T528), were autopilot-<pid>, noautopilot-<pid>
+        // 6: each CLI's /allocate, /allocate off and /crossrepo marks (M.ORCH-T528), were autopilot-<pid>, noautopilot-<pid>
         // and crossrepo-<pid> files in ~/.claude/session-context: one row per kind and CLI process, its text as the file held
         // it (the repos, comma-separated; empty for noautopilot). The hooks write them through stdlib sqlite3; a file is
         // written again only while the database is held, and the daemon reads it in. Not in the dump: they last as long as
@@ -211,7 +211,7 @@ public sealed class OrchestratorDb(string path)
         );
         """,
         // 7: which CLI made each claim (M.ORCH-T532): its process id as the pace gate resolves it, and its session then, so the
-        // idle-claim nudge, the fair share and the agent board give a claim to the CLI that made it, not whichever /autopilot
+        // idle-claim nudge, the fair share and the agent board give a claim to the CLI that made it, not whichever /allocate
         // CLI covers its repo. Rows already there keep NULL in both: claimed by a CLI not known.
         """
         ALTER TABLE assignments ADD COLUMN cli INTEGER;

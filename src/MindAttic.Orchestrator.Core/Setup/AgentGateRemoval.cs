@@ -48,7 +48,7 @@ public static class AgentGateRemoval
         foreach (var (file, body) in new[]
         {
             ("pacing.md", AgentGate.PacingCommand),
-            ("autopilot.md", AgentGate.AutopilotCommand), ("work.md", AgentGate.WorkCommand), ("allocate.md", AgentGate.AllocateCommand), ("crossrepo.md", AgentGate.CrossRepoCommand), ("handoff.md", AgentGate.HandoffCommand),
+            ("allocate.md", AgentGate.AllocateCommand), ("crossrepo.md", AgentGate.CrossRepoCommand), ("handoff.md", AgentGate.HandoffCommand),
         })
         {
             var path = Path.Combine(claude, "commands", file);

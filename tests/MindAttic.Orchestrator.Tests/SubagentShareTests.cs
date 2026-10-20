@@ -3,7 +3,7 @@ using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
 
-/// <summary>M.ORCH-T495: one repo's /autopilot claimed all 8 subagent places at once while every other CLI got none.</summary>
+/// <summary>M.ORCH-T495: one repo's /allocate claimed all 8 subagent places at once while every other CLI got none.</summary>
 public sealed class SubagentShareTests
 {
     private static Dictionary<int, int> Running(params (int Cli, int Count)[] r) => r.ToDictionary(x => x.Cli, x => x.Count);

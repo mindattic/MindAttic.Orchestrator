@@ -173,7 +173,7 @@ internal sealed class ReserveCommand : Command<ReserveCommand.Settings>
     }
 }
 
-/// <summary>Which CLIs have /autopilot on, and what each would hand its subagents next, without claiming anything.</summary>
+/// <summary>Which CLIs have /allocate on, and what each would hand its subagents next, without claiming anything.</summary>
 internal sealed class DryRunCommand : Command
 {
     public override int Execute(CommandContext context)
@@ -181,10 +181,10 @@ internal sealed class DryRunCommand : Command
         var (_, store, _, plan) = Ctx.Load();
         var cycler = new MindAttic.Orchestrator.Sessions.ContextCycler();
         var clis = cycler.AutopilotClis();
-        if (clis.Count == 0) { AnsiConsole.MarkupLine("[grey]/autopilot is off in every CLI; type /autopilot (optionally -repo=A,B) in the CLI that should work the tickets.[/]"); return 0; }
+        if (clis.Count == 0) { AnsiConsole.MarkupLine("[grey]/allocate is off in every CLI; type /allocate (optionally -repo=A,B) in the CLI that should work the tickets.[/]"); return 0; }
         foreach (var (pid, repos) in clis)
         {
-            AnsiConsole.MarkupLine($"/autopilot is on in CLI {pid} for {Markup.Escape(string.Join(", ", repos))}:");
+            AnsiConsole.MarkupLine($"/allocate is on in CLI {pid} for {Markup.Escape(string.Join(", ", repos))}:");
             var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, null, claim: false, DateTime.UtcNow,
                 self: cycler.LatestSessionOf(pid), handingOff: MindAttic.Orchestrator.Sessions.Handoff.Holding(cycler.Directory),
                 cli: pid, pilots: clis);
@@ -196,7 +196,7 @@ internal sealed class DryRunCommand : Command
     }
 }
 
-/// <summary>The next tickets a CLI running /autopilot hands to its subagents: each with its worktree and full prompt when claimed.</summary>
+/// <summary>The next tickets a CLI running /allocate hands to its subagents: each with its worktree and full prompt when claimed.</summary>
 internal sealed class NextCommand : Command<NextCommand.Settings>
 {
     public sealed class Settings : CommandSettings

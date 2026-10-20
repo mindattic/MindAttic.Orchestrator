@@ -258,7 +258,7 @@ public sealed class DispatcherTests
     [Test]
     public void A_ticket_claimed_elsewhere_since_the_plan_opens_no_tab_and_keeps_that_claim()
     {
-        var claim = Assign("A-T1", "A", @"D:\WT\A\A-T1", true); // an /autopilot CLI's `next --claim`
+        var claim = Assign("A-T1", "A", @"D:\WT\A\A-T1", true); // an /allocate CLI's `next --claim`
         store.SaveAssignments([claim]);
         var opened = 0;
         var dispatcher = Make((_, _, _, _, _) => { opened++; return (null, Task.FromResult(true)); });

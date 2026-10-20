@@ -137,7 +137,7 @@ public sealed class AutopilotHoldsTests
     [Test]
     public void With_autopilot_off_here_the_lease_still_decides_who_reaps_and_sweeps()
     {
-        // CLIs run /autopilot now, so the order is unset in the daemon and the dashboard alike: only the lease holder may
+        // CLIs run /allocate now, so the order is unset in the daemon and the dashboard alike: only the lease holder may
         // reap and run the hourly sweep's git (the dashboard ran it on its UI thread beside the daemon).
         order = null;
         var snap = Snap(("A", [T("A-T1")]));

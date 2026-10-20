@@ -9,7 +9,7 @@ using NUnit.Framework;
 namespace MindAttic.Orchestrator.Tests;
 
 /// <summary>
-/// M.ORCH-T532: a claim records the CLI that made it, so with two /autopilot CLIs on one repo the idle-claim nudge, the fair
+/// M.ORCH-T532: a claim records the CLI that made it, so with two /allocate CLIs on one repo the idle-claim nudge, the fair
 /// share and the agent board each give a CLI only its own claims (T529's nudge prompted the repo's owner for the other's).
 /// </summary>
 public sealed class ClaimOwnerTests
@@ -89,7 +89,7 @@ public sealed class ClaimOwnerTests
         var idle = AutopilotWaker.IdleClaims(snap, plan, pilots, Now);
 
         Assert.That(idle.Select(i => (i.Cli, i.Item.Id)), Is.EqualTo(new[] { (Second, "A-T1"), (Second, "A-T2") }),
-            "made before claims recorded it, or by a CLI no longer running /autopilot: left to the one that works A");
+            "made before claims recorded it, or by a CLI no longer running /allocate: left to the one that works A");
     }
 
     [Test]

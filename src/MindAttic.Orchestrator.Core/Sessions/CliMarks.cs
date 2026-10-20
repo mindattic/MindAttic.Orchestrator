@@ -4,7 +4,7 @@ using MindAttic.Orchestrator.Settings;
 namespace MindAttic.Orchestrator.Sessions;
 
 /// <summary>
-/// Each CLI's /autopilot, /autopilot off and /crossrepo marks (M.ORCH-T528): rows of the orchestrator database's
+/// Each CLI's /allocate, /allocate off and /crossrepo marks (M.ORCH-T528): rows of the orchestrator database's
 /// <c>cli_marks</c> (schema step 6), one per kind and CLI process, which the hooks write through stdlib sqlite3. While the
 /// database is held, missing or from before the table a hook writes the old <c>&lt;kind&gt;-&lt;pid&gt;</c> file instead
 /// (a removal leaves <c>&lt;kind&gt;-&lt;pid&gt;.cleared</c>); every reader takes such a file over the row, and the daemon

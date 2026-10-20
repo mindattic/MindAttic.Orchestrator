@@ -63,10 +63,10 @@ internal static class CliApp
             config.AddCommand<SettingsCommand>("settings").WithDescription("Show or change scheduler settings.");
             config.AddCommand<AuditCommand>("audit").WithDescription("Find drift in shared agent files and code duplicated across repos.");
             config.AddCommand<BlockCommand>("block").WithDescription("Make a ticket wait for others (--by X-T1), or --clear it.");
-            config.AddCommand<NextCommand>("next").WithDescription("The next tickets a CLI running /autopilot hands its subagents (--claim: worktree, assignment and prompt).");
+            config.AddCommand<NextCommand>("next").WithDescription("The next tickets a CLI running /allocate hands its subagents (--claim: worktree, assignment and prompt).");
             config.AddCommand<ApproveCommand>("approve").WithDescription("Approve tickets for work (fixes need none); with no ids, list what's waiting for your yes. --undo takes it back.");
             config.AddCommand<ReserveCommand>("reserve").WithDescription("Set aside tokens for a ticket so background work can't spend them first (0 releases).");
-            config.AddCommand<DryRunCommand>("dryrun").WithDescription("Show what /autopilot would start right now, without starting anything.");
+            config.AddCommand<DryRunCommand>("dryrun").WithDescription("Show what /allocate would start right now, without starting anything.");
             config.AddCommand<ShowCommand>("show").WithDescription("A ticket end to end: its row, the sessions that worked on it, and its commits (--diff for the full diff).");
             config.AddCommand<HygieneCommand>("hygiene").WithDescription("Closed tickets that may not be done: no Ref cited, or a later ticket says it came back.");
             config.AddCommand<IntakeCommand>("intake").WithDescription("File GitHub issues labelled orchestrator and CI failures on main as tickets (--dry-run to preview).");
@@ -74,7 +74,7 @@ internal static class CliApp
             config.AddCommand<BillingCommand>("billing").WithDescription("Who every CLI bills (Claude Team or the Vault's API key) and each open CLI's own billing; team or api switches every CLI.");
             config.AddCommand<AccountsCommand>("accounts").WithDescription("Every Claude account signed in to here: weekly % used and left, its reset, the 5-hour % and reset, and when each was last read (orchestrator.db).");
             config.AddCommand<LoginCommand>("login").WithDescription("The account roster (as the dashboard's account menu shows it); with an email or short name, opens that account's login (claude auth login --email); --api-key bills the Vault's API key.");
-            config.AddCommand<ClisCommand>("clis").WithDescription("Every open Claude CLI and whether /autopilot is on in it (the roster the daemon keeps in orchestrator.db).");
+            config.AddCommand<ClisCommand>("clis").WithDescription("Every open Claude CLI and whether /allocate is on in it (the roster the daemon keeps in orchestrator.db).");
             config.AddCommand<HandoffCommand>("handoff").WithDescription("/handoff from here: status (default) lists what's still working; on winds every CLI down for an account switch; off cancels it.");
             config.AddCommand<LedgerCommand>("ledger").WithDescription("Every 5-hour window graded against 99%-never-over (ok, under, blind, over) and the record so far; --csv writes it out. Exits 1 if one went over in --days.");
             config.AddCommand<RemindCommand>("remind").WithDescription("Save a reminder the daemon texts through Psst when it's due (\"<text>\" --at \"tomorrow 9am\" [[--to <contact>]]); --list, --cancel <id>.");

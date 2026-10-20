@@ -50,7 +50,7 @@ public sealed record TicketCosts(IReadOnlyList<SessionCost> Sessions)
     }
 
     /// <summary>The sessions that were dispatched on a ticket, with what they've spent so far. A subagent handed its own
-    /// ticket (an /autopilot handout) is charged to that ticket alone, keyed <c>&lt;session&gt;/&lt;agent&gt;</c>; the CLI that
+    /// ticket (an /allocate handout) is charged to that ticket alone, keyed <c>&lt;session&gt;/&lt;agent&gt;</c>; the CLI that
     /// started it is charged only for the rest, and only when it was itself dispatched on a ticket (M.ORCH-T252).</summary>
     public static IEnumerable<SessionCost> Observe(IEnumerable<TranscriptSession> sessions, Func<string?, string> repoOf)
     {

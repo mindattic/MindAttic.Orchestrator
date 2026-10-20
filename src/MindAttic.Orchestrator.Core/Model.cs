@@ -64,7 +64,7 @@ public sealed record TranscriptSession(string SessionId, string Cwd, DateTime La
     public string? TicketId { get; init; }
     public string? TicketType { get; init; }
 
-    /// <summary>Its subagents that were handed a ticket of their own (an /autopilot handout, M.ORCH-T252): their responses
+    /// <summary>Its subagents that were handed a ticket of their own (an /allocate handout, M.ORCH-T252): their responses
     /// are in <see cref="Events"/> (the CLI's limits count them) but their cost is their ticket's, not <see cref="TicketId"/>'s.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public IReadOnlyList<TicketedSubagent> TicketedSubagents { get; init; } = [];

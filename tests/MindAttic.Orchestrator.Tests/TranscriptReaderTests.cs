@@ -359,7 +359,7 @@ public sealed class TranscriptReaderTests
     [Test]
     public void A_subagents_ticket_is_its_own_not_its_parent_sessions()
     {
-        // /autopilot hands each subagent "Work on ticket X": the parent CLI works many, so it isn't stamped with the first.
+        // /allocate hands each subagent "Work on ticket X": the parent CLI works many, so it isn't stamped with the first.
         System.IO.File.WriteAllLines(File(), [Line("m1", "2026-10-13T12:00:00Z", 1, 1)]);
         var sub = Path.Combine(dir, "D--Projects-X", "s1", "subagents");
         Directory.CreateDirectory(sub);

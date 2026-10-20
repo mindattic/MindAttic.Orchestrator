@@ -326,7 +326,7 @@ public sealed class HookScriptTests
     public void Keep_going_asks_orchestrator_next_for_a_repo_on_its_own_story_file()
     {
         // M.ORCH-T445: UnitySolarSystem keeps its tickets in docs/USER_STORIES.md, not the database, so the hook's own count
-        // never saw its approved tickets and let an /autopilot CLI stop with work left.
+        // never saw its approved tickets and let an /allocate CLI stop with work left.
         var uss = Path.Combine(ws, "UnitySolarSystem");
         Directory.CreateDirectory(Path.Combine(uss, "docs"));
         File.WriteAllText(Path.Combine(uss, "docs", "USER_STORIES.md"), "| U.SPC-T9 | 2026-10-18 | feature | open | A feature | — |\n");
@@ -533,8 +533,8 @@ public sealed class HookScriptTests
     [Test]
     public void A_cli_records_its_process_from_its_first_prompt()
     {
-        // An /autopilot run's stops are all pushed back, so the Stop that used to record the pid never comes.
-        Gate(new { hook_event_name = "UserPromptSubmit", session_id = "p1", prompt = "/autopilot", cwd = ws }, AgentGate.ContextScriptName);
+        // An /allocate run's stops are all pushed back, so the Stop that used to record the pid never comes.
+        Gate(new { hook_event_name = "UserPromptSubmit", session_id = "p1", prompt = "/allocate", cwd = ws }, AgentGate.ContextScriptName);
         Assert.That(File.ReadAllText(Path.Combine(Marks, "p1.state.json")), Does.Contain("\"pid\""));
     }
 
@@ -565,7 +565,7 @@ public sealed class HookScriptTests
         var blocked = Gate(Prompt("fix the login bug"), AgentGate.ContextScriptName).Output;
         Assert.That(blocked, Does.Contain("\"block\"").And.Contain("9:50 PM").And.Contain("no tokens were spent"));
         Assert.That(GateLog().Single(), Does.Contain("\"decision\": \"prompt-answered\""), "the answered prompt is on the pace ledger's record");
-        Assert.That(Gate(Prompt("/autopilot off"), AgentGate.ContextScriptName).Output, Does.Not.Contain("\"block\""));
+        Assert.That(Gate(Prompt("/allocate off"), AgentGate.ContextScriptName).Output, Does.Not.Contain("\"block\""));
 
         Status(new { });
         Assert.That(Gate(Prompt("fix the login bug"), AgentGate.ContextScriptName).Output, Does.Not.Contain("\"block\""), "under the target typing is never held");
@@ -614,7 +614,7 @@ public sealed class HookScriptTests
             "d.execute(\"insert into tickets values('U.SPC-T1','UnitySolarSystem','open',1,'fix')\"); d.commit()", db }, UseShellExecute = false })!)
             mk.WaitForExit(20_000);
         var uss = Path.Combine(ws, "UnitySolarSystem");
-        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem"); // keep-going acts only in the CLI /autopilot is on in
+        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem"); // keep-going acts only in the CLI /allocate is on in
         object Asking(string sid) => new { hook_event_name = "Stop", session_id = sid, cwd = uss, last_assistant_message = "Shall I start the next one?" };
         Status(new { });
         Assert.That(Gate(Asking("w3"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\""), "open tickets: told to carry on");
@@ -800,7 +800,7 @@ public sealed class HookScriptTests
         finally { held.Kill(); }
     }
 
-    /// <summary>M.ORCH-T495: one repo's /autopilot took all 8 places at once while the other CLIs got none.</summary>
+    /// <summary>M.ORCH-T495: one repo's /allocate took all 8 places at once while the other CLIs got none.</summary>
     [Test]
     public void A_cli_at_its_fair_share_is_held_while_another_cli_waits_and_one_under_its_share_goes_first()
     {
@@ -930,9 +930,9 @@ public sealed class HookScriptTests
     {
         var mark = Path.Combine(Marks, $"autopilot-{Cli}");
         object Prompt(string prompt) => new { hook_event_name = "UserPromptSubmit", session_id = "s1", prompt, cwd = ws };
-        Gate(Prompt("/autopilot -repo=a,b on"), AgentGate.ContextScriptName);
+        Gate(Prompt("/allocate -repo=a,b on"), AgentGate.ContextScriptName);
         Assert.That(File.ReadAllText(mark), Is.EqualTo("a,b"));
-        Assert.That(Gate(Prompt("/autopilot -repos=MindAttic.Workflow"), AgentGate.ContextScriptName).Output,
+        Assert.That(Gate(Prompt("/allocate -repos=MindAttic.Workflow"), AgentGate.ContextScriptName).Output,
             Does.Contain("\"block\"").And.Contain("-repos is gone"), "the -repos alias is turned away, not guessed at");
         Assert.That(File.ReadAllText(mark), Is.EqualTo("a,b"), "and changes nothing");
 
@@ -940,17 +940,17 @@ public sealed class HookScriptTests
         var uss = Path.Combine(ws, "UnitySolarSystem");
         var file = Path.Combine(ws, "MindAttic.Workflow", "src", "x.cs");
         Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = file }, cwd = uss }).Output, Does.Contain("\"deny\""), "not named yet");
-        Gate(Prompt("/autopilot -repo=MINDATTIC.*"), AgentGate.ContextScriptName);
+        Gate(Prompt("/allocate -repo=MINDATTIC.*"), AgentGate.ContextScriptName);
         Assert.That(File.ReadAllText(mark), Is.EqualTo("a,b,MINDATTIC.*"), "a wildcard is kept as typed");
         Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = file }, cwd = uss }).Output, Is.Empty, "MindAttic.* names MindAttic.Workflow");
         Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = Path.Combine(uss, "x.cs") }, cwd = Path.Combine(ws, "MindAttic.Workflow") }).Output,
             Does.Contain("\"deny\""), "but not UnitySolarSystem");
-        Gate(Prompt("/autopilot off"), AgentGate.ContextScriptName);
+        Gate(Prompt("/allocate off"), AgentGate.ContextScriptName);
         Assert.That(File.Exists(mark), Is.False);
         Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = file }, cwd = uss }).Output, Does.Contain("\"deny\""), "off: back to its own repo");
     }
 
-    // ---- /crossrepo and /autopilot through the Skill tool (M.ORCH-T435): only when the user's own prompt asked ----
+    // ---- /crossrepo and /allocate through the Skill tool (M.ORCH-T435): only when the user's own prompt asked ----
 
     private object Said(string prompt) => new { hook_event_name = "UserPromptSubmit", session_id = "sk", prompt, cwd = Uss };
     private object SkillCall(string skill, string args = "") => new { hook_event_name = "PreToolUse", session_id = "sk", tool_name = "Skill", tool_input = new { skill, args }, cwd = Uss };
@@ -986,14 +986,14 @@ public sealed class HookScriptTests
     {
         var mark = Path.Combine(Marks, $"autopilot-{Cli}");
         Gate(Said("work the Workflow tickets"), AgentGate.ContextScriptName);
-        Assert.That(Gate(SkillCall("autopilot", "-repo=MindAttic.Workflow")).Output, Does.Contain("\"deny\"").And.Contain("/autopilot"));
+        Assert.That(Gate(SkillCall("autopilot", "-repo=MindAttic.Workflow")).Output, Does.Contain("\"deny\"").And.Contain("/allocate"));
         Assert.That(File.Exists(mark), Is.False);
         Assert.That(Gate(EditIn("MindAttic.Workflow")).Output, Does.Contain("\"deny\""));
 
         Gate(Said("turn auto pilot on for MindAttic.Workflow"), AgentGate.ContextScriptName);
         Assert.That(Gate(SkillCall("autopilot", "-repo=MindAttic.Workflow")).Output, Does.Not.Contain("\"deny\""));
         Assert.That(File.ReadAllText(mark), Is.EqualTo("MindAttic.Workflow"));
-        Assert.That(Gate(EditIn("MindAttic.Workflow")).Output, Is.Empty, "its repos are this CLI's exception, as typed /autopilot's are");
+        Assert.That(Gate(EditIn("MindAttic.Workflow")).Output, Is.Empty, "its repos are this CLI's exception, as typed /allocate's are");
         Assert.That(Gate(SkillCall("autopilot", "-repos=X")).Output, Does.Contain("\"deny\"").And.Contain("-repos is gone"), "the same rules as typed");
         Assert.That(File.ReadAllText(mark), Is.EqualTo("MindAttic.Workflow"));
     }
@@ -1130,12 +1130,12 @@ public sealed class HookScriptTests
         Assert.That(AgentGate.AddHook(odd, "Stop", AgentGate.ContextScriptName, "python c.py", 10), Is.True, "a non-string command is someone else's: ours is added beside it");
     }
 
-    // ---- keep-going (M.ORCH-T140): what context-gate.py does when an /autopilot turn stops ----
+    // ---- keep-going (M.ORCH-T140): what context-gate.py does when an /allocate turn stops ----
 
     private string Uss => Path.Combine(ws, "UnitySolarSystem");
     private string KeepGoingLog => Path.Combine(Marks, "keep-going.jsonl");
 
-    /// <summary>Two open fixes for UnitySolarSystem in the workflow db, and /autopilot on for it in this CLI.</summary>
+    /// <summary>Two open fixes for UnitySolarSystem in the workflow db, and /allocate on for it in this CLI.</summary>
     private void AutopilotWithOpenFixes()
     {
         var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
@@ -1269,12 +1269,12 @@ public sealed class HookScriptTests
     public void An_autopilot_list_outside_the_ansi_code_page_is_read_as_the_utf8_it_is_written_in()
     {
         // M.ORCH-T400: the marks are written as UTF-8 now; read in the ANSI code page, "Łódź" (0x81 in its bytes) failed the read,
-        // and /autopilot read as off in that CLI. (The write takes a claude.exe ancestor, which a test doesn't have.)
+        // and /allocate read as off in that CLI. (The write takes a claude.exe ancestor, which a test doesn't have.)
         AutopilotWithOpenFixes();
         Status(new { });
         File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem,Łódź", new System.Text.UTF8Encoding(false));
 
-        Assert.That(Stopped("x1"), Does.Contain("\"block\""), "still on /autopilot for UnitySolarSystem");
+        Assert.That(Stopped("x1"), Does.Contain("\"block\""), "still on /allocate for UnitySolarSystem");
     }
 
     [Test]
@@ -1319,7 +1319,7 @@ public sealed class HookScriptTests
     [Test]
     public void A_codex_stop_or_gemini_after_agent_is_never_pushed_onto_tickets()
     {
-        // The installer hooks both up to context-gate.py (codex / gemini on the command line), but /autopilot runs in a
+        // The installer hooks both up to context-gate.py (codex / gemini on the command line), but /allocate runs in a
         // Claude CLI: theirs are let stop, with nothing logged and no session state written (84d9b91).
         AutopilotWithOpenFixes();
         Status(new { });
@@ -2026,14 +2026,14 @@ public sealed class HookScriptTests
     {
         Tickets(("U.SPC-T1", "UnitySolarSystem"));
         Status(new { });
-        Gate(Said("/autopilot"), AgentGate.ContextScriptName);
+        Gate(Said("/allocate"), AgentGate.ContextScriptName);
         Gate(Said("/handoff"), AgentGate.ContextScriptName);
         using (var h = JsonDocument.Parse(File.ReadAllText(HandoffMark)))
         {
             Assert.That(h.RootElement.GetProperty("state").GetString(), Is.EqualTo("winding"));
             var cli = h.RootElement.GetProperty("autopilot").EnumerateArray().Single();
             Assert.That((cli.GetProperty("pid").GetInt32(), cli.GetProperty("repo").GetString(), cli.GetProperty("repos").GetString(), cli.GetProperty("off").GetBoolean()),
-                Is.EqualTo((Cli, "UnitySolarSystem", "UnitySolarSystem", false)), "this CLI's /autopilot (typed, for its repo) is recorded for after the switch");
+                Is.EqualTo((Cli, "UnitySolarSystem", "UnitySolarSystem", false)), "this CLI's /allocate (typed, for its repo) is recorded for after the switch");
         }
         Assert.That(File.ReadAllText(Path.Combine(Marks, "sk.state.json")), Does.Contain("\"exempt\": \"/handoff\""), "its turn quicksaves past every pace gate");
         Assert.That(MindAttic.Orchestrator.Sessions.Handoff.Read(Marks)!.Holds, Is.True, "the orchestrator reads the same mark");
@@ -2111,13 +2111,13 @@ public sealed class HookScriptTests
 
         var first = Context(Uss, "5001");
         Assert.That(first, Does.Contain("[Handoff] Picked up after the account switch.")
-            .And.Contain("/autopilot -repo=UnitySolarSystem,MindAttic.Workflow is back on")
+            .And.Contain("/allocate -repo=UnitySolarSystem,MindAttic.Workflow is back on")
             .And.Contain("Task: carry on with the parser (load)"));
         Assert.That(CliMark("autopilot", 5001), Is.EqualTo("UnitySolarSystem,MindAttic.Workflow"));
         Assert.That(MindAttic.Orchestrator.Sessions.Handoff.Read(Marks)!.State, Is.EqualTo("resumed"), "the first start clears the hold");
 
         var second = Context(workflow, "5002");
-        Assert.That(second, Does.Contain("/autopilot stays off"));
+        Assert.That(second, Does.Contain("/allocate stays off"));
         Assert.That((CliMark("noautopilot", 5002) is not null, CliMark("autopilot", 5002) is not null), Is.EqualTo((true, false)),
             "typed off before the switch, so it stays off");
 
@@ -2170,7 +2170,7 @@ public sealed class HookScriptTests
             Assert.That(output, Does.Not.Contain("[Handoff]"), source);
             Assert.That(MindAttic.Orchestrator.Sessions.Handoff.Read(Marks)!.State, Is.EqualTo("quiet"), source + ": the hold stays until the switch");
         }
-        Assert.That(Directory.GetFiles(Marks, "handoff-restored-*"), Is.Empty, "the saved /autopilot is kept for the new account");
+        Assert.That(Directory.GetFiles(Marks, "handoff-restored-*"), Is.Empty, "the saved /allocate is kept for the new account");
     }
 
     // ---- M.ORCH-T526: the status row and the event log in orchestrator.db ----

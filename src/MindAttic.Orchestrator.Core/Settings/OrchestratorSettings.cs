@@ -98,7 +98,7 @@ public sealed record OrchestratorSettings
     /// <summary>Sessions the scheduler will fill up to (working + waiting both occupy a slot).</summary>
     public int MaxConcurrentSessions { get; init; } = 4;
 
-    /// <summary>The master switch for <c>/autopilot</c>: on, every CLI where <c>/autopilot</c> was typed is fed its
+    /// <summary>The master switch for <c>/allocate</c>: on, every CLI where <c>/allocate</c> was typed is fed its
     /// repos' next story whenever it's idle and the pace allows; off pauses all of them (their marks stay).</summary>
     public bool Autopilot { get; init; } = true;
 
@@ -153,7 +153,7 @@ public sealed record OrchestratorSettings
     /// leaves the repo alone through the pauses between your prompts. 0 counts only a CLI that's mid-turn.</summary>
     public int AutopilotHandMinutes { get; init; } = 15;
 
-    /// <summary>Repos <c>/autopilot</c> never starts agents in, even when named or their CLI is open.</summary>
+    /// <summary>Repos <c>/allocate</c> never starts agents in, even when named or their CLI is open.</summary>
     public List<string> AutopilotSkip { get; init; } = [];
 
     /// <summary>Approvals as settings.json kept them before the Workflow database's queue held them (M.ORCH-T384): read only by
@@ -200,7 +200,7 @@ public sealed record OrchestratorSettings
 /// <summary>A ticket the orchestrator has handed to a session.</summary>
 public sealed record Assignment(string TicketId, string Repo, string Directory, string Provider, DateTime StartedUtc, bool Worktree)
 {
-    /// <summary>The background agent <c>/autopilot</c> started on it (its process id); null for a tab.</summary>
+    /// <summary>The background agent <c>/allocate</c> started on it (its process id); null for a tab.</summary>
     public int? Pilot { get; init; }
 
     /// <summary>When <see cref="Pilot"/>'s process started, so a later process given the same id isn't taken for it.</summary>

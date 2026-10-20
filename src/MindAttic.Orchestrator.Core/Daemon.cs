@@ -9,7 +9,7 @@ namespace MindAttic.Orchestrator;
 
 /// <summary>
 /// The always-on loop WatchDog's Orchestrator.Daemon job runs at logon: keeps <c>rl-status.json</c> and the pace current, notices
-/// stale assignments, cycles context, and feeds the CLIs where /autopilot is on (holding <see cref="DispatchLease"/>). Every
+/// stale assignments, cycles context, and feeds the CLIs where /allocate is on (holding <see cref="DispatchLease"/>). Every
 /// event goes to MindAttic.Log; <c>echo</c> also gets it when someone is watching (the CLI's console).
 /// Runs until cancelled; a failed refresh is logged and retried, since nobody sees a headless crash.
 /// </summary>
@@ -107,7 +107,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 if (wakeLease.TryAcquire())
                 {
                     ReportWakes(waker.Tick(snapshot.Pace, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
-                    // An idle /autopilot CLI let stop when its next handed out nothing is sent back once next has work for it
+                    // An idle /allocate CLI let stop when its next handed out nothing is sent back once next has work for it
                     // (M.ORCH-T523): keep-going acts only as a turn ends, so nothing asked it again when room opened.
                     ReportAutopilotWakes(pilotWaker.Tick(plan, s, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
                     // On course to end under target with room for more: a CLI holding claims no subagent is on is told to start
@@ -286,7 +286,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
     private readonly UnderTarget underTarget = new();
 
-    /// <summary>Logs each idle /autopilot CLI sent back for work; one it couldn't type into raises the Needs-you alert instead.</summary>
+    /// <summary>Logs each idle /allocate CLI sent back for work; one it couldn't type into raises the Needs-you alert instead.</summary>
     internal void ReportAutopilotWakes(IEnumerable<AutopilotWaker.Wake> wakes)
     {
         foreach (var w in wakes)
@@ -299,7 +299,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// <summary>Logs and raises the Needs-you alert when <see cref="UnderTarget"/> says one is due.</summary>
     internal void ReportUnderTarget(Snapshot snapshot, SchedulePlan plan, IReadOnlyDictionary<int, IReadOnlyList<string>> autopilotClis)
     {
-        // Every tick, once a window: on course to end under target with nothing left for any /autopilot CLI to start (M.ORCH-T529).
+        // Every tick, once a window: on course to end under target with nothing left for any /allocate CLI to start (M.ORCH-T529).
         if (underTarget.CheckNoWork(snapshot, plan, autopilotClis) is { } none)
         {
             Say(LogEventLevel.Warning, $"under target: {none}");
@@ -516,7 +516,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         else
         {
             Say(level == Activity.HealthLevel.Danger ? LogEventLevel.Error : LogEventLevel.Warning,
-                // Said, not held: /autopilot CLIs hand out tickets through orchestrator next, which a busy machine doesn't
+                // Said, not held: /allocate CLIs hand out tickets through orchestrator next, which a busy machine doesn't
                 // stop (heavy load is the point), so the alert mustn't claim autopilot is holding (M.ORCH-T357).
                 $"machine health {level.ToString().ToLowerInvariant()}: {why} ({offenders})");
             // One alert per episode and per escalation: warn, then danger; not again for every step back down and up.

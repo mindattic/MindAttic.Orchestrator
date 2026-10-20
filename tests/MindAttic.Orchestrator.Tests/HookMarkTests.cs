@@ -260,7 +260,7 @@ public sealed class HookMarkTests
         Assert.That(File.Exists(HandoffFile), Is.False, "no database: a clear just deletes the file");
     }
 
-    // ---- the per-CLI /autopilot, /autopilot off and /crossrepo marks (schema step 6) ----
+    // ---- the per-CLI /allocate, /allocate off and /crossrepo marks (schema step 6) ----
 
     private static Dictionary<string, string> CliRows()
     {
@@ -352,7 +352,7 @@ public sealed class HookMarkTests
     public void A_fresh_hook_waits_out_a_database_held_a_few_seconds_rather_than_reading_its_marks_as_missing()
     {
         // M.ORCH-T542: a hook process has no copy of its own to stand in, so a short wait that runs out read every mark as
-        // missing: the handoff wasn't holding, and /autopilot -repo=C replaced A,B with C.
+        // missing: the handoff wasn't holding, and /allocate -repo=C replaced A,B with C.
         Db.Open().Dispose();
         Hook("""set_cli_mark("autopilot", 5, "A,B")""");
         Hook(HookHandoff + """write_whole_mark("handoff", HANDOFF, {"state": "winding", "started": "2026-10-20T10:00:00Z", "autopilot": []})""");

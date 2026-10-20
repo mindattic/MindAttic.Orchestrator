@@ -72,7 +72,7 @@ public sealed class AgentGateRemovalTests
 
         Assert.That(File.Exists(Path.Combine(Claude, AgentGate.ScriptName)), Is.False, "the scripts go with their hooks");
         Assert.That(File.Exists(Path.Combine(Claude, AgentGate.ContextScriptName)), Is.False);
-        Assert.That(File.Exists(Path.Combine(Claude, "commands", "autopilot.md")), Is.False);
+        Assert.That(File.Exists(Path.Combine(Claude, "commands", "allocate.md")), Is.False);
         Assert.That(Remove(), Is.Null, "nothing of the orchestrator's left: a second uninstall does nothing");
     }
 
@@ -218,12 +218,12 @@ public sealed class AgentGateRemovalTests
     public void A_command_file_the_user_rewrote_is_kept()
     {
         AgentGate.Ensure(Claude);
-        var autopilot = Path.Combine(Claude, "commands", "autopilot.md");
-        File.WriteAllText(autopilot, "my own autopilot");
+        var allocate = Path.Combine(Claude, "commands", "allocate.md");
+        File.WriteAllText(allocate, "my own allocate");
 
         Remove();
 
-        Assert.That(File.ReadAllText(autopilot), Is.EqualTo("my own autopilot"));
+        Assert.That(File.ReadAllText(allocate), Is.EqualTo("my own allocate"));
         Assert.That(File.Exists(Path.Combine(Claude, "commands", "throttle.md")), Is.False);
         Assert.That(File.Exists(Path.Combine(Claude, "commands", "pacing.md")), Is.False);
     }

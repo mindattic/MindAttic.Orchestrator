@@ -5,11 +5,11 @@ using MindAttic.Orchestrator.Settings;
 namespace MindAttic.Orchestrator.Sessions;
 
 /// <summary>
-/// Sends an idle /autopilot CLI back for work once there is work it can have (M.ORCH-T523). The context gate's keep-going only
+/// Sends an idle /allocate CLI back for work once there is work it can have (M.ORCH-T523). The context gate's keep-going only
 /// acts as a turn ends: a CLI whose last <c>orchestrator next --claim</c> handed out nothing (no pace room, its fair share in use,
 /// a ticket held while another session's turn that filed it ran) is let stop, and nothing asked it again when the window reset,
 /// a subagent finished, or a ticket was filed or approved: five CLIs sat "Needs you" all night and through the morning with
-/// workable tickets and room to spare. Each tick, every live /autopilot CLI whose newest session is idle (and not waiting on a
+/// workable tickets and room to spare. Each tick, every live /allocate CLI whose newest session is idle (and not waiting on a
 /// window, which <see cref="LimitWaker"/> wakes, nor running a /goal) is asked <see cref="Autopilot.Next"/>, as its own
 /// <c>orchestrator next</c> would be (dry run: nothing is claimed); when it would hand out a ticket, the CLI's Launcher tab is
 /// typed a prompt to claim and work them. One in a plain terminal is said to you instead, once per idle stretch. A CLI is
@@ -35,7 +35,7 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
     /// <summary>Types a prompt into a tab and presses Enter (seam).</summary>
     internal Func<string, string, Task<bool>> Submit { get; init; } = (pipe, text) => SessionControl.SubmitAsync(pipe, text);
 
-    /// <summary>The live CLIs /autopilot is on in, and their repos (seam; <see cref="ContextCycler.AutopilotClis"/>).</summary>
+    /// <summary>The live CLIs /allocate is on in, and their repos (seam; <see cref="ContextCycler.AutopilotClis"/>).</summary>
     internal Func<IReadOnlyDictionary<int, IReadOnlyList<string>>>? Pilots { get; init; }
 
     /// <summary>Whether a /handoff holds every CLI (seam).</summary>
@@ -98,7 +98,7 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
             if (saidFor.TryGetValue(d.Pid, out var turn) && turn == d.Session.TurnUtc) continue;
             saidFor[d.Pid] = d.Session.TurnUtc;
             wakes.Add(new Wake(d.Pid, where, d.Ids, false,
-                $"The /autopilot CLI in {where} is idle while orchestrator next has {tickets} for it. Tell it to carry on (" +
+                $"The /allocate CLI in {where} is idle while orchestrator next has {tickets} for it. Tell it to carry on (" +
                 (!type ? "resume-after-reset is off" : host is null ? "it isn't in a Launcher tab the orchestrator can type into" : "typing into its tab failed") + ")."));
         }
         return wakes;
@@ -111,10 +111,10 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
 
     /// <summary>
     /// Claimed tickets left unstarted while the window is on course to end under its target (M.ORCH-T529): on 2026-10-20 the
-    /// pace projected ~65% of a 98% target while an /autopilot CLI held M.COMP-T9 and M.ORCH-T499 claimed and unstarted to
+    /// pace projected ~65% of a 98% target while an /allocate CLI held M.COMP-T9 and M.ORCH-T499 claimed and unstarted to
     /// avoid merge conflicts, until the user asked. Each tick, when <see cref="UnderTarget.Projected"/> is under target and
     /// the subagent allowance has room, every ticket a CLI claimed (<c>orchestrator next --claim</c>: its worktree and
-    /// assignment) with no subagent on it for <see cref="ClaimIdle"/> is put to the /autopilot CLI that works its repo, typed
+    /// assignment) with no subagent on it for <see cref="ClaimIdle"/> is put to the /allocate CLI that works its repo, typed
     /// into its Launcher tab: start them now, overlapping files are rebased, not a reason to wait. Busy or idle (a busy one's
     /// prompt waits in its box), but not one waiting on a window or running a /goal. A CLI is told at most once per
     /// <see cref="Cooldown"/> (shared with <see cref="Tick"/>), and one it can't type into is said to you once per set of claims.
@@ -172,7 +172,7 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
             if (saidClaims.TryGetValue(d.Pid, out var was) && was == tickets) continue;
             saidClaims[d.Pid] = tickets;
             wakes.Add(new Wake(d.Pid, where, ids, false,
-                $"The window is on course for {projected:0}% of its {settings.PaceTargetPercent}% target while the /autopilot CLI in {where} has {tickets} claimed with no subagent " +
+                $"The window is on course for {projected:0}% of its {settings.PaceTargetPercent}% target while the /allocate CLI in {where} has {tickets} claimed with no subagent " +
                 $"on {them} for {ClaimIdle.TotalMinutes:0}+ min. Tell it to start {them} now (" +
                 (!type ? "resume-after-reset is off" : host is null ? "it isn't in a Launcher tab the orchestrator can type into" : "typing into its tab failed") + ")."));
         }
@@ -181,13 +181,13 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
 
     /// <summary>
     /// The tickets claimed for a CLI's subagent (a worktree assignment no background agent holds, not gone stale) that nothing
-    /// has worked for <see cref="ClaimIdle"/>, each with the /autopilot CLI it's put to. A claim has a subagent on it when the
+    /// has worked for <see cref="ClaimIdle"/>, each with the /allocate CLI it's put to. A claim has a subagent on it when the
     /// plan sees a live session or subagent working it (<see cref="SchedulePlan.Worked"/>: a subagent's prompt or worktree
     /// names it), or a transcript (a session's, or a ticketed subagent's) or a Launcher tab has its working directory in the
     /// claim's worktree within <see cref="ClaimIdle"/>. The claim's CLI is the one that made it (M.ORCH-T532: with two
-    /// /autopilot CLIs on one repo, the repo's owner was prompted for the other's claims) while it's a live /autopilot CLI;
-    /// a claim whose CLI isn't known (made before claims recorded it) or has gone goes to the /autopilot CLI whose repos name
-    /// its repo: one naming it outright first, then one on a wildcard or every repo; a repo no /autopilot CLI works is
+    /// /allocate CLIs on one repo, the repo's owner was prompted for the other's claims) while it's a live /allocate CLI;
+    /// a claim whose CLI isn't known (made before claims recorded it) or has gone goes to the /allocate CLI whose repos name
+    /// its repo: one naming it outright first, then one on a wildcard or every repo; a repo no /allocate CLI works is
     /// nobody's to be told.
     /// </summary>
     internal static IReadOnlyList<(int Cli, QueueItem Item)> IdleClaims(Snapshot snapshot, SchedulePlan plan,

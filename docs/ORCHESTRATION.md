@@ -55,21 +55,21 @@ The daemon starts at logon and refreshes every 15 seconds, sooner when a turn en
      each active CLI (one with subagents running, or one waiting for one) has `allowance ÷ active CLIs` (at least one),
      and may go past that only into places no other CLI is waiting for. A CLI over its share starts nothing new while
      another waits, so the next place that frees goes to the CLI under its share; one that wants no more lends its
-     unused share. `orchestrator next --claim` likewise keeps a share for every other `/autopilot` CLI with workable
+     unused share. `orchestrator next --claim` likewise keeps a share for every other `/allocate` CLI with workable
      tickets of its own (`rl-status.json` → `subagents_by_cli`).
    - *Hold:* each tool call waits `20s × (demand ÷ sustainable − 1)`, up to 5 minutes, while the draw is over what
      the window can sustain. It's 0 as soon as the draw fits.
    - *Wind-down:* past 90% of the limit, agents are told to start only what they can finish, and to commit and
      file the rest as a ticket. Autopilot starts no new ticket until the window resets.
    - *Stop:* at the target, every tool call is refused and every typed prompt is answered without being sent, so
-     nothing more is spent until the reset. The orchestrator's own commands (`/autopilot`, `/pacing`) still work.
+     nothing more is spent until the reset. The orchestrator's own commands (`/allocate`, `/pacing`) still work.
 
 ## Scaling up and down
 
 The same arithmetic both speeds up and slows down:
 
 - **Up:** when the draw is under the sustainable rate (a quiet start to a window, or agents finishing), the spare
-  rate pays for more subagents, measured by what one typically draws, and holds drop to zero. `/autopilot` in a CLI
+  rate pays for more subagents, measured by what one typically draws, and holds drop to zero. `/allocate` in a CLI
   claims as many tickets as its fair share of the allowance has room for, each in its own git worktree, and hands each to a subagent.
 - **Down:** when the draw runs ahead, the allowance falls below the number running, so no new subagent starts and the
   extras drain as they finish. Holds stretch every tool call, so running agents slow down without stopping.

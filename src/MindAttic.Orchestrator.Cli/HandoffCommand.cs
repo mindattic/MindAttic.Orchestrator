@@ -30,7 +30,7 @@ internal sealed class HandoffCommand : Command<HandoffCommand.Settings>
                 var mark = Handoff.Start(cycler, null, ContextDirectory is null ? new MindAttic.Orchestrator.Budget.ClaudeAccount().Read(now)?.Account : null, now);
                 AnsiConsole.MarkupLine(Markup.Escape(was?.Holds == true
                     ? "A handoff is already under way."
-                    : $"Handing off: nothing new starts; what's working finishes, lands and closes, then each CLI quicksaves. {mark.Autopilot?.Count ?? 0} CLI(s)' /autopilot recorded for after the switch."));
+                    : $"Handing off: nothing new starts; what's working finishes, lands and closes, then each CLI quicksaves. {mark.Autopilot?.Count ?? 0} CLI(s)' /allocate recorded for after the switch."));
                 break;
             case "off" or "cancel":
                 var had = Handoff.Read(cycler.Directory) is not null;

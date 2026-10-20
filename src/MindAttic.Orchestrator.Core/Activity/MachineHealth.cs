@@ -31,7 +31,7 @@ public sealed record HealthSample(long TotalHandles, double CommitPercent, doubl
 /// Watches the machine the agents run on. Found live: two orphaned <c>find /</c> searches held 660k handles and the
 /// desktop froze while CPU sat idle, so CPU says nothing; kernel handles, commit charge and free RAM do. Past the warn
 /// line, and again past the danger line, you're alerted with the worst offenders. Nothing is held for it: <c>orchestrator
-/// next</c>, which /autopilot CLIs use, never reads it (M.ORCH-T357), and heavy load is the point. Nothing is killed
+/// next</c>, which /allocate CLIs use, never reads it (M.ORCH-T357), and heavy load is the point. Nothing is killed
 /// for it either (the <see cref="Sessions.ProcessReaper"/> kills runaway agent-spawned processes on its own rules).
 /// M.ORCH-T374 looked for a crash a hold would have prevented and found none. The 660k-handle freeze is the only wedge
 /// on record, and its cause is stopped at the source (the pace gate refuses whole-drive searches, the reaper kills

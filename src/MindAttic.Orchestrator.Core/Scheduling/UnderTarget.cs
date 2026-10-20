@@ -6,7 +6,7 @@ namespace MindAttic.Orchestrator.Scheduling;
 /// The under-target warning (M.ORCH-T176): an hour before each 5-hour reset, and again at 30 minutes, when the window is
 /// on course to end below <see cref="Percent"/> and no CLI has a ticket it would work, says how much would go unused, how
 /// many tickets wait for your approval, which are too big for autopilot to start before the reset (M.ORCH-T373) and where
-/// /autopilot is on. It only says so: it never starts or approves anything.
+/// /allocate is on. It only says so: it never starts or approves anything.
 /// Each mark is said at most once per window.
 /// </summary>
 public sealed class UnderTarget
@@ -19,7 +19,7 @@ public sealed class UnderTarget
 
     private readonly HashSet<(DateTime EndUtc, TimeSpan Mark)> said = [];
 
-    /// <summary>The Needs-you message due now, or null. <paramref name="autopilotClis"/> is the CLIs /autopilot is on in
+    /// <summary>The Needs-you message due now, or null. <paramref name="autopilotClis"/> is the CLIs /allocate is on in
     /// (by process id) and the repos each works (<see cref="Sessions.ContextCycler.AutopilotClis"/>).</summary>
     public string? Check(Snapshot snapshot, SchedulePlan plan, IReadOnlyDictionary<int, IReadOnlyList<string>> autopilotClis, DateTime nowUtc)
     {
@@ -38,7 +38,7 @@ public sealed class UnderTarget
     }
 
     /// <summary>The tickets some CLI would work now: open fixes and approved tickets, not claimed, blocked or already being
-    /// worked, in a repo that has a CLI open or that /autopilot works, and not estimated past what's left before the reset
+    /// worked, in a repo that has a CLI open or that /allocate works, and not estimated past what's left before the reset
     /// (M.ORCH-T373). A too-big one doesn't keep the warning quiet: autopilot won't start it, so the window goes unused unless
     /// a person picks it up, which is what the warning is for; the message names them instead (<see cref="TooBig"/>).</summary>
     internal static IReadOnlyList<QueueItem> Workable(Snapshot snapshot, SchedulePlan plan, IReadOnlyDictionary<int, IReadOnlyList<string>> autopilotClis) =>
@@ -77,8 +77,8 @@ public sealed class UnderTarget
             approval += $". {big.Count} ({Ids(big)}) {(big.Count == 1 ? "is" : "are")} estimated past what's left before the reset, " +
                         $"so autopilot won't start {(big.Count == 1 ? "it" : "them")}: a person in an open CLI still can, or split {(big.Count == 1 ? "it" : "them")}";
         var autopilot = autopilotClis.Count == 0
-            ? "/autopilot is off in every CLI"
-            : "/autopilot is on in " + string.Join("; ", autopilotClis.OrderBy(c => c.Key).Select(c =>
+            ? "/allocate is off in every CLI"
+            : "/allocate is on in " + string.Join("; ", autopilotClis.OrderBy(c => c.Key).Select(c =>
                 $"CLI {c.Key} for {string.Join(", ", c.Value.Select(r => r == Autopilot.AllRepos ? "every repo" : r))}"));
         // The clock as every other note writes it, on any Windows language (M.ORCH-T405).
         return $"The 5-hour window resets at {Formatting.ResetTime(u.EndUtc, u.EndUtc - left)} (in {Math.Ceiling(left.TotalMinutes):0} min) and is on course to end at " +
@@ -89,10 +89,10 @@ public sealed class UnderTarget
         string.Join(", ", items.Take(5).Select(q => q.Id)) + (items.Count > 5 ? ", ..." : "");
 
     // ── Acting on it (M.ORCH-T529) ──────────────────────────────────────────
-    // On 2026-10-20 the pace projected ~65% against a 98% target while an /autopilot CLI held two claimed tickets unstarted
+    // On 2026-10-20 the pace projected ~65% against a 98% target while an /allocate CLI held two claimed tickets unstarted
     // (to avoid merge conflicts) until the user asked "shouldn't you open more subagents?". The warnings above only speak at
     // the hour and half-hour marks; these act every tick instead: the waker tells a CLI to start its idle claims
-    // (AutopilotWaker.TickClaims), the pace raises the allowance it shows (Pacer.UnderTarget), and when no /autopilot CLI has
+    // (AutopilotWaker.TickClaims), the pace raises the allowance it shows (Pacer.UnderTarget), and when no /allocate CLI has
     // anything left to start, that is said once a window (CheckNoWork) and on the dashboard (NoWorkLine).
 
     /// <summary>Where the running window is on course to end, when that's under its pace target and new work may still start
@@ -104,7 +104,7 @@ public sealed class UnderTarget
     /// <summary>The pace's subagent allowance has room for another one across every CLI.</summary>
     public static bool HasRoom(SchedulePlan plan) => plan.Pace?.SubagentAllowance is { } allowed && allowed > plan.Pace.Subagents;
 
-    /// <summary>The tickets an /autopilot CLI could start now in the repos it works: open fixes and approved tickets nobody
+    /// <summary>The tickets an /allocate CLI could start now in the repos it works: open fixes and approved tickets nobody
     /// has, not blocked, not too big for what's left. A ticket outside every CLI's repos isn't counted: no CLI's repos are
     /// widened on its own.</summary>
     internal static IReadOnlyList<QueueItem> ForAutopilot(Snapshot snapshot, SchedulePlan plan, IReadOnlyDictionary<int, IReadOnlyList<string>> autopilotClis)
@@ -115,7 +115,7 @@ public sealed class UnderTarget
 
     private readonly HashSet<DateTime> saidNoWork = [];
 
-    /// <summary>What the dashboard says while the window is on course to end under its target and no /autopilot CLI has a
+    /// <summary>What the dashboard says while the window is on course to end under its target and no /allocate CLI has a
     /// ticket left to start, with the proposals waiting for your approval in their repos; null otherwise.</summary>
     public static string? NoWorkLine(Snapshot snapshot, SchedulePlan plan, IReadOnlyDictionary<int, IReadOnlyList<string>> autopilotClis)
     {
@@ -125,10 +125,10 @@ public sealed class UnderTarget
         var theirs = plan.AwaitingApproval.Where(q => Autopilot.Named(autopiloted, q.Repo)).ToList();
         var elsewhere = plan.AwaitingApproval.Count - theirs.Count;
         var repos = string.Join(", ", autopiloted.Select(r => r == Autopilot.AllRepos ? "every repo" : r));
-        return $"On course for {projected:0}%: no workable tickets left; approve some? /autopilot ({repos}) has nothing left to start" +
+        return $"On course for {projected:0}%: no workable tickets left; approve some? /allocate ({repos}) has nothing left to start" +
                (theirs.Count > 0 ? $"; {theirs.Count} wait{(theirs.Count == 1 ? "s" : "")} for your approval there ({Ids(theirs)}: orchestrator approve <ID>)"
                    : "; none waits for your approval there") +
-               (elsewhere > 0 ? $"; {elsewhere} more in repos no /autopilot works" : "") +
+               (elsewhere > 0 ? $"; {elsewhere} more in repos no /allocate works" : "") +
                ". Nothing is approved and no CLI's repos are widened for you.";
     }
 

@@ -5,7 +5,7 @@ using MindAttic.Orchestrator.Settings;
 namespace MindAttic.Orchestrator.Scheduling;
 
 /// <summary>
-/// The daemon's side of autopilot. <c>/autopilot</c> runs inside the CLI it's typed into, as that CLI's subagents
+/// The daemon's side of autopilot. <c>/allocate</c> runs inside the CLI it's typed into, as that CLI's subagents
 /// (<c>orchestrator next --claim</c>); here the lease holder (<see cref="DispatchLease"/>) reaps headless background
 /// agents started before that (M.ORCH-T164), giving back a ticket one left unclosed, sweeps the worktrees of landed
 /// tickets, and works out why autopilot would wait (switched off, quiet hours, machine health, the pace). The
@@ -16,7 +16,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     internal Func<string, string, string, int?> Start { get; init; } = BackgroundAgent.Start;
     internal Func<Assignment, bool> IsRunning { get; init; } = a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc);
     internal Func<int, DateTime?> StartTimeOf { get; init; } = BackgroundAgent.StartTimeOf;
-    // The daemon no longer starts headless background agents (M.ORCH-T164): /autopilot runs inside the CLI it's typed into, as
+    // The daemon no longer starts headless background agents (M.ORCH-T164): /allocate runs inside the CLI it's typed into, as
     // that CLI's subagents (see Next). Tick still reaps agents started before, lands their work and sweeps finished worktrees.
     internal Func<IReadOnlyList<string>?> Order { get; init; } = () => null;
     internal Func<int, bool> Alive { get; init; } = ContextCycler.IsClaude;
@@ -28,7 +28,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// null writes nothing.</summary>
     public string? WaitingPath { get; init; }
 
-    /// <summary><c>~/.claude/autopilot-waiting.json</c>: the repos autopilot is on for that have no agent working because
+    /// <summary><c>~/.claude/allocate-waiting.json</c>: the repos autopilot is on for that have no agent working because
     /// the pace can't afford one yet, so each repo's CLI can say so in its statusline (no turn, no tokens).</summary>
     public static string DefaultWaitingPath { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "autopilot-waiting.json");
@@ -50,7 +50,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// never reads it.</summary>
     public string? HealthHold { get; set; }
 
-    /// <summary>Whether <c>/autopilot</c> is on (until <c>/autopilot off</c>).</summary>
+    /// <summary>Whether <c>/allocate</c> is on (until <c>/allocate off</c>).</summary>
     public bool On { get; private set; }
 
     /// <summary>The repos it's working.</summary>
@@ -74,7 +74,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
 
         var order = Order();
         On = order is not null;
-        // Reaping and the hourly sweep (git fetch, merge, worktree remove) are the lease holder's whatever /autopilot's state:
+        // Reaping and the hourly sweep (git fetch, merge, worktree remove) are the lease holder's whatever /allocate's state:
         // with the order unset (CLIs run autopilot now) the dashboard used to run them too, on its UI thread, beside the daemon.
         HeldElsewhere = lease is not null && !lease.TryAcquire();
         if (!dryRun && !HeldElsewhere)
@@ -89,11 +89,11 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         Working = [.. store.LoadAssignments().Where(a => a.Log is not null && a.Pilot is not null && IsRunning(a))];
 
         // Repos with an open Claude CLI (agents' own sessions aside), or the ones named.
-        // "/autopilot all" (order "*"): every repo in the workspace with an open story, CLI open or not.
+        // "/allocate all" (order "*"): every repo in the workspace with an open story, CLI open or not.
         var everyRepo = order?.Contains(AllRepos) == true;
         var repos = order is null ? []
             : everyRepo ? snapshot.Repos.Where(r => r.Path.Length > 0 && !r.Name.StartsWith('(') && r.OpenTickets.Count > 0).ToList()
-            // Only the repos /autopilot was turned on for (each CLI adds its own), never every repo that has a CLI open.
+            // Only the repos /allocate was turned on for (each CLI adds its own), never every repo that has a CLI open.
             : snapshot.Repos.Where(r => r.Path.Length > 0 && Named(order, r.Name)).ToList();
         // Repos you've told it to skip, and ones whose own CLI you're working in by hand, get no new agents.
         var byHand = ByHand(nowUtc, snapshot, TimeSpan.FromMinutes(Math.Max(0, settings.AutopilotHandMinutes)));
@@ -372,7 +372,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
           "this CLI's to work: nothing else will.";
 
     /// <summary>
-    /// The next tickets a CLI running <c>/autopilot</c> hands to its own subagents (M.ORCH-T164): workable ones (fixes and
+    /// The next tickets a CLI running <c>/allocate</c> hands to its own subagents (M.ORCH-T164): workable ones (fixes and
     /// approved, already the only ones in the queue) of <paramref name="repos"/> ("*": all) that nobody has, in queue order,
     /// as many as the pace's subagent allowance has room for (or <paramref name="count"/>). With <paramref name="claim"/>
     /// each gets its own worktree from the repo's main line and an assignment, so it isn't handed out twice; when nothing
@@ -384,8 +384,8 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// except what the calling CLI <paramref name="self"/> itself filed, and one whose assignment went stale while the
     /// background agent on it is still running. While a /handoff holds (<paramref name="handingOff"/>) nothing is handed out.
     /// Paced, the calling CLI (<paramref name="cli"/>) gets its fair share of the allowance, not all of it (M.ORCH-T495: one
-    /// repo's /autopilot claimed all 8 places at once): the other CLIs' running subagents, and a share held for every other
-    /// /autopilot CLI (<paramref name="pilots"/>) that has workable tickets of its own, are left to them (<see cref="SubagentShare"/>).
+    /// repo's /allocate claimed all 8 places at once): the other CLIs' running subagents, and a share held for every other
+    /// /allocate CLI (<paramref name="pilots"/>) that has workable tickets of its own, are left to them (<see cref="SubagentShare"/>).
     /// </summary>
     public static (IReadOnlyList<Handout> Handed, string? Why) Next(SchedulePlan plan, OrchestratorSettings settings, JsonStore store,
         IReadOnlyList<string> repos, int? count, bool claim, DateTime nowUtc,
@@ -406,7 +406,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         // Past the wind-down line nothing new starts until the reset, estimate or not (M.ORCH-T254: five tickets whose
         // estimates each fit what was left went out at 96.6% as the reset neared and the allowance opened back up).
         if (!unthrottled && plan.Pace is { WindDown: true } wound) return ([], wound.WindDownHold);
-        // The switches the settings and the Settings panel offer apply to the CLIs that run /autopilot: Tick, which
+        // The switches the settings and the Settings panel offer apply to the CLIs that run /allocate: Tick, which
         // read them, starts nothing since M.ORCH-T164.
         if (!settings.Autopilot) return ([], "autopilot is paused (orchestrator settings --autopilot true, or the dashboard's Settings, resumes it)");
         if (QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is { } quiet) return ([], $"quiet hours ({quiet}): nothing starts until they end");
@@ -449,12 +449,12 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         var more = count ?? (!unthrottled && plan.Pace?.SubagentAllowance is { } allowed ? allowed - plan.Pace.Subagents
             : settings.MaxConcurrentSessions - plan.Queue.Count(Busy));
         if (more <= 0) return ([], "the pace has no room for another subagent right now; run it again in a few minutes");
-        // Its fair share, not every free place (M.ORCH-T495): another /autopilot CLI with workable tickets of its own keeps its share.
+        // Its fair share, not every free place (M.ORCH-T495): another /allocate CLI with workable tickets of its own keeps its share.
         if (count is null && !unthrottled && cli is { } me && plan.Pace?.SubagentAllowance is { } cap)
         {
             // A CLI's claims no subagent has shown up on yet are its subagents about to run (M.ORCH-T532): they count against its
             // own share, not against whichever CLI covers their repo. A claim whose CLI isn't known counts for nobody.
-            // A live /autopilot CLI (pilots holds only running ones) or this one is running; any other claimer is asked of Windows.
+            // A live /allocate CLI (pilots holds only running ones) or this one is running; any other claimer is asked of Windows.
             var pending = PendingClaims(plan, c => c == me || pilots?.ContainsKey(c) == true || cliRunning(c));
             var running = plan.Pace.SubagentsByCli.Keys.Union(pending.Keys)
                 .ToDictionary(c => c, c => plan.Pace.SubagentsByCli.GetValueOrDefault(c) + pending.GetValueOrDefault(c));
@@ -520,7 +520,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// <summary>Each CLI's claims (by the CLI that made them, M.ORCH-T532) that no subagent is seen working yet
     /// (<see cref="SchedulePlan.Worked"/>), not gone stale: the subagents it's about to start. A claim whose CLI is no longer
     /// running (<paramref name="cliRunning"/>) starts nothing: it isn't pending (M.ORCH-T550: a closed CLI's unstarted claims held
-    /// their places until StaleAfterHours), and <see cref="AutopilotWaker"/> offers it to the /autopilot CLI on its repo.</summary>
+    /// their places until StaleAfterHours), and <see cref="AutopilotWaker"/> offers it to the /allocate CLI on its repo.</summary>
     internal static IReadOnlyDictionary<int, int> PendingClaims(SchedulePlan plan, Func<int, bool>? cliRunning = null)
     {
         var worked = plan.Worked.Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -548,7 +548,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
 
     private const string NeedsYouPrefix = "autopilot: needs you: ";
 
-    /// <summary>The order <c>/autopilot all</c> writes: every repo with open stories.</summary>
+    /// <summary>The order <c>/allocate all</c> writes: every repo with open stories.</summary>
     public const string AllRepos = "*";
 
     /// <summary>The alert text when <paramref name="line"/> is one of <see cref="Tick"/>'s "needs you" lines; null for any other

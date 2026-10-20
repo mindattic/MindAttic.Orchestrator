@@ -6,7 +6,7 @@ using MindAttic.Orchestrator.Sessions;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
-/// <summary><c>orchestrator clis</c> (M.ORCH-T474): every open Claude CLI and whether /autopilot is on in it, from the roster the
+/// <summary><c>orchestrator clis</c> (M.ORCH-T474): every open Claude CLI and whether /allocate is on in it, from the roster the
 /// daemon keeps; built here when the daemon isn't keeping it fresh.</summary>
 internal sealed class ClisCommand : Command<ClisCommand.Settings>
 {
@@ -46,7 +46,7 @@ internal sealed class ClisCommand : Command<ClisCommand.Settings>
                 Format.Ago(c.LastTurnUtc, roster.WrittenUtc));
         AnsiConsole.Write(table);
         var on = roster.Clis.Count(c => c.Autopilot);
-        AnsiConsole.MarkupLine($"{roster.Clis.Count} open CLI(s), /autopilot on in {on}.");
+        AnsiConsole.MarkupLine($"{roster.Clis.Count} open CLI(s), /allocate on in {on}.");
         return 0;
     }
 }

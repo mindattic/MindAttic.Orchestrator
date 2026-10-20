@@ -69,7 +69,7 @@ public sealed class AutopilotTests
     [Test]
     public void Stories_start_in_queue_order_across_repos_not_one_repo_filled_first()
     {
-        // Found live: /autopilot all put all five spare sessions into Automata while a +70 story elsewhere waited.
+        // Found live: /allocate all put all five spare sessions into Automata while a +70 story elsewhere waited.
         order = [Autopilot.AllRepos];
         var snap = Snap(("Automata", [T("AUT-T1"), T("AUT-T2"), T("AUT-T3")]), ("Launcher", [T("M.LNCH-T21")]));
         snap = snap with { Priorities = new Dictionary<string, long> { ["M.LNCH-T21"] = 70 } };
@@ -250,7 +250,7 @@ public sealed class AutopilotTests
     [Test]
     public void A_cli_running_autopilot_is_handed_its_repos_workable_tickets_each_with_a_worktree_and_prompt_once()
     {
-        // M.ORCH-T164: /autopilot works tickets through the CLI's own subagents; `orchestrator next --claim` hands them out.
+        // M.ORCH-T164: /allocate works tickets through the CLI's own subagents; `orchestrator next --claim` hands them out.
         var snap = Snap(("A", [T("A-T1"), T("A-T2"), new Ticket("A-T3", "2026-10-01", "feature", "open", "not approved", "")]), ("B", [T("B-T1")]));
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
         var made = new List<string>();
@@ -291,7 +291,7 @@ public sealed class AutopilotTests
             "-repo=GTFO.* names every repo starting GTFO. (M.ORCH-T165)");
     }
 
-    /// <summary>M.ORCH-T495: one repo's /autopilot claimed all 8 places at once (8 subagents on one repo) while other CLIs got none.</summary>
+    /// <summary>M.ORCH-T495: one repo's /allocate claimed all 8 places at once (8 subagents on one repo) while other CLIs got none.</summary>
     [Test]
     public void A_cli_running_autopilot_claims_its_fair_share_of_the_allowance_not_every_place()
     {
@@ -305,7 +305,7 @@ public sealed class AutopilotTests
         Dictionary<int, IReadOnlyList<string>> pilots = new() { [1] = ["A"], [2] = ["B"] };
 
         var (handed, _) = Autopilot.Next(Planned(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots);
-        Assert.That(handed, Has.Count.EqualTo(4), "CLI 2's /autopilot has B's tickets to work: half the 8 is kept for it");
+        Assert.That(handed, Has.Count.EqualTo(4), "CLI 2's /allocate has B's tickets to work: half the 8 is kept for it");
 
         var (b, _) = Autopilot.Next(Planned(4, new() { [1] = 4 }), settings, store, ["B"], null, claim: false, Now, Make, _ => "main", cli: 2, pilots: pilots);
         Assert.That(b, Has.Count.EqualTo(4), "and CLI 2 gets it");
@@ -663,7 +663,7 @@ public sealed class AutopilotTests
     private void Cli(int pid, string cwd, bool busy = false, DateTime? turn = null)
     {
         clis.Add(pid);
-        // /autopilot typed in it: on for that CLI's own repo (a CLI at the workspace root has none).
+        // /allocate typed in it: on for that CLI's own repo (a CLI at the workspace root has none).
         var rel = Path.GetRelativePath(@"D:\W", cwd);
         if (order is not null && rel != "." && rel.Split('\\')[0] is var repo && !order.Contains(repo)) order = [.. order, repo];
         File.WriteAllText(Path.Combine(sessions.Directory, "s" + pid + ".state.json"),

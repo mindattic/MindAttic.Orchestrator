@@ -1,7 +1,7 @@
 namespace MindAttic.Orchestrator.Scheduling;
 
 /// <summary>
-/// How the global subagent allowance is shared between CLIs (M.ORCH-T495): one repo's /autopilot claimed all 8 places at
+/// How the global subagent allowance is shared between CLIs (M.ORCH-T495): one repo's /allocate claimed all 8 places at
 /// once while every other CLI got none. Each active CLI (the caller, every CLI with subagents running, and every CLI that
 /// wants one) has a fair share, <c>allowance / active</c> (at least one). A CLI may go past its share only into places no
 /// other CLI is waiting for: another CLI's share is held for it while it wants more (up to what it has running, or its

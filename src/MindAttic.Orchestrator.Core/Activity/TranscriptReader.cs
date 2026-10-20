@@ -194,7 +194,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
             .GroupBy(s => s.SessionId ?? "")
             .Select(g =>
             {
-                // A subagent handed a ticket (an /autopilot handout) names it in its own prompt: that ticket is the
+                // A subagent handed a ticket (an /allocate handout) names it in its own prompt: that ticket is the
                 // subagent's alone. Only the CLI's own transcript says which ticket the session itself works on (M.ORCH-T252).
                 var own = g.Where(s => s.AgentId is null).ToList();
                 var ticket = own.Select(s => (Id: s.TicketId, Type: s.TicketType)).FirstOrDefault(t => t.Id is not null);

@@ -831,7 +831,7 @@
                     <StackPanel HorizontalAlignment="Left" Margin="0,30,0,0"
                                 Visibility="{Binding HasAgents, Converter={x:Static vm:Converters.FalseToVisible}}">
                         <TextBlock Text="No agent is running right now." FontSize="16" FontWeight="SemiBold" />
-                        <TextBlock Text="Open a Claude CLI in a repo, or type /autopilot in one, and it shows up here with its subagents inside it."
+                        <TextBlock Text="Open a Claude CLI in a repo, or type /allocate in one, and it shows up here with its subagents inside it."
                                    Style="{StaticResource McMutedText}" Margin="0,4,0,0" />
                     </StackPanel>
 
@@ -1022,7 +1022,7 @@
                          AutomationProperties.Name="Dispatch provider" />
                 <ToggleButton Style="{StaticResource McPillToggle}" IsChecked="{Binding Autopilot}" Margin="0,8,0,0" HorizontalAlignment="Left"
                               Content="Autopilot" />
-                <TextBlock Text="Type /autopilot in a CLI and that CLI works its repo's tickets (or -repo=a,b, or all) through its own subagents, each in its own worktree, as many at once as the pace allows; no other CLI is affected. Off here pauses it in every CLI; /autopilot off ends it in that one."
+                <TextBlock Text="Type /allocate in a CLI and that CLI works its repo's tickets (or -repo=a,b, or all) through its own subagents, each in its own worktree, as many at once as the pace allows; no other CLI is affected. Off here pauses it in every CLI; /allocate off ends it in that one."
                            Style="{StaticResource McMutedText}" TextWrapping="Wrap" Margin="0,6,0,0" />
 
                 <TextBlock Text="{Binding Error}" Foreground="{DynamicResource McBad}" TextWrapping="Wrap" Margin="0,14,0,0" AutomationProperties.LiveSetting="Assertive"

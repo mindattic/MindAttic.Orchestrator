@@ -50,7 +50,7 @@ public sealed partial class MainViewModel
         dispatcher = new Dispatcher(control, store);
         // The same lease the status refresh uses (M.ORCH-T112): one FileStream per path per process, so a second
         // one here would just fail to acquire what the first already holds. Held until the app exits; while
-        // the logon daemon holds it, the daemon feeds the /autopilot CLIs and keeps rl-status.json fresh, and
+        // the logon daemon holds it, the daemon feeds the /allocate CLIs and keeps rl-status.json fresh, and
         // this window only shows.
         autopilot = new Autopilot(store, new MindAttic.Orchestrator.Sessions.ContextCycler(), lease) { WaitingPath = Autopilot.DefaultWaitingPath };
         auditRunner = new AuditRunner(aggregator.Options, store);
@@ -214,7 +214,7 @@ public sealed partial class MainViewModel
     /// how long it ran over it, and where the recent rate ends up.</summary>
     public string UtilizationText => UtilizationCaption(Utilization, snapshot is not null) + NoWorkText;
 
-    /// <summary>On course to end under target with nothing left for any /autopilot CLI to start: said under the graph, with the
+    /// <summary>On course to end under target with nothing left for any /allocate CLI to start: said under the graph, with the
     /// proposals waiting for your approval (M.ORCH-T529), as the daemon's one alert a window says it.</summary>
     private string NoWorkText => snapshot is null || plan is null ? ""
         : UnderTarget.NoWorkLine(snapshot, plan, new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis()) is { } line ? " " + line : "";
@@ -305,15 +305,15 @@ public sealed partial class MainViewModel
     public string SlotsText => plan is null ? ""
         : plan.Cap < plan.Slots ? $"{plan.Occupied} sessions open · pacing allows {plan.Cap} of {plan.Slots}"
         : $"{plan.Occupied} sessions open · fills up to {plan.Slots}";
-    // /autopilot is on per CLI (its marks, M.ORCH-T164), as `orchestrator settings` reports it: the dashboard's own Autopilot
+    // /allocate is on per CLI (its marks, M.ORCH-T164), as `orchestrator settings` reports it: the dashboard's own Autopilot
     // has no order to read, so it always read as off.
     public string AutopilotText => AutopilotLine(new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis(), store.LoadSettings().Autopilot) +
         (autopilot.Working.Count == 0 ? "" : $" Working in the background: {string.Join(", ", autopilot.Working.Select(a => $"{a.TicketId} in {a.Repo}"))}.");
 
     internal static string AutopilotLine(IReadOnlyDictionary<int, IReadOnlyList<string>> clis, bool on = true) => clis.Count == 0
-        ? "Proposals wait for you. Type /autopilot in a CLI to have its repos' tickets worked by its own subagents."
+        ? "Proposals wait for you. Type /allocate in a CLI to have its repos' tickets worked by its own subagents."
         // Paused from Settings or the CLI: the CLIs' marks stay, but orchestrator next hands them nothing.
-        : !on ? $"Autopilot is paused: the {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} that typed /autopilot get no tickets until you resume it from Settings."
+        : !on ? $"Autopilot is paused: the {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} that typed /allocate get no tickets until you resume it from Settings."
         : $"Autopilot is on in {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} for " +
           string.Join(", ", clis.Values.SelectMany(r => r).Select(r => r == Autopilot.AllRepos ? "every repo" : r).Distinct(StringComparer.OrdinalIgnoreCase)) +
           ", each through its own subagents, paced to the 5-hour window.";

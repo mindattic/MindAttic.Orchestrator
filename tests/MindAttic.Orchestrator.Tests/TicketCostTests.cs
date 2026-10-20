@@ -104,7 +104,7 @@ public sealed class TicketCostTests
     [Test]
     public void A_subagents_ticket_is_charged_only_its_own_tokens_not_its_parent_clis_session()
     {
-        // M.ORCH-T252: an /autopilot subagent's transcript shares its CLI's session id. The ticket its prompt named was stamped
+        // M.ORCH-T252: an /allocate subagent's transcript shares its CLI's session id. The ticket its prompt named was stamped
         // on the whole session, charging that ticket for the CLI's and every other subagent's tokens.
         var dir = Path.Combine(Path.GetTempPath(), "orch-attr-" + Guid.NewGuid().ToString("N"));
         var subs = Path.Combine(dir, "p", "s", "subagents");
@@ -112,7 +112,7 @@ public sealed class TicketCostTests
         try
         {
             File.WriteAllLines(Path.Combine(dir, "p", "s.jsonl"), [
-                UserLine("s", "2026-10-14T10:00:00Z", "/autopilot"),
+                UserLine("s", "2026-10-14T10:00:00Z", "/allocate"),
                 Response("s", "m1", "2026-10-14T10:01:00Z", 1000),
             ]);
             File.WriteAllLines(Path.Combine(subs, "agent-a1.jsonl"), [

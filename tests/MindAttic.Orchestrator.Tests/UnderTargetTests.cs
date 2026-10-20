@@ -8,7 +8,7 @@ using Serilog.Events;
 namespace MindAttic.Orchestrator.Tests;
 
 /// <summary>M.ORCH-T176: an hour and half an hour before the reset, a window on course to end under 90% with nothing any CLI
-/// could work raises one Needs-you alert per mark, saying what would go unused, what waits for approval and where /autopilot
+/// could work raises one Needs-you alert per mark, saying what would go unused, what waits for approval and where /allocate
 /// is on; it never starts or approves anything.</summary>
 public sealed class UnderTargetTests
 {
@@ -44,7 +44,7 @@ public sealed class UnderTargetTests
         var hour = Check(u, Snap(End.AddMinutes(-59), 60, repos), clis: clis).Line;
         Assert.That(hour, Does.Contain("on course to end at 60%, below 90%: 30% of the window (about 3M tokens) would go unused"));
         Assert.That(hour, Does.Contain("2 wait for your approval (A-T1, A-T2: orchestrator approve <ID>)"));
-        Assert.That(hour, Does.Contain("/autopilot is on in CLI 42 for B"));
+        Assert.That(hour, Does.Contain("/allocate is on in CLI 42 for B"));
         Assert.That(Check(u, Snap(End.AddMinutes(-45), 60, repos), clis: clis).Line, Is.Null, "the hour's mark is said once");
         Assert.That(Check(u, Snap(End.AddMinutes(-30), 62, repos), clis: clis).Line, Does.Contain("on course to end at 62%"));
         Assert.That(Check(u, Snap(End.AddMinutes(-10), 62, repos), clis: clis).Line, Is.Null, "the half hour's mark is said once");
@@ -52,7 +52,7 @@ public sealed class UnderTargetTests
         // The next window gets its own warnings.
         var next = Snap(End.AddHours(5).AddMinutes(-50), 50, repos);
         next = next with { Utilization = next.Utilization! with { EndUtc = End.AddHours(5) } };
-        Assert.That(Check(u, next).Line, Does.Contain("/autopilot is off in every CLI"));
+        Assert.That(Check(u, next).Line, Does.Contain("/allocate is off in every CLI"));
     }
 
     [Test]
@@ -63,7 +63,7 @@ public sealed class UnderTargetTests
 
         // A fix in a repo whose CLI is open is work for it.
         Assert.That(Check(new UnderTarget(), Snap(at, 50, Repo("A", RepoState.Waiting, T("A-T1")))).Line, Is.Null);
-        // So is one in a repo /autopilot works (a wildcard too), CLI open there or not.
+        // So is one in a repo /allocate works (a wildcard too), CLI open there or not.
         Assert.That(Check(new UnderTarget(), Snap(at, 50, Repo("GTFO.X", RepoState.Dormant, T("GTFO.X-T1"))),
             clis: new Dictionary<int, IReadOnlyList<string>> { [7] = ["GTFO.*"] }).Line, Is.Null);
         // A fix in a repo no CLI has open isn't anyone's: the warning still comes.
@@ -157,8 +157,8 @@ public sealed class UnderTargetTests
         var early = Snap(End.AddHours(-4), 65, repos);
         var line = u.CheckNoWork(early, Plan(early), clis);
         Assert.That(line, Does.StartWith("On course for 65%: no workable tickets left; approve some?"));
-        Assert.That(line, Does.Contain("1 waits for your approval there (A-T1: orchestrator approve <ID>)").And.Contain("1 more in repos no /autopilot works"));
-        Assert.That(line, Does.Not.Contain("B-T1"), "B's fix isn't /autopilot's: its repos aren't widened");
+        Assert.That(line, Does.Contain("1 waits for your approval there (A-T1: orchestrator approve <ID>)").And.Contain("1 more in repos no /allocate works"));
+        Assert.That(line, Does.Not.Contain("B-T1"), "B's fix isn't /allocate's: its repos aren't widened");
         Assert.That(UnderTarget.NoWorkLine(early, Plan(early), clis), Is.EqualTo(line), "the dashboard says the same");
 
         var later = Snap(End.AddHours(-2), 60, repos);
@@ -169,8 +169,8 @@ public sealed class UnderTargetTests
 
         Assert.That(new UnderTarget().CheckNoWork(Snap(End.AddHours(-4), 99.5, repos), Plan(early), clis), Is.Null, "on course for the target");
         var work = Snap(End.AddHours(-4), 65, Repo("A", RepoState.Waiting, T("A-T2")));
-        Assert.That(new UnderTarget().CheckNoWork(work, Plan(work), clis), Is.Null, "a fix /autopilot can start is work");
-        Assert.That(new UnderTarget().CheckNoWork(early, Plan(early), NoAutopilot), Is.Null, "no /autopilot CLI to say it of");
+        Assert.That(new UnderTarget().CheckNoWork(work, Plan(work), clis), Is.Null, "a fix /allocate can start is work");
+        Assert.That(new UnderTarget().CheckNoWork(early, Plan(early), NoAutopilot), Is.Null, "no /allocate CLI to say it of");
     }
 
     [Test]

@@ -3,7 +3,7 @@ using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
 
-/// <summary>The marks the context gate keeps and ContextCycler reads: the /autopilot order, the keep-going log,
+/// <summary>The marks the context gate keeps and ContextCycler reads: the /allocate order, the keep-going log,
 /// /crossrepo and /unthrottle marks, and subagent marks (M.ORCH-T138).</summary>
 public sealed class ContextCyclerMarksTests
 {
@@ -31,7 +31,7 @@ public sealed class ContextCyclerMarksTests
     public void A_cli_mark_being_read_in_never_vanishes_while_its_row_waits_on_the_database()
     {
         // M.ORCH-T540: the file was moved to .reading before its row was committed, so while the write waited on a held
-        // database another process saw neither and read an /autopilot CLI as off.
+        // database another process saw neither and read an /allocate CLI as off.
         var db = new Settings.OrchestratorDb(Settings.OrchestratorDb.StatePath(dir));
         db.Open().Dispose();
         File.WriteAllText(Path.Combine(dir, "autopilot-7"), "Prose");
@@ -60,7 +60,7 @@ public sealed class ContextCyclerMarksTests
     [Test]
     public void Autopilot_order_is_null_while_the_file_is_missing()
     {
-        Assert.That(new ContextCycler(dir).AutopilotOrder(), Is.Null, "no file: /autopilot is off");
+        Assert.That(new ContextCycler(dir).AutopilotOrder(), Is.Null, "no file: /allocate is off");
         Assert.That(new ContextCycler(Path.Combine(dir, "nowhere")).AutopilotOrder(), Is.Null, "no folder at all: off too");
     }
 
@@ -213,7 +213,7 @@ public sealed class ContextCyclerMarksTests
     [Test]
     public void Week_old_prune_keeps_a_running_clis_own_marks_and_drops_stale_session_files()
     {
-        // noautopilot-: /autopilot off typed in it a week ago stays off, not switched back on by the default (M.ORCH-T484).
+        // noautopilot-: /allocate off typed in it a week ago stays off, not switched back on by the default (M.ORCH-T484).
         var keep = new[] { "autopilot-123", "noautopilot-456", "unthrottled-123", "crossrepo-123", ContextCycler.AutopilotFile };
         var drop = new[] { "old.json", "old.state.json" };
         var now = DateTime.UtcNow;
@@ -226,7 +226,7 @@ public sealed class ContextCyclerMarksTests
         new ContextCycler(dir).Prune(now);
 
         Assert.That(Directory.GetFiles(dir).Select(Path.GetFileName).Order(), Is.EqualTo(keep.Order()),
-            "a CLI that typed /autopilot a week ago and is still running keeps it; PruneMarks drops it when the CLI closes");
+            "a CLI that typed /allocate a week ago and is still running keeps it; PruneMarks drops it when the CLI closes");
     }
 
     [Test]

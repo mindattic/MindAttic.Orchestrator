@@ -44,10 +44,10 @@ public sealed class AgentGateTests
         Assert.That(AgentGate.Ensure(Claude), Is.EqualTo("wrote pace-gate.py"), "only the edited script is put back");
         Assert.That(File.ReadAllText(pace), Is.EqualTo(AgentGate.Script));
 
-        File.Delete(Path.Combine(Claude, "commands", "autopilot.md"));
-        Assert.That(AgentGate.Ensure(Claude), Is.EqualTo("wrote autopilot.md"), "a missing command is written back");
-        // Since M.ORCH-T164 nothing works tickets in background agents: /autopilot mustn't tell the CLI something carries on.
-        Assert.That(AgentGate.AutopilotCommand, Does.Not.Contain("background agents of their own").And.Contain("this CLI's own subagents or nobody"));
+        File.Delete(Path.Combine(Claude, "commands", "allocate.md"));
+        Assert.That(AgentGate.Ensure(Claude), Is.EqualTo("wrote allocate.md"), "a missing command is written back");
+        // Since M.ORCH-T164 nothing works tickets in background agents: /allocate mustn't tell the CLI something carries on.
+        Assert.That(AgentGate.AllocateCommand, Does.Not.Contain("background agents of their own").And.Contain("this CLI's own subagents or nobody"));
     }
 
     [Test]

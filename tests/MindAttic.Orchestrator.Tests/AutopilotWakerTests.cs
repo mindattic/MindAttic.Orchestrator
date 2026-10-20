@@ -8,7 +8,7 @@ using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
 
-/// <summary>An idle /autopilot CLI is sent back for work within a tick of next having a ticket and room for it (M.ORCH-T523).</summary>
+/// <summary>An idle /allocate CLI is sent back for work within a tick of next having a ticket and room for it (M.ORCH-T523).</summary>
 public sealed class AutopilotWakerTests
 {
     private string dir = "";
@@ -62,7 +62,7 @@ public sealed class AutopilotWakerTests
     [Test]
     public void An_idle_autopilot_cli_let_stop_with_no_room_is_typed_back_to_work_once_room_opens()
     {
-        // Found live 2026-10-20: every /autopilot CLI stopped the night before on "the pace has no room", and none was sent back
+        // Found live 2026-10-20: every /allocate CLI stopped the night before on "the pace has no room", and none was sent back
         // when the window reset; MindAttic.Workflow's sat idle with M.FLOW-T116 workable until the user typed to it.
         State("idle", Now.AddHours(-6));
         var waker = Waker();
@@ -126,7 +126,7 @@ public sealed class AutopilotWakerTests
     [Test]
     public void An_idle_claim_under_target_with_room_gets_one_wake_to_start_it_now()
     {
-        // Found live 2026-10-20 (M.ORCH-T529): the pace projected ~65% of 98% while an /autopilot CLI held M.COMP-T9 and
+        // Found live 2026-10-20 (M.ORCH-T529): the pace projected ~65% of 98% while an /allocate CLI held M.COMP-T9 and
         // M.ORCH-T499 claimed and unstarted to avoid merge conflicts, until the user asked for more subagents.
         State("busy", Now.AddMinutes(-1));
         var waker = Waker();

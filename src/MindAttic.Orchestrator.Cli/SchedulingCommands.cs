@@ -241,7 +241,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         public int? MaxSessions { get; init; }
 
         [CommandOption("--autopilot <ON>")]
-        [Description("false pauses every CLI where /autopilot is on (their marks stay); true lets them go again.")]
+        [Description("false pauses every CLI where /allocate is on (their marks stay); true lets them go again.")]
         public bool? Autopilot { get; init; }
 
         [CommandOption("--throttle-agents <ON>")]
@@ -279,7 +279,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         public string[] RepoSessions { get; init; } = [];
 
         [CommandOption("--keep-going <ON>")]
-        [Description("true (default): a CLI that typed /autopilot and ends its turn while its repos have workable tickets is told to carry on; false lets it stop.")]
+        [Description("true (default): a CLI that typed /allocate and ends its turn while its repos have workable tickets is told to carry on; false lets it stop.")]
         public bool? KeepGoing { get; init; }
 
         [CommandOption("--resume-after-reset <ON>")]
@@ -287,11 +287,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         public bool? ResumeAfterReset { get; init; }
 
         [CommandOption("--hand-minutes <N>")]
-        [Description("Kept for older setups; it has no effect now: /autopilot hands tickets to the typing CLI's own subagents, each in its own worktree.")]
+        [Description("Kept for older setups; it has no effect now: /allocate hands tickets to the typing CLI's own subagents, each in its own worktree.")]
         public int? HandMinutes { get; init; }
 
         [CommandOption("--autopilot-skip <REPOS>")]
-        [Description("Repos /autopilot never starts agents in, comma-separated: \"GTFO.EZ,Prose\"; \"none\" clears.")]
+        [Description("Repos /allocate never starts agents in, comma-separated: \"GTFO.EZ,Prose\"; \"none\" clears.")]
         public string? AutopilotSkip { get; init; }
 
         [CommandOption("--exempt <COMMANDS>")]
@@ -452,11 +452,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         var clis = new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis();
         AnsiConsole.MarkupLine($"settings: {Markup.Escape(store.Describe(JsonStore.SettingsName))}");
         AnsiConsole.MarkupLine($"  max sessions {s.MaxConcurrentSessions} · provider {Markup.Escape(s.DefaultProvider)} · autopilot " +
-            (clis.Count == 0 ? "off in every CLI (type /autopilot in the CLI that should work tickets)"
+            (clis.Count == 0 ? "off in every CLI (type /allocate in the CLI that should work tickets)"
                 : (s.Autopilot ? "[green]on[/] in " : "[yellow]paused[/] (--autopilot true resumes it) in ") +
                   Markup.Escape(string.Join("; ", clis.Select(c => $"CLI {c.Key} for {string.Join(", ", c.Value)}")))) +
-            " · a new CLI starts with it off until /autopilot is typed there" +
-            (s.KeepGoing ? " · /autopilot CLIs keep going through their workable tickets without asking" : " · /autopilot CLIs may stop between tickets") +
+            " · a new CLI starts with it off until /allocate is typed there" +
+            (s.KeepGoing ? " · /allocate CLIs keep going through their workable tickets without asking" : " · /allocate CLIs may stop between tickets") +
             (s.ResumeAfterReset ? " · a CLI stopped for a window is told to carry on once it resets" : " · you're alerted when a CLI stopped for a window could carry on after its reset"));
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (Claude's report, else learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (Claude's report, else learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display + " unless Claude reports another" : "as Claude reports, else learned, else rolling 7 days")} · warn at {s.WarnPercent}%");
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +

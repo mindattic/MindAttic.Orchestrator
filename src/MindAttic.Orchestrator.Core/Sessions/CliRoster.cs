@@ -5,7 +5,7 @@ using Microsoft.Data.Sqlite;
 
 namespace MindAttic.Orchestrator.Sessions;
 
-/// <summary>One open Claude CLI: where it runs, what it bills, whether it's in a Launcher tab, and whether /autopilot is on in it
+/// <summary>One open Claude CLI: where it runs, what it bills, whether it's in a Launcher tab, and whether /allocate is on in it
 /// (with the repos it works, "*" for all).</summary>
 public sealed record CliRow(
     int Pid,
@@ -23,7 +23,7 @@ public sealed record CliRow(
 public sealed record CliRosterFile(DateTime WrittenUtc, IReadOnlyList<CliRow> Clis);
 
 /// <summary>
-/// The ready list of every open Claude CLI and whether /autopilot is on in it (M.ORCH-T474): the daemon rewrites its row in
+/// The ready list of every open Claude CLI and whether /allocate is on in it (M.ORCH-T474): the daemon rewrites its row in
 /// orchestrator.db's <c>state</c> every tick (M.ORCH-T526; it was <c>~/.claude/session-context/clis.json</c>, which nothing
 /// outside this repo read), so anything that wants it reads one row instead of rescanning every session's state and mark.
 /// The row is left out of the dump: it changes every tick.

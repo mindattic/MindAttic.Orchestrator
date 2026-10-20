@@ -22,7 +22,7 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
     public Result Dispatch(QueueItem item, string provider, bool useWorktree, bool submit = false)
     {
         var settings = store.LoadSettings();
-        // The caller's plan may be seconds old: an /autopilot CLI's `next --claim` (or another window) may have taken the
+        // The caller's plan may be seconds old: an /allocate CLI's `next --claim` (or another window) may have taken the
         // ticket since. Only the assignment the plan saw (a stale one) may be replaced.
         bool ClaimedElsewhere(IEnumerable<Assignment> all) => all.Any(a => a.TicketId == item.Id && a != item.Assignment);
         if (ClaimedElsewhere(store.LoadAssignments())) return new Result(false, $"{item.Id} was just claimed elsewhere; it isn't started twice.", null);

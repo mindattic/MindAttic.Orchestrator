@@ -6,7 +6,7 @@ using MindAttic.Orchestrator.Settings;
 
 namespace MindAttic.Orchestrator.Sessions;
 
-/// <summary>One CLI's /autopilot as it stood when the handoff began, so the CLI that starts in its place after the switch gets it
+/// <summary>One CLI's /allocate as it stood when the handoff began, so the CLI that starts in its place after the switch gets it
 /// back: <see cref="Repos"/> on (comma-separated, as its mark), <see cref="Off"/> typed off, neither for the default.</summary>
 public sealed record HandoffCli(
     [property: JsonPropertyName("pid")] int Pid,
@@ -45,7 +45,7 @@ public sealed record HandoffWork(IReadOnlyList<CliRow> Busy, IReadOnlyList<(stri
 /// /handoff (M.ORCH-T481): winds every CLI down for an account switch and picks up after it. While the mark holds,
 /// <c>orchestrator next</c> hands out nothing, keep-going sends no CLI back for work, the pace gate starts no new subagent, and the
 /// daemon returns claims no subagent started on; each CLI quicksaves its repo's handoff as its turn ends. Once nothing is working
-/// the daemon marks it quiet and says so once. On the new account, each CLI's start loads its handoff and gets its /autopilot back.
+/// the daemon marks it quiet and says so once. On the new account, each CLI's start loads its handoff and gets its /allocate back.
 /// </summary>
 public static class Handoff
 {
@@ -170,7 +170,7 @@ public static class Handoff
         File.Move(tmp, path, overwrite: true);
     }
 
-    /// <summary>Starts a handoff (unless one already holds), recording every open CLI's /autopilot so the CLIs on the new account get
+    /// <summary>Starts a handoff (unless one already holds), recording every open CLI's /allocate so the CLIs on the new account get
     /// it back. Returns the mark in force.</summary>
     public static HandoffMark Start(ContextCycler cycler, int? by, string? account, DateTime nowUtc)
     {
@@ -264,8 +264,8 @@ public static class Handoff
         lines.Add(mark.State switch
         {
             Winding => $"Handing off since {Formatting.Ago(mark.StartedUtc, nowUtc)}: nothing new starts; what's working finishes, lands and closes, then each CLI quicksaves.",
-            Quiet => $"{QuietLine} (quiet since {Formatting.Ago(mark.QuietUtc, nowUtc)}). Each CLI that starts next picks up its handoff and its /autopilot.",
-            _ => $"Picked up after the switch {Formatting.Ago(mark.ResumedUtc, nowUtc)}: new work starts again; CLIs still to start get their handoff and /autopilot.",
+            Quiet => $"{QuietLine} (quiet since {Formatting.Ago(mark.QuietUtc, nowUtc)}). Each CLI that starts next picks up its handoff and its /allocate.",
+            _ => $"Picked up after the switch {Formatting.Ago(mark.ResumedUtc, nowUtc)}: new work starts again; CLIs still to start get their handoff and /allocate.",
         });
         if (mark.State == Winding)
         {

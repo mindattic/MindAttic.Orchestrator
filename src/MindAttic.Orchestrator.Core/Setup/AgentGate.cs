@@ -1280,12 +1280,12 @@ public static class AgentGate
 
     /// <summary>Python shared by both hooks (needs <c>json</c>, <c>os</c>, <c>re</c>, <c>time</c>, <c>Path</c> and <c>repo_of</c>):
     /// the per-CLI <c>crossrepo-&lt;pid&gt;</c> and <c>autopilot-&lt;pid&gt;</c> marks. The context gate writes them for a typed
-    /// /crossrepo or /autopilot, the pace gate for the same command called through the Skill tool, but only when the user's
+    /// /crossrepo or /allocate, the pace gate for the same command called through the Skill tool, but only when the user's
     /// own latest prompt asked for it (M.ORCH-T435): both are the user's choice, never the model's.</summary>
     internal const string MarksPython = """
         SESSION_MARKS = Path.home() / ".claude" / "session-context"
         # What the user's typed prompt asks for by name ("use crossrepo for X", "turn auto-pilot on", or the command itself).
-        ASKS_FOR = {"crossrepo": re.compile(r"\bcross[\s_-]?repos?\b", re.I), "autopilot": re.compile(r"\bauto[\s_-]?pilot\b|/(work|allocate)\b", re.I),
+        ASKS_FOR = {"crossrepo": re.compile(r"\bcross[\s_-]?repos?\b", re.I), "autopilot": re.compile(r"\bauto[\s_-]?pilot\b|\ballocate\b", re.I),
                     "handoff": re.compile(r"\bhand[\s_-]?off\b", re.I)}
         def asked_for(prompt):
             return sorted(k for k, r in ASKS_FOR.items() if r.search(prompt or ""))
@@ -1300,7 +1300,7 @@ public static class AgentGate
             except Exception:
                 return {}
         def autopilot_repos(pid):
-            # What /autopilot turned on in THIS CLI (its repos, or "*"): it works them through its own subagents.
+            # What /allocate turned on in THIS CLI (its repos, or "*"): it works them through its own subagents.
             # Never another CLI's: one you're using is never pushed onto tickets because its repo was named elsewhere.
             # Its cli_marks row (M.ORCH-T528), or its autopilot-<pid> file as cli_marks reads it.
             try:
@@ -1308,18 +1308,18 @@ public static class AgentGate
             except Exception:
                 return []
         def set_autopilot(pid, args, cwd):
-            # /autopilot [off|all] [-repo=A,B]: THIS CLI works those repos' tickets through its own subagents (its own
-            # repo when none are named) until /autopilot off here. Nothing is marked for any other CLI. A name may be a
+            # /allocate [off|all] [-repo=A,B]: THIS CLI works those repos' tickets through its own subagents (its own
+            # repo when none are named) until /allocate off here. Nothing is marked for any other CLI. A name may be a
             # wildcard (-repo=GTFO.*), kept as typed and matched wherever the repos are read (M.ORCH-T165).
             # Returns why nothing changed, or None once it's recorded.
             import fnmatch
             if re.search(r"-{1,2}repos\b", args, re.I):
                 # The -repos alias is gone (it read as a different switch); say so rather than guess what was meant.
-                return "/autopilot takes -repo=A,B (wildcards too: -repo=GTFO.*); -repos is gone. Nothing changed: type it again with -repo."
+                return "/allocate takes -repo=A,B (wildcards too: -repo=GTFO.*); -repos is gone. Nothing changed: type it again with -repo."
             names = autopilot_repos(pid)
             if "cli:autopilot" in _unknown:
                 # Its row couldn't be read (M.ORCH-T542): a list made from nothing would drop the repos it already has.
-                return "The orchestrator's database is held by another write, so this CLI's /autopilot couldn't be read. Nothing changed: type it again in a moment."
+                return "The orchestrator's database is held by another write, so this CLI's /allocate couldn't be read. Nothing changed: type it again in a moment."
             mine = repo_of(cwd or "")
             m = re.search(r"-{1,2}repo\b\s*[=:]?\s*\[?([^\]]*)\]?", args, re.I)
             named = [r.strip() for r in m.group(1).replace(" ", ",").split(",") if r.strip() and r.strip().lower() not in ("on", "off", "this", "all")] if m else ([mine] if mine else [])
@@ -1331,8 +1331,8 @@ public static class AgentGate
                            if p.lower() != n.lower() and fnmatch.fnmatchcase(n.lower(), p.lower())]
                 if covered and not re.match(r"off\s+all\b", args, re.I):
                     n, p = covered[0]
-                    return (n + " is worked here through /autopilot " + ("all" if p == "*" else "-repo=" + p) + ", so it can't be switched "
-                            "off on its own. Nothing changed: type /autopilot off, then /autopilot -repo= with the repos you do want.")
+                    return (n + " is worked here through /allocate " + ("all" if p == "*" else "-repo=" + p) + ", so it can't be switched "
+                            "off on its own. Nothing changed: type /allocate off, then /allocate -repo= with the repos you do want.")
                 names = [] if re.match(r"off\s+all\b", args, re.I) or not m else [n for n in names if n.lower() not in lower]
             elif re.match(r"all\b", args, re.I):
                 names = ["*"]
@@ -1351,7 +1351,7 @@ public static class AgentGate
                         pass
             if pid and names:
                 if set_cli_mark("autopilot", pid, ",".join(names)) is False:
-                    return ("The orchestrator's database is held by another write and this CLI's /autopilot file is held open, so it "
+                    return ("The orchestrator's database is held by another write and this CLI's /allocate file is held open, so it "
                             "couldn't be recorded. Nothing changed: type it again in a moment.")
                 if may_have_cli_mark("noautopilot", pid):
                     set_cli_mark("noautopilot", pid, None)
@@ -1361,8 +1361,8 @@ public static class AgentGate
                 if pid and re.match(r"off\b", args, re.I):
                     set_cli_mark("noautopilot", pid, "")
             return None
-        # A freshly opened CLI starts with /autopilot off (M.ORCH-T522, reversing M.ORCH-T476's on-by-default): only a typed
-        # /autopilot (or /work, /allocate) marks it. The noautopilot mark /autopilot off leaves is what /handoff restores as "typed off".
+        # A freshly opened CLI starts with /allocate off (M.ORCH-T522, reversing M.ORCH-T476's on-by-default): only a typed
+        # /allocate marks it. The noautopilot mark /allocate off leaves is what /handoff restores as "typed off".
         def set_crossrepo(pid, args):
             # /crossrepo <A,B|all> lets this CLI work other repos too (the explicit exception to M.ORCH-T95); /crossrepo off ends it.
             if not pid:
@@ -1401,9 +1401,9 @@ public static class AgentGate
             if mark_too:
                 write_whole_mark("handoff", HANDOFF, None)
         def start_handoff(by, cwd=None):
-            # Starts a handoff unless one already holds, recording every CLI's /autopilot (on with its repos, or typed off) by the
+            # Starts a handoff unless one already holds, recording every CLI's /allocate (on with its repos, or typed off) by the
             # repo and folder it runs in, so the CLI that starts there on the new account gets it back. True when it started one.
-            # Nor while the mark or the CLIs' /autopilot can't be read (M.ORCH-T542): one under way would be replaced, or
+            # Nor while the mark or the CLIs' /allocate can't be read (M.ORCH-T542): one under way would be replaced, or
             # CLIs left out of it.
             if handing_off() or "handoff" in _unknown:
                 return False
@@ -1480,9 +1480,30 @@ public static class AgentGate
             ---
             MindAttic.Orchestrator's context gate has put this CLI process back under pace holds. Reply with one short line confirming this CLI is paced again.
             """),
+        // /autopilot and its alias /work, replaced by /allocate (M.ORCH-T560): deleted while they're still the installed text.
+        ("autopilot.md", RetiredAutopilotCommand),
+        ("work.md", RetiredAutopilotCommand
+            .Replace("description: This CLI works", "description: The same as /autopilot. This CLI works")
+            .Replace("/autopilot $ARGUMENTS is running", "/work $ARGUMENTS (the same as /autopilot $ARGUMENTS) is running")),
     ];
 
     /// <summary>Deletes a retired command file in <paramref name="commandsDir"/> that's still exactly ours; returns what went.</summary>
+    private const string RetiredAutopilotCommand = """
+        ---
+        description: This CLI works the open tickets of its own repo (or -repo=A,B, wildcards like -repo=GTFO.*, or "all") through its own subagents, each in its own worktree, landing on main and closing the ticket, until none are left. /autopilot off stops it in this CLI; /autopilot off all in every CLI.
+        argument-hint: "[off|off all|all] [-repo=A,B | -repo=GTFO.*]"
+        ---
+        /autopilot $ARGUMENTS is running in this CLI. MindAttic.Orchestrator's gates record it for this CLI only (no other CLI is affected) when the user typed it, or when you called it through the Skill tool because the user's own latest prompt asked for autopilot; a Skill call the user didn't ask for is refused and records nothing, so never start it on your own. Once recorded, while it's on, the repos named (a wildcard such as GTFO.* names every repo it matches) are this CLI's cross-repo exception so your subagents can work and close tickets there.
+
+        If the arguments start with "off": reply with one short line confirming autopilot is off in this CLI (with -repo, just for those repos; "off all": in every CLI). Subagents already working finish their tickets. Then end your turn.
+
+        Otherwise you work the tickets yourself, through subagents, now:
+        1. Run `orchestrator next --repos "<repos>" --claim`, where <repos> is the -repo list as typed (wildcards included), * for all, or this CLI's own repo when none are named; keep the quotes so no shell expands a wildcard. It claims the next workable tickets (fixes and tickets the user approved, in queue order, as many as the pace allows right now), makes each its own git worktree, and prints each ticket's id and a full prompt.
+        2. Start one subagent per ticket it printed, every one of them at once, all in one message, each with exactly the prompt printed for it (a general-purpose subagent, in the foreground). Don't hold a claimed ticket back because its files overlap another's: each works only in its own worktree, commits, rebases onto the repo's main line as it lands, and closes its ticket.
+        3. When they've returned, say in one line per ticket what happened, and go back to step 1.
+        4. Stop when `orchestrator next` hands out nothing (it says why: none left, waiting for approval, or the pace), and say so in one short line. Don't start anything else on your own. Nothing works these tickets in the background: it's this CLI's own subagents or nobody. Autopilot stays on here, so when this turn ends while the repos still have workable tickets and the pace has room, the orchestrator sends this CLI back to step 1; /autopilot off stops that.
+        """;
+
     internal static IEnumerable<string> DeleteRetiredCommands(string commandsDir)
     {
         foreach (var (file, body) in RetiredCommands)
@@ -1501,28 +1522,20 @@ public static class AgentGate
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
     }
 
-    internal static readonly string WorkCommand = AutopilotCommand
-        .Replace("description: This CLI works", "description: The same as /autopilot. This CLI works")
-        .Replace("/autopilot $ARGUMENTS is running", "/work $ARGUMENTS (the same as /autopilot $ARGUMENTS) is running");
-
-    internal static readonly string AllocateCommand = AutopilotCommand
-        .Replace("description: This CLI works", "description: The same as /autopilot. This CLI works")
-        .Replace("/autopilot $ARGUMENTS is running", "/allocate $ARGUMENTS (the same as /autopilot $ARGUMENTS) is running");
-
-    internal const string AutopilotCommand = """
+    internal const string AllocateCommand = """
         ---
-        description: This CLI works the open tickets of its own repo (or -repo=A,B, wildcards like -repo=GTFO.*, or "all") through its own subagents, each in its own worktree, landing on main and closing the ticket, until none are left. /autopilot off stops it in this CLI; /autopilot off all in every CLI.
+        description: Auto-allocates the open Workflow tickets of this CLI's repo (or -repo=A,B, wildcards like -repo=GTFO.*, or "all") to its own subagents whenever one has a free slot, each in its own worktree, landing on main and closing the ticket, until none are left. /allocate off stops it in this CLI; /allocate off all in every CLI.
         argument-hint: "[off|off all|all] [-repo=A,B | -repo=GTFO.*]"
         ---
-        /autopilot $ARGUMENTS is running in this CLI. MindAttic.Orchestrator's gates record it for this CLI only (no other CLI is affected) when the user typed it, or when you called it through the Skill tool because the user's own latest prompt asked for autopilot; a Skill call the user didn't ask for is refused and records nothing, so never start it on your own. Once recorded, while it's on, the repos named (a wildcard such as GTFO.* names every repo it matches) are this CLI's cross-repo exception so your subagents can work and close tickets there.
+        /allocate $ARGUMENTS is running in this CLI. MindAttic.Orchestrator's gates record it for this CLI only (no other CLI is affected) when the user typed it, or when you called it through the Skill tool because the user's own latest prompt asked for it; a Skill call the user didn't ask for is refused and records nothing, so never start it on your own. Once recorded, while it's on, the repos named (a wildcard such as GTFO.* names every repo it matches) are this CLI's cross-repo exception so your subagents can work and close tickets there.
 
-        If the arguments start with "off": reply with one short line confirming autopilot is off in this CLI (with -repo, just for those repos; "off all": in every CLI). Subagents already working finish their tickets. Then end your turn.
+        If the arguments start with "off": reply with one short line confirming /allocate is off in this CLI (with -repo, just for those repos; "off all": in every CLI). Subagents already working finish their tickets. Then end your turn.
 
         Otherwise you work the tickets yourself, through subagents, now:
         1. Run `orchestrator next --repos "<repos>" --claim`, where <repos> is the -repo list as typed (wildcards included), * for all, or this CLI's own repo when none are named; keep the quotes so no shell expands a wildcard. It claims the next workable tickets (fixes and tickets the user approved, in queue order, as many as the pace allows right now), makes each its own git worktree, and prints each ticket's id and a full prompt.
         2. Start one subagent per ticket it printed, every one of them at once, all in one message, each with exactly the prompt printed for it (a general-purpose subagent, in the foreground). Don't hold a claimed ticket back because its files overlap another's: each works only in its own worktree, commits, rebases onto the repo's main line as it lands, and closes its ticket.
         3. When they've returned, say in one line per ticket what happened, and go back to step 1.
-        4. Stop when `orchestrator next` hands out nothing (it says why: none left, waiting for approval, or the pace), and say so in one short line. Don't start anything else on your own. Nothing works these tickets in the background: it's this CLI's own subagents or nobody. Autopilot stays on here, so when this turn ends while the repos still have workable tickets and the pace has room, the orchestrator sends this CLI back to step 1; /autopilot off stops that.
+        4. Stop when `orchestrator next` hands out nothing (it says why: none left, waiting for approval, or the pace), and say so in one short line. Don't start anything else on your own. Nothing works these tickets in the background: it's this CLI's own subagents or nobody. /allocate stays on here, so when this turn ends while the repos still have workable tickets and the pace has room, the orchestrator sends this CLI back to step 1; /allocate off stops that.
         """;
 
     internal const string HandoffCommand = """
@@ -1541,7 +1554,7 @@ public static class AgentGate
         2. Then quicksave this repo's handoff exactly as /quicksave does: compose Task, Decisions, State and Next for what this CLI was doing, and run the shared runner's save from this CLI's folder: `& <workspace root>\mindattic-agent-standard\prose-agent.ps1 save -RepoRoot (Get-Location) -Task '...' -Decisions '...' -State '...' -Next '...'` (the workspace root is the folder this repo sits in; single-quote the strings, doubling any ' inside).
         3. Then say exactly "<repo> quiet, handoff saved", <repo> being this CLI's repo, and end your turn.
 
-        The orchestrator's daemon says "All quiet, safe to switch accounts" once nothing is working in any CLI. On the new account each CLI's start loads its handoff (as /quickload does) and gets its /autopilot back; memories are local files, so they carry over.
+        The orchestrator's daemon says "All quiet, safe to switch accounts" once nothing is working in any CLI. On the new account each CLI's start loads its handoff (as /quickload does) and gets its /allocate back; memories are local files, so they carry over.
         """;
 
     internal const string CrossRepoCommand = """
@@ -1635,16 +1648,16 @@ public static class AgentGate
             print(json.dumps(dict(hookSpecificOutput=dict(hookEventName="PreToolUse", permissionDecision="deny", permissionDecisionReason=why))))
             raise SystemExit(0)
 
-        # /crossrepo and /autopilot called through the Skill tool (M.ORCH-T435): the model starts them when the user asks in words
+        # /crossrepo and /allocate called through the Skill tool (M.ORCH-T435): the model starts them when the user asks in words
         # ("use crossrepo for X"), and the guard below refused every edit for want of the mark a typed command writes. They're
         # the user's choice, never the model's: recorded exactly as typed only when the user's latest prompt asked for it (the
         # context gate notes that), refused otherwise. Switching off is always safe, so it always goes through.
         {{MarksPython}}
         if tool == "Skill":
             called = str((data.get("tool_input") or {}).get("skill") or "").strip().lstrip("/").lower().split(":")[-1]
-            called = "autopilot" if called in ("work", "allocate") else called  # /work and /allocate are /autopilot's aliases
+            called = "autopilot" if called == "allocate" else called  # /allocate is autopilot's command (M.ORCH-T560)
             if called == "handoff":
-                # /handoff (M.ORCH-T481) through the Skill tool: the user's to start, like /autopilot; off and status always go through.
+                # /handoff (M.ORCH-T481) through the Skill tool: the user's to start, like /allocate; off and status always go through.
                 given = str((data.get("tool_input") or {}).get("args") or "").strip()
                 if re.match(r"(off|cancel)\b", given, re.I):
                     clear_handoff()
@@ -1659,7 +1672,7 @@ public static class AgentGate
                 off = bool(re.match(r"off\b", given, re.I)) or (called == "crossrepo" and not given)
                 if not off and called not in (session_state(data.get("session_id")).get("asked") or []):
                     refuse(f"/{called} is the user's to switch on, never yours: their latest prompt didn't ask for it, so nothing was "
-                           f"recorded. Ask the user to type " + ("/crossrepo <repos>" if called == "crossrepo" else "/autopilot") + " themselves.")
+                           f"recorded. Ask the user to type " + ("/crossrepo <repos>" if called == "crossrepo" else "/allocate") + " themselves.")
                 pid = os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
                 why = set_autopilot(pid, given, data.get("cwd") or "") if called == "autopilot" else set_crossrepo(pid, given)
                 if why:
@@ -1673,7 +1686,7 @@ public static class AgentGate
 
         # The one exception is explicit, per CLI and until it closes: /crossrepo <A,B|all> (the context gate writes the mark).
         def allowed_here():
-            # /crossrepo's repos, and the repos /autopilot is working in this CLI ("*" for all): its subagents edit and close there.
+            # /crossrepo's repos, and the repos /allocate is working in this CLI ("*" for all): its subagents edit and close there.
             pid = os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
             found = set()
             for kind in ("crossrepo", "autopilot"):
@@ -1693,7 +1706,7 @@ public static class AgentGate
                     return False
                 if excepted is None:
                     excepted = allowed_here()
-                # A name may be a wildcard (/autopilot -repo=GTFO.*): every repo it matches is excepted.
+                # A name may be a wildcard (/allocate -repo=GTFO.*): every repo it matches is excepted.
                 return "all" not in excepted and not any(fnmatch.fnmatchcase(r.lower(), p) for p in excepted)
             if tool in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
                 target = args.get("file_path") or args.get("notebook_path") or ""
@@ -1932,7 +1945,7 @@ public static class AgentGate
                 return held
             def slots():
                 return len(held_slots())
-            # Each CLI's fair share of the allowance (M.ORCH-T495: one repo's /autopilot took all 8 places at once while the
+            # Each CLI's fair share of the allowance (M.ORCH-T495: one repo's /allocate took all 8 places at once while the
             # other CLIs got none). The rule is SubagentShare's: every active CLI (this one, each with subagents running or
             # starting, each with an Agent call waiting here) has allowance / active (at least one), and may go past it only into
             # places no other CLI is waiting for. A waiting call marks its CLI as wanting, so the next place that frees goes to
@@ -2132,7 +2145,7 @@ public static class AgentGate
     /// The context gate: records each session's turn (busy on a prompt, idle on Stop) next to the
     /// context fill the statusline saves, so the orchestrator can cycle a session past <paramref name="percent"/>
     /// once its turn is over (<see cref="Sessions.ContextCycler"/>). With <paramref name="keepGoing"/>, a turn that ends in a CLI that typed
-    /// /autopilot while its repos still have workable tickets is told to carry on (<see cref="Settings.OrchestratorSettings.KeepGoing"/>).
+    /// /allocate while its repos still have workable tickets is told to carry on (<see cref="Settings.OrchestratorSettings.KeepGoing"/>).
     /// </summary>
     internal static string ContextScript(int percent, bool keepGoing = true) => $$$"""
         #!/usr/bin/env python3
@@ -2296,14 +2309,14 @@ public static class AgentGate
                 pass
             if insisted:
                 return None
-            return ("Don't stop: /autopilot is on in this CLI for " + repo + ", and " + str(len(ids)) + " workable ticket" +
+            return ("Don't stop: /allocate is on in this CLI for " + repo + ", and " + str(len(ids)) + " workable ticket" +
                     ("" if len(ids) == 1 else "s") + " remain (" + ", ".join(ids[:6]) + ("..." if len(ids) > 6 else "") + "). "
                     "Run `orchestrator next --repos \"" + ",".join(repos) + "\" --claim` and hand each ticket it prints to a subagent with the "
                     "prompt it prints (several at once, in one message), then repeat. End your turn only when it hands out nothing, "
                     "or you're blocked on a decision only the user can make, and then say plainly what it is.")
 
         def restore_autopilot(pid, cwd, h):
-            # The /autopilot a CLI in this repo had before the switch, given back to this one (each recorded CLI's to one new CLI,
+            # The /allocate a CLI in this repo had before the switch, given back to this one (each recorded CLI's to one new CLI,
             # the one in the same folder first): "off" when it was typed off, the command when it was on, None when none was recorded.
             mine = repo_of(cwd or "")
             if not pid or not mine:
@@ -2327,7 +2340,7 @@ public static class AgentGate
                     set_cli_mark("autopilot", pid, str(e["repos"]))
                     if may_have_cli_mark("noautopilot", pid):
                         set_cli_mark("noautopilot", pid, None)
-                    return "/autopilot " + ("all" if e["repos"] == "*" else "-repo=" + str(e["repos"]))
+                    return "/allocate " + ("all" if e["repos"] == "*" else "-repo=" + str(e["repos"]))
             return None
 
         def load_handoff(cwd, h):
@@ -2408,7 +2421,7 @@ public static class AgentGate
 
         # Typed at the window's stop, these still go through: they're how you steer the orchestrator itself.
         # /goal goes through at the stop only to clear one: a new goal there would run turn after turn its refused calls can't finish.
-        CONTROL = re.compile(r"/(autopilot|work|allocate|crossrepo|pacing|handoff)\b|/goal\s*(?:(?:clear|off|stop|reset|none|cancel)\s*)?$", re.I)
+        CONTROL = re.compile(r"/(allocate|crossrepo|pacing|handoff)\b|/goal\s*(?:(?:clear|off|stop|reset|none|cancel)\s*)?$", re.I)
 
         def goal_finished(transcript, goal):
             # A /goal ends on its own once its condition holds: the session's last entry is then the stop summary naming it
@@ -2478,10 +2491,10 @@ public static class AgentGate
             sys.exit(0)
         sid, event = data.get("session_id"), data.get("hook_event_name")
         # Codex (its Stop hook) and Gemini (AfterAgent) run this too, named on the command line: nothing here applies to
-        # them (their sessions aren't Claude's to cycle, and only a Claude CLI that typed /autopilot is kept going).
+        # them (their sessions aren't Claude's to cycle, and only a Claude CLI that typed /allocate is kept going).
         provider = sys.argv[1].capitalize() if len(sys.argv) > 1 else "Claude"
         if provider != "Claude":
-            sys.exit(0)  # /autopilot runs in a Claude CLI; a Codex or Gemini CLI is never pushed onto tickets
+            sys.exit(0)  # /allocate runs in a Claude CLI; a Codex or Gemini CLI is never pushed onto tickets
         # Every running subagent has a mark, so the pace gate can hold new ones past the allowance.
         if event in ("SubagentStart", "SubagentStop"):
             if event == "SubagentStop":
@@ -2524,7 +2537,7 @@ public static class AgentGate
                              pid=state.get("pid") or cli_pid(), cwd=state.get("cwd") or data.get("cwd"))
                 save(state_file, state)
                 # After a /handoff (M.ORCH-T481): the first start once it's quiet clears the hold (new work starts again), and each
-                # start gets back its repo's /autopilot and loads the handoff its CLI saved there.
+                # start gets back its repo's /allocate and loads the handoff its CLI saved there.
                 h = handoff()
                 # A /clear or a compaction starts a session in a CLI already open: on the old account it isn't the switch, so the
                 # hold stays and nothing meant for the new account is used up here; only one signed in to another account resumes.
@@ -2540,7 +2553,7 @@ public static class AgentGate
                     loaded = load_handoff(data.get("cwd"), h)
                     said = ["[Handoff] Picked up after the account switch."]
                     if restored == "off":
-                        said.append("/autopilot stays off in this CLI, as it was before.")
+                        said.append("/allocate stays off in this CLI, as it was before.")
                     elif restored:
                         said.append(restored + " is back on in this CLI, as it was before.")
                     if loaded:
@@ -2577,7 +2590,7 @@ public static class AgentGate
                 log_gate_event(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "prompt-answered", 0, None, limits.get("percent_used"))
                 print(json.dumps({"decision": "block", "reason": "Not sent, so no tokens were spent: the " + str(limits.get("stop_window") or "5-hour") + " window is at its target "
                     "(MindAttic.Orchestrator never lets it pass the limit). Typing works again when it resets at " +
-                    str(limits.get("reset_time") or "the end of the window") + ". /autopilot, /pacing and /goal clear still go through."}))
+                    str(limits.get("reset_time") or "the end of the window") + ". /allocate, /pacing and /goal clear still go through."}))
                 sys.exit(0)
         DIR.mkdir(parents=True, exist_ok=True)
         state_file = DIR / (sid + ".state.json")
@@ -2602,7 +2615,7 @@ public static class AgentGate
                 save(state_file, state)
                 print(json.dumps({"decision": "block", "reason": handoff_save_told(repo_of(data.get("cwd") or "") or Path(str(data.get("cwd") or ".")).name)}))
                 sys.exit(0)
-            # Only a CLI that typed /autopilot is kept going, on its own repos, while they have workable tickets.
+            # Only a CLI that typed /allocate is kept going, on its own repos, while they have workable tickets.
             repos = [] if winding else autopilot_repos(my_pid())
             if repos and KEEP_GOING and not stopped and not state.get("goal"):
                 why = "autopilot"
@@ -2655,7 +2668,7 @@ public static class AgentGate
             if data.get("transcript_path"):
                 state["transcript"] = data["transcript_path"]
             # The CLI's process id from its first prompt on: `orchestrator next` finds the calling CLI's own session by it, and
-            # a CLI whose every stop is pushed back (an /autopilot run) never reaches the Stop that used to record it.
+            # a CLI whose every stop is pushed back (an /allocate run) never reaches the Stop that used to record it.
             state.update(state="busy", at=now, warned=False, cwd=data.get("cwd"), pid=cli_pid(), auth=auth)
             # A turn typed as an exempt command (/deploy, /run, ...) skips every pace gate until it stops (M.ORCH-T198).
             exempt = exempt_prompt(data.get("prompt"))
@@ -2672,10 +2685,9 @@ public static class AgentGate
                 state["asked"] = asked
             else:
                 state.pop("asked", None)
-            # /autopilot (set_autopilot): THIS CLI works those repos' tickets through its own subagents until /autopilot off here.
-            # /work and /allocate are its aliases; not /workflow or /worktree.
-            alias = re.match(r"/(work|allocate)\b", prompt)
-            command = "/autopilot" if prompt.startswith("/autopilot") else "/" + alias.group(1) if alias else None
+            # /allocate (set_autopilot): THIS CLI works those repos' tickets through its own subagents until /allocate off here.
+            # /allocate replaced /autopilot and its alias /work (M.ORCH-T560).
+            command = "/allocate" if re.match(r"/allocate\b", prompt) else None
             if command:
                 why = set_autopilot(my_pid(), typed[len(command):].strip(), data.get("cwd") or "")
                 if why:
@@ -2839,8 +2851,6 @@ public static class AgentGate
         {
             (script, Script), (contextScript, ContextScript(contextPercent, keepGoing)),
             (Path.Combine(dir, "commands", "pacing.md"), PacingCommand),
-            (Path.Combine(dir, "commands", "autopilot.md"), AutopilotCommand),
-            (Path.Combine(dir, "commands", "work.md"), WorkCommand),
             (Path.Combine(dir, "commands", "allocate.md"), AllocateCommand),
             (Path.Combine(dir, "commands", "crossrepo.md"), CrossRepoCommand),
             (Path.Combine(dir, "commands", "handoff.md"), HandoffCommand),
@@ -2907,7 +2917,7 @@ public static class AgentGate
         if (MergeJsonHook(geminiSettings, "BeforeTool", ScriptName, command, HookTimeoutSeconds * 1000) is { } g) did.Add("Gemini: " + g);
         if (AppendKimiHook(kimiConfigPath ?? KimiConfigPath, command, HookTimeoutSeconds)) did.Add("Kimi: wired PreToolUse into config.toml");
         // Codex's Stop and Gemini's AfterAgent run the context gate too, but it leaves them be: only a Claude CLI that typed
-        // /autopilot is kept going. Kimi has no end-of-turn hook at all.
+        // /allocate is kept going. Kimi has no end-of-turn hook at all.
         var contextScript = Path.Combine(claudeDir ?? ClaudeDir, ContextScriptName);
         if (File.Exists(contextScript))
         {
