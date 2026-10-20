@@ -103,6 +103,27 @@ public sealed class AccountSwitchTests
     }
 
     [Test]
+    public void A_name_that_matches_several_accounts_at_a_step_is_ambiguous_and_switches_to_none()
+    {
+        // M.ORCH-T553: "d" starts two emails, so it fell through to the account-id step and picked z@, whose id starts with d.
+        foreach (var (id, email, ago) in new[] { ("e1", "d1@mindattic.com", -50), ("e2", "d2@mindattic.com", -40), ("dz", "z@mindattic.com", -30) })
+        {
+            SignIn(id, email, null, Now.AddMinutes(ago));
+            Observe(Reading(10, 10, Now.AddMinutes(ago)), Now.AddMinutes(ago));
+        }
+        var rows = AccountRoster.Load(db, "b/org");
+
+        Assert.That(AccountSwitch.Find(rows, "d", out var several), Is.Null);
+        Assert.That(several.Select(r => r.Email), Is.EquivalentTo(new[] { "d1@mindattic.com", "d2@mindattic.com" }));
+        Assert.That(AccountSwitch.Find(rows, "z", out several)?.Email, Is.EqualTo("z@mindattic.com"));
+        Assert.That(several, Is.Empty);
+
+        Assert.That(Run("login", "d"), Is.EqualTo(1));
+        Assert.That(logins, Is.Empty, "no account is signed in to");
+        Assert.That(output.ToString(), Does.Contain("\"d\" matches more than one account").And.Contain("d1@mindattic.com").And.Contain("d2@mindattic.com"));
+    }
+
+    [Test]
     public void The_seat_comes_from_the_plan_and_the_most_headroom_from_the_week_left()
     {
         Assert.That(Rows.Select(AccountSwitch.Seat), Is.EqualTo(new[] { "standard", "premium" }), "b signed in first, then a");

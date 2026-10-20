@@ -59,9 +59,11 @@ internal sealed class LoginCommand : Command<LoginCommand.Settings>
             BillingCommand.Write(switched.Status, now);
             return 0;
         }
-        if (AccountSwitch.Find(rows, settings.Account!) is not { } row)
+        if (AccountSwitch.Find(rows, settings.Account!, out var several) is not { } row)
         {
-            AnsiConsole.MarkupLine($"[red]No one account here is \"{Markup.Escape(settings.Account!)}\": name its email or the part before the @.[/]");
+            AnsiConsole.MarkupLine(several.Count > 1
+                ? $"[red]\"{Markup.Escape(settings.Account!.Trim())}\" matches more than one account ({Markup.Escape(string.Join(", ", several.Select(r => r.Label)))}): name its whole email.[/]"
+                : $"[red]No one account here is \"{Markup.Escape(settings.Account!)}\": name its email or the part before the @.[/]");
             AccountsCommand.Write(rows, current, now);
             return 1;
         }

@@ -15,15 +15,31 @@ public static class AccountSwitch
 {
     /// <summary>The row <paramref name="name"/> means: its email (any case), the part before the @ ("pdftransferjr"), the
     /// start of exactly one email, or the start of its account id. Null when none or more than one match.</summary>
-    public static AccountRow? Find(IReadOnlyList<AccountRow> rows, string name)
+    public static AccountRow? Find(IReadOnlyList<AccountRow> rows, string name) => Find(rows, name, out _);
+
+    /// <summary>As <see cref="Find(IReadOnlyList{AccountRow}, string)"/>, tried in that order; the first step that matches
+    /// anything decides. When it matches more than one, the name is ambiguous: null, with those rows in
+    /// <paramref name="several"/> (empty otherwise), and no looser step is tried, which would pick an unrelated account
+    /// ("d" starting two emails and a third account's id, M.ORCH-T553).</summary>
+    public static AccountRow? Find(IReadOnlyList<AccountRow> rows, string name, out IReadOnlyList<AccountRow> several)
     {
+        several = [];
         name = name.Trim();
         if (name.Length == 0) return null;
-        AccountRow? One(Func<AccountRow, bool> match) => rows.Where(match).Take(2).ToList() is [var only] ? only : null;
-        return One(r => string.Equals(r.Email, name, StringComparison.OrdinalIgnoreCase))
-            ?? One(r => r.Email is { } e && string.Equals(e.Split('@')[0], name, StringComparison.OrdinalIgnoreCase))
-            ?? One(r => r.Email?.StartsWith(name, StringComparison.OrdinalIgnoreCase) == true)
-            ?? One(r => r.Account.StartsWith(name, StringComparison.OrdinalIgnoreCase));
+        Func<AccountRow, bool>[] steps =
+        [
+            r => string.Equals(r.Email, name, StringComparison.OrdinalIgnoreCase),
+            r => r.Email is { } e && string.Equals(e.Split('@')[0], name, StringComparison.OrdinalIgnoreCase),
+            r => r.Email?.StartsWith(name, StringComparison.OrdinalIgnoreCase) == true,
+            r => r.Account.StartsWith(name, StringComparison.OrdinalIgnoreCase),
+        ];
+        foreach (var step in steps)
+        {
+            var matches = rows.Where(step).ToList();
+            if (matches is [var only]) return only;
+            if (matches.Count > 1) { several = matches; return null; }
+        }
+        return null;
     }
 
     /// <summary>"premium" or "standard": a Team or Enterprise seat's kind, by the Max tier its limits are sized by (a premium
