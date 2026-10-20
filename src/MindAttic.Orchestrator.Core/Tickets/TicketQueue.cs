@@ -90,11 +90,14 @@ public static class TicketQueue
             if (db.Ticket(id)?.Ticket is { Status: TicketRules.Open } t && db.QueueState(t.Id).Approval == WorkflowDb.Proposed) db.Approve(t.Id);
         foreach (var (id, priority) in prioritized)
             if (priority != 0 && db.Ticket(id)?.Ticket is { } t && db.QueueState(t.Id).Priority == 0) db.SetPriority(t.Id, priority);
+        // Which ids the database holds is asked first: each is a query that can wait on its lock, and a settings change saved
+        // (the Settings panel, orchestrator reserve) between this load and its save would be lost.
+        var moved = approved.Concat(prioritized.Select(kv => kv.Key)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var current = store.LoadSettingsToChange();
         store.SaveSettings(current with
         {
-            StoryApproved = current.StoryApproved.Where(id => !Held(id)).ToList(),
-            StoryPriorities = current.StoryPriorities.Where(kv => !Held(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value),
+            StoryApproved = current.StoryApproved.Where(id => !moved.Contains(id)).ToList(),
+            StoryPriorities = current.StoryPriorities.Where(kv => !moved.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value),
         });
         return approved.Count + prioritized.Count;
     }
