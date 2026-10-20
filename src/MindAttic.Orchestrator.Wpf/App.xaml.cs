@@ -24,6 +24,7 @@ public partial class App : Application
     private Mutex? daemonMutex;
     private Tray? tray;
     private EventWaitHandle? exitSignal;
+    private SingleInstance? instance;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -95,6 +96,15 @@ public partial class App : Application
             else if (TryInstallAndHandOver(installer, self, log)) { Shutdown(); return; }
         }
 
+        // One dashboard (M.ORCH-T497): a later launch brings this one forward and exits, rather than adding a second tray icon.
+        instance = SingleInstance.Claim(SingleInstance.DashboardName, TimeSpan.FromSeconds(5));
+        if (instance is null)
+        {
+            log.Information("A dashboard is already running; asked it to show itself, and this one exits");
+            Shutdown();
+            return;
+        }
+
         if (!EnsureWorkspace(log)) { Shutdown(); return; }
 
         if (!dev) RepairSetup(installer, self, log);
@@ -106,6 +116,7 @@ public partial class App : Application
         // An upgrade asks this dashboard to exit here: closing its window would only hide it to the tray.
         exitSignal = new EventWaitHandle(false, EventResetMode.ManualReset, Installer.DashboardExitEvent(Environment.ProcessId));
         ThreadPool.RegisterWaitForSingleObject(exitSignal, (_, _) => Dispatcher.BeginInvoke(() => tray?.Exit()), null, Timeout.Infinite, executeOnlyOnce: true);
+        instance.OnShowRequested(() => Dispatcher.BeginInvoke(() => { if (MainWindow is { } window) Tray.Restore(window); }));
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -114,6 +125,7 @@ public partial class App : Application
         OrchestratorLog.Stop();
         daemonMutex?.Dispose();
         exitSignal?.Dispose();
+        instance?.Dispose();
         base.OnExit(e);
     }
 
