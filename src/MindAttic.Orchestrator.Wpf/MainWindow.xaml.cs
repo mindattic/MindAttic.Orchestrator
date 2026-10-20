@@ -6,6 +6,7 @@ using System.Windows.Automation.Peers;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
+using MindAttic.Components.Wpf.Controls;
 using MindAttic.Orchestrator.Wpf.ViewModels;
 
 namespace MindAttic.Orchestrator.Wpf;
@@ -22,6 +23,7 @@ public partial class MainWindow : Window
 
     private readonly MainViewModel model = new();
     private readonly DispatcherTimer timer;
+    private readonly DropdownMenu accountMenu;
 
     public MainWindow()
     {
@@ -39,6 +41,9 @@ public partial class MainWindow : Window
             });
         }));
         CommandBindings.Add(new CommandBinding(WindowCommands.Escape, (_, _) => OnEscape()));
+
+        // The account menu in the upper right (M.ORCH-T492): built from the roster each time it opens; nothing in it is pinned.
+        accountMenu = new DropdownMenu(AccountMenuButton, AccountActions, isPinned: _ => false, togglePinned: _ => { });
 
         model.Toasts.CollectionChanged += OnToastsChanged;
         model.PropertyChanged += (_, e) =>
@@ -68,6 +73,10 @@ public partial class MainWindow : Window
         IsVisibleChanged += async (_, _) => await OnShownOrHidden();
         StateChanged += async (_, _) => await OnShownOrHidden();
     }
+
+    private IReadOnlyList<DropdownAction> AccountActions() =>
+        [.. model.AccountMenu().Select(item => new DropdownAction(item.Id, item.Label, item.Icon, item.ToolTip,
+            async (_, _) => await model.ChooseAccountAsync(item.Id)))];
 
     private bool Hidden => !IsVisible || WindowState == WindowState.Minimized;
 

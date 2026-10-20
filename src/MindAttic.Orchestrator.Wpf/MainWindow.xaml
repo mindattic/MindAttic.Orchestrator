@@ -119,20 +119,30 @@
         <!-- The header owns the window's left/right gutter; nothing inside it adds its own, so the tiles and the chart
              share both edges (M.ORCH-T192). The tiles are equal cells that together span the row at any width. -->
         <StackPanel x:Name="Header" Grid.Row="0" Margin="24,18,24,0">
-        <!-- Who's billed (M.ORCH-T436): Claude Team for everyday tokens, the Vault's API key (masked) for emergencies only. The
-             pills switch every CLI; the line under it says which open CLIs still bill the other thing, and which only you can
-             restart. The tooltip lists each CLI's own billing. -->
-        <DockPanel x:Name="BillingRow" Margin="0,0,0,10" Visibility="{Binding BillingHeadline, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
-            <ListBox DockPanel.Dock="Right" Style="{StaticResource PillChoice}" ItemsSource="{Binding BillingChoices}" Padding="0"
-                     SelectedItem="{Binding BillingChoice}" VerticalAlignment="Center" Margin="12,0,0,0"
-                     AutomationProperties.Name="Billing for every CLI"
-                     ToolTip="Switch every CLI: Claude Team (everyday) or the MindAttic Vault's API key (emergencies only). Open Launcher tabs restart with claude --resume at their next idle point." />
-            <StackPanel VerticalAlignment="Center" ToolTip="{Binding BillingClis}">
-                <TextBlock Text="{Binding BillingHeadline}" FontWeight="SemiBold" Foreground="{Binding BillingBrush}" TextTrimming="CharacterEllipsis"
-                           AutomationProperties.Name="{Binding BillingHeadline}" />
-                <TextBlock Text="{Binding BillingDetail}" Style="{StaticResource McTileSubtitle}" TextWrapping="Wrap"
-                           Visibility="{Binding BillingDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-            </StackPanel>
+        <!-- The account menu, upper right (M.ORCH-T492), as a normal app has it: the signed-in account's email ("API key" while
+             the Vault's key bills, M.ORCH-T436), which opens a dropdown of every account in the roster (seat, week used and
+             left, its reset, the 5-hour window, when it was read; the signed-in one marked, the most headroom starred). Picking
+             one opens its login in the browser; the last entry bills the API key, for emergencies. The tooltip says who every
+             CLI bills; the line beside it what the last switch did and which open CLIs still bill the other thing. -->
+        <DockPanel x:Name="AccountRow" Margin="0,0,0,10" LastChildFill="True">
+            <Button x:Name="AccountMenuButton" DockPanel.Dock="Right" Style="{StaticResource McButton}" VerticalAlignment="Center"
+                    Margin="12,0,0,0" Padding="12,4" AutomationProperties.Name="{Binding AccountCorner, StringFormat='Account: {0}. Opens the account menu'}"
+                    AutomationProperties.HelpText="{Binding BillingClis}">
+                <Button.ToolTip>
+                    <TextBlock>
+                        <Run Text="{Binding BillingHeadline, Mode=OneWay}" FontWeight="SemiBold" /><LineBreak />
+                        <Run Text="{Binding BillingClis, Mode=OneWay}" />
+                    </TextBlock>
+                </Button.ToolTip>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE77B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,0,8,0"
+                               Foreground="{Binding BillingBrush}" />
+                    <TextBlock Text="{Binding AccountCorner}" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{Binding BillingBrush}" />
+                    <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" VerticalAlignment="Center" Margin="8,1,0,0" />
+                </StackPanel>
+            </Button>
+            <TextBlock Text="{Binding BillingDetail}" Style="{StaticResource McTileSubtitle}" TextWrapping="Wrap" VerticalAlignment="Center"
+                       Visibility="{Binding BillingDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
         </DockPanel>
         <!-- Every Claude account signed in to here (M.ORCH-T490): its week used and left, the 5-hour window, when each resets
              and when it was last read. An account not signed in keeps its last reading; a passed reset reads 0%. -->

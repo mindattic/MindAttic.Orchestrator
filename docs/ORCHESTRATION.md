@@ -92,11 +92,19 @@ Claude actually reports stops new work.
 
 Every Claude CLI bills one of two things, set by one switch (M.ORCH-T436): the **Claude Team** login
 (`pdftransferjr@mindattic.com`, org MindAttic), for everyday tokens, or the **API key** in the MindAttic Vault keyring
-(`LlmCredentialStore`, provider `Claude`), for emergencies only. The switch is the dashboard's billing pills,
-`orchestrator billing team|api`, or a `/login` to a claude.ai account: the last sign-in decides, so a /login to another
-account than the one signed in when the API key was chosen sets the mode back to Claude Team. The dashboard's header and
-`orchestrator status` say who's billed (`Claude Team: <email> (<org>)`, or `API KEY: sk-ant-...<last4>`, never more of the
+(`LlmCredentialStore`, provider `Claude`), for emergencies only. The switch is the dashboard's account menu (its last
+entry, "Use API key (emergencies)"; any account in it bills Claude Team), `orchestrator billing team|api`,
+`orchestrator login --api-key`, or a `/login` to a claude.ai account: the last sign-in decides, so a /login to another
+account than the one signed in when the API key was chosen sets the mode back to Claude Team. The dashboard's upper-right corner (the signed-in
+email, or "API key"; its tooltip has the rest) and `orchestrator status` say who's billed (`Claude Team: <email> (<org>)`, or `API KEY: sk-ant-...<last4>`, never more of the
 key) and what each open CLI bills.
+
+The account menu (M.ORCH-T492) lists every account in the roster (`data/orchestrator.db`): seat (premium or standard),
+weekly % used and left and its reset, the 5-hour % and its reset, and when it was last read, the signed-in one marked and
+the one with the most of its week left starred. Picking another runs `claude auth login --email <address>` (`--sso` for an
+Enterprise org), which opens the browser on that account's login; the dashboard follows the switch once it lands
+(M.ORCH-T486). `orchestrator login <email-or-short-name>` does the same from a terminal, and a bare `orchestrator login`
+prints the same table.
 
 A switch:
 

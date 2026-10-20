@@ -23,6 +23,19 @@ internal sealed class AccountsCommand : Command<AccountsCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
+        var (rows, current, now) = Load();
+        if (settings.Json)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(rows, new JsonSerializerOptions { WriteIndented = true }));
+            return 0;
+        }
+        Write(rows, current, now);
+        return 0;
+    }
+
+    /// <summary>The roster with the signed-in account's row brought up to date from Claude's last reading, and who's signed in.</summary>
+    internal static (IReadOnlyList<AccountRow> Rows, string? Current, DateTime NowUtc) Load()
+    {
         var (db, account, usagePath) = Override?.Invoke() ?? (new OrchestratorDb(OrchestratorDb.DefaultPath(OrchestratorOptions.Load().WorkspaceRoot)), new ClaudeAccount(), null);
         var now = DateTime.UtcNow;
         var signIn = account.Read(now);
@@ -32,25 +45,28 @@ internal sealed class AccountsCommand : Command<AccountsCommand.Settings>
             try { AccountRoster.Observe(db, signIn, account.Profile, signIn.Owns(reading) ? reading : null, now); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { }
         }
-        var rows = AccountRoster.Load(db, signIn?.Account);
-        if (settings.Json)
-        {
-            Console.WriteLine(JsonSerializer.Serialize(rows, new JsonSerializerOptions { WriteIndented = true }));
-            return 0;
-        }
+        var current = signIn is { IsApiKey: false } ? signIn.Account : null;
+        return (AccountRoster.Load(db, current), current, now);
+    }
+
+    /// <summary>The roster table <c>accounts</c> and a bare <c>login</c> print (M.ORCH-T492): one row per account, the
+    /// signed-in one marked, the one with the most headroom suggested.</summary>
+    internal static void Write(IReadOnlyList<AccountRow> rows, string? current, DateTime now)
+    {
         if (rows.Count == 0)
         {
             AnsiConsole.MarkupLine("[grey]No Claude account has been signed in to yet.[/]");
-            return 0;
+            return;
         }
+        var suggested = AccountSwitch.MostHeadroom(rows, now)?.Account;
         var table = new Table().Border(TableBorder.Rounded)
-            .AddColumns("Account", "Plan", "Week used", "Week left", "Week resets", "5h used", "5h resets", "Last read");
+            .AddColumns("Account", "Seat", "Week used", "Week left", "Week resets", "5h used", "5h resets", "Last read");
         foreach (var r in rows)
         {
             var left = r.WeekLeftAt(now);
             table.AddRow(
-                Markup.Escape(r.Label) + (r.Account == signIn?.Account ? " [green](signed in)[/]" : ""),
-                Markup.Escape(r.Plan ?? ""),
+                Markup.Escape(r.Label) + (r.Account == current ? " [green](signed in)[/]" : "") + (r.Account == suggested ? " [aqua](most headroom)[/]" : ""),
+                Markup.Escape(AccountSwitch.SeatOrPlan(r)),
                 AccountRoster.Percent(r.WeekUsedAt(now)),
                 left is null ? "—" : $"[{(left < 10 ? "red" : left < 30 ? "yellow" : "green")}]{AccountRoster.Percent(left)}[/]",
                 r.WeekResetAt(now) is { } wr ? Formatting.ResetTime(wr, now) : "",
@@ -61,6 +77,5 @@ internal sealed class AccountsCommand : Command<AccountsCommand.Settings>
         AnsiConsole.Write(table);
         if (rows.Any(r => r.Email is null))
             AnsiConsole.MarkupLine("[grey]An account's email shows once it's signed in to again (/login).[/]");
-        return 0;
     }
 }

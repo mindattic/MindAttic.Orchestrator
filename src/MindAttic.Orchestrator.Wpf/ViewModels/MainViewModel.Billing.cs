@@ -4,35 +4,16 @@ using MindAttic.Orchestrator.Billing;
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
 /// <summary>
-/// The header's billing line (M.ORCH-T436): who every CLI bills ("Claude Team: you (org)" or "API KEY: sk-ant-...WXYZ",
-/// masked), what's being done about the CLIs billing the other thing, and the toggle that switches every CLI.
+/// Who every CLI bills (M.ORCH-T436): "Claude Team: you (org)" or "API KEY: sk-ant-...WXYZ" (masked), in the account
+/// corner's tooltip, and what's being done about the CLIs billing the other thing, beside it. The switch itself is the
+/// account menu's (M.ORCH-T492): an account bills Claude Team, its last entry the API key.
 /// </summary>
 public sealed partial class MainViewModel
 {
-    public const string TeamChoice = "Claude Team";
-    public const string ApiChoice = "API key";
-
     private BillingStatus? billing;
-    private string billingChoice = TeamChoice;
     private string billingMessage = "";
     private DateTime billingMessageUtc;
     private bool switchingBilling;
-
-    public IReadOnlyList<string> BillingChoices { get; } = [TeamChoice, ApiChoice];
-
-    /// <summary>The pill lit: the mode in force, or the one being switched to.</summary>
-    public string BillingChoice
-    {
-        get => billingChoice;
-        set
-        {
-            // Ctrl+click on the selected pill deselects it, writing null: that's no switch (M.ORCH-T431, T432).
-            if (value is null || value == billingChoice || switchingBilling) return;
-            billingChoice = value;
-            Raise();
-            _ = SwitchBillingAsync(value == ApiChoice ? BillingModes.Api : BillingModes.Team);
-        }
-    }
 
     /// <summary>"Billing: Claude Team: pdftransferjr@mindattic.com (MindAttic)" or "Billing: API KEY: sk-ant-...WXYZ".</summary>
     public string BillingHeadline => billing is null ? "" : $"Billing: {billing.Headline}";
@@ -69,12 +50,7 @@ public sealed partial class MainViewModel
         billing = next.Billing;
         // What the last switch did stays up for a couple of minutes, as a toast would.
         if (!switchingBilling && DateTime.UtcNow - billingMessageUtc > TimeSpan.FromMinutes(2)) billingMessage = "";
-        if (!switchingBilling && billing is not null)
-        {
-            billingChoice = billing.Mode == BillingModes.Api ? ApiChoice : TeamChoice;
-            Raise(nameof(BillingChoice));
-        }
-        Raise(nameof(BillingHeadline)); Raise(nameof(BillingBrush)); Raise(nameof(BillingDetail)); Raise(nameof(BillingClis));
+        Raise(nameof(AccountCorner)); Raise(nameof(BillingHeadline)); Raise(nameof(BillingBrush)); Raise(nameof(BillingDetail)); Raise(nameof(BillingClis));
     }
 
     private async Task SwitchBillingAsync(string mode)
@@ -103,8 +79,7 @@ public sealed partial class MainViewModel
             // A refresh built while it was switching read the old mode: it's built again, not applied (M.ORCH-T462).
             NoteLocalChange();
             switchingBilling = false;
-            if (billing is not null) billingChoice = billing.Mode == BillingModes.Api ? ApiChoice : TeamChoice;
-            Raise(nameof(BillingChoice)); Raise(nameof(BillingHeadline)); Raise(nameof(BillingBrush)); Raise(nameof(BillingDetail)); Raise(nameof(BillingClis));
+            Raise(nameof(AccountCorner)); Raise(nameof(BillingHeadline)); Raise(nameof(BillingBrush)); Raise(nameof(BillingDetail)); Raise(nameof(BillingClis));
         }
         await RefreshAsync();
     }
