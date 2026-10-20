@@ -30,6 +30,43 @@ public sealed class ContextCyclerTests
     }
 
     [Test]
+    public void A_state_file_another_process_holds_keeps_its_session_so_the_cli_reads_as_busy()
+    {
+        // M.ORCH-T539: a non-shared read of a state file a hook had open threw and dropped the session, so the CLI's older,
+        // idle session stood in for it and the wakers could type into the busy one.
+        var dir = Path.Combine(Path.GetTempPath(), "ctx-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "old.state.json"), """{"state":"idle","at":"2026-10-15T01:00:00Z","pid":42}""");
+            var current = Path.Combine(dir, "cur.state.json");
+            File.WriteAllText(current, """{"state":"busy","at":"2026-10-15T01:59:00Z","pid":42}""");
+            var cycler = new ContextCycler(dir);
+
+            using (new FileStream(current, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite))
+                Assert.That(cycler.LatestSessionOf(42), Is.EqualTo("cur"), "a file being written is read shared");
+
+            // Held outright: its session_states row stands in.
+            new OrchestratorDb(OrchestratorDb.StatePath(dir)).Write((connection, tx) =>
+            {
+                using var command = connection.CreateCommand();
+                command.Transaction = tx;
+                command.CommandText = "INSERT INTO session_states (session_id, value, written_at) VALUES ('cur', $v, $at);";
+                command.Parameters.AddWithValue("$v", """{"state":"busy","at":"2026-10-15T01:59:00Z","pid":42}""");
+                command.Parameters.AddWithValue("$at", (File.GetLastWriteTimeUtc(current) - DateTime.UnixEpoch).TotalSeconds - 1);
+                command.ExecuteNonQuery();
+            }, dump: false);
+            using (new FileStream(current, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            {
+                var cur = cycler.Load().Single(s => s.SessionId == "cur");
+                Assert.That((cur.Pid, cur.Idle), Is.EqualTo(((int?)42, false)));
+                Assert.That(cycler.LatestSessionOf(42), Is.EqualTo("cur"));
+            }
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Test]
     public void Nothing_ever_types_quicksave_clear_or_quickload_into_a_session()
     {
         // Found live: at 80% context the daemon typed /quicksave and /clear into a chat the user was working in.

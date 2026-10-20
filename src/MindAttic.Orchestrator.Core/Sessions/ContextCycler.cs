@@ -33,11 +33,12 @@ public sealed class ContextCycler(string? directory = null)
     public IEnumerable<SessionContext> Load()
     {
         if (!System.IO.Directory.Exists(Directory)) return [];
+        var rows = SessionStates.Rows();
         // A session that hasn't drawn its statusline yet has only the hook's state file.
         return System.IO.Directory.EnumerateFiles(Directory, "*.json")
             .Select(f => Path.GetFileName(f) is var n && n.EndsWith(".state.json", StringComparison.OrdinalIgnoreCase) ? n[..^".state.json".Length] : n[..^".json".Length])
             .Distinct(StringComparer.Ordinal)
-            .Select(Read)
+            .Select(id => Read(id, rows))
             .OfType<SessionContext>()
             .ToList();
     }
@@ -46,7 +47,7 @@ public sealed class ContextCycler(string? directory = null)
     /// all with its process id, and the first of those by file name is any of them.</summary>
     public string? LatestSessionOf(int pid) => Load().Where(s => s.Pid == pid).MaxBy(s => s.TurnUtc)?.SessionId;
 
-    internal SessionContext? Read(string sessionId)
+    internal SessionContext? Read(string sessionId, IReadOnlyDictionary<string, (string Value, DateTime WrittenUtc)>? rows = null)
     {
         try
         {
@@ -76,9 +77,23 @@ public sealed class ContextCycler(string? directory = null)
             string? goal = null;
             LimitStop? limitStop = null;
             var turn = DateTime.MinValue;
-            if (File.Exists(state))
+            // The session_states row or the exported file, whichever was written later, as the hooks read it; the file read
+            // shared (a hook may be writing it), and a read that fails falls back on the row rather than dropping the session,
+            // which kept the wakers from seeing that this CLI's current session is busy (M.ORCH-T539). With neither readable
+            // the session stays, busy.
+            JsonDocument? t = null;
+            var hasRow = (rows ?? SessionStates.Rows()).TryGetValue(sessionId, out var row);
+            try
             {
-                using var t = JsonDocument.Parse(File.ReadAllText(state));
+                if (File.Exists(state) && (!hasRow || File.GetLastWriteTimeUtc(state) >= row.WrittenUtc)) t = JsonDocument.Parse(ReadShared(state));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { }
+            if (t is null && hasRow)
+                try { t = JsonDocument.Parse(row.Value); }
+                catch (JsonException) { }
+            using var stateDoc = t;
+            if (t is not null)
+            {
                 idle = t.RootElement.TryGetProperty("state", out var st) && st.GetString() == "idle";
                 if (t.RootElement.TryGetProperty("at", out var at) &&
                     DateTime.TryParse(at.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var when))
