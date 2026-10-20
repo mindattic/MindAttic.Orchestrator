@@ -83,6 +83,19 @@ function Invoke-Installer([string]$path, [string[]]$arguments) {
     return $p.ExitCode
 }
 
+# What the install step does with the artifact: 'install'; 'newer' when the installed exe was built after it (another
+# checkout installed a newer build: --install refuses the downgrade, so running it failed every deploy, M.ORCH-T554);
+# 'current' when the installed copy is this build; 'none' when there's no artifact. -Force installs it anyway.
+function Get-InstallStep([string]$artifactPath, [string]$installedPath, [bool]$builtNow, [bool]$forced) {
+    if (-not (Test-Path $artifactPath)) { return 'none' }
+    if (-not $installedPath) { return 'install' }
+    if ($forced) { return 'install' }
+    if ((Get-Item $installedPath).LastWriteTimeUtc -gt (Get-Item $artifactPath).LastWriteTimeUtc) { return 'newer' }
+    # Also when the installed copy isn't this build: an install that failed last time is retried, not called up to date.
+    if ($builtNow -or (Get-FileHash $artifactPath).Hash -ne (Get-FileHash $installedPath).Hash) { return 'install' }
+    return 'current'
+}
+
 function Find-Installed {
     @((Join-Path $appDir 'MindAttic.Orchestrator.exe'),
       (Join-Path $env:LOCALAPPDATA 'Programs\MindAttic.Orchestrator\MindAttic.Orchestrator.exe')) |
@@ -137,16 +150,18 @@ if (Test-Stale $cliExe @($cliDir, $coreDir)) {
 
 # ── Install, as a double-click would ────────────────────────────────────────
 $installed = Find-Installed
-# Also when the installed copy isn't this build: an install that failed last time is retried, not called up to date.
-$outdated = $installed -and (Test-Path $artifact) -and ((Get-FileHash $artifact).Hash -ne (Get-FileHash $installed).Hash)
-if ((Test-Path $artifact) -and ($built -or -not $installed -or $outdated)) {
+$step = Get-InstallStep $artifact $installed $built ([bool]$Force)
+if ($step -eq 'newer') {
+    Write-Host ("The installed {0} ({1:yyyy-MM-dd HH:mm}) is newer than this build ({2:yyyy-MM-dd HH:mm}), so it's left as it is; -Force installs this build over it." -f
+        $installed, (Get-Item $installed).LastWriteTime, (Get-Item $artifact).LastWriteTime) -ForegroundColor DarkGray
+} elseif ($step -eq 'install') {
     Write-Host 'Installing (stops a running copy and its daemon; the daemon restarts from the new build)...' -ForegroundColor Cyan
     # An old-layout daemon still running from the CLI folder; only it: a CLI call in flight (an /autopilot CLI's
     # `orchestrator next --claim`) is left to finish, as a deploy that doesn't republish the CLI must.
     Get-CimInstance Win32_Process -Filter "Name='orchestrator.exe'" -ErrorAction SilentlyContinue |
         Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($cliOut, [System.StringComparison]::OrdinalIgnoreCase) -and $_.CommandLine -match '\sdaemon\b' } |
         ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop } catch { } }
-    $exitCode = Invoke-Installer $artifact @('--install')
+    $exitCode = Invoke-Installer $artifact $(if ($Force) { @('--install', '--force') } else { @('--install') })
     $installed = Find-Installed
     if ($exitCode -eq 0 -and $installed) { Write-Host "Installed $installed" -ForegroundColor Green }
     else { Write-Host 'Install FAILED; see its log, %APPDATA%\MindAttic\Logging\MindAttic.Orchestrator\MindAttic.Log.db (MindAttic.Log.Reader opens it).' -ForegroundColor Red; $failed = $true }

@@ -78,6 +78,63 @@ public sealed class DeployScriptTests
         }
     }
 
+    [Test]
+    public void A_newer_installed_build_is_left_alone_unless_forced()
+    {
+        // M.ORCH-T554: another checkout installed a newer build, so the hashes differed, --install ran without --force,
+        // the installer refused the downgrade and every deploy of an unchanged checkout ended 'Install FAILED'.
+        string File(string name, string text, DateTime written)
+        {
+            var path = Path.Combine(dir, name);
+            System.IO.File.WriteAllText(path, text);
+            System.IO.File.SetLastWriteTimeUtc(path, written);
+            return path;
+        }
+        var then = new DateTime(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc);
+        var artifact = File("artifact.exe", "this build", then);
+        var newer = File("newer.exe", "another checkout's build", then.AddHours(1));
+        var older = File("older.exe", "an old build", then.AddHours(-1));
+        var same = File("same.exe", "this build", then);
+        string Q(string s) => "'" + s.Replace("'", "''") + "'";
+
+        var lines = RunFunction("Get-InstallStep",
+            $"Get-InstallStep {Q(artifact)} {Q(newer)} $false $false",
+            $"Get-InstallStep {Q(artifact)} {Q(newer)} $false $true",
+            $"Get-InstallStep {Q(artifact)} {Q(older)} $false $false",
+            $"Get-InstallStep {Q(artifact)} {Q(same)} $false $false",
+            $"Get-InstallStep {Q(artifact)} $null $false $false",
+            $"Get-InstallStep {Q(Path.Combine(dir, "missing.exe"))} {Q(newer)} $false $false");
+
+        Assert.That(lines, Is.EqualTo(new[] { "newer", "install", "install", "current", "install", "none" }));
+        var script = System.IO.File.ReadAllText(DeployScript());
+        Assert.That(script, Does.Contain("if ($step -eq 'newer')"), "a newer install is said and skipped, not run and failed");
+        Assert.That(script, Does.Contain("@('--install', '--force')"), "-Force installs over a newer build");
+    }
+
+    /// <summary>Takes <paramref name="function"/> out of deploy.ps1 by the PowerShell parser, runs each call with it, and
+    /// returns what they printed, line by line. Nothing else in the script runs.</summary>
+    private static string[] RunFunction(string function, params string[] calls)
+    {
+        var script =
+            "$ErrorActionPreference = 'Stop'\n" +
+            $"$ast = [System.Management.Automation.Language.Parser]::ParseFile('{DeployScript().Replace("'", "''")}', [ref]$null, [ref]$null)\n" +
+            $"$f = $ast.FindAll({{ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq '{function}' }}, $true) | Select-Object -First 1\n" +
+            $"if (-not $f) {{ throw 'deploy.ps1 has no {function}' }}\n" +
+            ". ([scriptblock]::Create($f.Extent.Text))\n" +
+            string.Join("\n", calls) + "\n";
+        var psi = new ProcessStartInfo("powershell.exe",
+            "-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand " + Convert.ToBase64String(Encoding.Unicode.GetBytes(script)))
+        {
+            UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true,
+        };
+        using var ps = Process.Start(psi)!;
+        var stdout = ps.StandardOutput.ReadToEndAsync();
+        var stderr = ps.StandardError.ReadToEndAsync();
+        if (!ps.WaitForExit(60_000)) { ps.Kill(entireProcessTree: true); Assert.Fail("powershell didn't finish"); }
+        Assert.That(ps.ExitCode, Is.EqualTo(0), stderr.Result);
+        return stdout.Result.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
     private static bool IsRunning(int pid)
     {
         try { return !Process.GetProcessById(pid).HasExited; }
