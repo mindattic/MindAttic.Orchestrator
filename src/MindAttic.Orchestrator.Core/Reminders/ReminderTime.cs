@@ -14,9 +14,37 @@ public static partial class ReminderTime
     private static readonly TimeOnly Tonight = new(20, 0);
 
     /// <summary>The local time <paramref name="text"/> names, read against <paramref name="nowLocal"/>; false when it can't be read.</summary>
-    public static bool TryParse(string? text, DateTime nowLocal, out DateTime local)
+    public static bool TryParse(string? text, DateTime nowLocal, out DateTime local) => TryParse(text, nowLocal, out local, out _);
+
+    /// <summary>
+    /// When <paramref name="text"/> falls, in UTC, read against <paramref name="nowUtc"/> in <paramref name="zone"/>
+    /// (<paramref name="local"/> is that time on the zone's clock). A span from now is added to <paramref name="nowUtc"/>, not to
+    /// the wall clock: "in 2h" across a DST change is two hours away, not an hour more or less (M.ORCH-T552).
+    /// </summary>
+    public static bool TryParseUtc(string? text, DateTime nowUtc, TimeZoneInfo zone, out DateTime utc, out DateTime local)
+    {
+        utc = default;
+        nowUtc = DateTime.SpecifyKind(nowUtc, DateTimeKind.Utc);
+        if (!TryParse(text, TimeZoneInfo.ConvertTimeFromUtc(nowUtc, zone), out local, out var span)) return false;
+        if (span is { } by)
+        {
+            utc = nowUtc + by;
+            local = TimeZoneInfo.ConvertTimeFromUtc(utc, zone);
+            return true;
+        }
+        local = DateTime.SpecifyKind(local, DateTimeKind.Unspecified);
+        // A clock time the spring-forward skips ("2:30am" that night) is read at the zone's standard offset, as
+        // DateTime.ToUniversalTime reads it.
+        utc = zone.IsInvalidTime(local)
+            ? DateTime.SpecifyKind(local - zone.BaseUtcOffset, DateTimeKind.Utc)
+            : TimeZoneInfo.ConvertTimeToUtc(local, zone);
+        return true;
+    }
+
+    private static bool TryParse(string? text, DateTime nowLocal, out DateTime local, out TimeSpan? fromNow)
     {
         local = default;
+        fromNow = null;
         if (string.IsNullOrWhiteSpace(text)) return false;
         var t = Spaces().Replace(text.Trim().ToLowerInvariant(), " ");
         if (t.StartsWith("at ", StringComparison.Ordinal)) t = t[3..];
@@ -28,6 +56,7 @@ public static partial class ReminderTime
             var by = TimeSpan.FromDays(Of("d")) + TimeSpan.FromHours(Of("h")) + TimeSpan.FromMinutes(Of("m"));
             if (by <= TimeSpan.Zero) return false;
             local = nowLocal + by;
+            fromNow = by;
             return true;
         }
 

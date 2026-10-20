@@ -71,13 +71,11 @@ internal sealed class RemindCommand : Command<RemindCommand.Settings>
             AnsiConsole.MarkupLine("[red]When? Add --at, like --at \"tomorrow 9am\", --at 5pm or --at \"in 2h\".[/]");
             return 1;
         }
-        var nowLocal = now.ToLocalTime();
-        if (!ReminderTime.TryParse(settings.At, nowLocal, out var dueLocal))
+        if (!ReminderTime.TryParseUtc(settings.At, now, TimeZoneInfo.Local, out var dueUtc, out var dueLocal))
         {
             AnsiConsole.MarkupLine($"[red]Couldn't read --at \"{Markup.Escape(settings.At)}\"; try \"9am\", \"tomorrow\", \"fri 5pm\", \"in 2h\" or \"2026-10-20 09:00\".[/]");
             return 1;
         }
-        var dueUtc = DateTime.SpecifyKind(dueLocal, DateTimeKind.Local).ToUniversalTime();
         if (dueUtc < now - TimeSpan.FromMinutes(1))
         {
             AnsiConsole.MarkupLine($"[red]{dueLocal:ddd MMM d h:mm tt} has already passed.[/]");

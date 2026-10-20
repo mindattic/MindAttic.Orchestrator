@@ -87,6 +87,28 @@ public sealed class ReminderTests
         Assert.That(local, Is.EqualTo(DateTime.Parse(expected, System.Globalization.CultureInfo.InvariantCulture)));
     }
 
+    [Test]
+    public void A_span_across_a_dst_change_is_that_long_from_now()
+    {
+        // M.ORCH-T552: 1:30 AM EDT on the night clocks fall back (06:00 UTC). "in 2h" added to the wall clock read 3:30 AM
+        // EST, 08:30 UTC: three hours away. It's 07:30 UTC.
+        var eastern = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+        var nowUtc = new DateTime(2026, 11, 1, 5, 30, 0, DateTimeKind.Utc);
+        Assert.That(ReminderTime.TryParseUtc("in 2h", nowUtc, eastern, out var utc, out var local), Is.True);
+        Assert.That(utc, Is.EqualTo(nowUtc.AddHours(2)));
+        Assert.That(local, Is.EqualTo(new DateTime(2026, 11, 1, 2, 30, 0)), "1:30 EDT, 1:30 EST, 2:30 EST");
+
+        // Spring forward, 1:30 AM EST (06:30 UTC) on 2027-03-14: "30m" is 07:00 UTC, 3:00 AM EDT.
+        nowUtc = new DateTime(2027, 3, 14, 6, 30, 0, DateTimeKind.Utc);
+        Assert.That(ReminderTime.TryParseUtc("30m", nowUtc, eastern, out utc, out local), Is.True);
+        Assert.That(utc, Is.EqualTo(nowUtc.AddMinutes(30)));
+        Assert.That(local, Is.EqualTo(new DateTime(2027, 3, 14, 3, 0, 0)));
+
+        // A clock time is still read on the wall clock.
+        Assert.That(ReminderTime.TryParseUtc("tomorrow 9am", nowUtc, eastern, out utc, out _), Is.True);
+        Assert.That(utc, Is.EqualTo(new DateTime(2027, 3, 15, 13, 0, 0, DateTimeKind.Utc)));
+    }
+
     [TestCase("")]
     [TestCase("today")]
     [TestCase("whenever")]
