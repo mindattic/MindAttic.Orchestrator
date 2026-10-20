@@ -29,7 +29,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
     /// <summary>Where the ledger and the meter readings it's graded from are kept: the workspace's orchestrator.db.</summary>
     public OrchestratorDb Db
     {
-        get => db ??= new OrchestratorDb(OrchestratorDb.DefaultPath(WorkspaceRoot));
+        get => db ??= new OrchestratorDb(OrchestratorDb.LivePath);
         init => db = value;
     }
     /// <summary>The pace gate's old event log, read into the database's <c>gate_events</c> each tick (M.ORCH-T526): a hook that

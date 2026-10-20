@@ -26,7 +26,7 @@ internal sealed class LedgerCommand : Command<LedgerCommand.Settings>
     {
         var store = Ctx.Store();
         var now = DateTime.UtcNow;
-        var db = new OrchestratorDb(OrchestratorDb.DefaultPath(OrchestratorOptions.Load(store).WorkspaceRoot));
+        var db = new OrchestratorDb(OrchestratorDb.LivePath);
         db.ImportJson(store.Directory);
         var samples = db.LoadUsageSamples();
         var hits = store.LoadLimits();

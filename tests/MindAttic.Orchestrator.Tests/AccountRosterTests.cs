@@ -154,6 +154,28 @@ public sealed class AccountRosterTests
     }
 
     [Test]
+    public void Every_opener_and_the_daemon_sync_use_the_one_state_database()
+    {
+        // M.ORCH-T535: the status and the pace ledger opened the db under the configured workspace root while the store, the
+        // leases and the hooks opened StatePath, so a root elsewhere (or no default checkout) split the state in two.
+        var before = Environment.GetEnvironmentVariable(OrchestratorDb.EnvVar);
+        try
+        {
+            Environment.SetEnvironmentVariable(OrchestratorDb.EnvVar, null);
+            var live = Path.GetFullPath(OrchestratorDb.StatePath(JsonStore.LiveDirectory));
+            Assert.That(Path.GetFullPath(OrchestratorDb.LivePath), Is.EqualTo(live));
+            var elsewhere = Path.Combine(dir, "ws");
+            var store = new JsonStore(Path.Combine(dir, "store"), db);
+            Assert.That(new StatusAggregator(new OrchestratorOptions { WorkspaceRoot = elsewhere }, store).Db.Path, Is.EqualTo(live));
+            Assert.That(new PaceLedgerWatch(store, elsewhere, (_, _) => { }, (_, _, _) => { }).Db.Path, Is.EqualTo(live));
+        }
+        finally { Environment.SetEnvironmentVariable(OrchestratorDb.EnvVar, before); }
+        Assert.That(OrchestratorDb.RepoOf(@"C:\ws\MindAttic.Orchestrator\data\orchestrator.db"), Is.EqualTo(@"C:\ws\MindAttic.Orchestrator"));
+        Assert.That(OrchestratorDb.RepoOf(@"C:\Users\me\AppData\Roaming\MindAttic\MindAttic.Orchestrator\orchestrator.db"), Is.Null,
+            "the machine-local fallback has no repo to commit it to");
+    }
+
+    [Test]
     public void The_database_lives_in_the_main_checkout_unless_the_environment_names_another()
     {
         var before = Environment.GetEnvironmentVariable(OrchestratorDb.EnvVar);

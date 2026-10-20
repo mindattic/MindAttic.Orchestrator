@@ -208,7 +208,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 RunAuditIfDue(options, s);
                 tick.Lap("audit");
                 SyncWorkflowDbIfDue(options);
-                SyncOrchestratorDbIfDue(Path.Combine(options.WorkspaceRoot, "MindAttic.Orchestrator"), Settings.OrchestratorDb.DefaultPath(options.WorkspaceRoot), DateTime.UtcNow);
+                // The database everything writes (M.ORCH-T535), committed in the checkout that holds it.
+                if (Settings.OrchestratorDb.LivePath is var live && Settings.OrchestratorDb.RepoOf(live) is { } dbRepo)
+                    SyncOrchestratorDbIfDue(dbRepo, live, DateTime.UtcNow);
                 tick.Lap("workflow db sync");
                 if (s.GitHubIntake && DateTime.UtcNow - intakeUtc >= TimeSpan.FromHours(1))
                 {

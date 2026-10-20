@@ -39,6 +39,22 @@ public sealed class OrchestratorDb(string path)
                 ? DefaultPath(MindAttic.Workflow.Workspace.DefaultRoot)
                 : System.IO.Path.Combine(fallbackDirectory, "orchestrator.db");
 
+    /// <summary>The one database every process opens (M.ORCH-T535): <see cref="StatePath"/> with the live store's folder as the
+    /// fallback. Nothing opens <see cref="DefaultPath"/> under the configured workspace root, which would split the state across
+    /// two files whenever that root isn't the default one or has no checkout.</summary>
+    public static string LivePath => StatePath(JsonStore.LiveDirectory);
+
+    /// <summary>The checkout <paramref name="dbPath"/> is committed in: the folder holding <c>data/orchestrator.db</c>, or null for
+    /// a database kept anywhere else (the machine-local fallback, a file the environment names), which no sync commits.</summary>
+    public static string? RepoOf(string dbPath)
+    {
+        var full = System.IO.Path.GetFullPath(dbPath);
+        var data = System.IO.Path.GetDirectoryName(full);
+        return string.Equals(System.IO.Path.GetFileName(full), "orchestrator.db", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(System.IO.Path.GetFileName(data), "data", StringComparison.OrdinalIgnoreCase)
+            ? System.IO.Path.GetDirectoryName(data) : null;
+    }
+
     public string Path { get; } = System.IO.Path.GetFullPath(path);
 
     /// <summary>The readable dump written beside the database: <c>orchestrator.sql</c>.</summary>

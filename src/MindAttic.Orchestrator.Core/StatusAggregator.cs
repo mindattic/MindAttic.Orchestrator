@@ -108,7 +108,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// <summary>The repo's data/orchestrator.db in the workspace's main checkout (M.ORCH-T490): the account roster.</summary>
     public OrchestratorDb Db
     {
-        get => db ??= new OrchestratorDb(OrchestratorDb.DefaultPath(options.WorkspaceRoot));
+        get => db ??= new OrchestratorDb(OrchestratorDb.LivePath);
         init => db = value;
     }
 

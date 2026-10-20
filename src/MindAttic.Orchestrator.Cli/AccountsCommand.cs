@@ -36,7 +36,7 @@ internal sealed class AccountsCommand : Command<AccountsCommand.Settings>
     /// <summary>The roster with the signed-in account's row brought up to date from Claude's last reading, and who's signed in.</summary>
     internal static (IReadOnlyList<AccountRow> Rows, string? Current, DateTime NowUtc) Load()
     {
-        var (db, account, usagePath) = Override?.Invoke() ?? (new OrchestratorDb(OrchestratorDb.DefaultPath(OrchestratorOptions.Load().WorkspaceRoot)), new ClaudeAccount(), null);
+        var (db, account, usagePath) = Override?.Invoke() ?? (new OrchestratorDb(OrchestratorDb.LivePath), new ClaudeAccount(), null);
         var now = DateTime.UtcNow;
         var signIn = account.Read(now);
         if (signIn is not null)
