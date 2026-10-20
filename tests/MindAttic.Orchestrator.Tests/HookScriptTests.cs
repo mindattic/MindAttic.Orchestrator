@@ -1582,6 +1582,27 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void An_exempt_turn_is_read_from_the_newer_of_the_session_row_and_its_file()
+    {
+        // M.ORCH-T543: the gate read only the exported .state.json, so a Stop whose file write failed (held open) left the
+        // turn exempt in the file while its session_states row, written later, said it had ended.
+        Status(new { stop = true, pace_delay_seconds = 60 });
+        var file = Path.Combine(Marks, "x9.state.json");
+        Directory.CreateDirectory(Marks);
+        File.WriteAllText(file, """{"exempt": "/deploy"}""");
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddMinutes(-5));
+        using (var connection = OrchDb.Open())
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "INSERT OR REPLACE INTO session_states (session_id, value, written_at) VALUES ('x9', '{\"exempt\": null}', $at);";
+            command.Parameters.AddWithValue("$at", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0);
+            command.ExecuteNonQuery();
+        }
+        var read = new { tool_name = "Read", session_id = "x9", tool_input = new { file_path = "x" }, cwd = ws };
+        Assert.That(GateHeld(read, 2).Output, Does.Contain("\"deny\""), "the row, written later, ended the exempt turn");
+    }
+
+    [Test]
     public void A_skill_naming_an_exempt_command_is_let_through_anywhere_and_the_list_comes_from_settings()
     {
         Status(new { stop = true, pace_delay_seconds = 60 });

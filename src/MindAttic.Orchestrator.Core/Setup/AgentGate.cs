@@ -1750,17 +1750,9 @@ public static class AgentGate
         # "exempt" and the daemon is told to recount, so the spend still lands in the pace at once.
         {{ExemptPython}}
         def exempt_turn():
-            sid = re.sub(r"[^A-Za-z0-9_.-]", "_", str(data.get("session_id") or ""))
-            if not sid:
-                return False
-            for _ in range(20):
-                try:
-                    return bool(json.loads((Path.home() / ".claude" / "session-context" / (sid + ".state.json")).read_text()).get("exempt"))
-                except PermissionError:
-                    time.sleep(0.05)
-                except Exception:
-                    return False
-            return False
+            # The session's state as the context gate saved it: its session_states row or its exported file, whichever was
+            # written later (M.ORCH-T543: the file alone stayed exempt when a Stop's write of it failed).
+            return bool(session_state(data.get("session_id")).get("exempt"))
         if exempt_turn() or (tool == "Skill" and exempt_skill((data.get("tool_input") or {}).get("skill"))):
             gate_log("exempt", 0)
             try:
