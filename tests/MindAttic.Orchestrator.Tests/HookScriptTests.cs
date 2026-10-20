@@ -1100,6 +1100,10 @@ public sealed class HookScriptTests
 
         Gate(Event("SubagentStart"), new Dictionary<string, string> { ["ANTHROPIC_AUTH_TOKEN"] = "gateway-token" }, AgentGate.ContextScriptName);
         Assert.That(File.Exists(Path.Combine(Marks, "subagents", "agent_1")), Is.False, "a gateway CLI's subagent doesn't fill the subscription's allowance");
+
+        // M.ORCH-T506: the mark names its CLI as the pace gate does (MINDATTIC_CLI_PID first), or it counts as another CLI's.
+        Gate(Event("SubagentStart"), new Dictionary<string, string> { ["MINDATTIC_CLI_PID"] = "4242" }, AgentGate.ContextScriptName);
+        Assert.That(File.ReadAllText(Path.Combine(Marks, "subagents", "agent_1")), Is.EqualTo("4242"));
     }
 
     [Test]

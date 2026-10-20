@@ -1945,7 +1945,8 @@ public static class AgentGate
                     # subscription's windows: its subagents mustn't fill the subscription's allowance either.
                     if session_auth(data.get("cwd")) != "{{{Sessions.ContextCycler.SubscriptionAuth}}}":
                         sys.exit(0)
-                    mark.write_text(str(cli_pid() or ""))
+                    # The CLI as the pace gate names it (MINDATTIC_CLI_PID first), or its own subagents count as another CLI's.
+                    mark.write_text(str(my_pid() or ""))
                     # The mark now counts it, so the slot the pace gate kept for its call is let go: this CLI's oldest. Never
                     # another CLI's: a subagent that took no slot (a CLI with /pacing off, an exempt turn) would free a place
                     # still held for that CLI's pending call; a slot left over expires.
