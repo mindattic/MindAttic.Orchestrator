@@ -87,6 +87,10 @@ public sealed class ClaudeAccount
     private string? signedIn;
     private SignInState? last;
 
+    /// <summary>Who the signed-in account is (email, organization, plan) as of the last <see cref="Read"/>; null when
+    /// signed out or on an API key. Read with the sign-in, only when <c>~/.claude.json</c> changed.</summary>
+    public AccountProfile? Profile { get; private set; }
+
     /// <summary>The current account and its history, recording a switch the first time it's seen (the first account seen
     /// counts as one, so an install made while already switched starts clean); null until any account has been signed in.</summary>
     public SignInState? Read(DateTime nowUtc)
@@ -98,6 +102,7 @@ public sealed class ClaudeAccount
             if (!configRead || stamp != configStamp)
             {
                 signedIn = Current(ConfigPath);
+                Profile = signedIn is null || signedIn == ApiKey ? null : AccountProfile.Read(ConfigPath);
                 (configStamp, configRead) = (stamp, true);
             }
             var record = Load();

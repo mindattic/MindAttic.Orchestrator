@@ -101,6 +101,15 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     public OrchestratorOptions Options => options;
     public JsonStore Store { get; } = store ?? new JsonStore();
 
+    private OrchestratorDb? db;
+
+    /// <summary>The repo's data/orchestrator.db in the workspace's main checkout (M.ORCH-T490): the account roster.</summary>
+    public OrchestratorDb Db
+    {
+        get => db ??= new OrchestratorDb(OrchestratorDb.DefaultPath(options.WorkspaceRoot));
+        init => db = value;
+    }
+
     /// <summary>Where the lease holder publishes its snapshots; defaults to beside the transcript cache.</summary>
     internal string? SnapshotPath { get; init; }
 
@@ -264,6 +273,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             reported = ClaudeMeterProbe.Fresher(reported, probed, now);
         var calibration = Calibrate(subscriptionSessions, events, historyStartUtc, now, signIn?.History);
         var switchedNow = false;
+        var weekMoved = false;
         if (signIn is not null)
         {
             if (signIn.Account != lastAccount)
@@ -278,6 +288,10 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             if (reported is not null) SignIn!.Confirm(signIn.Account, reported, now);
             calibration = new LimitCalibration([.. calibration.Observations.Where(o => signIn.Contains(o.HitUtc) || o.ResetUtc <= now)])
                 { Mine = t => !signIn.Others(t) };
+            // Every account's latest 5h and weekly percent and resets (M.ORCH-T490): a sign-in refreshes its row, and each
+            // point the week moves refreshes it again and reads the meter.
+            try { weekMoved = AccountRoster.Observe(Db, signIn, SignIn!.Profile, reported, now); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { }
         }
         // No statusline reporting while tokens are spent (a CLI waiting on subagents): read Claude's meter directly (M.ORCH-T203).
         // An account just signed in to has no window of its own yet (every other CLI still shows the old one's): read it now.
@@ -296,7 +310,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             // A sign-in that just moved is read at once, even back to an account whose window is confirmed: claude-usage.json
             // holds the old account's last reading until a CLI replies, minutes on, and the budget, dashboard and statusline
             // showed nothing of the new one's meter until then (M.ORCH-T486).
-            probe.Tick(seen, events, now, force: switchedNow || lapsed is not null || signIn is { Switched: true } && !signIn.HasWindow(now));
+            // The week moved a point since the roster's reading: read the meter again for it (M.ORCH-T490).
+            probe.Tick(seen, events, now, force: switchedNow || weekMoved || lapsed is not null || signIn is { Switched: true } && !signIn.HasWindow(now));
         }
         var reportedLimit = ReportedLimitFrom(reported, events, now, signIn);
         List<UsageSample> mine = signIn is null ? samples ?? [] : [.. (samples ?? []).Where(s => signIn.Contains(s.AtUtc))];

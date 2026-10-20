@@ -179,6 +179,57 @@ public sealed class DaemonSafetyTests
     }
 
     [Test]
+    public void The_orchestrator_db_is_committed_with_its_dump_when_the_dump_changed()
+    {
+        var repo = Path.Combine(dir, "MindAttic.Orchestrator");
+        Directory.CreateDirectory(Path.Combine(repo, "data"));
+        var dbPath = Path.Combine(repo, "data", "orchestrator.db");
+        File.WriteAllText(dbPath, "db");
+        File.WriteAllText(Path.Combine(repo, "data", "orchestrator.sql"), "-- dump\nINSERT 1;\n");
+        var committedDump = "-- dump\r\n";
+        var runner = new FakeRunner(c => c.Args.Contains("show") ? new ProcessResult(0, committedDump, "", false) : new ProcessResult(0, "", "", false));
+        var daemon = Make(runner: runner);
+        var now = DateTime.UtcNow;
+
+        daemon.SyncOrchestratorDbIfDue(repo, Path.Combine(dir, "elsewhere.db"), now);
+        Assert.That(runner.Calls, Is.Empty, "a database the environment moves elsewhere isn't committed");
+
+        daemon.SyncOrchestratorDbIfDue(repo, dbPath, now);
+        string[] files = ["data/orchestrator.db", "data/orchestrator.sql"];
+        Assert.That(runner.Calls.Select(c => string.Join(' ', c.Args)), Is.EqualTo(new[]
+        {
+            $"-C {repo} show HEAD:data/orchestrator.sql",
+            $"-C {repo} add -- {string.Join(' ', files)}",
+            $"-C {repo} commit -q -m {Daemon.OrchestratorDbSyncSubject} -- {string.Join(' ', files)}",
+            $"-C {repo} push -q",
+        }), "only the database and its dump go in the commit");
+        Assert.That(runner.Calls.All(c => c.File == "git"));
+
+        daemon.SyncOrchestratorDbIfDue(repo, dbPath, now.AddMinutes(30));
+        Assert.That(runner.Calls, Has.Count.EqualTo(4), "an unchanged dump isn't committed again");
+
+        // The same text as the commit's (git handing it back with CRLF): nothing to commit.
+        File.WriteAllText(Path.Combine(repo, "data", "orchestrator.sql"), "-- dump\n");
+        daemon.SyncOrchestratorDbIfDue(repo, dbPath, now.AddMinutes(45));
+        Assert.That(runner.Calls, Has.Count.EqualTo(5));
+        Assert.That(runner.Calls[^1].Args, Does.Contain("show"));
+    }
+
+    [Test]
+    public void An_orchestrator_db_commit_that_fails_unstages_it()
+    {
+        var repo = Path.Combine(dir, "MindAttic.Orchestrator");
+        Directory.CreateDirectory(Path.Combine(repo, "data"));
+        var dbPath = Path.Combine(repo, "data", "orchestrator.db");
+        File.WriteAllText(dbPath, "db");
+        File.WriteAllText(Path.Combine(repo, "data", "orchestrator.sql"), "-- new\n");
+        var runner = new FakeRunner(c => c.Args.Contains("commit") ? new ProcessResult(1, "", "hook refused", false) : new ProcessResult(0, "-- old\n", "", false));
+        Make(runner: runner).SyncOrchestratorDbIfDue(repo, dbPath, DateTime.UtcNow);
+        Assert.That(runner.Calls[^1].Args, Is.EqualTo(new[] { "-C", repo, "reset", "-q", "--", "data/orchestrator.db", "data/orchestrator.sql" }));
+        Assert.That(said, Has.Some.Matches<(LogEventLevel Level, string Line)>(x => x.Line.Contains("git commit failed: hook refused")));
+    }
+
+    [Test]
     public void A_missing_workflow_cli_is_logged_not_thrown()
     {
         var daemon = Make(runner: new FakeRunner(_ => throw new System.ComponentModel.Win32Exception("not found")));

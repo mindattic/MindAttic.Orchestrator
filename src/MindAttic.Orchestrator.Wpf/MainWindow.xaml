@@ -134,6 +134,22 @@
                            Visibility="{Binding BillingDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
             </StackPanel>
         </DockPanel>
+        <!-- Every Claude account signed in to here (M.ORCH-T490): its week used and left, the 5-hour window, when each resets
+             and when it was last read. An account not signed in keeps its last reading; a passed reset reads 0%. -->
+        <Border x:Name="AccountsCard" Style="{StaticResource Card}" Margin="0,0,0,10" HorizontalAlignment="Stretch"
+                AutomationProperties.Name="Accounts"
+                Visibility="{Binding HasAccounts, Converter={StaticResource Visible}}">
+            <StackPanel>
+                <TextBlock Text="Accounts" Style="{StaticResource SectionLabel}" />
+                <ItemsControl ItemsSource="{Binding Accounts}" Focusable="False" Margin="0,4,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
         <local:AlignedGrid x:Name="StatTiles" MinItemWidth="160" Gap="10" RowGap="10" Balanced="True" UniformRows="True"
                            AutomationProperties.Name="Summary">
             <Button Command="{Binding FocusCommand}" CommandParameter="Waiting" ToolTip="Repos whose agent stopped and is waiting for you. Shows only those."

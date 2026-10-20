@@ -205,6 +205,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 RunAuditIfDue(options, s);
                 tick.Lap("audit");
                 SyncWorkflowDbIfDue(options);
+                SyncOrchestratorDbIfDue(Path.Combine(options.WorkspaceRoot, "MindAttic.Orchestrator"), Settings.OrchestratorDb.DefaultPath(options.WorkspaceRoot), DateTime.UtcNow);
                 tick.Lap("workflow db sync");
                 if (s.GitHubIntake && DateTime.UtcNow - intakeUtc >= TimeSpan.FromHours(1))
                 {
@@ -576,6 +577,60 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             Say(r.ExitCode == 0 ? LogEventLevel.Information : LogEventLevel.Warning, $"workflow db sync: {(r.Output + r.Error).Trim()}");
         }
         catch (System.ComponentModel.Win32Exception ex) { Say(LogEventLevel.Warning, $"couldn't run 'workflow db sync': {ex.Message}"); }
+    }
+
+    private string? orchestratorDbSynced;
+    private DateTime orchestratorDbTriedUtc;
+
+    /// <summary>The commit subject of <see cref="SyncOrchestratorDbIfDue"/>: the ticket that put the database in the repo.</summary>
+    internal const string OrchestratorDbSyncSubject = "Sync data/orchestrator.db: the account roster's latest readings (M.ORCH-T490)";
+
+    /// <summary>
+    /// Every 10 minutes, when <c>data/orchestrator.sql</c> (rewritten with each change to the database) differs from the commit's,
+    /// commits <c>data/orchestrator.db</c> and the dump in the main checkout at <paramref name="repo"/> and pushes, as
+    /// <c>workflow db sync</c> does for workflow.db (M.ORCH-T490). Only those two paths go in the commit (other staged work is
+    /// left as it was), and a commit that doesn't land unstages them. A database <see cref="Settings.OrchestratorDb.EnvVar"/> (<paramref name="dbPath"/>)
+    /// moves elsewhere isn't committed.
+    /// </summary>
+    internal void SyncOrchestratorDbIfDue(string repo, string dbPath, DateTime nowUtc)
+    {
+        var db = Path.Combine(repo, Settings.OrchestratorDb.RelativePath.Replace('/', Path.DirectorySeparatorChar));
+        var sql = Path.Combine(repo, Settings.OrchestratorDb.DumpRelativePath.Replace('/', Path.DirectorySeparatorChar));
+        if (nowUtc - orchestratorDbTriedUtc < TimeSpan.FromMinutes(10) || !File.Exists(db) || !File.Exists(sql)) return;
+        if (!string.Equals(Path.GetFullPath(dbPath), Path.GetFullPath(db), StringComparison.OrdinalIgnoreCase)) return;
+        string dump;
+        try { dump = File.ReadAllText(sql); }
+        catch (IOException) { return; }
+        if (dump == orchestratorDbSynced) return;
+        orchestratorDbTriedUtc = nowUtc;
+        string[] files = [Settings.OrchestratorDb.RelativePath, Settings.OrchestratorDb.DumpRelativePath];
+        ProcessResult Git(params string[] args) => Runner.Run("git", ["-C", repo, .. args], SyncTimeout);
+        try
+        {
+            var head = Git("show", "HEAD:" + Settings.OrchestratorDb.DumpRelativePath);
+            if (head.ExitCode == 0 && Same(head.Output, dump)) { orchestratorDbSynced = dump; return; }
+            try
+            {
+                var add = Git(["add", "--", .. files]);
+                if (add.ExitCode != 0 || add.TimedOut) throw new InvalidOperationException("git add failed: " + (add.Output + add.Error).Trim());
+                var commit = Git(["commit", "-q", "-m", OrchestratorDbSyncSubject, "--", .. files]);
+                if (commit.ExitCode != 0 || commit.TimedOut) throw new InvalidOperationException("git commit failed: " + (commit.Output + commit.Error).Trim());
+            }
+            catch (InvalidOperationException ex)
+            {
+                Git(["reset", "-q", "--", .. files]);
+                Say(LogEventLevel.Warning, $"orchestrator db sync: {ex.Message}");
+                return;
+            }
+            orchestratorDbSynced = dump;
+            var push = Git("push", "-q");
+            Say(push.ExitCode == 0 ? LogEventLevel.Information : LogEventLevel.Warning,
+                push.ExitCode == 0 ? "orchestrator db sync: committed and pushed data/orchestrator.db"
+                    : $"orchestrator db sync: committed data/orchestrator.db; push failed (it goes with the next push): {(push.Output + push.Error).Trim()}");
+        }
+        catch (System.ComponentModel.Win32Exception ex) { Say(LogEventLevel.Warning, $"couldn't run git for the orchestrator db sync: {ex.Message}"); }
+        // git may hand the committed text back with CRLF (core.autocrlf).
+        static bool Same(string a, string b) => a.ReplaceLineEndings("\n") == b.ReplaceLineEndings("\n");
     }
 
     /// <summary>Files new GitHub issues and CI failures as tickets in every repo that has a GitHub origin.</summary>

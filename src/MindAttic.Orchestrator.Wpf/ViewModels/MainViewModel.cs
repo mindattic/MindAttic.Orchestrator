@@ -258,6 +258,7 @@ public sealed partial class MainViewModel : ObservableObject
         ApplyPhases(next);
         ApplyBilling(next);
         ApplyReminders(DateTime.UtcNow);
+        ApplyAccounts(next, DateTime.UtcNow);
         ToastHandoffQuiet(MindAttic.Orchestrator.Sessions.Handoff.Read(new MindAttic.Orchestrator.Sessions.ContextCycler().Directory));
         // After the phases' own toasts (pace, budget, stuck, audit, Needs you), or they'd go past the cap (M.ORCH-T340).
         PruneToasts(Toasts, DateTime.UtcNow);
