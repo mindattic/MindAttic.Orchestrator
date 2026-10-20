@@ -123,7 +123,9 @@ public sealed class Installer
         {
             // Stopped for nothing (the old exe still locked, say by an elevated dashboard): the old install's daemon runs
             // again, or pacing and the hooks' holds stay off until the next logon (M.ORCH-T353).
-            if (!DaemonRunning()) StartDaemon(InstalledExe);
+            // The copy's failure is what's reported: a daemon that can't start too (no old exe there) mustn't replace it.
+            try { if (!DaemonRunning()) StartDaemon(InstalledExe); }
+            catch (InvalidOperationException) { }
             throw;
         }
     }
