@@ -2043,6 +2043,9 @@ public sealed class HookScriptTests
         Assert.That(File.Exists(HandoffMark), Is.False, "off always goes through");
     }
 
+    /// <summary>A CLI's mark of <paramref name="kind"/>: its cli_marks row once the orchestrator's database is there, else its file (M.ORCH-T528).</summary>
+    private string? CliMark(string kind, int pid) => MindAttic.Orchestrator.Sessions.CliMarks.Read(Marks, kind).GetValueOrDefault(pid);
+
     [Test]
     public void The_first_start_after_a_quiet_handoff_clears_the_hold_restores_autopilot_and_loads_the_saved_handoff()
     {
@@ -2078,17 +2081,17 @@ public sealed class HookScriptTests
         Assert.That(first, Does.Contain("[Handoff] Picked up after the account switch.")
             .And.Contain("/autopilot -repo=UnitySolarSystem,MindAttic.Workflow is back on")
             .And.Contain("Task: carry on with the parser (load)"));
-        Assert.That(File.ReadAllText(Path.Combine(Marks, "autopilot-5001")), Is.EqualTo("UnitySolarSystem,MindAttic.Workflow"));
+        Assert.That(CliMark("autopilot", 5001), Is.EqualTo("UnitySolarSystem,MindAttic.Workflow"));
         Assert.That(MindAttic.Orchestrator.Sessions.Handoff.Read(Marks)!.State, Is.EqualTo("resumed"), "the first start clears the hold");
 
         var second = Context(workflow, "5002");
         Assert.That(second, Does.Contain("/autopilot stays off"));
-        Assert.That((File.Exists(Path.Combine(Marks, "noautopilot-5002")), File.Exists(Path.Combine(Marks, "autopilot-5002"))), Is.EqualTo((true, false)),
+        Assert.That((CliMark("noautopilot", 5002) is not null, CliMark("autopilot", 5002) is not null), Is.EqualTo((true, false)),
             "typed off before the switch, so it stays off");
 
         var third = Context(Uss, "5003");
         Assert.That(third, Does.Not.Contain("[Handoff]"), "the one recorded CLI there went to the first, and its handoff was loaded there");
-        Assert.That(File.Exists(Path.Combine(Marks, "autopilot-5003")), Is.False, "nothing restored to it: it starts off, as every new CLI does");
+        Assert.That(CliMark("autopilot", 5003), Is.Null, "nothing restored to it: it starts off, as every new CLI does");
     }
 
     [Test]
@@ -2280,6 +2283,6 @@ public sealed class HookScriptTests
         Assert.That(SlotFiles(), Has.Length.EqualTo(1), "an older database: the slot is a file, as before");
 
         Assert.That(Rows("subagent_slots"), Is.Zero, "the orchestrator's next open adds the tables (schema step 5)");
-        Assert.That(MindAttic.Orchestrator.Settings.OrchestratorDb.Version, Is.EqualTo(5));
+        Assert.That(MindAttic.Orchestrator.Settings.OrchestratorDb.Version, Is.GreaterThanOrEqualTo(5));
     }
 }

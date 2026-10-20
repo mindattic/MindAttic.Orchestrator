@@ -180,6 +180,20 @@ public sealed class OrchestratorDb(string path)
             PRIMARY KEY (cli, gate_pid)
         );
         """,
+        // 6: each CLI's /autopilot, /autopilot off and /crossrepo marks (M.ORCH-T528), were autopilot-<pid>, noautopilot-<pid>
+        // and crossrepo-<pid> files in ~/.claude/session-context: one row per kind and CLI process, its text as the file held
+        // it (the repos, comma-separated; empty for noautopilot). The hooks write them through stdlib sqlite3; a file is
+        // written again only while the database is held, and the daemon reads it in. Not in the dump: they last as long as
+        // a CLI does.
+        """
+        CREATE TABLE cli_marks (
+            kind       TEXT NOT NULL,
+            pid        INTEGER NOT NULL,
+            value      TEXT NOT NULL,
+            written_at REAL NOT NULL,
+            PRIMARY KEY (kind, pid)
+        );
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a

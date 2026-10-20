@@ -175,9 +175,7 @@ public static class Handoff
         Clear(cycler.Directory, markToo: false);
         var on = cycler.AutopilotClis();
         var cwds = cycler.Load().Where(s => s.Pid is not null).GroupBy(s => s.Pid!.Value).ToDictionary(g => g.Key, g => g.MaxBy(s => s.TurnUtc)!.Cwd);
-        var off = !Directory.Exists(cycler.Directory) ? [] : Directory.EnumerateFiles(cycler.Directory, "noautopilot-*")
-            .Select(f => int.TryParse(Path.GetFileName(f)["noautopilot-".Length..], out var p) ? p : 0)
-            .Where(p => p > 0 && ContextCycler.IsClaude(p)).ToHashSet();
+        var off = CliMarks.Read(cycler.Directory, CliMarks.NoAutopilot).Keys.Where(ContextCycler.IsClaude).ToHashSet();
         var clis = on.Keys.Concat(off).Distinct().Order().Select(pid =>
         {
             var cwd = cwds.GetValueOrDefault(pid);

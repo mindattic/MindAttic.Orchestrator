@@ -766,9 +766,9 @@ public static class AgentGate
                     log.write(json.dumps({"at": at, "decision": decision, "held": held, "tool": tool, "percent": percent}) + "\n")
             except Exception:
                 pass
-        def state_tx(timeout=2):
-            # The orchestrator's database with a write transaction open on it, for a mark the hooks keep as a state row
-            # (M.ORCH-T528); None when it isn't there, is from before the state table, or stays held past timeout seconds.
+        def state_tx(timeout=2, table="state"):
+            # The orchestrator's database with a write transaction open on it, for a mark the hooks keep in it (M.ORCH-T528);
+            # None when it isn't there, is from before the table, or stays held past timeout seconds.
             try:
                 import sqlite3
                 if not os.path.isfile(ORCH_DB):
@@ -778,7 +778,7 @@ public static class AgentGate
                 return None
             try:
                 db.execute("BEGIN IMMEDIATE")
-                db.execute("SELECT 1 FROM state LIMIT 0")
+                db.execute("SELECT 1 FROM " + table + " LIMIT 0")
                 return db
             except Exception:
                 db.close()
@@ -866,6 +866,75 @@ public static class AgentGate
             new = change(json.loads(json.dumps(hook_mark(name, path))))
             if new is not None:
                 write_json(path, new)
+        CLI_MARKS_DIR = Path.home() / ".claude" / "session-context"
+        def cli_marks(kind):
+            # {pid: value} of one kind of per-CLI mark ("autopilot", "noautopilot", "crossrepo": M.ORCH-T528): the database's
+            # cli_marks rows, with any <kind>-<pid> file over them (one the daemon hasn't read in yet, or one kept while the
+            # database was held: newer either way), less those a <kind>-<pid>.cleared file says were removed while it was held.
+            # The files are listed first: the daemon reading one in commits its row before it moves the file aside.
+            files, cleared = {}, set()
+            try:
+                for f in CLI_MARKS_DIR.glob(kind + "-*"):
+                    rest = f.name[len(kind) + 1:]
+                    try:
+                        if rest.isdigit():
+                            files[rest] = f.read_text(encoding="utf-8", errors="replace")
+                        elif rest.endswith(".cleared") and rest[:-len(".cleared")].isdigit():
+                            cleared.add(rest[:-len(".cleared")])
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            rows = orch_rows("SELECT pid, value FROM cli_marks WHERE kind = ?", (kind,), timeout=1)
+            if rows is None:
+                rows = _marks_read.get("cli:" + kind, []) if os.path.isfile(ORCH_DB) else []
+            else:
+                _marks_read["cli:" + kind] = rows
+            out = {str(pid): str(value) for pid, value in rows if str(pid) not in cleared}
+            out.update(files)
+            return out
+        def cli_mark(kind, pid):
+            # This CLI's mark of the kind (its text), or None when it has none.
+            return cli_marks(kind).get(str(pid)) if pid else None
+        def set_cli_mark(kind, pid, value):
+            # Sets (or with None, removes) a CLI's mark: its cli_marks row in one write transaction, any file for it gone; the
+            # file while the database is held past a short wait, missing or older (a removal then leaves <kind>-<pid>.cleared).
+            if not pid:
+                return
+            f = CLI_MARKS_DIR / (kind + "-" + str(pid))
+            gone = CLI_MARKS_DIR / (kind + "-" + str(pid) + ".cleared")
+            def drop(p):
+                try:
+                    if p.exists():
+                        p.unlink()
+                except Exception:
+                    pass
+            db = state_tx(table="cli_marks")
+            if db is not None:
+                try:
+                    if value is None:
+                        db.execute("DELETE FROM cli_marks WHERE kind = ? AND pid = ?", (kind, int(pid)))
+                    else:
+                        db.execute("INSERT OR REPLACE INTO cli_marks (kind, pid, value, written_at) VALUES (?, ?, ?, ?)", (kind, int(pid), str(value), time.time()))
+                    db.execute("COMMIT")
+                    drop(f)
+                    drop(gone)
+                    return
+                except Exception:
+                    try:
+                        db.execute("ROLLBACK")
+                    except Exception:
+                        pass
+                finally:
+                    db.close()
+            CLI_MARKS_DIR.mkdir(parents=True, exist_ok=True)
+            if value is None:
+                drop(f)
+                if os.path.isfile(ORCH_DB):
+                    gone.write_text("", encoding="utf-8")
+            else:
+                f.write_text(str(value), encoding="utf-8")
+                drop(gone)
         CLEARED = {"state": "cleared"}  # a whole mark's file saying it was cleared while the database was held
         def whole_mark(name, path):
             # A mark the hooks keep whole (the handoff: M.ORCH-T528): its file when there is one (one no process has read in
@@ -1101,8 +1170,9 @@ public static class AgentGate
         def autopilot_repos(pid):
             # What /autopilot turned on in THIS CLI (its repos, or "*"): it works them through its own subagents.
             # Never another CLI's: one you're using is never pushed onto tickets because its repo was named elsewhere.
+            # Its cli_marks row (M.ORCH-T528), or its autopilot-<pid> file as cli_marks reads it.
             try:
-                return [n.strip() for n in (SESSION_MARKS / ("autopilot-" + str(pid))).read_text(encoding="utf-8", errors="replace").split(",") if n.strip()] if pid else []
+                return [n.strip() for n in (cli_mark("autopilot", pid) or "").split(",") if n.strip()] if pid else []
             except Exception:
                 return []
         def set_autopilot(pid, args, cwd):
@@ -1114,8 +1184,6 @@ public static class AgentGate
             if re.search(r"-{1,2}repos\b", args, re.I):
                 # The -repos alias is gone (it read as a different switch); say so rather than guess what was meant.
                 return "/autopilot takes -repo=A,B (wildcards too: -repo=GTFO.*); -repos is gone. Nothing changed: type it again with -repo."
-            SESSION_MARKS.mkdir(parents=True, exist_ok=True)
-            mark = SESSION_MARKS / ("autopilot-" + str(pid))
             names = autopilot_repos(pid)
             mine = repo_of(cwd or "")
             m = re.search(r"-{1,2}repo\b\s*[=:]?\s*\[?([^\]]*)\]?", args, re.I)
@@ -1140,22 +1208,21 @@ public static class AgentGate
             except Exception:
                 pass
             if re.match(r"off\s+all\b", args, re.I):
-                for each in SESSION_MARKS.glob("autopilot-*"):  # off everywhere: every CLI's, recorded as typed off
+                for each in cli_marks("autopilot"):  # off everywhere: every CLI's, recorded as typed off
                     try:
-                        (SESSION_MARKS / ("no" + each.name)).write_text("", encoding="utf-8")
-                        each.unlink()
+                        set_cli_mark("noautopilot", each, "")
+                        set_cli_mark("autopilot", each, None)
                     except Exception:
                         pass
-            off = SESSION_MARKS / ("noautopilot-" + str(pid))
             if pid and names:
-                mark.write_text(",".join(names), encoding="utf-8")
-                if off.exists():
-                    off.unlink()
+                set_cli_mark("autopilot", pid, ",".join(names))
+                if cli_mark("noautopilot", pid) is not None:
+                    set_cli_mark("noautopilot", pid, None)
             else:
-                if mark.exists():
-                    mark.unlink()
+                if cli_mark("autopilot", pid) is not None:
+                    set_cli_mark("autopilot", pid, None)
                 if pid and re.match(r"off\b", args, re.I):
-                    off.write_text("", encoding="utf-8")
+                    set_cli_mark("noautopilot", pid, "")
             return None
         # A freshly opened CLI starts with /autopilot off (M.ORCH-T522, reversing M.ORCH-T476's on-by-default): only a typed
         # /autopilot (or /work) marks it. The noautopilot mark /autopilot off leaves is what /handoff restores as "typed off".
@@ -1163,13 +1230,11 @@ public static class AgentGate
             # /crossrepo <A,B|all> lets this CLI work other repos too (the explicit exception to M.ORCH-T95); /crossrepo off ends it.
             if not pid:
                 return None
-            SESSION_MARKS.mkdir(parents=True, exist_ok=True)
-            mark = SESSION_MARKS / ("crossrepo-" + str(pid))
             if not args or re.match(r"off\b", args, re.I):
-                if mark.exists():
-                    mark.unlink()
+                if cli_mark("crossrepo", pid) is not None:
+                    set_cli_mark("crossrepo", pid, None)
             else:
-                mark.write_text(",".join(r.strip() for r in args.replace(" ", ",").split(",") if r.strip()), encoding="utf-8")
+                set_cli_mark("crossrepo", pid, ",".join(r.strip() for r in args.replace(" ", ",").split(",") if r.strip()))
             return None
         # /handoff (M.ORCH-T481): one mark for every CLI (Sessions.Handoff reads and writes the same file). While it's winding down
         # or quiet nothing new starts; each CLI quicksaves (handoff-saved-<pid>); the first start after the switch marks it resumed.
@@ -1215,16 +1280,10 @@ public static class AgentGate
             if by and cwd:
                 cwds[str(by)] = (float("inf"), cwd)  # the CLI starting it is where it's typed now
             clis = {}
-            for f in SESSION_MARKS.glob("autopilot-*"):
-                pid = f.name[len("autopilot-"):]
-                try:
-                    if pid.isdigit():
-                        clis[pid] = {"repos": ",".join(n.strip() for n in f.read_text(encoding="utf-8", errors="replace").split(",") if n.strip()), "off": False}
-                except Exception:
-                    pass
-            for f in SESSION_MARKS.glob("noautopilot-*"):
-                pid = f.name[len("noautopilot-"):]
-                if pid.isdigit() and pid not in clis:
+            for pid, repos in cli_marks("autopilot").items():
+                clis[pid] = {"repos": ",".join(n.strip() for n in repos.split(",") if n.strip()), "off": False}
+            for pid in cli_marks("noautopilot"):
+                if pid not in clis:
                     clis[pid] = {"repos": "", "off": True}
             entries = []
             for pid in sorted(clis, key=int):
@@ -1471,9 +1530,9 @@ public static class AgentGate
             # /crossrepo's repos, and the repos /autopilot is working in this CLI ("*" for all): its subagents edit and close there.
             pid = os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
             found = set()
-            for kind in ("crossrepo-", "autopilot-"):
+            for kind in ("crossrepo", "autopilot"):
                 try:
-                    found |= {r.strip().lower() for r in (Path.home() / ".claude" / "session-context" / (kind + str(pid))).read_text(encoding="utf-8", errors="replace").split(",") if r.strip()} if pid else set()
+                    found |= {r.strip().lower() for r in (cli_mark(kind, pid) or "").split(",") if r.strip()}
                 except Exception:
                     pass
             return {"all" if r == "*" else r for r in found}
@@ -2121,16 +2180,15 @@ public static class AgentGate
                     os.close(os.open(str(DIR / ("handoff-restored-" + str(i))), os.O_CREAT | os.O_EXCL | os.O_WRONLY))
                 except FileExistsError:
                     continue  # another CLI starting here already took it
-                on, off = DIR / ("autopilot-" + str(pid)), DIR / ("noautopilot-" + str(pid))
                 if e.get("off"):
-                    off.write_text("", encoding="utf-8")
-                    if on.exists():
-                        on.unlink()
+                    set_cli_mark("noautopilot", pid, "")
+                    if cli_mark("autopilot", pid) is not None:
+                        set_cli_mark("autopilot", pid, None)
                     return "off"
                 if e.get("repos"):
-                    on.write_text(str(e["repos"]), encoding="utf-8")
-                    if off.exists():
-                        off.unlink()
+                    set_cli_mark("autopilot", pid, str(e["repos"]))
+                    if cli_mark("noautopilot", pid) is not None:
+                        set_cli_mark("noautopilot", pid, None)
                     return "/autopilot " + ("all" if e["repos"] == "*" else "-repo=" + str(e["repos"]))
             return None
 

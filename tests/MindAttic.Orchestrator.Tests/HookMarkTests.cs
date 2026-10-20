@@ -223,6 +223,95 @@ public sealed class HookMarkTests
         Assert.That(File.Exists(HandoffFile), Is.False, "no database: a clear just deletes the file");
     }
 
+    // ---- the per-CLI /autopilot, /autopilot off and /crossrepo marks (schema step 6) ----
+
+    private static Dictionary<string, string> CliRows()
+    {
+        using var connection = Db.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT kind, pid, value FROM cli_marks;";
+        using var r = command.ExecuteReader();
+        var rows = new Dictionary<string, string>();
+        while (r.Read()) rows[$"{r.GetString(0)}-{r.GetInt64(1)}"] = r.GetString(2);
+        return rows;
+    }
+
+    private void MarkFile(string name, string text = "") => File.WriteAllText(Path.Combine(Marks, name), text);
+
+    [Test]
+    public void The_daemon_reads_the_cli_mark_files_in_once_keeping_each_as_bak_and_a_cleared_file_removes_its_row()
+    {
+        Db.Open().Dispose();
+        Hook("""set_cli_mark("crossrepo", 14, "Old")""");
+        MarkFile("autopilot-11", "UnitySolarSystem,Prose");
+        MarkFile("noautopilot-12");
+        MarkFile("crossrepo-13", "all");
+        MarkFile("crossrepo-14.cleared");
+        Assert.That(Sessions.CliMarks.Read(Marks, Sessions.CliMarks.Crossrepo).Keys, Is.EquivalentTo(new[] { 13 }), "the cleared file hides the row before it's read in");
+
+        Sessions.CliMarks.ReadIn(Marks);
+        Assert.That(CliRows(), Is.EquivalentTo(new Dictionary<string, string> { ["autopilot-11"] = "UnitySolarSystem,Prose", ["noautopilot-12"] = "", ["crossrepo-13"] = "all" }));
+        Assert.That(Directory.GetFiles(Marks).Select(Path.GetFileName), Is.EquivalentTo(new[] { "autopilot-11.bak", "noautopilot-12.bak", "crossrepo-13.bak" }));
+        Assert.That(Hook("""print(cli_mark("autopilot", 11), sorted(cli_marks("noautopilot")), cli_mark("crossrepo", 14))"""), Is.EqualTo("UnitySolarSystem,Prose ['12'] None"),
+            "the hooks read the rows, never a .bak");
+        Sessions.CliMarks.ReadIn(Marks);
+        Assert.That(CliRows(), Has.Count.EqualTo(3), "once: nothing left to read in");
+        Assert.That(Db.Dump(), Does.Not.Contain("cli_marks"), "they last as long as a CLI: out of the dump");
+    }
+
+    [Test]
+    public void Hooks_setting_cli_marks_at_once_each_keep_their_row_and_the_orchestrator_reads_them()
+    {
+        Db.Open().Dispose();
+        var writers = Enumerable.Range(1, 8).Select(i => Start($"""set_cli_mark("autopilot", {i}, "R{i}")""")).ToList();
+        foreach (var p in writers)
+        {
+            Assert.That(p.WaitForExit(30_000), Is.True);
+            Assert.That(p.ExitCode, Is.EqualTo(0), p.StandardError.ReadToEnd());
+            p.Dispose();
+        }
+        Assert.That(CliRows(), Has.Count.EqualTo(8), "concurrent writers: no row lost");
+        Assert.That(Directory.GetFiles(Marks), Is.Empty, "no files while the database takes them");
+        Assert.That(Sessions.CliMarks.Read(Marks, Sessions.CliMarks.Autopilot)[3], Is.EqualTo("R3"));
+
+        Hook("""set_cli_mark("autopilot", 3, None)""");
+        Assert.That(Sessions.CliMarks.Read(Marks, Sessions.CliMarks.Autopilot).ContainsKey(3), Is.False);
+        Sessions.CliMarks.Prune(pid => pid % 2 == 0);
+        Assert.That(CliRows().Keys, Is.EquivalentTo(new[] { "autopilot-2", "autopilot-4", "autopilot-6", "autopilot-8" }), "a closed CLI's rows go");
+    }
+
+    [Test]
+    public void A_hook_reads_committed_cli_marks_mid_write_and_its_writes_while_held_are_files_the_daemon_reads_in()
+    {
+        Db.Open().Dispose();
+        Hook("""set_cli_mark("autopilot", 5, "A"); set_cli_mark("crossrepo", 5, "B")""");
+        using (var connection = Db.Open())
+        {
+            OrchestratorDb.Execute(connection, "BEGIN IMMEDIATE; UPDATE cli_marks SET value = 'half';");
+            Assert.That(Hook("""print(cli_mark("autopilot", 5))"""), Is.EqualTo("A"), "the committed row, not the half-written one");
+            Hook("""set_cli_mark("autopilot", 5, "C"); set_cli_mark("crossrepo", 5, None)""");
+            OrchestratorDb.Execute(connection, "ROLLBACK;");
+        }
+        Assert.That(File.ReadAllText(Path.Combine(Marks, "autopilot-5")), Is.EqualTo("C"), "held: the file");
+        Assert.That(File.Exists(Path.Combine(Marks, "crossrepo-5.cleared")), Is.True, "held: a removal leaves .cleared");
+        Assert.That(Hook("""print(cli_mark("autopilot", 5), cli_mark("crossrepo", 5))"""), Is.EqualTo("C None"), "every reader takes the files over the rows");
+        Assert.That(Sessions.CliMarks.Read(Marks, Sessions.CliMarks.Crossrepo).ContainsKey(5), Is.False);
+
+        Sessions.CliMarks.ReadIn(Marks);
+        Assert.That(CliRows(), Is.EquivalentTo(new Dictionary<string, string> { ["autopilot-5"] = "C" }));
+        Assert.That(File.Exists(Path.Combine(Marks, "crossrepo-5.cleared")), Is.False);
+    }
+
+    [Test]
+    public void Without_a_database_the_cli_marks_stay_files_as_before()
+    {
+        Hook("""set_cli_mark("autopilot", 9, "X"); set_cli_mark("noautopilot", 9, ""); set_cli_mark("crossrepo", 9, "Y"); set_cli_mark("crossrepo", 9, None)""");
+        Assert.That(Directory.GetFiles(Marks).Select(Path.GetFileName), Is.EquivalentTo(new[] { "autopilot-9", "noautopilot-9" }), "no .cleared: there's no row to hide");
+        Sessions.CliMarks.ReadIn(Marks);
+        Assert.That(File.Exists(OrchestratorDb.DefaultPath()), Is.False, "neither a hook nor a read-in creates the database");
+        Assert.That(Sessions.CliMarks.Read(Marks, Sessions.CliMarks.Autopilot)[9], Is.EqualTo("X"));
+    }
+
     [Test]
     public void A_latch_lift_with_nothing_latched_opens_no_write_transaction()
     {

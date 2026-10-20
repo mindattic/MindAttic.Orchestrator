@@ -180,22 +180,28 @@ public sealed class ContextCycler(string? directory = null)
         if (System.IO.Directory.Exists(SubagentDirectory))
             foreach (var f in System.IO.Directory.EnumerateFiles(SubagentDirectory).Where(f => !SubagentAlive(f, DateTime.UtcNow, idle: false)))
                 try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        // The /autopilot and /crossrepo marks a hook kept as files while the database was held (or from before it) are read in
+        // first (M.ORCH-T528), then a closed CLI's rows go with its files.
+        CliMarks.ReadIn(Directory);
+        CliMarks.Prune(IsClaude);
         if (!System.IO.Directory.Exists(Directory)) return;
         foreach (var prefix in new[] { "unthrottled-", "crossrepo-", "autopilot-", "noautopilot-" })
             foreach (var f in System.IO.Directory.EnumerateFiles(Directory, prefix + "*"))
             {
-                var alive = int.TryParse(Path.GetFileName(f)[prefix.Length..], out var pid) && IsClaude(pid);
+                // A read-in mark's .bak and a removal's .cleared go when their CLI does.
+                var rest = Path.GetFileName(f)[prefix.Length..];
+                foreach (var suffix in new[] { ".bak", CliMarks.ClearedSuffix })
+                    if (rest.EndsWith(suffix, StringComparison.Ordinal)) rest = rest[..^suffix.Length];
+                var alive = int.TryParse(rest, out var pid) && IsClaude(pid);
                 if (!alive) try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
             }
     }
 
-    /// <summary>The CLIs /autopilot is on in (by process id), and the repos each works through its own subagents ("*": all).</summary>
-    public IReadOnlyDictionary<int, IReadOnlyList<string>> AutopilotClis() => !System.IO.Directory.Exists(Directory)
-        ? new Dictionary<int, IReadOnlyList<string>>()
-        : System.IO.Directory.EnumerateFiles(Directory, "autopilot-*")
-            .Select(f => (Pid: int.TryParse(Path.GetFileName(f)["autopilot-".Length..], out var pid) ? pid : 0, File: f))
-            .Where(x => x.Pid > 0 && IsClaude(x.Pid))
-            .ToDictionary(x => x.Pid, x => (IReadOnlyList<string>)[.. ReadOrEmpty(x.File).Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)]);
+    /// <summary>The CLIs /autopilot is on in (by process id), and the repos each works through its own subagents ("*": all):
+    /// their <c>cli_marks</c> rows, or <c>autopilot-&lt;pid&gt;</c> files not read in yet (<see cref="CliMarks"/>).</summary>
+    public IReadOnlyDictionary<int, IReadOnlyList<string>> AutopilotClis() => CliMarks.Read(Directory, CliMarks.Autopilot)
+        .Where(x => IsClaude(x.Key))
+        .ToDictionary(x => x.Key, x => (IReadOnlyList<string>)[.. x.Value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)]);
 
     private static string ReadOrEmpty(string path)
     {
