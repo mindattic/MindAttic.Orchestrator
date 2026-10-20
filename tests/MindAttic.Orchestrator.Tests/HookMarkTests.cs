@@ -378,6 +378,119 @@ public sealed class HookMarkTests
         Assert.That(Db.Dump(), Does.Not.Contain("B/O"), "out of the dump");
     }
 
+    // ---- each session's state (schema step 7), still exported as <session>.state.json ----
+
+    private string StateFile(string session) => Path.Combine(Marks, session + Sessions.SessionStates.Suffix);
+    private static string HookState(string body) =>
+        "def load(path):\n    value = exported_mark(path.name[:-len(\".state.json\")], path, table=\"session_states\", key=\"session_id\")\n    return value if isinstance(value, dict) else {}\n" +
+        "def save(path, value):\n    write_exported_mark(path.name[:-len(\".state.json\")], path, value, table=\"session_states\", key=\"session_id\")\n" +
+        "DIR = Path.home() / \".claude\" / \"session-context\"\n" + body;
+
+    [Test]
+    public void A_session_state_is_a_row_and_its_file_is_still_exported_for_the_Launcher()
+    {
+        Db.Open().Dispose();
+        Hook(HookState("""save(DIR / "s1.state.json", {"pid": 42, "idle": False})"""));
+        var row = Sessions.SessionStates.Rows()["s1"];
+        Assert.That(JsonNode.Parse(row.Value)!["pid"]!.GetValue<int>(), Is.EqualTo(42));
+        Assert.That(JsonNode.Parse(File.ReadAllText(StateFile("s1")))!["pid"]!.GetValue<int>(), Is.EqualTo(42), "exported");
+        Assert.That(new Sessions.ContextCycler(Marks).Load().Single().Pid, Is.EqualTo(42), "the orchestrator's readers read it as before");
+        Assert.That(Hook(HookState("""print(load(DIR / "s1.state.json")["pid"])""")), Is.EqualTo("42"));
+
+        Sessions.SessionStates.ReadIn(Marks);
+        Assert.That(File.Exists(StateFile("s1") + ".bak"), Is.False, "the gate's own export isn't read in again");
+        Assert.That(Db.Dump(), Does.Not.Contain("s1"), "out of the dump");
+    }
+
+    [Test]
+    public void The_daemon_reads_in_a_state_file_once_and_one_written_while_the_database_was_held()
+    {
+        Db.Open().Dispose();
+        File.WriteAllText(StateFile("old"), """{"pid": 7}""");
+        Sessions.SessionStates.ReadIn(Marks);
+        Assert.That(Sessions.SessionStates.Rows()["old"].Value, Does.Contain("7"));
+        Assert.That(File.Exists(StateFile("old") + ".bak"), Is.True, "a copy kept as .bak");
+        Assert.That(File.Exists(StateFile("old")), Is.True, "still exported");
+
+        Hook(HookState("""save(DIR / "s2.state.json", {"pid": 1})"""));
+        using (var connection = Db.Open())
+        {
+            OrchestratorDb.Execute(connection, "BEGIN IMMEDIATE; UPDATE session_states SET value = '{}';");
+            Assert.That(Hook(HookState("""print(load(DIR / "s2.state.json")["pid"])""")), Is.EqualTo("1"), "read mid-write: the committed state");
+            Hook(HookState("""save(DIR / "s2.state.json", {"pid": 2})"""));
+            OrchestratorDb.Execute(connection, "ROLLBACK;");
+        }
+        Assert.That(Sessions.SessionStates.Rows()["s2"].Value, Does.Contain("1"), "held: the row couldn't take it");
+        Assert.That(Hook(HookState("""print(load(DIR / "s2.state.json")["pid"])""")), Is.EqualTo("2"), "the file, written later, is the state");
+        Sessions.SessionStates.ReadIn(Marks);
+        Assert.That(Sessions.SessionStates.Rows()["s2"].Value, Does.Contain("2"), "read in at the daemon's next tick");
+
+        Sessions.SessionStates.Prune(DateTime.UtcNow.AddMinutes(1));
+        Assert.That(Sessions.SessionStates.Rows(), Is.Empty, "rows go with their sessions' files");
+    }
+
+    [Test]
+    public void Context_gates_saving_states_at_once_each_keep_their_row()
+    {
+        Db.Open().Dispose();
+        var writers = Enumerable.Range(0, 8).Select(i => Start(HookState($$"""save(DIR / "c{{i}}.state.json", {"pid": {{i}}})"""))).ToList();
+        foreach (var p in writers)
+        {
+            Assert.That(p.WaitForExit(30_000), Is.True);
+            Assert.That(p.ExitCode, Is.EqualTo(0), p.StandardError.ReadToEnd());
+            p.Dispose();
+        }
+        Assert.That(Sessions.SessionStates.Rows().Keys, Is.EquivalentTo(Enumerable.Range(0, 8).Select(i => "c" + i)));
+    }
+
+    // ---- the meter probe's readings: a row, the statusline's claude-usage.json read and never replaced ----
+
+    private string UsageFile => Path.Combine(dir, ".claude", "claude-usage.json");
+
+    private static string Usage(double percent, DateTime at, DateTime reset, string? account = null) =>
+        "{\"rate_limits\": {\"five_hour\": {\"used_percentage\": " + percent.ToString(System.Globalization.CultureInfo.InvariantCulture) +
+        ", \"resets_at\": " + new DateTimeOffset(reset).ToUnixTimeSeconds() + "}}, \"at\": \"" + at.ToString("yyyy-MM-ddTHH:mm:ssZ") + "\"" +
+        (account is null ? "" : ", \"account\": \"" + account + "\"") + "}";
+
+    [Test]
+    public void The_meter_probe_writes_its_reading_to_a_row_and_never_replaces_the_statuslines_file()
+    {
+        Db.Open().Dispose();
+        var now = DateTime.UtcNow;
+        var reset = now.AddHours(3);
+        File.WriteAllText(UsageFile, Usage(40, now.AddMinutes(-30), reset));
+        var statusline = File.ReadAllText(UsageFile);
+
+        var reading = new Budget.ReportedUsage(new Budget.ReportedWindow(55, reset), null, now);
+        Budget.ClaudeMeterProbe.Write(UsageFile, reading, now, "acct", Db);
+        Assert.That(File.ReadAllText(UsageFile), Is.EqualTo(statusline), "the statusline's file is left as it was");
+        Assert.That(Row(Budget.ReportedUsage.StateName)!["account"]!.GetValue<string>(), Is.EqualTo("acct"));
+        Assert.That(Budget.ReportedUsage.Load(now, UsageFile, Db)!.FiveHour!.Percent, Is.EqualTo(55), "the later of the file and the row");
+
+        // A statusline drawing after it: its reading is the later one.
+        File.WriteAllText(UsageFile, Usage(60, now.AddMinutes(1), reset));
+        Assert.That(Budget.ReportedUsage.Load(now.AddMinutes(1), UsageFile, Db)!.FiveHour!.Percent, Is.EqualTo(60));
+        Assert.That(Db.Dump(), Does.Not.Contain("acct"), "out of the dump");
+    }
+
+    [Test]
+    public void The_hooks_stop_on_the_probes_reading_in_the_database_when_the_statuslines_file_is_older()
+    {
+        Db.Open().Dispose();
+        var now = DateTime.UtcNow;
+        var reset = now.AddHours(1);
+        File.WriteAllText(UsageFile, Usage(80, now.AddMinutes(-10), reset));
+        Assert.That(Hook("""print(claude_stop())"""), Is.EqualTo("None"), "the statusline's 80% isn't the stop");
+
+        Db.SaveState(Budget.ReportedUsage.StateName, Usage(99.4, now, reset));
+        Assert.That(Hook("""print(claude_stop()[0])"""), Is.EqualTo("99.4"), "the probe's later 99% is");
+
+        using var connection = Db.Open();
+        OrchestratorDb.Execute(connection, "BEGIN IMMEDIATE; UPDATE state SET value = '{}' WHERE name = 'claude-usage';");
+        Assert.That(Hook("""print(claude_usage()["rate_limits"]["five_hour"]["used_percentage"])"""), Is.EqualTo("99.4"), "read mid-write: the committed reading");
+        OrchestratorDb.Execute(connection, "ROLLBACK;");
+    }
+
     [Test]
     public void A_latch_lift_with_nothing_latched_opens_no_write_transaction()
     {

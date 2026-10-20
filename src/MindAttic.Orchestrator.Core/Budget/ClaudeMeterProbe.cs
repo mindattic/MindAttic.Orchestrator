@@ -36,6 +36,12 @@ public sealed class ClaudeMeterProbe
     /// <summary>Where the reading is written; the statusline's file by default.</summary>
     public string UsagePath { get; init; } = ReportedUsage.DefaultPath;
 
+    /// <summary>Where the readings go (M.ORCH-T528): the <see cref="ReportedUsage.StateName"/> row of this database, so the
+    /// statusline's <see cref="UsagePath"/> is read and never replaced. The default database for the real file; null (a
+    /// test's own file) writes the file as before.</summary>
+    public Settings.OrchestratorDb? Db { get; init; }
+    private Settings.OrchestratorDb? Store => Db ?? (UsagePath == ReportedUsage.DefaultPath ? ReportedUsage.DefaultDb : null);
+
     public string CredentialsPath { get; init; } = DefaultCredentialsPath;
 
     /// <summary>The account signed in now (<see cref="ClaudeAccount.Current"/>), which each reading is tagged with: after a
@@ -165,12 +171,12 @@ public sealed class ClaudeMeterProbe
         }
         try
         {
-            LastReading = Write(UsagePath, reading, DateTime.UtcNow, account);
+            LastReading = Write(UsagePath, reading, DateTime.UtcNow, account, Store);
             LastResult = $"read Claude's meter: {reading.FiveHour?.Percent:0}% of the 5-hour window";
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException)
         {
-            // A reader or the statusline had the file at that moment: try again at the next due tick, not after a backoff.
+            // A reader or the statusline had the file (or a write the database) at that moment: try again at the next due tick, not after a backoff.
             LastResult = $"couldn't write {Path.GetFileName(UsagePath)}: {ex.Message}";
         }
 
@@ -238,10 +244,10 @@ public sealed class ClaudeMeterProbe
     /// <paramref name="account"/>. Usage never falls within a window, so a higher percent already in the file for the same
     /// window is kept (with this, newer, time), when it's the same account's: an untagged statusline reading may be another
     /// account's whose window happens to reset at the same minute, and its percent would be written tagged as this one's.</summary>
-    internal static ReportedUsage Write(string path, ReportedUsage reading, DateTime atUtc, string? account = null)
+    internal static ReportedUsage Write(string path, ReportedUsage reading, DateTime atUtc, string? account = null, Settings.OrchestratorDb? db = null)
     {
         var five = reading.FiveHour!;
-        if (ReportedUsage.Load(atUtc, path) is { FiveHour: { } old } was && was.Account == account && old.ResetUtc == five.ResetUtc && old.Percent > five.Percent)
+        if (ReportedUsage.Load(atUtc, path, db) is { FiveHour: { } old } was && was.Account == account && old.ResetUtc == five.ResetUtc && old.Percent > five.Percent)
             five = old;
         var limits = new JsonObject { ["five_hour"] = Node(five) };
         if (reading.Week is { } week) limits["seven_day"] = Node(week);
@@ -252,6 +258,11 @@ public sealed class ClaudeMeterProbe
             ["source"] = "orchestrator",
         };
         if (account is not null) json["account"] = account;
+        if (db is not null)
+        {
+            db.SaveState(ReportedUsage.StateName, json.ToJsonString()); // the statusline's file is never replaced
+            return new ReportedUsage(five, reading.Week, atUtc) { Account = account };
+        }
         var tmp = $"{path}.{Environment.ProcessId}.tmp";
         File.WriteAllText(tmp, json.ToJsonString());
         try { File.Move(tmp, path, overwrite: true); }

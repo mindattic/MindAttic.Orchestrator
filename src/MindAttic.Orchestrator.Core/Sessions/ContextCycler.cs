@@ -184,6 +184,7 @@ public sealed class ContextCycler(string? directory = null)
         // first (M.ORCH-T528), then a closed CLI's rows go with its files.
         CliMarks.ReadIn(Directory);
         CliMarks.Prune(IsClaude);
+        SessionStates.ReadIn(Directory);
         if (!System.IO.Directory.Exists(Directory)) return;
         foreach (var prefix in new[] { "unthrottled-", "crossrepo-", "autopilot-", "noautopilot-" })
             foreach (var f in System.IO.Directory.EnumerateFiles(Directory, prefix + "*"))
@@ -362,6 +363,7 @@ public sealed class ContextCycler(string? directory = null)
     /// <summary>Drops files for sessions not heard from in a week, so the folder doesn't grow forever.</summary>
     public void Prune(DateTime nowUtc)
     {
+        SessionStates.Prune(nowUtc - TimeSpan.FromDays(7)); // their rows go with their files (M.ORCH-T528)
         if (!System.IO.Directory.Exists(Directory)) return;
         // A CLI's own /autopilot, /autopilot off, /pacing off and /crossrepo marks are written once and live as long as it does,
         // however long that is; PruneMarks drops them when the CLI closes. A week-old noautopilot mark dropped here let the default

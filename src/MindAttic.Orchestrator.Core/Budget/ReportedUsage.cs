@@ -117,31 +117,60 @@ public sealed record ReportedUsage(ReportedWindow? FiveHour, ReportedWindow? Wee
     public static ReportedWindow? Usable(ReportedWindow? w, DateTime nowUtc) =>
         w is not null && w.ResetUtc > nowUtc ? w : null;
 
-    /// <summary>The saved report, or null when there's none, it's unreadable, or it's older than <see cref="MaxAge"/>.</summary>
-    public static ReportedUsage? Load(DateTime nowUtc, string? path = null)
+    /// <summary>The <c>state</c> row of the orchestrator's database the meter probe keeps its readings in (M.ORCH-T528), left
+    /// out of the dump: <see cref="DefaultPath"/> is the statusline's, which the orchestrator reads and never replaces.</summary>
+    public const string StateName = "claude-usage";
+
+    /// <summary>The database the probe's readings are kept in.</summary>
+    public static Settings.OrchestratorDb DefaultDb => new(Settings.OrchestratorDb.StatePath(Settings.JsonStore.LiveDirectory));
+
+    /// <summary>The latest report, or null when there's none, it's unreadable, or it's older than <see cref="MaxAge"/>: the
+    /// later of the statusline's file and the meter probe's row in <paramref name="db"/> (the default database for the real
+    /// file; none for another file unless given).</summary>
+    public static ReportedUsage? Load(DateTime nowUtc, string? path = null, Settings.OrchestratorDb? db = null)
+    {
+        db ??= path is null ? DefaultDb : null;
+        var file = LoadFile(nowUtc, path ?? DefaultPath);
+        ReportedUsage? row = null;
+        try
+        {
+            if (db is not null && File.Exists(db.Path) && db.LoadState(StateName) is { } state)
+            {
+                using var doc = JsonDocument.Parse(state.Value);
+                row = Parse(doc.RootElement, nowUtc);
+            }
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException or JsonException or InvalidOperationException or FormatException) { }
+        return row is not null && (file is null || row.AtUtc > file.AtUtc) ? row : file;
+    }
+
+    private static ReportedUsage? LoadFile(DateTime nowUtc, string file)
     {
         try
         {
-            var file = path ?? DefaultPath;
             if (!File.Exists(file)) return null;
             // Shared with delete: a statusline renaming its fresh report over this file mid-read must not fail (it left
             // its .tmp behind and the reading was lost).
             using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             using var doc = JsonDocument.Parse(stream);
-            var root = doc.RootElement;
-            if (!root.TryGetProperty("at", out var a) ||
-                !DateTime.TryParse(a.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var at) ||
-                nowUtc - at > MaxAge || !root.TryGetProperty("rate_limits", out var limits))
-                return null;
-            return new ReportedUsage(Window(limits, "five_hour"), Window(limits, "seven_day"), at)
-            {
-                Account = root.TryGetProperty("account", out var who) && who.ValueKind == JsonValueKind.String ? who.GetString() : null,
-            };
+            return Parse(doc.RootElement, nowUtc);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or FormatException)
         {
             return null;
         }
+    }
+
+    private static ReportedUsage? Parse(JsonElement root, DateTime nowUtc)
+    {
+        if (!root.TryGetProperty("at", out var a) ||
+            !DateTime.TryParse(a.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var at) ||
+            nowUtc - at > MaxAge || !root.TryGetProperty("rate_limits", out var limits))
+            return null;
+        return new ReportedUsage(Window(limits, "five_hour"), Window(limits, "seven_day"), at)
+        {
+            Account = root.TryGetProperty("account", out var who) && who.ValueKind == JsonValueKind.String ? who.GetString() : null,
+        };
     }
 
     private static ReportedWindow? Window(JsonElement limits, string name) =>

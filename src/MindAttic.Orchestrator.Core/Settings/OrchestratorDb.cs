@@ -201,6 +201,16 @@ public sealed class OrchestratorDb(string path)
         ALTER TABLE assignments ADD COLUMN cli INTEGER;
         ALTER TABLE assignments ADD COLUMN cli_session TEXT;
         """,
+        // 8: each session's state as the context gate keeps it (M.ORCH-T528): its turn, CLI process, cwd, /goal, limit stop...
+        // one row per session, its value the JSON <session>.state.json held. The context gate writes the row and still exports
+        // the file (the Launcher's ClaudeRestartGate reads it); the daemon reads in a file without a row. Not in the dump.
+        """
+        CREATE TABLE session_states (
+            session_id TEXT PRIMARY KEY,
+            value      TEXT NOT NULL,
+            written_at REAL NOT NULL
+        );
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a
@@ -211,7 +221,7 @@ public sealed class OrchestratorDb(string path)
         [Daemon.AutopilotHoldsName, Daemon.StaleTicketsName, "dashboard-seen", Budget.RateLimitStatusWriter.StateName, Sessions.CliRoster.StateName,
          // The hooks' own marks (M.ORCH-T528): written by every CLI's hooks, never history worth a commit.
          Setup.AgentGate.StopLatchStateName, Setup.AgentGate.ApiKeySetAsideStateName, Sessions.Handoff.StateName,
-         Billing.BillingModeFile.StateName, Budget.ClaudeAccount.StateName];
+         Billing.BillingModeFile.StateName, Budget.ClaudeAccount.StateName, Budget.ReportedUsage.StateName];
 
     /// <summary>Every table, with the order the dump lists its rows in: by key, so a change shows up as a few lines in its diff.</summary>
     private static readonly (string Table, string Order, string Where)[] Tables =

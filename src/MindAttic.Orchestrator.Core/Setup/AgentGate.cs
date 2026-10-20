@@ -281,13 +281,34 @@ public static class AgentGate
                 change_hook_mark("{{StopLatchStateName}}", LATCH, change)
             except Exception:
                 pass
+        def claude_usage():
+            # Claude's own report: the statusline's claude-usage.json, or the orchestrator's meter probe reading in its
+            # database (M.ORCH-T528: the probe never replaces the statusline's file), whichever is later. Raises when neither.
+            found = []
+            rows = orch_rows("SELECT value FROM state WHERE name = ?", ("{{Budget.ReportedUsage.StateName}}",), timeout=1)
+            if rows:
+                try:
+                    found.append(json.loads(rows[0][0]))
+                except Exception:
+                    pass
+            try:
+                found.append(read_json(Path.home() / ".claude" / "claude-usage.json"))
+            except Exception:
+                if not found:
+                    raise
+            def at(u):
+                try:
+                    return datetime.fromisoformat(str(u.get("at")).replace("Z", "+00:00")).timestamp()
+                except Exception:
+                    return 0.0
+            return max(found, key=at)
         def claude_stop():
             # (percent, reset epoch, window) when Claude itself reports a window at the stop line, now or earlier in the same
             # window (an idle session's later, lower report doesn't lift it); None otherwise. The week counts as much as the
             # 5 hours: a daemon that's down mustn't let a week at 99% run into a wall that locks you out for days.
             windows = (("five_hour", "claude", "5-hour"), ("seven_day", "claude-week", "weekly"))
             try:
-                usage = read_json(Path.home() / ".claude" / "claude-usage.json")
+                usage = claude_usage()
                 limits = usage["rate_limits"] if owns(usage) and (usage.get("account") or not before_switch(usage.get("at"))) else {}
                 for key, by, name in windows:
                     w = limits.get(key)
@@ -866,12 +887,12 @@ public static class AgentGate
             new = change(json.loads(json.dumps(hook_mark(name, path))))
             if new is not None:
                 write_json(path, new)
-        def exported_mark(name, path):
+        def exported_mark(name, path, table="state", key="name"):
             # A mark kept as a state row and still exported as its file for readers outside the orchestrator (the billing mode
             # for the Launcher, the account record for the statusline: M.ORCH-T528, Settings.ExportedState): whichever of the
             # two was written later; None when there's neither. A database held by a write isn't waited on long.
             row = None
-            rows = orch_rows("SELECT value, written_at FROM state WHERE name = ?", (name,), timeout=1)
+            rows = orch_rows("SELECT value, written_at FROM " + table + " WHERE " + key + " = ?", (name,), timeout=1)
             if rows:
                 try:
                     row = (json.loads(rows[0][0]), float(rows[0][1]))
@@ -884,12 +905,12 @@ public static class AgentGate
             except Exception:
                 pass
             return row[0] if row else None
-        def write_exported_mark(name, path, value):
+        def write_exported_mark(name, path, value, table="state", key="name"):
             # The row in one write transaction (when the database takes it), then the exported file.
-            db = state_tx()
+            db = state_tx(table=table)
             if db is not None:
                 try:
-                    db.execute("INSERT OR REPLACE INTO state (name, value, written_at) VALUES (?, ?, ?)", (name, json.dumps(value), time.time()))
+                    db.execute("INSERT OR REPLACE INTO " + table + " (" + key + ", value, written_at) VALUES (?, ?, ?)", (name, json.dumps(value), time.time()))
                     db.execute("COMMIT")
                 except Exception:
                     try:
@@ -1192,14 +1213,12 @@ public static class AgentGate
             sid = re.sub(r"[^A-Za-z0-9_.-]", "_", str(sid or ""))
             if not sid:
                 return {}
-            for _ in range(20):
-                try:
-                    return json.loads((SESSION_MARKS / (sid + ".state.json")).read_text()) or {}
-                except PermissionError:
-                    time.sleep(0.05)
-                except Exception:
-                    return {}
-            return {}
+            # Its session_states row or its exported .state.json, whichever was written later (M.ORCH-T528).
+            try:
+                value = exported_mark(sid, SESSION_MARKS / (sid + ".state.json"), table="session_states", key="session_id")
+                return value if isinstance(value, dict) else {}
+            except Exception:
+                return {}
         def autopilot_repos(pid):
             # What /autopilot turned on in THIS CLI (its repos, or "*"): it works them through its own subagents.
             # Never another CLI's: one you're using is never pushed onto tickets because its repo was named elsewhere.
@@ -2343,29 +2362,15 @@ public static class AgentGate
 
         # Hooks fire together (parallel tool calls, a Stop racing a SubagentStop). A read or replace Windows refuses while
         # another hook has the file open is retried: read as empty, the next save would wipe the session's goal and pid.
+        # A session's state (M.ORCH-T528): its session_states row in the orchestrator's database, still exported as its
+        # <session>.state.json, which the Launcher's ClaudeRestartGate and the orchestrator's session readers read; whichever of
+        # the two was written later.
         def load(path):
-            for _ in range(20):
-                try:
-                    return json.loads(path.read_text())
-                except PermissionError:
-                    time.sleep(0.05)
-                except Exception:
-                    return {}
-            return {}
+            value = exported_mark(path.name[:-len(".state.json")], path, table="session_states", key="session_id")
+            return value if isinstance(value, dict) else {}
 
         def save(path, value):
-            tmp = path.with_name(path.name + "." + str(os.getpid()) + ".tmp")
-            tmp.write_text(json.dumps(value))
-            for _ in range(20):
-                try:
-                    tmp.replace(path)
-                    return
-                except PermissionError:
-                    time.sleep(0.05)
-            try:
-                tmp.unlink()
-            except Exception:
-                pass
+            write_exported_mark(path.name[:-len(".state.json")], path, value, table="session_states", key="session_id")
 
         {{{CliPid}}}
 

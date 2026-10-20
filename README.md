@@ -92,7 +92,7 @@ It reads what already exists rather than adding new bookkeeping:
 | `MindAttic.Workflow\data\workflow.db` (the Workflow ticket database; each repo's `docs/USER_STORIES.md` is a view generated from it) | open tickets and their `requires` links |
 | `\\.\pipe\mindattic-host-{provider}-{pid}` (MindAttic.Launcher) | live Launcher tabs, and a way to type into them |
 | `~/.claude/projects/**/*.jsonl` (Claude Code transcripts) | per-session activity and per-response token usage, read incrementally |
-| `~/.claude/claude-usage.json` (written by the shared statusline) | Claude's own 5-hour and weekly percent used and reset times |
+| `~/.claude/claude-usage.json` (written by the shared statusline; the orchestrator's own meter readings go to `data/orchestrator.db`'s `claude-usage` state row and never replace it, and the later of the two counts: M.ORCH-T528) | Claude's own 5-hour and weekly percent used and reset times |
 | `~/.claude/session-context/*.json` (statusline + `context-gate.py`) | each session's context fill, whether its turn is running, and its CLI process |
 
 The goal is to keep agents working all day and night, spending the target (98% by default, adjustable) of every 5-hour window without ever hitting the session limit. Pick what runs; it handles the rest. The full explanation is in [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md).
