@@ -753,6 +753,81 @@ public static class AgentGate
                     log.write(json.dumps({"at": at, "decision": decision, "held": held, "tool": tool, "percent": percent}) + "\n")
             except Exception:
                 pass
+        def slot_db(timeout=3):
+            # The orchestrator's database with a write transaction open on it, for the subagent slots and wants (M.ORCH-T527):
+            # a pace gate's check and the slot it takes are one transaction, so Agent calls sent together queue on SQLite's
+            # lock instead of the old subagent-slots.lock file. None when the database isn't there, is from before the tables,
+            # or stays held past timeout seconds: the gate keeps its slot as a file then, which every gate counts too.
+            try:
+                import sqlite3
+                if not os.path.isfile(ORCH_DB):
+                    return None
+                db = sqlite3.connect(ORCH_DB, timeout=timeout, isolation_level=None)
+            except Exception:
+                return None
+            try:
+                db.execute("BEGIN IMMEDIATE")
+                db.execute("SELECT 1 FROM subagent_slots, subagent_wants LIMIT 0")
+                return db
+            except Exception:
+                db.close()
+                return None
+        def slot_done(db, commit=True):
+            # Ends slot_db's transaction; False when its writes didn't go in.
+            ok = True
+            try:
+                db.execute("COMMIT" if commit else "ROLLBACK")
+            except Exception:
+                ok = False
+            try:
+                db.close()
+            except Exception:
+                pass
+            return ok and commit
+        def slot_sql(tx, sql, args=()):
+            # One statement on the slot tables: in the open transaction tx when there is one, else its own short one. False
+            # when the database can't take it (the caller keeps a file instead).
+            if tx is not None:
+                tx.execute(sql, args)
+                return True
+            db = slot_db(2)
+            if db is None:
+                return False
+            try:
+                db.execute(sql, args)
+            except Exception:
+                slot_done(db, False)
+                return False
+            return slot_done(db)
+        def release_oldest_slot(cli, marks):
+            # SubagentStart: the subagent's mark now counts it, so this CLI's oldest slot (a row, or a file a gate kept while
+            # the database was held) is let go.
+            mine = str(cli) + "-"
+            held = []
+            try:
+                for f in (marks / "{{SlotDirName}}").iterdir():
+                    try:
+                        if f.name.startswith(mine):
+                            held.append((int(f.name.split("-")[1]), f))
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            db = slot_db()
+            try:
+                if db is not None:
+                    held += [(int(ns), rid) for rid, ns in db.execute("SELECT id, taken_ns FROM subagent_slots WHERE cli = ?", (str(cli),))]
+                if held:
+                    oldest = min(held, key=lambda h: h[0])[1]
+                    if isinstance(oldest, int):
+                        db.execute("DELETE FROM subagent_slots WHERE id = ?", (oldest,))
+                    else:
+                        oldest.unlink()
+            except Exception:
+                pass
+            finally:
+                if db is not None:
+                    slot_done(db)
         def orch_assignments():
             # The tickets the orchestrator has handed out; assignments.json until a daemon reads it in.
             f = ORCH_DIR / "assignments.json"
@@ -1388,11 +1463,22 @@ public static class AgentGate
         # Never past the limit, whatever else is set (/pacing off included): at the window's target a call is held as long
         # as a hook may wait, in case the reset or a lower count lifts it, then refused rather than let through.
         start = time.monotonic()
-        slot = None
+        slot = None  # the subagent slot this call holds: its subagent_slots row id, or its file (M.ORCH-T527)
+        def touch_slot():
+            # Still held, not abandoned: other gates drop a slot past its life.
+            try:
+                if isinstance(slot, int):
+                    slot_sql(None, "UPDATE subagent_slots SET touched_at = ? WHERE id = ?", (time.time(), slot))
+                elif slot is not None:
+                    os.utime(slot)
+            except Exception:
+                pass
         def release():
             # A subagent slot whose call never runs is given back at once, not left to expire.
             try:
-                if slot is not None:
+                if isinstance(slot, int):
+                    slot_sql(None, "DELETE FROM subagent_slots WHERE id = ?", (slot,))
+                elif slot is not None:
                     slot.unlink()
             except Exception:
                 pass
@@ -1412,11 +1498,7 @@ public static class AgentGate
             if stop_note() is None:
                 return
             while time.monotonic() - start < MAX_HOLD and stop_note() is not None:
-                if slot is not None:
-                    try:
-                        os.utime(slot)  # still held: other gates drop a slot past its life, and the call would go through uncounted
-                    except Exception:
-                        pass
+                touch_slot()  # still held: other gates drop a slot past its life, and the call would go through uncounted
                 time.sleep(5)
             note = stop_note()
             if note is not None:
@@ -1437,12 +1519,15 @@ public static class AgentGate
         # start anyway put 7 subagents on an allowance of 1, and a longer hold can't slow them: the cap stays under the
         # 5-minute prompt-cache TTL subagents use).
         # Agent calls sent in one message run this together, before any SubagentStart has marked one, so the check
-        # and the slot it lets through are one step under a lock (M.ORCH-T197: ~20 got past an allowance of 1-2).
+        # and the slot it lets through are one step under a lock (M.ORCH-T197: ~20 got past an allowance of 1-2): one write
+        # transaction on the orchestrator's database (M.ORCH-T527), or, while that's held or not there, the old .lock file
+        # with the slot kept as a file. Every gate counts both the rows and the files, so neither kind is missed.
         # The slot counts until the context gate's SubagentStart turns it into the subagent's mark, or it expires.
         if tool in ("Agent", "Task"):
             SUB = MARKS / "subagents"
             SLOTS = MARKS / "{{SlotDirName}}"
             LOCK = MARKS / "{{SlotDirName}}.lock"
+            TX = None  # the deciding transaction, while one is open
             def mark_ns(m):
                 # A mark whose subagent stops (or the daemon prunes) while it's counted is gone, not a reason to stop
                 # counting: then the allowance didn't hold at all (M.ORCH-T366).
@@ -1463,20 +1548,27 @@ public static class AgentGate
                     return int(s["subagents_running"]) + sum(1 for m in marks if mark_ns(m) > seen)
                 at = datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00")).timestamp()
                 return int(s["subagents_running"]) + sum(1 for m in marks if mark_ns(m) / 1e9 > at)
-            def slot_files():
-                # Slots let through but not started yet; one whose start never came (the call was refused) is dropped.
+            def held_slots():
+                # Slots let through but not started yet, as the CLI each is for: the table's rows and the files a gate kept
+                # while the database was held; one whose start never came (the call was refused) is dropped.
                 held = []
                 for f in (SLOTS.iterdir() if SLOTS.exists() else []):
                     try:
                         if time.time() - f.stat().st_mtime > {{SlotLifeSeconds}}:
                             f.unlink()
                         else:
-                            held.append(f)
+                            held.append(f.name.split("-")[0])
                     except Exception:
                         pass
+                cutoff = time.time() - {{SlotLifeSeconds}}
+                if TX is not None:
+                    TX.execute("DELETE FROM subagent_slots WHERE touched_at < ?", (cutoff,))
+                    held += [str(r[0]) for r in TX.execute("SELECT cli FROM subagent_slots")]
+                else:
+                    held += [str(r[0]) for r in orch_rows("SELECT cli FROM subagent_slots WHERE touched_at >= ?", (cutoff,), timeout=1) or []]
                 return held
             def slots():
-                return len(slot_files())
+                return len(held_slots())
             # Each CLI's fair share of the allowance (M.ORCH-T495: one repo's /autopilot took all 8 places at once while the
             # other CLIs got none). The rule is SubagentShare's: every active CLI (this one, each with subagents running or
             # starting, each with an Agent call waiting here) has allowance / active (at least one), and may go past it only into
@@ -1486,12 +1578,17 @@ public static class AgentGate
             WANTS = MARKS / "{{WantDirName}}"
             WANT = WANTS / (ME + "-" + str(os.getpid()))
             def want(on):
+                # A row of subagent_wants when the database takes it, else the old file; every gate reads both.
                 try:
                     if on:
+                        if slot_sql(TX, "INSERT OR REPLACE INTO subagent_wants (cli, gate_pid, touched_at) VALUES (?, ?, ?)", (ME, os.getpid(), time.time())):
+                            return
                         WANTS.mkdir(parents=True, exist_ok=True)
                         WANT.write_text("")
-                    elif WANT.exists():
-                        WANT.unlink()
+                    else:
+                        slot_sql(TX, "DELETE FROM subagent_wants WHERE cli = ? AND gate_pid = ?", (ME, os.getpid()))
+                        if WANT.exists():
+                            WANT.unlink()
                 except Exception:
                     pass
             def wanting():
@@ -1504,6 +1601,12 @@ public static class AgentGate
                             pids.add(f.name.split("-")[0])
                     except Exception:
                         pass
+                cutoff = time.time() - {{WantLifeSeconds}}
+                if TX is not None:
+                    TX.execute("DELETE FROM subagent_wants WHERE touched_at < ?", (cutoff,))
+                    pids.update(str(r[0]) for r in TX.execute("SELECT cli FROM subagent_wants"))
+                else:
+                    pids.update(str(r[0]) for r in orch_rows("SELECT cli FROM subagent_wants WHERE touched_at >= ?", (cutoff,), timeout=1) or [])
                 pids.discard(ME)
                 return pids
             def by_cli(s):
@@ -1529,8 +1632,7 @@ public static class AgentGate
                             counts[pid] = counts.get(pid, 0) + 1
                     except Exception:
                         pass
-                for f in slot_files():
-                    pid = f.name.split("-")[0]
+                for pid in held_slots():
                     counts[pid] = counts.get(pid, 0) + 1
                 return counts
             def fair_limit(s, allowed):
@@ -1564,17 +1666,26 @@ public static class AgentGate
                     LOCK.unlink()
                 except Exception:
                     pass
-            def take():
+            def take_file():
                 try:
                     SLOTS.mkdir(parents=True, exist_ok=True)
-                    path = SLOTS / (str(os.environ.get("MINDATTIC_CLI_PID") or cli_pid() or 0) + "-" + str(time.time_ns()) + "-" + str(os.getpid()))
+                    path = SLOTS / (ME + "-" + str(time.time_ns()) + "-" + str(os.getpid()))
                     path.write_text("")
                     return path
                 except Exception:
                     return None
+            def take():
+                if TX is not None:
+                    try:
+                        return TX.execute("INSERT INTO subagent_slots (cli, gate_pid, taken_ns, touched_at) VALUES (?, ?, ?, ?)",
+                                          (ME, os.getpid(), time.time_ns(), time.time())).lastrowid
+                    except Exception:
+                        pass
+                return take_file()
             mine = limit = clis = None
             while True:
-                has_lock = locked()
+                TX = slot_db()
+                has_lock = TX is None and locked()
                 try:
                     s = status()
                     allowed = s.get("subagent_allowance")
@@ -1593,6 +1704,10 @@ public static class AgentGate
                         break
                     want(True)  # waiting: the next place that frees is kept for a CLI under its share
                 finally:
+                    if TX is not None:
+                        tx, TX = TX, None
+                        if not slot_done(tx) and isinstance(slot, int):
+                            slot = take_file()  # its row didn't go in: the place is kept as a file instead
                     if has_lock:
                         unlock()
                 if time.monotonic() - start >= MAX_HOLD:
@@ -1619,21 +1734,13 @@ public static class AgentGate
                 left = min(delay(), MAX_HOLD) - waited
                 if left <= 0:
                     break
-                if slot is not None:
-                    try:
-                        os.utime(slot)  # still held, not abandoned: other gates drop a slot past its life
-                    except Exception:
-                        pass
+                touch_slot()  # still held, not abandoned: other gates drop a slot past its life
                 time.sleep(min(left, 5))
             hold_at_stop()  # the last word before the call runs
         except BaseException:
             release()  # killed, failed or refused while held: the call doesn't run
             raise
-        if slot is not None:
-            try:
-                os.utime(slot)  # its life starts when the call is let through, not when the slot was taken
-            except Exception:
-                pass
+        touch_slot()  # its life starts when the call is let through, not when the slot was taken
         if time.monotonic() - start >= 1:
             gate_log("held", time.monotonic() - start)
         """.Replace("\r\n", "\n");
@@ -2045,13 +2152,7 @@ public static class AgentGate
                     # The mark now counts it, so the slot the pace gate kept for its call is let go: this CLI's oldest. Never
                     # another CLI's: a subagent that took no slot (a CLI with /pacing off, an exempt turn) would free a place
                     # still held for that CLI's pending call; a slot left over expires.
-                    try:
-                        mine = str(my_pid() or 0) + "-"
-                        held = sorted(f for f in (DIR / "{{{SlotDirName}}}").iterdir() if f.name.startswith(mine))
-                        if held:
-                            held[0].unlink()
-                    except Exception:
-                        pass
+                    release_oldest_slot(my_pid() or 0, DIR)
                 elif mark.exists():
                     mark.unlink()
             sys.exit(0)

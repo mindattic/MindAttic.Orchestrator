@@ -60,7 +60,7 @@ public sealed class LeaseTests
         store.SaveSettings(new OrchestratorSettings { BlockBudget = 1234 });
         // Back to how a version-3 database was: no step-4 tables.
         using (var connection = store.Db.Open())
-            OrchestratorDb.Execute(connection, "DROP TABLE leases; DROP TABLE gate_events; PRAGMA user_version = 3;");
+            OrchestratorDb.Execute(connection, "DROP TABLE leases; DROP TABLE gate_events; DROP TABLE subagent_slots; DROP TABLE subagent_wants; PRAGMA user_version = 3;");
 
         using (var connection = new OrchestratorDb(path).Open())
         {
@@ -70,8 +70,30 @@ public sealed class LeaseTests
             command.CommandText = "SELECT count(*) FROM sqlite_master WHERE name IN ('leases', 'gate_events', 'gate_events_at');";
             Assert.That(command.ExecuteScalar(), Is.EqualTo(3L));
         }
-        Assert.That(OrchestratorDb.Version, Is.EqualTo(4));
+        Assert.That(OrchestratorDb.Version, Is.GreaterThanOrEqualTo(4));
         Assert.That(new JsonStore(dir, new OrchestratorDb(path)).LoadSettings().BlockBudget, Is.EqualTo(1234), "what it held is kept");
+    }
+
+    [Test]
+    public void Step_5_adds_the_subagent_slots_and_wants_to_a_version_4_database_and_keeps_what_it_held()
+    {
+        var path = Path.Combine(dir, "v4.db");
+        var store = new JsonStore(dir, new OrchestratorDb(path));
+        store.SaveSettings(new OrchestratorSettings { BlockBudget = 4321 });
+        // Back to how a version-4 database was: no step-5 tables (M.ORCH-T527).
+        using (var connection = store.Db.Open())
+            OrchestratorDb.Execute(connection, "DROP TABLE subagent_slots; DROP TABLE subagent_wants; PRAGMA user_version = 4;");
+
+        using (var connection = new OrchestratorDb(path).Open())
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA user_version;";
+            Assert.That(command.ExecuteScalar(), Is.EqualTo((long)OrchestratorDb.Version));
+            command.CommandText = "SELECT count(*) FROM sqlite_master WHERE name IN ('subagent_slots', 'subagent_wants');";
+            Assert.That(command.ExecuteScalar(), Is.EqualTo(2L));
+        }
+        Assert.That(OrchestratorDb.Version, Is.EqualTo(5));
+        Assert.That(new JsonStore(dir, new OrchestratorDb(path)).LoadSettings().BlockBudget, Is.EqualTo(4321), "what it held is kept");
     }
 
     // ---- leases ----

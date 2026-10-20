@@ -160,6 +160,26 @@ public sealed class OrchestratorDb(string path)
         );
         CREATE INDEX gate_events_at ON gate_events (at);
         """,
+        // 5: the pace gate's subagent slots and wants (M.ORCH-T527), were files in ~/.claude/session-context's subagent-slots
+        // and subagent-wants with a subagent-slots.lock beside them. A slot is a place an Agent call was let through into,
+        // held for the CLI it's for until its SubagentStart marks the subagent (or it goes untouched past its life); a want is
+        // one waiting call (its CLI and the gate's pid). Each gate's check and the slot it takes are one write transaction,
+        // so calls sent together queue on SQLite's lock instead of the .lock file. Not in the dump: they last seconds.
+        """
+        CREATE TABLE subagent_slots (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            cli        TEXT NOT NULL,
+            gate_pid   INTEGER NOT NULL,
+            taken_ns   INTEGER NOT NULL,
+            touched_at REAL NOT NULL
+        );
+        CREATE TABLE subagent_wants (
+            cli        TEXT NOT NULL,
+            gate_pid   INTEGER NOT NULL,
+            touched_at REAL NOT NULL,
+            PRIMARY KEY (cli, gate_pid)
+        );
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a

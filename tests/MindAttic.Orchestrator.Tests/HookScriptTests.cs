@@ -2188,4 +2188,98 @@ public sealed class HookScriptTests
         Assert.That(OrchDb.LoadGateEvents(DateTime.UtcNow.AddMinutes(-5)).Single().Decision, Is.EqualTo("held"), "read in once the database is free");
         Assert.That(File.Exists(log), Is.False);
     }
+
+    // ---- M.ORCH-T527: the subagent slots and wants in orchestrator.db ----
+
+    private static long Rows(string table)
+    {
+        using var connection = OrchDb.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT COUNT(*) FROM {table};";
+        return (long)command.ExecuteScalar()!;
+    }
+
+    private string[] SlotFiles()
+    {
+        var slots = Path.Combine(Marks, AgentGate.SlotDirName);
+        return Directory.Exists(slots) ? Directory.GetFiles(slots) : [];
+    }
+
+    [Test]
+    public void Agent_calls_sent_together_each_decide_in_one_write_transaction_and_take_a_slot_row_not_a_file()
+    {
+        OrchDb.Open().Dispose();
+        Status(new { subagent_allowance = 1, subagents_running = 0 });
+        var agent = new { tool_name = "Agent", tool_input = new { prompt = "x" } };
+        var burst = Enumerable.Range(0, 4).Select(_ => Run(AgentGate.ScriptName, agent)).ToList();
+        try
+        {
+            Thread.Sleep(8_000);
+            Assert.That(burst.Count(p => p.HasExited), Is.EqualTo(1), "concurrent writers: one free place lets one call through");
+            Assert.That(Rows("subagent_slots"), Is.EqualTo(1), "the call let through holds a row");
+            Assert.That(Rows("subagent_wants"), Is.GreaterThanOrEqualTo(1), "the waiting calls are rows too");
+            Assert.That(SlotFiles(), Is.Empty);
+            Assert.That(File.Exists(Path.Combine(Marks, AgentGate.SlotDirName + ".lock")), Is.False, "no lock file: the transaction is the lock");
+            Assert.That(Directory.Exists(Path.Combine(Marks, AgentGate.WantDirName)), Is.False);
+
+            Gate(new { hook_event_name = "SubagentStart", session_id = "s7", agent_id = "a7", cwd = ws }, AgentGate.ContextScriptName);
+            Assert.That(Rows("subagent_slots"), Is.Zero, "its SubagentStart lets the row go");
+            Thread.Sleep(7_000);
+            Assert.That(burst.Count(p => p.HasExited), Is.EqualTo(1), "the started subagent fills the allowance just as its slot did");
+        }
+        finally
+        {
+            foreach (var p in burst) { if (!p.HasExited) p.Kill(); p.Dispose(); }
+        }
+        Assert.That(OrchDb.Dump(), Does.Not.Contain("subagent_"), "slots and wants last seconds: never in the dump");
+    }
+
+    [Test]
+    public void A_gate_deciding_while_another_write_holds_the_database_keeps_its_slot_as_a_file_which_the_next_gate_counts()
+    {
+        OrchDb.Open().Dispose();
+        Status(new { subagent_allowance = 1, subagents_running = 0 });
+        var agent = new { tool_name = "Agent", tool_input = new { prompt = "x" } };
+        (string Output, TimeSpan Took) result;
+        using (var connection = OrchDb.Open())
+        {
+            // Another process mid-write: reads go on, a second write waits.
+            MindAttic.Orchestrator.Settings.OrchestratorDb.Execute(connection, "BEGIN IMMEDIATE;");
+            result = Gate(agent);
+            MindAttic.Orchestrator.Settings.OrchestratorDb.Execute(connection, "ROLLBACK;");
+        }
+        Assert.That(result.Output, Does.Not.Contain("deny"));
+        Assert.That(result.Took, Is.LessThan(TimeSpan.FromSeconds(20)), "not stuck on the database");
+        Assert.That(SlotFiles(), Has.Length.EqualTo(1), "the place it took is a file");
+        Assert.That(Rows("subagent_slots"), Is.Zero);
+
+        using (var held = Run(AgentGate.ScriptName, agent))
+        {
+            Assert.That(held.WaitForExit(7_000), Is.False, "a gate on the database counts the file's place: the allowance of one is full");
+            held.Kill();
+        }
+        Gate(new { hook_event_name = "SubagentStart", session_id = "s8", agent_id = "a8", cwd = ws }, AgentGate.ContextScriptName);
+        Assert.That(SlotFiles(), Is.Empty, "SubagentStart lets the file go too");
+        Status(new { subagent_allowance = 2, subagents_running = 0 });
+        Assert.That(Gate(agent).Took, Is.LessThan(TimeSpan.FromSeconds(10)));
+        Assert.That(Rows("subagent_slots"), Is.EqualTo(1), "with the database free the slot is a row");
+    }
+
+    [Test]
+    public void A_database_from_before_the_slot_tables_leaves_the_gate_on_its_files()
+    {
+        var path = MindAttic.Orchestrator.Settings.OrchestratorDb.DefaultPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        using (var old = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            old.Open();
+            MindAttic.Orchestrator.Settings.OrchestratorDb.Execute(old, "CREATE TABLE settings (name TEXT PRIMARY KEY, value TEXT NOT NULL); PRAGMA user_version = 4;");
+        }
+        Status(new { subagent_allowance = 2, subagents_running = 0 });
+        Assert.That(Gate(new { tool_name = "Agent", tool_input = new { prompt = "x" } }).Took, Is.LessThan(TimeSpan.FromSeconds(10)));
+        Assert.That(SlotFiles(), Has.Length.EqualTo(1), "an older database: the slot is a file, as before");
+
+        Assert.That(Rows("subagent_slots"), Is.Zero, "the orchestrator's next open adds the tables (schema step 5)");
+        Assert.That(MindAttic.Orchestrator.Settings.OrchestratorDb.Version, Is.EqualTo(5));
+    }
 }
