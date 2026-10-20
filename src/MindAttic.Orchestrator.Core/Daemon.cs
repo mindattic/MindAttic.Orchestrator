@@ -33,6 +33,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         var cycler = new ContextCycler();
         var autopilot = new Autopilot(store, cycler, lease) { WaitingPath = Autopilot.DefaultWaitingPath };
         var waker = new LimitWaker(cycler, store);
+        var pilotWaker = new AutopilotWaker(cycler, store) { HandingOff = () => Handoff.Holding(cycler.Directory) };
         var handoff = new HandoffWatch(cycler, store);
         // One daemon wakes the CLIs: an `orchestrator daemon` run beside the logon one would type every resume twice.
         using var wakeLease = new DispatchLease(store.Directory, LimitWaker.LeaseName);
@@ -106,6 +107,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 if (wakeLease.TryAcquire())
                 {
                     ReportWakes(waker.Tick(snapshot.Pace, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
+                    // An idle /autopilot CLI let stop when its next handed out nothing is sent back once next has work for it
+                    // (M.ORCH-T523): keep-going acts only as a turn ends, so nothing asked it again when room opened.
+                    ReportAutopilotWakes(pilotWaker.Tick(plan, s, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
                     // The billing switch (M.ORCH-T436): a /login to another claude.ai account switches back to Claude Team, and each
                     // open CLI billing the other mode is asked to restart (one daemon asks, as one wakes); one only you can
                     // restart is said to you.
@@ -275,6 +279,16 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     }
 
     private readonly UnderTarget underTarget = new();
+
+    /// <summary>Logs each idle /autopilot CLI sent back for work; one it couldn't type into raises the Needs-you alert instead.</summary>
+    internal void ReportAutopilotWakes(IEnumerable<AutopilotWaker.Wake> wakes)
+    {
+        foreach (var w in wakes)
+        {
+            Say(w.Typed ? LogEventLevel.Information : LogEventLevel.Warning, w.Line);
+            if (!w.Typed) Alert("Needs you", w.Line);
+        }
+    }
 
     /// <summary>Logs and raises the Needs-you alert when <see cref="UnderTarget"/> says one is due.</summary>
     internal void ReportUnderTarget(Snapshot snapshot, SchedulePlan plan, IReadOnlyDictionary<int, IReadOnlyList<string>> autopilotClis)
