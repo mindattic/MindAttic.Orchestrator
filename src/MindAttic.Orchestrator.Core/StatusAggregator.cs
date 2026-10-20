@@ -311,7 +311,12 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         DateTime? marksSeenThrough = null;
         var pace = Pacer.Compute(budget, active, typicalPerSession, settings, now,
             rateLimitFile?.AgentDelay(now) ?? 0, rateLimitFile is null ? 0 : contextCycler.Subagents(out marksSeenThrough));
-        pace = pace with { SubagentsSeenThroughUtc = marksSeenThrough };
+        pace = pace with
+        {
+            SubagentsSeenThroughUtc = marksSeenThrough,
+            SubagentsByCli = rateLimitFile is null ? new Dictionary<int, int>() : contextCycler.AliveSubagents(now)
+                .Where(x => x.Cli is not null).GroupBy(x => x.Cli!.Value).ToDictionary(g => g.Key, g => g.Count()),
+        };
         // An API key has no 5-hour or weekly window: nothing it spends is held against the subscription's learned limits.
         if (signIn is { IsApiKey: true })
         {

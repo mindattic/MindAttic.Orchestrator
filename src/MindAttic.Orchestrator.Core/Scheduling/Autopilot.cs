@@ -365,11 +365,15 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// <see cref="SchedulePlan.Worked"/> (filed this turn by an agent fixing it, or named in a live session's prompt or worktree),
     /// except what the calling CLI <paramref name="self"/> itself filed, and one whose assignment went stale while the
     /// background agent on it is still running. While a /handoff holds (<paramref name="handingOff"/>) nothing is handed out.
+    /// Paced, the calling CLI (<paramref name="cli"/>) gets its fair share of the allowance, not all of it (M.ORCH-T495: one
+    /// repo's /autopilot claimed all 8 places at once): the other CLIs' running subagents, and a share held for every other
+    /// /autopilot CLI (<paramref name="pilots"/>) that has workable tickets of its own, are left to them (<see cref="SubagentShare"/>).
     /// </summary>
     public static (IReadOnlyList<Handout> Handed, string? Why) Next(SchedulePlan plan, OrchestratorSettings settings, JsonStore store,
         IReadOnlyList<string> repos, int? count, bool claim, DateTime nowUtc,
         Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree = null, Func<string, string>? mainlineOf = null, bool unthrottled = false,
-        string? self = null, Func<Assignment, bool>? pilotRunning = null, bool handingOff = false, Func<string, string, bool>? stillOpen = null)
+        string? self = null, Func<Assignment, bool>? pilotRunning = null, bool handingOff = false, Func<string, string, bool>? stillOpen = null,
+        int? cli = null, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots = null)
     {
         // /handoff (M.ORCH-T481): every CLI is winding down for an account switch, so nothing new is handed out, unthrottled or not.
         if (handingOff) return ([], Handoff.HoldReason);
@@ -395,9 +399,10 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         var elsewhere = plan.Worked.Where(w => !(w.Filed && w.AgentId is null && self is not null && w.SessionId == self))
             .Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
         bool Busy(QueueItem q) => q.IsAssigned || elsewhere.Contains(q.Id) || (q.Assignment is { } a && pilotRunning(a));
-        var open = plan.Queue.Where(q => Named(q.Repo) && !settings.AutopilotSkip.Contains(q.Repo, StringComparer.OrdinalIgnoreCase) &&
+        bool Workable(QueueItem q) => !settings.AutopilotSkip.Contains(q.Repo, StringComparer.OrdinalIgnoreCase) &&
             q.RepoPath.Length > 0 && !Busy(q) && q.BlockedBy.Count == 0 &&
-            q.MayWork && !TooBigNow(q)).ToList(); // a stale unapproved one waits for your yes (M.ORCH-T383)
+            q.MayWork && !TooBigNow(q); // a stale unapproved one waits for your yes (M.ORCH-T383)
+        var open = plan.Queue.Where(q => Named(q.Repo) && Workable(q)).ToList();
         if (open.Count == 0)
         {
             bool Skipped(string repo) => settings.AutopilotSkip.Contains(repo, StringComparer.OrdinalIgnoreCase);
@@ -422,6 +427,18 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         }
         var more = count ?? (!unthrottled && plan.Pace?.SubagentAllowance is { } allowed ? allowed - plan.Pace.Subagents : settings.MaxConcurrentSessions);
         if (more <= 0) return ([], "the pace has no room for another subagent right now; run it again in a few minutes");
+        // Its fair share, not every free place (M.ORCH-T495): another /autopilot CLI with workable tickets of its own keeps its share.
+        if (count is null && !unthrottled && cli is { } me && plan.Pace?.SubagentAllowance is { } cap)
+        {
+            var running = plan.Pace.SubagentsByCli;
+            var wanting = (pilots ?? new Dictionary<int, IReadOnlyList<string>>()).Where(p => p.Key != me && plan.Queue.Any(q => Autopilot.Named(p.Value, q.Repo) && Workable(q)))
+                .Select(p => p.Key).ToList();
+            var fair = SubagentShare.Room(cap, plan.Pace.Subagents, me, running, wanting);
+            if (fair <= 0)
+                return ([], $"this CLI has its fair share of the subagent allowance ({running.GetValueOrDefault(me)} running of {cap} across " +
+                    $"{wanting.Count + 1} CLIs that want them); the rest are kept for the others. Run it again when one of yours finishes");
+            more = Math.Min(more, fair);
+        }
 
         var handed = new List<Handout>();
         // Past one it can't have (another CLI claimed it first, or its worktree failed) to the next, until `more` are handed out.

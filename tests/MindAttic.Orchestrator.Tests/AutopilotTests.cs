@@ -270,6 +270,36 @@ public sealed class AutopilotTests
             "-repo=GTFO.* names every repo starting GTFO. (M.ORCH-T165)");
     }
 
+    /// <summary>M.ORCH-T495: one repo's /autopilot claimed all 8 places at once (8 subagents on one repo) while other CLIs got none.</summary>
+    [Test]
+    public void A_cli_running_autopilot_claims_its_fair_share_of_the_allowance_not_every_place()
+    {
+        var snap = Snap(("A", [.. Enumerable.Range(1, 10).Select(i => T($"A-T{i}"))]), ("B", [T("B-T1"), T("B-T2"), T("B-T3"), T("B-T4"), T("B-T5")]), ("C", []));
+        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
+        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
+        SchedulePlan Planned(int running = 0, Dictionary<int, int>? byCli = null) => Paced(snap, 5) with
+        {
+            Pace = Paced(snap, 5).Pace! with { SubagentAllowance = 8, Subagents = running, SubagentsByCli = byCli ?? [] },
+        };
+        Dictionary<int, IReadOnlyList<string>> pilots = new() { [1] = ["A"], [2] = ["B"] };
+
+        var (handed, _) = Autopilot.Next(Planned(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots);
+        Assert.That(handed, Has.Count.EqualTo(4), "CLI 2's /autopilot has B's tickets to work: half the 8 is kept for it");
+
+        var (b, _) = Autopilot.Next(Planned(4, new() { [1] = 4 }), settings, store, ["B"], null, claim: false, Now, Make, _ => "main", cli: 2, pilots: pilots);
+        Assert.That(b, Has.Count.EqualTo(4), "and CLI 2 gets it");
+
+        var (full, why) = Autopilot.Next(Planned(4, new() { [1] = 4 }), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots);
+        Assert.That(full, Is.Empty);
+        Assert.That(why, Does.Contain("fair share"));
+
+        // A CLI whose repo has nothing workable lends its share: CLI 1 may have all 8.
+        var idle = new Dictionary<int, IReadOnlyList<string>> { [1] = ["A"], [2] = ["C"] };
+        Assert.That(Autopilot.Next(Planned(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: idle).Handed, Has.Count.EqualTo(8));
+        // An explicit --count isn't held to a share.
+        Assert.That(Autopilot.Next(Planned(), settings, store, ["A"], 6, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots).Handed, Has.Count.EqualTo(6));
+    }
+
     [Test]
     public void A_ticket_closed_after_the_queue_was_read_is_not_claimed_or_given_a_worktree()
     {

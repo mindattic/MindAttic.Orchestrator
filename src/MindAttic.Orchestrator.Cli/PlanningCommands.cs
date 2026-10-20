@@ -173,7 +173,8 @@ internal sealed class DryRunCommand : Command
         {
             AnsiConsole.MarkupLine($"/autopilot is on in CLI {pid} for {Markup.Escape(string.Join(", ", repos))}:");
             var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, null, claim: false, DateTime.UtcNow,
-                self: cycler.LatestSessionOf(pid), handingOff: MindAttic.Orchestrator.Sessions.Handoff.Holding(cycler.Directory));
+                self: cycler.LatestSessionOf(pid), handingOff: MindAttic.Orchestrator.Sessions.Handoff.Holding(cycler.Directory),
+                cli: pid, pilots: clis);
             foreach (var h in handed) AnsiConsole.MarkupLine($"  next: {Markup.Escape(h.Item.Id)} in {Markup.Escape(h.Item.Repo)}: {Markup.Escape(h.Item.Ticket.Summary)}");
             if (why is not null) AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(why)}[/]");
         }
@@ -219,7 +220,8 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
         // and is fixing is (M.ORCH-T255).
         var self = cli is { } me ? cycler.LatestSessionOf(me) : null;
         var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, settings.Count, settings.Claim, DateTime.UtcNow,
-            unthrottled: unthrottled, self: self, handingOff: MindAttic.Orchestrator.Sessions.Handoff.Holding(cycler.Directory));
+            unthrottled: unthrottled, self: self, handingOff: MindAttic.Orchestrator.Sessions.Handoff.Holding(cycler.Directory),
+            cli: cli, pilots: cycler.AutopilotClis());
         foreach (var h in handed)
         {
             Console.WriteLine($"=== {h.Item.Id} ({h.Item.Repo}, {h.Item.Ticket.Type}): {h.Item.Ticket.Summary}");

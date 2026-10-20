@@ -787,6 +787,37 @@ public sealed class HookScriptTests
         finally { held.Kill(); }
     }
 
+    /// <summary>M.ORCH-T495: one repo's /autopilot took all 8 places at once while the other CLIs got none.</summary>
+    [Test]
+    public void A_cli_at_its_fair_share_is_held_while_another_cli_waits_and_one_under_its_share_goes_first()
+    {
+        var wants = Path.Combine(Marks, AgentGate.WantDirName);
+        Directory.CreateDirectory(wants);
+        var other = Path.Combine(wants, "999-1");
+        File.WriteAllText(other, ""); // CLI 999 has an Agent call waiting
+        var agent = new { tool_name = "Agent", tool_input = new { prompt = "x" } };
+        Status(new { subagent_allowance = 4, subagents_running = 2, subagents_seen_through_ns = 0, subagents_by_cli = new Dictionary<string, int> { [Cli.ToString()] = 2 } });
+        using (var held = Run(AgentGate.ScriptName, agent))
+        {
+            Assert.That(held.WaitForExit(4_000), Is.False, "2 of 4 is this CLI's share while CLI 999 waits, though 2 places are free");
+            Assert.That(Directory.GetFiles(wants).Select(Path.GetFileName), Has.Some.StartsWith(Cli + "-"), "and it waits its turn too");
+            held.Kill();
+        }
+        foreach (var f in Directory.GetFiles(wants, Cli + "-*")) File.Delete(f); // the killed call's
+        var (output, _) = GateHeld(agent, 2);
+        Assert.That(output, Does.Contain("\"deny\"").And.Contain("fair share"));
+        Assert.That(Directory.GetFiles(wants).Select(Path.GetFileName), Has.None.StartsWith(Cli + "-"), "a refused call no longer waits");
+
+        File.SetLastWriteTimeUtc(other, DateTime.UtcNow.AddSeconds(-AgentGate.WantLifeSeconds - 10));
+        Assert.That(Gate(agent).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "nobody else wants one: this CLI borrows a free place");
+
+        // The other way round: CLI 999 is over its share and waits for more; this CLI, under its share, goes at once.
+        foreach (var f in Directory.GetFiles(Path.Combine(Marks, AgentGate.SlotDirName))) File.Delete(f);
+        File.WriteAllText(other, "");
+        Status(new { subagent_allowance = 4, subagents_running = 3, subagents_seen_through_ns = 0, subagents_by_cli = new Dictionary<string, int> { ["999"] = 3 } });
+        Assert.That(Gate(agent).Took, Is.LessThan(TimeSpan.FromSeconds(10)));
+    }
+
     [Test]
     public void A_subagent_start_never_frees_another_clis_slot()
     {

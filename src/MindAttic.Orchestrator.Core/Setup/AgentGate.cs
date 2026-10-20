@@ -1361,18 +1361,84 @@ public static class AgentGate
                     return int(s["subagents_running"]) + sum(1 for m in marks if mark_ns(m) > seen)
                 at = datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00")).timestamp()
                 return int(s["subagents_running"]) + sum(1 for m in marks if mark_ns(m) / 1e9 > at)
-            def slots():
+            def slot_files():
                 # Slots let through but not started yet; one whose start never came (the call was refused) is dropped.
-                held = 0
+                held = []
                 for f in (SLOTS.iterdir() if SLOTS.exists() else []):
                     try:
                         if time.time() - f.stat().st_mtime > {{SlotLifeSeconds}}:
                             f.unlink()
                         else:
-                            held += 1
+                            held.append(f)
                     except Exception:
                         pass
                 return held
+            def slots():
+                return len(slot_files())
+            # Each CLI's fair share of the allowance (M.ORCH-T495: one repo's /autopilot took all 8 places at once while the
+            # other CLIs got none). The rule is SubagentShare's: every active CLI (this one, each with subagents running or
+            # starting, each with an Agent call waiting here) has allowance / active (at least one), and may go past it only into
+            # places no other CLI is waiting for. A waiting call marks its CLI as wanting, so the next place that frees goes to
+            # a CLI under its share, never back to the one over it; a CLI that wants nothing more lends what it isn't using.
+            ME = str(os.environ.get("MINDATTIC_CLI_PID") or cli_pid() or 0)
+            WANTS = MARKS / "{{WantDirName}}"
+            WANT = WANTS / (ME + "-" + str(os.getpid()))
+            def want(on):
+                try:
+                    if on:
+                        WANTS.mkdir(parents=True, exist_ok=True)
+                        WANT.write_text("")
+                    elif WANT.exists():
+                        WANT.unlink()
+                except Exception:
+                    pass
+            def wanting():
+                pids = set()
+                for f in (WANTS.iterdir() if WANTS.exists() else []):
+                    try:
+                        if time.time() - f.stat().st_mtime > {{WantLifeSeconds}}:
+                            f.unlink()
+                        else:
+                            pids.add(f.name.split("-")[0])
+                    except Exception:
+                        pass
+                pids.discard(ME)
+                return pids
+            def by_cli(s):
+                # Running or starting, by CLI: the daemon's count of each (marks newer than it, each naming its CLI, are added)
+                # and the slots let through (named for their CLI). Without the daemon's count by CLI, every mark is counted.
+                counts = {}
+                seen = s.get("subagents_by_cli") if s.get("subagents_running") is not None else None
+                if isinstance(seen, dict):
+                    for k, v in seen.items():
+                        counts[str(k)] = counts.get(str(k), 0) + int(v)
+                    if s.get("subagents_seen_through_ns") is not None:
+                        after = int(s["subagents_seen_through_ns"])
+                        newer = lambda m: mark_ns(m) > after
+                    else:
+                        after = datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00")).timestamp()
+                        newer = lambda m: mark_ns(m) / 1e9 > after
+                else:
+                    newer = lambda m: True
+                for m in (list(SUB.iterdir()) if SUB.exists() else []):
+                    try:
+                        if newer(m):
+                            pid = m.read_text().strip()
+                            counts[pid] = counts.get(pid, 0) + 1
+                    except Exception:
+                        pass
+                for f in slot_files():
+                    pid = f.name.split("-")[0]
+                    counts[pid] = counts.get(pid, 0) + 1
+                return counts
+            def fair_limit(s, allowed):
+                # (running or starting here, how many this CLI may have, active CLIs)
+                counts = by_cli(s)
+                wants = wanting()
+                active = {p for p, n in counts.items() if n > 0 and p} | wants | {ME}
+                share = max(1, int(allowed) // max(1, len(active)))
+                held = sum(n for p, n in counts.items() if p != ME and p not in wants) + sum(max(counts.get(p, 0), share) for p in wants)
+                return counts.get(ME, 0), max(share, int(allowed) - held), len(active)
             def locked():
                 # One pace gate at a time decides; a lock left by a killed gate is broken after a few seconds.
                 MARKS.mkdir(parents=True, exist_ok=True)
@@ -1404,6 +1470,7 @@ public static class AgentGate
                     return path
                 except Exception:
                     return None
+            mine = limit = clis = None
             while True:
                 has_lock = locked()
                 try:
@@ -1412,21 +1479,37 @@ public static class AgentGate
                     try:
                         busy = running(s) + slots() if allowed is not None else 0
                         go = allowed is None or busy < allowed
+                        limit = None
+                        if go:
+                            mine, limit, clis = fair_limit(s, allowed)
+                            go = mine < limit
                     except Exception:
                         go = True
                     if go:
                         slot = take()
+                        want(False)
                         break
+                    want(True)  # waiting: the next place that frees is kept for a CLI under its share
                 finally:
                     if has_lock:
                         unlock()
                 if time.monotonic() - start >= MAX_HOLD:
+                    want(False)
                     gate_log("refused", time.monotonic() - start)
+                    if limit is not None:
+                        refuse("This CLI has its fair share of the subagent allowance (" + str(mine) + " running or starting, " + str(limit) +
+                               " its share of the " + str(allowed) + " allowed across the " + str(clis) + " CLIs that use or want them), so "
+                               "this subagent wasn't started: the free places are kept for the other CLIs. Don't start it now: work on in this "
+                               "turn, or end it, and try again after one of this CLI's subagents finishes.")
                     refuse("The subagent allowance is full (" + str(busy) + " running or starting, " + str(allowed) + " allowed across every CLI), "
                            "so this subagent wasn't started. Don't start it now: work on in this turn, or end it, and try again after one "
                            "of the running subagents finishes and a slot frees.")
                 time.sleep(5)
-                hold_at_stop()
+                try:
+                    hold_at_stop()
+                except BaseException:
+                    want(False)
+                    raise
         try:
             while True:
                 hold_at_stop()
@@ -1459,6 +1542,14 @@ public static class AgentGate
 
     /// <summary>A slot whose SubagentStart hasn't come this long after its call was let through was never used.</summary>
     public const int SlotLifeSeconds = 120;
+
+    /// <summary>Where a held Agent call marks its CLI as wanting a subagent (in <c>~/.claude/session-context</c>, one file per
+    /// waiting call, <c>&lt;cli pid&gt;-&lt;gate pid&gt;</c>), so the next place that frees goes to a CLI under its fair share (M.ORCH-T495).</summary>
+    public const string WantDirName = "subagent-wants";
+
+    /// <summary>A want mark not refreshed this long is a call that's no longer waiting (its gate was killed); a waiting gate
+    /// refreshes its own every 5 seconds.</summary>
+    public const int WantLifeSeconds = 20;
 
     /// <summary>The pace gate's event log in <c>~/.claude/session-context</c>: one JSON line per hold or refusal.</summary>
     public const string GateLogName = "pace-gate.jsonl";

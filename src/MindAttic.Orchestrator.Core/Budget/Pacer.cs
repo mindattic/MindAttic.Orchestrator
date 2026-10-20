@@ -51,6 +51,10 @@ public sealed record Pace(
     /// none); a mark newer than it started since the count.</summary>
     public DateTime? SubagentsSeenThroughUtc { get; init; }
 
+    /// <summary><see cref="Subagents"/> by the CLI (process id) running each, for each CLI's fair share of the allowance
+    /// (<see cref="Scheduling.SubagentShare"/>, M.ORCH-T495); a subagent whose mark names no CLI isn't in it.</summary>
+    public IReadOnlyDictionary<int, int> SubagentsByCli { get; init; } = new Dictionary<int, int>();
+
     /// <summary>The window is at its target or a limit: nothing more may be spent before the reset. The pace gate then
     /// refuses tool calls (every CLI, /pacing off included) rather than letting a held call through, so usage never
     /// passes the limit, whatever the hold settings.</summary>

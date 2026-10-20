@@ -386,6 +386,9 @@ public sealed class RateLimitStatusWriter(string? path = null)
                 body["subagents_seen_through_ns"] = pace.SubagentsSeenThroughUtc is { } seen
                     ? (seen.ToUniversalTime().Ticks - DateTime.UnixEpoch.Ticks) * 100 : 0L;
                 body["subagent_note"] = pace.SubagentNote;
+                // Each CLI's fair share is worked out from what each runs (M.ORCH-T495); marks newer than the count are added by CLI.
+                body["subagents_by_cli"] = pace.SubagentsByCli.OrderBy(c => c.Key)
+                    .ToDictionary(c => c.Key.ToString(CultureInfo.InvariantCulture), c => c.Value);
             }
         }
         // pace-gate.py holds each tool call this long; the average is what the next refresh corrects the
