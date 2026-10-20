@@ -56,6 +56,8 @@ public sealed class UtilizationChartLayoutTests
         Assert.That(card.Attribute("Width"), Is.Null, "no fixed width: it stretches across the window");
         Assert.That(chart.Attribute("Width"), Is.Null);
         Assert.That(double.Parse((string)chart.Attribute("Height")!, System.Globalization.CultureInfo.InvariantCulture), Is.GreaterThanOrEqualTo(240));
+        // It collapses only on an empty caption, which is never so once a snapshot is in, idle or not (M.ORCH-T502).
+        Assert.That((string?)card.Attribute("Visibility"), Does.StartWith("{Binding UtilizationText,"));
     }
 
     // M.ORCH-T464: the hour marks stepped the local clock across a clock change.

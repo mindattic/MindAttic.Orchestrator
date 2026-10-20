@@ -56,6 +56,32 @@ public sealed class UtilizationSeriesTests
         Assert.That(fast.HitsLimitUtc, Is.EqualTo(Start.AddHours(4)));
     }
 
+    private static BudgetStatus Idle() => new(null, 0, true, 0, default, default, null, null, 0, null, 90);
+
+    [Test]
+    public void Between_windows_the_last_window_is_drawn_as_it_ended()
+    {
+        // M.ORCH-T502: no window running, so the last one (its reset passed) is drawn to its last reading, without a projection.
+        var u = UtilizationSeries.Build([S(1, 10, End.AddHours(-5)), S(1, 20), S(3, 50), S(4.5, 72)], Idle(), 99, End.AddMinutes(40))!;
+
+        Assert.That(u.Ended, Is.True);
+        Assert.That(u.HasLastWindow, Is.True);
+        Assert.That((u.StartUtc, u.EndUtc), Is.EqualTo((Start, End)));
+        Assert.That(u.Actual.Select(p => p.Percent), Is.EqualTo(new[] { 0, 20, 50, 72.0 }), "the earlier window's reading is left out");
+        Assert.That((u.NowUtc, u.NowPercent, u.ProjectedEndPercent), Is.EqualTo((Start.AddHours(4.5), 72.0, 72.0)));
+    }
+
+    [Test]
+    public void Between_windows_with_none_on_record_an_empty_axis()
+    {
+        var now = End.AddMinutes(40);
+        var u = UtilizationSeries.Build([], Idle(), 99, now)!;
+        Assert.That(u.Ended, Is.True);
+        Assert.That(u.HasLastWindow, Is.False);
+        Assert.That(u.Actual, Is.Empty);
+        Assert.That((u.StartUtc, u.EndUtc), Is.EqualTo((now, now.AddHours(5))));
+    }
+
     [Test]
     public void Nothing_to_draw_without_a_real_limit()
     {

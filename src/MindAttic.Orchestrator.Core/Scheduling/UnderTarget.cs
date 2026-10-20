@@ -23,7 +23,7 @@ public sealed class UnderTarget
     /// (by process id) and the repos each works (<see cref="Sessions.ContextCycler.AutopilotClis"/>).</summary>
     public string? Check(Snapshot snapshot, SchedulePlan plan, IReadOnlyDictionary<int, IReadOnlyList<string>> autopilotClis, DateTime nowUtc)
     {
-        if (snapshot.Utilization is not { } u) return null;
+        if (snapshot.Utilization is not { Ended: false } u) return null;
         var left = u.EndUtc - nowUtc;
         if (left <= TimeSpan.Zero) return null;
         // The tightest mark it's inside: 45 minutes out is the hour's mark, 20 minutes out the half hour's.

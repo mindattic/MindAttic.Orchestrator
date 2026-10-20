@@ -8,11 +8,17 @@ public sealed record UtilizationPoint(DateTime AtUtc, double Percent);
 /// <see cref="TargetPercent"/> at its reset, straight on the linear profile and bowed up (target × elapsed^<see cref="Exponent"/>)
 /// on the front-loaded one (M.ORCH-T234), so a reading above it is spending faster than the window can sustain
 /// (over) and one below it slower (under). <see cref="ProjectedEndPercent"/> is where the recent rate lands by the reset.
+/// <see cref="Ended"/> while no window is running (M.ORCH-T502): then it's the last window as it ended (its line, pace and
+/// last reading, <see cref="NowPercent"/> at <see cref="NowUtc"/>), or with no <see cref="Actual"/> points an empty axis
+/// when there's no window on record.
 /// </summary>
 public sealed record Utilization(DateTime StartUtc, DateTime EndUtc, DateTime NowUtc, double TargetPercent,
     IReadOnlyList<UtilizationPoint> Actual, double NowPercent, double PercentPerHour, double ProjectedEndPercent, TimeSpan OverPace,
-    double Exponent = 1)
+    double Exponent = 1, bool Ended = false)
 {
+    /// <summary>Ended with a window on record to draw (not just an empty axis).</summary>
+    public bool HasLastWindow => Ended && Actual.Count > 0;
+
     /// <summary>Where the pace line is at <paramref name="atUtc"/>.</summary>
     public double PaceAt(DateTime atUtc) =>
         EndUtc <= StartUtc ? TargetPercent : TargetPercent * Curve(Math.Clamp((atUtc - StartUtc) / (EndUtc - StartUtc), 0, 1));
@@ -37,31 +43,65 @@ public static class UtilizationSeries
 
     /// <summary>
     /// The current window's line from Claude's own reports (<paramref name="samples"/> of that window, only ever rising:
-    /// a lower one is a stale report from an idle session) and the budget's figure now. Null without a real 5-hour limit.
+    /// a lower one is a stale report from an idle session) and the budget's figure now. Null without a real 5-hour limit while a window
+    /// runs; with none running, the last window as it ended (or an empty axis), never null.
     /// </summary>
     /// <param name="exponent">The pace curve's exponent (<see cref="Settings.OrchestratorSettings.PaceExponent"/>): 1 draws the straight line.</param>
     public static Utilization? Build(IReadOnlyList<UsageSample> samples, BudgetStatus b, double targetPercent, DateTime nowUtc, double exponent = 1)
     {
-        if (b.BlockLimitIsPeak || b.BlockLimit <= 0 || b.CurrentBlock is not { } block) return null;
-        var points = new List<UtilizationPoint> { new(block.StartUtc, 0) };
-        // Behind a wall the block ends at the limit message's reset (whole minutes, local clock), not Claude's resets_at
-        // to the second: the same window when within 10 minutes, as the pace ledger takes it.
-        foreach (var s in samples.Where(s => Math.Abs((s.ResetUtc - block.EndUtc).TotalMinutes) <= 10 && s.AtUtc <= nowUtc &&
-                                             s.AtUtc >= block.StartUtc).OrderBy(s => s.AtUtc))
-        {
-            if (s.Percent < points[^1].Percent) continue;
-            if (s.AtUtc - points[^1].AtUtc < MinSpacing && points.Count > 1) points[^1] = new(s.AtUtc, s.Percent);
-            else points.Add(new(s.AtUtc, s.Percent));
-        }
+        // Between windows the graph stays up with the last one as it ended (M.ORCH-T502): Claude's own percents, so no
+        // token limit is needed to draw it.
+        if (b.CurrentBlock is not { } block) return LastWindow(samples, targetPercent, nowUtc, exponent);
+        if (b.BlockLimitIsPeak || b.BlockLimit <= 0) return null;
+        var points = Line(samples, block.StartUtc, block.EndUtc, nowUtc);
         var now = Math.Max(points[^1].Percent, b.BlockPercent);
         if (nowUtc > points[^1].AtUtc) points.Add(new(nowUtc, now));
 
         var series = new Utilization(block.StartUtc, block.EndUtc, nowUtc, targetPercent, points, now,
             b.RecentFreshPerHour / b.BlockLimit * 100, 0, TimeSpan.Zero, exponent);
+        var over = OverPace(series, points);
+        var hoursLeft = Math.Max(0, (block.EndUtc - nowUtc).TotalHours);
+        return series with { ProjectedEndPercent = now + series.PercentPerHour * hoursLeft, OverPace = over };
+    }
+
+    /// <summary>The window from <paramref name="startUtc"/> to <paramref name="endUtc"/> from 0 at its start through its readings
+    /// up to <paramref name="nowUtc"/>, only ever rising. Behind a wall the block ends at the limit message's reset (whole minutes,
+    /// local clock), not Claude's resets_at to the second: the same window when within 10 minutes, as the pace ledger takes it.</summary>
+    private static List<UtilizationPoint> Line(IReadOnlyList<UsageSample> samples, DateTime startUtc, DateTime endUtc, DateTime nowUtc)
+    {
+        var points = new List<UtilizationPoint> { new(startUtc, 0) };
+        foreach (var s in samples.Where(s => Math.Abs((s.ResetUtc - endUtc).TotalMinutes) <= 10 && s.AtUtc <= nowUtc &&
+                                             s.AtUtc >= startUtc).OrderBy(s => s.AtUtc))
+        {
+            if (s.Percent < points[^1].Percent) continue;
+            if (s.AtUtc - points[^1].AtUtc < MinSpacing && points.Count > 1) points[^1] = new(s.AtUtc, s.Percent);
+            else points.Add(new(s.AtUtc, s.Percent));
+        }
+        return points;
+    }
+
+    /// <summary>
+    /// No window running: the most recent one that has reset, drawn as it ended (its line to the last reading, the pace,
+    /// <see cref="Utilization.NowPercent"/> its last reading). With none on record, an empty 5-hour axis from now. Never null,
+    /// so the card stays up between windows.
+    /// </summary>
+    private static Utilization LastWindow(IReadOnlyList<UsageSample> samples, double targetPercent, DateTime nowUtc, double exponent)
+    {
+        var last = samples.Where(s => s.ResetUtc <= nowUtc && s.AtUtc <= nowUtc).OrderByDescending(s => s.ResetUtc).FirstOrDefault();
+        if (last is null)
+            return new Utilization(nowUtc, nowUtc + BudgetCalculator.BlockLength, nowUtc, targetPercent, [], 0, 0, 0, TimeSpan.Zero, exponent, Ended: true);
+        var (start, end) = (last.ResetUtc - BudgetCalculator.BlockLength, last.ResetUtc);
+        var points = Line(samples, start, end, nowUtc);
+        var ended = points[^1];
+        var series = new Utilization(start, end, ended.AtUtc, targetPercent, points, ended.Percent, 0, ended.Percent, TimeSpan.Zero, exponent, Ended: true);
+        return series with { OverPace = OverPace(series, points) };
+    }
+
+    private static TimeSpan OverPace(Utilization series, IReadOnlyList<UtilizationPoint> points)
+    {
         var over = TimeSpan.Zero;
         for (var i = 1; i < points.Count; i++)
             if (points[i].Percent > series.PaceAt(points[i].AtUtc)) over += points[i].AtUtc - points[i - 1].AtUtc;
-        var hoursLeft = Math.Max(0, (block.EndUtc - nowUtc).TotalHours);
-        return series with { ProjectedEndPercent = now + series.PercentPerHour * hoursLeft, OverPace = over };
+        return over;
     }
 }

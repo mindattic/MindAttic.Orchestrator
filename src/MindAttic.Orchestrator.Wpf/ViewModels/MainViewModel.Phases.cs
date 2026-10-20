@@ -211,7 +211,19 @@ public sealed partial class MainViewModel
 
     /// <summary>The graph in words (it's also the card's accessible name): where the window is against the pace line,
     /// how long it ran over it, and where the recent rate ends up.</summary>
-    public string UtilizationText => Utilization is not { } u ? "" :
+    public string UtilizationText => UtilizationCaption(Utilization, snapshot is not null);
+
+    /// <summary>The caption for <see cref="UtilizationText"/>. Empty only before the first snapshot, and the card is collapsed
+    /// only on an empty caption, so it stays up between windows with the last one as it ended (M.ORCH-T502).</summary>
+    internal static string UtilizationCaption(Utilization? utilization, bool loaded) => utilization switch
+    {
+        null => loaded ? "No 5-hour limit known yet, so there's no pace to draw this window against." : "",
+        { HasLastWindow: true } u => $"No 5-hour window running: the last ended at {Formatting.ResetTime(u.EndUtc, DateTime.UtcNow)} at {u.NowPercent:0}%; the next starts with your next prompt.",
+        { Ended: true } => "No 5-hour window running: the next starts with your next prompt.",
+        { } u => Running(u),
+    };
+
+    private static string Running(Utilization u) =>
         $"{u.NowPercent:0}% used, {(u.OverNow ? "over" : "under")} the {(u.Curved ? "front-loaded pace curve" : "pace line")} ({u.PaceAt(u.NowUtc):0}% by now)" +
         (u.OverPace >= TimeSpan.FromMinutes(1) ? $"; over it for {(int)u.OverPace.TotalMinutes} min so far" : "") + ". " +
         (u.HitsLimitUtc is { } hit ? $"At the recent rate it would reach 100% at {Formatting.ResetTime(hit, u.NowUtc)}, before the {Formatting.ResetTime(u.EndUtc, u.NowUtc)} reset."

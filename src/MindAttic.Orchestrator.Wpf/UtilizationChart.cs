@@ -11,7 +11,7 @@ namespace MindAttic.Orchestrator.Wpf;
 /// window's own utilization (red while above the pace line, green below) and, dotted, where the recent rate ends up.
 /// The caption under it says the same in words, so nothing is told by colour alone. It spans the dashboard's width
 /// under the stat tiles and is tall (M.ORCH-T191), so it has room for a gridline every 25%, a time on every hour and
-/// labels sized to read at a glance.
+/// labels sized to read at a glance. Between windows it draws the last one as it ended, or an empty axis (M.ORCH-T502).
 /// </summary>
 public sealed class UtilizationChart : FrameworkElement
 {
@@ -69,6 +69,9 @@ public sealed class UtilizationChart : FrameworkElement
             dc.DrawText(f, new Point(x - f.Width / 2, labelY - f.Height / 2));
         }
 
+        // No window running and none on record: just the empty axis; the caption says the next starts with the next prompt (M.ORCH-T502).
+        if (u.Ended && u.Actual.Count == 0) return;
+
         // The target, and the pace line that reaches it exactly at the reset: straight on the linear profile, the active
         // profile's curve on the front-loaded one (M.ORCH-T234).
         dc.DrawLine(new Pen(accent, 1), P(u.StartUtc, u.TargetPercent), P(u.EndUtc, u.TargetPercent));
@@ -101,8 +104,20 @@ public sealed class UtilizationChart : FrameworkElement
             dc.DrawLine(b.Percent > u.PaceAt(b.AtUtc) ? over : under, P(a.AtUtc, a.Percent), P(b.AtUtc, b.Percent));
         }
 
-        // Where the recent rate ends up by the reset.
         var now = P(u.NowUtc, u.NowPercent);
+        FormattedText Text(string s, Brush b) => new(s, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), FontSize, b, dpi);
+
+        // The last window, between windows (M.ORCH-T502): where it ended, and no projection, since nothing more will be spent in it.
+        if (u.Ended)
+        {
+            dc.DrawEllipse(text, null, now, 4, 4);
+            var endedText = Text($"ended {u.NowPercent:0}%", text);
+            var (endedAt, _) = PlaceEndLabels(now, new Size(endedText.Width, endedText.Height), P(u.EndUtc, 0), new Size(0, 0), new Rect(Left, Top, w, h));
+            dc.DrawText(endedText, endedAt.TopLeft);
+            return;
+        }
+
+        // Where the recent rate ends up by the reset.
         var end = P(u.EndUtc, u.ProjectedEndPercent);
         var lands = u.ProjectedEndPercent > 100 ? Palette.Over : u.ProjectedEndPercent > u.TargetPercent ? Palette.Waiting : Palette.Working;
         dc.DrawLine(new Pen(lands, 2) { DashStyle = DashStyles.Dot }, now, end);
@@ -113,8 +128,6 @@ public sealed class UtilizationChart : FrameworkElement
             new Rect(Left, Top, w, h));
         dc.DrawText(nowText, nowAt.TopLeft);
         if (resetAt is { } r) dc.DrawText(resetText, r.TopLeft);
-
-        FormattedText Text(string s, Brush b) => new(s, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), FontSize, b, dpi);
     }
 
     /// <summary>

@@ -27,6 +27,28 @@ public sealed class DashboardViewModelTests
     private static ToastViewModel Toast(string title, DateTime createdUtc, RepoTileViewModel? target = null, TimeSpan? lifetime = null) =>
         new(title, "", Brushes.Gray, target) { CreatedUtc = createdUtc, Lifetime = lifetime };
 
+    // ── 5-hour utilization card ─────────────────────────────────────────────
+
+    [Test]
+    public void The_utilization_card_stays_visible_while_idle_between_windows()
+    {
+        // M.ORCH-T502: the card collapses only on an empty caption (MainWindow.xaml binds its Visibility to UtilizationText),
+        // so idle between windows it must still have one: the last window as it ended, or just that the next is yet to start.
+        var idle = new BudgetStatus(null, 0, true, 0, default, default, null, null, 0, null, 90);
+        var end = Now.AddMinutes(-40);
+        var last = UtilizationSeries.Build([new UsageSample(end.AddHours(-1), 64, end, 0)], idle, 99, Now);
+        var caption = MainViewModel.UtilizationCaption(last, loaded: true);
+        Assert.That(caption, Does.StartWith($"No 5-hour window running: the last ended at {Formatting.ResetTime(end, DateTime.UtcNow)} at 64%"));
+        Assert.That(caption, Does.EndWith("the next starts with your next prompt."));
+        Assert.That(Converters.EmptyToCollapsed.Convert(caption, typeof(System.Windows.Visibility), null, System.Globalization.CultureInfo.InvariantCulture),
+            Is.EqualTo(System.Windows.Visibility.Visible));
+
+        var none = MainViewModel.UtilizationCaption(UtilizationSeries.Build([], idle, 99, Now), loaded: true);
+        Assert.That(none, Is.EqualTo("No 5-hour window running: the next starts with your next prompt."));
+        Assert.That(MainViewModel.UtilizationCaption(null, loaded: true), Is.Not.Empty, "a window with no real limit keeps the card too");
+        Assert.That(MainViewModel.UtilizationCaption(null, loaded: false), Is.Empty, "only before the first snapshot is it collapsed");
+    }
+
     // ── Regroup visibility ──────────────────────────────────────────────────
 
     [Test]
