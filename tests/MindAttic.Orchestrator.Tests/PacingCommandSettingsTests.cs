@@ -20,4 +20,11 @@ public sealed class PacingCommandSettingsTests
         Assert.That(s.ExemptCommands, Is.EqualTo(new[] { "/pacing", "/deploy" }));
         Assert.That((s with { ExemptCommands = ["unthrottle", "/run"] }).ExemptCommands, Is.EqualTo(new[] { "/pacing", "/run" }));
     }
+
+    [Test]
+    public void Pacing_is_typed_only()
+    {
+        // M.ORCH-T519: only a typed /pacing records anything; a Skill call did nothing while its body had the model say it had.
+        Assert.That(MindAttic.Orchestrator.Setup.AgentGate.PacingCommand, Does.Contain("disable-model-invocation: true"));
+    }
 }
