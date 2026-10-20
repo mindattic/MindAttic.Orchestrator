@@ -97,7 +97,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
             // try again next tick.
             if (!store.TryLoad<List<DateTime>>(AlarmsName, out var saved)) return;
             // The first run knows every hit so far as history: only hits after it are news.
-            alarmed = System.IO.File.Exists(Path.Combine(store.Directory, AlarmsName + ".json")) ? [.. saved] : [.. session.Select(h => h.ResetUtc)];
+            alarmed = store.Has(AlarmsName) ? [.. saved] : [.. session.Select(h => h.ResetUtc)];
             if (saved.Count == 0) Save();
         }
         var fresh = session.Where(h => !alarmed.Contains(h.ResetUtc)).OrderBy(h => h.HitUtc).ToList();

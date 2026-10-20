@@ -284,24 +284,24 @@ public sealed class DashboardViewModelTests
         {
             var store = new JsonStore(dir);
             var runner = new MindAttic.Orchestrator.Audit.AuditRunner(new OrchestratorOptions { WorkspaceRoot = dir }, store);
-            var file = Path.Combine(dir, "audit.json");
             var seen = default(DateTime);
-            Assert.That(MainViewModel.NewerAudit(runner, file, ref seen, null), Is.Null, "no audit yet");
+            Assert.That(MainViewModel.NewerAudit(runner, ref seen, null), Is.Null, "no audit yet");
 
-            // The daemon's audit lands, but this refresh can't read it (caught mid-replace, or half written).
-            Directory.CreateDirectory(dir);
-            File.WriteAllText(file, "{ \"RanUtc\": \"2026-10-15T");
-            var stamp = new DateTime(2026, 10, 15, 13, 0, 0, DateTimeKind.Utc);
-            File.SetLastWriteTimeUtc(file, stamp);
-            Assert.That(MainViewModel.NewerAudit(runner, file, ref seen, null), Is.Null);
+            // The daemon's audit lands, but this refresh can't read it (half a report).
+            using (var connection = store.Db.Open())
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "INSERT INTO state (name, value, written_at) VALUES ('audit', '{ \"RanUtc\": \"2026-10-15T', 1760533200);";
+                command.ExecuteNonQuery();
+            }
+            Assert.That(MainViewModel.NewerAudit(runner, ref seen, null), Is.Null);
             Assert.That(seen, Is.EqualTo(default(DateTime)), "not taken as seen");
 
-            // Readable at the next refresh, the file unchanged since: it's shown then.
+            // Readable at the next refresh: it's shown then.
             store.Save("audit", new MindAttic.Orchestrator.Audit.AuditReport(Now, TimeSpan.FromSeconds(2), 3, 40, [], [], []));
-            File.SetLastWriteTimeUtc(file, stamp);
-            Assert.That(MainViewModel.NewerAudit(runner, file, ref seen, null)?.RanUtc, Is.EqualTo(Now));
-            Assert.That(seen, Is.EqualTo(stamp));
-            Assert.That(MainViewModel.NewerAudit(runner, file, ref seen, null), Is.Null, "once");
+            Assert.That(MainViewModel.NewerAudit(runner, ref seen, null)?.RanUtc, Is.EqualTo(Now));
+            Assert.That(seen, Is.EqualTo(store.WrittenUtc("audit")));
+            Assert.That(MainViewModel.NewerAudit(runner, ref seen, null), Is.Null, "once");
         }
         finally { if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true); }
     }

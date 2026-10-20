@@ -9,7 +9,10 @@ public sealed class AuditRunner(OrchestratorOptions options, JsonStore store)
     private const string StoreName = "audit";
 
     /// <summary>Where the latest report is kept (<c>audit.json</c> in the store).</summary>
-    public string FilePath => Path.Combine(store.Directory, StoreName + ".json");
+    public string FilePath => store.Describe(StoreName);
+
+    /// <summary>When the latest report was saved (null when there is none), so a reader rereads it only once a new one is.</summary>
+    public DateTime? SavedUtc => store.WrittenUtc(StoreName);
 
     /// <summary>Scans and saves; throws <see cref="IOException"/> or <see cref="UnauthorizedAccessException"/> when the
     /// report can't be saved (held, disk full). <see cref="Scan"/> and <see cref="TrySave"/> keep the report when it can't.</summary>

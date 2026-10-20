@@ -81,7 +81,7 @@ public sealed class CliCommandTests
         Directory.CreateDirectory(dir);
         File.WriteAllText(SettingsFile, "{ oops");
         var ex = Assert.Throws<InvalidDataException>(() => Run("reserve", "M.ORCH-T5", "2M"));
-        Assert.That(ex!.Message, Does.Contain("couldn't be read").And.Contain("Fix or remove it"));
+        Assert.That(ex!.Message, Does.Contain("couldn't be read").And.Contain("Fix or remove"));
         Assert.That(File.ReadAllText(SettingsFile), Is.EqualTo("{ oops"));
     }
 
@@ -92,9 +92,7 @@ public sealed class CliCommandTests
         var workspace = Path.Combine(dir, "workspace");
         Directory.CreateDirectory(workspace);
         Store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = workspace });
-        var auditFile = Path.Combine(dir, "audit.json");
-        File.WriteAllText(auditFile, "{}");
-        using (new FileStream(auditFile, FileMode.Open, FileAccess.Read, FileShare.None))
+        using (StoreFaults.Unwritable(Store, "audit"))
             Assert.That(Run("audit"), Is.EqualTo(1));
         Assert.That(output.ToString(), Does.Contain("Audit of 0 repos").And.Contain("Couldn't save this report"));
     }
@@ -102,8 +100,7 @@ public sealed class CliCommandTests
     [Test]
     public void Audit_latest_says_an_unreadable_audit_json_couldnt_be_read_not_that_there_is_none()
     {
-        Directory.CreateDirectory(dir);
-        File.WriteAllText(Path.Combine(dir, "audit.json"), "{ oops");
+        StoreFaults.Garble(Store, "audit", "{ oops");
         Assert.That(Run("audit", "--latest"), Is.EqualTo(1));
         Assert.That(output.ToString(), Does.Contain("couldn't be read").And.Not.Contain("No saved audit yet"));
     }
@@ -333,7 +330,7 @@ public sealed class CliCommandTests
                 Approved = ["a-t2", "A-T3", "A-T99"],
                 Priorities = new() { ["A-T1"] = 9, ["A-T2"] = 3, ["A-T99"] = 1 },
             });
-            var raw = File.ReadAllText(SettingsFile);
+            var raw = StoreFaults.SettingsText(Store);
             Assert.That(raw, Does.Contain("\"Approved\""));
 
             Assert.That(MindAttic.Orchestrator.Tickets.QueueImport.Run(Store, Path.Combine(dir, "workspace")),
@@ -341,7 +338,7 @@ public sealed class CliCommandTests
             using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
                 Assert.That((db.QueueState("A-T1"), db.QueueState("A-T2"), db.QueueState("A-T3").Approval),
                     Is.EqualTo((("proposed", 4L), ("approved", 3L), "proposed")));
-            Assert.That(File.ReadAllText(SettingsFile), Does.Not.Contain("\"Approved\"").And.Not.Contain("\"Priorities\""), "dropped from settings.json");
+            Assert.That(StoreFaults.SettingsText(Store), Does.Not.Contain("\"Approved\"").And.Not.Contain("\"Priorities\""), "dropped from the settings");
             Assert.That(MindAttic.Orchestrator.Tickets.QueueImport.Run(Store, Path.Combine(dir, "workspace")), Is.Null, "once");
         }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
@@ -370,7 +367,7 @@ public sealed class CliCommandTests
             Assert.That(MindAttic.Orchestrator.Tickets.QueueImport.Run(Store, workspace), Is.Null, "not imported again");
             using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
                 Assert.That(db.QueueState("A-T2"), Is.EqualTo(("proposed", 0L)));
-            Assert.That(File.ReadAllText(SettingsFile), Does.Not.Contain("\"Approved\"").And.Not.Contain("\"Priorities\""), "dropped again");
+            Assert.That(StoreFaults.SettingsText(Store), Does.Not.Contain("\"Approved\"").And.Not.Contain("\"Priorities\""), "dropped again");
         }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
     }
@@ -389,7 +386,7 @@ public sealed class CliCommandTests
     public void Reserve_refuses_tokens_it_cannot_read()
     {
         Assert.That(Run("reserve", "m.orch-t7", "lots"), Is.EqualTo(1));
-        Assert.That(File.Exists(SettingsFile), Is.False);
+        Assert.That(Store.Has(JsonStore.SettingsName), Is.False);
     }
 
     [Test]
@@ -493,7 +490,7 @@ public sealed class CliCommandTests
     {
         Assert.That(Run("settings", "--provider", "Clippy"), Is.EqualTo(1));
         Assert.That(output.ToString(), Does.Contain("No provider \"Clippy\""));
-        Assert.That(File.Exists(SettingsFile), Is.False);
+        Assert.That(Store.Has(JsonStore.SettingsName), Is.False);
     }
 
     [Test]
@@ -512,7 +509,7 @@ public sealed class CliCommandTests
     public void Settings_rejects_out_of_range_numbers_and_saves_nothing(string option, string value)
     {
         Assert.That(Run("settings", option, value), Is.EqualTo(1));
-        Assert.That(File.Exists(SettingsFile), Is.False);
+        Assert.That(Store.Has(JsonStore.SettingsName), Is.False);
     }
 
     [TestCase("--repo-sessions", "Prose")]
@@ -526,7 +523,7 @@ public sealed class CliCommandTests
     {
         Assert.That(Run("settings", option, value), Is.EqualTo(1));
         Assert.That(output.ToString(), Does.Contain("Use REPO="));
-        Assert.That(File.Exists(SettingsFile), Is.False);
+        Assert.That(Store.Has(JsonStore.SettingsName), Is.False);
     }
 
     [Test]
@@ -563,7 +560,7 @@ public sealed class CliCommandTests
         Assert.That(output.ToString(), Does.Contain("--warn is a percent"));
         Assert.That(Run("budget", "--weekly", "lots"), Is.EqualTo(1));
         Assert.That(output.ToString(), Does.Contain("--weekly: a number like"));
-        Assert.That(File.Exists(SettingsFile), Is.False);
+        Assert.That(Store.Has(JsonStore.SettingsName), Is.False);
     }
 
     [TestCase("0")]
@@ -573,7 +570,7 @@ public sealed class CliCommandTests
     {
         Assert.That(Run("budget", "--warn", warn), Is.EqualTo(1));
         Assert.That(output.ToString(), Does.Contain("--warn is a percent from 1 to 100"));
-        Assert.That(File.Exists(SettingsFile), Is.False);
+        Assert.That(Store.Has(JsonStore.SettingsName), Is.False);
     }
 
     [Test]

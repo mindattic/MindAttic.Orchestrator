@@ -191,14 +191,14 @@ public sealed class AuditTests
 
         runner.Run();
 
-        var json = Path.Combine(dir, "audit.json");
-        Assert.That(File.Exists(json), Is.True, "the report is kept as audit.json");
+        var store = new MindAttic.Orchestrator.Settings.JsonStore(dir);
+        Assert.That(store.Has("audit"), Is.True, "the report is kept as the audit state row");
         Assert.That(runner.Latest(), Is.Not.Null);
 
-        File.WriteAllText(json, "{ \"RanUtc\": \"2026-10-17T00:00:00Z\", \"Drift\": [ trunc");
+        StoreFaults.Garble(store, "audit", "{ \"RanUtc\": \"2026-10-17T00:00:00Z\", \"Drift\": [ trunc");
         Assert.That(runner.Latest(), Is.Null, "half-written JSON reads as no audit, not an exception");
 
-        File.WriteAllText(json, "{}");
+        StoreFaults.Garble(store, "audit", "{}");
         Assert.That(runner.Latest(), Is.Null, "a report with no run time isn't a report");
     }
 

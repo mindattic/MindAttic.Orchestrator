@@ -40,7 +40,7 @@ public static class ReminderBook
     /// <summary>How long a sent reminder stays in the file before the daemon drops it.</summary>
     public static readonly TimeSpan KeepSent = TimeSpan.FromDays(30);
 
-    public static string PathOf(JsonStore store) => Path.Combine(store.Directory, Name + ".json");
+    public static string PathOf(JsonStore store) => store.Describe(Name);
 
     /// <summary>Saves a new reminder (under the store's lock, so one added while the daemon marks another sent isn't lost).</summary>
     public static Reminder Add(JsonStore store, string text, DateTime dueUtc, string? to, DateTime nowUtc)

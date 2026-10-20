@@ -440,7 +440,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         changed |= settings.MaxSessions is not null || settings.Autopilot is not null || settings.Provider is not null || settings.StaleHours is not null;
         if (changed && !readable)
         {
-            AnsiConsole.MarkupLine($"[red]{Markup.Escape(Path.Combine(store.Directory, "settings.json"))} couldn't be read, so nothing was saved over it. Fix or remove it and try again.[/]");
+            AnsiConsole.MarkupLine($"[red]The settings in {Markup.Escape(store.Describe(JsonStore.SettingsName))} couldn't be read, so nothing was saved over them. Fix or remove {Markup.Escape(Path.Combine(store.Directory, "settings.json"))} if it's still there, and try again.[/]");
             return 1;
         }
         if (changed) store.SaveSettings(s);
@@ -450,7 +450,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             AnsiConsole.MarkupLine("[green]Sent a test alert.[/]");
 
         var clis = new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis();
-        AnsiConsole.MarkupLine($"settings: {Markup.Escape(Path.Combine(store.Directory, "settings.json"))}");
+        AnsiConsole.MarkupLine($"settings: {Markup.Escape(store.Describe(JsonStore.SettingsName))}");
         AnsiConsole.MarkupLine($"  max sessions {s.MaxConcurrentSessions} · provider {Markup.Escape(s.DefaultProvider)} · autopilot " +
             (clis.Count == 0 ? "off in every CLI (type /autopilot in the CLI that should work tickets)"
                 : (s.Autopilot ? "[green]on[/] in " : "[yellow]paused[/] (--autopilot true resumes it) in ") +

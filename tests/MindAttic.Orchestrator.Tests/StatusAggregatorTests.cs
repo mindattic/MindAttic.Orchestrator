@@ -365,12 +365,13 @@ public sealed class StatusAggregatorTests
         };
         Assert.That(aggregator.Refresh().Budget!.BlockLimitSource, Is.EqualTo(LimitSource.Learned));
 
-        using (new FileStream(Path.Combine(store.Directory, "limits.json"), FileMode.Open, FileAccess.Read, FileShare.None))
-        {
-            var held = aggregator.Refresh(DateTime.UtcNow.AddSeconds(5)).Budget!;
-            Assert.That((held.BlockLimitSource, held.BlockLimit), Is.EqualTo((LimitSource.Learned, 9_000_000L)), "the hits last read stand in");
-        }
-        Assert.That(store.LoadLimits(), Has.Count.EqualTo(1), "and nothing was saved over it");
+        var saved = store.LoadLimits();
+        StoreFaults.Garble(store, "limits", "[ {");
+        var held = aggregator.Refresh(DateTime.UtcNow.AddSeconds(5)).Budget!;
+        Assert.That((held.BlockLimitSource, held.BlockLimit), Is.EqualTo((LimitSource.Learned, 9_000_000L)), "the hits last read stand in");
+        Assert.That(store.TryLoadLimits(out _), Is.False, "and nothing was saved over it");
+        store.SaveLimits(saved);
+        Assert.That(store.LoadLimits(), Has.Count.EqualTo(1));
     }
 
     [Test]

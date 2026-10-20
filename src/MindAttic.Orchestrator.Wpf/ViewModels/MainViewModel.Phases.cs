@@ -551,7 +551,7 @@ public sealed partial class MainViewModel
         knownStuck.IntersectWith(stuck.Select(x => x.SessionId + x.Loop.Tool + x.Loop.Input));
 
         // The daemon audits on a schedule; pick up a newer report and say what it found.
-        if (!IsAuditing && NewerAudit(auditRunner, System.IO.Path.Combine(store.Directory, "audit.json"), ref auditFileStamp, shownAudit) is { } latest)
+        if (!IsAuditing && NewerAudit(auditRunner, ref auditFileStamp, shownAudit) is { } latest)
         {
             var news = AuditNews.Between(shownAudit, latest);
             ShowAudit(latest);
@@ -563,13 +563,13 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>
-    /// The report in <paramref name="auditFile"/> when it changed since <paramref name="seenStamp"/> and ran after
-    /// <paramref name="shown"/>; null otherwise. The file's timestamp is taken only once it's read: a read that failed (the
-    /// daemon replacing it) left the new audit unshown, and its toast unraised, until the next audit a day later (M.ORCH-T460).
+    /// The saved report when it changed since <paramref name="seenStamp"/> and ran after <paramref name="shown"/>; null
+    /// otherwise. Its save time is taken only once it's read: a read that failed (the daemon replacing it) left the new audit
+    /// unshown, and its toast unraised, until the next audit a day later (M.ORCH-T460).
     /// </summary>
-    internal static AuditReport? NewerAudit(AuditRunner runner, string auditFile, ref DateTime seenStamp, AuditReport? shown)
+    internal static AuditReport? NewerAudit(AuditRunner runner, ref DateTime seenStamp, AuditReport? shown)
     {
-        var stamp = System.IO.File.Exists(auditFile) ? System.IO.File.GetLastWriteTimeUtc(auditFile) : default;
+        var stamp = runner.SavedUtc ?? default;
         if (stamp == seenStamp) return null;
         if (stamp == default) { seenStamp = default; return null; }
         if (!runner.TryLatest(out var latest)) return null; // tried again next refresh

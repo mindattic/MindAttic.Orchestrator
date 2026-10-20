@@ -23,12 +23,18 @@ public sealed class OrchestratorHistoryTests
         new(Base.AddHours(5 * n), Base.AddHours(5 * (n + 1)), WindowGrade.Under, "ended at 90%", 91, 90.5, 12_345_678, 59, 0, null, null,
             3, 1.5, 0, 0, [new MeterGap(Base.AddHours(5 * n + 1), Base.AddHours(5 * n + 1.5), 77)], 1, account);
 
+    /// <summary>One of the old history files, as the JSON store wrote it before M.ORCH-T524 moved the store into the database.</summary>
+    private static void WriteJson<T>(string dir, string file, T value)
+    {
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, file), System.Text.Json.JsonSerializer.Serialize(value, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+    }
+
     private static void WriteJsonFiles(string dir, List<UsageSample> samples, List<LedgerWindow> ledger, List<DayUsage> history, List<SessionCost> costs)
     {
-        var store = new JsonStore(dir);
-        store.Save("usage-samples", samples);
-        store.Save("usage-history", history);
-        store.Save("ticket-costs", costs);
+        WriteJson(dir, OrchestratorHistory.SamplesFile, samples);
+        WriteJson(dir, OrchestratorHistory.HistoryFile, history);
+        WriteJson(dir, OrchestratorHistory.CostsFile, costs);
         File.WriteAllLines(Path.Combine(dir, OrchestratorHistory.LedgerFile), ledger.Select(PaceLedger.Serialize));
     }
 
@@ -70,7 +76,7 @@ public sealed class OrchestratorHistoryTests
     {
         var dir = temps.New();
         var db = new OrchestratorDb(Path.Combine(temps.New(), "orchestrator.db"));
-        new JsonStore(dir).Save("usage-samples", new List<UsageSample> { Sample(1) });
+        WriteJson(dir, OrchestratorHistory.SamplesFile, new List<UsageSample> { Sample(1) });
         File.WriteAllText(Path.Combine(dir, OrchestratorHistory.CostsFile), "[ {");
 
         using (new FileStream(Path.Combine(dir, OrchestratorHistory.SamplesFile), FileMode.Open, FileAccess.Read, FileShare.None))

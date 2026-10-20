@@ -118,7 +118,7 @@ public sealed class ViewModelTests
         var saves = 0;
         var vm = new SettingsViewModel(store, () => saves++);
         vm.WarnPercent = "70";
-        using (new FileStream(Path.Combine(dir, "settings.json"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        using (StoreFaults.Unwritable(store, JsonStore.SettingsName))
             Assert.DoesNotThrow(() => vm.SaveCommand.Execute(null));
         Assert.That((vm.Error, vm.WarnPercent, saves), Is.EqualTo((vm.Error, "70", 0)));
         Assert.That(vm.Error, Does.StartWith("Couldn't save"));

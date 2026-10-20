@@ -44,7 +44,7 @@ public sealed class SettingsViewModel : ObservableObject
     public string ExemptCommands { get => exemptCommands; set => Set(ref exemptCommands, value); }
     public string Error { get => error; private set => Set(ref error, value); }
     public IReadOnlyList<string> Providers => Sessions.SessionControl.Providers;
-    public string FilePath => System.IO.Path.Combine(store.Directory, "settings.json");
+    public string FilePath => store.Describe(JsonStore.SettingsName);
     public ICommand SaveCommand { get; }
 
     /// <summary>Autopilot as the panel read it: the CLI pauses and resumes it too while the panel is open, and a Save that

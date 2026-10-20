@@ -639,19 +639,88 @@ public static class AgentGate
     /// <summary>A stop from an orchestrator that didn't say when its window resets is latched this long.</summary>
     public const int StopLatchFallbackSeconds = 600;
 
-    /// <summary>Python shared by both hooks (needs <c>os</c> and <c>Path</c>): the workspace and which repo a folder is in,
-    /// so the repo-window guard and keep-going can't disagree about it.</summary>
-    private const string WorkspacePython = """
-        # The folders the orchestrator is set to (settings.json's WorkspaceRoot and WorktreeRoot), not always the default ones
+    /// <summary>Python shared by both hooks (needs <c>json</c>, <c>os</c>, <c>time</c> and <c>Path</c>): the orchestrator's
+    /// database and the settings and state it keeps (M.ORCH-T524), the workspace and which repo a folder is in, so the
+    /// repo-window guard and keep-going can't disagree about it.</summary>
+    internal static string WorkspacePython => $$"""
+        # The orchestrator's database (M.ORCH-T524), found as OrchestratorDb.StatePath finds it: MINDATTIC_ORCHESTRATOR_DB when
+        # set, else the main checkout's data/orchestrator.db under the default workspace (never a worktree's copy), else the
+        # machine-local one beside the old JSON files.
+        ORCH_DIR = Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator"
+        def orchestrator_db():
+            if os.environ.get("{{Settings.OrchestratorDb.EnvVar}}"):
+                return os.environ["{{Settings.OrchestratorDb.EnvVar}}"]
+            repo = Path(r"{{MindAttic.Workflow.Workspace.DefaultRoot}}") / "MindAttic.Orchestrator"
+            if repo.is_dir():
+                return str(repo / "data" / "orchestrator.db")
+            return str(ORCH_DIR / "orchestrator.db")
+        ORCH_DB = orchestrator_db()
+        def orch_rows(sql, args=()):
+            # Rows from the orchestrator's database; None when it isn't there (a read never creates it) or couldn't be read.
+            try:
+                import sqlite3
+                if not os.path.isfile(ORCH_DB):
+                    return None
+                db = sqlite3.connect(ORCH_DB, timeout=5)
+                try:
+                    return db.execute(sql, args).fetchall()
+                finally:
+                    db.close()
+            except Exception:
+                return None
+        def orch_settings():
+            # The orchestrator's settings, one row per setting; a settings.json no daemon has read in yet is read instead.
+            rows = orch_rows("SELECT name, value FROM settings")
+            if rows:
+                out = {}
+                for name, value in rows:
+                    try:
+                        out[name] = json.loads(value)
+                    except Exception:
+                        pass
+                return out
+            try:
+                s = json.loads((ORCH_DIR / "settings.json").read_text(encoding="utf-8-sig"))
+                return s if isinstance(s, dict) else {}
+            except Exception:
+                return {}
+        def orch_state(name, max_age=None):
+            # A state value the orchestrator keeps (autopilot holds, stale claims, ...); None when it isn't kept, can't be read,
+            # or was written more than max_age seconds ago (a daemon that stopped). Its old file until a daemon reads it in.
+            rows = orch_rows("SELECT value, written_at FROM state WHERE name = ?", (name,))
+            if rows:
+                value, at = rows[0]
+                if max_age is not None and time.time() - at > max_age:
+                    return None
+                try:
+                    return json.loads(value)
+                except Exception:
+                    return None
+            f = ORCH_DIR / (name + ".json")
+            try:
+                if max_age is not None and time.time() - f.stat().st_mtime > max_age:
+                    return None
+                return json.loads(f.read_text(encoding="utf-8-sig"))
+            except Exception:
+                return None
+        def orch_assignments():
+            # The tickets the orchestrator has handed out; assignments.json until a daemon reads it in.
+            f = ORCH_DIR / "assignments.json"
+            rows = orch_rows("SELECT ticket_id FROM assignments")
+            if rows is not None and (rows or not f.exists()):
+                return [r[0] or "" for r in rows]
+            try:
+                return [(a.get("TicketId") or "") for a in json.loads(f.read_text(encoding="utf-8-sig")) or []]
+            except Exception:
+                return []
+
+        # The folders the orchestrator is set to (settings' WorkspaceRoot and WorktreeRoot), not always the default ones
         # (M.ORCH-T409); MINDATTIC_WORKSPACE still overrides both, its worktrees beside it as before.
         def orchestrator_roots():
             if os.environ.get("MINDATTIC_WORKSPACE"):
                 return (os.environ["MINDATTIC_WORKSPACE"], None)
-            try:
-                s = json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "settings.json").read_text(encoding="utf-8-sig"))
-                return (s.get("WorkspaceRoot") or None, s.get("WorktreeRoot") or None) if isinstance(s, dict) else (None, None)
-            except Exception:
-                return (None, None)
+            s = orch_settings()
+            return (s.get("WorkspaceRoot") or None, s.get("WorktreeRoot") or None)
         _ws_root, _wt_root = orchestrator_roots()
         WS = Path(_ws_root or "D:/Projects/MindAttic")
         WT = Path(_wt_root) if _wt_root else WS.parent / (WS.name + ".worktrees")
@@ -688,7 +757,7 @@ public static class AgentGate
         EXEMPT_DEFAULT = [{{string.Join(", ", Settings.OrchestratorSettings.DefaultExemptCommands.Select(c => "\"" + c + "\""))}}]
         def exempt_commands():
             try:
-                names = json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "settings.json").read_text(encoding="utf-8-sig")).get("ExemptCommands")
+                names = orch_settings().get("ExemptCommands")
             except Exception:
                 names = None
             if not isinstance(names, list):
@@ -1593,21 +1662,14 @@ public static class AgentGate
                 except Exception:
                     approved = set()
                 db.close()
-                try:
-                    settings = json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "settings.json").read_text(encoding="utf-8-sig"))
-                except Exception:
-                    settings = {}
+                settings = orch_settings()
                 for f, ts in (settings.get("BlockedBy") or {}).items():
                     waits.setdefault(f.upper(), set()).update(t.upper() for t in ts or [])
                 def blocked(r):
                     on = waits.get(r[0].upper(), set()) | {m.upper() for m in re.findall(r"blocked by ((?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)", r[3] or "", re.I)}
                     return any(b != r[0].upper() and b in open_ids for b in on)
                 # A ticket `orchestrator next --claim` already handed to a subagent is being worked: it isn't left (M.ORCH-T188).
-                try:
-                    claimed = {(a.get("TicketId") or "").upper() for a in json.loads((Path(os.environ.get("APPDATA", "")) / "MindAttic" /
-                               "MindAttic.Orchestrator" / "assignments.json").read_text()) or []}
-                except Exception:
-                    claimed = set()
+                claimed = {t.upper() for t in orch_assignments()}
                 # A claim gone stale is back in the queue, and `orchestrator next` hands it out again: it's work. Only the
                 # running daemon's list counts (it rewrites it each minute): one left by a daemon that stopped may name a
                 # ticket claimed afresh since.
@@ -1616,12 +1678,8 @@ public static class AgentGate
                 if settings.get("Autopilot") is False or handing_off():
                     return []
                 skip = {(x or "").lower() for x in settings.get("AutopilotSkip") or []}
-                holds = {}
-                try:
-                    hf = Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "{{{Daemon.AutopilotHoldsName}}}.json"
-                    if time.time() - hf.stat().st_mtime <= {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}}:
-                        holds = json.loads(hf.read_text()) or {}
-                except Exception:
+                holds = orch_state("{{{Daemon.AutopilotHoldsName}}}", {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}})
+                if not isinstance(holds, dict):
                     holds = {}
                 if holds.get("Quiet"):
                     return []
@@ -1629,10 +1687,9 @@ public static class AgentGate
                         if not (w.get("Filed") and w.get("AgentId") is None and sid and w.get("SessionId") == sid)}
                 held |= {(i or "").upper() for i in holds.get("LivePilot") or []}
                 try:
-                    stale = Path(os.environ.get("APPDATA", "")) / "MindAttic" / "MindAttic.Orchestrator" / "{{{Daemon.StaleTicketsName}}}.json"
-                    if time.time() - stale.stat().st_mtime > {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}}:
-                        raise ValueError("no daemon")
-                    claimed -= {(i or "").upper() for i in json.loads(stale.read_text()) or []} - held
+                    stale = orch_state("{{{Daemon.StaleTicketsName}}}", {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}})
+                    if stale is not None:
+                        claimed -= {(i or "").upper() for i in stale or []} - held
                 except Exception:
                     pass
                 claimed |= held

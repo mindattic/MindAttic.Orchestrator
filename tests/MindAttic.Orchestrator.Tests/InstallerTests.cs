@@ -124,7 +124,7 @@ public sealed class InstallerTests
             store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = @"E:\Code" });
             Assert.That(OrchestratorOptions.Load(store).WorkspaceRoot, Is.EqualTo(@"E:\Code"));
         }
-        finally { Directory.Delete(dir, recursive: true); }
+        finally { if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true); }
     }
 
     [Test]
@@ -139,9 +139,15 @@ public sealed class InstallerTests
             Assert.That(none.WorkspaceRoot, Is.EqualTo(MindAttic.Workflow.Workspace.DefaultRoot));
             store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = @"E:\Code" });
             Assert.That((OrchestratorOptions.TryLoad(store, out var picked), picked.WorkspaceRoot), Is.EqualTo((true, @"E:\Code")));
-            File.WriteAllText(Path.Combine(dir, "settings.json"), "{ \"WorkspaceRoot\": \"E:\\\\Code\", oops");
+            // Settings that can't be read: a garbled row, as a hand-edited settings.json's typo once was.
+            using (var connection = store.Db.Open())
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "UPDATE settings SET value = '\"E:\\\\Code\", oops' WHERE name = 'WorkspaceRoot';";
+                command.ExecuteNonQuery();
+            }
             Assert.That(OrchestratorOptions.TryLoad(store, out _), Is.False);
         }
-        finally { Directory.Delete(dir, recursive: true); }
+        finally { if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true); }
     }
 }

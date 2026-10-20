@@ -534,8 +534,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// <summary>Repos the last audit found sharing duplicated code; reread only when the audit file changes.</summary>
     private IReadOnlyDictionary<string, IReadOnlySet<string>> LinkedRepos()
     {
-        var file = Path.Combine(Store.Directory, "audit.json");
-        var stamp = File.Exists(file) ? File.GetLastWriteTimeUtc(file) : default;
+        var stamp = Store.WrittenUtc("audit") ?? default;
         if (stamp == auditStamp) return links;
         // Taken only once read: a failed read kept the map empty until the next audit, up to a day later (M.ORCH-T433).
         if (!new Audit.AuditRunner(options, Store).TryLatest(out var latest)) return links;

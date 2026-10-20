@@ -165,7 +165,7 @@ public static class OrchestratorHistory
         var key = db.Path + "|" + Path.GetFullPath(jsonDirectory);
         if (Imported.ContainsKey(key)) return;
         if (Environment.GetEnvironmentVariable(OrchestratorDb.EnvVar) is { Length: > 0 } &&
-            string.Equals(Path.GetFullPath(jsonDirectory), Path.GetFullPath(new JsonStore().Directory), StringComparison.OrdinalIgnoreCase))
+            string.Equals(Path.GetFullPath(jsonDirectory), Path.GetFullPath(JsonStore.LiveDirectory), StringComparison.OrdinalIgnoreCase))
         {
             Imported[key] = true;
             return;
@@ -179,17 +179,16 @@ public static class OrchestratorHistory
 
         var done = new List<string>();
         var held = false;
-        var store = new JsonStore(jsonDirectory);
         db.Write((connection, tx) =>
         {
             // Read under the write lock: a process that got here first and already renamed the file leaves nothing to read.
-            if (Take(SamplesFile, () => store.TryLoad<List<UsageSample>>("usage-samples", out var s) ? s : null) is { } samples)
+            if (Take(SamplesFile, () => ReadList<UsageSample>(SamplesFile)) is { } samples)
                 foreach (var s in samples) InsertSample(connection, tx, s);
             if (Take(LedgerFile, () => PaceLedger.Load(Path.Combine(jsonDirectory, LedgerFile))) is { } ledger)
                 foreach (var w in ledger) InsertWindow(connection, tx, w);
-            if (Take(HistoryFile, () => store.TryLoad<List<DayUsage>>("usage-history", out var h) ? h : null) is { } history)
+            if (Take(HistoryFile, () => ReadList<DayUsage>(HistoryFile)) is { } history)
                 foreach (var d in history) InsertDay(connection, tx, d, replace: false);
-            if (Take(CostsFile, () => store.TryLoad<List<SessionCost>>("ticket-costs", out var c) ? c : null) is { } costs)
+            if (Take(CostsFile, () => ReadList<SessionCost>(CostsFile)) is { } costs)
                 foreach (var c in costs) InsertCost(connection, tx, c, replace: false);
         });
         foreach (var name in done)
@@ -199,6 +198,13 @@ public static class OrchestratorHistory
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { held = true; }
         }
         if (!held) Imported[key] = true;
+
+        // A JSON file's rows; null when it isn't readable JSON (held, it throws).
+        List<T>? ReadList<T>(string name)
+        {
+            try { return JsonSerializer.Deserialize<List<T>>(File.ReadAllText(Path.Combine(jsonDirectory, name)), Json) ?? []; }
+            catch (JsonException) { return null; }
+        }
 
         // The file's rows, or null when it isn't there (taken already) or couldn't be read now. A file whose JSON can't be
         // parsed reads as null from TryLoad too, so that's told apart by whether it can be opened at all.

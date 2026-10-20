@@ -26,6 +26,19 @@ public sealed class OrchestratorDb(string path)
             : System.IO.Path.Combine(workspaceRoot ?? MindAttic.Workflow.Workspace.DefaultRoot, "MindAttic.Orchestrator",
                 RelativePath.Replace('/', System.IO.Path.DirectorySeparatorChar));
 
+    /// <summary>
+    /// The database <see cref="JsonStore"/> keeps the orchestrator's settings and state in (M.ORCH-T524): <see cref="DefaultPath"/>
+    /// under the default workspace, found before any setting is read (the workspace root is itself a setting). On a machine
+    /// without a MindAttic.Orchestrator checkout there, so no repo to commit it to, a machine-local <c>orchestrator.db</c> in
+    /// <paramref name="fallbackDirectory"/> (the store's folder under <c>%APPDATA%</c>). The hooks find it the same way
+    /// (<see cref="Setup.AgentGate"/>).
+    /// </summary>
+    public static string StatePath(string fallbackDirectory) =>
+        Environment.GetEnvironmentVariable(EnvVar) is { Length: > 0 } env ? env
+            : System.IO.Directory.Exists(System.IO.Path.Combine(MindAttic.Workflow.Workspace.DefaultRoot, "MindAttic.Orchestrator"))
+                ? DefaultPath(MindAttic.Workflow.Workspace.DefaultRoot)
+                : System.IO.Path.Combine(fallbackDirectory, "orchestrator.db");
+
     public string Path { get; } = System.IO.Path.GetFullPath(path);
 
     /// <summary>The readable dump written beside the database: <c>orchestrator.sql</c>.</summary>
@@ -98,17 +111,56 @@ public sealed class OrchestratorDb(string path)
             own_share  INTEGER NOT NULL
         );
         """,
+        // 3: the rest of the orchestrator's JSON state (M.ORCH-T524; see JsonStore). settings.json is one row per setting, its
+        // value as JSON, so a change shows up as one line of the dump; assignments.json one row per assignment, in list order;
+        // every other JsonStore file (limits, reminders, audit, the pace alarms, autopilot holds, ...) one row of JSON under
+        // its old file name, with when it was written (Unix seconds) so a reader can tell a running daemon's from a stale one.
+        """
+        CREATE TABLE settings (
+            name  TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+        CREATE TABLE assignments (
+            position          INTEGER PRIMARY KEY,
+            ticket_id         TEXT,
+            repo              TEXT,
+            directory         TEXT,
+            provider          TEXT,
+            started_utc       TEXT,
+            worktree          INTEGER,
+            pilot             INTEGER,
+            pilot_started_utc TEXT,
+            log               TEXT
+        );
+        CREATE TABLE state (
+            name       TEXT PRIMARY KEY,
+            value      TEXT NOT NULL,
+            written_at REAL NOT NULL
+        );
+        """,
     ];
 
+    /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a
+    /// commit every <see cref="Daemon.SyncOrchestratorDbIfDue"/>: what autopilot holds back right now, the stale claims, and
+    /// when the dashboard was last looked at. They're still in the .db, which is committed whenever the dump changes.</summary>
+    internal static readonly string[] Volatile = [Daemon.AutopilotHoldsName, Daemon.StaleTicketsName, "dashboard-seen"];
+
     /// <summary>Every table, with the order the dump lists its rows in: by key, so a change shows up as a few lines in its diff.</summary>
-    private static readonly (string Table, string Order)[] Tables =
+    private static readonly (string Table, string Order, string Where)[] Tables =
     [
-        ("accounts", "id"),
-        ("usage_samples", "at"),
-        ("pace_ledger", "end_utc, account"),
-        ("usage_history", "day, repo, provider, account, before_utc"),
-        ("ticket_costs", "session_id"),
+        ("accounts", "id", ""),
+        ("usage_samples", "at", ""),
+        ("pace_ledger", "end_utc, account", ""),
+        ("usage_history", "day, repo, provider, account, before_utc", ""),
+        ("ticket_costs", "session_id", ""),
+        ("settings", "name", ""),
+        ("assignments", "position", ""),
+        ("state", "name", " WHERE name NOT IN (" + string.Join(", ", Volatile.Select(v => "'" + v + "'")) + ")"),
     ];
+
+    /// <summary>The columns the dump lists for <paramref name="table"/>: all of them, but <c>state</c>'s write time, which
+    /// changes with every write where only the name and value are history worth a diff.</summary>
+    private static string Columns(string table) => table == "state" ? "name, value" : "*";
 
     /// <summary>How long a connection waits for another process's write before giving up with SQLITE_BUSY; tests shorten it.
     /// Microsoft.Data.Sqlite also retries a busy command until its own timeout (30 s by default), so that's held to the same.</summary>
@@ -145,12 +197,12 @@ public sealed class OrchestratorDb(string path)
     public static string Dump(SqliteConnection connection, SqliteTransaction? tx = null)
     {
         var sb = new StringBuilder("-- MindAttic.Orchestrator database dump (written with every change; the .db file is the store).\n");
-        foreach (var (table, order) in Tables)
+        foreach (var (table, order, where) in Tables)
         {
             sb.Append("\n-- ").Append(table).Append('\n');
             using var command = connection.CreateCommand();
             command.Transaction = tx;
-            command.CommandText = $"SELECT * FROM {table} ORDER BY {order};";
+            command.CommandText = $"SELECT {Columns(table)} FROM {table}{where} ORDER BY {order};";
             using var r = command.ExecuteReader();
             var columns = Enumerable.Range(0, r.FieldCount).Select(r.GetName).ToList();
             while (r.Read())
@@ -195,14 +247,16 @@ public sealed class OrchestratorDb(string path)
     /// fail at commit), then rewrites the dump from what it committed. A dump that can't be written now (the file held) is left
     /// for the next change: the .db is the store.
     /// </summary>
-    public void Write(Action<SqliteConnection, SqliteTransaction> change)
+    public void Write(Action<SqliteConnection, SqliteTransaction> change, bool dump = true)
     {
         using var connection = Open();
         using var tx = connection.BeginTransaction(deferred: false);
         change(connection, tx);
-        var dump = Dump(connection, tx);
+        // A change only to rows the dump leaves out (Volatile) can't change it: not worth reading every table for.
+        var text = dump ? Dump(connection, tx) : null;
         tx.Commit();
-        try { WriteDump(dump); }
+        if (text is null) return;
+        try { WriteDump(text); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
