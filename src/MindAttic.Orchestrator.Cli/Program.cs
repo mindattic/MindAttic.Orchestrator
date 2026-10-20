@@ -49,6 +49,8 @@ internal static class CliApp
         app.Configure(config =>
         {
             config.SetApplicationName("orchestrator");
+            // Help goes where every command writes, so a test swapping AnsiConsole.Console sees it too (M.ORCH-T496).
+            config.ConfigureConsole(AnsiConsole.Console);
             config.AddCommand<StatusCommand>("status").WithDescription("Every repo: state, live sessions, open tickets, tokens today.");
             config.AddCommand<StartCommand>("start").WithDescription("Open an agent tab for a repo through the Launcher.");
             config.AddCommand<SendCommand>("send").WithDescription("Type text into a live Launcher-hosted session.");
@@ -73,7 +75,7 @@ internal static class CliApp
             config.AddCommand<ClisCommand>("clis").WithDescription("Every open Claude CLI and whether /autopilot is on in it (the roster the daemon keeps in clis.json).");
             config.AddCommand<HandoffCommand>("handoff").WithDescription("/handoff from here: status (default) lists what's still working; on winds every CLI down for an account switch; off cancels it.");
             config.AddCommand<LedgerCommand>("ledger").WithDescription("Every 5-hour window graded against 99%-never-over (ok, under, blind, over) and the record so far; --csv writes it out. Exits 1 if one went over in --days.");
-            config.AddCommand<RemindCommand>("remind").WithDescription("Save a reminder the daemon texts through Psst when it's due (\"<text>\" --at \"tomorrow 9am\" [--to <contact>]); --list, --cancel <id>.");
+            config.AddCommand<RemindCommand>("remind").WithDescription("Save a reminder the daemon texts through Psst when it's due (\"<text>\" --at \"tomorrow 9am\" [[--to <contact>]]); --list, --cancel <id>.");
             config.AddBranch("workspace", w =>
             {
                 w.SetDescription("The workspace as a list of repos: export it, or build it on a new machine.");

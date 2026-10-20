@@ -52,6 +52,29 @@ public sealed class CliCommandTests
     }
 
     [Test]
+    public void The_full_help_renders_without_a_markup_error()
+    {
+        // M.ORCH-T496: remind's description had an unescaped '[--to <contact>]', which Spectre read as markup, so
+        // 'orchestrator --help' crashed with "Could not find color or style '--to'".
+        Assert.That(Run("--help"), Is.Zero, output.ToString());
+        var help = string.Concat(output.ToString().Where(c => !char.IsWhiteSpace(c))); // help wraps at the console's width
+        Assert.That(help, Does.Contain("[--to<contact>]").And.Contain("remind"));
+    }
+
+    [Test]
+    public void Every_commands_help_renders_without_a_markup_error()
+    {
+        string[] commands =
+        [
+            "status", "start", "send", "budget", "queue", "bump", "dispatch", "release", "daemon", "settings", "audit",
+            "block", "next", "approve", "reserve", "dryrun", "show", "hygiene", "intake", "report", "billing", "clis",
+            "handoff", "ledger", "remind", "workspace", "workspace export", "workspace install-apps", "workspace build",
+        ];
+        foreach (var command in commands)
+            Assert.That(Run([.. command.Split(' '), "--help"]), Is.Zero, command + ": " + output);
+    }
+
+    [Test]
     public void An_unreadable_settings_json_is_an_invalid_data_exception_the_entry_point_reports_in_one_line()
     {
         // M.ORCH-T332: Program.cs says an InvalidDataException's message in one line; it used to log it as a crash.
