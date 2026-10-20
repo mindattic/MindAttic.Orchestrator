@@ -9,6 +9,15 @@ public sealed record OrchestratorOptions
             ? new OrchestratorOptions { WorkspaceRoot = root }
             : new OrchestratorOptions();
 
+    /// <summary>Like <see cref="Load"/>, but false when <c>settings.json</c> is there and can't be read (a typo from a hand
+    /// edit, held past the retries): its defaults aren't the workspace you picked, so nothing should switch to them.</summary>
+    public static bool TryLoad(Settings.JsonStore store, out OrchestratorOptions options)
+    {
+        var read = store.TryLoad<Settings.OrchestratorSettings>("settings", out var s);
+        options = read && s.WorkspaceRoot is { Length: > 0 } root ? new OrchestratorOptions { WorkspaceRoot = root } : new OrchestratorOptions();
+        return read;
+    }
+
     public string WorkspaceRoot { get; init; } = MindAttic.Workflow.Workspace.DefaultRoot;
 
     /// <summary>Claude Code's per-project transcript store (one folder per working directory).</summary>

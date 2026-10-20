@@ -126,4 +126,22 @@ public sealed class InstallerTests
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
+
+    [Test]
+    public void An_unreadable_settings_file_names_no_workspace_to_switch_to()
+    {
+        // M.ORCH-T513: the daemon took an unreadable settings.json's defaults as the workspace, and ran a tick against another one.
+        var dir = Path.Combine(Path.GetTempPath(), "orch-ws-" + Guid.NewGuid().ToString("N"));
+        var store = new JsonStore(dir);
+        try
+        {
+            Assert.That(OrchestratorOptions.TryLoad(store, out var none), Is.True, "no file yet: the default is the choice");
+            Assert.That(none.WorkspaceRoot, Is.EqualTo(MindAttic.Workflow.Workspace.DefaultRoot));
+            store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = @"E:\Code" });
+            Assert.That((OrchestratorOptions.TryLoad(store, out var picked), picked.WorkspaceRoot), Is.EqualTo((true, @"E:\Code")));
+            File.WriteAllText(Path.Combine(dir, "settings.json"), "{ \"WorkspaceRoot\": \"E:\\\\Code\", oops");
+            Assert.That(OrchestratorOptions.TryLoad(store, out _), Is.False);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
 }

@@ -57,7 +57,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             try
             {
                 // The dashboard's first run may pick the workspace after WatchDog already started this.
-                if (OrchestratorOptions.Load(store) is { } latest && latest.WorkspaceRoot != options.WorkspaceRoot)
+                // Only from a settings.json that could be read: an unreadable one's default root would switch the whole tick (and
+                // autopilot's reap) to another workspace and back, dropping the aggregator's latches each way (M.ORCH-T513).
+                if (OrchestratorOptions.TryLoad(store, out var latest) && latest.WorkspaceRoot != options.WorkspaceRoot)
                 {
                     options = latest;
                     Build();
