@@ -73,6 +73,16 @@ function Stop-From([string]$name, [string]$dir) {
     }
 }
 
+# Runs an installer and waits for it alone, returning its exit code. Not Start-Process -Wait: in Windows PowerShell
+# 5.1 that waits for the installer's whole process tree, and --install starts the daemon (which never exits), so
+# the deploy sat at 'Installing...' long after the install had finished (M.ORCH-T525).
+function Invoke-Installer([string]$path, [string[]]$arguments) {
+    $p = Start-Process -FilePath $path -ArgumentList $arguments -PassThru
+    $null = $p.Handle   # held from the start, or ExitCode reads empty once the process has gone
+    $p.WaitForExit()
+    return $p.ExitCode
+}
+
 function Find-Installed {
     @((Join-Path $appDir 'MindAttic.Orchestrator.exe'),
       (Join-Path $env:LOCALAPPDATA 'Programs\MindAttic.Orchestrator\MindAttic.Orchestrator.exe')) |
@@ -136,9 +146,9 @@ if ((Test-Path $artifact) -and ($built -or -not $installed -or $outdated)) {
     Get-CimInstance Win32_Process -Filter "Name='orchestrator.exe'" -ErrorAction SilentlyContinue |
         Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($cliOut, [System.StringComparison]::OrdinalIgnoreCase) -and $_.CommandLine -match '\sdaemon\b' } |
         ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop } catch { } }
-    $install = Start-Process -FilePath $artifact -ArgumentList '--install' -Wait -PassThru
+    $exitCode = Invoke-Installer $artifact @('--install')
     $installed = Find-Installed
-    if ($install.ExitCode -eq 0 -and $installed) { Write-Host "Installed $installed" -ForegroundColor Green }
+    if ($exitCode -eq 0 -and $installed) { Write-Host "Installed $installed" -ForegroundColor Green }
     else { Write-Host 'Install FAILED; see its log, %APPDATA%\MindAttic\Logging\MindAttic.Orchestrator\MindAttic.Log.db (MindAttic.Log.Reader opens it).' -ForegroundColor Red; $failed = $true }
 } elseif (-not $failed) {
     Write-Host 'MindAttic.Orchestrator is up to date.' -ForegroundColor DarkGray
