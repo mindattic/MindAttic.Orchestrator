@@ -2082,6 +2082,32 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void A_quicksave_made_after_the_switch_isnt_loaded_as_the_handoff()
+    {
+        // M.ORCH-T521: for the day a resumed handoff is kept, every start loaded any save newer than the handoff's start, so a
+        // /quicksave then /clear had its save loaded (and archived) as "picked up after the account switch".
+        Directory.CreateDirectory(Marks);
+        File.WriteAllText(HandoffMark, JsonSerializer.Serialize(new
+        {
+            state = "resumed", started = DateTime.UtcNow.AddHours(-3).ToString("yyyy-MM-ddTHH:mm:ssZ"), by = 1, account = "acct-old",
+            quiet_at = DateTime.UtcNow.AddHours(-2).ToString("yyyy-MM-ddTHH:mm:ssZ"), resumed_at = DateTime.UtcNow.AddHours(-1).ToString("yyyy-MM-ddTHH:mm:ssZ"),
+            autopilot = Array.Empty<object>(),
+        }));
+        Directory.CreateDirectory(Path.Combine(Uss, ".prose"));
+        var save = Path.Combine(Uss, ".prose", "agent-session.json");
+        File.WriteAllText(save, JsonSerializer.Serialize(new { updatedAt = DateTime.UtcNow.ToString("o"), task = "t" }));
+        Directory.CreateDirectory(Path.Combine(ws, "mindattic-agent-standard"));
+        File.WriteAllText(Path.Combine(ws, "mindattic-agent-standard", "prose-agent.ps1"),
+            "param([Parameter(Position=0)][string]$Command, [string]$RepoRoot)\r\n\"Task: carry on with the parser ($Command)\"\r\n" +
+            "Move-Item -LiteralPath (Join-Path $RepoRoot '.prose\\agent-session.json') -Destination (Join-Path $RepoRoot '.prose\\agent-session.json.001') -Force\r\n");
+
+        var output = Gate(new { hook_event_name = "SessionStart", session_id = "q1", source = "clear", cwd = Uss },
+            new Dictionary<string, string> { ["MINDATTIC_CLI_PID"] = "5201" }, AgentGate.ContextScriptName).Output;
+        Assert.That(output, Does.Not.Contain("Task: carry on"));
+        Assert.That(File.Exists(save), Is.True, "left for its own /quickload");
+    }
+
+    [Test]
     public void A_clear_on_the_old_account_during_a_quiet_handoff_doesnt_resume_it()
     {
         // M.ORCH-T505: any SessionStart moved a quiet handoff to resumed, a /clear or compaction in a CLI still on the old account too.

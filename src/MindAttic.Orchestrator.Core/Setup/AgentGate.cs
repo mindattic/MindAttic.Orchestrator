@@ -1782,6 +1782,11 @@ public static class AgentGate
                 at = lambda t: datetime.fromisoformat(re.sub(r"(\.\d{6})\d+", r"\1", str(t)).replace("Z", "+00:00")).timestamp()
                 if at(saved) < at(h.get("started")):
                     return None
+                # Saved after the switch: a /quicksave made since (its /clear starts a session too), not the handoff; left for
+                # its own /quickload rather than used up here (M.ORCH-T521). A minute's slack: resumed_at is to the second, and the
+                # first start can come right after the last save.
+                if h.get("resumed_at") and at(saved) > at(h["resumed_at"]) + 60:
+                    return None
                 runner = WS / "mindattic-agent-standard" / "prose-agent.ps1"
                 if not runner.exists():
                     return None
