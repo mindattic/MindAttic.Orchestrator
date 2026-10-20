@@ -1002,91 +1002,6 @@
 
         </Grid>
 
-        <!-- Settings flyout -->
-        <Border Grid.Row="1" Grid.RowSpan="3" HorizontalAlignment="Right" Width="400" Background="#FF23252B"
-                BorderBrush="{StaticResource McChromeBorder}" BorderThickness="1,1,0,0"
-                Visibility="{Binding IsSettingsOpen, Converter={StaticResource Visible}}">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="24" ShadowDepth="0" Opacity="0.5" />
-            </Border.Effect>
-            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,16,20,20" DataContext="{Binding Settings}">
-                <StackPanel>
-                    <DockPanel>
-                        <Button DockPanel.Dock="Right" Style="{StaticResource McToolButton}" Content="&#xE711;" ToolTip="Close"
-                                Command="{Binding DataContext.ToggleSettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                AutomationProperties.Name="Close settings" />
-                        <TextBlock Text="Settings" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" AutomationProperties.HeadingLevel="Level2" />
-                    </DockPanel>
-
-                    <TextBlock Text="TOKEN BUDGET" Style="{StaticResource SectionLabel}" />
-                    <TextBlock Text="Uncached tokens (input + cache writes + output). Accepts 20M, 500k, 1.5B. Leave blank to use Claude's own reported limit, or else the limits learned from the times you actually hit the wall."
-                               Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8" />
-                    <TextBlock Text="Per 5-hour block" Margin="0,4,0,4" />
-                    <TextBox Style="{StaticResource McTextBox}" Height="32" Text="{Binding BlockBudget, UpdateSourceTrigger=PropertyChanged}"
-                             AutomationProperties.Name="Budget per 5-hour block" />
-                    <TextBlock Text="Per week" Margin="0,10,0,4" />
-                    <TextBox Style="{StaticResource McTextBox}" Height="32" Text="{Binding WeeklyBudget, UpdateSourceTrigger=PropertyChanged}"
-                             AutomationProperties.Name="Weekly budget" />
-                    <TextBlock Text="Week resets (local time)" Margin="0,10,0,4" />
-                    <TextBox Style="{StaticResource McTextBox}" Height="32" Width="160" HorizontalAlignment="Left"
-                             Text="{Binding WeeklyReset, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Weekly reset day and time" />
-                    <TextBlock Text="When Claude's weekly limit restarts, e.g. Mon 9:00 AM or Tue 5pm. Claude's own reported reset comes first; blank uses the reset your last weekly limit hit reported, or a rolling 7 days before you've had one."
-                               Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                    <TextBlock Text="Warn at (%)" Margin="0,10,0,4" />
-                    <TextBox Style="{StaticResource McTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
-                             Text="{Binding WarnPercent, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Warn percent" />
-                    <ToggleButton Style="{StaticResource PillToggle}" IsChecked="{Binding Pacing}" Margin="0,12,0,0" HorizontalAlignment="Left"
-                                  Content="Pace to the reset" />
-                    <TextBlock Text="Caps new sessions so spend lands on the target as the 5-hour window resets, instead of hitting the wall and waiting. The week is shown, never paced. Off: new work holds at the warn line."
-                               Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                    <TextBlock Text="Pace target (% of the 5-hour limit by its reset)" Margin="0,10,0,4" />
-                    <TextBox Style="{StaticResource McTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
-                             Text="{Binding PaceTarget, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Pace target percent" />
-                    <TextBlock Text="Pace profile" Margin="0,10,0,4" />
-                    <ListBox Style="{StaticResource PillChoice}" ItemsSource="{Binding PaceProfiles}" SelectedItem="{Binding PaceProfile}"
-                             AutomationProperties.Name="Pace profile" />
-                    <TextBlock Text="Linear spreads what's left evenly to the reset. Front-loaded aims at target × elapsed^k, spending faster early and easing off, and starts no new subagent or ticket past 85%. Switch any time: the next pace check follows the new curve."
-                               Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                    <TextBlock Text="Front-loaded curve exponent k (0.1 to 1; lower front-loads more)" Margin="0,10,0,4" />
-                    <TextBox Style="{StaticResource McTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
-                             Text="{Binding PaceCurveK, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Front-loaded curve exponent" />
-                    <ToggleButton Style="{StaticResource PillToggle}" IsChecked="{Binding ThrottleAgents}" Margin="0,12,0,0" HorizontalAlignment="Left"
-                                  Content="Hold running agents" />
-                    <TextBlock Text="While the draw won't last until the reset, every Claude agent (subagents too) waits before each tool call, and is let go the moment it fits."
-                               Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                    <TextBlock Text="Longest hold per tool call (seconds)" Margin="0,10,0,4" />
-                    <TextBox Style="{StaticResource McTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
-                             Text="{Binding MaxDelay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Longest hold in seconds" />
-                    <TextBlock Text="Exempt from pacing" Margin="0,10,0,4" />
-                    <TextBox Style="{StaticResource McTextBox}" Height="32" Text="{Binding ExemptCommands, UpdateSourceTrigger=PropertyChanged}"
-                             AutomationProperties.Name="Commands exempt from pacing" />
-                    <TextBlock Text="Slash commands, comma-separated. A turn typed as one of them (and a Skill call naming one) skips every pace gate: no hold, no subagent wait, no stop. Its spend still counts. Blank exempts none."
-                               Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
-
-                    <TextBlock Text="SCHEDULER" Style="{StaticResource SectionLabel}" />
-                    <TextBlock Text="Max concurrent sessions (working + waiting)" Margin="0,0,0,4" />
-                    <TextBox Style="{StaticResource McTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
-                             Text="{Binding MaxSessions, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Max concurrent sessions" />
-                    <TextBlock Text="Provider for dispatched tickets" Margin="0,10,0,4" />
-                    <ListBox Style="{StaticResource PillChoice}" ItemsSource="{Binding Providers}" SelectedItem="{Binding Provider}"
-                             AutomationProperties.Name="Dispatch provider" />
-                    <ToggleButton Style="{StaticResource PillToggle}" IsChecked="{Binding Autopilot}" Margin="0,8,0,0" HorizontalAlignment="Left"
-                                  Content="Autopilot" />
-                    <TextBlock Text="Type /autopilot in a CLI and that CLI works its repo's tickets (or -repo=a,b, or all) through its own subagents, each in its own worktree, as many at once as the pace allows; no other CLI is affected. Off here pauses it in every CLI; /autopilot off ends it in that one."
-                               Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
-
-                    <TextBlock Text="{Binding Error}" Foreground="{StaticResource McRec}" TextWrapping="Wrap" Margin="0,14,0,0" AutomationProperties.LiveSetting="Assertive"
-                               Visibility="{Binding Error, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                    <DockPanel Margin="0,16,0,0">
-                        <Button DockPanel.Dock="Right" Style="{StaticResource McPrimaryButton}" Content="Save" Padding="20,6"
-                                Command="{Binding SaveCommand}" />
-                        <TextBlock Text="{Binding FilePath}" Style="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"
-                                   VerticalAlignment="Center" Margin="0,0,12,0" />
-                    </DockPanel>
-                </StackPanel>
-            </ScrollViewer>
-        </Border>
-
         <!-- Status bar -->
         <Border Grid.Row="4" BorderBrush="{StaticResource McChromeBorder}" BorderThickness="0,1,0,0" Padding="24,6">
             <DockPanel>
@@ -1119,5 +1034,82 @@
                            Text="Reading every repo's sessions, tickets and usage" />
             </StackPanel>
         </Border>
+
+        <!-- Settings (M.ORCH-T498): the shared McModal, centred over a dimmed window, instead of the old right-side flyout.
+             Esc, its close button and the backdrop all close it through ToggleSettingsCommand (which reloads the saved
+             settings, dropping unsaved edits, as the flyout's close did); focus is held inside while open and goes back to
+             the Settings button (or stat card) after. Last in the root grid, spanning every row, over the loader too. -->
+        <mc:McModal x:Name="SettingsModal" Grid.RowSpan="5" Title="Settings" AutomationProperties.Name="Settings"
+                    IsOpen="{Binding IsSettingsOpen}" CloseCommand="{Binding ToggleSettingsCommand}">
+            <StackPanel DataContext="{Binding Settings}">
+                <TextBlock Text="TOKEN BUDGET" Style="{StaticResource SectionLabel}" Margin="0,4,0,8" />
+                <TextBlock Text="Uncached tokens (input + cache writes + output). Accepts 20M, 500k, 1.5B. Leave blank to use Claude's own reported limit, or else the limits learned from the times you actually hit the wall."
+                           Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                <TextBlock Text="Per 5-hour block" Margin="0,4,0,4" />
+                <TextBox Style="{StaticResource McTextBox}" Height="32" Text="{Binding BlockBudget, UpdateSourceTrigger=PropertyChanged}"
+                         AutomationProperties.Name="Budget per 5-hour block" />
+                <TextBlock Text="Per week" Margin="0,10,0,4" />
+                <TextBox Style="{StaticResource McTextBox}" Height="32" Text="{Binding WeeklyBudget, UpdateSourceTrigger=PropertyChanged}"
+                         AutomationProperties.Name="Weekly budget" />
+                <TextBlock Text="Week resets (local time)" Margin="0,10,0,4" />
+                <TextBox Style="{StaticResource McTextBox}" Height="32" Width="160" HorizontalAlignment="Left"
+                         Text="{Binding WeeklyReset, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Weekly reset day and time" />
+                <TextBlock Text="When Claude's weekly limit restarts, e.g. Mon 9:00 AM or Tue 5pm. Claude's own reported reset comes first; blank uses the reset your last weekly limit hit reported, or a rolling 7 days before you've had one."
+                           Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                <TextBlock Text="Warn at (%)" Margin="0,10,0,4" />
+                <TextBox Style="{StaticResource McTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
+                         Text="{Binding WarnPercent, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Warn percent" />
+                <ToggleButton Style="{StaticResource PillToggle}" IsChecked="{Binding Pacing}" Margin="0,12,0,0" HorizontalAlignment="Left"
+                              Content="Pace to the reset" />
+                <TextBlock Text="Caps new sessions so spend lands on the target as the 5-hour window resets, instead of hitting the wall and waiting. The week is shown, never paced. Off: new work holds at the warn line."
+                           Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                <TextBlock Text="Pace target (% of the 5-hour limit by its reset)" Margin="0,10,0,4" />
+                <TextBox Style="{StaticResource McTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
+                         Text="{Binding PaceTarget, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Pace target percent" />
+                <TextBlock Text="Pace profile" Margin="0,10,0,4" />
+                <ListBox Style="{StaticResource PillChoice}" ItemsSource="{Binding PaceProfiles}" SelectedItem="{Binding PaceProfile}"
+                         AutomationProperties.Name="Pace profile" />
+                <TextBlock Text="Linear spreads what's left evenly to the reset. Front-loaded aims at target × elapsed^k, spending faster early and easing off, and starts no new subagent or ticket past 85%. Switch any time: the next pace check follows the new curve."
+                           Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                <TextBlock Text="Front-loaded curve exponent k (0.1 to 1; lower front-loads more)" Margin="0,10,0,4" />
+                <TextBox Style="{StaticResource McTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
+                         Text="{Binding PaceCurveK, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Front-loaded curve exponent" />
+                <ToggleButton Style="{StaticResource PillToggle}" IsChecked="{Binding ThrottleAgents}" Margin="0,12,0,0" HorizontalAlignment="Left"
+                              Content="Hold running agents" />
+                <TextBlock Text="While the draw won't last until the reset, every Claude agent (subagents too) waits before each tool call, and is let go the moment it fits."
+                           Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                <TextBlock Text="Longest hold per tool call (seconds)" Margin="0,10,0,4" />
+                <TextBox Style="{StaticResource McTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
+                         Text="{Binding MaxDelay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Longest hold in seconds" />
+                <TextBlock Text="Exempt from pacing" Margin="0,10,0,4" />
+                <TextBox Style="{StaticResource McTextBox}" Height="32" Text="{Binding ExemptCommands, UpdateSourceTrigger=PropertyChanged}"
+                         AutomationProperties.Name="Commands exempt from pacing" />
+                <TextBlock Text="Slash commands, comma-separated. A turn typed as one of them (and a Skill call naming one) skips every pace gate: no hold, no subagent wait, no stop. Its spend still counts. Blank exempts none."
+                           Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
+
+                <TextBlock Text="SCHEDULER" Style="{StaticResource SectionLabel}" />
+                <TextBlock Text="Max concurrent sessions (working + waiting)" Margin="0,0,0,4" />
+                <TextBox Style="{StaticResource McTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
+                         Text="{Binding MaxSessions, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Max concurrent sessions" />
+                <TextBlock Text="Provider for dispatched tickets" Margin="0,10,0,4" />
+                <ListBox Style="{StaticResource PillChoice}" ItemsSource="{Binding Providers}" SelectedItem="{Binding Provider}"
+                         AutomationProperties.Name="Dispatch provider" />
+                <ToggleButton Style="{StaticResource PillToggle}" IsChecked="{Binding Autopilot}" Margin="0,8,0,0" HorizontalAlignment="Left"
+                              Content="Autopilot" />
+                <TextBlock Text="Type /autopilot in a CLI and that CLI works its repo's tickets (or -repo=a,b, or all) through its own subagents, each in its own worktree, as many at once as the pace allows; no other CLI is affected. Off here pauses it in every CLI; /autopilot off ends it in that one."
+                           Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
+
+                <TextBlock Text="{Binding Error}" Foreground="{StaticResource McRec}" TextWrapping="Wrap" Margin="0,14,0,0" AutomationProperties.LiveSetting="Assertive"
+                           Visibility="{Binding Error, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+            </StackPanel>
+            <mc:McModal.Footer>
+                <DockPanel DataContext="{Binding Settings}" LastChildFill="True">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource McPrimaryButton}" Content="Save" Padding="20,6"
+                            Command="{Binding SaveCommand}" />
+                    <TextBlock Text="{Binding FilePath}" Style="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"
+                               VerticalAlignment="Center" Margin="0,0,12,0" />
+                </DockPanel>
+            </mc:McModal.Footer>
+        </mc:McModal>
     </Grid>
 </Window>

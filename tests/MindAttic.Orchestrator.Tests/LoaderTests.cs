@@ -19,9 +19,12 @@ public sealed class LoaderTests
         XNamespace p = "http://schemas.microsoft.com/winfx/2006/xaml/presentation", x = "http://schemas.microsoft.com/winfx/2006/xaml";
         var grid = XDocument.Load(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml")).Root!.Element(p + "Grid")!;
         var rows = grid.Element(p + "Grid.RowDefinitions")!.Elements(p + "RowDefinition").Count();
-        var loader = grid.Elements().Last();
+        // The settings modal (M.ORCH-T498) comes last and draws over everything, the loader included; under it, the loader
+        // is the last child and draws over the dashboard.
+        var children = grid.Elements().Where(e => e.Name.LocalName != "McModal").ToList();
+        var loader = children.Last();
 
-        Assert.That((string?)loader.Attribute(x + "Name"), Is.EqualTo("Loader"), "the loader is the root grid's last child, so it draws over everything");
+        Assert.That((string?)loader.Attribute(x + "Name"), Is.EqualTo("Loader"), "the loader is the root grid's last child but the modal, so it draws over the dashboard");
         Assert.That((int?)loader.Attribute("Grid.RowSpan"), Is.EqualTo(rows));
         Assert.That((string?)loader.Attribute("Visibility"), Does.StartWith("{Binding IsLoading,"));
     }
@@ -32,7 +35,8 @@ public sealed class LoaderTests
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         XNamespace p = "http://schemas.microsoft.com/winfx/2006/xaml/presentation", local = "clr-namespace:MindAttic.Orchestrator.Wpf";
-        var loader = XDocument.Load(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml")).Root!.Element(p + "Grid")!.Elements().Last();
+        var loader = XDocument.Load(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml")).Root!.Element(p + "Grid")!.Elements()
+            .Single(e => (string?)e.Attribute("{http://schemas.microsoft.com/winfx/2006/xaml}Name") == "Loader");
 
         Assert.That(loader.Descendants(local + "ThreadedSpinner").Count(), Is.EqualTo(1));
         Assert.That(loader.Descendants(p + "Storyboard"), Is.Empty, "a storyboard here would tick on the window's thread and freeze with it");
