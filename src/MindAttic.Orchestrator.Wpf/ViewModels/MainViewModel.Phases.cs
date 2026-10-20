@@ -486,7 +486,13 @@ public sealed partial class MainViewModel
     {
         IsAuditing = true;
         AuditInfo = "Scanning every repo…";
-        try { ShowAudit(await Task.Run(() => auditRunner.Run())); }
+        try
+        {
+            // A report that can't be saved (audit.json held, disk full) is still shown, with why, as the CLI does (M.ORCH-T467).
+            var report = await Task.Run(() => auditRunner.Scan());
+            ShowAudit(report);
+            if (!auditRunner.TrySave(report, out var saveError)) AuditInfo += $" · not saved: {saveError}";
+        }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException) { AuditInfo = $"Audit failed: {ex.Message}"; }
         finally
         {
