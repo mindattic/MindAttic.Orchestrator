@@ -77,6 +77,23 @@ public sealed class TranscriptReaderTests
     }
 
     [Test]
+    public void Subagents_each_making_the_same_call_once_arent_a_loop_but_one_repeating_it_is()
+    {
+        // M.ORCH-T517: every transcript of a session was pooled, so five subagents each reading the same file read as "stuck".
+        System.IO.File.WriteAllLines(File(), [Line("m0", "2026-10-13T06:00:00Z", 1, 1)]);
+        var subagents = Path.Combine(dir, "D--Projects-X", "s1", "subagents");
+        Directory.CreateDirectory(subagents);
+        for (var i = 1; i <= 5; i++)
+            System.IO.File.WriteAllLines(Path.Combine(subagents, $"agent-a{i}.jsonl"), [ToolLine("t" + i, $"2026-10-13T06:0{i}:00Z")]);
+        var reader = new TranscriptReader(dir);
+        Assert.That(reader.Poll(Since).Single().Loop, Is.Null);
+
+        System.IO.File.WriteAllLines(Path.Combine(subagents, "agent-a1.jsonl"),
+            [.. Enumerable.Range(1, 5).Select(i => ToolLine("r" + i, $"2026-10-13T06:1{i}:00Z"))]);
+        Assert.That(reader.Poll(Since).Single().Loop, Is.Not.Null, "one subagent making it five times is");
+    }
+
+    [Test]
     public void A_restarted_reader_picks_up_where_the_last_one_stopped()
     {
         System.IO.File.WriteAllLines(File(), [Line("m1", "2026-10-13T12:00:00Z", 1, 10), Line("m2", "2026-10-13T12:01:00Z", 1, 20)]);

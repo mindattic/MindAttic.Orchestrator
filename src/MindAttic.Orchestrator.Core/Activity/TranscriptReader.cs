@@ -212,7 +212,9 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
                     TicketedSubagents = [.. g.Where(s => s.AgentId is not null && s.TicketId is not null)
                         .Select(s => new TicketedSubagent(s.AgentId!, s.TicketId!, s.TicketType, s.Cwd!, [.. s.Events.OrderBy(e => e.AtUtc)]))],
                     Filing = [.. g.SelectMany(s => s.Filed.Select(id => new FiledTicket(id, s.AgentId, s.LastWriteUtc)))],
-                    Loop = LoopDetector.Find(g.SelectMany(s => s.Tools).OrderBy(c => c.AtUtc).ToList()),
+                    // Each transcript by itself: subagents running side by side each making the same call once isn't one
+                    // agent repeating itself, nor are the calls a fork copied from its parent.
+                    Loop = g.Select(s => LoopDetector.Find(s.Tools.OrderBy(c => c.AtUtc).ToList())).FirstOrDefault(l => l is not null),
                     Doing = g.SelectMany(s => s.Tools).MaxBy(c => c.AtUtc) is { } last ? ToolCallText.Describe(last.Name, last.Input) : null,
                     DoingAtUtc = g.SelectMany(s => s.Tools).MaxBy(c => c.AtUtc)?.AtUtc,
                 };
