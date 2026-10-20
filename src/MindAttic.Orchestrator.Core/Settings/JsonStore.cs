@@ -184,6 +184,8 @@ public sealed class JsonStore
         ("pilot", nameof(Assignment.Pilot), typeof(long)),
         ("pilot_started_utc", nameof(Assignment.PilotStartedUtc), typeof(string)),
         ("log", nameof(Assignment.Log), typeof(string)),
+        ("cli", nameof(Assignment.Cli), typeof(long)),
+        ("cli_session", nameof(Assignment.CliSession), typeof(string)),
     ];
 
     /// <summary><paramref name="name"/>'s value as JSON, or null when nothing is kept for it.</summary>

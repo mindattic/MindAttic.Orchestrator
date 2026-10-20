@@ -58,6 +58,9 @@ public sealed class AgentRowViewModel(string sessionId) : ObservableObject
     /// <summary>"Claude CLI · Claude Team · 3.2M tokens today", without a dangling separator for a part not known yet.</summary>
     public string Meta => string.Join(" · ", new[] { Kind, Billing, Tokens }.Where(p => p.Length > 0));
 
+    /// <summary>The tickets its CLI claimed for its subagents (M.ORCH-T532): "Claimed: M.ORCH-T1, M.ORCH-T2"; empty when none.</summary>
+    public string Claims => row.Claims.Count == 0 ? "" : "Claimed: " + string.Join(", ", row.Claims);
+
     /// <summary>Why it's held (the pace's note); empty otherwise.</summary>
     public string HoldNote => row.State == AgentState.HeldByPace ? row.StateDetail : "";
 
@@ -67,7 +70,7 @@ public sealed class AgentRowViewModel(string sessionId) : ObservableObject
 
     /// <summary>The whole card in one sentence, for a screen reader.</summary>
     public string AccessibleName =>
-        $"{Repo}, {Kind}, {StateLabel}, {Headline}. {Doing}. {(Billing.Length > 0 ? $"Bills {Billing}. " : "")}{SubagentsHeader}.";
+        $"{Repo}, {Kind}, {StateLabel}, {Headline}. {Doing}. {(Billing.Length > 0 ? $"Bills {Billing}. " : "")}{(Claims.Length > 0 ? Claims + ". " : "")}{SubagentsHeader}.";
 
     public void Update(AgentBoardRow next, string? title, DateTime snapshotUtc)
     {

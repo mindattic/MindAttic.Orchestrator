@@ -194,6 +194,13 @@ public sealed class OrchestratorDb(string path)
             PRIMARY KEY (kind, pid)
         );
         """,
+        // 7: which CLI made each claim (M.ORCH-T532): its process id as the pace gate resolves it, and its session then, so the
+        // idle-claim nudge, the fair share and the agent board give a claim to the CLI that made it, not whichever /autopilot
+        // CLI covers its repo. Rows already there keep NULL in both: claimed by a CLI not known.
+        """
+        ALTER TABLE assignments ADD COLUMN cli INTEGER;
+        ALTER TABLE assignments ADD COLUMN cli_session TEXT;
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a

@@ -958,6 +958,9 @@
                                                        Visibility="{Binding Doing, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                                             <TextBlock Text="{Binding HoldNote}" Foreground="{x:Static vm:Palette.Waiting}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
                                                        Visibility="{Binding HoldNote, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                                            <!-- The tickets this CLI claimed, only its own (M.ORCH-T532). -->
+                                            <TextBlock Text="{Binding Claims}" Style="{StaticResource Muted}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                                       Visibility="{Binding Claims, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
 
                                             <!-- Its subagents, inside it. -->
                                             <Border Background="{StaticResource McChrome}" CornerRadius="4" Padding="10,8" Margin="0,10,0,0"

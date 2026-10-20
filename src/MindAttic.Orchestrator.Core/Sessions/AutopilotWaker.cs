@@ -184,9 +184,11 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
     /// has worked for <see cref="ClaimIdle"/>, each with the /autopilot CLI it's put to. A claim has a subagent on it when the
     /// plan sees a live session or subagent working it (<see cref="SchedulePlan.Worked"/>: a subagent's prompt or worktree
     /// names it), or a transcript (a session's, or a ticketed subagent's) or a Launcher tab has its working directory in the
-    /// claim's worktree within <see cref="ClaimIdle"/>. The claim's CLI is the /autopilot CLI whose repos name its repo
-    /// (assignments don't record the claiming CLI): one naming it outright first, then one on a wildcard or every repo; a
-    /// repo no /autopilot CLI works is nobody's to be told.
+    /// claim's worktree within <see cref="ClaimIdle"/>. The claim's CLI is the one that made it (M.ORCH-T532: with two
+    /// /autopilot CLIs on one repo, the repo's owner was prompted for the other's claims) while it's a live /autopilot CLI;
+    /// a claim whose CLI isn't known (made before claims recorded it) or has gone goes to the /autopilot CLI whose repos name
+    /// its repo: one naming it outright first, then one on a wildcard or every repo; a repo no /autopilot CLI works is
+    /// nobody's to be told.
     /// </summary>
     internal static IReadOnlyList<(int Cli, QueueItem Item)> IdleClaims(Snapshot snapshot, SchedulePlan plan,
         IReadOnlyDictionary<int, IReadOnlyList<string>> pilots, DateTime nowUtc)
@@ -198,7 +200,8 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
             if (q.Assignment is not { Worktree: true, Pilot: null } a || !q.IsAssigned || worked.Contains(q.Id)) continue;
             if (nowUtc - a.StartedUtc < ClaimIdle) continue;
             if (Active(a.Directory, snapshot, nowUtc)) continue;
-            if (OwnerOf(q.Repo, pilots) is { } cli) idle.Add((cli, q));
+            var claimer = a.Cli is { } made && pilots.ContainsKey(made) ? made : OwnerOf(q.Repo, pilots);
+            if (claimer is { } cli) idle.Add((cli, q));
         }
         return idle;
     }

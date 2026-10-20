@@ -208,4 +208,16 @@ public sealed record Assignment(string TicketId, string Repo, string Directory, 
 
     /// <summary>Where that background agent's output goes.</summary>
     public string? Log { get; init; }
+
+    /// <summary>The Claude CLI that claimed it (<c>orchestrator next --claim</c>), by process id as the pace gate resolves it
+    /// (<c>MINDATTIC_CLI_PID</c>, else the claude.exe it runs under): its subagent is that CLI's to start (M.ORCH-T532). Null
+    /// when unknown: a tab's or background agent's assignment, or a claim made before claims recorded it.</summary>
+    public int? Cli { get; init; }
+
+    /// <summary>The claiming CLI's session at the claim (its newest, as the context gate recorded it); null when unknown.</summary>
+    public string? CliSession { get; init; }
+
+    /// <summary>A claim for a CLI's subagent: a worktree, no background agent on it.</summary>
+    [JsonIgnore]
+    public bool IsClaim => Worktree && Pilot is null && Log is null;
 }

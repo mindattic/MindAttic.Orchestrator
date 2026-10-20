@@ -60,7 +60,7 @@ public sealed class LeaseTests
         store.SaveSettings(new OrchestratorSettings { BlockBudget = 1234 });
         // Back to how a version-3 database was: no step-4 tables.
         using (var connection = store.Db.Open())
-            OrchestratorDb.Execute(connection, "DROP TABLE leases; DROP TABLE gate_events; DROP TABLE subagent_slots; DROP TABLE subagent_wants; DROP TABLE cli_marks; PRAGMA user_version = 3;");
+            OrchestratorDb.Execute(connection, "DROP TABLE leases; DROP TABLE gate_events; DROP TABLE subagent_slots; DROP TABLE subagent_wants; DROP TABLE cli_marks; " + DropStep7 + " PRAGMA user_version = 3;");
 
         using (var connection = new OrchestratorDb(path).Open())
         {
@@ -74,6 +74,9 @@ public sealed class LeaseTests
         Assert.That(new JsonStore(dir, new OrchestratorDb(path)).LoadSettings().BlockBudget, Is.EqualTo(1234), "what it held is kept");
     }
 
+    /// <summary>Undoes step 7 (M.ORCH-T532's claimer columns), so an older version's steps run again from there.</summary>
+    private const string DropStep7 = "ALTER TABLE assignments DROP COLUMN cli; ALTER TABLE assignments DROP COLUMN cli_session;";
+
     [Test]
     public void Step_5_adds_the_subagent_slots_and_wants_to_a_version_4_database_and_keeps_what_it_held()
     {
@@ -82,7 +85,7 @@ public sealed class LeaseTests
         store.SaveSettings(new OrchestratorSettings { BlockBudget = 4321 });
         // Back to how a version-4 database was: no step-5 tables (M.ORCH-T527).
         using (var connection = store.Db.Open())
-            OrchestratorDb.Execute(connection, "DROP TABLE subagent_slots; DROP TABLE subagent_wants; DROP TABLE cli_marks; PRAGMA user_version = 4;");
+            OrchestratorDb.Execute(connection, "DROP TABLE subagent_slots; DROP TABLE subagent_wants; DROP TABLE cli_marks; " + DropStep7 + " PRAGMA user_version = 4;");
 
         using (var connection = new OrchestratorDb(path).Open())
         {
@@ -104,7 +107,7 @@ public sealed class LeaseTests
         store.SaveSettings(new OrchestratorSettings { BlockBudget = 5555 });
         // Back to how a version-5 database was: no cli_marks (M.ORCH-T528).
         using (var connection = store.Db.Open())
-            OrchestratorDb.Execute(connection, "DROP TABLE cli_marks; PRAGMA user_version = 5;");
+            OrchestratorDb.Execute(connection, "DROP TABLE cli_marks; " + DropStep7 + " PRAGMA user_version = 5;");
 
         using (var connection = new OrchestratorDb(path).Open())
         {
@@ -114,7 +117,7 @@ public sealed class LeaseTests
             command.CommandText = "SELECT count(*) FROM sqlite_master WHERE name = 'cli_marks';";
             Assert.That(command.ExecuteScalar(), Is.EqualTo(1L));
         }
-        Assert.That(OrchestratorDb.Version, Is.EqualTo(6));
+        Assert.That(OrchestratorDb.Version, Is.GreaterThanOrEqualTo(6));
         Assert.That(new JsonStore(dir, new OrchestratorDb(path)).LoadSettings().BlockBudget, Is.EqualTo(5555), "what it held is kept");
     }
 

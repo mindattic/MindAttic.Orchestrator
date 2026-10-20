@@ -353,7 +353,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             rateLimitFile.Write(budget, pace);
 
         var runningSubagents = subagents.Poll(contextCycler, now);
-        var agentBoard = AgentBoard.Build(result, pace, Store.LoadAssignments(), runningSubagents, options.WorkingWindow, now, contextCycler.LiveSessions(now));
+        var agentBoard = AgentBoard.Build(result, pace, Store.LoadAssignments(), runningSubagents, options.WorkingWindow, now, contextCycler.LiveSessions(now),
+            contextCycler.Load().Where(c => c.Pid is not null).ToDictionary(c => c.SessionId, c => c.Pid!.Value, StringComparer.Ordinal));
         // Who's billed, and each CLI's own billing on its card (M.ORCH-T436); never the refresh's failure.
         Billing.BillingStatus? billing = null;
         try

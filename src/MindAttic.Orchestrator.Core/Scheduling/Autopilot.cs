@@ -438,13 +438,18 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         // Its fair share, not every free place (M.ORCH-T495): another /autopilot CLI with workable tickets of its own keeps its share.
         if (count is null && !unthrottled && cli is { } me && plan.Pace?.SubagentAllowance is { } cap)
         {
-            var running = plan.Pace.SubagentsByCli;
+            // A CLI's claims no subagent has shown up on yet are its subagents about to run (M.ORCH-T532): they count against its
+            // own share, not against whichever CLI covers their repo. A claim whose CLI isn't known counts for nobody.
+            var pending = PendingClaims(plan);
+            var running = plan.Pace.SubagentsByCli.Keys.Union(pending.Keys)
+                .ToDictionary(c => c, c => plan.Pace.SubagentsByCli.GetValueOrDefault(c) + pending.GetValueOrDefault(c));
             var wanting = (pilots ?? new Dictionary<int, IReadOnlyList<string>>()).Where(p => p.Key != me && plan.Queue.Any(q => Autopilot.Named(p.Value, q.Repo) && Workable(q)))
                 .Select(p => p.Key).ToList();
-            var fair = SubagentShare.Room(cap, plan.Pace.Subagents, me, running, wanting);
+            var fair = SubagentShare.Room(cap, plan.Pace.Subagents + pending.Values.Sum(), me, running, wanting);
             if (fair <= 0)
-                return ([], $"this CLI has its fair share of the subagent allowance ({running.GetValueOrDefault(me)} running of {cap} across " +
-                    $"{wanting.Count + 1} CLIs that want them); the rest are kept for the others. Run it again when one of yours finishes");
+                return ([], $"this CLI has its fair share of the subagent allowance ({running.GetValueOrDefault(me)} " +
+                    (pending.GetValueOrDefault(me) is > 0 and var mine ? $"running or claimed ({mine} claimed with no subagent on yet: start them)" : "running") +
+                    $" of {cap} across {wanting.Count + 1} CLIs that want them); the rest are kept for the others. Run it again when one of yours finishes");
             more = Math.Min(more, fair);
         }
 
@@ -484,7 +489,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             {
                 if (all.Any(a => a.TicketId == item.Id && a != item.Assignment)) { taken = true; return; }
                 all.RemoveAll(a => a.TicketId == item.Id);
-                all.Add(new Assignment(item.Id, item.Repo, tree, Providers.Claude, nowUtc, true));
+                all.Add(new Assignment(item.Id, item.Repo, tree, Providers.Claude, nowUtc, true) { Cli = cli, CliSession = self });
             });
             if (taken) { claimedElsewhere++; continue; }
             handed.Add(new Handout(item, tree, PromptFor(item, tree, branch, mainlineOf(item.RepoPath))));
@@ -495,6 +500,15 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             : claimedElsewhere > 0 ? "another CLI claimed them first; nothing else is ready"
             : closedSince > 0 ? "they were closed since the queue was read; nothing else is ready"
             : "couldn't make a worktree for any of them (see orchestrator queue)");
+    }
+
+    /// <summary>Each CLI's claims (by the CLI that made them, M.ORCH-T532) that no subagent is seen working yet
+    /// (<see cref="SchedulePlan.Worked"/>), not gone stale: the subagents it's about to start.</summary>
+    internal static IReadOnlyDictionary<int, int> PendingClaims(SchedulePlan plan)
+    {
+        var worked = plan.Worked.Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return plan.Queue.Where(q => q.IsAssigned && q.Assignment is { IsClaim: true, Cli: not null } && !worked.Contains(q.Id))
+            .GroupBy(q => q.Assignment!.Cli!.Value).ToDictionary(g => g.Key, g => g.Count());
     }
 
     /// <summary>Whether ticket <paramref name="id"/> of the repo at <paramref name="repoPath"/> is still open right now: in the

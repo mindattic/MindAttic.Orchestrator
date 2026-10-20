@@ -34,12 +34,17 @@ public sealed record AgentBoardRow(
 
     /// <summary>What its CLI bills, in words, and whether it's being restarted for the billing mode (M.ORCH-T436); null when unknown.</summary>
     public string? Billing { get; init; }
+
+    /// <summary>The tickets its CLI claimed for its subagents (<c>orchestrator next --claim</c>, M.ORCH-T532), in claim order:
+    /// only its own, never another CLI's on the same repo.</summary>
+    public IReadOnlyList<string> Claims { get; init; } = [];
 }
 
 /// <summary>
 /// Builds the agent board: every live Claude session (a Launcher tab or a headless autopilot agent),
 /// each with its running subagents nested under it. Pure projection over what <see cref="StatusAggregator"/>
-/// already gathers; nothing here reads a file itself.
+/// already gathers; nothing here reads a file itself. Each CLI's row lists the tickets that CLI claimed (by the CLI process
+/// <c>clis</c> maps its session to, or the session the claim recorded), so two CLIs on one repo each show only their own.
 /// </summary>
 public static class AgentBoard
 {
@@ -50,7 +55,8 @@ public static class AgentBoard
         IReadOnlyList<SubagentActivity> subagents,
         TimeSpan workingWindow,
         DateTime nowUtc,
-        IReadOnlyDictionary<string, bool>? live = null)
+        IReadOnlyDictionary<string, bool>? live = null,
+        IReadOnlyDictionary<string, int>? clis = null)
     {
         var byParent = subagents.ToLookup(s => s.ParentSessionId, StringComparer.Ordinal);
         var byTicket = assignments.DistinctBy(a => a.TicketId, StringComparer.OrdinalIgnoreCase).ToDictionary(a => a.TicketId, StringComparer.OrdinalIgnoreCase);
@@ -82,11 +88,17 @@ public static class AgentBoard
                 var assignment = session.TicketId is { } tid ? byTicket.GetValueOrDefault(tid) : null;
                 var started = assignment?.StartedUtc ?? (session.Events.Count > 0 ? session.Events[0].AtUtc : session.LastWriteUtc);
 
+                // Its CLI's claims: made by its CLI process (any of its sessions, so a /clear keeps them), or in this session.
+                int? cli = clis is not null && clis.TryGetValue(session.SessionId, out var p) ? p : null;
+                var claims = assignments.Where(a => a.IsClaim && ((cli is not null && a.Cli == cli) ||
+                        (a.CliSession is not null && a.CliSession == session.SessionId)))
+                    .Select(a => a.TicketId).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
                 rows.Add(new AgentBoardRow(
                     session.SessionId, repo.Name, session.TicketId, session.TicketType,
                     started, session.LastWriteUtc, state, detail,
                     assignment?.Pilot is not null, session.UsageToday,
-                    [.. byParent[session.SessionId]]) { Doing = session.Doing, DoingAtUtc = session.DoingAtUtc });
+                    [.. byParent[session.SessionId]]) { Doing = session.Doing, DoingAtUtc = session.DoingAtUtc, Claims = claims });
             }
         }
         return [.. rows.OrderByDescending(r => r.LastActivityUtc)];
