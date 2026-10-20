@@ -1016,6 +1016,7 @@ public static class AgentGate
         def set_cli_mark(kind, pid, value):
             # Sets (or with None, removes) a CLI's mark: its cli_marks row in one write transaction, any file for it gone; the
             # file while the database is held past a short wait, missing or older (a removal then leaves <kind>-<pid>.cleared).
+            # False when neither could be written.
             if not pid:
                 return
             f = CLI_MARKS_DIR / (kind + "-" + str(pid))
@@ -1036,7 +1037,7 @@ public static class AgentGate
                     db.execute("COMMIT")
                     drop(f)
                     drop(gone)
-                    return
+                    return True
                 except Exception:
                     try:
                         db.execute("ROLLBACK")
@@ -1044,14 +1045,31 @@ public static class AgentGate
                         pass
                 finally:
                     db.close()
-            CLI_MARKS_DIR.mkdir(parents=True, exist_ok=True)
+            def write(p, text):
+                # A file held open by another process for a moment is retried; one held longer isn't written (M.ORCH-T545:
+                # the error went up through the context gate, which isn't inside a try where it's called).
+                for _ in range(20):
+                    try:
+                        p.write_text(text, encoding="utf-8")
+                        return True
+                    except PermissionError:
+                        time.sleep(0.05)
+                    except Exception:
+                        return False
+                return False
+            try:
+                CLI_MARKS_DIR.mkdir(parents=True, exist_ok=True)
+            except Exception:
+                return False
             if value is None:
                 drop(f)
                 if os.path.isfile(ORCH_DB):
-                    gone.write_text("", encoding="utf-8")
+                    return write(gone, "")
             else:
-                f.write_text(str(value), encoding="utf-8")
+                if not write(f, str(value)):
+                    return False
                 drop(gone)
+            return True
         CLEARED = {"state": "cleared"}  # a whole mark's file saying it was cleared while the database was held
         def whole_mark(name, path):
             # A mark the hooks keep whole (the handoff: M.ORCH-T528): its file when there is one (one no process has read in
@@ -1328,7 +1346,9 @@ public static class AgentGate
                     except Exception:
                         pass
             if pid and names:
-                set_cli_mark("autopilot", pid, ",".join(names))
+                if set_cli_mark("autopilot", pid, ",".join(names)) is False:
+                    return ("The orchestrator's database is held by another write and this CLI's /autopilot file is held open, so it "
+                            "couldn't be recorded. Nothing changed: type it again in a moment.")
                 if may_have_cli_mark("noautopilot", pid):
                     set_cli_mark("noautopilot", pid, None)
             else:

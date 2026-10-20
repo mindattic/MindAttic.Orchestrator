@@ -392,6 +392,25 @@ public sealed class HookMarkTests
     }
 
     [Test]
+    public void A_cli_mark_file_held_open_while_the_database_is_held_is_reported_not_a_crash()
+    {
+        // M.ORCH-T545: the fallback's write_text raised PermissionError up through the context gate.
+        Db.Open().Dispose();
+        var file = Path.Combine(Marks, "autopilot-5");
+        File.WriteAllText(file, "A");
+        string output;
+        using (var connection = Db.Open())
+        using (new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            OrchestratorDb.Execute(connection, "BEGIN IMMEDIATE;");
+            output = Hook(AgentGate.MarksPython + "\n" + """print(set_cli_mark("crossrepo", 5, None) is not False, set_autopilot(5, "-repo=B", ""))""");
+            OrchestratorDb.Execute(connection, "ROLLBACK;");
+        }
+        Assert.That(output, Does.StartWith("True ").And.Contain("couldn't be recorded"));
+        Assert.That(File.ReadAllText(file), Is.EqualTo("A"));
+    }
+
+    [Test]
     public void Without_a_database_the_cli_marks_stay_files_as_before()
     {
         Hook("""set_cli_mark("autopilot", 9, "X"); set_cli_mark("noautopilot", 9, ""); set_cli_mark("crossrepo", 9, "Y"); set_cli_mark("crossrepo", 9, None)""");
