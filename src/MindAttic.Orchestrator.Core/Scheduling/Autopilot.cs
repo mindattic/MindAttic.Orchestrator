@@ -270,6 +270,10 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     }
 
     internal static readonly TimeSpan SweepEvery = TimeSpan.FromHours(1);
+
+    /// <summary>A ticket id as a worktree folder is named after it: M.ORCH-T123, M.COMP-T4, USS-T5.</summary>
+    private static readonly System.Text.RegularExpressions.Regex TicketName =
+        new(@"^(?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
     private DateTime sweptUtc;
 
     /// <summary>
@@ -291,6 +295,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             foreach (var tree in trees)
             {
                 var id = Path.GetFileName(tree);
+                // Only a folder named as a ticket is (PREFIX-T<n>) is a ticket's worktree: a bughunt or hand-made one isn't a closed
+                // ticket because the database doesn't know its name, and a subagent may be working in it unseen (M.ORCH-T547).
+                if (!TicketName.IsMatch(id)) continue;
                 // Only a ticket's own worktree (a .git file, not a full clone that ended up here) whose ticket is finished.
                 if (assigned.Contains(id) || open.Contains(id) || !File.Exists(Path.Combine(tree, ".git"))) continue;
                 // Nor one a tab is open in or a session wrote from lately: a tab's or a claim's assignment is gone as soon as its

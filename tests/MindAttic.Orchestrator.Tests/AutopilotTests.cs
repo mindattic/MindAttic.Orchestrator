@@ -218,6 +218,27 @@ public sealed class AutopilotTests
     }
 
     [Test]
+    public void The_sweep_leaves_a_worktree_whose_name_is_not_a_ticket_id_alone()
+    {
+        // M.ORCH-T547: any clean folder whose name the db didn't know read as a closed ticket and was removed, e.g. a bughunt
+        // worktree a subagent was working in (its cwd is its CLI's, so no activity is seen there).
+        var wt = Path.Combine(dir, "wt", "A");
+        foreach (var name in new[] { "bugfix-20261020-c", "scratch", "USS-T5", "M.COMP-T4", "A-T7" })
+        {
+            Directory.CreateDirectory(Path.Combine(wt, name));
+            File.WriteAllText(Path.Combine(wt, name, ".git"), "gitdir: x");
+            landed.Add(name.ToUpperInvariant());
+        }
+        Cli(100, @"D:\W\A");
+        var snap = Snap(("A", []));
+
+        Pilot().Tick(Paced(snap, 0), snap, new() { WorktreeRoot = Path.Combine(dir, "wt") }, Now);
+
+        Assert.That(landedFrom.Keys, Is.EquivalentTo(new[] { "USS-T5", "M.COMP-T4", "A-T7" }),
+            "ticket-shaped names (an old prefix too, M.ORCH-T368) are swept; anything else isn't a ticket's worktree");
+    }
+
+    [Test]
     public void A_repo_whose_stories_all_wait_for_approval_says_so()
     {
         Cli(100, @"D:\W\A");
