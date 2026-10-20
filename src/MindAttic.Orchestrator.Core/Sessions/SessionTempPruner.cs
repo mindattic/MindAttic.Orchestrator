@@ -17,6 +17,15 @@ public static class SessionTempPruner
 
     public static string BaseDir() => Path.Combine(Path.GetTempPath(), "claude");
 
+    // Hidden and system files are the session's too; only links are skipped.
+    private static readonly EnumerationOptions Walk = new()
+    {
+        RecurseSubdirectories = true, AttributesToSkip = FileAttributes.ReparsePoint, IgnoreInaccessible = false,
+    };
+
+    // Every folder in one folder (not below it), links included.
+    private static readonly EnumerationOptions Links = new() { AttributesToSkip = 0, IgnoreInaccessible = false };
+
     /// <summary>Deletes the folder of every session that has ended; returns how many and their bytes.</summary>
     /// <param name="running">Whether a session is running: true or false when its CLI is known, null when it isn't (then
     /// only <see cref="UnknownQuietLife"/> of quiet ends it).</param>
@@ -32,7 +41,9 @@ public static class SessionTempPruner
                 if (!Guid.TryParse(Path.GetFileName(dir), out _)) continue;
                 try
                 {
-                    var files = new DirectoryInfo(dir).GetFiles("*", SearchOption.AllDirectories);
+                    // Never through a junction or symlink (a scratchpad's pnpm node_modules): its target isn't the session's,
+                    // so it's not cleared, held or counted; the delete removes only the link.
+                    var files = new DirectoryInfo(dir).GetFiles("*", Walk);
                     var ended = running(Path.GetFileName(dir)) switch
                     {
                         true => false,
@@ -47,6 +58,10 @@ public static class SessionTempPruner
                     if (files.Any(InUse)) continue;
                     // Summed before the delete: a FileInfo that's been refreshed (clearing its flag does) can't be read after.
                     var size = files.Sum(f => f.Length);
+                    // Links first, each by itself: a recursive delete removes a junction but then throws (it tries it as a
+                    // volume mount point too), so the folder stayed.
+                    foreach (var d in new DirectoryInfo(dir).GetDirectories("*", Walk).Prepend(new DirectoryInfo(dir)))
+                        foreach (var link in d.GetDirectories("*", Links).Where(l => l.Attributes.HasFlag(FileAttributes.ReparsePoint))) link.Delete();
                     Directory.Delete(dir, recursive: true);
                     folders++;
                     bytes += size;

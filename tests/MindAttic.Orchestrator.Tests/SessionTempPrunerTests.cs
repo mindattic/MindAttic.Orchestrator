@@ -89,6 +89,33 @@ public sealed class SessionTempPrunerTests
     }
 
     [Test]
+    public void A_junction_in_an_ended_sessions_folder_is_removed_without_touching_its_target()
+    {
+        // M.ORCH-T507: the walk went through junctions, clearing read-only flags, holding and counting files outside the folder,
+        // and a file open there kept the session's folder for good.
+        var dir = Session("D--Projects-A", "77777777-7777-7777-7777-777777777777", 40);
+        var outside = Path.Combine(root, "outside");
+        Directory.CreateDirectory(outside);
+        var kept = Path.Combine(outside, "kept.bin");
+        File.WriteAllBytes(kept, new byte[1000]);
+        File.SetAttributes(kept, FileAttributes.ReadOnly);
+        var link = Path.Combine(dir, "scratchpad", "node_modules");
+        using (var mklink = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd", ["/c", "mklink", "/J", link, outside])
+               { CreateNoWindow = true, UseShellExecute = false, RedirectStandardOutput = true })!)
+            mklink.WaitForExit();
+        Assume.That(Directory.Exists(Path.Combine(link)) && new DirectoryInfo(link).Attributes.HasFlag(FileAttributes.ReparsePoint), "a junction could be made");
+
+        (int, long) pruned;
+        using (new FileStream(Path.Combine(outside, "open.log"), FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
+            pruned = SessionTempPruner.Prune(root, _ => false, DateTime.UtcNow);
+
+        Assert.That(pruned, Is.EqualTo((1, 40L)), "only the session's own files are counted, and the open file outside doesn't keep it");
+        Assert.That(Directory.Exists(dir), Is.False);
+        Assert.That(File.Exists(kept) && File.GetAttributes(kept).HasFlag(FileAttributes.ReadOnly), Is.True, "the target is left as it was");
+        File.SetAttributes(kept, FileAttributes.Normal);
+    }
+
+    [Test]
     public void No_claude_temp_folder_prunes_nothing() =>
         Assert.That(SessionTempPruner.Prune(Path.Combine(root, "missing"), _ => false, DateTime.UtcNow), Is.EqualTo((0, 0L)));
 }
