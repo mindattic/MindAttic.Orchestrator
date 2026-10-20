@@ -52,15 +52,21 @@ public sealed class BillingModeFile(string? path = null)
 {
     public const string FileName = "billing.json";
 
+    /// <summary>The <c>state</c> row of the orchestrator's database the mode is kept in (M.ORCH-T528), left out of the dump;
+    /// <see cref="FileName"/> is still written beside it for the Launcher (<see cref="Settings.ExportedState"/>).</summary>
+    public const string StateName = "billing";
+
     public string Path { get; } = path ?? System.IO.Path.Combine(Setup.AgentGate.ClaudeDir, "session-context", FileName);
+
+    /// <summary>The database the mode is kept in.</summary>
+    public Settings.OrchestratorDb Db { get; init; } = new(Settings.OrchestratorDb.StatePath(Settings.JsonStore.LiveDirectory));
 
     /// <summary>The mode written; null when there's none (or it can't be read, or names neither mode).</summary>
     public BillingState? Read()
     {
         try
         {
-            if (!File.Exists(Path)) return null;
-            if (JsonNode.Parse(ReadShared(Path)) is not JsonObject o) return null;
+            if (Settings.ExportedState.Read(Db, StateName, Path) is not { } text || JsonNode.Parse(text) is not JsonObject o) return null;
             if (BillingModes.Parse(Text(o, "mode")) is not { } mode) return null;
             var since = o["since"] is JsonValue v && v.GetValueKind() == JsonValueKind.Number ? DateTime.UnixEpoch.AddSeconds(v.GetValue<double>()) : DateTime.MinValue;
             return new BillingState(mode, since, Text(o, "login"), Text(o, "by") ?? "unknown")
@@ -88,10 +94,7 @@ public sealed class BillingModeFile(string? path = null)
             ["refused"] = new JsonArray([.. state.Refused.Select(s => (JsonNode)JsonValue.Create(s))]),
             ["approved_at"] = state.KeyApprovedUtc is { } at ? Math.Round((at - DateTime.UnixEpoch).TotalSeconds, 3) : null,
         };
-        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path)!);
-        var tmp = $"{Path}.{Environment.ProcessId}.tmp";
-        File.WriteAllText(tmp, o.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
-        File.Move(tmp, Path, overwrite: true);
+        Settings.ExportedState.Write(Db, StateName, Path, o.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
     }
 
     private static string? Text(JsonObject o, string name) =>
@@ -99,11 +102,4 @@ public sealed class BillingModeFile(string? path = null)
 
     private static IReadOnlyList<string> List(JsonObject o, string name) =>
         o[name] is JsonArray a ? [.. a.OfType<JsonValue>().Select(v => v.TryGetValue<string>(out var s) ? s : null).OfType<string>()] : [];
-
-    private static string ReadShared(string path)
-    {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
-    }
 }

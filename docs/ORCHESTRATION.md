@@ -118,7 +118,7 @@ A switch:
    dates the key in `~/.claude/session-context/api-key-set-aside.json` (by a hash, never the key; the hooks read it into `data/orchestrator.db`'s `api-key-set-aside` state row and keep it as .bak, M.ORCH-T528), so a CLI started on it
    still reads as billing it until it restarts. The daemon puts the choice back in line if it drifts from the mode (a
    "yes" answered in a CLI's prompt).
-2. **Writes the mode** to `~/.claude/session-context/billing.json`, where the Launcher reads it to start each CLI and the
+2. **Writes the mode** to `data/orchestrator.db`'s `billing` state row and exports it to `~/.claude/session-context/billing.json` (M.ORCH-T528), where the Launcher reads it to start each CLI and the
    context gate reads it to tell each CLI at its start what it bills:
 
    ```jsonc

@@ -312,6 +312,72 @@ public sealed class HookMarkTests
         Assert.That(Sessions.CliMarks.Read(Marks, Sessions.CliMarks.Autopilot)[9], Is.EqualTo("X"));
     }
 
+    // ---- the billing mode and the account record: rows, still exported as their files ----
+
+    private string BillingFile => Path.Combine(Marks, Billing.BillingModeFile.FileName);
+    private Billing.BillingModeFile ModeFile => new(BillingFile);
+    private const string HookBilling = "BILLING = Path.home() / \".claude\" / \"session-context\" / \"billing.json\"\n";
+
+    [Test]
+    public void The_billing_file_is_read_in_once_kept_as_bak_and_still_exported_with_every_write()
+    {
+        Db.Open().Dispose();
+        File.WriteAllText(BillingFile, """{"mode": "api", "since": 1000, "login": "a", "by": "dashboard"}""");
+        Assert.That(ModeFile.Read()!.Mode, Is.EqualTo("api"));
+        Assert.That(Row(Billing.BillingModeFile.StateName)!["mode"]!.GetValue<string>(), Is.EqualTo("api"), "read in");
+        Assert.That(File.Exists(BillingFile + ".bak"), Is.True, "a copy kept as .bak");
+        Assert.That(File.Exists(BillingFile), Is.True, "still exported for the Launcher");
+
+        ModeFile.Write(new Billing.BillingState("team", DateTime.UtcNow, "b", "test"));
+        Assert.That(Row(Billing.BillingModeFile.StateName)!["mode"]!.GetValue<string>(), Is.EqualTo("team"));
+        Assert.That(JsonNode.Parse(File.ReadAllText(BillingFile))!["mode"]!.GetValue<string>(), Is.EqualTo("team"), "the export follows");
+        Assert.That(Hook(HookBilling + """print(exported_mark("billing", BILLING)["mode"])"""), Is.EqualTo("team"));
+
+        // The context gate switching back on a /login writes both too.
+        Hook(HookBilling + """write_exported_mark("billing", BILLING, {"mode": "api", "since": time.time(), "by": "login"})""");
+        Assert.That(Row(Billing.BillingModeFile.StateName)!["by"]!.GetValue<string>(), Is.EqualTo("login"));
+        Assert.That(ModeFile.Read()!.By, Is.EqualTo("login"));
+        Assert.That(Db.Dump(), Does.Not.Contain("\"login\""), "out of the dump");
+    }
+
+    [Test]
+    public void A_billing_write_while_the_database_is_held_is_the_file_alone_and_reads_as_the_newer()
+    {
+        Db.Open().Dispose();
+        ModeFile.Write(new Billing.BillingState("team", DateTime.UtcNow, "b", "test"));
+        using (var connection = Db.Open())
+        {
+            OrchestratorDb.Execute(connection, "BEGIN IMMEDIATE; UPDATE state SET value = '{}' WHERE name = 'billing';");
+            Assert.That(Hook(HookBilling + """print(exported_mark("billing", BILLING)["mode"])"""), Is.EqualTo("team"), "read mid-write: the committed mode");
+            var clock = Stopwatch.StartNew();
+            Hook(HookBilling + """write_exported_mark("billing", BILLING, {"mode": "api", "since": time.time(), "by": "held"})""");
+            Assert.That(clock.Elapsed, Is.LessThan(TimeSpan.FromSeconds(15)));
+            OrchestratorDb.Execute(connection, "ROLLBACK;");
+        }
+        Assert.That(Row(Billing.BillingModeFile.StateName)!["mode"]!.GetValue<string>(), Is.EqualTo("team"), "the row couldn't take it");
+        Assert.That(ModeFile.Read()!.By, Is.EqualTo("held"), "the file, written later, is the mode");
+        Assert.That(Hook(HookBilling + """print(exported_mark("billing", BILLING)["by"])"""), Is.EqualTo("held"));
+    }
+
+    [Test]
+    public void The_account_record_is_a_row_the_hooks_and_the_orchestrator_share_and_its_file_is_still_written()
+    {
+        Db.Open().Dispose();
+        File.WriteAllText(Path.Combine(dir, ".claude.json"), """{"oauthAccount": {"accountUuid": "A", "organizationUuid": "O"}}""");
+        var account = new Budget.ClaudeAccount { ConfigPath = Path.Combine(dir, ".claude.json"), StatePath = Path.Combine(Marks, Budget.ClaudeAccount.FileName) };
+        Assert.That(account.Read(DateTime.UtcNow)!.Account, Is.EqualTo("A/O"));
+        Assert.That(Row(Budget.ClaudeAccount.StateName)!["account"]!.GetValue<string>(), Is.EqualTo("A/O"));
+        Assert.That(File.Exists(account.StatePath), Is.True, "exported for the statusline");
+
+        // A /login to B, first seen by a hook: it dates the switch in the row and the file, and the orchestrator reads it.
+        File.WriteAllText(Path.Combine(dir, ".claude.json"), """{"oauthAccount": {"accountUuid": "B", "organizationUuid": "O"}}""");
+        Assert.That(Hook("""print(account()[0])"""), Is.EqualTo("B/O"));
+        Assert.That(Row(Budget.ClaudeAccount.StateName)!["account"]!.GetValue<string>(), Is.EqualTo("B/O"));
+        Assert.That(new Budget.ClaudeAccount { ConfigPath = account.ConfigPath, StatePath = account.StatePath }.Read(DateTime.UtcNow)!.History, Has.Count.EqualTo(2),
+            "the switch the hook dated is the orchestrator's too");
+        Assert.That(Db.Dump(), Does.Not.Contain("B/O"), "out of the dump");
+    }
+
     [Test]
     public void A_latch_lift_with_nothing_latched_opens_no_write_transaction()
     {

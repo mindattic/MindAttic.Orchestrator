@@ -82,6 +82,13 @@ public sealed class ClaudeAccount
 
     public string StatePath { get; init; } = Path.Combine(Setup.AgentGate.ClaudeDir, "session-context", FileName);
 
+    /// <summary>The <c>state</c> row of the orchestrator's database the record is kept in (M.ORCH-T528), left out of the dump;
+    /// <see cref="StatePath"/> is still written beside it for the shared statusline (<see cref="Settings.ExportedState"/>).</summary>
+    public const string StateName = "account";
+
+    /// <summary>The database the record is kept in.</summary>
+    public Settings.OrchestratorDb Db { get; init; } = new(Settings.OrchestratorDb.StatePath(Settings.JsonStore.LiveDirectory));
+
     private DateTime configStamp;
     private bool configRead;
     private string? signedIn;
@@ -190,7 +197,7 @@ public sealed class ClaudeAccount
         e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String && v.GetString() is { Length: > 0 } s ? s : null;
 
     private JsonObject Load() =>
-        File.Exists(StatePath) && JsonNode.Parse(File.ReadAllText(StatePath)) is JsonObject o ? o : new JsonObject();
+        Settings.ExportedState.Read(Db, StateName, StatePath) is { } text && JsonNode.Parse(text) is JsonObject o ? o : new JsonObject();
 
     /// <summary>The record's spans; a record from before they were kept (<c>{account, since}</c>) is one open span from its date.</summary>
     private static List<AccountSpan> Spans(JsonObject record)
@@ -225,11 +232,5 @@ public sealed class ClaudeAccount
         Write(record);
     }
 
-    private void Write(JsonObject record)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(StatePath)!);
-        var tmp = $"{StatePath}.{Environment.ProcessId}.tmp";
-        File.WriteAllText(tmp, record.ToJsonString());
-        File.Move(tmp, StatePath, overwrite: true);
-    }
+    private void Write(JsonObject record) => Settings.ExportedState.Write(Db, StateName, StatePath, record.ToJsonString());
 }

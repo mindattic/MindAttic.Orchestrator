@@ -156,7 +156,7 @@ public static class AgentGate
             try:
                 signed = config_account(claude_config())
                 try:
-                    seen = read_json(ACCOUNT) if ACCOUNT.exists() else {}
+                    seen = exported_mark("{{Budget.ClaudeAccount.StateName}}", ACCOUNT) or {}  # M.ORCH-T528
                 except Exception:
                     seen = {}
                 spans = [dict(x) for x in seen.get("spans") or [] if isinstance(x, dict) and x.get("account") and x.get("from") is not None]
@@ -182,7 +182,7 @@ public static class AgentGate
                     spans, changed = kept, True
                 if changed:
                     seen.update(account=current, since=spans[-1]["from"], spans=spans)
-                    write_json(ACCOUNT, seen)
+                    write_exported_mark("{{Budget.ClaudeAccount.StateName}}", ACCOUNT, seen)
                 if current:
                     result = (current, [(float(x["from"]), None if x.get("to") is None else float(x["to"])) for x in spans if x["account"] == current], seen)
             except Exception:
@@ -347,7 +347,7 @@ public static class AgentGate
             # The billing mode the orchestrator's switch set (M.ORCH-T436): {"mode": "team"|"api", "since", "login", ...}; {} when
             # no switch was ever made, and the last sign-in alone decides, as before.
             try:
-                mode = read_json(BILLING) if BILLING.exists() else {}
+                mode = exported_mark("{{Billing.BillingModeFile.StateName}}", BILLING) or {}  # M.ORCH-T528
                 return mode if isinstance(mode, dict) and mode.get("mode") in ("{{Billing.BillingModes.Team}}", "{{Billing.BillingModes.Api}}") else {}
             except Exception:
                 return {}
@@ -606,7 +606,7 @@ public static class AgentGate
             mode = billing_mode()
             if mode.get("mode") == "api" and claude_ai and config_account(config) != mode.get("login"):
                 mode = dict(mode, mode="team", since=time.time(), login=config_account(config), by="login", requested=[], refused=[], approved_at=None)
-                write_json(BILLING, mode)
+                write_exported_mark("billing", BILLING, mode)
             api_mode = mode.get("mode") == "api"
             auth, source = billing(cwd)
             env, _ = auth_sources(cwd)
@@ -866,6 +866,39 @@ public static class AgentGate
             new = change(json.loads(json.dumps(hook_mark(name, path))))
             if new is not None:
                 write_json(path, new)
+        def exported_mark(name, path):
+            # A mark kept as a state row and still exported as its file for readers outside the orchestrator (the billing mode
+            # for the Launcher, the account record for the statusline: M.ORCH-T528, Settings.ExportedState): whichever of the
+            # two was written later; None when there's neither. A database held by a write isn't waited on long.
+            row = None
+            rows = orch_rows("SELECT value, written_at FROM state WHERE name = ?", (name,), timeout=1)
+            if rows:
+                try:
+                    row = (json.loads(rows[0][0]), float(rows[0][1]))
+                except Exception:
+                    pass
+            try:
+                at = path.stat().st_mtime
+                if row is None or at >= row[1]:
+                    return read_json(path)
+            except Exception:
+                pass
+            return row[0] if row else None
+        def write_exported_mark(name, path, value):
+            # The row in one write transaction (when the database takes it), then the exported file.
+            db = state_tx()
+            if db is not None:
+                try:
+                    db.execute("INSERT OR REPLACE INTO state (name, value, written_at) VALUES (?, ?, ?)", (name, json.dumps(value), time.time()))
+                    db.execute("COMMIT")
+                except Exception:
+                    try:
+                        db.execute("ROLLBACK")
+                    except Exception:
+                        pass
+                finally:
+                    db.close()
+            write_json(path, value)
         CLI_MARKS_DIR = Path.home() / ".claude" / "session-context"
         def cli_marks(kind):
             # {pid: value} of one kind of per-CLI mark ("autopilot", "noautopilot", "crossrepo": M.ORCH-T528): the database's
