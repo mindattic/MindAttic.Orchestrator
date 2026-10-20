@@ -987,6 +987,47 @@ public sealed class AutopilotTests
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
     }
 
+    [Test]
+    public void A_repo_the_database_doesnt_hold_has_its_tickets_read_from_its_user_stories()
+    {
+        // M.ORCH-T551: once the Workflow db existed, every ticket of a repo still on USER_STORIES.md read as closed, so Reap
+        // called an open ticket finished, removed its worktree and dropped its assignment, then handed it out again.
+        const string head = "---\ncode: {0}\n---\n\n# {0}\n\n## Tickets\n\n| ID | Date | Type | Status | Summary | Ref |\n|---|---|---|---|---|---|\n";
+        string Repo(string name, string status)
+        {
+            var origin = Path.Combine(dir, name + ".git");
+            var repo = Path.Combine(dir, name);
+            Git(dir, "init", "-q", "--bare", "-b", "main", origin);
+            Git(dir, "clone", "-q", origin, repo);
+            Directory.CreateDirectory(Path.Combine(repo, "docs"));
+            File.WriteAllText(Path.Combine(repo, "docs", "USER_STORIES.md"), string.Format(head, name) + $"| {name}-T1 | 2026-10-01 | fix | {status} | x | — |\n");
+            Git(repo, "add", ".");
+            Git(repo, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init");
+            Git(repo, "push", "-q", "origin", "HEAD:main");
+            return repo;
+        }
+        var inDb = Repo("B", "open");
+        var a = Repo("A", "open");
+        try
+        {
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(MindAttic.Workflow.Data.WorkflowDb.DefaultPath(dir)))
+                db.Import([new MindAttic.Workflow.Repo("B", inDb)]); // A isn't migrated yet
+            var tree = Path.Combine(dir, "wt", "A-T1");
+            Assert.That(Dispatcher.EnsureWorktree(a, tree, "orch/a-t1").Ok);
+            var assignment = new Assignment("A-T1", "A", tree, "Claude", Now, true);
+
+            var (closed, note) = Autopilot.LandOnMain(assignment, a);
+            Assert.That(closed, Is.False, note);
+            Assert.That(Directory.Exists(tree), Is.True, "an open ticket's worktree is kept");
+
+            File.WriteAllText(Path.Combine(tree, "docs", "USER_STORIES.md"), string.Format(head, "A") + "| A-T1 | 2026-10-01 | fix | closed | x | the test |\n");
+            Git(tree, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qam", "close A-T1");
+            Git(tree, "push", "-q", "origin", "HEAD:main");
+            Assert.That(Autopilot.LandOnMain(assignment, a).Closed, Is.True, "closed in its USER_STORIES.md on main: finished");
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
+    }
+
     private static void Git(string where, params string[] args)
     {
         var psi = new System.Diagnostics.ProcessStartInfo("git") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
