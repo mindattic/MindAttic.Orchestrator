@@ -302,6 +302,58 @@ public sealed class HookMarkTests
         Assert.That(File.Exists(Path.Combine(Marks, "crossrepo-5.cleared")), Is.False);
     }
 
+    private string Finish(Process p)
+    {
+        var output = p.StandardOutput.ReadToEndAsync();
+        var error = p.StandardError.ReadToEnd();
+        Assert.That(p.WaitForExit(30_000), Is.True);
+        Assert.That(p.ExitCode, Is.EqualTo(0), error);
+        return output.Result.Trim();
+    }
+
+    [Test]
+    public void A_fresh_hook_waits_out_a_database_held_a_few_seconds_rather_than_reading_its_marks_as_missing()
+    {
+        // M.ORCH-T542: a hook process has no copy of its own to stand in, so a short wait that runs out read every mark as
+        // missing: the handoff wasn't holding, and /autopilot -repo=C replaced A,B with C.
+        Db.Open().Dispose();
+        Hook("""set_cli_mark("autopilot", 5, "A,B")""");
+        Hook(HookHandoff + """write_whole_mark("handoff", HANDOFF, {"state": "winding", "started": "2026-10-20T10:00:00Z", "autopilot": []})""");
+        string output;
+        // The hook signals once its own start-up reads are done, so the write below holds it at the marks.
+        using var p = Start(HookHandoff + AgentGate.MarksPython + "\n" +
+            "print('ready', flush=True)\nwhile not (Path.home() / 'go').exists():\n    time.sleep(0.05)\n" +
+            """print(handing_off() is not None, set_autopilot(5, "-repo=C", ""), cli_mark("autopilot", 5))""");
+        Assert.That(p.StandardOutput.ReadLine(), Is.EqualTo("ready"));
+        using (var connection = Db.Open())
+        {
+            OrchestratorDb.Execute(connection, "BEGIN EXCLUSIVE;");
+            File.WriteAllText(Path.Combine(dir, "go"), "");
+            Thread.Sleep(3_000);
+            OrchestratorDb.Execute(connection, "ROLLBACK;");
+            output = Finish(p);
+        }
+        Assert.That(output, Is.EqualTo("True None A,B,C"));
+        Assert.That(CliRows()["autopilot-5"], Is.EqualTo("A,B,C"));
+    }
+
+    [Test]
+    public void A_hook_that_cant_read_a_mark_writes_nothing_made_from_it()
+    {
+        Db.Open().Dispose();
+        Hook("""set_cli_mark("autopilot", 5, "A,B")""");
+        string output;
+        using (var connection = Db.Open())
+        {
+            OrchestratorDb.Execute(connection, "BEGIN EXCLUSIVE;");
+            output = Hook(AgentGate.MarksPython + "\n" + """print(set_autopilot(5, "-repo=C", ""))""");
+            OrchestratorDb.Execute(connection, "ROLLBACK;");
+        }
+        Assert.That(output, Does.Contain("Nothing changed"), "held past every wait: refused, not guessed");
+        Assert.That(File.Exists(Path.Combine(Marks, "autopilot-5")), Is.False, "no file saying C alone");
+        Assert.That(CliRows()["autopilot-5"], Is.EqualTo("A,B"));
+    }
+
     [Test]
     public void Without_a_database_the_cli_marks_stay_files_as_before()
     {

@@ -714,6 +714,7 @@ public static class AgentGate
                 return str(repo / "data" / "orchestrator.db")
             return str(ORCH_DIR / "orchestrator.db")
         ORCH_DB = orchestrator_db()
+        _held = {}  # "long": a read already waited and found the database held; "at": when a mark's read last did
         def orch_rows(sql, args=(), timeout=5):
             # Rows from the orchestrator's database; None when it isn't there (a read never creates it) or couldn't be read
             # (held by a write past timeout seconds, or from before the table).
@@ -726,7 +727,9 @@ public static class AgentGate
                     return db.execute(sql, args).fetchall()
                 finally:
                     db.close()
-            except Exception:
+            except Exception as e:
+                if "locked" in str(e):
+                    _held["long"] = True
                 return None
         def orch_settings():
             # The orchestrator's settings, one row per setting; a settings.json no daemon has read in yet is read instead.
@@ -816,32 +819,59 @@ public static class AgentGate
             except Exception:
                 pass
             return {}
-        _marks_read = {}
+        _marks_read, _unknown = {}, set()
+        def mark_rows(key, sql, args):
+            # A mark's rows (M.ORCH-T542): [] without a database or from before its table. A database held by another write (it's
+            # read on every call) isn't waited on long once this hook has read the mark: its copy stands in, and while it was held
+            # a moment ago it isn't asked again (a check reads several marks). A fresh hook has no copy, so it waits longer, once,
+            # unless a read here already waited and found it held; still held, it's None and the key is in _unknown: the files are
+            # all a reader has, and nothing is written from a value that couldn't be read.
+            import sqlite3
+            if not os.path.isfile(ORCH_DB):
+                return []
+            def query(timeout):
+                try:
+                    db = sqlite3.connect(ORCH_DB, timeout=timeout)
+                    try:
+                        return db.execute(sql, args).fetchall()
+                    finally:
+                        db.close()
+                except sqlite3.OperationalError as e:
+                    return [] if "no such table" in str(e) else None
+                except Exception:
+                    return None
+            if time.monotonic() - _held.get("at", -60.0) <= 5:
+                if key in _marks_read:
+                    return _marks_read[key]
+                _unknown.add(key)
+                return None
+            rows = query(1)
+            if rows is None and key not in _marks_read and not _held.get("long"):
+                rows = query(5)
+                _held["long"] = rows is None
+            if rows is None:
+                _held["at"] = time.monotonic()
+                if key in _marks_read:
+                    return _marks_read[key]
+                _unknown.add(key)
+                return None
+            _marks_read[key] = rows
+            _unknown.discard(key)
+            return rows
         def hook_mark(name, path):
             # A mark the hooks keep (the stop latch, when a key was set aside: M.ORCH-T528): its state row in the orchestrator's
             # database, with the entries of its old file over it, a file being one no hook has read in yet or one a hook kept
             # while the database was held (newer, so it wins). The file is read first: a write reading it in commits the row
             # before it moves the file aside, so a hook reading meanwhile sees the entries in one or the other.
-            # A database held by another write (it's read on every call) isn't waited on long: the row this hook read last stands in.
             found = mark_file(path)
             value = {}
-            # One that was held a moment ago isn't asked again for a few seconds (a check reads several marks).
-            rows = None
-            if time.monotonic() - _marks_read.get("", -60.0) > 5:
-                rows = orch_rows("SELECT value FROM state WHERE name = ?", (name,), timeout=1)
-                if rows is None and os.path.isfile(ORCH_DB):
-                    _marks_read[""] = time.monotonic()
+            rows = mark_rows(name, "SELECT value FROM state WHERE name = ?", (name,))
             if rows:
                 try:
                     v = json.loads(rows[0][0])
                     value = v if isinstance(v, dict) else {}
                 except Exception:
                     pass
-                _marks_read[name] = value
-            elif rows is None:
-                value = dict(_marks_read.get(name) or {})
-            else:
-                _marks_read[name] = {}
             value.update(found)
             return json.loads(json.dumps(value))
         def change_hook_mark(name, path, change):
@@ -884,7 +914,10 @@ public static class AgentGate
                         pass
                 finally:
                     db.close()
-            new = change(json.loads(json.dumps(hook_mark(name, path))))
+            current = hook_mark(name, path)
+            if name in _unknown:
+                return  # the row couldn't be read: a file made from the rest would lose what it holds (M.ORCH-T542)
+            new = change(json.loads(json.dumps(current)))
             if new is not None:
                 write_json(path, new)
         def exported_mark(name, path, table="state", key="name"):
@@ -939,17 +972,16 @@ public static class AgentGate
                         pass
             except Exception:
                 pass
-            rows = orch_rows("SELECT pid, value FROM cli_marks WHERE kind = ?", (kind,), timeout=1)
-            if rows is None:
-                rows = _marks_read.get("cli:" + kind, []) if os.path.isfile(ORCH_DB) else []
-            else:
-                _marks_read["cli:" + kind] = rows
+            rows = mark_rows("cli:" + kind, "SELECT pid, value FROM cli_marks WHERE kind = ?", (kind,)) or []
             out = {str(pid): str(value) for pid, value in rows if str(pid) not in cleared}
             out.update(files)
             return out
         def cli_mark(kind, pid):
             # This CLI's mark of the kind (its text), or None when it has none.
             return cli_marks(kind).get(str(pid)) if pid else None
+        def may_have_cli_mark(kind, pid):
+            # Whether this CLI has (or, its rows unreadable, may have) a mark of the kind: a removal goes ahead either way.
+            return cli_mark(kind, pid) is not None or "cli:" + kind in _unknown
         def set_cli_mark(kind, pid, value):
             # Sets (or with None, removes) a CLI's mark: its cli_marks row in one write transaction, any file for it gone; the
             # file while the database is held past a short wait, missing or older (a removal then leaves <kind>-<pid>.cleared).
@@ -1004,15 +1036,11 @@ public static class AgentGate
                         break  # read in meanwhile: the row has it
                     except Exception:
                         return None
-            rows = orch_rows("SELECT value FROM state WHERE name = ?", (name,), timeout=1)
-            if rows is None:
-                return _marks_read.get(name) if os.path.isfile(ORCH_DB) else None
+            rows = mark_rows(name, "SELECT value FROM state WHERE name = ?", (name,))
             try:
-                value = json.loads(rows[0][0]) if rows else None
+                return json.loads(rows[0][0]) if rows else None
             except Exception:
-                value = None
-            _marks_read[name] = value
-            return value
+                return None
         def write_whole_mark(name, path, value):
             # Replaces (or with None, clears) a whole mark: its state row in one write transaction, its old file kept as .bak;
             # the file while the database is held past a short wait, missing or older (a clear then leaves CLEARED in it).
@@ -1024,7 +1052,8 @@ public static class AgentGate
                     else:
                         db.execute("INSERT OR REPLACE INTO state (name, value, written_at) VALUES (?, ?, ?)", (name, json.dumps(value), time.time()))
                     db.execute("COMMIT")
-                    _marks_read[name] = value
+                    _marks_read[name] = [] if value is None else [(json.dumps(value),)]
+                    _unknown.discard(name)
                     try:
                         if path.exists():
                             os.replace(path, path.with_name(path.name + ".bak"))
@@ -1237,6 +1266,9 @@ public static class AgentGate
                 # The -repos alias is gone (it read as a different switch); say so rather than guess what was meant.
                 return "/autopilot takes -repo=A,B (wildcards too: -repo=GTFO.*); -repos is gone. Nothing changed: type it again with -repo."
             names = autopilot_repos(pid)
+            if "cli:autopilot" in _unknown:
+                # Its row couldn't be read (M.ORCH-T542): a list made from nothing would drop the repos it already has.
+                return "The orchestrator's database is held by another write, so this CLI's /autopilot couldn't be read. Nothing changed: type it again in a moment."
             mine = repo_of(cwd or "")
             m = re.search(r"-{1,2}repo\b\s*[=:]?\s*\[?([^\]]*)\]?", args, re.I)
             named = [r.strip() for r in m.group(1).replace(" ", ",").split(",") if r.strip() and r.strip().lower() not in ("on", "off", "this", "all")] if m else ([mine] if mine else [])
@@ -1268,10 +1300,10 @@ public static class AgentGate
                         pass
             if pid and names:
                 set_cli_mark("autopilot", pid, ",".join(names))
-                if cli_mark("noautopilot", pid) is not None:
+                if may_have_cli_mark("noautopilot", pid):
                     set_cli_mark("noautopilot", pid, None)
             else:
-                if cli_mark("autopilot", pid) is not None:
+                if may_have_cli_mark("autopilot", pid):
                     set_cli_mark("autopilot", pid, None)
                 if pid and re.match(r"off\b", args, re.I):
                     set_cli_mark("noautopilot", pid, "")
@@ -1283,7 +1315,7 @@ public static class AgentGate
             if not pid:
                 return None
             if not args or re.match(r"off\b", args, re.I):
-                if cli_mark("crossrepo", pid) is not None:
+                if may_have_cli_mark("crossrepo", pid):
                     set_cli_mark("crossrepo", pid, None)
             else:
                 set_cli_mark("crossrepo", pid, ",".join(r.strip() for r in args.replace(" ", ",").split(",") if r.strip()))
@@ -1318,7 +1350,12 @@ public static class AgentGate
         def start_handoff(by, cwd=None):
             # Starts a handoff unless one already holds, recording every CLI's /autopilot (on with its repos, or typed off) by the
             # repo and folder it runs in, so the CLI that starts there on the new account gets it back. True when it started one.
-            if handing_off():
+            # Nor while the mark or the CLIs' /autopilot can't be read (M.ORCH-T542): one under way would be replaced, or
+            # CLIs left out of it.
+            if handing_off() or "handoff" in _unknown:
+                return False
+            cli_marks("autopilot"), cli_marks("noautopilot")
+            if {"cli:autopilot", "cli:noautopilot"} & _unknown:
                 return False
             clear_handoff(False)
             cwds = {}
@@ -2234,12 +2271,12 @@ public static class AgentGate
                     continue  # another CLI starting here already took it
                 if e.get("off"):
                     set_cli_mark("noautopilot", pid, "")
-                    if cli_mark("autopilot", pid) is not None:
+                    if may_have_cli_mark("autopilot", pid):
                         set_cli_mark("autopilot", pid, None)
                     return "off"
                 if e.get("repos"):
                     set_cli_mark("autopilot", pid, str(e["repos"]))
-                    if cli_mark("noautopilot", pid) is not None:
+                    if may_have_cli_mark("noautopilot", pid):
                         set_cli_mark("noautopilot", pid, None)
                     return "/autopilot " + ("all" if e["repos"] == "*" else "-repo=" + str(e["repos"]))
             return None
