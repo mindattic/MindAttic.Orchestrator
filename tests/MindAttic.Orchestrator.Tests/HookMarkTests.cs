@@ -146,6 +146,43 @@ public sealed class HookMarkTests
         Assert.That(File.Exists(Latch), Is.False);
     }
 
+    /// <summary>Python wrapping state_tx so that, as its COMMIT goes in, <paramref name="file"/> is rewritten with
+    /// <paramref name="json"/>: another hook, its own write held, keeping its mark as the file in between.</summary>
+    private static string WrittenAtCommit(string file, string json) => $$"""
+        _orig_tx = state_tx
+        class _Racing:
+            def __init__(self, db):
+                self.db = db
+            def execute(self, sql, *args):
+                result = self.db.execute(sql, *args)
+                if sql == "COMMIT":
+                    (Path.home() / ".claude" / "session-context" / "{{file}}").write_text('{{json}}', encoding="utf-8")
+                return result
+            def close(self):
+                self.db.close()
+        def state_tx(timeout=2, table="state"):
+            db = _orig_tx(timeout, table)
+            return _Racing(db) if db is not None else None
+
+        """;
+
+    [Test]
+    public void A_mark_file_written_after_it_was_read_in_is_not_moved_aside()
+    {
+        // M.ORCH-T544: the file was moved to .bak after the commit whatever it held by then, so a mark another hook kept as
+        // the file between the read and the move was lost.
+        Db.Open().Dispose();
+        File.WriteAllText(SetAside, """{"old": 1}""");
+        Hook(WrittenAtCommit(AgentGate.ApiKeySetAsideName, """{"old": 1, "late": 2}""") + Add(AgentGate.ApiKeySetAsideStateName, AgentGate.ApiKeySetAsideName, "new"));
+        Assert.That(File.Exists(SetAside), Is.True, "the later write is still the file");
+        Assert.That(Hook($"""print(sorted(hook_mark("{AgentGate.ApiKeySetAsideStateName}", Path.home() / ".claude" / "session-context" / "{AgentGate.ApiKeySetAsideName}")))"""),
+            Is.EqualTo("['late', 'new', 'old']"));
+
+        Hook(WrittenAtCommit(Sessions.Handoff.FileName, """{"state": "quiet"}""") + HookHandoff +
+            """write_whole_mark("handoff", HANDOFF, {"state": "winding", "started": "2026-10-20T10:00:00Z"})""");
+        Assert.That(Hook(HookHandoff + """print(whole_mark("handoff", HANDOFF)["state"])"""), Is.EqualTo("quiet"), "the handoff written later stands");
+    }
+
     [Test]
     public void Without_a_database_or_with_one_from_before_the_state_table_the_marks_stay_files()
     {

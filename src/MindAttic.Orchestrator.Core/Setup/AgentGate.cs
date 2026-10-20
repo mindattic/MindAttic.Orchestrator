@@ -819,6 +819,36 @@ public static class AgentGate
             except Exception:
                 pass
             return {}
+        def mark_text(path):
+            # A mark file's text; None when there's none (or it can't be read).
+            for _ in range(20):
+                try:
+                    return path.read_text(encoding="utf-8-sig")
+                except PermissionError:
+                    time.sleep(0.05)
+                except Exception:
+                    return None
+            return None
+        def retire_mark_file(path, seen):
+            # Moves a mark's file aside as .bak once its text (seen) is in the row, only if it still holds that text
+            # (M.ORCH-T544): another hook whose write found the database held may have written it since. It's claimed by a
+            # rename first, so a write meanwhile lands as a new file; a claim that isn't what was read goes back.
+            claim = path.with_name(path.name + "." + str(os.getpid()) + ".retiring")
+            try:
+                os.rename(path, claim)
+            except Exception:
+                return
+            bak = path.with_name(path.name + ".bak")
+            try:
+                if mark_text(claim) == seen:
+                    os.replace(claim, bak)
+                    return
+                try:
+                    os.rename(claim, path)  # not when a newer one is already there: that one is kept
+                except FileExistsError:
+                    os.replace(claim, bak)
+            except Exception:
+                pass
         _marks_read, _unknown = {}, set()
         def mark_rows(key, sql, args):
             # A mark's rows (M.ORCH-T542): [] without a database or from before its table. A database held by another write (it's
@@ -892,20 +922,21 @@ public static class AgentGate
                             value = v if isinstance(v, dict) else {}
                         except Exception:
                             pass
-                    had_file = path.exists()
-                    value.update(mark_file(path))
+                    seen = mark_text(path)
+                    try:
+                        found = json.loads(seen) if seen is not None else {}
+                    except Exception:
+                        found = {}
+                    value.update(found if isinstance(found, dict) else {})
                     new = change(json.loads(json.dumps(value)))
-                    if new is None and not had_file:
+                    if new is None and seen is None:
                         db.execute("ROLLBACK")
                         return
                     db.execute("INSERT OR REPLACE INTO state (name, value, written_at) VALUES (?, ?, ?)",
                                (name, json.dumps(value if new is None else new), time.time()))
                     db.execute("COMMIT")
-                    if had_file:
-                        try:
-                            os.replace(path, path.with_name(path.name + ".bak"))
-                        except Exception:
-                            pass
+                    if seen is not None:
+                        retire_mark_file(path, seen)
                     return
                 except Exception:
                     try:
@@ -1047,6 +1078,7 @@ public static class AgentGate
             db = state_tx()
             if db is not None:
                 try:
+                    seen = mark_text(path)
                     if value is None:
                         db.execute("DELETE FROM state WHERE name = ?", (name,))
                     else:
@@ -1054,11 +1086,8 @@ public static class AgentGate
                     db.execute("COMMIT")
                     _marks_read[name] = [] if value is None else [(json.dumps(value),)]
                     _unknown.discard(name)
-                    try:
-                        if path.exists():
-                            os.replace(path, path.with_name(path.name + ".bak"))
-                    except Exception:
-                        pass
+                    if seen is not None:
+                        retire_mark_file(path, seen)
                     return
                 except Exception:
                     try:
