@@ -1307,6 +1307,16 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:58:58Z', 9, '2026-10-21T01:30:00Z', 1087104);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:59:32Z', 9, '2026-10-21T01:30:00Z', 1093438);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:59:58Z', 10, '2026-10-21T01:30:00Z', 1124017);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:00:58Z', 10, '2026-10-21T01:30:00Z', 1140290);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:01:58Z', 10, '2026-10-21T01:30:00Z', 1187534);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:02:58Z', 10, '2026-10-21T01:30:00Z', 1204107);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:03:58Z', 10, '2026-10-21T01:30:00Z', 1221652);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:04:58Z', 10, '2026-10-21T01:30:00Z', 1241286);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:05:58Z', 11, '2026-10-21T01:30:00Z', 1254569);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:06:58Z', 11, '2026-10-21T01:30:00Z', 1275736);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:07:58Z', 11, '2026-10-21T01:30:00Z', 1278249);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:08:58Z', 11, '2026-10-21T01:30:00Z', 1288000);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:09:58Z', 11, '2026-10-21T01:30:00Z', 1288000);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -1509,7 +1519,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-19', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 689564);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-19', 'UnitySpace', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1608190);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-19', 'UnitySpace', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3172525);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3888580);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4115112);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'GTFO.EZ', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4807881);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'GridGameGaiden', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 6882499);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'MindAttic.Legion', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 58116);
@@ -1819,7 +1829,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share) VALUES ('71ffc829-973e-41e6-bfe0-95e4e7759eff/agent-a1fbee5b56bf0cee5', 'UM-T12', 'feature', '(workspace root)', 168913, '2026-10-20T20:39:36.268Z', 0);
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share) VALUES ('71ffc829-973e-41e6-bfe0-95e4e7759eff/agent-a21acede47ca29b9c', 'UM-T9', 'feature', '(workspace root)', 308157, '2026-10-20T19:24:14.358Z', 0);
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share) VALUES ('71ffc829-973e-41e6-bfe0-95e4e7759eff/agent-a516930353fd2c89e', 'UM-T7', 'feature', '(workspace root)', 143825, '2026-10-20T18:50:18.916Z', 0);
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share) VALUES ('71ffc829-973e-41e6-bfe0-95e4e7759eff/agent-a52e76a4f59a06c00', 'UM-T14', 'feature', '(workspace root)', 39385, '2026-10-20T21:00:23.785Z', 0);
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share) VALUES ('71ffc829-973e-41e6-bfe0-95e4e7759eff/agent-a52e76a4f59a06c00', 'UM-T14', 'feature', '(workspace root)', 191596, '2026-10-20T21:08:22.182Z', 0);
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share) VALUES ('71ffc829-973e-41e6-bfe0-95e4e7759eff/agent-a6af54e56c3e7a249', 'UC-T6', 'feature', '(workspace root)', 167432, '2026-10-20T20:58:20.276Z', 0);
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share) VALUES ('71ffc829-973e-41e6-bfe0-95e4e7759eff/agent-a8dd1a0a9175a15fd', 'UM-T11', 'feature', '(workspace root)', 268809, '2026-10-20T19:52:06Z', 0);
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share) VALUES ('71ffc829-973e-41e6-bfe0-95e4e7759eff/agent-a9850620f4fce731d', 'UM-T3', 'chore', '(workspace root)', 85488, '2026-10-20T17:51:48.473Z', 0);
