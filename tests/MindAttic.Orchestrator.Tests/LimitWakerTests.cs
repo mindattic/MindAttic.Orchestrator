@@ -85,6 +85,18 @@ public sealed class LimitWakerTests
     }
 
     [Test]
+    public void A_session_cleared_into_but_without_a_turn_yet_isnt_typed_the_stop_of_the_one_before()
+    {
+        // M.ORCH-T516: the SessionStart hook writes no 'at', so the cleared-into session lost to the stopped one by turn time.
+        State("old", 42, "idle", Now.AddHours(-3), until: Now.AddMinutes(-5));
+        File.SetLastWriteTimeUtc(Path.Combine(cycler.Directory, "old.state.json"), Now.AddHours(-3));
+        File.WriteAllText(Path.Combine(cycler.Directory, "new.state.json"), JsonSerializer.Serialize(new { pid = 42, cwd = @"D:\Projects\MindAttic\Prose", auth = "subscription" }));
+        File.SetLastWriteTimeUtc(Path.Combine(cycler.Directory, "new.state.json"), Now.AddHours(-1));
+        Assert.That(Waker().Tick(Open, [Tab], true, Now), Is.Empty);
+        Assert.That(typed, Is.Empty);
+    }
+
+    [Test]
     public void A_weekly_stop_after_a_five_hour_one_wakes_it_when_the_week_lifts_not_hours_later_forgotten()
     {
         State("s1", 42, "idle", Now.AddHours(-1), until: Now.AddMinutes(-5));

@@ -75,7 +75,9 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
         var due = cycler.Load()
             .Where(c => c.Pid is not null)
             .GroupBy(c => c.Pid!.Value)
-            .Select(g => g.MaxBy(c => c.TurnUtc)!)
+            // By when its state was written, not its last turn: a session /clear just started has had none, and the stop of the
+            // one before it would be typed into it (M.ORCH-T516).
+            .Select(g => g.MaxBy(c => (Written(c.SessionId), c.TurnUtc))!)
             .Where(c => c is { Idle: true, LimitStop: { } stop } && nowUtc - stop.UntilUtc >= Grace &&
                         nowUtc - HeldPast(stop.UntilUtc) <= Forget &&
                         !woken.ContainsKey(Key(c)))
@@ -115,6 +117,9 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
     /// that was on when it reset (within <see cref="Grace"/>), else the reset itself.</summary>
     private DateTime HeldPast(DateTime untilUtc) =>
         holdStartUtc is { } start && heldUtc is { } held && start <= untilUtc + Grace && held > untilUtc ? held : untilUtc;
+
+    /// <summary>When the context gate last wrote the session's state, its start included (1601 when it's gone since).</summary>
+    private DateTime Written(string sessionId) => File.GetLastWriteTimeUtc(Path.Combine(cycler.Directory, sessionId + ".state.json"));
 
     private async Task<bool> SafeSubmit(string pipe, string text)
     {
