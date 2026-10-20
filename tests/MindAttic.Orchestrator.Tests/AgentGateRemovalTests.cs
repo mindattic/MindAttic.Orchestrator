@@ -127,6 +127,23 @@ public sealed class AgentGateRemovalTests
     }
 
     [Test]
+    public void Kimi_keeps_the_comment_above_the_table_that_follows_the_gate()
+    {
+        // M.ORCH-T503: the gate's table was taken to run up to the next '[', so a comment above that table went with it.
+        Directory.CreateDirectory(Path.GetDirectoryName(Kimi)!);
+        const string before = "model = \"k2\"\n";
+        File.WriteAllText(Kimi, before);
+        Directory.CreateDirectory(Claude);
+        File.WriteAllText(Path.Combine(Claude, AgentGate.ScriptName), "# stand-in");
+        Assert.That(AgentGate.EnsureOtherProviders(Claude, Codex, Gemini, Kimi), Does.Contain("Kimi"));
+        File.AppendAllText(Kimi, "\n# my UI settings\n[ui]\ntheme = \"dark\"\n");
+
+        Assert.That(AgentGateRemoval.RemoveKimiHooks(Kimi), Is.True);
+
+        Assert.That(File.ReadAllText(Kimi), Is.EqualTo(before + "\n# my UI settings\n[ui]\ntheme = \"dark\"\n"));
+    }
+
+    [Test]
     public void Uninstall_keeps_a_commented_gemini_settings_json_as_the_user_wrote_it()
     {
         // M.ORCH-T442: the removal parsed with comments skipped and wrote the result back, so every // comment went.

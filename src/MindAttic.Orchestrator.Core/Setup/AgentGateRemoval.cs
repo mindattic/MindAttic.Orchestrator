@@ -133,9 +133,15 @@ public static class AgentGateRemoval
             var ours = lines.Skip(i + 1).Take(end - i - 1).Any(l =>
                 l.TrimStart().StartsWith("command", StringComparison.Ordinal) && Scripts.Any(s => l.Contains(s, StringComparison.OrdinalIgnoreCase)));
             if (!ours) continue;
+            // Comments after its last key belong to what follows (a "# my UI settings" above [ui]): they're kept, and the
+            // table goes up to the first of them.
+            var tail = end;
+            while (tail > i + 1 && (lines[tail - 1].Trim().Length == 0 || lines[tail - 1].TrimStart().StartsWith('#'))) tail--;
+            var comment = Enumerable.Range(tail, end - tail).FirstOrDefault(n => lines[n].TrimStart().StartsWith('#'), -1);
+            if (comment >= 0) end = comment;
             var start = i;
             while (start > 0 && lines[start - 1].Trim().Length == 0) start--;
-            // The blank lines before it separate it from what came before; kept when another table follows.
+            // The blank lines before it separate it from what came before; kept when another table or a kept comment follows.
             if (end < lines.Count && start > 0) start = i;
             lines.RemoveRange(start, end - start);
             i = start - 1;
