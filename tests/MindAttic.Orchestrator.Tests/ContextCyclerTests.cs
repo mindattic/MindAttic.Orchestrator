@@ -408,9 +408,16 @@ public sealed class ContextCyclerTests
             Typed("/work -repo=B");
             Typed("/autopilot -repo=C");
             Assert.That(File.ReadAllText(mark), Is.EqualTo("B,C"), "one switch under either name");
+            Typed("/allocate off");
+            Assert.That(File.Exists(mark), Is.False, "/allocate is the same switch too");
+            Typed("/allocate");
+            Assert.That(File.ReadAllText(mark), Is.EqualTo("A"));
 
-            var command = File.ReadAllText(Path.Combine(dir, "commands", "work.md"));
-            Assert.That(command, Does.Contain("The same as /autopilot").And.Contain("orchestrator next"));
+            foreach (var alias in new[] { "work.md", "allocate.md" })
+            {
+                var command = File.ReadAllText(Path.Combine(dir, "commands", alias));
+                Assert.That(command, Does.Contain("The same as /autopilot").And.Contain("orchestrator next"));
+            }
         }
         finally { Directory.Delete(dir, recursive: true); }
     }

@@ -1285,7 +1285,7 @@ public static class AgentGate
     internal const string MarksPython = """
         SESSION_MARKS = Path.home() / ".claude" / "session-context"
         # What the user's typed prompt asks for by name ("use crossrepo for X", "turn auto-pilot on", or the command itself).
-        ASKS_FOR = {"crossrepo": re.compile(r"\bcross[\s_-]?repos?\b", re.I), "autopilot": re.compile(r"\bauto[\s_-]?pilot\b|/work\b", re.I),
+        ASKS_FOR = {"crossrepo": re.compile(r"\bcross[\s_-]?repos?\b", re.I), "autopilot": re.compile(r"\bauto[\s_-]?pilot\b|/(work|allocate)\b", re.I),
                     "handoff": re.compile(r"\bhand[\s_-]?off\b", re.I)}
         def asked_for(prompt):
             return sorted(k for k, r in ASKS_FOR.items() if r.search(prompt or ""))
@@ -1362,7 +1362,7 @@ public static class AgentGate
                     set_cli_mark("noautopilot", pid, "")
             return None
         # A freshly opened CLI starts with /autopilot off (M.ORCH-T522, reversing M.ORCH-T476's on-by-default): only a typed
-        # /autopilot (or /work) marks it. The noautopilot mark /autopilot off leaves is what /handoff restores as "typed off".
+        # /autopilot (or /work, /allocate) marks it. The noautopilot mark /autopilot off leaves is what /handoff restores as "typed off".
         def set_crossrepo(pid, args):
             # /crossrepo <A,B|all> lets this CLI work other repos too (the explicit exception to M.ORCH-T95); /crossrepo off ends it.
             if not pid:
@@ -1505,6 +1505,10 @@ public static class AgentGate
         .Replace("description: This CLI works", "description: The same as /autopilot. This CLI works")
         .Replace("/autopilot $ARGUMENTS is running", "/work $ARGUMENTS (the same as /autopilot $ARGUMENTS) is running");
 
+    internal static readonly string AllocateCommand = AutopilotCommand
+        .Replace("description: This CLI works", "description: The same as /autopilot. This CLI works")
+        .Replace("/autopilot $ARGUMENTS is running", "/allocate $ARGUMENTS (the same as /autopilot $ARGUMENTS) is running");
+
     internal const string AutopilotCommand = """
         ---
         description: This CLI works the open tickets of its own repo (or -repo=A,B, wildcards like -repo=GTFO.*, or "all") through its own subagents, each in its own worktree, landing on main and closing the ticket, until none are left. /autopilot off stops it in this CLI; /autopilot off all in every CLI.
@@ -1638,7 +1642,7 @@ public static class AgentGate
         {{MarksPython}}
         if tool == "Skill":
             called = str((data.get("tool_input") or {}).get("skill") or "").strip().lstrip("/").lower().split(":")[-1]
-            called = "autopilot" if called == "work" else called  # /work is /autopilot's alias
+            called = "autopilot" if called in ("work", "allocate") else called  # /work and /allocate are /autopilot's aliases
             if called == "handoff":
                 # /handoff (M.ORCH-T481) through the Skill tool: the user's to start, like /autopilot; off and status always go through.
                 given = str((data.get("tool_input") or {}).get("args") or "").strip()
@@ -2404,7 +2408,7 @@ public static class AgentGate
 
         # Typed at the window's stop, these still go through: they're how you steer the orchestrator itself.
         # /goal goes through at the stop only to clear one: a new goal there would run turn after turn its refused calls can't finish.
-        CONTROL = re.compile(r"/(autopilot|work|crossrepo|pacing|handoff)\b|/goal\s*(?:(?:clear|off|stop|reset|none|cancel)\s*)?$", re.I)
+        CONTROL = re.compile(r"/(autopilot|work|allocate|crossrepo|pacing|handoff)\b|/goal\s*(?:(?:clear|off|stop|reset|none|cancel)\s*)?$", re.I)
 
         def goal_finished(transcript, goal):
             # A /goal ends on its own once its condition holds: the session's last entry is then the stop summary naming it
@@ -2669,8 +2673,9 @@ public static class AgentGate
             else:
                 state.pop("asked", None)
             # /autopilot (set_autopilot): THIS CLI works those repos' tickets through its own subagents until /autopilot off here.
-            # /work is its alias; not /workflow or /worktree.
-            command = "/autopilot" if prompt.startswith("/autopilot") else "/work" if re.match(r"/work\b", prompt) else None
+            # /work and /allocate are its aliases; not /workflow or /worktree.
+            alias = re.match(r"/(work|allocate)\b", prompt)
+            command = "/autopilot" if prompt.startswith("/autopilot") else "/" + alias.group(1) if alias else None
             if command:
                 why = set_autopilot(my_pid(), typed[len(command):].strip(), data.get("cwd") or "")
                 if why:
@@ -2836,6 +2841,7 @@ public static class AgentGate
             (Path.Combine(dir, "commands", "pacing.md"), PacingCommand),
             (Path.Combine(dir, "commands", "autopilot.md"), AutopilotCommand),
             (Path.Combine(dir, "commands", "work.md"), WorkCommand),
+            (Path.Combine(dir, "commands", "allocate.md"), AllocateCommand),
             (Path.Combine(dir, "commands", "crossrepo.md"), CrossRepoCommand),
             (Path.Combine(dir, "commands", "handoff.md"), HandoffCommand),
         })
