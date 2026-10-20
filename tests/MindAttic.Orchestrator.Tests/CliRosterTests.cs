@@ -41,20 +41,24 @@ public sealed class CliRosterTests
     [Test]
     public void The_roster_reads_back_as_written_and_a_missing_or_torn_one_reads_as_none()
     {
+        // M.ORCH-T526: the roster is a state row of orchestrator.db (was clis.json), left out of the dump; an old clis.json is kept as .bak.
         var dir = Directory.CreateTempSubdirectory("orch-roster-").FullName;
         try
         {
-            Assert.That(CliRoster.Read(dir), Is.Null);
+            var store = new MindAttic.Orchestrator.Settings.JsonStore(dir);
+            Assert.That(CliRoster.Read(store.Db), Is.Null);
+            File.WriteAllText(Path.Combine(dir, CliRoster.FileName), "{\"WrittenUtc\":\"2026-10-18T19:00:00Z\",\"Clis\":[]}");
             var row = new CliRow(7, "s", "Prose", @"D:\Prose", BillingModes.Team, true, true, ["*"], false, Turn);
-            CliRoster.Write(dir, [row], Turn);
-            var back = CliRoster.Read(dir)!;
+            CliRoster.Write(store.Db, [row], Turn, dir);
+            var back = CliRoster.Read(store.Db)!;
             Assert.That(back.WrittenUtc, Is.EqualTo(Turn));
             Assert.That(back.Clis.Single() with { AutopilotRepos = row.AutopilotRepos }, Is.EqualTo(row));
             Assert.That(back.Clis.Single().AutopilotRepos, Is.EqualTo(new[] { "*" }));
-            Assert.That(Directory.GetFiles(dir), Has.Length.EqualTo(1), "no temp file left beside it");
+            Assert.That(Directory.GetFiles(dir).Select(Path.GetFileName), Is.EqualTo(new[] { CliRoster.FileName + ".bak" }), "the old file kept as .bak, nothing else left");
+            Assert.That(store.Db.Dump(), Does.Not.Contain("'clis'"), "rewritten every tick: not in the dump");
 
-            File.WriteAllText(Path.Combine(dir, CliRoster.FileName), "{\"WrittenUtc\":");
-            Assert.That(CliRoster.Read(dir), Is.Null);
+            StoreFaults.Garble(store, CliRoster.StateName, "{\"WrittenUtc\":");
+            Assert.That(CliRoster.Read(store.Db), Is.Null);
         }
         finally { Directory.Delete(dir, recursive: true); }
     }

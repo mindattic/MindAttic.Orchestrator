@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using MindAttic.Orchestrator.Settings;
+using Microsoft.Data.Sqlite;
 
 namespace MindAttic.Orchestrator.Budget;
 
@@ -298,13 +299,28 @@ public static class BudgetCalculator
 }
 
 /// <summary>
-/// Keeps <c>~/.claude/rl-status.json</c> current, the file the global <c>rl-check.py</c> prompt hook
-/// and the Launcher's status block already read but nothing had been writing.
+/// Keeps the pace status current: the <c>rl-status</c> row of orchestrator.db's <c>state</c> (M.ORCH-T526), which the pace
+/// and context gates read, and <c>~/.claude/rl-status.json</c>, the same status exported for what reads it outside this repo
+/// (the global <c>rl-check.py</c> prompt hook, the Launcher's status block). The row is left out of the dump: it changes every tick.
 /// </summary>
 public sealed class RateLimitStatusWriter(string? path = null)
 {
+    /// <summary>The status's row in <c>state</c>.</summary>
+    public const string StateName = "rl-status";
+
     public string Path { get; } = path ?? System.IO.Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "rl-status.json");
+
+    private OrchestratorDb? db;
+    private bool dbSet;
+
+    /// <summary>The database the status row is kept in: the store's for the real file (the default), none for a file of a
+    /// test's own unless it sets one.</summary>
+    public OrchestratorDb? Db
+    {
+        get => dbSet ? db : path is null ? db ??= new OrchestratorDb(OrchestratorDb.StatePath(Settings.JsonStore.LiveDirectory)) : null;
+        init { db = value; dbSet = true; }
+    }
 
     /// <summary>The clock the writer stamps and dedupes by; tests move it.</summary>
     internal Func<DateTime> UtcNow { get; init; } = () => DateTime.UtcNow;
@@ -407,11 +423,17 @@ public sealed class RateLimitStatusWriter(string? path = null)
         if (key == lastWritten && nowUtc - lastWrittenUtc < TimeSpan.FromMinutes(1)) return;
 
         body["timestamp"] = nowUtc.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture) + "Z";
+        // The row first: it's what the gates read. The file after it, for the readers outside this repo; the gates read
+        // whichever of the two is newer, so either one landing keeps them paced.
+        var json = JsonSerializer.Serialize(body, new JsonSerializerOptions { WriteIndented = true });
+        string? rowError = null;
+        try { Db?.SaveState(StateName, json); }
+        catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException) { rowError = ex.Message; }
         try
         {
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path)!);
             var temp = Path + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(body, new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(temp, json);
             Replace(temp);
             lastWritten = key;
             lastWrittenUtc = nowUtc;
@@ -422,7 +444,29 @@ public sealed class RateLimitStatusWriter(string? path = null)
         {
             // Not silent any more: the daemon reports it, since a file that can't be replaced goes stale (M.ORCH-T205).
             FailingSinceUtc ??= nowUtc;
-            LastError = ex.Message;
+            LastError = rowError is null ? ex.Message : $"{ex.Message}; the database's row: {rowError}";
+        }
+    }
+
+    /// <summary>The status as last written: the database's row or the file, whichever is newer; null when neither is there.</summary>
+    internal string? ReadLatest()
+    {
+        string? row = null, file = null;
+        try { row = Db?.LoadState(StateName)?.Value; }
+        catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException) { }
+        try { if (File.Exists(Path)) file = File.ReadAllText(Path); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        if (row is null || file is null) return row ?? file;
+        return string.CompareOrdinal(Stamp(row), Stamp(file)) >= 0 ? row : file;
+
+        static string Stamp(string json)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(json);
+                return doc.RootElement.TryGetProperty("timestamp", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString()! : "";
+            }
+            catch (JsonException) { return ""; }
         }
     }
 
@@ -473,8 +517,8 @@ public sealed class RateLimitStatusWriter(string? path = null)
     {
         try
         {
-            if (!File.Exists(Path)) return 0;
-            using var doc = JsonDocument.Parse(File.ReadAllText(Path));
+            if (ReadLatest() is not { } latest) return 0;
+            using var doc = JsonDocument.Parse(latest);
             var root = doc.RootElement;
             if (!root.TryGetProperty("source", out var s) || s.GetString() != "MindAttic.Orchestrator") return 0;
             if (!root.TryGetProperty("timestamp", out var t) ||
@@ -502,6 +546,8 @@ public sealed class RateLimitStatusWriter(string? path = null)
     private void RemoveOwnFile()
     {
         lastWritten = null;
+        try { Db?.DeleteState(StateName); }
+        catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException) { }
         try
         {
             if (!File.Exists(Path)) return;

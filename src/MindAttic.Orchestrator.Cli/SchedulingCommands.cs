@@ -26,7 +26,7 @@ internal static class Ctx
 
     /// <summary>The status lease the daemon and dashboards share: a one-off command only writes rl-status.json while
     /// nobody else holds it, so it never overwrites the running daemon's pace. Released when the command exits.</summary>
-    public static DispatchLease Lease(JsonStore store) => new(store.Directory);
+    public static DispatchLease Lease(JsonStore store) => new(store.Directory, db: store.Db);
 
     /// <summary>A ticket id as stored and compared everywhere (upper case), so "m.orch-t5" isn't silently a different ticket.</summary>
     public static string Id(string typed) => typed.Trim().ToUpperInvariant();

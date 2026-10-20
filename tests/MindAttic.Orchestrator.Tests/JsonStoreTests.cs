@@ -266,8 +266,9 @@ public sealed class JsonStoreTests
         using var first = new MindAttic.Orchestrator.Scheduling.DispatchLease(dir);
         using var second = new MindAttic.Orchestrator.Scheduling.DispatchLease(dir);
         Assert.That((first.TryAcquire(), second.TryAcquire()), Is.EqualTo((true, false)));
-        using (var read = new FileStream(first.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-            Assert.That(new StreamReader(read).ReadToEnd(), Is.EqualTo(Environment.ProcessId.ToString()));
+        // M.ORCH-T526: a row of the database's leases names it, where the lock file held the pid.
+        Assert.That(LeaseTests.HolderPid(first), Is.EqualTo(Environment.ProcessId));
+        Assert.That(System.IO.File.Exists(first.Path), Is.False, "no lock file");
         first.Dispose();
         Assert.That(second.TryAcquire(), Is.True, "free once its holder lets go");
     }

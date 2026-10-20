@@ -30,7 +30,10 @@ internal sealed class LedgerCommand : Command<LedgerCommand.Settings>
         db.ImportJson(store.Directory);
         var samples = db.LoadUsageSamples();
         var hits = store.LoadLimits();
-        var events = PaceLedger.LoadEvents(PaceLedgerWatch.DefaultEventsPath, now - PaceLedgerWatch.KeepEvents);
+        // A hook that couldn't write the database appended its event to the old log: read in first (M.ORCH-T526).
+        try { db.ImportGateLog(PaceLedgerWatch.DefaultEventsPath); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        var events = db.LoadGateEvents(now - PaceLedgerWatch.KeepEvents);
         var recorded = db.LoadLedger();
         var accountAt = PaceLedger.AccountAt(new ClaudeAccount(), now);
         // Windows the daemon hasn't closed yet (it closes them a minute after their reset) are shown as they'll be recorded.

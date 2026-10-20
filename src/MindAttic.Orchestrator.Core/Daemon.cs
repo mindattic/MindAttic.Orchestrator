@@ -23,9 +23,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     public void Run(TimeSpan interval, CancellationToken cancel)
     {
         var options = OrchestratorOptions.Load(store);
-        using var lease = new DispatchLease(store.Directory);
+        using var lease = new DispatchLease(store.Directory, db: store.Db);
         StatusAggregator aggregator = null!;
-        var statusFile = new RateLimitStatusWriter();
+        var statusFile = new RateLimitStatusWriter { Db = store.Db };
         void Build() => aggregator = new StatusAggregator(options, store, statusFile, lease);
         Build();
 
@@ -36,9 +36,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         var pilotWaker = new AutopilotWaker(cycler, store) { HandingOff = () => Handoff.Holding(cycler.Directory) };
         var handoff = new HandoffWatch(cycler, store);
         // One daemon wakes the CLIs: an `orchestrator daemon` run beside the logon one would type every resume twice.
-        using var wakeLease = new DispatchLease(store.Directory, LimitWaker.LeaseName);
-        using var ledgerLease = new DispatchLease(store.Directory, PaceLedgerWatch.LeaseName);
-        using var remindLease = new DispatchLease(store.Directory, Reminders.ReminderSender.LeaseName);
+        using var wakeLease = new DispatchLease(store.Directory, LimitWaker.LeaseName, store.Db);
+        using var ledgerLease = new DispatchLease(store.Directory, PaceLedgerWatch.LeaseName, store.Db);
+        using var remindLease = new DispatchLease(store.Directory, Reminders.ReminderSender.LeaseName, store.Db);
         var reminders = new Reminders.ReminderSender(store, new Reminders.PsstClient(Runner), (level, line) => Say(level, line), (title, message, urgent) => Alert(title, message, urgent));
         string? lastPaused = null;
         cycler.Prune(DateTime.UtcNow);
@@ -90,7 +90,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
                 cycler.PruneMarks();
                 var roster = CliRoster.Build(cycler, aggregator.BillingSwitch, [.. snapshot.Repos.SelectMany(r => r.Hosts)], DateTime.UtcNow);
-                try { CliRoster.Write(cycler.Directory, roster, DateTime.UtcNow); }
+                try { CliRoster.Write(store.Db, roster, DateTime.UtcNow, cycler.Directory); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"CLI roster: couldn't write it: {ex.Message}"); }
                 // Not only at start: the logon daemon runs for weeks (M.ORCH-T330).
                 if (DateTime.UtcNow - prunedUtc >= TimeSpan.FromDays(1))

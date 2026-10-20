@@ -55,7 +55,7 @@ internal sealed class HandoffCommand : Command<HandoffCommand.Settings>
     }
 
     private static IReadOnlyList<CliRow> Roster(ContextCycler cycler, DateTime now) =>
-        CliRoster.Read(cycler.Directory) is { } r && now - r.WrittenUtc <= CliRoster.FreshFor ? r.Clis
+        CliRoster.Read(Ctx.Store().Db) is { } r && now - r.WrittenUtc <= CliRoster.FreshFor ? r.Clis
             : ContextDirectory is not null ? []
             : CliRoster.Build(cycler, new BillingSwitch(cycler.Directory), new HostSessionScanner(OrchestratorOptions.Load()).Scan(), now);
 

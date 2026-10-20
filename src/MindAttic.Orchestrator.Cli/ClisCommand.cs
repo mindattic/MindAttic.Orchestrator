@@ -21,7 +21,7 @@ internal sealed class ClisCommand : Command<ClisCommand.Settings>
     {
         var cycler = new ContextCycler();
         var now = DateTime.UtcNow;
-        var roster = CliRoster.Read(cycler.Directory) is { } r && now - r.WrittenUtc <= CliRoster.FreshFor
+        var roster = CliRoster.Read(Ctx.Store().Db) is { } r && now - r.WrittenUtc <= CliRoster.FreshFor
             ? r
             : new CliRosterFile(now, CliRoster.Build(cycler, new BillingSwitch(cycler.Directory), new HostSessionScanner(OrchestratorOptions.Load()).Scan(), now));
         if (settings.Json)

@@ -62,8 +62,8 @@ public sealed partial class MainViewModel : ObservableObject
 
     public MainViewModel()
     {
-        lease = new DispatchLease(store.Directory);
-        aggregator = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter(), lease);
+        lease = new DispatchLease(store.Directory, db: store.Db);
+        aggregator = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter { Db = store.Db }, lease);
         control = new SessionControl(aggregator.Options);
         Waiting = new("Needs you", "Sessions that stopped and are waiting for input, longest wait first", Palette.Waiting);
         Working = new("Working", "Agents mid-turn right now", Palette.Working);

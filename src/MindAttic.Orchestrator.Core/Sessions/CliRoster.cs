@@ -1,5 +1,7 @@
 using System.Text.Json;
 using MindAttic.Orchestrator.Billing;
+using MindAttic.Orchestrator.Settings;
+using Microsoft.Data.Sqlite;
 
 namespace MindAttic.Orchestrator.Sessions;
 
@@ -21,13 +23,18 @@ public sealed record CliRow(
 public sealed record CliRosterFile(DateTime WrittenUtc, IReadOnlyList<CliRow> Clis);
 
 /// <summary>
-/// The ready list of every open Claude CLI and whether /autopilot is on in it (M.ORCH-T474): the daemon rewrites
-/// <c>~/.claude/session-context/clis.json</c> every tick, so anything that wants it reads one file instead of rescanning
-/// every session's state and mark.
+/// The ready list of every open Claude CLI and whether /autopilot is on in it (M.ORCH-T474): the daemon rewrites its row in
+/// orchestrator.db's <c>state</c> every tick (M.ORCH-T526; it was <c>~/.claude/session-context/clis.json</c>, which nothing
+/// outside this repo read), so anything that wants it reads one row instead of rescanning every session's state and mark.
+/// The row is left out of the dump: it changes every tick.
 /// </summary>
 public static class CliRoster
 {
+    /// <summary>The file the roster was before the move.</summary>
     public const string FileName = "clis.json";
+
+    /// <summary>The roster's row in <c>state</c>.</summary>
+    public const string StateName = "clis";
 
     /// <summary>A roster older than this wasn't written by a running daemon: build one instead of trusting it.</summary>
     public static readonly TimeSpan FreshFor = TimeSpan.FromMinutes(1);
@@ -51,19 +58,23 @@ public static class CliRoster
     public static IReadOnlyList<CliRow> Build(ContextCycler cycler, BillingSwitch billing, IReadOnlyList<HostSession> hosts, DateTime nowUtc) =>
         Build(billing.LiveClis(hosts, nowUtc), cycler.AutopilotClis(), cycler.Load());
 
-    public static void Write(string directory, IReadOnlyList<CliRow> clis, DateTime nowUtc)
+    /// <summary>Writes the roster as its <c>state</c> row; a <c>clis.json</c> left in <paramref name="oldDirectory"/> by a daemon
+    /// from before the move is kept as <c>.bak</c> (what it held is a minute old by now, and this replaces it). A database that
+    /// stays held past its timeout is an <see cref="IOException"/>, as a held file was.</summary>
+    public static void Write(OrchestratorDb db, IReadOnlyList<CliRow> clis, DateTime nowUtc, string? oldDirectory = null)
     {
-        Directory.CreateDirectory(directory);
-        var path = Path.Combine(directory, FileName);
-        var tmp = $"{path}.{Environment.ProcessId}.tmp";
-        File.WriteAllText(tmp, JsonSerializer.Serialize(new CliRosterFile(nowUtc, clis), Json));
-        File.Move(tmp, path, overwrite: true);
+        try { db.SaveState(StateName, JsonSerializer.Serialize(new CliRosterFile(nowUtc, clis), Json)); }
+        catch (SqliteException ex) { throw new IOException($"The orchestrator database couldn't be written: {ex.Message}", ex); }
+        if (oldDirectory is null) return;
+        var old = Path.Combine(oldDirectory, FileName);
+        try { if (File.Exists(old)) File.Move(old, old + ".bak", overwrite: true); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { } // held now: next tick
     }
 
     /// <summary>The roster the daemon wrote, or null when there's none or it can't be read.</summary>
-    public static CliRosterFile? Read(string directory)
+    public static CliRosterFile? Read(OrchestratorDb db)
     {
-        try { return JsonSerializer.Deserialize<CliRosterFile>(File.ReadAllText(Path.Combine(directory, FileName))); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return null; }
+        try { return db.LoadState(StateName) is { } row ? JsonSerializer.Deserialize<CliRosterFile>(row.Value) : null; }
+        catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException or JsonException) { return null; }
     }
 }

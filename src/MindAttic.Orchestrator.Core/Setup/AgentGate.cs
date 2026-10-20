@@ -86,6 +86,31 @@ public static class AgentGate
                 except PermissionError:
                     time.sleep(0.05)
             raise PermissionError(str(path))
+        RL_STATUS = Path.home() / ".claude" / "rl-status.json"
+        def rl_status():
+            # The orchestrator's pace status (M.ORCH-T526): its rl-status row in the database (needs orch_rows), or
+            # rl-status.json, the same status exported for readers outside the orchestrator (and all a daemon from before the
+            # move writes), whichever was written later. A database held by a write isn't waited on long: the file stands in.
+            # Raises when there's neither.
+            found = []
+            rows = orch_rows("SELECT value FROM state WHERE name = ?", ("{{Budget.RateLimitStatusWriter.StateName}}",), timeout=1)
+            if rows:
+                try:
+                    s = json.loads(rows[0][0])
+                    if isinstance(s, dict):
+                        found.append(s)
+                except Exception:
+                    pass
+            try:
+                s = read_json(RL_STATUS)
+                if isinstance(s, dict):
+                    found.append(s)
+            except Exception:
+                if not found:
+                    raise
+            if not found:
+                raise ValueError("no status")
+            return max(found, key=lambda s: str(s.get("timestamp") or ""))
         def write_json(path, value):
             tmp = path.with_name(path.name + "." + str(os.getpid()) + ".tmp")
             try:
@@ -442,7 +467,7 @@ public static class AgentGate
         def daemon_down():
             # Seconds since the orchestrator last wrote rl-status.json, once that's past what the gates trust; else None.
             try:
-                s = json.loads((Path.home() / ".claude" / "rl-status.json").read_text())
+                s = rl_status()
                 if s.get("source") != "MindAttic.Orchestrator":
                     return None
                 age = time.time() - datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00")).timestamp()
@@ -655,13 +680,14 @@ public static class AgentGate
                 return str(repo / "data" / "orchestrator.db")
             return str(ORCH_DIR / "orchestrator.db")
         ORCH_DB = orchestrator_db()
-        def orch_rows(sql, args=()):
-            # Rows from the orchestrator's database; None when it isn't there (a read never creates it) or couldn't be read.
+        def orch_rows(sql, args=(), timeout=5):
+            # Rows from the orchestrator's database; None when it isn't there (a read never creates it) or couldn't be read
+            # (held by a write past timeout seconds, or from before the table).
             try:
                 import sqlite3
                 if not os.path.isfile(ORCH_DB):
                     return None
-                db = sqlite3.connect(ORCH_DB, timeout=5)
+                db = sqlite3.connect(ORCH_DB, timeout=timeout)
                 try:
                     return db.execute(sql, args).fetchall()
                 finally:
@@ -703,6 +729,30 @@ public static class AgentGate
                 return json.loads(f.read_text(encoding="utf-8-sig"))
             except Exception:
                 return None
+        GATE_LOG = Path.home() / ".claude" / "session-context" / "{{GateLogName}}"
+        def log_gate_event(at, decision, held, tool, percent):
+            # One of the pace gate's events (a hold, a refusal, an exempt call, a prompt answered at the stop) for the pace
+            # ledger (M.ORCH-T526): a row of the database's gate_events; appended to the old pace-gate.jsonl instead when the
+            # database can't take it right now (held past a short wait, or from before the table), which the daemon reads in.
+            try:
+                import sqlite3
+                if os.path.isfile(ORCH_DB):
+                    db = sqlite3.connect(ORCH_DB, timeout=2)
+                    try:
+                        db.execute("INSERT INTO gate_events (at, decision, held, tool, percent) VALUES (?, ?, ?, ?, ?)",
+                                   (at, decision, float(held), tool, percent if isinstance(percent, (int, float)) else None))
+                        db.commit()
+                        return
+                    finally:
+                        db.close()
+            except Exception:
+                pass
+            try:
+                GATE_LOG.parent.mkdir(parents=True, exist_ok=True)
+                with open(GATE_LOG, "a", encoding="utf-8") as log:
+                    log.write(json.dumps({"at": at, "decision": decision, "held": held, "tool": tool, "percent": percent}) + "\n")
+            except Exception:
+                pass
         def orch_assignments():
             # The tickets the orchestrator has handed out; assignments.json until a daemon reads it in.
             f = ORCH_DIR / "assignments.json"
@@ -1073,7 +1123,6 @@ public static class AgentGate
 
         {{ClaudeUsagePython}}
 
-        STATUS = Path.home() / ".claude" / "rl-status.json"
         STALE = {{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}
         # MINDATTIC_MAX_HOLD shortens the longest hold so tests can run the held-then-refused paths in seconds.
         try:
@@ -1083,7 +1132,7 @@ public static class AgentGate
 
         def status():
             try:
-                s = read_json(STATUS)
+                s = rl_status()
                 if s.get("source") != "MindAttic.Orchestrator" or before_switch(s["timestamp"], True):
                     return {}
                 at = datetime.fromisoformat(s["timestamp"].replace("Z", ""))
@@ -1099,7 +1148,7 @@ public static class AgentGate
                 s = status()
                 if s:
                     return float(s.get("pace_delay_seconds", 0))
-                s = read_json(STATUS)
+                s = rl_status()
                 if s.get("source") != "MindAttic.Orchestrator" or not s.get("window_reset") or before_switch(s.get("timestamp"), True):
                     return 0
                 until = datetime.fromisoformat(str(s["window_reset"]).replace("Z", "+00:00")).timestamp()
@@ -1111,10 +1160,7 @@ public static class AgentGate
         # so a window that went over can be traced to the calls around it.
         def gate_log(decision, held):
             try:
-                (Path.home() / ".claude" / "session-context").mkdir(parents=True, exist_ok=True)
-                with open(Path.home() / ".claude" / "session-context" / "{{GateLogName}}", "a", encoding="utf-8") as log:
-                    log.write(json.dumps({"at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), "decision": decision, "held": round(held, 1),
-                                          "tool": tool, "percent": status().get("percent_used")}) + "\n")
+                log_gate_event(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), decision, round(held, 1), tool, status().get("percent_used"))
             except Exception:
                 pass
 
@@ -1843,7 +1889,7 @@ public static class AgentGate
             # rl-status.json while the orchestrator keeps it fresh; {} when it's stale or someone else's. Read as the pace gate
             # reads it, retried while the daemon is replacing it: once, a Stop then saw no status at all (M.ORCH-T363).
             try:
-                s = read_json(Path.home() / ".claude" / "rl-status.json")
+                s = rl_status()
                 age = (datetime.now(timezone.utc) - datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00"))).total_seconds()
                 fresh = age <= {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}} and not before_switch(s["timestamp"], True)
                 return lapsed(s) if s.get("source") == "MindAttic.Orchestrator" and fresh else {}
@@ -2079,13 +2125,7 @@ public static class AgentGate
                 limits = dict(limits, stop=True, percent_used=own[0], reset_time=reset_text(own[1]), stop_window=own[2])
             # So do the exempt commands (M.ORCH-T198): their turns skip every Orchestrator gate.
             if limits.get("stop") and not CONTROL.match((data.get("prompt") or "").strip()) and not exempt_prompt(data.get("prompt")):
-                try:
-                    DIR.mkdir(parents=True, exist_ok=True)
-                    with open(DIR / "{{{GateLogName}}}", "a", encoding="utf-8") as log:
-                        log.write(json.dumps({"at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "decision": "prompt-answered",
-                                              "held": 0, "tool": None, "percent": limits.get("percent_used")}) + "\n")
-                except Exception:
-                    pass
+                log_gate_event(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "prompt-answered", 0, None, limits.get("percent_used"))
                 print(json.dumps({"decision": "block", "reason": "Not sent, so no tokens were spent: the " + str(limits.get("stop_window") or "5-hour") + " window is at its target "
                     "(MindAttic.Orchestrator never lets it pass the limit). Typing works again when it resets at " +
                     str(limits.get("reset_time") or "the end of the window") + ". /autopilot, /pacing and /goal clear still go through."}))

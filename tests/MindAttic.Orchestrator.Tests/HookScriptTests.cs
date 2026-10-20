@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using MindAttic.Orchestrator.Settings;
 using MindAttic.Orchestrator.Setup;
 using NUnit.Framework;
 
@@ -111,10 +112,22 @@ public sealed class HookScriptTests
 
     private static readonly object ReadCall = new { tool_name = "Read", tool_input = new { file_path = "x" } };
 
+    /// <summary>The pace gate's events, as the old log's lines: the file a hook falls back to, then the database's gate_events
+    /// rows (M.ORCH-T526) once a test's database exists, written out as the hook wrote its lines.</summary>
     private string[] GateLog()
     {
         var path = Path.Combine(Marks, AgentGate.GateLogName);
-        return File.Exists(path) ? File.ReadAllLines(path) : [];
+        var lines = File.Exists(path) ? File.ReadAllLines(path).ToList() : [];
+        var db = MindAttic.Orchestrator.Settings.OrchestratorDb.DefaultPath();
+        if (!File.Exists(db)) return [.. lines];
+        using var connection = new MindAttic.Orchestrator.Settings.OrchestratorDb(db).Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT at, decision, held, tool, percent FROM gate_events ORDER BY id;";
+        using var r = command.ExecuteReader();
+        string Json(int i) => r.IsDBNull(i) ? "null" : JsonSerializer.Serialize(r.GetValue(i));
+        while (r.Read())
+            lines.Add($"{{\"at\": {Json(0)}, \"decision\": {Json(1)}, \"held\": {Json(2)}, \"tool\": {Json(3)}, \"percent\": {Json(4)}}}");
+        return [.. lines];
     }
 
     private void Status(object fields, DateTime? at = null, string source = "MindAttic.Orchestrator")
@@ -2123,5 +2136,56 @@ public sealed class HookScriptTests
             Assert.That(MindAttic.Orchestrator.Sessions.Handoff.Read(Marks)!.State, Is.EqualTo("quiet"), source + ": the hold stays until the switch");
         }
         Assert.That(Directory.GetFiles(Marks, "handoff-restored-*"), Is.Empty, "the saved /autopilot is kept for the new account");
+    }
+
+    // ---- M.ORCH-T526: the status row and the event log in orchestrator.db ----
+
+    private static MindAttic.Orchestrator.Settings.OrchestratorDb OrchDb => new(MindAttic.Orchestrator.Settings.OrchestratorDb.DefaultPath());
+
+    private static void StatusRow(object fields, DateTime? at = null)
+    {
+        var body = JsonSerializer.SerializeToNode(fields)!.AsObject();
+        body["source"] = "MindAttic.Orchestrator";
+        body["timestamp"] = (at ?? DateTime.UtcNow).ToString("yyyy-MM-ddTHH:mm:ssZ");
+        OrchDb.SaveState(MindAttic.Orchestrator.Budget.RateLimitStatusWriter.StateName, body.ToJsonString());
+    }
+
+    [Test]
+    public void The_pace_hold_is_read_from_the_databases_row_and_its_event_goes_into_gate_events()
+    {
+        StatusRow(new { pace_delay_seconds = 2 });
+        Assert.That(File.Exists(Path.Combine(Claude, "rl-status.json")), Is.False, "no file: the row alone");
+        Assert.That(Gate(ReadCall).Took, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(1.9)), "the row's hold is waited out");
+        Assert.That(File.Exists(Path.Combine(Marks, AgentGate.GateLogName)), Is.False, "the event went into the database");
+        var held = OrchDb.LoadGateEvents(DateTime.UtcNow.AddMinutes(-5)).Single();
+        Assert.That((held.Decision, held.Tool), Is.EqualTo(("held", "Read")));
+
+        // The newer of the row and the file decides: a file written later (a daemon from before the move) wins.
+        StatusRow(new { pace_delay_seconds = 30 }, DateTime.UtcNow.AddSeconds(-20));
+        Status(new { pace_delay_seconds = 0 });
+        Assert.That(Gate(ReadCall).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "the file is newer");
+    }
+
+    [Test]
+    public void A_hook_reading_while_a_write_holds_the_database_falls_back_to_the_file_and_its_event_is_read_in_later()
+    {
+        StatusRow(new { pace_delay_seconds = 0 }, DateTime.UtcNow.AddSeconds(-30));
+        Status(new { pace_delay_seconds = 3 });
+        (string Output, TimeSpan Took) result;
+        using (var connection = OrchDb.Open())
+        {
+            // Another process mid-write, holding the database past every wait the hook makes.
+            MindAttic.Orchestrator.Settings.OrchestratorDb.Execute(connection, "BEGIN EXCLUSIVE;");
+            result = Gate(ReadCall);
+            MindAttic.Orchestrator.Settings.OrchestratorDb.Execute(connection, "ROLLBACK;");
+        }
+        Assert.That(result.Took, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(2.9)).And.LessThan(TimeSpan.FromSeconds(25)), "held by the file, not stuck on the database");
+        Assert.That(result.Output, Does.Not.Contain("deny"));
+        var log = Path.Combine(Marks, AgentGate.GateLogName);
+        Assert.That(File.ReadAllLines(log).Single(), Does.Contain("\"decision\": \"held\""), "the event fell back to the old log");
+
+        OrchDb.ImportGateLog(log);
+        Assert.That(OrchDb.LoadGateEvents(DateTime.UtcNow.AddMinutes(-5)).Single().Decision, Is.EqualTo("held"), "read in once the database is free");
+        Assert.That(File.Exists(log), Is.False);
     }
 }

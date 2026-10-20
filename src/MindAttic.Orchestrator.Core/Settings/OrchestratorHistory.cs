@@ -147,6 +147,86 @@ public static class OrchestratorHistory
             ("$id", c.SessionId), ("$ticket", c.TicketId), ("$type", c.Type), ("$repo", c.Repo), ("$fresh", c.Fresh), ("$last", Text(c.LastUtc)),
             ("$own", c.OwnShare ? 1 : 0));
 
+    // ---- gate_events (M.ORCH-T526) ----
+
+    /// <summary>The pace gate's events since <paramref name="sinceUtc"/>, oldest first.</summary>
+    public static List<GateEvent> LoadGateEvents(this OrchestratorDb db, DateTime sinceUtc)
+    {
+        using var connection = db.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT at, decision, held, tool FROM gate_events WHERE at >= $since ORDER BY at, id;";
+        command.Parameters.AddWithValue("$since", Second(sinceUtc));
+        using var r = command.ExecuteReader();
+        var events = new List<GateEvent>();
+        while (r.Read())
+        {
+            if (!DateTime.TryParse(r.GetString(0), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var at) ||
+                at < sinceUtc) continue;
+            events.Add(new GateEvent(at, r.GetString(1), r.GetDouble(2), r.IsDBNull(3) ? null : r.GetString(3)));
+        }
+        return events;
+    }
+
+    /// <summary>Adds events as the hooks add them (tests, and the old log's lines as they're read in).</summary>
+    public static void AddGateEvents(this OrchestratorDb db, IEnumerable<(GateEvent Event, double? Percent)> events) =>
+        db.Write((connection, tx) => { foreach (var (e, percent) in events) InsertEvent(connection, tx, e, percent); }, dump: false);
+
+    /// <summary>Drops the events older than <paramref name="keepFromUtc"/> once they're counted into the ledger.</summary>
+    public static void TrimGateEvents(this OrchestratorDb db, DateTime keepFromUtc) =>
+        db.Write((connection, tx) => Run(connection, tx, "DELETE FROM gate_events WHERE at < $from;", ("$from", Second(keepFromUtc))), dump: false);
+
+    private static void InsertEvent(SqliteConnection connection, SqliteTransaction tx, GateEvent e, double? percent) =>
+        Run(connection, tx, "INSERT INTO gate_events (at, decision, held, tool, percent) VALUES ($at, $decision, $held, $tool, $percent);",
+            ("$at", Second(e.AtUtc)), ("$decision", e.Decision), ("$held", e.HeldSeconds), ("$tool", e.Tool), ("$percent", percent));
+
+    /// <summary>A time as the hooks write it ("2026-10-15T20:00:00Z"), so the rows sort and compare as text.</summary>
+    private static string Second(DateTime utc) =>
+        (utc.Kind == DateTimeKind.Local ? utc.ToUniversalTime() : utc).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Reads the pace gate's old event log (<c>pace-gate.jsonl</c>) into <c>gate_events</c> and appends its lines to
+    /// <c>pace-gate.jsonl.bak</c>. Not only once: a hook that can't write the database right now (held past its short wait, or
+    /// one from before the table) appends to the file as before, so whatever is there is read in on the next tick. The file is
+    /// renamed before it's read, so a line a hook appends meanwhile goes to a new file rather than being lost or read twice; a
+    /// file a hook has open right now is left for next time. A rename whose rows didn't go in is read in first the next time.
+    /// </summary>
+    public static void ImportGateLog(this OrchestratorDb db, string path)
+    {
+        var taking = path + ".importing";
+        if (!File.Exists(taking))
+        {
+            if (!File.Exists(path)) return;
+            try { File.Move(path, taking); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return; }
+        }
+        var lines = File.ReadAllLines(taking).Where(l => !string.IsNullOrWhiteSpace(l)).ToList();
+        db.Write((connection, tx) =>
+        {
+            foreach (var line in lines)
+                if (ParseEvent(line) is { } e) InsertEvent(connection, tx, e.Event, e.Percent);
+        }, dump: false);
+        File.AppendAllLines(path + ".bak", lines);
+        File.Delete(taking);
+    }
+
+    /// <summary>One line of the old log; null when it isn't one (a torn line, a hook killed mid-write).</summary>
+    private static (GateEvent Event, double? Percent)? ParseEvent(string line)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(line);
+            var r = doc.RootElement;
+            if (!r.TryGetProperty("at", out var a) || a.ValueKind != JsonValueKind.String || !DateTime.TryParse(a.GetString(), CultureInfo.InvariantCulture,
+                    DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var at)) return null;
+            return (new GateEvent(at,
+                r.TryGetProperty("decision", out var d) && d.ValueKind == JsonValueKind.String ? d.GetString()! : "",
+                r.TryGetProperty("held", out var h) && h.ValueKind == JsonValueKind.Number ? h.GetDouble() : 0,
+                r.TryGetProperty("tool", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null),
+                r.TryGetProperty("percent", out var p) && p.ValueKind == JsonValueKind.Number ? p.GetDouble() : null);
+        }
+        catch (JsonException) { return null; }
+    }
+
     // ---- the one-time import ----
 
     private static readonly ConcurrentDictionary<string, bool> Imported = new(StringComparer.OrdinalIgnoreCase);

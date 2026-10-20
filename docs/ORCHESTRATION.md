@@ -46,7 +46,10 @@ The daemon starts at logon and refreshes every 15 seconds, sooner when a turn en
    every subagent running past 85% had started before 85%, and later Agent calls were refused. Front-loaded stays as
    an option. No window reached the 98% target. The 65% and 49% windows were short on demand, not held back:
    pacing held agents for 47 minutes and 1 minute in those windows.
-3. **Steer.** The result goes into `~/.claude/rl-status.json`, which the hooks in every Claude CLI read:
+3. **Steer.** The result goes into orchestrator.db's `rl-status` row (and `~/.claude/rl-status.json`, the same status
+   exported for rl-check.py and the Launcher), which the hooks in every Claude CLI read, taking whichever is newer. Their
+   holds and refusals go into its `gate_events` (once `pace-gate.jsonl`; a hook that finds the database held still
+   appends there, and the daemon reads it in). What the status steers:
    - *Subagent allowance:* how many subagents may run at once across all CLIs. A new one waits while the allowance
      is used up, and is refused (try again once a slot frees) if it's still full after 5 minutes. It's shared fairly:
      each active CLI (one with subagents running, or one waiting for one) has `allowance ÷ active CLIs` (at least one),

@@ -138,12 +138,36 @@ public sealed class OrchestratorDb(string path)
             written_at REAL NOT NULL
         );
         """,
+        // 4: the lease files and the pace gate's event log (M.ORCH-T526). A lease (dispatch, limit-wake, pace-ledger,
+        // reminders) is one row naming the process holding it (its pid and start time, so a holder that exited or crashed is
+        // told from a live one, and a reused pid isn't taken for it); the pace gate's holds, refusals and answered prompts, one
+        // row each, were pace-gate.jsonl. Neither is in the dump: they change every tick and mean nothing on another machine.
+        """
+        CREATE TABLE leases (
+            name     TEXT PRIMARY KEY,
+            holder   TEXT NOT NULL,
+            pid      INTEGER NOT NULL,
+            started  REAL,
+            taken_at REAL NOT NULL
+        );
+        CREATE TABLE gate_events (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            at       TEXT NOT NULL,
+            decision TEXT NOT NULL,
+            held     REAL NOT NULL,
+            tool     TEXT,
+            percent  REAL
+        );
+        CREATE INDEX gate_events_at ON gate_events (at);
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a
-    /// commit every <see cref="Daemon.SyncOrchestratorDbIfDue"/>: what autopilot holds back right now, the stale claims, and
-    /// when the dashboard was last looked at. They're still in the .db, which is committed whenever the dump changes.</summary>
-    internal static readonly string[] Volatile = [Daemon.AutopilotHoldsName, Daemon.StaleTicketsName, "dashboard-seen"];
+    /// commit every <see cref="Daemon.SyncOrchestratorDbIfDue"/>: what autopilot holds back right now, the stale claims, when
+    /// the dashboard was last looked at, the pace status the hooks read (rl-status) and the roster of open CLIs. They're
+    /// still in the .db, which is committed whenever the dump changes.</summary>
+    internal static readonly string[] Volatile =
+        [Daemon.AutopilotHoldsName, Daemon.StaleTicketsName, "dashboard-seen", Budget.RateLimitStatusWriter.StateName, Sessions.CliRoster.StateName];
 
     /// <summary>Every table, with the order the dump lists its rows in: by key, so a change shows up as a few lines in its diff.</summary>
     private static readonly (string Table, string Order, string Where)[] Tables =
@@ -259,6 +283,41 @@ public sealed class OrchestratorDb(string path)
         try { WriteDump(text); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
+
+    // ---- one state row, for the stores kept outside JsonStore (M.ORCH-T526) ----
+
+    /// <summary><paramref name="name"/>'s <c>state</c> value and when it was written; null when none is kept.</summary>
+    public (string Value, DateTime WrittenUtc)? LoadState(string name)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT value, written_at FROM state WHERE name = $name;";
+        command.Parameters.AddWithValue("$name", name);
+        using var r = command.ExecuteReader();
+        return r.Read() ? (r.GetString(0), DateTime.UnixEpoch.AddTicks((long)(r.GetDouble(1) * TimeSpan.TicksPerSecond))) : null;
+    }
+
+    /// <summary>Replaces <paramref name="name"/>'s <c>state</c> value (a volatile one without rewriting the dump).</summary>
+    public void SaveState(string name, string json) => Write((connection, tx) =>
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = tx;
+        command.CommandText = "INSERT OR REPLACE INTO state (name, value, written_at) VALUES ($name, $value, $at);";
+        command.Parameters.AddWithValue("$name", name);
+        command.Parameters.AddWithValue("$value", json);
+        command.Parameters.AddWithValue("$at", (DateTime.UtcNow - DateTime.UnixEpoch).Ticks / (double)TimeSpan.TicksPerSecond);
+        command.ExecuteNonQuery();
+    }, dump: !Volatile.Contains(name));
+
+    /// <summary>Drops <paramref name="name"/>'s <c>state</c> value.</summary>
+    public void DeleteState(string name) => Write((connection, tx) =>
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = tx;
+        command.CommandText = "DELETE FROM state WHERE name = $name;";
+        command.Parameters.AddWithValue("$name", name);
+        command.ExecuteNonQuery();
+    }, dump: !Volatile.Contains(name));
 
     private static void Migrate(SqliteConnection connection)
     {

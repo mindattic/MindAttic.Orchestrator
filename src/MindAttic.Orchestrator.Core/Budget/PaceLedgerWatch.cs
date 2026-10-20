@@ -32,8 +32,16 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
         get => db ??= new OrchestratorDb(OrchestratorDb.DefaultPath(WorkspaceRoot));
         init => db = value;
     }
+    /// <summary>The pace gate's old event log, read into the database's <c>gate_events</c> each tick (M.ORCH-T526): a hook that
+    /// can't write the database right now still appends its event there.</summary>
     public static string DefaultEventsPath { get; } = Path.Combine(Setup.AgentGate.ClaudeDir, "session-context", Setup.AgentGate.GateLogName);
     public string EventsPath { get; init; } = DefaultEventsPath;
+
+    private List<GateEvent> Events(DateTime sinceUtc)
+    {
+        try { return Db.LoadGateEvents(sinceUtc); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return []; }
+    }
 
     /// <summary>Where its tickets are filed: the daemon moves it when the dashboard's first run picks another workspace (M.ORCH-T359).</summary>
     public string WorkspaceRoot { get; set; } = workspaceRoot;
@@ -57,7 +65,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
         if (nowUtc - checkedUtc < TimeSpan.FromMinutes(1)) return;
         // A held database or limits file reads as empty: a window graded from that is written for good (over with no hit, or
         // blind), so the check waits for the next tick instead.
-        try { Db.ImportJson(store.Directory); }
+        try { Db.ImportJson(store.Directory); Db.ImportGateLog(EventsPath); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
         if (!Db.TryLoadUsageSamples(out var samples) || !store.TryLoadLimits(out var hits)) return;
         var first = checkedUtc == default;
@@ -77,14 +85,16 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
         List<LedgerWindow> recorded;
         try { recorded = Db.LoadLedger(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
-        var events = PaceLedger.LoadEvents(EventsPath, nowUtc - KeepEvents);
+        List<GateEvent> events;
+        try { events = Db.LoadGateEvents(nowUtc - KeepEvents); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
         var due = PaceLedger.Due(recorded, samples, hits, events, nowUtc, Account is null ? null : PaceLedger.AccountAt(Account, nowUtc));
         if (due.Count == 0) return;
         try { Db.AppendLedger(due); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
         foreach (var w in due) Report(w, nowUtc);
-        try { PaceLedger.TrimEvents(EventsPath, nowUtc - KeepEvents); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        try { Db.TrimGateEvents(nowUtc - KeepEvents); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { }
     }
 
     /// <summary>A 5-hour limit hit read from the transcripts is the failure the orchestrator exists to prevent: raise it at once.</summary>
@@ -105,7 +115,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
         {
             alarmed.Add(o.ResetUtc);
             var hit = o.HitUtc;
-            var around = PaceLedger.LoadEvents(EventsPath, hit - TimeSpan.FromMinutes(30)).Where(e => e.AtUtc <= hit + TimeSpan.FromMinutes(1)).ToList();
+            var around = Events(hit - TimeSpan.FromMinutes(30)).Where(e => e.AtUtc <= hit + TimeSpan.FromMinutes(1)).ToList();
             var line = $"Agents ran out of tokens: the 5-hour limit was hit at {Formatting.ResetTime(hit, nowUtc)} ({Formatting.Ago(hit, nowUtc)}), " +
                        $"{Formatting.Tokens(o.FreshUsed)} uncached into the window, resetting {Formatting.ResetTime(o.ResetUtc, nowUtc)}. " +
                        $"In the 30 minutes before it the pace gate held {around.Count(e => e.Decision == GateEvent.Held)} calls " +
