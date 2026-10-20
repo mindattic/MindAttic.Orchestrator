@@ -37,6 +37,7 @@ public sealed class HandoffWatch(ContextCycler cycler, JsonStore store)
     public const string Prompt = "/handoff";
 
     private readonly HashSet<string> asked = new(StringComparer.Ordinal);
+    private readonly HashSet<string> leftAlone = new(StringComparer.OrdinalIgnoreCase);
     private int quietTicks;
     private string? started;
 
@@ -46,7 +47,7 @@ public sealed class HandoffWatch(ContextCycler cycler, JsonStore store)
     {
         var lines = new List<string>();
         var mark = Handoff.Read(cycler.Directory);
-        if (mark?.Started != started) { asked.Clear(); quietTicks = 0; started = mark?.Started; }
+        if (mark?.Started != started) { asked.Clear(); leftAlone.Clear(); quietTicks = 0; started = mark?.Started; }
         if (mark is null) return (lines, false);
         if (mark.State == Handoff.Resumed)
         {
@@ -60,12 +61,16 @@ public sealed class HandoffWatch(ContextCycler cycler, JsonStore store)
         if (mark.State != Handoff.Winding) return (lines, false);
 
         var workedIds = worked.Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var a in store.LoadAssignments().Where(a => Handoff.Unstarted(a, workedIds, nowUtc)))
+        foreach (var a in store.LoadAssignments().Where(a => Handoff.Unstarted(a, workedIds, nowUtc) && !leftAlone.Contains(a.TicketId)))
         {
-            var said = repoPaths.TryGetValue(a.Repo, out var path) ? Return(a, path) : null;
-            lines.Add(said is null
-                ? $"handoff: {a.TicketId} was claimed but no subagent started on it, and its worktree {a.Directory} has work in it, so it's left as it is"
-                : $"handoff: {a.TicketId} was claimed but no subagent started on it: it's back in the queue ({said})");
+            var found = repoPaths.TryGetValue(a.Repo, out var path);
+            var said = found ? Return(a, path!) : null;
+            // Left as it is once, and said once: nothing works it, so it doesn't keep the handoff from going quiet either; its
+            // worktree stays on disk through the switch (M.ORCH-T509).
+            if (said is null) leftAlone.Add(a.TicketId);
+            lines.Add(said is not null ? $"handoff: {a.TicketId} was claimed but no subagent started on it: it's back in the queue ({said})"
+                : found ? $"handoff: {a.TicketId} was claimed but no subagent started on it, and its worktree {a.Directory} has work in it, so it's left as it is"
+                : $"handoff: {a.TicketId} was claimed but no subagent started on it, and its repo {a.Repo} isn't in the workspace, so it's left as it is");
         }
 
         // An idle tab that hasn't saved is asked to, once; one typed into is busy by the next tick.
@@ -80,7 +85,7 @@ public sealed class HandoffWatch(ContextCycler cycler, JsonStore store)
             if (sent) { typed = true; lines.Add($"handoff: asked the idle CLI in {c.Repo} (pid {c.Pid}) to quicksave its handoff"); }
         }
 
-        var work = Handoff.Working(roster, cycler.AliveSubagents(nowUtc), store.LoadAssignments(), workedIds);
+        var work = Handoff.Working(roster, cycler.AliveSubagents(nowUtc), store.LoadAssignments().Where(a => !leftAlone.Contains(a.TicketId)), workedIds);
         quietTicks = work.Any || typed ? 0 : quietTicks + 1;
         if (quietTicks < 2) return (lines, false);
         Handoff.Write(cycler.Directory, mark with { State = Handoff.Quiet, QuietAt = Handoff.Stamp(nowUtc) });

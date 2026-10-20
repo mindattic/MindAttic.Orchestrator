@@ -139,6 +139,34 @@ public sealed class HandoffTests
     }
 
     [Test]
+    public void A_claim_whose_worktree_has_work_is_left_said_once_and_doesnt_keep_the_handoff_from_going_quiet()
+    {
+        // M.ORCH-T509: it was checked and said again every tick, and counted as working for good, so the handoff never went quiet.
+        Winding();
+        store.UpdateAssignments(all => all.Add(new Assignment("A-T1", "A", @"D:\WT\A\A-T1", Providers.Claude, Now.AddMinutes(-20), true)));
+        var tried = 0;
+        var watch = new HandoffWatch(cycler, store) { Return = (_, _) => { tried++; return null; } };
+        var repos = new Dictionary<string, string> { ["A"] = @"D:\W\A" };
+
+        var said = new List<string>();
+        var quiet = false;
+        for (var i = 0; i < 3 && !quiet; i++)
+        {
+            var (lines, wentQuiet) = watch.Tick([], [], [], repos, Now.AddMinutes(i));
+            said.AddRange(lines);
+            quiet = wentQuiet;
+        }
+        Assert.That(tried, Is.EqualTo(1));
+        Assert.That(said.Count(l => l.Contains("has work in it, so it's left as it is")), Is.EqualTo(1));
+        Assert.That(quiet, Is.True);
+        Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EqualTo(new[] { "A-T1" }), "its worktree and claim stay");
+
+        Winding(Now);
+        store.UpdateAssignments(all => all.Add(new Assignment("B-T1", "B", @"D:\WT\B\B-T1", Providers.Claude, Now.AddMinutes(-20), true)));
+        Assert.That(watch.Tick([], [], [], repos, Now.AddMinutes(5)).Lines, Has.Some.Contains("its repo B isn't in the workspace"));
+    }
+
+    [Test]
     public void Nothing_goes_quiet_while_a_subagent_runs_and_a_resumed_handoff_is_tidied_a_day_on()
     {
         Winding();
