@@ -33,7 +33,8 @@ internal sealed class ShowCommand : Command<ShowCommand.Settings>
         var repoPath = new MindAttic.Workflow.Workspace(options.WorkspaceRoot).Find(hit.Repo)?.Path ?? "";
 
         var t = hit.Ticket;
-        AnsiConsole.MarkupLine($"[bold]{t.Id}[/] in {Markup.Escape(hit.Repo)} · {t.Type} · [bold]{t.Status}[/] · opened {t.Date}");
+        // Every cell escaped: a story file's are hand-edited text, and a '[' in one was read as markup and crashed.
+        AnsiConsole.MarkupLine($"[bold]{Markup.Escape(t.Id)}[/] in {Markup.Escape(hit.Repo)} · {Markup.Escape(t.Type)} · [bold]{Markup.Escape(t.Status)}[/] · opened {Markup.Escape(t.Date)}");
         AnsiConsole.MarkupLine($"  {Markup.Escape(t.Summary)}");
         if (t.Ref.Trim() is { Length: > 0 } r && r != "—") AnsiConsole.MarkupLine($"  [grey]Ref: {Markup.Escape(r)}[/]");
 
