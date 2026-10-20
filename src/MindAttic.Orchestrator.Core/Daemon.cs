@@ -419,7 +419,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     private void RunAuditIfDue(OrchestratorOptions options, OrchestratorSettings s)
     {
         if (s.AuditEveryHours <= 0) return;
-        var every = TimeSpan.FromHours(s.AuditEveryHours);
+        // Capped at a century: a huge value typed to mean "never" overflowed and ended every tick here, before autopilot's turn.
+        var every = TimeSpan.FromHours(Math.Min(s.AuditEveryHours, 36_525 * 24));
         var runner = new Audit.AuditRunner(options, store);
         var before = runner.Latest();
         if (before is not null && DateTime.UtcNow - before.RanUtc < every) return;
