@@ -167,6 +167,24 @@ public sealed class HandoffTests
     }
 
     [Test]
+    public void A_handoff_cancelled_during_the_tick_that_goes_quiet_stays_cancelled()
+    {
+        // M.ORCH-T510: the tick read the mark at its start and wrote it back quiet at its end, over a /handoff off in between.
+        Winding();
+        var watch = new HandoffWatch(cycler, store)
+        {
+            Submit = (_, _) => { Handoff.Clear(cycler.Directory); return Task.FromResult(false); },
+            HostOf = (pid, hosts) => hosts.FirstOrDefault(h => h.ProcessId == pid),
+        };
+        var repos = new Dictionary<string, string>();
+        Assert.That(watch.Tick([], [], [], repos, Now).WentQuiet, Is.False);
+        // The second quiet tick: /handoff off lands while it asks an idle tab to save.
+        var (_, wentQuiet) = watch.Tick([Row(2, idle: true, launcher: true)], [new HostSession("claude", 2, "pipe-2", null)], [], repos, Now.AddMinutes(1));
+        Assert.That(wentQuiet, Is.False);
+        Assert.That(Handoff.Read(cycler.Directory), Is.Null);
+    }
+
+    [Test]
     public void Nothing_goes_quiet_while_a_subagent_runs_and_a_resumed_handoff_is_tidied_a_day_on()
     {
         Winding();

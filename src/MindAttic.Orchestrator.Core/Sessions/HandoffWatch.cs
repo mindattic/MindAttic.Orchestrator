@@ -88,7 +88,9 @@ public sealed class HandoffWatch(ContextCycler cycler, JsonStore store)
         var work = Handoff.Working(roster, cycler.AliveSubagents(nowUtc), store.LoadAssignments().Where(a => !leftAlone.Contains(a.TicketId)), workedIds);
         quietTicks = work.Any || typed ? 0 : quietTicks + 1;
         if (quietTicks < 2) return (lines, false);
-        Handoff.Write(cycler.Directory, mark with { State = Handoff.Quiet, QuietAt = Handoff.Stamp(nowUtc) });
+        // Read again just before: a /handoff off since the tick began deleted it, and writing it back would bring it back.
+        if (Handoff.Read(cycler.Directory) is not { State: Handoff.Winding } now || now.Started != mark.Started) return (lines, false);
+        Handoff.Write(cycler.Directory, now with { State = Handoff.Quiet, QuietAt = Handoff.Stamp(nowUtc) });
         lines.Add($"handoff: {Handoff.QuietLine} ({saved.Count} CLI handoff{(saved.Count == 1 ? "" : "s")} saved)");
         return (lines, true);
     }
