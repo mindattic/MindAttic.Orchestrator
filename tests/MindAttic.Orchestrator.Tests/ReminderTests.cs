@@ -185,6 +185,28 @@ public sealed class ReminderTests
     }
 
     [Test]
+    public void A_send_that_times_out_isnt_tried_again_every_tick()
+    {
+        // M.ORCH-T508: a hung psst held the daemon's tick for 2 minutes per due reminder, every tick, past the gates' stale line.
+        var utc = DateTime.UtcNow;
+        ReminderBook.Add(Store, "one", utc.AddMinutes(-2), null, utc.AddHours(-1));
+        ReminderBook.Add(Store, "two", utc.AddMinutes(-1), null, utc.AddHours(-1));
+        var hang = true;
+        var psst = Psst(sms: _ => hang ? new ProcessResult(-1, "", "", true) : Ok());
+        var sender = Sender(psst);
+
+        sender.Tick(utc);
+        Assert.That(psst.Calls.Count(c => c[0] == "sms"), Is.EqualTo(1), "the second isn't tried behind one that hung");
+        sender.Tick(utc.AddSeconds(15));
+        Assert.That(psst.Calls, Has.Count.EqualTo(2), "nothing run at all on the next tick");
+        Assert.That(ReminderBook.Pending(Store).Single(r => r.Text == "one").Failures, Is.EqualTo(1));
+
+        hang = false;
+        sender.Tick(utc + ReminderSender.AfterTimeout);
+        Assert.That(ReminderBook.Pending(Store), Is.Empty);
+    }
+
+    [Test]
     public void Psst_not_installed_or_not_configured_holds_them_and_alerts_once()
     {
         var utc = DateTime.UtcNow;

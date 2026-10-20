@@ -21,6 +21,11 @@ public sealed class ReminderSender(JsonStore store, PsstClient psst, Action<LogE
     private bool unreadable;
     private readonly HashSet<string> alertedFailures = new(StringComparer.OrdinalIgnoreCase);
     private DateTime prunedUtc;
+    private DateTime heldUntilUtc;    // after psst hung: the tick isn't held up by it again until then
+
+    /// <summary>After <c>psst</c> times out (an SMTP or network stall), how long before it's run again: each try holds the
+    /// daemon's tick for up to <see cref="PsstClient.SendTimeout"/>, and the gates go stale past a few minutes of it.</summary>
+    internal static readonly TimeSpan AfterTimeout = TimeSpan.FromMinutes(10);
 
     public void Tick(DateTime nowUtc)
     {
@@ -40,7 +45,9 @@ public sealed class ReminderSender(JsonStore store, PsstClient psst, Action<LogE
             return;
         }
 
+        if (nowUtc < heldUntilUtc) return;
         var status = psst.Probe();
+        if (status.TimedOut) heldUntilUtc = nowUtc + AfterTimeout;
         if (!status.Installed || !status.Configured)
         {
             Report(status.Problem ?? "Psst can't send texts", due.Count);
@@ -52,7 +59,7 @@ public sealed class ReminderSender(JsonStore store, PsstClient psst, Action<LogE
         foreach (var r in due)
         {
             if ((r.To ?? status.OwnerNumber) is not { } to) { ownerless++; continue; }
-            var (sent, detail) = psst.Send(to, r.Message);
+            var (sent, detail, timedOut) = psst.Send(to, r.Message);
             if (sent)
             {
                 done[r.Id] = r with { SentUtc = nowUtc, LastError = null };
@@ -63,9 +70,13 @@ public sealed class ReminderSender(JsonStore store, PsstClient psst, Action<LogE
             else
             {
                 done[r.Id] = r with { Failures = r.Failures + 1, LastError = detail };
-                say(LogEventLevel.Warning, $"reminder {r.Id}: Psst couldn't text it to {r.ToLabel} ({detail}); trying again next tick");
+                // Hung (it may even have gone): the rest would hang as well, so none is tried again for a while.
+                if (timedOut) heldUntilUtc = nowUtc + AfterTimeout;
+                var again = timedOut ? $"in {AfterTimeout.TotalMinutes:0} minutes" : "next tick";
+                say(LogEventLevel.Warning, $"reminder {r.Id}: Psst couldn't text it to {r.ToLabel} ({detail}); trying again {again}");
                 if (alertedFailures.Add(r.Id))
-                    alert("Reminder not sent", $"Psst couldn't text your reminder to {r.ToLabel} ({detail}): {r.Text}. Trying again every tick until it goes.", false);
+                    alert("Reminder not sent", $"Psst couldn't text your reminder to {r.ToLabel} ({detail}): {r.Text}. Trying again until it goes.", false);
+                if (timedOut) break;
             }
         }
         if (ownerless > 0)

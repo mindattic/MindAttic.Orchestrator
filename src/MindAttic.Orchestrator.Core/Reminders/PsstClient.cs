@@ -5,7 +5,7 @@ namespace MindAttic.Orchestrator.Reminders;
 
 /// <summary>What <c>psst ping</c> says: whether Psst runs, whether it can send a text, and the owner's number (its own
 /// configured recipient, where a reminder with no <c>--to</c> goes). <see cref="Problem"/> says what's wrong, if anything.</summary>
-public sealed record PsstStatus(bool Installed, bool Configured, string? OwnerNumber, string? Problem);
+public sealed record PsstStatus(bool Installed, bool Configured, string? OwnerNumber, string? Problem, bool TimedOut = false);
 
 /// <summary>
 /// Texts through MindAttic.Psst's own CLI (<c>psst sms &lt;to&gt; &lt;text&gt;</c>), so its transport, contact book and
@@ -25,7 +25,7 @@ public sealed class PsstClient(IProcessRunner runner, string exe = "psst")
         ProcessResult r;
         try { r = runner.Run(exe, ["ping"], PingTimeout); }
         catch (Win32Exception) { return new(false, false, null, "Psst isn't installed (no psst.exe on the PATH)"); }
-        if (r.TimedOut) return new(true, false, null, $"psst ping didn't answer in {PingTimeout.TotalSeconds:0}s");
+        if (r.TimedOut) return new(true, false, null, $"psst ping didn't answer in {PingTimeout.TotalSeconds:0}s", TimedOut: true);
         if (r.ExitCode != 0) return new(true, false, null, $"psst ping failed (exit {r.ExitCode}): {FirstLine(r)}");
         return Parse(r.Output);
     }
@@ -41,14 +41,15 @@ public sealed class PsstClient(IProcessRunner runner, string exe = "psst")
             configured ? null : "Psst isn't configured to send texts (run psst ping to see what's missing)");
     }
 
-    /// <summary>Sends <paramref name="text"/> to <paramref name="to"/>; Sent is psst's exit code 0, Detail what it said.</summary>
-    public (bool Sent, string Detail) Send(string to, string text)
+    /// <summary>Sends <paramref name="text"/> to <paramref name="to"/>; Sent is psst's exit code 0, Detail what it said, TimedOut
+    /// whether it was stopped at <see cref="SendTimeout"/>.</summary>
+    public (bool Sent, string Detail, bool TimedOut) Send(string to, string text)
     {
         ProcessResult r;
         try { r = runner.Run(exe, ["sms", to, text], SendTimeout); }
-        catch (Win32Exception) { return (false, "Psst isn't installed (no psst.exe on the PATH)"); }
-        if (r.TimedOut) return (false, $"psst sms didn't finish in {SendTimeout.TotalMinutes:0} minutes");
-        return (r.ExitCode == 0, FirstLine(r));
+        catch (Win32Exception) { return (false, "Psst isn't installed (no psst.exe on the PATH)", false); }
+        if (r.TimedOut) return (false, $"psst sms didn't finish in {SendTimeout.TotalMinutes:0} minutes", true);
+        return (r.ExitCode == 0, FirstLine(r), false);
     }
 
     /// <summary>True when Psst would take <paramref name="to"/>: a US number (10 digits, optionally +1, no letters) or a name
