@@ -89,8 +89,13 @@ public sealed class LibraryControlsTests
         var window = File.ReadAllText(Wpf("MainWindow.xaml"));
 
         Assert.That(window, Does.Not.Contain("vm:Palette."), "a state colour is the theme's McGood, McWarn, McLink, McMuted or McBad");
+        // App.xaml too: RepoTile's selected border was a StaticResource McFocus (M.ORCH-T556).
+        var app = File.ReadAllText(Wpf("App.xaml"));
         foreach (var key in PaletteKeys)
+        {
             Assert.That(window, Does.Not.Contain($"{{StaticResource {key}}}"), $"{key}: a StaticResource keeps the dark colour under high contrast");
+            Assert.That(app, Does.Not.Contain($"{{StaticResource {key}}}"), $"App.xaml's {key}: a StaticResource keeps the dark colour under high contrast");
+        }
         Assert.That(window, Does.Contain("{DynamicResource McGood}"));
         Assert.That(window, Does.Contain("{DynamicResource McWarn}"));
 

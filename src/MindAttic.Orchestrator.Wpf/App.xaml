@@ -22,7 +22,7 @@
                 <Setter Property="FocusVisualStyle" Value="{StaticResource McFocusRing}" />
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                        <Setter Property="BorderBrush" Value="{StaticResource McFocus}" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource McFocus}" />
                         <Setter Property="BorderThickness" Value="2" />
                     </DataTrigger>
                 </Style.Triggers>
