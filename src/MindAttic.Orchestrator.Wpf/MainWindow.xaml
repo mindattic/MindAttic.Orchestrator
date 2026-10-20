@@ -803,20 +803,15 @@
                                         <ItemsControl ItemsSource="{Binding Files}" Focusable="False">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate DataType="{x:Type vm:AuditFileViewModel}">
-                                                    <Button Command="{Binding OpenCommand}" Cursor="Hand" Background="Transparent" BorderThickness="0"
-                                                            HorizontalContentAlignment="Left" ToolTip="Open" MinHeight="24"
-                                                            FocusVisualStyle="{StaticResource FocusRing}">
+                                                    <!-- McTextButton with no fill (M.ORCH-T499): left-aligned, since its template centres its content. -->
+                                                    <Button Command="{Binding OpenCommand}" Style="{StaticResource McTextButton}" Background="Transparent"
+                                                            Padding="0,1" Margin="0" HorizontalAlignment="Left" ToolTip="Open" MinHeight="24">
                                                         <AutomationProperties.Name>
                                                             <MultiBinding StringFormat="Open {0} {1}">
                                                                 <Binding Path="Repo" />
                                                                 <Binding Path="RelativePath" />
                                                             </MultiBinding>
                                                         </AutomationProperties.Name>
-                                                        <Button.Template>
-                                                            <ControlTemplate TargetType="Button">
-                                                                <ContentPresenter Margin="0,1" VerticalAlignment="Center" />
-                                                            </ControlTemplate>
-                                                        </Button.Template>
                                                         <TextBlock TextTrimming="CharacterEllipsis">
                                                             <Run Text="{Binding Repo, Mode=OneWay}" Foreground="{StaticResource McText}" />
                                                             <Run Text="{Binding RelativePath, Mode=OneWay}" Foreground="{StaticResource McMuted}" />

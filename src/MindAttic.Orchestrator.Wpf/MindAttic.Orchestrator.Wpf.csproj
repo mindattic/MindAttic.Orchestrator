@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="MindAttic.Components.Wpf" Version="5.0.0" />
+    <PackageReference Include="MindAttic.Components.Wpf" Version="7.0.0" />
   </ItemGroup>
 
   <ItemGroup>

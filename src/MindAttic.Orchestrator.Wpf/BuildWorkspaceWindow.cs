@@ -1,11 +1,15 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using MindAttic.Components.Wpf.Controls;
 using MindAttic.Orchestrator.Setup;
 
 namespace MindAttic.Orchestrator.Wpf;
 
-/// <summary>The first run on a new machine: clones the workspace into a folder and shows each repo as it lands.</summary>
+/// <summary>The first run on a new machine: clones the workspace into a folder and shows each repo as it lands. Built from
+/// MindAttic.Components.Wpf (M.ORCH-T499): the dark title bar and chrome, McPrimaryButton, and an McModal for the one question
+/// it asks. The log box and progress bar are stock controls in the theme's brushes until the library has a scrolling text area
+/// and a progress bar (M.ORCH-T531).</summary>
 public sealed class BuildWorkspaceWindow : Window
 {
     private readonly string folder;
@@ -17,6 +21,8 @@ public sealed class BuildWorkspaceWindow : Window
     };
     private readonly ProgressBar bar = new() { IsIndeterminate = true, Height = 4, Margin = new Thickness(0, 8, 0, 8) };
     private readonly Button done = new() { Content = "Working…", IsEnabled = false, Padding = new Thickness(20, 6, 20, 6), HorizontalAlignment = HorizontalAlignment.Right };
+    private readonly McModal question = new() { DialogWidth = 460 };
+    private TaskCompletionSource<bool>? answer;
     private bool succeeded;
 
     private BuildWorkspaceWindow(string folder, Serilog.ILogger log)
@@ -27,6 +33,16 @@ public sealed class BuildWorkspaceWindow : Window
         Width = 720;
         Height = 480;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        McWindow.SetDarkTitleBar(this, true);
+        SetResourceReference(BackgroundProperty, "McChrome");
+        SetResourceReference(ForegroundProperty, "McText");
+        output.SetResourceReference(BackgroundProperty, "McSurface");
+        output.SetResourceReference(ForegroundProperty, "McText");
+        output.SetResourceReference(BorderBrushProperty, "FieldBorder");
+        bar.SetResourceReference(BackgroundProperty, "McSurface");
+        bar.SetResourceReference(ForegroundProperty, "McAccent");
+        bar.BorderThickness = new Thickness(0);
+        done.SetResourceReference(StyleProperty, "McPrimaryButton");
         var panel = new DockPanel { Margin = new Thickness(16) };
         var header = new TextBlock { Text = $"Cloning into {folder}", FontSize = 15, Margin = new Thickness(0, 0, 0, 4) };
         DockPanel.SetDock(header, Dock.Top);
@@ -38,7 +54,11 @@ public sealed class BuildWorkspaceWindow : Window
         panel.Children.Add(bar);
         panel.Children.Add(done);
         panel.Children.Add(output);
-        Content = panel;
+        question.Closed += (_, _) => answer?.TrySetResult(false);
+        var root = new Grid();
+        root.Children.Add(panel);
+        root.Children.Add(question);
+        Content = root;
         Loaded += async (_, _) => await BuildAsync();
     }
 
@@ -55,6 +75,32 @@ public sealed class BuildWorkspaceWindow : Window
     {
         output.AppendText(line + Environment.NewLine);
         output.ScrollToEnd();
+    }
+
+    /// <summary>Asks a yes/no question in an McModal over the log; Esc, the close button or the backdrop answer no.</summary>
+    private Task<bool> AskAsync(string title, string detail)
+    {
+        answer = new TaskCompletionSource<bool>();
+        var no = new Button { Content = "_No", Margin = new Thickness(0, 0, 8, 0) };
+        var yes = new Button { Content = "_Yes", IsDefault = true };
+        no.SetResourceReference(StyleProperty, "McButton");
+        yes.SetResourceReference(StyleProperty, "McPrimaryButton");
+        no.Click += (_, _) => Answer(false);
+        yes.Click += (_, _) => Answer(true);
+        var footer = new StackPanel { Orientation = Orientation.Horizontal };
+        footer.Children.Add(no);
+        footer.Children.Add(yes);
+        question.Title = title;
+        question.Content = new TextBlock { Text = detail, TextWrapping = TextWrapping.Wrap };
+        question.Footer = footer;
+        question.IsOpen = true;
+        return answer.Task;
+    }
+
+    private void Answer(bool yes)
+    {
+        answer?.TrySetResult(yes);
+        question.IsOpen = false;
     }
 
     private async Task BuildAsync()
@@ -75,8 +121,7 @@ public sealed class BuildWorkspaceWindow : Window
             }
             log.Information("Built the workspace in {Folder:l}: cloned {Cloned}, failed {Failed}", folder, r.Cloned, r.Failed.Count);
             var apps = WorkspaceBootstrap.Apps(folder);
-            if (apps.Count > 0 && MessageBox.Show(this, $"Also install the {apps.Count} apps that have a deploy script?\n\n{string.Join(", ", apps)}",
-                    "MindAttic Orchestrator", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            if (apps.Count > 0 && await AskAsync($"Also install the {apps.Count} apps that have a deploy script?", string.Join(", ", apps)))
             {
                 Say("");
                 var appsFailed = await WorkspaceBootstrap.InstallAppsAsync(folder, new Progress<string>(Say));
