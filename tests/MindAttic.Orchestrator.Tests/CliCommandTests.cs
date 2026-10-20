@@ -456,6 +456,39 @@ public sealed class CliCommandTests
     }
 
     [Test]
+    public void Block_keeps_a_ticket_of_a_repo_still_on_its_story_file_in_settings()
+    {
+        // M.ORCH-T504: once the database existed, block only looked there, so a ticket that approve and bump find was "no ticket".
+        var workspace = Path.Combine(dir, "workspace");
+        string Repo(string name, string rows)
+        {
+            var repoDir = Path.Combine(workspace, name);
+            Directory.CreateDirectory(Path.Combine(repoDir, ".git"));
+            Directory.CreateDirectory(Path.Combine(repoDir, "docs"));
+            File.WriteAllText(Path.Combine(repoDir, "docs", "USER_STORIES.md"),
+                $"---\ncode: {name}\n---\n\n# {name}\n\n## Tickets\n\n| ID | Date | Type | Status | Summary | Ref |\n|---|---|---|---|---|---|\n" + rows);
+            return repoDir;
+        }
+        var a = Repo("A", "| A-T1 | 2026-10-01 | fix | open | one | — |\n");
+        Repo("B", "| B-T1 | 2026-10-01 | fix | open | one | — |\n| B-T2 | 2026-10-01 | fix | open | two | — |\n");
+        Store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = workspace });
+        try
+        {
+            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(MindAttic.Workflow.Data.WorkflowDb.DefaultPath(workspace)))
+                db.Import([new MindAttic.Workflow.Repo("A", a)]);
+
+            Assert.That(Run("block", "b-t2", "--by", "B-T1", "--by", "A-T1"), Is.Zero);
+            Assert.That(Store.LoadSettings().BlockedBy["B-T2"], Is.EqualTo(new[] { "B-T1", "A-T1" }));
+            Assert.That(Run("block", "B-T2", "--by", "B-T9"), Is.EqualTo(1), "one that exists nowhere is still refused");
+            Assert.That(output.ToString(), Does.Contain("no ticket B-T9"));
+            Assert.That(Run("block", "B-T2", "--by", "B-T2"), Is.EqualTo(1));
+            Assert.That(output.ToString(), Does.Contain("can't require itself"));
+            Assert.That(Store.LoadSettings().BlockedBy["B-T2"], Is.EqualTo(new[] { "B-T1", "A-T1" }), "nothing changed");
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
+    }
+
+    [Test]
     public void Settings_rejects_an_unknown_provider_and_saves_nothing()
     {
         Assert.That(Run("settings", "--provider", "Clippy"), Is.EqualTo(1));

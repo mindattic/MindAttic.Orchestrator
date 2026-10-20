@@ -26,16 +26,29 @@ internal sealed class BlockCommand : Command<BlockCommand.Settings>
         var id = Ctx.Id(settings.Ticket);
         var by = settings.By.Select(Ctx.Id).ToList();
         // Once migrated, prerequisites are 'requires' links in the Workflow database, where every tool sees them.
-        using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(OrchestratorOptions.Load(store).WorkspaceRoot))
-            if (db is not null)
+        var root = OrchestratorOptions.Load(store).WorkspaceRoot;
+        using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(root))
+            if (db is not null && (db.Ticket(id) is null || by.Any(b => db.Ticket(b) is null)))
+            {
+                // A ticket of a repo still on its own USER_STORIES.md isn't in the database, so it can't be linked there: it's
+                // blocked in settings.json below, which the scheduler reads for every ticket, as approve and bump do (M.ORCH-T441).
+                // Checked before anything changes: an id that doesn't exist anywhere would be confirmed though nothing waits on it.
+                var missing = by.Prepend(id).Where(t => MindAttic.Orchestrator.Tickets.TicketQueue.Find(db, root, t) is null)
+                    .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                var refused = missing.Count > 0 ? $"There's no ticket {string.Join(", ", missing)}"
+                    : by.Contains(id, StringComparer.OrdinalIgnoreCase) ? $"{id} can't require itself" : null;
+                if (refused is not null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(refused)}. Nothing changed.[/]"); return 1; }
+                // --clear replaces what it requires, wherever it was kept.
+                if (settings.Clear && db.Ticket(id) is not null)
+                    foreach (var to in db.Requires(id)) db.RemoveLink(id, to, "requires");
+            }
+            else if (db is not null)
             {
                 // Checked before anything changes: a link the database refuses (to itself, or a cycle) used to throw half-way,
-                // a clear already done, and an id that doesn't exist was confirmed though nothing ever waits on it.
-                if (db.Ticket(id) is null) { AnsiConsole.MarkupLine($"[red]There's no ticket {Markup.Escape(id)}. Nothing changed.[/]"); return 1; }
+                // a clear already done.
                 foreach (var prerequisite in by)
                 {
-                    var why = db.Ticket(prerequisite) is null ? $"there's no ticket {prerequisite}"
-                        : prerequisite.Equals(id, StringComparison.OrdinalIgnoreCase) ? $"{id} can't require itself"
+                    var why = prerequisite.Equals(id, StringComparison.OrdinalIgnoreCase) ? $"{id} can't require itself"
                         : db.Requires(prerequisite, transitive: true).Contains(id, StringComparer.OrdinalIgnoreCase) ? $"{prerequisite} already (indirectly) requires {id}; that would be a cycle"
                         : null;
                     if (why is not null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(why)}. Nothing changed.[/]"); return 1; }
