@@ -20,13 +20,16 @@ public sealed class BuildWorkspaceWindow : Window
     private readonly ProgressBar bar = new() { IsIndeterminate = true, Height = 4, Margin = new Thickness(0, 8, 0, 8) };
     private readonly Button done = new() { Content = "Working…", IsEnabled = false, Padding = new Thickness(20, 6, 20, 6), HorizontalAlignment = HorizontalAlignment.Right };
     private readonly McModal question = new() { DialogWidth = 460 };
+    private readonly Func<IProgress<string>, Task<BootstrapResult>> clone;
     private TaskCompletionSource<bool>? answer;
     private bool succeeded;
 
-    private BuildWorkspaceWindow(string folder, Serilog.ILogger log)
+    /// <param name="clone">The clone itself; tests give a stand-in, so they clone nothing.</param>
+    internal BuildWorkspaceWindow(string folder, Serilog.ILogger log, Func<IProgress<string>, Task<BootstrapResult>>? clone = null)
     {
         this.folder = folder;
         this.log = log;
+        this.clone = clone ?? (progress => WorkspaceBootstrap.BuildAsync(folder, WorkspaceBootstrap.DefaultRootRemote, progress));
         Title = "Building the MindAttic workspace";
         Width = 720;
         Height = 480;
@@ -50,6 +53,8 @@ public sealed class BuildWorkspaceWindow : Window
         panel.Children.Add(done);
         panel.Children.Add(output);
         question.Closed += (_, _) => answer?.TrySetResult(false);
+        // The window's X at the question is no as well (M.ORCH-T555): nothing else would ever answer it.
+        Closed += (_, _) => answer?.TrySetResult(false);
         var root = new Grid();
         root.Children.Add(panel);
         root.Children.Add(question);
@@ -65,6 +70,12 @@ public sealed class BuildWorkspaceWindow : Window
         window.ShowDialog();
         return window.succeeded;
     }
+
+    /// <summary>Whether the workspace is there to use (what <see cref="Run"/> returns).</summary>
+    internal bool Succeeded => succeeded;
+
+    /// <summary>Whether its question is open.</summary>
+    internal bool Asking => question.IsOpen;
 
     private void Say(string line)
     {
@@ -98,11 +109,11 @@ public sealed class BuildWorkspaceWindow : Window
         question.IsOpen = false;
     }
 
-    private async Task BuildAsync()
+    internal async Task BuildAsync()
     {
         try
         {
-            var r = await WorkspaceBootstrap.BuildAsync(folder, WorkspaceBootstrap.DefaultRootRemote, new Progress<string>(Say));
+            var r = await clone(new Progress<string>(Say));
             Say("");
             Say($"Cloned {r.Cloned}, {r.AlreadyThere} already there, {r.Failed.Count} failed.");
             foreach (var f in r.Failed) Say("  " + f);
@@ -115,6 +126,9 @@ public sealed class BuildWorkspaceWindow : Window
                     Say($"  git clone {repo.Remote} \"{Path.Combine(folder, repo.Name)}\"");
             }
             log.Information("Built the workspace in {Folder:l}: cloned {Cloned}, failed {Failed}", folder, r.Cloned, r.Failed.Count);
+            // Done from here: the repos are there whatever's answered about the apps, and the window may be closed at
+            // that question or while they install (M.ORCH-T555).
+            succeeded = true;
             var apps = WorkspaceBootstrap.Apps(folder);
             if (apps.Count > 0 && await AskAsync($"Also install the {apps.Count} apps that have a deploy script?", string.Join(", ", apps)))
             {
@@ -124,7 +138,6 @@ public sealed class BuildWorkspaceWindow : Window
                 foreach (var f in appsFailed) Say("  " + f);
                 log.Information("Installed {Count} apps, {Failed} failed", apps.Count, appsFailed.Count);
             }
-            succeeded = true;
             done.Content = "Open the dashboard";
         }
         catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
