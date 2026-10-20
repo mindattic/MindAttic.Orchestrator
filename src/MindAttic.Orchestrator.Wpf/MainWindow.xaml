@@ -124,7 +124,16 @@
              left, its reset, the 5-hour window, when it was read; the signed-in one marked, the most headroom starred). Picking
              one opens its login in the browser; the last entry bills the API key, for emergencies. The tooltip says who every
              CLI bills; the line beside it what the last switch did and which open CLIs still bill the other thing. -->
+        <!-- Upper left (M.ORCH-T493): the clock, when the dashboard last refreshed, Refresh (F5) and Settings, so the upper
+             right holds only the account menu. -->
         <DockPanel x:Name="AccountRow" Margin="0,0,0,10" LastChildFill="True">
+            <StackPanel x:Name="HeaderControls" DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Clock.Text}" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" VerticalAlignment="Center" Margin="0,0,12,0"
+                           AutomationProperties.Name="Current time" ToolTip="Current time" />
+                <TextBlock Text="{Binding RefreshInfo}" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                <Button Style="{StaticResource McButton}" Command="{Binding RefreshCommand}" Content="Refresh" ToolTip="F5" />
+                <Button Style="{StaticResource McButton}" Command="{Binding ToggleSettingsCommand}" Content="Settings" Margin="8,0,0,0" />
+            </StackPanel>
             <Button x:Name="AccountMenuButton" DockPanel.Dock="Right" Style="{StaticResource McButton}" VerticalAlignment="Center"
                     Margin="12,0,0,0" Padding="12,4" AutomationProperties.Name="{Binding AccountCorner, StringFormat='Account: {0}. Opens the account menu'}"
                     AutomationProperties.HelpText="{Binding BillingClis}">
@@ -142,6 +151,7 @@
                 </StackPanel>
             </Button>
             <TextBlock Text="{Binding BillingDetail}" Style="{StaticResource McTileSubtitle}" TextWrapping="Wrap" VerticalAlignment="Center"
+                       TextAlignment="Right" Margin="12,0,0,0"
                        Visibility="{Binding BillingDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
         </DockPanel>
         <!-- Every Claude account signed in to here (M.ORCH-T490): its week used and left, the 5-hour window, when each resets
@@ -308,11 +318,6 @@
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="{Binding ZoomText}" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,12,0"
                            ToolTip="Ctrl+0 resets the zoom" />
-                <TextBlock Text="{Binding Clock.Text}" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" VerticalAlignment="Center" Margin="0,0,12,0"
-                           AutomationProperties.Name="Current time" ToolTip="Current time" />
-                <TextBlock Text="{Binding RefreshInfo}" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                <Button Style="{StaticResource McButton}" Command="{Binding RefreshCommand}" Content="Refresh" ToolTip="F5" />
-                <Button Style="{StaticResource McButton}" Command="{Binding ToggleSettingsCommand}" Content="Settings" Margin="8,0,0,0" />
             </StackPanel>
         </Grid>
 

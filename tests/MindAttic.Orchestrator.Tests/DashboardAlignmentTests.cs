@@ -109,7 +109,7 @@ public sealed class DashboardAlignmentTests
         }
 
         Assert.That(Sides((string?)Named("Header").Attribute("Margin")), Is.EqualTo(new[] { Gutters.Side, Gutters.Side }), "the header owns the gutter");
-        Assert.That(Sides((string?)Named("Toolbar").Attribute("Margin")), Is.EqualTo(new[] { Gutters.Side, Gutters.Side }), "the tab row and Updated/Refresh/Settings");
+        Assert.That(Sides((string?)Named("Toolbar").Attribute("Margin")), Is.EqualTo(new[] { Gutters.Side, Gutters.Side }), "the tab row and the zoom");
         Assert.That(Sides((string?)Named("ToastRow").Attribute("Margin")), Is.EqualTo(new[] { Gutters.Side, Gutters.Side }));
 
         // Nothing inside the header adds a side margin of its own, so the tiles and the chart share both edges.
@@ -139,5 +139,37 @@ public sealed class DashboardAlignmentTests
         Assert.That(agents.Descendants().Any(d => d.Name.LocalName == "AlignedGrid"), Is.True);
         var card = agents.Descendants(P + "DataTemplate").First().Elements().First();
         Assert.That(card.Attribute("Width") ?? card.Attribute("Margin"), Is.Null);
+    }
+
+    [Test]
+    public void The_clock_refresh_and_settings_sit_upper_left_and_the_upper_right_holds_only_the_account_menu()
+    {
+        var root = TestContext.CurrentContext.TestDirectory;
+        while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
+        var doc = XDocument.Load(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
+        XElement Named(string name) => doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == name);
+        static string? Binding(XElement e, string attribute) => (string?)e.Attribute(attribute);
+
+        var row = Named("AccountRow");
+        var controls = Named("HeaderControls");
+        Assert.That(controls.Parent, Is.EqualTo(row), "the controls share the header's top row with the account menu");
+        Assert.That((string?)controls.Attribute("DockPanel.Dock"), Is.EqualTo("Left"), "upper left");
+        Assert.That(row.Elements().First(), Is.EqualTo(controls), "docked first, so it takes the left edge");
+        Assert.That(row.Elements().Where(e => (string?)e.Attribute("DockPanel.Dock") == "Right").Select(e => (string?)e.Attribute(X + "Name")),
+            Is.EqualTo(new[] { "AccountMenuButton" }), "the account menu is the only thing on the right");
+
+        var clock = controls.Elements(P + "TextBlock").Single(t => Binding(t, "Text") == "{Binding Clock.Text}");
+        Assert.That((string?)clock.Attribute("AutomationProperties.Name"), Is.EqualTo("Current time"));
+        Assert.That(controls.Elements(P + "TextBlock").Any(t => Binding(t, "Text") == "{Binding RefreshInfo}"), Is.True);
+        var refresh = controls.Elements(P + "Button").Single(b => (string?)b.Attribute("Content") == "Refresh");
+        Assert.That(Binding(refresh, "Command"), Is.EqualTo("{Binding RefreshCommand}"));
+        Assert.That((string?)refresh.Attribute("ToolTip"), Is.EqualTo("F5"));
+        var settings = controls.Elements(P + "Button").Single(b => (string?)b.Attribute("Content") == "Settings");
+        Assert.That(Binding(settings, "Command"), Is.EqualTo("{Binding ToggleSettingsCommand}"));
+        Assert.That(doc.Descendants(P + "KeyBinding").Any(k => (string?)k.Attribute("Key") == "F5" && Binding(k, "Command") == "{Binding RefreshCommand}"), Is.True, "F5 still refreshes");
+
+        var toolbar = Named("Toolbar");
+        Assert.That(toolbar.Descendants().Any(e => Binding(e, "Text") is "{Binding Clock.Text}" or "{Binding RefreshInfo}"
+                                                    || (string?)e.Attribute("Content") is "Refresh" or "Settings"), Is.False, "no second copy in the toolbar");
     }
 }
