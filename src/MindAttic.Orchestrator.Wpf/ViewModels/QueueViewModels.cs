@@ -62,9 +62,12 @@ public sealed class QueueRowViewModel : ObservableObject
 public sealed class FinishedViewModel(Assignment assignment, MainViewModel owner) : ObservableObject
 {
     public string TicketId => assignment.TicketId;
-    public string Text => assignment.Worktree
-        ? $"{assignment.TicketId} in {assignment.Repo} is closed. Its worktree is still at {assignment.Directory}."
-        : $"{assignment.TicketId} in {assignment.Repo} is closed.";
+    public string Text => assignment.TicketId + TextAfterId;
+
+    /// <summary><see cref="Text"/> after the id, which the card shows as a link into Workflow (M.ORCH-T500).</summary>
+    public string TextAfterId => assignment.Worktree
+        ? $" in {assignment.Repo} is closed. Its worktree is still at {assignment.Directory}."
+        : $" in {assignment.Repo} is closed.";
     public string ActionLabel => assignment.Worktree ? "Remove worktree" : "Clear";
     public ICommand ActionCommand { get; } = new RelayCommand(() => owner.Finish(assignment));
     public ICommand DetailsCommand { get; } = new RelayCommand(() => owner.ShowDetails(assignment));
@@ -76,6 +79,7 @@ public sealed class FinishedViewModel(Assignment assignment, MainViewModel owner
         if (latest == assignment) return;
         assignment = latest;
         Raise(nameof(Text));
+        Raise(nameof(TextAfterId));
         Raise(nameof(ActionLabel));
     }
 }

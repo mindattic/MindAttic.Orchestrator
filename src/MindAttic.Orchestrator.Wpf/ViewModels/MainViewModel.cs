@@ -86,6 +86,7 @@ public sealed partial class MainViewModel : ObservableObject
             if (t.Target is not null) SelectRepo(t.Target.Name);
         });
         ClearSearchCommand = new RelayCommand(() => Search = "");
+        OpenInWorkflowCommand = new RelayCommand(p => OpenInWorkflow(p as string));
         InitPhases();
     }
 
@@ -106,6 +107,16 @@ public sealed partial class MainViewModel : ObservableObject
     public ICommand StartCommand { get; }
     public ICommand OpenFolderCommand { get; }
     public ICommand UseTicketCommand { get; }
+
+    /// <summary>A ticket id anywhere in the window opens that ticket in Workflow Desktop, to view, approve, prioritize or
+    /// close it there (M.ORCH-T500); the parameter is the id.</summary>
+    public ICommand OpenInWorkflowCommand { get; }
+
+    private void OpenInWorkflow(string? ticketId)
+    {
+        if (MindAttic.Orchestrator.Tickets.WorkflowDesktop.Open(ticketId, aggregator.Options) is { } error)
+            Toasts.Insert(0, new ToastViewModel("Couldn't open it in Workflow", error, Palette.Over, null));
+    }
     public ICommand DismissToastCommand { get; }
     public ICommand OpenToastCommand { get; }
     public ICommand ClearSearchCommand { get; }

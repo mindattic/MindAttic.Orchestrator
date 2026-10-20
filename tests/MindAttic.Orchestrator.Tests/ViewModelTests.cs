@@ -209,7 +209,8 @@ public sealed class ViewModelTests
         row.Update(new Assignment("A-T1", "A", @"D:\WT\A\A-T1", "Claude", DateTime.UtcNow, true));
 
         Assert.That((row.Text, row.ActionLabel), Is.EqualTo(($@"A-T1 in A is closed. Its worktree is still at D:\WT\A\A-T1.", "Remove worktree")));
-        Assert.That(changed, Is.EquivalentTo(new[] { nameof(row.Text), nameof(row.ActionLabel) }));
+        Assert.That(changed, Is.EquivalentTo(new[] { nameof(row.Text), nameof(row.TextAfterId), nameof(row.ActionLabel) }));
+        Assert.That(row.TextAfterId, Is.EqualTo(@" in A is closed. Its worktree is still at D:\WT\A\A-T1."), "the id before it is a link into Workflow (M.ORCH-T500)");
     }
 
     [Test]
