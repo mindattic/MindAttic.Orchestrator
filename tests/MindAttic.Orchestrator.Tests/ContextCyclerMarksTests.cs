@@ -25,6 +25,36 @@ public sealed class ContextCyclerMarksTests
     /// <summary>A process id that is certainly not a running Claude CLI: this test process.</summary>
     private static int NotClaude => Environment.ProcessId;
 
+    // ---- CliMarks.ReadIn ----
+
+    [Test]
+    public void A_cli_mark_being_read_in_never_vanishes_while_its_row_waits_on_the_database()
+    {
+        // M.ORCH-T540: the file was moved to .reading before its row was committed, so while the write waited on a held
+        // database another process saw neither and read an /autopilot CLI as off.
+        var db = new Settings.OrchestratorDb(Settings.OrchestratorDb.StatePath(dir));
+        db.Open().Dispose();
+        File.WriteAllText(Path.Combine(dir, "autopilot-7"), "Prose");
+        var before = Settings.OrchestratorDb.BusyTimeoutMs;
+        Settings.OrchestratorDb.BusyTimeoutMs = 3000;
+        try
+        {
+            Task reading;
+            using (var held = db.Open())
+            {
+                Settings.OrchestratorDb.Execute(held, "BEGIN IMMEDIATE;");
+                reading = Task.Run(() => CliMarks.ReadIn(dir));
+                Thread.Sleep(500); // ReadIn is waiting on the lock now
+                Assert.That(CliMarks.Read(dir, CliMarks.Autopilot).GetValueOrDefault(7), Is.EqualTo("Prose"), "the mark is still there mid-read-in");
+                Settings.OrchestratorDb.Execute(held, "ROLLBACK;");
+            }
+            Assert.That(reading.Wait(TimeSpan.FromSeconds(10)), Is.True);
+        }
+        finally { Settings.OrchestratorDb.BusyTimeoutMs = before; }
+        Assert.That(CliMarks.Read(dir, CliMarks.Autopilot)[7], Is.EqualTo("Prose"));
+        Assert.That(Directory.GetFiles(dir).Select(Path.GetFileName), Is.EquivalentTo(new[] { "autopilot-7.bak" }), "read in, kept as .bak");
+    }
+
     // ---- AutopilotOrder ----
 
     [Test]

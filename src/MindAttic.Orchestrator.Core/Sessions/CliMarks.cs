@@ -64,8 +64,9 @@ public static class CliMarks
 
     /// <summary>
     /// Reads every mark file in <paramref name="directory"/> into its row (a <c>.cleared</c> one removes the row), keeping each
-    /// as .bak. A file is moved aside before it's read, so a hook writing a newer one meanwhile isn't lost; while the database
-    /// can't take it, it's put back. Nothing happens without a database: a read never creates it.
+    /// as .bak. The row is committed before the file is moved aside (M.ORCH-T540), so a reader always finds one or the other;
+    /// a file a hook rewrote between the read and the move is put back for the next time. While the database can't take it,
+    /// the file stays where it is. Nothing happens without a database: a read never creates it.
     /// </summary>
     public static void ReadIn(string directory)
     {
@@ -79,11 +80,10 @@ public static class CliMarks
                 var clear = rest.EndsWith(ClearedSuffix, StringComparison.Ordinal);
                 if (!IsPid(clear ? rest[..^ClearedSuffix.Length] : rest, out var pid)) continue;
                 var claim = $"{f}.{Environment.ProcessId}.reading";
-                try { File.Move(f, claim); }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { continue; }
+                string text;
                 try
                 {
-                    var text = File.ReadAllText(claim);
+                    text = File.ReadAllText(f);
                     db.Write((connection, tx) =>
                     {
                         using var command = connection.CreateCommand();
@@ -96,12 +96,19 @@ public static class CliMarks
                         command.Parameters.AddWithValue("$at", (DateTime.UtcNow - DateTime.UnixEpoch).TotalSeconds);
                         command.ExecuteNonQuery();
                     }, dump: false);
-                    if (clear) File.Delete(claim);
+                }
+                catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException) { continue; }
+                try
+                {
+                    File.Move(f, claim);
+                    // A hook wrote it again after the read: that newer mark goes back to be read in next time.
+                    if (!clear && File.ReadAllText(claim) != text) { if (!File.Exists(f)) File.Move(claim, f); else File.Delete(claim); }
+                    else if (clear) File.Delete(claim);
                     else File.Move(claim, f + ".bak", overwrite: true);
                 }
-                catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException)
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
-                    try { if (!File.Exists(f)) File.Move(claim, f); else File.Delete(claim); }
+                    try { if (File.Exists(claim)) { if (!File.Exists(f)) File.Move(claim, f); else File.Delete(claim); } }
                     catch (Exception again) when (again is IOException or UnauthorizedAccessException) { }
                 }
             }
