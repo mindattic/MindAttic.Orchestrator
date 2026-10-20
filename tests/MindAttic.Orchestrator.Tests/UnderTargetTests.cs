@@ -146,6 +146,51 @@ public sealed class UnderTargetTests
     }
 
     [Test]
+    public void No_workable_tickets_left_for_autopilot_under_target_is_alerted_once_per_window_with_what_waits_for_approval()
+    {
+        // M.ORCH-T529: every tick, not only at the hour marks, and never widening a CLI's repos.
+        var u = new UnderTarget();
+        var clis = new Dictionary<int, IReadOnlyList<string>> { [42] = ["A"] };
+        var repos = new[] { Repo("A", RepoState.Waiting, T("A-T1", "feature")), Repo("B", RepoState.Dormant, T("B-T1"), T("B-T2", "feature")) };
+        SchedulePlan Plan(Snapshot s) => Scheduler.Plan(s, new OrchestratorSettings(), []);
+
+        var early = Snap(End.AddHours(-4), 65, repos);
+        var line = u.CheckNoWork(early, Plan(early), clis);
+        Assert.That(line, Does.StartWith("On course for 65%: no workable tickets left; approve some?"));
+        Assert.That(line, Does.Contain("1 waits for your approval there (A-T1: orchestrator approve <ID>)").And.Contain("1 more in repos no /autopilot works"));
+        Assert.That(line, Does.Not.Contain("B-T1"), "B's fix isn't /autopilot's: its repos aren't widened");
+        Assert.That(UnderTarget.NoWorkLine(early, Plan(early), clis), Is.EqualTo(line), "the dashboard says the same");
+
+        var later = Snap(End.AddHours(-2), 60, repos);
+        Assert.That(u.CheckNoWork(later, Plan(later), clis), Is.Null, "once per window");
+        var next = Snap(End.AddHours(1), 50, repos);
+        next = next with { Utilization = next.Utilization! with { EndUtc = End.AddHours(5) } };
+        Assert.That(u.CheckNoWork(next, Plan(next), clis), Is.Not.Null, "the next window gets its own");
+
+        Assert.That(new UnderTarget().CheckNoWork(Snap(End.AddHours(-4), 99.5, repos), Plan(early), clis), Is.Null, "on course for the target");
+        var work = Snap(End.AddHours(-4), 65, Repo("A", RepoState.Waiting, T("A-T2")));
+        Assert.That(new UnderTarget().CheckNoWork(work, Plan(work), clis), Is.Null, "a fix /autopilot can start is work");
+        Assert.That(new UnderTarget().CheckNoWork(early, Plan(early), NoAutopilot), Is.Null, "no /autopilot CLI to say it of");
+    }
+
+    [Test]
+    public void The_allowance_shown_to_CLIs_is_raised_while_the_window_is_on_course_to_end_under_target()
+    {
+        var pace = new Pace(PaceMode.Open, 6, 10_000, 0, 1_000, "5-hour", End, "On pace.") { SubagentAllowance = 3, Subagents = 2 };
+        var under = new Utilization(End.AddHours(-5), End, End.AddHours(-3), 98, [], 20, 5, 65, TimeSpan.Zero);
+
+        var raised = Pacer.UnderTarget(pace, under, 16);
+        Assert.That(raised.SubagentAllowance, Is.EqualTo(6), "2 running + 4 for 33 points short");
+        Assert.That(raised.SubagentNote, Does.StartWith("Subagents: up to 6 may run at once").And.Contain("near 65%, under its 98% target, so start more now"));
+        Assert.That(Pacer.UnderTarget(pace, under, 4).SubagentAllowance, Is.EqualTo(4), "never past the ceiling");
+        Assert.That(Pacer.UnderTarget(pace, under with { ProjectedEndPercent = 98.5 }, 16), Is.SameAs(pace), "on course: left as it is");
+        var wound = pace with { WindDown = true };
+        Assert.That(Pacer.UnderTarget(wound, under, 16), Is.SameAs(wound), "past the wind-down line");
+        var none = pace with { SubagentAllowance = 0 };
+        Assert.That(Pacer.UnderTarget(none, under, 16), Is.SameAs(none), "the pace says none new");
+    }
+
+    [Test]
     public void The_daemon_raises_it_as_a_Needs_you_alert_and_logs_it()
     {
         var dir = Path.Combine(Path.GetTempPath(), "orch-under-" + Guid.NewGuid().ToString("N"));

@@ -353,6 +353,14 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// <summary>A ticket handed to a CLI's subagent: where it works and what it's told.</summary>
     public sealed record Handout(QueueItem Item, string? Worktree, string? Prompt);
 
+    /// <summary>What <c>orchestrator next --claim</c> ends with once it claimed some (M.ORCH-T529: a CLI held two claims unstarted
+    /// to avoid merge conflicts while the window ran under its target): start every one now, at once.</summary>
+    public static string StartAllLine(int claimed) => claimed == 1
+        ? "Start a subagent on this ticket now, with the prompt above. Claimed, it's this CLI's to work: nothing else will."
+        : $"Start all {claimed} now: one subagent per ticket above, all in one message, each with its own prompt. Don't hold one back " +
+          "because its files overlap another's: each works in its own worktree and rebases onto main as it lands. Claimed, they're " +
+          "this CLI's to work: nothing else will.";
+
     /// <summary>
     /// The next tickets a CLI running <c>/autopilot</c> hands to its own subagents (M.ORCH-T164): workable ones (fixes and
     /// approved, already the only ones in the queue) of <paramref name="repos"/> ("*": all) that nobody has, in queue order,

@@ -1315,7 +1315,7 @@ public static class AgentGate
 
         Otherwise you work the tickets yourself, through subagents, now:
         1. Run `orchestrator next --repos "<repos>" --claim`, where <repos> is the -repo list as typed (wildcards included), * for all, or this CLI's own repo when none are named; keep the quotes so no shell expands a wildcard. It claims the next workable tickets (fixes and tickets the user approved, in queue order, as many as the pace allows right now), makes each its own git worktree, and prints each ticket's id and a full prompt.
-        2. Start one subagent per ticket it printed, all in one message, each with exactly the prompt printed for it (a general-purpose subagent, in the foreground). Each works only in its worktree, commits, lands on the repo's main line and closes its ticket.
+        2. Start one subagent per ticket it printed, every one of them at once, all in one message, each with exactly the prompt printed for it (a general-purpose subagent, in the foreground). Don't hold a claimed ticket back because its files overlap another's: each works only in its own worktree, commits, rebases onto the repo's main line as it lands, and closes its ticket.
         3. When they've returned, say in one line per ticket what happened, and go back to step 1.
         4. Stop when `orchestrator next` hands out nothing (it says why: none left, waiting for approval, or the pace), and say so in one short line. Don't start anything else on your own. Nothing works these tickets in the background: it's this CLI's own subagents or nobody. Autopilot stays on here, so when this turn ends while the repos still have workable tickets and the pace has room, the orchestrator sends this CLI back to step 1; /autopilot off stops that.
         """;

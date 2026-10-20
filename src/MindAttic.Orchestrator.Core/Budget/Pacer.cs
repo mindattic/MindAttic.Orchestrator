@@ -55,6 +55,13 @@ public sealed record Pace(
     /// (<see cref="Scheduling.SubagentShare"/>, M.ORCH-T495); a subagent whose mark names no CLI isn't in it.</summary>
     public IReadOnlyDictionary<int, int> SubagentsByCli { get; init; } = new Dictionary<int, int>();
 
+    /// <summary>Where the 5-hour window is on course to end, when <see cref="Pacer.UnderTarget"/> raised the allowance for
+    /// being under <see cref="TargetPercent"/> (M.ORCH-T529); null when it didn't.</summary>
+    public double? UnderTargetPercent { get; init; }
+
+    /// <summary>The pace target <see cref="UnderTargetPercent"/> is short of.</summary>
+    public double TargetPercent { get; init; }
+
     /// <summary>The window is at its target or a limit: nothing more may be spent before the reset. The pace gate then
     /// refuses tool calls (every CLI, /pacing off included) rather than letting a held call through, so usage never
     /// passes the limit, whatever the hold settings.</summary>
@@ -90,6 +97,10 @@ public sealed record Pace(
     {
         null => "",
         0 => $"Subagents: none new right now ({(WindDown && !Stop && Profile == OrchestratorSettings.FrontLoadedProfile ? $"the {Governing ?? "5-hour"} window is past its {WindDownPercent} wind-down line" : Note)}). Finish with the {Subagents} running; a new one waits until there's room.",
+        var a when a > Subagents && UnderTargetPercent is { } projected => $"Subagents: up to {a} may run at once across all agents ({Subagents} running now). " +
+            $"The 5-hour window is on course to end near {projected:0}%, under its {TargetPercent:0}% target, so start more now: a subagent on every ticket " +
+            "you've claimed or been handed, all at once, and parallel subagents for independent pieces. Don't hold one back because its files overlap " +
+            "another's: each rebases onto main as it lands.",
         var a when a > Subagents => $"Subagents: up to {a} may run at once across all agents ({Subagents} running now). There's room under the 5-hour pace, " +
             "so hand independent pieces (searches, separate files, test runs, reviews) to parallel subagents rather than doing them one after another.",
         var a => $"Subagents: {a} at once across all agents ({Subagents} running now). Usage is ahead of the 5-hour pace, so don't start extra subagents; a new one waits for a free slot.",
@@ -275,6 +286,21 @@ public static class Pacer
         if (sustainable <= 0) return 0;
         var spare = sustainable - demand;
         return perSession is > 0 and var p ? (int)Math.Clamp(Math.Floor(spare / p), -100, 100) : spare > 0 ? 1 : 0;
+    }
+
+    /// <summary>
+    /// Raises the subagent allowance while the 5-hour window is on course to end under its target (M.ORCH-T529: it projected ~65%
+    /// of a 98% target while claimed tickets sat unstarted): to the ones running plus one more for every 10 points it's short
+    /// (at least one), never past <paramref name="max"/> and never lower than it was. Left as it is at the stop, past the
+    /// wind-down line, when the pace says none new (0), or when the window isn't under its target.
+    /// </summary>
+    public static Pace UnderTarget(Pace pace, Utilization? window, int max)
+    {
+        if (pace is not { IsPaced: true, Stop: false, WindDown: false, SubagentAllowance: { } allowed and > 0 } || max <= 0) return pace;
+        if (window is not { Ended: false } u || u.ProjectedEndPercent >= u.TargetPercent) return pace;
+        var shortBy = u.TargetPercent - Math.Max(0, u.ProjectedEndPercent);
+        var raised = (int)Math.Min(max, Math.Max(allowed, (long)pace.Subagents + Math.Max(1, (int)Math.Ceiling(shortBy / 10))));
+        return pace with { SubagentAllowance = raised, UnderTargetPercent = Math.Max(0, u.ProjectedEndPercent), TargetPercent = u.TargetPercent };
     }
 
     /// <summary>

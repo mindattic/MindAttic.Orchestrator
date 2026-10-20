@@ -211,7 +211,12 @@ public sealed partial class MainViewModel
 
     /// <summary>The graph in words (it's also the card's accessible name): where the window is against the pace line,
     /// how long it ran over it, and where the recent rate ends up.</summary>
-    public string UtilizationText => UtilizationCaption(Utilization, snapshot is not null);
+    public string UtilizationText => UtilizationCaption(Utilization, snapshot is not null) + NoWorkText;
+
+    /// <summary>On course to end under target with nothing left for any /autopilot CLI to start: said under the graph, with the
+    /// proposals waiting for your approval (M.ORCH-T529), as the daemon's one alert a window says it.</summary>
+    private string NoWorkText => snapshot is null || plan is null ? ""
+        : UnderTarget.NoWorkLine(snapshot, plan, new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis()) is { } line ? " " + line : "";
 
     /// <summary>The caption for <see cref="UtilizationText"/>. Empty only before the first snapshot, and the card is collapsed
     /// only on an empty caption, so it stays up between windows with the last one as it ended (M.ORCH-T502).</summary>
@@ -627,7 +632,7 @@ public sealed partial class MainViewModel
         Proposals.ReorderTo([.. Queue.Where(q => q.IsNext)]);
         Finished.SyncBy(plan.Finished, a => a.TicketId, f => f.TicketId, a => new FinishedViewModel(a, this), (row, a) => row.Update(a));
 
-        foreach (var name in new[] { nameof(Hold), nameof(HasHold), nameof(SlotsText), nameof(AutopilotText), nameof(QueueCount), nameof(EmptyQueueText) })
+        foreach (var name in new[] { nameof(Hold), nameof(HasHold), nameof(SlotsText), nameof(AutopilotText), nameof(QueueCount), nameof(EmptyQueueText), nameof(UtilizationText) })
             Raise(name);
         // A row's Start and Release are enabled by whether it's assigned, which the refresh just changed: WPF rechecks a
         // command only on input, so the button shown would stay disabled until some unrelated click (M.ORCH-T351).

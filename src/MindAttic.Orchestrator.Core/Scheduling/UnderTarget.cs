@@ -87,4 +87,58 @@ public sealed class UnderTarget
 
     private static string Ids(IReadOnlyList<QueueItem> items) =>
         string.Join(", ", items.Take(5).Select(q => q.Id)) + (items.Count > 5 ? ", ..." : "");
+
+    // ── Acting on it (M.ORCH-T529) ──────────────────────────────────────────
+    // On 2026-10-20 the pace projected ~65% against a 98% target while an /autopilot CLI held two claimed tickets unstarted
+    // (to avoid merge conflicts) until the user asked "shouldn't you open more subagents?". The warnings above only speak at
+    // the hour and half-hour marks; these act every tick instead: the waker tells a CLI to start its idle claims
+    // (AutopilotWaker.TickClaims), the pace raises the allowance it shows (Pacer.UnderTarget), and when no /autopilot CLI has
+    // anything left to start, that is said once a window (CheckNoWork) and on the dashboard (NoWorkLine).
+
+    /// <summary>Where the running window is on course to end, when that's under its pace target and new work may still start
+    /// (not at the stop, not past the wind-down line); null otherwise.</summary>
+    public static double? Projected(Snapshot snapshot, SchedulePlan plan) =>
+        snapshot.Utilization is { Ended: false } u && u.EndUtc > snapshot.TakenUtc && !plan.Stopped && plan.Pace is not { WindDown: true } &&
+        u.ProjectedEndPercent < u.TargetPercent ? Math.Max(0, u.ProjectedEndPercent) : null;
+
+    /// <summary>The pace's subagent allowance has room for another one across every CLI.</summary>
+    public static bool HasRoom(SchedulePlan plan) => plan.Pace?.SubagentAllowance is { } allowed && allowed > plan.Pace.Subagents;
+
+    /// <summary>The tickets an /autopilot CLI could start now in the repos it works: open fixes and approved tickets nobody
+    /// has, not blocked, not too big for what's left. A ticket outside every CLI's repos isn't counted: no CLI's repos are
+    /// widened on its own.</summary>
+    internal static IReadOnlyList<QueueItem> ForAutopilot(Snapshot snapshot, SchedulePlan plan, IReadOnlyDictionary<int, IReadOnlyList<string>> autopilotClis)
+    {
+        var autopiloted = autopilotClis.Values.SelectMany(r => r).ToList();
+        return [.. Candidates(snapshot, plan, autopilotClis).Where(q => !q.TooBig && Autopilot.Named(autopiloted, q.Repo))];
+    }
+
+    private readonly HashSet<DateTime> saidNoWork = [];
+
+    /// <summary>What the dashboard says while the window is on course to end under its target and no /autopilot CLI has a
+    /// ticket left to start, with the proposals waiting for your approval in their repos; null otherwise.</summary>
+    public static string? NoWorkLine(Snapshot snapshot, SchedulePlan plan, IReadOnlyDictionary<int, IReadOnlyList<string>> autopilotClis)
+    {
+        if (autopilotClis.Count == 0 || Projected(snapshot, plan) is not { } projected) return null;
+        if (ForAutopilot(snapshot, plan, autopilotClis).Count > 0) return null;
+        var autopiloted = autopilotClis.Values.SelectMany(r => r).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var theirs = plan.AwaitingApproval.Where(q => Autopilot.Named(autopiloted, q.Repo)).ToList();
+        var elsewhere = plan.AwaitingApproval.Count - theirs.Count;
+        var repos = string.Join(", ", autopiloted.Select(r => r == Autopilot.AllRepos ? "every repo" : r));
+        return $"On course for {projected:0}%: no workable tickets left; approve some? /autopilot ({repos}) has nothing left to start" +
+               (theirs.Count > 0 ? $"; {theirs.Count} wait{(theirs.Count == 1 ? "s" : "")} for your approval there ({Ids(theirs)}: orchestrator approve <ID>)"
+                   : "; none waits for your approval there") +
+               (elsewhere > 0 ? $"; {elsewhere} more in repos no /autopilot works" : "") +
+               ". Nothing is approved and no CLI's repos are widened for you.";
+    }
+
+    /// <summary><see cref="NoWorkLine"/> as a Needs-you alert, at most once per window.</summary>
+    public string? CheckNoWork(Snapshot snapshot, SchedulePlan plan, IReadOnlyDictionary<int, IReadOnlyList<string>> autopilotClis)
+    {
+        if (snapshot.Utilization is not { Ended: false } u || saidNoWork.Contains(u.EndUtc)) return null;
+        if (NoWorkLine(snapshot, plan, autopilotClis) is not { } line) return null;
+        saidNoWork.Add(u.EndUtc);
+        saidNoWork.RemoveWhere(e => e < u.EndUtc);
+        return line;
+    }
 }

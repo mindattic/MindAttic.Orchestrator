@@ -242,6 +242,8 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
             if (h.Prompt is not null) Console.WriteLine("prompt:\n" + h.Prompt + "\n");
         }
         if (why is not null) Console.WriteLine($"Nothing handed out: {why}.");
+        // M.ORCH-T529: a CLI held two claims unstarted to avoid merge conflicts while the window went under its target.
+        else if (settings.Claim && handed.Count > 0) Console.WriteLine(Autopilot.StartAllLine(handed.Count));
         return 0;
     }
 }

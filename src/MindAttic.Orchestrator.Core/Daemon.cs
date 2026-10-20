@@ -110,6 +110,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     // An idle /autopilot CLI let stop when its next handed out nothing is sent back once next has work for it
                     // (M.ORCH-T523): keep-going acts only as a turn ends, so nothing asked it again when room opened.
                     ReportAutopilotWakes(pilotWaker.Tick(plan, s, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
+                    // On course to end under target with room for more: a CLI holding claims no subagent is on is told to start
+                    // them now (M.ORCH-T529: two sat unstarted at a projected 65% of 98% until the user asked).
+                    ReportAutopilotWakes(pilotWaker.TickClaims(snapshot, plan, s, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
                     // The billing switch (M.ORCH-T436): a /login to another claude.ai account switches back to Claude Team, and each
                     // open CLI billing the other mode is asked to restart (one daemon asks, as one wakes); one only you can
                     // restart is said to you.
@@ -294,6 +297,12 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// <summary>Logs and raises the Needs-you alert when <see cref="UnderTarget"/> says one is due.</summary>
     internal void ReportUnderTarget(Snapshot snapshot, SchedulePlan plan, IReadOnlyDictionary<int, IReadOnlyList<string>> autopilotClis)
     {
+        // Every tick, once a window: on course to end under target with nothing left for any /autopilot CLI to start (M.ORCH-T529).
+        if (underTarget.CheckNoWork(snapshot, plan, autopilotClis) is { } none)
+        {
+            Say(LogEventLevel.Warning, $"under target: {none}");
+            Alert("Needs you", none);
+        }
         if (underTarget.Check(snapshot, plan, autopilotClis, snapshot.TakenUtc) is not { } line) return;
         Say(LogEventLevel.Warning, $"under target: {line}");
         Alert("Needs you", line);

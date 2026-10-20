@@ -1,3 +1,4 @@
+using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Settings;
 
@@ -102,6 +103,145 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
         }
         return wakes;
     }
+
+    /// <summary>How long a claimed ticket goes with no subagent on it before its CLI is told to start it (M.ORCH-T529).</summary>
+    public static readonly TimeSpan ClaimIdle = TimeSpan.FromMinutes(5);
+
+    private readonly Dictionary<int, string> saidClaims = [];
+
+    /// <summary>
+    /// Claimed tickets left unstarted while the window is on course to end under its target (M.ORCH-T529): on 2026-10-20 the
+    /// pace projected ~65% of a 98% target while an /autopilot CLI held M.COMP-T9 and M.ORCH-T499 claimed and unstarted to
+    /// avoid merge conflicts, until the user asked. Each tick, when <see cref="UnderTarget.Projected"/> is under target and
+    /// the subagent allowance has room, every ticket a CLI claimed (<c>orchestrator next --claim</c>: its worktree and
+    /// assignment) with no subagent on it for <see cref="ClaimIdle"/> is put to the /autopilot CLI that works its repo, typed
+    /// into its Launcher tab: start them now, overlapping files are rebased, not a reason to wait. Busy or idle (a busy one's
+    /// prompt waits in its box), but not one waiting on a window or running a /goal. A CLI is told at most once per
+    /// <see cref="Cooldown"/> (shared with <see cref="Tick"/>), and one it can't type into is said to you once per set of claims.
+    /// </summary>
+    public IReadOnlyList<Wake> TickClaims(Snapshot snapshot, SchedulePlan plan, OrchestratorSettings settings, IReadOnlyList<HostSession> hosts, bool type, DateTime nowUtc)
+    {
+        if (!settings.KeepGoing || !settings.Autopilot || HandingOff()) return [];
+        if (UnderTarget.Projected(snapshot, plan) is not { } projected || !UnderTarget.HasRoom(plan)) return [];
+        var pilots = Pilots?.Invoke() ?? cycler.AutopilotClis();
+        if (pilots.Count == 0) return [];
+        var idle = IdleClaims(snapshot, plan, pilots, nowUtc);
+        if (idle.Count == 0) return [];
+        var newest = cycler.Load().Where(c => c.Pid is not null).GroupBy(c => c.Pid!.Value)
+            .ToDictionary(g => g.Key, g => g.MaxBy(c => (Written(c.SessionId), c.TurnUtc))!);
+        // No more tickets put to the CLIs than the allowance has room for.
+        var room = plan.Pace!.SubagentAllowance!.Value - plan.Pace.Subagents;
+
+        var due = new List<(int Pid, string? Cwd, IReadOnlyList<QueueItem> Items)>();
+        foreach (var g in idle.GroupBy(c => c.Cli).OrderBy(g => g.Key))
+        {
+            if (room <= 0) break;
+            var pid = g.Key;
+            newest.TryGetValue(pid, out var c);
+            if (c is not null && (c.LimitStop is not null || c.Goal is not null)) continue;
+            if (wokenUtc.TryGetValue(pid, out var last) && nowUtc - last < Cooldown) continue;
+            if (!IsAlive(pid)) continue;
+            var items = g.Select(x => x.Item).Take(room).ToList();
+            room -= items.Count;
+            due.Add((pid, c?.Cwd, items));
+        }
+        if (due.Count == 0) return [];
+
+        var sends = due.Select(d =>
+        {
+            var host = type ? HostOf(d.Pid, hosts) : null;
+            return (Due: d, Host: host, Sent: host is null ? Task.FromResult(false) : SafeSubmit(host.PipeName, ClaimsPrompt(d.Items, projected, settings.PaceTargetPercent)));
+        }).ToList();
+        Task.WaitAll([.. sends.Select(s => s.Sent)]);
+
+        var wakes = new List<Wake>();
+        foreach (var (d, host, sent) in sends)
+        {
+            var where = LimitWaker.Where(d.Cwd);
+            var ids = d.Items.Select(i => i.Id).ToList();
+            var tickets = string.Join(", ", ids);
+            var them = ids.Count == 1 ? "it" : "them";
+            if (sent.Result)
+            {
+                wokenUtc[d.Pid] = nowUtc;
+                saidClaims.Remove(d.Pid);
+                wakes.Add(new Wake(d.Pid, where, ids, true,
+                    $"autopilot: on course for {projected:0}% of the {settings.PaceTargetPercent}% target, so told the CLI in {where} to start its idle claims now: {tickets}"));
+                continue;
+            }
+            if (saidClaims.TryGetValue(d.Pid, out var was) && was == tickets) continue;
+            saidClaims[d.Pid] = tickets;
+            wakes.Add(new Wake(d.Pid, where, ids, false,
+                $"The window is on course for {projected:0}% of its {settings.PaceTargetPercent}% target while the /autopilot CLI in {where} has {tickets} claimed with no subagent " +
+                $"on {them} for {ClaimIdle.TotalMinutes:0}+ min. Tell it to start {them} now (" +
+                (!type ? "resume-after-reset is off" : host is null ? "it isn't in a Launcher tab the orchestrator can type into" : "typing into its tab failed") + ")."));
+        }
+        return wakes;
+    }
+
+    /// <summary>
+    /// The tickets claimed for a CLI's subagent (a worktree assignment no background agent holds, not gone stale) that nothing
+    /// has worked for <see cref="ClaimIdle"/>, each with the /autopilot CLI it's put to. A claim has a subagent on it when the
+    /// plan sees a live session or subagent working it (<see cref="SchedulePlan.Worked"/>: a subagent's prompt or worktree
+    /// names it), or a transcript (a session's, or a ticketed subagent's) or a Launcher tab has its working directory in the
+    /// claim's worktree within <see cref="ClaimIdle"/>. The claim's CLI is the /autopilot CLI whose repos name its repo
+    /// (assignments don't record the claiming CLI): one naming it outright first, then one on a wildcard or every repo; a
+    /// repo no /autopilot CLI works is nobody's to be told.
+    /// </summary>
+    internal static IReadOnlyList<(int Cli, QueueItem Item)> IdleClaims(Snapshot snapshot, SchedulePlan plan,
+        IReadOnlyDictionary<int, IReadOnlyList<string>> pilots, DateTime nowUtc)
+    {
+        var worked = plan.Worked.Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var idle = new List<(int, QueueItem)>();
+        foreach (var q in plan.Queue)
+        {
+            if (q.Assignment is not { Worktree: true, Pilot: null } a || !q.IsAssigned || worked.Contains(q.Id)) continue;
+            if (nowUtc - a.StartedUtc < ClaimIdle) continue;
+            if (Active(a.Directory, snapshot, nowUtc)) continue;
+            if (OwnerOf(q.Repo, pilots) is { } cli) idle.Add((cli, q));
+        }
+        return idle;
+    }
+
+    private static bool Active(string directory, Snapshot snapshot, DateTime nowUtc)
+    {
+        bool Recent(DateTime at) => nowUtc - at < ClaimIdle;
+        foreach (var repo in snapshot.Repos)
+        {
+            if (repo.Hosts.Any(h => IsUnder(h.WorkingDirectory, directory))) return true;
+            foreach (var s in repo.Sessions)
+            {
+                if (Recent(s.LastWriteUtc) && IsUnder(s.Cwd, directory)) return true;
+                if (s.TicketedSubagents.Any(t => t.Events.Count > 0 && Recent(t.Events[^1].AtUtc) && IsUnder(t.Cwd, directory))) return true;
+            }
+        }
+        return false;
+    }
+
+    private static int? OwnerOf(string repo, IReadOnlyDictionary<int, IReadOnlyList<string>> pilots)
+    {
+        var named = pilots.Where(p => Autopilot.Named(p.Value, repo)).OrderBy(p => p.Key).ToList();
+        if (named.Count == 0) return null;
+        var exact = named.Where(p => p.Value.Contains(repo, StringComparer.OrdinalIgnoreCase)).Select(p => (int?)p.Key).FirstOrDefault();
+        return exact ?? named[0].Key;
+    }
+
+    private static bool IsUnder(string? path, string directory)
+    {
+        if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(directory)) return false;
+        var p = Path.TrimEndingDirectorySeparator(path.Replace('/', '\\'));
+        var d = Path.TrimEndingDirectorySeparator(directory.Replace('/', '\\'));
+        return p.Equals(d, StringComparison.OrdinalIgnoreCase) || p.StartsWith(d + "\\", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>What a CLI holding idle claims is typed: one line, no double quote (see <see cref="Prompt"/>).</summary>
+    public static string ClaimsPrompt(IReadOnlyList<QueueItem> items, double projected, int targetPercent) =>
+        $"This 5-hour window is on course to end near {projected:0}%, under its {targetPercent}% target, and the pace has room for more subagents, " +
+        $"but {(items.Count == 1 ? "a ticket" : $"{items.Count} tickets")} this CLI claimed {(items.Count == 1 ? "has" : "have")} had no subagent on {(items.Count == 1 ? "it" : "them")} " +
+        $"for {ClaimIdle.TotalMinutes:0}+ min: " + string.Join("; ", items.Select(i => $"{i.Id} (worktree {i.Assignment!.Directory})")) + ". " +
+        "Start a subagent on each now, all in one message, each with the prompt orchestrator next printed for it when it was claimed " +
+        "(if that's gone: work the ticket only in that worktree, land it on main, then close it). Overlapping files are no reason to wait: " +
+        "each rebases onto main as it lands. Then carry on with orchestrator next --claim.";
 
     /// <summary>What the CLI is typed: one line (a line break would be a new line in the prompt box, not Enter), and no double
     /// quote (wt would split on it).</summary>

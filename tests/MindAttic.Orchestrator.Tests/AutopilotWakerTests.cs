@@ -106,6 +106,64 @@ public sealed class AutopilotWakerTests
         Assert.That(typed, Is.Empty);
     }
 
+    /// <summary>A window on course for <paramref name="projected"/>% of 98%, with A-T1 and A-T2 claimed for a CLI's subagents
+    /// <paramref name="claimedAgo"/> ago (worktrees under D:\WT\A), and the pace allowing <paramref name="allowance"/> subagents.</summary>
+    private static (Snapshot Snap, SchedulePlan Plan) Claimed(double projected, int allowance, int running, TimeSpan claimedAgo,
+        IReadOnlyList<TranscriptSession>? sessions = null)
+    {
+        var snap = new Snapshot(Now, [new RepoStatus("A", @"D:\W\A", RepoState.Dormant, [], sessions ?? [], [T("A-T1"), T("A-T2")], null, default)], [])
+        {
+            Utilization = new Utilization(Now.AddHours(-2), Now.AddHours(3), Now, 98, [], 30, 7, projected, TimeSpan.Zero),
+        };
+        var claims = new[] { "A-T1", "A-T2" }.Select(id => new Assignment(id, "A", $@"D:\WT\A\{id}", Providers.Claude, Now - claimedAgo, true)).ToList();
+        var plan = Scheduler.Plan(snap, Settings, claims) with
+        {
+            Pace = new Pace(PaceMode.Open, 6, 10_000, 0, 1_000, "5-hour", Now.AddHours(3), "On pace.") { SubagentAllowance = allowance, Subagents = running },
+        };
+        return (snap, plan);
+    }
+
+    [Test]
+    public void An_idle_claim_under_target_with_room_gets_one_wake_to_start_it_now()
+    {
+        // Found live 2026-10-20 (M.ORCH-T529): the pace projected ~65% of 98% while an /autopilot CLI held M.COMP-T9 and
+        // M.ORCH-T499 claimed and unstarted to avoid merge conflicts, until the user asked for more subagents.
+        State("busy", Now.AddMinutes(-1));
+        var waker = Waker();
+        var (snap, plan) = Claimed(65, 8, 2, TimeSpan.FromMinutes(10));
+
+        var w = waker.TickClaims(snap, plan, Settings, [Tab], type: true, Now).Single();
+        Assert.That(w.Typed, Is.True);
+        Assert.That(w.Tickets, Is.EqualTo(new[] { "A-T1", "A-T2" }));
+        Assert.That(typed.Single().Text, Does.Contain("near 65%, under its 98% target").And.Contain(@"A-T1 (worktree D:\WT\A\A-T1)")
+            .And.Contain("Overlapping files are no reason to wait").And.Not.Contain("\n").And.Not.Contain("\""));
+
+        Assert.That(waker.TickClaims(snap, plan, Settings, [Tab], true, Now.AddMinutes(1)), Is.Empty, "one wake, not one every tick");
+        Assert.That(typed, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void No_wake_for_claims_when_on_pace_at_the_allowance_freshly_claimed_or_with_a_subagent_on_them()
+    {
+        State("idle", Now.AddHours(-1));
+        Assert.That(Waker().TickClaims(Claimed(99, 8, 2, TimeSpan.FromMinutes(10)).Snap, Claimed(99, 8, 2, TimeSpan.FromMinutes(10)).Plan, Settings, [Tab], true, Now),
+            Is.Empty, "on course for the target");
+        var full = Claimed(65, 4, 4, TimeSpan.FromMinutes(10));
+        Assert.That(Waker().TickClaims(full.Snap, full.Plan, Settings, [Tab], true, Now), Is.Empty, "the allowance is in use");
+        var fresh = Claimed(65, 8, 2, TimeSpan.FromMinutes(2));
+        Assert.That(Waker().TickClaims(fresh.Snap, fresh.Plan, Settings, [Tab], true, Now), Is.Empty, "claimed under 5 minutes ago");
+        var stopped = Claimed(65, 8, 2, TimeSpan.FromMinutes(10));
+        Assert.That(Waker().TickClaims(stopped.Snap, stopped.Plan with { Stop = true }, Settings, [Tab], true, Now), Is.Empty, "at the window's stop");
+
+        // A subagent working in A-T1's worktree: only A-T2 is idle.
+        var sub = new TranscriptSession("s1", @"D:\W\A", Now.AddMinutes(-1), default, null)
+        {
+            TicketedSubagents = [new TicketedSubagent("ag1", "X-T9", "fix", @"D:\WT\A\A-T1\src", [new UsageEvent(Now.AddMinutes(-1), default)])],
+        };
+        var one = Claimed(65, 8, 2, TimeSpan.FromMinutes(10), [sub]);
+        Assert.That(Waker().TickClaims(one.Snap, one.Plan, Settings, [Tab], true, Now).Single().Tickets, Is.EqualTo(new[] { "A-T2" }));
+    }
+
     [Test]
     public void A_cli_it_cant_type_into_is_said_once_per_idle_stretch()
     {
