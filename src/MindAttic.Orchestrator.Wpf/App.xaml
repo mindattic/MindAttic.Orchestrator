@@ -3,61 +3,21 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
         <ResourceDictionary>
+            <!-- Every control, text style, card, pill, focus ring, chart and scroll bar comes from MindAttic.Components.Wpf
+                 (M.ORCH-T499, M.ORCH-T531). Only the repo tile and the text fields' outline below are the dashboard's own. -->
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/MindAttic.Components.Wpf;component/Theme.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="Visible" />
 
-            <!-- WCAG 2.2 AA overrides of the shared theme. Red text at #E5484D is 3.6:1 on a card; this is 4.9:1 or better on
-                 every surface here. A text field's outline at #34363E is 1.2:1; it needs 3:1 to show where to type (1.4.11). -->
-            <SolidColorBrush x:Key="McRec" Color="#FFFF7A7D" />
+            <!-- WCAG 2.2 AA: a text field's outline at the theme's #34363E is 1.2:1; it needs 3:1 to show where to type (1.4.11). -->
             <SolidColorBrush x:Key="FieldBorder" Color="#FF8A8C96" />
             <Style x:Key="McTextBox" TargetType="TextBox" BasedOn="{StaticResource McTextBox}">
                 <Setter Property="BorderBrush" Value="{StaticResource FieldBorder}" />
             </Style>
-
-            <!-- A 2px focus ring in the theme's focus blue (6.7:1 on a card), drawn just outside the control, for every control
-                 whose own template doesn't show keyboard focus well; the system's default is a black dotted line, invisible here. -->
-            <Style x:Key="FocusRing">
-                <Setter Property="Control.Template">
-                    <Setter.Value>
-                        <ControlTemplate>
-                            <Border Margin="-3" BorderBrush="{StaticResource McFocus}" BorderThickness="2" CornerRadius="7" SnapsToDevicePixels="True" />
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <!-- A heading: screen readers list and jump between these (1.3.1). -->
-            <Style x:Key="Heading" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="15" />
-                <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="AutomationProperties.HeadingLevel" Value="Level2" />
-            </Style>
-
-            <!-- Section label: small caps-style heading used across the window. -->
-            <Style x:Key="SectionLabel" TargetType="TextBlock">
-                <Setter Property="AutomationProperties.HeadingLevel" Value="Level3" />
-                <Setter Property="Foreground" Value="{StaticResource McMuted}" />
-                <Setter Property="FontSize" Value="11" />
-                <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="Margin" Value="0,18,0,8" />
-            </Style>
-
-            <Style x:Key="Muted" TargetType="TextBlock">
-                <Setter Property="Foreground" Value="{StaticResource McMuted}" />
-                <Setter Property="FontSize" Value="12" />
-                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-            </Style>
-
-            <!-- A summary card in the header; clicking one focuses the grid on that group. -->
-            <Style x:Key="StatCard" TargetType="Button" BasedOn="{StaticResource McTileButton}">
-                <Setter Property="Height" Value="74" />
-                <Setter Property="MinWidth" Value="150" />
-                <Setter Property="Margin" Value="0,0,10,0" />
-                <Setter Property="Padding" Value="14,0,18,0" />
-                <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+            <Style x:Key="McTextArea" TargetType="TextBox" BasedOn="{StaticResource McTextArea}">
+                <Setter Property="BorderBrush" Value="{StaticResource FieldBorder}" />
             </Style>
 
             <!-- A repo tile: McTileButton with room for a state bar, two lines and a token count. -->
@@ -67,106 +27,13 @@
                 <Setter Property="Margin" Value="0" />
                 <Setter Property="Padding" Value="0" />
                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+                <Setter Property="FocusVisualStyle" Value="{StaticResource McFocusRing}" />
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
                         <Setter Property="BorderBrush" Value="{StaticResource McFocus}" />
                         <Setter Property="BorderThickness" Value="2" />
                     </DataTrigger>
                 </Style.Triggers>
-            </Style>
-
-            <!-- A steady state dot. It used to pulse forever, which WCAG 2.2.2 rules out without a way to stop it; the
-                 group heading and the state word say what it means, so the dot is only a cue. -->
-            <Style x:Key="PulseDot" TargetType="Ellipse">
-                <Setter Property="Width" Value="8" />
-                <Setter Property="Height" Value="8" />
-            </Style>
-
-            <Style x:Key="Card" TargetType="Border">
-                <Setter Property="Background" Value="{StaticResource McSurface}" />
-                <Setter Property="BorderBrush" Value="{StaticResource McChromeBorder}" />
-                <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="6" />
-                <Setter Property="Padding" Value="12,10" />
-                <Setter Property="Margin" Value="0,0,0,8" />
-            </Style>
-
-            <!-- A horizontal single-choice pill row (ListBox) that matches the dark chrome. -->
-            <Style x:Key="PillChoice" TargetType="ListBox">
-                <Setter Property="Background" Value="Transparent" />
-                <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
-                <Setter Property="ItemsPanel">
-                    <Setter.Value>
-                        <ItemsPanelTemplate>
-                            <WrapPanel />
-                        </ItemsPanelTemplate>
-                    </Setter.Value>
-                </Setter>
-                <Setter Property="ItemContainerStyle">
-                    <Setter.Value>
-                        <Style TargetType="ListBoxItem">
-                            <Setter Property="Foreground" Value="{StaticResource McText}" />
-                            <Setter Property="Cursor" Value="Hand" />
-                            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
-                            <Setter Property="MinHeight" Value="32" />
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="ListBoxItem">
-                                        <Border x:Name="Bd" Background="{StaticResource McChrome}" BorderBrush="{StaticResource McControlBorder}"
-                                                BorderThickness="1" CornerRadius="14" Padding="14,5" Margin="0,0,6,6">
-                                            <ContentPresenter />
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource McHover}" />
-                                            </Trigger>
-                                            <Trigger Property="IsKeyboardFocused" Value="True">
-                                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource McFocus}" />
-                                            </Trigger>
-                                            <Trigger Property="IsSelected" Value="True">
-                                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource McAccent}" />
-                                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource McAccent}" />
-                                                <Setter Property="Foreground" Value="White" />
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <Style x:Key="PillToggle" TargetType="ToggleButton">
-                <Setter Property="Foreground" Value="{StaticResource McText}" />
-                <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
-                <Setter Property="MinHeight" Value="32" />
-                <Setter Property="Cursor" Value="Hand" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="ToggleButton">
-                            <Border x:Name="Bd" Background="{StaticResource McSurface}" BorderBrush="{StaticResource McControlBorder}"
-                                    BorderThickness="1" CornerRadius="14" Padding="14,5">
-                                <ContentPresenter VerticalAlignment="Center" />
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource McHover}" />
-                                </Trigger>
-                                <Trigger Property="IsKeyboardFocused" Value="True">
-                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource McFocus}" />
-                                </Trigger>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource McAccent}" />
-                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource McAccent}" />
-                                    <Setter Property="Foreground" Value="White" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
             </Style>
         </ResourceDictionary>
     </Application.Resources>

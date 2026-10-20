@@ -53,13 +53,13 @@ public sealed class SettingsModalTests
     }
 
     [Test]
-    public void The_app_merges_the_components_theme_and_references_7_0_0()
+    public void The_app_merges_the_components_theme_and_references_17_0_0()
     {
         var root = RepoRoot();
         var app = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "App.xaml"));
         Assert.That(app, Does.Contain("pack://application:,,,/MindAttic.Components.Wpf;component/Theme.xaml"), "McModal's look lives in Theme.xaml");
         var csproj = XDocument.Load(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MindAttic.Orchestrator.Wpf.csproj"));
         var reference = csproj.Descendants("PackageReference").Single(r => (string?)r.Attribute("Include") == "MindAttic.Components.Wpf");
-        Assert.That((string?)reference.Attribute("Version"), Is.EqualTo("7.0.0"));
+        Assert.That((string?)reference.Attribute("Version"), Is.EqualTo("17.0.0"));
     }
 }

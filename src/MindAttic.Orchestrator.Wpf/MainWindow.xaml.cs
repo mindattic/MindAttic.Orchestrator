@@ -120,12 +120,11 @@ public partial class MainWindow : Window
             ?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
     }
 
-    /// <summary>A session that needs you should be noticed even when this window is behind others, and heard by a screen reader.</summary>
+    /// <summary>A session that needs you should be noticed even when this window is behind others. The toast row (McToastHost)
+    /// reads each new one out itself.</summary>
     private void OnToastsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (e.Action != NotifyCollectionChangedAction.Add) return;
-        if (e.NewItems?.Count > 0 && e.NewItems[0] is ToastViewModel toast) Announce($"{toast.Title}. {toast.Body}");
-        if (IsActive) return;
+        if (e.Action != NotifyCollectionChangedAction.Add || IsActive) return;
         var info = new FlashInfo
         {
             Size = (uint)Marshal.SizeOf<FlashInfo>(),

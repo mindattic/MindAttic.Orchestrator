@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
+using MindAttic.Components.Wpf.Controls;
 using MindAttic.Orchestrator.Settings;
 using MindAttic.Orchestrator.Setup;
 
@@ -47,7 +48,7 @@ public partial class App : Application
         {
             var hooks = installer.Uninstall();
             log.Information("Uninstalled: removed the shortcuts (and any legacy logon task); hooks: {Hooks:l}", hooks ?? "none registered");
-            MessageBox.Show($"The background daemon, the shortcuts and the CLI hooks are gone.\n\nTo finish, delete {installer.InstallDir} and remove WatchDog's Orchestrator.Daemon job, which starts the daemon at logon.",
+            McMessageBox.Show($"The background daemon, the shortcuts and the CLI hooks are gone.\n\nTo finish, delete {installer.InstallDir} and remove WatchDog's Orchestrator.Daemon job, which starts the daemon at logon.",
                 "MindAttic Orchestrator", MessageBoxButton.OK, MessageBoxImage.Information);
             Shutdown();
             return;
@@ -168,7 +169,7 @@ public partial class App : Application
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
         {
             log.Error(ex, "Installing to {Dir:l} failed; running from {Self:l}", installer.InstallDir, self);
-            MessageBox.Show($"Couldn't install to {installer.InstallDir}: {ex.Message}\n\nRunning from here instead; the background daemon will point at this copy.",
+            McMessageBox.Show($"Couldn't install to {installer.InstallDir}: {ex.Message}\n\nRunning from here instead; the background daemon will point at this copy.",
                 "MindAttic Orchestrator", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
@@ -201,7 +202,7 @@ public partial class App : Application
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or COMException)
         {
             log.Error(ex, "Setup couldn't finish");
-            MessageBox.Show($"Setup couldn't finish: {ex.Message}\n\nThe dashboard works; the background daemon (budget file, pacing, autopilot) may not run until this is fixed.",
+            McMessageBox.Show($"Setup couldn't finish: {ex.Message}\n\nThe dashboard works; the background daemon (budget file, pacing, autopilot) may not run until this is fixed.",
                 "MindAttic Orchestrator", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -216,7 +217,7 @@ public partial class App : Application
         var root = OrchestratorOptions.Load(store).WorkspaceRoot;
         if (!WorkspaceBootstrap.IsEmpty(root)) return true;
 
-        var choice = MessageBox.Show(
+        var choice = McMessageBox.Show(
             "There's no MindAttic workspace on this machine yet.\n\n" +
             "Yes: build one. Pick an empty folder and every repo is cloned into it from GitHub.\n" +
             "No: point at a workspace folder that's already here.",
@@ -236,7 +237,7 @@ public partial class App : Application
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             log.Error(ex, "Couldn't save the workspace folder");
-            MessageBox.Show($"Couldn't save the workspace folder: {ex.Message}", "MindAttic Orchestrator", MessageBoxButton.OK, MessageBoxImage.Warning);
+            McMessageBox.Show($"Couldn't save the workspace folder: {ex.Message}", "MindAttic Orchestrator", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
         log.Information("Workspace set to {Root:l}", dialog.FolderName);

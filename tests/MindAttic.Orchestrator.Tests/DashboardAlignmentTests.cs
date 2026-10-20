@@ -132,7 +132,7 @@ public sealed class DashboardAlignmentTests
         foreach (var body in new[] { "ReposBody", "QueueBody", "AuditBody", "AgentsBody" })
             Assert.That((string?)Named(body).Attribute("Style"), Is.EqualTo("{StaticResource BodyScroll}"), body);
         Assert.That(Gutters.BesideScrollBar.Left, Is.EqualTo(Gutters.Side));
-        Assert.That(Gutters.BesideScrollBar.Right + SystemParameters.VerticalScrollBarWidth, Is.GreaterThanOrEqualTo(Gutters.Side), "the scroll bar sits inside the gutter");
+        Assert.That(Gutters.BesideScrollBar.Right + Gutters.ScrollBarWidth, Is.EqualTo(Gutters.Side), "the scroll bar sits inside the gutter");
 
         // The agent cards are laid out by an AlignedGrid and carry no fixed width or margin of their own.
         var agents = Named("AgentCards");

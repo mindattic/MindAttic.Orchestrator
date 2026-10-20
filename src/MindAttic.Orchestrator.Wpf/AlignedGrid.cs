@@ -152,5 +152,8 @@ public static class Gutters
     /// A body view's padding while its vertical scroll bar shows: the bar sits inside the right gutter instead of pushing
     /// the content in, so the cards still end where the tiles, chart and toolbar end.
     /// </summary>
-    public static Thickness BesideScrollBar => new(Side, 0, Math.Max(0, Side - SystemParameters.VerticalScrollBarWidth), 16);
+    public static Thickness BesideScrollBar => new(Side, 0, Math.Max(0, Side - ScrollBarWidth), 16);
+
+    /// <summary>A vertical scroll bar's width: the theme's slim McScrollBar, which every ScrollViewer takes (M.ORCH-T531).</summary>
+    public const double ScrollBarWidth = 10;
 }

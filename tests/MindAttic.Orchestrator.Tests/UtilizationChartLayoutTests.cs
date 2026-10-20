@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Xml.Linq;
+using MindAttic.Components.Wpf.Controls;
 using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Wpf;
 using NUnit.Framework;
@@ -13,13 +14,94 @@ namespace MindAttic.Orchestrator.Tests;
 [Apartment(ApartmentState.STA)]
 public sealed class UtilizationChartLayoutTests
 {
+    private static readonly UtilizationChartData.ChartBrushes Theme = new(Brushes.SteelBlue, Brushes.Green, Brushes.Orange, Brushes.Red);
+    private static readonly DateTime Start = new(2026, 10, 16, 14, 0, 0, DateTimeKind.Utc);
+
+    private static Utilization Window(double now, double projected, double exponent = 1, params (double Hours, double Percent)[] line) =>
+        new(Start, Start.AddHours(5), Start.AddHours(3), 80, [.. line.Select(p => new UtilizationPoint(Start.AddHours(p.Hours), p.Percent))],
+            now, 10, projected, TimeSpan.Zero, exponent);
+
+    // M.ORCH-T531: the library's McLineChart draws the window; this is what it's given.
+    [Test]
+    public void The_target_is_an_accent_level_and_the_pace_line_reaches_it_at_the_reset()
+    {
+        var d = UtilizationChartData.From(Window(50, 70, line: [(0, 0), (1, 10), (3, 50)]), Theme);
+
+        Assert.That(d.StartUtc, Is.EqualTo(Start));
+        Assert.That(d.EndUtc, Is.EqualTo(Start.AddHours(5)));
+        var target = d.ReferenceLines![0];
+        Assert.That(target.Label, Is.EqualTo("80% target"));
+        Assert.That(target.Brush, Is.SameAs(Brushes.SteelBlue));
+        Assert.That(target.Path.Select(p => p.Percent), Is.EqualTo(new[] { 80d, 80d }));
+        var pace = d.ReferenceLines[1];
+        Assert.That(pace.Dash, Is.EqualTo(McLineDash.Dashed));
+        Assert.That(pace.Path, Has.Count.EqualTo(2), "a straight line on the linear profile");
+        Assert.That(pace.Path[0].Percent, Is.Zero);
+        Assert.That(pace.Path[^1].Percent, Is.EqualTo(80));
+
+        var curved = UtilizationChartData.From(Window(50, 70, exponent: 0.5, line: [(0, 0), (3, 50)]), Theme).ReferenceLines![1];
+        Assert.That(curved.Path, Has.Count.EqualTo(61), "the front-loaded curve, sampled");
+        Assert.That(curved.Path[30].Percent, Is.EqualTo(80 * Math.Sqrt(0.5)).Within(1e-9));
+    }
+
+    [Test]
+    public void Each_stretch_is_bad_above_the_pace_and_good_below_and_the_line_ends_at_now()
+    {
+        // Pace: 16% an hour. 1h at 30 is over it; 2h at 30 and 3h at 40 are under.
+        var d = UtilizationChartData.From(Window(40, 70, line: [(0, 0), (1, 30), (2, 30), (3, 40)]), Theme);
+
+        Assert.That(d.Points.Skip(1).Select(p => p.Brush), Is.EqualTo(new[] { Brushes.Red, Brushes.Green, Brushes.Green }));
+        Assert.That(d.Points[^1].AtUtc, Is.EqualTo(Start.AddHours(3)));
+        Assert.That(d.EndLabel, Is.EqualTo("now 40%"));
+    }
+
+    [TestCase(120, "Red")]
+    [TestCase(90, "Orange")]
+    [TestCase(70, "Green")]
+    public void The_projection_is_coloured_by_where_it_lands(double projected, string colour)
+    {
+        var d = UtilizationChartData.From(Window(40, projected, line: [(0, 0), (3, 40)]), Theme);
+
+        Assert.That(d.Projection!.AtUtc, Is.EqualTo(Start.AddHours(5)));
+        Assert.That(d.Projection.Percent, Is.EqualTo(projected));
+        Assert.That(d.Projection.Label, Is.EqualTo($"{projected:0}% at reset"));
+        Assert.That(d.Projection.Brush, Is.SameAs(typeof(Brushes).GetProperty(colour)!.GetValue(null)));
+    }
+
+    // M.ORCH-T502 kept: between windows the last one as it ended, with no projection; with none on record, the empty axis.
+    [Test]
+    public void An_ended_window_is_drawn_to_where_it_ended_without_a_projection()
+    {
+        var ended = Window(55, 55, line: [(0, 0), (2, 30), (3, 55)]) with { Ended = true };
+        var d = UtilizationChartData.From(ended, Theme);
+
+        Assert.That(d.EndLabel, Is.EqualTo("ended 55%"));
+        Assert.That(d.Projection, Is.Null);
+        Assert.That(d.Points, Has.Count.EqualTo(3));
+        Assert.That(d.ReferenceLines, Has.Count.EqualTo(2));
+    }
+
+    [Test]
+    public void With_no_window_on_record_it_is_just_the_empty_axis()
+    {
+        var now = Start;
+        var idle = new Utilization(now, now.AddHours(5), now, 80, [], 0, 0, 0, TimeSpan.Zero, Ended: true);
+        var d = UtilizationChartData.From(idle, Theme);
+
+        Assert.That(d.Points, Is.Empty);
+        Assert.That(d.ReferenceLines ?? [], Is.Empty);
+        Assert.That(d.Projection, Is.Null);
+        Assert.That(d.EndLabel, Is.Null);
+        Assert.That(UtilizationChartData.Converter.Convert(null, typeof(McLineChartData), null, System.Globalization.CultureInfo.InvariantCulture), Is.Null);
+    }
+
     [Test]
     public void The_chart_draws_its_pace_line_target_and_projection_at_full_width()
     {
         var start = new DateTime(2026, 10, 16, 14, 0, 0, DateTimeKind.Utc);
         var now = start.AddHours(3);
         var actual = new List<UtilizationPoint> { new(start, 0), new(start.AddHours(1), 30), new(start.AddHours(2), 45), new(now, 70) };
-        var chart = new UtilizationChart { Data = new Utilization(start, start.AddHours(5), now, 99, actual, 70, 20, 110, TimeSpan.FromHours(2)) };
+        var chart = new McLineChart { Data = UtilizationChartData.From(new Utilization(start, start.AddHours(5), now, 99, actual, 70, 20, 110, TimeSpan.FromHours(2)), Theme) };
         var host = new Border { Background = Brushes.Black, Child = chart, Width = 1400, Height = 260 };
         host.Measure(new Size(1400, 260));
         host.Arrange(new Rect(0, 0, 1400, 260));
@@ -46,7 +128,7 @@ public sealed class UtilizationChartLayoutTests
         XNamespace p = "http://schemas.microsoft.com/winfx/2006/xaml/presentation", x = "http://schemas.microsoft.com/winfx/2006/xaml";
         var doc = XDocument.Load(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
         var card = doc.Descendants(p + "Border").Single(b => (string?)b.Attribute(x + "Name") == "UtilizationCard");
-        var chart = card.Descendants().Single(e => e.Name.LocalName == "UtilizationChart");
+        var chart = card.Descendants().Single(e => e.Name.LocalName == "McLineChart");
 
         Assert.That(card.Ancestors(p + "WrapPanel"), Is.Empty, "the chart isn't one more tile beside the stats");
         var header = card.Parent!;
@@ -55,6 +137,7 @@ public sealed class UtilizationChartLayoutTests
         Assert.That(siblings.IndexOf(card), Is.GreaterThan(siblings.FindIndex(e => e.Name.LocalName == "AlignedGrid")), "it sits under the tiles");
         Assert.That(card.Attribute("Width"), Is.Null, "no fixed width: it stretches across the window");
         Assert.That(chart.Attribute("Width"), Is.Null);
+        Assert.That((string?)chart.Attribute("Data"), Is.EqualTo("{Binding Utilization, Converter={x:Static local:UtilizationChartData.Converter}}"));
         Assert.That(double.Parse((string)chart.Attribute("Height")!, System.Globalization.CultureInfo.InvariantCulture), Is.GreaterThanOrEqualTo(240));
         // It collapses only on an empty caption, which is never so once a snapshot is in, idle or not (M.ORCH-T502).
         Assert.That((string?)card.Attribute("Visibility"), Does.StartWith("{Binding UtilizationText,"));
@@ -64,7 +147,7 @@ public sealed class UtilizationChartLayoutTests
     private static readonly TimeZoneInfo Central = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time");
 
     private static string[] Marks(DateTime startUtc, DateTime endUtc, TimeZoneInfo zone) =>
-        [.. UtilizationChart.HourTicks(startUtc, endUtc, zone).Select(t => TimeZoneInfo.ConvertTimeFromUtc(t, zone).ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture) + "@" + t.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture))];
+        [.. McLineChart.HourTicks(startUtc, endUtc, zone).Select(t => TimeZoneInfo.ConvertTimeFromUtc(t, zone).ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture) + "@" + t.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture))];
 
     [Test]
     public void Hour_marks_fall_on_every_whole_local_hour_between_start_and_reset()
@@ -104,7 +187,7 @@ public sealed class UtilizationChartLayoutTests
     [Test]
     public void Far_from_the_reset_now_keeps_its_usual_spot_above_right_of_the_dot()
     {
-        var (now, reset) = UtilizationChart.PlaceEndLabels(new Point(800, 120), NowSize, new Point(Plot.Right, 60), ResetSize, Plot);
+        var (now, reset) = McLineChart.PlaceEndLabels(new Point(800, 120), NowSize, new Point(Plot.Right, 60), ResetSize, Plot);
         Assert.That(now.Left, Is.EqualTo(806));
         Assert.That(now.Top + now.Height / 2, Is.EqualTo(102));
         Assert.That(reset, Is.Not.Null);
@@ -117,7 +200,7 @@ public sealed class UtilizationChartLayoutTests
     [TestCase(1300, 120, 118)]
     public void Near_the_reset_the_now_label_and_the_projection_label_do_not_overlap(double nowX, double nowY, double endY)
     {
-        var (now, reset) = UtilizationChart.PlaceEndLabels(new Point(nowX, nowY), NowSize, new Point(Plot.Right, endY), ResetSize, Plot);
+        var (now, reset) = McLineChart.PlaceEndLabels(new Point(nowX, nowY), NowSize, new Point(Plot.Right, endY), ResetSize, Plot);
         if (reset is { } r) Assert.That(now.IntersectsWith(r), Is.False, $"now {now} overlaps reset {r}");
         Assert.That(now.Left, Is.GreaterThanOrEqualTo(Plot.Left));
         Assert.That(now.Right, Is.LessThanOrEqualTo(Plot.Right + 12), "now stays inside the chart");

@@ -7,9 +7,8 @@ using MindAttic.Orchestrator.Setup;
 namespace MindAttic.Orchestrator.Wpf;
 
 /// <summary>The first run on a new machine: clones the workspace into a folder and shows each repo as it lands. Built from
-/// MindAttic.Components.Wpf (M.ORCH-T499): the dark title bar and chrome, McPrimaryButton, and an McModal for the one question
-/// it asks. The log box and progress bar are stock controls in the theme's brushes until the library has a scrolling text area
-/// and a progress bar (M.ORCH-T531).</summary>
+/// MindAttic.Components.Wpf (M.ORCH-T499, M.ORCH-T531): the dark title bar and chrome, McPrimaryButton, an McModal for the
+/// one question it asks, the log in an McTextArea (no wrapping, so long lines scroll) and an McProgressBar.</summary>
 public sealed class BuildWorkspaceWindow : Window
 {
     private readonly string folder;
@@ -17,7 +16,6 @@ public sealed class BuildWorkspaceWindow : Window
     private readonly TextBox output = new()
     {
         IsReadOnly = true, FontFamily = new System.Windows.Media.FontFamily("Consolas"), FontSize = 12,
-        VerticalScrollBarVisibility = ScrollBarVisibility.Auto, TextWrapping = TextWrapping.NoWrap,
     };
     private readonly ProgressBar bar = new() { IsIndeterminate = true, Height = 4, Margin = new Thickness(0, 8, 0, 8) };
     private readonly Button done = new() { Content = "Working…", IsEnabled = false, Padding = new Thickness(20, 6, 20, 6), HorizontalAlignment = HorizontalAlignment.Right };
@@ -36,12 +34,9 @@ public sealed class BuildWorkspaceWindow : Window
         McWindow.SetDarkTitleBar(this, true);
         SetResourceReference(BackgroundProperty, "McChrome");
         SetResourceReference(ForegroundProperty, "McText");
-        output.SetResourceReference(BackgroundProperty, "McSurface");
-        output.SetResourceReference(ForegroundProperty, "McText");
-        output.SetResourceReference(BorderBrushProperty, "FieldBorder");
-        bar.SetResourceReference(BackgroundProperty, "McSurface");
-        bar.SetResourceReference(ForegroundProperty, "McAccent");
-        bar.BorderThickness = new Thickness(0);
+        output.SetResourceReference(StyleProperty, "McTextArea");
+        output.TextWrapping = TextWrapping.NoWrap;
+        bar.SetResourceReference(StyleProperty, "McProgressBar");
         done.SetResourceReference(StyleProperty, "McPrimaryButton");
         var panel = new DockPanel { Margin = new Thickness(16) };
         var header = new TextBlock { Text = $"Cloning into {folder}", FontSize = 15, Margin = new Thickness(0, 0, 0, 4) };
