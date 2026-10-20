@@ -850,8 +850,14 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:AgentRowViewModel}">
-                                <Border Background="{StaticResource McSurface}" BorderBrush="{StaticResource McControlBorder}" BorderThickness="1"
-                                        CornerRadius="6">
+                                <!-- The library's McCard without its bottom margin (the AlignedGrid owns the gaps, M.ORCH-T192) and without
+                                     its padding (the state stripe runs to the card's edge) (M.ORCH-T182). -->
+                                <Border x:Name="AgentCard" Padding="0">
+                                    <Border.Style>
+                                        <Style TargetType="Border" BasedOn="{StaticResource McCard}">
+                                            <Setter Property="Margin" Value="0" />
+                                        </Style>
+                                    </Border.Style>
                                     <DockPanel>
                                         <!-- The state's colour down the left edge: a cue, never the only one. -->
                                         <Border DockPanel.Dock="Left" Width="5" Background="{Binding StateBrush}" CornerRadius="5,0,0,5" />
@@ -891,7 +897,7 @@
                                                        Visibility="{Binding Claims, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
 
                                             <!-- Its subagents, inside it. -->
-                                            <Border Background="{StaticResource McChrome}" CornerRadius="4" Padding="10,8" Margin="0,10,0,0"
+                                            <Border x:Name="SubagentPanel" Style="{StaticResource McCard}" Background="{StaticResource McChrome}" Padding="10,8" Margin="0,10,0,0"
                                                     Visibility="{Binding HasSubagents, Converter={StaticResource Visible}}">
                                                 <StackPanel>
                                                     <TextBlock Text="{Binding SubagentsHeader}" Style="{StaticResource McSectionLabel}" Margin="0,0,0,6" />

@@ -124,6 +124,30 @@ public sealed class LibraryControlsTests
     }
 
     [Test]
+    public void The_agent_card_and_its_subagent_panel_are_McCards_and_no_card_is_hand_built()
+    {
+        var window = Window();
+
+        // The agent card is McCard with only its margin dropped: the AlignedGrid owns the gaps (DashboardAlignmentTests).
+        var card = Named(window, "AgentCard");
+        var style = card.Element(P + "Border.Style")?.Element(P + "Style");
+        Assert.That(style, Is.Not.Null, "the agent card takes a style based on McCard");
+        Assert.That((string?)style!.Attribute("BasedOn"), Is.EqualTo("{StaticResource McCard}"));
+        Assert.That(style.Elements(P + "Setter").Select(s => (string?)s.Attribute("Property")), Is.EqualTo(new[] { "Margin" }));
+        Assert.That(card.Attribute("Background") ?? card.Attribute("BorderBrush") ?? card.Attribute("CornerRadius"), Is.Null, "the card's look is McCard's");
+
+        Assert.That((string?)Named(window, "SubagentPanel").Attribute("Style"), Is.EqualTo("{StaticResource McCard}"));
+
+        // A rounded surface drawn by hand is a card the library already has.
+        bool McCardStyled(XElement b) => (string?)b.Attribute("Style") == "{StaticResource McCard}"
+            || (string?)b.Element(P + "Border.Style")?.Element(P + "Style")?.Attribute("BasedOn") == "{StaticResource McCard}";
+        var handMade = window.Descendants(P + "Border")
+            .Where(b => b.Attribute("CornerRadius") is not null && ((string?)b.Attribute("Background"))?.StartsWith("{StaticResource Mc") == true)
+            .Where(b => !McCardStyled(b));
+        Assert.That(handMade.Select(b => b.ToString()), Is.Empty);
+    }
+
+    [Test]
     public void Progress_bars_text_areas_and_placeholders_are_the_librarys()
     {
         var window = Window();
