@@ -199,15 +199,39 @@ public static class OrchestratorHistory
             try { File.Move(path, taking); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return; }
         }
-        var lines = File.ReadAllLines(taking).Where(l => !string.IsNullOrWhiteSpace(l)).ToList();
+        // Read and inserted under the write lock, with the file's hash kept beside its rows (M.ORCH-T537): a second process that
+        // found the same .importing while this one held the lock finds it gone or already in, and a file whose rows went in
+        // but whose .bak append or delete failed is only finished next time, never inserted again.
+        List<string>? lines = null;
         db.Write((connection, tx) =>
         {
+            if (!File.Exists(taking)) return;
+            lines = File.ReadAllLines(taking).Where(l => !string.IsNullOrWhiteSpace(l)).ToList();
+            var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(string.Join('\n', lines))));
+            using (var read = connection.CreateCommand())
+            {
+                read.Transaction = tx;
+                read.CommandText = "SELECT value FROM state WHERE name = $name;";
+                read.Parameters.AddWithValue("$name", GateLogImportedName);
+                if (read.ExecuteScalar() as string == hash) return;
+            }
             foreach (var line in lines)
                 if (ParseEvent(line) is { } e) InsertEvent(connection, tx, e.Event, e.Percent);
+            using var mark = connection.CreateCommand();
+            mark.Transaction = tx;
+            mark.CommandText = "INSERT OR REPLACE INTO state (name, value, written_at) VALUES ($name, $value, $at);";
+            mark.Parameters.AddWithValue("$name", GateLogImportedName);
+            mark.Parameters.AddWithValue("$value", hash);
+            mark.Parameters.AddWithValue("$at", (DateTime.UtcNow - DateTime.UnixEpoch).TotalSeconds);
+            mark.ExecuteNonQuery();
         }, dump: false);
+        if (lines is null) return;
         File.AppendAllLines(path + ".bak", lines);
         File.Delete(taking);
     }
+
+    /// <summary>The <c>state</c> row holding the hash of the last <c>.importing</c> file read into <c>gate_events</c>.</summary>
+    internal const string GateLogImportedName = "pace-gate-imported";
 
     /// <summary>One line of the old log; null when it isn't one (a torn line, a hook killed mid-write).</summary>
     private static (GateEvent Event, double? Percent)? ParseEvent(string line)

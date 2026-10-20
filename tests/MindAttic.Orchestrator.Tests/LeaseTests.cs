@@ -263,6 +263,24 @@ public sealed class LeaseTests
     // ---- gate_events ----
 
     [Test]
+    public void A_gate_log_whose_rows_went_in_but_whose_bak_append_failed_is_not_read_in_again()
+    {
+        // M.ORCH-T537: the .importing file outlived its committed rows and was inserted again every tick.
+        var log = Path.Combine(dir, "pace-gate.jsonl");
+        File.WriteAllText(log, "{\"at\": \"2026-10-15T20:00:00Z\", \"decision\": \"held\", \"held\": 30, \"tool\": \"Bash\"}\n");
+        Directory.CreateDirectory(log + ".bak"); // the append fails
+        Assert.Catch(() => Db.ImportGateLog(log));
+        Assert.That(File.Exists(log + ".importing"), Is.True);
+        Assert.Catch(() => Db.ImportGateLog(log));
+        Directory.Delete(log + ".bak");
+        Db.ImportGateLog(log);
+        var since = new DateTime(2026, 10, 15, 0, 0, 0, DateTimeKind.Utc);
+        Assert.That(Db.LoadGateEvents(since), Has.Count.EqualTo(1), "read in once");
+        Assert.That((File.Exists(log + ".importing"), File.ReadAllLines(log + ".bak").Length), Is.EqualTo((false, 1)));
+        Assert.That(Db.Dump(), Does.Not.Contain(OrchestratorHistory.GateLogImportedName), "its mark isn't history worth a commit");
+    }
+
+    [Test]
     public void The_old_event_log_is_read_in_as_rows_kept_as_bak_and_read_in_again_whenever_a_hook_fell_back_to_it()
     {
         var log = Path.Combine(dir, "pace-gate.jsonl");
