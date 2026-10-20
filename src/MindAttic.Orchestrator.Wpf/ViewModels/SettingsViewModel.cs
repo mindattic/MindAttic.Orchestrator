@@ -47,7 +47,7 @@ public sealed class SettingsViewModel : ObservableObject
     public string FilePath => System.IO.Path.Combine(store.Directory, "settings.json");
     public ICommand SaveCommand { get; }
 
-    /// <summary>Autopilot as the panel read it: the tray pauses and resumes it too while the panel is open, and a Save that
+    /// <summary>Autopilot as the panel read it: the CLI pauses and resumes it too while the panel is open, and a Save that
     /// didn't touch the toggle mustn't put back what it read.</summary>
     private bool loadedAutopilot;
 

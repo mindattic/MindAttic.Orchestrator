@@ -4,8 +4,8 @@ namespace MindAttic.Orchestrator.Setup;
 
 /// <summary>
 /// One dashboard per user session (M.ORCH-T497): the first to <see cref="Claim"/> a named mutex owns it for its life;
-/// a later launch signals the owner's show event (it brings its window up, from the tray if hidden) and exits, so
-/// launches never pile up copies, each with its own tray icon. A launch that finds the mutex held but no show event
+/// a later launch signals the owner's show event (it brings its window up, restored if minimized) and exits, so
+/// launches never pile up copies. A launch that finds the mutex held but no show event
 /// (the owner is exiting for an upgrade, or still starting) waits a moment for it rather than leaving no dashboard.
 /// </summary>
 public sealed partial class SingleInstance : IDisposable

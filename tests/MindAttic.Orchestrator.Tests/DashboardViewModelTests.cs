@@ -9,8 +9,8 @@ using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
 
-/// <summary>The dashboard's view-model rules (M.ORCH-T149): which groups show, which toasts stay, where the tray's
-/// "show repo" lands, the tray's one line, a queue row's Where and Status, a tile's search match, and the refresh pace.</summary>
+/// <summary>The dashboard's view-model rules (M.ORCH-T149): which groups show, which toasts stay, where "show repo"
+/// lands, a queue row's Where and Status, a tile's search match, and the refresh pace.</summary>
 public sealed class DashboardViewModelTests
 {
     private static readonly DateTime Now = new(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc);
@@ -60,7 +60,7 @@ public sealed class DashboardViewModelTests
         var on = MainViewModel.AutopilotLine(new Dictionary<int, IReadOnlyList<string>> { [1] = ["Prose"], [2] = ["prose", "GTFO.*"], [3] = ["*"] });
         Assert.That(on, Is.EqualTo("Autopilot is on in 3 CLIs for Prose, GTFO.*, every repo, each through its own subagents, paced to the 5-hour window."));
         Assert.That(MainViewModel.AutopilotLine(new Dictionary<int, IReadOnlyList<string>> { [1] = ["Prose"] }, on: false), Does.StartWith("Autopilot is paused"),
-            "paused from the tray or Settings, the CLIs that typed it get nothing");
+            "paused from Settings or the CLI, the CLIs that typed it get nothing");
     }
 
     // ── Toast pruning ───────────────────────────────────────────────────────
@@ -133,18 +133,6 @@ public sealed class DashboardViewModelTests
     public void Selecting_an_unknown_repo_finds_nothing_and_keeps_the_search() =>
         Assert.That(MainViewModel.FindRepo("Nope", [Tile("A")], new Dictionary<string, RepoTileViewModel>()),
             Is.EqualTo(((RepoTileViewModel?)null, false)));
-
-    // ── TraySummary ─────────────────────────────────────────────────────────
-
-    [Test]
-    public void Tray_text_names_the_budget_counts_and_the_pace_only_when_paced()
-    {
-        Assert.That(MainViewModel.TrayText("Idle", null, 0, 0), Is.EqualTo("Budget Idle · 0 need you · 0 working"));
-        Assert.That(MainViewModel.TrayText("42%", new Pace(PaceMode.Unpaced, 4, 0, 0, null, null, null, ""), 2, 3),
-            Is.EqualTo("Budget 42% · 2 need you · 3 working"));
-        Assert.That(MainViewModel.TrayText("88%", new Pace(PaceMode.Throttled, 1, 100, 100, null, "5-hour", Now, "paced"), 1, 2),
-            Is.EqualTo("Budget 88% · throttled · 1 need you · 2 working"));
-    }
 
     // ── QueueRowViewModel ───────────────────────────────────────────────────
 

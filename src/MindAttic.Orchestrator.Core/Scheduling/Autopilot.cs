@@ -387,9 +387,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         // Past the wind-down line nothing new starts until the reset, estimate or not (M.ORCH-T254: five tickets whose
         // estimates each fit what was left went out at 96.6% as the reset neared and the allowance opened back up).
         if (!unthrottled && plan.Pace is { WindDown: true } wound) return ([], wound.WindDownHold);
-        // The switches the settings, the tray and the Settings panel offer apply to the CLIs that run /autopilot: Tick, which
+        // The switches the settings and the Settings panel offer apply to the CLIs that run /autopilot: Tick, which
         // read them, starts nothing since M.ORCH-T164.
-        if (!settings.Autopilot) return ([], "autopilot is paused (orchestrator settings --autopilot true, or the tray, resumes it)");
+        if (!settings.Autopilot) return ([], "autopilot is paused (orchestrator settings --autopilot true, or the dashboard's Settings, resumes it)");
         if (QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is { } quiet) return ([], $"quiet hours ({quiet}): nothing starts until they end");
         bool Named(string repo) => Autopilot.Named(repos, repo);
         var room = unthrottled ? null : plan.Pace?.RoomTokens;

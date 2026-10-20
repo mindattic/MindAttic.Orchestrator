@@ -23,8 +23,8 @@ public sealed class Installer
     /// <summary>Held by the running daemon, so the dashboard can tell whether one is up without WMI.</summary>
     public const string DaemonMutex = @"Local\MindAttic.Orchestrator.Daemon";
 
-    /// <summary>The event a dashboard (process <paramref name="pid"/>) waits on to exit as the tray's Exit does: closing its
-    /// window only hides it to the tray (M.ORCH-T183), and a hidden one has no window to close at all.</summary>
+    /// <summary>The event a dashboard (process <paramref name="pid"/>) waits on to exit: an upgrade's way to close it, and a newer
+    /// dashboard's way to retire one an older build left hidden in the tray (M.ORCH-T183), which has no window to close.</summary>
     public static string DashboardExitEvent(int pid) => $@"Local\MindAttic.Orchestrator.Dashboard.Exit.{pid}";
 
     public static readonly string PreferredDir = @"C:\Apps\MindAttic.Orchestrator";
@@ -136,7 +136,7 @@ public sealed class Installer
             try
             {
                 if (p.Id == Environment.ProcessId || p.MainModule?.FileName is not { } path || !SamePath(path, InstalledExe)) continue;
-                // Asked to exit first, so it disposes its tray icon and flushes its log; killed only if it doesn't.
+                // Asked to exit first, so it flushes its log (and an older build disposes its tray icon); killed only if it doesn't.
                 if (EventWaitHandle.TryOpenExisting(DashboardExitEvent(p.Id), out var exit))
                     using (exit) { exit.Set(); p.WaitForExit(5000); }
                 if (!p.HasExited && p.MainWindowHandle != IntPtr.Zero) { p.CloseMainWindow(); p.WaitForExit(5000); }

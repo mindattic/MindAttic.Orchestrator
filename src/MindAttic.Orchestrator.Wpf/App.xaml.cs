@@ -22,7 +22,6 @@ public partial class App : Application
         typeof(DependencyObject), new FrameworkPropertyMetadata(int.MaxValue));
 
     private Mutex? daemonMutex;
-    private Tray? tray;
     private EventWaitHandle? exitSignal;
     private SingleInstance? instance;
 
@@ -96,7 +95,7 @@ public partial class App : Application
             else if (TryInstallAndHandOver(installer, self, log)) { Shutdown(); return; }
         }
 
-        // One dashboard (M.ORCH-T497): a later launch brings this one forward and exits, rather than adding a second tray icon.
+        // One dashboard (M.ORCH-T497): a later launch brings this one forward and exits.
         instance = SingleInstance.Claim(SingleInstance.DashboardName, TimeSpan.FromSeconds(5));
         if (instance is null)
         {
@@ -104,24 +103,27 @@ public partial class App : Application
             Shutdown();
             return;
         }
+        // Holding the mutex, any other dashboard of this exe is from an older build, maybe hidden in the tray (M.ORCH-T501).
+        var retired = DashboardWindow.RetireHiddenCopies(self);
+        if (retired > 0) log.Information("Asked {Count} dashboard(s) an older build left hidden in the tray to exit", retired);
 
         if (!EnsureWorkspace(log)) { Shutdown(); return; }
 
         if (!dev) RepairSetup(installer, self, log);
 
+        // Closing the window quits: there's no tray to hide in (M.ORCH-T501).
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         MainWindow = new MainWindow();
         MainWindow.Show();
-        tray = new Tray(MainWindow, (ViewModels.MainViewModel)MainWindow.DataContext);
-        // An upgrade asks this dashboard to exit here: closing its window would only hide it to the tray.
+        DashboardWindow.Track(MainWindow);
+        instance.OnShowRequested(() => Dispatcher.BeginInvoke(() => { if (MainWindow is { } window) DashboardWindow.Restore(window); }));
+        // An upgrade asks this dashboard to exit here (it may be minimized, or behind other windows).
         exitSignal = new EventWaitHandle(false, EventResetMode.ManualReset, Installer.DashboardExitEvent(Environment.ProcessId));
-        ThreadPool.RegisterWaitForSingleObject(exitSignal, (_, _) => Dispatcher.BeginInvoke(() => tray?.Exit()), null, Timeout.Infinite, executeOnlyOnce: true);
-        instance.OnShowRequested(() => Dispatcher.BeginInvoke(() => { if (MainWindow is { } window) Tray.Restore(window); }));
+        ThreadPool.RegisterWaitForSingleObject(exitSignal, (_, _) => Dispatcher.BeginInvoke(() => Shutdown()), null, Timeout.Infinite, executeOnlyOnce: true);
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
-        tray?.Dispose();
         OrchestratorLog.Stop();
         daemonMutex?.Dispose();
         exitSignal?.Dispose();

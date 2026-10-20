@@ -345,7 +345,7 @@ public sealed class AutopilotTests
         (IReadOnlyList<Autopilot.Handout> Handed, string? Why) Next(OrchestratorSettings s) =>
             Autopilot.Next(Paced(snap, 5), s with { WorktreeRoot = @"D:\WT" }, store, ["*"], null, claim: false, Now, Make, _ => "main");
 
-        Assert.That(Next(new() { Autopilot = false }).Why, Does.StartWith("autopilot is paused"), "the tray's Pause, settings --autopilot false");
+        Assert.That(Next(new() { Autopilot = false }).Why, Does.StartWith("autopilot is paused"), "Settings' Pause, settings --autopilot false");
         var local = Now.ToLocalTime();
         var quiet = $"{local.AddHours(-1):HH:mm}-{local.AddHours(1):HH:mm}";
         Assert.That(Next(new() { QuietHours = [quiet] }).Why, Does.StartWith("quiet hours"));

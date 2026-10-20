@@ -12,7 +12,7 @@ A Windows daemon, dashboard and CLI that keeps Claude agents working the workspa
                                                          pace:    target left / hours to reset
  hooks <------ ~/.claude/rl-status.json  <---------      steer:   allowance, hold, wind-down, stop
    pace-gate.py    (before every tool call)
-   context-gate.py (prompt / turn end)                 Dashboard (WPF, tray)   CLI (orchestrator)
+   context-gate.py (prompt / turn end)                 Dashboard (WPF)         CLI (orchestrator)
                                                          status, budget, queue,  status, budget, queue,
  /autopilot in a CLI --> orchestrator next --claim       agents, settings        next, ledger, audit ...
    one subagent per ticket, each in its own git worktree, landing on main
@@ -51,7 +51,7 @@ A Windows daemon, dashboard and CLI that keeps Claude agents working the workspa
 - Stat tiles for the token budget, pace and tokens today, a full-width 5-hour utilization chart, and a live clock.
 - An agent board listing every live CLI and background agent with its ticket, state, tokens and running time, subagents nested under it.
 - Start a Claude, Codex, Gemini or Kimi tab in any repo, or reply to a live Launcher tab, from the detail pane.
-- Lives in the tray: closing hides it, a left click on the tray icon brings it back, and the tray menu has an always-on-top HUD strip.
+- No tray icon: closing the window quits, and you pin it to Start or the taskbar to open it. Only one runs (M.ORCH-T497): opening it again brings the open one to the front, and a copy an older build left hidden in the tray is asked to exit (M.ORCH-T501).
 - A Settings panel for limits, the pace target, holds, the provider and exempt commands (the subagent cap is `orchestrator settings --max-subagents`).
 
 **Watching and safety**
@@ -141,7 +141,7 @@ There's no setup step. `MindAttic.Orchestrator.exe` is one self-contained file: 
 
 Every later start checks the same things and repairs only what's missing or points elsewhere, so a moved exe, a deleted shortcut or a dead daemon fixes itself. Double-clicking a newer copy upgrades in place (the running daemon and dashboard are stopped and restarted); an older one starts the installed copy instead of replacing it. A dev or test build (under `bin\` or `obj\`, inside a git checkout or worktree, a `*.worktrees` folder, or the temp folder) runs as itself and leaves the install, daemon and shortcuts alone; only `--install` installs it (`--install --force` to replace a newer installed exe). `MindAttic.Orchestrator.exe --uninstall` removes the shortcuts and hooks (and the old `\MindAttic\Orchestrator\Orchestrator daemon` task, if an older install left one); WatchDog's job is removed in WatchDog.
 
-The daemon is what makes budgets and pacing always on: it keeps `~/.claude/rl-status.json` and the pace (including the hold on running agents) current, installs and repairs the pace and context hooks, notices stale assignments, reaps orphaned processes and sweeps landed worktrees. Only one runs (a named mutex), and only one process holds the dispatch lease (`dispatch.lock`). The same lease decides who writes `rl-status.json` and builds the status snapshot: the holder publishes each one to `status-snapshot.json`, and every other dashboard window, and one-off CLI commands like `status` and `queue`, show that instead of reading the transcripts themselves (they build their own only when nothing fresh was published in the last minute, and never overwrite the holder's `rl-status.json`). A dashboard hidden in the tray refreshes every 60s instead of every 5s (every 15s while it's the one holding the lease) and catches up the moment it's shown.
+The daemon is what makes budgets and pacing always on: it keeps `~/.claude/rl-status.json` and the pace (including the hold on running agents) current, installs and repairs the pace and context hooks, notices stale assignments, reaps orphaned processes and sweeps landed worktrees. Only one runs (a named mutex), and only one process holds the dispatch lease (`dispatch.lock`). The same lease decides who writes `rl-status.json` and builds the status snapshot: the holder publishes each one to `status-snapshot.json`, and every other dashboard window, and one-off CLI commands like `status` and `queue`, show that instead of reading the transcripts themselves (they build their own only when nothing fresh was published in the last minute, and never overwrite the holder's `rl-status.json`). A minimized dashboard refreshes every 60s instead of every 5s (every 15s while it's the one holding the lease) and catches up the moment it's shown.
 
 ## Commands
 
@@ -231,7 +231,8 @@ Every 30 seconds it samples the machine (kernel handles, commit charge, free RAM
 
 Every tick it reads free space on the system drive and the worktree root's drive: under `DiskWarnGb` (default 20 GB; `settings --disk-warn-gb`, 0 turns it off) you're alerted, urgently under `DiskCriticalGb` (default 5 GB), with the five biggest folders in `%TEMP%` and the five biggest files under `%TEMP%\claude\<project>\<session>\` (background commands' output, scratchpad builds), so a runaway writer is named while it's still growing. It alerts once per step down and again each time free space halves since the last alert; it's back to normal once a tenth of the warn line (at least 1 GB) clear of it.
 
-Beside the watchdog, every tick it texts each reminder that's due (`orchestrator remind`) through Psst (`psst sms <to> "Reminder: <text>"`) and marks it sent. The reminders live in one file it owns, `%APPDATA%\MindAttic\MindAttic.Orchestratoreminders.json`, not a Task Scheduler task each as `psst sms --schedule` makes, so they're listed (`remind --list`, the Queue view), cancelled, and survive reboots: one whose time passed while the machine slept or the daemon was off is sent at the next tick and logged as late. A send Psst fails is counted, alerted once and tried again next tick; when Psst isn't installed or configured, or a reminder for you finds no number in Psst's settings, the reminders wait and you're alerted once. Sent ones are dropped from the file after 30 days.
+Beside the watchdog, every tick it texts each reminder that's due (`orchestrator remind`) through Psst (`psst sms <to> "Reminder: <text>"`) and marks it sent. The reminders live in one file it owns, `%APPDATA%\MindAttic\MindAttic.Orchestrator
+eminders.json`, not a Task Scheduler task each as `psst sms --schedule` makes, so they're listed (`remind --list`, the Queue view), cancelled, and survive reboots: one whose time passed while the machine slept or the daemon was off is sent at the next tick and logged as late. A send Psst fails is counted, alerted once and tried again next tick; when Psst isn't installed or configured, or a reminder for you finds no number in Psst's settings, the reminders wait and you're alerted once. Sent ones are dropped from the file after 30 days.
 
 Every 60 seconds it reaps tool processes (`find`, `rg`, `grep`, `git`, `bash`, `python`, `node`) left orphaned when their agent exited, ones still under an agent that pass 50,000 handles, and searches (`find`, `rg`, `grep`) running past 30 minutes; a long test run or build under an agent is left be. An orphan is only reaped if an earlier scan saw it (or the shell it ran in) under a live Claude CLI, so a dev server or script you started yourself is never touched. Git and `gh` calls made inside its loop give up after 2 minutes and 1 minute and never wait on a credential prompt, so a network stall can't stop pacing.
 
@@ -243,7 +244,7 @@ The top row holds the stat tiles (token budget, tokens today and the rest, align
 
 From a repo's detail pane you can start a Claude, Codex, Gemini or Kimi tab (ticket text can pre-fill the prompt, sent only by you) and reply to a live Launcher tab.
 
-A tray icon shows budget, pace and who needs you. Closing the window hides it to the tray; a left click on the icon brings it back, and only the tray menu's Exit quits. The menu also opens the dashboard, pauses or resumes autopilot, starts the next proposal, jumps to a waiting repo, and shows an always-on-top HUD strip. Usage is kept by day for a year (`usage-history.json`), so `report` and the week projection reach past the 7 days of transcripts.
+There's no tray icon: closing the window quits the dashboard (the daemon keeps running), and it's opened from its Start menu shortcut or a taskbar pin. Opening it while it's already up brings that window to the front. Usage is kept by day for a year (`usage-history.json`), so `report` and the week projection reach past the 7 days of transcripts.
 
 ## Audit
 
@@ -256,7 +257,7 @@ A tray icon shows budget, pace and who needs you. Closing the window hides it to
 | Path | What's there |
 | --- | --- |
 | `src/MindAttic.Orchestrator.Core` | budget and pacing, the pace ledger, scheduling and autopilot, session discovery and control, activity readers, audit, installer and the hook scripts |
-| `src/MindAttic.Orchestrator.Wpf` | the dashboard, tray and daemon entry point (`MindAttic.Orchestrator.exe`) |
+| `src/MindAttic.Orchestrator.Wpf` | the dashboard and daemon entry point (`MindAttic.Orchestrator.exe`) |
 | `src/MindAttic.Orchestrator.Cli` | the `orchestrator` CLI (Spectre.Console) |
 | `tests/MindAttic.Orchestrator.Tests` | NUnit tests for all of the above, including the Python hooks run for real |
 | `deploy.ps1` | build the single-file exe and the CLI, then install |

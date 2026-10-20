@@ -28,7 +28,7 @@ public sealed partial class MainViewModel
     private DateTime seenSavedUtc;
     private bool watched = true;
 
-    /// <summary>Whether the window is on screen. Hidden in the tray it keeps refreshing, but nobody is looking: you're not
+    /// <summary>Whether the window is on screen. Minimized it keeps refreshing, but nobody is looking: you're not
     /// "seen", and showing it again is a new open that may start with a "While you were away" summary.</summary>
     public void SetWatched(bool shown)
     {
@@ -294,8 +294,8 @@ public sealed partial class MainViewModel
 
     internal static string AutopilotLine(IReadOnlyDictionary<int, IReadOnlyList<string>> clis, bool on = true) => clis.Count == 0
         ? "Proposals wait for you. Type /autopilot in a CLI to have its repos' tickets worked by its own subagents."
-        // Paused from the tray or Settings: the CLIs' marks stay, but orchestrator next hands them nothing.
-        : !on ? $"Autopilot is paused: the {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} that typed /autopilot get no tickets until you resume it from the tray or Settings."
+        // Paused from Settings or the CLI: the CLIs' marks stay, but orchestrator next hands them nothing.
+        : !on ? $"Autopilot is paused: the {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} that typed /autopilot get no tickets until you resume it from Settings."
         : $"Autopilot is on in {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} for " +
           string.Join(", ", clis.Values.SelectMany(r => r).Select(r => r == Autopilot.AllRepos ? "every repo" : r).Distinct(StringComparer.OrdinalIgnoreCase)) +
           ", each through its own subagents, paced to the 5-hour window.";
@@ -311,7 +311,7 @@ public sealed partial class MainViewModel
         : $"Nothing workable: {awaitingApproval} open ticket{(awaitingApproval == 1 ? "" : "s")} wait{(awaitingApproval == 1 ? "s" : "")} for your approval (orchestrator approve <ID>); fixes need none.";
 
     /// <summary>Tickets being started now: the row shows them unassigned until the refresh after the start, and a second
-    /// click (or the tray's Start next) in that time would open a second agent on the same ticket.</summary>
+    /// click in that time would open a second agent on the same ticket.</summary>
     private readonly HashSet<string> starting = new(StringComparer.OrdinalIgnoreCase);
 
     public bool IsStarting(string ticketId) => starting.Contains(ticketId);
@@ -392,41 +392,13 @@ public sealed partial class MainViewModel
         }
     }
 
-    // ── Tray and HUD ────────────────────────────────────────────────────────
-
-    /// <summary>The workspace in one line, for the tray tooltip and the HUD.</summary>
-    public string TraySummary => TrayText(BudgetHeadline, Pace, WaitingCount, WorkingCount);
-
-    internal static string TrayText(string budgetHeadline, Pace? pace, int waiting, int working) =>
-        $"Budget {budgetHeadline}" +
-        (pace is { IsPaced: true } p ? $" · {p.Key}" : "") +
-        $" · {waiting} need you · {working} working";
-
-    public bool AutopilotOn => store.LoadSettings().Autopilot;
-
-    public IReadOnlyList<string> WaitingRepos => snapshot?.Repos.Where(r => r.State == RepoState.Waiting).Select(r => r.Name).ToList() ?? [];
-
-    public void ToggleAutopilot() => Guarded("Autopilot", () =>
-    {
-        var s = store.LoadSettingsToChange();
-        store.SaveSettings(s with { Autopilot = !s.Autopilot });
-        queueLog.Information("Autopilot {State:l} from the tray", s.Autopilot ? "paused" : "resumed");
-        Raise(nameof(AutopilotText));
-    });
-
-    /// <summary>Starts the top proposal, if there is one; returns what it said.</summary>
-    public string DispatchNext()
-    {
-        if (plan?.Proposals.FirstOrDefault(p => !IsStarting(p.Item.Id)) is not { } p) return plan?.Hold ?? "Nothing is ready to start.";
-        Dispatch(p.Item, p.UseWorktree);
-        return $"Starting {p.Item.Id}…";
-    }
+    // ── Selecting a repo ────────────────────────────────────────────────────
 
     public void SelectRepo(string name)
     {
         ViewChoice = "Repos";
         var (tile, clearSearch) = FindRepo(name, Waiting.Tiles.Concat(Working.Tiles).Concat(Tickets.Tiles), tiles);
-        if (clearSearch) Search = ""; // the tray asked for a repo the search box was hiding
+        if (clearSearch) Search = ""; // a toast asked for a repo the search box was hiding
         if (tile is not null) Selected = tile;
     }
 

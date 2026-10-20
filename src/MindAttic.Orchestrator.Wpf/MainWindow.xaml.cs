@@ -14,7 +14,7 @@ public partial class MainWindow : Window
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
 
-    /// <summary>Hidden in the tray while the daemon builds the snapshots: just enough to keep the tray's summary current.</summary>
+    /// <summary>Minimized while the daemon builds the snapshots: nobody is looking, so just enough to stay roughly current.</summary>
     private static readonly TimeSpan HiddenInterval = TimeSpan.FromSeconds(60);
 
     /// <summary>Hidden but holding the lease (no daemon running): the daemon's own pace, since rl-status.json and autopilot depend on it.</summary>
@@ -64,7 +64,7 @@ public partial class MainWindow : Window
             timer.Stop();
             model.Clock.Stop();
         };
-        // Minimized to the tray, nobody is looking: no 5-second refresh (M.ORCH-T115). Shown again, it catches up at once.
+        // Minimized, nobody is looking: no 5-second refresh (M.ORCH-T115). Shown again, it catches up at once.
         IsVisibleChanged += async (_, _) => await OnShownOrHidden();
         StateChanged += async (_, _) => await OnShownOrHidden();
     }
@@ -78,7 +78,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>How often to refresh: every 5s while shown; hidden, every 15s if this window holds the lease (it feeds
-    /// rl-status.json and autopilot), else every 60s, just enough for the tray's summary.</summary>
+    /// rl-status.json and autopilot), else every 60s.</summary>
     internal static TimeSpan RefreshInterval(bool hidden, bool holdsLease) =>
         !hidden ? PollInterval : holdsLease ? HiddenHolderInterval : HiddenInterval;
 

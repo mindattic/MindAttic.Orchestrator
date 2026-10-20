@@ -3,7 +3,7 @@ using System.Windows.Threading;
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
 /// <summary>The header's live clock with seconds (e.g. 7:31:39 PM). It ticks on its own one-second timer, independent of
-/// the data refresh, so it keeps moving while a refresh is slow, failing or paused in the tray (M.ORCH-T193).</summary>
+/// the data refresh, so it keeps moving while a refresh is slow, failing or slowed while minimized (M.ORCH-T193).</summary>
 public sealed class ClockViewModel : ObservableObject
 {
     private readonly Func<DateTime> now;

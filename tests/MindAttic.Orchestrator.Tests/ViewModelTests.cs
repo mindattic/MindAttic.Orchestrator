@@ -125,12 +125,12 @@ public sealed class ViewModelTests
     }
 
     [Test]
-    public void Saving_the_panel_keeps_an_autopilot_pause_made_from_the_tray_meanwhile()
+    public void Saving_the_panel_keeps_an_autopilot_pause_made_elsewhere_meanwhile()
     {
         var store = new JsonStore(dir);
         store.SaveSettings(store.LoadSettings() with { Autopilot = true });
         var vm = new SettingsViewModel(store, () => { });
-        store.SaveSettings(store.LoadSettings() with { Autopilot = false }); // the tray's Pause autopilot
+        store.SaveSettings(store.LoadSettings() with { Autopilot = false }); // Settings' Pause autopilot
         vm.WarnPercent = "70";
         vm.SaveCommand.Execute(null);
         Assert.That((vm.Error, store.LoadSettings().Autopilot), Is.EqualTo(("", false)), "the toggle wasn't touched in the panel");
