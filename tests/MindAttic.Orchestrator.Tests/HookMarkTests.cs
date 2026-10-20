@@ -166,6 +166,63 @@ public sealed class HookMarkTests
         Assert.That(Hook(PrintLatched), Does.Contain("99.0"));
     }
 
+    // ---- the handoff mark ----
+
+    private string HandoffFile => Path.Combine(Marks, Sessions.Handoff.FileName);
+    private const string HookHandoff = "HANDOFF = Path.home() / \".claude\" / \"session-context\" / \"handoff.json\"\n";
+    private static Sessions.HandoffMark Mark(string state) => new(state, Sessions.Handoff.Stamp(DateTime.UtcNow), 7, "acct", null, null, []);
+
+    [Test]
+    public void The_handoff_file_is_read_in_once_by_the_orchestrator_and_kept_as_bak()
+    {
+        Db.Open().Dispose();
+        Sessions.Handoff.Write(Path.Combine(dir, "elsewhere"), Mark(Sessions.Handoff.Resumed)); // the row an older mark replaces
+        File.WriteAllText(HandoffFile, System.Text.Json.JsonSerializer.Serialize(Mark(Sessions.Handoff.Winding)));
+        Assert.That(Hook(HookHandoff + """print(whole_mark("handoff", HANDOFF)["state"])"""), Is.EqualTo("winding"), "the file over the row");
+
+        Assert.That(Sessions.Handoff.Read(Marks)!.State, Is.EqualTo(Sessions.Handoff.Winding));
+        Assert.That(File.Exists(HandoffFile), Is.False);
+        Assert.That(File.Exists(HandoffFile + ".bak"), Is.True, "the old file is kept as .bak");
+        Assert.That(Row(Sessions.Handoff.StateName)!["state"]!.GetValue<string>(), Is.EqualTo("winding"));
+        Assert.That(Hook(HookHandoff + """print(whole_mark("handoff", HANDOFF)["state"])"""), Is.EqualTo("winding"), "the hooks read the row");
+        Assert.That(Db.Dump(), Does.Not.Contain("winding"), "out of the dump");
+        Assert.That(Sessions.Handoff.StateName, Is.EqualTo("handoff"), "the context gate names the row literally");
+    }
+
+    [Test]
+    public void A_hook_and_the_orchestrator_write_the_handoff_row_and_a_clear_while_held_is_a_cleared_file()
+    {
+        Db.Open().Dispose();
+        Hook(HookHandoff + """write_whole_mark("handoff", HANDOFF, {"state": "winding", "started": "2026-10-20T10:00:00Z", "by": 3, "autopilot": []})""");
+        Assert.That(File.Exists(HandoffFile), Is.False, "the hook's write is the row");
+        Assert.That(Sessions.Handoff.Read(Marks)!.By, Is.EqualTo(3));
+        Sessions.Handoff.Write(Marks, Sessions.Handoff.Read(Marks)! with { State = Sessions.Handoff.Quiet });
+        Assert.That(Hook(HookHandoff + """print(whole_mark("handoff", HANDOFF)["state"])"""), Is.EqualTo("quiet"));
+
+        using (var connection = Db.Open())
+        {
+            OrchestratorDb.Execute(connection, "BEGIN IMMEDIATE;");
+            Assert.That(Hook(HookHandoff + """print(whole_mark("handoff", HANDOFF)["state"])"""), Is.EqualTo("quiet"), "read mid-write: the committed row");
+            Hook(HookHandoff + """write_whole_mark("handoff", HANDOFF, None)""");
+            OrchestratorDb.Execute(connection, "ROLLBACK;");
+        }
+        Assert.That(File.ReadAllText(HandoffFile), Does.Contain("cleared"), "held: the clear is a file every reader takes over the row");
+        Assert.That(Hook(HookHandoff + """print(whole_mark("handoff", HANDOFF))"""), Does.Contain("cleared"));
+        Assert.That(Sessions.Handoff.Read(Marks), Is.Null, "cleared");
+        Assert.That(Row(Sessions.Handoff.StateName), Is.Null, "the orchestrator's read takes the clear in");
+        Assert.That(File.Exists(HandoffFile), Is.False);
+    }
+
+    [Test]
+    public void Without_a_database_the_handoff_stays_a_file()
+    {
+        Hook(HookHandoff + """write_whole_mark("handoff", HANDOFF, {"state": "winding", "started": "2026-10-20T10:00:00Z"})""");
+        Assert.That(File.Exists(HandoffFile), Is.True);
+        Assert.That(File.Exists(OrchestratorDb.DefaultPath()), Is.False, "a hook never creates the database");
+        Hook(HookHandoff + """write_whole_mark("handoff", HANDOFF, None)""");
+        Assert.That(File.Exists(HandoffFile), Is.False, "no database: a clear just deletes the file");
+    }
+
     [Test]
     public void A_latch_lift_with_nothing_latched_opens_no_write_transaction()
     {

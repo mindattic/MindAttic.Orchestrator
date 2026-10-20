@@ -866,6 +866,70 @@ public static class AgentGate
             new = change(json.loads(json.dumps(hook_mark(name, path))))
             if new is not None:
                 write_json(path, new)
+        CLEARED = {"state": "cleared"}  # a whole mark's file saying it was cleared while the database was held
+        def whole_mark(name, path):
+            # A mark the hooks keep whole (the handoff: M.ORCH-T528): its file when there is one (one no process has read in
+            # yet, or one kept while the database was held: newer either way), else its state row; None when there's neither.
+            # A database held by a write isn't waited on long: the row this hook read last stands in.
+            if path.exists():
+                for _ in range(20):
+                    try:
+                        return json.loads(path.read_text(encoding="utf-8-sig"))
+                    except PermissionError:
+                        time.sleep(0.05)
+                    except FileNotFoundError:
+                        break  # read in meanwhile: the row has it
+                    except Exception:
+                        return None
+            rows = orch_rows("SELECT value FROM state WHERE name = ?", (name,), timeout=1)
+            if rows is None:
+                return _marks_read.get(name) if os.path.isfile(ORCH_DB) else None
+            try:
+                value = json.loads(rows[0][0]) if rows else None
+            except Exception:
+                value = None
+            _marks_read[name] = value
+            return value
+        def write_whole_mark(name, path, value):
+            # Replaces (or with None, clears) a whole mark: its state row in one write transaction, its old file kept as .bak;
+            # the file while the database is held past a short wait, missing or older (a clear then leaves CLEARED in it).
+            db = state_tx()
+            if db is not None:
+                try:
+                    if value is None:
+                        db.execute("DELETE FROM state WHERE name = ?", (name,))
+                    else:
+                        db.execute("INSERT OR REPLACE INTO state (name, value, written_at) VALUES (?, ?, ?)", (name, json.dumps(value), time.time()))
+                    db.execute("COMMIT")
+                    _marks_read[name] = value
+                    try:
+                        if path.exists():
+                            os.replace(path, path.with_name(path.name + ".bak"))
+                    except Exception:
+                        pass
+                    return
+                except Exception:
+                    try:
+                        db.execute("ROLLBACK")
+                    except Exception:
+                        pass
+                finally:
+                    db.close()
+            if value is None and not os.path.isfile(ORCH_DB):
+                try:
+                    path.unlink()
+                except Exception:
+                    pass
+                return
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_name(path.name + "." + str(os.getpid()) + ".tmp")
+            tmp.write_text(json.dumps(CLEARED if value is None else value, indent=2), encoding="utf-8")
+            for _ in range(20):
+                try:
+                    os.replace(tmp, path)
+                    return
+                except PermissionError:
+                    time.sleep(0.05)
         def slot_db(timeout=3):
             # The orchestrator's database with a write transaction open on it, for the subagent slots and wants (M.ORCH-T527):
             # a pace gate's check and the slot it takes are one transaction, so Agent calls sent together queue on SQLite's
@@ -1114,37 +1178,26 @@ public static class AgentGate
         QUICKSAVE = re.compile(r"prose-agent\.ps1['\"]?\s+(?:-Command\s+)?save\b", re.I)
         def utc_stamp():
             return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        # The mark is the orchestrator database's handoff state row (M.ORCH-T528, Handoff.StateName), with handoff.json as
+        # whole_mark reads it: read in by the next write (here or the orchestrator's), kept as .bak.
         def handoff():
-            for _ in range(20):
-                try:
-                    h = json.loads(HANDOFF.read_text(encoding="utf-8"))
-                    return h if isinstance(h, dict) and h.get("state") in ("winding", "quiet", "resumed") else None
-                except PermissionError:
-                    time.sleep(0.05)
-                except Exception:
-                    return None
-            return None
+            h = whole_mark("handoff", HANDOFF)
+            return h if isinstance(h, dict) and h.get("state") in ("winding", "quiet", "resumed") else None
         def handing_off():
             # The mark while it holds new work back (winding down, or quiet until the switch); None otherwise.
             h = handoff()
             return h if h and h.get("state") in ("winding", "quiet") else None
         def write_handoff(h):
-            SESSION_MARKS.mkdir(parents=True, exist_ok=True)
-            tmp = HANDOFF.with_name(HANDOFF.name + "." + str(os.getpid()) + ".tmp")
-            tmp.write_text(json.dumps(h, indent=2), encoding="utf-8")
-            for _ in range(20):
-                try:
-                    os.replace(tmp, HANDOFF)
-                    return
-                except PermissionError:
-                    time.sleep(0.05)
+            write_whole_mark("handoff", HANDOFF, h)
         def clear_handoff(mark_too=True):
             # /handoff off, or a new handoff starting: the mark (unless kept) and every CLI's saved and restored marks go.
-            for f in list(SESSION_MARKS.glob("handoff-saved-*")) + list(SESSION_MARKS.glob("handoff-restored-*")) + ([HANDOFF] if mark_too else []):
+            for f in list(SESSION_MARKS.glob("handoff-saved-*")) + list(SESSION_MARKS.glob("handoff-restored-*")):
                 try:
                     f.unlink()
                 except Exception:
                     pass
+            if mark_too:
+                write_whole_mark("handoff", HANDOFF, None)
         def start_handoff(by, cwd=None):
             # Starts a handoff unless one already holds, recording every CLI's /autopilot (on with its repos, or typed off) by the
             # repo and folder it runs in, so the CLI that starts there on the new account gets it back. True when it started one.

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Data.Sqlite;
 using MindAttic.Orchestrator.Settings;
 
 namespace MindAttic.Orchestrator.Sessions;
@@ -80,22 +81,70 @@ public static class Handoff
     internal static DateTime? Parse(string? text) =>
         DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var at) ? at : null;
 
-    /// <summary>The mark in <paramref name="directory"/> (the session-context folder), or null when there's none or it can't be read.</summary>
+    /// <summary>The <c>state</c> row of the orchestrator's database the mark lives in (M.ORCH-T528), left out of the dump. The
+    /// hooks write it through stdlib sqlite3 (the context gate names it literally); <see cref="FileName"/> is read in the
+    /// first time it's seen (kept as .bak) and written again only while the database is held, missing or older, a clear
+    /// then leaving <c>{"state": "cleared"}</c> in it.</summary>
+    public const string StateName = "handoff";
+
+    /// <summary>The database the mark is kept in; replaceable for tests.</summary>
+    internal static Func<OrchestratorDb> Db { get; set; } = () => new OrchestratorDb(OrchestratorDb.StatePath(JsonStore.LiveDirectory));
+
+    /// <summary>The mark in <paramref name="directory"/> (the session-context folder), or null when there's none or it can't be read:
+    /// the database's handoff row, or <see cref="FileName"/> while one is there (read in here when the database takes it).</summary>
     public static HandoffMark? Read(string directory)
     {
         var path = Path.Combine(directory, FileName);
+        ReadIn(path);
+        var text = ReadFile(path);
+        if (text is null && !File.Exists(path))
+        {
+            var db = Db();
+            try { text = File.Exists(db.Path) ? db.LoadState(StateName)?.Value : null; }
+            catch (Exception ex) when (ex is SqliteException or IOException) { return null; }
+        }
+        try
+        {
+            var mark = text is null ? null : JsonSerializer.Deserialize<HandoffMark>(text);
+            return mark?.State is Winding or Quiet or Resumed ? mark : null;
+        }
+        catch (JsonException) { return null; }
+    }
+
+    private static string? ReadFile(string path)
+    {
         for (var i = 0; i < 20; i++)
         {
-            try
-            {
-                if (!File.Exists(path)) return null;
-                var mark = JsonSerializer.Deserialize<HandoffMark>(File.ReadAllText(path));
-                return mark?.State is Winding or Quiet or Resumed ? mark : null;
-            }
+            try { return File.Exists(path) ? File.ReadAllText(path) : null; }
             catch (IOException) { Thread.Sleep(50); } // being replaced: a retry, not a missing mark
-            catch (Exception ex) when (ex is UnauthorizedAccessException or JsonException) { return null; }
+            catch (UnauthorizedAccessException) { return null; }
         }
         return null;
+    }
+
+    /// <summary>Reads <paramref name="path"/> (a mark from before the database, or one a hook kept while it was held) into the
+    /// handoff row and keeps it as .bak. It's moved aside first, so a hook writing a newer file meanwhile isn't lost; while the
+    /// database can't take it, it's put back (unless a newer one took its place).</summary>
+    private static void ReadIn(string path)
+    {
+        if (!File.Exists(path)) return;
+        var claim = $"{path}.{Environment.ProcessId}.{Guid.NewGuid():N}.reading";
+        try { File.Move(path, claim); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return; }
+        try
+        {
+            var text = File.ReadAllText(claim);
+            HandoffMark? mark = null;
+            try { mark = JsonSerializer.Deserialize<HandoffMark>(text); } catch (JsonException) { }
+            if (mark?.State is Winding or Quiet or Resumed) Db().SaveState(StateName, JsonSerializer.Serialize(mark, Json));
+            else Db().DeleteState(StateName); // cleared while the database was held
+            File.Move(claim, path + ".bak", overwrite: true);
+        }
+        catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException)
+        {
+            try { if (!File.Exists(path)) File.Move(claim, path); else File.Delete(claim); }
+            catch (Exception again) when (again is IOException or UnauthorizedAccessException) { }
+        }
     }
 
     /// <summary>Whether a handoff holds new work back now (winding down or quiet).</summary>
@@ -103,10 +152,18 @@ public static class Handoff
 
     public static void Write(string directory, HandoffMark mark)
     {
-        Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, FileName);
+        var json = JsonSerializer.Serialize(mark, Json);
+        try
+        {
+            Db().SaveState(StateName, json);
+            if (File.Exists(path)) File.Move(path, path + ".bak", overwrite: true);
+            return;
+        }
+        catch (SqliteException) { } // held past the busy timeout: the file, which the next read takes in
+        Directory.CreateDirectory(directory);
         var tmp = $"{path}.{Environment.ProcessId}.tmp";
-        File.WriteAllText(tmp, JsonSerializer.Serialize(mark, Json));
+        File.WriteAllText(tmp, json);
         File.Move(tmp, path, overwrite: true);
     }
 
@@ -148,9 +205,24 @@ public static class Handoff
     /// <summary>Cancels a handoff (or tidies one that's done): the mark and every CLI's saved and restored marks go.</summary>
     public static void Clear(string directory, bool markToo = true)
     {
+        if (markToo)
+        {
+            var path = Path.Combine(directory, FileName);
+            try
+            {
+                var db = Db();
+                if (File.Exists(db.Path)) db.DeleteState(StateName);
+                try { File.Delete(path); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            }
+            catch (SqliteException)
+            {
+                // Held past the busy timeout: a cleared file, which every reader takes over the row.
+                Directory.CreateDirectory(directory);
+                File.WriteAllText(path, """{"state": "cleared"}""");
+            }
+        }
         if (!Directory.Exists(directory)) return;
         var files = Directory.EnumerateFiles(directory, SavedPrefix + "*").Concat(Directory.EnumerateFiles(directory, RestoredPrefix + "*")).ToList();
-        if (markToo) files.Add(Path.Combine(directory, FileName));
         foreach (var f in files)
             try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
