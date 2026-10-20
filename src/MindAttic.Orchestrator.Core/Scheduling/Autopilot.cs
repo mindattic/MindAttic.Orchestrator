@@ -368,7 +368,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// each gets its own worktree from the repo's main line and an assignment, so it isn't handed out twice; when nothing
     /// is handed out, <c>Why</c> says why. For an <paramref name="unthrottled"/> CLI (/pacing off, M.ORCH-T195/T483) the pace's
     /// subagent allowance, room and wind-down don't apply, as the pace gate skips its holds for it: it gets <paramref name="count"/>
-    /// or <see cref="OrchestratorSettings.MaxConcurrentSessions"/>, and the daemon's next measurement holds everyone else to make up
+    /// or <see cref="OrchestratorSettings.MaxConcurrentSessions"/> less the tickets already being worked or claimed (as unpaced), and the daemon's next measurement holds everyone else to make up
     /// for it. Only the window's hard stop still applies. A ticket another agent is working isn't handed out (M.ORCH-T255): one in
     /// <see cref="SchedulePlan.Worked"/> (filed this turn by an agent fixing it, or named in a live session's prompt or worktree),
     /// except what the calling CLI <paramref name="self"/> itself filed, and one whose assignment went stale while the
@@ -433,7 +433,10 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                     }.OfType<string>())
                 : "no open fixes or approved tickets left there");
         }
-        var more = count ?? (!unthrottled && plan.Pace?.SubagentAllowance is { } allowed ? allowed - plan.Pace.Subagents : settings.MaxConcurrentSessions);
+        // Without the pace's allowance the session setting caps it, less what's already being worked or claimed, as Tick
+        // subtracts its running agents: with nothing subtracted, each call handed out the whole setting again (M.ORCH-T549).
+        var more = count ?? (!unthrottled && plan.Pace?.SubagentAllowance is { } allowed ? allowed - plan.Pace.Subagents
+            : settings.MaxConcurrentSessions - plan.Queue.Count(Busy));
         if (more <= 0) return ([], "the pace has no room for another subagent right now; run it again in a few minutes");
         // Its fair share, not every free place (M.ORCH-T495): another /autopilot CLI with workable tickets of its own keeps its share.
         if (count is null && !unthrottled && cli is { } me && plan.Pace?.SubagentAllowance is { } cap)

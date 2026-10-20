@@ -535,6 +535,30 @@ public sealed class AutopilotTests
     }
 
     [Test]
+    public void With_pacing_off_next_subtracts_the_tickets_already_running_or_claimed_from_the_session_setting()
+    {
+        // M.ORCH-T549: unpaced, `next --claim` handed out MaxConcurrentSessions every call with nothing subtracted, so a CLI
+        // calling it as each subagent finished stacked 4+4+... claims. Two claimed and one a live session works: 4 - 3 = 1.
+        store.SaveAssignments([new Assignment("A-T1", "A", @"D:\WT\A\A-T1", "Claude", Now, true), new Assignment("A-T2", "A", @"D:\WT\A\A-T2", "Claude", Now, true)]);
+        var worker = new TranscriptSession("w", @"D:\WT\A\A-T3", Now.AddMinutes(-1), default, null) { TicketId = "A-T3" };
+        var snap = Snap(("A", [T("A-T1"), T("A-T2"), T("A-T3"), T("A-T4"), T("A-T5"), T("A-T6")])) is var s0
+            ? s0 with { Repos = [s0.Repos[0] with { Sessions = [worker] }] } : null!;
+        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT", MaxConcurrentSessions = 4, Pacing = false };
+        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
+        var plan = Scheduler.Plan(snap, settings, store.LoadAssignments());
+        Assert.That(plan.Pace, Is.Null);
+
+        var (handed, _) = Autopilot.Next(plan, settings, store, ["A"], null, claim: true, Now, Make, _ => "main", stillOpen: (_, _) => true, pilotRunning: _ => false);
+        Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T4" }), "one place left of the four");
+
+        var (none, why) = Autopilot.Next(Scheduler.Plan(snap, settings, store.LoadAssignments()), settings, store, ["A"], null, claim: true, Now, Make, _ => "main",
+            stillOpen: (_, _) => true, pilotRunning: _ => false);
+        Assert.That((none.Count, why), Is.EqualTo((0, "the pace has no room for another subagent right now; run it again in a few minutes")), "the next call: all four are taken");
+        Assert.That(Autopilot.Next(plan, settings, store, ["A"], 2, claim: false, Now, Make, _ => "main", pilotRunning: _ => false).Handed, Has.Count.EqualTo(2),
+            "an explicit --count is still honoured as asked");
+    }
+
+    [Test]
     public void Past_the_wind_down_line_a_cli_is_handed_no_ticket_even_one_whose_estimate_fits_or_with_a_count()
     {
         // M.ORCH-T254: `next --claim` handed out five tickets at 96.6% (past the 90% wind-down) as the reset neared and the
