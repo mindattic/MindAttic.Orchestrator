@@ -9,7 +9,14 @@ namespace MindAttic.Orchestrator.Tests;
 [Apartment(ApartmentState.STA)]
 public sealed class DashboardWindowTests
 {
-    private static Window NewWindow() => new() { Width = 200, Height = 120, ShowActivated = false, ShowInTaskbar = false };
+    /// <summary>Restore as the dashboard does, but recording the activate and focus calls instead of making them, so the
+    /// off-screen test window (<see cref="OffScreenWindow"/>, M.ORCH-T530) never takes the user's keyboard focus.</summary>
+    private static List<string> Restore(Window window)
+    {
+        var calls = new List<string>();
+        DashboardWindow.Restore(window, w => calls.Add($"activate topmost={w.Topmost}"), w => calls.Add($"focus topmost={w.Topmost}"));
+        return calls;
+    }
 
     [Test]
     public void The_dashboard_has_no_tray_icon_to_hide_in()
@@ -22,11 +29,10 @@ public sealed class DashboardWindowTests
     [Test]
     public void Closing_the_dashboard_closes_it()
     {
-        var window = NewWindow();
+        var window = OffScreenWindow.Show();
         var closed = false;
         window.Closed += (_, _) => closed = true;
         DashboardWindow.Track(window);
-        window.Show();
 
         window.Close();
 
@@ -37,18 +43,17 @@ public sealed class DashboardWindowTests
     public void A_maximized_dashboard_brought_back_from_minimized_comes_back_maximized()
     {
         // M.ORCH-T336: Restore set every minimized window to Normal.
-        var window = NewWindow();
+        var window = OffScreenWindow.Show();
         DashboardWindow.Track(window);
-        window.Show();
         window.WindowState = WindowState.Maximized;
         window.WindowState = WindowState.Minimized;
 
-        DashboardWindow.Restore(window);
+        Restore(window);
         Assert.That((window.IsVisible, window.WindowState), Is.EqualTo((true, WindowState.Maximized)));
 
         window.WindowState = WindowState.Normal;
         window.WindowState = WindowState.Minimized;
-        DashboardWindow.Restore(window);
+        Restore(window);
         Assert.That(window.WindowState, Is.EqualTo(WindowState.Normal), "and a normal one normal");
         window.Close();
     }
@@ -56,14 +61,14 @@ public sealed class DashboardWindowTests
     [Test]
     public void Bringing_it_back_puts_it_in_front_without_leaving_it_always_on_top()
     {
-        var window = NewWindow();
+        var window = OffScreenWindow.Show();
         DashboardWindow.Track(window);
-        window.Show();
         window.WindowState = WindowState.Minimized;
 
-        DashboardWindow.Restore(window);
+        var calls = Restore(window);
 
         Assert.That((window.IsVisible, window.WindowState, window.Topmost), Is.EqualTo((true, WindowState.Normal, false)));
+        Assert.That(calls, Is.EqualTo(new[] { "activate topmost=True", "focus topmost=False" }), "raised above the rest while it's activated, then let back down");
         window.Close();
     }
 

@@ -42,14 +42,9 @@ public sealed class LoaderTests
     public void The_spinner_keeps_turning_while_the_windows_thread_is_blocked_and_stops_its_thread_when_hidden()
     {
         var spinner = new ThreadedSpinner { Width = 44, Height = 44 };
-        var window = new Window
-        {
-            Content = spinner, Width = 120, Height = 120, Left = -20000, Top = -20000,
-            WindowStyle = WindowStyle.None, ShowInTaskbar = false, ShowActivated = false,
-        };
+        var window = OffScreenWindow.Show(120, 120, spinner);
         try
         {
-            window.Show();
             Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle); // let Loaded run
 
             Assert.That(spinner.IsSpinning, Is.True);

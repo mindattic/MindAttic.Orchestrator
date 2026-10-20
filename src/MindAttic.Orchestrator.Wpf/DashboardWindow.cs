@@ -52,14 +52,18 @@ public static class DashboardWindow
     /// <summary>Shows <paramref name="window"/>: visible, not minimized, in front. Activate alone can lose to Windows'
     /// foreground lock and only flash the taskbar button when it's behind other windows, so it's raised above them for a
     /// moment first (M.ORCH-T185); it doesn't stay on top.</summary>
-    public static void Restore(Window window)
+    public static void Restore(Window window) => Restore(window, w => w.Activate(), w => w.Focus());
+
+    /// <summary><see cref="Restore(Window)"/> with the focus-taking calls passed in, so tests can check them on an
+    /// off-screen window without stealing the user's keyboard focus (M.ORCH-T530).</summary>
+    internal static void Restore(Window window, Action<Window> activate, Action<Window> focus)
     {
         window.Show();
         if (window.WindowState == WindowState.Minimized) window.WindowState = Unminimized(window).Value;
         var topmost = window.Topmost;
         window.Topmost = true;
-        window.Activate();
+        activate(window);
         window.Topmost = topmost;
-        window.Focus();
+        focus(window);
     }
 }
