@@ -1981,6 +1981,12 @@ public static class AgentGate
                 # After a /handoff (M.ORCH-T481): the first start once it's quiet clears the hold (new work starts again), and each
                 # start gets back its repo's /autopilot and loads the handoff its CLI saved there, before the default could switch it.
                 h = handoff()
+                # A /clear or a compaction starts a session in a CLI already open: on the old account it isn't the switch, so the
+                # hold stays and nothing meant for the new account is used up here; only one signed in to another account resumes.
+                if h and h.get("state") == "quiet" and data.get("source") in ("clear", "compact"):
+                    signed = account()[0]
+                    if not (h.get("account") and signed and signed != h["account"]):
+                        h = None
                 if h and h.get("state") == "quiet":
                     h = dict(h, state="resumed", resumed_at=utc_stamp())
                     write_handoff(h)

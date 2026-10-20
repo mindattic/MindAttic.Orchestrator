@@ -2076,4 +2076,25 @@ public sealed class HookScriptTests
         Assert.That(third, Does.Not.Contain("[Handoff]"), "the one recorded CLI there went to the first, and its handoff was loaded there");
         Assert.That(File.Exists(Path.Combine(Marks, "autopilot-5003")), Is.False, "nothing restored to it: only the default applies");
     }
+
+    [Test]
+    public void A_clear_on_the_old_account_during_a_quiet_handoff_doesnt_resume_it()
+    {
+        // M.ORCH-T505: any SessionStart moved a quiet handoff to resumed, a /clear or compaction in a CLI still on the old account too.
+        Directory.CreateDirectory(Marks);
+        File.WriteAllText(HandoffMark, JsonSerializer.Serialize(new
+        {
+            state = "quiet", started = DateTime.UtcNow.AddMinutes(-5).ToString("yyyy-MM-ddTHH:mm:ssZ"), by = 1, account = "acct-old",
+            quiet_at = DateTime.UtcNow.AddMinutes(-1).ToString("yyyy-MM-ddTHH:mm:ssZ"), resumed_at = (string?)null,
+            autopilot = new object[] { new { pid = 1, repo = "UnitySolarSystem", cwd = Uss, repos = "UnitySolarSystem", off = false } },
+        }));
+        foreach (var source in new[] { "clear", "compact" })
+        {
+            var output = Gate(new { hook_event_name = "SessionStart", session_id = "c-" + source, source, cwd = Uss },
+                new Dictionary<string, string> { ["MINDATTIC_CLI_PID"] = "5101" }, AgentGate.ContextScriptName).Output;
+            Assert.That(output, Does.Not.Contain("[Handoff]"), source);
+            Assert.That(MindAttic.Orchestrator.Sessions.Handoff.Read(Marks)!.State, Is.EqualTo("quiet"), source + ": the hold stays until the switch");
+        }
+        Assert.That(Directory.GetFiles(Marks, "handoff-restored-*"), Is.Empty, "the saved /autopilot is kept for the new account");
+    }
 }
