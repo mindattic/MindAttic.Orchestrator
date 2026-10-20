@@ -1227,6 +1227,10 @@ public static class AgentGate
         WT = Path(_wt_root) if _wt_root else WS.parent / (WS.name + ".worktrees")
         # The Workflow database the orchestrator and the workflow CLI open: MINDATTIC_WORKFLOW_DB when set (M.ORCH-T398).
         WORKFLOW_DB = os.environ.get("MINDATTIC_WORKFLOW_DB") or str(WS / "MindAttic.Workflow" / "data" / "workflow.db")
+        def workflow_db():
+            # The Workflow database opened read-only: a missing one raises instead of being created empty (M.ORCH-T546).
+            import sqlite3
+            return sqlite3.connect(Path(os.path.abspath(WORKFLOW_DB)).as_uri() + "?mode=ro", uri=True)
 
         def repo_of(path, worktrees=True):
             # A repo checkout under the workspace, or (with worktrees) one of autopilot's worktrees of it; None elsewhere.
@@ -1616,7 +1620,7 @@ public static class AgentGate
 
         def ticket_repo(ticket_id):
             try:
-                db = sqlite3.connect(WORKFLOW_DB)
+                db = workflow_db()
                 row = db.execute("SELECT repo FROM tickets WHERE id = ? COLLATE NOCASE", (ticket_id,)).fetchone()
                 db.close()
                 return row[0] if row else None
@@ -2149,7 +2153,7 @@ public static class AgentGate
             # The open fixes and approved tickets of repos (names or wildcards such as GTFO.*; "*": every repo), in ticket order.
             try:
                 import fnmatch, sqlite3
-                db = sqlite3.connect(WORKFLOW_DB)
+                db = workflow_db()
                 try:
                     rows = db.execute("SELECT id, type, repo, summary FROM tickets WHERE status = 'open' ORDER BY ordinal").fetchall()
                 except sqlite3.OperationalError:  # a database from before tickets had summaries
@@ -2214,7 +2218,7 @@ public static class AgentGate
             try:
                 import fnmatch, sqlite3
                 try:
-                    db = sqlite3.connect(WORKFLOW_DB)
+                    db = workflow_db()
                     try:
                         held = {(r or "").lower() for (r,) in db.execute("SELECT DISTINCT repo FROM tickets").fetchall()}
                     finally:

@@ -1582,6 +1582,17 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void The_hooks_never_create_the_workflow_database()
+    {
+        // M.ORCH-T546: sqlite3.connect(WORKFLOW_DB) left a 0-byte workflow.db wherever it pointed, which Workflow then opened.
+        var data = Path.Combine(ws, "MindAttic.Workflow", "data");
+        Directory.CreateDirectory(data);
+        Gate(new { tool_name = "Bash", tool_input = new { command = "workflow ticket close M.WF-T7 --ref abc123" }, cwd = Path.Combine(ws, "UnitySolarSystem") });
+        Gate(new { hook_event_name = "Stop", session_id = "w1", cwd = Path.Combine(ws, "UnitySolarSystem") }, AgentGate.ContextScriptName);
+        Assert.That(File.Exists(Path.Combine(data, "workflow.db")), Is.False);
+    }
+
+    [Test]
     public void An_exempt_turn_is_read_from_the_newer_of_the_session_row_and_its_file()
     {
         // M.ORCH-T543: the gate read only the exported .state.json, so a Stop whose file write failed (held open) left the
