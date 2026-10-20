@@ -381,8 +381,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         IReadOnlyList<string> repos, int? count, bool claim, DateTime nowUtc,
         Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree = null, Func<string, string>? mainlineOf = null, bool unthrottled = false,
         string? self = null, Func<Assignment, bool>? pilotRunning = null, bool handingOff = false, Func<string, string, bool>? stillOpen = null,
-        int? cli = null, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots = null)
+        int? cli = null, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots = null, Func<int, bool>? cliRunning = null)
     {
+        cliRunning ??= ContextCycler.IsClaude;
         // /handoff (M.ORCH-T481): every CLI is winding down for an account switch, so nothing new is handed out, unthrottled or not.
         if (handingOff) return ([], Handoff.HoldReason);
         stillOpen ??= StillOpen;
@@ -443,7 +444,8 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         {
             // A CLI's claims no subagent has shown up on yet are its subagents about to run (M.ORCH-T532): they count against its
             // own share, not against whichever CLI covers their repo. A claim whose CLI isn't known counts for nobody.
-            var pending = PendingClaims(plan);
+            // A live /autopilot CLI (pilots holds only running ones) or this one is running; any other claimer is asked of Windows.
+            var pending = PendingClaims(plan, c => c == me || pilots?.ContainsKey(c) == true || cliRunning(c));
             var running = plan.Pace.SubagentsByCli.Keys.Union(pending.Keys)
                 .ToDictionary(c => c, c => plan.Pace.SubagentsByCli.GetValueOrDefault(c) + pending.GetValueOrDefault(c));
             var wanting = (pilots ?? new Dictionary<int, IReadOnlyList<string>>()).Where(p => p.Key != me && plan.Queue.Any(q => Autopilot.Named(p.Value, q.Repo) && Workable(q)))
@@ -506,11 +508,13 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     }
 
     /// <summary>Each CLI's claims (by the CLI that made them, M.ORCH-T532) that no subagent is seen working yet
-    /// (<see cref="SchedulePlan.Worked"/>), not gone stale: the subagents it's about to start.</summary>
-    internal static IReadOnlyDictionary<int, int> PendingClaims(SchedulePlan plan)
+    /// (<see cref="SchedulePlan.Worked"/>), not gone stale: the subagents it's about to start. A claim whose CLI is no longer
+    /// running (<paramref name="cliRunning"/>) starts nothing: it isn't pending (M.ORCH-T550: a closed CLI's unstarted claims held
+    /// their places until StaleAfterHours), and <see cref="AutopilotWaker"/> offers it to the /autopilot CLI on its repo.</summary>
+    internal static IReadOnlyDictionary<int, int> PendingClaims(SchedulePlan plan, Func<int, bool>? cliRunning = null)
     {
         var worked = plan.Worked.Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return plan.Queue.Where(q => q.IsAssigned && q.Assignment is { IsClaim: true, Cli: not null } && !worked.Contains(q.Id))
+        return plan.Queue.Where(q => q.IsAssigned && q.Assignment is { IsClaim: true, Cli: { } c } && !worked.Contains(q.Id) && cliRunning?.Invoke(c) != false)
             .GroupBy(q => q.Assignment!.Cli!.Value).ToDictionary(g => g.Key, g => g.Count());
     }
 

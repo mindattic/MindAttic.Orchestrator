@@ -127,6 +127,25 @@ public sealed class ClaimOwnerTests
     }
 
     [Test]
+    public void A_closed_clis_unstarted_claims_hold_no_place_and_go_to_the_cli_working_their_repo()
+    {
+        // M.ORCH-T550: a claim counted as pending until StaleAfterHours, so a closed CLI's three unstarted claims kept three of
+        // eight places from every CLI for up to 12 hours.
+        var snap = Snap([.. Enumerable.Range(1, 10).Select(i => T($"A-T{i}"))]);
+        var claims = new[] { Claim("A-T1", Second, TimeSpan.FromMinutes(10)), Claim("A-T2", Second, TimeSpan.FromMinutes(10)),
+            Claim("A-T3", Second, TimeSpan.FromMinutes(10)), Claim("A-T4", null, TimeSpan.FromMinutes(10)) };
+        var plan = Plan(snap, claims);
+        var pilots = new Dictionary<int, IReadOnlyList<string>> { [First] = ["A"] }; // the second CLI has closed
+
+        Assert.That(Autopilot.PendingClaims(plan, c => c == First), Is.Empty, "its claimer isn't running; an unknown claimer counts for nobody, as before");
+        Assert.That(Autopilot.PendingClaims(plan, _ => true), Is.EqualTo(new Dictionary<int, int> { [Second] = 3 }), "still running: pending");
+        var handed = Autopilot.Next(plan, Settings, store, ["A"], null, claim: false, Now, cli: First, pilots: pilots, cliRunning: c => c == First).Handed;
+        Assert.That(handed, Has.Count.EqualTo(6), "every free ticket: the dead claims don't take 3 of the 8 places");
+        Assert.That(AutopilotWaker.IdleClaims(snap, plan, pilots, Now).Select(i => (i.Cli, i.Item.Id)),
+            Is.EqualTo(new[] { (First, "A-T1"), (First, "A-T2"), (First, "A-T3"), (First, "A-T4") }), "offered to the CLI that works A");
+    }
+
+    [Test]
     public void The_agent_board_lists_each_cli_only_its_own_claims()
     {
         TranscriptSession Session(string id) => new(id, @"D:\W\A", Now.AddMinutes(-1), default, "claude-sonnet-5");
