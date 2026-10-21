@@ -8,7 +8,7 @@ using Serilog.Events;
 namespace MindAttic.Orchestrator;
 
 /// <summary>
-/// The always-on loop WatchDog's Orchestrator.Daemon job runs at logon: keeps <c>rl-status.json</c> and the pace current, notices
+/// The always-on loop Scheduler's Orchestrator.Daemon job runs at logon: keeps <c>rl-status.json</c> and the pace current, notices
 /// stale assignments, cycles context, and feeds the CLIs where /allocate is on (holding <see cref="DispatchLease"/>). Every
 /// event goes to MindAttic.Log; <c>echo</c> also gets it when someone is watching (the CLI's console).
 /// Runs until cancelled; a failed refresh is logged and retried, since nobody sees a headless crash.
@@ -57,7 +57,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             tick.Start();
             try
             {
-                // The dashboard's first run may pick the workspace after WatchDog already started this.
+                // The dashboard's first run may pick the workspace after Scheduler already started this.
                 // Only from a settings.json that could be read: an unreadable one's default root would switch the whole tick (and
                 // autopilot's reap) to another workspace and back, dropping the aggregator's latches each way (M.ORCH-T513).
                 if (OrchestratorOptions.TryLoad(store, out var latest) && latest.WorkspaceRoot != options.WorkspaceRoot)

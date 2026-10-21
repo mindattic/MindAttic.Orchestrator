@@ -9,7 +9,7 @@ using MindAttic.Orchestrator.Setup;
 namespace MindAttic.Orchestrator.Wpf;
 
 /// <summary>
-/// One exe, three jobs. <c>--daemon</c>: the headless always-on loop WatchDog's Orchestrator.Daemon job
+/// One exe, three jobs. <c>--daemon</c>: the headless always-on loop Scheduler's Orchestrator.Daemon job
 /// starts at logon (M.WD-T5; this exe registers no task of its own, M.ORCH-T475).
 /// <c>--uninstall</c>: remove the shortcuts and hooks. Otherwise the dashboard, which first makes
 /// sure it's installed and set up: dropped anywhere and double-clicked, it installs itself and hands
@@ -53,7 +53,7 @@ public partial class App : Application
         {
             var hooks = installer.Uninstall();
             log.Information("Uninstalled: removed the shortcuts (and any legacy logon task); hooks: {Hooks:l}", hooks ?? "none registered");
-            McMessageBox.Show($"The background daemon, the shortcuts and the CLI hooks are gone.\n\nTo finish, delete {installer.InstallDir} and remove WatchDog's Orchestrator.Daemon job, which starts the daemon at logon.",
+            McMessageBox.Show($"The background daemon, the shortcuts and the CLI hooks are gone.\n\nTo finish, delete {installer.InstallDir} and remove Scheduler's Orchestrator.Daemon job, which starts the daemon at logon.",
                 "MindAttic Orchestrator", MessageBoxButton.OK, MessageBoxImage.Information);
             Shutdown();
             return;
@@ -196,7 +196,7 @@ public partial class App : Application
         }
     }
 
-    /// <summary>The daemon (started if it isn't running; WatchDog starts it at logon) and the shortcuts, checked every start and fixed only when missing or pointing elsewhere.</summary>
+    /// <summary>The daemon (started if it isn't running; Scheduler starts it at logon) and the shortcuts, checked every start and fixed only when missing or pointing elsewhere.</summary>
     private static void RepairSetup(Installer installer, string self, Serilog.ILogger log)
     {
         try

@@ -9,7 +9,7 @@ public sealed class InstallerTests
     [Test]
     public void The_daemon_is_started_from_the_exe_with_the_daemon_arg_and_no_window()
     {
-        // M.ORCH-T475: WatchDog's Orchestrator.Daemon job starts it at logon; the exe only starts one itself after an upgrade.
+        // M.ORCH-T475: Scheduler's Orchestrator.Daemon job starts it at logon; the exe only starts one itself after an upgrade.
         var psi = Installer.DaemonStartInfo(@"C:\Apps\Mind & Attic\MindAttic.Orchestrator.exe");
         Assert.That(psi.FileName, Is.EqualTo(@"C:\Apps\Mind & Attic\MindAttic.Orchestrator.exe"));
         Assert.That(psi.ArgumentList, Is.EqualTo(new[] { Installer.DaemonArg }));

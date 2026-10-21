@@ -8,7 +8,7 @@ namespace MindAttic.Orchestrator.Setup;
 /// install folder, it copies itself in and hands over to that copy. Every start of the installed copy
 /// then checks (cheaply) that the daemon is running and the shortcuts exist and point at it, and fixes
 /// whatever doesn't, so there is no setup step, and a moved or upgraded exe repairs itself. Starting the
-/// daemon at logon and keeping it running is MindAttic.WatchDog's job (its Orchestrator.Daemon job, M.WD-T5,
+/// daemon at logon and keeping it running is MindAttic.Scheduler's job (its Orchestrator.Daemon job, M.WD-T5,
 /// runs this exe with <see cref="DaemonArg"/>); this exe no longer registers a scheduled task of its own (M.ORCH-T475).
 /// </summary>
 public sealed class Installer
@@ -149,7 +149,7 @@ public sealed class Installer
         }
     }
 
-    /// <summary>Starts the daemon from <paramref name="exe"/> when none is running, as WatchDog would at logon: after an upgrade
+    /// <summary>Starts the daemon from <paramref name="exe"/> when none is running, as Scheduler would at logon: after an upgrade
     /// stopped it, pacing and the hooks' holds don't stay off until the next logon. Registers nothing (M.ORCH-T475).
     /// Returns what it did, or null when one was already up.</summary>
     public string? EnsureDaemon(string exe)
