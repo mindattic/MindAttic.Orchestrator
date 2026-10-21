@@ -139,7 +139,7 @@ public sealed class AccountSwitchTests
         Assert.That(Run("login"), Is.EqualTo(0));
         var text = output.ToString();
         Assert.That(text, Does.Contain("b@mindattic.com (signed in)").And.Contain("a@mindattic.com (most headroom)"));
-        Assert.That(text, Does.Contain("Week usage").And.Contain("Last Checked").And.Contain("30/70%").And.Contain("80/20%"));
+        Assert.That(text, Does.Contain("Week usage").And.Contain("Last Checked").And.Contain("30/100%").And.Contain("80/100%"));
         Assert.That(text, Does.Not.Contain("premium").And.Not.Contain("Seat"));
         Assert.That(logins, Is.Empty, "listing signs nobody in");
     }
@@ -202,7 +202,7 @@ public sealed class AccountSwitchTests
     {
         var b = Rows.Single(r => r.Account == "b/org");
         var c = AccountSwitch.Columns(b, Now);
-        Assert.That(c.WeekUsage, Is.EqualTo("80/20%"));
+        Assert.That(c.WeekUsage, Is.EqualTo("80/100%"));
         Assert.That(c.WeekResets, Is.EqualTo(b.WeekResetAt(Now)!.Value.ToLocalTime().ToString("M/d h:mm tt", System.Globalization.CultureInfo.InvariantCulture)));
         Assert.That(c.FiveHourResets, Is.EqualTo(b.FiveHourResetAt(Now)!.Value.ToLocalTime().ToString("M/d h:mm tt", System.Globalization.CultureInfo.InvariantCulture)));
         Assert.That(AccountSwitch.Columns(new AccountRow { Account = "x/org" }, Now).WeekUsage, Is.EqualTo("—"), "never read");
