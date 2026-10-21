@@ -6,7 +6,7 @@ namespace MindAttic.Orchestrator.Budget;
 public sealed record AccountSwitchResult(IReadOnlyList<string> Lines, string? Error);
 
 /// <summary>One account's row in a table (the dashboard's account menu, <c>orchestrator accounts</c>): this week's
-/// usage (as "used/100%") and reset, and the 5-hour window's used/reset, and when it was last read. A reset or read
+/// usage and reset, and the 5-hour window's used/reset, and when it was last read. A reset or read
 /// cell is "" when there's none to show (the account hasn't been read, or its reset isn't known).</summary>
 public readonly record struct AccountColumns(string WeekUsage, string WeekResets,
     string FiveHourUsed, string FiveHourResets, string LastRead);
@@ -91,9 +91,7 @@ public static class AccountSwitch
     /// <summary>The same facts as <see cref="MenuLine"/>, as plain table cells (M.ORCH-T566): the dashboard's account menu
     /// renders these as columns instead of one joined sentence. Each reset or read cell is "" when there's none to show.</summary>
     public static AccountColumns Columns(AccountRow row, DateTime nowUtc) => new(
-        row.WeekUsedAt(nowUtc) is { } used
-            ? $"{used.ToString("0", System.Globalization.CultureInfo.InvariantCulture)}/100%"
-            : "—",
+        AccountRoster.Percent(row.WeekUsedAt(nowUtc)),
         row.WeekResetAt(nowUtc) is { } wr ? DateAndTime(wr) : "",
         AccountRoster.Percent(row.FiveHourUsedAt(nowUtc)),
         row.FiveHourResetAt(nowUtc) is { } fr ? DateAndTime(fr) : "",
