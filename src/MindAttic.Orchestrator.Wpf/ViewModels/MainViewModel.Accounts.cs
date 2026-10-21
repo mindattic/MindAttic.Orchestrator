@@ -5,26 +5,24 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
 /// <summary>One entry in the account menu: what it switches to (<see cref="Id"/>: an account key, or
 /// <see cref="MainViewModel.ApiKeyItem"/>), its line, its icon-font glyph and its tooltip.</summary>
-public sealed record AccountMenuItem(string Id, string Label, string Icon, string ToolTip);
+public sealed record AccountMenuItem(string Id, string Label, string Icon, string ToolTip, string Account, string Badge,
+    bool IsCurrent, string Seat, string WeekUsed, string WeekLeft, string WeekResets, string FiveHourUsed,
+    string FiveHourResets, string LastRead, bool IsApiKey);
 
 /// <summary>
-/// The Accounts card (M.ORCH-T490) and the account menu in the upper right (M.ORCH-T492): every Claude account signed in to
-/// here, how much of its week and 5-hour window it has left and when each resets, read from the roster the daemon keeps. The
-/// corner names the signed-in account ("API key" while the Vault's key bills); its menu lists every account, the signed-in
-/// one marked and the one with the most headroom suggested, and picking one opens its login. The menu's last entry bills
-/// the API key instead, as the Claude Team / API key toggle did (M.ORCH-T436).
+/// The account menu in the upper right (M.ORCH-T492, M.ORCH-T566): every Claude account signed in to here, how much of its
+/// week and 5-hour window it has left and when each resets, read from the roster the daemon keeps, as a table. The corner
+/// names the signed-in account ("API key" while the Vault's key bills); its menu lists every account, the signed-in one
+/// marked and the one with the most headroom suggested, and picking one opens its login. The menu's last row bills the API
+/// key instead, as the Claude Team / API key toggle did (M.ORCH-T436).
 /// </summary>
 public sealed partial class MainViewModel
 {
     public const string ApiKeyItem = "use-api-key";
 
-    private IReadOnlyList<string> accounts = [];
     private IReadOnlyList<AccountRow> accountRows = [];
     private string? currentAccount;
     private bool switchingAccount;
-
-    public IReadOnlyList<string> Accounts { get => accounts; private set => Set(ref accounts, value); }
-    public bool HasAccounts => Accounts.Count > 0;
 
     /// <summary>The upper-right corner: "API key" while the Vault's key bills, else the signed-in account's email.</summary>
     public string AccountCorner => CornerOf(billing?.Mode, accountRows, currentAccount);
@@ -33,8 +31,12 @@ public sealed partial class MainViewModel
         mode == BillingModes.Api ? "API key"
             : rows.FirstOrDefault(r => r.Account == current)?.Label ?? (current is null ? "Not signed in" : "Signed in");
 
-    /// <summary>The menu's entries, built as it opens: every account, then "Use API key (emergencies)".</summary>
+    /// <summary>The menu's rows, built as it opens: every account, then "Use API key (emergencies)".</summary>
     public IReadOnlyList<AccountMenuItem> AccountMenu() => MenuOf(accountRows, currentAccount, billing?.Mode, DateTime.UtcNow);
+
+    /// <summary>Bindable: the table the account menu's popup renders, rebuilt whenever the roster, the signed-in account or
+    /// the billing mode changes.</summary>
+    public IReadOnlyList<AccountMenuItem> AccountMenuItems => AccountMenu();
 
     internal static IReadOnlyList<AccountMenuItem> MenuOf(IReadOnlyList<AccountRow> rows, string? current, string? mode, DateTime nowUtc)
     {
@@ -49,10 +51,18 @@ public sealed partial class MainViewModel
                 : r.Email is null ? "Its email shows once it's signed in to again (/login in a Claude CLI)."
                 : r.Account == current ? "Bill this account again instead of the API key: every CLI switches back."
                 : $"Sign every CLI in to {r.Email}: opens its login in the browser ({AccountSwitch.LoginCommand(r.Email, AccountSwitch.UsesSso(r))}).";
-            items.Add(new AccountMenuItem(r.Account, AccountSwitch.MenuLine(r, signedIn ? current : null, suggested, nowUtc), icon, tip));
+            var badges = new List<string>();
+            if (signedIn) badges.Add("Signed in");
+            if (r.Account == suggested) badges.Add("Most headroom");
+            var badge = string.Join(" · ", badges);
+            var c = AccountSwitch.Columns(r, nowUtc);
+            items.Add(new AccountMenuItem(r.Account, AccountSwitch.MenuLine(r, signedIn ? current : null, suggested, nowUtc), icon, tip,
+                r.Label, badge, signedIn, c.Seat, c.WeekUsed, c.WeekLeft, c.WeekResets, c.FiveHourUsed, c.FiveHourResets, c.LastRead, false));
         }
-        items.Add(new AccountMenuItem(ApiKeyItem, "Use API key (emergencies)" + (onKey ? " (in use)" : ""), onKey ? "" : "",
-            "Bill every CLI to the MindAttic Vault's API key, for emergencies only. Open Launcher tabs restart with claude --resume at their next idle point."));
+        var apiLabel = "Use API key (emergencies)" + (onKey ? " (in use)" : "");
+        items.Add(new AccountMenuItem(ApiKeyItem, apiLabel, onKey ? "" : "",
+            "Bill every CLI to the MindAttic Vault's API key, for emergencies only. Open Launcher tabs restart with claude --resume at their next idle point.",
+            apiLabel, onKey ? "In use" : "", onKey, "", "", "", "", "", "", "", true));
         return items;
     }
 
@@ -64,14 +74,8 @@ public sealed partial class MainViewModel
         accountRows = rows;
         currentAccount = next.Account == ClaudeAccount.ApiKey ? null : next.Account;
         Raise(nameof(AccountCorner));
-        var lines = AccountLines(rows, next.Account, nowUtc);
-        if (lines.SequenceEqual(Accounts)) return;
-        Accounts = lines;
-        Raise(nameof(HasAccounts));
+        Raise(nameof(AccountMenuItems));
     }
-
-    internal static IReadOnlyList<string> AccountLines(IEnumerable<AccountRow> rows, string? current, DateTime nowUtc) =>
-        [.. rows.Select(r => AccountRoster.Line(r, current, nowUtc))];
 
     /// <summary>Picks a menu entry: the API key switches every CLI to it; an account opens its login (billing goes back to
     /// Claude Team first if the key was billing). The dashboard follows the switch at the next refresh after it lands.</summary>

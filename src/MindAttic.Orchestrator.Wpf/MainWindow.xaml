@@ -63,6 +63,11 @@
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
+        <Style x:Key="AccountMenuHeading" TargetType="{x:Type TextBlock}" BasedOn="{StaticResource McMutedText}">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="10,0,10,4" />
+        </Style>
+
         <!-- A body view (repos, queue, audit, agents): the same 24px gutters as the header and toolbar. While the vertical
              scroll bar shows, it sits inside the right gutter instead of pushing the content in (M.ORCH-T192). Based on the
              theme's implicit ScrollViewer, so it keeps the dark corner and scroll bars. -->
@@ -94,10 +99,11 @@
              share both edges (M.ORCH-T192). The tiles are equal cells that together span the row at any width. -->
         <StackPanel x:Name="Header" Grid.Row="0" Margin="24,18,24,0">
         <!-- The account menu, upper right (M.ORCH-T492), as a normal app has it: the signed-in account's email ("API key" while
-             the Vault's key bills, M.ORCH-T436), which opens a dropdown of every account in the roster (seat, week used and
-             left, its reset, the 5-hour window, when it was read; the signed-in one marked, the most headroom starred). Picking
-             one opens its login in the browser; the last entry bills the API key, for emergencies. The tooltip says who every
-             CLI bills; the line beside it what the last switch did and which open CLIs still bill the other thing. -->
+             the Vault's key bills, M.ORCH-T436), which opens a table of every account in the roster (seat, week used and
+             left, its reset, the 5-hour window, when it was read; the signed-in one marked, the most headroom starred).
+             Hovering a row highlights it; clicking one opens its login in the browser. The last row bills the API key, for
+             emergencies (M.ORCH-T566). The tooltip says who every CLI bills; the line beside it what the last switch did and
+             which open CLIs still bill the other thing. -->
         <!-- Upper left (M.ORCH-T493): the clock, when the dashboard last refreshed, Refresh (F5) and Settings, so the upper
              right holds only the account menu. -->
         <DockPanel x:Name="AccountRow" Margin="0,0,0,10" LastChildFill="True">
@@ -128,22 +134,94 @@
                        TextAlignment="Right" Margin="12,0,0,0"
                        Visibility="{Binding BillingDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
         </DockPanel>
-        <!-- Every Claude account signed in to here (M.ORCH-T490): its week used and left, the 5-hour window, when each resets
-             and when it was last read. An account not signed in keeps its last reading; a passed reset reads 0%. -->
-        <Border x:Name="AccountsCard" Style="{StaticResource McCard}" Margin="0,0,0,10" HorizontalAlignment="Stretch"
-                AutomationProperties.Name="Accounts"
-                Visibility="{Binding HasAccounts, Converter={StaticResource Visible}}">
-            <StackPanel>
-                <TextBlock Text="Accounts" Style="{StaticResource McSectionLabel}" />
-                <ItemsControl ItemsSource="{Binding Accounts}" Focusable="False" Margin="0,4,0,0">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding}" Style="{StaticResource McMutedText}" TextWrapping="Wrap" Margin="0,2,0,0" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
-        </Border>
+
+        <!-- The account menu's popup (M.ORCH-T566): a table, not a text menu, so picking an account is "hover the row, click
+             it" rather than reading a long joined sentence. StaysOpen="False" gives it the usual light-dismiss (an outside
+             click or losing focus closes it) for free; the trigger button's own toggle is wired in code-behind, since a plain
+             Click there would immediately reopen what the outside click just closed. -->
+        <Popup x:Name="AccountPopup" PlacementTarget="{Binding ElementName=AccountMenuButton}" Placement="Custom"
+               AllowsTransparency="True" StaysOpen="False" Focusable="False" PopupAnimation="Fade">
+            <Border Style="{StaticResource McCard}" Padding="4,8" Margin="0">
+                <StackPanel>
+                    <Grid Margin="4,0,4,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="22" />
+                            <ColumnDefinition Width="230" />
+                            <ColumnDefinition Width="64" />
+                            <ColumnDefinition Width="64" />
+                            <ColumnDefinition Width="64" />
+                            <ColumnDefinition Width="92" />
+                            <ColumnDefinition Width="54" />
+                            <ColumnDefinition Width="92" />
+                            <ColumnDefinition Width="70" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="1" Text="Account" Style="{StaticResource AccountMenuHeading}" />
+                        <TextBlock Grid.Column="2" Text="Seat" Style="{StaticResource AccountMenuHeading}" />
+                        <TextBlock Grid.Column="3" Text="Week used" Style="{StaticResource AccountMenuHeading}" />
+                        <TextBlock Grid.Column="4" Text="Week left" Style="{StaticResource AccountMenuHeading}" />
+                        <TextBlock Grid.Column="5" Text="Week resets" Style="{StaticResource AccountMenuHeading}" />
+                        <TextBlock Grid.Column="6" Text="5h used" Style="{StaticResource AccountMenuHeading}" />
+                        <TextBlock Grid.Column="7" Text="5h resets" Style="{StaticResource AccountMenuHeading}" />
+                        <TextBlock Grid.Column="8" Text="Read" Style="{StaticResource AccountMenuHeading}" />
+                    </Grid>
+                    <ItemsControl x:Name="AccountRows" ItemsSource="{Binding AccountMenuItems}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:AccountMenuItem}">
+                                <Button CommandParameter="{Binding Id}" ToolTip="{Binding ToolTip}"
+                                        AutomationProperties.Name="{Binding Label}">
+                                    <Button.Style>
+                                        <!-- McToolButton (M.ORCH-T499): transparent at rest, McHover on mouse-over or keyboard
+                                             focus, so hovering or tabbing to a row is the only cue needed before clicking it
+                                             (or pressing Enter/Space) picks that account. -->
+                                        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource McToolButton}">
+                                            <Setter Property="Width" Value="Auto" />
+                                            <Setter Property="Height" Value="Auto" />
+                                            <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                            <Setter Property="Padding" Value="8,6" />
+                                            <Style.Triggers>
+                                                <!-- Sets it apart from the accounts above it; McToolButton's own template draws no
+                                                     border for Margin to play against, so a gap is all a trigger here can add. -->
+                                                <DataTrigger Binding="{Binding IsApiKey}" Value="True">
+                                                    <Setter Property="Margin" Value="0,6,0,0" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="22" />
+                                            <ColumnDefinition Width="230" />
+                                            <ColumnDefinition Width="64" />
+                                            <ColumnDefinition Width="64" />
+                                            <ColumnDefinition Width="64" />
+                                            <ColumnDefinition Width="92" />
+                                            <ColumnDefinition Width="54" />
+                                            <ColumnDefinition Width="92" />
+                                            <ColumnDefinition Width="70" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" VerticalAlignment="Center" />
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
+                                            <TextBlock Text="{Binding Account}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Badge}" Style="{StaticResource McMutedText}" Foreground="{DynamicResource McGood}"
+                                                       Visibility="{Binding Badge, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Text="{Binding Seat}" Style="{StaticResource McMutedText}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="3" Text="{Binding WeekUsed}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="4" Text="{Binding WeekLeft}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="5" Text="{Binding WeekResets}" Style="{StaticResource McMutedText}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="6" Text="{Binding FiveHourUsed}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="7" Text="{Binding FiveHourResets}" Style="{StaticResource McMutedText}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="8" Text="{Binding LastRead}" Style="{StaticResource McMutedText}" VerticalAlignment="Center" />
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </Popup>
+
         <local:AlignedGrid x:Name="StatTiles" MinItemWidth="160" Gap="10" RowGap="10" Balanced="True" UniformRows="True"
                            AutomationProperties.Name="Summary">
             <Button Command="{Binding FocusCommand}" CommandParameter="Waiting" ToolTip="Repos whose agent stopped and is waiting for you. Shows only those."

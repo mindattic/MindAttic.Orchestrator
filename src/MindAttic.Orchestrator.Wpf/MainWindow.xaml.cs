@@ -3,10 +3,11 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
-using MindAttic.Components.Wpf.Controls;
 using MindAttic.Orchestrator.Wpf.ViewModels;
 
 namespace MindAttic.Orchestrator.Wpf;
@@ -23,7 +24,6 @@ public partial class MainWindow : Window
 
     private readonly MainViewModel model = new();
     private readonly DispatcherTimer timer;
-    private readonly DropdownMenu accountMenu;
 
     public MainWindow()
     {
@@ -44,8 +44,21 @@ public partial class MainWindow : Window
         }));
         CommandBindings.Add(new CommandBinding(WindowCommands.Escape, (_, _) => OnEscape()));
 
-        // The account menu in the upper right (M.ORCH-T492): built from the roster each time it opens; nothing in it is pinned.
-        accountMenu = new DropdownMenu(AccountMenuButton, AccountActions, isPinned: _ => false, togglePinned: _ => { });
+        // The account menu in the upper right (M.ORCH-T492, M.ORCH-T566): a table popup, its rows rebuilt from the roster
+        // every time AccountMenuItems changes. AccountPopup.StaysOpen="False" already closes it on an outside click or lost
+        // focus; a plain Click on the trigger would immediately reopen what that outside click just closed, so the toggle
+        // is done on the preview mouse-down instead, closing (and swallowing the press) when it's already open.
+        AccountMenuButton.PreviewMouseLeftButtonDown += (_, e) =>
+        {
+            if (!AccountPopup.IsOpen) return;
+            AccountPopup.IsOpen = false;
+            e.Handled = true;
+        };
+        AccountMenuButton.Click += (_, _) => AccountPopup.IsOpen = true;
+        AccountPopup.CustomPopupPlacementCallback = PlaceAccountPopup;
+        // A row's Button has no Command (its CommandParameter alone can't pick which VM method to call); caught here instead,
+        // once, since every row's Click bubbles up through the ItemsControl regardless of which DataTemplate instance it's in.
+        AccountRows.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(OnAccountRowClick));
 
         model.Toasts.CollectionChanged += OnToastsChanged;
         model.PropertyChanged += (_, e) =>
@@ -76,9 +89,20 @@ public partial class MainWindow : Window
         StateChanged += async (_, _) => await OnShownOrHidden();
     }
 
-    private IReadOnlyList<DropdownAction> AccountActions() =>
-        [.. model.AccountMenu().Select(item => new DropdownAction(item.Id, item.Label, item.Icon, item.ToolTip,
-            async (_, _) => await model.ChooseAccountAsync(item.Id)))];
+    /// <summary>Lines up the account menu table's right edge with the trigger button's right edge, directly beneath it,
+    /// rather than the left-aligned spot a plain Placement="Bottom" would give a trigger sitting at the window's right
+    /// edge (which would push most of a ~750px table off past that edge).</summary>
+    private static CustomPopupPlacement[] PlaceAccountPopup(Size popupSize, Size targetSize, Point offset) =>
+        [new CustomPopupPlacement(new Point(targetSize.Width - popupSize.Width, targetSize.Height), PopupPrimaryAxis.Horizontal)];
+
+    /// <summary>A row clicked in the account menu table (M.ORCH-T566): close the popup first, so it's never on screen for a
+    /// screenshot or the start of a recording, then run the switch itself.</summary>
+    private void OnAccountRowClick(object sender, RoutedEventArgs e)
+    {
+        AccountPopup.IsOpen = false;
+        if (e.OriginalSource is not Button { CommandParameter: string id }) return;
+        Dispatcher.BeginInvoke(async () => await model.ChooseAccountAsync(id), DispatcherPriority.Background);
+    }
 
     private bool Hidden => !IsVisible || WindowState == WindowState.Minimized;
 
@@ -106,7 +130,8 @@ public partial class MainWindow : Window
 
     private void OnEscape()
     {
-        if (model.IsSettingsOpen) model.IsSettingsOpen = false;
+        if (AccountPopup.IsOpen) AccountPopup.IsOpen = false;
+        else if (model.IsSettingsOpen) model.IsSettingsOpen = false;
         else if (SearchBox.IsKeyboardFocusWithin && model.Search.Length > 0) model.Search = "";
         else if (model.Selected is not null) model.SelectCommand.Execute(model.Selected);
         else model.Search = "";

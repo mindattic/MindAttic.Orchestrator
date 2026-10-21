@@ -5,6 +5,12 @@ namespace MindAttic.Orchestrator.Budget;
 /// <summary>What a switch did, line by line, and why it stopped when it did.</summary>
 public sealed record AccountSwitchResult(IReadOnlyList<string> Lines, string? Error);
 
+/// <summary>One account's row in a table (the dashboard's account menu, <c>orchestrator accounts</c>): its seat, this week's
+/// used/left/reset and the 5-hour window's used/reset, and when it was last read. A reset or read cell is "" when there's
+/// none to show (the account hasn't been read, or its reset isn't known).</summary>
+public readonly record struct AccountColumns(string Seat, string WeekUsed, string WeekLeft, string WeekResets,
+    string FiveHourUsed, string FiveHourResets, string LastRead);
+
 /// <summary>
 /// Switching the Claude account every CLI signs in with (M.ORCH-T492), from the dashboard's account menu or
 /// <c>orchestrator login</c>: finding the roster row a name means, its seat, the account with the most headroom, and the
@@ -81,6 +87,17 @@ public static class AccountSwitch
         parts.Add(row.ReadUtc is { } r ? $"read {Formatting.Ago(r, nowUtc)}" : "not read yet");
         return string.Join(" · ", parts);
     }
+
+    /// <summary>The same facts as <see cref="MenuLine"/>, as plain table cells (M.ORCH-T566): the dashboard's account menu
+    /// renders these as columns instead of one joined sentence. Each reset or read cell is "" when there's none to show.</summary>
+    public static AccountColumns Columns(AccountRow row, DateTime nowUtc) => new(
+        SeatOrPlan(row),
+        AccountRoster.Percent(row.WeekUsedAt(nowUtc)),
+        row.WeekUsedAt(nowUtc) is null ? "—" : AccountRoster.Percent(row.WeekLeftAt(nowUtc)),
+        row.WeekResetAt(nowUtc) is { } wr ? Formatting.ResetTime(wr, nowUtc) : "",
+        AccountRoster.Percent(row.FiveHourUsedAt(nowUtc)),
+        row.FiveHourResetAt(nowUtc) is { } fr ? Formatting.ResetTime(fr, nowUtc) : "",
+        row.ReadUtc is { } r ? Formatting.Ago(r, nowUtc) : "not read yet");
 
     /// <summary><c>auth login --email &lt;address&gt;</c>, and <c>--sso</c> when <paramref name="sso"/>.</summary>
     public static IReadOnlyList<string> LoginArgs(string email, bool sso) =>

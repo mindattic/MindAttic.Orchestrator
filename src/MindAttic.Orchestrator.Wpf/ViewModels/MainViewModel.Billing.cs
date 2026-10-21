@@ -50,7 +50,7 @@ public sealed partial class MainViewModel
         billing = next.Billing;
         // What the last switch did stays up for a couple of minutes, as a toast would.
         if (!switchingBilling && DateTime.UtcNow - billingMessageUtc > TimeSpan.FromMinutes(2)) billingMessage = "";
-        Raise(nameof(AccountCorner)); Raise(nameof(BillingHeadline)); Raise(nameof(BillingBrush)); Raise(nameof(BillingDetail)); Raise(nameof(BillingClis));
+        Raise(nameof(AccountCorner)); Raise(nameof(AccountMenuItems)); Raise(nameof(BillingHeadline)); Raise(nameof(BillingBrush)); Raise(nameof(BillingDetail)); Raise(nameof(BillingClis));
     }
 
     private async Task SwitchBillingAsync(string mode)
@@ -79,7 +79,7 @@ public sealed partial class MainViewModel
             // A refresh built while it was switching read the old mode: it's built again, not applied (M.ORCH-T462).
             NoteLocalChange();
             switchingBilling = false;
-            Raise(nameof(AccountCorner)); Raise(nameof(BillingHeadline)); Raise(nameof(BillingBrush)); Raise(nameof(BillingDetail)); Raise(nameof(BillingClis));
+            Raise(nameof(AccountCorner)); Raise(nameof(AccountMenuItems)); Raise(nameof(BillingHeadline)); Raise(nameof(BillingBrush)); Raise(nameof(BillingDetail)); Raise(nameof(BillingClis));
         }
         await RefreshAsync();
     }

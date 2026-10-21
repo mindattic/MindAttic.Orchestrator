@@ -197,13 +197,14 @@ public sealed class AccountSwitchTests
     }
 
     [Test]
-    public void The_dashboard_uses_the_components_dropdown_and_the_billing_toggle_is_gone_from_the_window()
+    public void The_dashboard_lists_accounts_as_a_table_and_the_billing_toggle_and_Accounts_card_are_gone_from_the_window()
     {
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
         var code = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml.cs"));
-        Assert.That(xaml, Does.Not.Contain("BillingChoice").And.Contain("x:Name=\"AccountMenuButton\""));
-        Assert.That(code, Does.Contain("new DropdownMenu(AccountMenuButton"));
+        Assert.That(xaml, Does.Not.Contain("BillingChoice").And.Not.Contain("x:Name=\"AccountsCard\"")
+            .And.Contain("x:Name=\"AccountMenuButton\"").And.Contain("x:Name=\"AccountPopup\"").And.Contain("x:Name=\"AccountRows\""));
+        Assert.That(code, Does.Contain("AccountPopup.IsOpen"));
     }
 }
