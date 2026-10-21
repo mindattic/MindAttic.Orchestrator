@@ -68,6 +68,23 @@
             <Setter Property="Margin" Value="10,0,10,4" />
         </Style>
 
+        <!-- The account menu's row text (M.ORCH-T568): the signed-in row's whole line turns green instead of a separate
+             green "Signed in" line underneath it. -->
+        <Style x:Key="AccountRowText" TargetType="TextBlock">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource McGood}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="AccountRowMutedText" TargetType="TextBlock" BasedOn="{StaticResource McMutedText}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource McGood}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <!-- A body view (repos, queue, audit, agents): the same 24px gutters as the header and toolbar. While the vertical
              scroll bar shows, it sits inside the right gutter instead of pushing the content in (M.ORCH-T192). Based on the
              theme's implicit ScrollViewer, so it keeps the dark corner and scroll bars. -->
@@ -146,7 +163,7 @@
                     <Grid Margin="4,0,4,2">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="22" />
-                            <ColumnDefinition Width="230" />
+                            <ColumnDefinition Width="300" />
                             <ColumnDefinition Width="64" />
                             <ColumnDefinition Width="64" />
                             <ColumnDefinition Width="64" />
@@ -193,7 +210,7 @@
                                     <Grid TextElement.FontFamily="Segoe UI">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="22" />
-                                            <ColumnDefinition Width="230" />
+                                            <ColumnDefinition Width="300" />
                                             <ColumnDefinition Width="64" />
                                             <ColumnDefinition Width="64" />
                                             <ColumnDefinition Width="64" />
@@ -202,19 +219,19 @@
                                             <ColumnDefinition Width="92" />
                                             <ColumnDefinition Width="70" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" VerticalAlignment="Center" />
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
-                                            <TextBlock Text="{Binding Account}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding Badge}" Style="{StaticResource McMutedText}" Foreground="{DynamicResource McGood}"
-                                                       Visibility="{Binding Badge, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                                        </StackPanel>
-                                        <TextBlock Grid.Column="2" Text="{Binding Seat}" Style="{StaticResource McMutedText}" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="3" Text="{Binding WeekUsed}" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="4" Text="{Binding WeekLeft}" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="5" Text="{Binding WeekResets}" Style="{StaticResource McMutedText}" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="6" Text="{Binding FiveHourUsed}" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="7" Text="{Binding FiveHourResets}" Style="{StaticResource McMutedText}" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="8" Text="{Binding LastRead}" Style="{StaticResource McMutedText}" VerticalAlignment="Center" />
+                                        <!-- Empty space, not a person icon, for every row but the signed-in one: the checkmark is
+                                             the only icon the roster shows, so this column just reserves its width (M.ORCH-T568). -->
+                                        <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" VerticalAlignment="Center"
+                                                   Style="{StaticResource AccountRowText}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Account}" FontWeight="SemiBold" VerticalAlignment="Center"
+                                                   Margin="0,0,10,0" Style="{StaticResource AccountRowText}" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Seat}" Style="{StaticResource AccountRowMutedText}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="3" Text="{Binding WeekUsed}" Style="{StaticResource AccountRowText}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="4" Text="{Binding WeekLeft}" Style="{StaticResource AccountRowText}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="5" Text="{Binding WeekResets}" Style="{StaticResource AccountRowMutedText}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="6" Text="{Binding FiveHourUsed}" Style="{StaticResource AccountRowText}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="7" Text="{Binding FiveHourResets}" Style="{StaticResource AccountRowMutedText}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="8" Text="{Binding LastRead}" Style="{StaticResource AccountRowMutedText}" VerticalAlignment="Center" />
                                     </Grid>
                                 </Button>
                             </DataTemplate>
