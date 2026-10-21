@@ -164,17 +164,17 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="22" />
                             <ColumnDefinition Width="300" />
-                            <ColumnDefinition Width="90" />
-                            <ColumnDefinition Width="104" />
                             <ColumnDefinition Width="74" />
+                            <ColumnDefinition Width="104" />
+                            <ColumnDefinition Width="90" />
                             <ColumnDefinition Width="104" />
                             <ColumnDefinition Width="104" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="1" Text="Account" Style="{StaticResource AccountMenuHeading}" />
-                        <TextBlock Grid.Column="2" Text="Week usage" Style="{StaticResource AccountMenuHeading}" />
-                        <TextBlock Grid.Column="3" Text="Week resets" Style="{StaticResource AccountMenuHeading}" />
-                        <TextBlock Grid.Column="4" Text="5h used" Style="{StaticResource AccountMenuHeading}" />
-                        <TextBlock Grid.Column="5" Text="5h resets" Style="{StaticResource AccountMenuHeading}" />
+                        <TextBlock Grid.Column="2" Text="5h used" Style="{StaticResource AccountMenuHeading}" />
+                        <TextBlock Grid.Column="3" Text="5h resets" Style="{StaticResource AccountMenuHeading}" />
+                        <TextBlock Grid.Column="4" Text="Week usage" Style="{StaticResource AccountMenuHeading}" />
+                        <TextBlock Grid.Column="5" Text="Week resets" Style="{StaticResource AccountMenuHeading}" />
                         <TextBlock Grid.Column="6" Text="Last Checked" Style="{StaticResource AccountMenuHeading}" />
                     </Grid>
                     <ItemsControl x:Name="AccountRows" ItemsSource="{Binding AccountMenuItems}" Focusable="False">
@@ -207,9 +207,9 @@
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="22" />
                                             <ColumnDefinition Width="300" />
-                                            <ColumnDefinition Width="90" />
-                                            <ColumnDefinition Width="104" />
                                             <ColumnDefinition Width="74" />
+                                            <ColumnDefinition Width="104" />
+                                            <ColumnDefinition Width="90" />
                                             <ColumnDefinition Width="104" />
                                             <ColumnDefinition Width="104" />
                                         </Grid.ColumnDefinitions>
@@ -219,10 +219,10 @@
                                                    Style="{StaticResource AccountRowText}" />
                                         <TextBlock Grid.Column="1" Text="{Binding Account}" FontWeight="SemiBold" VerticalAlignment="Center"
                                                    Margin="0,0,10,0" Style="{StaticResource AccountRowText}" />
-                                        <TextBlock Grid.Column="2" Text="{Binding WeekUsage}" Style="{StaticResource AccountRowText}" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="3" Text="{Binding WeekResets}" Style="{StaticResource AccountRowMutedText}" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="4" Text="{Binding FiveHourUsed}" Style="{StaticResource AccountRowText}" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="5" Text="{Binding FiveHourResets}" Style="{StaticResource AccountRowMutedText}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2" Text="{Binding FiveHourUsed}" Style="{StaticResource AccountRowText}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="3" Text="{Binding FiveHourResets}" Style="{StaticResource AccountRowMutedText}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="4" Text="{Binding WeekUsage}" Style="{StaticResource AccountRowText}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="5" Text="{Binding WeekResets}" Style="{StaticResource AccountRowMutedText}" VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="6" Text="{Binding LastRead}" Style="{StaticResource AccountRowMutedText}" VerticalAlignment="Center" />
                                     </Grid>
                                 </Button>

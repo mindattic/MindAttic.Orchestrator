@@ -112,17 +112,17 @@ internal sealed class AccountsCommand : Command<AccountsCommand.Settings>
         }
         var suggested = AccountSwitch.MostHeadroom(rows, now)?.Account;
         var table = new Table().Border(TableBorder.Rounded)
-            .AddColumns("Account", "Week usage", "Week resets", "5h used", "5h resets", "Last Checked");
+            .AddColumns("Account", "5h used", "5h resets", "Week usage", "Week resets", "Last Checked");
         foreach (var r in rows)
         {
             var c = AccountSwitch.Columns(r, now);
             var left = r.WeekLeftAt(now);
             table.AddRow(
                 Markup.Escape(r.Label) + (r.Account == current ? " [green](signed in)[/]" : "") + (r.Account == suggested ? " [aqua](most headroom)[/]" : ""),
-                left is null ? c.WeekUsage : $"[{(left < 10 ? "red" : left < 30 ? "yellow" : "green")}]{c.WeekUsage}[/]",
-                c.WeekResets,
                 c.FiveHourUsed,
                 c.FiveHourResets,
+                left is null ? c.WeekUsage : $"[{(left < 10 ? "red" : left < 30 ? "yellow" : "green")}]{c.WeekUsage}[/]",
+                c.WeekResets,
                 r.ReadUtc is null ? "[grey]not read yet[/]" : c.LastRead);
         }
         AnsiConsole.Write(table);
