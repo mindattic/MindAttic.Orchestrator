@@ -203,8 +203,13 @@ public sealed class AccountSwitchTests
         var b = Rows.Single(r => r.Account == "b/org");
         var c = AccountSwitch.Columns(b, Now);
         Assert.That(c.WeekUsage, Is.EqualTo("80%"));
-        Assert.That(c.WeekResets, Is.EqualTo(b.WeekResetAt(Now)!.Value.ToLocalTime().ToString("M/d h:mm tt", System.Globalization.CultureInfo.InvariantCulture)));
-        Assert.That(c.FiveHourResets, Is.EqualTo(b.FiveHourResetAt(Now)!.Value.ToLocalTime().ToString("M/d h:mm tt", System.Globalization.CultureInfo.InvariantCulture)));
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        var wr = b.WeekResetAt(Now)!.Value;
+        var fr = b.FiveHourResetAt(Now)!.Value;
+        Assert.That(c.WeekResets, Is.EqualTo($"{wr.ToLocalTime().ToString("M/d h:mm tt", inv)} ({(wr - Now).TotalDays.ToString("0.0", inv)} days)"));
+        Assert.That(c.FiveHourResets, Is.EqualTo($"{fr.ToLocalTime().ToString("M/d h:mm tt", inv)} ({(fr - Now).TotalHours.ToString("0.0", inv)} hours)"));
+        Assert.That(c.WeekResets, Does.EndWith("(3.0 days)"), "the fixture's week resets 3 days out");
+        Assert.That(c.FiveHourResets, Does.EndWith("(3.0 hours)"), "its 5-hour window 3 hours out");
         Assert.That(AccountSwitch.Columns(new AccountRow { Account = "x/org" }, Now).WeekUsage, Is.EqualTo("—"), "never read");
 
         var root = TestContext.CurrentContext.TestDirectory;

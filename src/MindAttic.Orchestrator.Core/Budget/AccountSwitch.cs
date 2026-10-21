@@ -92,13 +92,15 @@ public static class AccountSwitch
     /// renders these as columns instead of one joined sentence. Each reset or read cell is "" when there's none to show.</summary>
     public static AccountColumns Columns(AccountRow row, DateTime nowUtc) => new(
         AccountRoster.Percent(row.WeekUsedAt(nowUtc)),
-        row.WeekResetAt(nowUtc) is { } wr ? DateAndTime(wr) : "",
+        row.WeekResetAt(nowUtc) is { } wr ? $"{DateAndTime(wr)} ({Tenths((wr - nowUtc).TotalDays)} days)" : "",
         AccountRoster.Percent(row.FiveHourUsedAt(nowUtc)),
-        row.FiveHourResetAt(nowUtc) is { } fr ? DateAndTime(fr) : "",
+        row.FiveHourResetAt(nowUtc) is { } fr ? $"{DateAndTime(fr)} ({Tenths((fr - nowUtc).TotalHours)} hours)" : "",
         row.ReadUtc is { } r ? Formatting.Ago(r, nowUtc) : "not read yet");
 
     private static string DateAndTime(DateTime utc) =>
         utc.ToLocalTime().ToString("M/d h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string Tenths(double n) => n.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
 
     /// <summary><c>auth login --email &lt;address&gt;</c>, and <c>--sso</c> when <paramref name="sso"/>.</summary>
     public static IReadOnlyList<string> LoginArgs(string email, bool sso) =>

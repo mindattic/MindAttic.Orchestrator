@@ -165,9 +165,9 @@
                             <ColumnDefinition Width="22" />
                             <ColumnDefinition Width="300" />
                             <ColumnDefinition Width="74" />
-                            <ColumnDefinition Width="104" />
+                            <ColumnDefinition Width="180" />
                             <ColumnDefinition Width="90" />
-                            <ColumnDefinition Width="104" />
+                            <ColumnDefinition Width="180" />
                             <ColumnDefinition Width="104" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="1" Text="Account" Style="{StaticResource AccountMenuHeading}" />
@@ -208,9 +208,9 @@
                                             <ColumnDefinition Width="22" />
                                             <ColumnDefinition Width="300" />
                                             <ColumnDefinition Width="74" />
-                                            <ColumnDefinition Width="104" />
+                                            <ColumnDefinition Width="180" />
                                             <ColumnDefinition Width="90" />
-                                            <ColumnDefinition Width="104" />
+                                            <ColumnDefinition Width="180" />
                                             <ColumnDefinition Width="104" />
                                         </Grid.ColumnDefinitions>
                                         <!-- Empty space, not a person icon, for every row but the signed-in one: the checkmark is
