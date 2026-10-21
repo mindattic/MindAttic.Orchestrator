@@ -112,19 +112,18 @@ internal sealed class AccountsCommand : Command<AccountsCommand.Settings>
         }
         var suggested = AccountSwitch.MostHeadroom(rows, now)?.Account;
         var table = new Table().Border(TableBorder.Rounded)
-            .AddColumns("Account", "Seat", "Week used", "Week left", "Week resets", "5h used", "5h resets", "Last read");
+            .AddColumns("Account", "Week usage", "Week resets", "5h used", "5h resets", "Last Checked");
         foreach (var r in rows)
         {
+            var c = AccountSwitch.Columns(r, now);
             var left = r.WeekLeftAt(now);
             table.AddRow(
                 Markup.Escape(r.Label) + (r.Account == current ? " [green](signed in)[/]" : "") + (r.Account == suggested ? " [aqua](most headroom)[/]" : ""),
-                Markup.Escape(AccountSwitch.SeatOrPlan(r)),
-                AccountRoster.Percent(r.WeekUsedAt(now)),
-                left is null ? "—" : $"[{(left < 10 ? "red" : left < 30 ? "yellow" : "green")}]{AccountRoster.Percent(left)}[/]",
-                r.WeekResetAt(now) is { } wr ? Formatting.ResetTime(wr, now) : "",
-                AccountRoster.Percent(r.FiveHourUsedAt(now)),
-                r.FiveHourResetAt(now) is { } fr ? Formatting.ResetTime(fr, now) : "",
-                r.ReadUtc is { } read ? Formatting.Ago(read, now) : "[grey]not yet[/]");
+                left is null ? c.WeekUsage : $"[{(left < 10 ? "red" : left < 30 ? "yellow" : "green")}]{c.WeekUsage}[/]",
+                c.WeekResets,
+                c.FiveHourUsed,
+                c.FiveHourResets,
+                r.ReadUtc is null ? "[grey]not read yet[/]" : c.LastRead);
         }
         AnsiConsole.Write(table);
         if (rows.Any(r => r.Email is null))

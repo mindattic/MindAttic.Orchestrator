@@ -139,7 +139,8 @@ public sealed class AccountSwitchTests
         Assert.That(Run("login"), Is.EqualTo(0));
         var text = output.ToString();
         Assert.That(text, Does.Contain("b@mindattic.com (signed in)").And.Contain("a@mindattic.com (most headroom)"));
-        Assert.That(text, Does.Contain("premium").And.Contain("standard").And.Contain("70%"));
+        Assert.That(text, Does.Contain("Week usage").And.Contain("Last Checked").And.Contain("30/70%").And.Contain("80/20%"));
+        Assert.That(text, Does.Not.Contain("premium").And.Not.Contain("Seat"));
         Assert.That(logins, Is.Empty, "listing signs nobody in");
     }
 
