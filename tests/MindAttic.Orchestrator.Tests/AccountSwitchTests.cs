@@ -206,9 +206,9 @@ public sealed class AccountSwitchTests
         var inv = System.Globalization.CultureInfo.InvariantCulture;
         var wr = b.WeekResetAt(Now)!.Value;
         var fr = b.FiveHourResetAt(Now)!.Value;
-        Assert.That(c.WeekResets, Is.EqualTo($"{wr.ToLocalTime().ToString("M/d hmmtt", inv).ToLowerInvariant()} ({(wr - Now).TotalDays.ToString("0.0", inv)} days)"));
-        Assert.That(c.FiveHourResets, Is.EqualTo($"{fr.ToLocalTime().ToString("M/d hmmtt", inv).ToLowerInvariant()} ({(fr - Now).TotalHours.ToString("0.0", inv)} hours)"));
-        Assert.That(c.WeekResets, Does.Match(@"^\d{1,2}/\d{1,2} \d{3,4}[ap]m \("), "10/21 530pm: no colon, no space, lowercase");
+        Assert.That(c.WeekResets, Is.EqualTo($"{wr.ToLocalTime().ToString("M/d h:mmtt", inv).ToLowerInvariant()} ({(wr - Now).TotalDays.ToString("0.0", inv)} days)"));
+        Assert.That(c.FiveHourResets, Is.EqualTo($"{fr.ToLocalTime().ToString("M/d h:mmtt", inv).ToLowerInvariant()} ({(fr - Now).TotalHours.ToString("0.0", inv)} hours)"));
+        Assert.That(c.WeekResets, Does.Match(@"^\d{1,2}/\d{1,2} \d{1,2}:\d{2}[ap]m \("), "10/21 5:30pm: no space before the lowercase am/pm");
         Assert.That(c.WeekResets, Does.EndWith("(3.0 days)"), "the fixture's week resets 3 days out");
         Assert.That(c.FiveHourResets, Does.EndWith("(3.0 hours)"), "its 5-hour window 3 hours out");
         Assert.That(AccountSwitch.Columns(new AccountRow { Account = "x/org" }, Now).WeekUsage, Is.EqualTo("—"), "never read");

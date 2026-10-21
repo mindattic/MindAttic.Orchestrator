@@ -98,7 +98,7 @@ public static class AccountSwitch
         row.ReadUtc is { } r ? Formatting.Ago(r, nowUtc) : "not read yet");
 
     private static string DateAndTime(DateTime utc) =>
-        utc.ToLocalTime().ToString("M/d hmmtt", System.Globalization.CultureInfo.InvariantCulture).ToLowerInvariant();
+        utc.ToLocalTime().ToString("M/d h:mmtt", System.Globalization.CultureInfo.InvariantCulture).ToLowerInvariant();
 
     private static string Tenths(double n) => n.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
 
