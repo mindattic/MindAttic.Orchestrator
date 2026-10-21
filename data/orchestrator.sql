@@ -1946,6 +1946,7 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T13:26:27Z', 52, '2026-10-21T16:30:00Z', 8243463);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T13:29:01Z', 53, '2026-10-21T16:30:00Z', 8348667);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T13:37:05Z', 0, '2026-10-21T18:30:00Z', 19148);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T13:41:16Z', 1, '2026-10-21T18:30:00Z', 155379);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -2139,10 +2140,10 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'Unity.Multiplayer', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 458362);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'Unity.SpaceGod', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 510414);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1278018);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 107011);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 109424);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'Cursory', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 24861);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 61587);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'MindAttic.Orchestrator', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 23303);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'MindAttic.Orchestrator', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 56518);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'Unity.Cursory', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 745489);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'Unity.GridGame', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4269446);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'Unity.Multiplayer', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5170494);
@@ -5629,6 +5630,101 @@ INSERT INTO state (name, value) VALUES ('limits', '[
     "Covered": true
   }
 ]');
+INSERT INTO state (name, value) VALUES ('mainline-tests', '{
+  "Automata": {
+    "Tested": "0750dcebf6ff157db9169eb3e3d860c18efdb960"
+  },
+  "AutoWebNav": {
+    "Tested": "49bd2f9728ef9c42ff7db4d4ca341dd416050fd0"
+  },
+  "Cursory": {
+    "Tested": "534d7658ff1d9d719ce00099c6af3c335da0a8f9"
+  },
+  "Formicarium": {
+    "Tested": "46d4d43a77ef4db1d49d7739cc849e643f272690"
+  },
+  "Gadfly": {
+    "Tested": "5a130d86193c1b9cb4850d61d6fc2b3a30dc5555"
+  },
+  "IdiotProof": {
+    "Tested": "5619128e3962bdf843bde3d473318d3b2b914631"
+  },
+  "JobHunt": {
+    "Tested": "62176ef30da1fc03fd30443badec563c268446ab"
+  },
+  "MediaButler": {
+    "Tested": "091758d44ef55cd0c73998d386fb700ce55385f3"
+  },
+  "MindAttic.Authentication": {
+    "Tested": "2819dc7f5dabbb3e2d14ee49670d6c9b370da7f7"
+  },
+  "MindAttic.Browser": {
+    "Tested": "61f39d8456bcfad97677847e22e9ff717dc5d462"
+  },
+  "MindAttic.Capture": {
+    "Tested": "9b227bb1dd0b44e14eb1dc57cc219c297620e40a"
+  },
+  "MindAttic.Components": {
+    "Tested": "7588907f7f1c8fddb50c6db2bad7941569d9d571"
+  },
+  "MindAttic.Deploy": {
+    "Tested": "ff7f71052fcace839437c838fa07b009d0427800"
+  },
+  "MindAttic.Export": {
+    "Tested": "6054a7f08cd444813ef4491c18eae18d1d7fcfb3"
+  },
+  "MindAttic.Helpers": {
+    "Tested": "29a15c1290f69d142fa96bfbbde0e70de5d0d2d0"
+  },
+  "MindAttic.Ideas": {
+    "Tested": "922520ea981e16a2795f9b0b0b796c1c7139ab37"
+  },
+  "MindAttic.Launcher": {
+    "Tested": "816a55c69a083fe02b7f88b2aa1976c34a6c86f4"
+  },
+  "MindAttic.Legion": {
+    "Tested": "8ce8bdf0abb0082602d57c49005862c80292501f"
+  },
+  "MindAttic.Log": {
+    "Tested": "8f82dd755017f221ec22a07e58d8706bc84c3f05"
+  },
+  "MindAttic.Media": {
+    "Tested": "b25c0977b14280f7d94cefe06354ea3049d6ec4c"
+  },
+  "MindAttic.Orchestrator": {
+    "Tested": "4505a04bb5530dfbf37ccccff2c629c485ade393"
+  },
+  "MindAttic.Psst": {
+    "Tested": "9e8035c79b5f76e50c1f9c00acdb39f9dd275cb9"
+  },
+  "MindAttic.Telemetry": {
+    "Tested": "da2e8e853b941e35b33d05d5a8e3c2a8927625f9"
+  },
+  "MindAttic.Tickets": {
+    "Tested": "5ffc19a410b7b6ff41a45af390e61a4eeb2eeb49"
+  },
+  "MindAttic.Vault": {
+    "Tested": "b7fc7519011772d8c05ef568e03494d3148fb369"
+  },
+  "OpenCredentials": {
+    "Tested": "54e8941fd1193af20db1b75550839c9ed6a1da93"
+  },
+  "ProcessLogger": {
+    "Tested": "fb901afa50f15a9e0a48d10e6b45ada9893e8fef"
+  },
+  "TaxRateCollector": {
+    "Tested": "9426630529141a579825c0ef4aff6fd049caef58"
+  },
+  "ThinkTank": {
+    "Tested": "4d889a4f31564f385a8db97220e89a60e90f62ab"
+  },
+  "Tutor": {
+    "Tested": "83d772e19b051d142e7a483893613dd21608114d"
+  },
+  "Unity.GridGame": {
+    "Tested": "9472aafca624b45e9bdd1a702384283da035b315"
+  }
+}');
 INSERT INTO state (name, value) VALUES ('pace-alarm-walls', '[
   "2026-09-17T07:10:00Z",
   "2026-09-18T18:30:00Z",
