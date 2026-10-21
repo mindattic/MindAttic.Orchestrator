@@ -404,7 +404,7 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
         var color = b.Level switch { BudgetLevel.Over => "red", BudgetLevel.Warn => "yellow", _ => "green" };
         var what = b.BlockLimitSource switch { LimitSource.Learned => "learned 5h limit", LimitSource.Reported => "5h limit (Claude's count)", _ => "5h budget" };
         var wall = b.AtLimitUntilUtc is { } until ? $" [red]· at the {(b.AtLimitKind == LimitKind.Weekly ? "weekly" : "5-hour")} limit until {Formatting.ResetTime(until, nowUtc)}[/]" : "";
-        return $"[{color}]budget: {b.BlockPercent:0}% of your {what}[/] ({Format.Tokens(block.Usage.Fresh)} of {Format.Tokens(b.BlockLimit)}; {used}){wall}";
+        return $"[{color}]budget: {Formatting.FiveHourPercent(b.BlockPercent)} of your {what}[/] ({Format.Tokens(block.Usage.Fresh)} of {Format.Tokens(b.BlockLimit)}; {used}){wall}";
     }
 }
 

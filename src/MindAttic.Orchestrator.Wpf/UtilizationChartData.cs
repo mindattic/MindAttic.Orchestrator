@@ -43,11 +43,11 @@ public static class UtilizationChartData
 
         // The last window, between windows: where it ended, and no projection, since nothing more will be spent in it.
         if (u.Ended)
-            return new MaLineChartData(u.StartUtc, u.EndUtc, points, string.Create(CultureInfo.CurrentCulture, $"ended {u.NowPercent:0}%"),
+            return new MaLineChartData(u.StartUtc, u.EndUtc, points, $"ended {Formatting.FiveHourPercent(u.NowPercent)}",
                 ReferenceLines: [target, pace]);
 
         var lands = u.ProjectedEndPercent > 100 ? brushes.Bad : u.ProjectedEndPercent > u.TargetPercent ? brushes.Warn : brushes.Good;
-        return new MaLineChartData(u.StartUtc, u.EndUtc, points, string.Create(CultureInfo.CurrentCulture, $"now {u.NowPercent:0}%"),
+        return new MaLineChartData(u.StartUtc, u.EndUtc, points, $"now {Formatting.FiveHourPercent(u.NowPercent)}",
             new MaChartProjection(u.EndUtc, u.ProjectedEndPercent, lands, string.Create(CultureInfo.CurrentCulture, $"{u.ProjectedEndPercent:0}% at reset")),
             [target, pace]);
     }

@@ -58,4 +58,27 @@ public sealed class FormattingTests
         Assert.That(Formatting.ResetTime(now.AddHours(23), now), Is.EqualTo(Local(now.AddHours(23), "ddd h:mm tt")),
             "tomorrow's 2:00 PM, under a day off, isn't today's 2:00 PM (M.ORCH-T403)");
     }
+
+    [TestCase(0, "0%")]
+    [TestCase(42.4, "42%")]
+    [TestCase(42.5, "43%")]
+    [TestCase(89.4, "89%")]
+    [TestCase(89.6, "89%")]
+    [TestCase(89.99, "89%")]
+    [TestCase(90, "90.0%")]
+    [TestCase(90.1, "90.1%")]
+    [TestCase(94.04, "94.0%")]
+    [TestCase(96.44, "96.4%")]
+    [TestCase(99.96, "100.0%")]
+    [TestCase(104.2, "104.2%")]
+    public void FiveHourPercent_is_whole_below_90_and_tenths_from_90(double percent, string expected)
+    {
+        var was = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE"); // a decimal comma must not leak in
+            Assert.That(Formatting.FiveHourPercent(percent), Is.EqualTo(expected));
+        }
+        finally { CultureInfo.CurrentCulture = was; }
+    }
 }

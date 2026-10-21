@@ -344,9 +344,13 @@ public sealed class RateLimitStatusWriter(string? path = null)
         var reset = status.AtLimitKind == LimitKind.Session && status.AtLimitUntilUtc is { } wall ? Clock(wall)
             : status.CurrentBlock is { } b ? Clock(b.EndUtc)
             : "no active block";
+        var percentUsed = status.AtLimitKind == LimitKind.Session ? Math.Max(100, status.BlockPercent) : status.BlockPercent;
         var body = new Dictionary<string, object>
         {
-            ["percent_used"] = Math.Round(status.AtLimitKind == LimitKind.Session ? Math.Max(100, status.BlockPercent) : status.BlockPercent, 1),
+            ["percent_used"] = Math.Round(percentUsed, 1),
+            // The same figure as every other display shows it (whole below 90%, a decimal from there): rl-check.py's
+            // "RATE LIMIT ... used" line prints this when present (M.ORCH-T594).
+            ["percent_text"] = Formatting.FiveHourPercent(percentUsed),
             ["reset_time"] = reset,
             ["tokens_remaining"] = status.AtLimitKind == LimitKind.Session ? 0 : status.BlockRemaining,
             ["basis"] = status.BlockLimitSource switch

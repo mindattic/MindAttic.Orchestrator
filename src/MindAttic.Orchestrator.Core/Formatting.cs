@@ -23,6 +23,16 @@ public static class Formatting
 
     private static string Tenths(double n) => n.ToString("0.0", CultureInfo.InvariantCulture);
 
+    /// <summary>Where the 5-hour percent gains a decimal: near the 98% target a whole percent hides the last few points.</summary>
+    public const double FiveHourTenthsFrom = 90;
+
+    /// <summary>The 5-hour usage percent, with its sign: whole percents below 90 ("42%"), one decimal from 90 on ("90.0%",
+    /// "96.4%"), so the last stretch to the stop shows its movement (M.ORCH-T594). A value just under 90 never rounds up
+    /// to a whole "90%": 89.6 reads "89%", since it hasn't reached the line where the decimal starts.</summary>
+    public static string FiveHourPercent(double percent) =>
+        (percent >= FiveHourTenthsFrom ? percent.ToString("0.0", CultureInfo.InvariantCulture)
+            : Math.Min(Math.Round(percent, MidpointRounding.AwayFromZero), 89).ToString("0", CultureInfo.InvariantCulture)) + "%";
+
     // The thresholds are where the smaller unit would round up to 1000 (999,999 is "1M", not "1000k").
     public static string Tokens(long n) => n switch
     {

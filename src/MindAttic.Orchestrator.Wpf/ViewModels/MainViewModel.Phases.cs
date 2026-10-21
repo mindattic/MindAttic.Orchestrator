@@ -100,7 +100,7 @@ public sealed partial class MainViewModel
     public BudgetStatus? Budget => snapshot?.Budget;
     public bool BudgetIsPeak => Budget?.BlockLimitIsPeak ?? true;
 
-    public string BudgetHeadline => Budget?.CurrentBlock is null ? "Idle" : $"{Budget.BlockPercent:0}%";
+    public string BudgetHeadline => Budget?.CurrentBlock is null ? "Idle" : Formatting.FiveHourPercent(Budget.BlockPercent);
 
     public string BudgetCaption => Budget switch
     {
@@ -224,13 +224,13 @@ public sealed partial class MainViewModel
     internal static string UtilizationCaption(Utilization? utilization, bool loaded) => utilization switch
     {
         null => loaded ? "No 5-hour limit known yet, so there's no pace to draw this window against." : "",
-        { HasLastWindow: true } u => $"No 5-hour window running: the last ended at {Formatting.ResetTime(u.EndUtc, DateTime.UtcNow)} at {u.NowPercent:0}%; the next starts with your next prompt.",
+        { HasLastWindow: true } u => $"No 5-hour window running: the last ended at {Formatting.ResetTime(u.EndUtc, DateTime.UtcNow)} at {Formatting.FiveHourPercent(u.NowPercent)}; the next starts with your next prompt.",
         { Ended: true } => "No 5-hour window running: the next starts with your next prompt.",
         { } u => Running(u),
     };
 
     private static string Running(Utilization u) =>
-        $"{u.NowPercent:0}% used, {(u.OverNow ? "over" : "under")} the {(u.Curved ? "front-loaded pace curve" : "pace line")} ({u.PaceAt(u.NowUtc):0}% by now)" +
+        $"{Formatting.FiveHourPercent(u.NowPercent)} used, {(u.OverNow ? "over" : "under")} the {(u.Curved ? "front-loaded pace curve" : "pace line")} ({u.PaceAt(u.NowUtc):0}% by now)" +
         (u.OverPace >= TimeSpan.FromMinutes(1) ? $"; over it for {(int)u.OverPace.TotalMinutes} min so far" : "") + ". " +
         (u.HitsLimitUtc is { } hit ? $"At the recent rate it would reach 100% at {Formatting.ResetTime(hit, u.NowUtc)}, before the {Formatting.ResetTime(u.EndUtc, u.NowUtc)} reset."
             : $"At the recent rate it ends near {u.ProjectedEndPercent:0}% at {Formatting.ResetTime(u.EndUtc, u.NowUtc)}; the target is {u.TargetPercent:0}%.");
