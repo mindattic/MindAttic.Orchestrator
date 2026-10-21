@@ -325,7 +325,7 @@ public sealed partial class MainViewModel
     public string EmptyQueueText => EmptyQueue(plan?.AwaitingApproval.Count ?? 0);
 
     internal static string EmptyQueue(int awaitingApproval) => awaitingApproval == 0
-        ? "No open tickets anywhere. Add one with: workflow ticket new"
+        ? "No open tickets anywhere. Add one with: tickets ticket new"
         : $"Nothing workable: {awaitingApproval} open ticket{(awaitingApproval == 1 ? "" : "s")} wait{(awaitingApproval == 1 ? "s" : "")} for your approval (orchestrator approve <ID>); fixes need none.";
 
     /// <summary>Tickets being started now: the row shows them unassigned until the refresh after the start, and a second
@@ -372,9 +372,9 @@ public sealed partial class MainViewModel
 
     public void Bump(string ticketId, int by) => Guarded("Bump", () =>
     {
-        // Priority lives in the Workflow database's queue, where every tool reads and writes it (M.ORCH-T384); a ticket it doesn't
+        // Priority lives in the ticket database's queue, where every tool reads and writes it (M.ORCH-T384); a ticket it doesn't
         // hold (a repo still on its own USER_STORIES.md) keeps it in settings.json, which the plan reads too (M.ORCH-T441).
-        using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(aggregator.Options.WorkspaceRoot);
+        using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(aggregator.Options.WorkspaceRoot);
         var inDb = db?.Ticket(ticketId) is not null;
         var next = MindAttic.Orchestrator.Tickets.TicketQueue.Bump(store, db, ticketId, by);
         NoteLocalChange();

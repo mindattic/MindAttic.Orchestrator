@@ -2,7 +2,7 @@ using System.Text.Json;
 using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Settings;
-using MindAttic.Workflow.Tickets;
+using MindAttic.Tickets.Log;
 using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
@@ -253,7 +253,7 @@ public sealed class PacerTests
 
         var late = Pace(10.5, 1, s, E(10, 920));
         Assert.That((late.WindDown, late.Stop), Is.EqualTo((true, false)));
-        Assert.That(late.WindDownNote, Does.Contain("90%").And.Contains("workflow ticket new").And.Not.Contain("/quicksave"));
+        Assert.That(late.WindDownNote, Does.Contain("90%").And.Contains("tickets ticket new").And.Not.Contain("/quicksave"));
         // The same on any Windows language (M.ORCH-T404): de-DE would say "90 %" and drop AM/PM.
         var culture = System.Globalization.CultureInfo.CurrentCulture;
         try
@@ -369,13 +369,15 @@ public sealed class PacerTests
             Assert.That(Gate(worktree, "Edit", new { file_path = Path.Combine(worktree, "a.cs") }), Is.Empty, "its own worktree");
             Assert.That(Gate(worktree, "Edit", new { file_path = orch }), Does.Contain("\"deny\""), "a worktree is still that repo's window");
             Assert.That(Gate(uss, "Edit", new { file_path = Path.Combine(dir, "notes.md") }), Is.Empty, "outside the workspace (temp, ~/.claude)");
-            Assert.That(Gate(uss, "Bash", new { command = "workflow ticket close M.ORCH-T1 --repo MindAttic.Orchestrator --ref x" }), Does.Contain("\"deny\""));
-            Assert.That(Gate(uss, "Bash", new { command = "workflow ticket new --repo UnitySolarSystem --type fix --summary x" }), Is.Empty);
+            Assert.That(Gate(uss, "Bash", new { command = "tickets ticket close M.ORCH-T1 --repo MindAttic.Orchestrator --ref x" }), Does.Contain("\"deny\""));
+            Assert.That(Gate(uss, "Bash", new { command = "tickets ticket new --repo UnitySolarSystem --type fix --summary x" }), Is.Empty);
             // Found live: the words inside a handoff string were taken for a command.
-            Assert.That(Gate(uss, "PowerShell", new { command = "& save.ps1 -State 'then run workflow ticket close M.ORCH-T1 --ref x'" }), Is.Empty, "text, not a command");
-            Assert.That(Gate(uss, "Bash", new { command = "workflow ticket new --repo UnitySolarSystem --type fix --summary 'follows M.ORCH-T1'" }), Is.Empty, "an ID in the summary is just text");
-            Assert.That(Gate(uss, "PowerShell", new { command = "& 'workflow' ticket close M.ORCH-T1 --repo MindAttic.Orchestrator --ref x" }), Does.Contain("\"deny\""),
+            Assert.That(Gate(uss, "PowerShell", new { command = "& save.ps1 -State 'then run tickets ticket close M.ORCH-T1 --ref x'" }), Is.Empty, "text, not a command");
+            Assert.That(Gate(uss, "Bash", new { command = "tickets ticket new --repo UnitySolarSystem --type fix --summary 'follows M.ORCH-T1'" }), Is.Empty, "an ID in the summary is just text");
+            Assert.That(Gate(uss, "PowerShell", new { command = "& 'tickets' ticket close M.ORCH-T1 --repo MindAttic.Orchestrator --ref x" }), Does.Contain("\"deny\""),
                 "the PowerShell call form still counts (this scratch workspace has no database to look M.ORCH-T1 up in)");
+            Assert.That(Gate(uss, "PowerShell", new { command = "& 'workflow' ticket close M.ORCH-T1 --repo MindAttic.Orchestrator --ref x" }), Does.Contain("\"deny\""),
+                "and through the legacy workflow shim (M.ORCH-T564)");
             Assert.That(Gate(uss, "Bash", new { command = $"git -C {Path.Combine(ws, "MindAttic.Orchestrator")} commit -m x" }), Does.Contain("\"deny\""));
             Assert.That(Gate(uss, "Bash", new { command = $"git -C {Path.Combine(ws, "MindAttic.Orchestrator")} log -1" }), Is.Empty, "reading another repo is fine");
             var orchRepo = Path.Combine(ws, "MindAttic.Orchestrator");
@@ -402,7 +404,7 @@ public sealed class PacerTests
             Assert.That(GateAs(4242, uss, "Edit", new { file_path = orch }), Is.Empty, "excepted into MindAttic.Orchestrator");
             Assert.That(GateAs(4343, uss, "Edit", new { file_path = orch }), Does.Contain("\"deny\""), "another CLI has no exception");
             File.WriteAllText(Path.Combine(marks, "crossrepo-4242"), "all");
-            Assert.That(GateAs(4242, uss, "Bash", new { command = "workflow ticket close M.ORCH-T1 --repo MindAttic.Orchestrator" }), Is.Empty, "all lifts it");
+            Assert.That(GateAs(4242, uss, "Bash", new { command = "tickets ticket close M.ORCH-T1 --repo MindAttic.Orchestrator" }), Is.Empty, "all lifts it");
         }
         finally { Directory.Delete(dir, recursive: true); }
     }

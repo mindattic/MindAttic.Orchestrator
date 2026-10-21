@@ -1,7 +1,7 @@
 using Microsoft.Data.Sqlite;
 using MindAttic.Orchestrator.Tickets;
-using MindAttic.Workflow;
-using MindAttic.Workflow.Data;
+using MindAttic.Tickets;
+using MindAttic.Tickets.Data;
 using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
@@ -84,7 +84,7 @@ public sealed class OpenTicketSourceTests
     {
         var a = Repo("A", "A", "| A-T1 | 2026-10-01 | fix | open | one, blocked by A-T2 | — |\n| A-T2 | 2026-10-01 | fix | open | two | — |\n");
         var b = Repo("B", "B", "| B-T1 | 2026-10-01 | fix | open | only in markdown | — |\n");
-        using (var db = WorkflowDb.Open(WorkflowDb.DefaultPath(root)))
+        using (var db = TicketsDb.Open(TicketsDb.DefaultPath(root)))
         {
             db.Import([a]);
             db.Close("A-T2", reference: "done");
@@ -108,12 +108,12 @@ public sealed class OpenTicketSourceTests
         source.OpenFor(a, warnings);
         Assert.That(source.Requires, Is.Empty, "the markdown carries no requires links");
 
-        var path = WorkflowDb.DefaultPath(root);
-        using (var db = WorkflowDb.Open(path)) db.Import([a]);
+        var path = TicketsDb.DefaultPath(root);
+        using (var db = TicketsDb.Open(path)) db.Import([a]);
         Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(new[] { "A-T1", "A-T2" }));
         Assert.That(source.Requires["a-t1"], Is.EqualTo(new[] { "A-T2" }), "looked up without regard to case");
 
-        using (var db = WorkflowDb.Open(path)) db.Close("A-T1", reference: "done");
+        using (var db = TicketsDb.Open(path)) db.Close("A-T1", reference: "done");
         File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(5));
         Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(new[] { "A-T2" }), "re-read once the database changed");
         Assert.That(warnings, Is.Empty);
@@ -124,12 +124,12 @@ public sealed class OpenTicketSourceTests
     {
         // The markdown lags the database: it still lists A-T1 open, and lacks A-T3, which autopilot is working.
         var a = Repo("A", "A", "| A-T1 | 2026-10-01 | fix | open | one | — |\n");
-        var path = WorkflowDb.DefaultPath(root);
-        using (var db = WorkflowDb.Open(path))
+        var path = TicketsDb.DefaultPath(root);
+        using (var db = TicketsDb.Open(path))
         {
             db.Import([a]);
             db.Close("A-T1", reference: "done");
-            db.Add("A", "fix", MindAttic.Workflow.Tickets.TicketRules.Open, "three", "—");
+            db.Add("A", "fix", MindAttic.Tickets.Log.TicketRules.Open, "three", "—");
         }
         var source = new OpenTicketSource();
         var warnings = new List<string>();
@@ -141,9 +141,9 @@ public sealed class OpenTicketSourceTests
         File.WriteAllText(path, "not a database: caught mid-write");
         File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(5));
         Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(good), "the last good read, not the stale markdown");
-        Assert.That(warnings, Has.Count.EqualTo(1).And.Some.StartsWith("workflow database:"));
+        Assert.That(warnings, Has.Count.EqualTo(1).And.Some.StartsWith("ticket database:"));
 
-        // WorkflowDb's constructor leaves its connection open when the schema read throws (a MindAttic.Workflow bug, filed
+        // TicketsDb's constructor leaves its connection open when the schema read throws (a MindAttic.Tickets bug, filed
         // there); only the finalizer lets the file go.
         GC.Collect();
         GC.WaitForPendingFinalizers();

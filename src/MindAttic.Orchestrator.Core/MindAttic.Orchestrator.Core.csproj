@@ -13,7 +13,7 @@
   <ItemGroup>
     <PackageReference Include="MindAttic.Log" Version="3.0.0" />
     <PackageReference Include="MindAttic.Vault" Version="6.0.0" />
-    <PackageReference Include="MindAttic.Workflow" Version="2.0.0" />
+    <PackageReference Include="MindAttic.Tickets" Version="2.0.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.9" />
     <PackageReference Include="System.Management" Version="10.0.0" />
   </ItemGroup>

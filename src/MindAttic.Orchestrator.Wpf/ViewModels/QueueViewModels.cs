@@ -65,7 +65,7 @@ public sealed class FinishedViewModel(Assignment assignment, MainViewModel owner
     public string TicketId => assignment.TicketId;
     public string Text => assignment.TicketId + TextAfterId;
 
-    /// <summary><see cref="Text"/> after the id, which the card shows as a link into Workflow (M.ORCH-T500).</summary>
+    /// <summary><see cref="Text"/> after the id, which the card shows as a link into Tickets Desktop (M.ORCH-T500).</summary>
     public string TextAfterId => assignment.Worktree
         ? $" in {assignment.Repo} is closed. Its worktree is still at {assignment.Directory}."
         : $" in {assignment.Repo} is closed.";

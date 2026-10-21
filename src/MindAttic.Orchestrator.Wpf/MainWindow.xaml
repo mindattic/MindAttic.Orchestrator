@@ -50,12 +50,12 @@
             </Button>
         </DataTemplate>
 
-        <!-- A ticket id: a link that opens the ticket in Workflow Desktop to view, approve, prioritize or close it (M.ORCH-T500).
+        <!-- A ticket id: a link that opens the ticket in Tickets Desktop to view, approve, prioritize or close it (M.ORCH-T500).
              Its CommandParameter is the id. The library's McHyperlink (McLink, SemiBold, underlined on hover and keyboard focus,
              so it reads as a link without colour), plus the command and tooltip. -->
         <Style x:Key="TicketLink" TargetType="Hyperlink" BasedOn="{StaticResource McHyperlink}">
-            <Setter Property="Command" Value="{Binding DataContext.OpenInWorkflowCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
-            <Setter Property="ToolTip" Value="Open it in Workflow to view, approve, prioritize or close it" />
+            <Setter Property="Command" Value="{Binding DataContext.OpenInTicketsCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+            <Setter Property="ToolTip" Value="Open it in Tickets Desktop to view, approve, prioritize or close it" />
         </Style>
 
         <Style x:Key="StatValue" TargetType="TextBlock">
@@ -446,7 +446,7 @@
                                                             CommandParameter="{Binding}" />
                                                     <TextBlock VerticalAlignment="Center">
                                                         <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding Id}"
-                                                                   AutomationProperties.Name="{Binding Id, StringFormat='{}{0}: open it in Workflow'}"><Run Text="{Binding Id, Mode=OneWay}" /></Hyperlink>
+                                                                   AutomationProperties.Name="{Binding Id, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding Id, Mode=OneWay}" /></Hyperlink>
                                                         <Run Text="  " /><Run Text="{Binding Type, Mode=OneWay}" Foreground="{DynamicResource McMuted}" />
                                                         <Run Text="  " /><Run Text="{Binding Date, Mode=OneWay}" Foreground="{DynamicResource McMuted}" />
                                                     </TextBlock>
@@ -564,7 +564,7 @@
                                                 ToolTip="The sessions that worked on it and the commits that mention it" />
                                         <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0">
                                             <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding TicketId}"
-                                                       AutomationProperties.Name="{Binding TicketId, StringFormat='{}{0}: open it in Workflow'}"><Run Text="{Binding TicketId, Mode=OneWay}" /></Hyperlink><Run Text="{Binding TextAfterId, Mode=OneWay}" />
+                                                       AutomationProperties.Name="{Binding TicketId, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding TicketId, Mode=OneWay}" /></Hyperlink><Run Text="{Binding TextAfterId, Mode=OneWay}" />
                                         </TextBlock>
                                     </DockPanel>
                                 </Border>
@@ -594,7 +594,7 @@
                                         <StackPanel>
                                             <TextBlock>
                                                 <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding Id}" Foreground="{DynamicResource McGood}"
-                                                           AutomationProperties.Name="{Binding Id, StringFormat='{}{0}: open it in Workflow'}"><Run Text="{Binding Id, Mode=OneWay}" /></Hyperlink>
+                                                           AutomationProperties.Name="{Binding Id, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding Id, Mode=OneWay}" /></Hyperlink>
                                                 <Run Text="  " /><Run Text="{Binding Repo, Mode=OneWay}" FontWeight="SemiBold" />
                                                 <Run Text="  " /><Run Text="{Binding Type, Mode=OneWay}" Foreground="{DynamicResource McMuted}" />
                                             </TextBlock>
@@ -662,7 +662,7 @@
                                         </StackPanel>
                                         <TextBlock Grid.Column="2" VerticalAlignment="Center">
                                             <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding Id}"
-                                                       AutomationProperties.Name="{Binding Id, StringFormat='{}{0}: open it in Workflow'}"><Run Text="{Binding Id, Mode=OneWay}" /></Hyperlink>
+                                                       AutomationProperties.Name="{Binding Id, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding Id, Mode=OneWay}" /></Hyperlink>
                                         </TextBlock>
                                         <TextBlock Grid.Column="3" Text="{Binding Repo}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                         <TextBlock Grid.Column="4" VerticalAlignment="Center">
@@ -872,11 +872,11 @@
                                             <TextBlock Text="{Binding Headline}" Margin="0,6,0,0" TextWrapping="Wrap"
                                                        Visibility="{Binding HasTicket, Converter={x:Static vm:Converters.FalseToVisible}}" />
                                             <DockPanel Margin="0,4,0,0">
-                                                <!-- The headline opens its history here; this opens the ticket itself in Workflow (M.ORCH-T500). -->
+                                                <!-- The headline opens its history here; this opens the ticket itself in Tickets Desktop (M.ORCH-T500). -->
                                                 <TextBlock DockPanel.Dock="Right" Margin="8,0,0,0" FontSize="12"
                                                            Visibility="{Binding HasTicket, Converter={StaticResource Visible}}">
                                                     <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding TicketId}"
-                                                               AutomationProperties.Name="{Binding TicketId, StringFormat='{}{0}: open it in Workflow'}"><Run Text="Open in Workflow" /></Hyperlink>
+                                                               AutomationProperties.Name="{Binding TicketId, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="Open in Tickets" /></Hyperlink>
                                                 </TextBlock>
                                                 <TextBlock Text="{Binding Meta}" Style="{StaticResource McMutedText}" TextTrimming="CharacterEllipsis" />
                                             </DockPanel>

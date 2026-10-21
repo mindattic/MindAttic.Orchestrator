@@ -20,7 +20,7 @@ public sealed class HookScriptTests
     {
         dir = Path.Combine(Path.GetTempPath(), "hooks-" + Guid.NewGuid().ToString("N"));
         ws = Path.Combine(dir, "ws");
-        foreach (var r in new[] { "UnitySolarSystem", "MindAttic.Workflow" }) Directory.CreateDirectory(Path.Combine(ws, r, ".git"));
+        foreach (var r in new[] { "UnitySolarSystem", "MindAttic.Tickets" }) Directory.CreateDirectory(Path.Combine(ws, r, ".git"));
         AgentGate.Ensure(Claude);
     }
 
@@ -39,7 +39,9 @@ public sealed class HookScriptTests
         psi.Environment["APPDATA"] = dir; // the orchestrator's settings (approvals) come from here, never this machine's
         psi.Environment["MINDATTIC_CLI_PID"] = Cli.ToString(); // as one CLI process, never the one running these tests
         psi.Environment["MINDATTIC_WORKSPACE"] = ws;
-        psi.Environment.Remove("MINDATTIC_WORKFLOW_DB"); // the scratch workspace's database, never one this machine names
+        // The scratch workspace's database, never one this machine names (by the variable's current name or its legacy one).
+        psi.Environment.Remove("MINDATTIC_TICKETS_DB");
+        psi.Environment.Remove("MINDATTIC_WORKFLOW_DB");
         // Keep-going never asks this machine's orchestrator what `next` would hand out: none is found unless a test sets one.
         psi.Environment["MINDATTIC_ORCHESTRATOR"] = Path.Combine(dir, "no-orchestrator.exe");
         // Inside claude.exe on its /login, whatever the machine running the tests is signed in with.
@@ -101,7 +103,7 @@ public sealed class HookScriptTests
 
     private void Tickets(params (string Id, string Repo)[] rows)
     {
-        var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
+        var db = Path.Combine(ws, "MindAttic.Tickets", "data", "Tickets.db");
         Directory.CreateDirectory(Path.GetDirectoryName(db)!);
         var values = string.Join(",", rows.Select(r => $"('{r.Id}','{r.Repo}','open',1,'fix')"));
         using var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
@@ -181,7 +183,7 @@ public sealed class HookScriptTests
     public void A_ticket_waiting_on_another_open_one_is_not_work_to_push_on_to()
     {
         // `orchestrator next` hands out nothing blocked, so keep-going pushing back to it only spent a turn and raised "needs you".
-        var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
+        var db = Path.Combine(ws, "MindAttic.Tickets", "data", "Tickets.db");
         Directory.CreateDirectory(Path.GetDirectoryName(db)!);
         void Sql(string sql)
         {
@@ -246,7 +248,7 @@ public sealed class HookScriptTests
     [Test]
     public void What_orchestrator_next_holds_back_isnt_work_to_push_on_to()
     {
-        var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
+        var db = Path.Combine(ws, "MindAttic.Tickets", "data", "Tickets.db");
         Directory.CreateDirectory(Path.GetDirectoryName(db)!);
         using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
             "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal,type)'); " +
@@ -286,7 +288,7 @@ public sealed class HookScriptTests
     {
         // M.ORCH-T385: another live session filed U.SPC-T1 a moment ago. `next` held it back at once ("already being worked"),
         // but the daemon's holds hadn't caught up, so every stop was sent back for it.
-        var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
+        var db = Path.Combine(ws, "MindAttic.Tickets", "data", "Tickets.db");
         Directory.CreateDirectory(Path.GetDirectoryName(db)!);
         using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
             "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal,type)'); " +
@@ -347,7 +349,7 @@ public sealed class HookScriptTests
         Assert.That(Asked("s2"), Is.Empty, "next has nothing for it: let stop");
 
         // Once the database holds the repo, its own count is the first look again (the story file is then generated).
-        var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
+        var db = Path.Combine(ws, "MindAttic.Tickets", "data", "Tickets.db");
         Directory.CreateDirectory(Path.GetDirectoryName(db)!);
         using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
             "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal,type)'); " +
@@ -360,7 +362,7 @@ public sealed class HookScriptTests
     [Test]
     public void A_claim_gone_stale_is_work_again_as_orchestrator_next_hands_it_out()
     {
-        var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
+        var db = Path.Combine(ws, "MindAttic.Tickets", "data", "Tickets.db");
         Directory.CreateDirectory(Path.GetDirectoryName(db)!);
         using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
             "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal,type)'); " +
@@ -387,7 +389,7 @@ public sealed class HookScriptTests
     [Test]
     public void At_claudes_own_line_with_the_daemon_down_keep_going_never_pushes_a_stop_back()
     {
-        var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
+        var db = Path.Combine(ws, "MindAttic.Tickets", "data", "Tickets.db");
         Directory.CreateDirectory(Path.GetDirectoryName(db)!);
         using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
             "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal,type)'); " +
@@ -607,7 +609,7 @@ public sealed class HookScriptTests
         Assert.That(Gate(Tool(), AgentGate.ContextScriptName).Output, Does.Contain("Past 90%"), "crossed mid-turn");
         Assert.That(Gate(Tool(), AgentGate.ContextScriptName).Output, Is.Empty, "once");
 
-        var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
+        var db = Path.Combine(ws, "MindAttic.Tickets", "data", "Tickets.db");
         Directory.CreateDirectory(Path.GetDirectoryName(db)!);
         using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
             "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal,type)'); " +
@@ -912,10 +914,10 @@ public sealed class HookScriptTests
     {
         var uss = Path.Combine(ws, "UnitySolarSystem");
         object Bash(string command) => new { tool_name = "Bash", tool_input = new { command }, cwd = uss };
-        Assert.That(Gate(Bash("workflow ticket new --repo MindAttic.Workflow --type chore --summary 'bring it up to date'")).Output, Is.Empty,
+        Assert.That(Gate(Bash("tickets ticket new --repo MindAttic.Tickets --type chore --summary 'bring it up to date'")).Output, Is.Empty,
             "the edit refusal itself says to file a ticket for the other repo");
-        Assert.That(Gate(Bash("workflow ticket close M.ORCH-T1 --repo MindAttic.Workflow --ref x")).Output, Does.Contain("\"deny\""));
-        Assert.That(Gate(Bash("workflow ticket correct M.ORCH-T1 --repo MindAttic.Workflow --summary x")).Output, Does.Contain("\"deny\""));
+        Assert.That(Gate(Bash("tickets ticket close M.ORCH-T1 --repo MindAttic.Tickets --ref x")).Output, Does.Contain("\"deny\""));
+        Assert.That(Gate(Bash("tickets ticket correct M.ORCH-T1 --repo MindAttic.Tickets --summary x")).Output, Does.Contain("\"deny\""));
     }
 
     [Test]
@@ -991,18 +993,18 @@ public sealed class HookScriptTests
         object Prompt(string prompt) => new { hook_event_name = "UserPromptSubmit", session_id = "s1", prompt, cwd = ws };
         Gate(Prompt("/allocate -repo=a,b on"), AgentGate.ContextScriptName);
         Assert.That(File.ReadAllText(mark), Is.EqualTo("a,b"));
-        Assert.That(Gate(Prompt("/allocate -repos=MindAttic.Workflow"), AgentGate.ContextScriptName).Output,
+        Assert.That(Gate(Prompt("/allocate -repos=MindAttic.Tickets"), AgentGate.ContextScriptName).Output,
             Does.Contain("\"block\"").And.Contain("-repos is gone"), "the -repos alias is turned away, not guessed at");
         Assert.That(File.ReadAllText(mark), Is.EqualTo("a,b"), "and changes nothing");
 
         // Its subagents edit and close tickets in the repos it's working, though this CLI sits in another repo.
         var uss = Path.Combine(ws, "UnitySolarSystem");
-        var file = Path.Combine(ws, "MindAttic.Workflow", "src", "x.cs");
+        var file = Path.Combine(ws, "MindAttic.Tickets", "src", "x.cs");
         Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = file }, cwd = uss }).Output, Does.Contain("\"deny\""), "not named yet");
         Gate(Prompt("/allocate -repo=MINDATTIC.*"), AgentGate.ContextScriptName);
         Assert.That(File.ReadAllText(mark), Is.EqualTo("a,b,MINDATTIC.*"), "a wildcard is kept as typed");
-        Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = file }, cwd = uss }).Output, Is.Empty, "MindAttic.* names MindAttic.Workflow");
-        Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = Path.Combine(uss, "x.cs") }, cwd = Path.Combine(ws, "MindAttic.Workflow") }).Output,
+        Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = file }, cwd = uss }).Output, Is.Empty, "MindAttic.* names MindAttic.Tickets");
+        Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = Path.Combine(uss, "x.cs") }, cwd = Path.Combine(ws, "MindAttic.Tickets") }).Output,
             Does.Contain("\"deny\""), "but not UnitySolarSystem");
         Gate(Prompt("/allocate off"), AgentGate.ContextScriptName);
         Assert.That(File.Exists(mark), Is.False);
@@ -1018,20 +1020,20 @@ public sealed class HookScriptTests
     [Test]
     public void A_crossrepo_skill_call_the_user_asked_for_is_recorded_as_typed_and_the_guard_lets_its_edits_through()
     {
-        Gate(Said("use cross-repo for MindAttic.Workflow and fix the parser there"), AgentGate.ContextScriptName);
-        Assert.That(Gate(SkillCall("crossrepo", "MindAttic.Workflow")).Output, Does.Not.Contain("\"deny\""));
-        Assert.That(File.ReadAllText(Path.Combine(Marks, $"crossrepo-{Cli}")), Is.EqualTo("MindAttic.Workflow"));
-        Assert.That(Gate(EditIn("MindAttic.Workflow")).Output, Is.Empty, "the guard reads the same mark");
+        Gate(Said("use cross-repo for MindAttic.Tickets and fix the parser there"), AgentGate.ContextScriptName);
+        Assert.That(Gate(SkillCall("crossrepo", "MindAttic.Tickets")).Output, Does.Not.Contain("\"deny\""));
+        Assert.That(File.ReadAllText(Path.Combine(Marks, $"crossrepo-{Cli}")), Is.EqualTo("MindAttic.Tickets"));
+        Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Is.Empty, "the guard reads the same mark");
     }
 
     [Test]
     public void A_crossrepo_skill_call_the_user_never_asked_for_is_refused_and_records_nothing()
     {
-        Gate(Said("fix the parser in MindAttic.Workflow"), AgentGate.ContextScriptName);
-        var refused = Gate(SkillCall("crossrepo", "MindAttic.Workflow")).Output;
+        Gate(Said("fix the parser in MindAttic.Tickets"), AgentGate.ContextScriptName);
+        var refused = Gate(SkillCall("crossrepo", "MindAttic.Tickets")).Output;
         Assert.That(refused, Does.Contain("\"deny\"").And.Contain("/crossrepo <repos>"));
         Assert.That(File.Exists(Path.Combine(Marks, $"crossrepo-{Cli}")), Is.False);
-        Assert.That(Gate(EditIn("MindAttic.Workflow")).Output, Does.Contain("\"deny\"").And.Contain("This window is for UnitySolarSystem"));
+        Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Does.Contain("\"deny\"").And.Contain("This window is for UnitySolarSystem"));
 
         // A plugin-style name is the same skill, and asking once doesn't carry over to the next prompt.
         Gate(Said("crossrepo please"), AgentGate.ContextScriptName);
@@ -1044,17 +1046,17 @@ public sealed class HookScriptTests
     public void An_autopilot_skill_call_is_recorded_only_when_the_user_asked_for_autopilot()
     {
         var mark = Path.Combine(Marks, $"autopilot-{Cli}");
-        Gate(Said("work the Workflow tickets"), AgentGate.ContextScriptName);
-        Assert.That(Gate(SkillCall("autopilot", "-repo=MindAttic.Workflow")).Output, Does.Contain("\"deny\"").And.Contain("/allocate"));
+        Gate(Said("work the Tickets tickets"), AgentGate.ContextScriptName);
+        Assert.That(Gate(SkillCall("autopilot", "-repo=MindAttic.Tickets")).Output, Does.Contain("\"deny\"").And.Contain("/allocate"));
         Assert.That(File.Exists(mark), Is.False);
-        Assert.That(Gate(EditIn("MindAttic.Workflow")).Output, Does.Contain("\"deny\""));
+        Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Does.Contain("\"deny\""));
 
-        Gate(Said("turn auto pilot on for MindAttic.Workflow"), AgentGate.ContextScriptName);
-        Assert.That(Gate(SkillCall("autopilot", "-repo=MindAttic.Workflow")).Output, Does.Not.Contain("\"deny\""));
-        Assert.That(File.ReadAllText(mark), Is.EqualTo("MindAttic.Workflow"));
-        Assert.That(Gate(EditIn("MindAttic.Workflow")).Output, Is.Empty, "its repos are this CLI's exception, as typed /allocate's are");
+        Gate(Said("turn auto pilot on for MindAttic.Tickets"), AgentGate.ContextScriptName);
+        Assert.That(Gate(SkillCall("autopilot", "-repo=MindAttic.Tickets")).Output, Does.Not.Contain("\"deny\""));
+        Assert.That(File.ReadAllText(mark), Is.EqualTo("MindAttic.Tickets"));
+        Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Is.Empty, "its repos are this CLI's exception, as typed /allocate's are");
         Assert.That(Gate(SkillCall("autopilot", "-repos=X")).Output, Does.Contain("\"deny\"").And.Contain("-repos is gone"), "the same rules as typed");
-        Assert.That(File.ReadAllText(mark), Is.EqualTo("MindAttic.Workflow"));
+        Assert.That(File.ReadAllText(mark), Is.EqualTo("MindAttic.Tickets"));
     }
 
     [Test]
@@ -1068,19 +1070,19 @@ public sealed class HookScriptTests
         Assert.That(Gate(SkillCall("autopilot", "off")).Output, Does.Not.Contain("\"deny\""));
         Assert.That(File.Exists(Path.Combine(Marks, $"crossrepo-{Cli}")), Is.False);
         Assert.That(File.Exists(Path.Combine(Marks, $"autopilot-{Cli}")), Is.False);
-        Assert.That(Gate(EditIn("MindAttic.Workflow")).Output, Does.Contain("\"deny\""));
+        Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Does.Contain("\"deny\""));
     }
 
     [Test]
     public void A_typed_crossrepo_still_marks_this_cli_and_off_ends_it()
     {
         var mark = Path.Combine(Marks, $"crossrepo-{Cli}");
-        Gate(Said("/crossrepo MindAttic.Workflow"), AgentGate.ContextScriptName);
-        Assert.That(File.ReadAllText(mark), Is.EqualTo("MindAttic.Workflow"));
-        Assert.That(Gate(EditIn("MindAttic.Workflow")).Output, Is.Empty);
+        Gate(Said("/crossrepo MindAttic.Tickets"), AgentGate.ContextScriptName);
+        Assert.That(File.ReadAllText(mark), Is.EqualTo("MindAttic.Tickets"));
+        Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Is.Empty);
         Gate(Said("/crossrepo off"), AgentGate.ContextScriptName);
         Assert.That(File.Exists(mark), Is.False);
-        Assert.That(Gate(EditIn("MindAttic.Workflow")).Output, Does.Contain("\"deny\""));
+        Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Does.Contain("\"deny\""));
     }
 
     // ---- /pacing on|off replaces /unthrottle and /throttle (M.ORCH-T483) ----
@@ -1194,10 +1196,10 @@ public sealed class HookScriptTests
     private string Uss => Path.Combine(ws, "UnitySolarSystem");
     private string KeepGoingLog => Path.Combine(Marks, "keep-going.jsonl");
 
-    /// <summary>Two open fixes for UnitySolarSystem in the workflow db, and /allocate on for it in this CLI.</summary>
+    /// <summary>Two open fixes for UnitySolarSystem in the ticket database, and /allocate on for it in this CLI.</summary>
     private void AutopilotWithOpenFixes()
     {
-        var db = Path.Combine(ws, "MindAttic.Workflow", "data", "workflow.db");
+        var db = Path.Combine(ws, "MindAttic.Tickets", "data", "Tickets.db");
         Directory.CreateDirectory(Path.GetDirectoryName(db)!);
         using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
             "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal,type)'); " +
@@ -1228,7 +1230,7 @@ public sealed class HookScriptTests
         AutopilotWithOpenFixes();
         Status(new { });
         Turn("k1", "go");
-        Ran("k1", "workflow ticket close U.SPC-T1 --ref abc123");
+        Ran("k1", "tickets ticket close U.SPC-T1 --ref abc123");
         var state = Path.Combine(Marks, "k1.state.json");
         Assert.That(File.ReadAllText(state), Does.Contain("U.SPC-T1"), "the close is remembered for the stop");
 
@@ -1337,9 +1339,11 @@ public sealed class HookScriptTests
     }
 
     [Test]
-    public void Keep_going_reads_the_workflow_database_MINDATTIC_WORKFLOW_DB_names()
+    [TestCase("MINDATTIC_TICKETS_DB")]
+    [TestCase("MINDATTIC_WORKFLOW_DB")] // its name before MindAttic.Workflow became MindAttic.Tickets (M.ORCH-T564)
+    public void Keep_going_reads_the_ticket_database_the_env_var_names(string variable)
     {
-        // M.ORCH-T398: as the orchestrator and the workflow CLI do; the workspace's own (two open fixes) is not the one in use.
+        // M.ORCH-T398: as the orchestrator and the tickets CLI do; the workspace's own (two open fixes) is not the one in use.
         AutopilotWithOpenFixes();
         Status(new { });
         var elsewhere = Path.Combine(dir, "elsewhere.db");
@@ -1347,7 +1351,7 @@ public sealed class HookScriptTests
             "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.execute('create table tickets(id,repo,status,ordinal,type)'); d.commit()", elsewhere },
             UseShellExecute = false })!)
             Assert.That(mk.WaitForExit(20_000), Is.True);
-        var env = new Dictionary<string, string> { ["MINDATTIC_WORKFLOW_DB"] = elsewhere };
+        var env = new Dictionary<string, string> { [variable] = elsewhere };
         Gate(new { hook_event_name = "UserPromptSubmit", session_id = "w1", prompt = "go", cwd = Uss }, env, AgentGate.ContextScriptName);
 
         var stop = Gate(new { hook_event_name = "Stop", session_id = "w1", cwd = Uss, last_assistant_message = "Done." }, env, AgentGate.ContextScriptName).Output;
@@ -1578,37 +1582,51 @@ public sealed class HookScriptTests
     }
 
     [Test]
-    public void The_repo_window_guard_looks_up_a_closes_first_ticket_argument_in_the_workflow_db()
+    public void The_repo_window_guard_looks_up_a_closes_first_ticket_argument_in_the_ticket_database()
     {
-        Tickets(("U.SPC-T1", "UnitySolarSystem"), ("M.WF-T7", "MindAttic.Workflow"));
+        Tickets(("U.SPC-T1", "UnitySolarSystem"), ("M.WF-T7", "MindAttic.Tickets"));
         var uss = Path.Combine(ws, "UnitySolarSystem");
         object Bash(string command) => new { tool_name = "Bash", tool_input = new { command }, cwd = uss };
 
-        Assert.That(Gate(Bash("workflow ticket close M.WF-T7 --ref abc123")).Output,
-            Does.Contain("\"deny\"").And.Contain("belongs to MindAttic.Workflow"), "no --repo: the db says whose ticket it is");
-        Assert.That(Gate(Bash("cd x && workflow ticket close M.WF-T7 --ref abc")).Output, Does.Contain("\"deny\""), "as any segment of a command");
-        Assert.That(Gate(Bash("workflow ticket close U.SPC-T1 --ref M.WF-T7 --summary 'like M.WF-T7'")).Output, Is.Empty,
+        Assert.That(Gate(Bash("tickets ticket close M.WF-T7 --ref abc123")).Output,
+            Does.Contain("\"deny\"").And.Contain("belongs to MindAttic.Tickets"), "no --repo: the db says whose ticket it is");
+        Assert.That(Gate(Bash("cd x && tickets ticket close M.WF-T7 --ref abc")).Output, Does.Contain("\"deny\""), "as any segment of a command");
+        Assert.That(Gate(Bash("tickets ticket close U.SPC-T1 --ref M.WF-T7 --summary 'like M.WF-T7'")).Output, Is.Empty,
             "this repo's own ticket; the IDs in --ref and --summary are just text");
-        Assert.That(Gate(Bash("workflow ticket correct M.WF-T7 --summary x")).Output, Does.Contain("\"deny\""), "correct is looked up the same way");
-        Assert.That(Gate(Bash("workflow ticket close X.NOPE-T1 --ref x")).Output, Is.Empty, "a ticket the db doesn't know isn't refused");
-        // M.ORCH-T468: the lookup ignores case, so the ID and the command name must too (Windows runs Workflow.exe all the same).
-        Assert.That(Gate(Bash("workflow ticket close m.wf-t7 --ref abc")).Output, Does.Contain("\"deny\""), "a lower-case ID");
-        Assert.That(Gate(Bash("& Workflow.exe ticket close M.WF-T7 --ref abc")).Output, Does.Contain("\"deny\""), "the command name in any case");
-        Assert.That(Gate(Bash("workflow ticket close u.spc-t1 --ref abc")).Output, Is.Empty, "this repo's own ticket in lower case");
+        Assert.That(Gate(Bash("tickets ticket correct M.WF-T7 --summary x")).Output, Does.Contain("\"deny\""), "correct is looked up the same way");
+        Assert.That(Gate(Bash("tickets ticket close X.NOPE-T1 --ref x")).Output, Is.Empty, "a ticket the db doesn't know isn't refused");
+        // M.ORCH-T468: the lookup ignores case, so the ID and the command name must too (Windows runs Tickets.exe all the same).
+        Assert.That(Gate(Bash("tickets ticket close m.wf-t7 --ref abc")).Output, Does.Contain("\"deny\""), "a lower-case ID");
+        Assert.That(Gate(Bash("& Tickets.exe ticket close M.WF-T7 --ref abc")).Output, Does.Contain("\"deny\""), "the command name in any case");
+        // M.ORCH-T564: the legacy `workflow` shim forwards to tickets, so a close through it is looked up the same way.
+        Assert.That(Gate(Bash("& Workflow.exe ticket close M.WF-T7 --ref abc")).Output, Does.Contain("\"deny\""), "the legacy workflow shim");
+        Assert.That(Gate(Bash("tickets ticket close u.spc-t1 --ref abc")).Output, Is.Empty, "this repo's own ticket in lower case");
     }
 
     [Test]
     public void The_hooks_find_the_workspace_the_orchestrator_is_set_to()
     {
         // M.ORCH-T409: with the workspace anywhere but D:\Projects\MindAttic, the hooks found no repo and no tickets.
-        Tickets(("U.SPC-T1", "UnitySolarSystem"), ("M.WF-T7", "MindAttic.Workflow"));
+        Tickets(("U.SPC-T1", "UnitySolarSystem"), ("M.WF-T7", "MindAttic.Tickets"));
         var settings = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "settings.json");
         Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
         File.WriteAllText(settings, JsonSerializer.Serialize(new { WorkspaceRoot = ws }));
-        var close = new { tool_name = "Bash", tool_input = new { command = "workflow ticket close M.WF-T7 --ref abc123" }, cwd = Path.Combine(ws, "UnitySolarSystem") };
+        var close = new { tool_name = "Bash", tool_input = new { command = "tickets ticket close M.WF-T7 --ref abc123" }, cwd = Path.Combine(ws, "UnitySolarSystem") };
 
         Assert.That(Gate(close, new Dictionary<string, string> { ["MINDATTIC_WORKSPACE"] = "" }).Output,
-            Does.Contain("\"deny\"").And.Contain("belongs to MindAttic.Workflow"), "settings.json's workspace, with no MINDATTIC_WORKSPACE");
+            Does.Contain("\"deny\"").And.Contain("belongs to MindAttic.Tickets"), "settings.json's workspace, with no MINDATTIC_WORKSPACE");
+    }
+
+    [Test]
+    public void The_hooks_find_the_ticket_database_in_the_MindAttic_Workflow_folder_until_it_is_renamed()
+    {
+        // M.ORCH-T564: MindAttic.Workflow became MindAttic.Tickets, but the folder is renamed last; until then the database
+        // is MindAttic.Workflow\data\Tickets.db, as TicketsDb.HomeFolder finds it.
+        Tickets(("U.SPC-T1", "UnitySolarSystem"), ("M.TIX-T7", "MindAttic.Tickets"));
+        Directory.Move(Path.Combine(ws, "MindAttic.Tickets"), Path.Combine(ws, "MindAttic.Workflow"));
+        var close = new { tool_name = "Bash", tool_input = new { command = "tickets ticket close M.TIX-T7 --ref abc123" }, cwd = Path.Combine(ws, "UnitySolarSystem") };
+
+        Assert.That(Gate(close).Output, Does.Contain("\"deny\"").And.Contain("belongs to MindAttic.Tickets"));
     }
 
     [Test]
@@ -1641,14 +1659,14 @@ public sealed class HookScriptTests
     }
 
     [Test]
-    public void The_hooks_never_create_the_workflow_database()
+    public void The_hooks_never_create_the_ticket_database()
     {
-        // M.ORCH-T546: sqlite3.connect(WORKFLOW_DB) left a 0-byte workflow.db wherever it pointed, which Workflow then opened.
-        var data = Path.Combine(ws, "MindAttic.Workflow", "data");
+        // M.ORCH-T546: sqlite3.connect(WORKFLOW_DB) left a 0-byte database wherever it pointed, which the tickets CLI then opened.
+        var data = Path.Combine(ws, "MindAttic.Tickets", "data");
         Directory.CreateDirectory(data);
-        Gate(new { tool_name = "Bash", tool_input = new { command = "workflow ticket close M.WF-T7 --ref abc123" }, cwd = Path.Combine(ws, "UnitySolarSystem") });
+        Gate(new { tool_name = "Bash", tool_input = new { command = "tickets ticket close M.WF-T7 --ref abc123" }, cwd = Path.Combine(ws, "UnitySolarSystem") });
         Gate(new { hook_event_name = "Stop", session_id = "w1", cwd = Path.Combine(ws, "UnitySolarSystem") }, AgentGate.ContextScriptName);
-        Assert.That(File.Exists(Path.Combine(data, "workflow.db")), Is.False);
+        Assert.That(File.Exists(Path.Combine(data, "Tickets.db")), Is.False);
     }
 
     [Test]
@@ -2140,7 +2158,7 @@ public sealed class HookScriptTests
     [Test]
     public void The_first_start_after_a_quiet_handoff_clears_the_hold_restores_autopilot_and_loads_the_saved_handoff()
     {
-        var workflow = Path.Combine(ws, "MindAttic.Workflow");
+        var tickets = Path.Combine(ws, "MindAttic.Tickets");
         Directory.CreateDirectory(Marks);
         File.WriteAllText(HandoffMark, JsonSerializer.Serialize(new
         {
@@ -2148,8 +2166,8 @@ public sealed class HookScriptTests
             quiet_at = DateTime.UtcNow.AddMinutes(-1).ToString("yyyy-MM-ddTHH:mm:ssZ"), resumed_at = (string?)null,
             autopilot = new object[]
             {
-                new { pid = 1, repo = "UnitySolarSystem", cwd = Uss, repos = "UnitySolarSystem,MindAttic.Workflow", off = false },
-                new { pid = 2, repo = "MindAttic.Workflow", cwd = workflow, repos = "", off = true },
+                new { pid = 1, repo = "UnitySolarSystem", cwd = Uss, repos = "UnitySolarSystem,MindAttic.Tickets", off = false },
+                new { pid = 2, repo = "MindAttic.Tickets", cwd = tickets, repos = "", off = true },
             },
         }));
         // The CLI's quicksave from after the handoff began, and a stand-in for the shared runner's load.
@@ -2170,12 +2188,12 @@ public sealed class HookScriptTests
 
         var first = Context(Uss, "5001");
         Assert.That(first, Does.Contain("[Handoff] Picked up after the account switch.")
-            .And.Contain("/allocate -repo=UnitySolarSystem,MindAttic.Workflow is back on")
+            .And.Contain("/allocate -repo=UnitySolarSystem,MindAttic.Tickets is back on")
             .And.Contain("Task: carry on with the parser (load)"));
-        Assert.That(CliMark("autopilot", 5001), Is.EqualTo("UnitySolarSystem,MindAttic.Workflow"));
+        Assert.That(CliMark("autopilot", 5001), Is.EqualTo("UnitySolarSystem,MindAttic.Tickets"));
         Assert.That(MindAttic.Orchestrator.Sessions.Handoff.Read(Marks)!.State, Is.EqualTo("resumed"), "the first start clears the hold");
 
-        var second = Context(workflow, "5002");
+        var second = Context(tickets, "5002");
         Assert.That(second, Does.Contain("/allocate stays off"));
         Assert.That((CliMark("noautopilot", 5002) is not null, CliMark("autopilot", 5002) is not null), Is.EqualTo((true, false)),
             "typed off before the switch, so it stays off");

@@ -2,7 +2,7 @@ using System.Diagnostics;
 using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Settings;
-using MindAttic.Workflow.Tickets;
+using MindAttic.Tickets.Log;
 using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
@@ -49,7 +49,7 @@ public sealed class SchedulerTests
         Assert.That(running.Queue.Select(q => q.Id), Does.Contain("A-T1"), "one already being worked stays tracked");
     }
 
-    /// <summary>M.ORCH-T441: a ticket the Workflow database doesn't hold (its repo still on its own USER_STORIES.md) is approved
+    /// <summary>M.ORCH-T441: a ticket the ticket database doesn't hold (its repo still on its own USER_STORIES.md) is approved
     /// and prioritized in settings.json, and the plan reads that beside the database's queue, whose word wins for its own.</summary>
     [Test]
     public void Approval_and_priority_of_tickets_outside_the_database_come_from_settings()
@@ -126,7 +126,7 @@ public sealed class SchedulerTests
     public void Prompt_says_how_to_close_the_ticket()
     {
         var item = new QueueItem("Repo", @"D:\W\Repo", T("RP-T3", "fix"), 0, null, false);
-        Assert.That(Scheduler.PromptFor(item), Does.Contain("workflow ticket close RP-T3 --repo Repo"));
+        Assert.That(Scheduler.PromptFor(item), Does.Contain("tickets ticket close RP-T3 --repo Repo"));
     }
 
     [Test]
@@ -176,7 +176,7 @@ public sealed class SchedulerTests
         Assert.That(plan.Queue.Select(q => q.Id), Is.EqualTo(new[] { "A-T1", "B-T1" }));
         Assert.That(Scheduler.Plan(snap with { Priorities = new Dictionary<string, long> { ["B-T1"] = 1 } }, new OrchestratorSettings(), []).Queue[0].Id, Is.EqualTo("B-T1"),
             "priority still comes first");
-        Assert.That(Scheduler.PromptFor(plan.Queue[0]), Does.Contain("/commit").And.Contains("workflow ticket close A-T1 --repo A"));
+        Assert.That(Scheduler.PromptFor(plan.Queue[0]), Does.Contain("/commit").And.Contains("tickets ticket close A-T1 --repo A"));
     }
 
     [Test]

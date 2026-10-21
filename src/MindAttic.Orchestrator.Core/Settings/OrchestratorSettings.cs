@@ -6,7 +6,7 @@ namespace MindAttic.Orchestrator.Settings;
 /// <summary>What you tell the orchestrator. Everything has a working default.</summary>
 public sealed record OrchestratorSettings
 {
-    /// <summary>The folder holding every repo. Null uses MindAttic.Workflow's default; the first run
+    /// <summary>The folder holding every repo. Null uses MindAttic.Tickets's default; the first run
     /// asks for one when that doesn't exist on this machine.</summary>
     public string? WorkspaceRoot { get; init; }
 
@@ -156,9 +156,9 @@ public sealed record OrchestratorSettings
     /// <summary>Repos <c>/allocate</c> never starts agents in, even when named or their CLI is open.</summary>
     public List<string> AutopilotSkip { get; init; } = [];
 
-    /// <summary>Approvals as settings.json kept them before the Workflow database's queue held them (M.ORCH-T384): read only by
+    /// <summary>Approvals as settings.json kept them before the ticket database's queue held them (M.ORCH-T384): read only by
     /// <see cref="Tickets.QueueImport"/>, which moves them into <c>ticket_queue</c> once and drops them here. Approval is
-    /// read from and written to the database alone, where <c>workflow ticket approve</c> and the Workflow Desktop write it.</summary>
+    /// read from and written to the database alone, where <c>tickets ticket approve</c> and the Tickets Desktop write it.</summary>
     public List<string>? Approved { get; init; }
 
     /// <summary>Open tickets older than this many days with nobody on them are listed for grooming. 0 means never.</summary>
@@ -182,18 +182,18 @@ public sealed record OrchestratorSettings
     /// labelled "orchestrator" and CI runs that failed on main as tickets (see <see cref="Tickets.GitHubIntake"/>).</summary>
     public bool GitHubIntake { get; init; }
 
-    /// <summary>Manual priorities as settings.json kept them before the Workflow database (M.ORCH-T384): moved into
+    /// <summary>Manual priorities as settings.json kept them before the ticket database (M.ORCH-T384): moved into
     /// <c>ticket_queue</c> once by <see cref="Tickets.QueueImport"/> and dropped here, like <see cref="Approved"/>.</summary>
     public Dictionary<string, int>? Priorities { get; init; }
 
-    /// <summary>Approved tickets the Workflow database doesn't hold: those of a repo still on its own <c>docs/USER_STORIES.md</c>
+    /// <summary>Approved tickets the ticket database doesn't hold: those of a repo still on its own <c>docs/USER_STORIES.md</c>
     /// (or every ticket, before the workspace is migrated). <c>ticket_queue</c> only takes tickets in the database, so without
     /// this such a repo's features, chores and docs could never be approved (M.ORCH-T441). Written by
     /// <see cref="Tickets.TicketQueue"/>, read by the scheduler next to the database's queue, and moved into that queue by
     /// <see cref="Tickets.TicketQueue.MoveIntoDatabase"/> once the database holds the ticket.</summary>
     public List<string> StoryApproved { get; init; } = [];
 
-    /// <summary>Manual priorities of tickets the Workflow database doesn't hold, like <see cref="StoryApproved"/>.</summary>
+    /// <summary>Manual priorities of tickets the ticket database doesn't hold, like <see cref="StoryApproved"/>.</summary>
     public Dictionary<string, long> StoryPriorities { get; init; } = [];
 }
 

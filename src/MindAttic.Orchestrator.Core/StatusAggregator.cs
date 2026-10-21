@@ -4,13 +4,13 @@ using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
 using MindAttic.Orchestrator.Tickets;
-using MindAttic.Workflow;
+using MindAttic.Tickets;
 
 namespace MindAttic.Orchestrator;
 
 /// <summary>
 /// Builds a <see cref="Snapshot"/> of the whole workspace from sources that already exist: the
-/// repo folders (MindAttic.Workflow's <see cref="Workspace"/>), each repo's ticket log, the
+/// repo folders (MindAttic.Tickets's <see cref="Workspace"/>), each repo's ticket log, the
 /// Launcher's host pipes, and Claude Code's transcripts. Holds incremental state between calls,
 /// so keep one instance and call <see cref="Refresh"/> on a timer. Not thread-safe.
 /// </summary>
@@ -141,28 +141,28 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         return snapshot;
     }
 
-    // The Workflow database's queue as last read, by its write time (M.ORCH-T396).
+    // The ticket database's queue as last read, by its write time (M.ORCH-T396).
     private (string Path, DateTime WriteUtc, IReadOnlySet<string> Approved, IReadOnlyDictionary<string, long> Priorities)? liveQueue;
 
     /// <summary>
-    /// <paramref name="shared"/> with approvals and priorities as the Workflow database's queue holds them now (M.ORCH-T396): the
+    /// <paramref name="shared"/> with approvals and priorities as the ticket database's queue holds them now (M.ORCH-T396): the
     /// holder's snapshot can be up to <see cref="SnapshotFile.MaxAge"/> old, and a ticket just approved (orchestrator approve, then
     /// dispatch) or bumped would read as it was, where settings.json was read live before. Reread only when the database changes.
     /// </summary>
     internal Snapshot WithLiveQueue(Snapshot shared)
     {
-        var path = MindAttic.Workflow.Data.WorkflowDb.DefaultPath(workspace.Root);
+        var path = MindAttic.Tickets.Data.TicketsDb.DefaultPath(workspace.Root);
         try
         {
             if (!File.Exists(path)) return shared;
             var written = File.GetLastWriteTimeUtc(path);
             if (liveQueue is not { } last || last.Path != path || last.WriteUtc != written)
             {
-                using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(workspace.Root);
+                using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(workspace.Root);
                 if (db is null) return shared;
                 var queue = db.QueueStates();
                 liveQueue = (path, written,
-                    queue.Where(q => q.Value.Approval == MindAttic.Workflow.Data.WorkflowDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
+                    queue.Where(q => q.Value.Approval == MindAttic.Tickets.Data.TicketsDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
                     queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase));
             }
             return shared with { Approved = liveQueue.Value.Approved, Priorities = liveQueue.Value.Priorities };
@@ -212,14 +212,14 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException
                                        or Microsoft.Data.Sqlite.SqliteException)
         {
-            warnings.Add($"moving settings.json's approvals into the workflow database: {ex.Message} (tried again next refresh)");
+            warnings.Add($"moving settings.json's approvals into the ticket database: {ex.Message} (tried again next refresh)");
         }
         // So do those of tickets the database didn't hold when they were approved, once it holds them (M.ORCH-T441).
         try { TicketQueue.MoveIntoDatabase(Store, workspace.Root); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException
                                        or KeyNotFoundException or Microsoft.Data.Sqlite.SqliteException)
         {
-            warnings.Add($"moving settings.json's story-file approvals into the workflow database: {ex.Message} (tried again next refresh)");
+            warnings.Add($"moving settings.json's story-file approvals into the ticket database: {ex.Message} (tried again next refresh)");
         }
         var settings = Store.LoadSettings();
         var repos = workspace.Repos();
@@ -406,7 +406,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
         return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = utilization, ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, Approved = tickets.Approved, Priorities = tickets.Priorities, Agents = agentBoard, Billing = billing };
 
-        RepoStatus Repo(string name, string path, IReadOnlyList<MindAttic.Workflow.Tickets.Ticket> open)
+        RepoStatus Repo(string name, string path, IReadOnlyList<MindAttic.Tickets.Log.Ticket> open)
         {
             var repoSessions = sessions[name].OrderByDescending(s => s.LastWriteUtc).ToList();
             var repoHosts = hostSessions[name].ToList();

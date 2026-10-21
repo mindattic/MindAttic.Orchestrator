@@ -119,7 +119,7 @@ public sealed class CliCommandTests
         Assert.That(Ctx.Store().Directory, Is.EqualTo(dir));
     }
 
-    /// <summary>A workspace with repo A (open A-T1 fix, A-T2 feature, A-T3 closed feature) imported into its own Workflow database; the
+    /// <summary>A workspace with repo A (open A-T1 fix, A-T2 feature, A-T3 closed feature) imported into its own ticket database; the
     /// database's path. Never the real workspace's.</summary>
     private string WorkspaceWithDb()
     {
@@ -131,16 +131,16 @@ public sealed class CliCommandTests
             "---\ncode: A\n---\n\n# A\n\n## Tickets\n\n| ID | Date | Type | Status | Summary | Ref |\n|---|---|---|---|---|---|\n" +
             "| A-T1 | 2026-10-01 | fix | open | one | — |\n| A-T2 | 2026-10-01 | feature | open | two | — |\n| A-T3 | 2026-10-01 | feature | closed | three | x |\n");
         Store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = workspace });
-        var path = MindAttic.Workflow.Data.WorkflowDb.DefaultPath(workspace);
-        using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
-            db.Import([new MindAttic.Workflow.Repo("A", repoDir)]);
+        var path = MindAttic.Tickets.Data.TicketsDb.DefaultPath(workspace);
+        using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path))
+            db.Import([new MindAttic.Tickets.Repo("A", repoDir)]);
         return path;
     }
 
-    /// <summary>M.ORCH-T384: priority and approval live in the Workflow database's queue, where workflow ticket approve and the
-    /// Workflow Desktop write them too, not in settings.json, which the scheduler alone read.</summary>
+    /// <summary>M.ORCH-T384: priority and approval live in the ticket database's queue, where tickets ticket approve and the
+    /// Tickets Desktop write them too, not in settings.json, which the scheduler alone read.</summary>
     [Test]
-    public void Bump_and_approve_write_the_workflow_databases_queue_not_settings()
+    public void Bump_and_approve_write_the_ticket_databases_queue_not_settings()
     {
         var path = WorkspaceWithDb();
         try
@@ -148,17 +148,17 @@ public sealed class CliCommandTests
             Assert.That(Run("bump", "a-t2", "--by", "2"), Is.Zero);
             Assert.That(output.ToString(), Does.Contain("A-T2 priority is now +2"));
             Assert.That(Run("approve", "a-t2"), Is.Zero);
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path))
                 Assert.That(db.QueueState("A-T2"), Is.EqualTo(("approved", 2L)));
             // And what the scheduler reads: the snapshot's approvals and priorities come from that queue.
             var source = new MindAttic.Orchestrator.Tickets.OpenTicketSource();
-            source.OpenFor(new MindAttic.Workflow.Repo("A", Path.Combine(dir, "workspace", "A")), new List<string>());
+            source.OpenFor(new MindAttic.Tickets.Repo("A", Path.Combine(dir, "workspace", "A")), new List<string>());
             Assert.That((source.Approved.Contains("a-t2"), source.Priorities.GetValueOrDefault("A-T2")), Is.EqualTo((true, 2L)));
             Assert.That((Store.LoadSettings().Approved, Store.LoadSettings().Priorities), Is.EqualTo((null as List<string>, null as Dictionary<string, int>)));
 
             Assert.That(Run("bump", "A-T2", "--by", "-2"), Is.Zero);
             Assert.That(Run("approve", "A-T2", "--undo"), Is.Zero);
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path))
                 Assert.That(db.QueueState("A-T2"), Is.EqualTo(("proposed", 0L)));
 
             Assert.That(Run("approve", "A-T3"), Is.EqualTo(1), "a closed ticket isn't approved");
@@ -175,17 +175,17 @@ public sealed class CliCommandTests
         try
         {
             Assert.That(Run("approve", "A-T2", "a-t2"), Is.Zero, output.ToString());
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path))
                 Assert.That(db.QueueState("A-T2").Item1, Is.EqualTo("approved"));
             Assert.That(output.ToString(), Does.Contain("A-T2 approved"));
             Assert.That(Run("approve", "A-T2", "A-T2", "--undo"), Is.Zero, output.ToString());
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path))
                 Assert.That(db.QueueState("A-T2").Item1, Is.EqualTo("proposed"));
         }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
     }
 
-    /// <summary>M.ORCH-T461: show and hygiene read the Workflow database, not the USER_STORIES.md view, which lags it until
+    /// <summary>M.ORCH-T461: show and hygiene read the ticket database, not the USER_STORIES.md view, which lags it until
     /// something renders it: a ticket the orchestrator filed itself (the pace ledger's, GitHub intake's) read as "No ticket".</summary>
     [Test]
     public void Show_and_hygiene_read_a_ticket_the_view_does_not_have_yet_from_the_database()
@@ -195,7 +195,7 @@ public sealed class CliCommandTests
         try
         {
             string filed, closed;
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path))
             {
                 // Added as PaceLedgerWatch and GitHubIntake add them: straight into the database, the view not rendered.
                 filed = db.Add("A", "fix", "open", "filed by the pace ledger", "pace-ledger.jsonl").Id;
@@ -216,7 +216,7 @@ public sealed class CliCommandTests
     }
 
     [Test]
-    public void Bump_and_approve_without_a_workflow_database_change_nothing()
+    public void Bump_and_approve_without_a_ticket_database_change_nothing()
     {
         var workspace = Path.Combine(dir, "workspace");
         Directory.CreateDirectory(workspace);
@@ -240,7 +240,7 @@ public sealed class CliCommandTests
         return repoDir;
     }
 
-    /// <summary>M.ORCH-T441: ticket_queue only takes tickets in the Workflow database, so a repo still on its own USER_STORIES.md
+    /// <summary>M.ORCH-T441: ticket_queue only takes tickets in the ticket database, so a repo still on its own USER_STORIES.md
     /// had approve and bump refuse every ticket ("No ticket"), and its features, chores and docs waited for approval forever.
     /// They're kept in settings.json for such a ticket now, where the scheduler reads them beside the database's queue.</summary>
     [Test]
@@ -256,12 +256,12 @@ public sealed class CliCommandTests
             Assert.That(Run("reserve", "B-T2", "1M"), Is.Zero, "reserve takes it too");
             var s = Store.LoadSettings();
             Assert.That((s.StoryApproved, s.StoryPriorities), Is.EqualTo((new List<string> { "B-T1" }, new Dictionary<string, long> { ["B-T1"] = 3 })));
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path))
                 Assert.That(db.QueueStates().Keys, Has.None.StartsWith("B-"), "nothing of B's in the database's queue");
 
             // What the scheduler makes of it: B-T1 is work, B-T2 still waits.
             var snap = new Snapshot(DateTime.UtcNow,
-                [new RepoStatus("B", repoDir, RepoState.Dormant, [], [], [.. MindAttic.Workflow.Tickets.StoryFile.Load(Path.Combine(repoDir, "docs", "USER_STORIES.md")).Tickets.Where(t => t.Status == "open")], null, default)], []);
+                [new RepoStatus("B", repoDir, RepoState.Dormant, [], [], [.. MindAttic.Tickets.Log.StoryFile.Load(Path.Combine(repoDir, "docs", "USER_STORIES.md")).Tickets.Where(t => t.Status == "open")], null, default)], []);
             var plan = MindAttic.Orchestrator.Scheduling.Scheduler.Plan(snap, Store.LoadSettings(), []);
             Assert.That((plan.Queue.Select(q => (q.Id, q.Priority)), plan.AwaitingApproval.Select(q => q.Id)),
                 Is.EqualTo((new[] { ("B-T1", 3) }, new[] { "B-T2" })));
@@ -279,7 +279,7 @@ public sealed class CliCommandTests
     }
 
     [Test]
-    public void Approve_works_before_the_workspace_has_a_workflow_database()
+    public void Approve_works_before_the_workspace_has_a_ticket_database()
     {
         Store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = Path.Combine(dir, "workspace") });
         StoryRepo();
@@ -288,7 +288,7 @@ public sealed class CliCommandTests
     }
 
     /// <summary>M.ORCH-T441: once the repo is brought into the database, its settings.json approvals and priorities move into the
-    /// database's queue (so workflow ticket approve --undo and the Workflow Desktop can take them back) and leave settings.json.</summary>
+    /// database's queue (so tickets ticket approve --undo and the Tickets Desktop can take them back) and leave settings.json.</summary>
     [Test]
     public void Story_file_approvals_move_into_the_database_once_it_holds_the_ticket()
     {
@@ -304,10 +304,10 @@ public sealed class CliCommandTests
             var workspace = Path.Combine(dir, "workspace");
             Assert.That(MindAttic.Orchestrator.Tickets.TicketQueue.MoveIntoDatabase(Store, workspace), Is.Zero, "B isn't in the database yet");
 
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
-                db.Import([new MindAttic.Workflow.Repo("B", repoDir)]);
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path))
+                db.Import([new MindAttic.Tickets.Repo("B", repoDir)]);
             Assert.That(MindAttic.Orchestrator.Tickets.TicketQueue.MoveIntoDatabase(Store, workspace), Is.EqualTo(2));
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path))
                 Assert.That((db.QueueState("B-T1").Approval, db.QueueState("B-T2")), Is.EqualTo(("approved", ("proposed", 4L))));
             var s = Store.LoadSettings();
             Assert.That((s.StoryApproved, s.StoryPriorities), Is.EqualTo((new List<string> { "C-T1" }, new Dictionary<string, long> { ["C-T1"] = 2 })),
@@ -324,7 +324,7 @@ public sealed class CliCommandTests
         var path = WorkspaceWithDb();
         try
         {
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path)) db.SetPriority("A-T1", 4);
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path)) db.SetPriority("A-T1", 4);
             Store.SaveSettings(Store.LoadSettings() with
             {
                 Approved = ["a-t2", "A-T3", "A-T99"],
@@ -335,7 +335,7 @@ public sealed class CliCommandTests
 
             Assert.That(MindAttic.Orchestrator.Tickets.QueueImport.Run(Store, Path.Combine(dir, "workspace")),
                 Is.EqualTo(new MindAttic.Orchestrator.Tickets.QueueImport.Result(1, 1)), "A-T2 approved and prioritized; the closed A-T3, the unknown A-T99 and A-T1's own priority left");
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path))
                 Assert.That((db.QueueState("A-T1"), db.QueueState("A-T2"), db.QueueState("A-T3").Approval),
                     Is.EqualTo((("proposed", 4L), ("approved", 3L), "proposed")));
             Assert.That(StoreFaults.SettingsText(Store), Does.Not.Contain("\"Approved\"").And.Not.Contain("\"Priorities\""), "dropped from the settings");
@@ -355,7 +355,7 @@ public sealed class CliCommandTests
             var workspace = Path.Combine(dir, "workspace");
             Store.SaveSettings(Store.LoadSettings() with { Approved = ["A-T2"], Priorities = new() { ["A-T2"] = 3 } });
             Assert.That(MindAttic.Orchestrator.Tickets.QueueImport.Run(Store, workspace), Is.EqualTo(new MindAttic.Orchestrator.Tickets.QueueImport.Result(1, 1)));
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path))
             {
                 Assert.That(MindAttic.Orchestrator.Tickets.QueueImport.IsDone(db.Path), Is.True, "the move is recorded in the database");
                 db.Unapprove("A-T2");
@@ -365,7 +365,7 @@ public sealed class CliCommandTests
             // An older process saves its stale settings.json back, old fields and all.
             Store.SaveSettings(Store.LoadSettings() with { Approved = ["A-T2"], Priorities = new() { ["A-T2"] = 3 } });
             Assert.That(MindAttic.Orchestrator.Tickets.QueueImport.Run(Store, workspace), Is.Null, "not imported again");
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path))
                 Assert.That(db.QueueState("A-T2"), Is.EqualTo(("proposed", 0L)));
             Assert.That(StoreFaults.SettingsText(Store), Does.Not.Contain("\"Approved\"").And.Not.Contain("\"Priorities\""), "dropped again");
         }
@@ -392,7 +392,7 @@ public sealed class CliCommandTests
     [Test]
     public void Block_stores_both_ids_upper_cased()
     {
-        // A workspace with no Workflow database, so block keeps its prerequisites in settings (never the real workspace's).
+        // A workspace with no ticket database, so block keeps its prerequisites in settings (never the real workspace's).
         var workspace = Path.Combine(dir, "workspace");
         Directory.CreateDirectory(workspace);
         Store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = workspace });
@@ -418,12 +418,12 @@ public sealed class CliCommandTests
             "---\ncode: A\n---\n\n# A\n\n## Tickets\n\n| ID | Date | Type | Status | Summary | Ref |\n|---|---|---|---|---|---|\n" +
             "| A-T1 | 2026-10-01 | fix | open | one | — |\n| A-T2 | 2026-10-01 | fix | open | two | — |\n| A-T3 | 2026-10-01 | fix | open | three | — |\n");
         Store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = workspace });
-        var path = MindAttic.Workflow.Data.WorkflowDb.DefaultPath(workspace);
+        var path = MindAttic.Tickets.Data.TicketsDb.DefaultPath(workspace);
         try
         {
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path))
             {
-                db.Import([new MindAttic.Workflow.Repo("A", repoDir)]);
+                db.Import([new MindAttic.Tickets.Repo("A", repoDir)]);
                 db.AddLink("A-T1", "A-T2", "requires");
                 db.AddLink("A-T3", "A-T1", "requires");
             }
@@ -437,7 +437,7 @@ public sealed class CliCommandTests
             Assert.That((Run("bump", "A-T99"), Run("reserve", "A-T99", "2M")), Is.EqualTo((1, 1)), "a typo isn't bumped or reserved either");
             Assert.That((Store.LoadSettings().Priorities, Store.LoadSettings().Reservations.Count), Is.EqualTo((null as Dictionary<string, int>, 0)));
             Assert.That((Run("bump", "a-t2"), Run("reserve", "A-T2", "2M"), Run("reserve", "A-T99", "0")), Is.EqualTo((0, 0, 0)));
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path))
                 Assert.That(db.Requires("A-T1"), Is.EqualTo(new[] { "A-T2" }), "nothing changed: the --clear wasn't half-done");
 
             // M.ORCH-T331: a prerequisite set by hand before the migration is still in settings.json; --clear clears it too.
@@ -446,7 +446,7 @@ public sealed class CliCommandTests
             Assert.That(output.ToString(), Does.Contain("It still waits for A-T3 too"), "M.ORCH-T356: the hand-set one is said");
             Assert.That(Run("block", "A-T1", "--clear"), Is.Zero);
             Assert.That(Store.LoadSettings().BlockedBy.Keys, Is.EqualTo(new[] { "A-T2" }), "only the cleared ticket's");
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(path))
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path))
                 Assert.That(db.Requires("A-T1"), Is.Empty);
         }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
@@ -471,8 +471,8 @@ public sealed class CliCommandTests
         Store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = workspace });
         try
         {
-            using (var db = MindAttic.Workflow.Data.WorkflowDb.Open(MindAttic.Workflow.Data.WorkflowDb.DefaultPath(workspace)))
-                db.Import([new MindAttic.Workflow.Repo("A", a)]);
+            using (var db = MindAttic.Tickets.Data.TicketsDb.Open(MindAttic.Tickets.Data.TicketsDb.DefaultPath(workspace)))
+                db.Import([new MindAttic.Tickets.Repo("A", a)]);
 
             Assert.That(Run("block", "b-t2", "--by", "B-T1", "--by", "A-T1"), Is.Zero);
             Assert.That(Store.LoadSettings().BlockedBy["B-T2"], Is.EqualTo(new[] { "B-T1", "A-T1" }));

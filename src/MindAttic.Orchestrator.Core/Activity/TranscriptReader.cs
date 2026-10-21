@@ -80,7 +80,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
         public readonly List<LimitHit> Hits = [];
         public readonly List<ToolCall> Tools = [];
         public readonly Dictionary<string, TokenUsage> CountedMessages = new(StringComparer.Ordinal);
-        /// <summary><c>workflow ticket new</c> calls whose output hasn't come back yet (their tool_use ids).</summary>
+        /// <summary><c>tickets ticket new</c> calls whose output hasn't come back yet (their tool_use ids).</summary>
         public readonly HashSet<string> PendingFiles = new(StringComparer.Ordinal);
         /// <summary>Tickets this transcript filed in its current turn: an agent that files a ticket and fixes it is working it (M.ORCH-T255).</summary>
         public readonly List<string> Filed = [];
@@ -557,20 +557,21 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
         Str(root, "sessionKind") == "bg" && Str(root, "session_id") is { Length: > 0 } from && Str(root, "sessionId") is { } own && from != own;
 
     /// <summary>How an agent files a ticket; it prints the new ticket's id.</summary>
-    internal const string FileTicketCommand = "workflow ticket new";
+    internal const string FileTicketCommand = "tickets ticket new";
 
-    /// <summary>Whether a tool call's raw input runs <see cref="FileTicketCommand"/>, however it names the CLI: PowerShell agents
-    /// must call it <c>&amp; workflow.exe ticket new</c> (workflow is a PowerShell keyword), or by its quoted path (M.ORCH-T444).</summary>
+    /// <summary>Whether a tool call's raw input runs <see cref="FileTicketCommand"/>, however it names the CLI: <c>tickets.exe</c>, by
+    /// its quoted path (M.ORCH-T444), or as the legacy <c>workflow</c> shim, which PowerShell agents must call
+    /// <c>&amp; workflow.exe ticket new</c> (workflow is a PowerShell keyword) (M.ORCH-T564).</summary>
     internal static bool FilesTicket(string rawInput) => FileTicketCall().IsMatch(rawInput);
 
     // The input is raw JSON: a quote after the path is written \" (or ").
-    [System.Text.RegularExpressions.GeneratedRegex(@"\bworkflow(?:\.exe)?(?:\\u0022|\\""|['""])?\s+ticket\s+new\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase)]
+    [System.Text.RegularExpressions.GeneratedRegex(@"\b(?:tickets|workflow)(?:\.exe)?(?:\\u0022|\\""|['""])?\s+ticket\s+new\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase)]
     private static partial System.Text.RegularExpressions.Regex FileTicketCall();
 
     [System.Text.RegularExpressions.GeneratedRegex(@"^\s*(?<id>(?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)\s*$", System.Text.RegularExpressions.RegexOptions.Multiline)]
     private static partial System.Text.RegularExpressions.Regex FiledId();
 
-    /// <summary>The output of a <c>workflow ticket new</c> call: the id it printed is a ticket this transcript filed.</summary>
+    /// <summary>The output of a <c>tickets ticket new</c> call: the id it printed is a ticket this transcript filed.</summary>
     private static void NoteFiled(JsonElement message, TranscriptLineSink sink)
     {
         if (!message.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.Array) return;

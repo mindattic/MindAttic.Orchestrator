@@ -1,5 +1,5 @@
 using MindAttic.Orchestrator.Settings;
-using MindAttic.Workflow.Tickets;
+using MindAttic.Tickets.Log;
 using Serilog.Events;
 
 namespace MindAttic.Orchestrator.Budget;
@@ -173,7 +173,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
         var marker = summary[..(summary.IndexOf(']') + 1)];
         try
         {
-            using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(WorkspaceRoot);
+            using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(WorkspaceRoot);
             if (db is null) return null;
             if (db.Tickets(Repo).Any(t => t.Ticket.Status == TicketRules.Open && t.Ticket.Summary.Contains(marker, StringComparison.Ordinal))) return null;
             return db.Add(Repo, "fix", TicketRules.Open, summary, PaceLedger.Ref).Id;

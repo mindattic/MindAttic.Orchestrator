@@ -3,7 +3,7 @@ using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
-using MindAttic.Workflow.Tickets;
+using MindAttic.Tickets.Log;
 using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
@@ -63,7 +63,7 @@ public sealed class AutopilotWakerTests
     public void An_idle_autopilot_cli_let_stop_with_no_room_is_typed_back_to_work_once_room_opens()
     {
         // Found live 2026-10-20: every /allocate CLI stopped the night before on "the pace has no room", and none was sent back
-        // when the window reset; MindAttic.Workflow's sat idle with M.FLOW-T116 workable until the user typed to it.
+        // when the window reset; MindAttic.Tickets' sat idle with M.TIX-T116 workable until the user typed to it.
         State("idle", Now.AddHours(-6));
         var waker = Waker();
 

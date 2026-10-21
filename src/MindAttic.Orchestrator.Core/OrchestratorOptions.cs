@@ -18,7 +18,7 @@ public sealed record OrchestratorOptions
         return read;
     }
 
-    public string WorkspaceRoot { get; init; } = MindAttic.Workflow.Workspace.DefaultRoot;
+    public string WorkspaceRoot { get; init; } = MindAttic.Tickets.Workspace.DefaultRoot;
 
     /// <summary>Claude Code's per-project transcript store (one folder per working directory).</summary>
     public string ClaudeProjectsDir { get; init; } =
@@ -32,8 +32,8 @@ public sealed record OrchestratorOptions
     /// <summary>The deployed Launcher (see MindAttic.Launcher/deploy.ps1).</summary>
     public string LauncherExe { get; init; } = @"C:\Apps\MindAttic.Launcher\MindAttic.Launcher.exe";
 
-    /// <summary>The deployed Workflow Desktop (see MindAttic.Workflow/deploy.ps1), where a ticket id the dashboard lists opens (M.ORCH-T500).</summary>
-    public string WorkflowDesktopExe { get; init; } = @"C:\Apps\MindAttic.Workflow.Desktop\MindAttic.Workflow.Desktop.exe";
+    /// <summary>The deployed Tickets Desktop (see MindAttic.Tickets/deploy.ps1), where a ticket id the dashboard lists opens (M.ORCH-T500).</summary>
+    public string TicketsDesktopExe { get; init; } = @"C:\Apps\MindAttic.Tickets.Desktop\MindAttic.Tickets.Desktop.exe";
 
     /// <summary>A transcript written this recently means the agent is mid-turn.</summary>
     public TimeSpan WorkingWindow { get; init; } = TimeSpan.FromMinutes(2);

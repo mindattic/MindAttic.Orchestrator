@@ -1,6 +1,6 @@
 using MindAttic.Orchestrator;
 using MindAttic.Orchestrator.Tickets;
-using MindAttic.Workflow.Tickets;
+using MindAttic.Tickets.Log;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -10,13 +10,13 @@ internal sealed class HygieneCommand : Command
     public override int Execute(CommandContext context)
     {
         var root = OrchestratorOptions.Load(Ctx.Store()).WorkspaceRoot;
-        // Each repo's tickets from the Workflow database when it holds the repo, else from its own USER_STORIES.md (M.ORCH-T461):
+        // Each repo's tickets from the ticket database when it holds the repo, else from its own USER_STORIES.md (M.ORCH-T461):
         // the generated view lags the database until something renders it, so a ticket closed or filed since was judged as it was.
-        using var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(root);
+        using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(root);
         var inDb = db?.Repos().Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
         var fromDb = db is null ? [] : db.Tickets().GroupBy(t => t.Repo, StringComparer.OrdinalIgnoreCase)
             .SelectMany(g => TicketHygiene.Check(g.Key, [.. g.Select(x => x.Ticket)]));
-        var findings = fromDb.Concat(new MindAttic.Workflow.Workspace(root).Repos()
+        var findings = fromDb.Concat(new MindAttic.Tickets.Workspace(root).Repos()
             .Where(r => !inDb.Contains(r.Name) && File.Exists(r.StoriesPath))
             .SelectMany(r =>
             {

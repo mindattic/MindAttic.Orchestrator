@@ -411,16 +411,16 @@ public sealed class TranscriptReaderTests
     {
         // M.ORCH-T255: a subagent that hit bugs filed M.ORCH-T250/T251/T253 and fixed them; `next --claim` handed each out again.
         System.IO.File.WriteAllLines(File(), [
-            Call("m1", "tu1", "2026-10-13T12:00:00Z", "workflow ticket new --repo X --type fix --summary \"the parent files one too\""),
+            Call("m1", "tu1", "2026-10-13T12:00:00Z", "tickets ticket new --repo X --type fix --summary \"the parent files one too\""),
             Result("tu1", "2026-10-13T12:00:01Z", "X-T8\nX: tickets OK (8)"),
         ]);
         var sub = Path.Combine(dir, "D--Projects-X", "s1", "subagents");
         Directory.CreateDirectory(sub);
         var agent = Path.Combine(sub, "agent-a.jsonl");
         System.IO.File.WriteAllLines(agent, [
-            Call("m2", "tu2", "2026-10-13T12:00:00Z", "workflow ticket new --help"),
-            Result("tu2", "2026-10-13T12:00:01Z", "USAGE: workflow ticket new [OPTIONS]"),
-            Call("m3", "tu3", "2026-10-13T12:01:00Z", @"cd D:\Projects\X; workflow ticket new --repo X --type fix --summary ""a bug"""),
+            Call("m2", "tu2", "2026-10-13T12:00:00Z", "tickets ticket new --help"),
+            Result("tu2", "2026-10-13T12:00:01Z", "USAGE: tickets ticket new [OPTIONS]"),
+            Call("m3", "tu3", "2026-10-13T12:01:00Z", @"cd D:\Projects\X; tickets ticket new --repo X --type fix --summary ""a bug"""),
             Result("tu3", "2026-10-13T12:01:01Z", "X-T9"),
             Call("m4", "tu4", "2026-10-13T12:02:00Z", "git status"),
             Result("tu4", "2026-10-13T12:02:01Z", "X-T10"),
@@ -429,7 +429,7 @@ public sealed class TranscriptReaderTests
 
         var filing = reader.Poll(Since).Single().Filing;
         Assert.That(filing.Select(f => (f.TicketId, f.AgentId)), Is.EquivalentTo(new[] { ("X-T8", (string?)null), ("X-T9", "agent-a") }),
-            "the id each `workflow ticket new` printed, by whoever ran it; not --help's output nor another call's");
+            "the id each `tickets ticket new` printed, by whoever ran it; not --help's output nor another call's");
 
         Assert.That(new TranscriptReader(dir, Cache).Poll(Since).Single().Filing, Has.Count.EqualTo(2), "a restarted reader still knows (from its cache)");
 
@@ -440,9 +440,10 @@ public sealed class TranscriptReaderTests
     }
 
     [Test]
-    public void A_ticket_filed_through_workflow_exe_or_its_quoted_path_is_seen_as_filed()
+    public void A_ticket_filed_through_the_exe_its_quoted_path_or_the_legacy_workflow_shim_is_seen_as_filed()
     {
-        // M.ORCH-T444: PowerShell agents must call it `& workflow.exe ticket new`; only `workflow ticket new` was matched.
+        // M.ORCH-T444: PowerShell agents called it `& workflow.exe ticket new`; only `workflow ticket new` was matched. Since
+        // M.ORCH-T564 the CLI is `tickets`, and the legacy `workflow` shim still counts.
         System.IO.File.WriteAllLines(File(), [
             Call("m1", "tu1", "2026-10-13T12:00:00Z", "& workflow.exe ticket new --repo X --type fix --summary \"a bug\""),
             Result("tu1", "2026-10-13T12:00:01Z", "X-T8"),
@@ -450,9 +451,11 @@ public sealed class TranscriptReaderTests
             Result("tu2", "2026-10-13T12:00:11Z", "X-T9"),
             Call("m3", "tu3", "2026-10-13T12:00:20Z", "workflow.exe ticket list"),
             Result("tu3", "2026-10-13T12:00:21Z", "X-T10"),
+            Call("m4", "tu4", "2026-10-13T12:00:30Z", @"& ""C:\Tools	ickets.exe"" ticket new --repo X --type fix --summary y"),
+            Result("tu4", "2026-10-13T12:00:31Z", "X-T11"),
         ]);
 
-        Assert.That(new TranscriptReader(dir, Cache).Poll(Since).Single().Filing.Select(f => f.TicketId), Is.EquivalentTo(new[] { "X-T8", "X-T9" }));
+        Assert.That(new TranscriptReader(dir, Cache).Poll(Since).Single().Filing.Select(f => f.TicketId), Is.EquivalentTo(new[] { "X-T8", "X-T9", "X-T11" }));
         Assert.That(TranscriptReader.FilesTicket("""{"command":"& \"C:\\Tools\\workflow.exe\" ticket new --type fix"}"""), Is.True, "as Claude Code writes the quote");
     }
 

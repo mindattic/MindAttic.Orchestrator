@@ -27,7 +27,7 @@ public sealed class AuditRunner(OrchestratorOptions options, JsonStore store)
     public AuditReport Scan(CancellationToken ct = default)
     {
         var clock = Stopwatch.StartNew();
-        var repos = new MindAttic.Workflow.Workspace(options.WorkspaceRoot).Repos().Select(r => (r.Name, r.Path)).ToList();
+        var repos = new MindAttic.Tickets.Workspace(options.WorkspaceRoot).Repos().Select(r => (r.Name, r.Path)).ToList();
         var (drift, missing) = ConventionAudit.Run(repos);
         var (duplicates, files) = DuplicationAudit.Run(repos, ct);
         return new AuditReport(DateTime.UtcNow, clock.Elapsed, repos.Count, files, drift, missing, duplicates);

@@ -1,4 +1,4 @@
-using MindAttic.Workflow.Tickets;
+using MindAttic.Tickets.Log;
 
 namespace MindAttic.Orchestrator;
 
@@ -91,7 +91,7 @@ public sealed record TranscriptSession(string SessionId, string Cwd, DateTime La
         Events.Where(e => e.AtUtc >= utc).Aggregate(default(TokenUsage), (sum, e) => sum + e.Usage);
 }
 
-/// <summary>A ticket a transcript filed with <c>workflow ticket new</c> in its current turn: the subagent that did (null for the
+/// <summary>A ticket a transcript filed with <c>tickets ticket new</c> in its current turn: the subagent that did (null for the
 /// CLI itself), and when that transcript was last written.</summary>
 public sealed record FiledTicket(string TicketId, string? AgentId, DateTime LastWriteUtc);
 
@@ -133,14 +133,14 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// <summary>Repos that share duplicated code (from the last audit): editing them at once risks conflicting fixes.</summary>
     public IReadOnlyDictionary<string, IReadOnlySet<string>> LinkedRepos { get; init; } = new Dictionary<string, IReadOnlySet<string>>();
 
-    /// <summary>Ticket → the tickets it requires (prerequisite links in the Workflow database).</summary>
+    /// <summary>Ticket → the tickets it requires (prerequisite links in the ticket database).</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>> Requires { get; init; } = new Dictionary<string, IReadOnlyList<string>>();
 
-    /// <summary>Tickets approved for work in the Workflow database's queue. Fixes need no approval; any other open ticket
+    /// <summary>Tickets approved for work in the ticket database's queue. Fixes need no approval; any other open ticket
     /// waits outside the queue until it's here, so no agent works a feature you didn't ask for (M.ORCH-T384).</summary>
     public IReadOnlySet<string> Approved { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Ticket → its manual priority in the Workflow database's queue; higher runs sooner, missing means 0.</summary>
+    /// <summary>Ticket → its manual priority in the ticket database's queue; higher runs sooner, missing means 0.</summary>
     public IReadOnlyDictionary<string, long> Priorities { get; init; } = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Whether <paramref name="ticket"/> may be worked: a fix, or one approved in the database's queue.</summary>

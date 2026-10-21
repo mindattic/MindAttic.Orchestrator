@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using MindAttic.Orchestrator;
 using MindAttic.Orchestrator.Tickets;
-using MindAttic.Workflow.Tickets;
+using MindAttic.Tickets.Log;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -23,14 +23,14 @@ internal sealed class ShowCommand : Command<ShowCommand.Settings>
         var store = Ctx.Store();
         var options = OrchestratorOptions.Load(store);
         var id = Ctx.Id(settings.Ticket);
-        // The Workflow database when it holds the ticket, else a story-file repo's USER_STORIES.md (M.ORCH-T461): the generated view
+        // The ticket database when it holds the ticket, else a story-file repo's USER_STORIES.md (M.ORCH-T461): the generated view
         // lags the database until something renders it, so a ticket the orchestrator filed itself (the pace ledger's, GitHub
         // intake's) read as "No ticket" for up to the daemon's next db sync, or for good with the daemon stopped.
         MindAttic.Orchestrator.Tickets.TicketQueue.Found? hit;
-        using (var db = MindAttic.Workflow.Data.WorkflowDb.OpenIfMigrated(options.WorkspaceRoot))
+        using (var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(options.WorkspaceRoot))
             hit = TicketQueue.Find(db, options.WorkspaceRoot, id);
         if (hit is null) { AnsiConsole.MarkupLine($"[red]No ticket {Markup.Escape(id)} in the workspace.[/]"); return 1; }
-        var repoPath = new MindAttic.Workflow.Workspace(options.WorkspaceRoot).Find(hit.Repo)?.Path ?? "";
+        var repoPath = new MindAttic.Tickets.Workspace(options.WorkspaceRoot).Find(hit.Repo)?.Path ?? "";
 
         var t = hit.Ticket;
         // Every cell escaped: a story file's are hand-edited text, and a '[' in one was read as markup and crashed.

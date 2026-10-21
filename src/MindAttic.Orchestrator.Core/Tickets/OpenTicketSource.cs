@@ -1,11 +1,11 @@
-using MindAttic.Workflow;
-using MindAttic.Workflow.Data;
-using MindAttic.Workflow.Tickets;
+using MindAttic.Tickets;
+using MindAttic.Tickets.Data;
+using MindAttic.Tickets.Log;
 
 namespace MindAttic.Orchestrator.Tickets;
 
 /// <summary>
-/// Open tickets per repo, and the prerequisites between tickets, from the Workflow database once the workspace
+/// Open tickets per repo, and the prerequisites between tickets, from the ticket database once the workspace
 /// is migrated, with every ticket's approval and priority from its queue (re-read only when the database changes on disk); a repo not in it falls back to its
 /// <c>docs/USER_STORIES.md</c>, re-parsed only when that file changes.
 /// </summary>
@@ -20,8 +20,8 @@ public sealed class OpenTicketSource
     /// <summary>Ticket → the tickets it requires (prerequisite links in the database).</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>> Requires => fromDb?.Requires ?? new Dictionary<string, IReadOnlyList<string>>();
 
-    /// <summary>Tickets approved for work in the database's queue (<c>workflow ticket approve</c>, <c>orchestrator approve</c>,
-    /// the Workflow Desktop): the one store approval lives in (M.ORCH-T384).</summary>
+    /// <summary>Tickets approved for work in the database's queue (<c>tickets ticket approve</c>, <c>orchestrator approve</c>,
+    /// the Tickets Desktop): the one store approval lives in (M.ORCH-T384).</summary>
     public IReadOnlySet<string> Approved => fromDb?.Approved ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Ticket → its manual priority in the database's queue (higher runs sooner); missing means 0.</summary>
@@ -56,14 +56,14 @@ public sealed class OpenTicketSource
     private IReadOnlyList<Ticket>? FromDatabase(Repo repo, ICollection<string> warnings)
     {
         var root = Path.GetDirectoryName(repo.Path);
-        var path = WorkflowDb.DefaultPath(root);
+        var path = TicketsDb.DefaultPath(root);
         if (!File.Exists(path)) return null;
         var written = File.GetLastWriteTimeUtc(path);
         if (fromDb is not { } c || c.Path != path || c.WriteUtc != written)
         {
             try
             {
-                using var db = WorkflowDb.OpenIfMigrated(root);
+                using var db = TicketsDb.OpenIfMigrated(root);
                 if (db is null) return null;
                 var requires = db.AllLinks().Where(l => l.Kind == "requires")
                     .GroupBy(l => l.From, StringComparer.OrdinalIgnoreCase)
@@ -72,12 +72,12 @@ public sealed class OpenTicketSource
                 fromDb = (path, written,
                     db.Tickets().Where(t => t.Ticket.Status == TicketRules.Open).ToLookup(t => t.Repo, t => t.Ticket, StringComparer.OrdinalIgnoreCase),
                     db.Repos().Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase), requires,
-                    queue.Where(q => q.Value.Approval == WorkflowDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
+                    queue.Where(q => q.Value.Approval == TicketsDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
                     queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase));
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or Microsoft.Data.Sqlite.SqliteException)
             {
-                warnings.Add($"workflow database: {ex.Message}");
+                warnings.Add($"ticket database: {ex.Message}");
                 // A read that fails mid-write (the database locked) keeps the last good read rather than fall back to
                 // USER_STORIES.md, which can lag it: a ticket missing there reads as finished, and autopilot would reap
                 // its live assignment. The read is tried again next time, since the cached time still differs.
