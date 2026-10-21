@@ -10,6 +10,19 @@ public static class Formatting
         resetUtc.ToLocalTime().ToString(resetUtc.ToLocalTime().Date != nowUtc.ToLocalTime().Date ? "ddd h:mm tt" : "h:mm tt",
             System.Globalization.CultureInfo.InvariantCulture);
 
+    /// <summary>A weekly reset with how far off it is: "10/27 5:00pm (6.3 days)".</summary>
+    public static string ResetInDays(DateTime resetUtc, DateTime nowUtc) =>
+        $"{DateAndTime(resetUtc)} ({Tenths((resetUtc - nowUtc).TotalDays)} days)";
+
+    /// <summary>A 5-hour window's reset with how far off it is: "10/21 1:40pm (4.5 hours)".</summary>
+    public static string ResetInHours(DateTime resetUtc, DateTime nowUtc) =>
+        $"{DateAndTime(resetUtc)} ({Tenths((resetUtc - nowUtc).TotalHours)} hours)";
+
+    private static string DateAndTime(DateTime utc) =>
+        utc.ToLocalTime().ToString("M/d h:mmtt", CultureInfo.InvariantCulture).ToLowerInvariant();
+
+    private static string Tenths(double n) => n.ToString("0.0", CultureInfo.InvariantCulture);
+
     // The thresholds are where the smaller unit would round up to 1000 (999,999 is "1M", not "1000k").
     public static string Tokens(long n) => n switch
     {

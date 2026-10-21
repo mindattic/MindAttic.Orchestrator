@@ -246,7 +246,7 @@ public sealed partial class MainViewModel
     public string WeeklyCaption => Budget switch
     {
         { WeeklyPercent: null } or null => "no weekly limit known yet",
-        { WeekResetUtc: { } r, WeeklyPercent: { } u } => $"{Left(u)}% left · resets {r.ToLocalTime():ddd h:mm tt}",
+        { WeekResetUtc: { } r, WeeklyPercent: { } u } => $"{Left(u)}% left resets {Formatting.ResetInDays(r, DateTime.UtcNow)}",
         { WeeklyPercent: { } u } => $"{Left(u)}% left · rolling 7 days",
     };
 
