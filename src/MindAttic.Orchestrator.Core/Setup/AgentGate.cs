@@ -1313,6 +1313,43 @@ public static class AgentGate
                     return None
                 return name
             return None
+
+        _canonical_repo_cache = {}
+        def canonical_repo(name):
+            # name's current name, by the ticket database's repo rename history (repo_renames): the same chain
+            # TicketsDb's own rename resolver follows for a former repo name (M.ORCH-T565). A repo's folder on disk
+            # is renamed by hand, sometime after `tickets repo rename` moves every ticket to the new name there, so
+            # a window still standing in the old folder (or a ticket, or a typed --repo, naming the old one) would
+            # otherwise look like a different repo from the one the ticket database now calls it. Cached per name
+            # for this call: the chain is walked at most once per name per hook invocation.
+            key = (name or "").lower()
+            if not key:
+                return name
+            if key in _canonical_repo_cache:
+                return _canonical_repo_cache[key]
+            cur, seen = name, {key}
+            try:
+                db = tickets_db()
+                try:
+                    while True:
+                        row = db.execute("SELECT new_name FROM repo_renames WHERE old_name = ? COLLATE NOCASE ORDER BY seq DESC LIMIT 1", (cur,)).fetchone()
+                        if not row or row[0].lower() in seen:
+                            break
+                        cur = row[0]
+                        seen.add(cur.lower())
+                finally:
+                    db.close()
+            except Exception:
+                pass
+            _canonical_repo_cache[key] = cur
+            return cur
+
+        def same_repo(a, b):
+            # Whether a and b name the same repo: the same folder, or one a former name of the other's current one
+            # (M.ORCH-T565), so a rename doesn't make a window refuse its own repo's tickets until its folder catches up.
+            if not a or not b:
+                return False
+            return a.lower() == b.lower() or canonical_repo(a).lower() == canonical_repo(b).lower()
         """;
 
     /// <summary>Python shared by both hooks (needs <c>json</c>, <c>os</c>, <c>re</c> and <c>Path</c>): the commands exempt from
@@ -1762,12 +1799,16 @@ public static class AgentGate
             excepted = None
             def other(r):
                 global excepted
-                if not r or r.lower() == here.lower():
+                if not r or same_repo(r, here):
                     return False
                 if excepted is None:
                     excepted = allowed_here()
-                # A name may be a wildcard (/allocate -repo=GTFO.*): every repo it matches is excepted.
-                return "all" not in excepted and not any(fnmatch.fnmatchcase(r.lower(), p) for p in excepted)
+                if "all" in excepted:
+                    return False
+                # A name may be a wildcard (/allocate -repo=GTFO.*): every repo it matches is excepted, by either
+                # name it's known by (a rename doesn't drop it from what was already named, M.ORCH-T565).
+                names = {r.lower(), canonical_repo(r).lower()}
+                return not any(fnmatch.fnmatchcase(n, p) for n in names for p in excepted)
             if tool in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
                 target = args.get("file_path") or args.get("notebook_path") or ""
                 if other(repo_of(target)):

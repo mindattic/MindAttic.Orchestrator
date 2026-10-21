@@ -112,6 +112,19 @@ public sealed class HookScriptTests
         Assert.That(mk.WaitForExit(20_000), Is.True);
     }
 
+    /// <summary>Records repo renames in the ticket database's repo_renames table, as `tickets repo rename` would.</summary>
+    private void RepoRenames(params (string Old, string New)[] renames)
+    {
+        var db = Path.Combine(ws, "MindAttic.Tickets", "data", "Tickets.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(db)!);
+        var values = string.Join(",", renames.Select(r => $"('{r.Old}','{r.New}','2026-01-01T00:00:00Z','rename')"));
+        using var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
+            "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); " +
+            "d.execute('create table if not exists repo_renames(seq integer primary key, old_name, new_name, at, reason)'); " +
+            $"d.execute(\"insert into repo_renames(old_name,new_name,at,reason) values{values}\"); d.commit()", db }, UseShellExecute = false })!;
+        Assert.That(mk.WaitForExit(20_000), Is.True);
+    }
+
     private static readonly object ReadCall = new { tool_name = "Read", tool_input = new { file_path = "x" } };
 
     /// <summary>The pace gate's events, as the old log's lines: the file a hook falls back to, then the database's gate_events
@@ -918,6 +931,27 @@ public sealed class HookScriptTests
             "the edit refusal itself says to file a ticket for the other repo");
         Assert.That(Gate(Bash("tickets ticket close M.ORCH-T1 --repo MindAttic.Tickets --ref x")).Output, Does.Contain("\"deny\""));
         Assert.That(Gate(Bash("tickets ticket correct M.ORCH-T1 --repo MindAttic.Tickets --summary x")).Output, Does.Contain("\"deny\""));
+    }
+
+    /// <summary>M.ORCH-T565: `tickets repo rename` moves every ticket to a repo's new name right away, but its folder on
+    /// disk may not be renamed yet; the window gate must still recognize its own tickets by the rename history.</summary>
+    [Test]
+    public void A_renamed_repos_window_still_works_its_own_tickets_by_either_name()
+    {
+        Tickets(("U.SYS-T1", "UnitySystem"), ("M.ORCH-T1", "MindAttic.Tickets"));
+        RepoRenames(("UnitySolarSystem", "UnitySystem")); // the folder is still named UnitySolarSystem (not renamed yet)
+        var uss = Path.Combine(ws, "UnitySolarSystem");
+        object Bash(string command) => new { tool_name = "Bash", tool_input = new { command }, cwd = uss };
+        Assert.That(Gate(Bash("tickets ticket close U.SYS-T1 --ref x")).Output, Is.Empty,
+            "UnitySystem is this folder's new name: still its own ticket");
+        Assert.That(Gate(Bash("tickets ticket correct U.SYS-T1 --summary x")).Output, Is.Empty);
+        Assert.That(Gate(Bash("tickets ticket close M.ORCH-T1 --ref x")).Output, Does.Contain("\"deny\""),
+            "a genuinely different repo is still refused");
+
+        var file = Path.Combine(ws, "UnitySystem", "src", "x.cs"); // UnitySystem's own worktree folder, say
+        Directory.CreateDirectory(Path.Combine(ws, "UnitySystem", ".git"));
+        Assert.That(Gate(new { tool_name = "Edit", tool_input = new { file_path = file }, cwd = uss }).Output, Is.Empty,
+            "a folder already named UnitySystem is the same repo as the UnitySolarSystem window sits in");
     }
 
     [Test]
