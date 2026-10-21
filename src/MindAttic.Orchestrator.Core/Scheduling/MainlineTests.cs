@@ -13,7 +13,9 @@ namespace MindAttic.Orchestrator.Scheduling;
 /// root whose <c>origin/&lt;main line&gt;</c> moved past the last commit tested gets one run of its whole suite, in a detached
 /// worktree of its own (<see cref="WorktreeName"/>): one run per repo at a time, so landings made while one runs are covered,
 /// coalesced, by the next. A run with failing tests files one <c>fix</c> ticket per test (its name, its failure message and the
-/// commits landed since the last green run); a test with an open ticket isn't filed again, and one that passes closes it.
+/// commits landed since the last green run, and the tickets they landed); a test with an open ticket isn't filed again, and
+/// one that passes closes it. A ticket filed goes to the top of the workspace's queue (M.ORCH-T562): above every other open
+/// ticket, below the failing-test tickets filed before it, so the next free slot in any CLI takes the oldest failure first.
 /// </summary>
 public sealed partial class MainlineTests(JsonStore store)
 {
@@ -170,6 +172,7 @@ public sealed partial class MainlineTests(JsonStore store)
             .Where(t => t.Status == TicketRules.Open && TestOf(t.Summary) is not null).ToList();
         // Compared as the summary holds them (one line, no '|'), so a parameterized test's name still matches its ticket.
         var passed = result.Passed.Select(OneLine).ToHashSet(StringComparer.Ordinal);
+        var filed = new List<string>();
         foreach (var f in result.Failed)
         {
             if (open.FirstOrDefault(t => TestOf(t.Summary) == OneLine(f.Test)) is { } already)
@@ -179,6 +182,7 @@ public sealed partial class MainlineTests(JsonStore store)
             }
             var t = db.Add(repo, "fix", TicketRules.Open, Summary(f, mainline, since), $"{mainline}@{Short(head)}");
             open.Add(t);
+            filed.Add(t.Id);
             said.Add($"filed {t.Id} in {repo}: {f.Test} fails on {mainline}");
         }
         foreach (var t in open.Where(t => TestOf(t.Summary) is { } test && passed.Contains(test)).ToList())
@@ -186,18 +190,44 @@ public sealed partial class MainlineTests(JsonStore store)
             db.Close(t.Id, TicketRules.Closed, $"passes on {mainline}@{Short(head)}");
             said.Add($"closed {t.Id} in {repo}: {TestOf(t.Summary)} passes on {mainline} again");
         }
+        if (filed.Count > 0) ToTheTop(db, filed);
         return said;
     }
 
-    /// <summary>The ticket's one line: the test, how it failed, and the commits landed since the last green run (their subjects
-    /// end with their tickets' IDs, so the fix starts from what just changed).</summary>
+    /// <summary>
+    /// Puts the failing-test tickets at the top of the whole workspace's queue (M.ORCH-T562), in the order they failed: the ones
+    /// already open (any repo) as the queue has them, then <paramref name="filed"/> as they failed, given descending priorities
+    /// all above the highest any other open ticket holds. Only a priority that changes is written.
+    /// </summary>
+    internal static void ToTheTop(TicketsDb db, IReadOnlyList<string> filed)
+    {
+        var queue = db.Queue();
+        var isNew = filed.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var failing = queue.Where(q => !isNew.Contains(q.Ticket.Id) && IsFailingTest(q.Ticket)).Select(q => q.Ticket.Id).Concat(filed).ToList();
+        var band = failing.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var top = Math.Max(0, queue.Where(q => !band.Contains(q.Ticket.Id)).Select(q => q.Priority).DefaultIfEmpty(0).Max());
+        for (var i = 0; i < failing.Count; i++) db.SetPriority(failing[i], top + failing.Count - i);
+    }
+
+    private static bool IsFailingTest(Ticket t) =>
+        t.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) && TestOf(t.Summary) is not null;
+
+    /// <summary>The ticket's one line: the test, how it failed, the tickets landed since the last green run and their commits,
+    /// so the fix starts from what just changed (M.ORCH-T562).</summary>
     internal static string Summary(Failure f, string mainline, string since)
     {
         var message = OneLine(f.Message);
         if (message.Length > 300) message = message[..297] + "...";
         if (message.Length == 0) message = "no message";
-        return OneLine($"{SummaryPrefix}{f.Test}{Separator}{message} (landed on {mainline} since the last green run: {(since.Length > 0 ? since : "not known")})");
+        var tickets = LandedTickets(since);
+        var landed = since.Length == 0 ? "not known"
+            : $"{(tickets.Count > 0 ? "tickets " + string.Join(", ", tickets) : "no ticket named")} in {since}";
+        return OneLine($"{SummaryPrefix}{f.Test}{Separator}{message} (landed on {mainline} since the last green run: {landed})");
     }
+
+    /// <summary>The ticket IDs the commit subjects in <paramref name="since"/> name, newest first as they're listed, each once.</summary>
+    internal static IReadOnlyList<string> LandedTickets(string since) =>
+        [.. since.Split("; ").SelectMany(c => TicketId().Matches(c).Select(m => m.Value)).Distinct(StringComparer.OrdinalIgnoreCase)];
 
     /// <summary>The test a ticket this filed is for; null for any other ticket.</summary>
     internal static string? TestOf(string summary)
@@ -233,11 +263,13 @@ public sealed partial class MainlineTests(JsonStore store)
         path.StartsWith("data/", StringComparison.OrdinalIgnoreCase) || path.StartsWith("docs/", StringComparison.OrdinalIgnoreCase) ||
         path.EndsWith(".md", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>The commits from <paramref name="from"/> (exclusive) to <paramref name="head"/>, newest first: "abc1234 Subject (ID); ...".</summary>
+    /// <summary>The commits from <paramref name="from"/> (exclusive) to <paramref name="head"/>, newest first: "abc1234 Subject (ID); ...".
+    /// Only those that changed code: a database sync or a ticket view (data, docs, markdown) isn't what broke a test.</summary>
     private string Since(string repo, string? from, string head)
     {
         if (from is null) return "";
-        var (code, output) = Git(repo, ["log", "--no-merges", "-n", "20", "--format=%h %s", $"{from}..{head}"]);
+        var (code, output) = Git(repo, ["log", "--no-merges", "-n", "20", "--format=%h %s", $"{from}..{head}", "--", ".",
+            ":(exclude)data", ":(exclude)docs", ":(exclude)*.md"]);
         return code != 0 ? "" : string.Join("; ", output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
     }
 
@@ -335,4 +367,7 @@ public sealed partial class MainlineTests(JsonStore store)
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex Whitespace();
+
+    [GeneratedRegex(@"\b(?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+\b")]
+    private static partial Regex TicketId();
 }

@@ -145,6 +145,35 @@ public sealed class MainlineTestsTests
     }
 
     [Test]
+    public void Failing_test_tickets_go_to_the_top_of_the_queue_in_the_order_they_failed_naming_the_landed_tickets()
+    {
+        // M.ORCH-T562: above every other open ticket, the first failure first; later failures queue behind earlier ones.
+        using (var db = TicketsDb.Open(TicketsDb.DefaultPath(dir))) db.SetPriority("A-T1", 5);
+        var tests = Make();
+        Tick(tests, Now);
+        head = "aaaaaaa2";
+        Tick(tests, Now.AddMinutes(1));
+        Assert.That(git.Single(a => a[0] == "log"), Does.Contain(":(exclude)data").And.Contain(":(exclude)*.md"), "only commits that changed code");
+        runs[0].SetResult(Result(["A.Tests.One", "A.Tests.Two"], []));
+        Tick(tests, Now.AddMinutes(2));
+
+        List<string> Order()
+        {
+            using var db = TicketsDb.Open(TicketsDb.DefaultPath(dir));
+            return [.. db.Queue().Select(q => q.Ticket.Id)];
+        }
+        Assert.That(Order(), Is.EqualTo(new[] { "A-T2", "A-T3", "A-T1" }));
+        Assert.That(Filed()[0].Summary, Does.Contain("since the last green run: tickets A-T7, A-T8 in bbbbbbb Fix the parser (A-T7)"));
+
+        // One still fails, Two passes (closed), Three fails for the first time: it goes behind One, still ahead of A-T1.
+        head = "aaaaaaa3";
+        Tick(tests, Now.AddMinutes(3));
+        runs[1].SetResult(Result(["A.Tests.One", "A.Tests.Three"], ["A.Tests.Two"]));
+        Tick(tests, Now.AddMinutes(4));
+        Assert.That(Order(), Is.EqualTo(new[] { "A-T2", "A-T4", "A-T1" }));
+    }
+
+    [Test]
     public void A_run_that_did_not_complete_files_and_closes_nothing()
     {
         var tests = Make();
@@ -221,6 +250,8 @@ public sealed class MainlineTestsTests
         Assert.That(summary, Does.StartWith("Fails on main: A.Tests.X(1/2) — line one line / two"));
         Assert.That(MainlineTests.TestOf(summary), Is.EqualTo("A.Tests.X(1/2)"));
         Assert.That(MainlineTests.TestOf("Fix the parser"), Is.Null);
+        Assert.That(MainlineTests.Summary(new MainlineTests.Failure("T", "m"), "main", "abc Sync (M.ORCH-T524); def Tidy"), Does.EndWith("tickets M.ORCH-T524 in abc Sync (M.ORCH-T524); def Tidy)"));
+        Assert.That(MainlineTests.Summary(new MainlineTests.Failure("T", "m"), "main", ""), Does.EndWith("green run: not known)"));
         Assert.That(MainlineTests.BuildErrors("ok\n  src/A.cs(3,1): error CS1002: ; expected\nmore"), Is.EqualTo("src/A.cs(3,1): error CS1002: ; expected"));
     }
 }
