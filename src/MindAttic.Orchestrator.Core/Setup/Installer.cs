@@ -179,23 +179,38 @@ public sealed class Installer
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), ShortcutName),
     ];
 
-    /// <summary>Start menu and desktop shortcuts to <paramref name="exe"/>, showing its embedded icon; only (re)written
-    /// when missing, pointing elsewhere or taking their icon from elsewhere.</summary>
+    /// <summary>What a source checkout's deploy.ps1 writes beside the installed exe: it redeploys when the source is newer,
+    /// then opens the app.</summary>
+    public const string LauncherName = "deploy.bat";
+
+    /// <summary>What the shortcuts open: the <see cref="LauncherName"/> beside <paramref name="exe"/> when there is one, so every
+    /// open runs the newest build; otherwise (a drag-and-drop install, no checkout) the exe itself.</summary>
+    public static string ShortcutTarget(string exe)
+    {
+        var launcher = Path.Combine(Path.GetDirectoryName(exe)!, LauncherName);
+        return File.Exists(launcher) ? launcher : exe;
+    }
+
+    /// <summary>Start menu and desktop shortcuts to <see cref="ShortcutTarget"/>, showing <paramref name="exe"/>'s embedded icon;
+    /// only (re)written when missing, pointing elsewhere or taking their icon from elsewhere.</summary>
     public static string? EnsureShortcuts(string exe)
     {
         var shellType = Type.GetTypeFromProgID("WScript.Shell");
         if (shellType is null) return null;
         dynamic shell = Activator.CreateInstance(shellType)!;
         var icon = exe + ",0";
+        var target = ShortcutTarget(exe);
         var made = 0;
         foreach (var path in ShortcutPaths())
         {
             dynamic link = shell.CreateShortcut(path);
-            if (File.Exists(path) && SamePath((string)link.TargetPath, exe)
+            if (File.Exists(path) && SamePath((string)link.TargetPath, target)
                 && SamePath(((string)link.IconLocation).Split(',')[0], exe)) continue;
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            link.TargetPath = exe;
+            link.TargetPath = target;
             link.IconLocation = icon;
+            // 7 = minimized: the launcher's console stays in the taskbar while it checks or rebuilds, not over the desktop.
+            link.WindowStyle = SamePath(target, exe) ? 1 : 7;
             link.WorkingDirectory = Path.GetDirectoryName(exe);
             link.Description = "Every agent session across the workspace: status, budget and pace, the ticket queue";
             link.Save();

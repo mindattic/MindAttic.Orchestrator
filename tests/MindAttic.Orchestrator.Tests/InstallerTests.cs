@@ -18,6 +18,21 @@ public sealed class InstallerTests
     }
 
     [Test]
+    public void The_shortcuts_open_the_redeploying_launcher_when_a_checkout_wrote_one_and_the_exe_otherwise()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"orch-shortcut-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var exe = Path.Combine(dir, Installer.ExeName);
+            Assert.That(Installer.ShortcutTarget(exe), Is.EqualTo(exe), "a drag-and-drop install has no launcher");
+            File.WriteAllText(Path.Combine(dir, Installer.LauncherName), "@echo off");
+            Assert.That(Installer.ShortcutTarget(exe), Is.EqualTo(Path.Combine(dir, Installer.LauncherName)));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Test]
     public void No_logon_task_is_registered_any_more()
     {
         // M.ORCH-T475: the task (and its XML) is gone; only its name is kept, to end and delete one an older install left.
