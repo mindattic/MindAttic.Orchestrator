@@ -1632,6 +1632,7 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T03:44:27Z', 62, '2026-10-21T06:30:00Z', 10348700);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T03:44:36Z', 62, '2026-10-21T06:30:00Z', 10352279);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T03:48:15Z', 63, '2026-10-21T06:30:00Z', 10401960);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T03:52:22Z', 64, '2026-10-21T06:30:00Z', 10466554);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -1811,11 +1812,11 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-19', 'ProcessLogger', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 105732);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-19', 'Prose', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 91497);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-19', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 689564);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 31069373);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 31132763);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'GTFO.EZ', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4807881);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'MindAttic.Launcher', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 186545);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'MindAttic.Legion', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 284349);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 22613985);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 22902883);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'MindAttic.Tickets', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 686640);
 
 -- ticket_costs
@@ -2179,6 +2180,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share) VALUES ('852b98be-444e-4500-b84c-d2f69e073fad/agent-a5f5da228131771aa', 'UM-T17', 'chore', '(workspace root)', 442755, '2026-10-21T02:47:56.275Z', 0);
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share) VALUES ('852b98be-444e-4500-b84c-d2f69e073fad/agent-a694ed3406d6cdbc2', 'U.SPC-T317', 'fix', '(workspace root)', 186630, '2026-10-21T02:34:04.641Z', 0);
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share) VALUES ('852b98be-444e-4500-b84c-d2f69e073fad/agent-a6d053950e81b554f', 'U.EVE-T16', 'chore', '(workspace root)', 334084, '2026-10-21T02:51:20.809Z', 0);
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share) VALUES ('852b98be-444e-4500-b84c-d2f69e073fad/agent-a7c61807ecfa6a779', 'GG-T80', 'docs', '(workspace root)', 65943, '2026-10-21T03:56:10.395Z', 0);
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share) VALUES ('852b98be-444e-4500-b84c-d2f69e073fad/agent-a8101f8beb944b357', 'U.SPC-T361', 'chore', '(workspace root)', 1183865, '2026-10-21T02:57:31.461Z', 0);
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share) VALUES ('852b98be-444e-4500-b84c-d2f69e073fad/agent-a8bc6920dfb3b543c', 'UM-T35', 'chore', 'GridGameGaiden', 199211, '2026-10-21T01:58:15.205Z', 0);
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share) VALUES ('852b98be-444e-4500-b84c-d2f69e073fad/agent-aa83e1bbe25c5dc8d', 'U.SPC-T319', 'fix', 'GridGameGaiden', 107672, '2026-10-21T02:15:45.505Z', 0);
@@ -2378,6 +2380,7 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session) VALUES (1, 'M.ORCH-T563', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic.worktrees\MindAttic.Orchestrator\M.ORCH-T563', 'Claude', '2026-10-21T03:14:08.3618975Z', 1, NULL, NULL, NULL, 41340, '5c92ef58-99eb-4513-9909-e772f015b71b');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session) VALUES (2, 'M.ORCH-T565', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic.worktrees\MindAttic.Orchestrator\M.ORCH-T565', 'Claude', '2026-10-21T03:18:18.5241048Z', 1, NULL, NULL, NULL, 41340, '5c92ef58-99eb-4513-9909-e772f015b71b');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session) VALUES (3, 'M.ORCH-T559', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic.worktrees\MindAttic.Orchestrator\M.ORCH-T559', 'Claude', '2026-10-21T03:18:18.5241048Z', 1, NULL, NULL, NULL, 41340, '5c92ef58-99eb-4513-9909-e772f015b71b');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session) VALUES (4, 'GG-T80', 'Unity.GridGame', 'D:\Projects\MindAttic.worktrees\Unity.GridGame\GG-T80', 'Claude', '2026-10-21T03:53:30.1892013Z', 1, NULL, NULL, NULL, 40368, '852b98be-444e-4500-b84c-d2f69e073fad');
 
 -- state
 INSERT INTO state (name, value) VALUES ('audit', '{
