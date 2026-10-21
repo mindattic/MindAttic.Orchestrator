@@ -39,6 +39,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         using var wakeLease = new DispatchLease(store.Directory, LimitWaker.LeaseName, store.Db);
         using var ledgerLease = new DispatchLease(store.Directory, PaceLedgerWatch.LeaseName, store.Db);
         using var remindLease = new DispatchLease(store.Directory, Reminders.ReminderSender.LeaseName, store.Db);
+        // Each repo's full suite on its main line after a landing, with no LLM (M.ORCH-T561); one daemon runs them.
+        using var testsLease = new DispatchLease(store.Directory, MainlineTests.LeaseName, store.Db);
+        var mainTests = new MainlineTests(store);
         var reminders = new Reminders.ReminderSender(store, new Reminders.PsstClient(Runner), (level, line) => Say(level, line), (title, message, urgent) => Alert(title, message, urgent));
         string? lastPaused = null;
         cycler.Prune(DateTime.UtcNow);
@@ -231,6 +234,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
                 ReportAutopilot(autopilot.Tick(plan, snapshot, s, DateTime.UtcNow));
                 tick.Lap("autopilot");
+                RunMainlineTests(mainTests, testsLease, snapshot, s, options.WorkspaceRoot);
+                tick.Lap("main-line tests");
                 // Keyed without its numbers: a hold whose percent ticks 93 → 94 is the same hold, not a new line (found live: 46 lines in 2h).
                 var pausedKey = autopilot.Paused is null ? null : Digits().Replace(autopilot.Paused, "#");
                 if (autopilot.On && pausedKey != lastPaused)
@@ -254,6 +259,26 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             WaitForNextRefresh(interval, cancel);
         }
         Say(LogEventLevel.Information, "daemon stopped");
+    }
+
+    /// <summary>
+    /// Starts each repo's full suite on its main line once something landed there, and reports the runs that finished, failing
+    /// tests filed as fix tickets (<see cref="MainlineTests"/>). Runs go on their own threads: the tick only reads refs. Finished
+    /// runs are reported whoever holds the lease; only its holder starts new ones.
+    /// </summary>
+    private void RunMainlineTests(MainlineTests tests, DispatchLease lease, Snapshot snapshot, OrchestratorSettings s, string workspaceRoot)
+    {
+        try
+        {
+            var repos = snapshot.Repos.Where(r => r.Path.Length > 0 && !r.Name.StartsWith('('))
+                .GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase).Select(g => (g.Key, g.First().Path));
+            foreach (var line in tests.Tick(repos, s.WorktreeRoot, () => MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(workspaceRoot), DateTime.UtcNow, lease.TryAcquire()))
+                Say(line.Warn ? LogEventLevel.Warning : LogEventLevel.Information, line.Text);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException)
+        {
+            Say(LogEventLevel.Warning, $"main tests: {ex.Message}");
+        }
     }
 
     /// <summary>Logs each CLI woken after its window reset; one it couldn't type into raises the Needs-you alert instead.</summary>
