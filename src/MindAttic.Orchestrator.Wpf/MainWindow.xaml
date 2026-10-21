@@ -188,7 +188,9 @@
                                             </Style.Triggers>
                                         </Style>
                                     </Button.Style>
-                                    <Grid>
+                                    <!-- McToolButton (the row's Style) sets FontFamily to the icon font, which inherits down to
+                                         every cell unless reset here: only the Icon TextBlock below wants that font. -->
+                                    <Grid TextElement.FontFamily="Segoe UI">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="22" />
                                             <ColumnDefinition Width="230" />
