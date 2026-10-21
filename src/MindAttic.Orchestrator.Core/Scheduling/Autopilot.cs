@@ -223,7 +223,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// session is tied to the ticket), lands the branch on main itself, then closes the ticket in the ticket
     /// database (the same database from any folder, worktrees included).
     /// </summary>
-    internal static string PromptFor(QueueItem item, string worktree, string branch, string mainline = "main") =>
+    internal static string PromptFor(QueueItem item, string worktree, string branch, string mainline = "main", ModelChoice.Choice? model = null) =>
         $"Work on ticket {item.Id} ({item.Ticket.Type}): {item.Ticket.Summary} " +
         $"You have your own git worktree of {item.Repo} ({worktree}, branch {branch}) so other agents can work {item.Repo} at the same time: " +
         "run every command from that folder (cd there first) and edit only files under it; work, build and test only there. " +
@@ -233,11 +233,20 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         // (MainlineTests), so the subagent's slot goes to the next ticket as soon as its own work is done.
         "When it's done: build, and run only the tests your change touches (the tests of the code you changed), not the whole suite: " +
         $"once you land, the orchestrator runs {item.Repo}'s full suite on {mainline} itself and files a fix ticket for any test that fails, so don't wait for a full run. " +
-        $"Then run /commit, but don't push (the next step does). Land it on {item.Repo}'s main line, {mainline}: git fetch origin, git rebase origin/{mainline} (resolve any conflicts, then rebuild and rerun those tests), git push origin HEAD:{mainline}. " +
+        "Then run /commit, but don't push (the next step does). " +
+        // M.ORCH-T563: a Sonnet ticket's big or risky diff gets one Opus review of the diff alone before it lands.
+        (model is { IsSonnet: true } ? ReviewStep(item.Id) : "") +
+        $"Land it on {item.Repo}'s main line, {mainline}: git fetch origin, git rebase origin/{mainline} (resolve any conflicts, then rebuild and rerun those tests), git push origin HEAD:{mainline}. " +
         // Found live (M.ORCH-T178): chained after the push, a rejected push (main moved) still closed the ticket, unlanded, on a pre-rebase hash.
         $"If the push is rejected because {mainline} moved, fetch, rebase and push again. Only once the push has succeeded, as its own step, " +
         $"mark it finished: tickets ticket close {item.Id} --ref <the test, or the commit hash as it landed on {mainline}>. " +
         "If you can't finish or land it, leave the ticket open and say why.";
+
+    /// <summary>What a Sonnet ticket's prompt says between its commit and its landing (M.ORCH-T563).</summary>
+    internal static string ReviewStep(string id) =>
+        $"Then, before landing, run orchestrator review {id} from the worktree: it decides whether this Sonnet ticket's diff needs its one Opus " +
+        "review (a big diff, or one touching the gates, pacing or git landing) and, if so, runs it on the diff alone. Fix what the review " +
+        "finds that's really wrong, rerun the tests it touches and commit that; don't run the review again. ";
 
     /// <summary>
     /// Agents that exited. A worktree agent is done when its ticket is closed (in the ticket database, or on origin/main
@@ -364,14 +373,16 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         return (closed, note);
     }
 
-    /// <summary>A ticket handed to a CLI's subagent: where it works and what it's told.</summary>
-    public sealed record Handout(QueueItem Item, string? Worktree, string? Prompt);
+    /// <summary>A ticket handed to a CLI's subagent: where it works, what it's told, and the model it runs on (M.ORCH-T563).</summary>
+    public sealed record Handout(QueueItem Item, string? Worktree, string? Prompt, ModelChoice.Choice? Model = null);
 
     /// <summary>What <c>orchestrator next --claim</c> ends with once it claimed some (M.ORCH-T529: a CLI held two claims unstarted
-    /// to avoid merge conflicts while the window ran under its target): start every one now, at once.</summary>
+    /// to avoid merge conflicts while the window ran under its target): start every one now, at once, each on its model.</summary>
     public static string StartAllLine(int claimed) => claimed == 1
-        ? "Start a subagent on this ticket now, with the prompt above. Claimed, it's this CLI's to work: nothing else will."
-        : $"Start all {claimed} now: one subagent per ticket above, all in one message, each with its own prompt. Don't hold one back " +
+        ? "Start a subagent on this ticket now, with the prompt above, on the model it names (the Agent tool's model: sonnet or opus). " +
+          "Claimed, it's this CLI's to work: nothing else will."
+        : $"Start all {claimed} now: one subagent per ticket above, all in one message, each with its own prompt and on the model it names " +
+          "(the Agent tool's model: sonnet or opus). Don't hold one back " +
           "because its files overlap another's: each works in its own worktree and rebases onto main as it lands. Claimed, they're " +
           "this CLI's to work: nothing else will.";
 
@@ -501,9 +512,10 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 capped.Add(item.Repo);
                 continue;
             }
+            var model = ModelChoice.For(item.Ticket, item.Repo, settings);
             if (!claim)
             {
-                handed.Add(new Handout(item, null, null));
+                handed.Add(new Handout(item, null, null, model));
                 inRepo[item.Repo] = inRepo.GetValueOrDefault(item.Repo) + 1;
                 continue;
             }
@@ -520,10 +532,10 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             {
                 if (all.Any(a => a.TicketId == item.Id && a != item.Assignment)) { taken = true; return; }
                 all.RemoveAll(a => a.TicketId == item.Id);
-                all.Add(new Assignment(item.Id, item.Repo, tree, Providers.Claude, nowUtc, true) { Cli = cli, CliSession = self });
+                all.Add(new Assignment(item.Id, item.Repo, tree, Providers.Claude, nowUtc, true) { Cli = cli, CliSession = self, Model = model.Model });
             });
             if (taken) { claimedElsewhere++; continue; }
-            handed.Add(new Handout(item, tree, PromptFor(item, tree, branch, mainlineOf(item.RepoPath))));
+            handed.Add(new Handout(item, tree, PromptFor(item, tree, branch, mainlineOf(item.RepoPath), model), model));
             inRepo[item.Repo] = inRepo.GetValueOrDefault(item.Repo) + 1;
         }
         return (handed, handed.Count > 0 ? null

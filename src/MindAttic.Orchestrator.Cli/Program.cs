@@ -63,14 +63,15 @@ internal static class CliApp
             config.AddCommand<SettingsCommand>("settings").WithDescription("Show or change scheduler settings.");
             config.AddCommand<AuditCommand>("audit").WithDescription("Find drift in shared agent files and code duplicated across repos.");
             config.AddCommand<BlockCommand>("block").WithDescription("Make a ticket wait for others (--by X-T1), or --clear it.");
-            config.AddCommand<NextCommand>("next").WithDescription("The next tickets a CLI running /allocate hands its subagents (--claim: worktree, assignment and prompt).");
+            config.AddCommand<NextCommand>("next").WithDescription("The next tickets a CLI running /allocate hands its subagents, each with its model (--claim: worktree, assignment and prompt).");
+            config.AddCommand<ReviewCommand>("review").WithDescription("From a Sonnet ticket's worktree: its one Opus review of the diff before it lands, when the diff is big or touches risky files (--dry-run only says).");
             config.AddCommand<ApproveCommand>("approve").WithDescription("Approve tickets for work (fixes need none); with no ids, list what's waiting for your yes. --undo takes it back.");
             config.AddCommand<ReserveCommand>("reserve").WithDescription("Set aside tokens for a ticket so background work can't spend them first (0 releases).");
             config.AddCommand<DryRunCommand>("dryrun").WithDescription("Show what /allocate would start right now, without starting anything.");
             config.AddCommand<ShowCommand>("show").WithDescription("A ticket end to end: its row, the sessions that worked on it, and its commits (--diff for the full diff).");
             config.AddCommand<HygieneCommand>("hygiene").WithDescription("Closed tickets that may not be done: no Ref cited, or a later ticket says it came back.");
             config.AddCommand<IntakeCommand>("intake").WithDescription("File GitHub issues labelled orchestrator and CI failures on main as tickets (--dry-run to preview).");
-            config.AddCommand<ReportCommand>("report").WithDescription("Uncached tokens by week, repo, provider and ticket type; --csv writes it out.");
+            config.AddCommand<ReportCommand>("report").WithDescription("Uncached tokens by week, repo, provider and ticket type, and cost per completed ticket by model; --csv writes it out.");
             config.AddCommand<BillingCommand>("billing").WithDescription("Who every CLI bills (Claude Team or the Vault's API key) and each open CLI's own billing; team or api switches every CLI.");
             config.AddCommand<AccountsCommand>("accounts").WithDescription("Every Claude account signed in to here: weekly % used and left, its reset, the 5-hour % and reset, and when each was last read (orchestrator.db).");
             config.AddCommand<LoginCommand>("login").WithDescription("The account roster (as the dashboard's account menu shows it); with an email or short name, opens that account's login (claude auth login --email); --account <email> signs in a per-CLI login of its own instead; --api-key bills the Vault's API key.");

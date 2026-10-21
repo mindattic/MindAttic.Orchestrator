@@ -127,9 +127,9 @@ public static class OrchestratorHistory
     public static List<SessionCost> LoadTicketCosts(this OrchestratorDb db)
     {
         using var connection = db.Open();
-        return Read(connection, "SELECT session_id, ticket_id, type, repo, fresh, last_utc, own_share FROM ticket_costs;",
+        return Read(connection, "SELECT session_id, ticket_id, type, repo, fresh, last_utc, own_share, model FROM ticket_costs;",
             r => new SessionCost(r.GetString(0), r.GetString(1), r.IsDBNull(2) ? null : r.GetString(2), r.GetString(3), r.GetInt64(4),
-                Time(r.GetString(5)), r.GetInt64(6) != 0))
+                Time(r.GetString(5)), r.GetInt64(6) != 0, r.IsDBNull(7) ? null : r.GetString(7)))
             .OrderBy(s => s.LastUtc).ThenBy(s => s.SessionId, StringComparer.Ordinal).ToList();
     }
 
@@ -143,9 +143,9 @@ public static class OrchestratorHistory
 
     private static void InsertCost(SqliteConnection connection, SqliteTransaction tx, SessionCost c, bool replace) =>
         Run(connection, tx,
-            $"INSERT OR {(replace ? "REPLACE" : "IGNORE")} INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share) VALUES ($id, $ticket, $type, $repo, $fresh, $last, $own);",
+            $"INSERT OR {(replace ? "REPLACE" : "IGNORE")} INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ($id, $ticket, $type, $repo, $fresh, $last, $own, $model);",
             ("$id", c.SessionId), ("$ticket", c.TicketId), ("$type", c.Type), ("$repo", c.Repo), ("$fresh", c.Fresh), ("$last", Text(c.LastUtc)),
-            ("$own", c.OwnShare ? 1 : 0));
+            ("$own", c.OwnShare ? 1 : 0), ("$model", c.Model));
 
     // ---- gate_events (M.ORCH-T526) ----
 

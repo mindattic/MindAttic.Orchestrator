@@ -195,6 +195,28 @@ public sealed record OrchestratorSettings
 
     /// <summary>Manual priorities of tickets the ticket database doesn't hold, like <see cref="StoryApproved"/>.</summary>
     public Dictionary<string, long> StoryPriorities { get; init; } = [];
+
+    /// <summary>The model a ticket's subagent runs on, by ticket id or repo (a name or a wildcard like <c>GTFO.*</c>) → "sonnet"
+    /// or "opus" (M.ORCH-T563). A ticket's entry wins over its repo's; with neither, <see cref="Scheduling.ModelChoice"/> picks.</summary>
+    public Dictionary<string, string> ModelOverrides { get; init; } = [];
+
+    /// <summary>Lines changed (added + removed) past which a Sonnet ticket's diff gets one Opus review before it lands. 0 reviews
+    /// every Sonnet diff; a negative number none for size (risky files still are).</summary>
+    public int ReviewDiffLines { get; init; } = 300;
+
+    /// <summary>Files whose change by a Sonnet ticket always gets one Opus review before it lands: the gates, pacing and git
+    /// landing. Wildcards (<c>*</c>, <c>?</c>) match against the path as git prints it, folders included.</summary>
+    public List<string> RiskyFiles { get; init; } = [.. DefaultRiskyFiles];
+
+    public static IReadOnlyList<string> DefaultRiskyFiles { get; } =
+    [
+        // The gates: the hooks every CLI runs, and what writes them.
+        "*AgentGate*.cs", "*pace-gate*", "*context-gate*", "*commit-msg*", "*/hooks/*",
+        // Pacing.
+        "*/Budget/Pacer.cs", "*/Budget/BudgetCalculator.cs", "*/Budget/PaceLedger*.cs", "*/Scheduling/SubagentShare.cs", "*RateLimitStatus*",
+        // Git landing.
+        "*/Scheduling/Dispatcher.cs", "*/Scheduling/Autopilot.cs", "*land*.ps1", "*deploy.ps1",
+    ];
 }
 
 /// <summary>A ticket the orchestrator has handed to a session.</summary>
@@ -216,6 +238,12 @@ public sealed record Assignment(string TicketId, string Repo, string Directory, 
 
     /// <summary>The claiming CLI's session at the claim (its newest, as the context gate recorded it); null when unknown.</summary>
     public string? CliSession { get; init; }
+
+    /// <summary>The model the claim's subagent was told to run on ("sonnet" or "opus", M.ORCH-T563); null for anything else.</summary>
+    public string? Model { get; init; }
+
+    /// <summary>When its diff had its one Opus review (<c>orchestrator review</c>); null before it has.</summary>
+    public DateTime? ReviewedUtc { get; init; }
 
     /// <summary>A claim for a CLI's subagent: a worktree, no background agent on it.</summary>
     [JsonIgnore]

@@ -189,7 +189,8 @@ internal sealed class DryRunCommand : Command
             var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, null, claim: false, DateTime.UtcNow,
                 self: cycler.LatestSessionOf(pid), handingOff: MindAttic.Orchestrator.Sessions.Handoff.Holding(cycler.Directory),
                 cli: pid, pilots: clis, onSince: since);
-            foreach (var h in handed) AnsiConsole.MarkupLine($"  next: {Markup.Escape(h.Item.Id)} in {Markup.Escape(h.Item.Repo)}: {Markup.Escape(h.Item.Ticket.Summary)}");
+            foreach (var h in handed) AnsiConsole.MarkupLine($"  next: {Markup.Escape(h.Item.Id)} in {Markup.Escape(h.Item.Repo)}" +
+                (h.Model is { } m ? $" on {m.Model}" : "") + $": {Markup.Escape(h.Item.Ticket.Summary)}");
             if (why is not null) AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(why)}[/]");
         }
         AnsiConsole.MarkupLine("[grey]Each CLI hands these to its own subagents (orchestrator next --claim). Nothing was claimed.[/]");
@@ -239,12 +240,46 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
         foreach (var h in handed)
         {
             Console.WriteLine($"=== {h.Item.Id} ({h.Item.Repo}, {h.Item.Ticket.Type}): {h.Item.Ticket.Summary}");
+            // M.ORCH-T563: the model /allocate starts this ticket's subagent on (the Agent tool's model).
+            if (h.Model is { } model) Console.WriteLine(ModelChoice.Line(model));
             if (h.Worktree is not null) Console.WriteLine($"worktree: {h.Worktree}");
             if (h.Prompt is not null) Console.WriteLine("prompt:\n" + h.Prompt + "\n");
         }
         if (why is not null) Console.WriteLine($"Nothing handed out: {why}.");
         // M.ORCH-T529: a CLI held two claims unstarted to avoid merge conflicts while the window went under its target.
         else if (settings.Claim && handed.Count > 0) Console.WriteLine(Autopilot.StartAllLine(handed.Count));
+        return 0;
+    }
+}
+
+/// <summary>A Sonnet ticket's one Opus review of its diff before it lands (M.ORCH-T563), run from the ticket's worktree.</summary>
+internal sealed class ReviewCommand : Command<ReviewCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandArgument(0, "<TICKET>")]
+        public string Ticket { get; init; } = "";
+
+        [CommandOption("--dry-run")]
+        [Description("Only say whether the diff gets its review, and why.")]
+        public bool DryRun { get; init; }
+
+        [CommandOption("--force")]
+        [Description("Review it whatever its size or model, even a second time.")]
+        public bool Force { get; init; }
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        var store = Ctx.Store();
+        var id = Ctx.Id(settings.Ticket);
+        var root = OrchestratorOptions.Load(store).WorkspaceRoot;
+        MindAttic.Orchestrator.Tickets.TicketQueue.Found? found;
+        using (var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(root))
+            found = MindAttic.Orchestrator.Tickets.TicketQueue.Find(db, root, id);
+        var outcome = DiffReview.Review(store, store.LoadSettings(), Environment.CurrentDirectory, id, found?.Ticket, found?.Repo,
+            settings.Force, settings.DryRun, DateTime.UtcNow);
+        Console.WriteLine(outcome.Text);
         return 0;
     }
 }

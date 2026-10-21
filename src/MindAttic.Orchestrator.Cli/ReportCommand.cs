@@ -35,6 +35,19 @@ internal sealed class ReportCommand : Command<ReportCommand.Settings>
         return (sb.ToString(), count);
     }
 
+    /// <summary>Cost per completed ticket by model (M.ORCH-T563): <paramref name="tickets"/> not in <paramref name="open"/>, by the
+    /// model that spent the most on each, so Sonnet's and Opus's can be compared.</summary>
+    internal static string ModelLine(IEnumerable<TicketCost> tickets, IReadOnlySet<string> open)
+    {
+        var done = tickets.Where(t => !open.Contains(t.TicketId)).ToList();
+        var byModel = TicketCosts.ByModel(done);
+        if (byModel.Count == 0) return "By model (completed tickets): none with a known model in this period yet.";
+        var unknown = done.Count(t => t.Model is null);
+        return "By model (completed tickets): " + string.Join(" · ", byModel.Select(m =>
+                $"{m.Model} {Formatting.Tokens(m.PerTicket)} per ticket over {m.Tickets} ticket{(m.Tickets == 1 ? "" : "s")} ({Formatting.Tokens(m.Fresh)} in all)")) +
+            (unknown > 0 ? $" · {unknown} more with no model known" : "");
+    }
+
     internal static DateOnly WeekOf(DateOnly d) => d.AddDays(-(((int)d.DayOfWeek + 6) % 7)); // Mondays
 
     public override int Execute(CommandContext context, Settings settings)
@@ -60,6 +73,9 @@ internal sealed class ReportCommand : Command<ReportCommand.Settings>
             ? "[grey]By ticket type: no dispatched tickets in this period yet.[/]"
             : "By ticket type (dispatched work): " + string.Join(" · ", tickets.GroupBy(t => t.Type ?? "?").OrderByDescending(g => g.Sum(t => t.Fresh))
                 .Select(g => $"{g.Key} {Formatting.Tokens(g.Sum(t => t.Fresh))} over {g.Count()} ticket{(g.Count() == 1 ? "" : "s")}")));
+
+        var open = snapshot.Repos.SelectMany(r => r.OpenTickets).Select(t => t.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        AnsiConsole.MarkupLine(Markup.Escape(ModelLine(tickets, open)));
 
         if (settings.Csv is { } csv)
         {

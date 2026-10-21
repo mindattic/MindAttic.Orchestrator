@@ -233,6 +233,14 @@ public sealed class OrchestratorDb(string path)
         """
         ALTER TABLE cli_marks ADD COLUMN since REAL;
         """,
+        // 10: the model each ticket is worked on (M.ORCH-T563): the one a claim's subagent was told to run on, and when its diff
+        // had its one Opus review; and the model each session's cost was spent on, so orchestrator report can compare what a
+        // completed ticket costs on Sonnet and on Opus. Rows already there keep NULL: not known.
+        """
+        ALTER TABLE assignments ADD COLUMN model TEXT;
+        ALTER TABLE assignments ADD COLUMN reviewed_utc TEXT;
+        ALTER TABLE ticket_costs ADD COLUMN model TEXT;
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a

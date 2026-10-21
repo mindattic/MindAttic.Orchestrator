@@ -95,8 +95,9 @@ public sealed record TranscriptSession(string SessionId, string Cwd, DateTime La
 /// CLI itself), and when that transcript was last written.</summary>
 public sealed record FiledTicket(string TicketId, string? AgentId, DateTime LastWriteUtc);
 
-/// <summary>A session's subagent that works a ticket of its own, with every response it made in the reader's window.</summary>
-public sealed record TicketedSubagent(string AgentId, string TicketId, string? TicketType, string Cwd, IReadOnlyList<UsageEvent> Events);
+/// <summary>A session's subagent that works a ticket of its own, with every response it made in the reader's window, and the
+/// model it ran on as its transcript names it (M.ORCH-T563), null when it names none.</summary>
+public sealed record TicketedSubagent(string AgentId, string TicketId, string? TicketType, string Cwd, IReadOnlyList<UsageEvent> Events, string? Model = null);
 
 public sealed record RepoStatus(
     string Name,

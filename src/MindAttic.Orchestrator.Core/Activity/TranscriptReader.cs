@@ -210,7 +210,7 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
                     TicketId = ticket.Id ?? own.Select(s => TicketAttribution.FromWorktree(s.Cwd, worktreeRoot)).FirstOrDefault(id => id is not null),
                     TicketType = ticket.Type,
                     TicketedSubagents = [.. g.Where(s => s.AgentId is not null && s.TicketId is not null)
-                        .Select(s => new TicketedSubagent(s.AgentId!, s.TicketId!, s.TicketType, s.Cwd!, [.. s.Events.OrderBy(e => e.AtUtc)]))],
+                        .Select(s => new TicketedSubagent(s.AgentId!, s.TicketId!, s.TicketType, s.Cwd!, [.. s.Events.OrderBy(e => e.AtUtc)], s.Model))],
                     Filing = [.. g.SelectMany(s => s.Filed.Select(id => new FiledTicket(id, s.AgentId, s.LastWriteUtc)))],
                     // Each transcript by itself: subagents running side by side each making the same call once isn't one
                     // agent repeating itself, nor are the calls a fork copied from its parent.

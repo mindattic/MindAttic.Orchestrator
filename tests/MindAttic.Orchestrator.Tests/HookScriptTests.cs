@@ -2423,9 +2423,10 @@ public sealed class HookScriptTests
         using (var old = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={path};Pooling=False"))
         {
             old.Open();
-            // A version-4 database has step 3's assignments table, which step 6 adds the claiming CLI to (M.ORCH-T532).
+            // A version-4 database has step 3's assignments table, which step 6 adds the claiming CLI to (M.ORCH-T532), and step
+            // 2's ticket_costs, which step 10 adds the model to (M.ORCH-T563).
             MindAttic.Orchestrator.Settings.OrchestratorDb.Execute(old, "CREATE TABLE settings (name TEXT PRIMARY KEY, value TEXT NOT NULL); " +
-                "CREATE TABLE assignments (position INTEGER PRIMARY KEY, ticket_id TEXT); PRAGMA user_version = 4;");
+                "CREATE TABLE assignments (position INTEGER PRIMARY KEY, ticket_id TEXT); CREATE TABLE ticket_costs (session_id TEXT PRIMARY KEY); PRAGMA user_version = 4;");
         }
         Status(new { subagent_allowance = 2, subagents_running = 0 });
         Assert.That(Gate(new { tool_name = "Agent", tool_input = new { prompt = "x" } }).Took, Is.LessThan(TimeSpan.FromSeconds(10)));

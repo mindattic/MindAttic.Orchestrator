@@ -245,8 +245,9 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
     public static string ClaimsPrompt(IReadOnlyList<QueueItem> items, double projected, int targetPercent) =>
         $"This 5-hour window is on course to end near {projected:0}%, under its {targetPercent}% target, and the pace has room for more subagents, " +
         $"but {(items.Count == 1 ? "a ticket" : $"{items.Count} tickets")} this CLI claimed {(items.Count == 1 ? "has" : "have")} had no subagent on {(items.Count == 1 ? "it" : "them")} " +
-        $"for {ClaimIdle.TotalMinutes:0}+ min: " + string.Join("; ", items.Select(i => $"{i.Id} (worktree {i.Assignment!.Directory})")) + ". " +
-        "Start a subagent on each now, all in one message, each with the prompt orchestrator next printed for it when it was claimed " +
+        $"for {ClaimIdle.TotalMinutes:0}+ min: " + string.Join("; ", items.Select(i =>
+            $"{i.Id} (worktree {i.Assignment!.Directory}{(i.Assignment.Model is { } m ? $", model {m}" : "")})")) + ". " +
+        "Start a subagent on each now, all in one message, each on the model named and with the prompt orchestrator next printed for it when it was claimed " +
         "(if that's gone: work the ticket only in that worktree, land it on main, then close it). Overlapping files are no reason to wait: " +
         "each rebases onto main as it lands. Then carry on with orchestrator next --claim.";
 
@@ -255,7 +256,7 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
     public static string Prompt(IReadOnlyList<string> repos, IReadOnlyList<string> ids) =>
         $"There's room to work again: orchestrator next has {ids.Count} workable ticket{(ids.Count == 1 ? "" : "s")} for this CLI's autopilot " +
         $"({string.Join(", ", ids.Take(6))}{(ids.Count > 6 ? "..." : "")}). Run `orchestrator next --repos '{string.Join(",", repos)}' --claim` and hand each ticket it prints " +
-        "to a subagent with the prompt it prints (several at once, in one message), then repeat. End your turn when it hands out nothing.";
+        "to a subagent with the prompt and on the model it prints (several at once, in one message), then repeat. End your turn when it hands out nothing.";
 
     /// <summary>When the context gate last wrote the session's state, its start included (1601 when it's gone since).</summary>
     private DateTime Written(string sessionId) => File.GetLastWriteTimeUtc(Path.Combine(cycler.Directory, sessionId + ".state.json"));

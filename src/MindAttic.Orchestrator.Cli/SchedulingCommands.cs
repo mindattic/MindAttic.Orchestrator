@@ -337,6 +337,18 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [CommandOption("--disk-critical-gb <GB>")]
         [Description("Free GB under which that alert is urgent (default 5).")]
         public double? DiskCriticalGb { get; init; }
+
+        [CommandOption("--model <REPO_OR_TICKET=MODEL>")]
+        [Description("The model /allocate starts a repo's (or one ticket's) subagents on, overriding the pick: Prose=opus, M.ORCH-T12=sonnet, GTFO.*=sonnet; =auto clears. A ticket's wins over its repo's. Repeatable.")]
+        public string[] Model { get; init; } = [];
+
+        [CommandOption("--review-lines <N>")]
+        [Description("Lines changed past which a Sonnet ticket's diff gets one Opus review before it lands (default 300; 0 reviews every one, -1 none for size).")]
+        public int? ReviewLines { get; init; }
+
+        [CommandOption("--risky-files <GLOBS>")]
+        [Description("Files whose change by a Sonnet ticket always gets that review, comma-separated wildcards: \"*AgentGate*.cs,*/Budget/Pacer.cs\"; \"default\" restores the gates, pacing and git landing; \"none\" clears.")]
+        public string? RiskyFiles { get; init; }
     }
 
     public override int Execute(CommandContext context, Settings settings)
@@ -453,6 +465,41 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = isCap ? s with { RepoBudgetPercent = map } : s with { RepoMaxSessions = map };
             changed = true;
         }
+        // M.ORCH-T563: which model a repo's or a ticket's subagents run on, and when a Sonnet ticket's diff gets its Opus review.
+        foreach (var opt in settings.Model)
+        {
+            var parts = opt.Split('=', 2);
+            if (parts.Length != 2 || parts[0].Trim().Length == 0 || ModelChoice.Parse(parts[1]) is not { } model)
+            {
+                AnsiConsole.MarkupLine($"[red]Use REPO=MODEL or TICKET=MODEL with sonnet, opus or auto, not \"{Markup.Escape(opt)}\".[/]");
+                return 1;
+            }
+            var key = parts[0].Trim();
+            var map = new Dictionary<string, string>(s.ModelOverrides, StringComparer.Ordinal);
+            foreach (var same in map.Keys.Where(k => k.Equals(key, StringComparison.OrdinalIgnoreCase)).ToList()) map.Remove(same);
+            if (model != ModelChoice.Auto) map[key] = model;
+            s = s with { ModelOverrides = map };
+            changed = true;
+        }
+        if (settings.ReviewLines is { } reviewLines)
+        {
+            if (reviewLines < -1) { AnsiConsole.MarkupLine("[red]--review-lines is -1 (none for size), 0 (every one) or more.[/]"); return 1; }
+            s = s with { ReviewDiffLines = reviewLines };
+            changed = true;
+        }
+        if (settings.RiskyFiles is { } risky)
+        {
+            s = s with
+            {
+                RiskyFiles = risky.Trim().ToLowerInvariant() switch
+                {
+                    "none" => [],
+                    "default" => [.. OrchestratorSettings.DefaultRiskyFiles],
+                    _ => [.. risky.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Distinct()],
+                },
+            };
+            changed = true;
+        }
         changed |= profile is not null || settings.PaceCurveK is not null;
         changed |= settings.MaxSessions is not null || settings.Autopilot is not null || settings.Provider is not null || settings.StaleHours is not null;
         if (changed && !readable)
@@ -490,6 +537,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (s.RepoBudgetPercent.Count > 0 ? " · repo caps " + Markup.Escape(string.Join(", ", s.RepoBudgetPercent.Select(kv => $"{kv.Key} {kv.Value}%"))) : "") +
             (s.Reservations.Count > 0 ? " · reserved " + Markup.Escape(string.Join(", ", s.Reservations.Select(kv => $"{kv.Key} {Formatting.Tokens(kv.Value)}"))) : "") +
             $" · groom after {s.GroomAfterDays} days");
+        AnsiConsole.MarkupLine("  models: Sonnet for fixes, failed tests and tightly specified changes, Opus for features, design and wide changes" +
+            (s.ModelOverrides.Count > 0 ? " · overrides " + Markup.Escape(string.Join(", ", s.ModelOverrides.Select(kv => $"{kv.Key} {kv.Value}"))) : "") +
+            " · a Sonnet diff gets one Opus review " + (s.ReviewDiffLines >= 0 ? $"past {s.ReviewDiffLines} lines or " : "") +
+            (s.RiskyFiles.Count > 0 ? $"touching {s.RiskyFiles.Count} risky file patterns" : "never for files (no risky files set)"));
         return 0;
     }
 }

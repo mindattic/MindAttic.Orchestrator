@@ -75,7 +75,10 @@ public sealed class LeaseTests
     }
 
     /// <summary>Undoes step 7 (M.ORCH-T532's claimer columns), so an older version's steps run again from there.</summary>
-    private const string DropStep7 = "ALTER TABLE assignments DROP COLUMN cli; ALTER TABLE assignments DROP COLUMN cli_session;";
+    private const string DropStep7 = DropStep10 + "ALTER TABLE assignments DROP COLUMN cli; ALTER TABLE assignments DROP COLUMN cli_session;";
+
+    /// <summary>Undoes step 10 (M.ORCH-T563's model columns).</summary>
+    internal const string DropStep10 = "ALTER TABLE assignments DROP COLUMN model; ALTER TABLE assignments DROP COLUMN reviewed_utc; ALTER TABLE ticket_costs DROP COLUMN model; ";
 
     [Test]
     public void Step_5_adds_the_subagent_slots_and_wants_to_a_version_4_database_and_keeps_what_it_held()
@@ -119,7 +122,7 @@ public sealed class LeaseTests
             command.CommandText = "SELECT count(*) FROM pragma_table_info('cli_marks') WHERE name = 'since';";
             Assert.That(command.ExecuteScalar(), Is.EqualTo(1L), "step 9 (M.ORCH-T558): when each CLI's mark was first written");
         }
-        Assert.That(OrchestratorDb.Version, Is.EqualTo(9), "step 8 (M.ORCH-T528) adds session_states, step 9 (M.ORCH-T558) cli_marks.since");
+        Assert.That(OrchestratorDb.Version, Is.EqualTo(10), "step 8 (M.ORCH-T528) adds session_states, step 9 (M.ORCH-T558) cli_marks.since, step 10 (M.ORCH-T563) the models");
         Assert.That(new JsonStore(dir, new OrchestratorDb(path)).LoadSettings().BlockBudget, Is.EqualTo(5555), "what it held is kept");
     }
 

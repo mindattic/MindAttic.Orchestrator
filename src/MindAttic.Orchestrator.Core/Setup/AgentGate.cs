@@ -1665,8 +1665,8 @@ public static class AgentGate
         If the arguments start with "off": reply with one short line confirming /allocate is off in this CLI (with -repo, just for those repos; "off all": in every CLI). Subagents already working finish their tickets. Then end your turn.
 
         Otherwise you work the tickets yourself, through subagents, now:
-        1. Run `orchestrator next --repos "<repos>" --claim`, where <repos> is the -repo list as typed (wildcards included), * for all, or this CLI's own repo when none are named; keep the quotes so no shell expands a wildcard. It claims the next workable tickets (fixes and tickets the user approved, in queue order, as many as the pace allows right now), makes each its own git worktree, and prints each ticket's id and a full prompt.
-        2. Start one subagent per ticket it printed, every one of them at once, all in one message, each with exactly the prompt printed for it (a general-purpose subagent, in the foreground). Don't hold a claimed ticket back because its files overlap another's: each works only in its own worktree, commits, rebases onto the repo's main line as it lands, and closes its ticket.
+        1. Run `orchestrator next --repos "<repos>" --claim`, where <repos> is the -repo list as typed (wildcards included), * for all, or this CLI's own repo when none are named; keep the quotes so no shell expands a wildcard. It claims the next workable tickets (fixes and tickets the user approved, in queue order, as many as the pace allows right now), makes each its own git worktree, and prints each ticket's id, its `model:` line and a full prompt.
+        2. Start one subagent per ticket it printed, every one of them at once, all in one message, each with exactly the prompt printed for it and on the model its `model:` line names (the Agent tool's model: sonnet or opus; a general-purpose subagent, in the foreground). Don't hold a claimed ticket back because its files overlap another's: each works only in its own worktree, commits, rebases onto the repo's main line as it lands, and closes its ticket.
         3. When they've returned, say in one line per ticket what happened, and go back to step 1.
         4. Stop when `orchestrator next` hands out nothing (it says why: none left, waiting for approval, or the pace), and say so in one short line. Don't start anything else on your own. Nothing works these tickets in the background: it's this CLI's own subagents or nobody. /allocate stays on here, so when this turn ends while the repos still have workable tickets and the pace has room, the orchestrator sends this CLI back to step 1; /allocate off stops that.
         """;
@@ -2486,7 +2486,7 @@ public static class AgentGate
             return ("Don't stop: /allocate is on in this CLI for " + repo + ", and " + str(len(ids)) + " workable ticket" +
                     ("" if len(ids) == 1 else "s") + " remain (" + ", ".join(ids[:6]) + ("..." if len(ids) > 6 else "") + "). "
                     "Run `orchestrator next --repos \"" + ",".join(repos) + "\" --claim` and hand each ticket it prints to a subagent with the "
-                    "prompt it prints (several at once, in one message), then repeat. End your turn only when it hands out nothing, "
+                    "prompt it prints, on the model it names (several at once, in one message), then repeat. End your turn only when it hands out nothing, "
                     "or you're blocked on a decision only the user can make, and then say plainly what it is.")
 
         def restore_autopilot(pid, cwd, h):
