@@ -368,6 +368,13 @@
                 <ToggleButton Style="{StaticResource MaPillToggle}" VerticalAlignment="Center"
                               IsChecked="{Binding ShowQuiet}" Content="Show quiet repos"
                               Visibility="{Binding IsReposView, Converter={StaticResource Visible}}" />
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0"
+                            Visibility="{Binding IsReposView, Converter={StaticResource Visible}}">
+                    <TextBlock Text="Sort by" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <ListBox Style="{StaticResource MaPillChoice}" ItemsSource="{Binding RepoSorts}" Padding="0"
+                             SelectedItem="{Binding RepoSort}" VerticalAlignment="Center" Margin="0,6,0,0"
+                             AutomationProperties.Name="Sort repos by" />
+                </StackPanel>
             </WrapPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="{Binding Zoom.Text}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="0,0,12,0"

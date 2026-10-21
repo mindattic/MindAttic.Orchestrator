@@ -54,6 +54,7 @@ public sealed partial class MainViewModel : ObservableObject
     private bool refreshing;
     private string search = "";
     private bool showQuiet;
+    private string repoSort = SortByName;
     private Focus focus;
     private RepoTileViewModel? selected;
     private string provider = "Claude";
@@ -66,7 +67,7 @@ public sealed partial class MainViewModel : ObservableObject
         lease = new DispatchLease(store.Directory, db: store.Db);
         aggregator = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter { Db = store.Db }, lease);
         control = new SessionControl(aggregator.Options);
-        Waiting = new("Needs you", "Sessions that stopped and are waiting for input, longest wait first", Palette.Waiting);
+        Waiting = new("Needs you", "Sessions that stopped and are waiting for input", Palette.Waiting);
         Working = new("Working", "Agents mid-turn right now", Palette.Working);
         Tickets = new("Open tickets, no session", "Work that's queued but nobody's on", Palette.Tickets);
         Quiet = new("Quiet", "No session and no open tickets", Palette.Quiet);
@@ -89,6 +90,7 @@ public sealed partial class MainViewModel : ObservableObject
         ClearSearchCommand = new RelayCommand(() => Search = "");
         OpenInTicketsCommand = new RelayCommand(p => OpenInTickets(p as string));
         InitPhases();
+        if (store.Load<ReposView>(ReposViewName).Sort is { } sort && RepoSorts.Contains(sort)) repoSort = sort;
     }
 
     public TileGroupViewModel Waiting { get; }
@@ -129,6 +131,26 @@ public sealed partial class MainViewModel : ObservableObject
     public string Search { get => search; set { if (Set(ref search, value)) Regroup(); } }
     public bool ShowQuiet { get => showQuiet; set { if (Set(ref showQuiet, value)) Regroup(); } }
     public Focus Focus { get => focus; private set => Set(ref focus, value); }
+
+    public const string SortByName = "Name", SortByTickets = "Open tickets";
+    public IReadOnlyList<string> RepoSorts { get; } = [SortByName, SortByTickets];
+
+    private const string ReposViewName = "dashboard-repos";
+    private sealed class ReposView { public string? Sort { get; init; } }
+
+    /// <summary>How the repo cards are ordered within each section (M.ORCH-T593); kept for the next time the window opens.</summary>
+    public string RepoSort
+    {
+        get => repoSort;
+        set
+        {
+            // Ctrl+click on the selected pill deselects it, writing null: it stays on the one it was.
+            if (value is null || !Set(ref repoSort, value)) return;
+            try { store.Save(ReposViewName, new ReposView { Sort = value }); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            Regroup();
+        }
+    }
 
     public RepoTileViewModel? Selected
     {
@@ -333,17 +355,18 @@ public sealed partial class MainViewModel : ObservableObject
          tickets > 0 && focus is Focus.All or Focus.Tickets,
          quiet > 0 && focus is Focus.All && (showQuiet || !string.IsNullOrWhiteSpace(search)));
 
+    /// <summary>A section's cards in <paramref name="sort"/>'s order: by name, or most open tickets first and then by name.</summary>
+    internal static IEnumerable<RepoTileViewModel> Sorted(IEnumerable<RepoTileViewModel> tiles, string sort) =>
+        (sort == SortByTickets ? tiles.OrderByDescending(t => t.OpenTicketCount) : tiles.OrderBy(_ => 0))
+            .ThenBy(t => t.Name, StringComparer.OrdinalIgnoreCase);
+
     private void Regroup()
     {
         var visible = tiles.Values.Where(t => t.Matches(Search)).ToList();
-        Waiting.Tiles.ReorderTo([.. visible.Where(t => t.State == RepoState.Waiting)
-            .OrderBy(t => t.Status?.LastActivityUtc ?? DateTime.MaxValue)]);
-        Working.Tiles.ReorderTo([.. visible.Where(t => t.State == RepoState.Working)
-            .OrderByDescending(t => t.TokensToday)]);
-        Tickets.Tiles.ReorderTo([.. visible.Where(t => t.State == RepoState.Dormant && t.OpenTicketCount > 0)
-            .OrderByDescending(t => t.OpenTicketCount).ThenBy(t => t.Name, StringComparer.OrdinalIgnoreCase)]);
-        Quiet.Tiles.ReorderTo([.. visible.Where(t => t.State == RepoState.Dormant && t.OpenTicketCount == 0)
-            .OrderByDescending(t => t.Status?.LastActivityUtc ?? DateTime.MinValue).ThenBy(t => t.Name, StringComparer.OrdinalIgnoreCase)]);
+        Waiting.Tiles.ReorderTo([.. Sorted(visible.Where(t => t.State == RepoState.Waiting), RepoSort)]);
+        Working.Tiles.ReorderTo([.. Sorted(visible.Where(t => t.State == RepoState.Working), RepoSort)]);
+        Tickets.Tiles.ReorderTo([.. Sorted(visible.Where(t => t.State == RepoState.Dormant && t.OpenTicketCount > 0), RepoSort)]);
+        Quiet.Tiles.ReorderTo([.. Sorted(visible.Where(t => t.State == RepoState.Dormant && t.OpenTicketCount == 0), RepoSort)]);
 
         (Waiting.IsVisible, Working.IsVisible, Tickets.IsVisible, Quiet.IsVisible) =
             GroupVisibility(Waiting.Count, Working.Count, Tickets.Count, Quiet.Count, Focus, ShowQuiet, Search);

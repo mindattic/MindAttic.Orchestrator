@@ -49,6 +49,17 @@ public sealed class DashboardViewModelTests
         Assert.That(MainViewModel.UtilizationCaption(null, loaded: false), Is.Empty, "only before the first snapshot is it collapsed");
     }
 
+    // ── Repo sort (M.ORCH-T593) ─────────────────────────────────────────────
+
+    [Test]
+    public void Repo_cards_sort_by_name_ignoring_case_or_by_open_tickets_then_name()
+    {
+        RepoTileViewModel[] tiles = [Tile("zeta", open: T("Z-T1")), Tile("Beta", open: [T("B-T1"), T("B-T2")]),
+                                     Tile("alpha", open: T("A-T1")), Tile("Gamma", open: [T("G-T1"), T("G-T2")])];
+
+        Assert.That(MainViewModel.Sorted(tiles, MainViewModel.SortByName).Select(t => t.Name), Is.EqualTo(new[] { "alpha", "Beta", "Gamma", "zeta" }));
+        Assert.That(MainViewModel.Sorted(tiles, MainViewModel.SortByTickets).Select(t => t.Name), Is.EqualTo(new[] { "Beta", "Gamma", "alpha", "zeta" }));    }
+
     // ── Regroup visibility ──────────────────────────────────────────────────
 
     [Test]
