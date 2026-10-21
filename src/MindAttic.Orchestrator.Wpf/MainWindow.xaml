@@ -65,7 +65,7 @@
 
         <Style x:Key="AccountMenuHeading" TargetType="{x:Type TextBlock}" BasedOn="{StaticResource MaMutedText}">
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Margin" Value="10,0,10,4" />
+            <Setter Property="Margin" Value="0,0,10,4" />
         </Style>
 
         <!-- The account menu's row text (M.ORCH-T568): the signed-in row's whole line turns green instead of a separate
@@ -160,7 +160,8 @@
                AllowsTransparency="True" StaysOpen="False" Focusable="False" PopupAnimation="Fade">
             <Border Style="{StaticResource MaCard}" Padding="4,8" Margin="0">
                 <StackPanel>
-                    <Grid Margin="4,0,4,2">
+                    <!-- 8px sides: the rows' button Padding, so each heading starts where its cells do. -->
+                    <Grid Margin="8,0,8,2">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="22" />
                             <ColumnDefinition Width="300" />
