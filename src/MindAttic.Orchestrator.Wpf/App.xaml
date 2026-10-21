@@ -5,24 +5,24 @@
         <ResourceDictionary>
             <!-- Every control, text style, card, pill, focus ring, chart, scroll bar and colour comes from MindAttic.Components.Wpf
                  (M.ORCH-T499, M.ORCH-T531, M.ORCH-T181), whose palette meets WCAG 2.2 AA by itself (the text fields' 3:1
-                 McFieldBorder outline, McRec at 4.5:1) and follows Windows high contrast. Only the repo tile is the dashboard's own. -->
+                 MaFieldBorder outline, MaRec at 4.5:1) and follows Windows high contrast. Only the repo tile is the dashboard's own. -->
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/MindAttic.Components.Wpf;component/Theme.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="Visible" />
 
-            <!-- A repo tile: McTileButton with room for a state bar, two lines and a token count. -->
-            <Style x:Key="RepoTile" TargetType="Button" BasedOn="{StaticResource McTileButton}">
+            <!-- A repo tile: MaTileButton with room for a state bar, two lines and a token count. -->
+            <Style x:Key="RepoTile" TargetType="Button" BasedOn="{StaticResource MaTileButton}">
                 <!-- No width or margin: the repo grid (an AlignedGrid) sizes every tile and the gaps between them. -->
                 <Setter Property="Height" Value="78" />
                 <Setter Property="Margin" Value="0" />
                 <Setter Property="Padding" Value="0" />
                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                <Setter Property="FocusVisualStyle" Value="{StaticResource McFocusRing}" />
+                <Setter Property="FocusVisualStyle" Value="{StaticResource MaFocusRing}" />
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                        <Setter Property="BorderBrush" Value="{DynamicResource McFocus}" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource MaFocus}" />
                         <Setter Property="BorderThickness" Value="2" />
                     </DataTrigger>
                 </Style.Triggers>

@@ -4,18 +4,18 @@ using System.Windows.Media;
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
 /// <summary>What each repo and agent state is drawn in, for the view models that hand a brush to the view. The colours are
-/// MindAttic.Components.Wpf's own (M.ORCH-T181): working is McGood, waiting McWarn, tickets McLink, over McBad and quiet
-/// McMuted, each 4.5:1 or better on the theme's surfaces (WCAG 2.2 AA), and each swapped for the system colour by
-/// McHighContrast. Each is read from the theme when asked, so a brush handed out while high contrast is on is the high-contrast
+/// MindAttic.Components.Wpf's own (M.ORCH-T181): working is MaGood, waiting MaWarn, tickets MaLink, over MaBad and quiet
+/// MaMuted, each 4.5:1 or better on the theme's surfaces (WCAG 2.2 AA), and each swapped for the system colour by
+/// MaHighContrast. Each is read from the theme when asked, so a brush handed out while high contrast is on is the high-contrast
 /// one. The XAML refers to the same keys as DynamicResource. Colour never carries meaning on its own: a word or glyph says the
 /// same.</summary>
 public static class Palette
 {
-    public static Brush Working => Theme("McGood");
-    public static Brush Waiting => Theme("McWarn");
-    public static Brush Tickets => Theme("McLink");
-    public static Brush Quiet => Theme("McMuted");
-    public static Brush Over => Theme("McBad");
+    public static Brush Working => Theme("MaGood");
+    public static Brush Waiting => Theme("MaWarn");
+    public static Brush Tickets => Theme("MaLink");
+    public static Brush Quiet => Theme("MaMuted");
+    public static Brush Over => Theme("MaBad");
 
     public static Brush For(RepoState state, bool hasTickets) => state switch
     {
@@ -24,7 +24,7 @@ public static class Palette
         _ => hasTickets ? Tickets : Quiet,
     };
 
-    /// <summary>The app's brush for <paramref name="key"/> (the theme's, or McHighContrast's while it is on); outside the app
+    /// <summary>The app's brush for <paramref name="key"/> (the theme's, or MaHighContrast's while it is on); outside the app
     /// (tests) the library theme's own.</summary>
     private static Brush Theme(string key) =>
         Application.Current?.TryFindResource(key) as Brush ?? LibraryTheme.Value[key];
@@ -35,7 +35,7 @@ public static class Palette
         _ = System.IO.Packaging.PackUriHelper.UriSchemePack; // registers pack:// outside an Application
         var theme = (ResourceDictionary)Application.LoadComponent(new Uri("/MindAttic.Components.Wpf;component/Theme.xaml", UriKind.Relative));
         var brushes = new Dictionary<string, Brush>();
-        foreach (var key in new[] { "McGood", "McWarn", "McLink", "McMuted", "McBad", "McAccent" })
+        foreach (var key in new[] { "MaGood", "MaWarn", "MaLink", "MaMuted", "MaBad", "MaAccent" })
         {
             var brush = ((Brush)theme[key]).CloneCurrentValue();
             brush.Freeze();
@@ -44,6 +44,6 @@ public static class Palette
         return brushes;
     });
 
-    /// <summary>The theme's McAccent (the chart's target line).</summary>
-    public static Brush Accent => Theme("McAccent");
+    /// <summary>The theme's MaAccent (the chart's target line).</summary>
+    public static Brush Accent => Theme("MaAccent");
 }

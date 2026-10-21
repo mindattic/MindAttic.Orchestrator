@@ -7,8 +7,8 @@ using MindAttic.Orchestrator.Setup;
 namespace MindAttic.Orchestrator.Wpf;
 
 /// <summary>The first run on a new machine: clones the workspace into a folder and shows each repo as it lands. Built from
-/// MindAttic.Components.Wpf (M.ORCH-T499, M.ORCH-T531): the dark title bar and chrome, McPrimaryButton, an McModal for the
-/// one question it asks, the log in an McTextArea (no wrapping, so long lines scroll) and an McProgressBar.</summary>
+/// MindAttic.Components.Wpf (M.ORCH-T499, M.ORCH-T531): the dark title bar and chrome, MaPrimaryButton, an MaModal for the
+/// one question it asks, the log in an MaTextArea (no wrapping, so long lines scroll) and an MaProgressBar.</summary>
 public sealed class BuildWorkspaceWindow : Window
 {
     private readonly string folder;
@@ -19,7 +19,7 @@ public sealed class BuildWorkspaceWindow : Window
     };
     private readonly ProgressBar bar = new() { IsIndeterminate = true, Height = 4, Margin = new Thickness(0, 8, 0, 8) };
     private readonly Button done = new() { Content = "Working…", IsEnabled = false, Padding = new Thickness(20, 6, 20, 6), HorizontalAlignment = HorizontalAlignment.Right };
-    private readonly McModal question = new() { DialogWidth = 460 };
+    private readonly MaModal question = new() { DialogWidth = 460 };
     private readonly Func<IProgress<string>, Task<BootstrapResult>> clone;
     private TaskCompletionSource<bool>? answer;
     private bool succeeded;
@@ -34,13 +34,13 @@ public sealed class BuildWorkspaceWindow : Window
         Width = 720;
         Height = 480;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        McWindow.SetDarkTitleBar(this, true);
-        SetResourceReference(BackgroundProperty, "McChrome");
-        SetResourceReference(ForegroundProperty, "McText");
-        output.SetResourceReference(StyleProperty, "McTextArea");
+        MaWindow.SetDarkTitleBar(this, true);
+        SetResourceReference(BackgroundProperty, "MaChrome");
+        SetResourceReference(ForegroundProperty, "MaText");
+        output.SetResourceReference(StyleProperty, "MaTextArea");
         output.TextWrapping = TextWrapping.NoWrap;
-        bar.SetResourceReference(StyleProperty, "McProgressBar");
-        done.SetResourceReference(StyleProperty, "McPrimaryButton");
+        bar.SetResourceReference(StyleProperty, "MaProgressBar");
+        done.SetResourceReference(StyleProperty, "MaPrimaryButton");
         var panel = new DockPanel { Margin = new Thickness(16) };
         var header = new TextBlock { Text = $"Cloning into {folder}", FontSize = 15, Margin = new Thickness(0, 0, 0, 4) };
         DockPanel.SetDock(header, Dock.Top);
@@ -83,14 +83,14 @@ public sealed class BuildWorkspaceWindow : Window
         output.ScrollToEnd();
     }
 
-    /// <summary>Asks a yes/no question in an McModal over the log; Esc, the close button or the backdrop answer no.</summary>
+    /// <summary>Asks a yes/no question in an MaModal over the log; Esc, the close button or the backdrop answer no.</summary>
     private Task<bool> AskAsync(string title, string detail)
     {
         answer = new TaskCompletionSource<bool>();
         var no = new Button { Content = "_No", Margin = new Thickness(0, 0, 8, 0) };
         var yes = new Button { Content = "_Yes", IsDefault = true };
-        no.SetResourceReference(StyleProperty, "McButton");
-        yes.SetResourceReference(StyleProperty, "McPrimaryButton");
+        no.SetResourceReference(StyleProperty, "MaButton");
+        yes.SetResourceReference(StyleProperty, "MaPrimaryButton");
         no.Click += (_, _) => Answer(false);
         yes.Click += (_, _) => Answer(true);
         var footer = new StackPanel { Orientation = Orientation.Horizontal };

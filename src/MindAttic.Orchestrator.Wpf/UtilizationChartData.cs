@@ -9,11 +9,11 @@ using MindAttic.Orchestrator.Wpf.ViewModels;
 namespace MindAttic.Orchestrator.Wpf;
 
 /// <summary>
-/// The 5-hour window as the library's <see cref="McLineChart"/> draws it (M.ORCH-T531; the chart itself was the dashboard's
-/// own UtilizationChart, M.ORCH-T191). The target is a level line in McAccent labelled 'NN% target'; the pace line reaches
+/// The 5-hour window as the library's <see cref="MaLineChart"/> draws it (M.ORCH-T531; the chart itself was the dashboard's
+/// own UtilizationChart, M.ORCH-T191). The target is a level line in MaAccent labelled 'NN% target'; the pace line reaches
 /// it exactly at the reset (straight on the linear profile, the front-loaded curve otherwise, M.ORCH-T234); the window's
-/// own line is McBad on each stretch that ended above the pace and McGood below; and, dotted, where the recent rate ends up
-/// by the reset, in McBad past 100%, McWarn past the target, else McGood. Between windows it's the last one as it ended,
+/// own line is MaBad on each stretch that ended above the pace and MaGood below; and, dotted, where the recent rate ends up
+/// by the reset, in MaBad past 100%, MaWarn past the target, else MaGood. Between windows it's the last one as it ended,
 /// labelled 'ended NN%' with no projection, or with none on record just the empty axis (M.ORCH-T502). The caption under
 /// the chart says the same in words, so nothing is told by colour alone.
 /// </summary>
@@ -22,37 +22,37 @@ public static class UtilizationChartData
     /// <summary>The brushes the chart's data is drawn in.</summary>
     public sealed record ChartBrushes(Brush Accent, Brush Good, Brush Warn, Brush Bad);
 
-    /// <summary>The theme's McAccent, McGood, McWarn and McBad (the library theme's own outside the app, in tests).</summary>
+    /// <summary>The theme's MaAccent, MaGood, MaWarn and MaBad (the library theme's own outside the app, in tests).</summary>
     public static ChartBrushes ThemeBrushes() => new(Palette.Accent, Palette.Working, Palette.Waiting, Palette.Over);
 
     /// <summary>What the chart draws for <paramref name="u"/>.</summary>
-    public static McLineChartData From(Utilization u, ChartBrushes brushes)
+    public static MaLineChartData From(Utilization u, ChartBrushes brushes)
     {
         // No window running and none on record: just the empty axis; the caption says the next starts with the next prompt.
-        if (u.Ended && u.Actual.Count == 0) return new McLineChartData(u.StartUtc, u.EndUtc, []);
+        if (u.Ended && u.Actual.Count == 0) return new MaLineChartData(u.StartUtc, u.EndUtc, []);
 
-        var target = McChartReferenceLine.Level(u.StartUtc, u.EndUtc, u.TargetPercent, brushes.Accent,
+        var target = MaChartReferenceLine.Level(u.StartUtc, u.EndUtc, u.TargetPercent, brushes.Accent,
             label: string.Create(CultureInfo.CurrentCulture, $"{u.TargetPercent:0}% target"));
-        var pace = McChartReferenceLine.Curve(u.StartUtc, u.EndUtc, u.PaceAt, steps: u.Curved ? 60 : 1);
+        var pace = MaChartReferenceLine.Curve(u.StartUtc, u.EndUtc, u.PaceAt, steps: u.Curved ? 60 : 1);
 
         // The window so far, each stretch coloured by whether it ended above the pace line, ending at now.
-        var points = u.Actual.Select(p => new McChartPoint(p.AtUtc, p.Percent, p.Percent > u.PaceAt(p.AtUtc) ? brushes.Bad : brushes.Good)).ToList();
-        var now = new McChartPoint(u.NowUtc, u.NowPercent, u.NowPercent > u.PaceAt(u.NowUtc) ? brushes.Bad : brushes.Good);
+        var points = u.Actual.Select(p => new MaChartPoint(p.AtUtc, p.Percent, p.Percent > u.PaceAt(p.AtUtc) ? brushes.Bad : brushes.Good)).ToList();
+        var now = new MaChartPoint(u.NowUtc, u.NowPercent, u.NowPercent > u.PaceAt(u.NowUtc) ? brushes.Bad : brushes.Good);
         if (points.Count == 0 || u.NowUtc > points[^1].AtUtc) points.Add(now);
         else if (u.NowUtc == points[^1].AtUtc) points[^1] = now;
 
         // The last window, between windows: where it ended, and no projection, since nothing more will be spent in it.
         if (u.Ended)
-            return new McLineChartData(u.StartUtc, u.EndUtc, points, string.Create(CultureInfo.CurrentCulture, $"ended {u.NowPercent:0}%"),
+            return new MaLineChartData(u.StartUtc, u.EndUtc, points, string.Create(CultureInfo.CurrentCulture, $"ended {u.NowPercent:0}%"),
                 ReferenceLines: [target, pace]);
 
         var lands = u.ProjectedEndPercent > 100 ? brushes.Bad : u.ProjectedEndPercent > u.TargetPercent ? brushes.Warn : brushes.Good;
-        return new McLineChartData(u.StartUtc, u.EndUtc, points, string.Create(CultureInfo.CurrentCulture, $"now {u.NowPercent:0}%"),
-            new McChartProjection(u.EndUtc, u.ProjectedEndPercent, lands, string.Create(CultureInfo.CurrentCulture, $"{u.ProjectedEndPercent:0}% at reset")),
+        return new MaLineChartData(u.StartUtc, u.EndUtc, points, string.Create(CultureInfo.CurrentCulture, $"now {u.NowPercent:0}%"),
+            new MaChartProjection(u.EndUtc, u.ProjectedEndPercent, lands, string.Create(CultureInfo.CurrentCulture, $"{u.ProjectedEndPercent:0}% at reset")),
             [target, pace]);
     }
 
-    /// <summary>Binds the view model's <see cref="Utilization"/> to <see cref="McLineChart.Data"/>.</summary>
+    /// <summary>Binds the view model's <see cref="Utilization"/> to <see cref="MaLineChart.Data"/>.</summary>
     public static IValueConverter Converter { get; } = new UtilizationConverter();
 
     private sealed class UtilizationConverter : IValueConverter

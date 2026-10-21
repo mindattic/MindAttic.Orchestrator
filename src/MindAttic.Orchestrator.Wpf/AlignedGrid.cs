@@ -154,6 +154,6 @@ public static class Gutters
     /// </summary>
     public static Thickness BesideScrollBar => new(Side, 0, Math.Max(0, Side - ScrollBarWidth), 16);
 
-    /// <summary>A vertical scroll bar's width: the theme's slim McScrollBar, which every ScrollViewer takes (M.ORCH-T531).</summary>
+    /// <summary>A vertical scroll bar's width: the theme's slim MaScrollBar, which every ScrollViewer takes (M.ORCH-T531).</summary>
     public const double ScrollBarWidth = 10;
 }

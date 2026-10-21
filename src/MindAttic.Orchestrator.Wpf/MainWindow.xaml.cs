@@ -147,7 +147,7 @@ public partial class MainWindow : Window
             ?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
     }
 
-    /// <summary>A session that needs you should be noticed even when this window is behind others. The toast row (McToastHost)
+    /// <summary>A session that needs you should be noticed even when this window is behind others. The toast row (MaToastHost)
     /// reads each new one out itself.</summary>
     private void OnToastsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {

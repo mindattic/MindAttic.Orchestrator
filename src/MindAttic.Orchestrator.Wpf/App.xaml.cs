@@ -19,7 +19,7 @@ namespace MindAttic.Orchestrator.Wpf;
 public partial class App : Application
 {
     // WCAG 1.4.13: a tooltip stays up until the pointer or focus leaves or Esc is pressed, rather than vanishing after 5s.
-    static App() => McToolTips.KeepOpen();
+    static App() => MaToolTips.KeepOpen();
 
     private Mutex? daemonMutex;
     private EventWaitHandle? exitSignal;
@@ -38,9 +38,9 @@ public partial class App : Application
         }
 
         // Windows' high-contrast theme swaps the system colours into every theme brush, live (--high-contrast forces it, to
-        // check the colours without changing Windows). The dashboard's state colours are the theme's McGood, McWarn, McLink,
-        // McBad and McMuted (ViewModels/Palette.cs), so it registers no keys of its own.
-        highContrast = McHighContrast.Track(this, force: e.Args.Contains("--high-contrast", StringComparer.OrdinalIgnoreCase));
+        // check the colours without changing Windows). The dashboard's state colours are the theme's MaGood, MaWarn, MaLink,
+        // MaBad and MaMuted (ViewModels/Palette.cs), so it registers no keys of its own.
+        highContrast = MaHighContrast.Track(this, force: e.Args.Contains("--high-contrast", StringComparer.OrdinalIgnoreCase));
 
         OrchestratorLog.Start("Dashboard");
         var log = OrchestratorLog.For("Dashboard");
@@ -53,7 +53,7 @@ public partial class App : Application
         {
             var hooks = installer.Uninstall();
             log.Information("Uninstalled: removed the shortcuts (and any legacy logon task); hooks: {Hooks:l}", hooks ?? "none registered");
-            McMessageBox.Show($"The background daemon, the shortcuts and the CLI hooks are gone.\n\nTo finish, delete {installer.InstallDir} and remove Scheduler's Orchestrator.Daemon job, which starts the daemon at logon.",
+            MaMessageBox.Show($"The background daemon, the shortcuts and the CLI hooks are gone.\n\nTo finish, delete {installer.InstallDir} and remove Scheduler's Orchestrator.Daemon job, which starts the daemon at logon.",
                 "MindAttic Orchestrator", MessageBoxButton.OK, MessageBoxImage.Information);
             Shutdown();
             return;
@@ -175,7 +175,7 @@ public partial class App : Application
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
         {
             log.Error(ex, "Installing to {Dir:l} failed; running from {Self:l}", installer.InstallDir, self);
-            McMessageBox.Show($"Couldn't install to {installer.InstallDir}: {ex.Message}\n\nRunning from here instead; the background daemon will point at this copy.",
+            MaMessageBox.Show($"Couldn't install to {installer.InstallDir}: {ex.Message}\n\nRunning from here instead; the background daemon will point at this copy.",
                 "MindAttic Orchestrator", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
@@ -208,7 +208,7 @@ public partial class App : Application
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or COMException)
         {
             log.Error(ex, "Setup couldn't finish");
-            McMessageBox.Show($"Setup couldn't finish: {ex.Message}\n\nThe dashboard works; the background daemon (budget file, pacing, autopilot) may not run until this is fixed.",
+            MaMessageBox.Show($"Setup couldn't finish: {ex.Message}\n\nThe dashboard works; the background daemon (budget file, pacing, autopilot) may not run until this is fixed.",
                 "MindAttic Orchestrator", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -223,7 +223,7 @@ public partial class App : Application
         var root = OrchestratorOptions.Load(store).WorkspaceRoot;
         if (!WorkspaceBootstrap.IsEmpty(root)) return true;
 
-        var choice = McMessageBox.Show(
+        var choice = MaMessageBox.Show(
             "There's no MindAttic workspace on this machine yet.\n\n" +
             "Yes: build one. Pick an empty folder and every repo is cloned into it from GitHub.\n" +
             "No: point at a workspace folder that's already here.",
@@ -243,7 +243,7 @@ public partial class App : Application
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             log.Error(ex, "Couldn't save the workspace folder");
-            McMessageBox.Show($"Couldn't save the workspace folder: {ex.Message}", "MindAttic Orchestrator", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MaMessageBox.Show($"Couldn't save the workspace folder: {ex.Message}", "MindAttic Orchestrator", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
         log.Information("Workspace set to {Root:l}", dialog.FolderName);

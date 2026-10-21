@@ -4,7 +4,7 @@ using NUnit.Framework;
 namespace MindAttic.Orchestrator.Tests;
 
 /// <summary>
-/// The settings dialog is the shared McModal from MindAttic.Components.Wpf 7.0.0 (M.ORCH-T498), not the hand-built
+/// The settings dialog is the shared MaModal from MindAttic.Components.Wpf 7.0.0 (M.ORCH-T498), not the hand-built
 /// 400px flyout it replaced: last in the window's root grid spanning every row, opened by IsSettingsOpen and closed (Esc,
 /// its close button, the backdrop) through ToggleSettingsCommand, holding the same settings with Save in its footer.
 /// </summary>
@@ -29,7 +29,7 @@ public sealed class SettingsModalTests
         var rows = grid.Element(P + "Grid.RowDefinitions")!.Elements(P + "RowDefinition").Count();
 
         var modal = grid.Elements().Last();
-        Assert.That(modal.Name, Is.EqualTo(Mc + "McModal"), "the modal is the root grid's last child, over everything");
+        Assert.That(modal.Name, Is.EqualTo(Mc + "MaModal"), "the modal is the root grid's last child, over everything");
         Assert.That((string?)modal.Attribute("Grid.RowSpan"), Is.EqualTo(rows.ToString()), "it spans every row");
         Assert.That((string?)modal.Attribute("Grid.Row"), Is.Null.Or.EqualTo("0"));
         Assert.That((string?)modal.Attribute("IsOpen"), Is.EqualTo("{Binding IsSettingsOpen}"));
@@ -41,7 +41,7 @@ public sealed class SettingsModalTests
         Assert.That(content.Descendants(P + "TextBox").Any(t => (string?)t.Attribute("AutomationProperties.Name") == "Budget per 5-hour block"), Is.True);
         Assert.That(content.Descendants(P + "ToggleButton").Any(t => (string?)t.Attribute("Content") == "Autopilot"), Is.True);
 
-        var footer = modal.Element(Mc + "McModal.Footer")!.Elements().Single();
+        var footer = modal.Element(Mc + "MaModal.Footer")!.Elements().Single();
         Assert.That((string?)footer.Attribute("DataContext"), Is.EqualTo("{Binding Settings}"));
         Assert.That(footer.Descendants(P + "Button").Single(b => (string?)b.Attribute("Content") == "Save").Attribute("Command")?.Value,
             Is.EqualTo("{Binding SaveCommand}"));
@@ -53,13 +53,13 @@ public sealed class SettingsModalTests
     }
 
     [Test]
-    public void The_app_merges_the_components_theme_and_references_18_0_0()
+    public void The_app_merges_the_components_theme_and_references_19_0_0()
     {
         var root = RepoRoot();
         var app = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "App.xaml"));
-        Assert.That(app, Does.Contain("pack://application:,,,/MindAttic.Components.Wpf;component/Theme.xaml"), "McModal's look lives in Theme.xaml");
+        Assert.That(app, Does.Contain("pack://application:,,,/MindAttic.Components.Wpf;component/Theme.xaml"), "MaModal's look lives in Theme.xaml");
         var csproj = XDocument.Load(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MindAttic.Orchestrator.Wpf.csproj"));
         var reference = csproj.Descendants("PackageReference").Single(r => (string?)r.Attribute("Include") == "MindAttic.Components.Wpf");
-        Assert.That((string?)reference.Attribute("Version"), Is.EqualTo("18.0.0"));
+        Assert.That((string?)reference.Attribute("Version"), Is.EqualTo("19.0.0"));
     }
 }

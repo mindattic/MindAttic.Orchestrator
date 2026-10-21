@@ -32,8 +32,8 @@ public sealed class LibraryControlsTests
     [Test]
     public void Every_dashboard_button_uses_a_library_button_style()
     {
-        // RepoTile, App.xaml's one button style, is based on McTileButton.
-        string[] libraryBased = ["McToolButton", "McTextButton", "McButton", "McPrimaryButton", "McTileButton", "McStatCard", "McSmallStat", "RepoTile"];
+        // RepoTile, App.xaml's one button style, is based on MaTileButton.
+        string[] libraryBased = ["MaToolButton", "MaTextButton", "MaButton", "MaPrimaryButton", "MaTileButton", "MaStatCard", "MaSmallStat", "RepoTile"];
 
         bool Styled(XElement button)
         {
@@ -56,7 +56,7 @@ public sealed class LibraryControlsTests
             var colours = root.Descendants().Attributes().Where(a => Regex.IsMatch(a.Value, "^#[0-9A-Fa-f]{6,8}$"));
             Assert.That(colours.Select(a => $"{a.Parent!.Name.LocalName}.{a.Name}={a.Value}"), Is.Empty);
         }
-        Assert.That((string?)Named(Window(), "DetailPane").Attribute("Background"), Is.EqualTo("{DynamicResource McChrome}"));
+        Assert.That((string?)Named(Window(), "DetailPane").Attribute("Background"), Is.EqualTo("{DynamicResource MaChrome}"));
     }
 
     [Test]
@@ -64,23 +64,23 @@ public sealed class LibraryControlsTests
     {
         var keys = App().Descendants().Select(e => (string?)e.Attribute(X + "Key")).OfType<string>().ToList();
 
-        // No FieldBorder, McTextBox or McTextArea override: the library's McFieldBorder outline is 3:1 (M.COMP-T11).
+        // No FieldBorder, MaTextBox or MaTextArea override: the library's MaFieldBorder outline is 3:1 (M.COMP-T11).
         Assert.That(keys, Is.EquivalentTo(new[] { "Visible", "RepoTile" }));
 
         // The old copies are gone, and nothing refers to them.
         var window = File.ReadAllText(Wpf("MainWindow.xaml"));
-        foreach (var old in new[] { "FocusRing", "Heading", "SectionLabel", "Muted", "StatCard", "SmallStat", "Card", "PillChoice", "PillToggle", "PulseDot", "McRec", "FieldBorder" })
+        foreach (var old in new[] { "FocusRing", "Heading", "SectionLabel", "Muted", "StatCard", "SmallStat", "Card", "PillChoice", "PillToggle", "PulseDot", "MaRec", "FieldBorder" })
         {
             Assert.That(window, Does.Not.Contain($"{{StaticResource {old}}}"), old);
             Assert.That(window, Does.Not.Contain($"{{DynamicResource {old}}}"), old);
         }
     }
 
-    /// <summary>The theme's brushes (not its styles), which McHighContrast re-keys.</summary>
+    /// <summary>The theme's brushes (not its styles), which MaHighContrast re-keys.</summary>
     private static readonly string[] PaletteKeys =
     [
-        "McChrome", "McChromeBorder", "McSurface", "McHover", "McText", "McMuted", "McRec", "McStar", "McControlBorder", "McFieldBorder",
-        "McFocus", "McAccent", "McAccentHover", "McOnAccent", "McTileHover", "McGood", "McWarn", "McBad", "McLink", "McChartGrid",
+        "MaChrome", "MaChromeBorder", "MaSurface", "MaHover", "MaText", "MaMuted", "MaRec", "MaStar", "MaControlBorder", "MaFieldBorder",
+        "MaFocus", "MaAccent", "MaAccentHover", "MaOnAccent", "MaTileHover", "MaGood", "MaWarn", "MaBad", "MaLink", "MaChartGrid",
     ];
 
     [Test]
@@ -88,21 +88,21 @@ public sealed class LibraryControlsTests
     {
         var window = File.ReadAllText(Wpf("MainWindow.xaml"));
 
-        Assert.That(window, Does.Not.Contain("vm:Palette."), "a state colour is the theme's McGood, McWarn, McLink, McMuted or McBad");
-        // App.xaml too: RepoTile's selected border was a StaticResource McFocus (M.ORCH-T556).
+        Assert.That(window, Does.Not.Contain("vm:Palette."), "a state colour is the theme's MaGood, MaWarn, MaLink, MaMuted or MaBad");
+        // App.xaml too: RepoTile's selected border was a StaticResource MaFocus (M.ORCH-T556).
         var app = File.ReadAllText(Wpf("App.xaml"));
         foreach (var key in PaletteKeys)
         {
             Assert.That(window, Does.Not.Contain($"{{StaticResource {key}}}"), $"{key}: a StaticResource keeps the dark colour under high contrast");
             Assert.That(app, Does.Not.Contain($"{{StaticResource {key}}}"), $"App.xaml's {key}: a StaticResource keeps the dark colour under high contrast");
         }
-        Assert.That(window, Does.Contain("{DynamicResource McGood}"));
-        Assert.That(window, Does.Contain("{DynamicResource McWarn}"));
+        Assert.That(window, Does.Contain("{DynamicResource MaGood}"));
+        Assert.That(window, Does.Contain("{DynamicResource MaWarn}"));
 
         // The view models' state brushes are the theme's too, read when asked: no colour of the dashboard's own.
         var palette = File.ReadAllText(Wpf(Path.Combine("ViewModels", "Palette.cs")));
         Assert.That(Regex.IsMatch(palette, @"Color\.From|0x[0-9A-Fa-f]{2}\b|#[0-9A-Fa-f]{6}|new SolidColorBrush"), Is.False, "Palette defines a colour of its own");
-        foreach (var key in new[] { "McGood", "McWarn", "McLink", "McMuted", "McBad" })
+        foreach (var key in new[] { "MaGood", "MaWarn", "MaLink", "MaMuted", "MaBad" })
             Assert.That(palette, Does.Contain($"\"{key}\""), key);
         Assert.That(File.ReadAllText(Wpf("UtilizationChartData.cs")), Does.Not.Contain("Brushes."));
     }
@@ -115,11 +115,11 @@ public sealed class LibraryControlsTests
             new Uri("/MindAttic.Components.Wpf;component/Theme.xaml", UriKind.Relative));
         static System.Windows.Media.Color Colour(object brush) => ((System.Windows.Media.SolidColorBrush)brush).Color;
 
-        Assert.That(Colour(MindAttic.Orchestrator.Wpf.ViewModels.Palette.Working), Is.EqualTo(Colour(theme["McGood"])));
-        Assert.That(Colour(MindAttic.Orchestrator.Wpf.ViewModels.Palette.Waiting), Is.EqualTo(Colour(theme["McWarn"])));
-        Assert.That(Colour(MindAttic.Orchestrator.Wpf.ViewModels.Palette.Tickets), Is.EqualTo(Colour(theme["McLink"])));
-        Assert.That(Colour(MindAttic.Orchestrator.Wpf.ViewModels.Palette.Quiet), Is.EqualTo(Colour(theme["McMuted"])));
-        Assert.That(Colour(MindAttic.Orchestrator.Wpf.ViewModels.Palette.Over), Is.EqualTo(Colour(theme["McBad"])));
+        Assert.That(Colour(MindAttic.Orchestrator.Wpf.ViewModels.Palette.Working), Is.EqualTo(Colour(theme["MaGood"])));
+        Assert.That(Colour(MindAttic.Orchestrator.Wpf.ViewModels.Palette.Waiting), Is.EqualTo(Colour(theme["MaWarn"])));
+        Assert.That(Colour(MindAttic.Orchestrator.Wpf.ViewModels.Palette.Tickets), Is.EqualTo(Colour(theme["MaLink"])));
+        Assert.That(Colour(MindAttic.Orchestrator.Wpf.ViewModels.Palette.Quiet), Is.EqualTo(Colour(theme["MaMuted"])));
+        Assert.That(Colour(MindAttic.Orchestrator.Wpf.ViewModels.Palette.Over), Is.EqualTo(Colour(theme["MaBad"])));
         Assert.That(MindAttic.Orchestrator.Wpf.ViewModels.Palette.Working.IsFrozen, Is.True, "usable from any thread outside the app");
     }
 
@@ -135,14 +135,14 @@ public sealed class LibraryControlsTests
         foreach (var (file, text) in sources)
         {
             Assert.That(Regex.IsMatch(text, @"\b(class|record)\s+(ObservableObject|RelayCommand|CollectionSync|ZoomLevel)\b"), Is.False, $"{file} copies a library Mvvm type");
-            Assert.That(text, Does.Not.Contain("ShowDurationProperty"), $"{file}: McToolTips.KeepOpen keeps tooltips up");
-            Assert.That(text, Does.Not.Contain("SystemParameters.HighContrast"), $"{file}: McHighContrast follows high contrast");
+            Assert.That(text, Does.Not.Contain("ShowDurationProperty"), $"{file}: MaToolTips.KeepOpen keeps tooltips up");
+            Assert.That(text, Does.Not.Contain("SystemParameters.HighContrast"), $"{file}: MaHighContrast follows high contrast");
             Assert.That(text, Does.Not.Contain("ScaleTransform"), $"{file}: ZoomLevel.Attach scales the window");
         }
 
         var app = sources["App.xaml.cs"];
-        Assert.That(app, Does.Contain("McToolTips.KeepOpen()"));
-        Assert.That(app, Does.Contain("McHighContrast.Track(this"));
+        Assert.That(app, Does.Contain("MaToolTips.KeepOpen()"));
+        Assert.That(app, Does.Contain("MaHighContrast.Track(this"));
         Assert.That(sources["MainViewModel.cs"], Does.Contain("public ZoomLevel Zoom { get; }"));
         Assert.That(sources["MainWindow.xaml.cs"], Does.Contain("model.Zoom.Attach(Root, this)"));
 
@@ -154,7 +154,7 @@ public sealed class LibraryControlsTests
 
         var csproj = XDocument.Load(Wpf("MindAttic.Orchestrator.Wpf.csproj"));
         var version = (string?)csproj.Descendants("PackageReference").Single(r => (string?)r.Attribute("Include") == "MindAttic.Components.Wpf").Attribute("Version");
-        Assert.That(int.Parse(version!.Split('.')[0]), Is.GreaterThanOrEqualTo(18), "Mvvm, ZoomLevel, McToolTips and McHighContrast arrived in 18.0.0");
+        Assert.That(int.Parse(version!.Split('.')[0]), Is.GreaterThanOrEqualTo(18), "Mvvm, ZoomLevel, MaToolTips and MaHighContrast arrived in 18.0.0");
     }
 
     [Test]
@@ -164,14 +164,14 @@ public sealed class LibraryControlsTests
         Assert.That(File.Exists(Wpf("ThreadedSpinner.cs")), Is.False);
 
         var window = Window();
-        Assert.That(Named(window, "UtilizationChart").Name, Is.EqualTo(Mc + "McLineChart"));
-        Assert.That(Named(window, "LoaderSpinner").Name, Is.EqualTo(Mc + "McSpinner"));
+        Assert.That(Named(window, "UtilizationChart").Name, Is.EqualTo(Mc + "MaLineChart"));
+        Assert.That(Named(window, "LoaderSpinner").Name, Is.EqualTo(Mc + "MaSpinner"));
 
         var sources = Directory.EnumerateFiles(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf"), "*.cs", SearchOption.AllDirectories)
             .Where(f => !f.Split(Path.DirectorySeparatorChar).Any(d => d is "bin" or "obj"));
         foreach (var file in sources)
-            Assert.That(Regex.IsMatch(File.ReadAllText(file), @"(?<!Mc)MessageBox\.Show\("), Is.False, $"{Path.GetFileName(file)} uses the system message box; use McMessageBox");
-        Assert.That(File.ReadAllText(Wpf("App.xaml.cs")), Does.Contain("McMessageBox.Show("));
+            Assert.That(Regex.IsMatch(File.ReadAllText(file), @"(?<!Ma)MessageBox\.Show\("), Is.False, $"{Path.GetFileName(file)} uses the system message box; use MaMessageBox");
+        Assert.That(File.ReadAllText(Wpf("App.xaml.cs")), Does.Contain("MaMessageBox.Show("));
     }
 
     [Test]
@@ -179,7 +179,7 @@ public sealed class LibraryControlsTests
     {
         var row = Named(Window(), "ToastRow");
 
-        Assert.That(row.Name, Is.EqualTo(Mc + "McToastHost"));
+        Assert.That(row.Name, Is.EqualTo(Mc + "MaToastHost"));
         Assert.That((string?)row.Attribute("ItemsSource"), Is.EqualTo("{Binding Toasts}"));
         Assert.That((string?)row.Attribute("OpenCommand"), Is.EqualTo("{Binding OpenToastCommand}"));
         Assert.That((string?)row.Attribute("DismissCommand"), Is.EqualTo("{Binding DismissToastCommand}"));
@@ -191,14 +191,14 @@ public sealed class LibraryControlsTests
     {
         var window = Window();
         var pill = Named(window, "StatePill");
-        Assert.That(pill.Name, Is.EqualTo(Mc + "McBadge"));
+        Assert.That(pill.Name, Is.EqualTo(Mc + "MaBadge"));
         Assert.That((string?)pill.Attribute("Glyph"), Is.EqualTo("{Binding StateGlyph}"));
         Assert.That((string?)pill.Attribute("Content"), Is.EqualTo("{Binding StateLabel}"));
         Assert.That((string?)pill.Attribute("Foreground"), Is.EqualTo("{Binding StateBrush}"));
 
         var tag = Named(window, "SubagentTag");
-        Assert.That(tag.Name, Is.EqualTo(Mc + "McBadge"));
-        Assert.That((string?)tag.Attribute("Style"), Is.EqualTo("{StaticResource McTag}"));
+        Assert.That(tag.Name, Is.EqualTo(Mc + "MaBadge"));
+        Assert.That((string?)tag.Attribute("Style"), Is.EqualTo("{StaticResource MaTag}"));
     }
 
     [Test]
@@ -206,22 +206,22 @@ public sealed class LibraryControlsTests
     {
         var window = Window();
 
-        // The agent card is McCard with only its margin dropped: the AlignedGrid owns the gaps (DashboardAlignmentTests).
+        // The agent card is MaCard with only its margin dropped: the AlignedGrid owns the gaps (DashboardAlignmentTests).
         var card = Named(window, "AgentCard");
         var style = card.Element(P + "Border.Style")?.Element(P + "Style");
-        Assert.That(style, Is.Not.Null, "the agent card takes a style based on McCard");
-        Assert.That((string?)style!.Attribute("BasedOn"), Is.EqualTo("{StaticResource McCard}"));
+        Assert.That(style, Is.Not.Null, "the agent card takes a style based on MaCard");
+        Assert.That((string?)style!.Attribute("BasedOn"), Is.EqualTo("{StaticResource MaCard}"));
         Assert.That(style.Elements(P + "Setter").Select(s => (string?)s.Attribute("Property")), Is.EqualTo(new[] { "Margin" }));
-        Assert.That(card.Attribute("Background") ?? card.Attribute("BorderBrush") ?? card.Attribute("CornerRadius"), Is.Null, "the card's look is McCard's");
+        Assert.That(card.Attribute("Background") ?? card.Attribute("BorderBrush") ?? card.Attribute("CornerRadius"), Is.Null, "the card's look is MaCard's");
 
-        Assert.That((string?)Named(window, "SubagentPanel").Attribute("Style"), Is.EqualTo("{StaticResource McCard}"));
+        Assert.That((string?)Named(window, "SubagentPanel").Attribute("Style"), Is.EqualTo("{StaticResource MaCard}"));
 
         // A rounded surface drawn by hand is a card the library already has.
-        bool McCardStyled(XElement b) => (string?)b.Attribute("Style") == "{StaticResource McCard}"
-            || (string?)b.Element(P + "Border.Style")?.Element(P + "Style")?.Attribute("BasedOn") == "{StaticResource McCard}";
+        bool MaCardStyled(XElement b) => (string?)b.Attribute("Style") == "{StaticResource MaCard}"
+            || (string?)b.Element(P + "Border.Style")?.Element(P + "Style")?.Attribute("BasedOn") == "{StaticResource MaCard}";
         var handMade = window.Descendants(P + "Border")
             .Where(b => b.Attribute("CornerRadius") is not null && Regex.IsMatch((string?)b.Attribute("Background") ?? "", @"^\{(Static|Dynamic)Resource Mc"))
-            .Where(b => !McCardStyled(b));
+            .Where(b => !MaCardStyled(b));
         Assert.That(handMade.Select(b => b.ToString()), Is.Empty);
     }
 
@@ -231,20 +231,20 @@ public sealed class LibraryControlsTests
         var window = Window();
         var bar = Named(window, "BudgetBar");
         Assert.That(bar.Name, Is.EqualTo(P + "ProgressBar"));
-        Assert.That((string?)bar.Attribute("Style"), Is.EqualTo("{StaticResource McProgressBar}"));
+        Assert.That((string?)bar.Attribute("Style"), Is.EqualTo("{StaticResource MaProgressBar}"));
 
         // No placeholder drawn by hand over a box: every box's hint is the library's attached Placeholder.
         Assert.That(window.Descendants(P + "TextBlock").Where(t => (string?)t.Attribute("IsHitTestVisible") == "False"), Is.Empty);
         var boxes = window.Descendants(P + "TextBox").ToList();
-        Assert.That(boxes.Select(b => (string?)b.Attribute("Style")), Has.All.Matches<string?>(s => s is "{StaticResource McTextBox}" or "{StaticResource McTextArea}"));
-        var placeholders = boxes.Select(b => (string?)b.Attribute(Mc + "McTextBox.Placeholder")).OfType<string>().ToList();
+        Assert.That(boxes.Select(b => (string?)b.Attribute("Style")), Has.All.Matches<string?>(s => s is "{StaticResource MaTextBox}" or "{StaticResource MaTextArea}"));
+        var placeholders = boxes.Select(b => (string?)b.Attribute(Mc + "MaTextBox.Placeholder")).OfType<string>().ToList();
         Assert.That(placeholders, Is.EquivalentTo(new[] { "Search repos and tickets   Ctrl+F", "Opening prompt (optional), or pick a ticket below", "Reply to this tab…" }));
-        Assert.That(boxes.Where(b => (string?)b.Attribute("AcceptsReturn") == "True"), Is.Empty, "a multi-line box is an McTextArea");
+        Assert.That(boxes.Where(b => (string?)b.Attribute("AcceptsReturn") == "True"), Is.Empty, "a multi-line box is an MaTextArea");
 
         var build = File.ReadAllText(Wpf("BuildWorkspaceWindow.cs"));
-        Assert.That(build, Does.Contain("SetResourceReference(StyleProperty, \"McTextArea\")"));
+        Assert.That(build, Does.Contain("SetResourceReference(StyleProperty, \"MaTextArea\")"));
         Assert.That(build, Does.Contain("TextWrapping.NoWrap"));
-        Assert.That(build, Does.Contain("SetResourceReference(StyleProperty, \"McProgressBar\")"));
+        Assert.That(build, Does.Contain("SetResourceReference(StyleProperty, \"MaProgressBar\")"));
     }
 
     [Test]
@@ -252,7 +252,7 @@ public sealed class LibraryControlsTests
     {
         var window = Window();
         var link = window.Descendants(P + "Style").Single(s => (string?)s.Attribute(X + "Key") == "TicketLink");
-        Assert.That((string?)link.Attribute("BasedOn"), Is.EqualTo("{StaticResource McHyperlink}"));
+        Assert.That((string?)link.Attribute("BasedOn"), Is.EqualTo("{StaticResource MaHyperlink}"));
         Assert.That(link.Elements(P + "Setter").Select(s => (string?)s.Attribute("Property")), Is.EquivalentTo(new[] { "Command", "ToolTip" }));
 
         // A ScrollViewer style not based on the theme's implicit one would bring back the light corner.
@@ -278,7 +278,7 @@ public sealed class LibraryControlsTests
         Assert.That(named, Is.Not.Empty);
         Assert.That(named.Where(k => !keys.Contains(k)), Is.Empty);
         // The scroll bar the gutter makes room for is the theme's.
-        var scrollBar = (System.Windows.Style)theme["McScrollBar"];
+        var scrollBar = (System.Windows.Style)theme["MaScrollBar"];
         Assert.That(scrollBar.Setters.OfType<System.Windows.Setter>().Single(s => s.Property.Name == "Width").Value, Is.EqualTo(MindAttic.Orchestrator.Wpf.Gutters.ScrollBarWidth));
     }
 
@@ -287,8 +287,8 @@ public sealed class LibraryControlsTests
     {
         var source = File.ReadAllText(Wpf("BuildWorkspaceWindow.cs"));
 
-        Assert.That(source, Does.Contain("McModal question = new()"));
+        Assert.That(source, Does.Contain("MaModal question = new()"));
         Assert.That(source, Does.Not.Contain("MessageBox.Show"));
-        Assert.That(source, Does.Contain("\"McPrimaryButton\""));
+        Assert.That(source, Does.Contain("\"MaPrimaryButton\""));
     }
 }
