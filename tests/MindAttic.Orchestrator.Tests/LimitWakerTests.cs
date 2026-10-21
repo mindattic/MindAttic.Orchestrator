@@ -183,6 +183,62 @@ public sealed class LimitWakerTests
             "a second daemon doesn't type the resume again; an open dashboard holding autopilot's lease doesn't stop the wakes");
     }
 
+    private static readonly DateTime Reset = Now.AddMinutes(30);
+
+    private static Pace Wall => Open with { Stop = true, ResetUtc = Reset };
+
+    [Test]
+    public void A_cli_frozen_at_the_wall_gets_a_resume_due_two_minutes_past_the_reset()
+    {
+        // M.ORCH-T595: a turn that errored over the limit never reached its Stop hook, so no limit_stop was recorded and it
+        // stayed "busy" forever: nothing ever sent it back.
+        State("frozen", 42, "busy", Now.AddMinutes(-10), until: null);
+        var waker = Waker();
+        Assert.That(waker.Tick(Wall, [Tab], true, Now), Is.Empty, "held: nothing woken at the wall");
+        var resume = waker.Scheduled!["42"];
+        Assert.That((resume.SessionId, resume.UntilUtc, resume.DueUtc), Is.EqualTo(("frozen", Reset, Reset.AddMinutes(2))));
+
+        Assert.That(waker.Tick(Open, [Tab], true, Reset.AddMinutes(1)), Is.Empty, "not due before reset + 2 minutes");
+        var w = waker.Tick(Open, [Tab], true, Reset.AddMinutes(2)).Single();
+        Assert.That((w.SessionId, w.Typed, w.Stop.UntilUtc), Is.EqualTo(("frozen", true, Reset)));
+        Assert.That(typed.Single().Text, Does.Contain("The 5-hour window you stopped for reset"));
+
+        Assert.That(waker.Tick(Open, [Tab], true, Reset.AddMinutes(3)), Is.Empty, "fires once");
+        Assert.That(Waker().Tick(Open, [Tab], true, Reset.AddMinutes(4)), Is.Empty, "and not again after a restart");
+        Assert.That(typed, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void A_resume_recorded_at_the_wall_survives_a_daemon_restart()
+    {
+        State("frozen", 42, "busy", Now.AddMinutes(-10), until: null);
+        Waker().Tick(Wall, [Tab], true, Now);
+        var restarted = Waker();
+        Assert.That(restarted.Tick(Open, [Tab], true, Reset.AddMinutes(2)).Single().SessionId, Is.EqualTo("frozen"));
+        Assert.That(restarted.Scheduled, Is.Empty, "delivered, so dropped from the store");
+    }
+
+    [Test]
+    public void A_scheduled_resume_is_dropped_when_the_cli_went_on_closed_or_was_woken_for_its_own_stop()
+    {
+        State("prompted", 42, "busy", Now.AddMinutes(-10), until: null);
+        State("closed", 43, "busy", Now.AddMinutes(-10), until: null, cwd: @"D:\Projects\MindAttic\Other");
+        State("ownstop", 44, "busy", Now.AddMinutes(-10), until: null, cwd: @"D:\Projects\MindAttic\Third");
+        State("waiting", 45, "idle", Now.AddHours(-2), until: null, cwd: @"D:\Projects\MindAttic\Fourth");
+        var alive = new HashSet<int> { 42, 43, 44, 45 };
+        var waker = Waker(alive: alive.Contains);
+        waker.Tick(Wall, [Tab], true, Now);
+        Assert.That(waker.Scheduled!.Keys, Is.EquivalentTo(new[] { "42", "43", "44" }), "an idle CLI not stopped by the wall isn't working");
+
+        State("prompted", 42, "busy", Reset.AddSeconds(30), until: null); // typed into after the reset: going again
+        alive.Remove(43);
+        State("ownstop", 44, "idle", Now.AddMinutes(1), until: Reset, cwd: @"D:\Projects\MindAttic\Third"); // its Stop hook came
+        var wakes = waker.Tick(Open, [Tab], true, Reset.AddMinutes(2));
+        Assert.That(wakes.Select(w => w.SessionId), Is.EqualTo(new[] { "ownstop" }), "woken once, for its own stop");
+        Assert.That(waker.Scheduled, Is.Empty);
+        Assert.That(waker.Tick(Open, [Tab], true, Reset.AddMinutes(5)), Is.Empty);
+    }
+
     [Test]
     public void The_daemon_alerts_only_for_a_cli_it_couldnt_type_into()
     {
