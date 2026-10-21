@@ -386,12 +386,15 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// Paced, the calling CLI (<paramref name="cli"/>) gets its fair share of the allowance, not all of it (M.ORCH-T495: one
     /// repo's /allocate claimed all 8 places at once): the other CLIs' running subagents, and a share held for every other
     /// /allocate CLI (<paramref name="pilots"/>) that has workable tickets of its own, are left to them (<see cref="SubagentShare"/>).
+    /// It also warms up (M.ORCH-T558): one subagent the minute its /allocate turned on (<paramref name="onSince"/>, by CLI), one
+    /// more each minute after, up to its share, so a CLI opened just after it gets to claim its own before every place is taken.
     /// </summary>
     public static (IReadOnlyList<Handout> Handed, string? Why) Next(SchedulePlan plan, OrchestratorSettings settings, JsonStore store,
         IReadOnlyList<string> repos, int? count, bool claim, DateTime nowUtc,
         Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree = null, Func<string, string>? mainlineOf = null, bool unthrottled = false,
         string? self = null, Func<Assignment, bool>? pilotRunning = null, bool handingOff = false, Func<string, string, bool>? stillOpen = null,
-        int? cli = null, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots = null, Func<int, bool>? cliRunning = null)
+        int? cli = null, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots = null, Func<int, bool>? cliRunning = null,
+        IReadOnlyDictionary<int, DateTime>? onSince = null)
     {
         cliRunning ??= ContextCycler.IsClaude;
         // /handoff (M.ORCH-T481): every CLI is winding down for an account switch, so nothing new is handed out, unthrottled or not.
@@ -460,7 +463,16 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 .ToDictionary(c => c, c => plan.Pace.SubagentsByCli.GetValueOrDefault(c) + pending.GetValueOrDefault(c));
             var wanting = (pilots ?? new Dictionary<int, IReadOnlyList<string>>()).Where(p => p.Key != me && plan.Queue.Any(q => Autopilot.Named(p.Value, q.Repo) && Workable(q)))
                 .Select(p => p.Key).ToList();
-            var fair = SubagentShare.Room(cap, plan.Pace.Subagents + pending.Values.Sum(), me, running, wanting);
+            var total = plan.Pace.Subagents + pending.Values.Sum();
+            var fair = SubagentShare.Room(cap, total, me, running, wanting);
+            // Warming up (M.ORCH-T558): at most one more each minute since this CLI's /allocate turned on.
+            var since = onSince is not null && onSince.TryGetValue(me, out var on) ? on : (DateTime?)null;
+            var warm = SubagentShare.WarmUp(since, nowUtc);
+            if (fair > 0 && SubagentShare.Room(cap, total, me, running, wanting, warm) <= 0)
+                return ([], $"this CLI's /allocate is warming up (on {Math.Max(0, (int)(nowUtc - since!.Value).TotalMinutes)} min: at most {warm} " +
+                    $"subagents yet, {running.GetValueOrDefault(me)} running or claimed; one more each minute, so CLIs opened just after it " +
+                    "get theirs too). Run it again in a minute");
+            fair = SubagentShare.Room(cap, total, me, running, wanting, warm);
             if (fair <= 0)
                 return ([], $"this CLI has its fair share of the subagent allowance ({running.GetValueOrDefault(me)} " +
                     (pending.GetValueOrDefault(me) is > 0 and var mine ? $"running or claimed ({mine} claimed with no subagent on yet: start them)" : "running") +

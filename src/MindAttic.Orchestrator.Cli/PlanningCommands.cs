@@ -182,12 +182,13 @@ internal sealed class DryRunCommand : Command
         var cycler = new MindAttic.Orchestrator.Sessions.ContextCycler();
         var clis = cycler.AutopilotClis();
         if (clis.Count == 0) { AnsiConsole.MarkupLine("[grey]/allocate is off in every CLI; type /allocate (optionally -repo=A,B) in the CLI that should work the tickets.[/]"); return 0; }
+        var since = cycler.AutopilotSince();
         foreach (var (pid, repos) in clis)
         {
             AnsiConsole.MarkupLine($"/allocate is on in CLI {pid} for {Markup.Escape(string.Join(", ", repos))}:");
             var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, null, claim: false, DateTime.UtcNow,
                 self: cycler.LatestSessionOf(pid), handingOff: MindAttic.Orchestrator.Sessions.Handoff.Holding(cycler.Directory),
-                cli: pid, pilots: clis);
+                cli: pid, pilots: clis, onSince: since);
             foreach (var h in handed) AnsiConsole.MarkupLine($"  next: {Markup.Escape(h.Item.Id)} in {Markup.Escape(h.Item.Repo)}: {Markup.Escape(h.Item.Ticket.Summary)}");
             if (why is not null) AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(why)}[/]");
         }
@@ -234,7 +235,7 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
         var self = cli is { } me ? cycler.LatestSessionOf(me) : null;
         var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, settings.Count, settings.Claim, DateTime.UtcNow,
             unthrottled: unthrottled, self: self, handingOff: MindAttic.Orchestrator.Sessions.Handoff.Holding(cycler.Directory),
-            cli: cli, pilots: cycler.AutopilotClis());
+            cli: cli, pilots: cycler.AutopilotClis(), onSince: cycler.AutopilotSince());
         foreach (var h in handed)
         {
             Console.WriteLine($"=== {h.Item.Id} ({h.Item.Repo}, {h.Item.Ticket.Type}): {h.Item.Ticket.Summary}");

@@ -71,6 +71,8 @@ The same arithmetic both speeds up and slows down:
 - **Up:** when the draw is under the sustainable rate (a quiet start to a window, or agents finishing), the spare
   rate pays for more subagents, measured by what one typically draws, and holds drop to zero. `/allocate` in a CLI
   claims as many tickets as its fair share of the allowance has room for, each in its own git worktree, and hands each to a subagent.
+  It warms up: one subagent the minute `/allocate` turned on in it, one more each minute after, so CLIs opened just after
+  it claim their share before it fills every place; a freed place goes to the waiting CLI furthest under its share.
 - **Down:** when the draw runs ahead, the allowance falls below the number running, so no new subagent starts and the
   extras drain as they finish. Holds stretch every tool call, so running agents slow down without stopping.
 - **Near the reset**, the hours left shrink faster than the budget left, so the sustainable rate rises and the

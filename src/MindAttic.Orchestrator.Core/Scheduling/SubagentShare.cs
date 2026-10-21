@@ -8,6 +8,8 @@ namespace MindAttic.Orchestrator.Scheduling;
 /// share if that's more), and a CLI that wants nothing more lends what it isn't using. Nothing running is ever stopped:
 /// a CLI over its share only starts nothing new until it's back under, so the next free place goes to the one under.
 /// The pace gate (<c>pace-gate.py</c>) applies the same rule live, a waiting Agent call being what "wants" means there.
+/// Each CLI's /allocate also warms up (<see cref="WarmUp"/>, M.ORCH-T558), and in the gate a freed place goes to the waiting
+/// CLI furthest under its share.
 /// </summary>
 public static class SubagentShare
 {
@@ -29,8 +31,18 @@ public static class SubagentShare
     /// so with more CLIs than places each still gets the next one that frees in turn.</summary>
     public static int Share(int allowance, int active) => Math.Max(1, allowance / Math.Max(1, active));
 
-    /// <summary>How many more CLI <paramref name="me"/> may start now: under its <see cref="Limit"/> and under the allowance
-    /// across every CLI (<paramref name="total"/> running everywhere).</summary>
-    public static int Room(int allowance, int total, int me, IReadOnlyDictionary<int, int> running, IEnumerable<int> wanting) =>
-        Math.Max(0, Math.Min(allowance - total, Limit(allowance, me, running, wanting) - running.GetValueOrDefault(me)));
+    /// <summary>How many more CLI <paramref name="me"/> may start now: under its <see cref="Limit"/>, under its
+    /// <paramref name="warm"/> warm-up cap (<see cref="WarmUp"/>) and under the allowance across every CLI (<paramref name="total"/>
+    /// running everywhere).</summary>
+    public static int Room(int allowance, int total, int me, IReadOnlyDictionary<int, int> running, IEnumerable<int> wanting, int warm = int.MaxValue) =>
+        Math.Max(0, Math.Min(allowance - total, Math.Min(warm, Limit(allowance, me, running, wanting)) - running.GetValueOrDefault(me)));
+
+    /// <summary>
+    /// How many subagents a CLI's /allocate may have running <paramref name="nowUtc"/> while it warms up (M.ORCH-T558): one the
+    /// minute it turned on (<paramref name="onSinceUtc"/>), one more each minute after, so CLIs opened just after it can turn
+    /// /allocate on and claim their share before the first one fills every place. No cap when it isn't known to be on.
+    /// </summary>
+    public static int WarmUp(DateTime? onSinceUtc, DateTime nowUtc) => onSinceUtc is { } since
+        ? (int)Math.Min(int.MaxValue, 1 + Math.Floor(Math.Max(0, (nowUtc - since).TotalMinutes)))
+        : int.MaxValue;
 }

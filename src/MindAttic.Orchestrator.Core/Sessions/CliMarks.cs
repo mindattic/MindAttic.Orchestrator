@@ -62,6 +62,47 @@ public static class CliMarks
         return rows;
     }
 
+    /// <summary>When each CLI's mark of <paramref name="kind"/> was first written (M.ORCH-T558: /allocate warms up from when it
+    /// turned on), by process id, for the marks <see cref="Read"/> finds: the row's, or for a mark only a file in
+    /// <paramref name="directory"/> holds (or one removed and written again while the database was held), the file's time.</summary>
+    public static IReadOnlyDictionary<int, DateTime> Since(string directory, string kind)
+    {
+        var rows = new Dictionary<int, DateTime>();
+        try
+        {
+            var db = Db();
+            if (File.Exists(db.Path))
+            {
+                using var connection = db.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT pid, COALESCE(since, written_at) FROM cli_marks WHERE kind = $kind;";
+                command.Parameters.AddWithValue("$kind", kind);
+                using var r = command.ExecuteReader();
+                while (r.Read()) rows[(int)r.GetInt64(0)] = DateTime.UnixEpoch.AddSeconds(r.GetDouble(1));
+            }
+        }
+        catch (Exception ex) when (ex is SqliteException or IOException) { }
+        var since = new Dictionary<int, DateTime>();
+        foreach (var pid in Read(directory, kind).Keys)
+        {
+            var file = Path.Combine(directory, kind + "-" + pid);
+            var at = FileTime(file);
+            var cleared = File.Exists(file + ClearedSuffix);
+            since[pid] = rows.TryGetValue(pid, out var row) && !(cleared && at is not null)
+                ? at is { } t && t < row ? t : row
+                : at ?? DateTime.UtcNow;
+        }
+        return since;
+    }
+
+    private static double Seconds(DateTime utc) => (utc - DateTime.UnixEpoch).TotalSeconds;
+
+    private static DateTime? FileTime(string path)
+    {
+        try { return File.Exists(path) ? File.GetLastWriteTimeUtc(path) : null; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+    }
+
     /// <summary>
     /// Reads every mark file in <paramref name="directory"/> into its row (a <c>.cleared</c> one removes the row), keeping each
     /// as .bak. The row is committed before the file is moved aside (M.ORCH-T540), so a reader always finds one or the other;
@@ -88,12 +129,16 @@ public static class CliMarks
                     {
                         using var command = connection.CreateCommand();
                         command.Transaction = tx;
+                        // A mark already there keeps when it was first written (M.ORCH-T558); a new one is from its file's time.
                         command.CommandText = clear ? "DELETE FROM cli_marks WHERE kind = $kind AND pid = $pid;"
-                            : "INSERT OR REPLACE INTO cli_marks (kind, pid, value, written_at) VALUES ($kind, $pid, $value, $at);";
+                            : "INSERT INTO cli_marks (kind, pid, value, written_at, since) VALUES ($kind, $pid, $value, $at, $since) " +
+                              "ON CONFLICT (kind, pid) DO UPDATE SET value = excluded.value, written_at = excluded.written_at, " +
+                              "since = COALESCE(cli_marks.since, cli_marks.written_at);";
                         command.Parameters.AddWithValue("$kind", kind);
                         command.Parameters.AddWithValue("$pid", pid);
                         command.Parameters.AddWithValue("$value", text);
                         command.Parameters.AddWithValue("$at", (DateTime.UtcNow - DateTime.UnixEpoch).TotalSeconds);
+                        command.Parameters.AddWithValue("$since", Seconds(FileTime(f) ?? DateTime.UtcNow));
                         command.ExecuteNonQuery();
                     }, dump: false);
                 }

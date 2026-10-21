@@ -227,6 +227,12 @@ public sealed class OrchestratorDb(string path)
             written_at REAL NOT NULL
         );
         """,
+        // 9: when each CLI's mark was first written (M.ORCH-T558), kept while the mark is rewritten (repos added) and gone with
+        // it: /allocate warms up from it, one more subagent each minute since it turned on, across restarts. Rows already there
+        // keep NULL: their written_at stands in.
+        """
+        ALTER TABLE cli_marks ADD COLUMN since REAL;
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a

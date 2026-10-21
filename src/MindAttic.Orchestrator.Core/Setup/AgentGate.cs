@@ -1007,6 +1007,43 @@ public static class AgentGate
             out = {str(pid): str(value) for pid, value in rows if str(pid) not in cleared}
             out.update(files)
             return out
+        def cli_mark_since(kind):
+            # {pid: when it was first written} for each CLI's mark of the kind (M.ORCH-T558: /allocate warms up from when it
+            # turned on): its row's since (written_at from before the column), or for a mark only a file holds, the file's time.
+            # Read through the gate's deciding transaction while one is open (TX_SINCE).
+            marks = cli_marks(kind)
+            rows = {}
+            def query(sql):
+                if TX_SINCE[0] is not None:
+                    return TX_SINCE[0].execute(sql, (kind,)).fetchall()
+                return orch_rows(sql, (kind,), timeout=1)
+            try:
+                got = query("SELECT pid, COALESCE(since, written_at) FROM cli_marks WHERE kind = ?")
+            except Exception:
+                got = None
+            if got is None:
+                try:
+                    got = query("SELECT pid, written_at FROM cli_marks WHERE kind = ?")
+                except Exception:
+                    got = None
+            for pid, at in got or []:
+                try:
+                    rows[str(pid)] = float(at)
+                except Exception:
+                    pass
+            out = {}
+            for pid in marks:
+                f = CLI_MARKS_DIR / (kind + "-" + pid)
+                try:
+                    at = f.stat().st_mtime if f.exists() else None
+                except Exception:
+                    at = None
+                row = rows.get(pid)
+                if (CLI_MARKS_DIR / (kind + "-" + pid + ".cleared")).exists() and at is not None:
+                    row = None
+                out[pid] = min(t for t in (row, at) if t is not None) if (row is not None or at is not None) else time.time()
+            return out
+        TX_SINCE = [None]  # the gate's deciding transaction while one is open: cli_mark_since reads through it
         def cli_mark(kind, pid):
             # This CLI's mark of the kind (its text), or None when it has none.
             return cli_marks(kind).get(str(pid)) if pid else None
@@ -1033,7 +1070,25 @@ public static class AgentGate
                     if value is None:
                         db.execute("DELETE FROM cli_marks WHERE kind = ? AND pid = ?", (kind, int(pid)))
                     else:
-                        db.execute("INSERT OR REPLACE INTO cli_marks (kind, pid, value, written_at) VALUES (?, ?, ?, ?)", (kind, int(pid), str(value), time.time()))
+                        # A mark already there keeps when it was first written (M.ORCH-T558: /allocate warms up from when it
+                        # turned on); a new one is from now, or from its file kept while the database was held. One removed
+                        # while it was held (its .cleared file) starts again. A database from before the column is written as before.
+                        now = time.time()
+                        try:
+                            first = f.stat().st_mtime if f.exists() and not gone.exists() else now
+                        except Exception:
+                            first = now
+                        try:
+                            if gone.exists():
+                                db.execute("DELETE FROM cli_marks WHERE kind = ? AND pid = ?", (kind, int(pid)))
+                            db.execute("INSERT INTO cli_marks (kind, pid, value, written_at, since) VALUES (?, ?, ?, ?, ?) "
+                                       "ON CONFLICT (kind, pid) DO UPDATE SET value = excluded.value, written_at = excluded.written_at, "
+                                       "since = MIN(COALESCE(cli_marks.since, cli_marks.written_at), excluded.since)",
+                                       (kind, int(pid), str(value), now, first))
+                        except Exception as e:
+                            if "since" not in str(e):
+                                raise
+                            db.execute("INSERT OR REPLACE INTO cli_marks (kind, pid, value, written_at) VALUES (?, ?, ?, ?)", (kind, int(pid), str(value), now))
                     db.execute("COMMIT")
                     drop(f)
                     drop(gone)
@@ -2011,14 +2066,38 @@ public static class AgentGate
                 for pid in held_slots():
                     counts[pid] = counts.get(pid, 0) + 1
                 return counts
-            def fair_limit(s, allowed):
-                # (running or starting here, how many this CLI may have, active CLIs)
+            def fair_limit(s, allowed, free):
+                # (running or starting here, how many this CLI may have, active CLIs, whether it's warming up, whether it's
+                # another CLI's turn)
                 counts = by_cli(s)
                 wants = wanting()
                 active = {p for p, n in counts.items() if n > 0 and p} | wants | {ME}
                 share = max(1, int(allowed) // max(1, len(active)))
                 held = sum(n for p, n in counts.items() if p != ME and p not in wants) + sum(max(counts.get(p, 0), share) for p in wants)
-                return counts.get(ME, 0), max(share, int(allowed) - held), len(active)
+                limit = max(share, int(allowed) - held)
+                # Warming up (M.ORCH-T558): a CLI's /allocate has at most one subagent the minute it turned on and one more
+                # each minute after, so CLIs opened just after it claim theirs before it fills every place. A CLI without
+                # /allocate on (subagents started by hand) has no warm-up.
+                TX_SINCE[0] = TX
+                try:
+                    since = cli_mark_since("autopilot")
+                finally:
+                    TX_SINCE[0] = None
+                def warm(p):
+                    at = since.get(p)
+                    return 1 + int(max(0.0, time.time() - at) // 60) if at is not None else None
+                w = warm(ME)
+                warming = w is not None and w < limit
+                if warming:
+                    limit = w
+                # A freed place goes to the waiting CLI furthest under its share (its warm-up counted), not whichever asks
+                # first: this one waits while the CLIs ahead of it would take every free place.
+                def under(p):
+                    cap = share if warm(p) is None else min(share, warm(p))
+                    return cap - counts.get(p, 0)
+                mine_under = under(ME)
+                ahead = [p for p in wants if under(p) > 0 and (under(p) > mine_under or (under(p) == mine_under and str(p) < str(ME)))]
+                return counts.get(ME, 0), limit, len(active), warming, len(ahead) >= free
             def locked():
                 # One pace gate at a time decides; a lock left by a killed gate is broken after a few seconds.
                 MARKS.mkdir(parents=True, exist_ok=True)
@@ -2059,6 +2138,7 @@ public static class AgentGate
                         pass
                 return take_file()
             mine = limit = clis = None
+            warming = turn = False
             while True:
                 TX = slot_db()
                 has_lock = TX is None and locked()
@@ -2069,9 +2149,10 @@ public static class AgentGate
                         busy = running(s) + slots() if allowed is not None else 0
                         go = allowed is None or busy < allowed
                         limit = None
+                        warming = turn = False
                         if go:
-                            mine, limit, clis = fair_limit(s, allowed)
-                            go = mine < limit
+                            mine, limit, clis, warming, turn = fair_limit(s, allowed, int(allowed) - busy)
+                            go = mine < limit and not turn
                     except Exception:
                         go = True
                     if go:
@@ -2089,6 +2170,15 @@ public static class AgentGate
                 if time.monotonic() - start >= MAX_HOLD:
                     want(False)
                     gate_log("refused", time.monotonic() - start)
+                    if limit is not None and warming and mine >= limit:
+                        refuse("This CLI's /allocate is warming up (" + str(mine) + " running or starting, at most " + str(limit) +
+                               " yet: one more each minute since it turned on, so CLIs opened just after it get theirs too), so this "
+                               "subagent wasn't started. Don't start it now: work on in this turn, or end it, and try again in a minute.")
+                    if limit is not None and turn and mine < limit:
+                        refuse("Another CLI further under its fair share of the subagent allowance is waiting for the free places (" +
+                               str(mine) + " running or starting here, " + str(allowed) + " allowed across the " + str(clis) + " CLIs that use "
+                               "or want them), so this subagent wasn't started. Don't start it now: work on in this turn, or end it, and "
+                               "try again in a minute.")
                     if limit is not None:
                         refuse("This CLI has its fair share of the subagent allowance (" + str(mine) + " running or starting, " + str(limit) +
                                " its share of the " + str(allowed) + " allowed across the " + str(clis) + " CLIs that use or want them), so "

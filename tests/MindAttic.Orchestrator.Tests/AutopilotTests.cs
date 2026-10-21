@@ -321,6 +321,42 @@ public sealed class AutopilotTests
         Assert.That(Autopilot.Next(Planned(), settings, store, ["A"], 6, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots).Handed, Has.Count.EqualTo(6));
     }
 
+    /// <summary>M.ORCH-T558: the first CLI to turn /allocate on claimed every place before the CLIs opened just after it could.</summary>
+    [Test]
+    public void A_cli_whose_autopilot_just_turned_on_warms_up_one_more_subagent_each_minute()
+    {
+        var snap = Snap(("A", [.. Enumerable.Range(1, 12).Select(i => T($"A-T{i}"))]), ("B", [T("B-T1"), T("B-T2")]));
+        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
+        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
+        SchedulePlan Planned(int running = 0, Dictionary<int, int>? byCli = null) => Paced(snap, 5) with
+        {
+            Pace = Paced(snap, 5).Pace! with { SubagentAllowance = 12, Subagents = running, SubagentsByCli = byCli ?? [] },
+        };
+        Dictionary<int, IReadOnlyList<string>> alone = new() { [1] = ["A"] };
+        var since = new Dictionary<int, DateTime> { [1] = Now };
+
+        var (first, _) = Autopilot.Next(Planned(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: alone, onSince: since);
+        Assert.That(first, Has.Count.EqualTo(1), "minute 0: one, not all 12");
+        var (held, why) = Autopilot.Next(Planned(1, new() { [1] = 1 }), settings, store, ["A"], null, claim: false, Now.AddSeconds(30), Make, _ => "main",
+            cli: 1, pilots: alone, onSince: since);
+        Assert.That(held, Is.Empty);
+        Assert.That(why, Does.Contain("warming up"));
+        Assert.That(Autopilot.Next(Planned(1, new() { [1] = 1 }), settings, store, ["A"], null, claim: false, Now.AddMinutes(2.5), Make, _ => "main",
+            cli: 1, pilots: alone, onSince: since).Handed, Has.Count.EqualTo(2), "minute 2: up to 3");
+        Assert.That(Autopilot.Next(Planned(), settings, store, ["A"], null, claim: false, Now.AddMinutes(30), Make, _ => "main",
+            cli: 1, pilots: alone, onSince: since).Handed, Has.Count.EqualTo(12), "warmed up and alone: every place");
+
+        // A CLI opened just after it turns /allocate on: it warms up from its own minute, and its share is kept for it.
+        Dictionary<int, IReadOnlyList<string>> both = new() { [1] = ["A"], [2] = ["B"] };
+        since[2] = Now.AddMinutes(3);
+        Assert.That(Autopilot.Next(Planned(3, new() { [1] = 3 }), settings, store, ["A"], null, claim: false, Now.AddMinutes(10), Make, _ => "main",
+            cli: 1, pilots: both, onSince: since).Handed, Has.Count.EqualTo(3), "CLI 1 gets up to its share of 6, the rest kept for CLI 2");
+        Assert.That(Autopilot.Next(Planned(6, new() { [1] = 6 }), settings, store, ["B"], null, claim: false, Now.AddMinutes(3), Make, _ => "main",
+            cli: 2, pilots: both, onSince: since).Handed, Has.Count.EqualTo(1), "CLI 2's own minute 0: one");
+        Assert.That(Autopilot.Next(Planned(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: alone).Handed,
+            Has.Count.EqualTo(12), "not known to be on: no warm-up");
+    }
+
     [Test]
     public void A_ticket_closed_after_the_queue_was_read_is_not_claimed_or_given_a_worktree()
     {

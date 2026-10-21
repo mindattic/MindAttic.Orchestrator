@@ -100,7 +100,7 @@ public sealed class LeaseTests
     }
 
     [Test]
-    public void Steps_6_to_8_add_the_cli_marks_claimers_and_session_states_to_a_version_5_database_and_keeps_what_it_held()
+    public void Steps_6_to_9_add_the_cli_marks_claimers_and_session_states_to_a_version_5_database_and_keeps_what_it_held()
     {
         var path = Path.Combine(dir, "v5.db");
         var store = new JsonStore(dir, new OrchestratorDb(path));
@@ -116,8 +116,10 @@ public sealed class LeaseTests
             Assert.That(command.ExecuteScalar(), Is.EqualTo((long)OrchestratorDb.Version));
             command.CommandText = "SELECT count(*) FROM sqlite_master WHERE name IN ('cli_marks', 'session_states');";
             Assert.That(command.ExecuteScalar(), Is.EqualTo(2L));
+            command.CommandText = "SELECT count(*) FROM pragma_table_info('cli_marks') WHERE name = 'since';";
+            Assert.That(command.ExecuteScalar(), Is.EqualTo(1L), "step 9 (M.ORCH-T558): when each CLI's mark was first written");
         }
-        Assert.That(OrchestratorDb.Version, Is.EqualTo(8), "step 8 (M.ORCH-T528) adds session_states");
+        Assert.That(OrchestratorDb.Version, Is.EqualTo(9), "step 8 (M.ORCH-T528) adds session_states, step 9 (M.ORCH-T558) cli_marks.since");
         Assert.That(new JsonStore(dir, new OrchestratorDb(path)).LoadSettings().BlockBudget, Is.EqualTo(5555), "what it held is kept");
     }
 

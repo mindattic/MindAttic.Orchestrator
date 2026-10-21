@@ -174,7 +174,8 @@ public sealed class ClaimOwnerTests
         old.SaveAssignments([Claim("A-T1", null, TimeSpan.FromMinutes(1))]);
         // Back to how a version-6 database was: no claimer columns.
         using (var connection = old.Db.Open())
-            OrchestratorDb.Execute(connection, "ALTER TABLE assignments DROP COLUMN cli; ALTER TABLE assignments DROP COLUMN cli_session; DROP TABLE session_states; PRAGMA user_version = 6;");
+            OrchestratorDb.Execute(connection, "ALTER TABLE assignments DROP COLUMN cli; ALTER TABLE assignments DROP COLUMN cli_session; DROP TABLE session_states; " +
+                "ALTER TABLE cli_marks DROP COLUMN since; PRAGMA user_version = 6;");
 
         var store6 = new JsonStore(Path.Combine(dir, "v6"), new OrchestratorDb(path));
         var kept = store6.LoadAssignments().Single();

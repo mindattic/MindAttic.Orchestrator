@@ -831,6 +831,65 @@ public sealed class HookScriptTests
         Assert.That(Gate(agent).Took, Is.LessThan(TimeSpan.FromSeconds(10)));
     }
 
+    /// <summary>M.ORCH-T558: the first CLI to turn /allocate on filled every place before the CLIs opened just after it could.</summary>
+    [Test]
+    public void Autopilot_warms_up_one_more_subagent_each_minute_since_it_turned_on_and_keeps_that_time_when_its_repos_change()
+    {
+        var path = MindAttic.Orchestrator.Settings.OrchestratorDb.DefaultPath();
+        new MindAttic.Orchestrator.Settings.OrchestratorDb(path).Open().Dispose();
+        double? Since()
+        {
+            using var connection = new MindAttic.Orchestrator.Settings.OrchestratorDb(path).Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = $"SELECT since FROM cli_marks WHERE kind = 'autopilot' AND pid = {Cli};";
+            return command.ExecuteScalar() is double d ? d : null;
+        }
+        void Shift(int seconds)
+        {
+            using var connection = new MindAttic.Orchestrator.Settings.OrchestratorDb(path).Open();
+            MindAttic.Orchestrator.Settings.OrchestratorDb.Execute(connection, $"UPDATE cli_marks SET since = since - {seconds};");
+        }
+        object Prompt(string prompt) => new { hook_event_name = "UserPromptSubmit", session_id = "s1", prompt, cwd = ws };
+        Gate(Prompt("/allocate -repo=a"), AgentGate.ContextScriptName);
+        var on = Since();
+        Assert.That(on, Is.Not.Null.And.EqualTo((DateTime.UtcNow - DateTime.UnixEpoch).TotalSeconds).Within(30), "when it turned on, in its row");
+        Thread.Sleep(1_100);
+        Gate(Prompt("/allocate -repo=b"), AgentGate.ContextScriptName);
+        Assert.That(Since(), Is.EqualTo(on), "repos added: still when it turned on");
+
+        var agent = new { tool_name = "Agent", tool_input = new { prompt = "x" } };
+        Status(new { subagent_allowance = 8, subagents_running = 1, subagents_seen_through_ns = 0, subagents_by_cli = new Dictionary<string, int> { [Cli.ToString()] = 1 } });
+        var (output, _) = GateHeld(agent, 2);
+        Assert.That(output, Does.Contain("\"deny\"").And.Contain("warming up"), "minute 0: one, though 7 places are free");
+        Shift(150);
+        Assert.That(GateHeld(agent, 2).Output, Is.Empty, "two and a half minutes on: up to 3");
+
+        Gate(Prompt("/allocate off"), AgentGate.ContextScriptName);
+        Gate(Prompt("/allocate -repo=a"), AgentGate.ContextScriptName);
+        Assert.That(Since(), Is.GreaterThan(on!.Value - 10), "off and on again: it warms up from the start");
+    }
+
+    /// <summary>M.ORCH-T558: a freed place goes to the waiting CLI furthest under its share, not whichever asks first.</summary>
+    [Test]
+    public void A_free_place_goes_to_the_waiting_cli_furthest_under_its_share()
+    {
+        var wants = Path.Combine(Marks, AgentGate.WantDirName);
+        Directory.CreateDirectory(wants);
+        File.WriteAllText(Path.Combine(wants, "999-1"), ""); // CLI 999 waits with none running
+        var agent = new { tool_name = "Agent", tool_input = new { prompt = "x" } };
+        // 6 allowed across 3 CLIs (a share of 2): one place free. This CLI has 1, CLI 999 none: 999 is further under.
+        Status(new { subagent_allowance = 6, subagents_running = 5, subagents_seen_through_ns = 0,
+            subagents_by_cli = new Dictionary<string, int> { [Cli.ToString()] = 1, ["777"] = 4 } });
+        var (output, _) = GateHeld(agent, 2);
+        Assert.That(output, Does.Contain("\"deny\"").And.Contain("further under its fair share"));
+
+        // Both one under: the tie goes the same way in every gate (the lower process id first), so one of them takes it.
+        foreach (var f in Directory.GetFiles(wants, Cli + "-*")) File.Delete(f);
+        Status(new { subagent_allowance = 6, subagents_running = 5, subagents_seen_through_ns = 0,
+            subagents_by_cli = new Dictionary<string, int> { [Cli.ToString()] = 1, ["999"] = 1, ["777"] = 3 } });
+        Assert.That(GateHeld(agent, 2).Output, Is.Empty, "4242 goes before 999");
+    }
+
     [Test]
     public void A_subagent_start_never_frees_another_clis_slot()
     {
