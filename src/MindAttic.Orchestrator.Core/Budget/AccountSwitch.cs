@@ -110,12 +110,23 @@ public static class AccountSwitch
     /// From a terminal it runs in that terminal; from the dashboard (which has no console) it gets a console window of its
     /// own, where the login says what it's doing. Returns the process, for the caller to wait on; throws
     /// <see cref="System.ComponentModel.Win32Exception"/> when claude isn't found.</summary>
-    public static Process Start(string email, bool sso)
+    public static Process Start(string email, bool sso, string? configDir = null)
     {
         var psi = new ProcessStartInfo("claude") { UseShellExecute = false, CreateNoWindow = false };
         foreach (var a in LoginArgs(email, sso)) psi.ArgumentList.Add(a);
+        // A per-CLI login (M.ORCH-T559) signs in to its own folder, leaving the global login as it is.
+        if (configDir is not null) psi.Environment[Sessions.AccountDirs.EnvVar] = configDir;
         return Process.Start(psi) ?? throw new InvalidOperationException("claude didn't start");
     }
+
+    /// <summary>The seam <c>orchestrator login --account</c> signs a per-CLI login's folder in through (M.ORCH-T559): runs
+    /// <c>claude auth login --email</c> with <c>CLAUDE_CONFIG_DIR</c> set to the folder and returns its exit code. Tests replace it.</summary>
+    public static Func<string, bool, string, int> LoginInto { get; set; } = (email, sso, configDir) =>
+    {
+        using var p = Start(email, sso, configDir);
+        p.WaitForExit();
+        return p.ExitCode;
+    };
 
     /// <summary>
     /// Signs every CLI in to <paramref name="row"/>'s account (by <paramref name="by"/>: "dashboard", "cli"): billing on the API

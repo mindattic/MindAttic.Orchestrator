@@ -57,6 +57,30 @@ public static class AgentGate
         """;
 
     /// <summary>
+    /// Python for a CLI on its own Claude login (M.ORCH-T559, <see cref="Sessions.AccountDirs"/>; needs <c>os</c> and
+    /// <c>Path</c>): <c>PROFILE_DIR</c> is the account's own config folder when <c>CLAUDE_CONFIG_DIR</c> names one other than
+    /// <c>~/.claude</c>, else None. Such a CLI is paced on its account alone: its status, Claude's meter and its sign-in are
+    /// read from that folder (<c>CLAUDE_HOME</c>, <c>CLAUDE_JSON</c>), and its subagents' marks, slots and wants are kept in
+    /// that folder's <c>session-context</c> (<c>SUBAGENT_MARKS</c>), never the shared tables, so one account's subagents
+    /// never fill another's allowance. Everything else (turn state, /allocate, handoff) stays shared.
+    /// </summary>
+    internal static string ProfilePython => """
+        def _profile_dir():
+            d = os.environ.get("CLAUDE_CONFIG_DIR")
+            if not d:
+                return None
+            try:
+                p = Path(d).expanduser().resolve()
+                return None if p == (Path.home() / ".claude").resolve() else p
+            except Exception:
+                return None
+        PROFILE_DIR = _profile_dir()
+        CLAUDE_HOME = PROFILE_DIR or (Path.home() / ".claude")
+        CLAUDE_JSON = (PROFILE_DIR / ".claude.json") if PROFILE_DIR else (Path.home() / ".claude.json")
+        SUBAGENT_MARKS = (PROFILE_DIR / "session-context") if PROFILE_DIR else (Path.home() / ".claude" / "session-context")
+        """;
+
+    /// <summary>
     /// Python shared by both hooks (needs <c>json</c>, <c>os</c>, <c>time</c>, <c>datetime</c> and <c>Path</c>): the never-over line
     /// without the orchestrator. While the daemon keeps <c>rl-status.json</c> fresh it decides the stop; if it dies or
     /// stalls, the hooks used to treat the stale file as "no pacing", so nothing stopped a window passing the limit.
@@ -74,6 +98,7 @@ public static class AgentGate
     /// subscription's windows, so no stop or pace holds it.</para>
     /// </summary>
     internal static string ClaudeUsagePython => $$"""
+        {{ProfilePython}}
         STOP_PERCENT = {{StopPercent}}
         LATCH = Path.home() / ".claude" / "session-context" / "{{StopLatchName}}"
         ACCOUNT = Path.home() / ".claude" / "session-context" / "{{Budget.ClaudeAccount.FileName}}"
@@ -86,14 +111,15 @@ public static class AgentGate
                 except PermissionError:
                     time.sleep(0.05)
             raise PermissionError(str(path))
-        RL_STATUS = Path.home() / ".claude" / "rl-status.json"
+        RL_STATUS = CLAUDE_HOME / "rl-status.json"
         def rl_status():
             # The orchestrator's pace status (M.ORCH-T526): its rl-status row in the database (needs orch_rows), or
             # rl-status.json, the same status exported for readers outside the orchestrator (and all a daemon from before the
             # move writes), whichever was written later. A database held by a write isn't waited on long: the file stands in.
-            # Raises when there's neither.
+            # Raises when there's neither. A CLI on its own login (M.ORCH-T559) reads only its account's file: the row is the
+            # global login's pace.
             found = []
-            rows = orch_rows("SELECT value FROM state WHERE name = ?", ("{{Budget.RateLimitStatusWriter.StateName}}",), timeout=1)
+            rows = None if PROFILE_DIR else orch_rows("SELECT value FROM state WHERE name = ?", ("{{Budget.RateLimitStatusWriter.StateName}}",), timeout=1)
             if rows:
                 try:
                     s = json.loads(rows[0][0])
@@ -130,7 +156,7 @@ public static class AgentGate
                 pass
         def claude_config():
             try:
-                config = json.loads((Path.home() / ".claude.json").read_text(encoding="utf-8", errors="ignore"))
+                config = json.loads(CLAUDE_JSON.read_text(encoding="utf-8", errors="ignore"))
                 return config if isinstance(config, dict) else {}
             except Exception:
                 return {}
@@ -153,6 +179,12 @@ public static class AgentGate
             if _account:
                 return _account[0]
             result = ("", [], {})
+            if PROFILE_DIR:
+                # A CLI on its own login (M.ORCH-T559) is that one account for its whole life: it has no switches, and the
+                # shared record is the global login's, so it's never written from here.
+                signed = config_account(claude_config()) or ""
+                _account.append((signed, [(0.0, None)] if signed else [], {}))
+                return _account[0]
             try:
                 signed = config_account(claude_config())
                 try:
@@ -285,14 +317,14 @@ public static class AgentGate
             # Claude's own report: the statusline's claude-usage.json, or the orchestrator's meter probe reading in its
             # database (M.ORCH-T528: the probe never replaces the statusline's file), whichever is later. Raises when neither.
             found = []
-            rows = orch_rows("SELECT value FROM state WHERE name = ?", ("{{Budget.ReportedUsage.StateName}}",), timeout=1)
+            rows = None if PROFILE_DIR else orch_rows("SELECT value FROM state WHERE name = ?", ("{{Budget.ReportedUsage.StateName}}",), timeout=1)
             if rows:
                 try:
                     found.append(json.loads(rows[0][0]))
                 except Exception:
                     pass
             try:
-                found.append(read_json(Path.home() / ".claude" / "claude-usage.json"))
+                found.append(read_json(CLAUDE_HOME / "claude-usage.json"))
             except Exception:
                 if not found:
                     raise
@@ -387,7 +419,7 @@ public static class AgentGate
         def auth_sources(cwd=None):
             # (environment, settings files): this CLI's own environment over the settings' env blocks, and the settings read.
             settings = []
-            places = [Path.home() / ".claude" / "settings.json", Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "ClaudeCode" / "managed-settings.json"]
+            places = [CLAUDE_HOME / "settings.json", Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "ClaudeCode" / "managed-settings.json"]
             if cwd:
                 places += [Path(cwd) / ".claude" / "settings.json", Path(cwd) / ".claude" / "settings.local.json"]
             for place in places:
@@ -570,7 +602,7 @@ public static class AgentGate
             # Moves the key's last 20 characters from customApiKeyResponses.approved to .rejected in ~/.claude.json; True when it
             # did. That's Claude Code's own file, large and rewritten often: only that field's text changes, the rest is kept byte
             # for byte, and it's put in place whole, re-read just before so a write Claude Code made meanwhile is never lost.
-            path, tail = Path.home() / ".claude.json", key[-20:]
+            path, tail = CLAUDE_JSON, key[-20:]
             for _ in range(5):
                 raw = None
                 for _ in range(20):
@@ -1189,6 +1221,10 @@ public static class AgentGate
             # a pace gate's check and the slot it takes are one transaction, so Agent calls sent together queue on SQLite's
             # lock instead of the old subagent-slots.lock file. None when the database isn't there, is from before the tables,
             # or stays held past timeout seconds: the gate keeps its slot as a file then, which every gate counts too.
+            # None for a CLI on its own login (M.ORCH-T559): its slots are files in its account's folder, apart from every
+            # other account's.
+            if globals().get("PROFILE_DIR"):
+                return None
             try:
                 import sqlite3
                 if not os.path.isfile(ORCH_DB):
@@ -2001,9 +2037,11 @@ public static class AgentGate
         # with the slot kept as a file. Every gate counts both the rows and the files, so neither kind is missed.
         # The slot counts until the context gate's SubagentStart turns it into the subagent's mark, or it expires.
         if tool in ("Agent", "Task"):
-            SUB = MARKS / "subagents"
-            SLOTS = MARKS / "{{SlotDirName}}"
-            LOCK = MARKS / "{{SlotDirName}}.lock"
+            # Each Claude login's subagents are its own (M.ORCH-T559): a CLI on its own login counts, slots and waits in its
+            # account's folder (SUBAGENT_MARKS), held to that account's allowance.
+            SUB = SUBAGENT_MARKS / "subagents"
+            SLOTS = SUBAGENT_MARKS / "{{SlotDirName}}"
+            LOCK = SUBAGENT_MARKS / "{{SlotDirName}}.lock"
             TX = None  # the deciding transaction, while one is open
             def mark_ns(m):
                 # A mark whose subagent stops (or the daemon prunes) while it's counted is gone, not a reason to stop
@@ -2041,7 +2079,7 @@ public static class AgentGate
                 if TX is not None:
                     TX.execute("DELETE FROM subagent_slots WHERE touched_at < ?", (cutoff,))
                     held += [str(r[0]) for r in TX.execute("SELECT cli FROM subagent_slots")]
-                else:
+                elif not PROFILE_DIR:
                     held += [str(r[0]) for r in orch_rows("SELECT cli FROM subagent_slots WHERE touched_at >= ?", (cutoff,), timeout=1) or []]
                 return held
             def slots():
@@ -2052,7 +2090,7 @@ public static class AgentGate
             # places no other CLI is waiting for. A waiting call marks its CLI as wanting, so the next place that frees goes to
             # a CLI under its share, never back to the one over it; a CLI that wants nothing more lends what it isn't using.
             ME = str(os.environ.get("MINDATTIC_CLI_PID") or cli_pid() or 0)
-            WANTS = MARKS / "{{WantDirName}}"
+            WANTS = SUBAGENT_MARKS / "{{WantDirName}}"
             WANT = WANTS / (ME + "-" + str(os.getpid()))
             def want(on):
                 # A row of subagent_wants when the database takes it, else the old file; every gate reads both.
@@ -2082,7 +2120,7 @@ public static class AgentGate
                 if TX is not None:
                     TX.execute("DELETE FROM subagent_wants WHERE touched_at < ?", (cutoff,))
                     pids.update(str(r[0]) for r in TX.execute("SELECT cli FROM subagent_wants"))
-                else:
+                elif not PROFILE_DIR:
                     pids.update(str(r[0]) for r in orch_rows("SELECT cli FROM subagent_wants WHERE touched_at >= ?", (cutoff,), timeout=1) or [])
                 pids.discard(ME)
                 return pids
@@ -2146,7 +2184,7 @@ public static class AgentGate
                 return counts.get(ME, 0), limit, len(active), warming, len(ahead) >= free
             def locked():
                 # One pace gate at a time decides; a lock left by a killed gate is broken after a few seconds.
-                MARKS.mkdir(parents=True, exist_ok=True)
+                SUBAGENT_MARKS.mkdir(parents=True, exist_ok=True)
                 give_up = time.monotonic() + 15
                 while time.monotonic() < give_up:
                     try:
@@ -2391,7 +2429,7 @@ public static class AgentGate
                 allowed = limits.get("subagent_allowance")
                 if allowed is None or (pid and (DIR / ("unthrottled-" + str(pid))).exists()):
                     return False
-                sub = DIR / "subagents"
+                sub = SUBAGENT_MARKS / "subagents"
                 marks = list(sub.iterdir()) if sub.exists() else []
                 def mark_ns(m):
                     # Gone while counted (its stop came): not counted, rather than the whole check giving up (M.ORCH-T366).
@@ -2636,7 +2674,7 @@ public static class AgentGate
             if event == "SubagentStop":
                 poke()
             if data.get("agent_id"):
-                sub = DIR / "subagents"
+                sub = SUBAGENT_MARKS / "subagents"
                 sub.mkdir(parents=True, exist_ok=True)
                 mark = sub / re.sub(r"[^A-Za-z0-9_.-]", "_", str(data["agent_id"]))
                 if event == "SubagentStart":
@@ -2649,7 +2687,7 @@ public static class AgentGate
                     # The mark now counts it, so the slot the pace gate kept for its call is let go: this CLI's oldest. Never
                     # another CLI's: a subagent that took no slot (a CLI with /pacing off, an exempt turn) would free a place
                     # still held for that CLI's pending call; a slot left over expires.
-                    release_oldest_slot(my_pid() or 0, DIR)
+                    release_oldest_slot(my_pid() or 0, SUBAGENT_MARKS)
                 elif mark.exists():
                     mark.unlink()
             sys.exit(0)
@@ -2669,7 +2707,7 @@ public static class AgentGate
                 DIR.mkdir(parents=True, exist_ok=True)
                 state_file = DIR / (sid + ".state.json")
                 state = load(state_file)
-                state.update(auth=auth, billing=line, billing_warn=warn, billing_account=config_account(claude_config()) or "",
+                state.update(auth=auth, config_dir=str(PROFILE_DIR or ""), billing=line, billing_warn=warn, billing_account=config_account(claude_config()) or "",
                              pid=state.get("pid") or cli_pid(), cwd=state.get("cwd") or data.get("cwd"))
                 save(state_file, state)
                 # After a /handoff (M.ORCH-T481): the first start once it's quiet clears the hold (new work starts again), and each
@@ -2777,7 +2815,7 @@ public static class AgentGate
                 sys.exit(0)
             for k in ("nudged", "worked", "closed"):
                 state.pop(k, None)
-            state.update(state="idle", at=now, pid=cli_pid(), cwd=data.get("cwd"), auth=auth)
+            state.update(state="idle", at=now, pid=cli_pid(), cwd=data.get("cwd"), auth=auth, config_dir=str(PROFILE_DIR or ""))
             # Held by a window (its stop, or the wind-down with work left for the reset): the daemon wakes it once that window
             # resets. Any other end of a turn isn't waiting on anything.
             held = limit_held(limits, data, now) if paced and (stopped or limits.get("wind_down_note")) else None
@@ -2805,7 +2843,7 @@ public static class AgentGate
                 state["transcript"] = data["transcript_path"]
             # The CLI's process id from its first prompt on: `orchestrator next` finds the calling CLI's own session by it, and
             # a CLI whose every stop is pushed back (an /allocate run) never reaches the Stop that used to record it.
-            state.update(state="busy", at=now, warned=False, cwd=data.get("cwd"), pid=cli_pid(), auth=auth)
+            state.update(state="busy", at=now, warned=False, cwd=data.get("cwd"), pid=cli_pid(), auth=auth, config_dir=str(PROFILE_DIR or ""))
             # A turn typed as an exempt command (/deploy, /run, ...) skips every pace gate until it stops (M.ORCH-T198).
             exempt = exempt_prompt(data.get("prompt"))
             if exempt:
@@ -2918,7 +2956,7 @@ public static class AgentGate
                 try:
                     auth, line, warn = billing_check(data.get("cwd"))
                     was = state.get("billing")
-                    state.update(auth=auth, billing=line, billing_warn=warn, billing_account=signed)
+                    state.update(auth=auth, config_dir=str(PROFILE_DIR or ""), billing=line, billing_warn=warn, billing_account=signed)
                     if line != was:
                         out["systemMessage"] = line
                         told = out.setdefault("hookSpecificOutput", {"hookEventName": "UserPromptSubmit", "additionalContext": ""})

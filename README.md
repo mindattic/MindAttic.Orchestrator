@@ -44,6 +44,7 @@ A Windows daemon, dashboard and CLI that keeps Claude agents working the workspa
 - Only fixes are worked without asking; features, chores and docs wait for `orchestrator approve`.
 - Repo windows: a CLI opened in a repo only edits that repo's files and closes that repo's tickets, unless you grant `/crossrepo`.
 - `/handoff` winds every CLI down for an account switch and picks up after it; `/handoff off` cancels it, `orchestrator handoff status` lists what's still working.
+- Per-CLI logins: `orchestrator start <repo> --account <email>` (or the dashboard's login choice) runs that CLI on another account's token pool beside the others, each paced on its own.
 
 **Dashboard**
 
@@ -123,6 +124,15 @@ The goal is to keep agents working all day and night, spending the target (98% b
 
 The hooks are written into your global `~/.claude/settings.json` by the daemon and dashboard, and rewritten if they go missing (a failed write, say while Claude Code has the file open, is retried on the next refresh). Both gates take the workspace from `MINDATTIC_WORKSPACE` (default `D:/Projects/MindAttic`) and treat `<workspace>.worktrees\<Repo>\...` as that repo's autopilot worktrees.
 
+## Per-CLI logins
+
+Several CLIs can run at once, each on a different Claude account's token pool (M.ORCH-T559). Sign an account in once with `orchestrator login --account <email>`, which makes its own config folder (`%USERPROFILE%\.claude-accounts\<email>`) and runs `claude auth login --email <email>` with `CLAUDE_CONFIG_DIR` pointing there. Then `orchestrator start <repo> --account <email>`, or the account's pill under *Start a session* in the dashboard, opens a Launcher tab whose CLI runs under that folder. A CLI started without it uses the global login (`~/.claude`) exactly as before.
+
+- **Shared:** the folder links (junctions) `commands`, `skills`, `agents`, `hooks`, `plugins` and `projects` to `~/.claude`, copies `CLAUDE.md`, and takes `~/.claude`'s `settings.json` each time a tab starts on it. Its `.claude.json` starts as yours without the sign-in, so trusted folders carry over. Transcripts stay in one place, so the dashboard, tickets and agent board see every CLI's work.
+- **Its own:** the sign-in, Claude's meter (its own statusline writes `claude-usage.json` in the folder and hands the rest of the line to the shared one, tagged with the account), the pace (`rl-status.json` in the folder, written by the daemon), its subagents' marks, slots and waits (`session-context` in the folder), and its 5-hour readings (`usage-samples.json`).
+- **Paced apart:** the context gate records each session's config folder, so the global login's budget, pace and subagent allowance leave those sessions out. Each account gets its own budget, pace, allowance and meter probe, and its finished windows are graded in the pace ledger under its own account. `orchestrator next` (what `/allocate` asks) run from such a CLI hands out what its account has room for, and `orchestrator accounts` lists the per-CLI logins with their meter and pace.
+- The global `rl-check.py` prompt hook is left out of an account's settings: it only reads the global login's pace.
+
 ## Autopilot
 
 Type `/allocate` in a CLI. That CLI works its own repo's tickets (or `-repo=A,B`, a wildcard such as `-repo=GTFO.*` for every repo whose name starts `GTFO.`, or `all`) through its own subagents, and no other CLI is affected.
@@ -155,7 +165,8 @@ The same core drives a CLI, deployed as `orchestrator.exe` in `C:\Apps\MindAttic
 | `status [--all] [--json]` | every repo's state, sessions, open tickets, tokens today, budget line, who's billed and each open CLI's own billing |
 | `billing [team\|api]` | who every CLI bills: `Claude Team: <email> (<org>)` or `API KEY: sk-ant-...<last4>` (masked), and each open CLI's own billing; `team` or `api` switches every CLI (see [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md#billing)) |
 | `login [<email-or-short-name>] [--sso] [--api-key]` | bare: the account roster, the signed-in one marked and the most headroom suggested; with an account, runs `claude auth login --email <address>` (`--sso` for SSO orgs), which opens its login in the browser; `--api-key` bills every CLI to the Vault's API key (emergencies) |
-| `start <Repo> [--provider] [--prompt]` | open a Launcher tab for a repo |
+| `login --account <email> [--sso]` | signs in a per-CLI login once: that account's own folder (`%USERPROFILE%\.claude-accounts\<email>`), leaving the global login every other CLI uses as it is (see [Per-CLI logins](#per-cli-logins)) |
+| `start <Repo> [--provider] [--prompt] [--account <email>]` | open a Launcher tab for a repo; `--account` runs its Claude CLI on that per-CLI login's token pool |
 | `send <Repo> "text" [--no-submit]` | type text + Enter (or just the text) into that repo's Launcher tab(s) |
 | `budget [--block 20M] [--weekly 150M] [--weekly-reset "Mon 9:00"] [--warn 80] [--pace true] [--target 98] [--hits] [--week]` | current 5-hour block, week and pace, and Codex/Gemini usage; set limits (`0` clears back to learned, `none` drops the reset); `--hits` lists the limit hits the learned limits come from; `--week` charts the week day by day and projects it against the weekly limit |
 | `queue [--top 25] [--groom]` / `bump <ID> [--by n]` | the cross-repo ticket queue, what's proposed next, and why (estimate, stale, too big, blocked, reserved); `--groom` lists old untouched tickets; reprioritize |

@@ -188,13 +188,20 @@ public sealed class ContextCycler(string? directory = null)
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
     }
 
-    /// <summary>Drops /pacing off marks whose CLI has closed, so a reused process id never inherits one, and
-    /// subagent marks whose stop never came.</summary>
-    public void PruneMarks()
+    /// <summary>Drops subagent marks whose stop never came (their CLI closed, or past <see cref="SubagentMarkLife"/>). Alone, for
+    /// a Claude login's own folder (M.ORCH-T559), which keeps only its subagents' marks.</summary>
+    public void PruneSubagentMarks()
     {
         if (System.IO.Directory.Exists(SubagentDirectory))
             foreach (var f in System.IO.Directory.EnumerateFiles(SubagentDirectory).Where(f => !SubagentAlive(f, DateTime.UtcNow, idle: false)))
                 try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+
+    /// <summary>Drops /pacing off marks whose CLI has closed, so a reused process id never inherits one, and
+    /// subagent marks whose stop never came.</summary>
+    public void PruneMarks()
+    {
+        PruneSubagentMarks();
         // The /allocate and /crossrepo marks a hook kept as files while the database was held (or from before it) are read in
         // first (M.ORCH-T528), then a closed CLI's rows go with its files.
         CliMarks.ReadIn(Directory);
@@ -333,7 +340,7 @@ public sealed class ContextCycler(string? directory = null)
     /// <summary>What the context gate records for a session billed to the subscription (its <c>auth</c>); anything else is not.</summary>
     public const string SubscriptionAuth = "subscription";
 
-    private readonly Dictionary<string, (DateTime Stamp, string? Auth)> auths = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (DateTime Stamp, string? Auth, string? ConfigDir)> auths = new(StringComparer.Ordinal);
 
     /// <summary>
     /// The sessions the context gate found billed elsewhere than the Claude subscription (an API key, a gateway, a cloud
@@ -343,7 +350,27 @@ public sealed class ContextCycler(string? directory = null)
     public IReadOnlyDictionary<string, string> OffSubscription()
     {
         var found = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (!System.IO.Directory.Exists(Directory)) return found;
+        foreach (var (session, known) in ReadAuths())
+            if (known.Auth is { } auth && auth != SubscriptionAuth) found[session] = auth;
+        return found;
+    }
+
+    /// <summary>
+    /// The sessions running on a Claude login of their own (M.ORCH-T559: <c>CLAUDE_CONFIG_DIR</c> naming an
+    /// <see cref="AccountDirs"/> folder, as the context gate records it), with that folder. Their tokens are their account's,
+    /// so they're left out of the global login's budget and pace and counted in their own account's.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> OnOwnLogin()
+    {
+        var found = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (session, known) in ReadAuths())
+            if (known.ConfigDir is { Length: > 0 } dir) found[session] = dir;
+        return found;
+    }
+
+    private Dictionary<string, (DateTime Stamp, string? Auth, string? ConfigDir)> ReadAuths()
+    {
+        if (!System.IO.Directory.Exists(Directory)) return auths;
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var file in System.IO.Directory.EnumerateFiles(Directory, "*.state.json"))
         {
@@ -355,18 +382,19 @@ public sealed class ContextCycler(string? directory = null)
                 if (!auths.TryGetValue(session, out var known) || known.Stamp != stamp)
                 {
                     using var doc = JsonDocument.Parse(ReadShared(file));
-                    known = (stamp, doc.RootElement.TryGetProperty("auth", out var a) && a.ValueKind == JsonValueKind.String ? a.GetString() : null);
+                    var root = doc.RootElement;
+                    known = (stamp, root.TryGetProperty("auth", out var a) && a.ValueKind == JsonValueKind.String ? a.GetString() : null,
+                        root.TryGetProperty("config_dir", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() : null);
                     auths[session] = known;
                 }
-                if (known.Auth is { } auth && auth != SubscriptionAuth) found[session] = auth;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
             {
-                if (auths.TryGetValue(session, out var known) && known.Auth is { } auth && auth != SubscriptionAuth) found[session] = auth;
+                // Kept as last read: a state file being replaced isn't a session that changed how it's billed.
             }
         }
         foreach (var gone in auths.Keys.Where(k => !seen.Contains(k)).ToList()) auths.Remove(gone);
-        return found;
+        return auths;
     }
 
     /// <summary>Whether <paramref name="pid"/> is a running Claude CLI.</summary>

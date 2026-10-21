@@ -57,6 +57,16 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// <summary>Claude's own usage report (claude-usage.json); null reads the real one. Replaceable for tests.</summary>
     internal string? ReportedUsagePath { get; init; }
 
+    private AccountPacer? accountPacer;
+
+    /// <summary>The per-CLI Claude logins' own pacing (M.ORCH-T559); tests point it at their own folders. By default only the
+    /// process writing the real rl-status.json writes theirs, and only for the real account folders.</summary>
+    public AccountPacer Accounts
+    {
+        get => accountPacer ??= new AccountPacer { ProjectsDir = options.ClaudeProjectsDir, Probe = ReportedUsagePath is null };
+        init => accountPacer = value;
+    }
+
     /// <summary>Reads Claude's meter when no statusline has for a while and tokens are being spent. By default only a
     /// process that writes the real rl-status.json under the status lease (the daemon, a dashboard) asks, and only for the
     /// real claude-usage.json; tests set their own.</summary>
@@ -241,12 +251,15 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         // A CLI on an API key, a gateway or a cloud provider spends none of the subscription's windows (the hooks record each
         // session's auth): its tokens, limit hits and burn stay out of the budget and the pace, though its work still shows.
         var offSubscription = contextCycler.OffSubscription();
-        var offKey = string.Join(",", offSubscription.Keys.Order(StringComparer.Ordinal));
+        // A CLI on a Claude login of its own (M.ORCH-T559) spends its account's windows, not the global login's: paced apart
+        // (AccountPacer), though its work still shows.
+        var ownLogin = contextCycler.OnOwnLogin();
+        var offKey = string.Join(",", offSubscription.Keys.Concat(ownLogin.Keys).Order(StringComparer.Ordinal));
         if (claudeKey != (transcripts.Version, startOfTodayUtc, offKey))
         {
             claudeKey = (transcripts.Version, startOfTodayUtc, offKey);
             claudeSessions = [.. polled.Select(s => s with { UsageToday = s.UsageSince(startOfTodayUtc) })];
-            subscriptionSessions = [.. claudeSessions.Where(s => s.SessionId is not { } id || !offSubscription.ContainsKey(id))];
+            subscriptionSessions = [.. claudeSessions.Where(s => s.SessionId is not { } id || !offSubscription.ContainsKey(id) && !ownLogin.ContainsKey(id))];
             claudeEvents = [.. subscriptionSessions.SelectMany(s => s.Events).OrderBy(e => e.AtUtc)];
             typicalPerSession = Pacer.TypicalPerSession(subscriptionSessions.Select(s => s.Events), historyStartUtc);
         }
@@ -349,8 +362,12 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             budget = BudgetCalculator.Compute(events, settings with { BlockBudget = null, WeeklyBudget = null }, now, startOfTodayUtc);
             pace = new Pace(PaceMode.Unpaced, settings.MaxConcurrentSessions, 0, budget.RecentFreshPerHour, null, null, null, Pacer.ApiKeyNote);
         }
-        if (rateLimitFile is not null && (statusLease is null || statusLease.IsHeld || statusLease.TryAcquire()))
-            rateLimitFile.Write(budget, pace);
+        var writing = rateLimitFile is not null && (statusLease is null || statusLease.IsHeld || statusLease.TryAcquire());
+        if (writing) rateLimitFile!.Write(budget, pace);
+        // Each per-CLI login's own budget and pace (M.ORCH-T559), written for its CLIs' hooks by the process writing the global one.
+        IReadOnlyList<AccountPace> accountPaces = [];
+        try { accountPaces = Accounts.Tick(claudeSessions, ownLogin, settings, now, startOfTodayUtc, typicalPerSession, writing && rateLimitFile?.Path == new RateLimitStatusWriter().Path); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { warnings.Add($"per-CLI logins: {ex.Message}"); }
 
         var runningSubagents = subagents.Poll(contextCycler, now);
         var agentBoard = AgentBoard.Build(result, pace, Store.LoadAssignments(), runningSubagents, options.WorkingWindow, now, contextCycler.LiveSessions(now),
@@ -381,9 +398,15 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         var historyRead = Db.TryLoadUsageHistory(out var storedHistory);
         // Each Claude day is kept per account, and a session billed elsewhere apart, and the reset day's tokens before the reset apart
         // from those after it, so the weekly bars count what the budget does.
+        // Each folder's sign-in read once, not once a session: an account's .claude.json can run to megabytes.
+        var folderAccounts = ownLogin.Values.Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(d => d, d => Accounts.Dirs.Of(d)?.Account, StringComparer.OrdinalIgnoreCase);
+        var ownAccounts = ownLogin.Where(o => folderAccounts[o.Value] is not null)
+            .ToDictionary(o => o.Key, o => folderAccounts[o.Value]!, StringComparer.Ordinal);
         string? AccountOf(TranscriptSession s, UsageEvent e) =>
             s.Provider != Providers.Claude ? null
             : s.SessionId is { } id && offSubscription.TryGetValue(id, out var auth) ? UsageHistory.BilledElsewhere + auth
+            : s.SessionId is { } own && ownAccounts.TryGetValue(own, out var key) ? key
             : signIn?.AccountAt(e.AtUtc);
         var history = UsageHistory.Merge(storedHistory, UsageHistory.Observe(allSessions.Concat(providerSessions), Bucket, historyStartUtc, AccountOf, budget.WeekStartUtc),
             DateOnly.FromDateTime(startOfToday.AddDays(-HistoryDays)), DateOnly.FromDateTime(startOfToday));
@@ -404,7 +427,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { }
         }
 
-        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = utilization, ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, Approved = tickets.Approved, Priorities = tickets.Priorities, Agents = agentBoard, Billing = billing };
+        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = utilization, ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, Approved = tickets.Approved, Priorities = tickets.Priorities, Agents = agentBoard, Billing = billing, Accounts = accountPaces };
 
         RepoStatus Repo(string name, string path, IReadOnlyList<MindAttic.Tickets.Log.Ticket> open)
         {

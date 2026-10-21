@@ -300,4 +300,33 @@ public sealed class PaceLedgerTests
         Assert.That(h.Filed.Single(), Does.StartWith("[pace-ledger blind]"));
         Assert.That(h.Alerts.Single().Title, Is.EqualTo("Pace was blind"));
     }
+
+    /// <summary>M.ORCH-T559: a per-CLI login's windows are its own account's, graded from its own readings, and one ending
+    /// minutes from a global window is never taken for it.</summary>
+    [Test]
+    public void A_per_cli_logins_windows_are_graded_on_its_own_account_beside_the_global_logins()
+    {
+        var dir = temp.New();
+        var h = new Harness(Path.Combine(dir, "store"));
+        var dirs = new MindAttic.Orchestrator.Sessions.AccountDirs(Path.Combine(dir, "accounts"), Path.Combine(dir, ".claude"), Path.Combine(dir, ".claude.json"));
+        var b = dirs.For("b@example.com");
+        Directory.CreateDirectory(b.Directory);
+        File.WriteAllText(b.ConfigPath, """{"oauthAccount":{"accountUuid":"acct-b"}}""");
+        File.WriteAllText(b.SamplesPath, System.Text.Json.JsonSerializer.Serialize(Steady(70, End.AddMinutes(5))));
+        h.Watch.Db.AddUsageSamples(Steady(98), DateTime.MinValue);
+        var watch = new PaceLedgerWatch(h.Store, "unused", (l, s) => h.Said.Add((l, s)), (t, _, u) => h.Alerts.Add((t, u)))
+        {
+            EventsPath = h.Watch.EventsPath,
+            FileTicket = s => { h.Filed.Add(s); return "M.ORCH-T999"; },
+            AccountDirs = dirs,
+        };
+
+        watch.Tick(End.AddMinutes(30));
+        var ledger = watch.Db.LoadLedger();
+        Assert.That(ledger.Select(w => (w.Account, w.Grade)), Is.EquivalentTo(new (string?, WindowGrade)[] { (null, WindowGrade.Ok), ("acct-b", WindowGrade.Under) }));
+        Assert.That(h.Said.Any(s => s.Line.Contains("b@example.com")), Is.True, "its line names the account");
+
+        watch.Tick(End.AddMinutes(45));
+        Assert.That(watch.Db.LoadLedger(), Has.Count.EqualTo(2), "each window is recorded once");
+    }
 }

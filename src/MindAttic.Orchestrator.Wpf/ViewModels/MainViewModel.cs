@@ -141,6 +141,7 @@ public sealed partial class MainViewModel : ObservableObject
             if (selected is not null) selected.IsSelected = true;
             Prompt = "";
             StatusMessage = "";
+            if (selected is not null) RefreshLogins();
             Raise();
             Raise(nameof(HasSelection));
             Raise(nameof(ShowDetail));
@@ -149,7 +150,35 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool HasSelection => Selected is not null;
     // Ctrl+click on the selected pill deselects it, writing null: Start would crash the dashboard on it.
-    public string Provider { get => provider; set { if (value is not null) Set(ref provider, value); } }
+    public string Provider { get => provider; set { if (value is not null && Set(ref provider, value)) Raise(nameof(ShowLogins)); } }
+
+    /// <summary>What <see cref="Logins"/> lists for the login every CLI uses unless started on one of its own.</summary>
+    public const string GlobalLogin = "Global login";
+
+    private readonly AccountDirs accountDirs = new();
+    private string login = GlobalLogin;
+
+    /// <summary>The logins a Claude tab can start on (M.ORCH-T559): the global one, then each per-CLI login signed in to
+    /// (orchestrator login --account), as the CLI's <c>start --account</c> takes them.</summary>
+    public IReadOnlyList<string> Logins { get; private set; } = [GlobalLogin];
+
+    /// <summary>Shown only for Claude, and only once there's a per-CLI login to choose.</summary>
+    public bool ShowLogins => Provider == "Claude" && Logins.Count > 1;
+
+    // Ctrl+click on the selected pill deselects it, writing null: it stays on the one it was.
+    public string Login { get => login; set { if (value is not null) Set(ref login, value); } }
+
+    private void RefreshLogins()
+    {
+        IReadOnlyList<string> found;
+        try { found = [GlobalLogin, .. accountDirs.SignedIn().Select(a => a.Email)]; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { found = [GlobalLogin]; }
+        if (found.SequenceEqual(Logins)) return;
+        Logins = found;
+        if (!found.Contains(Login)) Login = GlobalLogin;
+        Raise(nameof(Logins));
+        Raise(nameof(ShowLogins));
+    }
     public string Prompt { get => prompt; set => Set(ref prompt, value); }
     public string StatusMessage { get => statusMessage; private set => Set(ref statusMessage, value); }
     public string RefreshInfo { get => refreshInfo; private set => Set(ref refreshInfo, value); }
@@ -337,8 +366,21 @@ public sealed partial class MainViewModel : ObservableObject
     private void StartSession()
     {
         if (Selected is null) return;
-        var error = control.Start(Selected.Name, Selected.Path, Provider, string.IsNullOrWhiteSpace(Prompt) ? null : Prompt);
-        StatusMessage = error ?? $"Opened a {Provider} tab for {Selected.Name}. It'll appear here within a few seconds.";
+        string? configDir = null;
+        if (ShowLogins && Login != GlobalLogin)
+        {
+            var dir = accountDirs.For(Login);
+            if (!dir.SignedIn)
+            {
+                StatusMessage = $"{Login} has no login of its own any more: run orchestrator login --account {Login} once.";
+                return;
+            }
+            try { accountDirs.Prepare(dir); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { StatusMessage = $"Couldn't prepare {Login}'s login: {ex.Message}"; return; }
+            configDir = dir.Directory;
+        }
+        var error = control.Start(Selected.Name, Selected.Path, Provider, string.IsNullOrWhiteSpace(Prompt) ? null : Prompt, configDir);
+        StatusMessage = error ?? $"Opened a {Provider} tab for {Selected.Name}" + (configDir is null ? "" : $" on {Login}'s own login") + ". It'll appear here within a few seconds.";
         if (error is null) Prompt = "";
     }
 }

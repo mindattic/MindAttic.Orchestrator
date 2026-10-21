@@ -13,9 +13,26 @@ internal static class Ctx
     {
         var store = Ctx.Store();
         var aggregator = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter(), Lease(store));
-        var snapshot = aggregator.Refresh();
+        var snapshot = OnOwnLogin(aggregator.Refresh(), CurrentLogin?.Invoke() ?? new AccountDirs().Current());
         var plan = Scheduler.Plan(snapshot, store.LoadSettings(), store.LoadAssignments());
         return (aggregator, store, snapshot, plan);
+    }
+
+    /// <summary>The per-CLI login this command runs under (its CLI's CLAUDE_CONFIG_DIR); tests set their own.</summary>
+    internal static Func<AccountDir?>? CurrentLogin { get; set; }
+
+    /// <summary>
+    /// <paramref name="snapshot"/> as a CLI on <paramref name="login"/>'s own login sees it (M.ORCH-T559): its account's budget and
+    /// pace in place of the global login's, so <c>/allocate</c>'s <c>next</c>, <c>dryrun</c> and <c>queue</c> hand out what that
+    /// account's allowance and window have room for. Unchanged on the global login. An account the snapshot hasn't paced yet
+    /// (signed in moments ago) is planned unpaced, as with no daemon, never on the global login's room; its hooks still stop
+    /// it at Claude's own 99%.
+    /// </summary>
+    internal static Snapshot OnOwnLogin(Snapshot snapshot, AccountDir? login)
+    {
+        if (login is null) return snapshot;
+        var own = snapshot.Accounts.FirstOrDefault(a => a.Email.Equals(login.Email, StringComparison.OrdinalIgnoreCase));
+        return snapshot with { Budget = own?.Budget, Pace = own?.Pace, Utilization = own?.Utilization, Account = own?.Account };
     }
 
     /// <summary>Where the store lives; null is the user's own (%APPDATA%). Tests point it at a temp folder.</summary>

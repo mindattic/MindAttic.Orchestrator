@@ -52,7 +52,7 @@ internal static class CliApp
             // Help goes where every command writes, so a test swapping AnsiConsole.Console sees it too (M.ORCH-T496).
             config.ConfigureConsole(AnsiConsole.Console);
             config.AddCommand<StatusCommand>("status").WithDescription("Every repo: state, live sessions, open tickets, tokens today.");
-            config.AddCommand<StartCommand>("start").WithDescription("Open an agent tab for a repo through the Launcher.");
+            config.AddCommand<StartCommand>("start").WithDescription("Open an agent tab for a repo through the Launcher; --account <email> runs its Claude CLI on that per-CLI login's token pool.");
             config.AddCommand<SendCommand>("send").WithDescription("Type text into a live Launcher-hosted session.");
             config.AddCommand<BudgetCommand>("budget").WithDescription("Token budget for the current 5-hour block and the week, and the pace; --block/--weekly/--warn/--pace/--target set them, --hits lists learned limits.");
             config.AddCommand<QueueCommand>("queue").WithDescription("Every open ticket across the workspace, in the order the scheduler would start them.");
@@ -73,7 +73,7 @@ internal static class CliApp
             config.AddCommand<ReportCommand>("report").WithDescription("Uncached tokens by week, repo, provider and ticket type; --csv writes it out.");
             config.AddCommand<BillingCommand>("billing").WithDescription("Who every CLI bills (Claude Team or the Vault's API key) and each open CLI's own billing; team or api switches every CLI.");
             config.AddCommand<AccountsCommand>("accounts").WithDescription("Every Claude account signed in to here: weekly % used and left, its reset, the 5-hour % and reset, and when each was last read (orchestrator.db).");
-            config.AddCommand<LoginCommand>("login").WithDescription("The account roster (as the dashboard's account menu shows it); with an email or short name, opens that account's login (claude auth login --email); --api-key bills the Vault's API key.");
+            config.AddCommand<LoginCommand>("login").WithDescription("The account roster (as the dashboard's account menu shows it); with an email or short name, opens that account's login (claude auth login --email); --account <email> signs in a per-CLI login of its own instead; --api-key bills the Vault's API key.");
             config.AddCommand<ClisCommand>("clis").WithDescription("Every open Claude CLI and whether /allocate is on in it (the roster the daemon keeps in orchestrator.db).");
             config.AddCommand<HandoffCommand>("handoff").WithDescription("/handoff from here: status (default) lists what's still working; on winds every CLI down for an account switch; off cancels it.");
             config.AddCommand<LedgerCommand>("ledger").WithDescription("Every 5-hour window graded against 99%-never-over (ok, under, blind, over) and the record so far; --csv writes it out. Exits 1 if one went over in --days.");
@@ -164,7 +164,14 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
 
         [CommandOption("--prompt <TEXT>")]
         public string? Prompt { get; init; }
+
+        [CommandOption("--account <EMAIL>")]
+        [Description("Run the CLI on this account's own login (signed in once with 'orchestrator login --account <email>'), paced on its own token pool. Without it the CLI uses the global login.")]
+        public string? Account { get; init; }
     }
+
+    /// <summary>Where per-CLI logins' folders are; tests point it elsewhere (never the real ~/.claude-accounts).</summary>
+    internal static Func<AccountDirs>? DirsOverride { get; set; }
 
     public override int Execute(CommandContext context, Settings settings)
     {
@@ -172,10 +179,41 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
         var repo = new MindAttic.Tickets.Workspace(options.WorkspaceRoot).Find(settings.Repo);
         if (repo is null) { AnsiConsole.MarkupLine($"[red]No repo named {Markup.Escape(settings.Repo)}.[/]"); return 1; }
         if (Ctx.Provider(settings.Provider) is not { } provider) return 1;
-        var error = new SessionControl(options).Start(repo.Name, repo.Path, provider, settings.Prompt);
+        string? configDir = null;
+        if (settings.Account is not null)
+        {
+            if (OwnLogin(DirsOverride?.Invoke() ?? new AccountDirs(), settings.Account, provider) is not { } dir) return 1;
+            configDir = dir.Directory;
+        }
+        var error = new SessionControl(options).Start(repo.Name, repo.Path, provider, settings.Prompt, configDir);
         if (error is not null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(error)}[/]"); return 1; }
-        AnsiConsole.MarkupLine($"Started [bold]{provider}[/] in {Markup.Escape(repo.Name)}.");
+        AnsiConsole.MarkupLine($"Started [bold]{provider}[/] in {Markup.Escape(repo.Name)}" +
+            (settings.Account is null ? "." : $" on {Markup.Escape(AccountDirs.Normalize(settings.Account)!)}'s own login."));
         return 0;
+    }
+
+    /// <summary>The per-CLI login (M.ORCH-T559) a tab is started on, brought up to date; null (said in red) when it can't be.</summary>
+    internal static AccountDir? OwnLogin(AccountDirs dirs, string email, string provider)
+    {
+        if (provider != "Claude")
+        {
+            AnsiConsole.MarkupLine($"[red]--account is a Claude login: {Markup.Escape(provider)} has none.[/]");
+            return null;
+        }
+        if (AccountDirs.Normalize(email) is null)
+        {
+            AnsiConsole.MarkupLine($"[red]\"{Markup.Escape(email)}\" isn't an email address: --account takes the account's whole email.[/]");
+            return null;
+        }
+        var dir = dirs.For(email);
+        if (!dir.SignedIn)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(dir.Email)} has no login of its own yet: run [bold]orchestrator login --account {Markup.Escape(dir.Email)}[/] once first.[/]");
+            return null;
+        }
+        // Its settings follow ~/.claude's (hooks, statusline) each time a CLI starts on it.
+        foreach (var line in dirs.Prepare(dir)) AnsiConsole.MarkupLine($"[grey]{Markup.Escape(line)}[/]");
+        return dir;
     }
 }
 

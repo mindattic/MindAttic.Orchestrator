@@ -46,6 +46,8 @@ public sealed class HookScriptTests
         psi.Environment["MINDATTIC_ORCHESTRATOR"] = Path.Combine(dir, "no-orchestrator.exe");
         // Inside claude.exe on its /login, whatever the machine running the tests is signed in with.
         foreach (var auth in AuthVariables) psi.Environment.Remove(auth);
+        // On the global login unless a test puts the CLI on one of its own (M.ORCH-T559), whatever runs the tests.
+        psi.Environment.Remove("CLAUDE_CONFIG_DIR");
         psi.Environment["CLAUDECODE"] = "1";
         psi.Environment["CLAUDE_CODE_ENTRYPOINT"] = "cli";
         foreach (var (k, v) in env ?? new Dictionary<string, string>()) psi.Environment[k] = v;
@@ -76,10 +78,12 @@ public sealed class HookScriptTests
     }
 
     /// <summary>The pace gate with MINDATTIC_MAX_HOLD at <paramref name="maxHold"/> seconds, so the longest hold ends in seconds.</summary>
-    private (string Output, TimeSpan Took) GateHeld(object input, int maxHold)
+    private (string Output, TimeSpan Took) GateHeld(object input, int maxHold, IDictionary<string, string>? env = null)
     {
         var clock = Stopwatch.StartNew();
-        using var p = Run(AgentGate.ScriptName, input, MaxHold(maxHold));
+        var all = MaxHold(maxHold)!;
+        foreach (var (k, v) in env ?? new Dictionary<string, string>()) all[k] = v;
+        using var p = Run(AgentGate.ScriptName, input, all);
         var output = p.StandardOutput.ReadToEnd();
         Assert.That(p.WaitForExit(30_000), Is.True);
         return (output, clock.Elapsed);
@@ -2429,5 +2433,109 @@ public sealed class HookScriptTests
 
         Assert.That(Rows("subagent_slots"), Is.Zero, "the orchestrator's next open adds the tables (schema step 5)");
         Assert.That(MindAttic.Orchestrator.Settings.OrchestratorDb.Version, Is.GreaterThanOrEqualTo(5));
+    }
+
+    /// <summary>A per-CLI login's folder (M.ORCH-T559) signed in to <paramref name="uuid"/>, and the environment of a CLI on it.</summary>
+    private (string Folder, Dictionary<string, string> Env) OwnLogin(string email = "b@example.com", string uuid = "acct-b")
+    {
+        var folder = Path.Combine(dir, ".claude-accounts", email);
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, ".claude.json"), JsonSerializer.Serialize(new { oauthAccount = new { accountUuid = uuid, emailAddress = email } }));
+        return (folder, new Dictionary<string, string> { ["CLAUDE_CONFIG_DIR"] = folder });
+    }
+
+    private static void OwnStatus(string folder, object fields)
+    {
+        var body = JsonSerializer.SerializeToNode(fields)!.AsObject();
+        body["source"] = "MindAttic.Orchestrator";
+        body["timestamp"] = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
+        File.WriteAllText(Path.Combine(folder, "rl-status.json"), body.ToJsonString());
+    }
+
+    /// <summary>M.ORCH-T559: a CLI on its own login spends its account's pool, so the global login's stop isn't its stop, and
+    /// its account's stop holds it while the global login runs on.</summary>
+    [Test]
+    public void A_cli_on_its_own_login_is_held_by_its_accounts_pace_not_the_global_logins()
+    {
+        var (folder, env) = OwnLogin();
+        Status(new { stop = true, stop_note = "At the target until 9:50 PM. End your turn now." });
+        OwnStatus(folder, new { stop = false });
+        Assert.That(Gate(ReadCall, env).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "the global login's stop isn't this account's");
+
+        OwnStatus(folder, new { stop = true, stop_note = "At the target until 9:50 PM. End your turn now." });
+        Status(new { stop = false });
+        using (var held = Run(AgentGate.ScriptName, ReadCall, env))
+        {
+            Assert.That(held.WaitForExit(7_000), Is.False, "its own account at the target holds it");
+            held.Kill();
+        }
+        Assert.That(Gate(ReadCall).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "and a CLI on the global login runs on");
+    }
+
+    [Test]
+    public void A_cli_on_its_own_login_stops_at_its_accounts_own_meter_and_never_reads_the_global_one()
+    {
+        var (folder, env) = OwnLogin();
+        Status(new { stop = false }, at: DateTime.UtcNow.AddMinutes(-10)); // the daemon is down
+        ClaudeReports(99); // the global login at the line
+        Assert.That(Gate(ReadCall, env).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "another account's 99% isn't this one's");
+
+        File.WriteAllText(Path.Combine(folder, "claude-usage.json"), JsonSerializer.Serialize(new
+        {
+            rate_limits = new { five_hour = new { used_percentage = 99, resets_at = new DateTimeOffset(DateTime.UtcNow.AddHours(1)).ToUnixTimeSeconds() } },
+            at = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+        }));
+        Assert.That(GateHeld(ReadCall, 2, env).Output, Does.Contain("\"deny\"").And.Contain("5-hour window used"), "its own meter at 99% refuses it");
+    }
+
+    [Test]
+    public void A_cli_on_its_own_login_never_moves_the_global_sign_in_record()
+    {
+        var (_, env) = OwnLogin(uuid: "acct-b");
+        File.WriteAllText(Path.Combine(dir, ".claude.json"), JsonSerializer.Serialize(new { oauthAccount = new { accountUuid = "acct-a" } }));
+        Gate(ReadCall);
+        var record = Path.Combine(Marks, MindAttic.Orchestrator.Budget.ClaudeAccount.FileName);
+        Assert.That(File.ReadAllText(record), Does.Contain("acct-a"));
+        var before = File.ReadAllText(record);
+        Gate(ReadCall, env);
+        Assert.That(File.ReadAllText(record), Is.EqualTo(before), "the other account isn't a /login switch of the global one");
+    }
+
+    /// <summary>M.ORCH-T559: each login's subagents count against its own allowance only, marked, slotted and waited in its folder.</summary>
+    [Test]
+    public void A_cli_on_its_own_login_counts_only_its_accounts_subagents()
+    {
+        var (folder, env) = OwnLogin();
+        var own = Path.Combine(folder, "session-context");
+        var global = Path.Combine(Marks, "subagents");
+        Directory.CreateDirectory(global);
+        foreach (var m in new[] { "g1", "g2", "g3" }) File.WriteAllText(Path.Combine(global, m), "");
+        Status(new { subagent_allowance = 1, subagents_running = 3 });
+        OwnStatus(folder, new { subagent_allowance = 1, subagents_running = 0 });
+
+        var agent = new { tool_name = "Agent", tool_input = new { prompt = "x" } };
+        Assert.That(Gate(agent, env).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "the global login's full allowance isn't this account's");
+        Assert.That(Directory.GetFiles(Path.Combine(own, AgentGate.SlotDirName)), Has.Length.EqualTo(1), "its slot is in its own folder");
+        Assert.That(Directory.Exists(Path.Combine(Marks, AgentGate.SlotDirName)) ? Directory.GetFiles(Path.Combine(Marks, AgentGate.SlotDirName)) : [], Is.Empty);
+
+        Gate(new { hook_event_name = "SubagentStart", session_id = "own1", agent_id = "a1", cwd = ws }, env, AgentGate.ContextScriptName);
+        Assert.That(File.Exists(Path.Combine(own, "subagents", "a1")), Is.True, "its subagent is marked in its folder");
+        Assert.That(File.Exists(Path.Combine(global, "a1")), Is.False, "and never fills the global login's allowance");
+        Assert.That(Directory.GetFiles(Path.Combine(own, AgentGate.SlotDirName)), Is.Empty, "its start let its own slot go");
+
+        using var held = Run(AgentGate.ScriptName, agent, env);
+        Assert.That(held.WaitForExit(7_000), Is.False, "its own one subagent fills its own allowance of one");
+        held.Kill();
+    }
+
+    [Test]
+    public void A_cli_on_its_own_login_is_recorded_so_the_daemon_paces_its_tokens_on_its_account()
+    {
+        var (folder, env) = OwnLogin();
+        Gate(new { hook_event_name = "UserPromptSubmit", session_id = "own2", prompt = "hi", cwd = ws }, env, AgentGate.ContextScriptName);
+        Gate(new { hook_event_name = "UserPromptSubmit", session_id = "glob2", prompt = "hi", cwd = ws }, AgentGate.ContextScriptName);
+        var logins = new MindAttic.Orchestrator.Sessions.ContextCycler(Marks).OnOwnLogin();
+        Assert.That(logins.Keys, Is.EquivalentTo(new[] { "own2" }));
+        Assert.That(new MindAttic.Orchestrator.Sessions.AccountDirs(Path.Combine(dir, ".claude-accounts")).Of(logins["own2"])?.Email, Is.EqualTo("b@example.com"));
     }
 }

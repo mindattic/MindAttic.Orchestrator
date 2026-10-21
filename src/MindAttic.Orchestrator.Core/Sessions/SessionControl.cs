@@ -14,15 +14,19 @@ public sealed class SessionControl(OrchestratorOptions options)
     public static readonly IReadOnlyList<string> Providers = ["Claude", "Codex", "Gemini", "Kimi"];
 
     /// <summary>Opens a new tab for <paramref name="directory"/>; returns an error, or null on success.</summary>
-    public string? Start(string title, string directory, string provider, string? prompt = null)
+    /// <param name="configDir">A Claude login of its own (M.ORCH-T559, <see cref="AccountDir.Directory"/>) the tab's CLI runs
+    /// under; null runs it on the global login, as every tab did before.</param>
+    public string? Start(string title, string directory, string provider, string? prompt = null, string? configDir = null)
     {
+        if (configDir is not null && provider != "Claude")
+            return $"--account is a Claude login: {provider} has none.";
         if (!File.Exists(options.LauncherExe))
             return $"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/deploy.ps1).";
         if (!Directory.Exists(directory))
             return $"Folder not found: {directory}";
 
         var psi = new ProcessStartInfo("wt.exe") { UseShellExecute = false };
-        foreach (var a in StartArguments(title, directory, provider, prompt)) psi.ArgumentList.Add(a);
+        foreach (var a in StartArguments(title, directory, provider, prompt, configDir)) psi.ArgumentList.Add(a);
         try
         {
             using var _ = Process.Start(psi);
@@ -34,9 +38,21 @@ public sealed class SessionControl(OrchestratorOptions options)
         }
     }
 
-    internal IEnumerable<string> StartArguments(string title, string directory, string provider, string? prompt)
+    internal IEnumerable<string> StartArguments(string title, string directory, string provider, string? prompt, string? configDir = null)
     {
         var tabTitle = $"{title} [{provider}]";
+        if (configDir is not null)
+        {
+            // Windows Terminal starts the tab itself, from its own environment, not this process's: the Launcher (and the
+            // CLI it hosts) is started by a PowerShell that sets CLAUDE_CONFIG_DIR first. Encoded, so no quote, space or ';' in
+            // the folder, title or prompt reaches wt's parse.
+            var script = $"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; & {AccountDirs.Ps(options.LauncherExe)} host --path {AccountDirs.Ps(directory)} " +
+                $"--title {AccountDirs.Ps(tabTitle)} --provider {AccountDirs.Ps(provider)}" +
+                (string.IsNullOrWhiteSpace(prompt) ? "" : $" --prompt {AccountDirs.Ps(SafePrompt(prompt))}") + "; exit $LASTEXITCODE";
+            string[] wrapped = ["-w", "0", "new-tab", "--title", tabTitle, "-d", directory, "--",
+                "powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", Convert.ToBase64String(Encoding.Unicode.GetBytes(script))];
+            return wrapped.Select(a => a.Replace(";", @"\;"));
+        }
         string[] head =
         [
             "-w", "0", "new-tab", "--title", tabTitle, "-d", directory, "--",

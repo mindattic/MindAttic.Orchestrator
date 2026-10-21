@@ -462,6 +462,10 @@
                         <TextBlock Text="START A SESSION" Style="{StaticResource MaSectionLabel}" />
                         <ListBox Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Providers}" SelectedItem="{Binding Provider}"
                                  AutomationProperties.Name="Agent provider" />
+                        <!-- Per-CLI Claude logins (M.ORCH-T559): the tab's CLI spends this account's token pool. -->
+                        <ListBox Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Logins}" SelectedItem="{Binding Login}" Margin="0,4,0,0"
+                                 Visibility="{Binding ShowLogins, Converter={StaticResource Visible}}"
+                                 AutomationProperties.Name="Claude login" />
                         <TextBox Style="{StaticResource MaTextArea}" Text="{Binding Prompt, UpdateSourceTrigger=PropertyChanged}"
                                  Height="64" Margin="0,4,0,0" mc:MaTextBox.Placeholder="Opening prompt (optional), or pick a ticket below"
                                  AutomationProperties.Name="Opening prompt (optional)" />

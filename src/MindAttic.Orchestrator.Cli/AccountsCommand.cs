@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Text.Json;
 using MindAttic.Orchestrator;
 using MindAttic.Orchestrator.Budget;
+using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -30,7 +31,58 @@ internal sealed class AccountsCommand : Command<AccountsCommand.Settings>
             return 0;
         }
         Write(rows, current, now);
+        WriteOwnLogins(LoginsOverride?.Invoke() ?? new AccountDirs(), now);
         return 0;
+    }
+
+    /// <summary>Where per-CLI logins' folders are; tests point it elsewhere (never the real ~/.claude-accounts).</summary>
+    internal static Func<AccountDirs>? LoginsOverride { get; set; }
+
+    /// <summary>
+    /// The per-CLI logins (M.ORCH-T559): each account a CLI can run on with <c>orchestrator start &lt;repo&gt; --account</c>, with
+    /// its own meter (Claude's 5-hour and weekly percent for it) and the pace the daemon last wrote for its CLIs.
+    /// </summary>
+    internal static void WriteOwnLogins(AccountDirs dirs, DateTime now)
+    {
+        var all = dirs.All();
+        if (all.Count == 0) return;
+        var table = new Table().Border(TableBorder.Rounded).Title("Per-CLI logins")
+            .AddColumns("Account", "Signed in as", "5h used", "5h resets", "Week used", "Pace", "Subagents", "Paced");
+        foreach (var dir in all)
+        {
+            var usage = ReportedUsage.Load(now, dir.UsagePath);
+            var status = Status(dir.StatusPath);
+            string? Text(string name) => status is { } s && s.TryGetProperty(name, out var v) ? v.ValueKind switch
+            {
+                JsonValueKind.String => v.GetString(),
+                JsonValueKind.Number => v.GetDouble().ToString("0.#", System.Globalization.CultureInfo.InvariantCulture),
+                _ => null,
+            } : null;
+            var at = Text("timestamp") is { } t && DateTime.TryParse(t, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var stamp) ? stamp : (DateTime?)null;
+            table.AddRow(
+                Markup.Escape(dir.Email),
+                dir.SignedIn ? Markup.Escape(dir.SignedInEmail ?? "(signed in)") : "[red]not signed in[/] [grey](orchestrator login --account)[/]",
+                AccountRoster.Percent(ReportedUsage.Usable(usage?.FiveHour, now)?.Percent),
+                ReportedUsage.Usable(usage?.FiveHour, now) is { } w ? Formatting.ResetTime(w.ResetUtc, now) : "",
+                AccountRoster.Percent(usage?.Week is { } week && week.ResetUtc > now ? week.Percent : null),
+                Markup.Escape(Text("pace") ?? (Text("stop") is not null ? "stop" : "—")),
+                Text("subagent_allowance") is { } allowed ? $"{Text("subagents_running") ?? "0"} of {allowed}" : "—",
+                at is { } a ? Formatting.Ago(a, now) : "[grey]not yet[/]");
+        }
+        AnsiConsole.Write(table);
+        AnsiConsole.MarkupLine("[grey]orchestrator start <repo> --account <email> runs a CLI on one of these; orchestrator login --account <email> adds one.[/]");
+
+        static JsonElement? Status(string path)
+        {
+            try
+            {
+                if (!File.Exists(path)) return null;
+                using var doc = JsonDocument.Parse(File.ReadAllText(path));
+                return doc.RootElement.Clone();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return null; }
+        }
     }
 
     /// <summary>The roster with the signed-in account's row brought up to date from Claude's last reading, and who's signed in.</summary>

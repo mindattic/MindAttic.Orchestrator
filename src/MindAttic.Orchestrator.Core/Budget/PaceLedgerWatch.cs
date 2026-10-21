@@ -88,13 +88,41 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
         List<GateEvent> events;
         try { events = Db.LoadGateEvents(nowUtc - KeepEvents); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
-        var due = PaceLedger.Due(recorded, samples, hits, events, nowUtc, Account is null ? null : PaceLedger.AccountAt(Account, nowUtc));
+        // A per-CLI login's windows are its own (M.ORCH-T559): one of them ending near a global window isn't that window.
+        var own = AccountDirs?.All().Select(d => d.Account).OfType<string>().ToHashSet(StringComparer.Ordinal) ?? [];
+        var due = PaceLedger.Due([.. recorded.Where(r => r.Account is null || !own.Contains(r.Account))], samples, hits, events, nowUtc,
+            Account is null ? null : PaceLedger.AccountAt(Account, nowUtc));
+        TickAccounts(recorded, nowUtc);
         if (due.Count == 0) return;
         try { Db.AppendLedger(due); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
         foreach (var w in due) Report(w, nowUtc);
         try { Db.TrimGateEvents(nowUtc - KeepEvents); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { }
+    }
+
+    /// <summary>The per-CLI Claude logins whose windows are graded on their own (M.ORCH-T559); null (tests) grades none.</summary>
+    public Sessions.AccountDirs? AccountDirs { get; init; }
+
+    /// <summary>
+    /// Closes each per-CLI login's ended windows into the ledger under its own account (M.ORCH-T559), graded from its own week
+    /// of Claude's readings (<see cref="Sessions.AccountDir.SamplesPath"/>). The pace gate's holds and the transcripts' limit hits
+    /// aren't kept per account, so its rows carry Claude's percent alone.
+    /// </summary>
+    private void TickAccounts(List<LedgerWindow> recorded, DateTime nowUtc)
+    {
+        if (AccountDirs is null) return;
+        foreach (var dir in AccountDirs.All())
+        {
+            if (dir.Account is not { } account || account == ClaudeAccount.ApiKey) continue;
+            var samples = AccountPacer.LoadSamples(dir);
+            if (samples.Count == 0) continue;
+            var due = PaceLedger.Due([.. recorded.Where(r => r.Account == account)], samples, [], [], nowUtc, _ => account);
+            if (due.Count == 0) continue;
+            try { Db.AppendLedger(due); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { continue; }
+            foreach (var w in due) Report(w with { Why = $"{dir.Email}: {w.Why}" }, nowUtc);
+        }
     }
 
     /// <summary>A 5-hour limit hit read from the transcripts is the failure the orchestrator exists to prevent: raise it at once.</summary>

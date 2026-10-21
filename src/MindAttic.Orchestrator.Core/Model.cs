@@ -130,6 +130,10 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// and the budget counts every subscription session.</summary>
     public string? Account { get; init; }
 
+    /// <summary>Each per-CLI Claude login's own budget and pace (M.ORCH-T559), apart from the global login's
+    /// <see cref="Budget"/> and <see cref="Pace"/>; empty when no CLI runs on a login of its own.</summary>
+    public IReadOnlyList<Budget.AccountPace> Accounts { get; init; } = [];
+
     /// <summary>Repos that share duplicated code (from the last audit): editing them at once risks conflicting fixes.</summary>
     public IReadOnlyDictionary<string, IReadOnlySet<string>> LinkedRepos { get; init; } = new Dictionary<string, IReadOnlySet<string>>();
 
