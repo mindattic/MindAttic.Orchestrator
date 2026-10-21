@@ -1,7 +1,7 @@
 -- MindAttic.Orchestrator database dump (written with every change; the .db file is the store).
 
 -- accounts
-INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', 'ohleo199@mindattic.com', 'MindAttic', 'Team · Max 5x', 64, 1792626000, 27, 1793138400, 1792617572, 1792591584.09404);
+INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', 'ohleo199@mindattic.com', 'MindAttic', 'Team · Max 5x', 71, 1792626000, 28, 1793138400, 1792618986, 1792591584.09404);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', 'ryandebraal@mindattic.com', 'MindAttic', 'Team · Max 5x', 0, 1792609200, 100, 1792764000, 1792591343, 1792591305.195613);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', 'shampoo1232@mindattic.com', 'MindAttic', 'Team · Max 5x', 51, 1792600200, 96, 1792702800, 1792589089, 1792464053.5616076);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', 'pdftransferjr@mindattic.com', 'MindAttic', 'Team · Max 5x', 0, 1792607400, 79, 1792929600, 1792589825, 1792589744.5756793);
@@ -2165,6 +2165,11 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:34:06Z', 68, '2026-10-21T23:40:00Z', 8026926);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:37:06Z', 69, '2026-10-21T23:40:00Z', 8146041);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:40:06Z', 70, '2026-10-21T23:40:00Z', 8203753);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:43:06Z', 71, '2026-10-21T23:40:00Z', 8334998);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:43:09Z', 72, '2026-10-21T23:40:00Z', 8336269);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:45:06Z', 72, '2026-10-21T23:40:00Z', 8400418);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:47:06Z', 73, '2026-10-21T23:40:00Z', 8456052);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T21:50:08Z', 74, '2026-10-21T23:40:00Z', 8530185);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -2358,7 +2363,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'Unity.GridGame', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 158532);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'Unity.Multiplayer', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 458362);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-20', 'Unity.SpaceGod', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 510414);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3439103);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', '(workspace root)', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3767078);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1278018);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 109424);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'AutoWebNav', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 15938);
@@ -6038,8 +6043,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "da2e8e853b941e35b33d05d5a8e3c2a8927625f9"
   },
   "MindAttic.Tickets": {
-    "Tested": "2f6b60e242574baf82f702462be81a74ca30bccc",
-    "Green": "2f6b60e242574baf82f702462be81a74ca30bccc"
+    "Tested": "a4e0407c4c85a4476078a4bb1affb498ce21f7d2",
+    "Green": "a4e0407c4c85a4476078a4bb1affb498ce21f7d2"
   },
   "MindAttic.Vault": {
     "Tested": "a99ccb26566bf02efef2c2f83f08c7dc05470ff3",
@@ -6068,8 +6073,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "0143cfd92bb39ebc86268b10ffdb37d10c545950"
   },
   "REA.Bloodlines": {
-    "Tested": "f6197a456f71ef92e5f02421a2c619480064d65b",
-    "Green": "f6197a456f71ef92e5f02421a2c619480064d65b"
+    "Tested": "e47d2e87c51dd1483f82dab99a8bb6877881ad1b",
+    "Green": "e47d2e87c51dd1483f82dab99a8bb6877881ad1b"
   }
 }');
 INSERT INTO state (name, value) VALUES ('pace-alarm-walls', '[
