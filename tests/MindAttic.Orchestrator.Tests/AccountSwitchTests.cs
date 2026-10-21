@@ -197,6 +197,22 @@ public sealed class AccountSwitchTests
     }
 
     [Test]
+    public void The_menu_table_shows_week_usage_as_used_over_left_and_the_week_reset_with_its_date()
+    {
+        var b = Rows.Single(r => r.Account == "b/org");
+        var c = AccountSwitch.Columns(b, Now);
+        Assert.That(c.WeekUsage, Is.EqualTo("80/20%"));
+        Assert.That(c.WeekResets, Is.EqualTo(b.WeekResetAt(Now)!.Value.ToLocalTime().ToString("M/d h:mm tt", System.Globalization.CultureInfo.InvariantCulture)));
+        Assert.That(AccountSwitch.Columns(new AccountRow { Account = "x/org" }, Now).WeekUsage, Is.EqualTo("—"), "never read");
+
+        var root = TestContext.CurrentContext.TestDirectory;
+        while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
+        Assert.That(xaml, Does.Contain("Text=\"Week usage\"").And.Contain("Text=\"Last Checked\"")
+            .And.Not.Contain("Text=\"Seat\"").And.Not.Contain("Text=\"Week used\"").And.Not.Contain("Text=\"Read\""));
+    }
+
+    [Test]
     public void The_dashboard_lists_accounts_as_a_table_and_the_billing_toggle_and_Accounts_card_are_gone_from_the_window()
     {
         var root = TestContext.CurrentContext.TestDirectory;
