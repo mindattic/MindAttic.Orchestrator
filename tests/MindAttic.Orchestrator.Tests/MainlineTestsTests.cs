@@ -15,9 +15,38 @@ public sealed class MainlineTestsTests
     private JsonStore store = null!;
     private string head = "aaaaaaa1";
     private string diff = "src/A.cs";
+    private string root = "A.slnx";
     private readonly List<string[]> git = [];
     private readonly List<TaskCompletionSource<MainlineTests.SuiteResult>> runs = [];
     private static readonly DateTime Now = new(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc);
+
+    [Test]
+    public void SolutionIn_picks_a_tracked_root_solution_slnx_first()
+    {
+        Assert.That(MainlineTests.SolutionIn(["B.sln", "src", "Z.slnx", "A.slnx"]), Is.EqualTo("A.slnx"));
+        Assert.That(MainlineTests.SolutionIn(["B.sln", "src"]), Is.EqualTo("B.sln"));
+        Assert.That(MainlineTests.SolutionIn(["README.md", "src"]), Is.Null);
+    }
+
+    [Test]
+    public void The_solution_is_chosen_from_the_built_commit_not_the_repo_folder()
+    {
+        // The repo folder holds A.slnx, but the commit being built tracks only B.slnx.
+        string? ran = null;
+        var tests = Make();
+        var inner = tests.Git;
+        tests = new MainlineTests(store)
+        {
+            Git = (p, a) => a[0] == "ls-tree" ? (0, "B.slnx\n") : inner(p, a),
+            MainlineOf = _ => "main",
+            RunSuite = s => { ran = s; return Result([], []); },
+            Spawn = w => Task.FromResult(w()),
+        };
+        Tick(tests, Now);
+        head = "bbbbbbb2";
+        Tick(tests, Now.AddMinutes(5));
+        Assert.That(ran, Is.EqualTo(Path.Combine(dir, "wt", "A", MainlineTests.WorktreeName, "B.slnx")));
+    }
 
     [SetUp]
     public void SetUp()
@@ -54,6 +83,7 @@ public sealed class MainlineTestsTests
             {
                 "rev-parse" => (0, head + "\n"),
                 "diff" => (0, diff + "\n"),
+                "ls-tree" => (0, root),
                 "log" => (0, "bbbbbbb Fix the parser (A-T7)\ncccccc2 Add the thing (A-T8)\n"),
                 _ => (0, ""),
             };
@@ -213,7 +243,7 @@ public sealed class MainlineTestsTests
         Tick(tests, Now.AddSeconds(15));
         Assert.That(git.Count(a => a[0] == "rev-parse"), Is.EqualTo(reads));
 
-        File.Delete(Path.Combine(repo, "A.slnx"));
+        root = "README.md";
         head = "aaaaaaa2";
         Tick(tests, Now.AddMinutes(2));
         Assert.That(runs, Is.Empty);

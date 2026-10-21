@@ -101,7 +101,7 @@ public sealed partial class MainlineTests(JsonStore store)
             checkedUtc = nowUtc;
             foreach (var (name, path) in repos)
             {
-                if (running.ContainsKey(name) || Solution(path) is not { } solution) continue;
+                if (running.ContainsKey(name)) continue;
                 if (!mainlines.TryGetValue(name, out var mainline)) mainlines[name] = mainline = MainlineOf(path);
                 var (code, output) = Git(path, ["rev-parse", "--verify", "--quiet", "refs/remotes/origin/" + mainline]);
                 if (code != 0 || output.Trim() is not { Length: > 0 } head) continue;
@@ -121,12 +121,15 @@ public sealed partial class MainlineTests(JsonStore store)
                     changed = true;
                     continue;
                 }
+                // The solution comes from the commit being built, tracked files only: the repo's own folder may be behind
+                // origin or hold an untracked or ignored generated solution the fresh worktree doesn't have (M.ORCH-T598).
+                var (listed, tracked) = Git(path, ["ls-tree", "--name-only", head]);
+                if (listed != 0 || SolutionIn(tracked.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) is not { } solution) continue;
                 var since = Since(path, st.Green ?? st.Tested, head);
                 var tree = Path.Combine(worktreeRoot, name, WorktreeName);
-                var relative = Path.GetRelativePath(path, solution);
                 running[name] = new Run(name, path, mainline, head, since, Spawn(() =>
                     Prepare(path, tree, head) is { } error ? new SuiteResult(false, [], new HashSet<string>(), error)
-                        : RunSuite(Path.Combine(tree, relative))));
+                        : RunSuite(Path.Combine(tree, solution))));
                 lines.Add(new Line(false, $"main tests: running {name}'s full suite on {mainline} at {Short(head)}"));
             }
         }
@@ -239,15 +242,12 @@ public sealed partial class MainlineTests(JsonStore store)
 
     private static string OneLine(string text) => Whitespace().Replace(text.Replace('|', '/'), " ").Trim();
 
-    /// <summary>The solution at the repo's root (.slnx before .sln, then by name); null for a repo with none, which isn't run.</summary>
-    internal static string? Solution(string repoPath)
+    /// <summary>The solution among a commit's root entries (.slnx before .sln, then by name); null when it has none, which isn't run.</summary>
+    internal static string? SolutionIn(IEnumerable<string> rootEntries)
     {
-        try
-        {
-            return Directory.GetFiles(repoPath, "*.slnx").Order(StringComparer.OrdinalIgnoreCase)
-                .Concat(Directory.GetFiles(repoPath, "*.sln").Order(StringComparer.OrdinalIgnoreCase)).FirstOrDefault();
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+        var names = rootEntries.Where(n => !n.Contains('/') && !n.Contains('\\')).ToList();
+        return names.Where(n => n.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase)).Order(StringComparer.OrdinalIgnoreCase)
+            .Concat(names.Where(n => n.EndsWith(".sln", StringComparison.OrdinalIgnoreCase)).Order(StringComparer.OrdinalIgnoreCase)).FirstOrDefault();
     }
 
     /// <summary>Whether every path changed between the two commits is data, docs or markdown.</summary>
