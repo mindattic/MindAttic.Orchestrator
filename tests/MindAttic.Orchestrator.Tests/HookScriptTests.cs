@@ -1123,6 +1123,27 @@ public sealed class HookScriptTests
         Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Does.Contain("\"deny\""));
     }
 
+    [Test]
+    public void A_typed_crossrepo_accepts_the_repo_form_and_trims_punctuation_per_name()
+    {
+        var mark = Path.Combine(Marks, $"crossrepo-{Cli}");
+        Directory.CreateDirectory(Path.Combine(ws, "Unity.Shared", ".git"));
+        Gate(Said("/crossrepo -repo=Unity.Shared,MindAttic.Tickets."), AgentGate.ContextScriptName);
+        Assert.That(File.ReadAllText(mark), Is.EqualTo("Unity.Shared,MindAttic.Tickets"));
+        Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Is.Empty);
+        Assert.That(Gate(EditIn("Unity.Shared")).Output, Is.Empty);
+        Gate(Said("/crossrepo off"), AgentGate.ContextScriptName);
+        Gate(Said("/crossrepo  MindAttic.Tickets. "), AgentGate.ContextScriptName);
+        Assert.That(File.ReadAllText(mark), Is.EqualTo("MindAttic.Tickets"));
+    }
+
+    [Test]
+    public void A_typed_crossrepo_confirmation_names_only_known_repos_and_warns_about_the_rest()
+    {
+        var output = Gate(Said("/crossrepo -repo=MindAttic.Tickets,NoSuchRepo"), AgentGate.ContextScriptName).Output;
+        Assert.That(output, Does.Contain("may work MindAttic.Tickets.").And.Contain("NoSuchRepo; edits there stay refused"));
+    }
+
     // ---- /pacing on|off replaces /unthrottle and /throttle (M.ORCH-T483) ----
 
     [Test]

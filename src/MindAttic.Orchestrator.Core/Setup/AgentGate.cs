@@ -1496,6 +1496,7 @@ public static class AgentGate
             return None
         # A freshly opened CLI starts with /allocate off (M.ORCH-T522, reversing M.ORCH-T476's on-by-default): only a typed
         # /allocate marks it. The noautopilot mark /allocate off leaves is what /handoff restores as "typed off".
+        CROSSREPO_NOTE = [None]
         def set_crossrepo(pid, args):
             # /crossrepo <A,B|all> lets this CLI work other repos too (the explicit exception to M.ORCH-T95); /crossrepo off ends it.
             if not pid:
@@ -1504,7 +1505,33 @@ public static class AgentGate
                 if may_have_cli_mark("crossrepo", pid):
                     set_cli_mark("crossrepo", pid, None)
             else:
-                set_cli_mark("crossrepo", pid, ",".join(r.strip() for r in args.replace(" ", ",").split(",") if r.strip()))
+                # The -repo= form /allocate takes is accepted too, and each name is trimmed of surrounding punctuation
+                # ("-repo=A,B." is A and B, M.ORCH-T591): the mark holds clean names the write guard can match.
+                body = re.sub(r"^\s*-{1,2}repo\b\s*[=:]?\s*", "", args, flags=re.I)
+                names = []
+                for r in re.split(r"[\s,;]+", body):
+                    r = r.strip(" \t.,;:'\"`()[]<>")
+                    if r and r.lower() not in [n.lower() for n in names]:
+                        names.append(r)
+                if names:
+                    set_cli_mark("crossrepo", pid, ",".join(names))
+                    import fnmatch
+                    def known(n):
+                        if n in ("*",) or n.lower() == "all":
+                            return True
+                        try:
+                            dirs = [d.name for d in WS.iterdir() if (d / ".git").exists()]
+                        except Exception:
+                            dirs = []
+                        return any(fnmatch.fnmatchcase(d.lower(), n.lower()) or d.lower() == canonical_repo(n).lower() for d in dirs)
+                    ok = [n for n in names if known(n)]
+                    bad = [n for n in names if n not in ok]
+                    note = "/crossrepo: this CLI may work " + (", ".join(ok) if ok else "no known repo") + "."
+                    if bad:
+                        note += " Not a known repo here (check the spelling): " + ", ".join(bad) + "; edits there stay refused."
+                    CROSSREPO_NOTE[0] = note
+                elif may_have_cli_mark("crossrepo", pid):
+                    set_cli_mark("crossrepo", pid, None)
             return None
         # /handoff (M.ORCH-T481): one mark for every CLI (Sessions.Handoff reads and writes the same file). While it's winding down
         # or quiet nothing new starts; each CLI quicksaves (handoff-saved-<pid>); the first start after the switch marks it resumed.
@@ -2929,6 +2956,8 @@ public static class AgentGate
             if handing:
                 notes.append("A handoff is under way (/handoff): every CLI is winding down for an account switch, so start no ticket or "
                              "subagent; when this turn's work is done, quicksave this repo's handoff as /handoff says. /handoff off cancels it.")
+            if CROSSREPO_NOTE[0]:
+                notes.append(CROSSREPO_NOTE[0])
             state["wind_down_told"] = bool(s.get("wind_down_note") or s.get("stop_note"))
             out = {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": " ".join(notes)}} if notes else {}
             # A CLI that started before its SessionStart hook was registered is checked on its first prompt instead, and told
