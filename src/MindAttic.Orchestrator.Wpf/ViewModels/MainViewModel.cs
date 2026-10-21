@@ -67,7 +67,7 @@ public sealed partial class MainViewModel : ObservableObject
         lease = new DispatchLease(store.Directory, db: store.Db);
         aggregator = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter { Db = store.Db }, lease);
         control = new SessionControl(aggregator.Options);
-        Waiting = new("Needs you", "Sessions that stopped and are waiting for input", Palette.Waiting);
+        Waiting = new("Needs you", "Sessions that stopped and are waiting for input, longest wait first", Palette.Waiting);
         Working = new("Working", "Agents mid-turn right now", Palette.Working);
         Tickets = new("Open tickets, no session", "Work that's queued but nobody's on", Palette.Tickets);
         Quiet = new("Quiet", "No session and no open tickets", Palette.Quiet);
@@ -363,7 +363,9 @@ public sealed partial class MainViewModel : ObservableObject
     private void Regroup()
     {
         var visible = tiles.Values.Where(t => t.Matches(Search)).ToList();
-        Waiting.Tiles.ReorderTo([.. Sorted(visible.Where(t => t.State == RepoState.Waiting), RepoSort)]);
+        // Needs you keeps longest wait first whatever the sort: the one waiting longest is the one to answer next.
+        Waiting.Tiles.ReorderTo([.. visible.Where(t => t.State == RepoState.Waiting)
+            .OrderBy(t => t.Status?.LastActivityUtc ?? DateTime.MaxValue)]);
         Working.Tiles.ReorderTo([.. Sorted(visible.Where(t => t.State == RepoState.Working), RepoSort)]);
         Tickets.Tiles.ReorderTo([.. Sorted(visible.Where(t => t.State == RepoState.Dormant && t.OpenTicketCount > 0), RepoSort)]);
         Quiet.Tiles.ReorderTo([.. Sorted(visible.Where(t => t.State == RepoState.Dormant && t.OpenTicketCount == 0), RepoSort)]);
