@@ -94,10 +94,13 @@ public static class AccountSwitch
         row.WeekUsedAt(nowUtc) is { } used
             ? $"{used.ToString("0", System.Globalization.CultureInfo.InvariantCulture)}/{AccountRoster.Percent(row.WeekLeftAt(nowUtc))}"
             : "—",
-        row.WeekResetAt(nowUtc) is { } wr ? wr.ToLocalTime().ToString("M/d h:mm tt", System.Globalization.CultureInfo.InvariantCulture) : "",
+        row.WeekResetAt(nowUtc) is { } wr ? DateAndTime(wr) : "",
         AccountRoster.Percent(row.FiveHourUsedAt(nowUtc)),
-        row.FiveHourResetAt(nowUtc) is { } fr ? Formatting.ResetTime(fr, nowUtc) : "",
+        row.FiveHourResetAt(nowUtc) is { } fr ? DateAndTime(fr) : "",
         row.ReadUtc is { } r ? Formatting.Ago(r, nowUtc) : "not read yet");
+
+    private static string DateAndTime(DateTime utc) =>
+        utc.ToLocalTime().ToString("M/d h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
 
     /// <summary><c>auth login --email &lt;address&gt;</c>, and <c>--sso</c> when <paramref name="sso"/>.</summary>
     public static IReadOnlyList<string> LoginArgs(string email, bool sso) =>

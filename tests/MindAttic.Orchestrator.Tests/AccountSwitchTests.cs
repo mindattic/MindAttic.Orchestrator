@@ -203,6 +203,7 @@ public sealed class AccountSwitchTests
         var c = AccountSwitch.Columns(b, Now);
         Assert.That(c.WeekUsage, Is.EqualTo("80/20%"));
         Assert.That(c.WeekResets, Is.EqualTo(b.WeekResetAt(Now)!.Value.ToLocalTime().ToString("M/d h:mm tt", System.Globalization.CultureInfo.InvariantCulture)));
+        Assert.That(c.FiveHourResets, Is.EqualTo(b.FiveHourResetAt(Now)!.Value.ToLocalTime().ToString("M/d h:mm tt", System.Globalization.CultureInfo.InvariantCulture)));
         Assert.That(AccountSwitch.Columns(new AccountRow { Account = "x/org" }, Now).WeekUsage, Is.EqualTo("—"), "never read");
 
         var root = TestContext.CurrentContext.TestDirectory;
