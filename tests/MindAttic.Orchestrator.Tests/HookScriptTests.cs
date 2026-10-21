@@ -1622,22 +1622,22 @@ public sealed class HookScriptTests
     [Test]
     public void The_repo_window_guard_looks_up_a_closes_first_ticket_argument_in_the_ticket_database()
     {
-        Tickets(("U.SPC-T1", "UnitySolarSystem"), ("M.WF-T7", "MindAttic.Tickets"));
+        Tickets(("U.SPC-T1", "UnitySolarSystem"), ("M.TIX-T7", "MindAttic.Tickets"));
         var uss = Path.Combine(ws, "UnitySolarSystem");
         object Bash(string command) => new { tool_name = "Bash", tool_input = new { command }, cwd = uss };
 
-        Assert.That(Gate(Bash("tickets ticket close M.WF-T7 --ref abc123")).Output,
+        Assert.That(Gate(Bash("tickets ticket close M.TIX-T7 --ref abc123")).Output,
             Does.Contain("\"deny\"").And.Contain("belongs to MindAttic.Tickets"), "no --repo: the db says whose ticket it is");
-        Assert.That(Gate(Bash("cd x && tickets ticket close M.WF-T7 --ref abc")).Output, Does.Contain("\"deny\""), "as any segment of a command");
-        Assert.That(Gate(Bash("tickets ticket close U.SPC-T1 --ref M.WF-T7 --summary 'like M.WF-T7'")).Output, Is.Empty,
+        Assert.That(Gate(Bash("cd x && tickets ticket close M.TIX-T7 --ref abc")).Output, Does.Contain("\"deny\""), "as any segment of a command");
+        Assert.That(Gate(Bash("tickets ticket close U.SPC-T1 --ref M.TIX-T7 --summary 'like M.TIX-T7'")).Output, Is.Empty,
             "this repo's own ticket; the IDs in --ref and --summary are just text");
-        Assert.That(Gate(Bash("tickets ticket correct M.WF-T7 --summary x")).Output, Does.Contain("\"deny\""), "correct is looked up the same way");
+        Assert.That(Gate(Bash("tickets ticket correct M.TIX-T7 --summary x")).Output, Does.Contain("\"deny\""), "correct is looked up the same way");
         Assert.That(Gate(Bash("tickets ticket close X.NOPE-T1 --ref x")).Output, Is.Empty, "a ticket the db doesn't know isn't refused");
         // M.ORCH-T468: the lookup ignores case, so the ID and the command name must too (Windows runs Tickets.exe all the same).
-        Assert.That(Gate(Bash("tickets ticket close m.wf-t7 --ref abc")).Output, Does.Contain("\"deny\""), "a lower-case ID");
-        Assert.That(Gate(Bash("& Tickets.exe ticket close M.WF-T7 --ref abc")).Output, Does.Contain("\"deny\""), "the command name in any case");
+        Assert.That(Gate(Bash("tickets ticket close m.tix-t7 --ref abc")).Output, Does.Contain("\"deny\""), "a lower-case ID");
+        Assert.That(Gate(Bash("& Tickets.exe ticket close M.TIX-T7 --ref abc")).Output, Does.Contain("\"deny\""), "the command name in any case");
         // M.ORCH-T564: the legacy `workflow` shim forwards to tickets, so a close through it is looked up the same way.
-        Assert.That(Gate(Bash("& Workflow.exe ticket close M.WF-T7 --ref abc")).Output, Does.Contain("\"deny\""), "the legacy workflow shim");
+        Assert.That(Gate(Bash("& Workflow.exe ticket close M.TIX-T7 --ref abc")).Output, Does.Contain("\"deny\""), "the legacy workflow shim");
         Assert.That(Gate(Bash("tickets ticket close u.spc-t1 --ref abc")).Output, Is.Empty, "this repo's own ticket in lower case");
     }
 
@@ -1645,11 +1645,11 @@ public sealed class HookScriptTests
     public void The_hooks_find_the_workspace_the_orchestrator_is_set_to()
     {
         // M.ORCH-T409: with the workspace anywhere but D:\Projects\MindAttic, the hooks found no repo and no tickets.
-        Tickets(("U.SPC-T1", "UnitySolarSystem"), ("M.WF-T7", "MindAttic.Tickets"));
+        Tickets(("U.SPC-T1", "UnitySolarSystem"), ("M.TIX-T7", "MindAttic.Tickets"));
         var settings = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "settings.json");
         Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
         File.WriteAllText(settings, JsonSerializer.Serialize(new { WorkspaceRoot = ws }));
-        var close = new { tool_name = "Bash", tool_input = new { command = "tickets ticket close M.WF-T7 --ref abc123" }, cwd = Path.Combine(ws, "UnitySolarSystem") };
+        var close = new { tool_name = "Bash", tool_input = new { command = "tickets ticket close M.TIX-T7 --ref abc123" }, cwd = Path.Combine(ws, "UnitySolarSystem") };
 
         Assert.That(Gate(close, new Dictionary<string, string> { ["MINDATTIC_WORKSPACE"] = "" }).Output,
             Does.Contain("\"deny\"").And.Contain("belongs to MindAttic.Tickets"), "settings.json's workspace, with no MINDATTIC_WORKSPACE");
@@ -1702,7 +1702,7 @@ public sealed class HookScriptTests
         // M.ORCH-T546: sqlite3.connect(WORKFLOW_DB) left a 0-byte database wherever it pointed, which the tickets CLI then opened.
         var data = Path.Combine(ws, "MindAttic.Tickets", "data");
         Directory.CreateDirectory(data);
-        Gate(new { tool_name = "Bash", tool_input = new { command = "tickets ticket close M.WF-T7 --ref abc123" }, cwd = Path.Combine(ws, "UnitySolarSystem") });
+        Gate(new { tool_name = "Bash", tool_input = new { command = "tickets ticket close M.TIX-T7 --ref abc123" }, cwd = Path.Combine(ws, "UnitySolarSystem") });
         Gate(new { hook_event_name = "Stop", session_id = "w1", cwd = Path.Combine(ws, "UnitySolarSystem") }, AgentGate.ContextScriptName);
         Assert.That(File.Exists(Path.Combine(data, "Tickets.db")), Is.False);
     }
