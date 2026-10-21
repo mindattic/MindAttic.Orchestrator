@@ -1521,9 +1521,10 @@ public static class AgentGate
                             return True
                         try:
                             dirs = [d.name for d in WS.iterdir() if (d / ".git").exists()]
+                            canon = (canonical_repo(n) or n).lower()
+                            return any(fnmatch.fnmatchcase(d.lower(), n.lower()) or d.lower() == canon for d in dirs)
                         except Exception:
-                            dirs = []
-                        return any(fnmatch.fnmatchcase(d.lower(), n.lower()) or d.lower() == canonical_repo(n).lower() for d in dirs)
+                            return False
                     ok = [n for n in names if known(n)]
                     bad = [n for n in names if n not in ok]
                     note = "/crossrepo: this CLI may work " + (", ".join(ok) if ok else "no known repo") + "."
