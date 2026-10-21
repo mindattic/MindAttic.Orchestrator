@@ -2141,7 +2141,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', '(workspace root)', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1278018);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', '(workspace root)', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 109424);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'Cursory', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 24861);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2024);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 54167);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 61587);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'MindAttic.Orchestrator', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 57420);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'Unity.Cursory', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 745489);
@@ -5632,7 +5632,8 @@ INSERT INTO state (name, value) VALUES ('limits', '[
 ]');
 INSERT INTO state (name, value) VALUES ('mainline-tests', '{
   "Automata": {
-    "Tested": "0750dcebf6ff157db9169eb3e3d860c18efdb960"
+    "Tested": "73fa60dc301b92f727bccf0a3d40f7810ad166ff",
+    "Green": "73fa60dc301b92f727bccf0a3d40f7810ad166ff"
   },
   "AutoWebNav": {
     "Tested": "49bd2f9728ef9c42ff7db4d4ca341dd416050fd0"
@@ -5692,7 +5693,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "b25c0977b14280f7d94cefe06354ea3049d6ec4c"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "1b20bf79fc9492ccce6ed420c752bc26eb42b534"
+    "Tested": "11bd3dd361fb3d16ada82e6799e1e22ac322f346"
   },
   "MindAttic.Psst": {
     "Tested": "9e8035c79b5f76e50c1f9c00acdb39f9dd275cb9"
@@ -5701,7 +5702,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "da2e8e853b941e35b33d05d5a8e3c2a8927625f9"
   },
   "MindAttic.Tickets": {
-    "Tested": "5ffc19a410b7b6ff41a45af390e61a4eeb2eeb49"
+    "Tested": "25633088975b0437b55780d775866eb2ef9cf895"
   },
   "MindAttic.Vault": {
     "Tested": "b7fc7519011772d8c05ef568e03494d3148fb369"

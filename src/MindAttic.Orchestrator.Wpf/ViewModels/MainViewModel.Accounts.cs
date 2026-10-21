@@ -6,7 +6,7 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 /// <summary>One entry in the account menu: what it switches to (<see cref="Id"/>: an account key, or
 /// <see cref="MainViewModel.ApiKeyItem"/>), its line, its icon-font glyph and its tooltip.</summary>
 public sealed record AccountMenuItem(string Id, string Label, string Icon, string ToolTip, string Account,
-    bool IsCurrent, string Seat, string WeekUsed, string WeekLeft, string WeekResets, string FiveHourUsed,
+    bool IsCurrent, string WeekUsage, string WeekResets, string FiveHourUsed,
     string FiveHourResets, string LastRead, bool IsApiKey);
 
 /// <summary>
@@ -53,12 +53,12 @@ public sealed partial class MainViewModel
                 : $"Sign every CLI in to {r.Email}: opens its login in the browser ({AccountSwitch.LoginCommand(r.Email, AccountSwitch.UsesSso(r))}).";
             var c = AccountSwitch.Columns(r, nowUtc);
             items.Add(new AccountMenuItem(r.Account, AccountSwitch.MenuLine(r, signedIn ? current : null, suggested, nowUtc), icon, tip,
-                r.Label, signedIn, c.Seat, c.WeekUsed, c.WeekLeft, c.WeekResets, c.FiveHourUsed, c.FiveHourResets, c.LastRead, false));
+                r.Label, signedIn, c.WeekUsage, c.WeekResets, c.FiveHourUsed, c.FiveHourResets, c.LastRead, false));
         }
         var apiLabel = "Use API key (emergencies)" + (onKey ? " (in use)" : "");
         items.Add(new AccountMenuItem(ApiKeyItem, apiLabel, onKey ? "" : "",
             "Bill every CLI to the MindAttic Vault's API key, for emergencies only. Open Launcher tabs restart with claude --resume at their next idle point.",
-            apiLabel, onKey, "", "", "", "", "", "", "", true));
+            apiLabel, onKey, "", "", "", "", "", true));
         return items;
     }
 
