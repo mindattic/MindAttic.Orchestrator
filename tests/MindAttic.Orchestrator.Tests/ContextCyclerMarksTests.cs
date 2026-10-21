@@ -55,6 +55,25 @@ public sealed class ContextCyclerMarksTests
         Assert.That(Directory.GetFiles(dir).Select(Path.GetFileName), Is.EquivalentTo(new[] { "autopilot-7.bak" }), "read in, kept as .bak");
     }
 
+    /// <summary>M.ORCH-T558: /allocate warms up from when it turned on, so that time survives a read-in, a rewrite and a restart.</summary>
+    [Test]
+    public void When_autopilot_turned_on_is_kept_through_a_read_in_and_a_rewrite_of_its_mark()
+    {
+        CliMarks.Db().Open().Dispose();
+        var file = Path.Combine(dir, "autopilot-7");
+        File.WriteAllText(file, "Prose");
+        var on = DateTime.UtcNow.AddMinutes(-5);
+        File.SetLastWriteTimeUtc(file, on);
+        Assert.That(CliMarks.Since(dir, CliMarks.Autopilot)[7], Is.EqualTo(on).Within(TimeSpan.FromSeconds(1)), "a file not read in yet: its time");
+        CliMarks.ReadIn(dir);
+        Assert.That(File.Exists(file), Is.False);
+        Assert.That(CliMarks.Since(dir, CliMarks.Autopilot)[7], Is.EqualTo(on).Within(TimeSpan.FromSeconds(1)), "read in: its row keeps it");
+        File.WriteAllText(file, "Prose,GTFO"); // repos added while the database was held
+        CliMarks.ReadIn(dir);
+        Assert.That(CliMarks.Read(dir, CliMarks.Autopilot)[7], Is.EqualTo("Prose,GTFO"));
+        Assert.That(new ContextCycler(dir).AutopilotSince()[7], Is.EqualTo(on).Within(TimeSpan.FromSeconds(1)), "rewritten: still when it turned on");
+    }
+
     // ---- AutopilotOrder ----
 
     [Test]

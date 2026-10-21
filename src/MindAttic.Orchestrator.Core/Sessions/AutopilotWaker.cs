@@ -38,6 +38,9 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
     /// <summary>The live CLIs /allocate is on in, and their repos (seam; <see cref="ContextCycler.AutopilotClis"/>).</summary>
     internal Func<IReadOnlyDictionary<int, IReadOnlyList<string>>>? Pilots { get; init; }
 
+    /// <summary>When /allocate turned on in each of them (seam; <see cref="ContextCycler.AutopilotSince"/>).</summary>
+    internal Func<IReadOnlyDictionary<int, DateTime>>? PilotsSince { get; init; }
+
     /// <summary>Whether a /handoff holds every CLI (seam).</summary>
     internal Func<bool> HandingOff { get; init; } = () => false;
 
@@ -61,6 +64,7 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
         var newest = cycler.Load().Where(c => c.Pid is not null).GroupBy(c => c.Pid!.Value)
             .ToDictionary(g => g.Key, g => g.MaxBy(c => (Written(c.SessionId), c.TurnUtc))!);
         var handingOff = HandingOff();
+        var since = PilotsSince?.Invoke() ?? (Pilots is null ? cycler.AutopilotSince() : new Dictionary<int, DateTime>()); // warming up (M.ORCH-T558): not woken for one it can't have yet
 
         var due = new List<(int Pid, SessionContext Session, IReadOnlyList<string> Repos, IReadOnlyList<string> Ids)>();
         foreach (var (pid, repos) in pilots)
@@ -70,7 +74,7 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
             if (wokenUtc.TryGetValue(pid, out var last) && nowUtc - last < Cooldown) continue;
             if (!IsAlive(pid)) continue;
             var (handed, _) = Autopilot.Next(plan, settings, store, repos, null, claim: false, nowUtc,
-                unthrottled: cycler.IsUnthrottled(pid), self: c.SessionId, handingOff: handingOff, cli: pid, pilots: pilots);
+                unthrottled: cycler.IsUnthrottled(pid), self: c.SessionId, handingOff: handingOff, cli: pid, pilots: pilots, onSince: since);
             if (handed.Count > 0) due.Add((pid, c, repos, [.. handed.Select(h => h.Item.Id)]));
         }
         if (due.Count == 0) return [];

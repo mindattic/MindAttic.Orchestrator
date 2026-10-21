@@ -219,6 +219,9 @@ public sealed class ContextCycler(string? directory = null)
         .Where(x => IsClaude(x.Key))
         .ToDictionary(x => x.Key, x => (IReadOnlyList<string>)[.. x.Value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)]);
 
+    /// <summary>When /allocate turned on in each CLI that has it on (M.ORCH-T558: it warms up from then), by process id.</summary>
+    public IReadOnlyDictionary<int, DateTime> AutopilotSince() => CliMarks.Since(Directory, CliMarks.Autopilot);
+
     private static string ReadOrEmpty(string path)
     {
         try { return File.ReadAllText(path); }

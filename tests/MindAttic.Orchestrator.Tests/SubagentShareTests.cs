@@ -43,4 +43,17 @@ public sealed class SubagentShareTests
     [Test]
     public void Never_past_the_allowance_across_every_cli() =>
         Assert.That(SubagentShare.Room(4, 4, 1, Running((2, 4)), []), Is.Zero);
+
+    /// <summary>M.ORCH-T558: a CLI's /allocate warms up, one more subagent each minute since it turned on, up to its share.</summary>
+    [Test]
+    public void A_cli_warms_up_one_more_subagent_each_minute_since_its_autopilot_turned_on()
+    {
+        var on = new DateTime(2026, 10, 20, 9, 0, 0, DateTimeKind.Utc);
+        Assert.That(new[] { 0, 59, 60, 150, 600 }.Select(s => SubagentShare.WarmUp(on, on.AddSeconds(s))), Is.EqualTo(new[] { 1, 1, 2, 3, 11 }));
+        Assert.That(SubagentShare.WarmUp(null, on), Is.EqualTo(int.MaxValue), "not known to be on: no warm-up");
+        Assert.That(SubagentShare.WarmUp(on.AddMinutes(1), on), Is.EqualTo(1), "a clock behind the mark still lets one start");
+        Assert.That(SubagentShare.Room(12, 0, 1, Running(), [], warm: 1), Is.EqualTo(1), "alone at minute 0: one, not all 12");
+        Assert.That(SubagentShare.Room(12, 1, 1, Running((1, 1)), [], warm: 3), Is.EqualTo(2), "minute 2: up to 3");
+        Assert.That(SubagentShare.Room(12, 0, 1, Running(), [2], warm: 20), Is.EqualTo(6), "warmed past its share: the share still holds");
+    }
 }
