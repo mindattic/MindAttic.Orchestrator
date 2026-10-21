@@ -2053,6 +2053,10 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T17:28:32Z', 77, '2026-10-21T18:40:00Z', 9284840);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T17:28:33Z', 77, '2026-10-21T18:40:00Z', 9287514);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T17:31:11Z', 78, '2026-10-21T18:40:00Z', 9394047);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T17:33:39Z', 79, '2026-10-21T18:40:00Z', 9694047);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T17:35:05Z', 80, '2026-10-21T18:40:00Z', 9769993);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T17:37:37Z', 81, '2026-10-21T18:40:00Z', 9878076);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-21T17:41:11Z', 82, '2026-10-21T18:40:00Z', 9972976);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -2252,11 +2256,11 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 10826);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 61587);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'MindAttic.Orchestrator', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 57420);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'Unity.Cursory', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 7203721);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'Unity.Cursory', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 7660828);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'Unity.Cursory', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 745489);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'Unity.GridGame', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4269446);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'Unity.Multiplayer', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5170494);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'Unity.SpaceGod', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 553934);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'Unity.SpaceGod', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 733238);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-21', 'Unity.SpaceGod', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 14262591);
 
 -- ticket_costs
@@ -5806,8 +5810,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "b25c0977b14280f7d94cefe06354ea3049d6ec4c"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "3cc7753bda01ed986cb56285ca975a9d8c803df2",
-    "Green": "3cc7753bda01ed986cb56285ca975a9d8c803df2"
+    "Tested": "ec7f35966bd89295b007d649ca7226c1fbabd490",
+    "Green": "ec7f35966bd89295b007d649ca7226c1fbabd490"
   },
   "MindAttic.Psst": {
     "Tested": "9e8035c79b5f76e50c1f9c00acdb39f9dd275cb9"
@@ -5842,7 +5846,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "8780199056b2fcf3ac0b8b4c497b804da22caac2"
   },
   "Unity.Cursory": {
-    "Tested": "a43e4e64de77cacb98aa1b211180b65aaa674ee6"
+    "Tested": "bc7a1b42fa98858ddb4807bba4deccf4b60b4f47"
   }
 }');
 INSERT INTO state (name, value) VALUES ('pace-alarm-walls', '[
