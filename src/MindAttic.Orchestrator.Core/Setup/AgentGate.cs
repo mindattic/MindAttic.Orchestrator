@@ -1440,9 +1440,118 @@ public static class AgentGate
                 return [n.strip() for n in (cli_mark("autopilot", pid) or "").split(",") if n.strip()] if pid else []
             except Exception:
                 return []
+        ALLOCATE_NOTE = [None]
+        def known_clis():
+            # {pid: {"sessions": [ids], "cwd": its latest cwd}} of every CLI still running that a session's state (its
+            # session_states row or .state.json) or an /allocate mark names (M.ORCH-T599).
+            found = {}
+            def add(sid, s, at):
+                if not isinstance(s, dict) or not str(s.get("pid") or "").isdigit():
+                    return
+                e = found.setdefault(str(s["pid"]), {"sessions": [], "cwd": None, "at": -1.0})
+                if sid and sid not in e["sessions"]:
+                    e["sessions"].append(sid)
+                if s.get("cwd") and at > e["at"]:
+                    e["cwd"], e["at"] = s.get("cwd"), at
+            try:
+                for sid, value, at in orch_rows("SELECT session_id, value, written_at FROM session_states", (), timeout=1) or []:
+                    try:
+                        add(str(sid), json.loads(value), float(at))
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            try:
+                for f in SESSION_MARKS.glob("*.state.json"):
+                    try:
+                        add(f.name[:-len(".state.json")], json.loads(f.read_text(encoding="utf-8")), f.stat().st_mtime)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            for kind in ("autopilot", "noautopilot"):
+                try:
+                    for each in cli_marks(kind):
+                        found.setdefault(str(each), {"sessions": [], "cwd": None, "at": -1.0})
+                except Exception:
+                    pass
+            return {p: e for p, e in found.items() if process_started(p) is not None}
+        def cli_label(pid, cwd):
+            r = repo_of(cwd) if cwd else None
+            return "CLI " + str(pid) + (" (" + r + ")" if r else "")
         def set_autopilot(pid, args, cwd):
-            # /allocate [off|all] [-repo=A,B]: THIS CLI works those repos' tickets through its own subagents (its own
-            # repo when none are named) until /allocate off here. Nothing is marked for any other CLI. A name may be a
+            # /allocate [off|all] [-repo=A,B] [-target=X,Y|others|all] (M.ORCH-T599): -target names the CLIs whose own records
+            # change (PIDs, session ids or a CLI's repo or folder name; "others" is every CLI but this one, "all" every one);
+            # without it, this CLI's alone. ALLOCATE_NOTE says which it changed and any target that matched none.
+            ALLOCATE_NOTE[0] = None
+            m = re.search(r"(?:^|\s)-{1,2}targets?\b\s*[=:]?\s*(\[[^\]]*\]|\"[^\"]*\"|'[^']*'|\S+(?:\s*,\s*\S+)*)", args, re.I)
+            if not m:
+                return set_autopilot_one(pid, args, cwd)
+            # "off all" with a -target is off for those targets: -target=all is how every CLI is named.
+            rest = re.sub(r"^off\s+all\b", "off", (args[:m.start()] + " " + args[m.end():]).strip(), flags=re.I)
+            wanted = [t.strip(" \t.;:'\"`()[]<>") for t in re.split(r"[\s,]+", m.group(1).strip("[]\"'"))]
+            wanted = [t for t in wanted if t]
+            if not wanted:
+                return "/allocate -target= names the CLIs (PIDs or session ids or names, comma-separated), others or all. Nothing changed."
+            clis = known_clis()
+            me = str(pid or "")
+            if me:
+                clis.setdefault(me, {"sessions": [], "cwd": cwd, "at": -1.0})
+                clis[me]["cwd"] = cwd or clis[me]["cwd"]
+            import fnmatch
+            picked, missed = [], []
+            for t in wanted:
+                low = t.lower()
+                if low in ("all", "*", "every", "everyone"):
+                    hits = list(clis)
+                elif low in ("others", "other", "rest"):
+                    hits = [p for p in clis if p != me]
+                elif low in ("this", "me", "self", "here"):
+                    hits = [me] if me else []
+                elif t.isdigit():
+                    hits = [t] if t in clis else []
+                else:
+                    hits = []
+                    for p, e in clis.items():
+                        c = e.get("cwd") or ""
+                        names = [n.lower() for n in (repo_of(c) if c else None, Path(c).name if c else None) if n]
+                        if (any(s.lower() == low or (len(low) >= 4 and s.lower().startswith(low)) for s in e["sessions"])
+                                or any(n == low or fnmatch.fnmatchcase(n, low) for n in names)):
+                            hits.append(p)
+                if not hits:
+                    missed.append(t)
+                for p in hits:
+                    if p not in picked:
+                        picked.append(p)
+            if not picked:
+                return ("/allocate -target=" + ",".join(wanted) + " matched no running CLI, so nothing changed. Name them by PID, session id or "
+                        "repo (orchestrator clis lists them), or use -target=others or -target=all.")
+            changed, refused = [], []
+            for p in sorted(picked, key=lambda x: int(x) if x.isdigit() else 0):
+                c = clis.get(p, {}).get("cwd") or (cwd if p == me else "")
+                if not re.match(r"(off|all)\b", rest, re.I) and not re.search(r"-{1,2}repo\b", rest, re.I) and not repo_of(c or ""):
+                    refused.append(cli_label(p, c) + ": its repo isn't known, so name the repos with -repo=")
+                    continue
+                why = set_autopilot_one(p, rest, c)
+                if why:
+                    refused.append(cli_label(p, c) + ": " + why)
+                else:
+                    changed.append(cli_label(p, c) + (" (this one)" if p == me else ""))
+            if not changed:
+                return "/allocate -target changed no CLI. " + " ".join(refused)
+            what = "off" if re.match(r"off\b", rest, re.I) else "on"
+            note = "/allocate " + what + " was recorded for " + ", ".join(changed) + "."
+            if refused:
+                note += " Not changed: " + "; ".join(refused) + "."
+            if missed:
+                note += " No running CLI matched " + ", ".join(missed) + "."
+            if me not in picked:
+                note += " This CLI's own /allocate is unchanged, so don't work any tickets here for it: just say which CLIs changed."
+            ALLOCATE_NOTE[0] = note
+            return None
+        def set_autopilot_one(pid, args, cwd):
+            # /allocate [off|all] [-repo=A,B]: the CLI works those repos' tickets through its own subagents (its own
+            # repo when none are named) until /allocate off there. Nothing is marked for any other CLI. A name may be a
             # wildcard (-repo=GTFO.*), kept as typed and matched wherever the repos are read (M.ORCH-T165).
             # Returns why nothing changed, or None once it's recorded.
             import fnmatch
@@ -1685,12 +1794,14 @@ public static class AgentGate
 
     internal const string AllocateCommand = """
         ---
-        description: Auto-allocates the open tickets of this CLI's repo (or -repo=A,B, wildcards like -repo=GTFO.*, or "all") to its own subagents whenever one has a free slot, each in its own worktree, landing on main and closing the ticket, until none are left. /allocate off stops it in this CLI; /allocate off all in every CLI.
-        argument-hint: "[off|off all|all] [-repo=A,B | -repo=GTFO.*]"
+        description: Auto-allocates the open tickets of this CLI's repo (or -repo=A,B, wildcards like -repo=GTFO.*, or "all") to its own subagents whenever one has a free slot, each in its own worktree, landing on main and closing the ticket, until none are left. /allocate off stops it in this CLI; /allocate off all in every CLI; -target=PID,PID|others|all turns it on or off in other CLIs.
+        argument-hint: "[off|off all|all] [-repo=A,B | -repo=GTFO.*] [-target=PID,session,name | -target=others | -target=all]"
         ---
         /allocate $ARGUMENTS is running in this CLI. MindAttic.Orchestrator's gates record it for this CLI only (no other CLI is affected) when the user typed it, or when you called it through the Skill tool because the user's own latest prompt asked for it; a Skill call the user didn't ask for is refused and records nothing, so never start it on your own. Once recorded, while it's on, the repos named (a wildcard such as GTFO.* names every repo it matches) are this CLI's cross-repo exception so your subagents can work and close tickets there.
 
-        If the arguments start with "off": reply with one short line confirming /allocate is off in this CLI (with -repo, just for those repos; "off all": in every CLI). Subagents already working finish their tickets. Then end your turn.
+        -target= points it (on or off) at other CLIs instead of this one, each changed in its own record: a comma-separated list of CLIs, each a PID, a session id (or its first 4+ characters) or a name (the repo or folder the CLI runs in, wildcards too), or a selector: -target=others (every running CLI except this one) or -target=all (every running CLI, this one included). For example /allocate off -target=others, /allocate off -target=4120,8836, /allocate -target=GTFO.Api, /allocate all -target=all. Without -repo a targeted CLI works its own repo. If the arguments have -target: say in one short line each CLI the orchestrator's note says it changed (and any target that matched none). Only if it was switched on and this CLI is among those changed, go on to the steps below; otherwise end your turn without working any tickets here. A target that matches no running CLI changes nothing.
+
+        If the arguments start with "off" (and have no -target): reply with one short line confirming /allocate is off in this CLI (with -repo, just for those repos; "off all": in every CLI). Subagents already working finish their tickets. Then end your turn.
 
         Otherwise you work the tickets yourself, through subagents, now:
         1. Run `orchestrator next --repos "<repos>" --claim`, where <repos> is the -repo list as typed (wildcards included), * for all, or this CLI's own repo when none are named; keep the quotes so no shell expands a wildcard. It claims the next workable tickets (fixes and tickets the user approved, in queue order, as many as the pace allows right now), makes each its own git worktree, and prints each ticket's id, its `model:` line and a full prompt.
@@ -1838,6 +1949,10 @@ public static class AgentGate
                 why = set_autopilot(pid, given, data.get("cwd") or "") if called == "autopilot" else set_crossrepo(pid, given)
                 if why:
                     refuse(why)
+                if called == "autopilot" and ALLOCATE_NOTE[0]:
+                    # -target (M.ORCH-T599): the model's reply names the CLIs it changed.
+                    told = dict(hookEventName="PreToolUse", additionalContext=ALLOCATE_NOTE[0])
+                    print(json.dumps(dict(hookSpecificOutput=told)))
                 raise SystemExit(0)
 
         # While a /handoff winds every CLI down for an account switch, no new subagent starts: the ones working finish (M.ORCH-T481).
@@ -2959,6 +3074,8 @@ public static class AgentGate
                              "subagent; when this turn's work is done, quicksave this repo's handoff as /handoff says. /handoff off cancels it.")
             if CROSSREPO_NOTE[0]:
                 notes.append(CROSSREPO_NOTE[0])
+            if ALLOCATE_NOTE[0]:
+                notes.append(ALLOCATE_NOTE[0])
             state["wind_down_told"] = bool(s.get("wind_down_note") or s.get("stop_note"))
             out = {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": " ".join(notes)}} if notes else {}
             # A CLI that started before its SessionStart hook was registered is checked on its first prompt instead, and told

@@ -322,6 +322,69 @@ public sealed class ContextCyclerTests
     }
 
     [Test]
+    public void Allocate_with_a_target_changes_the_named_clis_records_not_this_ones()
+    {
+        // M.ORCH-T599: -target= takes PIDs, session ids or names, or others/all; each targeted CLI's own record changes.
+        var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
+        var ws = Path.Combine(dir, "ws");
+        var (a, b) = (Path.Combine(ws, "A"), Path.Combine(ws, "B"));
+        Directory.CreateDirectory(Path.Combine(a, ".git"));
+        Directory.CreateDirectory(Path.Combine(b, ".git"));
+        using var sleeper = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("python", "-c \"import time; time.sleep(120)\"") { UseShellExecute = false })!;
+        try
+        {
+            Setup.AgentGate.Ensure(dir);
+            var ctx = Path.Combine(dir, ".claude", "session-context");
+            Directory.CreateDirectory(ctx);
+            int live1 = Environment.ProcessId, live2 = sleeper.Id;
+            // Running CLIs as their sessions' states name them; one whose process is gone is never a target.
+            File.WriteAllText(Path.Combine(ctx, "sa.state.json"), $$"""{"pid":{{live1}},"cwd":{{System.Text.Json.JsonSerializer.Serialize(a)}}}""");
+            File.WriteAllText(Path.Combine(ctx, "sbcdef.state.json"), $$"""{"pid":{{live2}},"cwd":{{System.Text.Json.JsonSerializer.Serialize(b)}}}""");
+            File.WriteAllText(Path.Combine(ctx, "gone.state.json"), $$"""{"pid":999999,"cwd":{{System.Text.Json.JsonSerializer.Serialize(a)}}}""");
+            string Typed(string prompt)
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\"")
+                    { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
+                psi.Environment["USERPROFILE"] = dir;
+                psi.Environment["APPDATA"] = dir;
+                psi.Environment["MINDATTIC_WORKSPACE"] = ws;
+                psi.Environment["MINDATTIC_CLI_PID"] = "1";
+                using var p = System.Diagnostics.Process.Start(psi)!;
+                p.StandardInput.Write(System.Text.Json.JsonSerializer.Serialize(new { session_id = "s1", hook_event_name = "UserPromptSubmit", cwd = ws, prompt }));
+                p.StandardInput.Close();
+                var output = p.StandardOutput.ReadToEnd();
+                Assert.That(p.WaitForExit(20_000), Is.True);
+                return output;
+            }
+            string? Mark(object cli) => File.Exists(Path.Combine(ctx, $"autopilot-{cli}")) ? File.ReadAllText(Path.Combine(ctx, $"autopilot-{cli}")) : null;
+
+            var said = Typed("/allocate -target=others");
+            Assert.That((Mark(live1), Mark(live2), Mark(1), Mark(999999)), Is.EqualTo(("A", "B", (string?)null, (string?)null)),
+                "every other running CLI, each on its own repo; not this one, not a CLI that's gone");
+            Assert.That(said, Does.Contain($"CLI {live1} (A)").And.Contain($"CLI {live2} (B)").And.Contain("own /allocate is unchanged"));
+
+            said = Typed($"/allocate off -target={live1},nobody");
+            Assert.That((Mark(live1), Mark(live2)), Is.EqualTo(((string?)null, "B")), "off for the PID named alone");
+            Assert.That(File.Exists(Path.Combine(ctx, $"noautopilot-{live1}")), "recorded as typed off in its own record");
+            Assert.That(said, Does.Contain($"CLI {live1} (A)").And.Contain("No running CLI matched nobody"));
+
+            Assert.That(Typed("/allocate off -target=nobody"), Does.Contain("\"block\"").And.Contain("matched no running CLI"));
+            Assert.That(Mark(live2), Is.EqualTo("B"), "a target that matched none changes nothing");
+
+            Typed("/allocate -target=sbcd -repo=A");
+            Assert.That(Mark(live2), Is.EqualTo("B,A"), "a session id's first characters name its CLI");
+            Typed("/allocate -repo=A");
+            Typed("/allocate off -target=all");
+            Assert.That((Mark(live1), Mark(live2), Mark(1)), Is.EqualTo(((string?)null, (string?)null, (string?)null)), "all: this one too");
+        }
+        finally
+        {
+            try { sleeper.Kill(); } catch (InvalidOperationException) { }
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Test]
     public void A_freshly_opened_cli_starts_with_autopilot_off_until_it_is_typed_there()
     {
         // M.ORCH-T522 reverses M.ORCH-T476's on-by-default: no CLI works tickets until /allocate is typed in it.
