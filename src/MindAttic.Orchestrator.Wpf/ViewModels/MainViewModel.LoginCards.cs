@@ -135,10 +135,12 @@ public sealed partial class MainViewModel
 
     /// <summary>Reads every login's card off the UI thread (a login's <c>.claude.json</c> can run to megabytes) and shows them.
     /// Only while the Accounts view is open: the normal refresh calls it, and so does opening the view.</summary>
+    private void SetLoadingLoginCards(bool on) { loadingLoginCards = on; Raise(nameof(IsViewBusy)); }
+
     internal async Task RefreshLoginCardsAsync()
     {
         if (loadingLoginCards || !IsAccountsView) return;
-        loadingLoginCards = true;
+        SetLoadingLoginCards(true);
         try
         {
             var now = DateTime.UtcNow;
@@ -156,7 +158,7 @@ public sealed partial class MainViewModel
         {
             AccountsMessage = $"Couldn't read the logins: {ex.Message}";
         }
-        finally { loadingLoginCards = false; }
+        finally { SetLoadingLoginCards(false); }
     }
 
     /// <summary>Every login's card: the global one (<paramref name="current"/> is the roster's row for whoever's signed in to

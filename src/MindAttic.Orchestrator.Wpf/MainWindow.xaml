@@ -1241,6 +1241,12 @@
                  WPF, so the whole view is hidden (never collapsed: they keep their size) while Settings or the loader is over it.
                  Every pane's terminal lives in the one host grid below; only the shown person's chosen one is visible.
                  Visibility reads the window's view model: this element's own DataContext is Terminals, which has none. -->
+            <!-- A refresh really running behind the shown view (M.ORCH-T634): a small spinner at its bottom; switching never waits. -->
+            <mc:MaSpinner x:Name="ViewSpinner" Grid.ColumnSpan="2" Width="20" Height="20" StrokeThickness="2"
+                          HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,8" Panel.ZIndex="5" IsHitTestVisible="False"
+                          Visibility="{Binding IsViewBusy, Converter={StaticResource Visible}}"
+                          AutomationProperties.Name="Refreshing this view" />
+
             <DockPanel x:Name="TerminalsBody" Grid.ColumnSpan="2" Margin="24,0,24,16"
                        Visibility="{Binding DataContext.TerminalsVisibility, RelativeSource={RelativeSource AncestorType=Window}}"
                        DataContext="{Binding Terminals}">
