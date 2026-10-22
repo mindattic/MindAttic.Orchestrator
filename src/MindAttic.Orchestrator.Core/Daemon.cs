@@ -131,6 +131,17 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     {
                         Say(LogEventLevel.Warning, $"billing: {ex.Message}");
                     }
+                    // Rebalance when an account runs low (M.ORCH-T608): a CLI on a login past its 5-hour pace target or weekly stop
+                    // line moves to a free login with more headroom at its next idle point.
+                    try
+                    {
+                        rebalancer ??= new AccountRebalancer(AccountMove.Default(billing: aggregator.BillingSwitch));
+                        ReportRebalance(rebalancer.Tick(snapshot.Pace, snapshot.Accounts, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s, DateTime.UtcNow));
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidDataException)
+                    {
+                        Say(LogEventLevel.Warning, $"rebalance: {ex.Message}");
+                    }
                 }
 
                 // An agent finished its turn and is waiting on you: the alert worth leaving the desk for.
@@ -278,6 +289,21 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         {
             Say(w.Typed ? LogEventLevel.Information : LogEventLevel.Warning, w.Line);
             if (!w.Typed) Alert("Needs you", w.Line);
+        }
+    }
+
+    private AccountRebalancer? rebalancer;
+
+    /// <summary>Logs each CLI the rebalancer moved and toasts it; one it couldn't move is only logged, as a warning.</summary>
+    internal void ReportRebalance(IEnumerable<Rebalanced> moves)
+    {
+        foreach (var m in moves)
+        {
+            Say(m.Moved ? LogEventLevel.Information : LogEventLevel.Warning, m.Line);
+            if (!m.Moved) continue;
+            var text = m.Line.StartsWith("rebalance: ", StringComparison.Ordinal) ? m.Line["rebalance: ".Length..] : m.Line;
+            Alert("Moved a CLI", text);
+            AccountRebalancer.Record(store, text, DateTime.UtcNow);
         }
     }
 

@@ -169,6 +169,12 @@ public sealed record OrchestratorSettings
     /// (<see cref="Sessions.LoginPicker"/>), else the global login. False starts every such tab on the global login.</summary>
     public bool AutoLogin { get; init; } = true;
 
+    /// <summary>Rebalance when an account runs low (M.ORCH-T608): a CLI whose login crosses its 5-hour pace target or its weekly
+    /// stop line is moved by the daemon to a signed-in per-CLI login with no CLI and more headroom, restarting with
+    /// <c>claude --resume</c> at its next idle point, and you're toasted (<see cref="Sessions.AccountRebalancer"/>).
+    /// False leaves every CLI on its login.</summary>
+    public bool RebalanceLogins { get; init; } = true;
+
     /// <summary>Minutes since a repo's own CLI last ended a turn that it still counts as worked by hand, so autopilot
     /// leaves the repo alone through the pauses between your prompts. 0 counts only a CLI that's mid-turn.</summary>
     public int AutopilotHandMinutes { get; init; } = 15;

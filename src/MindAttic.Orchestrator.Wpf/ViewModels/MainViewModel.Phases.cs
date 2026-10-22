@@ -38,6 +38,8 @@ public sealed partial class MainViewModel
     }
 
     private sealed class Seen { public DateTime LastSeenUtc { get; init; } }
+    /// <summary>The newest rebalance move toasted; moves made before the window opened aren't.</summary>
+    private DateTime rebalanceSeenUtc = DateTime.UtcNow;
     private View view;
     private string viewChoice = "Agents";
     private bool isSettingsOpen;
@@ -568,6 +570,13 @@ public sealed partial class MainViewModel
             var news = AuditNews.Between(shownAudit, latest);
             ShowAudit(latest);
             if (news.Any) Toasts.Insert(0, new ToastViewModel("Audit found something new", news.ToString(), Palette.Waiting, null));
+        }
+
+        // The daemon moved a CLI off a login that ran low (M.ORCH-T608): each move since the last one shown, from the window's open.
+        foreach (var move in Sessions.AccountRebalancer.Since(store, rebalanceSeenUtc))
+        {
+            Toasts.Insert(0, new ToastViewModel("Moved a CLI", move.Text, Palette.Working, null));
+            rebalanceSeenUtc = move.AtUtc;
         }
 
         ApplyPlan(next);

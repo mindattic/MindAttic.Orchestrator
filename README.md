@@ -46,6 +46,7 @@ A Windows daemon, dashboard and CLI that keeps Claude agents working the workspa
 - `/allocate off` (this CLI) or `/allocate off all` (every CLI) winds down: no new ticket is claimed, working subagents finish, land and close, and once a CLI's last one has, it quicksaves its repo's handoff (as `/quicksave` does) and says `<repo> quiet, handoff saved`. It replaced `/handoff` (M.ORCH-T572).
 - Per-CLI logins: `orchestrator start <repo> --account <email>` (or the dashboard's login choice) runs that CLI on another account's token pool beside the others, each paced on its own.
 - Move to account: each CLI on the Accounts view and the agent board has a "Move to" menu of the other signed-in logins (and `orchestrator move <repo|pid> --account <email>|--global`); its Launcher tab restarts it with `claude --resume` on that login at its next idle point, so it keeps its session and spends the other account's tokens from then on.
+- Rebalance when an account runs low: when a CLI's login crosses its 5-hour pace target or its weekly stop line and another signed-in login has no CLI and at least 10 points more headroom, the daemon moves it there the same way (restart-resume at its next idle point) and toasts it, keeping one CLI per account. A moved CLI isn't moved again for 30 minutes, and a login that's low itself is never a target. `orchestrator settings --rebalance false` (or the Settings toggle) turns it off.
 
 **Dashboard**
 
