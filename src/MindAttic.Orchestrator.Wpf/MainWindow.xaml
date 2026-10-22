@@ -966,6 +966,9 @@
                                                            ToolTip="How long it's been on this" Margin="8,0,0,0" />
                                                 <TextBlock Text="{Binding Repo}" Style="{StaticResource MaHeading}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                             </DockPanel>
+                                            <!-- The Claude login this CLI bills (M.ORCH-T606), so one on the wrong account shows. -->
+                                            <TextBlock Text="{Binding Login}" Style="{StaticResource MaMutedText}" FontSize="11" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
+                                                       ToolTip="The Claude login this CLI bills" Visibility="{Binding Login, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                                             <!-- The ticket opens its history; with no ticket, the line is plain text, not a dead button. -->
                                             <Button Command="{Binding DataContext.ShowTicketCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}" Style="{StaticResource MaTextButton}" Padding="4,2" MinHeight="24" Margin="-4,6,0,0"

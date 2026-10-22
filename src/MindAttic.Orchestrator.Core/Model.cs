@@ -13,7 +13,11 @@ public enum RepoState
 }
 
 /// <summary>A Launcher-hosted agent tab, found by its <c>mindattic-host-{provider}-{pid}</c> pipe.</summary>
-public sealed record HostSession(string Provider, int ProcessId, string PipeName, string? WorkingDirectory);
+public sealed record HostSession(string Provider, int ProcessId, string PipeName, string? WorkingDirectory)
+{
+    /// <summary>The Claude login the tab's CLI bills (M.ORCH-T606), as <see cref="Activity.AgentBoardRow.Login"/> words it; null when not known.</summary>
+    public string? Login { get; init; }
+}
 
 /// <summary>Token counts as the API reports them.</summary>
 public readonly record struct TokenUsage(long Input, long CacheCreation, long CacheRead, long Output)

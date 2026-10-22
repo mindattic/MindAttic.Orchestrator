@@ -56,6 +56,9 @@ public sealed class AgentRowViewModel(string sessionId) : ObservableObject
     /// <summary>What its CLI bills (M.ORCH-T436): "Claude Team", or "API key: the Launcher restarts it…" while it bills the other thing.</summary>
     public string Billing => row.Billing ?? "";
 
+    /// <summary>The Claude login its CLI bills (M.ORCH-T606): "Login: a@b.com", or the global login's "(global)"; empty when unknown.</summary>
+    public string Login => row.Login is { } l ? $"Login: {l}" : "";
+
     /// <summary>"Claude CLI · Claude Team · 3.2M tokens today", without a dangling separator for a part not known yet.</summary>
     public string Meta => string.Join(" · ", new[] { Kind, Billing, Tokens }.Where(p => p.Length > 0));
 
@@ -71,7 +74,7 @@ public sealed class AgentRowViewModel(string sessionId) : ObservableObject
 
     /// <summary>The whole card in one sentence, for a screen reader.</summary>
     public string AccessibleName =>
-        $"{Repo}, {Kind}, {StateLabel}, {Headline}. {Doing}. {(Billing.Length > 0 ? $"Bills {Billing}. " : "")}{(Claims.Length > 0 ? Claims + ". " : "")}{SubagentsHeader}.";
+        $"{Repo}, {Kind}, {StateLabel}, {Headline}. {Doing}. {(Billing.Length > 0 ? $"Bills {Billing}. " : "")}{(Login.Length > 0 ? Login + ". " : "")}{(Claims.Length > 0 ? Claims + ". " : "")}{SubagentsHeader}.";
 
     public void Update(AgentBoardRow next, string? title, DateTime snapshotUtc)
     {

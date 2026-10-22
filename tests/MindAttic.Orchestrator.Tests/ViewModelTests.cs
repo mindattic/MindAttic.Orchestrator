@@ -111,6 +111,31 @@ public sealed class ViewModelTests
         Assert.That(received.Count(t => t == "hello"), Is.EqualTo(1), "the text is typed once");
     }
 
+    [TestCase("a@b.com", null, "a@b.com")]
+    [TestCase(null, "g@b.com", "g@b.com (global)")]
+    [TestCase("a@b.com", "g@b.com", "a@b.com")]
+    [TestCase(null, null, null)]
+    public void A_cli_names_its_own_login_else_the_global_one(string? own, string? global, string? expected) =>
+        Assert.That(StatusAggregator.LoginText(own, global), Is.EqualTo(expected));
+
+    [Test]
+    public void Agent_cards_and_launcher_tabs_show_the_login_each_cli_bills()
+    {
+        var now = DateTime.UtcNow;
+        var row = new MindAttic.Orchestrator.Activity.AgentBoardRow("s1", "A", null, null, now, now,
+            MindAttic.Orchestrator.Activity.AgentState.Working, "", false, default, []) { Login = "a@b.com" };
+        var card = new AgentRowViewModel("s1");
+        card.Update(row, null, now);
+        Assert.That((card.Login, card.AccessibleName.Contains("Login: a@b.com.")), Is.EqualTo(("Login: a@b.com", true)));
+        card.Update(row with { Login = null }, null, now);
+        Assert.That(card.Login, Is.Empty, "nothing shown when the login isn't known");
+
+        var host = new HostRowViewModel(new HostSession("Claude", 7, "p", null) { Login = "g@b.com (global)" });
+        Assert.That(host.Detail, Is.EqualTo("PID 7 · g@b.com (global)"));
+        host.Update(new HostSession("Claude", 7, "p", null));
+        Assert.That(host.Detail, Is.EqualTo("PID 7"));
+    }
+
     [Test]
     public void A_save_that_cant_write_settings_says_so_instead_of_throwing()
     {

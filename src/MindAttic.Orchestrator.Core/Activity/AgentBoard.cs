@@ -35,6 +35,10 @@ public sealed record AgentBoardRow(
     /// <summary>What its CLI bills, in words, and whether it's being restarted for the billing mode (M.ORCH-T436); null when unknown.</summary>
     public string? Billing { get; init; }
 
+    /// <summary>The Claude login its CLI bills (M.ORCH-T606): its per-CLI login's email, or the global login's marked
+    /// "(global)"; null when not known.</summary>
+    public string? Login { get; init; }
+
     /// <summary>The tickets its CLI claimed for its subagents (<c>orchestrator next --claim</c>, M.ORCH-T532), in claim order:
     /// only its own, never another CLI's on the same repo.</summary>
     public IReadOnlyList<string> Claims { get; init; } = [];

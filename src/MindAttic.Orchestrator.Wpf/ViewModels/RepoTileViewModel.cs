@@ -113,7 +113,8 @@ public sealed class HostRowViewModel : ObservableObject
 
     public string PipeName => host.PipeName;
     public string Title => $"{host.Provider} tab";
-    public string Detail => $"PID {host.ProcessId}";
+    /// <summary>"PID 1234 · a@b.com": the tab's process and the Claude login its CLI bills (M.ORCH-T606), when known.</summary>
+    public string Detail => host.Login is { } l ? $"PID {host.ProcessId} · {l}" : $"PID {host.ProcessId}";
     public string Draft { get => draft; set => Set(ref draft, value); }
     public string Feedback { get => feedback; private set => Set(ref feedback, value); }
     public ICommand SendCommand { get; }

@@ -208,6 +208,11 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         }
     }
 
+    /// <summary>A CLI's login in words (M.ORCH-T606): its own login's email, else the global login's marked "(global)"; null
+    /// when neither is known.</summary>
+    internal static string? LoginText(string? ownEmail, string? globalEmail) =>
+        ownEmail ?? (globalEmail is null ? null : $"{globalEmail} (global)");
+
     private Snapshot Build(DateTime now)
     {
         var warnings = new List<string>();
@@ -372,6 +377,10 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         var runningSubagents = subagents.Poll(contextCycler, now);
         var agentBoard = AgentBoard.Build(result, pace, Store.LoadAssignments(), runningSubagents, options.WorkingWindow, now, contextCycler.LiveSessions(now),
             contextCycler.Load().Where(c => c.Pid is not null).ToDictionary(c => c.SessionId, c => c.Pid!.Value, StringComparer.Ordinal));
+        // The Claude login each CLI bills, on its card (M.ORCH-T606): its own login's email, else the global login's.
+        var globalLogin = SignIn?.Profile?.Email;
+        string? LoginOf(string session) => LoginText(ownLogin.TryGetValue(session, out var dir) ? Accounts.Dirs.Of(dir)?.Email : null, globalLogin);
+        agentBoard = [.. agentBoard.Select(a => a with { Login = LoginOf(a.SessionId) })];
         // Who's billed, and each CLI's own billing on its card (M.ORCH-T436); never the refresh's failure.
         Billing.BillingStatus? billing = null;
         try
@@ -379,6 +388,12 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             billing = BillingSwitch.Status([.. result.SelectMany(r => r.Hosts)], now);
             var bySession = billing.Clis.ToDictionary(c => c.SessionId, c => Billing.BillingText.Of(c), StringComparer.Ordinal);
             agentBoard = [.. agentBoard.Select(a => bySession.TryGetValue(a.SessionId, out var b) ? a with { Billing = b } : a)];
+            // Each Launcher tab's login, by the CLI running in it (M.ORCH-T606).
+            var hostLogins = billing.Clis.Where(c => c.Host is not null).GroupBy(c => c.Host!.ProcessId)
+                .ToDictionary(g => g.Key, g => LoginOf(g.First().SessionId));
+            for (var i = 0; i < result.Count; i++)
+                if (result[i].Hosts.Any(h => hostLogins.ContainsKey(h.ProcessId)))
+                    result[i] = result[i] with { Hosts = [.. result[i].Hosts.Select(h => hostLogins.TryGetValue(h.ProcessId, out var l) ? h with { Login = l } : h)] };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidOperationException)
         {
