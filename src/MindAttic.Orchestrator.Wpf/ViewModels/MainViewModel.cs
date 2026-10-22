@@ -117,15 +117,20 @@ public sealed partial class MainViewModel : ObservableObject
         ClearSearchCommand = new RelayCommand(() => Search = "");
         OpenInTicketsCommand = new RelayCommand(p => OpenInTickets(p as string));
         InitPhases();
-        // Terminals inside the Orchestrator (M.ORCH-T618): a pane opened shows its view; panes left from last time open on it.
-        // One host of panes for the window, so one for every login's tab: the global login's.
+        // Terminals inside the Orchestrator (M.ORCH-T618): one host of panes for the window, so one for every login's tab, the
+        // global login's; each tab's Terminals tab shows its own person's panes (M.ORCH-T622). A pane opened shows on its
+        // person's Terminals tab; panes left from last time are offered on the global login's.
         if (root is null)
         {
-            Terminals = new TerminalsViewModel(control, store);
-            Terminals.Opened += () => SelectedTab.ViewChoice = "Terminals";
-            if (Terminals.HasReopen) ViewChoice = "Terminals";
+            AllTerminals = new TerminalsViewModel(control, store);
+            AllTerminals.Opened += ShowPane;
+            AllTerminals.LoginsChanged += SyncTerminals;
+            AllTerminals.Panes.CollectionChanged += (_, _) => SyncTerminals();
         }
-        else Terminals = root.Terminals;
+        else AllTerminals = root.AllTerminals;
+        Terminals = new PersonTerminalsViewModel(AllTerminals);
+        Terminals.SelectionChanged += () => Root.ShowChosenPane();
+        if (root is null && AllTerminals.HasReopen) Page = TerminalsPage;
         if (store.Load<ReposView>(ReposViewName).Sort is { } sort && RepoSorts.Contains(sort)) repoSort = sort;
     }
 
@@ -136,8 +141,11 @@ public sealed partial class MainViewModel : ObservableObject
     public IReadOnlyList<TileGroupViewModel> Groups { get; }
     public ObservableCollection<ToastViewModel> Toasts { get; } = [];
 
-    /// <summary>The CLIs running inside the dashboard (M.ORCH-T618).</summary>
-    public TerminalsViewModel Terminals { get; }
+    /// <summary>Every CLI running inside the dashboard (M.ORCH-T618), whoever's; the same in every tab.</summary>
+    public TerminalsViewModel AllTerminals { get; }
+
+    /// <summary>This person's CLIs running inside the dashboard, on their Terminals tab (M.ORCH-T622).</summary>
+    public PersonTerminalsViewModel Terminals { get; }
 
     /// <summary>The header's live clock, ticking every second on its own timer, not with the refresh (M.ORCH-T193).</summary>
     public ClockViewModel Clock { get; }
@@ -388,7 +396,7 @@ public sealed partial class MainViewModel : ObservableObject
         ApplyBilling(next);
         ApplyReminders(DateTime.UtcNow);
         ApplyAccounts(all, DateTime.UtcNow);
-        if (IsGlobalTab) Terminals.Update(all);
+        if (IsGlobalTab) AllTerminals.Update(all);
         // The Accounts view's cards, read off the UI thread, only while it's open (M.ORCH-T603).
         _ = RefreshLoginCardsAsync();
         // After the phases' own toasts (pace, budget, stuck, audit, Needs you), or they'd go past the cap (M.ORCH-T340).

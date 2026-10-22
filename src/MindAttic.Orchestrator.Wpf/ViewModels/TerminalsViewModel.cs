@@ -33,7 +33,19 @@ public sealed class TerminalPaneViewModel : ObservableObject
         System.Windows.Automation.AutomationProperties.SetName(Control, request.Title);
         TabBrush = request.TabColor is { } hex && new BrushConverter().ConvertFromString(hex) is Brush brush ? brush : Brushes.Gray;
         BadgeForeground = ReadableOn(TabBrush);
+        Login = LoginOf(request.ConfigDir);
     }
+
+    /// <summary>The per-CLI login a <c>CLAUDE_CONFIG_DIR</c> folder is (its folder name, the login's email); null for none, the global login.</summary>
+    internal static string? LoginOf(string? configDir) =>
+        string.IsNullOrEmpty(configDir) ? null : Path.GetFileName(Path.TrimEndingDirectorySeparator(configDir));
+
+    /// <summary>The person whose Terminals tab it's on (M.ORCH-T622): its CLI's login's email, null for the global login.
+    /// The login it was opened on until the dashboard sees its CLI on another (moved with "Move to").</summary>
+    public string? Login { get; internal set; }
+
+    /// <summary>claude.exe running in it, once the dashboard has seen it (for "Move to").</summary>
+    public int? CliPid { get; internal set; }
 
     public PaneRequest Request { get; }
 
@@ -126,13 +138,13 @@ public sealed class TerminalsViewModel : ObservableObject
 
     public ObservableCollection<TerminalPaneViewModel> Panes { get; } = [];
 
+    /// <summary>The one pane on screen, the shown person's chosen one (M.ORCH-T622); null shows none.</summary>
     public TerminalPaneViewModel? SelectedPane
     {
         get => selected;
-        // Ctrl+click on the selected tab deselects it, writing null: it stays on the one it was.
         set
         {
-            if (value is null && Panes.Count > 0) return;
+            if (value is not null && !Panes.Contains(value)) return;
             if (selected == value) return;
             if (selected is not null) selected.IsSelected = false;
             selected = value;
@@ -143,8 +155,11 @@ public sealed class TerminalsViewModel : ObservableObject
 
     public bool HasPanes => Panes.Count > 0;
 
-    /// <summary>A pane was just opened: the window shows the Terminals view.</summary>
-    public event Action? Opened;
+    /// <summary>A pane was just opened: the window shows it, on its person's Terminals tab.</summary>
+    public event Action<TerminalPaneViewModel>? Opened;
+
+    /// <summary>A pane's CLI was seen on another login than the one it was on (moved): it goes to that person's Terminals tab.</summary>
+    public event Action? LoginsChanged;
 
     public ICommand CloseCommand { get; }
     public ICommand ReopenCommand { get; }
@@ -204,7 +219,7 @@ public sealed class TerminalsViewModel : ObservableObject
         Panes.Add(pane);
         SelectedPane = pane;
         Raise(nameof(HasPanes));
-        Opened?.Invoke();
+        Opened?.Invoke(pane);
         return null;
     }
 
@@ -224,13 +239,8 @@ public sealed class TerminalsViewModel : ObservableObject
         Raise(nameof(HasPanes));
     }
 
-    /// <summary>Selects the pane running Launcher host <paramref name="hostPid"/>; false when none does.</summary>
-    public bool Select(int hostPid)
-    {
-        if (Panes.FirstOrDefault(p => p.HostPid == hostPid && !p.Ended) is not { } pane) return false;
-        SelectedPane = pane;
-        return true;
-    }
+    /// <summary>The live pane running Launcher host <paramref name="hostPid"/>; null when none does.</summary>
+    public TerminalPaneViewModel? Find(int hostPid) => Panes.FirstOrDefault(p => p.HostPid == hostPid && !p.Ended);
 
     /// <summary>At each refresh: a pane whose CLI has exited is marked ended and dropped from the record; a live one learns
     /// its Launcher host and the Claude session that host's CLI is on, and records the session.</summary>
@@ -238,6 +248,7 @@ public sealed class TerminalsViewModel : ObservableObject
     {
         if (Panes.Count == 0) return;
         var hosts = snapshot?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
+        var moved = false;
         foreach (var pane in Panes.Where(p => !p.Ended).ToList())
         {
             if (pane.HasExited)
@@ -249,12 +260,23 @@ public sealed class TerminalsViewModel : ObservableObject
             if (snapshot is null || pane.RootPid is not { } root) continue;
             pane.HostPid ??= hosts.FirstOrDefault(h => h.ProcessId == root || ProcessTree.IsAncestor(root, h.ProcessId))?.ProcessId;
             if (pane.HostPid is not { } host) continue;
-            if (snapshot.Agents.FirstOrDefault(a => a.Host?.ProcessId == host)?.SessionId is { Length: > 0 } session && session != pane.Record.SessionId)
+            if (snapshot.Agents.FirstOrDefault(a => a.Host?.ProcessId == host) is not { } agent) continue;
+            pane.CliPid = agent.CliPid ?? pane.CliPid;
+            if (agent.SessionId is not { Length: > 0 } session) continue;
+            if (session != pane.Record.SessionId)
             {
                 pane.Record = pane.Record with { SessionId = session };
                 Save(pane.Record);
             }
+            // Its person is the login its CLI is on now: moved to another, it moves to that one's Terminals tab.
+            var login = LoginScope.LoginOf(snapshot, session);
+            if (!string.Equals(login, pane.Login, StringComparison.OrdinalIgnoreCase))
+            {
+                pane.Login = login;
+                moved = true;
+            }
         }
+        if (moved) LoginsChanged?.Invoke();
     }
 
     private void Save(PaneRecord record)
@@ -270,5 +292,81 @@ public sealed class TerminalsViewModel : ObservableObject
     {
         try { PaneRecords.Remove(store, [record.Id]); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
+    }
+}
+
+/// <summary>
+/// One person's Terminals tab (M.ORCH-T622): the panes of the shared <see cref="TerminalsViewModel"/> whose CLI runs on this
+/// login's dashboard tab, one terminal tab each, and the one last chosen here. The terminals themselves stay in the window's
+/// one host grid (a native terminal can't change parents without starting over); only the shown person's chosen pane shows.
+/// </summary>
+public sealed class PersonTerminalsViewModel : ObservableObject
+{
+    private readonly TerminalsViewModel all;
+    private TerminalPaneViewModel? selected;
+
+    public PersonTerminalsViewModel(TerminalsViewModel all)
+    {
+        this.all = all;
+        all.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(TerminalsViewModel.HasReopen) or nameof(TerminalsViewModel.ReopenText)) Raise(e.PropertyName);
+        };
+    }
+
+    /// <summary>This person's panes, in the order they opened.</summary>
+    public ObservableCollection<TerminalPaneViewModel> Panes { get; } = [];
+
+    /// <summary>The pane this person's Terminals tab shows.</summary>
+    public TerminalPaneViewModel? SelectedPane
+    {
+        get => selected;
+        // Ctrl+click on the selected tab deselects it, writing null: it stays on the one it was.
+        set
+        {
+            if (value is null && Panes.Count > 0) return;
+            if (value is not null && !Panes.Contains(value)) return;
+            if (!Set(ref selected, value)) return;
+            SelectionChanged?.Invoke();
+        }
+    }
+
+    public bool HasPanes => Panes.Count > 0;
+
+    /// <summary>How many terminals this person has open, in words, for the Dashboard/Terminals strip's tooltip and screen readers.</summary>
+    public string Summary => Panes.Count == 0 ? "No terminals open" : Panes.Count == 1 ? "1 terminal open" : $"{Panes.Count} terminals open";
+
+    /// <summary>Raised when this person's chosen pane changes, so the window shows it.</summary>
+    internal event Action? SelectionChanged;
+
+    public ICommand CloseCommand => all.CloseCommand;
+    public ICommand ReopenCommand => all.ReopenCommand;
+    public ICommand DismissReopenCommand => all.DismissReopenCommand;
+    public bool HasReopen => all.HasReopen;
+    public string ReopenText => all.ReopenText;
+
+    /// <summary>Makes <see cref="Panes"/> exactly <paramref name="mine"/>, in its order. The chosen pane stays chosen while it's
+    /// still here; gone, its neighbor is chosen; and a pane arriving on an empty tab is chosen.</summary>
+    internal void SyncTo(IReadOnlyList<TerminalPaneViewModel> mine)
+    {
+        var at = selected is null ? -1 : Panes.IndexOf(selected);
+        for (var i = Panes.Count - 1; i >= 0; i--)
+            if (!mine.Contains(Panes[i])) Panes.RemoveAt(i);
+        for (var i = 0; i < mine.Count; i++)
+        {
+            var now = Panes.IndexOf(mine[i]);
+            if (now < 0) Panes.Insert(i, mine[i]);
+            else if (now != i) Panes.Move(now, i);
+        }
+        if (selected is not null && !Panes.Contains(selected))
+        {
+            selected = null;
+            if (Panes.Count > 0) selected = Panes[Math.Clamp(at, 0, Panes.Count - 1)];
+            Raise(nameof(SelectedPane));
+            SelectionChanged?.Invoke();
+        }
+        else if (selected is null && Panes.Count > 0) SelectedPane = Panes[^1];
+        Raise(nameof(HasPanes));
+        Raise(nameof(Summary));
     }
 }

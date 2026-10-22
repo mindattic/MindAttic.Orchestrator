@@ -75,7 +75,7 @@ public partial class MainWindow : Window
 
         // Each pane's terminal lives in the Terminals view's host grid from its opening to its closing (M.ORCH-T618): a
         // template would build a new terminal (and a new CLI) every time its tab was shown.
-        model.Terminals.Panes.CollectionChanged += (_, e) =>
+        model.AllTerminals.Panes.CollectionChanged += (_, e) =>
         {
             foreach (var gone in e.OldItems?.OfType<TerminalPaneViewModel>() ?? []) TerminalPanesHost.Children.Remove(gone.Control);
             foreach (var added in e.NewItems?.OfType<TerminalPaneViewModel>() ?? []) TerminalPanesHost.Children.Add(added.Control);
@@ -118,9 +118,9 @@ public partial class MainWindow : Window
     /// </summary>
     internal void HostPanes()
     {
-        Sessions.PaneBroker.Local = request => Dispatcher.CheckAccess() ? model.Terminals.Open(request) : Dispatcher.Invoke(() => model.Terminals.Open(request));
+        Sessions.PaneBroker.Local = request => Dispatcher.CheckAccess() ? model.AllTerminals.Open(request) : Dispatcher.Invoke(() => model.AllTerminals.Open(request));
         paneBroker = new CancellationTokenSource();
-        _ = Sessions.PaneBroker.ServeAsync(request => Dispatcher.InvokeAsync(() => model.Terminals.Open(request)).Task, paneBroker.Token);
+        _ = Sessions.PaneBroker.ServeAsync(request => Dispatcher.InvokeAsync(() => model.AllTerminals.Open(request)).Task, paneBroker.Token);
         Closed += (_, _) =>
         {
             paneBroker.Cancel();
@@ -149,7 +149,7 @@ public partial class MainWindow : Window
         Dispatcher.BeginInvoke(async () => await tab.ChooseAccountAsync(id), DispatcherPriority.Background);
     }
 
-    /// <summary>"Move to" on an agent card or an Accounts-view CLI row (M.ORCH-T607): a menu of the other signed-in logins,
+    /// <summary>"Move to" on an agent card, an Accounts-view CLI row (M.ORCH-T607) or a terminal tab (M.ORCH-T622): a menu of the other signed-in logins,
     /// read when it's opened, each moving that CLI to its login.</summary>
     private async void OnMoveToClick(object sender, RoutedEventArgs e)
     {
@@ -158,6 +158,8 @@ public partial class MainWindow : Window
         {
             AgentRowViewModel a => (a.Repo, a.SessionId, a.CliPid, a.OwnLogin),
             LoginCliViewModel c => (c.Repo, c.SessionId, c.CliPid, c.OwnLogin),
+            // A terminal tab (M.ORCH-T622): its CLI, by the session and claude.exe the dashboard has seen in it.
+            TerminalPaneViewModel t => (t.Request.Repo, t.Record.SessionId ?? "", t.CliPid, t.Login),
             _ => null,
         };
         if (cli is not { } it) return;

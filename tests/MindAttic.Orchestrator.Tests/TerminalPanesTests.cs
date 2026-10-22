@@ -200,8 +200,68 @@ public sealed class TerminalPanesTests
         Assert.That(tag, Does.Contain("DataContext=\"{Binding Terminals}\""));
         Assert.That(tag, Does.Contain("Visibility=\"{Binding DataContext.TerminalsVisibility, RelativeSource={RelativeSource AncestorType=Window}}\""));
         Assert.That(typeof(MindAttic.Orchestrator.Wpf.ViewModels.MainViewModel).GetProperty("TerminalsVisibility"), Is.Not.Null);
-        Assert.That(typeof(MindAttic.Orchestrator.Wpf.ViewModels.TerminalsViewModel).GetProperty("TerminalsVisibility"), Is.Null,
+        Assert.That(typeof(PersonTerminalsViewModel).GetProperty("TerminalsVisibility"), Is.Null,
             "if Terminals ever gains one, the plain binding would be right again");
+    }
+
+    [Test]
+    public void On_a_person_s_Terminals_tab_the_header_chart_and_view_pills_fold_away_for_the_panes()
+    {
+        // M.ORCH-T622: the terminals fill the window below the person tabs, beside a Dashboard tab.
+        var root = TestContext.CurrentContext.TestDirectory;
+        while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
+        string Tag(string name)
+        {
+            var at = xaml.IndexOf($"x:Name=\"{name}\"", StringComparison.Ordinal);
+            Assert.That(at, Is.GreaterThan(0), name);
+            return xaml[at..xaml.IndexOf('>', at)];
+        }
+        Assert.That(Tag("PageTabStrip"), Does.Contain("ItemsSource=\"{Binding Pages}\"").And.Contain("SelectedItem=\"{Binding Page}\""));
+        foreach (var folded in new[] { "Header", "Toolbar" })
+            Assert.That(Tag(folded), Does.Contain("Visibility=\"{Binding ShowsDashboard, Converter={StaticResource Visible}}\""), folded);
+        Assert.That(Tag("PaneGoToButton"), Does.Contain("ShowPaneRepoCommand"));
+        Assert.That(Tag("PaneMoveToButton"), Does.Contain("Click=\"OnMoveToClick\""));
+        Assert.That(MainViewModel.ViewNames, Does.Not.Contain(MainViewModel.TerminalsPage));
+    }
+
+    [TestCase(null, null)]
+    [TestCase("", null)]
+    [TestCase(@"C:\Users\me\.claude-accounts\amy@example.com", "amy@example.com")]
+    [TestCase(@"C:\Users\me\.claude-accounts\amy@example.com\", "amy@example.com")]
+    public void A_pane_belongs_to_the_login_its_config_folder_is(string? configDir, string? login) =>
+        Assert.That(TerminalPaneViewModel.LoginOf(configDir), Is.EqualTo(login));
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_person_s_Terminals_tab_keeps_their_chosen_pane_and_picks_a_neighbor_when_it_goes()
+    {
+        var all = new TerminalsViewModel(Control(@"C:\nope.exe"), new JsonStore(temp.New()));
+        var person = new PersonTerminalsViewModel(all);
+        TerminalPaneViewModel Pane(string repo) =>
+            new(new PaneRequest(repo, repo, temp.New(), "Claude", "cmd.exe") { ConfigDir = @"C:\a\.claude-accounts\amy@example.com" },
+                new PaneRecord(repo, repo, "", "Claude", DateTime.UtcNow));
+        var (a, b, c) = (Pane("A"), Pane("B"), Pane("C"));
+        Assert.That(a.Login, Is.EqualTo("amy@example.com"));
+        var changes = 0;
+        person.SelectionChanged += () => changes++;
+
+        person.SyncTo([a]);
+        Assert.That(person.SelectedPane, Is.SameAs(a), "a first pane is chosen as it arrives");
+        person.SyncTo([a, b, c]);
+        Assert.That(person.Panes, Is.EqualTo(new[] { a, b, c }));
+        Assert.That(person.SelectedPane, Is.SameAs(a), "new panes don't take the choice from the one chosen");
+        person.SelectedPane = b;
+        person.SelectedPane = null;
+        Assert.That(person.SelectedPane, Is.SameAs(b), "Ctrl+click can't leave it with none chosen");
+        person.SelectedPane = Pane("someone else's");
+        Assert.That(person.SelectedPane, Is.SameAs(b), "only its own panes");
+
+        person.SyncTo([a, c]);
+        Assert.That(person.SelectedPane, Is.SameAs(c), "the closed pane's neighbor");
+        person.SyncTo([]);
+        Assert.That(person.SelectedPane, Is.Null);
+        Assert.That(person.HasPanes, Is.False);
+        Assert.That(changes, Is.EqualTo(4));
     }
 
     [Test]
@@ -230,7 +290,7 @@ public sealed class TerminalPanesTests
         try
         {
             var opened = 0;
-            terminals.Opened += () => opened++;
+            terminals.Opened += _ => opened++;
             Assert.That(terminals.Open(new PaneRequest("Repo", "[JO] Repo [Claude]", temp.New(), "Claude", "cmd.exe /k echo pane")), Is.Null);
             Assert.That(opened, Is.EqualTo(1));
             var pane = terminals.Panes.Single();

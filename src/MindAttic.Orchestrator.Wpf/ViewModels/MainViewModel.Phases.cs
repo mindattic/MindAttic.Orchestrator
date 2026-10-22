@@ -11,7 +11,7 @@ using MindAttic.Orchestrator.Settings;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
-public enum View { Agents, Repos, Queue, Audit, Accounts, Terminals }
+public enum View { Agents, Repos, Queue, Audit, Accounts }
 
 /// <summary>Budget (phase 2), the cross-repo queue (phase 3) and the audit (phase 4).</summary>
 public sealed partial class MainViewModel
@@ -77,33 +77,73 @@ public sealed partial class MainViewModel
     /// <summary>Accounts (M.ORCH-T603): which Claude login each live CLI runs on.</summary>
     public IReadOnlyList<string> ViewChoices { get; } = ViewNames;
 
-    internal static readonly IReadOnlyList<string> ViewNames = ["Agents", "Repos", "Queue", "Audit", "Accounts", "Terminals"];
+    internal static readonly IReadOnlyList<string> ViewNames = ["Agents", "Repos", "Queue", "Audit", "Accounts"];
 
+    /// <summary>A view of the dashboard: choosing one (a pill, a tile, a toast that opens a repo) shows the Dashboard tab.</summary>
     public string ViewChoice
     {
         get => viewChoice;
         set
         {
             // Ctrl+click on the selected pill deselects it: the window jumped to Agents with no pill lit (M.ORCH-T432).
-            if (value is null || !Set(ref viewChoice, value)) return;
+            if (value is null) return;
+            Page = DashboardPage;
+            if (!Set(ref viewChoice, value)) return;
             view = Enum.TryParse<View>(value, out var v) ? v : View.Agents;
-            Raise(nameof(IsReposView)); Raise(nameof(IsQueueView)); Raise(nameof(IsAuditView)); Raise(nameof(IsAgentsView)); Raise(nameof(ShowDetail));
-            Raise(nameof(IsAccountsView)); Raise(nameof(IsTerminalsView)); Raise(nameof(TerminalsVisibility));
+            RaiseViews();
             if (IsAccountsView) _ = RefreshLoginCardsAsync();
         }
     }
 
+    private void RaiseViews()
+    {
+        Raise(nameof(IsReposView)); Raise(nameof(IsQueueView)); Raise(nameof(IsAuditView)); Raise(nameof(IsAgentsView)); Raise(nameof(ShowDetail));
+        Raise(nameof(IsAccountsView));
+    }
+
     public bool ShowDetail => IsReposView && HasSelection;
 
-    public bool IsReposView => view == View.Repos;
-    public bool IsQueueView => view == View.Queue;
-    public bool IsAuditView => view == View.Audit;
-    public bool IsAgentsView => view == View.Agents;
-    public bool IsAccountsView => view == View.Accounts;
-    public bool IsTerminalsView => view == View.Terminals;
+    // The dashboard's views show only on its Dashboard tab (M.ORCH-T622): on Terminals the panes have the whole body.
+    public bool IsReposView => view == View.Repos && IsDashboardPage;
+    public bool IsQueueView => view == View.Queue && IsDashboardPage;
+    public bool IsAuditView => view == View.Audit && IsDashboardPage;
+    public bool IsAgentsView => view == View.Agents && IsDashboardPage;
+    public bool IsAccountsView => view == View.Accounts && IsDashboardPage;
 
-    /// <summary>The Terminals view's (M.ORCH-T618): its terminals are native windows WPF can't draw over, so the view is hidden
-    /// while Settings or the loader covers the window, or on a tab that only signs its login in (M.ORCH-T615), not only in another view; hidden, never collapsed, so each keeps its size.</summary>
+    // ── Dashboard and Terminals, each person's two tabs (M.ORCH-T622) ─────────
+
+    public const string DashboardPage = "Dashboard", TerminalsPage = "Terminals";
+    private string page = DashboardPage;
+
+    /// <summary>The two tabs under the person's tab: their dashboard, and their terminals.</summary>
+    public IReadOnlyList<string> Pages { get; } = [DashboardPage, TerminalsPage];
+
+    /// <summary>The person's tab showing: <see cref="DashboardPage"/> (tiles, chart, view pills and the chosen view) or
+    /// <see cref="TerminalsPage"/> (only their terminals, filling the window below the person tabs).</summary>
+    public string Page
+    {
+        get => page;
+        set
+        {
+            // Ctrl+click on the selected tab deselects it, writing null: it stays on the one it was.
+            if (value is not (DashboardPage or TerminalsPage) || !Set(ref page, value)) return;
+            Raise(nameof(IsDashboardPage)); Raise(nameof(ShowsDashboard)); Raise(nameof(IsTerminalsView)); Raise(nameof(TerminalsVisibility));
+            RaiseViews();
+            if (IsAccountsView) _ = RefreshLoginCardsAsync();
+        }
+    }
+
+    public bool IsDashboardPage => page == DashboardPage;
+
+    /// <summary>The Terminals tab is showing: the header tiles, the chart and the view pills fold away for the panes.</summary>
+    public bool IsTerminalsView => page == TerminalsPage;
+
+    /// <summary>The header tiles, the chart and the view pills: on a signed-in login's Dashboard tab only.</summary>
+    public bool ShowsDashboard => IsDashboardPage && IsTabSignedIn;
+
+    /// <summary>The Terminals tab's (M.ORCH-T618): its terminals are native windows WPF can't draw over, so they're hidden while
+    /// Settings or the loader covers the window, or on a tab that only signs its login in (M.ORCH-T615), not only on the
+    /// Dashboard tab; hidden, never collapsed, so each keeps its size.</summary>
     public System.Windows.Visibility TerminalsVisibility =>
         IsTerminalsView && !IsSettingsOpen && !IsLoading && IsTabSignedIn ? System.Windows.Visibility.Visible : System.Windows.Visibility.Hidden;
     public ICommand ShowViewCommand { get; private set; } = null!;
