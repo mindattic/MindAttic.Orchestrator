@@ -3140,10 +3140,10 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'MindAttic.Capture', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 90056);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'MindAttic.Launcher', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 446040);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1176036);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 201243);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 226349);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'OpenCredentials', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 32416);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'REA.Bloodlines', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 9056223);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'REA.Bloodlines', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 145804);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'REA.Bloodlines', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 191575);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'REA.Bloodlines', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 7770642);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'Unity.Cursory', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2689500);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'Unity.GridGame', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2826980);
@@ -3983,10 +3983,10 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 
 -- state
 INSERT INTO state (name, value) VALUES ('audit', '{
-  "RanUtc": "2026-10-21T22:14:57.782053Z",
-  "Took": "00:00:20.9308812",
-  "ReposScanned": 58,
-  "FilesScanned": 5435,
+  "RanUtc": "2026-10-22T22:15:43.2469866Z",
+  "Took": "00:00:29.2952836",
+  "ReposScanned": 63,
+  "FilesScanned": 5914,
   "Drift": [
     {
       "File": ".prose/commands/show.md",
@@ -4004,9 +4004,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "MindAttic.Agency",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Agency\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 58,
-      "Variants": 18,
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
       "Similarity": 0.02564102564102564,
       "IsCustom": true
     },
@@ -4015,10 +4015,21 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "SyntheticExchangeTheory",
       "Path": "D:\\Projects\\MindAttic\\SyntheticExchangeTheory\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 58,
-      "Variants": 18,
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
       "Similarity": 0.031746031746031744,
+      "IsCustom": true
+    },
+    {
+      "File": "AGENTS.md",
+      "Repo": "Unity.Incognito",
+      "Path": "D:\\Projects\\MindAttic\\Unity.Incognito\\AGENTS.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
+      "Similarity": 0.041666666666666664,
       "IsCustom": true
     },
     {
@@ -4037,9 +4048,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "TownWalker",
       "Path": "D:\\Projects\\MindAttic\\TownWalker\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 58,
-      "Variants": 18,
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
       "Similarity": 0.044444444444444446,
       "IsCustom": true
     },
@@ -4048,9 +4059,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.GridGame",
       "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 58,
-      "Variants": 18,
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
       "Similarity": 0.05405405405405406,
       "IsCustom": true
     },
@@ -4092,9 +4103,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Eve",
       "Path": "D:\\Projects\\MindAttic\\Unity.Eve\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 58,
-      "Variants": 18,
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
       "Similarity": 0.07547169811320754,
       "IsCustom": true
     },
@@ -4103,9 +4114,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "UnityRonin",
       "Path": "D:\\Projects\\MindAttic\\UnityRonin\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 58,
-      "Variants": 18,
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
       "Similarity": 0.07547169811320754,
       "IsCustom": true
     },
@@ -4136,9 +4147,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "MindAttic.Export",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Export\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 58,
-      "Variants": 18,
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
       "Similarity": 0.10526315789473684,
       "IsCustom": true
     },
@@ -4147,9 +4158,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Prose",
       "Path": "D:\\Projects\\MindAttic\\Prose\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 58,
-      "Variants": 18,
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
       "Similarity": 0.11764705882352941,
       "IsCustom": true
     },
@@ -4169,9 +4180,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "AutoWebNav",
       "Path": "D:\\Projects\\MindAttic\\AutoWebNav\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 58,
-      "Variants": 18,
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
       "Similarity": 0.18181818181818182,
       "IsCustom": true
     },
@@ -4180,9 +4191,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "KdpPublish",
       "Path": "D:\\Projects\\MindAttic\\KdpPublish\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 58,
-      "Variants": 18,
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
       "Similarity": 0.18181818181818182,
       "IsCustom": true
     },
@@ -4345,9 +4356,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "MindAttic.Web",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Web\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 58,
-      "Variants": 18,
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
       "Similarity": 0.21052631578947367,
       "IsCustom": true
     },
@@ -5137,9 +5148,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "JobHunt",
       "Path": "D:\\Projects\\MindAttic\\JobHunt\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 58,
-      "Variants": 18,
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
       "Similarity": 0.2857142857142857,
       "IsCustom": true
     },
@@ -5155,6 +5166,17 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "IsCustom": false
     },
     {
+      "File": "AGENTS.md",
+      "Repo": "REA.Bloodlines",
+      "Path": "D:\\Projects\\MindAttic\\REA.Bloodlines\\AGENTS.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
+      "Similarity": 0.4,
+      "IsCustom": false
+    },
+    {
       "File": ".claude/skills/discard/SKILL.md",
       "Repo": "Prose",
       "Path": "D:\\Projects\\MindAttic\\Prose\\.claude\\skills\\discard\\SKILL.md",
@@ -5166,24 +5188,13 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "IsCustom": false
     },
     {
-      "File": "AGENTS.md",
-      "Repo": "REA.Bloodlines",
-      "Path": "D:\\Projects\\MindAttic\\REA.Bloodlines\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 58,
-      "Variants": 18,
-      "Similarity": 0.47619047619047616,
-      "IsCustom": false
-    },
-    {
       "File": "CLAUDE.md",
       "Repo": "MindAttic.Export",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Export\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md",
-      "CanonicalCount": 30,
-      "Total": 37,
-      "Variants": 5,
+      "CanonicalCount": 31,
+      "Total": 41,
+      "Variants": 6,
       "Similarity": 0.5,
       "IsCustom": false
     },
@@ -5192,9 +5203,20 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "SyntheticExchangeTheory",
       "Path": "D:\\Projects\\MindAttic\\SyntheticExchangeTheory\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md",
-      "CanonicalCount": 30,
-      "Total": 37,
-      "Variants": 5,
+      "CanonicalCount": 31,
+      "Total": 41,
+      "Variants": 6,
+      "Similarity": 0.5,
+      "IsCustom": false
+    },
+    {
+      "File": "CLAUDE.md",
+      "Repo": "Unity.QuickDuel",
+      "Path": "D:\\Projects\\MindAttic\\Unity.QuickDuel\\CLAUDE.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md",
+      "CanonicalCount": 31,
+      "Total": 41,
+      "Variants": 6,
       "Similarity": 0.5,
       "IsCustom": false
     },
@@ -5214,9 +5236,20 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Automata",
       "Path": "D:\\Projects\\MindAttic\\Automata\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 58,
-      "Variants": 18,
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
+      "Similarity": 0.5555555555555556,
+      "IsCustom": false
+    },
+    {
+      "File": "AGENTS.md",
+      "Repo": "Unity.QuickDuel",
+      "Path": "D:\\Projects\\MindAttic\\Unity.QuickDuel\\AGENTS.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
       "Similarity": 0.5555555555555556,
       "IsCustom": false
     },
@@ -5225,9 +5258,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "GTFO.EZ.AbsurdItems",
       "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdItems\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 58,
-      "Variants": 18,
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
     },
@@ -5236,9 +5269,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "GTFO.EZ.AbsurdMoves",
       "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdMoves\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 58,
-      "Variants": 18,
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
     },
@@ -5247,9 +5280,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "GTFO.EZ.AbsurdWeapons",
       "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdWeapons\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 58,
-      "Variants": 18,
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
     },
@@ -5258,9 +5291,20 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "TownWalker",
       "Path": "D:\\Projects\\MindAttic\\TownWalker\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md",
-      "CanonicalCount": 30,
-      "Total": 37,
-      "Variants": 5,
+      "CanonicalCount": 31,
+      "Total": 41,
+      "Variants": 6,
+      "Similarity": 0.6,
+      "IsCustom": false
+    },
+    {
+      "File": "CLAUDE.md",
+      "Repo": "Unity.Chain",
+      "Path": "D:\\Projects\\MindAttic\\Unity.Chain\\CLAUDE.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md",
+      "CanonicalCount": 31,
+      "Total": 41,
+      "Variants": 6,
       "Similarity": 0.6,
       "IsCustom": false
     },
@@ -5269,9 +5313,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.SpaceGod",
       "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md",
-      "CanonicalCount": 30,
-      "Total": 37,
-      "Variants": 5,
+      "CanonicalCount": 31,
+      "Total": 41,
+      "Variants": 6,
       "Similarity": 0.6,
       "IsCustom": false
     },
@@ -5280,9 +5324,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "MindAttic.Web",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Web\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md",
-      "CanonicalCount": 30,
-      "Total": 37,
-      "Variants": 5,
+      "CanonicalCount": 31,
+      "Total": 41,
+      "Variants": 6,
       "Similarity": 0.6,
       "IsCustom": false
     },
@@ -5302,9 +5346,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Eve",
       "Path": "D:\\Projects\\MindAttic\\Unity.Eve\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md",
-      "CanonicalCount": 30,
-      "Total": 37,
-      "Variants": 5,
+      "CanonicalCount": 31,
+      "Total": 41,
+      "Variants": 6,
       "Similarity": 0.8,
       "IsCustom": false
     },
@@ -5313,75 +5357,202 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.GridGame",
       "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\CLAUDE.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md",
-      "CanonicalCount": 30,
-      "Total": 37,
-      "Variants": 5,
+      "CanonicalCount": 31,
+      "Total": 41,
+      "Variants": 6,
       "Similarity": 0.8,
+      "IsCustom": false
+    },
+    {
+      "File": "CLAUDE.md",
+      "Repo": "Unity.Incognito",
+      "Path": "D:\\Projects\\MindAttic\\Unity.Incognito\\CLAUDE.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md",
+      "CanonicalCount": 31,
+      "Total": 41,
+      "Variants": 6,
+      "Similarity": 0.8,
+      "IsCustom": false
+    },
+    {
+      "File": "AGENTS.md",
+      "Repo": "Unity.SpaceGod",
+      "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\AGENTS.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
+      "CanonicalCount": 42,
+      "Total": 62,
+      "Variants": 21,
+      "Similarity": 0.8333333333333334,
       "IsCustom": false
     }
   ],
   "Missing": [
     {
+      "File": ".prose/commands/autopilot.md",
+      "Repo": "Unity.QuickDuel",
+      "HaveIt": 39,
+      "Eligible": 40,
+      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\autopilot.md"
+    },
+    {
+      "File": ".prose/commands/bootstrap.md",
+      "Repo": "Unity.QuickDuel",
+      "HaveIt": 39,
+      "Eligible": 40,
+      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\bootstrap.md"
+    },
+    {
+      "File": ".prose/commands/bughunt.md",
+      "Repo": "Unity.QuickDuel",
+      "HaveIt": 39,
+      "Eligible": 40,
+      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\bughunt.md"
+    },
+    {
+      "File": ".prose/commands/commit.md",
+      "Repo": "Unity.QuickDuel",
+      "HaveIt": 39,
+      "Eligible": 40,
+      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\commit.md"
+    },
+    {
+      "File": ".prose/commands/crossrepo.md",
+      "Repo": "Unity.QuickDuel",
+      "HaveIt": 39,
+      "Eligible": 40,
+      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\crossrepo.md"
+    },
+    {
+      "File": ".prose/commands/deploy.md",
+      "Repo": "Unity.QuickDuel",
+      "HaveIt": 39,
+      "Eligible": 40,
+      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\deploy.md"
+    },
+    {
+      "File": ".prose/commands/do.md",
+      "Repo": "Unity.QuickDuel",
+      "HaveIt": 39,
+      "Eligible": 40,
+      "ExamplePath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md"
+    },
+    {
+      "File": ".prose/commands/progress.md",
+      "Repo": "Unity.QuickDuel",
+      "HaveIt": 39,
+      "Eligible": 40,
+      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\progress.md"
+    },
+    {
+      "File": ".prose/commands/queue.md",
+      "Repo": "Unity.QuickDuel",
+      "HaveIt": 39,
+      "Eligible": 40,
+      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\queue.md"
+    },
+    {
+      "File": ".prose/commands/quickload.md",
+      "Repo": "Unity.QuickDuel",
+      "HaveIt": 39,
+      "Eligible": 40,
+      "ExamplePath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md"
+    },
+    {
+      "File": ".prose/commands/quicksave.md",
+      "Repo": "Unity.QuickDuel",
+      "HaveIt": 39,
+      "Eligible": 40,
+      "ExamplePath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md"
+    },
+    {
+      "File": ".prose/commands/show.md",
+      "Repo": "Unity.QuickDuel",
+      "HaveIt": 39,
+      "Eligible": 40,
+      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\show.md"
+    },
+    {
+      "File": ".prose/commands/throttle.md",
+      "Repo": "Unity.QuickDuel",
+      "HaveIt": 39,
+      "Eligible": 40,
+      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\throttle.md"
+    },
+    {
+      "File": ".prose/commands/unstuck.md",
+      "Repo": "Unity.QuickDuel",
+      "HaveIt": 39,
+      "Eligible": 40,
+      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\unstuck.md"
+    },
+    {
+      "File": ".prose/commands/unthrottle.md",
+      "Repo": "Unity.QuickDuel",
+      "HaveIt": 39,
+      "Eligible": 40,
+      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\unthrottle.md"
+    },
+    {
       "File": "CLAUDE.md",
       "Repo": "Automata",
-      "HaveIt": 30,
-      "Eligible": 39,
+      "HaveIt": 31,
+      "Eligible": 40,
       "ExamplePath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
       "Repo": "AutoWebNav",
-      "HaveIt": 30,
-      "Eligible": 39,
+      "HaveIt": 31,
+      "Eligible": 40,
       "ExamplePath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
       "Repo": "Formicarium",
-      "HaveIt": 30,
-      "Eligible": 39,
+      "HaveIt": 31,
+      "Eligible": 40,
       "ExamplePath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
       "Repo": "GTFO.EZ",
-      "HaveIt": 30,
-      "Eligible": 39,
+      "HaveIt": 31,
+      "Eligible": 40,
       "ExamplePath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
       "Repo": "JobHunt",
-      "HaveIt": 30,
-      "Eligible": 39,
+      "HaveIt": 31,
+      "Eligible": 40,
       "ExamplePath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
       "Repo": "JoyceFit",
-      "HaveIt": 30,
-      "Eligible": 39,
+      "HaveIt": 31,
+      "Eligible": 40,
       "ExamplePath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
       "Repo": "KdpPublish",
-      "HaveIt": 30,
-      "Eligible": 39,
+      "HaveIt": 31,
+      "Eligible": 40,
       "ExamplePath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
       "Repo": "MindAttic.Cryptography",
-      "HaveIt": 30,
-      "Eligible": 39,
+      "HaveIt": 31,
+      "Eligible": 40,
       "ExamplePath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md"
     },
     {
       "File": "CLAUDE.md",
       "Repo": "MindAttic.Orchestrator",
-      "HaveIt": 30,
-      "Eligible": 39,
+      "HaveIt": 31,
+      "Eligible": 40,
       "ExamplePath": "D:\\Projects\\MindAttic\\ChiMesh\\CLAUDE.md"
     }
   ],
@@ -5667,11 +5838,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Lines": 13
         },
         {
-          "Repo": "MindAttic.Launcher",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Launcher\\tools\\build-readme.ps1",
-          "Lines": 13
-        },
-        {
           "Repo": "MindAttic.Log",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Log\\tools\\build-readme.ps1",
           "Lines": 13
@@ -5716,7 +5882,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 1,
       "SharedLines": 13,
       "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
-      "RepoCount": 17
+      "RepoCount": 16
     },
     {
       "Files": [
@@ -5773,25 +5939,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 0.9921875,
       "SharedLines": 132,
       "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
-      "RepoCount": 2
-    },
-    {
-      "Files": [
-        {
-          "Repo": "TownWalker",
-          "Path": "D:\\Projects\\MindAttic\\TownWalker\\tools\\make_icons.py",
-          "Lines": 153
-        },
-        {
-          "Repo": "Unity.GridGame",
-          "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\tools\\make_icons.py",
-          "Lines": 163
-        }
-      ],
-      "Identical": false,
-      "Similarity": 0.8445945945945946,
-      "SharedLines": 130,
-      "SuggestedHome": "a shared Python package",
       "RepoCount": 2
     },
     {
@@ -5885,6 +6032,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 103,
       "SuggestedHome": "MindAttic.Components (web/Blazor)",
       "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
+          "Repo": "TownWalker",
+          "Path": "D:\\Projects\\MindAttic\\TownWalker\\tools\\make_icons.py",
+          "Lines": 153
+        },
+        {
+          "Repo": "Unity.GridGame",
+          "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\tools\\make_icons.py",
+          "Lines": 182
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.6621621621621622,
+      "SharedLines": 103,
+      "SuggestedHome": "a shared Python package",
+      "RepoCount": 2
     },
     {
       "Files": [
@@ -6410,6 +6576,11 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Lines": 33
         },
         {
+          "Repo": "Unity.Hare",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Hare\\tools\\unity.ps1",
+          "Lines": 32
+        },
+        {
           "Repo": "UnityRonin",
           "Path": "D:\\Projects\\MindAttic\\UnityRonin\\tools\\unity.ps1",
           "Lines": 33
@@ -6419,7 +6590,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 0.6785714285714286,
       "SharedLines": 24,
       "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
-      "RepoCount": 3
+      "RepoCount": 4
     },
     {
       "Files": [
@@ -6908,8 +7079,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "353c5389ca0ff0ddd31229b4118288799603ae53"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "53e87dde7e06c0a2aafe0624b4303ac5539bc441",
-    "Green": "53e87dde7e06c0a2aafe0624b4303ac5539bc441"
+    "Tested": "879245011b49215fbdd06082efa866e14f396779",
+    "Green": "879245011b49215fbdd06082efa866e14f396779"
   },
   "MindAttic.Psst": {
     "Tested": "11224b271ff95cb232162fc5b5d2e26ceebe801e"
