@@ -114,10 +114,12 @@ public sealed class AccountDirsTests
         var b = dirs.For("b@example.com");
         var stub = Path.Combine(dir, "launcher stub.cmd");
         File.WriteAllText(stub, "@echo %CLAUDE_CONFIG_DIR%^|%*>\"%~dp0out.txt\"\r\n");
-        var control = new SessionControl(new OrchestratorOptions { LauncherExe = stub });
+        var control = new SessionControl(new OrchestratorOptions { LauncherExe = stub }) { Look = d => LoginLook.For(d ?? Path.Combine(dir, "global"), d is null ? "jordan@example.com" : "b@example.com") };
         var args = control.StartArguments("Repo A", dir, "Claude", "it's \"quoted\"; with a semicolon", b.Directory).ToList();
 
-        Assert.That(args[..7], Is.EqualTo(new[] { "-w", "0", "new-tab", "--title", "Repo A [Claude]", "-d", dir }));
+        Assert.That(args[..5], Is.EqualTo(new[] { "-w", "b", "new-tab", "--title", "[B] Repo A [Claude]" }), "its own window, badged");
+        Assert.That(args[5], Is.EqualTo("--tabColor"));
+        Assert.That(args[7..9], Is.EqualTo(new[] { "-d", dir }));
         Assert.That(args, Does.Contain("powershell.exe"));
         var encoded = args[args.IndexOf("-EncodedCommand") + 1];
         var script = Encoding.Unicode.GetString(Convert.FromBase64String(encoded));
@@ -133,8 +135,34 @@ public sealed class AccountDirsTests
         Assert.That(seen, Does.Contain("--provider Claude").And.Contain("--prompt").And.Contain("it's 'quoted'; with a semicolon"));
 
         Assert.That(control.Start("Repo A", dir, "Codex", null, b.Directory), Does.Contain("Claude login"), "only Claude has a login to pick");
-        Assert.That(control.StartArguments("Repo A", dir, "Claude", null).ToList(), Does.Contain("host").And.Not.Contain("powershell.exe"),
-            "without one, the tab starts as it always did");
+        var global = control.StartArguments("Repo A", dir, "Claude", null).ToList();
+        Assert.That(global, Does.Contain("host").And.Not.Contain("powershell.exe"), "without one, the tab starts the Launcher directly");
+        Assert.That(global[..5], Is.EqualTo(new[] { "-w", "jordan", "new-tab", "--title", "[JO] Repo A [Claude]" }), "the global login's own window");
+        Assert.That(control.StartArguments("Repo A", dir, "Codex", null).ToList()[..5], Is.EqualTo(new[] { "-w", "0", "new-tab", "--title", "Repo A [Codex]" }),
+            "a provider with no login opens as it always did");
+    }
+
+    [Test]
+    public void A_logins_look_comes_from_its_folder_else_its_email()
+    {
+        var b = dirs.For("ryandebraal@example.com");
+        Directory.CreateDirectory(b.Directory);
+        var plain = LoginLook.For(b.Directory, b.Email);
+        Assert.That((plain.Window, plain.Initials), Is.EqualTo(("ryandebraal", "RY")));
+        Assert.That(plain.TabColor, Is.EqualTo(LoginLook.For(b.Directory, b.Email).TabColor), "the same login keeps its color");
+
+        File.WriteAllText(Path.Combine(b.Directory, LoginLook.FileName), """{ "alias": "Ryan", "initials": "rd", "tabColor": "#123abc" }""");
+        Assert.That(LoginLook.For(b.Directory, b.Email), Is.EqualTo(new LoginLook("Ryan", "RD", "#123ABC")));
+
+        File.WriteAllText(Path.Combine(b.Directory, LoginLook.FileName), """{ "alias": "Amy Reed" }""");
+        Assert.That(LoginLook.For(b.Directory, b.Email).Initials, Is.EqualTo("AR"), "two words give their first letters");
+        Assert.That(LoginLook.For(b.Directory, b.Email).Window, Is.EqualTo("Amy-Reed"));
+
+        File.WriteAllText(Path.Combine(b.Directory, LoginLook.FileName), "not json");
+        Assert.That(LoginLook.For(b.Directory, b.Email).Initials, Is.EqualTo("RY"), "a broken file is ignored");
+
+        Assert.That(LoginLook.WindowName("42"), Is.EqualTo("claude-42"), "a number would be a window id");
+        Assert.That(LoginLook.WindowName("new"), Is.EqualTo("claude-new"));
     }
 
     [Test]

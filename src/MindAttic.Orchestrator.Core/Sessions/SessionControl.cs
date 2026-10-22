@@ -38,9 +38,17 @@ public sealed class SessionControl(OrchestratorOptions options)
         }
     }
 
+    /// <summary>The look of a login's tabs (M.ORCH-T616); tests set their own rather than read the real ~/.claude.</summary>
+    internal Func<string?, LoginLook> Look { get; init; } = LoginLook.ForConfigDir;
+
     internal IEnumerable<string> StartArguments(string title, string directory, string provider, string? prompt, string? configDir = null)
     {
-        var tabTitle = $"{title} [{provider}]";
+        // A Claude tab gathers in its login's own window, badged and colored as that login; other providers have no login.
+        var look = provider == "Claude" ? Look(configDir) : null;
+        var tabTitle = look is null ? $"{title} [{provider}]" : $"[{look.Initials}] {title} [{provider}]";
+        string[] tab = look is null
+            ? ["-w", "0", "new-tab", "--title", tabTitle]
+            : ["-w", look.Window, "new-tab", "--title", tabTitle, "--tabColor", look.TabColor];
         if (configDir is not null)
         {
             // Windows Terminal starts the tab itself, from its own environment, not this process's: the Launcher (and the
@@ -49,13 +57,13 @@ public sealed class SessionControl(OrchestratorOptions options)
             var script = $"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; & {AccountDirs.Ps(options.LauncherExe)} host --path {AccountDirs.Ps(directory)} " +
                 $"--title {AccountDirs.Ps(tabTitle)} --provider {AccountDirs.Ps(provider)}" +
                 (string.IsNullOrWhiteSpace(prompt) ? "" : $" --prompt {AccountDirs.Ps(SafePrompt(prompt))}") + "; exit $LASTEXITCODE";
-            string[] wrapped = ["-w", "0", "new-tab", "--title", tabTitle, "-d", directory, "--",
+            string[] wrapped = [.. tab, "-d", directory, "--",
                 "powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", Convert.ToBase64String(Encoding.Unicode.GetBytes(script))];
             return wrapped.Select(a => a.Replace(";", @"\;"));
         }
         string[] head =
         [
-            "-w", "0", "new-tab", "--title", tabTitle, "-d", directory, "--",
+            .. tab, "-d", directory, "--",
             options.LauncherExe, "host", "--path", directory, "--title", tabTitle, "--provider", provider,
         ];
         // A double quote (or a line break) in the prompt survives .NET's quoting but not wt's own re-parse,
