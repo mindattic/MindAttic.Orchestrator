@@ -313,23 +313,44 @@ public sealed class AccountDirsTests
     }
 
     [Test]
-    public void Start_on_an_account_without_its_own_login_yet_says_how_to_sign_it_in()
+    public void Start_on_an_account_without_its_own_login_yet_signs_it_in_first()
     {
+        var real = AccountSwitch.LoginInto;
         var previous = AnsiConsole.Console;
         var output = new StringWriter();
         AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings { Out = new AnsiConsoleOutput(output), Ansi = AnsiSupport.No, ColorSystem = ColorSystemSupport.NoColors, Interactive = InteractionSupport.No });
         AnsiConsole.Profile.Width = 300;
         try
         {
+            AccountSwitch.LoginInto = (_, _, _) => 0; // finished, but nobody signed in
             Assert.That(StartCommand.OwnLogin(dirs, "b@example.com", "Claude"), Is.Null);
-            Assert.That(output.ToString(), Does.Contain("orchestrator login --account b@example.com"));
+            Assert.That(output.ToString(), Does.Contain("No tab opened"));
             Assert.That(StartCommand.OwnLogin(dirs, "b@example.com", "Codex"), Is.Null);
+
+            AccountSwitch.LoginInto = (email, _, configDir) =>
+            {
+                File.WriteAllText(Path.Combine(configDir, ".claude.json"), JsonSerializer.Serialize(new { oauthAccount = new { accountUuid = "acct-x", emailAddress = "someone-else@example.com" } }));
+                return 0;
+            };
+            Assert.That(StartCommand.OwnLogin(dirs, "c@example.com", "Claude"), Is.Null, "signed in as another account: no tab");
+
+            var calls = 0;
+            AccountSwitch.LoginInto = (email, _, configDir) =>
+            {
+                calls++;
+                File.WriteAllText(Path.Combine(configDir, ".claude.json"), JsonSerializer.Serialize(new { oauthAccount = new { accountUuid = "acct-b", emailAddress = email } }));
+                return 0;
+            };
             var b = dirs.For("b@example.com");
-            Directory.CreateDirectory(b.Directory);
-            SignIn(b);
             Assert.That(StartCommand.OwnLogin(dirs, "B@example.com", "Claude")?.Directory, Is.EqualTo(b.Directory));
+            Assert.That(StartCommand.OwnLogin(dirs, "b@example.com", "Claude")?.Directory, Is.EqualTo(b.Directory));
+            Assert.That(calls, Is.EqualTo(1), "signed in once, then reused");
             Assert.That(File.Exists(b.SettingsPath), Is.True, "brought up to date as the tab starts");
         }
-        finally { AnsiConsole.Console = previous; }
+        finally
+        {
+            AccountSwitch.LoginInto = real;
+            AnsiConsole.Console = previous;
+        }
     }
 }

@@ -171,7 +171,7 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
         public string? Prompt { get; init; }
 
         [CommandOption("--account <EMAIL>")]
-        [Description("Run the CLI on this account's own login (signed in once with 'orchestrator login --account <email>'), paced on its own token pool. Without it a Claude CLI goes on the Auto login: a signed-in per-CLI login no CLI runs on yet (most headroom first), else the global login (settings --auto-login false: always the global login).")]
+        [Description("Run the CLI on this account's own login (signed in first, in the browser, when it has none yet), paced on its own token pool. Without it a Claude CLI goes on the Auto login: a signed-in per-CLI login no CLI runs on yet (most headroom first), else the global login (settings --auto-login false: always the global login).")]
         public string? Account { get; init; }
     }
 
@@ -220,8 +220,13 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
         var dir = dirs.For(email);
         if (!dir.SignedIn)
         {
-            AnsiConsole.MarkupLine($"[red]{Markup.Escape(dir.Email)} has no login of its own yet: run [bold]orchestrator login --account {Markup.Escape(dir.Email)}[/] once first.[/]");
-            return null;
+            AnsiConsole.MarkupLine($"{Markup.Escape(dir.Email)} has no login of its own yet: signing it in first.");
+            var signedIn = LoginCommand.SignInFirst(dirs, dir.Email);
+            if (signedIn.Outcome != OwnLoginOutcome.SignedIn)
+            {
+                AnsiConsole.MarkupLine($"[red]No tab opened: {Markup.Escape(dir.Email)} isn't signed in as itself.[/]");
+                return null;
+            }
         }
         // Its settings follow ~/.claude's (hooks, statusline) each time a CLI starts on it.
         foreach (var line in dirs.Prepare(dir)) AnsiConsole.MarkupLine($"[grey]{Markup.Escape(line)}[/]");

@@ -136,6 +136,14 @@ internal sealed class LoginCommand : Command<LoginCommand.Settings>
         return results.Any(r => r.Outcome == OwnLoginOutcome.Failed) ? 1 : 0;
     }
 
+    /// <summary>Signs <paramref name="email"/>'s own folder in for <c>start --account</c>, said as <c>login --account</c> says it.</summary>
+    internal static OwnLoginResult SignInFirst(AccountDirs dirs, string email)
+    {
+        var result = OwnLogins.SignIn(dirs, email, sso: false, Opening);
+        Report(result);
+        return result;
+    }
+
     private static void Opening(AccountDir dir, string command) =>
         AnsiConsole.MarkupLine($"Opening {Markup.Escape(dir.Email)}'s login in the browser ({Markup.Escape(command)}).");
 
