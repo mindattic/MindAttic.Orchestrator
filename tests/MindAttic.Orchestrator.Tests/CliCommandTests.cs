@@ -494,6 +494,19 @@ public sealed class CliCommandTests
     }
 
     [Test]
+    public void Settings_terminal_host_chooses_where_CLIs_open_and_refuses_a_typo()
+    {
+        Assert.That(Run("settings", "--terminal-host", "Orchestrator"), Is.Zero);
+        Assert.That(Store.LoadSettings().TerminalHost, Is.EqualTo(OrchestratorSettings.OrchestratorHost));
+        Assert.That(output.ToString(), Does.Contain("CLIs open as panes inside the Orchestrator"));
+        Assert.That(Run("settings", "--terminal-host", "tmux"), Is.EqualTo(1));
+        Assert.That(output.ToString(), Does.Contain("No terminal host \"tmux\""));
+        Assert.That(Store.LoadSettings().TerminalHost, Is.EqualTo(OrchestratorSettings.OrchestratorHost), "a typo saves nothing");
+        Assert.That(Run("settings", "--terminal-host", "wt"), Is.Zero);
+        Assert.That(Store.LoadSettings().EmbeddedTerminals, Is.False);
+    }
+
+    [Test]
     public void Settings_stores_a_known_provider_in_its_own_casing()
     {
         Assert.That(Run("settings", "--provider", "codex"), Is.Zero);

@@ -91,6 +91,10 @@ public sealed partial class MainViewModel : ObservableObject
         ClearSearchCommand = new RelayCommand(() => Search = "");
         OpenInTicketsCommand = new RelayCommand(p => OpenInTickets(p as string));
         InitPhases();
+        // Terminals inside the Orchestrator (M.ORCH-T618): a pane opened shows its view; panes left from last time open on it.
+        Terminals = new TerminalsViewModel(control, store);
+        Terminals.Opened += () => ViewChoice = "Terminals";
+        if (Terminals.HasReopen) ViewChoice = "Terminals";
         if (store.Load<ReposView>(ReposViewName).Sort is { } sort && RepoSorts.Contains(sort)) repoSort = sort;
     }
 
@@ -100,6 +104,9 @@ public sealed partial class MainViewModel : ObservableObject
     public TileGroupViewModel Quiet { get; }
     public IReadOnlyList<TileGroupViewModel> Groups { get; }
     public ObservableCollection<ToastViewModel> Toasts { get; } = [];
+
+    /// <summary>The CLIs running inside the dashboard (M.ORCH-T618).</summary>
+    public TerminalsViewModel Terminals { get; }
 
     /// <summary>The header's live clock, ticking every second on its own timer, not with the refresh (M.ORCH-T193).</summary>
     public ClockViewModel Clock { get; } = new();
@@ -261,7 +268,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>True until the first refresh finishes, either way (a failure shows in RefreshInfo): the full-screen
     /// loader covers the dashboard until then, so it never shows empty or half-filled panels (M.ORCH-T184).</summary>
-    public bool IsLoading { get => isLoading; private set => Set(ref isLoading, value); }
+    public bool IsLoading { get => isLoading; private set { if (Set(ref isLoading, value)) Raise(nameof(TerminalsVisibility)); } }
 
     public async Task RefreshAsync()
     {
@@ -338,6 +345,7 @@ public sealed partial class MainViewModel : ObservableObject
         ApplyBilling(next);
         ApplyReminders(DateTime.UtcNow);
         ApplyAccounts(next, DateTime.UtcNow);
+        Terminals.Update(next);
         // The Accounts view's cards, read off the UI thread, only while it's open (M.ORCH-T603).
         _ = RefreshLoginCardsAsync();
         // After the phases' own toasts (pace, budget, stuck, audit, Needs you), or they'd go past the cap (M.ORCH-T340).

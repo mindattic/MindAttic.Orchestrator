@@ -60,6 +60,14 @@ public partial class MainWindow : Window
         // once, since every row's Click bubbles up through the ItemsControl regardless of which DataTemplate instance it's in.
         AccountRows.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(OnAccountRowClick));
 
+        // Each pane's terminal lives in the Terminals view's host grid from its opening to its closing (M.ORCH-T618): a
+        // template would build a new terminal (and a new CLI) every time its tab was shown.
+        model.Terminals.Panes.CollectionChanged += (_, e) =>
+        {
+            foreach (var gone in e.OldItems?.OfType<TerminalPaneViewModel>() ?? []) TerminalPanesHost.Children.Remove(gone.Control);
+            foreach (var added in e.NewItems?.OfType<TerminalPaneViewModel>() ?? []) TerminalPanesHost.Children.Add(added.Control);
+        };
+
         model.Toasts.CollectionChanged += OnToastsChanged;
         model.PropertyChanged += (_, e) =>
         {
@@ -87,6 +95,25 @@ public partial class MainWindow : Window
         // Minimized, nobody is looking: no 5-second refresh (M.ORCH-T115). Shown again, it catches up at once.
         IsVisibleChanged += async (_, _) => await OnShownOrHidden();
         StateChanged += async (_, _) => await OnShownOrHidden();
+    }
+
+    private CancellationTokenSource? paneBroker;
+
+    /// <summary>
+    /// Makes this window the one that holds terminal panes (M.ORCH-T618): a start in this process opens its pane here directly,
+    /// and one from another process (the daemon's autopilot, <c>orchestrator start</c>) arrives on the pane pipe. Called by the
+    /// app for its one dashboard only, never by a test's window.
+    /// </summary>
+    internal void HostPanes()
+    {
+        Sessions.PaneBroker.Local = request => Dispatcher.CheckAccess() ? model.Terminals.Open(request) : Dispatcher.Invoke(() => model.Terminals.Open(request));
+        paneBroker = new CancellationTokenSource();
+        _ = Sessions.PaneBroker.ServeAsync(request => Dispatcher.InvokeAsync(() => model.Terminals.Open(request)).Task, paneBroker.Token);
+        Closed += (_, _) =>
+        {
+            paneBroker.Cancel();
+            Sessions.PaneBroker.Local = null;
+        };
     }
 
     /// <summary>Lines up the account menu table's right edge with the trigger button's right edge, directly beneath it,

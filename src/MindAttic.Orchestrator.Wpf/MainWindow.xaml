@@ -1183,6 +1183,55 @@
                 </StackPanel>
             </ScrollViewer>
 
+            <!-- Terminals view (M.ORCH-T618): the CLIs opened inside the Orchestrator ("Where CLIs open" in Settings), one pane
+                 tab each with its login's badge and color (M.ORCH-T616). The terminals are native windows drawn over WPF, so
+                 the whole view is hidden (never collapsed: they keep their size) while Settings or the loader is over it. -->
+            <DockPanel x:Name="TerminalsBody" Grid.ColumnSpan="2" Margin="24,0,24,16" Visibility="{Binding TerminalsVisibility}"
+                       DataContext="{Binding Terminals}">
+                <DockPanel x:Name="TerminalsReopen" DockPanel.Dock="Top" Margin="0,0,0,8"
+                           Visibility="{Binding HasReopen, Converter={StaticResource Visible}}">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Content="Dismiss" Padding="14,4" Margin="8,0,0,0"
+                            Command="{Binding DismissReopenCommand}" VerticalAlignment="Center"
+                            ToolTip="Forget them: nothing is reopened" />
+                    <Button DockPanel.Dock="Right" Style="{StaticResource MaPrimaryButton}" Content="Reopen" Padding="14,4" Margin="8,0,0,0"
+                            Command="{Binding ReopenCommand}" VerticalAlignment="Center"
+                            ToolTip="Open each one again in a pane of its own, on the login it ran on, resuming its Claude conversation (claude --resume)" />
+                    <TextBlock Text="{Binding ReopenText}" TextWrapping="Wrap" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+                </DockPanel>
+
+                <ListBox x:Name="TerminalTabs" DockPanel.Dock="Top" ItemsSource="{Binding Panes}" SelectedItem="{Binding SelectedPane}"
+                         Background="Transparent" BorderThickness="0" Margin="0,0,0,6" AutomationProperties.Name="Terminal panes"
+                         ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:TerminalPaneViewModel}">
+                            <Border x:Name="TerminalTab" BorderBrush="{Binding TabBrush}" BorderThickness="0,0,0,3" Padding="8,4,4,4"
+                                    ToolTip="{Binding Tooltip}" AutomationProperties.Name="{Binding Title}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Badge}" Foreground="{Binding TabBrush}" FontWeight="SemiBold" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding StateText}" Style="{StaticResource MaMutedText}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    <Button Style="{StaticResource MaButton}" Content="✕" Padding="6,0" Margin="8,0,0,0" FontSize="11"
+                                            Command="{Binding DataContext.CloseCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                            CommandParameter="{Binding}"
+                                            AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
+                                            ToolTip="Close this pane, ending its CLI" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <TextBlock DockPanel.Dock="Top" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
+                           Visibility="{Binding HasPanes, Converter={x:Static vm:Converters.FalseToVisible}}"
+                           Text="No terminals open here. With Settings, Where CLIs open: Orchestrator, a CLI started from the Orchestrator (Start, the Queue, autopilot, orchestrator start) opens here as a pane of its own." />
+
+                <!-- The panes' terminals, one per pane, stacked: only the selected one shows (MainWindow.xaml.cs adds and removes them). -->
+                <Grid x:Name="TerminalPanesHost" />
+            </DockPanel>
+
         </Grid>
 
         <!-- Status bar -->
@@ -1283,6 +1332,11 @@
                 <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding RebalanceLogins}" Margin="0,0,0,0" HorizontalAlignment="Left"
                               Content="Rebalance when an account runs low" />
                 <TextBlock Text="A CLI whose login crosses its 5-hour pace target or its weekly stop line is moved by the daemon to a signed-in per-CLI login with no CLI and more headroom: it restarts with claude --resume at its next idle point, keeping its session, and you're toasted. Off: every CLI stays on its login."
+                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,10" />
+                <TextBlock Text="Where CLIs open" Margin="0,0,0,4" />
+                <ListBox x:Name="TerminalHostChoice" Style="{StaticResource MaPillChoice}" ItemsSource="{Binding TerminalHosts}" SelectedItem="{Binding TerminalHost}"
+                         AutomationProperties.Name="Where CLIs open" />
+                <TextBlock Text="Windows Terminal opens each CLI in a Windows Terminal window of its login's own. Orchestrator opens it as a terminal pane in the Terminals view here, running the same Launcher tab; the panes close with this window, which then offers to resume them (claude --resume) the next time it opens. Only CLIs opened after a Save follow it."
                            Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,10" />
                 <TextBlock Text="Max concurrent sessions (working + waiting)" Margin="0,0,0,4" />
                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"

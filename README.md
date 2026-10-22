@@ -138,6 +138,22 @@ Several CLIs can run at once, each on a different Claude account's token pool (M
 - **Its own login screen:** an account's sign-in (`login --account`, `login --all`, `start --account`, the Accounts view's Sign in / Add account, and a Start pill for an account not signed in yet) opens in a private window of a browser profile of its own (`login-browser` in its folder; Chrome, Edge or Brave, the default one first), prefilled with its email, through the folder's `open-login.cmd` set as `BROWSER` for `claude auth login`. So the page asks for that person's email and code instead of authorizing whoever your default browser is signed in to claude.ai as. Afterwards the folder's account is checked against the chosen email: a mismatch signs the folder out again and says so. The dashboard's Start pills list every roster account; starting on one not signed in yet signs it in first, then opens the tab on it.
 - **One CLI per account by default (Auto, M.ORCH-T605):** a Claude tab started without a login chosen for it (the dashboard's *Auto* pill, `orchestrator start` without `--account`, Queue starts) goes on a signed-in per-CLI login no live CLI runs on yet, the one with the most headroom (the smaller of its 5-hour and weekly room) first, and falls back to the global login once every account has a CLI or none is signed in. A pick is held for 3 minutes so tabs started back to back spread out. `--account` or *Global login* still wins; `orchestrator settings --auto-login false` (or the Settings toggle) turns Auto off. `orchestrator accounts pick` prints the chosen login's `CLAUDE_CONFIG_DIR` (an empty line for the global login), which is what the Launcher starts a new tab with; `--json` adds the email and why.
 
+### Where CLIs open (M.ORCH-T618)
+
+Settings' *Where CLIs open* (or `orchestrator settings --terminal-host windows-terminal|orchestrator`) picks where a CLI the
+Orchestrator starts (Start, Queue, autopilot, `orchestrator start`) runs:
+
+- **Windows Terminal** (the default): a tab in its login's own Windows Terminal window, as before (M.ORCH-T616).
+- **Orchestrator**: a terminal pane in the dashboard's *Terminals* view: the Windows Terminal renderer for WPF
+  (`Microsoft.Terminal.Wpf` through the `EasyWindowsTerminalControl` package) over ConPTY, running the same
+  `MindAttic.Launcher host --path … --title … --provider …` command with the login's `CLAUDE_CONFIG_DIR` set inside it, so
+  restart-resume, account moves and idle detection work unchanged. Each pane is a tab with its login's `[JR]` badge and color;
+  closing one ends its CLI. A start from another process reaches the dashboard on a per-user pipe; with no dashboard open it
+  falls back to Windows Terminal. Panes die with the dashboard, so it records each one's repo, login and Claude session and,
+  the next time it opens, offers to reopen them with `claude --resume`.
+
+Switching it affects only CLIs opened afterwards.
+
 ## Autopilot
 
 Type `/allocate` in a CLI. That CLI works its own repo's tickets (or `-repo=A,B`, a wildcard such as `-repo=GTFO.*` for every repo whose name starts `GTFO.`, or `all`) through its own subagents, and no other CLI is affected.
