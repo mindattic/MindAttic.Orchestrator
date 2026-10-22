@@ -486,6 +486,15 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                     $"subagents yet, {running.GetValueOrDefault(me)} running or claimed; one more each minute, so CLIs opened just after it " +
                     "get theirs too). Run it again in a minute");
             fair = SubagentShare.Room(cap, total, me, running, wanting, warm);
+            // Under its share but every place taken, other CLIs' unstarted claims included: say so, not "its fair share" while it
+            // runs nothing (M.ORCH-T601).
+            if (fair <= 0 && cap - total <= 0 && SubagentShare.Limit(cap, me, running, wanting) > running.GetValueOrDefault(me))
+            {
+                var othersClaimed = pending.Where(p => p.Key != me).Sum(p => p.Value);
+                return ([], $"the subagent allowance is full ({total} of {cap}: {total - pending.Values.Sum()} running" +
+                    (othersClaimed > 0 ? $", {othersClaimed} claimed by other CLIs with no subagent on yet" : "") +
+                    $"); this CLI, with {running.GetValueOrDefault(me)}, is under its share and gets the next place that frees. Run it again in a few minutes");
+            }
             if (fair <= 0)
                 return ([], $"this CLI has its fair share of the subagent allowance ({running.GetValueOrDefault(me)} " +
                     (pending.GetValueOrDefault(me) is > 0 and var mine ? $"running or claimed ({mine} claimed with no subagent on yet: start them)" : "running") +

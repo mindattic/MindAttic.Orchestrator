@@ -317,6 +317,29 @@ public sealed class AutopilotTests
         Assert.That(Autopilot.Next(Planned(), settings, store, ["A"], 6, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots).Handed, Has.Count.EqualTo(6));
     }
 
+    /// <summary>M.ORCH-T601: a CLI running nothing was told it "has its fair share (0 running of 14)" when other CLIs' running
+    /// subagents and unstarted claims had taken every place.</summary>
+    [Test]
+    public void A_cli_under_its_share_is_told_the_allowance_is_full_not_that_it_has_its_share()
+    {
+        var snap = Snap(("A", [T("A-T1"), T("A-T2")]), ("B", [T("B-T1"), T("B-T2")]));
+        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
+        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
+        SchedulePlan Planned(int running = 0, Dictionary<int, int>? byCli = null) => Paced(snap, 5) with
+        {
+            Pace = Paced(snap, 5).Pace! with { SubagentAllowance = 8, Subagents = running, SubagentsByCli = byCli ?? [] },
+        };
+        Dictionary<int, IReadOnlyList<string>> pilots = new() { [1] = ["A"], [2] = ["B"], [3] = ["A"] };
+        // CLI 2 claims one ticket and hasn't started its subagent yet: with 7 running that fills all 8 places.
+        Assert.That(Autopilot.Next(Planned(7, new() { [1] = 4, [2] = 3 }), settings, store, ["B"], 1, claim: true, Now, Make, _ => "main",
+            cli: 2, pilots: pilots).Handed, Has.Count.EqualTo(1));
+
+        var (none, why) = Autopilot.Next(Planned(7, new() { [1] = 4, [2] = 3 }), settings, store, ["A"], null, claim: false, Now, Make, _ => "main",
+            cli: 3, pilots: pilots);
+        Assert.That(none, Is.Empty);
+        Assert.That(why, Does.Contain("allowance is full (8 of 8: 7 running, 1 claimed by other CLIs with no subagent on yet)").And.Not.Contain("fair share"));
+    }
+
     /// <summary>M.ORCH-T558: the first CLI to turn /allocate on claimed every place before the CLIs opened just after it could.</summary>
     [Test]
     public void A_cli_whose_autopilot_just_turned_on_warms_up_one_more_subagent_each_minute()
