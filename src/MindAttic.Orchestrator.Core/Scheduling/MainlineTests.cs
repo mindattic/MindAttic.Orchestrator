@@ -318,7 +318,10 @@ public sealed partial class MainlineTests(JsonStore store)
 
     /// <summary>Whether a build's errors are a file another process holds, not a fault in the code.</summary>
     internal static bool IsFileLock(string errors) =>
-        errors.Contains("MSB3027", StringComparison.Ordinal) || errors.Contains("MSB3021", StringComparison.Ordinal);
+        errors.Split("; ").Where(e => e.Contains(": error ", StringComparison.Ordinal)).ToList() is { Count: > 0 } lines && lines.All(IsLockError);
+
+    private static bool IsLockError(string line) =>
+        line.Contains("MSB3027", StringComparison.Ordinal) || line.Contains("MSB3021", StringComparison.Ordinal);
 
     private static SuiteResult DotnetOnce(IProcessRunner runner, string solution, TimeSpan timeout)
     {
@@ -346,7 +349,8 @@ public sealed partial class MainlineTests(JsonStore store)
     /// <summary>The build's first few errors, else the end of its output.</summary>
     internal static string BuildErrors(string output)
     {
-        var errors = output.Split('\n').Select(l => l.Trim()).Where(l => l.Contains(": error ", StringComparison.Ordinal)).Distinct().Take(3).ToList();
+        var errors = output.Split('\n').Select(l => l.Trim()).Where(l => l.Contains(": error ", StringComparison.Ordinal)).Distinct()
+            .OrderBy(IsLockError).Take(3).ToList(); // a real error is never crowded out by file-lock noise
         if (errors.Count > 0) return string.Join("; ", errors);
         var tail = output.Trim();
         return tail.Length > 300 ? tail[^300..] : tail;

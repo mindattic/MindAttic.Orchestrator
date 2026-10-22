@@ -342,4 +342,22 @@ public sealed class MainlineTestsFileLockTests
         }
         finally { Directory.Delete(dir, true); }
     }
+
+    [Test]
+    public void A_lock_beside_a_real_compile_error_is_still_a_build_failure()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "mt-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var output = string.Join('\n', Lock, Lock.Replace("a.dll", "c.dll"), Lock.Replace("a.dll", "d.dll"), "A.cs(1,1): error CS1002: ; expected");
+            var runner = new Runner(new([new(1, output, "", false)]));
+            var r = MainlineTests.Dotnet(runner, Path.Combine(dir, "x.sln"), TimeSpan.FromMinutes(1), TimeSpan.Zero);
+            Assert.That(r.Completed);
+            Assert.That(r.Failed, Has.Count.EqualTo(1));
+            Assert.That(r.Failed[0].Message, Does.Contain("CS1002"));
+            Assert.That(runner.Calls, Is.EqualTo(1));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
 }
