@@ -163,6 +163,8 @@ public sealed class ContextCyclerTests
 
             Gate(200, Typed("pilot", "/allocate off"));
             Gate(200, Typed("pilot", "x"));
+            Assert.That(Gate(200, Stop("pilot", ask)), Does.Contain("A quiet, handoff saved").And.Not.Contain("workable"),
+                "off in this CLI: with no subagent of its working, it quicksaves (M.ORCH-T572), and is sent back for no ticket");
             Assert.That(Gate(200, Stop("pilot", ask)), Is.Empty, "off in this CLI");
             Assert.That(Gate(300, new { session_id = "c1", hook_event_name = "Stop", cwd = repo, last_assistant_message = ask }, "codex"), Is.Empty,
                 "a Codex CLI is never pushed onto tickets");
@@ -465,9 +467,12 @@ public sealed class ContextCyclerTests
             // M.ORCH-T560: /allocate replaced /autopilot and its alias /work; the old command files go once they're still ours.
             File.WriteAllText(Path.Combine(dir, "commands", "autopilot.md"), Setup.AgentGate.RetiredCommands.Single(c => c.File == "autopilot.md").Body);
             File.WriteAllText(Path.Combine(dir, "commands", "work.md"), Setup.AgentGate.RetiredCommands.Single(c => c.File == "work.md").Body);
+            // M.ORCH-T572: /allocate off took over /handoff's wind-down; its command file goes too, and isn't written again.
+            File.WriteAllText(Path.Combine(dir, "commands", "handoff.md"), Setup.AgentGate.RetiredCommands.Single(c => c.File == "handoff.md").Body);
             Setup.AgentGate.Ensure(dir);
             Assert.That(File.Exists(Path.Combine(dir, "commands", "autopilot.md")), Is.False);
             Assert.That(File.Exists(Path.Combine(dir, "commands", "work.md")), Is.False);
+            Assert.That(File.Exists(Path.Combine(dir, "commands", "handoff.md")), Is.False);
 
             Typed("/work");
             Typed("/autopilot");
@@ -480,7 +485,8 @@ public sealed class ContextCyclerTests
             Assert.That(File.ReadAllText(mark), Is.EqualTo("B,C"));
 
             var command = File.ReadAllText(Path.Combine(dir, "commands", "allocate.md"));
-            Assert.That(command, Does.Contain("Auto-allocates").And.Contain("orchestrator next").And.Not.Contain("/autopilot"));
+            Assert.That(command, Does.Contain("Auto-allocates").And.Contain("orchestrator next").And.Not.Contain("/autopilot")
+                .And.Contain("quiet, handoff saved"));
         }
         finally { Directory.Delete(dir, recursive: true); }
     }

@@ -76,7 +76,6 @@ internal static class CliApp
             config.AddCommand<AccountsCommand>("accounts").WithDescription("Every Claude account signed in to here: weekly % used and left, its reset, the 5-hour % and reset, and when each was last read (orchestrator.db).");
             config.AddCommand<LoginCommand>("login").WithDescription("The account roster (as the dashboard's account menu shows it); with an email or short name, opens that account's login (claude auth login --email); --account <email> signs in a per-CLI login of its own instead; --api-key bills the Vault's API key.");
             config.AddCommand<ClisCommand>("clis").WithDescription("Every open Claude CLI and whether /allocate is on in it (the roster the daemon keeps in orchestrator.db).");
-            config.AddCommand<HandoffCommand>("handoff").WithDescription("/handoff from here: status (default) lists what's still working; on winds every CLI down for an account switch; off cancels it.");
             config.AddCommand<LedgerCommand>("ledger").WithDescription("Every 5-hour window graded against 99%-never-over (ok, under, blind, over) and the record so far; --csv writes it out. Exits 1 if one went over in --days.");
             config.AddCommand<RemindCommand>("remind").WithDescription("Save a reminder the daemon texts through Psst when it's due (\"<text>\" --at \"tomorrow 9am\" [[--to <contact>]]); --list, --cancel <id>.");
             config.AddBranch("workspace", w =>

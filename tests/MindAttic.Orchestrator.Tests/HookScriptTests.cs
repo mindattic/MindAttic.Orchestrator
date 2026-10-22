@@ -2153,160 +2153,53 @@ public sealed class HookScriptTests
         Assert.That(Responses().GetProperty("rejected")[0].GetString(), Is.EqualTo(KeyTail));
     }
 
-    // ---- /handoff (M.ORCH-T481) ----
-
-    private string HandoffMark => Path.Combine(Marks, "handoff.json");
-
-    [Test]
-    public void A_typed_handoff_holds_new_work_back_lets_the_quicksave_through_and_nudges_a_turn_that_ends_unsaved()
-    {
-        Tickets(("U.SPC-T1", "UnitySolarSystem"));
-        Status(new { });
-        Gate(Said("/allocate"), AgentGate.ContextScriptName);
-        Gate(Said("/handoff"), AgentGate.ContextScriptName);
-        using (var h = JsonDocument.Parse(File.ReadAllText(HandoffMark)))
-        {
-            Assert.That(h.RootElement.GetProperty("state").GetString(), Is.EqualTo("winding"));
-            var cli = h.RootElement.GetProperty("autopilot").EnumerateArray().Single();
-            Assert.That((cli.GetProperty("pid").GetInt32(), cli.GetProperty("repo").GetString(), cli.GetProperty("repos").GetString(), cli.GetProperty("off").GetBoolean()),
-                Is.EqualTo((Cli, "UnitySolarSystem", "UnitySolarSystem", false)), "this CLI's /allocate (typed, for its repo) is recorded for after the switch");
-        }
-        Assert.That(File.ReadAllText(Path.Combine(Marks, "sk.state.json")), Does.Contain("\"exempt\": \"/handoff\""), "its turn quicksaves past every pace gate");
-        Assert.That(MindAttic.Orchestrator.Sessions.Handoff.Read(Marks)!.Holds, Is.True, "the orchestrator reads the same mark");
-
-        var agent = new { tool_name = "Agent", tool_input = new { prompt = "Work on ticket U.SPC-T1" }, session_id = "w1", cwd = Uss };
-        Assert.That(Gate(agent).Output, Does.Contain("\"deny\"").And.Contain("handoff"), "no new subagent starts");
-
-        // At the window's stop every other call is refused, but the quicksave goes through.
-        Status(new { stop = true });
-        var command = @"& D:\Projects\MindAttic\mindattic-agent-standard\prose-agent.ps1 save -RepoRoot (Get-Location) -Task 'a' -Next 'b'";
-        var save = new { tool_name = "PowerShell", session_id = "w1", cwd = Uss, hook_event_name = "PreToolUse", tool_input = new { command } };
-        Assert.That(Gate(save).Output, Is.Empty);
-        Status(new { });
-
-        // A turn that ends without having saved is told to, once; then it may stop, and nothing sends it back for work.
-        object Stop(string sid) => new { hook_event_name = "Stop", session_id = sid, cwd = Uss, last_assistant_message = "Done." };
-        Assert.That(Gate(Stop("w1"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\"").And.Contain("UnitySolarSystem quiet, handoff saved"));
-        Assert.That(Gate(Stop("w1"), AgentGate.ContextScriptName).Output, Is.Empty, "told once; the workable ticket doesn't keep it going");
-        Gate(new { hook_event_name = "PostToolUse", session_id = "w2", cwd = Uss, tool_name = "PowerShell", tool_input = new { command } }, AgentGate.ContextScriptName);
-        Assert.That(File.ReadAllText(Path.Combine(Marks, $"handoff-saved-{Cli}")), Is.EqualTo("UnitySolarSystem"));
-        Assert.That(Gate(Stop("w2"), AgentGate.ContextScriptName).Output, Is.Empty, "saved: nothing to tell it");
-
-        Gate(Said("/handoff off"), AgentGate.ContextScriptName);
-        Assert.That((File.Exists(HandoffMark), File.Exists(Path.Combine(Marks, $"handoff-saved-{Cli}"))), Is.EqualTo((false, false)), "cancelled before the switch");
-        Assert.That(Gate(agent).Output, Does.Not.Contain("\"deny\""));
-        Assert.That(Gate(Stop("w3"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\"").And.Contain("U.SPC-T1"), "keep-going is back");
-    }
-
-    [Test]
-    public void A_handoff_skill_call_starts_one_only_when_the_user_asked_for_a_handoff()
-    {
-        Gate(Said("fix the parser"), AgentGate.ContextScriptName);
-        Assert.That(Gate(SkillCall("handoff")).Output, Does.Contain("\"deny\"").And.Contain("type /handoff"));
-        Assert.That(File.Exists(HandoffMark), Is.False);
-        Gate(Said("time to hand off, I'm switching accounts"), AgentGate.ContextScriptName);
-        Assert.That(Gate(SkillCall("handoff")).Output, Is.Empty);
-        Assert.That(File.Exists(HandoffMark), Is.True);
-        Assert.That(Gate(SkillCall("handoff", "off")).Output, Is.Empty);
-        Assert.That(File.Exists(HandoffMark), Is.False, "off always goes through");
-    }
+    // ---- /allocate off winds a CLI down and quicksaves it (M.ORCH-T572, which retired /handoff) ----
 
     /// <summary>A CLI's mark of <paramref name="kind"/>: its cli_marks row once the orchestrator's database is there, else its file (M.ORCH-T528).</summary>
     private string? CliMark(string kind, int pid) => MindAttic.Orchestrator.Sessions.CliMarks.Read(Marks, kind).GetValueOrDefault(pid);
 
     [Test]
-    public void The_first_start_after_a_quiet_handoff_clears_the_hold_restores_autopilot_and_loads_the_saved_handoff()
+    public void Allocate_off_lets_its_subagents_land_then_has_the_cli_quicksave_its_handoff_once()
     {
-        var tickets = Path.Combine(ws, "MindAttic.Tickets");
-        Directory.CreateDirectory(Marks);
-        File.WriteAllText(HandoffMark, JsonSerializer.Serialize(new
-        {
-            state = "quiet", started = DateTime.UtcNow.AddMinutes(-5).ToString("yyyy-MM-ddTHH:mm:ssZ"), by = 1, account = "acct-old",
-            quiet_at = DateTime.UtcNow.AddMinutes(-1).ToString("yyyy-MM-ddTHH:mm:ssZ"), resumed_at = (string?)null,
-            autopilot = new object[]
-            {
-                new { pid = 1, repo = "UnitySolarSystem", cwd = Uss, repos = "UnitySolarSystem,MindAttic.Tickets", off = false },
-                new { pid = 2, repo = "MindAttic.Tickets", cwd = tickets, repos = "", off = true },
-            },
-        }));
-        // The CLI's quicksave from after the handoff began, and a stand-in for the shared runner's load.
-        Directory.CreateDirectory(Path.Combine(Uss, ".prose"));
-        File.WriteAllText(Path.Combine(Uss, ".prose", "agent-session.json"), JsonSerializer.Serialize(new { updatedAt = DateTime.UtcNow.ToString("o"), task = "t" }));
-        Directory.CreateDirectory(Path.Combine(ws, "mindattic-agent-standard"));
-        File.WriteAllText(Path.Combine(ws, "mindattic-agent-standard", "prose-agent.ps1"),
-            "param([Parameter(Position=0)][string]$Command, [string]$RepoRoot)\r\n\"Task: carry on with the parser ($Command)\"\r\n" +
-            "Move-Item -LiteralPath (Join-Path $RepoRoot '.prose\\agent-session.json') -Destination (Join-Path $RepoRoot '.prose\\agent-session.json.001') -Force\r\n");
+        Tickets(("U.SPC-T1", "UnitySolarSystem"));
+        Status(new { });
+        Gate(Said("/allocate"), AgentGate.ContextScriptName);
+        var sub = Path.Combine(Marks, "subagents");
+        Directory.CreateDirectory(sub);
+        File.WriteAllText(Path.Combine(sub, "a1"), Cli.ToString()); // one of this CLI's subagents, still working
+        File.WriteAllText(Path.Combine(sub, "b1"), "777");           // another CLI's
 
-        string Context(string cwd, string pid)
-        {
-            var output = Gate(new { hook_event_name = "SessionStart", session_id = "n" + pid, source = "startup", cwd },
-                new Dictionary<string, string> { ["MINDATTIC_CLI_PID"] = pid }, AgentGate.ContextScriptName).Output;
-            using var doc = JsonDocument.Parse(output);
-            return doc.RootElement.GetProperty("hookSpecificOutput").GetProperty("additionalContext").GetString()!;
-        }
+        Gate(Said("/allocate off"), AgentGate.ContextScriptName);
+        Assert.That((CliMark("autopilot", Cli), CliMark("noautopilot", Cli)), Is.EqualTo(((string?)null, "wind")), "off, and winding down");
 
-        var first = Context(Uss, "5001");
-        Assert.That(first, Does.Contain("[Handoff] Picked up after the account switch.")
-            .And.Contain("/allocate -repo=UnitySolarSystem,MindAttic.Tickets is back on")
-            .And.Contain("Task: carry on with the parser (load)"));
-        Assert.That(CliMark("autopilot", 5001), Is.EqualTo("UnitySolarSystem,MindAttic.Tickets"));
-        Assert.That(MindAttic.Orchestrator.Sessions.Handoff.Read(Marks)!.State, Is.EqualTo("resumed"), "the first start clears the hold");
+        object Stop(string sid) => new { hook_event_name = "Stop", session_id = sid, cwd = Uss, last_assistant_message = "Done." };
+        Assert.That(Gate(Stop("sk"), AgentGate.ContextScriptName).Output, Is.Empty, "its subagent is still working; off sends it back for no ticket");
 
-        var second = Context(tickets, "5002");
-        Assert.That(second, Does.Contain("/allocate stays off"));
-        Assert.That((CliMark("noautopilot", 5002) is not null, CliMark("autopilot", 5002) is not null), Is.EqualTo((true, false)),
-            "typed off before the switch, so it stays off");
+        File.Delete(Path.Combine(sub, "a1")); // landed and closed
+        Assert.That(Gate(Stop("sk"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\"").And.Contain("UnitySolarSystem quiet, handoff saved"),
+            "the last of its subagents is done: quicksave, whatever another CLI's are doing");
+        Assert.That(Gate(Stop("sk"), AgentGate.ContextScriptName).Output, Is.Empty, "told once");
 
-        var third = Context(Uss, "5003");
-        Assert.That(third, Does.Not.Contain("[Handoff]"), "the one recorded CLI there went to the first, and its handoff was loaded there");
-        Assert.That(CliMark("autopilot", 5003), Is.Null, "nothing restored to it: it starts off, as every new CLI does");
+        // At the window's stop every other call is refused, but the quicksave goes through.
+        Status(new { stop = true });
+        var command = @"& D:\Projects\MindAttic\mindattic-agent-standard\prose-agent.ps1 save -RepoRoot (Get-Location) -Task 'a' -Next 'b'";
+        Assert.That(Gate(new { tool_name = "PowerShell", session_id = "sk", cwd = Uss, hook_event_name = "PreToolUse", tool_input = new { command } }).Output, Is.Empty);
+        Status(new { });
+        Gate(new { hook_event_name = "PostToolUse", session_id = "sk", cwd = Uss, tool_name = "PowerShell", tool_input = new { command } }, AgentGate.ContextScriptName);
+        Assert.That(CliMark("noautopilot", Cli), Is.EqualTo(""), "saved: still off, wound down");
+
+        Gate(Said("what's left?"), AgentGate.ContextScriptName);
+        Assert.That(Gate(Stop("sk"), AgentGate.ContextScriptName).Output, Is.Empty, "nothing more to save, and nothing sends it back for work");
     }
 
     [Test]
-    public void A_quicksave_made_after_the_switch_isnt_loaded_as_the_handoff()
+    public void Allocate_off_all_winds_every_allocate_cli_down()
     {
-        // M.ORCH-T521: for the day a resumed handoff is kept, every start loaded any save newer than the handoff's start, so a
-        // /quicksave then /clear had its save loaded (and archived) as "picked up after the account switch".
-        Directory.CreateDirectory(Marks);
-        File.WriteAllText(HandoffMark, JsonSerializer.Serialize(new
-        {
-            state = "resumed", started = DateTime.UtcNow.AddHours(-3).ToString("yyyy-MM-ddTHH:mm:ssZ"), by = 1, account = "acct-old",
-            quiet_at = DateTime.UtcNow.AddHours(-2).ToString("yyyy-MM-ddTHH:mm:ssZ"), resumed_at = DateTime.UtcNow.AddHours(-1).ToString("yyyy-MM-ddTHH:mm:ssZ"),
-            autopilot = Array.Empty<object>(),
-        }));
-        Directory.CreateDirectory(Path.Combine(Uss, ".prose"));
-        var save = Path.Combine(Uss, ".prose", "agent-session.json");
-        File.WriteAllText(save, JsonSerializer.Serialize(new { updatedAt = DateTime.UtcNow.ToString("o"), task = "t" }));
-        Directory.CreateDirectory(Path.Combine(ws, "mindattic-agent-standard"));
-        File.WriteAllText(Path.Combine(ws, "mindattic-agent-standard", "prose-agent.ps1"),
-            "param([Parameter(Position=0)][string]$Command, [string]$RepoRoot)\r\n\"Task: carry on with the parser ($Command)\"\r\n" +
-            "Move-Item -LiteralPath (Join-Path $RepoRoot '.prose\\agent-session.json') -Destination (Join-Path $RepoRoot '.prose\\agent-session.json.001') -Force\r\n");
-
-        var output = Gate(new { hook_event_name = "SessionStart", session_id = "q1", source = "clear", cwd = Uss },
-            new Dictionary<string, string> { ["MINDATTIC_CLI_PID"] = "5201" }, AgentGate.ContextScriptName).Output;
-        Assert.That(output, Does.Not.Contain("Task: carry on"));
-        Assert.That(File.Exists(save), Is.True, "left for its own /quickload");
-    }
-
-    [Test]
-    public void A_clear_on_the_old_account_during_a_quiet_handoff_doesnt_resume_it()
-    {
-        // M.ORCH-T505: any SessionStart moved a quiet handoff to resumed, a /clear or compaction in a CLI still on the old account too.
-        Directory.CreateDirectory(Marks);
-        File.WriteAllText(HandoffMark, JsonSerializer.Serialize(new
-        {
-            state = "quiet", started = DateTime.UtcNow.AddMinutes(-5).ToString("yyyy-MM-ddTHH:mm:ssZ"), by = 1, account = "acct-old",
-            quiet_at = DateTime.UtcNow.AddMinutes(-1).ToString("yyyy-MM-ddTHH:mm:ssZ"), resumed_at = (string?)null,
-            autopilot = new object[] { new { pid = 1, repo = "UnitySolarSystem", cwd = Uss, repos = "UnitySolarSystem", off = false } },
-        }));
-        foreach (var source in new[] { "clear", "compact" })
-        {
-            var output = Gate(new { hook_event_name = "SessionStart", session_id = "c-" + source, source, cwd = Uss },
-                new Dictionary<string, string> { ["MINDATTIC_CLI_PID"] = "5101" }, AgentGate.ContextScriptName).Output;
-            Assert.That(output, Does.Not.Contain("[Handoff]"), source);
-            Assert.That(MindAttic.Orchestrator.Sessions.Handoff.Read(Marks)!.State, Is.EqualTo("quiet"), source + ": the hold stays until the switch");
-        }
-        Assert.That(Directory.GetFiles(Marks, "handoff-restored-*"), Is.Empty, "the saved /allocate is kept for the new account");
+        Gate(Said("/allocate"), AgentGate.ContextScriptName);
+        Gate(new { hook_event_name = "UserPromptSubmit", session_id = "o2", prompt = "/allocate", cwd = Uss },
+            new Dictionary<string, string> { ["MINDATTIC_CLI_PID"] = "5301" }, AgentGate.ContextScriptName);
+        Gate(Said("/allocate off all"), AgentGate.ContextScriptName);
+        Assert.That((CliMark("noautopilot", Cli), CliMark("noautopilot", 5301), CliMark("autopilot", 5301)), Is.EqualTo(("wind", "wind", (string?)null)));
     }
 
     // ---- M.ORCH-T526: the status row and the event log in orchestrator.db ----

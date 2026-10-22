@@ -397,7 +397,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// for it. Only the window's hard stop still applies. A ticket another agent is working isn't handed out (M.ORCH-T255): one in
     /// <see cref="SchedulePlan.Worked"/> (filed this turn by an agent fixing it, or named in a live session's prompt or worktree),
     /// except what the calling CLI <paramref name="self"/> itself filed, and one whose assignment went stale while the
-    /// background agent on it is still running. While a /handoff holds (<paramref name="handingOff"/>) nothing is handed out.
+    /// background agent on it is still running.
     /// Paced, the calling CLI (<paramref name="cli"/>) gets its fair share of the allowance, not all of it (M.ORCH-T495: one
     /// repo's /allocate claimed all 8 places at once): the other CLIs' running subagents, and a share held for every other
     /// /allocate CLI (<paramref name="pilots"/>) that has workable tickets of its own, are left to them (<see cref="SubagentShare"/>).
@@ -407,13 +407,11 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     public static (IReadOnlyList<Handout> Handed, string? Why) Next(SchedulePlan plan, OrchestratorSettings settings, JsonStore store,
         IReadOnlyList<string> repos, int? count, bool claim, DateTime nowUtc,
         Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree = null, Func<string, string>? mainlineOf = null, bool unthrottled = false,
-        string? self = null, Func<Assignment, bool>? pilotRunning = null, bool handingOff = false, Func<string, string, bool>? stillOpen = null,
+        string? self = null, Func<Assignment, bool>? pilotRunning = null, Func<string, string, bool>? stillOpen = null,
         int? cli = null, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots = null, Func<int, bool>? cliRunning = null,
         IReadOnlyDictionary<int, DateTime>? onSince = null)
     {
         cliRunning ??= ContextCycler.IsClaude;
-        // /handoff (M.ORCH-T481): every CLI is winding down for an account switch, so nothing new is handed out, unthrottled or not.
-        if (handingOff) return ([], Handoff.HoldReason);
         stillOpen ??= StillOpen;
         pilotRunning ??= a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc);
         makeWorktree ??= Dispatcher.EnsureWorktree;

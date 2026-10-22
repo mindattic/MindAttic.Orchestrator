@@ -33,8 +33,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         var cycler = new ContextCycler();
         var autopilot = new Autopilot(store, cycler, lease) { WaitingPath = Autopilot.DefaultWaitingPath };
         var waker = new LimitWaker(cycler, store);
-        var pilotWaker = new AutopilotWaker(cycler, store) { HandingOff = () => Handoff.Holding(cycler.Directory) };
-        var handoff = new HandoffWatch(cycler, store);
+        var pilotWaker = new AutopilotWaker(cycler, store);
         // One daemon wakes the CLIs: an `orchestrator daemon` run beside the logon one would type every resume twice.
         using var wakeLease = new DispatchLease(store.Directory, LimitWaker.LeaseName, store.Db);
         using var ledgerLease = new DispatchLease(store.Directory, PaceLedgerWatch.LeaseName, store.Db);
@@ -132,15 +131,6 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     {
                         Say(LogEventLevel.Warning, $"billing: {ex.Message}");
                     }
-                }
-
-                // /handoff (M.ORCH-T481): watched from the roster just written; one daemon does it, as one wakes.
-                if (wakeLease.TryAcquire())
-                {
-                    try { ReportHandoff(handoff.Tick(roster, [.. snapshot.Repos.SelectMany(r => r.Hosts)], plan.Worked,
-                        snapshot.Repos.Where(r => r.Path.Length > 0).GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First().Path, StringComparer.OrdinalIgnoreCase),
-                        DateTime.UtcNow)); }
-                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { Say(LogEventLevel.Warning, $"handoff: {ex.Message}"); }
                 }
 
                 // An agent finished its turn and is waiting on you: the alert worth leaving the desk for.
@@ -289,24 +279,6 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             Say(w.Typed ? LogEventLevel.Information : LogEventLevel.Warning, w.Line);
             if (!w.Typed) Alert("Needs you", w.Line);
         }
-    }
-
-    /// <summary>Logs the handoff's lines; the tick it goes quiet sends the one alert and Psst text saying it's safe to switch.</summary>
-    internal void ReportHandoff((IReadOnlyList<string> Lines, bool WentQuiet) tick)
-    {
-        foreach (var line in tick.Lines) Say(LogEventLevel.Information, line);
-        if (!tick.WentQuiet) return;
-        Alert("All quiet", Handoff.QuietLine + ".", urgent: true);
-        // The user asked for it in the /handoff ticket: a sound at the desk and a text on the phone, once.
-        _ = Task.Run(() =>
-        {
-            try
-            {
-                var r = Runner.Run("psst", ["test", Handoff.QuietLine], TimeSpan.FromMinutes(2));
-                if (r.ExitCode != 0) Say(LogEventLevel.Warning, $"handoff: psst didn't send the text: {(r.Output + r.Error).Trim()}");
-            }
-            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException) { Say(LogEventLevel.Warning, $"handoff: couldn't run psst: {ex.Message}"); }
-        });
     }
 
     private readonly UnderTarget underTarget = new();

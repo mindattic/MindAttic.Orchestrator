@@ -41,9 +41,6 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
     /// <summary>When /allocate turned on in each of them (seam; <see cref="ContextCycler.AutopilotSince"/>).</summary>
     internal Func<IReadOnlyDictionary<int, DateTime>>? PilotsSince { get; init; }
 
-    /// <summary>Whether a /handoff holds every CLI (seam).</summary>
-    internal Func<bool> HandingOff { get; init; } = () => false;
-
     /// <param name="Typed">The prompt went into the CLI's tab; false: it's said to you to do.</param>
     public sealed record Wake(int Pid, string Where, IReadOnlyList<string> Tickets, bool Typed, string Line);
 
@@ -63,7 +60,6 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
         if (pilots.Count == 0) return [];
         var newest = cycler.Load().Where(c => c.Pid is not null).GroupBy(c => c.Pid!.Value)
             .ToDictionary(g => g.Key, g => g.MaxBy(c => (Written(c.SessionId), c.TurnUtc))!);
-        var handingOff = HandingOff();
         var since = PilotsSince?.Invoke() ?? (Pilots is null ? cycler.AutopilotSince() : new Dictionary<int, DateTime>()); // warming up (M.ORCH-T558): not woken for one it can't have yet
 
         var due = new List<(int Pid, SessionContext Session, IReadOnlyList<string> Repos, IReadOnlyList<string> Ids)>();
@@ -74,7 +70,7 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
             if (wokenUtc.TryGetValue(pid, out var last) && nowUtc - last < Cooldown) continue;
             if (!IsAlive(pid)) continue;
             var (handed, _) = Autopilot.Next(plan, settings, store, repos, null, claim: false, nowUtc,
-                unthrottled: cycler.IsUnthrottled(pid), self: c.SessionId, handingOff: handingOff, cli: pid, pilots: pilots, onSince: since);
+                unthrottled: cycler.IsUnthrottled(pid), self: c.SessionId, cli: pid, pilots: pilots, onSince: since);
             if (handed.Count > 0) due.Add((pid, c, repos, [.. handed.Select(h => h.Item.Id)]));
         }
         if (due.Count == 0) return [];
@@ -125,7 +121,7 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
     /// </summary>
     public IReadOnlyList<Wake> TickClaims(Snapshot snapshot, SchedulePlan plan, OrchestratorSettings settings, IReadOnlyList<HostSession> hosts, bool type, DateTime nowUtc)
     {
-        if (!settings.KeepGoing || !settings.Autopilot || HandingOff()) return [];
+        if (!settings.KeepGoing || !settings.Autopilot) return [];
         if (UnderTarget.Projected(snapshot, plan) is not { } projected || !UnderTarget.HasRoom(plan)) return [];
         var pilots = Pilots?.Invoke() ?? cycler.AutopilotClis();
         if (pilots.Count == 0) return [];

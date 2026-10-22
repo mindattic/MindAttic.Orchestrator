@@ -250,7 +250,8 @@ public sealed class OrchestratorDb(string path)
     internal static readonly string[] Volatile =
         [Daemon.AutopilotHoldsName, Daemon.StaleTicketsName, "dashboard-seen", Budget.RateLimitStatusWriter.StateName, Sessions.CliRoster.StateName,
          // The hooks' own marks (M.ORCH-T528): written by every CLI's hooks, never history worth a commit.
-         Setup.AgentGate.StopLatchStateName, Setup.AgentGate.ApiKeySetAsideStateName, Sessions.Handoff.StateName,
+         Setup.AgentGate.StopLatchStateName, Setup.AgentGate.ApiKeySetAsideStateName,
+         "handoff", // the retired /handoff's mark (M.ORCH-T572), should a row of it be left
          Billing.BillingModeFile.StateName, Budget.ClaudeAccount.StateName, Budget.ReportedUsage.StateName,
          OrchestratorHistory.GateLogImportedName];
 

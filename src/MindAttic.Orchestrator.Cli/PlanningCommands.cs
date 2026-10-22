@@ -187,7 +187,7 @@ internal sealed class DryRunCommand : Command
         {
             AnsiConsole.MarkupLine($"/allocate is on in CLI {pid} for {Markup.Escape(string.Join(", ", repos))}:");
             var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, null, claim: false, DateTime.UtcNow,
-                self: cycler.LatestSessionOf(pid), handingOff: MindAttic.Orchestrator.Sessions.Handoff.Holding(cycler.Directory),
+                self: cycler.LatestSessionOf(pid),
                 cli: pid, pilots: clis, onSince: since);
             foreach (var h in handed) AnsiConsole.MarkupLine($"  next: {Markup.Escape(h.Item.Id)} in {Markup.Escape(h.Item.Repo)}" +
                 (h.Model is { } m ? $" on {m.Model}" : "") + $": {Markup.Escape(h.Item.Ticket.Summary)}");
@@ -235,7 +235,7 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
         // and is fixing is (M.ORCH-T255).
         var self = cli is { } me ? cycler.LatestSessionOf(me) : null;
         var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, settings.Count, settings.Claim, DateTime.UtcNow,
-            unthrottled: unthrottled, self: self, handingOff: MindAttic.Orchestrator.Sessions.Handoff.Holding(cycler.Directory),
+            unthrottled: unthrottled, self: self,
             cli: cli, pilots: cycler.AutopilotClis(), onSince: cycler.AutopilotSince());
         foreach (var h in handed)
         {

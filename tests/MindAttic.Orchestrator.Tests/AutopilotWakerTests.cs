@@ -33,13 +33,12 @@ public sealed class AutopilotWakerTests
     [TearDown]
     public void TearDown() => Directory.Delete(dir, recursive: true);
 
-    private AutopilotWaker Waker(bool inTab = true, bool handingOff = false) => new(cycler, store)
+    private AutopilotWaker Waker(bool inTab = true) => new(cycler, store)
     {
         IsAlive = _ => true,
         Pilots = () => new Dictionary<int, IReadOnlyList<string>> { [Cli] = ["A"] },
         HostOf = (pid, hosts) => inTab && pid == Cli ? hosts.FirstOrDefault() : null,
         Submit = (pipe, text) => { lock (typed) typed.Add((pipe, text)); return Task.FromResult(true); },
-        HandingOff = () => handingOff,
     };
 
     private void State(string state, DateTime at, bool limitStop = false, string? goal = null)
@@ -85,7 +84,7 @@ public sealed class AutopilotWakerTests
     }
 
     [Test]
-    public void A_busy_just_stopped_window_held_goal_or_handoff_cli_or_one_with_nothing_workable_is_left_alone()
+    public void A_busy_just_stopped_window_held_or_goal_cli_or_one_with_nothing_workable_is_left_alone()
     {
         var plan = Plan(4, 0, T("A-T1"));
         State("busy", Now.AddHours(-1));
@@ -102,7 +101,6 @@ public sealed class AutopilotWakerTests
         Assert.That(Waker().Tick(plan with { Stop = true }, Settings, [Tab], true, Now), Is.Empty, "at the window's stop");
         Assert.That(Waker().Tick(plan with { Pace = plan.Pace! with { WindDown = true } }, Settings, [Tab], true, Now), Is.Empty, "past the wind-down line");
         Assert.That(Waker().Tick(plan, Settings with { KeepGoing = false }, [Tab], true, Now), Is.Empty, "keep-going off");
-        Assert.That(Waker(handingOff: true).Tick(plan, Settings, [Tab], true, Now), Is.Empty, "a /handoff holds every CLI");
         Assert.That(typed, Is.Empty);
     }
 

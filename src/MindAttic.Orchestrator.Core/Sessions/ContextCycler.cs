@@ -419,9 +419,7 @@ public sealed class ContextCycler(string? directory = null)
         foreach (var f in System.IO.Directory.EnumerateFiles(Directory).Where(f => Path.GetFileName(f) is var n && n != AutopilotFile &&
                      n != Billing.BillingModeFile.FileName && n != Setup.AgentGate.ApiKeySetAsideName &&
                      !n.StartsWith("unthrottled-", StringComparison.Ordinal) && !n.StartsWith("crossrepo-", StringComparison.Ordinal) &&
-                     !n.StartsWith("autopilot-", StringComparison.Ordinal) && !n.StartsWith("noautopilot-", StringComparison.Ordinal) &&
-                     // A handoff waits as long as the switch does, and its saved and restored marks go with it (M.ORCH-T481).
-                     n != Handoff.FileName && !n.StartsWith(Handoff.SavedPrefix, StringComparison.Ordinal) && !n.StartsWith(Handoff.RestoredPrefix, StringComparison.Ordinal)))
+                     !n.StartsWith("autopilot-", StringComparison.Ordinal) && !n.StartsWith("noautopilot-", StringComparison.Ordinal)))
             try { if (nowUtc - File.GetLastWriteTimeUtc(f) > TimeSpan.FromDays(7)) File.Delete(f); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }

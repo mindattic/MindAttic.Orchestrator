@@ -315,22 +315,11 @@ public sealed partial class MainViewModel : ObservableObject
         ApplyBilling(next);
         ApplyReminders(DateTime.UtcNow);
         ApplyAccounts(next, DateTime.UtcNow);
-        ToastHandoffQuiet(MindAttic.Orchestrator.Sessions.Handoff.Read(new MindAttic.Orchestrator.Sessions.ContextCycler().Directory));
         // After the phases' own toasts (pace, budget, stuck, audit, Needs you), or they'd go past the cap (M.ORCH-T340).
         PruneToasts(Toasts, DateTime.UtcNow);
         Raise(nameof(WorkingCount)); Raise(nameof(WaitingCount)); Raise(nameof(HostCount));
         Raise(nameof(TicketCount)); Raise(nameof(RepoCount)); Raise(nameof(TokensToday));
         Raise(nameof(TokensDetail)); Raise(nameof(Warnings)); Raise(nameof(HasWarnings)); Raise(nameof(WarningsText));
-    }
-
-    private string? toastedQuiet;
-
-    /// <summary>/handoff (M.ORCH-T481): once every CLI is quiet, one toast says it's safe to switch accounts (the daemon texts it too).</summary>
-    internal void ToastHandoffQuiet(MindAttic.Orchestrator.Sessions.HandoffMark? mark)
-    {
-        if (mark is not { State: MindAttic.Orchestrator.Sessions.Handoff.Quiet, QuietAt: { } at } || at == toastedQuiet) return;
-        toastedQuiet = at;
-        Toasts.Insert(0, new ToastViewModel("All quiet", MindAttic.Orchestrator.Sessions.Handoff.QuietLine + ": nothing is working in any CLI (orchestrator handoff status lists who saved).", Palette.Quiet, null));
     }
 
     /// <summary>The most toasts shown at once; the oldest (last) go first.</summary>

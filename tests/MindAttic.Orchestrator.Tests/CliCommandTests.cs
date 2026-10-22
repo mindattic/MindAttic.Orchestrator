@@ -68,7 +68,7 @@ public sealed class CliCommandTests
         [
             "status", "start", "send", "budget", "queue", "bump", "dispatch", "release", "daemon", "settings", "audit",
             "block", "next", "approve", "reserve", "dryrun", "show", "hygiene", "intake", "report", "billing", "clis",
-            "handoff", "ledger", "remind", "workspace", "workspace export", "workspace install-apps", "workspace build",
+            "ledger", "remind", "workspace", "workspace export", "workspace install-apps", "workspace build",
         ];
         foreach (var command in commands)
             Assert.That(Run([.. command.Split(' '), "--help"]), Is.Zero, command + ": " + output);
@@ -573,26 +573,4 @@ public sealed class CliCommandTests
         Assert.That(Store.Has(JsonStore.SettingsName), Is.False);
     }
 
-    [Test]
-    public void Handoff_on_status_and_off_start_list_and_cancel_the_handoff()
-    {
-        // M.ORCH-T481: /handoff from outside a CLI.
-        var context = Path.Combine(dir, "session-context");
-        HandoffCommand.ContextDirectory = context;
-        try
-        {
-            Assert.That(Run("handoff"), Is.EqualTo(0));
-            Assert.That(output.ToString(), Does.Contain("No handoff"));
-            Assert.That(Run("handoff", "on"), Is.EqualTo(0));
-            Assert.That(output.ToString(), Does.Contain("Handing off: nothing new starts").And.Contain("Nothing is working"));
-            Assert.That(MindAttic.Orchestrator.Sessions.Handoff.Holding(context), Is.True);
-            Assert.That(Run("handoff", "on"), Is.EqualTo(0));
-            Assert.That(output.ToString(), Does.Contain("already under way"));
-            Assert.That(Run("handoff", "off"), Is.EqualTo(0));
-            Assert.That(output.ToString(), Does.Contain("Handoff cancelled"));
-            Assert.That(MindAttic.Orchestrator.Sessions.Handoff.Read(context), Is.Null);
-            Assert.That(Run("handoff", "maybe"), Is.EqualTo(1));
-        }
-        finally { HandoffCommand.ContextDirectory = null; }
-    }
 }
