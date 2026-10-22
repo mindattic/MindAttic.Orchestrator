@@ -10,11 +10,12 @@ public sealed record UtilizationPoint(DateTime AtUtc, double Percent);
 /// (over) and one below it slower (under). <see cref="ProjectedEndPercent"/> is where the recent rate lands by the reset.
 /// <see cref="Ended"/> while no window is running (M.ORCH-T502): then it's the last window as it ended (its line, pace and
 /// last reading, <see cref="NowPercent"/> at <see cref="NowUtc"/>), or with no <see cref="Actual"/> points an empty axis
-/// when there's no window on record.
+/// when there's no window on record. <see cref="Idle"/> while nothing runs on the login (M.ORCH-T629): a flat line at its
+/// current percent across the window, against the target only (<see cref="UtilizationSeries.IdleWindow"/>).
 /// </summary>
 public sealed record Utilization(DateTime StartUtc, DateTime EndUtc, DateTime NowUtc, double TargetPercent,
     IReadOnlyList<UtilizationPoint> Actual, double NowPercent, double PercentPerHour, double ProjectedEndPercent, TimeSpan OverPace,
-    double Exponent = 1, bool Ended = false)
+    double Exponent = 1, bool Ended = false, bool Idle = false, bool Unstarted = false)
 {
     /// <summary>Ended with a window on record to draw (not just an empty axis).</summary>
     public bool HasLastWindow => Ended && Actual.Count > 0;
@@ -95,6 +96,21 @@ public static class UtilizationSeries
         var ended = points[^1];
         var series = new Utilization(start, end, ended.AtUtc, targetPercent, points, ended.Percent, 0, ended.Percent, TimeSpan.Zero, exponent, Ended: true);
         return series with { OverPace = OverPace(series, points) };
+    }
+
+    /// <summary>
+    /// Nothing running on the login (M.ORCH-T629): its window drawn as a flat line at <paramref name="percent"/> from the
+    /// window's start (<paramref name="resetUtc"/> less 5 hours) to its reset, against <paramref name="targetPercent"/>. A
+    /// window that has reset or was never read (<paramref name="resetUtc"/> null or past) is the next 5 hours from now at 0%,
+    /// <see cref="Utilization.Unstarted"/>.
+    /// </summary>
+    public static Utilization IdleWindow(DateTime? resetUtc, double percent, double targetPercent, DateTime nowUtc)
+    {
+        var unstarted = resetUtc is not { } r || r <= nowUtc;
+        var (start, end) = unstarted ? (nowUtc, nowUtc + BudgetCalculator.BlockLength) : (resetUtc!.Value - BudgetCalculator.BlockLength, resetUtc.Value);
+        var level = unstarted ? 0 : Math.Max(0, percent);
+        return new Utilization(start, end, nowUtc, targetPercent, [new(start, level), new(end, level)], level, 0, level, TimeSpan.Zero,
+            Idle: true, Unstarted: unstarted);
     }
 
     private static TimeSpan OverPace(Utilization series, IReadOnlyList<UtilizationPoint> points)

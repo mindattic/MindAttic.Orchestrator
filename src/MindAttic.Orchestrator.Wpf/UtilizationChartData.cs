@@ -15,7 +15,8 @@ namespace MindAttic.Orchestrator.Wpf;
 /// own line is MaBad on each stretch that ended above the pace and MaGood below; and, dotted, where the recent rate ends up
 /// by the reset, in MaBad past 100%, MaWarn past the target, else MaGood. Between windows it's the last one as it ended,
 /// labelled 'ended NN%' with no projection, or with none on record just the empty axis (M.ORCH-T502). The caption under
-/// the chart says the same in words, so nothing is told by colour alone.
+/// the chart says the same in words, so nothing is told by colour alone. With nothing running on the login it's a flat line
+/// at its current % across the window against the target, labelled 'idle NN%' (M.ORCH-T629).
 /// </summary>
 public static class UtilizationChartData
 {
@@ -33,6 +34,12 @@ public static class UtilizationChartData
 
         var target = MaChartReferenceLine.Level(u.StartUtc, u.EndUtc, u.TargetPercent, brushes.Accent,
             label: string.Create(CultureInfo.CurrentCulture, $"{u.TargetPercent:0}% target"));
+        // Nothing running on the login (M.ORCH-T629): a flat line at its current % across the window, against the target.
+        if (u.Idle)
+            return new MaLineChartData(u.StartUtc, u.EndUtc,
+                [.. u.Actual.Select(p => new MaChartPoint(p.AtUtc, p.Percent, p.Percent > u.TargetPercent ? brushes.Bad : brushes.Good))],
+                $"idle {Formatting.FiveHourPercent(u.NowPercent)}", ReferenceLines: [target]);
+
         var pace = MaChartReferenceLine.Curve(u.StartUtc, u.EndUtc, u.PaceAt, steps: u.Curved ? 60 : 1);
 
         // The window so far, each stretch coloured by whether it ended above the pace line, ending at now.

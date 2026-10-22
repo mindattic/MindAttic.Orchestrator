@@ -22,6 +22,9 @@ public sealed partial class MainViewModel
     /// <summary>Each account's weekly stop line (M.ORCH-T609), from the weekly reserve setting as of the last refresh.</summary>
     private int weeklyStopPercent = MindAttic.Orchestrator.Settings.OrchestratorSettings.WeeklyStopFor(MindAttic.Orchestrator.Settings.OrchestratorSettings.DefaultWeeklyReservePercent);
 
+    /// <summary>The pace target (M.ORCH-T629's idle chart's target line when the login has no utilization of its own).</summary>
+    private double paceTargetPercent = new MindAttic.Orchestrator.Settings.OrchestratorSettings().PaceTargetPercent;
+
     /// <summary>This tab's login's roster row (M.ORCH-T628): on the global login's tab, whoever's signed in to it; on a per-CLI
     /// login's tab, the account with its email. Null when the roster doesn't know it.</summary>
     internal AccountRow? OwnRow => RowFor(accountRows, ScopeEmail, currentAccount);
@@ -37,6 +40,7 @@ public sealed partial class MainViewModel
         {
             accountRows = root.accountRows;
             weeklyStopPercent = root.weeklyStopPercent;
+            paceTargetPercent = root.paceTargetPercent;
             // The global login's account is the global tab's: a per-CLI tab's snapshot names its own login's.
             currentAccount = root.currentAccount;
         }
@@ -44,7 +48,7 @@ public sealed partial class MainViewModel
         {
             try { accountRows = AccountRoster.Load(aggregator.Db, next.Account); }
             catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
-            try { weeklyStopPercent = store.LoadSettings().WeeklyStopPercent; }
+            try { var settings = store.LoadSettings(); weeklyStopPercent = settings.WeeklyStopPercent; paceTargetPercent = settings.PaceTargetPercent; }
             catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException) { }
             currentAccount = next.Account == ClaudeAccount.ApiKey ? null : next.Account;
         }

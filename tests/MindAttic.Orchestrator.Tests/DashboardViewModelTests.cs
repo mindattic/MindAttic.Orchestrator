@@ -49,6 +49,33 @@ public sealed class DashboardViewModelTests
         Assert.That(MainViewModel.UtilizationCaption(null, loaded: false), Is.Empty, "only before the first snapshot is it collapsed");
     }
 
+    [Test]
+    public void An_idle_login_draws_a_flat_line_at_its_current_percent_with_the_target_and_says_it_is_idle()
+    {
+        // M.ORCH-T629: nothing running, no pace of its own, the roster read 37% of a window resetting in 2 hours.
+        var quiet = new Snapshot(Now, [], []);
+        Assert.That(MainViewModel.IsLoginIdle(quiet), Is.True);
+        var reset = Now.AddHours(2);
+        var row = new AccountRow { Account = "a/o", Email = "ryan@x.com", FiveHourPercent = 37, FiveHourResetUtc = reset };
+        var u = MainViewModel.IdleUtilization(quiet, row, 98, Now);
+        Assert.That((u.Idle, u.Unstarted, u.StartUtc, u.EndUtc, u.NowPercent), Is.EqualTo((true, false, reset.AddHours(-5), reset, 37d)));
+        Assert.That(u.Actual.Select(p => p.Percent), Is.EqualTo(new[] { 37d, 37d }), "flat across the window's span");
+        Assert.That(MainViewModel.UtilizationCaption(u, loaded: true, "Ryan"),
+            Does.StartWith("Idle: 37% of this 5-hour window used; nothing running on Ryan."));
+
+        var chart = UtilizationChartData.From(u, new UtilizationChartData.ChartBrushes(Brushes.Blue, Brushes.Green, Brushes.Orange, Brushes.Red));
+        Assert.That(chart.ReferenceLines, Has.Count.EqualTo(1), "the target line only");
+        Assert.That(chart.Points, Has.Count.EqualTo(2));
+
+        // Reset already, or never read: 0% over the next 5 hours from now.
+        foreach (var r in new AccountRow?[] { row with { FiveHourResetUtc = Now.AddMinutes(-1) }, null })
+        {
+            var next = MainViewModel.IdleUtilization(quiet, r, 98, Now);
+            Assert.That((next.Unstarted, next.StartUtc, next.EndUtc, next.NowPercent), Is.EqualTo((true, Now, Now.AddHours(5), 0d)));
+            Assert.That(MainViewModel.UtilizationCaption(next, loaded: true, "Ryan"), Does.StartWith("Idle: 0% of this 5-hour window used; nothing running on Ryan."));
+        }
+    }
+
     // ── Repo sort (M.ORCH-T593) ─────────────────────────────────────────────
 
     [Test]

@@ -274,12 +274,36 @@ public sealed partial class MainViewModel
         _ => Palette.Working,
     };
 
-    /// <summary>This 5-hour window against its pace, for the utilization graph.</summary>
-    public Utilization? Utilization => snapshot?.Utilization;
+    /// <summary>This 5-hour window against its pace, for the utilization graph; with nothing running on the tab's login, its
+    /// window as a flat line at its current % (M.ORCH-T629), so every person's tab always shows its chart.</summary>
+    public Utilization? Utilization => snapshot is null ? null
+        : IsLoginIdle(snapshot) ? IdleUtilization(snapshot, OwnRow, paceTargetPercent, DateTime.UtcNow) : snapshot.Utilization;
 
     /// <summary>The graph in words (it's also the card's accessible name): where the window is against the pace line,
     /// how long it ran over it, and where the recent rate ends up.</summary>
-    public string UtilizationText => UtilizationCaption(Utilization, snapshot is not null) + NoWorkText;
+    public string UtilizationText => UtilizationCaption(Utilization, snapshot is not null, LoginName) + NoWorkText;
+
+    /// <summary>The tab's person, for the idle caption: its title without "(global)".</summary>
+    private string LoginName => tab.Title.EndsWith(" (global)", StringComparison.Ordinal) ? tab.Title[..^" (global)".Length]
+        : tab.IsGlobal ? "the global login" : tab.Title;
+
+    /// <summary>Nothing running on the login (M.ORCH-T629): none of its repos working and none of its agents working or with a
+    /// subagent running.</summary>
+    internal static bool IsLoginIdle(Snapshot s) =>
+        s.Working == 0 && !s.Agents.Any(a => a.State == MindAttic.Orchestrator.Activity.AgentState.Working || a.Subagents.Count > 0);
+
+    /// <summary>The login's window while it's idle (M.ORCH-T629): the running window's % and reset (its own pace's, else the
+    /// roster's last reading of it), or the next 5 hours from now at 0% once it has reset or was never read.</summary>
+    internal static Utilization IdleUtilization(Snapshot s, AccountRow? row, double targetPercent, DateTime nowUtc)
+    {
+        var target = s.Utilization?.TargetPercent ?? targetPercent;
+        if (s.Utilization is { Ended: false, Idle: false } u && u.EndUtc > nowUtc)
+            return UtilizationSeries.IdleWindow(u.EndUtc, u.NowPercent, target, nowUtc);
+        if (s.Budget is { CurrentBlock: { } block } b && block.EndUtc > nowUtc)
+            return UtilizationSeries.IdleWindow(block.EndUtc,
+                b.BlockLimitIsPeak || b.BlockLimit <= 0 ? row?.FiveHourUsedAt(nowUtc) ?? 0 : b.BlockPercent, target, nowUtc);
+        return UtilizationSeries.IdleWindow(row?.FiveHourResetAt(nowUtc), row?.FiveHourUsedAt(nowUtc) ?? 0, target, nowUtc);
+    }
 
     /// <summary>On course to end under target with nothing left for any /allocate CLI to start: said under the graph, with the
     /// proposals waiting for your approval (M.ORCH-T529), as the daemon's one alert a window says it.</summary>
@@ -288,8 +312,12 @@ public sealed partial class MainViewModel
 
     /// <summary>The caption for <see cref="UtilizationText"/>. Empty only before the first snapshot, and the card is collapsed
     /// only on an empty caption, so it stays up between windows with the last one as it ended (M.ORCH-T502).</summary>
-    internal static string UtilizationCaption(Utilization? utilization, bool loaded) => utilization switch
+    internal static string UtilizationCaption(Utilization? utilization, bool loaded, string login = "this login") => utilization switch
     {
+        { Idle: true, Unstarted: true } =>
+            $"Idle: 0% of this 5-hour window used; nothing running on {login}. No window has started, so this is the next 5 hours from now.",
+        { Idle: true } u => $"Idle: {Formatting.FiveHourPercent(u.NowPercent)} of this 5-hour window used; nothing running on {login}. " +
+                            $"It resets at {Formatting.ResetTime(u.EndUtc, u.NowUtc)}; the target is {u.TargetPercent:0}%.",
         null => loaded ? "No 5-hour limit known yet, so there's no pace to draw this window against." : "",
         { HasLastWindow: true } u => $"No 5-hour window running: the last ended at {Formatting.ResetTime(u.EndUtc, DateTime.UtcNow)} at {Formatting.FiveHourPercent(u.NowPercent)}; the next starts with your next prompt.",
         { Ended: true } => "No 5-hour window running: the next starts with your next prompt.",
@@ -345,7 +373,8 @@ public sealed partial class MainViewModel
     private void RaiseOwnNumbers()
     {
         foreach (var name in new[] { nameof(BudgetHeadline), nameof(BudgetCaption), nameof(BudgetDetail),
-                                     nameof(WeeklyHeadline), nameof(WeeklyCaption), nameof(WeeklyAccountLine) })
+                                     nameof(WeeklyHeadline), nameof(WeeklyCaption), nameof(WeeklyAccountLine),
+                                     nameof(Utilization), nameof(UtilizationText) })
             Raise(name);
     }
 
