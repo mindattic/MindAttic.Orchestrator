@@ -84,6 +84,35 @@ public sealed class AutopilotWakerTests
     }
 
     [Test]
+    public void A_cli_on_its_own_login_is_judged_by_that_accounts_pace_not_the_global_logins()
+    {
+        // Found live 2026-10-22 (M.ORCH-T640): the nudge said "room to work again" three times while that CLI's own
+        // `orchestrator next --claim`, on its login's pace, answered "the pace has no room for another subagent".
+        State("idle", Now.AddHours(-6));
+        var root = Path.Combine(dir, "accounts");
+        var login = Path.Combine(root, "me@example.com");
+        var globalPlan = Plan(4, 0, T("A-T1")); // the global login has room
+        var accountPace = globalPlan.Pace! with { SubagentAllowance = 2, Subagents = 2 }; // this account's has none
+        var snapshot = new Snapshot(Now, [new RepoStatus("A", @"D:\W\A", RepoState.Dormant, [], [], [T("A-T1")], null, default)], [])
+        {
+            Accounts = [new AccountPace("me@example.com", login, null, default!, accountPace, null, 1)],
+        };
+        var onOwn = new AutopilotWaker(cycler, store)
+        {
+            IsAlive = _ => true,
+            Pilots = () => new Dictionary<int, IReadOnlyList<string>> { [Cli] = ["A"] },
+            HostOf = (pid, hosts) => hosts.FirstOrDefault(),
+            Submit = (pipe, text) => { lock (typed) typed.Add((pipe, text)); return Task.FromResult(true); },
+            Dirs = new AccountDirs(root),
+            OwnLogins = () => new Dictionary<string, string> { ["s1"] = login },
+        };
+
+        Assert.That(onOwn.Tick(globalPlan, Settings, [Tab], type: true, Now, snapshot), Is.Empty, "its own account has no room: next --claim would hand out nothing");
+        Assert.That(typed, Is.Empty);
+        Assert.That(onOwn.Tick(globalPlan, Settings, [Tab], type: true, Now), Has.Count.EqualTo(1), "without a snapshot it's the plan it was given");
+    }
+
+    [Test]
     public void A_busy_just_stopped_window_held_or_goal_cli_or_one_with_nothing_workable_is_left_alone()
     {
         var plan = Plan(4, 0, T("A-T1"));
