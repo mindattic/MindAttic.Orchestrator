@@ -48,7 +48,7 @@ public static class UtilizationChartData
 
         var lands = u.ProjectedEndPercent > 100 ? brushes.Bad : u.ProjectedEndPercent > u.TargetPercent ? brushes.Warn : brushes.Good;
         return new MaLineChartData(u.StartUtc, u.EndUtc, points, $"now {Formatting.FiveHourPercent(u.NowPercent)}",
-            new MaChartProjection(u.EndUtc, u.ProjectedEndPercent, lands, string.Create(CultureInfo.CurrentCulture, $"{u.ProjectedEndPercent:0}% at reset")),
+            new MaChartProjection(u.EndUtc, u.ProjectedEndPercent, lands, $"{Formatting.FiveHourPercent(u.ProjectedEndPercent)} at reset"),
             [target, pace]);
     }
 

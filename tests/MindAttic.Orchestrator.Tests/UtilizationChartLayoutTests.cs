@@ -64,8 +64,17 @@ public sealed class UtilizationChartLayoutTests
 
         Assert.That(d.Projection!.AtUtc, Is.EqualTo(Start.AddHours(5)));
         Assert.That(d.Projection.Percent, Is.EqualTo(projected));
-        Assert.That(d.Projection.Label, Is.EqualTo($"{projected:0}% at reset"));
+        Assert.That(d.Projection.Label, Is.EqualTo($"{Formatting.FiveHourPercent(projected)} at reset"));
         Assert.That(d.Projection.Brush, Is.SameAs(typeof(Brushes).GetProperty(colour)!.GetValue(null)));
+    }
+
+    // M.ORCH-T635: 98.3 over a 98% target read as a bare "98% at reset", hiding the overshoot.
+    [Test]
+    public void The_projection_label_shows_a_decimal_so_an_overshoot_of_the_target_is_visible()
+    {
+        var d = UtilizationChartData.From(Window(40, 98.3, line: [(0, 0), (3, 40)]), Theme);
+
+        Assert.That(d.Projection!.Label, Is.EqualTo("98.3% at reset"));
     }
 
     // M.ORCH-T502 kept: between windows the last one as it ended, with no projection; with none on record, the empty axis.
