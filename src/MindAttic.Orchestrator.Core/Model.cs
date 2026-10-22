@@ -17,6 +17,10 @@ public sealed record HostSession(string Provider, int ProcessId, string PipeName
 {
     /// <summary>The Claude login the tab's CLI bills (M.ORCH-T606), as <see cref="Activity.AgentBoardRow.Login"/> words it; null when not known.</summary>
     public string? Login { get; init; }
+
+    /// <summary>The tab's title as the Launcher was given it (<c>host --title</c>), which its Windows Terminal tab shows
+    /// behind a status glyph (M.ORCH-T619); null when the command line had none.</summary>
+    public string? Title { get; init; }
 }
 
 /// <summary>Token counts as the API reports them.</summary>

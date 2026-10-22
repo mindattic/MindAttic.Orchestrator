@@ -25,7 +25,10 @@ public sealed partial class HostSessionScanner(OrchestratorOptions options)
         return [.. pipes.Select(p =>
         {
             commandLines.TryGetValue(p.Pid, out var cmd);
-            return new HostSession(p.Provider, p.Pid, p.Name, cmd is null ? null : WorkingDirectoryOf(cmd, roster));
+            return new HostSession(p.Provider, p.Pid, p.Name, cmd is null ? null : WorkingDirectoryOf(cmd, roster))
+            {
+                Title = cmd is null ? null : TitleOf(cmd),
+            };
         })];
     }
 
@@ -61,6 +64,15 @@ public sealed partial class HostSessionScanner(OrchestratorOptions options)
         if (!string.IsNullOrWhiteSpace(path)) return path;
         if (string.IsNullOrWhiteSpace(name)) return null;
         return roster.TryGetValue(name, out var p) ? p : Path.Combine(options.WorkspaceRoot, name);
+    }
+
+    /// <summary>The <c>--title</c> a <c>host</c> invocation was given: what its Windows Terminal tab shows (M.ORCH-T619).</summary>
+    internal static string? TitleOf(string commandLine)
+    {
+        var args = SplitCommandLine(commandLine);
+        for (var i = 0; i < args.Count - 1; i++)
+            if (args[i].Equals("--title", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(args[i + 1])) return args[i + 1];
+        return null;
     }
 
     private static IEnumerable<string> EnumeratePipes()

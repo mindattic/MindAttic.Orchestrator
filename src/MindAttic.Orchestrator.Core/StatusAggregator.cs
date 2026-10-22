@@ -388,6 +388,10 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             billing = BillingSwitch.Status([.. result.SelectMany(r => r.Hosts)], now);
             var bySession = billing.Clis.ToDictionary(c => c.SessionId, c => Billing.BillingText.Of(c), StringComparer.Ordinal);
             agentBoard = [.. agentBoard.Select(a => bySession.TryGetValue(a.SessionId, out var b) ? a with { Billing = b } : a)];
+            // Each CLI's Launcher tab, for its card's "Go to tab" (M.ORCH-T619).
+            var hostBySession = billing.Clis.Where(c => c.Host is not null).GroupBy(c => c.SessionId, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.First().Host!, StringComparer.Ordinal);
+            agentBoard = [.. agentBoard.Select(a => hostBySession.TryGetValue(a.SessionId, out var h) ? a with { Host = h } : a)];
             // Each Launcher tab's login, by the CLI running in it (M.ORCH-T606).
             var hostLogins = billing.Clis.Where(c => c.Host is not null).GroupBy(c => c.Host!.ProcessId)
                 .ToDictionary(g => g.Key, g => LoginOf(g.First().SessionId));

@@ -18,6 +18,10 @@ public sealed class AgentRowViewModel(string sessionId) : ObservableObject
     public bool HasTicket => TicketId is { Length: > 0 };
     public AgentState State => row.State;
 
+    /// <summary>The Launcher tab its CLI runs in, for "Go to tab" (M.ORCH-T619); null for a headless agent.</summary>
+    public HostSession? Host => row.Host;
+    public bool HasHost => row.Host is not null;
+
     /// <summary>"M.ORCH-T84: Agent board …" when the ticket's title is known, else just the id, else what it's for.</summary>
     public string Headline => TicketId is not { Length: > 0 } ? "No ticket: working on what you typed"
         : ticketTitle is { Length: > 0 } ? $"{TicketId}: {ticketTitle}" : TicketId;

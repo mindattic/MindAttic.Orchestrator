@@ -112,12 +112,17 @@ public sealed class HostRowViewModel : ObservableObject
     }
 
     public string PipeName => host.PipeName;
+    /// <summary>The tab itself, for "Go to tab" (M.ORCH-T619).</summary>
+    public HostSession Host => host;
     public string Title => $"{host.Provider} tab";
     /// <summary>"PID 1234 · a@b.com": the tab's process and the Claude login its CLI bills (M.ORCH-T606), when known.</summary>
     public string Detail => host.Login is { } l ? $"PID {host.ProcessId} · {l}" : $"PID {host.ProcessId}";
     public string Draft { get => draft; set => Set(ref draft, value); }
     public string Feedback { get => feedback; private set => Set(ref feedback, value); }
     public ICommand SendCommand { get; }
+
+    /// <summary>Says under the row why "Go to tab" didn't land on the tab itself.</summary>
+    internal void ShowFeedback(string note) => Feedback = note;
 
     public void Update(HostSession next)
     {

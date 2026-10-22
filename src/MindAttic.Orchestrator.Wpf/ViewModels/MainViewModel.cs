@@ -80,12 +80,13 @@ public sealed partial class MainViewModel : ObservableObject
         OpenFolderCommand = new RelayCommand(() => SessionControl.OpenFolder(Selected!.Path), () => Selected is { HasFolder: true });
         UseTicketCommand = new RelayCommand(p => { if (p is TicketRowViewModel t) Prompt = $"Work on ticket {t.Id}: {t.Summary}"; });
         DismissToastCommand = new RelayCommand(p => { if (p is ToastViewModel t) Toasts.Remove(t); });
-        OpenToastCommand = new RelayCommand(p =>
+        OpenToastCommand = new RelayCommand(async p =>
         {
             if (p is not ToastViewModel t) return;
             Toasts.Remove(t);
-            // To the repo's detail, from whichever view: not Select, a toggle that only shows in the Repos view.
-            if (t.Target is not null) SelectRepo(t.Target.Name);
+            // To the CLI's own tab (M.ORCH-T619); failing that, the repo's detail, from whichever view: not Select, a
+            // toggle that only shows in the Repos view.
+            await OpenToastAsync(t);
         });
         ClearSearchCommand = new RelayCommand(() => Search = "");
         OpenInTicketsCommand = new RelayCommand(p => OpenInTickets(p as string));

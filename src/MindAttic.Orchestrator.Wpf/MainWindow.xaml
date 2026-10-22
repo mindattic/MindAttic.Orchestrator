@@ -498,8 +498,13 @@
                                         <Border Style="{StaticResource MaCard}">
                                             <StackPanel>
                                                 <DockPanel>
-                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Detail}" Style="{StaticResource MaMutedText}" />
-                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                                    <!-- Brings this tab's own Windows Terminal window up, on this tab (M.ORCH-T619). -->
+                                                    <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Content="Go to tab" Margin="10,0,0,0" Padding="12,5"
+                                                            Command="{Binding DataContext.GoToTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}" ToolTip="Bring this tab's terminal to the front, on this tab"
+                                                            AutomationProperties.Name="{Binding Detail, StringFormat='Go to the tab, {0}'}" />
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Detail}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" />
+                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center" />
                                                 </DockPanel>
                                                 <DockPanel Margin="0,8,0,0">
                                                     <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Content="Send" Margin="6,0,0,0"
@@ -986,6 +991,12 @@
                                             </DockPanel>
                                             <TextBlock Text="{Binding Doing}" Margin="0,6,0,0" TextWrapping="Wrap" MaxHeight="38" TextTrimming="CharacterEllipsis"
                                                        Visibility="{Binding Doing, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                                            <!-- To this CLI's own terminal tab (M.ORCH-T619); only a CLI in a Launcher tab has one. -->
+                                            <Button Command="{Binding DataContext.GoToTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}" Style="{StaticResource MaButton}" Content="Go to tab" Padding="12,5" Margin="0,8,0,0"
+                                                    HorizontalAlignment="Left" Visibility="{Binding HasHost, Converter={StaticResource Visible}}"
+                                                    ToolTip="Bring this CLI's terminal to the front, on its tab"
+                                                    AutomationProperties.Name="{Binding Repo, StringFormat='Go to the {0} tab'}" />
                                             <TextBlock Text="{Binding HoldNote}" Foreground="{DynamicResource MaWarn}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
                                                        Visibility="{Binding HoldNote, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                                             <!-- The tickets this CLI claimed, only its own (M.ORCH-T532). -->

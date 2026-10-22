@@ -23,6 +23,21 @@ public static partial class ProcessTree
         return null;
     }
 
+    /// <summary>The processes above <paramref name="pid"/>, nearest first (its parent, then that one's), up to 16.</summary>
+    public static IReadOnlyList<(int Pid, string Exe)> Ancestors(int pid) => Ancestors(pid, Processes());
+
+    internal static IReadOnlyList<(int Pid, string Exe)> Ancestors(int pid, IReadOnlyDictionary<int, (int Parent, string Exe)> processes)
+    {
+        var result = new List<(int, string)>();
+        for (var i = 0; i < 16 && processes.TryGetValue(pid, out var p) && p.Parent != 0 && p.Parent != pid; i++)
+        {
+            pid = p.Parent;
+            if (!processes.TryGetValue(pid, out var up)) break;
+            result.Add((pid, up.Exe));
+        }
+        return result;
+    }
+
     /// <summary>The same walk over a given child-to-parent map; it gives up after 16 steps, so a pid cycle ends.</summary>
     internal static bool IsAncestor(int ancestor, int pid, IReadOnlyDictionary<int, int> parents)
     {

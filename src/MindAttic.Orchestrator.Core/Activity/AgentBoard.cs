@@ -42,6 +42,9 @@ public sealed record AgentBoardRow(
     /// <summary>The tickets its CLI claimed for its subagents (<c>orchestrator next --claim</c>, M.ORCH-T532), in claim order:
     /// only its own, never another CLI's on the same repo.</summary>
     public IReadOnlyList<string> Claims { get; init; } = [];
+
+    /// <summary>The Launcher tab its CLI runs in, for the card's "Go to tab" (M.ORCH-T619); null for a headless agent or when not known.</summary>
+    public HostSession? Host { get; init; }
 }
 
 /// <summary>

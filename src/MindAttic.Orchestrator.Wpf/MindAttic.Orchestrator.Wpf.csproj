@@ -10,6 +10,8 @@
     <Version>1.0.0</Version>
     <!-- The exe's own icon: Explorer, the shortcuts and a Start or taskbar pin all show it. -->
     <ApplicationIcon>..\..\assets\logo.ico</ApplicationIcon>
+    <!-- LibraryImport's generated marshalling (TerminalFocus's user32 calls) needs it. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
