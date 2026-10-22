@@ -787,7 +787,7 @@ public static class AgentGate
                 import sqlite3
                 if not os.path.isfile(ORCH_DB):
                     return None
-                db = sqlite3.connect(ORCH_DB, timeout=timeout)
+                db = sqlite3.connect(ORCH_DB, timeout=(min(timeout, 1) if _held.get("long") else timeout))
                 try:
                     return db.execute(sql, args).fetchall()
                 finally:
