@@ -462,7 +462,8 @@
                         <TextBlock Text="START A SESSION" Style="{StaticResource MaSectionLabel}" />
                         <ListBox Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Providers}" SelectedItem="{Binding Provider}"
                                  AutomationProperties.Name="Agent provider" />
-                        <!-- Per-CLI Claude logins (M.ORCH-T559): the tab's CLI spends this account's token pool. -->
+                        <!-- Per-CLI Claude logins (M.ORCH-T559): the tab's CLI spends this account's token pool. Every roster
+                             account is listed (M.ORCH-T610); one not signed in yet opens its own sign-in first. -->
                         <ListBox Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Logins}" SelectedItem="{Binding Login}" Margin="0,4,0,0"
                                  Visibility="{Binding ShowLogins, Converter={StaticResource Visible}}"
                                  AutomationProperties.Name="Claude login" />

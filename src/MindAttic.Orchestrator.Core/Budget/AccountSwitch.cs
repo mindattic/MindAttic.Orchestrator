@@ -131,13 +131,21 @@ public static class AccountSwitch
     {
         var psi = new ProcessStartInfo("claude") { UseShellExecute = false, CreateNoWindow = false };
         foreach (var a in LoginArgs(email, sso)) psi.ArgumentList.Add(a);
-        // A per-CLI login (M.ORCH-T559) signs in to its own folder, leaving the global login as it is.
-        if (configDir is not null) psi.Environment[Sessions.AccountDirs.EnvVar] = configDir;
+        // A per-CLI login (M.ORCH-T559) signs in to its own folder, leaving the global login as it is, and its sign-in page
+        // opens through the folder's own opener (M.ORCH-T610): a private window of the account's own browser profile.
+        if (configDir is not null)
+        {
+            psi.Environment[Sessions.AccountDirs.EnvVar] = configDir;
+            var opener = new Sessions.AccountDir(email, configDir).LoginOpenerPath;
+            if (File.Exists(opener)) psi.Environment["BROWSER"] = opener;
+            else psi.Environment.Remove("BROWSER");
+        }
         return Process.Start(psi) ?? throw new InvalidOperationException("claude didn't start");
     }
 
     /// <summary>The seam <c>orchestrator login --account</c> signs a per-CLI login's folder in through (M.ORCH-T559): runs
-    /// <c>claude auth login --email</c> with <c>CLAUDE_CONFIG_DIR</c> set to the folder and returns its exit code. Tests replace it.</summary>
+    /// <c>claude auth login --email</c> with <c>CLAUDE_CONFIG_DIR</c> set to the folder (and <c>BROWSER</c> to its opener,
+    /// <see cref="Sessions.LoginBrowser"/>) and returns its exit code. Tests replace it.</summary>
     public static Func<string, bool, string, int> LoginInto { get; set; } = (email, sso, configDir) =>
     {
         using var p = Start(email, sso, configDir);

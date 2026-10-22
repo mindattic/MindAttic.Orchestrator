@@ -32,6 +32,12 @@ public sealed record AccountDir(string Email, string Directory)
 
     public string StatuslinePath => Path.Combine(Directory, AccountDirs.StatuslineName);
 
+    /// <summary>The script <c>claude auth login</c> opens this account's sign-in through (<c>BROWSER</c>, M.ORCH-T610).</summary>
+    public string LoginOpenerPath => Path.Combine(Directory, "open-login.cmd");
+
+    /// <summary>The account's own browser profile its sign-in opens in, apart from whoever the default browser is signed in as.</summary>
+    public string BrowserProfileDirectory => Path.Combine(Directory, "login-browser");
+
     /// <summary>The account signed in here, keyed as <see cref="ClaudeAccount.Current"/> keys it; null when nobody is (yet).</summary>
     public string? Account
     {
@@ -203,6 +209,29 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
             hook["command"] is JsonValue v && v.TryGetValue<string>(out var text) && text.Contains(GlobalOnlyHook, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>The keys of a <c>.claude.json</c> that say who's signed in.</summary>
+    private static readonly string[] SignInKeys = ["oauthAccount", "primaryApiKey", "customApiKeyResponses", "userID"];
+
+    /// <summary>
+    /// Signs <paramref name="account"/>'s folder out (M.ORCH-T610): its token (<c>.credentials.json</c>) goes, and its
+    /// <c>.claude.json</c> forgets who was signed in, keeping everything else. Used when its sign-in landed on another account
+    /// than the folder's, so no CLI started on it spends that other account's tokens. Returns why it couldn't, or null.
+    /// </summary>
+    public static string? SignOut(AccountDir account)
+    {
+        try
+        {
+            if (File.Exists(account.CredentialsPath)) File.Delete(account.CredentialsPath);
+            if (File.Exists(account.ConfigPath) && JsonNode.Parse(File.ReadAllText(account.ConfigPath)) is JsonObject config)
+            {
+                foreach (var key in SignInKeys) config.Remove(key);
+                WriteIfChanged(account.ConfigPath, config.ToJsonString());
+            }
+            return null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return ex.Message; }
+    }
+
     /// <summary><c>~/.claude.json</c> without who's signed in, so the account's folder keeps your trusted folders and settings but
     /// signs in on its own; null when there's none to start from.</summary>
     private string? SeedConfig()
@@ -210,7 +239,7 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
         try
         {
             if (!File.Exists(HomeConfigPath) || JsonNode.Parse(File.ReadAllText(HomeConfigPath)) is not JsonObject config) return null;
-            foreach (var key in new[] { "oauthAccount", "primaryApiKey", "customApiKeyResponses", "userID" }) config.Remove(key);
+            foreach (var key in SignInKeys) config.Remove(key);
             return config.ToJsonString();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return null; }

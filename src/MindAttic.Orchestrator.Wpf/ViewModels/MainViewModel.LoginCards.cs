@@ -68,7 +68,9 @@ public sealed partial class MainViewModel
     {
         if (IsSigningIn) return false;
         IsSigningIn = true;
-        AccountsMessage = $"Opening {email}'s login in the browser…";
+        CommandManager.InvalidateRequerySuggested();
+        // Its own login screen (M.ORCH-T610): a private window of the account's own browser profile, prefilled with its email.
+        AccountsMessage = $"Opening {email}'s own sign-in in a private browser window: sign in there as {email}…";
         try
         {
             var dirs = OwnLoginDirs();
@@ -86,6 +88,7 @@ public sealed partial class MainViewModel
         finally
         {
             IsSigningIn = false;
+            CommandManager.InvalidateRequerySuggested();
             RefreshLogins();
             await RefreshLoginCardsAsync();
         }
