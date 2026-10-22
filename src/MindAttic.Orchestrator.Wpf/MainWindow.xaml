@@ -1253,9 +1253,24 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
 
-                <TextBlock DockPanel.Dock="Top" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
-                           Visibility="{Binding HasPanes, Converter={x:Static vm:Converters.FalseToVisible}}"
-                           Text="No terminals open here. With Settings, Where CLIs open: Orchestrator, a CLI started from the Orchestrator (Start, the Queue, autopilot, orchestrator start) opens here as a pane of its own." />
+                <!-- Only in the Terminals view (M.ORCH-T625): collapsed elsewhere so it can never draw over another view's heading. -->
+                <TextBlock x:Name="TerminalsEmptyHint" DockPanel.Dock="Top" TextWrapping="Wrap"
+                           Text="No terminals open here. With Settings, Where CLIs open: Orchestrator, a CLI started from the Orchestrator (Start, the Queue, autopilot, orchestrator start) opens here as a pane of its own.">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource MaMutedText}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding HasPanes}" Value="False" />
+                                        <Condition Binding="{Binding DataContext.IsTerminalsView, RelativeSource={RelativeSource AncestorType=Window}}" Value="True" />
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
 
                 <!-- The panes' terminals, one per pane, stacked: only the selected one shows (MainWindow.xaml.cs adds and removes them). -->
                 <Grid x:Name="TerminalPanesHost" />
