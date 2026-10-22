@@ -1,7 +1,7 @@
 -- MindAttic.Orchestrator database dump (written with every change; the .db file is the store).
 
 -- accounts
-INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', 'ohleo199@mindattic.com', 'MindAttic', 'Team · Max 5x', 14, 1792722000, 90, 1793138400, 1792706078, 1792686357.102392);
+INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', 'ohleo199@mindattic.com', 'MindAttic', 'Team · Max 5x', 15, 1792722000, 91, 1793138400, 1792706337, 1792686357.102392);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', 'ryandebraal@mindattic.com', 'MindAttic', 'Team · Max 5x', 0, 1792609200, 100, 1792764000, 1792591343, 1792591305.195613);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', 'shampoo1232@mindattic.com', 'MindAttic', 'Team · Max 5x', 51, 1792600200, 96, 1792702800, 1792589089, 1792464053.5616076);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', 'pdftransferjr@mindattic.com', 'MindAttic', 'Team · Max 5x', 81, 1792688400, 93, 1792929600, 1792685787, 1792670412.137807);
@@ -2890,6 +2890,8 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T21:49:01Z', 13, '2026-10-23T02:20:00Z', 1736746);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T21:53:05Z', 14, '2026-10-23T02:20:00Z', 1785959);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T21:54:38Z', 14, '2026-10-23T02:20:00Z', 1796749);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T21:58:57Z', 15, '2026-10-23T02:20:00Z', 1846880);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-22T22:03:10Z', 15, '2026-10-23T02:20:00Z', 1854201);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -3138,7 +3140,9 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'MindAttic.Capture', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 90056);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'MindAttic.Launcher', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 446040);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'MindAttic.Orchestrator', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1176036);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'REA.Bloodlines', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 9042629);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'OpenCredentials', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 32416);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'REA.Bloodlines', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 9056223);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'REA.Bloodlines', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 44733);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'REA.Bloodlines', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 7770642);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'Unity.Cursory', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2689500);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'Unity.GridGame', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2826980);
@@ -3657,7 +3661,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('7fb4df7f-f57a-4d06-abbc-8f7f03e9941d/agent-aaa12da6ea2990975', 'RB-T38', 'fix', 'REA.Bloodlines', 184096, '2026-10-22T14:09:57.912Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('7fb4df7f-f57a-4d06-abbc-8f7f03e9941d/agent-ab5ac7cc51c08aa84', 'RB-T35', 'feature', 'REA.Bloodlines', 1601342, '2026-10-22T14:53:20.033Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('7fb4df7f-f57a-4d06-abbc-8f7f03e9941d/agent-ab8c70c6f0f1edf46', 'RB-T45', 'fix', 'REA.Bloodlines', 62379, '2026-10-22T16:54:44.959Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('7fb4df7f-f57a-4d06-abbc-8f7f03e9941d/agent-ab8d4ca75f1766f39', 'RB-T61', 'fix', 'REA.Bloodlines', 288787, '2026-10-22T21:55:55.373Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('7fb4df7f-f57a-4d06-abbc-8f7f03e9941d/agent-ab8d4ca75f1766f39', 'RB-T61', 'fix', 'REA.Bloodlines', 296605, '2026-10-22T21:59:07.698Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('7fb4df7f-f57a-4d06-abbc-8f7f03e9941d/agent-ac2add5dc86094da7', 'RB-T85', 'fix', 'REA.Bloodlines', 115421, '2026-10-22T21:49:45.779Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('7fb4df7f-f57a-4d06-abbc-8f7f03e9941d/agent-ac45f61261150a446', 'RB-T119', 'docs', 'REA.Bloodlines', 102816, '2026-10-22T20:24:28.424Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('7fb4df7f-f57a-4d06-abbc-8f7f03e9941d/agent-acec089ad7a1960b2', 'RB-T49', 'feature', 'REA.Bloodlines', 318381, '2026-10-22T19:39:54.702Z', 0, 'opus');
@@ -3975,7 +3979,6 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc) VALUES (41, 'RB-T52', 'REA.Bloodlines', 'D:\Projects\MindAttic.worktrees\REA.Bloodlines\RB-T52', 'Claude', '2026-10-22T18:14:17.2254726Z', 1, NULL, NULL, NULL, 37992, '7fb4df7f-f57a-4d06-abbc-8f7f03e9941d', 'opus', NULL);
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc) VALUES (42, 'RB-T53', 'REA.Bloodlines', 'D:\Projects\MindAttic.worktrees\REA.Bloodlines\RB-T53', 'Claude', '2026-10-22T18:14:30.4177877Z', 1, NULL, NULL, NULL, 37992, '7fb4df7f-f57a-4d06-abbc-8f7f03e9941d', 'opus', NULL);
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc) VALUES (43, 'M.ORCH-T628', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic.worktrees\MindAttic.Orchestrator\M.ORCH-T628', 'Claude', '2026-10-22T19:13:07.0959771Z', 1, NULL, NULL, NULL, 50732, '66d3da02-ec62-4b6f-a7bb-44cc8b7b0c3f', 'opus', NULL);
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc) VALUES (44, 'RB-T61', 'REA.Bloodlines', 'D:\Projects\MindAttic.worktrees\REA.Bloodlines\RB-T61', 'Claude', '2026-10-22T19:27:37.7239507Z', 1, NULL, NULL, NULL, 37992, '7fb4df7f-f57a-4d06-abbc-8f7f03e9941d', 'sonnet', '2026-10-22T21:54:56.6575046Z');
 
 -- state
 INSERT INTO state (name, value) VALUES ('audit', '{
@@ -6904,8 +6907,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "353c5389ca0ff0ddd31229b4118288799603ae53"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "bb5d672d16f62aef41c318b12c8de333e44a7148",
-    "Green": "bb5d672d16f62aef41c318b12c8de333e44a7148"
+    "Tested": "b4cfa31afb802a31a83889ce0fca2ea8a6fe9618",
+    "Green": "b4cfa31afb802a31a83889ce0fca2ea8a6fe9618"
   },
   "MindAttic.Psst": {
     "Tested": "11224b271ff95cb232162fc5b5d2e26ceebe801e"
@@ -6914,8 +6917,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "abe81baeac104dc09daf44fa165ab3b35303203e"
   },
   "MindAttic.Tickets": {
-    "Tested": "3bdb778b513ed5ffa073d65f93fefe9d4b054194",
-    "Green": "3bdb778b513ed5ffa073d65f93fefe9d4b054194"
+    "Tested": "54be6da303f577d040dce3ddf3e8d258fe9cc114",
+    "Green": "54be6da303f577d040dce3ddf3e8d258fe9cc114"
   },
   "MindAttic.Vault": {
     "Tested": "d1d380ee7f79fca1002dc912e38cd1fff5f25687",
@@ -6944,8 +6947,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "3bb8457f5b8e8283cbf0765b3894a98562659d0e"
   },
   "REA.Bloodlines": {
-    "Tested": "dc97c8b141cd43b8a2e834eb842f6a10592855d1",
-    "Green": "dc97c8b141cd43b8a2e834eb842f6a10592855d1"
+    "Tested": "5854ddc22e6524299ad7cb948dedf8061c3c9242",
+    "Green": "5854ddc22e6524299ad7cb948dedf8061c3c9242"
   },
   "ChiMesh": {
     "Tested": "a8e0c7d78000859f22abbc117615e923574acedf"
