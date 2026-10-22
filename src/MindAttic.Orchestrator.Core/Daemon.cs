@@ -681,18 +681,19 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         void Push(bool retry)
         {
             // Agents land through their own worktrees, so main moves under this checkout: integrate origin/main first or every
-            // push is rejected as non-fast-forward (M.ORCH-T620). The commits touch only the database and its dump, and
-            // --autostash leaves any other dirty files as they were.
+            // push is rejected as non-fast-forward (M.ORCH-T620). A merge, not a rebase --autostash: the daemon keeps the
+            // dirty data/ files open and changing so the autostash itself fails (M.ORCH-T624), and incoming commits never touch
+            // them, so no stash is needed (merge commits pass the commit-msg hook).
             var fetch = Git("fetch", "-q", "origin");
             if (fetch.ExitCode == 0 && !fetch.TimedOut)
             {
-                var rebase = Git("rebase", "-q", "--autostash", "origin/main");
+                var rebase = Git("merge", "-q", "--no-edit", "origin/main");
                 if (rebase.ExitCode != 0 || rebase.TimedOut)
                 {
-                    Git("rebase", "--abort");
+                    Git("merge", "--abort");
                     orchestratorDbUnpushed = true;
                     if (!orchestratorDbIntegrateWarned)
-                        Say(LogEventLevel.Warning, $"orchestrator db sync: couldn't rebase onto origin/main, so data/orchestrator.db isn't pushed (retrying every 10 minutes, not warning again): {(rebase.Output + rebase.Error).Trim()}");
+                        Say(LogEventLevel.Warning, $"orchestrator db sync: couldn't merge origin/main, so data/orchestrator.db isn't pushed (retrying every 10 minutes, not warning again): {(rebase.Output + rebase.Error).Trim()}");
                     orchestratorDbIntegrateWarned = true;
                     return;
                 }
