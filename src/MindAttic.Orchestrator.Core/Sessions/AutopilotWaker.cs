@@ -41,6 +41,12 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
     /// <summary>When /allocate turned on in each of them (seam; <see cref="ContextCycler.AutopilotSince"/>).</summary>
     internal Func<IReadOnlyDictionary<int, DateTime>>? PilotsSince { get; init; }
 
+    /// <summary>The per-CLI logins, to find the account a CLI runs on (seam).</summary>
+    internal AccountDirs Dirs { get; init; } = new();
+
+    /// <summary>The session's <c>CLAUDE_CONFIG_DIR</c> when it runs on a login of its own (seam; <see cref="ContextCycler.OnOwnLogin"/>).</summary>
+    internal Func<IReadOnlyDictionary<string, string>>? OwnLogins { get; init; }
+
     /// <param name="Typed">The prompt went into the CLI's tab; false: it's said to you to do.</param>
     public sealed record Wake(int Pid, string Where, IReadOnlyList<string> Tickets, bool Typed, string Line);
 
@@ -48,7 +54,7 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
     private readonly Dictionary<int, DateTime> saidFor = [];
 
     /// <summary>What to wake now, woken (or said, when <paramref name="type"/> is false or it can't be typed into).</summary>
-    public IReadOnlyList<Wake> Tick(SchedulePlan plan, OrchestratorSettings settings, IReadOnlyList<HostSession> hosts, bool type, DateTime nowUtc)
+    public IReadOnlyList<Wake> Tick(SchedulePlan plan, OrchestratorSettings settings, IReadOnlyList<HostSession> hosts, bool type, DateTime nowUtc, Snapshot? snapshot = null)
     {
         if (!settings.KeepGoing || !settings.Autopilot) return [];
         var pilots = Pilots?.Invoke() ?? cycler.AutopilotClis();
@@ -62,6 +68,8 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
             .ToDictionary(g => g.Key, g => g.MaxBy(c => (Written(c.SessionId), c.TurnUtc))!);
         var since = PilotsSince?.Invoke() ?? (Pilots is null ? cycler.AutopilotSince() : new Dictionary<int, DateTime>()); // warming up (M.ORCH-T558): not woken for one it can't have yet
         var moving = Moving();
+        var own = snapshot is null ? null : (OwnLogins?.Invoke() ?? cycler.OnOwnLogin());
+        var plans = new Dictionary<string, SchedulePlan>(StringComparer.OrdinalIgnoreCase);
 
         var due = new List<(int Pid, SessionContext Session, IReadOnlyList<string> Repos, IReadOnlyList<string> Ids)>();
         foreach (var (pid, repos) in pilots)
@@ -72,7 +80,20 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
             if (nowUtc - c.TurnUtc < Settle) continue;
             if (wokenUtc.TryGetValue(pid, out var last) && nowUtc - last < Cooldown) continue;
             if (!IsAlive(pid)) continue;
-            var (handed, _) = Autopilot.Next(plan, settings, store, repos, null, claim: false, nowUtc,
+            // As its own `orchestrator next --claim` plans it (M.ORCH-T640): a CLI on a login of its own is held to that account's
+            // pace and allowance, not the global login's, or the nudge fired every tick for a claim that was answered "no room".
+            var cliPlan = plan;
+            if (snapshot is not null && own is not null && own.TryGetValue(c.SessionId, out var dir) && Dirs.Of(dir) is { } login)
+            {
+                if (!plans.TryGetValue(login.Email, out var forLogin))
+                {
+                    var account = snapshot.Accounts.FirstOrDefault(a => a.Email.Equals(login.Email, StringComparison.OrdinalIgnoreCase));
+                    plans[login.Email] = forLogin = Scheduler.Plan(snapshot with { Budget = account?.Budget, Pace = account?.Pace, Utilization = account?.Utilization, Account = account?.Account },
+                        settings, store.LoadAssignments());
+                }
+                cliPlan = forLogin;
+            }
+            var (handed, _) = Autopilot.Next(cliPlan, settings, store, repos, null, claim: false, nowUtc,
                 unthrottled: cycler.IsUnthrottled(pid), self: c.SessionId, cli: pid, pilots: pilots, onSince: since);
             if (handed.Count > 0) due.Add((pid, c, repos, [.. handed.Select(h => h.Item.Id)]));
         }
