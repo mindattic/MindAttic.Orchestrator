@@ -48,6 +48,51 @@ public sealed class SessionControl(OrchestratorOptions options)
         }
     }
 
+    /// <summary>
+    /// Opens the Launcher's menu as one person (M.ORCH-T615): <c>MindAttic.Launcher --account &lt;email&gt;</c> (M.LNCH-T54), so
+    /// every repo CLI started from it runs on that per-CLI login and shows in its dashboard tab; <paramref name="email"/> null
+    /// opens it unscoped, on the global login. It goes in that login's own Windows Terminal window, colored as it (M.ORCH-T616).
+    /// Returns an error, or null on success.
+    /// </summary>
+    public string? OpenLauncher(string? email)
+    {
+        if (email is not null && AccountDirs.Normalize(email) is null)
+            return $"\"{email}\" isn't an email address: the Launcher's --account takes the account's whole email.";
+        if (!File.Exists(options.LauncherExe))
+            return $"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/deploy.ps1).";
+        var psi = new ProcessStartInfo("wt.exe") { UseShellExecute = false };
+        foreach (var a in LauncherArguments(email)) psi.ArgumentList.Add(a);
+        try
+        {
+            using var _ = Process.Start(psi);
+            return null;
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            return $"Couldn't start Windows Terminal: {ex.Message}";
+        }
+    }
+
+    /// <summary>Where the per-CLI logins live, to name <see cref="OpenLauncher"/>'s login folder for its look; tests set their own.</summary>
+    internal AccountDirs Dirs { get; init; } = new();
+
+    /// <summary><c>wt</c>'s arguments for <see cref="OpenLauncher"/>: a tab in the login's window, titled and colored as it, at the
+    /// workspace root, running the Launcher (with <c>--account</c> for a per-CLI login).</summary>
+    internal IEnumerable<string> LauncherArguments(string? email)
+    {
+        var normalized = AccountDirs.Normalize(email);
+        var look = Look(normalized is null ? null : Dirs.For(normalized).Directory);
+        var title = $"[{look.Initials}] MindAttic.Launcher";
+        var root = Directory.Exists(options.WorkspaceRoot) ? options.WorkspaceRoot : Path.GetDirectoryName(options.LauncherExe) ?? ".";
+        string[] all =
+        [
+            "-w", look.Window, "new-tab", "--title", title, "--tabColor", look.TabColor, "-d", root, "--",
+            options.LauncherExe, .. normalized is null ? Array.Empty<string>() : ["--account", normalized],
+        ];
+        // wt splits its whole command line into subcommands on ';' unless it's escaped.
+        return all.Select(a => a.Replace(";", @"\;"));
+    }
+
     /// <summary>The look of a login's tabs (M.ORCH-T616); tests set their own rather than read the real ~/.claude.</summary>
     internal Func<string?, LoginLook> Look { get; init; } = LoginLook.ForConfigDir;
 
