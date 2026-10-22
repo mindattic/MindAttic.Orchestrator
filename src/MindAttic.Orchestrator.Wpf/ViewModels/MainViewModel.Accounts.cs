@@ -6,72 +6,29 @@ using MindAttic.Components.Wpf.Mvvm;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
-/// <summary>One entry in the account menu: what it switches to (<see cref="Id"/>: an account key, or
-/// <see cref="MainViewModel.ApiKeyItem"/>), its line, its icon-font glyph and its tooltip.</summary>
-public sealed record AccountMenuItem(string Id, string Label, string Icon, string ToolTip, string Account,
-    bool IsCurrent, string WeekUsage, string WeekResets, string FiveHourUsed,
-    string FiveHourResets, string LastRead, bool IsApiKey);
-
 /// <summary>
-/// The account menu in the upper right (M.ORCH-T492, M.ORCH-T566): every Claude account signed in to here, how much of its
-/// week and 5-hour window it has left and when each resets, read from the roster the daemon keeps, as a table. The corner
-/// names the signed-in account ("API key" while the Vault's key bills); its menu lists every account, the signed-in one
-/// marked and the one with the most headroom suggested, and picking one opens its login. The menu's last row bills the API
-/// key instead, as the Claude Team / API key toggle did (M.ORCH-T436).
+/// The account roster the daemon keeps (every Claude account signed in to here, how much of its week and 5-hour window it
+/// has left and when each resets). There's no account menu any more (M.ORCH-T628): every person is signed in at once, each
+/// with a tab of their own (M.ORCH-T613) whose stat tiles carry that login's own numbers (<see cref="OwnRow"/>), and what
+/// only the menu did moved to the Accounts view: billing the API key for emergencies and back to Claude Team
+/// (<see cref="ToggleBillingCommand"/>, M.ORCH-T436), and making a login the global default (<see cref="MakeDefaultCommand"/>).
 /// </summary>
 public sealed partial class MainViewModel
 {
-    public const string ApiKeyItem = "use-api-key";
-
     private IReadOnlyList<AccountRow> accountRows = [];
     private string? currentAccount;
     private bool switchingAccount;
 
-    /// <summary>The upper-right corner: "API key" while the Vault's key bills, else the signed-in account's email.</summary>
-    public string AccountCorner => CornerOf(billing?.Mode, accountRows, currentAccount);
-
-    internal static string CornerOf(string? mode, IReadOnlyList<AccountRow> rows, string? current) =>
-        mode == BillingModes.Api ? "API key"
-            : rows.FirstOrDefault(r => r.Account == current)?.Label ?? (current is null ? "Not signed in" : "Signed in");
-
-    /// <summary>The menu's rows, built as it opens: every account, then "Use API key (emergencies)".</summary>
-    public IReadOnlyList<AccountMenuItem> AccountMenu() => MenuOf(accountRows, currentAccount, billing?.Mode, DateTime.UtcNow, weeklyStopPercent);
-
     /// <summary>Each account's weekly stop line (M.ORCH-T609), from the weekly reserve setting as of the last refresh.</summary>
     private int weeklyStopPercent = MindAttic.Orchestrator.Settings.OrchestratorSettings.WeeklyStopFor(MindAttic.Orchestrator.Settings.OrchestratorSettings.DefaultWeeklyReservePercent);
 
-    /// <summary>Bindable: the table the account menu's popup renders, rebuilt whenever the roster, the signed-in account or
-    /// the billing mode changes.</summary>
-    public IReadOnlyList<AccountMenuItem> AccountMenuItems => AccountMenu();
+    /// <summary>This tab's login's roster row (M.ORCH-T628): on the global login's tab, whoever's signed in to it; on a per-CLI
+    /// login's tab, the account with its email. Null when the roster doesn't know it.</summary>
+    internal AccountRow? OwnRow => RowFor(accountRows, ScopeEmail, currentAccount);
 
-    internal static IReadOnlyList<AccountMenuItem> MenuOf(IReadOnlyList<AccountRow> rows, string? current, string? mode, DateTime nowUtc,
-        int? weeklyStopPercent = null)
-    {
-        var onKey = mode == BillingModes.Api;
-        var suggested = AccountSwitch.MostHeadroom(rows, nowUtc, weeklyStopPercent)?.Account;
-        var items = new List<AccountMenuItem>();
-        foreach (var r in rows)
-        {
-            var signedIn = r.Account == current && !onKey;
-            var icon = signedIn ? "" : ""; // only the signed-in row gets an icon
-            var tip = signedIn ? "Signed in: every CLI bills this account."
-                : r.Email is null ? "Its email shows once it's signed in to again (/login in a Claude CLI)."
-                : r.Account == current ? "Bill this account again instead of the API key: every CLI switches back."
-                : $"Sign every CLI in to {r.Email}: opens its login in the browser ({AccountSwitch.LoginCommand(r.Email, AccountSwitch.UsesSso(r))}).";
-            if (weeklyStopPercent is { } stop)
-                tip += AccountSwitch.AtWeeklyStop(r, nowUtc, stop)
-                    ? $" Its week is at its {stop}% stop line (the weekly reserve): its CLIs are stopped until the week resets."
-                    : $" Its CLIs stop at {stop}% of its week (the weekly reserve).";
-            var c = AccountSwitch.Columns(r, nowUtc, weeklyStopPercent);
-            items.Add(new AccountMenuItem(r.Account, AccountSwitch.MenuLine(r, signedIn ? current : null, suggested, nowUtc, weeklyStopPercent), icon, tip,
-                r.Label, signedIn, c.WeekUsage, c.WeekResets, c.FiveHourUsed, c.FiveHourResets, c.LastRead, false));
-        }
-        var apiLabel = "Use API key (emergencies)" + (onKey ? " (in use)" : "");
-        items.Add(new AccountMenuItem(ApiKeyItem, apiLabel, onKey ? "" : "",
-            "Bill every CLI to the MindAttic Vault's API key, for emergencies only. Open Launcher tabs restart with claude --resume at their next idle point.",
-            apiLabel, onKey, "", "", "", "", "", true));
-        return items;
-    }
+    internal static AccountRow? RowFor(IReadOnlyList<AccountRow> rows, string? email, string? current) => email is null
+        ? rows.FirstOrDefault(r => r.Account == current)
+        : rows.FirstOrDefault(r => string.Equals(r.Email, email, StringComparison.OrdinalIgnoreCase));
 
     private void ApplyAccounts(Snapshot next, DateTime nowUtc)
     {
@@ -80,6 +37,8 @@ public sealed partial class MainViewModel
         {
             accountRows = root.accountRows;
             weeklyStopPercent = root.weeklyStopPercent;
+            // The global login's account is the global tab's: a per-CLI tab's snapshot names its own login's.
+            currentAccount = root.currentAccount;
         }
         else
         {
@@ -87,23 +46,45 @@ public sealed partial class MainViewModel
             catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
             try { weeklyStopPercent = store.LoadSettings().WeeklyStopPercent; }
             catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException) { }
+            currentAccount = next.Account == ClaudeAccount.ApiKey ? null : next.Account;
         }
-        currentAccount = next.Account == ClaudeAccount.ApiKey ? null : next.Account;
-        Raise(nameof(AccountCorner));
-        Raise(nameof(AccountMenuItems));
+        RaiseOwnNumbers();
     }
 
-    /// <summary>Picks a menu entry: the API key switches every CLI to it; an account opens its login (billing goes back to
-    /// Claude Team first if the key was billing). The dashboard follows the switch at the next refresh after it lands.</summary>
-    public async Task ChooseAccountAsync(string id)
+    private ICommand? makeDefaultCommand, toggleBillingCommand;
+
+    /// <summary>"Make default" on a per-CLI login's card in the Accounts view (the parameter is its
+    /// <see cref="LoginCardViewModel"/>): signs the global login in to that account, so every CLI not started on a login of
+    /// its own runs on it, as picking it in the old account menu did.</summary>
+    public ICommand MakeDefaultCommand => makeDefaultCommand ??= new RelayCommand(async p =>
     {
-        if (id == ApiKeyItem)
-        {
-            if (billing?.Mode != BillingModes.Api && !switchingBilling) await SwitchBillingAsync(BillingModes.Api);
-            return;
-        }
-        if (switchingAccount || switchingBilling || accountRows.FirstOrDefault(r => r.Account == id) is not { } row) return;
+        if (p is LoginCardViewModel { CanMakeDefault: true, Email: { } email }) await MakeDefaultAsync(email);
+    }, _ => !switchingAccount && !switchingBilling);
+
+    /// <summary>The Accounts view's billing button: "Use API key (emergencies)" while Claude Team bills, "Back to Claude Team"
+    /// while the Vault's key does (M.ORCH-T436).</summary>
+    public ICommand ToggleBillingCommand => toggleBillingCommand ??= new RelayCommand(async () =>
+    {
+        if (switchingBilling || switchingAccount) return;
+        await SwitchBillingAsync(IsOnApiKey ? BillingModes.Team : BillingModes.Api);
+    }, () => !switchingBilling && !switchingAccount);
+
+    /// <summary>Whether the Vault's API key bills every CLI right now.</summary>
+    public bool IsOnApiKey => billing?.Mode == BillingModes.Api;
+
+    /// <summary>The billing button's label.</summary>
+    public string BillingToggleText => IsOnApiKey ? "Back to Claude Team" : "Use API key (emergencies)";
+
+    /// <summary>Signs the global login in to <paramref name="email"/>'s account (its roster row, or the email alone when the
+    /// roster doesn't know it yet): billing goes back to Claude Team first if the key was billing. The dashboard follows the
+    /// switch at the next refresh after it lands.</summary>
+    public async Task MakeDefaultAsync(string email)
+    {
+        if (switchingAccount || switchingBilling) return;
+        var row = accountRows.FirstOrDefault(r => string.Equals(r.Email, email, StringComparison.OrdinalIgnoreCase))
+                  ?? new AccountRow { Account = email, Email = email };
         switchingAccount = true;
+        CommandManager.InvalidateRequerySuggested();
         billingMessage = row.Account == currentAccount ? "Switching every CLI back to Claude Team…" : $"Opening {row.Label}'s login in the browser…";
         billingMessageUtc = DateTime.UtcNow;
         Raise(nameof(BillingDetail));
@@ -115,11 +96,11 @@ public sealed partial class MainViewModel
             billingMessage = result.Error ?? result.Lines.LastOrDefault() ?? "";
             billingMessageUtc = DateTime.UtcNow;
             if (result.Error is not null)
-                Toasts.Insert(0, new ToastViewModel("Account not switched", result.Error, Palette.Over, null));
+                Toasts.Insert(0, new ToastViewModel("Default login not switched", result.Error, Palette.Over, null));
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            billingMessage = $"Couldn't switch account: {ex.Message}";
+            billingMessage = $"Couldn't switch the default login: {ex.Message}";
             billingMessageUtc = DateTime.UtcNow;
             OrchestratorLog.For("Dashboard").Error(ex, "account switch failed");
         }
@@ -127,6 +108,7 @@ public sealed partial class MainViewModel
         {
             NoteLocalChange();
             switchingAccount = false;
+            CommandManager.InvalidateRequerySuggested();
             Raise(nameof(BillingDetail));
         }
         await RefreshAsync();

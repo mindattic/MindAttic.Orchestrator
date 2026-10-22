@@ -66,28 +66,6 @@
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
-        <Style x:Key="AccountMenuHeading" TargetType="{x:Type TextBlock}" BasedOn="{StaticResource MaMutedText}">
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Margin" Value="0,0,10,4" />
-        </Style>
-
-        <!-- The account menu's row text (M.ORCH-T568): the signed-in row's whole line turns green instead of a separate
-             green "Signed in" line underneath it. -->
-        <Style x:Key="AccountRowText" TargetType="TextBlock">
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsCurrent}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource MaGood}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-        <Style x:Key="AccountRowMutedText" TargetType="TextBlock" BasedOn="{StaticResource MaMutedText}">
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsCurrent}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource MaGood}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-
         <!-- A body view (repos, queue, audit, agents): the same 24px gutters as the header and toolbar. While the vertical
              scroll bar shows, it sits inside the right gutter instead of pushing the content in (M.ORCH-T192). Based on the
              theme's implicit ScrollViewer, so it keeps the dark corner and scroll bars. -->
@@ -151,15 +129,10 @@
         <!-- The header owns the window's left/right gutter; nothing inside it adds its own, so the tiles and the chart
              share both edges (M.ORCH-T192). The tiles are equal cells that together span the row at any width. -->
         <StackPanel x:Name="Header" Grid.Row="2" Margin="24,18,24,0" Visibility="{Binding ShowsDashboard, Converter={StaticResource Visible}}">
-        <!-- The account menu, upper right (M.ORCH-T492), as a normal app has it: the signed-in account's email ("API key" while
-             the Vault's key bills, M.ORCH-T436), which opens a table of every account in the roster (seat, week used and
-             left, its reset, the 5-hour window, when it was read; the signed-in one marked, the most headroom starred).
-             Hovering a row highlights it; clicking one opens its login in the browser. The last row bills the API key, for
-             emergencies (M.ORCH-T566). The tooltip says who every CLI bills; the line beside it what the last switch did and
-             which open CLIs still bill the other thing. -->
-        <!-- Upper left (M.ORCH-T493): the clock, when the dashboard last refreshed, Refresh (F5) and Settings, so the upper
-             right holds only the account menu. -->
-        <DockPanel x:Name="AccountRow" Margin="0,0,0,10" LastChildFill="True">
+        <!-- Upper left (M.ORCH-T493): the clock, when the dashboard last refreshed, Refresh (F5), Settings and Open Launcher.
+             The account menu that sat upper right is gone (M.ORCH-T628): every person is signed in at once, each on a tab of
+             their own whose tiles carry their numbers; billing and the global default moved to the Accounts view. -->
+        <DockPanel x:Name="HeaderRow" Margin="0,0,0,10" LastChildFill="True">
             <StackPanel x:Name="HeaderControls" DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="{Binding Clock.Text}" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" VerticalAlignment="Center" Margin="0,0,12,0"
                            AutomationProperties.Name="Current time" ToolTip="Current time" />
@@ -172,108 +145,7 @@
                         ToolTip="{Binding TabTitle}" ToolTipService.ShowOnDisabled="False"
                         AutomationProperties.Name="{Binding TabTitle, StringFormat='Open the Launcher as {0}'}" />
             </StackPanel>
-            <Button x:Name="AccountMenuButton" DockPanel.Dock="Right" Style="{StaticResource MaButton}" VerticalAlignment="Center"
-                    Margin="12,0,0,0" Padding="12,4" AutomationProperties.Name="{Binding AccountCorner, StringFormat='Account: {0}. Opens the account menu'}"
-                    AutomationProperties.HelpText="{Binding BillingClis}">
-                <Button.ToolTip>
-                    <TextBlock>
-                        <Run Text="{Binding BillingHeadline, Mode=OneWay}" FontWeight="SemiBold" /><LineBreak />
-                        <Run Text="{Binding BillingClis, Mode=OneWay}" />
-                    </TextBlock>
-                </Button.ToolTip>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE77B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,0,8,0"
-                               Foreground="{Binding BillingBrush}" />
-                    <TextBlock Text="{Binding AccountCorner}" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{Binding BillingBrush}" />
-                    <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" VerticalAlignment="Center" Margin="8,1,0,0" />
-                </StackPanel>
-            </Button>
-            <TextBlock Text="{Binding BillingDetail}" Style="{StaticResource MaTileSubtitle}" TextWrapping="Wrap" VerticalAlignment="Center"
-                       TextAlignment="Right" Margin="12,0,0,0"
-                       Visibility="{Binding BillingDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
         </DockPanel>
-
-        <!-- The account menu's popup (M.ORCH-T566): a table, not a text menu, so picking an account is "hover the row, click
-             it" rather than reading a long joined sentence. StaysOpen="False" gives it the usual light-dismiss (an outside
-             click or losing focus closes it) for free; the trigger button's own toggle is wired in code-behind, since a plain
-             Click there would immediately reopen what the outside click just closed. -->
-        <Popup x:Name="AccountPopup" PlacementTarget="{Binding ElementName=AccountMenuButton}" Placement="Custom"
-               AllowsTransparency="True" StaysOpen="False" Focusable="False" PopupAnimation="Fade">
-            <Border Style="{StaticResource MaCard}" Padding="4,8" Margin="0">
-                <StackPanel>
-                    <!-- 8px sides: the rows' button Padding, so each heading starts where its cells do. -->
-                    <Grid Margin="8,0,8,2">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="22" />
-                            <ColumnDefinition Width="300" />
-                            <ColumnDefinition Width="74" />
-                            <ColumnDefinition Width="180" />
-                            <ColumnDefinition Width="160" />
-                            <ColumnDefinition Width="180" />
-                            <ColumnDefinition Width="104" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="1" Text="Account" Style="{StaticResource AccountMenuHeading}" />
-                        <TextBlock Grid.Column="2" Text="5h used" Style="{StaticResource AccountMenuHeading}" />
-                        <TextBlock Grid.Column="3" Text="5h resets" Style="{StaticResource AccountMenuHeading}" />
-                        <TextBlock Grid.Column="4" Text="Week usage" Style="{StaticResource AccountMenuHeading}" />
-                        <TextBlock Grid.Column="5" Text="Week resets" Style="{StaticResource AccountMenuHeading}" />
-                        <TextBlock Grid.Column="6" Text="Last Checked" Style="{StaticResource AccountMenuHeading}" />
-                    </Grid>
-                    <ItemsControl x:Name="AccountRows" ItemsSource="{Binding AccountMenuItems}" Focusable="False">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:AccountMenuItem}">
-                                <Button CommandParameter="{Binding Id}" ToolTip="{Binding ToolTip}"
-                                        AutomationProperties.Name="{Binding Label}">
-                                    <Button.Style>
-                                        <!-- MaToolButton (M.ORCH-T499): transparent at rest, MaHover on mouse-over or keyboard
-                                             focus, so hovering or tabbing to a row is the only cue needed before clicking it
-                                             (or pressing Enter/Space) picks that account. -->
-                                        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaToolButton}">
-                                            <Setter Property="Width" Value="Auto" />
-                                            <Setter Property="Height" Value="Auto" />
-                                            <Setter Property="HorizontalAlignment" Value="Stretch" />
-                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                            <Setter Property="Padding" Value="8,6" />
-                                            <Style.Triggers>
-                                                <!-- Sets it apart from the accounts above it; MaToolButton's own template draws no
-                                                     border for Margin to play against, so a gap is all a trigger here can add. -->
-                                                <DataTrigger Binding="{Binding IsApiKey}" Value="True">
-                                                    <Setter Property="Margin" Value="0,6,0,0" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                    <!-- MaToolButton (the row's Style) sets FontFamily to the icon font, which inherits down to
-                                         every cell unless reset here: only the Icon TextBlock below wants that font. -->
-                                    <Grid TextElement.FontFamily="Segoe UI">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="22" />
-                                            <ColumnDefinition Width="300" />
-                                            <ColumnDefinition Width="74" />
-                                            <ColumnDefinition Width="180" />
-                                            <ColumnDefinition Width="160" />
-                                            <ColumnDefinition Width="180" />
-                                            <ColumnDefinition Width="104" />
-                                        </Grid.ColumnDefinitions>
-                                        <!-- Empty space, not a person icon, for every row but the signed-in one: the checkmark is
-                                             the only icon the roster shows, so this column just reserves its width (M.ORCH-T568). -->
-                                        <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" VerticalAlignment="Center"
-                                                   Style="{StaticResource AccountRowText}" />
-                                        <TextBlock Grid.Column="1" Text="{Binding Account}" FontWeight="SemiBold" VerticalAlignment="Center"
-                                                   Margin="0,0,10,0" Style="{StaticResource AccountRowText}" />
-                                        <TextBlock Grid.Column="2" Text="{Binding FiveHourUsed}" Style="{StaticResource AccountRowText}" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="3" Text="{Binding FiveHourResets}" Style="{StaticResource AccountRowMutedText}" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="4" Text="{Binding WeekUsage}" Style="{StaticResource AccountRowText}" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="5" Text="{Binding WeekResets}" Style="{StaticResource AccountRowMutedText}" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="6" Text="{Binding LastRead}" Style="{StaticResource AccountRowMutedText}" VerticalAlignment="Center" />
-                                    </Grid>
-                                </Button>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-            </Border>
-        </Popup>
 
         <local:AlignedGrid x:Name="StatTiles" MinItemWidth="160" Gap="10" RowGap="10" Balanced="True" UniformRows="True"
                            AutomationProperties.Name="Summary">
@@ -358,13 +230,17 @@
                                Visibility="{Binding PaceText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 </StackPanel>
             </Button>
-            <!-- Weekly: the other half of /status's picture; the 5-hour card never shows it on its own. -->
+            <!-- Weekly: the other half of /status's picture; the 5-hour card never shows it on its own. The tab's login's own
+                 week (M.ORCH-T628): what's left, its reset's day, date and time, its weekly stop line (M.ORCH-T609), and the
+                 plan and last-checked time the account menu used to show. -->
             <Button Style="{StaticResource MaSmallStat}" Command="{Binding ToggleSettingsCommand}"
-                    ToolTip="How much of Claude's weekly limit is left (/status reports the used share). Opens settings, where the weekly reset is set."
+                    ToolTip="How much of this login's weekly limit is left (/status reports the used share), when it resets, and where its CLIs stop (the weekly reserve). Opens settings, where the weekly reset is set."
                     AutomationProperties.Name="{Binding WeeklyHeadline, StringFormat='Week {0}: open settings'}">
                 <StackPanel>
                     <TextBlock Text="{Binding WeeklyHeadline}" Style="{StaticResource StatValue}" />
-                    <TextBlock Text="{Binding WeeklyCaption}" Style="{StaticResource MaTileSubtitle}" />
+                    <TextBlock Text="{Binding WeeklyCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding WeeklyAccountLine}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis"
+                               Visibility="{Binding WeeklyAccountLine, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 </StackPanel>
             </Button>
             <Button Style="{StaticResource MaSmallStat}" Command="{Binding ShowViewCommand}" CommandParameter="Repos"
@@ -1115,9 +991,21 @@
             <ScrollViewer x:Name="AccountsBody" Grid.ColumnSpan="2" Style="{StaticResource BodyScroll}"
                           Visibility="{Binding IsAccountsView, Converter={StaticResource Visible}}">
                 <StackPanel>
-                    <!-- The view's toolbar: Add account and Sign in all (M.ORCH-T604); room for more account actions here. -->
+                    <!-- The view's toolbar: Add account and Sign in all (M.ORCH-T604), and billing the Vault's API key for
+                         emergencies or back to Claude Team (M.ORCH-T436), moved here from the account menu (M.ORCH-T628) with its
+                         tooltip of who every CLI bills. -->
                     <DockPanel x:Name="AccountsToolbar" Margin="0,4,0,8">
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom">
+                            <Button x:Name="BillingToggleButton" Style="{StaticResource MaButton}" Content="{Binding BillingToggleText}" Padding="14,5" Margin="0,0,8,0"
+                                    Command="{Binding ToggleBillingCommand}" VerticalAlignment="Center" Foreground="{Binding BillingBrush}"
+                                    AutomationProperties.Name="{Binding BillingToggleText}" AutomationProperties.HelpText="{Binding BillingClis}">
+                                <Button.ToolTip>
+                                    <TextBlock>
+                                        <Run Text="{Binding BillingHeadline, Mode=OneWay}" FontWeight="SemiBold" /><LineBreak />
+                                        <Run Text="{Binding BillingClis, Mode=OneWay}" />
+                                    </TextBlock>
+                                </Button.ToolTip>
+                            </Button>
                             <TextBox x:Name="NewAccountBox" Style="{StaticResource MaTextBox}" Width="260" Height="32" VerticalAlignment="Center"
                                      Text="{Binding NewAccountEmail, UpdateSourceTrigger=PropertyChanged}"
                                      mc:MaTextBox.Placeholder="name@company.com"
@@ -1137,6 +1025,11 @@
                     <TextBlock Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,0,0,10"
                                AutomationProperties.LiveSetting="Polite"
                                Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                    <!-- The billing detail line (M.ORCH-T628, from beside the old account menu): what the last switch did, a
+                         problem, and the open CLIs still billing the other thing. -->
+                    <TextBlock x:Name="BillingDetailLine" Text="{Binding BillingDetail}" Style="{StaticResource MaTileSubtitle}" TextWrapping="Wrap" Margin="0,0,0,10"
+                               AutomationProperties.LiveSetting="Polite"
+                               Visibility="{Binding BillingDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
 
                     <ItemsControl x:Name="LoginCardList" ItemsSource="{Binding LoginCards}" Focusable="False" AutomationProperties.Name="Claude logins">
                         <ItemsControl.ItemsPanel>
@@ -1209,6 +1102,18 @@
                                                 <TextBlock Text="Nobody is signed in to this login, so no CLI can run on it." Style="{StaticResource MaMutedText}"
                                                            TextWrapping="Wrap" VerticalAlignment="Center" />
                                             </DockPanel>
+                                            <!-- Make default (M.ORCH-T628, from the old account menu): sign the global login in to this
+                                                 account, so every CLI not started on a login of its own runs on it. -->
+                                            <DockPanel Margin="0,8,0,0" Visibility="{Binding CanMakeDefault, Converter={StaticResource Visible}}">
+                                                <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Content="Make default" Padding="14,4"
+                                                        Command="{Binding DataContext.MakeDefaultCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        AutomationProperties.Name="{Binding Title, StringFormat='Make {0} the global default'}"
+                                                        ToolTip="Sign the global login (~/.claude) in to this account, opening its login in the browser: every CLI not started on a login of its own follows at its next turn. Billing goes back to Claude Team first if the API key bills." />
+                                                <TextBlock Text="Not the global default." Style="{StaticResource MaMutedText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                            </DockPanel>
+                                            <TextBlock Text="The global default: every CLI not started on a login of its own runs on this account." Style="{StaticResource MaMutedText}"
+                                                       TextWrapping="Wrap" Margin="0,8,0,0" Visibility="{Binding IsDefault, Converter={StaticResource Visible}}" />
                                             <TextBlock Text="{Binding SignInHint}" Foreground="{DynamicResource MaWarn}" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0"
                                                        Visibility="{Binding SignInHint, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
 

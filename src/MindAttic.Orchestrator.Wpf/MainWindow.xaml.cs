@@ -57,22 +57,6 @@ public partial class MainWindow : Window
         }));
         CommandBindings.Add(new CommandBinding(WindowCommands.Escape, (_, _) => OnEscape()));
 
-        // The account menu in the upper right (M.ORCH-T492, M.ORCH-T566): a table popup, its rows rebuilt from the roster
-        // every time AccountMenuItems changes. AccountPopup.StaysOpen="False" already closes it on an outside click or lost
-        // focus; a plain Click on the trigger would immediately reopen what that outside click just closed, so the toggle
-        // is done on the preview mouse-down instead, closing (and swallowing the press) when it's already open.
-        AccountMenuButton.PreviewMouseLeftButtonDown += (_, e) =>
-        {
-            if (!AccountPopup.IsOpen) return;
-            AccountPopup.IsOpen = false;
-            e.Handled = true;
-        };
-        AccountMenuButton.Click += (_, _) => AccountPopup.IsOpen = true;
-        AccountPopup.CustomPopupPlacementCallback = PlaceAccountPopup;
-        // A row's Button has no Command (its CommandParameter alone can't pick which VM method to call); caught here instead,
-        // once, since every row's Click bubbles up through the ItemsControl regardless of which DataTemplate instance it's in.
-        AccountRows.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(OnAccountRowClick));
-
         // Each pane's terminal lives in the Terminals view's host grid from its opening to its closing (M.ORCH-T618): a
         // template would build a new terminal (and a new CLI) every time its tab was shown.
         model.AllTerminals.Panes.CollectionChanged += (_, e) =>
@@ -106,9 +90,6 @@ public partial class MainWindow : Window
         StateChanged += async (_, _) => await OnShownOrHidden();
     }
 
-    /// <summary>Lines up the account menu table's right edge with the trigger button's right edge, directly beneath it,
-    /// rather than the left-aligned spot a plain Placement="Bottom" would give a trigger sitting at the window's right
-    /// edge (which would push most of a ~750px table off past that edge).</summary>
     private CancellationTokenSource? paneBroker;
 
     /// <summary>
@@ -134,19 +115,6 @@ public partial class MainWindow : Window
         if (sender != Shown) return;
         if (e.PropertyName == nameof(MainViewModel.StatusMessage)) Announce(Shown.StatusMessage);
         else if (e.PropertyName == nameof(MainViewModel.QueueMessage)) Announce(Shown.QueueMessage);
-    }
-
-    private static CustomPopupPlacement[] PlaceAccountPopup(Size popupSize, Size targetSize, Point offset) =>
-        [new CustomPopupPlacement(new Point(targetSize.Width - popupSize.Width, targetSize.Height), PopupPrimaryAxis.Horizontal)];
-
-    /// <summary>A row clicked in the account menu table (M.ORCH-T566): close the popup first, so it's never on screen for a
-    /// screenshot or the start of a recording, then run the switch itself.</summary>
-    private void OnAccountRowClick(object sender, RoutedEventArgs e)
-    {
-        AccountPopup.IsOpen = false;
-        if (e.OriginalSource is not Button { CommandParameter: string id }) return;
-        var tab = Shown;
-        Dispatcher.BeginInvoke(async () => await tab.ChooseAccountAsync(id), DispatcherPriority.Background);
     }
 
     /// <summary>"Move to" on an agent card, an Accounts-view CLI row (M.ORCH-T607) or a terminal tab (M.ORCH-T622): a menu of the other signed-in logins,
@@ -205,8 +173,7 @@ public partial class MainWindow : Window
     private void OnEscape()
     {
         var shown = Shown;
-        if (AccountPopup.IsOpen) AccountPopup.IsOpen = false;
-        else if (shown.IsSettingsOpen) shown.IsSettingsOpen = false;
+        if (shown.IsSettingsOpen) shown.IsSettingsOpen = false;
         else if (SearchBox.IsKeyboardFocusWithin && shown.Search.Length > 0) shown.Search = "";
         else if (shown.Selected is not null) shown.SelectCommand.Execute(shown.Selected);
         else shown.Search = "";

@@ -170,9 +170,11 @@ public sealed partial class MainViewModel
 
     internal void ApplyLoginCards(IReadOnlyList<LoginCard> cards, DateTime nowUtc)
     {
+        // Who the global login is signed in to: that per-CLI login's card is the default already (no Make default).
+        var defaultEmail = IsOnApiKey ? null : cards.FirstOrDefault(c => c.IsGlobal)?.SignedInAs;
         LoginCards.SyncBy([.. cards], c => c.Email ?? "", v => v.Key,
-            c => { var v = new LoginCardViewModel(c.Email ?? ""); v.Update(c, nowUtc); return v; },
-            (v, c) => v.Update(c, nowUtc));
+            c => { var v = new LoginCardViewModel(c.Email ?? ""); v.Update(c, nowUtc, defaultEmail); return v; },
+            (v, c) => v.Update(c, nowUtc, defaultEmail));
         Raise(nameof(LoginCardsSummary));
     }
 }

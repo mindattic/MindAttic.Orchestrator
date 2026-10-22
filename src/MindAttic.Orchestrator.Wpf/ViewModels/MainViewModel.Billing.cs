@@ -4,9 +4,9 @@ using MindAttic.Orchestrator.Billing;
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
 /// <summary>
-/// Who every CLI bills (M.ORCH-T436): "Claude Team: you (org)" or "API KEY: sk-ant-...WXYZ" (masked), in the account
-/// corner's tooltip, and what's being done about the CLIs billing the other thing, beside it. The switch itself is the
-/// account menu's (M.ORCH-T492): an account bills Claude Team, its last entry the API key.
+/// Who every CLI bills (M.ORCH-T436): "Claude Team: you (org)" or "API KEY: sk-ant-...WXYZ" (masked), in the tooltip of
+/// the Accounts view's billing button, and what's being done about the CLIs billing the other thing, on the line under the
+/// view's toolbar (M.ORCH-T628: they went with the account menu's switches to the Accounts view).
 /// </summary>
 public sealed partial class MainViewModel
 {
@@ -50,12 +50,13 @@ public sealed partial class MainViewModel
         billing = next.Billing;
         // What the last switch did stays up for a couple of minutes, as a toast would.
         if (!switchingBilling && DateTime.UtcNow - billingMessageUtc > TimeSpan.FromMinutes(2)) billingMessage = "";
-        Raise(nameof(AccountCorner)); Raise(nameof(AccountMenuItems)); Raise(nameof(BillingHeadline)); Raise(nameof(BillingBrush)); Raise(nameof(BillingDetail)); Raise(nameof(BillingClis));
+        Raise(nameof(IsOnApiKey)); Raise(nameof(BillingToggleText)); Raise(nameof(BillingHeadline)); Raise(nameof(BillingBrush)); Raise(nameof(BillingDetail)); Raise(nameof(BillingClis));
     }
 
     private async Task SwitchBillingAsync(string mode)
     {
         switchingBilling = true;
+        System.Windows.Input.CommandManager.InvalidateRequerySuggested();
         billingMessage = $"Switching every CLI to {BillingModes.Name(mode)}…";
         Raise(nameof(BillingDetail));
         try
@@ -79,7 +80,8 @@ public sealed partial class MainViewModel
             // A refresh built while it was switching read the old mode: it's built again, not applied (M.ORCH-T462).
             NoteLocalChange();
             switchingBilling = false;
-            Raise(nameof(AccountCorner)); Raise(nameof(AccountMenuItems)); Raise(nameof(BillingHeadline)); Raise(nameof(BillingBrush)); Raise(nameof(BillingDetail)); Raise(nameof(BillingClis));
+            System.Windows.Input.CommandManager.InvalidateRequerySuggested();
+            Raise(nameof(IsOnApiKey)); Raise(nameof(BillingToggleText)); Raise(nameof(BillingHeadline)); Raise(nameof(BillingBrush)); Raise(nameof(BillingDetail)); Raise(nameof(BillingClis));
         }
         await RefreshAsync();
     }

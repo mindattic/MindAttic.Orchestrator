@@ -122,6 +122,15 @@ public sealed class LoginCardViewModel(string key) : ObservableObject
 
     /// <summary>A per-CLI login nobody's signed in to offers Sign in; the global login signs in with /login in any CLI.</summary>
     public bool CanSignIn => !SignedIn && !IsGlobal;
+
+    private bool isDefault;
+
+    /// <summary>The global login is signed in to this per-CLI login's account: it's every unscoped CLI's default already.</summary>
+    public bool IsDefault => isDefault;
+
+    /// <summary>"Make default" (M.ORCH-T628, from the old account menu): a per-CLI login whose account the global login isn't
+    /// signed in to can become the global default, its sign-in opening in the browser.</summary>
+    public bool CanMakeDefault => !IsGlobal && Email is not null && !isDefault;
     public string SignInHint => !SignedIn && IsGlobal ? "Run /login in a Claude CLI to sign the global login in." : "";
 
     public ObservableCollection<LoginCliViewModel> Clis { get; } = [];
@@ -133,10 +142,12 @@ public sealed class LoginCardViewModel(string key) : ObservableObject
         var n => $"{n} CLIs running on it",
     };
 
-    public void Update(LoginCard next, DateTime now)
+    /// <param name="defaultEmail">Who the global login is signed in to, for <see cref="CanMakeDefault"/>.</param>
+    public void Update(LoginCard next, DateTime now, string? defaultEmail = null)
     {
         card = next;
         nowUtc = now;
+        isDefault = !next.IsGlobal && next.Email is not null && string.Equals(next.Email, defaultEmail, StringComparison.OrdinalIgnoreCase);
         Clis.SyncBy([.. next.Clis], c => c.SessionId, v => v.SessionId,
             c => { var v = new LoginCliViewModel(c.SessionId); v.Update(c); return v; },
             (v, c) => v.Update(c));

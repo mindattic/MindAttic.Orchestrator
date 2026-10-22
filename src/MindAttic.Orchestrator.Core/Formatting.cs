@@ -10,6 +10,10 @@ public static class Formatting
         resetUtc.ToLocalTime().ToString(resetUtc.ToLocalTime().Date != nowUtc.ToLocalTime().Date ? "ddd h:mm tt" : "h:mm tt",
             System.Globalization.CultureInfo.InvariantCulture);
 
+    /// <summary>A reset with its weekday, date and time, local: "Mon 10/27 5:00 PM" (the weekly tile, M.ORCH-T628).</summary>
+    public static string ResetOnDay(DateTime resetUtc) =>
+        resetUtc.ToLocalTime().ToString("ddd M/d h:mm tt", CultureInfo.InvariantCulture);
+
     /// <summary>A weekly reset with how far off it is: "10/27 5:00pm (6.3 days)".</summary>
     public static string ResetInDays(DateTime resetUtc, DateTime nowUtc) =>
         $"{DateAndTime(resetUtc)} ({Tenths((resetUtc - nowUtc).TotalDays)} days)";
