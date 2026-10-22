@@ -81,11 +81,11 @@ public sealed class TerminalPanesTests
         var record = new PaneRecord("id", "Repo", @"D:\W\Repo", "Claude", DateTime.UtcNow) { ConfigDir = @"C:\a\amy@example.com", SessionId = "abc-123" };
         var request = control.ResumeRequest(record);
         var script = Script(request.CommandLine);
-        Assert.That(script, Is.EqualTo("$env:CLAUDE_CONFIG_DIR = 'C:\\a\\amy@example.com'; Set-Location -LiteralPath 'D:\\W\\Repo'; & claude --resume 'abc-123'; exit $LASTEXITCODE"));
+        Assert.That(script, Is.EqualTo("$env:CLAUDE_CONFIG_DIR = 'C:\\a\\amy@example.com'; & 'C:\\Apps\\L.exe' 'host' '--path' 'D:\\W\\Repo' '--title' '[AM] Repo [Claude]' '--provider' 'Claude' '--resume' 'abc-123' '--config-dir' 'C:\\a\\amy@example.com'; exit $LASTEXITCODE"));
         Assert.That(request.ResumeSession, Is.EqualTo("abc-123"));
 
         var global = Script(control.ResumeRequest(record with { ConfigDir = null }).CommandLine);
-        Assert.That(global, Does.StartWith("Remove-Item Env:CLAUDE_CONFIG_DIR"), "the global login: no folder the dashboard happens to carry");
+        Assert.That(global, Does.StartWith("Remove-Item Env:CLAUDE_CONFIG_DIR").And.Contain("'--resume' 'abc-123'").And.Not.Contain("--config-dir"), "the global login: no folder the dashboard happens to carry");
 
         var fresh = control.ResumeRequest(record with { SessionId = null });
         Assert.That(fresh.ResumeSession, Is.Null);

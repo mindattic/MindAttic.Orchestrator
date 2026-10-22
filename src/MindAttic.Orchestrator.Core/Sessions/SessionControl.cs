@@ -66,36 +66,34 @@ public sealed class SessionControl(OrchestratorOptions options)
 
     /// <summary>A pane for <paramref name="directory"/> (M.ORCH-T618): the same Launcher host command, title, badge and color a
     /// Windows Terminal tab gets, with the login's <c>CLAUDE_CONFIG_DIR</c> set inside the pane's own command.</summary>
-    public PaneRequest PaneRequestFor(string title, string directory, string provider, string? prompt, string? configDir = null)
+    public PaneRequest PaneRequestFor(string title, string directory, string provider, string? prompt, string? configDir = null, string? resumeSession = null)
     {
         var look = provider == "Claude" ? Look(configDir) : null;
         var tabTitle = TabTitle(title, provider, look);
         string[] host =
         [
             options.LauncherExe, "host", "--path", directory, "--title", tabTitle, "--provider", provider,
+            .. resumeSession is { Length: > 0 } ? new[] { "--resume", resumeSession } : [],
+            .. resumeSession is { Length: > 0 } && configDir is not null ? new[] { "--config-dir", configDir } : [],
             .. string.IsNullOrWhiteSpace(prompt) ? Array.Empty<string>() : new[] { "--prompt", SafePrompt(prompt) },
         ];
-        var command = configDir is null
+        // A resumed pane on the global login clears the variable the dashboard itself may carry.
+        var command = configDir is null && resumeSession is not { Length: > 0 }
             ? JoinCommandLine(host)
+            : configDir is null
+            ? PowerShell($"Remove-Item Env:{AccountDirs.EnvVar} -ErrorAction SilentlyContinue; & {string.Join(' ', host.Select(AccountDirs.Ps))}; exit $LASTEXITCODE")
             : PowerShell($"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; & {string.Join(' ', host.Select(AccountDirs.Ps))}; exit $LASTEXITCODE");
         return new PaneRequest(title, tabTitle, directory, provider, command) { ConfigDir = configDir, Initials = look?.Initials, TabColor = look?.TabColor };
     }
 
-    /// <summary>A pane that picks a recorded Claude conversation back up (<c>claude --resume</c>) under the login it ran on, once
+    /// <summary>A pane that picks a recorded Claude conversation back up (the Launcher host's <c>--resume</c>, so it has the input and control pipes, restart-resume and account moves) under the login it ran on, once
     /// the dashboard that held it has closed (M.ORCH-T618). Without a session, a new tab for the repo as <see cref="PaneRequestFor"/>.</summary>
     public PaneRequest ResumeRequest(PaneRecord record)
     {
         if (record.SessionId is not { Length: > 0 } session || record.Provider != "Claude")
             return PaneRequestFor(record.Repo, record.Directory, record.Provider, null, record.ConfigDir);
-        var look = Look(record.ConfigDir);
-        var login = record.ConfigDir is { } dir
-            ? $"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(dir)}; "
-            : $"Remove-Item Env:{AccountDirs.EnvVar} -ErrorAction SilentlyContinue; ";
-        var script = login + $"Set-Location -LiteralPath {AccountDirs.Ps(record.Directory)}; & claude --resume {AccountDirs.Ps(session)}; exit $LASTEXITCODE";
-        return new PaneRequest(record.Repo, TabTitle(record.Repo, record.Provider, look), record.Directory, record.Provider, PowerShell(script))
-        {
-            ConfigDir = record.ConfigDir, Initials = look.Initials, TabColor = look.TabColor, ResumeSession = session,
-        };
+        var request = PaneRequestFor(record.Repo, record.Directory, record.Provider, null, record.ConfigDir, session);
+        return request with { ResumeSession = session };
     }
 
     /// <summary>PowerShell running <paramref name="script"/>, encoded so no quote, space or ';' in a folder, title or prompt is
