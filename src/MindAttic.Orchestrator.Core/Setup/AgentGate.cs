@@ -1851,10 +1851,11 @@ public static class AgentGate
             called = str((data.get("tool_input") or {}).get("skill") or "").strip().lstrip("/").lower().split(":")[-1]
             called = "autopilot" if called == "allocate" else called  # /allocate is autopilot's command (M.ORCH-T560)
             if called in ("crossrepo", "autopilot"):
+                shown = "allocate" if called == "autopilot" else called  # the public name, never the internal "autopilot" one
                 given = str((data.get("tool_input") or {}).get("args") or "").strip()
                 off = bool(re.match(r"off\b", given, re.I)) or (called == "crossrepo" and not given)
                 if not off and called not in (session_state(data.get("session_id")).get("asked") or []):
-                    refuse(f"/{called} is the user's to switch on, never yours: their latest prompt didn't ask for it, so nothing was "
+                    refuse(f"/{shown} is the user's to switch on, never yours: their latest prompt didn't ask for it, so nothing was "
                            f"recorded. Ask the user to type " + ("/crossrepo <repos>" if called == "crossrepo" else "/allocate") + " themselves.")
                 pid = os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
                 why = set_autopilot(pid, given, data.get("cwd") or "") if called == "autopilot" else set_crossrepo(pid, given)

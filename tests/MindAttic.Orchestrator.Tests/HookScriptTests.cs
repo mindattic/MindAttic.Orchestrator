@@ -1107,7 +1107,8 @@ public sealed class HookScriptTests
     {
         var mark = Path.Combine(Marks, $"autopilot-{Cli}");
         Gate(Said("work the Tickets tickets"), AgentGate.ContextScriptName);
-        Assert.That(Gate(SkillCall("autopilot", "-repo=MindAttic.Tickets")).Output, Does.Contain("\"deny\"").And.Contain("/allocate"));
+        // The refusal always names the public command (/allocate), never the internal "autopilot" one it's stored as.
+        Assert.That(Gate(SkillCall("autopilot", "-repo=MindAttic.Tickets")).Output, Does.Contain("\"deny\"").And.Contain("/allocate").And.Not.Contain("/autopilot"));
         Assert.That(File.Exists(mark), Is.False);
         Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Does.Contain("\"deny\""));
 
