@@ -285,3 +285,61 @@ public sealed class MainlineTestsTests
         Assert.That(MainlineTests.BuildErrors("ok\n  src/A.cs(3,1): error CS1002: ; expected\nmore"), Is.EqualTo("src/A.cs(3,1): error CS1002: ; expected"));
     }
 }
+
+public sealed class MainlineTestsFileLockTests
+{
+    private sealed class Runner(Queue<ProcessResult> results) : IProcessRunner
+    {
+        public int Calls;
+        public ProcessResult Run(string file, IReadOnlyList<string> args, TimeSpan timeout) { Calls++; return results.Dequeue(); }
+    }
+
+    private const string Lock = "Microsoft.Common.CurrentVersion.targets(5096,5): error MSB3027: Could not copy \"a.dll\" to \"b\". Exceeded retry count of 10.";
+
+    [Test]
+    public void A_file_lock_that_clears_on_retry_is_not_a_failure()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "mt-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var runner = new Runner(new([new(1, Lock, "", false), new(0, "", "", false)]));
+            var r = MainlineTests.Dotnet(runner, Path.Combine(dir, "x.sln"), TimeSpan.FromMinutes(1), TimeSpan.Zero);
+            Assert.That(r.Completed);
+            Assert.That(r.Failed, Is.Empty);
+            Assert.That(runner.Calls, Is.EqualTo(2));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Test]
+    public void A_file_lock_that_persists_is_not_completed_so_nothing_is_filed()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "mt-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var runner = new Runner(new([new(1, Lock, "", false), new(1, Lock, "", false), new(1, Lock, "", false)]));
+            var r = MainlineTests.Dotnet(runner, Path.Combine(dir, "x.sln"), TimeSpan.FromMinutes(1), TimeSpan.Zero);
+            Assert.That(r.Completed, Is.False);
+            Assert.That(runner.Calls, Is.EqualTo(3));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Test]
+    public void A_real_compile_error_is_not_retried()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "mt-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var runner = new Runner(new([new(1, "A.cs(1,1): error CS1002: ; expected", "", false)]));
+            var r = MainlineTests.Dotnet(runner, Path.Combine(dir, "x.sln"), TimeSpan.FromMinutes(1), TimeSpan.Zero);
+            Assert.That(r.Completed);
+            Assert.That(r.Failed, Has.Count.EqualTo(1));
+            Assert.That(runner.Calls, Is.EqualTo(1));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+}

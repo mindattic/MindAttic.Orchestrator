@@ -299,7 +299,28 @@ public sealed partial class MainlineTests(JsonStore store)
     /// <c>dotnet test</c> on <paramref name="solution"/>, read from its TRX results. Build servers are off: one left running
     /// would hold the output pipes open (and the run "timed out"). No results and a failed exit is a build that failed.
     /// </summary>
-    internal static SuiteResult Dotnet(IProcessRunner runner, string solution, TimeSpan timeout)
+    internal static SuiteResult Dotnet(IProcessRunner runner, string solution, TimeSpan timeout, TimeSpan? retryDelay = null)
+    {
+        // A copy that fails because another process holds the file (MSB3027/MSB3021: a leftover testhost, antivirus, an
+        // overlapping build) is the machine, not main: retried, and if it persists the run isn't completed, so no
+        // "Fails on main: the build" ticket is filed for it (M.ORCH-T600).
+        SuiteResult result = null!;
+        for (var attempt = 0; attempt <= FileLockRetries; attempt++)
+        {
+            if (attempt > 0) Thread.Sleep(retryDelay ?? TimeSpan.FromSeconds(30));
+            result = DotnetOnce(runner, solution, timeout);
+            if (!(result.Completed && result.Failed.Count == 1 && result.Failed[0].Test == BuildName && IsFileLock(result.Failed[0].Message))) return result;
+        }
+        return new SuiteResult(false, [], new HashSet<string>(), $"the build couldn't copy a file another process held, after {FileLockRetries + 1} tries: {result.Failed[0].Message}");
+    }
+
+    internal const int FileLockRetries = 2;
+
+    /// <summary>Whether a build's errors are a file another process holds, not a fault in the code.</summary>
+    internal static bool IsFileLock(string errors) =>
+        errors.Contains("MSB3027", StringComparison.Ordinal) || errors.Contains("MSB3021", StringComparison.Ordinal);
+
+    private static SuiteResult DotnetOnce(IProcessRunner runner, string solution, TimeSpan timeout)
     {
         // Beside the worktree (main-tests-results), not in it: the next checkout's clean would take it.
         var tree = Path.GetDirectoryName(Path.GetFullPath(solution))!;
