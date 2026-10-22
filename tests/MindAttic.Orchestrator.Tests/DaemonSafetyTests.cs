@@ -201,17 +201,19 @@ public sealed class DaemonSafetyTests
             $"-C {repo} show HEAD:data/orchestrator.sql",
             $"-C {repo} add -- {string.Join(' ', files)}",
             $"-C {repo} commit -q -m {Daemon.OrchestratorDbSyncSubject} -- {string.Join(' ', files)}",
+            $"-C {repo} fetch -q origin",
+            $"-C {repo} rebase -q --autostash origin/main",
             $"-C {repo} push -q",
         }), "only the database and its dump go in the commit");
         Assert.That(runner.Calls.All(c => c.File == "git"));
 
         daemon.SyncOrchestratorDbIfDue(repo, dbPath, now.AddMinutes(30));
-        Assert.That(runner.Calls, Has.Count.EqualTo(4), "an unchanged dump isn't committed again");
+        Assert.That(runner.Calls, Has.Count.EqualTo(6), "an unchanged dump isn't committed again");
 
         // The same text as the commit's (git handing it back with CRLF): nothing to commit.
         File.WriteAllText(Path.Combine(repo, "data", "orchestrator.sql"), "-- dump\n");
         daemon.SyncOrchestratorDbIfDue(repo, dbPath, now.AddMinutes(45));
-        Assert.That(runner.Calls, Has.Count.EqualTo(5));
+        Assert.That(runner.Calls, Has.Count.EqualTo(7));
         Assert.That(runner.Calls[^1].Args, Does.Contain("show"));
     }
 
@@ -263,6 +265,32 @@ public sealed class DaemonSafetyTests
     }
 
     [Test]
+    public void An_orchestrator_db_sync_that_cant_rebase_onto_main_aborts_and_warns_once()
+    {
+        // M.ORCH-T620: main moves under the checkout, so the push must follow a fetch and rebase.
+        var repo = Path.Combine(dir, "MindAttic.Orchestrator");
+        Directory.CreateDirectory(Path.Combine(repo, "data"));
+        var dbPath = Path.Combine(repo, "data", "orchestrator.db");
+        new OrchestratorDb(dbPath).Dump();
+        File.WriteAllText(Path.Combine(repo, "data", "orchestrator.sql"), "-- new\n");
+        var committed = "-- old\n";
+        var runner = new FakeRunner(c =>
+        {
+            if (c.Args.Contains("commit")) committed = "-- new\n";
+            if (c.Args.Contains("rebase") && !c.Args.Contains("--abort")) return new ProcessResult(1, "", "conflict", false);
+            return c.Args.Contains("show") ? new ProcessResult(0, committed, "", false) : new ProcessResult(0, "", "", false);
+        });
+        var daemon = Make(runner: runner);
+        var now = DateTime.UtcNow;
+
+        daemon.SyncOrchestratorDbIfDue(repo, dbPath, now);
+        daemon.SyncOrchestratorDbIfDue(repo, dbPath, now.AddMinutes(11));
+        Assert.That(runner.Calls.Any(c => c.Args.Contains("push")), Is.False, "a push that would be rejected isn't tried");
+        Assert.That(runner.Calls.Count(c => c.Args.Contains("--abort")), Is.EqualTo(2));
+        Assert.That(said.Count(x => x.Line.Contains("couldn't rebase onto origin/main")), Is.EqualTo(1), "warned once");
+    }
+
+    [Test]
     public void The_orchestrator_db_is_staged_holding_its_write_lock()
     {
         // M.ORCH-T536: git add read the file while the daemon and hooks could be mid-write, so a commit could take half a write.
@@ -286,7 +314,7 @@ public sealed class DaemonSafetyTests
         });
         Make(runner: runner).SyncOrchestratorDbIfDue(repo, dbPath, DateTime.UtcNow);
         Assert.That(writeBlocked, Is.True, "no other write can run while git stages the database");
-        Assert.That(runner.Calls.Select(c => c.Args[2]), Is.EqualTo(new[] { "show", "add", "commit", "push" }));
+        Assert.That(runner.Calls.Select(c => c.Args[2]), Is.EqualTo(new[] { "show", "add", "commit", "fetch", "rebase", "push" }));
         Assert.DoesNotThrow(() => new OrchestratorDb(dbPath).SaveState("after", "{}"), "the lock is let go once it's staged");
     }
 

@@ -622,6 +622,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
     private string? orchestratorDbSynced;
     private bool orchestratorDbUnpushed;
+    private bool orchestratorDbIntegrateWarned;
     private DateTime orchestratorDbTriedUtc;
 
     /// <summary>The commit subject of <see cref="SyncOrchestratorDbIfDue"/>: the ticket that put the database in the repo.</summary>
@@ -679,6 +680,24 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         // Only a push that lands counts the dump as synced (M.ORCH-T538): a failed one is tried again on the next try.
         void Push(bool retry)
         {
+            // Agents land through their own worktrees, so main moves under this checkout: integrate origin/main first or every
+            // push is rejected as non-fast-forward (M.ORCH-T620). The commits touch only the database and its dump, and
+            // --autostash leaves any other dirty files as they were.
+            var fetch = Git("fetch", "-q", "origin");
+            if (fetch.ExitCode == 0 && !fetch.TimedOut)
+            {
+                var rebase = Git("rebase", "-q", "--autostash", "origin/main");
+                if (rebase.ExitCode != 0 || rebase.TimedOut)
+                {
+                    Git("rebase", "--abort");
+                    orchestratorDbUnpushed = true;
+                    if (!orchestratorDbIntegrateWarned)
+                        Say(LogEventLevel.Warning, $"orchestrator db sync: couldn't rebase onto origin/main, so data/orchestrator.db isn't pushed (retrying every 10 minutes, not warning again): {(rebase.Output + rebase.Error).Trim()}");
+                    orchestratorDbIntegrateWarned = true;
+                    return;
+                }
+                orchestratorDbIntegrateWarned = false;
+            }
             var push = Git("push", "-q");
             var ok = push.ExitCode == 0 && !push.TimedOut;
             orchestratorDbUnpushed = !ok;
