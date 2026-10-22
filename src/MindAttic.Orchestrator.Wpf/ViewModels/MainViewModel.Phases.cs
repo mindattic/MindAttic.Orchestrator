@@ -99,7 +99,12 @@ public sealed partial class MainViewModel
     {
         Raise(nameof(IsReposView)); Raise(nameof(IsQueueView)); Raise(nameof(IsAuditView)); Raise(nameof(IsAgentsView)); Raise(nameof(ShowDetail));
         Raise(nameof(IsAccountsView));
+        Raise(nameof(IsViewBusy));
     }
+
+    /// <summary>A refresh really running behind the shown view (M.ORCH-T634): the Accounts cards being read, or the audit running.
+    /// Every view stays loaded in memory and switching never waits on this; it only drives the small spinner at the view's bottom.</summary>
+    public bool IsViewBusy => IsDashboardPage && (view == View.Accounts ? loadingLoginCards : view == View.Audit && IsAuditing);
 
     public bool ShowDetail => IsReposView && HasSelection;
 
@@ -548,7 +553,7 @@ public sealed partial class MainViewModel
     public ObservableCollection<DuplicateGroupViewModel> Duplicates { get; } = [];
     public ObservableCollection<DriftViewModel> Drift { get; } = [];
     public ObservableCollection<MissingViewModel> Missing { get; } = [];
-    public bool IsAuditing { get => isAuditing; private set => Set(ref isAuditing, value); }
+    public bool IsAuditing { get => isAuditing; private set { if (Set(ref isAuditing, value)) Raise(nameof(IsViewBusy)); } }
     public string AuditInfo { get => auditInfo; private set => Set(ref auditInfo, value); }
     public string DuplicatesHeader => $"DUPLICATED ACROSS REPOS · {Duplicates.Count}";
     public string DriftHeader => $"SHARED AGENT FILES THAT DIFFER · {Drift.Count}";
