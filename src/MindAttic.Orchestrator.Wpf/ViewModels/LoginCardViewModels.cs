@@ -20,6 +20,12 @@ public sealed class LoginCliViewModel(string sessionId) : ObservableObject
     public string? OwnLogin => cli.OwnLogin;
     public int? CliPid => cli.CliPid;
 
+    /// <summary>Its move in flight (M.ORCH-T638), as on its agent card.</summary>
+    public bool IsMoving => PendingMoves.For(SessionId) is not null;
+    public bool IsUnlocked => !IsMoving;
+    public string MovingText => PendingMoves.For(SessionId) is { } m ? $"Moving to {m.TargetName}…" : "";
+    public void RaiseMoving() { Raise(nameof(IsMoving)); Raise(nameof(IsUnlocked)); Raise(nameof(MovingText)); }
+
     /// <summary>The state in words, as the agent board says it.</summary>
     public string StateLabel => cli.State switch
     {

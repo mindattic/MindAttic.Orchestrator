@@ -354,6 +354,7 @@ public sealed partial class MainViewModel
             r => { var a = new AgentRowViewModel(r.SessionId); a.Update(r, TitleOf(r), next.TakenUtc); return a; },
             (a, r) => a.Update(r, TitleOf(r), next.TakenUtc));
         Raise(nameof(HasAgents)); Raise(nameof(SubagentCount)); Raise(nameof(AgentsSummary));
+        ReconcileMoves(next);
 
         string? TitleOf(AgentBoardRow r) => r.TicketId is not { Length: > 0 } id ? null
             : next.Repos.FirstOrDefault(repo => repo.Name == r.Repo)?.OpenTickets.FirstOrDefault(t => t.Id == id)?.Summary;

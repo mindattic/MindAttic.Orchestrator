@@ -129,6 +129,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         else AllTerminals = root.AllTerminals;
         Terminals = new PersonTerminalsViewModel(AllTerminals);
+        PendingMoves.Changed += OnMovesChanged;
         Terminals.SelectionChanged += () => Root.ShowChosenPane();
         if (root is null && AllTerminals.HasReopen) Page = TerminalsPage;
         if (store.Load<ReposView>(ReposViewName).Sort is { } sort && RepoSorts.Contains(sort)) repoSort = sort;
