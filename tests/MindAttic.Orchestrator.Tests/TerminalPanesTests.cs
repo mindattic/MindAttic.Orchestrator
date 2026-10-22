@@ -174,6 +174,17 @@ public sealed class TerminalPanesTests
         Assert.That(store.LoadSettings().EmbeddedTerminals, Is.True);
     }
 
+    [Test]
+    public void The_badge_text_is_black_or_white_by_the_luminance_of_its_tab_color_chip()
+    {
+        // M.ORCH-T621: the badge sits on a chip of the tab color, so every palette color must read.
+        var dark = new[] { "#6A1B9A", "#1565C0", "#AD1457", "#C62828", "#2E7D32" };
+        foreach (var hex in dark)
+            Assert.That(TerminalPaneViewModel.ReadableOn(new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex))),
+                Is.SameAs(System.Windows.Media.Brushes.White), hex);
+        Assert.That(TerminalPaneViewModel.ReadableOn(new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Yellow)), Is.SameAs(System.Windows.Media.Brushes.Black));
+    }
+
     [Test, Apartment(ApartmentState.STA)]
     public void A_pane_runs_its_command_in_a_real_terminal_and_closing_it_ends_the_process()
     {

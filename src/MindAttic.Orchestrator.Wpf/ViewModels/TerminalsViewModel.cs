@@ -32,6 +32,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
         };
         System.Windows.Automation.AutomationProperties.SetName(Control, request.Title);
         TabBrush = request.TabColor is { } hex && new BrushConverter().ConvertFromString(hex) is Brush brush ? brush : Brushes.Gray;
+        BadgeForeground = ReadableOn(TabBrush);
     }
 
     public PaneRequest Request { get; }
@@ -46,6 +47,18 @@ public sealed class TerminalPaneViewModel : ObservableObject
     public string Badge => Request.Initials is { } i ? $"[{i}]" : "";
     public string Name => $"{Request.Repo} [{Request.Provider}]";
     public Brush TabBrush { get; }
+
+    /// <summary>The badge's text color (M.ORCH-T621): black or white, whichever reads on the chip of <see cref="TabBrush"/>.</summary>
+    public Brush BadgeForeground { get; }
+
+    /// <summary>Black on a light <paramref name="background"/>, white on a dark one (by relative luminance).</summary>
+    internal static Brush ReadableOn(Brush background)
+    {
+        if (background is not SolidColorBrush { Color: var c }) return Brushes.White;
+        static double Lin(byte v) { var x = v / 255.0; return x <= 0.03928 ? x / 12.92 : Math.Pow((x + 0.055) / 1.055, 2.4); }
+        var lum = 0.2126 * Lin(c.R) + 0.7152 * Lin(c.G) + 0.0722 * Lin(c.B);
+        return lum > 0.179 ? Brushes.Black : Brushes.White;
+    }
     public string Tooltip => $"{Request.Directory}\n{Record.Login}" + (Record.SessionId is { } s ? $"\nsession {s}" : "");
 
     /// <summary>The Launcher host process running in it, once found (for "Go to tab").</summary>

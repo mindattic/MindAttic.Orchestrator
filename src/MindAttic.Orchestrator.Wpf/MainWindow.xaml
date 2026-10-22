@@ -1210,7 +1210,9 @@
                             <Border x:Name="TerminalTab" BorderBrush="{Binding TabBrush}" BorderThickness="0,0,0,3" Padding="8,4,4,4"
                                     ToolTip="{Binding Tooltip}" AutomationProperties.Name="{Binding Title}">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding Badge}" Foreground="{Binding TabBrush}" FontWeight="SemiBold" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                    <Border Background="{Binding TabBrush}" CornerRadius="3" Padding="4,0" Margin="0,0,6,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Badge}" Foreground="{Binding BadgeForeground}" FontWeight="SemiBold" />
+                                    </Border>
                                     <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
                                     <TextBlock Text="{Binding StateText}" Style="{StaticResource MaMutedText}" Margin="6,0,0,0" VerticalAlignment="Center" />
                                     <Button Style="{StaticResource MaButton}" Content="✕" Padding="6,0" Margin="8,0,0,0" FontSize="11"
