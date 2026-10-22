@@ -446,6 +446,28 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void The_weekly_stop_line_is_read_live_from_the_status_not_baked_into_the_hook()
+    {
+        // M.ORCH-T609: the week stops at 100 minus the weekly reserve (95% by default), read from the status the daemon writes.
+        void Week(double percent) => File.WriteAllText(Path.Combine(Claude, "claude-usage.json"), JsonSerializer.Serialize(new
+        {
+            rate_limits = new
+            {
+                five_hour = new { used_percentage = 10, resets_at = new DateTimeOffset(DateTime.UtcNow.AddHours(2)).ToUnixTimeSeconds() },
+                seven_day = new { used_percentage = percent, resets_at = new DateTimeOffset(DateTime.UtcNow.AddDays(3)).ToUnixTimeSeconds() },
+            },
+            at = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+        }));
+        var read = new { tool_name = "Read", tool_input = new { file_path = "x" } };
+        Status(new { stop = false, weekly_stop_percent = 98 });
+        Week(96);
+        Assert.That(Gate(read).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "a 2% reserve: 96% of the week still runs");
+        Status(new { stop = false });
+        Assert.That(GateHeld(read, maxHold: 2).Output, Does.Contain("\"deny\"").And.Contain("96% of the weekly window used"),
+            "no line written: the default 95% holds");
+    }
+
+    [Test]
     public void With_the_daemon_down_claudes_own_weekly_percent_at_the_line_stops_too()
     {
         // The week at 99% (its wall locks you out for days), the 5 hours at 50%, the daemon dead.

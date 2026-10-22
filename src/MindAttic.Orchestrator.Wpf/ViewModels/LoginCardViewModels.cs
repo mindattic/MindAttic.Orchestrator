@@ -68,7 +68,10 @@ public sealed class LoginCardViewModel(string key) : ObservableObject
     public string FiveHourUsed => AccountRoster.Percent(card.FiveHourPercent);
     public string FiveHourResets => card.FiveHourResetUtc is { } r ? "resets " + Formatting.ResetInHours(r, nowUtc) : "";
     public string WeekUsed => AccountRoster.Percent(card.WeekPercent);
-    public string WeekResets => card.WeekResetUtc is { } r ? "resets " + Formatting.ResetInDays(r, nowUtc) : "";
+    /// <summary>"stops at 95% · resets 4/26 9:00am (3.2 days)": the login's weekly stop line (M.ORCH-T609, the weekly reserve's;
+    /// "stopped at" once its week reached it), then the week's reset.</summary>
+    public string WeekResets => (card.AtWeeklyStop ? "stopped at " : "stops at ") + card.WeeklyStopPercent + "%" +
+        (card.WeekResetUtc is { } r ? " · resets " + Formatting.ResetInDays(r, nowUtc) : "");
 
     /// <summary>"Pace open · subagents 2 of 6 · written 1m ago", or that the daemon hasn't paced it yet.</summary>
     public string PaceText => PaceLine(card.Pace, nowUtc);

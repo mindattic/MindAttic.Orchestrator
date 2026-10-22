@@ -307,6 +307,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("true (default): a Claude tab started without a login chosen (dashboard Auto, start without --account, Queue starts, accounts pick) goes on a signed-in per-CLI login no CLI runs on yet, most headroom first, else the global login; false: always the global login.")]
         public bool? AutoLogin { get; init; }
 
+        [CommandOption("--weekly-reserve <PERCENT>")]
+        [Description("The share of each account's week kept back, 0 to 50 (default 5): every CLI on an account stops at 100 minus this of that account's week (95% by default), each login on its own.")]
+        public int? WeeklyReserve { get; init; }
+
         [CommandOption("--hand-minutes <N>")]
         [Description("Kept for older setups; it has no effect now: /allocate hands tickets to the typing CLI's own subagents, each in its own worktree.")]
         public int? HandMinutes { get; init; }
@@ -439,6 +443,12 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { AutoLogin = autoLogin };
             changed = true;
         }
+        if (settings.WeeklyReserve is { } weeklyReserve)
+        {
+            if (weeklyReserve is < 0 or > OrchestratorSettings.MaxWeeklyReservePercent) { AnsiConsole.MarkupLine($"[red]--weekly-reserve is 0 to {OrchestratorSettings.MaxWeeklyReservePercent}.[/]"); return 1; }
+            s = s with { WeeklyReservePercent = weeklyReserve };
+            changed = true;
+        }
         if (settings.AutopilotSkip is { } skip)
         {
             s = s with { AutopilotSkip = skip.Equals("none", StringComparison.OrdinalIgnoreCase) ? [] : [.. skip.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)] };
@@ -532,7 +542,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (s.KeepGoing ? " · /allocate CLIs keep going through their workable tickets without asking" : " · /allocate CLIs may stop between tickets") +
             (s.ResumeAfterReset ? " · a CLI stopped for a window is told to carry on once it resets" : " · you're alerted when a CLI stopped for a window could carry on after its reset") +
             (s.AutoLogin ? " · a new Claude tab goes on a free per-CLI login (one CLI per account), else the global login" : " · a new Claude tab uses the global login unless given --account"));
-        AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (Claude's report, else learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (Claude's report, else learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display + " unless Claude reports another" : "as Claude reports, else learned, else rolling 7 days")} · warn at {s.WarnPercent}%");
+        AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (Claude's report, else learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (Claude's report, else learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display + " unless Claude reports another" : "as Claude reports, else learned, else rolling 7 days")} · warn at {s.WarnPercent}%" +
+            $" · weekly reserve {s.WeeklyReservePercent}% (each account's CLIs stop at {s.WeeklyStopPercent}% of its week)");
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +
             (s.FrontLoaded ? $" · profile front-loaded (target × elapsed^{s.PaceExponent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}; no new subagent or ticket past {MindAttic.Orchestrator.Budget.Pacer.FrontLoadedWindDownShare:P0})" : " · profile linear") +
             (s.ThrottleAgents ? $" · running agents held up to {s.MaxAgentDelaySeconds}s per tool call when the burn won't last" : " · running agents never held") +

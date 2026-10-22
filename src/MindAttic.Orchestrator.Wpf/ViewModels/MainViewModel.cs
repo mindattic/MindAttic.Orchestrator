@@ -397,7 +397,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (Provider == "Claude" && Login == AutoLogin)
         {
             // Auto (M.ORCH-T605): a free per-CLI login, else the global one; held for this tab so the next Start goes elsewhere.
-            var auto = new LoginPicker(accountDirs).ForNewTab(Provider, autoLogin: true, DateTime.UtcNow, out _);
+            var auto = new LoginPicker(accountDirs).ForNewTab(Provider, autoLogin: true, DateTime.UtcNow, out _, weeklyStopPercent);
             configDir = auto?.Directory;
             on = auto?.Email ?? GlobalLogin;
         }

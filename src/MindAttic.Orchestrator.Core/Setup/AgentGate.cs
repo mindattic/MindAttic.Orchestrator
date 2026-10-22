@@ -334,25 +334,53 @@ public static class AgentGate
                 except Exception:
                     return 0.0
             return max(found, key=at)
+        WEEK_STOP_DEFAULT = {{WeeklyStopDefault}}
+        _week_stop = []
+        def week_stop_percent():
+            # The account's weekly stop line (M.ORCH-T609): 100 minus the weekly reserve on the Settings page, read live (never
+            # baked in here), so a changed reserve applies within a daemon tick. The line the daemon wrote into this login's
+            # status (rl-status.json, or the global login's row) first, then the settings (a daemon from before the line, or none
+            # yet), then the default ({{WeeklyStopDefault}}%).
+            if _week_stop:
+                return _week_stop[0]
+            line = None
+            try:
+                v = rl_status().get("weekly_stop_percent")
+                if isinstance(v, (int, float)) and not isinstance(v, bool) and {{100 - Settings.OrchestratorSettings.MaxWeeklyReservePercent}} <= v <= 100:
+                    line = float(v)
+            except Exception:
+                pass
+            if line is None:
+                try:
+                    reserve = orch_settings().get("WeeklyReservePercent")
+                    if isinstance(reserve, (int, float)) and not isinstance(reserve, bool):
+                        line = 100.0 - min(max(float(reserve), 0.0), {{Settings.OrchestratorSettings.MaxWeeklyReservePercent}}.0)
+                except Exception:
+                    pass
+            _week_stop.append(WEEK_STOP_DEFAULT if line is None else line)
+            return _week_stop[0]
         def claude_stop():
             # (percent, reset epoch, window) when Claude itself reports a window at the stop line, now or earlier in the same
             # window (an idle session's later, lower report doesn't lift it); None otherwise. The week counts as much as the
-            # 5 hours: a daemon that's down mustn't let a week at 99% run into a wall that locks you out for days.
+            # 5 hours: a daemon that's down mustn't let a week at its stop line run into a wall that locks you out for days.
+            # The 5 hours stop at STOP_PERCENT, the week at week_stop_percent() (the weekly reserve, M.ORCH-T609).
             windows = (("five_hour", "claude", "5-hour"), ("seven_day", "claude-week", "weekly"))
+            line = lambda key: week_stop_percent() if key == "seven_day" else STOP_PERCENT
             try:
                 usage = claude_usage()
                 limits = usage["rate_limits"] if owns(usage) and (usage.get("account") or not before_switch(usage.get("at"))) else {}
                 for key, by, name in windows:
                     w = limits.get(key)
-                    if w and float(w["used_percentage"]) >= STOP_PERCENT and float(w["resets_at"]) > time.time():
+                    if w and float(w["used_percentage"]) >= line(key) and float(w["resets_at"]) > time.time():
                         latch(by, float(w["resets_at"]), percent=float(w["used_percentage"]))
                         return float(w["used_percentage"]), float(w["resets_at"]), name
             except Exception:
                 pass
             for key, by, name in windows:
                 l = latched(by)
-                if l:
-                    return float(l.get("percent") or STOP_PERCENT), float(l["until"]), name
+                # A weekly latch below the line as it is now (the reserve lowered since) no longer holds.
+                if l and float(l.get("percent") or line(key)) >= line(key):
+                    return float(l.get("percent") or line(key)), float(l["until"]), name
             return None
         def flag(value):
             return bool(value) and str(value).strip().lower() not in ("0", "false", "no", "off")
@@ -535,8 +563,13 @@ public static class AgentGate
                 return None
         """;
 
-    /// <summary>The percent of the 5-hour window at which every tool call is refused, whoever is counting.</summary>
+    /// <summary>The percent of the 5-hour window at which every tool call is refused, whoever is counting. The week stops at
+    /// its own line, <see cref="Settings.OrchestratorSettings.WeeklyStopPercent"/> (the weekly reserve, M.ORCH-T609), which the
+    /// hooks read live.</summary>
     public const int StopPercent = 99;
+
+    /// <summary>The weekly stop line the hooks fall back to when neither the settings nor the daemon's status name one.</summary>
+    public static int WeeklyStopDefault => Settings.OrchestratorSettings.WeeklyStopFor(Settings.OrchestratorSettings.DefaultWeeklyReservePercent);
 
     /// <summary>Where the hooks latch a stop they've seen until its window resets (in <c>~/.claude/session-context</c>).</summary>
     public const string StopLatchName = "stop-latch.json";
@@ -2900,7 +2933,7 @@ public static class AgentGate
             down = daemon_down()
             if down is not None:
                 out["systemMessage"] = ((out["systemMessage"] + " ") if out.get("systemMessage") else "") + ("MindAttic.Orchestrator hasn't updated the pace for " + str(int(down // 60)) + " min: its daemon "
-                    "isn't running, so agents aren't being paced (only Claude's own " + str(STOP_PERCENT) + "% stop still holds). "
+                    "isn't running, so agents aren't being paced (only Claude's own " + str(STOP_PERCENT) + "% 5-hour and " + str(int(week_stop_percent())) + "% weekly stops still hold). "
                     "Start it: C:\\Apps\\MindAttic.Orchestrator\\MindAttic.Orchestrator.exe")
             if out:
                 print(json.dumps(out))

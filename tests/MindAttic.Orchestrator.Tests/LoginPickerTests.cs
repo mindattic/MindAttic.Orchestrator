@@ -107,6 +107,19 @@ public sealed class LoginPickerTests
     }
 
     [Test]
+    public void An_account_at_its_weekly_stop_line_is_not_picked()
+    {
+        // M.ORCH-T609: its CLIs stop at 100 minus the weekly reserve (95% by default), so it has nothing left to give a new CLI.
+        Account("a@example.com", fiveHour: 5, week: 95);
+        Account("b@example.com", fiveHour: 70, week: 10);
+        Assert.That(Picker.Pick(Now).Account?.Email, Is.EqualTo("b@example.com"), "a at 95% of its week is at the default line");
+        Assert.That(LoginPicker.Headroom(Budget.ReportedUsage.Load(Now, dirs.For("a@example.com").UsagePath), Now), Is.Zero);
+        live.Add(dirs.For("b@example.com").Directory);
+        Assert.That(Picker.Pick(Now).Account, Is.Null, "with b busy, nothing is free below its line: the global login");
+        Assert.That(Picker.Pick(Now, weeklyStopPercent: 98).Account?.Email, Is.EqualTo("a@example.com"), "a 2% reserve leaves a 3% of its week");
+    }
+
+    [Test]
     public void A_claimed_pick_holds_its_account_until_the_hold_runs_out()
     {
         Account("a@example.com");

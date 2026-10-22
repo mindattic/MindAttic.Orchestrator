@@ -195,7 +195,7 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
             (configDir, email) = (dir.Directory, dir.Email);
         }
         // No --account: the Auto login (M.ORCH-T605) puts it on a per-CLI login no CLI runs on yet, else the global one.
-        else if (new LoginPicker(dirs, LiveOverride).ForNewTab(provider, Ctx.Settings.AutoLogin, DateTime.UtcNow, out _) is { } auto)
+        else if (new LoginPicker(dirs, LiveOverride).ForNewTab(provider, Ctx.Settings.AutoLogin, DateTime.UtcNow, out _, Ctx.Settings.WeeklyStopPercent) is { } auto)
             (configDir, email) = (auto.Directory, auto.Email);
         var error = new SessionControl(options).Start(repo.Name, repo.Path, provider, settings.Prompt, configDir);
         if (error is not null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(error)}[/]"); return 1; }

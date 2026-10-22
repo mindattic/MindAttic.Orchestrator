@@ -198,6 +198,20 @@ public sealed class AccountSwitchTests
     }
 
     [Test]
+    public void The_menu_shows_each_accounts_weekly_stop_line_and_never_suggests_one_at_it()
+    {
+        // M.ORCH-T609: a 30%, b 80%. With the line at 75%, b's CLIs are stopped; at 25%, both are.
+        var menu = MainViewModel.MenuOf(Rows, "b/org", BillingModes.Team, Now, weeklyStopPercent: 75);
+        Assert.That(menu[0].WeekUsage, Is.EqualTo("80%, stopped at 75%"));
+        Assert.That(menu[1].WeekUsage, Is.EqualTo("30%, stops at 75%"));
+        Assert.That(menu[1].Label, Does.Contain("(most headroom)").And.Contain("70% left, stops at 75%"));
+        Assert.That(menu[0].ToolTip, Does.Contain("75% stop line"));
+        Assert.That(AccountSwitch.MostHeadroom(Rows, Now, 25), Is.Null, "every account at its stop: none to move to");
+        Assert.That(AccountSwitch.MostHeadroom(Rows, Now, 85)?.Account, Is.EqualTo("a/org"));
+        Assert.That(AccountSwitch.Columns(Rows[0], Now).WeekUsage, Does.Not.Contain("stop"), "no line given, the bare percent");
+    }
+
+    [Test]
     public void The_menu_table_shows_week_usage_as_used_over_left_and_the_week_reset_with_its_date()
     {
         var b = Rows.Single(r => r.Account == "b/org");

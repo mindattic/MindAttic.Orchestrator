@@ -12,6 +12,9 @@ public sealed record LoginPace(string? Pace, string? SubagentsRunning, string? S
     /// <summary>"2 of 6" while there's an allowance; null when unpaced.</summary>
     public string? Subagents => SubagentAllowance is { } allowed ? $"{SubagentsRunning ?? "0"} of {allowed}" : null;
 
+    /// <summary>The login's weekly stop line the daemon wrote (M.ORCH-T609, the weekly reserve's); null from a daemon before it.</summary>
+    public int? WeeklyStopPercent { get; init; }
+
     /// <summary>The status at <paramref name="path"/>; null when there's none or it can't be read.</summary>
     public static LoginPace? Read(string path)
     {
@@ -31,7 +34,11 @@ public sealed record LoginPace(string? Pace, string? SubagentsRunning, string? S
             } : null;
             var at = Text("timestamp") is { } t && DateTime.TryParse(t, CultureInfo.InvariantCulture,
                 DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var stamp) ? stamp : (DateTime?)null;
-            return new LoginPace(Text("pace") ?? (Text("stop") is not null ? "stop" : null), Text("subagents_running"), Text("subagent_allowance"), at);
+            return new LoginPace(Text("pace") ?? (Text("stop") is not null ? "stop" : null), Text("subagents_running"), Text("subagent_allowance"), at)
+            {
+                WeeklyStopPercent = root.TryGetProperty("weekly_stop_percent", out var line) && line.ValueKind == JsonValueKind.Number &&
+                    line.TryGetInt32(out var stop) ? stop : null,
+            };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return null; }
     }
@@ -61,6 +68,14 @@ public sealed record LoginCard(
     IReadOnlyList<LoginCli> Clis)
 {
     public bool IsGlobal => Email is null;
+
+    /// <summary>Where this login's CLIs stop in its week (M.ORCH-T609): the line the daemon wrote for it, else the weekly
+    /// reserve's default.</summary>
+    public int WeeklyStopPercent => Pace?.WeeklyStopPercent
+        ?? Settings.OrchestratorSettings.WeeklyStopFor(Settings.OrchestratorSettings.DefaultWeeklyReservePercent);
+
+    /// <summary>Its week is at or past <see cref="WeeklyStopPercent"/>: its CLIs are stopped until the week resets.</summary>
+    public bool AtWeeklyStop => WeekPercent is { } week && week >= WeeklyStopPercent;
 }
 
 /// <summary>

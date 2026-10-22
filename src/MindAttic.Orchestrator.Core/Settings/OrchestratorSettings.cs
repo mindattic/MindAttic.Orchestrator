@@ -32,6 +32,20 @@ public sealed record OrchestratorSettings
     /// the orchestrator can't see (claude.ai, other machines).</summary>
     public int PaceTargetPercent { get; init; } = 98;
 
+    /// <summary>The share of each account's week kept back (M.ORCH-T609): every CLI on an account stops at
+    /// <see cref="WeeklyStopPercent"/> (100 minus this) of that account's week instead of burning it all. 0 to
+    /// <see cref="MaxWeeklyReservePercent"/>; applies to each login on its own.</summary>
+    public int WeeklyReservePercent { get; init; } = DefaultWeeklyReservePercent;
+
+    public const int DefaultWeeklyReservePercent = 5, MaxWeeklyReservePercent = 50;
+
+    /// <summary>The percent of an account's week at which its CLIs stop: 100 minus <see cref="WeeklyReservePercent"/>
+    /// (kept to 0–<see cref="MaxWeeklyReservePercent"/>, so a hand-edited value can't stop it at nothing).</summary>
+    [JsonIgnore]
+    public int WeeklyStopPercent => WeeklyStopFor(WeeklyReservePercent);
+
+    public static int WeeklyStopFor(int reservePercent) => 100 - Math.Clamp(reservePercent, 0, MaxWeeklyReservePercent);
+
     /// <summary>The curve the 5-hour window is paced along (M.ORCH-T234): <see cref="LinearProfile"/> (the default) spreads what's
     /// left of the target evenly to the reset; <see cref="FrontLoadedProfile"/> aims at <see cref="PaceTargetPercent"/> ×
     /// elapsed^<see cref="PaceCurveK"/>, spending faster early and easing off toward the reset, and starts no new subagent past

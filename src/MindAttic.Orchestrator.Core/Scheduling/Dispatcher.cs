@@ -66,7 +66,8 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         var before = sessions.HostIds();
         var focus = Foreground.Current();
         // One CLI per account (M.ORCH-T605): a Claude tab goes on a free per-CLI login, else the global one.
-        var account = (Logins ?? new LoginPicker()).ForNewTab(provider, store.LoadSettings().AutoLogin, DateTime.UtcNow, out _);
+        var loaded = store.LoadSettings();
+        var account = (Logins ?? new LoginPicker()).ForNewTab(provider, loaded.AutoLogin, DateTime.UtcNow, out _, loaded.WeeklyStopPercent);
         var startError = sessions.Start(title, directory, provider, prompt, account?.Directory);
         if (startError is not null) return (startError, null);
         _ = Foreground.RestoreAsync(focus, TimeSpan.FromSeconds(2));

@@ -35,16 +35,20 @@ public sealed partial class MainViewModel
             : rows.FirstOrDefault(r => r.Account == current)?.Label ?? (current is null ? "Not signed in" : "Signed in");
 
     /// <summary>The menu's rows, built as it opens: every account, then "Use API key (emergencies)".</summary>
-    public IReadOnlyList<AccountMenuItem> AccountMenu() => MenuOf(accountRows, currentAccount, billing?.Mode, DateTime.UtcNow);
+    public IReadOnlyList<AccountMenuItem> AccountMenu() => MenuOf(accountRows, currentAccount, billing?.Mode, DateTime.UtcNow, weeklyStopPercent);
+
+    /// <summary>Each account's weekly stop line (M.ORCH-T609), from the weekly reserve setting as of the last refresh.</summary>
+    private int weeklyStopPercent = MindAttic.Orchestrator.Settings.OrchestratorSettings.WeeklyStopFor(MindAttic.Orchestrator.Settings.OrchestratorSettings.DefaultWeeklyReservePercent);
 
     /// <summary>Bindable: the table the account menu's popup renders, rebuilt whenever the roster, the signed-in account or
     /// the billing mode changes.</summary>
     public IReadOnlyList<AccountMenuItem> AccountMenuItems => AccountMenu();
 
-    internal static IReadOnlyList<AccountMenuItem> MenuOf(IReadOnlyList<AccountRow> rows, string? current, string? mode, DateTime nowUtc)
+    internal static IReadOnlyList<AccountMenuItem> MenuOf(IReadOnlyList<AccountRow> rows, string? current, string? mode, DateTime nowUtc,
+        int? weeklyStopPercent = null)
     {
         var onKey = mode == BillingModes.Api;
-        var suggested = AccountSwitch.MostHeadroom(rows, nowUtc)?.Account;
+        var suggested = AccountSwitch.MostHeadroom(rows, nowUtc, weeklyStopPercent)?.Account;
         var items = new List<AccountMenuItem>();
         foreach (var r in rows)
         {
@@ -54,8 +58,12 @@ public sealed partial class MainViewModel
                 : r.Email is null ? "Its email shows once it's signed in to again (/login in a Claude CLI)."
                 : r.Account == current ? "Bill this account again instead of the API key: every CLI switches back."
                 : $"Sign every CLI in to {r.Email}: opens its login in the browser ({AccountSwitch.LoginCommand(r.Email, AccountSwitch.UsesSso(r))}).";
-            var c = AccountSwitch.Columns(r, nowUtc);
-            items.Add(new AccountMenuItem(r.Account, AccountSwitch.MenuLine(r, signedIn ? current : null, suggested, nowUtc), icon, tip,
+            if (weeklyStopPercent is { } stop)
+                tip += AccountSwitch.AtWeeklyStop(r, nowUtc, stop)
+                    ? $" Its week is at its {stop}% stop line (the weekly reserve): its CLIs are stopped until the week resets."
+                    : $" Its CLIs stop at {stop}% of its week (the weekly reserve).";
+            var c = AccountSwitch.Columns(r, nowUtc, weeklyStopPercent);
+            items.Add(new AccountMenuItem(r.Account, AccountSwitch.MenuLine(r, signedIn ? current : null, suggested, nowUtc, weeklyStopPercent), icon, tip,
                 r.Label, signedIn, c.WeekUsage, c.WeekResets, c.FiveHourUsed, c.FiveHourResets, c.LastRead, false));
         }
         var apiLabel = "Use API key (emergencies)" + (onKey ? " (in use)" : "");
@@ -71,6 +79,8 @@ public sealed partial class MainViewModel
         try { rows = AccountRoster.Load(aggregator.Db, next.Account); }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
         accountRows = rows;
+        try { weeklyStopPercent = store.LoadSettings().WeeklyStopPercent; }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException) { }
         currentAccount = next.Account == ClaudeAccount.ApiKey ? null : next.Account;
         Raise(nameof(AccountCorner));
         Raise(nameof(AccountMenuItems));

@@ -28,7 +28,7 @@ internal sealed class AccountsPickCommand : Command<AccountsPickCommand.Settings
         try
         {
             pick = Ctx.Settings.AutoLogin
-                ? new LoginPicker(AccountsCommand.LoginsOverride?.Invoke(), StartCommand.LiveOverride).Pick(DateTime.UtcNow, claim: true)
+                ? new LoginPicker(AccountsCommand.LoginsOverride?.Invoke(), StartCommand.LiveOverride).Pick(DateTime.UtcNow, claim: true, Ctx.Settings.WeeklyStopPercent)
                 : new LoginPick(null, "Auto login is off (settings --auto-login): global login");
         }
         // The contract is one line and exit 0: anything unreadable means the global login.
@@ -97,7 +97,7 @@ internal sealed class AccountsCommand : Command<AccountsCommand.Settings>
                 card.SignedIn ? Markup.Escape(card.SignedInAs ?? "(signed in)") : "[red]not signed in[/] [grey](orchestrator login --account)[/]",
                 AccountRoster.Percent(card.FiveHourPercent),
                 card.FiveHourResetUtc is { } r ? Formatting.ResetTime(r, now) : "",
-                AccountRoster.Percent(card.WeekPercent),
+                AccountRoster.Percent(card.WeekPercent) + $" [grey](stops at {card.WeeklyStopPercent}%)[/]",
                 Markup.Escape(card.Pace?.Pace ?? "—"),
                 card.Pace?.Subagents ?? "—",
                 card.Pace?.AtUtc is { } a ? Formatting.Ago(a, now) : "[grey]not yet[/]");
@@ -122,6 +122,17 @@ internal sealed class AccountsCommand : Command<AccountsCommand.Settings>
         return (AccountRoster.Load(db, current), current, now);
     }
 
+    /// <summary>Each account's weekly stop line (M.ORCH-T609): 100 minus the weekly reserve setting; the default's when the
+    /// settings can't be read.</summary>
+    internal static int WeeklyStop()
+    {
+        try { return Ctx.Settings.WeeklyStopPercent; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            return OrchestratorSettings.WeeklyStopFor(OrchestratorSettings.DefaultWeeklyReservePercent);
+        }
+    }
+
     /// <summary>The roster table <c>accounts</c> and a bare <c>login</c> print (M.ORCH-T492): one row per account, the
     /// signed-in one marked, the one with the most headroom suggested.</summary>
     internal static void Write(IReadOnlyList<AccountRow> rows, string? current, DateTime now)
@@ -131,12 +142,13 @@ internal sealed class AccountsCommand : Command<AccountsCommand.Settings>
             AnsiConsole.MarkupLine("[grey]No Claude account has been signed in to yet.[/]");
             return;
         }
-        var suggested = AccountSwitch.MostHeadroom(rows, now)?.Account;
+        var stop = WeeklyStop();
+        var suggested = AccountSwitch.MostHeadroom(rows, now, stop)?.Account;
         var table = new Table().Border(TableBorder.Rounded)
             .AddColumns("Account", "5h used", "5h resets", "Week usage", "Week resets", "Last Checked");
         foreach (var r in rows)
         {
-            var c = AccountSwitch.Columns(r, now);
+            var c = AccountSwitch.Columns(r, now, stop);
             var left = r.WeekLeftAt(now);
             table.AddRow(
                 Markup.Escape(r.Label) + (r.Account == current ? " [green](signed in)[/]" : "") + (r.Account == suggested ? " [aqua](most headroom)[/]" : ""),

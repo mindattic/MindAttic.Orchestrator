@@ -168,7 +168,8 @@ public static class Pacer
         // is never paced.
         if (b.WeeklyStopped(nowUtc) && b.WeeklyStop is { } weekStop)
         {
-            var at = $"Claude reports the week at {weekStop.Percent.ToString("0", System.Globalization.CultureInfo.InvariantCulture)}%";
+            // The line is the weekly reserve's (M.ORCH-T609): 100 minus the reserve kept back, 95% by default.
+            var at = $"Claude reports the week at {weekStop.Percent.ToString("0", System.Globalization.CultureInfo.InvariantCulture)}% (stops at {b.WeeklyStopPercent}%)";
             return new Pace(PaceMode.Over, 0, 0, recent, null, "weekly", weekStop.ResetUtc,
                 $"{at}: stopped at the weekly limit until {Formatting.ResetTime(weekStop.ResetUtc, nowUtc)}.",
                 $"{at}: at the weekly limit until {Formatting.ResetTime(weekStop.ResetUtc, nowUtc)}. Finish the current step and stop at a clean point.")

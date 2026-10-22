@@ -64,21 +64,40 @@ public static class AccountSwitch
     /// <summary>Whether its org signs in through SSO: an Enterprise org does; a Team or personal plan signs in by email.</summary>
     public static bool UsesSso(AccountRow row) => row.Plan?.StartsWith("Enterprise", StringComparison.Ordinal) == true;
 
-    /// <summary>The account with the most of its week left (then of its 5-hour window), among those that can be signed in to
-    /// (an email is known) and have been read. Null when none has.</summary>
-    public static AccountRow? MostHeadroom(IReadOnlyList<AccountRow> rows, DateTime nowUtc) =>
-        rows.Where(r => r.Email is not null && r.WeekLeftAt(nowUtc) is not null)
+    /// <summary>The weekly stop line when nothing names one: the default weekly reserve's (M.ORCH-T609).</summary>
+    private static int DefaultStop => Settings.OrchestratorSettings.WeeklyStopFor(Settings.OrchestratorSettings.DefaultWeeklyReservePercent);
+
+    /// <summary>Whether <paramref name="row"/>'s week is at or past its stop line (M.ORCH-T609): its CLIs are stopped, so it
+    /// isn't somewhere to move work to.</summary>
+    public static bool AtWeeklyStop(AccountRow row, DateTime nowUtc, int? weeklyStopPercent = null) =>
+        row.WeekUsedAt(nowUtc) is { } used && used >= (weeklyStopPercent ?? DefaultStop);
+
+    /// <summary>The account with the most of its week left before its stop line (then of its 5-hour window), among those that
+    /// can be signed in to (an email is known), have been read and aren't at their weekly stop (M.ORCH-T609). Null when none.</summary>
+    public static AccountRow? MostHeadroom(IReadOnlyList<AccountRow> rows, DateTime nowUtc, int? weeklyStopPercent = null) =>
+        rows.Where(r => r.Email is not null && r.WeekLeftAt(nowUtc) is not null && !AtWeeklyStop(r, nowUtc, weeklyStopPercent))
             .OrderByDescending(r => r.WeekLeftAt(nowUtc))
             .ThenBy(r => r.FiveHourUsedAt(nowUtc) ?? 0)
             .FirstOrDefault();
 
-    /// <summary>One account's entry in the dashboard's account menu: "a@mindattic.com · premium · week 42% used, 58% left, resets
-    /// Sun 4:00 PM · 5h 10%, resets 9:30 PM · read 3m ago", with "(signed in)" and "(most headroom)" where they apply.</summary>
-    public static string MenuLine(AccountRow row, string? current, string? suggested, DateTime nowUtc)
+    /// <summary>The week's usage cell: "42%", and with <paramref name="weeklyStopPercent"/> its stop line, "42%, stops at 95%" (or
+    /// "96%, stopped at 95%" once it's reached, M.ORCH-T609).</summary>
+    public static string WeekUsage(AccountRow row, DateTime nowUtc, int? weeklyStopPercent = null)
+    {
+        var used = AccountRoster.Percent(row.WeekUsedAt(nowUtc));
+        if (weeklyStopPercent is not { } stop) return used;
+        return used + (AtWeeklyStop(row, nowUtc, stop) ? $", stopped at {stop}%" : $", stops at {stop}%");
+    }
+
+    /// <summary>One account's entry in the dashboard's account menu: "a@mindattic.com · premium · week 42% used, 58% left, stops
+    /// at 95%, resets Sun 4:00 PM · 5h 10%, resets 9:30 PM · read 3m ago", with "(signed in)" and "(most headroom)" where they
+    /// apply; the stop line only when <paramref name="weeklyStopPercent"/> is given.</summary>
+    public static string MenuLine(AccountRow row, string? current, string? suggested, DateTime nowUtc, int? weeklyStopPercent = null)
     {
         var parts = new List<string> { row.Label + (row.Account == current ? " (signed in)" : "") + (row.Account == suggested ? " (most headroom)" : "") };
         if (SeatOrPlan(row) is { Length: > 0 } seat) parts.Add(seat);
         var week = row.WeekUsedAt(nowUtc) is null ? "week —" : $"week {AccountRoster.Percent(row.WeekUsedAt(nowUtc))} used, {AccountRoster.Percent(row.WeekLeftAt(nowUtc))} left";
+        if (weeklyStopPercent is { } stop) week += AtWeeklyStop(row, nowUtc, stop) ? $", stopped at {stop}%" : $", stops at {stop}%";
         if (row.WeekResetAt(nowUtc) is { } wr) week += $", resets {Formatting.ResetTime(wr, nowUtc)}";
         parts.Add(week);
         var five = $"5h {AccountRoster.Percent(row.FiveHourUsedAt(nowUtc))}";
@@ -90,8 +109,8 @@ public static class AccountSwitch
 
     /// <summary>The same facts as <see cref="MenuLine"/>, as plain table cells (M.ORCH-T566): the dashboard's account menu
     /// renders these as columns instead of one joined sentence. Each reset or read cell is "" when there's none to show.</summary>
-    public static AccountColumns Columns(AccountRow row, DateTime nowUtc) => new(
-        AccountRoster.Percent(row.WeekUsedAt(nowUtc)),
+    public static AccountColumns Columns(AccountRow row, DateTime nowUtc, int? weeklyStopPercent = null) => new(
+        WeekUsage(row, nowUtc, weeklyStopPercent),
         row.WeekResetAt(nowUtc) is { } wr ? Formatting.ResetInDays(wr, nowUtc) : "",
         AccountRoster.Percent(row.FiveHourUsedAt(nowUtc)),
         row.FiveHourResetAt(nowUtc) is { } fr ? Formatting.ResetInHours(fr, nowUtc) : "",

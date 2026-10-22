@@ -112,7 +112,7 @@ public sealed class AccountsViewTests
         Assert.That(other.SignedInText, Is.EqualTo("z@example.com"));
         Assert.That(other.Mismatch, Does.Contain("spend z@example.com's tokens"));
         Assert.That(other.FiveHourUsed, Is.EqualTo("40%"));
-        Assert.That(other.WeekResets, Does.StartWith("resets "));
+        Assert.That(other.WeekResets, Does.StartWith("stops at 95% · resets "), "its weekly stop line (M.ORCH-T609), then the reset");
         Assert.That(other.PaceText, Is.EqualTo("Pace open · subagents 1 of 4 · written 2m ago"));
         Assert.That(other.ClisHeader, Is.EqualTo("2 CLIs running on it"));
         Assert.That(other.Clis.Select(c => c.StateLabel), Is.EqualTo(new[] { "Working", "Needs you" }));

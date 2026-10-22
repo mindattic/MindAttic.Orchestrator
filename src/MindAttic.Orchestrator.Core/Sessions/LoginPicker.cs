@@ -28,6 +28,8 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
 
     public AccountDirs Dirs { get; } = dirs ?? new AccountDirs();
 
+    private static int DefaultWeeklyStop => Settings.OrchestratorSettings.WeeklyStopFor(Settings.OrchestratorSettings.DefaultWeeklyReservePercent);
+
     private readonly Func<IEnumerable<string?>> live = liveConfigDirs ?? LiveFromContextGate;
 
     /// <summary>The <c>CLAUDE_CONFIG_DIR</c> of every live Claude CLI on a login of its own, as the context gate recorded it
@@ -55,33 +57,38 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
     /// <summary>
     /// Picks the login a new Claude CLI should run on now; with <paramref name="claim"/>, holds it (<see cref="ClaimFor"/>)
     /// for the CLI about to start. Never throws for an unreadable folder: anything it can't read falls back to the global login.
+    /// <paramref name="weeklyStopPercent"/> is where every account's CLIs stop in its week (M.ORCH-T609: 100 minus the weekly
+    /// reserve setting, 95% by default); an account at or past it has no headroom, so it's never picked.
     /// </summary>
-    public LoginPick Pick(DateTime nowUtc, bool claim = false)
+    public LoginPick Pick(DateTime nowUtc, bool claim = false, int? weeklyStopPercent = null)
     {
+        var stop = weeklyStopPercent ?? DefaultWeeklyStop;
         IReadOnlyList<AccountDir> signedIn;
         try { signedIn = Dirs.SignedIn(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return new(null, $"couldn't read the per-CLI logins ({ex.Message}): global login"); }
         if (signedIn.Count == 0) return new(null, "no per-CLI login is signed in: global login");
         var busy = Busy(nowUtc);
-        var chosen = Choose(signedIn, busy, a => ReportedUsage.Load(nowUtc, a.UsagePath), nowUtc);
+        var chosen = Choose(signedIn, busy, a => ReportedUsage.Load(nowUtc, a.UsagePath), nowUtc, stop);
         if (chosen is null)
             return new(null, signedIn.All(a => busy.Contains(a.Email))
                 ? $"every per-CLI login ({signedIn.Count}) already has a CLI: global login"
-                : "no free per-CLI login has headroom left: global login");
+                : $"no free per-CLI login has headroom left (each stops at {stop}% of its week): global login");
         if (claim) Claim(chosen, nowUtc);
-        var room = Headroom(ReportedUsage.Load(nowUtc, chosen.UsagePath), nowUtc);
+        var room = Headroom(ReportedUsage.Load(nowUtc, chosen.UsagePath), nowUtc, stop);
         return new(chosen, $"{chosen.Email}: no CLI on it yet, {room.ToString("0", CultureInfo.InvariantCulture)}% headroom");
     }
 
     /// <summary>
     /// The rule itself: among <paramref name="signedIn"/> accounts not in <paramref name="busy"/> and with headroom left, the
     /// one with the most (<see cref="Headroom"/>), then the most of its week left, then by email. Null when there's none,
-    /// which means the global login.
+    /// which means the global login. An account at or past its weekly stop line (<paramref name="weeklyStopPercent"/>, the
+    /// weekly reserve's, M.ORCH-T609) has no headroom: its CLIs would be stopped at once.
     /// </summary>
-    public static AccountDir? Choose(IEnumerable<AccountDir> signedIn, IReadOnlySet<string> busy, Func<AccountDir, ReportedUsage?> usage, DateTime nowUtc) =>
+    public static AccountDir? Choose(IEnumerable<AccountDir> signedIn, IReadOnlySet<string> busy, Func<AccountDir, ReportedUsage?> usage, DateTime nowUtc,
+        int? weeklyStopPercent = null) =>
         signedIn.Where(a => !busy.Contains(a.Email))
             .Select(a => (Account: a, Usage: usage(a)))
-            .Select(x => (x.Account, Room: Headroom(x.Usage, nowUtc), Week: 100 - (WeekUsed(x.Usage, nowUtc) ?? 0)))
+            .Select(x => (x.Account, Room: Headroom(x.Usage, nowUtc, weeklyStopPercent), Week: 100 - (WeekUsed(x.Usage, nowUtc) ?? 0)))
             .Where(x => x.Room > 0)
             .OrderByDescending(x => x.Room)
             .ThenByDescending(x => x.Week)
@@ -89,13 +96,14 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
             .Select(x => x.Account)
             .FirstOrDefault();
 
-    /// <summary>The percent an account has left before its tighter limit: the smaller of its 5-hour and its weekly room, by
-    /// Claude's meter for it. A window not read, or already reset, counts as untouched (100% left).</summary>
-    public static double Headroom(ReportedUsage? usage, DateTime nowUtc)
+    /// <summary>The percent an account has left before its tighter limit: the smaller of its 5-hour room and its weekly room up
+    /// to its stop line (<paramref name="weeklyStopPercent"/>, the weekly reserve's: 95% by default, M.ORCH-T609), by Claude's
+    /// meter for it. A window not read, or already reset, counts as untouched.</summary>
+    public static double Headroom(ReportedUsage? usage, DateTime nowUtc, int? weeklyStopPercent = null)
     {
         var five = ReportedUsage.Usable(usage?.FiveHour, nowUtc)?.Percent ?? 0;
         var week = WeekUsed(usage, nowUtc) ?? 0;
-        return Math.Max(0, 100 - Math.Max(five, week));
+        return Math.Max(0, Math.Min(100 - five, (weeklyStopPercent ?? DefaultWeeklyStop) - week));
     }
 
     private static double? WeekUsed(ReportedUsage? usage, DateTime nowUtc) => ReportedUsage.Usable(usage?.Week, nowUtc)?.Percent;
@@ -125,11 +133,11 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
     /// <paramref name="autoLogin"/> is on, prepared as a Claude home; null (the global login) when it's off, the provider isn't
     /// Claude, or nothing is free. <paramref name="note"/> says what was picked, for the caller to show.
     /// </summary>
-    public AccountDir? ForNewTab(string provider, bool autoLogin, DateTime nowUtc, out string? note)
+    public AccountDir? ForNewTab(string provider, bool autoLogin, DateTime nowUtc, out string? note, int? weeklyStopPercent = null)
     {
         note = null;
         if (!autoLogin || provider != "Claude") return null;
-        var pick = Pick(nowUtc, claim: true);
+        var pick = Pick(nowUtc, claim: true, weeklyStopPercent);
         note = pick.Reason;
         if (pick.Account is not { } account) return null;
         try { Dirs.Prepare(account); }

@@ -521,7 +521,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// </summary>
     internal BudgetStatus HoldWeeklyStop(BudgetStatus budget, DateTime now)
     {
-        if (weekStop is { } held && held.ResetUtc <= now) weekStop = null;
+        // A held stop below the line as it is now (the weekly reserve lowered, M.ORCH-T609) lifts: the week has room again.
+        if (weekStop is { } held && (held.ResetUtc <= now || held.Percent < budget.WeeklyStopPercent)) weekStop = null;
         if (budget.WeeklyStopped(now) && budget.WeeklyStop is { } seen &&
             (weekStop is null || seen.ResetUtc != weekStop.ResetUtc || seen.Percent >= weekStop.Percent))
             weekStop = seen;

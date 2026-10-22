@@ -60,10 +60,13 @@ public sealed record BudgetStatus(
     public DateTime? AtLimitUntilUtc { get; init; }
     public LimitKind? AtLimitKind { get; init; }
 
-    /// <summary>Claude's own weekly report while it's at or past <see cref="Setup.AgentGate.StopPercent"/>, until its reset:
+    /// <summary>Claude's own weekly report while it's at or past <see cref="WeeklyStopPercent"/>, until its reset:
     /// the point the hooks refuse every tool call at, so the pace stops there too (M.ORCH-T438). The week is still never
     /// paced below it.</summary>
     public ReportedWindow? WeeklyStop { get; init; }
+
+    /// <summary>The account's weekly stop line (M.ORCH-T609): 100 minus the weekly reserve setting, 95 by default.</summary>
+    public int WeeklyStopPercent { get; init; } = Settings.OrchestratorSettings.WeeklyStopFor(Settings.OrchestratorSettings.DefaultWeeklyReservePercent);
 
     /// <summary>Whether Claude's reported week is at the stop line as of <paramref name="nowUtc"/> (its reset not passed).</summary>
     public bool WeeklyStopped(DateTime nowUtc) => WeeklyStop is { } w && w.ResetUtc > nowUtc;
@@ -269,7 +272,8 @@ public static class BudgetCalculator
             ControlFreshPerHour = events.Where(e => e.AtUtc >= nowUtc - ControlWindow && e.AtUtc <= nowUtc).Sum(e => e.Usage.Fresh) / ControlWindow.TotalHours,
             AtLimitUntilUtc = wall?.ResetUtc,
             AtLimitKind = wall?.Kind,
-            WeeklyStop = reportedWeek is { Percent: >= Setup.AgentGate.StopPercent } ? reportedWeek : null,
+            WeeklyStop = reportedWeek is not null && reportedWeek.Percent >= settings.WeeklyStopPercent ? reportedWeek : null,
+            WeeklyStopPercent = settings.WeeklyStopPercent,
             Calibration = learned,
             BlockLimitOutdated = blockRefuted,
             WeeklyLimitOutdated = weeklyRefuted,
@@ -371,12 +375,17 @@ public sealed class RateLimitStatusWriter(string? path = null)
             body.Remove("basis");
         }
         if (status.WeeklyPercent is { } wp) body["weekly_percent"] = Math.Round(wp, 1);
+        // The account's weekly stop line (M.ORCH-T609): the hooks read it live, so a changed weekly reserve applies at the next
+        // write without reinstalling them.
+        body["weekly_stop_percent"] = status.WeeklyStopPercent;
         // pace-gate.py refuses tool calls while this is set (after holding them its longest), so nothing passes the limit;
         // written paced or not, since the stop doesn't depend on pacing.
         if (pace is { Stop: true })
         {
             body["stop"] = true;
-            body["stop_note"] = $"The {pace.Governing ?? "5-hour"} window is at its target" +
+            body["stop_note"] = (pace.Governing == "weekly" && status.WeeklyStop is not null
+                    ? $"The weekly window is at its {status.WeeklyStopPercent}% stop line (the weekly reserve)"
+                    : $"The {pace.Governing ?? "5-hour"} window is at its target") +
                 (pace.ResetUtc is { } r ? $" until {Formatting.ResetTime(r, UtcNow())}" : "") + "; no more tokens are spent before the reset, so tool calls are refused. " +
                 "End your turn now with one short line saying where you stopped; your uncommitted work stays where it is.";
             // The hooks latch the stop until then, so a daemon that stalls once it's set can't lift it (M.ORCH-T196).

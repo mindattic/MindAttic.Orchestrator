@@ -8,7 +8,7 @@ using NUnit.Framework;
 namespace MindAttic.Orchestrator.Tests;
 
 /// <summary>
-/// M.ORCH-T438: the hooks refuse every tool call once Claude reports the week at <see cref="AgentGate.StopPercent"/>; the
+/// M.ORCH-T438: the hooks refuse every tool call once Claude reports the week at its stop line (<see cref="OrchestratorSettings.WeeklyStopPercent"/>, 100 minus the weekly reserve: M.ORCH-T609); the
 /// daemon has to stop at the same point (and lift it at the weekly reset), or autopilot hands out tickets and the dashboard
 /// says On pace while every call is refused. Below that line the week is still never paced.
 /// </summary>
@@ -30,7 +30,7 @@ public sealed class WeeklyStopTests
     [Test]
     public void Claude_reporting_the_week_at_the_stop_line_stops_the_pace_until_the_weekly_reset()
     {
-        var b = Budget(AgentGate.StopPercent);
+        var b = Budget(Settings.WeeklyStopPercent);
         var p = Pacer.Compute(b, 2, null, Settings, Now);
 
         Assert.That(b.WeeklyStop, Is.Not.Null, "the same line the hooks refuse at");
@@ -38,14 +38,14 @@ public sealed class WeeklyStopTests
         Assert.That((p.Mode, p.SessionCap, p.SubagentAllowance), Is.EqualTo((PaceMode.Over, 0, (int?)0)));
         Assert.That(p.Governing, Is.EqualTo("weekly"));
         Assert.That(p.ResetUtc, Is.EqualTo(WeekReset), "lifted at the weekly reset, not the 5-hour block's end");
-        Assert.That(p.Note, Does.Contain("week at 99%").And.Not.Contain("On pace"));
+        Assert.That(p.Note, Does.Contain("week at 95%").And.Not.Contain("On pace"));
     }
 
     [Test]
     public void Below_the_stop_line_the_week_is_never_paced()
     {
         // The user's rule: no slowing, holds, session caps or subagent limits for the week below the stop.
-        var p = Pacer.Compute(Budget(AgentGate.StopPercent - 1), 1, 1_000, Settings, Now);
+        var p = Pacer.Compute(Budget(Settings.WeeklyStopPercent - 1), 1, 1_000, Settings, Now);
 
         Assert.That(p.Stop, Is.False);
         Assert.That(p.Governing, Is.EqualTo("5-hour"));
@@ -64,7 +64,7 @@ public sealed class WeeklyStopTests
     [Test]
     public void Past_the_weekly_reset_the_stop_is_lifted()
     {
-        var b = Budget(AgentGate.StopPercent);
+        var b = Budget(Settings.WeeklyStopPercent);
         var after = WeekReset.AddMinutes(1);
 
         Assert.That(b.WeeklyStopped(after), Is.False);
@@ -77,7 +77,7 @@ public sealed class WeeklyStopTests
         var path = Path.Combine(Path.GetTempPath(), "orch-weekstop-" + Guid.NewGuid().ToString("N") + ".json");
         try
         {
-            var b = Budget(AgentGate.StopPercent);
+            var b = Budget(Settings.WeeklyStopPercent);
             new RateLimitStatusWriter(path) { UtcNow = () => Now }.Write(b, Pacer.Compute(b, 1, null, Settings, Now));
             using var doc = JsonDocument.Parse(File.ReadAllText(path));
             var root = doc.RootElement;
@@ -98,7 +98,7 @@ public sealed class WeeklyStopTests
         var dir = Path.Combine(Path.GetTempPath(), "orch-weekstop-" + Guid.NewGuid().ToString("N"));
         try
         {
-            var b = Budget(AgentGate.StopPercent);
+            var b = Budget(Settings.WeeklyStopPercent);
             var plan = Scheduler.Plan(new Snapshot(Now, [], []) { Budget = b, Pace = Pacer.Compute(b, 1, null, Settings, Now) }, Settings, []);
             var (handed, why) = Autopilot.Next(plan, Settings, new JsonStore(dir), ["*"], null, claim: true, Now);
 
@@ -113,11 +113,57 @@ public sealed class WeeklyStopTests
     }
 
     [Test]
+    public void The_weekly_reserve_sets_the_stop_line_five_percent_by_default()
+    {
+        // M.ORCH-T609: every CLI on an account stops at 100 minus the reserve of its week instead of burning it all.
+        Assert.That((new OrchestratorSettings().WeeklyReservePercent, new OrchestratorSettings().WeeklyStopPercent), Is.EqualTo((5, 95)));
+        Assert.That(Budget(95).WeeklyStopped(Now), Is.True, "95% is the default line");
+        Assert.That(Budget(94.5).WeeklyStopped(Now), Is.False);
+
+        var two = Settings with { WeeklyReservePercent = 2 };
+        Assert.That(Budget(96, two).WeeklyStopped(Now), Is.False, "a 2% reserve lets the week run to 98%");
+        Assert.That(Budget(98, two).WeeklyStopped(Now), Is.True);
+        Assert.That(Pacer.Compute(Budget(98, two), 1, null, two, Now).Note, Does.Contain("stops at 98%"));
+
+        Assert.That((Settings with { WeeklyReservePercent = 0 }).WeeklyStopPercent, Is.EqualTo(100), "0 keeps nothing back");
+        Assert.That((Settings with { WeeklyReservePercent = 80 }).WeeklyStopPercent, Is.EqualTo(50), "a hand edit past 50 is kept to 50");
+        Assert.That((Settings with { WeeklyReservePercent = -3 }).WeeklyStopPercent, Is.EqualTo(100));
+    }
+
+    [Test]
+    public void The_stop_line_reaches_rl_status_for_the_hooks_to_read_live()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "orch-weekstop-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var three = Settings with { WeeklyReservePercent = 3 };
+            var b = Budget(50, three);
+            new RateLimitStatusWriter(path) { UtcNow = () => Now }.Write(b, Pacer.Compute(b, 1, null, three, Now));
+            using var doc = JsonDocument.Parse(File.ReadAllText(path));
+            Assert.That(doc.RootElement.GetProperty("weekly_stop_percent").GetInt32(), Is.EqualTo(97));
+            Assert.That(Sessions.LoginPace.Read(path)?.WeeklyStopPercent, Is.EqualTo(97), "the Accounts view reads it back per login");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Test]
+    public void A_held_stop_lifts_when_the_reserve_is_lowered_below_it()
+    {
+        var agg = new StatusAggregator(new OrchestratorOptions());
+        Assert.That(agg.HoldWeeklyStop(Budget(96), Now).WeeklyStopped(Now), Is.True, "96% is past the default 95% line");
+        var two = Settings with { WeeklyReservePercent = 2 };
+        Assert.That(agg.HoldWeeklyStop(Budget(96, two), Now).WeeklyStopped(Now), Is.False, "at a 2% reserve the line is 98%: the week has room");
+    }
+
+    [Test]
     public void An_idle_tabs_lower_weekly_percent_doesnt_lift_the_stop_before_the_reset()
     {
         // Every open session restamps claude-usage.json with its own last weekly percent; the hooks latch the stop, so must the daemon.
         var agg = new StatusAggregator(new OrchestratorOptions());
-        Assert.That(agg.HoldWeeklyStop(Budget(AgentGate.StopPercent), Now).WeeklyStopped(Now), Is.True);
+        Assert.That(agg.HoldWeeklyStop(Budget(Settings.WeeklyStopPercent), Now).WeeklyStopped(Now), Is.True);
 
         var later = Now.AddMinutes(5);
         Assert.That(agg.HoldWeeklyStop(Budget(85, now: later), later).WeeklyStopped(later), Is.True, "a stale lower report");
