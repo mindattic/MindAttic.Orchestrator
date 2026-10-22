@@ -255,6 +255,64 @@ public sealed class AccountDirsTests
     }
 
     [Test]
+    public void Sign_in_all_gives_every_roster_account_without_its_own_login_one_in_turn()
+    {
+        var calls = new List<(string Email, bool Sso, string Dir)>();
+        var real = AccountSwitch.LoginInto;
+        var previous = AnsiConsole.Console;
+        var output = new StringWriter();
+        AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings { Out = new AnsiConsoleOutput(output), Ansi = AnsiSupport.No, ColorSystem = ColorSystemSupport.NoColors, Interactive = InteractionSupport.No });
+        AnsiConsole.Profile.Width = 300;
+        var c = dirs.For("c@example.com");
+        Directory.CreateDirectory(c.Directory);
+        SignIn(c, "acct-c");
+        AccountRow[] rows =
+        [
+            new() { Account = "acct-b/org", Email = "B@Example.com", Plan = "Team · Max 5x" },
+            new() { Account = "acct-b/other", Email = "b@example.com", Plan = "Team" }, // the same email in another org: once
+            new() { Account = "acct-c/org", Email = "c@example.com", Plan = "Team" },   // already has its own login
+            new() { Account = "acct-d-uuid/org" },                                      // no email yet
+            new() { Account = "acct-e/org", Email = "e@example.com", Plan = "Enterprise" },
+            new() { Account = "acct-f/org", Email = "f@example.com", Plan = "Team" },
+        ];
+        try
+        {
+            AccountSwitch.LoginInto = (email, sso, configDir) =>
+            {
+                calls.Add((email, sso, configDir));
+                if (email == "f@example.com") return 1; // the user closed the browser
+                File.WriteAllText(Path.Combine(configDir, ".claude.json"), JsonSerializer.Serialize(new { oauthAccount = new { accountUuid = "acct-" + email[0], emailAddress = email } }));
+                return 0;
+            };
+            var results = OwnLogins.SignInAll(dirs, rows);
+            Assert.That(calls, Is.EqualTo(new[]
+            {
+                ("b@example.com", false, dirs.For("b@example.com").Directory),
+                ("e@example.com", true, dirs.For("e@example.com").Directory),
+                ("f@example.com", false, dirs.For("f@example.com").Directory),
+            }), "one after another, each in its own folder, SSO for the Enterprise org");
+            Assert.That(results.Select(r => r.Outcome), Is.EqualTo(new[]
+            {
+                OwnLoginOutcome.SignedIn, OwnLoginOutcome.AlreadySignedIn, OwnLoginOutcome.NoEmail, OwnLoginOutcome.SignedIn, OwnLoginOutcome.Failed,
+            }));
+            Assert.That(dirs.For("b@example.com").SignedIn && dirs.For("e@example.com").SignedIn, Is.True);
+            Assert.That(File.ReadAllText(HomeConfig), Does.Contain("\"global\""), "the global login is left as it is");
+            Assert.That(OwnLogins.Summary(results), Is.EqualTo("2 signed in, 1 already had its own login, 1 failed, 1 with no email yet."));
+
+            calls.Clear();
+            Assert.That(LoginCommand.SignInAll(dirs, rows), Is.EqualTo(1), "f still fails");
+            Assert.That(calls.Select(x => x.Email), Is.EqualTo(new[] { "f@example.com" }), "only the one still without a login");
+            Assert.That(output.ToString(), Does.Contain("acct-d-u").And.Contain("no email yet").And.Contain("f@example.com isn't signed in"));
+            Assert.That(CliApp.Create().Run(["login", "--all", "--account", "b@example.com"]), Is.EqualTo(1), "--all goes on its own");
+        }
+        finally
+        {
+            AccountSwitch.LoginInto = real;
+            AnsiConsole.Console = previous;
+        }
+    }
+
+    [Test]
     public void Start_on_an_account_without_its_own_login_yet_says_how_to_sign_it_in()
     {
         var previous = AnsiConsole.Console;

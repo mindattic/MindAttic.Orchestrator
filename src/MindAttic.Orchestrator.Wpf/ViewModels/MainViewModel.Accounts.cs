@@ -1,5 +1,8 @@
 using MindAttic.Orchestrator.Billing;
 using MindAttic.Orchestrator.Budget;
+using MindAttic.Orchestrator.Sessions;
+using System.Windows.Input;
+using MindAttic.Components.Wpf.Mvvm;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
@@ -108,6 +111,62 @@ public sealed partial class MainViewModel
             NoteLocalChange();
             switchingAccount = false;
             Raise(nameof(BillingDetail));
+        }
+        await RefreshAsync();
+    }
+
+    private bool signingInAll;
+    private RelayCommand? signInAllCommand;
+
+    /// <summary>"Sign in all" (M.ORCH-T604): every account in the roster with no per-CLI login yet gets its own folder and its
+    /// login, in turn, so every Claude Team seat stays signed in side by side and the global login is only the default.</summary>
+    public ICommand SignInAllCommand => signInAllCommand ??= new RelayCommand(async () => await SignInAllAsync(), () => !signingInAll);
+
+    /// <summary>Where the per-CLI logins' folders are; tests point it elsewhere (never the real ~/.claude-accounts).</summary>
+    internal Func<AccountDirs> OwnLoginDirs { get; set; } = () => new AccountDirs();
+
+    /// <summary>Runs <see cref="OwnLogins.SignInAll"/> off the UI thread (each login waits on the browser), saying each account
+    /// as its login opens and finishes, a toast for each that failed, and the tally at the end.</summary>
+    public async Task SignInAllAsync()
+    {
+        if (signingInAll) return;
+        signingInAll = true;
+        CommandManager.InvalidateRequerySuggested();
+        void Say(string text)
+        {
+            billingMessage = text;
+            billingMessageUtc = DateTime.UtcNow;
+            Raise(nameof(BillingDetail));
+        }
+        Say("Signing every account in to its own login…");
+        var opening = new Progress<string>(email => Say($"Opening {email}'s login in the browser…"));
+        var finished = new Progress<OwnLoginResult>(r =>
+        {
+            Say(r.Message);
+            if (r.Outcome == OwnLoginOutcome.Failed)
+                Toasts.Insert(0, new ToastViewModel($"{r.Label} not signed in", r.Message, Palette.Over, null));
+        });
+        try
+        {
+            var rows = accountRows;
+            var dirs = OwnLoginDirs();
+            var results = await Task.Run(() => OwnLogins.SignInAll(dirs, rows,
+                (dir, _) => ((IProgress<string>)opening).Report(dir.Email), r => ((IProgress<OwnLoginResult>)finished).Report(r)));
+            var summary = OwnLogins.Summary(results);
+            Say(summary);
+            Toasts.Insert(0, new ToastViewModel("Sign in all", summary,
+                results.Any(r => r.Outcome == OwnLoginOutcome.Failed) ? Palette.Waiting : Palette.Working, null));
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            Say($"Couldn't sign the accounts in: {ex.Message}");
+            OrchestratorLog.For("Dashboard").Error(ex, "sign in all failed");
+        }
+        finally
+        {
+            signingInAll = false;
+            CommandManager.InvalidateRequerySuggested();
+            NoteLocalChange();
         }
         await RefreshAsync();
     }

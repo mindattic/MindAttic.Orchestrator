@@ -230,6 +230,10 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <!-- Sign in all (M.ORCH-T604): every account in the roster with no per-CLI login yet gets its own one, in turn. -->
+                    <Button x:Name="SignInAllButton" Style="{StaticResource MaButton}" Command="{Binding SignInAllCommand}"
+                            Content="Sign in all" HorizontalAlignment="Right" Margin="8,6,8,0"
+                            ToolTip="Give every account here with no per-CLI login yet its own (~/.claude-accounts), opening each one's login in the browser in turn, so every Claude Team seat stays signed in side by side. The global login stays the default." />
                 </StackPanel>
             </Border>
         </Popup>

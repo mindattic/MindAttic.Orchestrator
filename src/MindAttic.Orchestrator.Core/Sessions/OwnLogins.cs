@@ -1,0 +1,99 @@
+using MindAttic.Orchestrator.Budget;
+
+namespace MindAttic.Orchestrator.Sessions;
+
+/// <summary>How one per-CLI login's sign-in went (M.ORCH-T604).</summary>
+public enum OwnLoginOutcome
+{
+    /// <summary>Signed in to the account it was opened for.</summary>
+    SignedIn,
+    /// <summary>Signed in, but to another account than the one asked for (CLIs on it spend that account's tokens).</summary>
+    SignedInAsOther,
+    /// <summary>It already had its own login: left alone.</summary>
+    AlreadySignedIn,
+    /// <summary>The roster row has no email yet (it shows once the account is signed in to again), so it has no folder.</summary>
+    NoEmail,
+    /// <summary>The login didn't run, didn't finish, or left nobody signed in.</summary>
+    Failed,
+}
+
+/// <summary>One account's sign-in: who (<see cref="Label"/>, its <see cref="Email"/> when known), how it went, and what to say.
+/// <see cref="Notes"/> are what preparing its folder had to say.</summary>
+public sealed record OwnLoginResult(string Label, string? Email, string? Directory, OwnLoginOutcome Outcome, string Message, IReadOnlyList<string> Notes)
+{
+    public bool Ok => Outcome is OwnLoginOutcome.SignedIn or OwnLoginOutcome.SignedInAsOther or OwnLoginOutcome.AlreadySignedIn;
+}
+
+/// <summary>
+/// Signs per-CLI logins in (M.ORCH-T559, M.ORCH-T604): <see cref="SignIn"/> one account's own folder, or <see cref="SignInAll"/>
+/// every account in the roster that has none yet, one after another, so every Claude Team seat stays signed in side by side
+/// and the global login is only the default. Each runs <c>claude auth login --email</c> under the account's folder through
+/// <see cref="AccountSwitch.LoginInto"/>; the global login is never touched.
+/// </summary>
+public static class OwnLogins
+{
+    /// <summary>Prepares <paramref name="email"/>'s own folder and runs its login there; <paramref name="opening"/> hears of it
+    /// just before the browser opens (with the command run), since the login waits on the user.</summary>
+    public static OwnLoginResult SignIn(AccountDirs dirs, string email, bool sso, Action<AccountDir, string>? opening = null)
+    {
+        if (AccountDirs.Normalize(email) is null)
+            return new OwnLoginResult(email, null, null, OwnLoginOutcome.Failed, $"\"{email}\" isn't an email address.", []);
+        var dir = dirs.For(email);
+        var notes = dirs.Prepare(dir);
+        var command = $"{AccountDirs.EnvVar}={dir.Directory} {AccountSwitch.LoginCommand(dir.Email, sso)}";
+        opening?.Invoke(dir, command);
+        OwnLoginResult Done(OwnLoginOutcome outcome, string message) => new(dir.Email, dir.Email, dir.Directory, outcome, message, notes);
+        int code;
+        try { code = AccountSwitch.LoginInto(dir.Email, sso, dir.Directory); }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            return Done(OwnLoginOutcome.Failed, $"Couldn't run {command}: {ex.Message}");
+        }
+        if (code != 0) return Done(OwnLoginOutcome.Failed, $"{command} ended with exit code {code}; {dir.Email} isn't signed in.");
+        if (!dir.SignedIn) return Done(OwnLoginOutcome.Failed, $"The login finished but no Claude account is signed in to in {dir.Directory}.");
+        if (dir.SignedInEmail is { } signed && !signed.Equals(dir.Email, StringComparison.OrdinalIgnoreCase))
+            return Done(OwnLoginOutcome.SignedInAsOther,
+                $"Signed in as {signed}, not {dir.Email}: CLIs started with --account {dir.Email} spend {signed}'s tokens.");
+        return Done(OwnLoginOutcome.SignedIn, $"Signed in: {dir.Email} has its own login in {dir.Directory}.");
+    }
+
+    /// <summary>
+    /// Every roster row with an email whose own folder isn't signed in yet gets its folder and its login, in turn (each login
+    /// waits for the browser). Rows already signed in on their own are left alone; rows with no email yet are said and skipped.
+    /// One email is signed in once, however many rows (orgs) carry it. <paramref name="done"/> hears of each as it finishes.
+    /// </summary>
+    public static IReadOnlyList<OwnLoginResult> SignInAll(AccountDirs dirs, IEnumerable<AccountRow> rows,
+        Action<AccountDir, string>? opening = null, Action<OwnLoginResult>? done = null)
+    {
+        var results = new List<OwnLoginResult>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var row in rows)
+        {
+            OwnLoginResult result;
+            if (row.Email is not { } email || AccountDirs.Normalize(email) is not { } normalized)
+                result = new OwnLoginResult(row.Label, row.Email, null, OwnLoginOutcome.NoEmail,
+                    $"{row.Label} has no email yet (it shows once it's signed in to again), so it's skipped.", []);
+            else if (!seen.Add(normalized)) continue;
+            else if (dirs.For(normalized) is { SignedIn: true } already)
+                result = new OwnLoginResult(already.Email, already.Email, already.Directory, OwnLoginOutcome.AlreadySignedIn,
+                    $"{already.Email} already has its own login.", []);
+            else result = SignIn(dirs, normalized, AccountSwitch.UsesSso(row), opening);
+            results.Add(result);
+            done?.Invoke(result);
+        }
+        return results;
+    }
+
+    /// <summary>"3 signed in, 1 already was, 1 failed, 1 with no email": the tally of a <see cref="SignInAll"/>.</summary>
+    public static string Summary(IReadOnlyList<OwnLoginResult> results)
+    {
+        if (results.Count == 0) return "No accounts in the roster to sign in.";
+        var parts = new List<string>();
+        void Add(int n, string text) { if (n > 0) parts.Add($"{n} {text}"); }
+        Add(results.Count(r => r.Outcome is OwnLoginOutcome.SignedIn or OwnLoginOutcome.SignedInAsOther), "signed in");
+        Add(results.Count(r => r.Outcome == OwnLoginOutcome.AlreadySignedIn), "already had its own login");
+        Add(results.Count(r => r.Outcome == OwnLoginOutcome.Failed), "failed");
+        Add(results.Count(r => r.Outcome == OwnLoginOutcome.NoEmail), "with no email yet");
+        return string.Join(", ", parts) + ".";
+    }
+}

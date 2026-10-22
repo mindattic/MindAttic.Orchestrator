@@ -14,6 +14,7 @@ using Spectre.Console.Cli;
 /// <para><c>--account &lt;email&gt;</c> (M.ORCH-T559) signs in a per-CLI login instead: that account's own folder
 /// (<see cref="AccountDirs"/>), once, so <c>orchestrator start &lt;repo&gt; --account &lt;email&gt;</c> runs a CLI on its token
 /// pool beside the others. The global login every other CLI uses is left as it is.</para>
+/// <para><c>--all</c> (M.ORCH-T604) does that for every account in the roster with no per-CLI login yet, in turn.</para>
 /// </summary>
 internal sealed class LoginCommand : Command<LoginCommand.Settings>
 {
@@ -31,6 +32,10 @@ internal sealed class LoginCommand : Command<LoginCommand.Settings>
         [Description("Sign in a per-CLI login: this account's own folder, for CLIs started with 'orchestrator start <repo> --account <email>'. The global login is left alone.")]
         public string? OwnLogin { get; init; }
 
+        [CommandOption("--all")]
+        [Description("Sign in a per-CLI login for every account in the roster that has none yet, one after another, so every seat stays signed in side by side.")]
+        public bool All { get; init; }
+
         [CommandOption("--sso")]
         [Description("Force the SSO login flow (it's used anyway when the account's org signs in through SSO).")]
         public bool Sso { get; init; }
@@ -44,6 +49,15 @@ internal sealed class LoginCommand : Command<LoginCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
+        if (settings.All)
+        {
+            if (settings.ApiKey || settings.Account is not null || settings.OwnLogin is not null)
+            {
+                AnsiConsole.MarkupLine("[red]--all signs in every account's own login on its own: leave out the account, --account and --api-key.[/]");
+                return 1;
+            }
+            return SignInAll(DirsOverride?.Invoke() ?? new AccountDirs(), AccountsCommand.Load().Rows);
+        }
         if (settings.OwnLogin is not null)
         {
             if (settings.ApiKey || settings.Account is not null)
@@ -104,31 +118,37 @@ internal sealed class LoginCommand : Command<LoginCommand.Settings>
             AnsiConsole.MarkupLine($"[red]\"{Markup.Escape(email)}\" isn't an email address: --account takes the account's whole email.[/]");
             return 1;
         }
-        var dir = dirs.For(email);
-        foreach (var line in dirs.Prepare(dir)) AnsiConsole.MarkupLine($"[grey]{Markup.Escape(line)}[/]");
-        var command = $"CLAUDE_CONFIG_DIR={dir.Directory} {AccountSwitch.LoginCommand(dir.Email, sso)}";
-        AnsiConsole.MarkupLine($"Opening {Markup.Escape(dir.Email)}'s login in the browser ({Markup.Escape(command)}).");
-        int code;
-        try { code = AccountSwitch.LoginInto(dir.Email, sso, dir.Directory); }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
-        {
-            AnsiConsole.MarkupLine($"[red]Couldn't run {Markup.Escape(command)}: {Markup.Escape(ex.Message)}[/]");
-            return 1;
-        }
-        if (code != 0)
-        {
-            AnsiConsole.MarkupLine($"[red]{Markup.Escape(command)} ended with exit code {code}; {Markup.Escape(dir.Email)} isn't signed in.[/]");
-            return 1;
-        }
-        if (!dir.SignedIn)
-        {
-            AnsiConsole.MarkupLine($"[red]The login finished but no Claude account is signed in to in {Markup.Escape(dir.Directory)}.[/]");
-            return 1;
-        }
-        if (dir.SignedInEmail is { } signed && !signed.Equals(dir.Email, StringComparison.OrdinalIgnoreCase))
-            AnsiConsole.MarkupLine($"[yellow]Signed in as {Markup.Escape(signed)}, not {Markup.Escape(dir.Email)}: CLIs started with --account {Markup.Escape(dir.Email)} spend {Markup.Escape(signed)}'s tokens.[/]");
-        AnsiConsole.MarkupLine($"Signed in: {Markup.Escape(dir.Email)} has its own login in {Markup.Escape(dir.Directory)}. " +
-            $"Start a CLI on it with [bold]orchestrator start <repo> --account {Markup.Escape(dir.Email)}[/]; every other CLI stays on the global login.");
+        var result = OwnLogins.SignIn(dirs, email, sso, Opening);
+        Report(result);
+        if (!result.Ok) return 1;
+        AnsiConsole.MarkupLine($"Start a CLI on it with [bold]orchestrator start <repo> --account {Markup.Escape(result.Email!)}[/]; every other CLI stays on the global login.");
         return 0;
+    }
+
+    /// <summary><c>login --all</c> (M.ORCH-T604): every roster account with no per-CLI login yet gets its own folder and its
+    /// login, one after another, so every Claude Team seat is signed in side by side. Fails when any login did.</summary>
+    internal static int SignInAll(AccountDirs dirs, IReadOnlyList<AccountRow> rows)
+    {
+        var results = OwnLogins.SignInAll(dirs, rows, Opening, Report);
+        AnsiConsole.MarkupLine(Markup.Escape(OwnLogins.Summary(results)));
+        if (results.Any(r => r.Ok))
+            AnsiConsole.MarkupLine("[grey]Start a CLI on any of them with orchestrator start <repo> --account <email>; the global login stays the default.[/]");
+        return results.Any(r => r.Outcome == OwnLoginOutcome.Failed) ? 1 : 0;
+    }
+
+    private static void Opening(AccountDir dir, string command) =>
+        AnsiConsole.MarkupLine($"Opening {Markup.Escape(dir.Email)}'s login in the browser ({Markup.Escape(command)}).");
+
+    private static void Report(OwnLoginResult result)
+    {
+        foreach (var line in result.Notes) AnsiConsole.MarkupLine($"[grey]{Markup.Escape(line)}[/]");
+        var color = result.Outcome switch
+        {
+            OwnLoginOutcome.Failed => "red",
+            OwnLoginOutcome.SignedInAsOther => "yellow",
+            OwnLoginOutcome.NoEmail or OwnLoginOutcome.AlreadySignedIn => "grey",
+            _ => "default",
+        };
+        AnsiConsole.MarkupLine($"[{color}]{Markup.Escape(result.Message)}[/]");
     }
 }

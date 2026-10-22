@@ -59,6 +59,7 @@ public partial class MainWindow : Window
         // A row's Button has no Command (its CommandParameter alone can't pick which VM method to call); caught here instead,
         // once, since every row's Click bubbles up through the ItemsControl regardless of which DataTemplate instance it's in.
         AccountRows.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(OnAccountRowClick));
+        SignInAllButton.Click += (_, _) => AccountPopup.IsOpen = false;
 
         model.Toasts.CollectionChanged += OnToastsChanged;
         model.PropertyChanged += (_, e) =>
