@@ -238,7 +238,7 @@ public sealed class LibraryControlsTests
         var boxes = window.Descendants(P + "TextBox").ToList();
         Assert.That(boxes.Select(b => (string?)b.Attribute("Style")), Has.All.Matches<string?>(s => s is "{StaticResource MaTextBox}" or "{StaticResource MaTextArea}"));
         var placeholders = boxes.Select(b => (string?)b.Attribute(Mc + "MaTextBox.Placeholder")).OfType<string>().ToList();
-        Assert.That(placeholders, Is.EquivalentTo(new[] { "Search repos and tickets   Ctrl+F", "Opening prompt (optional), or pick a ticket below", "Reply to this tab…" }));
+        Assert.That(placeholders, Is.EquivalentTo(new[] { "Search repos and tickets   Ctrl+F", "Opening prompt (optional), or pick a ticket below", "Reply to this tab…", "name@company.com" }));
         Assert.That(boxes.Where(b => (string?)b.Attribute("AcceptsReturn") == "True"), Is.Empty, "a multi-line box is an MaTextArea");
 
         var build = File.ReadAllText(Wpf("BuildWorkspaceWindow.cs"));
