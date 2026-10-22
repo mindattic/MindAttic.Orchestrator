@@ -1212,8 +1212,10 @@
 
             <!-- Terminals view (M.ORCH-T618): the CLIs opened inside the Orchestrator ("Where CLIs open" in Settings), one pane
                  tab each with its login's badge and color (M.ORCH-T616). The terminals are native windows drawn over WPF, so
-                 the whole view is hidden (never collapsed: they keep their size) while Settings or the loader is over it. -->
-            <DockPanel x:Name="TerminalsBody" Grid.ColumnSpan="2" Margin="24,0,24,16" Visibility="{Binding TerminalsVisibility}"
+                 the whole view is hidden (never collapsed: they keep their size) while Settings or the loader is over it.
+                 Visibility reads the window's view model: this element's own DataContext is Terminals, which has none. -->
+            <DockPanel x:Name="TerminalsBody" Grid.ColumnSpan="2" Margin="24,0,24,16"
+                       Visibility="{Binding DataContext.TerminalsVisibility, RelativeSource={RelativeSource AncestorType=Window}}"
                        DataContext="{Binding Terminals}">
                 <DockPanel x:Name="TerminalsReopen" DockPanel.Dock="Top" Margin="0,0,0,8"
                            Visibility="{Binding HasReopen, Converter={StaticResource Visible}}">

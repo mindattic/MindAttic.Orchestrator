@@ -188,6 +188,23 @@ public sealed class TerminalPanesTests
     }
 
     [Test]
+    public void The_terminals_body_reads_its_visibility_from_the_window_not_from_its_own_Terminals_context()
+    {
+        // M.ORCH-T626: bound against its own DataContext (Terminals) the binding failed and the body showed in every view.
+        var root = TestContext.CurrentContext.TestDirectory;
+        while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
+        var at = xaml.IndexOf("x:Name=\"TerminalsBody\"", StringComparison.Ordinal);
+        Assert.That(at, Is.GreaterThan(0));
+        var tag = xaml[at..xaml.IndexOf('>', at)];
+        Assert.That(tag, Does.Contain("DataContext=\"{Binding Terminals}\""));
+        Assert.That(tag, Does.Contain("Visibility=\"{Binding DataContext.TerminalsVisibility, RelativeSource={RelativeSource AncestorType=Window}}\""));
+        Assert.That(typeof(MindAttic.Orchestrator.Wpf.ViewModels.MainViewModel).GetProperty("TerminalsVisibility"), Is.Not.Null);
+        Assert.That(typeof(MindAttic.Orchestrator.Wpf.ViewModels.TerminalsViewModel).GetProperty("TerminalsVisibility"), Is.Null,
+            "if Terminals ever gains one, the plain binding would be right again");
+    }
+
+    [Test]
     public void The_badge_text_is_black_or_white_by_the_luminance_of_its_tab_color_chip()
     {
         // M.ORCH-T621: the badge sits on a chip of the tab color, so every palette color must read.
