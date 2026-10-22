@@ -416,6 +416,10 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         pilotRunning ??= a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc);
         makeWorktree ??= Dispatcher.EnsureWorktree;
         mainlineOf ??= Dispatcher.Mainline;
+        // A CLI on its way to another login (M.ORCH-T637) claims nothing until it lands: its own tickets are handed back then.
+        if (cli is { } moving && new Sessions.MoveLocks(store).All().FirstOrDefault(m => m.Pid == moving || (self is not null && m.SessionId == self)) is { } move)
+            return ([], $"this CLI is moving to {move.ToName}: it claims nothing until the move lands, " +
+                "then its tickets are handed back to it to start again");
         if (plan.Stopped)
             return ([], $"the {plan.Pace?.Governing ?? "5-hour"} window is at its target: nothing starts before it resets" +
                 (plan.Pace?.ResetUtc is { } reset ? $" ({Formatting.ResetTime(reset, nowUtc)})" : ""));

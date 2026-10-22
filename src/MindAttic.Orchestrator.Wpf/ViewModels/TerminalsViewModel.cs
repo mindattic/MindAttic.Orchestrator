@@ -50,7 +50,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>Its CLI's move in flight (M.ORCH-T638): the tab's controls stay locked under "Moving to …" until it lands.</summary>
     public bool IsMoving => PendingMoves.For(Record.SessionId) is not null;
     public bool IsUnlocked => !IsMoving;
-    public string MovingText => PendingMoves.For(Record.SessionId) is { } m ? $"Moving to {m.TargetName}…" : "";
+    public string MovingText => PendingMoves.For(Record.SessionId) is { } m ? m.Text : "";
     public void RaiseMoving() { Raise(nameof(IsMoving)); Raise(nameof(IsUnlocked)); Raise(nameof(MovingText)); }
 
     public PaneRequest Request { get; }

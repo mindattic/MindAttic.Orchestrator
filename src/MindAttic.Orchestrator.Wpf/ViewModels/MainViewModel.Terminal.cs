@@ -22,6 +22,12 @@ public sealed partial class MainViewModel
                 await GoToOrShowRepoAsync(agent.Host, agent.Repo);
                 break;
         }
+    }, p => p switch
+    {
+        // Off while its CLI moves to another login (M.ORCH-T637).
+        HostRowViewModel row => !row.IsMoving,
+        AgentRowViewModel agent => !agent.IsMoving,
+        _ => true,
     });
 
     /// <summary>The tab a toast about <paramref name="repo"/> goes to: the one whose CLI waits on you, else its only (or first) tab.</summary>

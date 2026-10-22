@@ -457,7 +457,9 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             // Each session's per-CLI login, and the global login's email: what the dashboard's tabs split it by (M.ORCH-T613).
             OwnLogins = ownLogin.Select(o => (Session: o.Key, Email: Accounts.Dirs.Of(o.Value)?.Email)).Where(o => o.Email is not null)
                 .ToDictionary(o => o.Session, o => o.Email!, StringComparer.Ordinal),
-            GlobalEmail = globalLogin };
+            GlobalEmail = globalLogin,
+            // The moves in flight (M.ORCH-T637): what locks a moving CLI's controls and tickets everywhere.
+            Moves = new MoveLocks(Store).All() };
 
         RepoStatus Repo(string name, string path, IReadOnlyList<MindAttic.Tickets.Log.Ticket> open)
         {

@@ -33,8 +33,15 @@ public sealed partial class MainViewModel
     {
         if (moving || PendingMoves.For(sessionId) is not null) return;
         moving = true;
+        // The tickets it and its subagents hold (M.ORCH-T637): its claims, and the one it was started on.
+        var row = full?.Agents.FirstOrDefault(a => a.SessionId == sessionId);
+        List<string> holding = [.. (row?.Claims ?? []).Concat(row?.TicketId is { Length: > 0 } own ? [own] : []).Distinct(StringComparer.OrdinalIgnoreCase)];
         // Locked at once (M.ORCH-T638): the CLI only moves at its next idle point, so without this it looks like nothing happened.
-        PendingMoves.Begin(new PendingMoves.Move(sessionId, repo, target.Email, NameOf(target), DateTime.UtcNow));
+        PendingMoves.Begin(new MoveLock
+        {
+            SessionId = sessionId, Pid = cliPid ?? 0, HostPid = row?.Host?.ProcessId, HostPipe = row?.Host?.PipeName, Repo = repo,
+            ToEmail = target.Email, ToName = NameOf(target), StartedUtc = DateTime.UtcNow, Tickets = holding,
+        });
         var hosts = full?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
         var mover = AccountMover;
         AccountMoveResult result;
@@ -48,7 +55,7 @@ public sealed partial class MainViewModel
                 var cli = live.FirstOrDefault(c => c.SessionId == sessionId) ?? (cliPid is { } pid ? live.FirstOrDefault(c => c.Pid == pid) : null);
                 return cli is null
                     ? new AccountMoveResult(false, $"The CLI in {repo} isn't running any more, so it wasn't moved.")
-                    : await move.MoveAsync(cli, target.Email, now);
+                    : await move.MoveAsync(cli, target.Email, now, holding, repo);
             });
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -73,13 +80,27 @@ public sealed partial class MainViewModel
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or ArgumentException) { return target.Label; }
     }
 
-    /// <summary>Ends the moves this tab's agents show landed, says which timed out, and refreshes every locked control.</summary>
+    /// <summary>Takes the moves in flight as the refresh read them (the daemon ends each one as it lands, fails or times out, and
+    /// hands its tickets back, M.ORCH-T637), and says which ended without landing.</summary>
     private void ReconcileMoves(Snapshot next)
     {
-        foreach (var m in PendingMoves.Reconcile(next.Agents, next.TakenUtc))
-            Toasts.Insert(0, new ToastViewModel($"{m.Repo} hasn't moved to {m.TargetName}",
-                $"Its CLI didn't show up on {m.TargetName} within {PendingMoves.Timeout.TotalMinutes:0} minutes, so its controls are unlocked again. It may still move at its next idle point.",
+        foreach (var m in PendingMoves.Sync(next.Moves, next.TakenUtc))
+        {
+            if ((full ?? next).Agents.Any(a => MoveLocks.Landed(m, a))) continue;
+            Toasts.Insert(0, new ToastViewModel($"{m.Repo} hasn't moved to {m.ToName}",
+                $"Its CLI didn't show up on {m.ToName}, so it and its tickets are unlocked again and stay with its old login" +
+                (m.Tickets.Count > 0 ? $" ({string.Join(", ", m.Tickets)} are handed back to it)." : "."),
                 Palette.Over, null));
+        }
+    }
+
+    /// <summary>Whether a CLI moving to another login holds <paramref name="ticketId"/> (M.ORCH-T637): its dashboard actions
+    /// (Start, Release, Use as prompt, Remove worktree) are refused until the move lands, saying so.</summary>
+    internal bool Locked(string ticketId)
+    {
+        if (PendingMoves.ForTicket(ticketId) is not { } m) return false;
+        QueueMessage = StatusMessage = $"{ticketId} is held by the CLI in {m.Repo}, which is moving to {m.ToName}: try again once it lands.";
+        return true;
     }
 
     /// <summary>Re-reads every moving flag this tab shows, when any move begins, lands or times out.</summary>
@@ -88,5 +109,13 @@ public sealed partial class MainViewModel
         foreach (var a in Agents) a.RaiseMoving();
         foreach (var card in LoginCards) foreach (var c in card.Clis) c.RaiseMoving();
         foreach (var p in Terminals.Panes) p.RaiseMoving();
+        // Every ticket a move holds, wherever it shows (M.ORCH-T637): the repo's open tickets, the queue and finished work.
+        foreach (var r in tiles.Values)
+        {
+            foreach (var t in r.Tickets) t.RaiseMoving();
+            foreach (var h in r.Hosts) h.RaiseMoving();
+        }
+        foreach (var q in Queue) q.RaiseMoving();
+        System.Windows.Input.CommandManager.InvalidateRequerySuggested();
     }
 }

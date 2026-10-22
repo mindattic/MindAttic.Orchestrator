@@ -173,6 +173,19 @@ The request goes to the host, never into the CLI, on a pipe of its own beside th
   login (`CLAUDE_CONFIG_DIR` removed). The tab keeps it for every later restart, and a request without one (a billing
   restart) keeps the login the CLI is on. Only signed-in logins are offered, never the one the CLI is already on.
 
+  **A move carries the CLI's subagents and locks its work (M.ORCH-T637).** The moment a move is sent (from any of the
+  above, the rebalancer included) the CLI and every ticket it or its subagents hold (its `orchestrator next --claim`
+  claims, and the ticket it was started on) are locked in `data/orchestrator.db`'s `account-moves` state row: the
+  dashboard shows each as "Moving to <name>…" with Move to, Start, Use as prompt, Send, Go to tab, Release and Remove
+  worktree off; `orchestrator next` (and the daemon's nudges) never hand them out, claim them or put them to another CLI,
+  and the moving CLI itself claims nothing; a second move of it is refused. Its running subagents are stopped at once
+  (Esc typed into its tab interrupts its turn, so the restart doesn't wait for them); their tickets stay claimed and their
+  worktrees and uncommitted changes are kept. When the CLI shows up on the new login (its session, the same Launcher tab,
+  or a CLI of its repo started since the move), the daemon puts the claims on the CLI as it is now and types into its tab a
+  prompt to start their subagents again in the same worktrees, under the new account. A move the tab refused unlocks at
+  once; one that doesn't land within 30 minutes (or whose CLI ended and didn't come back within 5) unlocks with an alert,
+  the claims staying with the old owner, whose CLI is told to start them again if it's still running.
+
   **Rebalance (M.ORCH-T608):** the daemon sends the same request on its own when a CLI's login runs low (Claude's meter
   puts its 5-hour window at the pace target or its week at the weekly reserve's stop line, or its pace is at a limit) and a
   signed-in per-CLI login has no CLI and at least 10 points more headroom. The CLI isn't moved again for 30 minutes, its

@@ -436,6 +436,7 @@ public sealed partial class MainViewModel
 
     public async void Dispatch(QueueItem item, bool worktree)
     {
+        if (Locked(item.Id)) return;
         if (!starting.Add(item.Id)) return;
         try
         {
@@ -499,6 +500,7 @@ public sealed partial class MainViewModel
 
     public void Release(string ticketId) => Guarded("Release", () =>
     {
+        if (Locked(ticketId)) return;
         dispatcher.Release(ticketId);
         QueueMessage = $"{ticketId} is back in the queue.";
         queueLog.Information("Released {Ticket:l}", ticketId);
@@ -568,6 +570,7 @@ public sealed partial class MainViewModel
 
     public async void Finish(Assignment a)
     {
+        if (Locked(a.TicketId)) return;
         try
         {
             var repoPath = snapshot?.Repos.FirstOrDefault(r => r.Name == a.Repo)?.Path ?? "";

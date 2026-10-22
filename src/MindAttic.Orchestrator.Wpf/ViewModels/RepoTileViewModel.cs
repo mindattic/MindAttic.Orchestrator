@@ -108,8 +108,14 @@ public sealed class HostRowViewModel : ObservableObject
     public HostRowViewModel(HostSession host)
     {
         this.host = host;
-        SendCommand = new RelayCommand(async () => await SendAsync(), () => !Sending && !string.IsNullOrWhiteSpace(Draft));
+        SendCommand = new RelayCommand(async () => await SendAsync(), () => !Sending && !IsMoving && !string.IsNullOrWhiteSpace(Draft));
     }
+
+    /// <summary>Its CLI is moving to another login (M.ORCH-T637): Send and Go to tab are off until the move lands.</summary>
+    public bool IsMoving => PendingMoves.ForHost(host.ProcessId) is not null;
+    public bool IsUnlocked => !IsMoving;
+    public string MovingText => PendingMoves.ForHost(host.ProcessId)?.Text ?? "";
+    public void RaiseMoving() { Raise(nameof(IsMoving)); Raise(nameof(IsUnlocked)); Raise(nameof(MovingText)); }
 
     public string PipeName => host.PipeName;
     /// <summary>The tab itself, for "Go to tab" (M.ORCH-T619).</summary>
@@ -183,6 +189,12 @@ public sealed class TicketRowViewModel(Ticket ticket) : ObservableObject
     public string Type => ticket.Type;
     public string Summary => ticket.Summary;
     public string Date => ticket.Date;
+
+    /// <summary>Held by a CLI moving to another login (M.ORCH-T637): "Use as prompt" is off until the move lands.</summary>
+    public bool IsMoving => PendingMoves.ForTicket(Id) is not null;
+    public bool IsUnlocked => !IsMoving;
+    public string MovingText => PendingMoves.ForTicket(Id)?.Text ?? "";
+    public void RaiseMoving() { Raise(nameof(IsMoving)); Raise(nameof(IsUnlocked)); Raise(nameof(MovingText)); }
 
     public void Update(Ticket next)
     {

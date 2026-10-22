@@ -108,6 +108,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 // A CLI that stopped for a window is told to carry on (or you're told it's waiting) once that window resets (M.ORCH-T256).
                 if (wakeLease.TryAcquire())
                 {
+                    // A moved CLI that landed on its new login gets its tickets back to start again in their worktrees; one that
+                    // didn't land in time is unlocked with its old owner keeping them (M.ORCH-T637).
+                    ReportMoves(snapshot.Agents, DateTime.UtcNow);
                     ReportWakes(waker.Tick(snapshot.Pace, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
                     // An idle /allocate CLI let stop when its next handed out nothing is sent back once next has work for it
                     // (M.ORCH-T523): keep-going acts only as a turn ends, so nothing asked it again when room opened.
@@ -135,7 +138,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     // line moves to a free login with more headroom at its next idle point.
                     try
                     {
-                        rebalancer ??= new AccountRebalancer(AccountMove.Default(billing: aggregator.BillingSwitch));
+                        rebalancer ??= new AccountRebalancer(AccountMove.Default(billing: aggregator.BillingSwitch, store: store));
                         ReportRebalance(rebalancer.Tick(snapshot.Pace, snapshot.Accounts, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s, DateTime.UtcNow));
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidDataException)
@@ -293,6 +296,28 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     }
 
     private AccountRebalancer? rebalancer;
+
+    /// <summary>Ends the moves in flight that landed, failed or timed out, and hands each one's tickets back (M.ORCH-T637):
+    /// logged, and toasted when it didn't land or its CLI couldn't be typed into.</summary>
+    internal void ReportMoves(IReadOnlyList<Activity.AgentBoardRow> agents, DateTime nowUtc)
+    {
+        try
+        {
+            var handback = new MoveHandback(store);
+            foreach (var end in new MoveLocks(store).Reconcile(agents, nowUtc))
+            {
+                var result = handback.Deliver(end);
+                var warn = !end.Landed || (!result.Typed && result.Tickets.Count > 0);
+                Say(warn ? LogEventLevel.Warning : LogEventLevel.Information, result.Line);
+                if (!end.Landed) Alert("Move didn't land", result.Line["move: ".Length..]);
+                else if (warn) Alert("Needs you", result.Line["move: ".Length..]);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            Say(LogEventLevel.Warning, $"move: {ex.Message}");
+        }
+    }
 
     /// <summary>Logs each CLI the rebalancer moved and toasts it; one it couldn't move is only logged, as a warning.</summary>
     internal void ReportRebalance(IEnumerable<Rebalanced> moves)

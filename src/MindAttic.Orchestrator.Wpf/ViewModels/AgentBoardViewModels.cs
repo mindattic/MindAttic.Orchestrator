@@ -29,7 +29,7 @@ public sealed class AgentRowViewModel(string sessionId) : ObservableObject
     /// <summary>Its move in flight (M.ORCH-T638): its controls stay locked under "Moving to …" until it lands.</summary>
     public bool IsMoving => PendingMoves.For(SessionId) is not null;
     public bool IsUnlocked => !IsMoving;
-    public string MovingText => PendingMoves.For(SessionId) is { } m ? $"Moving to {m.TargetName}…" : "";
+    public string MovingText => PendingMoves.For(SessionId) is { } m ? m.Text : "";
     public void RaiseMoving() { Raise(nameof(IsMoving)); Raise(nameof(IsUnlocked)); Raise(nameof(MovingText)); }
 
     /// <summary>"M.ORCH-T84: Agent board …" when the ticket's title is known, else just the id, else what it's for.</summary>

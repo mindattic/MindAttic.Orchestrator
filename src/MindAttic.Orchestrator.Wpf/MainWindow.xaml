@@ -448,6 +448,11 @@
                                                         <Binding Path="Feedback" Converter="{x:Static vm:Converters.EmptyToCollapsed}" />
                                                     </TextBlock.Visibility>
                                                 </TextBlock>
+                                                <!-- Its CLI moving to another login (M.ORCH-T637): Send and Go to tab are off until it lands. -->
+                                                <StackPanel x:Name="HostMovingNote" Orientation="Horizontal" Margin="0,6,0,0" Visibility="{Binding IsMoving, Converter={StaticResource Visible}}">
+                                                    <mc:MaSpinner Width="14" Height="14" StrokeThickness="2" Margin="0,0,6,0" />
+                                                    <TextBlock Text="{Binding MovingText}" FontWeight="SemiBold" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+                                                </StackPanel>
                                             </StackPanel>
                                         </Border>
                                     </DataTemplate>
@@ -487,6 +492,11 @@
                                                     </TextBlock>
                                                 </DockPanel>
                                                 <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                                <!-- Held by a CLI moving to another login (M.ORCH-T637): locked until the move lands. -->
+                                                <StackPanel x:Name="TicketMovingNote" Orientation="Horizontal" Margin="0,6,0,0" Visibility="{Binding IsMoving, Converter={StaticResource Visible}}">
+                                                    <mc:MaSpinner Width="14" Height="14" StrokeThickness="2" Margin="0,0,6,0" />
+                                                    <TextBlock Text="{Binding MovingText}" FontWeight="SemiBold" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+                                                </StackPanel>
                                             </StackPanel>
                                         </Border>
                                     </DataTemplate>

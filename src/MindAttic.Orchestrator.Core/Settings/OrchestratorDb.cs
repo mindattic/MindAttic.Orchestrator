@@ -254,7 +254,8 @@ public sealed class OrchestratorDb(string path)
          "handoff", // the retired /handoff's mark (M.ORCH-T572), should a row of it be left
          Billing.BillingModeFile.StateName, Budget.ClaudeAccount.StateName, Budget.ReportedUsage.StateName,
          OrchestratorHistory.GateLogImportedName,
-         Sessions.PaneRecords.StateName]; // this machine's open terminal panes (M.ORCH-T618)
+         Sessions.PaneRecords.StateName, // this machine's open terminal panes (M.ORCH-T618)
+         Sessions.MoveLocks.StateName]; // the account moves in flight (M.ORCH-T637)
 
     /// <summary>Every table, with the order the dump lists its rows in: by key, so a change shows up as a few lines in its diff.</summary>
     private static readonly (string Table, string Order, string Where)[] Tables =

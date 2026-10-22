@@ -1,10 +1,11 @@
-using MindAttic.Orchestrator.Activity;
+using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Wpf.ViewModels;
 using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
 
-/// <summary>A move in flight locks its CLI's controls until it lands on the new login (M.ORCH-T638).</summary>
+/// <summary>A move in flight locks its CLI's controls, and those of every ticket it holds, until it lands on the new login
+/// (M.ORCH-T638, M.ORCH-T637): begun here at once, then as the database's moves say.</summary>
 [NonParallelizable]
 public sealed class PendingMovesTests
 {
@@ -13,57 +14,55 @@ public sealed class PendingMovesTests
     [SetUp, TearDown]
     public void Reset() => PendingMoves.Clear();
 
-    private static AgentBoardRow Cli(string session, string repo, string? ownLogin, DateTime started) =>
-        new(session, repo, null, null, started, started, AgentState.Working, "", false, new TokenUsage(0, 0, 0, 0), []) { OwnLogin = ownLogin };
+    private static MoveLock Move(string session = "s1", params string[] tickets) =>
+        new() { SessionId = session, Pid = 1, HostPid = 77, Repo = "Repo", ToEmail = "ryan@example.com", ToName = "Ryan", StartedUtc = T0, Tickets = [.. tickets] };
 
     [Test]
-    public void A_move_locks_its_cli_until_it_shows_up_on_the_new_login()
+    public void A_move_begun_here_locks_its_cli_its_tab_and_its_tickets_at_once()
     {
         var changes = 0;
         void Count() => changes++;
         PendingMoves.Changed += Count;
         try
         {
-            PendingMoves.Begin(new PendingMoves.Move("s1", "Repo", "ryan@example.com", "Ryan", T0));
-            Assert.That(PendingMoves.For("s1")?.TargetName, Is.EqualTo("Ryan"));
+            PendingMoves.Begin(Move("s1", "A-T1"));
+            Assert.That(PendingMoves.For("s1")?.Text, Is.EqualTo("Moving to Ryan…"));
+            Assert.That(PendingMoves.ForTicket("a-t1")?.SessionId, Is.EqualTo("s1"));
+            Assert.That(PendingMoves.ForHost(77), Is.Not.Null);
             Assert.That(PendingMoves.For("s2"), Is.Null);
+            Assert.That(PendingMoves.ForTicket("A-T2"), Is.Null);
 
-            Assert.That(PendingMoves.Reconcile([Cli("s1", "Repo", null, T0.AddHours(-1))], T0.AddMinutes(1)), Is.Empty);
-            Assert.That(PendingMoves.For("s1"), Is.Not.Null, "still on the old login: still moving");
-
-            Assert.That(PendingMoves.Reconcile([Cli("s1", "Repo", "RYAN@example.com", T0.AddHours(-1))], T0.AddMinutes(2)), Is.Empty);
-            Assert.That(PendingMoves.For("s1"), Is.Null, "its own session on the new login: landed");
-            Assert.That(changes, Is.EqualTo(2), "raised when it began and when it landed");
+            // The refresh before the database shows it keeps it locked.
+            PendingMoves.Sync([], T0.AddSeconds(15));
+            Assert.That(PendingMoves.For("s1"), Is.Not.Null);
+            Assert.That(changes, Is.EqualTo(1));
         }
         finally { PendingMoves.Changed -= Count; }
     }
 
     [Test]
-    public void A_resumed_cli_under_a_new_session_in_the_same_repo_counts_as_landed_but_an_older_one_does_not()
+    public void The_databases_moves_lock_and_unlock_and_an_ended_one_is_said_once()
     {
-        PendingMoves.Begin(new PendingMoves.Move("s1", "Repo", null, "Global login", T0));
-        PendingMoves.Reconcile([Cli("old", "Repo", null, T0.AddMinutes(-5))], T0.AddMinutes(1));
-        Assert.That(PendingMoves.For("s1"), Is.Not.Null, "a CLI already on the target before the move isn't this one");
+        // A move made elsewhere (orchestrator move, the rebalancer) locks here too.
+        Assert.That(PendingMoves.Sync([Move("s1", "A-T1")], T0), Is.Empty);
+        Assert.That(PendingMoves.ForTicket("A-T1"), Is.Not.Null);
 
-        PendingMoves.Reconcile([Cli("new", "Repo", null, T0.AddMinutes(3))], T0.AddMinutes(4));
+        var ended = PendingMoves.Sync([], T0.AddMinutes(1));
+        Assert.That(ended.Select(m => m.SessionId), Is.EqualTo(new[] { "s1" }));
         Assert.That(PendingMoves.For("s1"), Is.Null);
+        Assert.That(PendingMoves.ForTicket("A-T1"), Is.Null);
+        Assert.That(PendingMoves.Sync([], T0.AddMinutes(2)), Is.Empty, "said once");
     }
 
     [Test]
-    public void A_move_that_never_lands_times_out_once_and_unlocks()
+    public void A_refused_move_unlocks_at_once_and_one_the_database_never_shows_after_its_grace()
     {
-        PendingMoves.Begin(new PendingMoves.Move("s1", "Repo", "ryan@example.com", "Ryan", T0));
-        var late = T0 + PendingMoves.Timeout + TimeSpan.FromSeconds(1);
-        Assert.That(PendingMoves.Reconcile([], late).Select(m => m.SessionId), Is.EqualTo(new[] { "s1" }));
-        Assert.That(PendingMoves.For("s1"), Is.Null);
-        Assert.That(PendingMoves.Reconcile([], late), Is.Empty, "said once");
-    }
-
-    [Test]
-    public void A_refused_move_unlocks_at_once()
-    {
-        PendingMoves.Begin(new PendingMoves.Move("s1", "Repo", "ryan@example.com", "Ryan", T0));
+        PendingMoves.Begin(Move("s1"));
         PendingMoves.End("s1");
         Assert.That(PendingMoves.For("s1"), Is.Null);
+
+        PendingMoves.Begin(Move("s2"));
+        PendingMoves.Sync([], T0 + PendingMoves.LocalGrace + TimeSpan.FromSeconds(1));
+        Assert.That(PendingMoves.For("s2"), Is.Null);
     }
 }

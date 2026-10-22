@@ -1,67 +1,91 @@
-using MindAttic.Orchestrator.Activity;
+using MindAttic.Orchestrator.Sessions;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
 /// <summary>
-/// Moves sent but not landed yet (M.ORCH-T638), shared by every person's tab: a moving CLI's controls stay locked under a
-/// "Moving to …" overlay until it shows up on the new login (its own session, or a CLI in its repo started since the move,
-/// since a resumed CLI may come back under a new session), or until <see cref="Timeout"/> passes.
+/// Moves sent but not landed yet (M.ORCH-T638, M.ORCH-T637), shared by every person's tab: a moving CLI's controls, and the
+/// controls of every ticket it or its subagents hold, stay locked under "Moving to …" until the move lands, fails or times out.
+/// The moves themselves live in the database (<see cref="MoveLocks"/>, read into each refresh's <see cref="Snapshot.Moves"/>), so
+/// one sent by <c>orchestrator move</c> or the rebalancer locks here too; one this dashboard just sent is locked at once
+/// (<see cref="Begin"/>), before the next refresh shows it.
 /// </summary>
 public static class PendingMoves
 {
-    public sealed record Move(string SessionId, string Repo, string? TargetEmail, string TargetName, DateTime StartedUtc);
+    /// <summary>How long a move begun here stays locked without the database showing it (a refresh away, normally).</summary>
+    public static readonly TimeSpan LocalGrace = TimeSpan.FromMinutes(2);
 
-    /// <summary>A move restarts the CLI at its next idle point, which can wait out a long turn.</summary>
-    public static readonly TimeSpan Timeout = TimeSpan.FromMinutes(30);
+    private static readonly Dictionary<string, MoveLock> stored = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, MoveLock> local = new(StringComparer.Ordinal);
 
-    private static readonly Dictionary<string, Move> moves = new(StringComparer.Ordinal);
-
-    /// <summary>Raised on the thread that began, ended or reconciled a move (the dashboard's).</summary>
+    /// <summary>Raised on the thread that began, ended or synced a move (the dashboard's).</summary>
     public static event Action? Changed;
 
-    public static Move? For(string? sessionId)
+    private static IEnumerable<MoveLock> All() => stored.Values.Concat(local.Values.Where(l => !stored.ContainsKey(l.SessionId)));
+
+    /// <summary>The move of the CLI running <paramref name="sessionId"/>, if any.</summary>
+    public static MoveLock? For(string? sessionId)
     {
-        lock (moves) return sessionId is not null && moves.TryGetValue(sessionId, out var m) ? m : null;
+        if (sessionId is null) return null;
+        lock (stored) return stored.GetValueOrDefault(sessionId) ?? local.GetValueOrDefault(sessionId);
     }
 
-    public static void Begin(Move move)
+    /// <summary>The move holding ticket <paramref name="ticketId"/>, if any.</summary>
+    public static MoveLock? ForTicket(string? ticketId)
     {
-        lock (moves) moves[move.SessionId] = move;
+        lock (stored) return MoveLocks.ForTicket([.. All()], ticketId);
+    }
+
+    /// <summary>The move of the CLI in the Launcher tab <paramref name="hostPid"/>, if any.</summary>
+    public static MoveLock? ForHost(int? hostPid)
+    {
+        if (hostPid is null) return null;
+        lock (stored) return All().FirstOrDefault(m => m.HostPid == hostPid);
+    }
+
+    /// <summary>Locks a move this dashboard is sending, at once.</summary>
+    public static void Begin(MoveLock move)
+    {
+        lock (stored) local[move.SessionId] = move;
         Changed?.Invoke();
     }
 
+    /// <summary>Unlocks a move this dashboard began that was refused.</summary>
     public static void End(string sessionId)
     {
         bool removed;
-        lock (moves) removed = moves.Remove(sessionId);
+        lock (stored) removed = local.Remove(sessionId);
         if (removed) Changed?.Invoke();
     }
 
-    /// <summary>Ends every move <paramref name="seen"/> shows landed, and every one past <see cref="Timeout"/>; returns the
-    /// timed-out ones, once each, for the caller to say so.</summary>
-    public static IReadOnlyList<Move> Reconcile(IEnumerable<AgentBoardRow> seen, DateTime nowUtc)
+    /// <summary>Takes the moves in flight as the database has them; returns the ones that ended since the last sync. A move begun
+    /// here is kept until the database shows it, or for <see cref="LocalGrace"/>.</summary>
+    public static IReadOnlyList<MoveLock> Sync(IReadOnlyList<MoveLock> moves, DateTime nowUtc)
     {
-        var rows = seen.ToList();
-        var timedOut = new List<Move>();
+        List<MoveLock> ended;
         var changed = false;
-        lock (moves)
+        lock (stored)
         {
-            foreach (var m in moves.Values.ToList())
-            {
-                var landed = rows.Any(r => SameLogin(r.OwnLogin, m.TargetEmail) &&
-                    (r.SessionId == m.SessionId || (r.Repo == m.Repo && r.StartedUtc >= m.StartedUtc)));
-                if (landed) { moves.Remove(m.SessionId); changed = true; }
-                else if (nowUtc - m.StartedUtc > Timeout) { moves.Remove(m.SessionId); timedOut.Add(m); changed = true; }
-            }
+            var next = moves.GroupBy(m => m.SessionId, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+            ended = [.. stored.Values.Where(m => !next.ContainsKey(m.SessionId))];
+            foreach (var key in local.Keys.ToList())
+                if (next.ContainsKey(key) || stored.ContainsKey(key) || nowUtc - local[key].StartedUtc > LocalGrace) { local.Remove(key); changed = true; }
+            changed |= ended.Count > 0 || next.Count != stored.Count || next.Any(kv => !stored.TryGetValue(kv.Key, out var was) || !Same(was, kv.Value));
+            stored.Clear();
+            foreach (var (key, value) in next) stored[key] = value;
         }
         if (changed) Changed?.Invoke();
-        return timedOut;
+        return ended;
     }
+
+    private static bool Same(MoveLock a, MoveLock b) =>
+        a.ToName == b.ToName && a.Interrupted == b.Interrupted && a.HostPid == b.HostPid && a.Tickets.SequenceEqual(b.Tickets, StringComparer.OrdinalIgnoreCase);
 
     internal static void Clear()
     {
-        lock (moves) moves.Clear();
+        lock (stored)
+        {
+            stored.Clear();
+            local.Clear();
+        }
     }
-
-    private static bool SameLogin(string? a, string? b) => string.Equals(a ?? "", b ?? "", StringComparison.OrdinalIgnoreCase);
 }

@@ -46,11 +46,24 @@ public sealed class AccountMove(AccountDirs? dirs = null, BillingSwitch? billing
     /// <summary>The live CLIs, with their Launcher tabs (seam).</summary>
     internal Func<IReadOnlyList<HostSession>, DateTime, IReadOnlyList<CliBilling>>? LiveOverride { get; init; }
 
-    /// <summary>The real thing: the global login read from <see cref="AccountDirs.HomeConfigPath"/>.</summary>
-    public static AccountMove Default(AccountDirs? dirs = null, BillingSwitch? billing = null)
+    /// <summary>The moves in flight (M.ORCH-T637): a move locks its CLI and the tickets it holds until it lands. Null moves
+    /// without locking (tests that only check the request).</summary>
+    public MoveLocks? Locks { get; init; }
+
+    /// <summary>Stops the CLI's running subagents at once (seam): its turn interrupted with Esc typed into its tab, so the
+    /// Launcher's restart, which waits for an idle CLI with no subagent running, comes now rather than when they finish.</summary>
+    internal Func<HostSession, Task<bool>> Interrupt { get; init; } =
+        host => SessionControl.SendAsync(host.PipeName, "\u001b", submit: false);
+
+    /// <summary>A login's name as the dashboard shows it (seam), from its folder ("" the global login).</summary>
+    internal Func<string, string> NameOf { get; init; } = configDir => LoginLook.ForConfigDir(configDir.Length == 0 ? null : configDir).Alias;
+
+    /// <summary>The real thing: the global login read from <see cref="AccountDirs.HomeConfigPath"/>, and moves locked in
+    /// <paramref name="store"/>'s database (the live one by default).</summary>
+    public static AccountMove Default(AccountDirs? dirs = null, BillingSwitch? billing = null, Settings.JsonStore? store = null)
     {
         var d = dirs ?? new AccountDirs();
-        return new AccountMove(d, billing) { GlobalSignedIn = () => IsSignedIn(d.HomeConfigPath) };
+        return new AccountMove(d, billing) { GlobalSignedIn = () => IsSignedIn(d.HomeConfigPath), Locks = new MoveLocks(store ?? new Settings.JsonStore()) };
     }
 
     private static bool IsSignedIn(string configPath)
@@ -119,7 +132,10 @@ public sealed class AccountMove(AccountDirs? dirs = null, BillingSwitch? billing
     /// already there, the login isn't signed in, or the CLI isn't in a Launcher tab; otherwise the login's folder is brought up
     /// to date (its settings follow <c>~/.claude</c>'s) and the tab is asked to restart the CLI on it at its next idle point.
     /// </summary>
-    public async Task<AccountMoveResult> MoveAsync(CliBilling cli, string? email, DateTime nowUtc)
+    /// <remarks>With <see cref="Locks"/>, the CLI and the tickets it holds (its claims, and <paramref name="holding"/>) are
+    /// locked until it lands, and its running subagents are stopped at once (M.ORCH-T637); <paramref name="repo"/> names its
+    /// repo for the lock.</remarks>
+    public async Task<AccountMoveResult> MoveAsync(CliBilling cli, string? email, DateTime nowUtc, IReadOnlyCollection<string>? holding = null, string? repo = null)
     {
         string? normalized = null;
         if (email is not null && (normalized = AccountDirs.Normalize(email)) is null)
@@ -149,13 +165,58 @@ public sealed class AccountMove(AccountDirs? dirs = null, BillingSwitch? billing
         if (cli.Host is null)
             return new(false, $"The CLI in {cli.Where} (pid {cli.Pid}) isn't in a Launcher tab, so only you can move it: close it and reopen it on {to} " +
                               $"({(normalized is null ? "" : $"{AccountDirs.EnvVar}={configDir} ")}claude --resume {cli.SessionId}).");
+        // Locked from now until it lands (M.ORCH-T637): the CLI and every ticket it or its subagents hold, so nothing else
+        // starts, claims or hands them out meanwhile; refused when it's already on its way somewhere.
+        MoveLock? locked = null;
+        if (Locks is { } locks)
+        {
+            string name;
+            try { name = NameOf(configDir); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or JsonException) { name = to; }
+            List<string> tickets;
+            try { tickets = MoveLocks.ClaimsOf(locks.Store.LoadAssignments(), cli.Pid, cli.SessionId); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { tickets = []; }
+            foreach (var t in holding ?? []) if (!tickets.Contains(t, StringComparer.OrdinalIgnoreCase)) tickets.Add(t);
+            locked = new MoveLock
+            {
+                SessionId = cli.SessionId, Pid = cli.Pid, HostPid = cli.Host.ProcessId, HostPipe = cli.Host.PipeName,
+                Repo = repo ?? cli.Where, Cwd = cli.Cwd, FromEmail = current, ToEmail = normalized, ToName = name,
+                StartedUtc = nowUtc, Tickets = tickets,
+            };
+            try
+            {
+                if (!locks.TryBegin(locked, out var already))
+                    return new(false, $"The CLI in {cli.Where} (pid {cli.Pid}) is already moving to {already!.ToName}: wait for that move to land.");
+            }
+            catch (IOException ex) { return new(false, $"Couldn't lock the CLI in {cli.Where} for the move ({ex.Message}), so it wasn't moved."); }
+        }
         bool sent;
         try { sent = await Send(cli.Host, Message(cli, configDir, nowUtc)).ConfigureAwait(false); }
         catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException or OperationCanceledException) { sent = false; }
-        return sent
-            ? new(true, $"Asked the Launcher to move the CLI in {cli.Where} (pid {cli.Pid}) from {current ?? GlobalLabel.ToLowerInvariant()} to {(normalized ?? GlobalLabel.ToLowerInvariant())}: " +
-                        "it restarts with claude --resume at its next idle point, keeping its session.")
-            : new(false, $"Couldn't ask the Launcher tab running the CLI in {cli.Where} (pid {cli.Pid}) to move it (no control pipe: a Launcher from before " +
-                         $"M.LNCH-T52?): close it and reopen it on {to} (claude --resume {cli.SessionId}).");
+        if (!sent)
+        {
+            // Nothing was asked of the tab: its old owner keeps everything, unlocked at once.
+            if (locked is not null)
+                try { Locks!.End(locked.SessionId); }
+                catch (IOException) { }
+            return new(false, $"Couldn't ask the Launcher tab running the CLI in {cli.Where} (pid {cli.Pid}) to move it (no control pipe: a Launcher from before " +
+                              $"M.LNCH-T52?): close it and reopen it on {to} (claude --resume {cli.SessionId}).");
+        }
+        // Its subagents move with it: stopped now (their tickets stay claimed, their worktrees kept), handed back once it lands.
+        var stopped = "";
+        if (locked is { Tickets.Count: > 0 })
+        {
+            bool interrupted;
+            try { interrupted = await Interrupt(cli.Host).ConfigureAwait(false); }
+            catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException or OperationCanceledException) { interrupted = false; }
+            if (interrupted)
+                try { Locks!.Put(locked with { Interrupted = true }); }
+                catch (IOException) { }
+            stopped = interrupted
+                ? $" Its subagents were stopped; {string.Join(", ", locked.Tickets)} stay claimed with their worktrees and are handed back to it to start again once it's there."
+                : $" Its subagents couldn't be stopped (typing into its tab failed), so it moves once they finish; {string.Join(", ", locked.Tickets)} stay locked until then.";
+        }
+        return new(true, $"Asked the Launcher to move the CLI in {cli.Where} (pid {cli.Pid}) from {current ?? GlobalLabel.ToLowerInvariant()} to {(normalized ?? GlobalLabel.ToLowerInvariant())}: " +
+                         "it restarts with claude --resume at its next idle point, keeping its session." + stopped);
     }
 }

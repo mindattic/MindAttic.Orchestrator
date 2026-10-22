@@ -15,11 +15,16 @@ public sealed class QueueRowViewModel : ObservableObject
     public QueueRowViewModel(QueueItem item, MainViewModel owner)
     {
         this.item = item;
-        StartCommand = new RelayCommand(() => owner.Dispatch(this.item, this.proposal?.UseWorktree ?? this.item.NeedsWorktree), () => !this.item.IsAssigned && this.item.MayWork && !owner.IsStarting(this.item.Id));
-        UpCommand = new RelayCommand(() => owner.Bump(this.item.Id, +1));
-        DownCommand = new RelayCommand(() => owner.Bump(this.item.Id, -1));
-        ReleaseCommand = new RelayCommand(() => owner.Release(this.item.Id), () => this.item.IsAssigned);
+        StartCommand = new RelayCommand(() => owner.Dispatch(this.item, this.proposal?.UseWorktree ?? this.item.NeedsWorktree), () => !this.item.IsAssigned && this.item.MayWork && !owner.IsStarting(this.item.Id) && !IsMoving);
+        UpCommand = new RelayCommand(() => owner.Bump(this.item.Id, +1), () => !IsMoving);
+        DownCommand = new RelayCommand(() => owner.Bump(this.item.Id, -1), () => !IsMoving);
+        ReleaseCommand = new RelayCommand(() => owner.Release(this.item.Id), () => this.item.IsAssigned && !IsMoving);
     }
+
+    /// <summary>Held by a CLI moving to another login (M.ORCH-T637): its controls are off until the move lands.</summary>
+    public bool IsMoving => item.Moving is not null || PendingMoves.ForTicket(item.Id) is not null;
+    public string MovingText => (PendingMoves.ForTicket(item.Id) ?? item.Moving)?.Text ?? "";
+    public void RaiseMoving() { Raise(nameof(IsMoving)); Raise(nameof(MovingText)); Raise(nameof(Status)); }
 
     public string Id => item.Id;
     public QueueItem Item => item;
@@ -34,7 +39,7 @@ public sealed class QueueRowViewModel : ObservableObject
     public string Reason => proposal?.Reason ?? "";
     public string Where => proposal?.UseWorktree == true || (proposal is null && item.NeedsWorktree) ? "in a worktree" : "in the repo";
 
-    public string Status => item switch
+    public string Status => IsMoving ? MovingText : item switch
     {
         { BlockedBy.Count: > 0 } => $"Waits for {string.Join(", ", item.BlockedBy)}",
         { IsStale: true } => $"Stale: quiet {Formatting.Ago(item.StaleSinceUtc, DateTime.UtcNow)}",
@@ -70,7 +75,8 @@ public sealed class FinishedViewModel(Assignment assignment, MainViewModel owner
         ? $" in {assignment.Repo} is closed. Its worktree is still at {assignment.Directory}."
         : $" in {assignment.Repo} is closed.";
     public string ActionLabel => assignment.Worktree ? "Remove worktree" : "Clear";
-    public ICommand ActionCommand { get; } = new RelayCommand(() => owner.Finish(assignment));
+    /// <summary>Off while a CLI moving to another login holds the ticket (M.ORCH-T637): its worktree is handed back to it.</summary>
+    public ICommand ActionCommand { get; } = new RelayCommand(() => owner.Finish(assignment), () => PendingMoves.ForTicket(assignment.TicketId) is null);
     public ICommand DetailsCommand { get; } = new RelayCommand(() => owner.ShowDetails(assignment));
 
     /// <summary>The ticket's assignment as the latest refresh has it (reopened, dispatched again elsewhere and closed): its

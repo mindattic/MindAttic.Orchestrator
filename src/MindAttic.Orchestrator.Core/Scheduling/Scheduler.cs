@@ -37,7 +37,12 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
 
     /// <summary>Whether it may be worked: a fix, or approved.</summary>
     public bool MayWork => Approved || Ticket.Type.Equals("fix", StringComparison.OrdinalIgnoreCase);
-    public bool IsAssigned => Assignment is not null && !IsStale;
+
+    /// <summary>The move holding it (M.ORCH-T637): its CLI is on its way to another login, and it stays that CLI's, never
+    /// proposed, handed out, claimed or started elsewhere, until the move lands or fails. Null when it isn't moving.</summary>
+    public Sessions.MoveLock? Moving { get; init; }
+
+    public bool IsAssigned => (Assignment is not null && !IsStale) || Moving is not null;
 
     /// <summary>Whether starting it takes a worktree: its repo has a session, or it went stale in a worktree, where its
     /// partial work is. Every way of starting it (the proposal, the dashboard's Start, orchestrator dispatch) asks this.</summary>
@@ -115,10 +120,13 @@ public static partial class Scheduler
         var assigned = assignments.ToDictionary(a => a.TicketId, StringComparer.Ordinal);
         var openIds = snapshot.Repos.SelectMany(r => r.OpenTickets).Select(t => t.Id).ToHashSet(StringComparer.Ordinal);
 
+        // A moving CLI's tickets stay its own until the move lands or fails (M.ORCH-T637): never stale meanwhile.
+        Sessions.MoveLock? MovingOf(string id) => Sessions.MoveLocks.ForTicket(snapshot.Moves, id);
+
         // A session that ended without closing its ticket would hold it out of the queue forever.
         DateTime? StaleSince(Assignment? a)
         {
-            if (a is null || settings.StaleAfterHours <= 0) return null;
+            if (a is null || settings.StaleAfterHours <= 0 || MovingOf(a.TicketId) is not null) return null;
             var last = LastActivityUtc(a, snapshot);
             // Clamped to a century: a huge setting threw out of every plan, so out of every daemon tick (M.ORCH-T429).
             return snapshot.TakenUtc - last > TimeSpan.FromHours(Math.Min(settings.StaleAfterHours, Century * 24)) ? last : null;
@@ -165,6 +173,7 @@ public static partial class Scheduler
                     BlockedBy = Blockers(t),
                     Old = IsOld(t),
                     Approved = IsApproved(t.Id),
+                    Moving = MovingOf(t.Id),
                 }))
             .OrderBy(q => q.IsAssigned)
             .ThenByDescending(q => q.Reserved > 0)

@@ -104,7 +104,9 @@ public sealed partial class MainViewModel : ObservableObject
         RefreshCommand = new RelayCommand(async () => await RefreshAsync());
         StartCommand = new RelayCommand(async () => await StartSessionAsync(), () => Selected is { HasFolder: true } && !IsSigningIn);
         OpenFolderCommand = new RelayCommand(() => SessionControl.OpenFolder(Selected!.Path), () => Selected is { HasFolder: true });
-        UseTicketCommand = new RelayCommand(p => { if (p is TicketRowViewModel t) Prompt = $"Work on ticket {t.Id}: {t.Summary}"; });
+        // Off for a ticket a CLI moving to another login holds (M.ORCH-T637): it's handed back to that CLI once it lands.
+        UseTicketCommand = new RelayCommand(p => { if (p is TicketRowViewModel { IsMoving: false } t) Prompt = $"Work on ticket {t.Id}: {t.Summary}"; },
+            p => p is not TicketRowViewModel { IsMoving: true });
         DismissToastCommand = new RelayCommand(p => { if (p is ToastViewModel t) Toasts.Remove(t); });
         OpenToastCommand = new RelayCommand(async p =>
         {

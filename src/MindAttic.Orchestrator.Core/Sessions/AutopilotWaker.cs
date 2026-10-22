@@ -61,10 +61,13 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
         var newest = cycler.Load().Where(c => c.Pid is not null).GroupBy(c => c.Pid!.Value)
             .ToDictionary(g => g.Key, g => g.MaxBy(c => (Written(c.SessionId), c.TurnUtc))!);
         var since = PilotsSince?.Invoke() ?? (Pilots is null ? cycler.AutopilotSince() : new Dictionary<int, DateTime>()); // warming up (M.ORCH-T558): not woken for one it can't have yet
+        var moving = Moving();
 
         var due = new List<(int Pid, SessionContext Session, IReadOnlyList<string> Repos, IReadOnlyList<string> Ids)>();
         foreach (var (pid, repos) in pilots)
         {
+            // A CLI on its way to another login (M.ORCH-T637) is locked: it's handed its tickets back once it lands.
+            if (moving.Contains(pid)) continue;
             if (!newest.TryGetValue(pid, out var c) || c is not { Idle: true, LimitStop: null, Goal: null }) continue;
             if (nowUtc - c.TurnUtc < Settle) continue;
             if (wokenUtc.TryGetValue(pid, out var last) && nowUtc - last < Cooldown) continue;
@@ -133,10 +136,12 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
         var room = plan.Pace!.SubagentAllowance!.Value - plan.Pace.Subagents;
 
         var due = new List<(int Pid, string? Cwd, IReadOnlyList<QueueItem> Items)>();
+        var moving = Moving();
         foreach (var g in idle.GroupBy(c => c.Cli).OrderBy(g => g.Key))
         {
             if (room <= 0) break;
             var pid = g.Key;
+            if (moving.Contains(pid)) continue; // locked while it moves (M.ORCH-T637)
             newest.TryGetValue(pid, out var c);
             if (c is not null && (c.LimitStop is not null || c.Goal is not null)) continue;
             if (wokenUtc.TryGetValue(pid, out var last) && nowUtc - last < Cooldown) continue;
@@ -198,6 +203,8 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
         foreach (var q in plan.Queue)
         {
             if (q.Assignment is not { Worktree: true, Pilot: null } a || !q.IsAssigned || worked.Contains(q.Id)) continue;
+            // Its CLI is moving to another login (M.ORCH-T637): handed back to it once it lands, never put to another CLI meanwhile.
+            if (q.Moving is not null) continue;
             if (nowUtc - a.StartedUtc < ClaimIdle) continue;
             if (Active(a.Directory, snapshot, nowUtc)) continue;
             var claimer = a.Cli is { } made && pilots.ContainsKey(made) ? made : OwnerOf(q.Repo, pilots);
@@ -253,6 +260,9 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
         $"There's room to work again: orchestrator next has {ids.Count} workable ticket{(ids.Count == 1 ? "" : "s")} for this CLI's autopilot " +
         $"({string.Join(", ", ids.Take(6))}{(ids.Count > 6 ? "..." : "")}). Run `orchestrator next --repos '{string.Join(",", repos)}' --claim` and hand each ticket it prints " +
         "to a subagent with the prompt and on the model it prints (several at once, in one message), then repeat. End your turn when it hands out nothing.";
+
+    /// <summary>The CLIs on their way to another login (M.ORCH-T637), by process id.</summary>
+    private HashSet<int> Moving() => [.. new MoveLocks(store).All().Select(m => m.Pid)];
 
     /// <summary>When the context gate last wrote the session's state, its start included (1601 when it's gone since).</summary>
     private DateTime Written(string sessionId) => File.GetLastWriteTimeUtc(Path.Combine(cycler.Directory, sessionId + ".state.json"));
