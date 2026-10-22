@@ -111,6 +111,46 @@ public sealed class LoginScopeTests
     }
 
     [Test]
+    public void A_roster_account_not_signed_in_yet_still_gets_a_tab_that_only_signs_it_in()
+    {
+        // M.ORCH-T615: Amy's in the roster but not signed in here; Jordan's signed in; Ryan is the global login's own account.
+        var tabs = LoginScope.Tabs(Workspace(), email => new LoginLook("w", "XX", "#123456") { Alias = email[..email.IndexOf('@')] },
+            new LoginLook("ryan", "RY", "#654321") { Alias = "Ryan" }, ["Amy@Example.com", "jordan@example.com", "ryan@example.com", null, "not an email"]);
+
+        Assert.That(tabs.Select(t => t.Email), Is.EqualTo(new[] { null, "amy@example.com", "jordan@example.com" }),
+            "Amy gets a tab; the global login's own account gets no second one; a row with no email gets none");
+        Assert.That(tabs.Select(t => t.SignedIn), Is.EqualTo(new[] { true, false, true }));
+        Assert.That(tabs[1].ToolTip, Does.Contain("not signed in"));
+
+        var amy = LoginScope.For(Workspace(), "amy@example.com", WorkingWindow, WaitingWindow);
+        Assert.That(amy.Repos.SelectMany(r => r.Hosts), Is.Empty, "no CLI of anyone else's shows on Amy's tab");
+    }
+
+    [Test]
+    public void Open_launcher_starts_the_launcher_scoped_to_the_tabs_login_in_its_own_window()
+    {
+        var dirs = new AccountDirs(@"C:\accounts", @"C:\claude", @"C:\claude.json");
+        string? lookedUp = "unset";
+        var control = new SessionControl(new OrchestratorOptions { LauncherExe = @"C:\L\MindAttic.Launcher.exe", WorkspaceRoot = @"C:\no-such-root" })
+        {
+            Dirs = dirs,
+            Look = d => { lookedUp = d; return d is null ? new LoginLook("ryan", "RD", "#654321") : new LoginLook("Amy", "AR", "#123456"); },
+        };
+
+        var amy = control.LauncherArguments("Amy@Example.com").ToList();
+        Assert.That(lookedUp, Is.EqualTo(dirs.For("amy@example.com").Directory), "colored as Amy's own login");
+        Assert.That(amy.Take(7), Is.EqualTo(new[] { "-w", "Amy", "new-tab", "--title", "[AR] MindAttic.Launcher", "--tabColor", "#123456" }));
+        Assert.That(amy.SkipWhile(a => a != "--").Skip(1), Is.EqualTo(new[] { @"C:\L\MindAttic.Launcher.exe", "--account", "amy@example.com" }));
+
+        var global = control.LauncherArguments(null).ToList();
+        Assert.That(lookedUp, Is.Null);
+        Assert.That(global.SkipWhile(a => a != "--").Skip(1), Is.EqualTo(new[] { @"C:\L\MindAttic.Launcher.exe" }), "the global login's tab: unscoped");
+
+        Assert.That(control.OpenLauncher("not an email"), Does.Contain("isn't an email address"));
+        Assert.That(control.OpenLauncher("amy@example.com"), Does.StartWith("Launcher not found"));
+    }
+
+    [Test]
     public void A_tab_started_on_a_login_opens_there_and_auto_picks_only_when_none_was_chosen()
     {
         Assert.That(Dispatcher.ConfigDirFor("Claude", new Dispatcher.TabLogin(@"C:\a\j@x.com"), () => "picked"), Is.EqualTo(@"C:\a\j@x.com"));

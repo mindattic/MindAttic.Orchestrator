@@ -103,9 +103,9 @@ public sealed partial class MainViewModel
     public bool IsTerminalsView => view == View.Terminals;
 
     /// <summary>The Terminals view's (M.ORCH-T618): its terminals are native windows WPF can't draw over, so the view is hidden
-    /// while Settings or the loader covers the window, not only in another view; hidden, never collapsed, so each keeps its size.</summary>
+    /// while Settings or the loader covers the window, or on a tab that only signs its login in (M.ORCH-T615), not only in another view; hidden, never collapsed, so each keeps its size.</summary>
     public System.Windows.Visibility TerminalsVisibility =>
-        IsTerminalsView && !IsSettingsOpen && !IsLoading ? System.Windows.Visibility.Visible : System.Windows.Visibility.Hidden;
+        IsTerminalsView && !IsSettingsOpen && !IsLoading && IsTabSignedIn ? System.Windows.Visibility.Visible : System.Windows.Visibility.Hidden;
     public ICommand ShowViewCommand { get; private set; } = null!;
 
     // ── Settings ────────────────────────────────────────────────────────────

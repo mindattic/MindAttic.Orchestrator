@@ -4,8 +4,9 @@ namespace MindAttic.Orchestrator.Sessions;
 
 /// <summary>One dashboard tab (M.ORCH-T613): a Claude login, the global <c>~/.claude</c> one (<see cref="Email"/> null) or a
 /// per-CLI one under <c>~/.claude-accounts</c>, by the name its folder gives it (M.ORCH-T614) and its terminal tabs' color
-/// (M.ORCH-T616), with its email for the tooltip.</summary>
-public sealed record LoginTab(string? Email, string Title, string ToolTip, string Color)
+/// (M.ORCH-T616), with its email for the tooltip. A roster account not signed in on this machine yet still has a tab
+/// (M.ORCH-T615), <see cref="SignedIn"/> false: it shows only its Sign in until it is.</summary>
+public sealed record LoginTab(string? Email, string Title, string ToolTip, string Color, bool SignedIn = true)
 {
     public bool IsGlobal => Email is null;
 
@@ -70,26 +71,34 @@ public static class LoginScope
 
     /// <summary>
     /// The dashboard's tabs: the global login first, then each per-CLI login signed in (the ones <see cref="Snapshot.Accounts"/>
-    /// paces) or with a live CLI or Launcher tab on it, by email. Each is titled by its name (<see cref="LoginLook.Alias"/>), the
-    /// global one marked "(global)", with its email in the tooltip and its terminal tabs' color as its accent.
+    /// paces) or with a live CLI or Launcher tab on it, and each known roster account (<paramref name="roster"/>'s emails) not
+    /// signed in yet (M.ORCH-T615), which gets a tab that only signs it in; by email. Each is titled by its name
+    /// (<see cref="LoginLook.Alias"/>), the global one marked "(global)", with its email in the tooltip and its terminal tabs'
+    /// color as its accent. The global login's own account gets no second tab.
     /// </summary>
-    public static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, AccountDirs dirs) =>
-        Tabs(snapshot, email => LoginLook.For(dirs.For(email).Directory, email), LoginLook.For(dirs.ClaudeDir, snapshot.GlobalEmail));
+    public static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, AccountDirs dirs, IEnumerable<string?>? roster = null) =>
+        Tabs(snapshot, email => LoginLook.For(dirs.For(email).Directory, email), LoginLook.For(dirs.ClaudeDir, snapshot.GlobalEmail), roster);
 
-    internal static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, Func<string, LoginLook> ownLook, LoginLook globalLook)
+    internal static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, Func<string, LoginLook> ownLook, LoginLook globalLook, IEnumerable<string?>? roster = null)
     {
         var global = snapshot.GlobalEmail is { } g
             ? new LoginTab(null, $"{globalLook.Alias} (global)", $"{g}: the global login (~/.claude), every CLI's unless started on its own", globalLook.TabColor)
             : new LoginTab(null, "Global login", "The global login (~/.claude): nobody's email is known for it yet", globalLook.TabColor);
-        var emails = snapshot.Accounts.Select(a => a.Email)
+        var live = snapshot.Accounts.Select(a => a.Email)
             .Concat(snapshot.Agents.Select(a => a.OwnLogin))
             .Concat(snapshot.Repos.SelectMany(r => r.Hosts).Select(h => h.OwnLogin))
             .Select(AccountDirs.Normalize).OfType<string>()
-            .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal);
-        return [global, .. emails.Select(e =>
+            .ToHashSet(StringComparer.Ordinal);
+        var globalEmail = AccountDirs.Normalize(snapshot.GlobalEmail);
+        var waiting = (roster ?? []).Select(AccountDirs.Normalize).OfType<string>()
+            .Where(e => !live.Contains(e) && e != globalEmail)
+            .ToHashSet(StringComparer.Ordinal);
+        return [global, .. live.Concat(waiting).Order(StringComparer.Ordinal).Select(e =>
         {
             var look = ownLook(e);
-            return new LoginTab(e, look.Alias, $"{e}: its own login (~/.claude-accounts)", look.TabColor);
+            return waiting.Contains(e)
+                ? new LoginTab(e, look.Alias, $"{e}: not signed in on this machine yet; sign in to see its dashboard", look.TabColor, SignedIn: false)
+                : new LoginTab(e, look.Alias, $"{e}: its own login (~/.claude-accounts)", look.TabColor);
         })];
     }
 }

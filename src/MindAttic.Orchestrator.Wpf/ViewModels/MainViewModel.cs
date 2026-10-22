@@ -311,8 +311,12 @@ public sealed partial class MainViewModel : ObservableObject
             var (next, tabs) = await BuiltAfterChanges(() => Task.Run(() =>
             {
                 var built = aggregator.Refresh();
-                // Each login's name and color, read with the snapshot, off the UI thread.
-                return (built, LoginScope.Tabs(built, dirs));
+                // Each login's name and color, read with the snapshot, off the UI thread; and the roster's accounts, so one not
+                // signed in yet still has its tab, to sign in from (M.ORCH-T615).
+                IReadOnlyList<string?> roster = [];
+                try { roster = [.. AccountRoster.Load(aggregator.Db).Select(r => r.Email)]; }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { }
+                return (built, LoginScope.Tabs(built, dirs, roster));
             }), () => localChanges);
             ApplyTabs(next, tabs);
             await TickAutopilotAsync(next);

@@ -141,7 +141,7 @@
              tokens (this 5-hour window, the week, the pace ledger, today). Every card is a button that goes somewhere. -->
         <!-- The header owns the window's left/right gutter; nothing inside it adds its own, so the tiles and the chart
              share both edges (M.ORCH-T192). The tiles are equal cells that together span the row at any width. -->
-        <StackPanel x:Name="Header" Grid.Row="1" Margin="24,18,24,0">
+        <StackPanel x:Name="Header" Grid.Row="1" Margin="24,18,24,0" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
         <!-- The account menu, upper right (M.ORCH-T492), as a normal app has it: the signed-in account's email ("API key" while
              the Vault's key bills, M.ORCH-T436), which opens a table of every account in the roster (seat, week used and
              left, its reset, the 5-hour window, when it was read; the signed-in one marked, the most headroom starred).
@@ -157,6 +157,11 @@
                 <TextBlock Text="{Binding RefreshInfo}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="0,0,12,0" />
                 <Button Style="{StaticResource MaButton}" Command="{Binding RefreshCommand}" Content="Refresh" ToolTip="F5" />
                 <Button Style="{StaticResource MaButton}" Command="{Binding ToggleSettingsCommand}" Content="Settings" Margin="8,0,0,0" />
+                <!-- Open Launcher (M.ORCH-T615): the Launcher's menu as this tab's login (MindAttic.Launcher with its account), so
+                     every repo CLI started from it runs on that login and shows in this tab; on the global login's tab, unscoped. -->
+                <Button Style="{StaticResource MaButton}" Command="{Binding OpenLauncherCommand}" Content="Open Launcher" Margin="8,0,0,0"
+                        ToolTip="{Binding TabTitle}" ToolTipService.ShowOnDisabled="False"
+                        AutomationProperties.Name="{Binding TabTitle, StringFormat='Open the Launcher as {0}'}" />
             </StackPanel>
             <Button x:Name="AccountMenuButton" DockPanel.Dock="Right" Style="{StaticResource MaButton}" VerticalAlignment="Center"
                     Margin="12,0,0,0" Padding="12,4" AutomationProperties.Name="{Binding AccountCorner, StringFormat='Account: {0}. Opens the account menu'}"
@@ -378,7 +383,7 @@
         </StackPanel>
 
         <!-- Toolbar -->
-        <Grid x:Name="Toolbar" Grid.Row="2" Margin="24,8,24,10">
+        <Grid x:Name="Toolbar" Grid.Row="2" Margin="24,8,24,10" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -417,8 +422,19 @@
                         OpenCommand="{Binding OpenToastCommand}" DismissCommand="{Binding DismissToastCommand}"
                         AutomationProperties.Name="Notifications" />
 
+        <!-- A roster account not signed in on this machine yet (M.ORCH-T615): its tab shows only its Sign in, then, once signed
+             in, the whole dashboard and Open Launcher at the next refresh. -->
+        <StackPanel Grid.Row="4" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520" Margin="24"
+                    Visibility="{Binding IsTabSignedIn, Converter={x:Static vm:Converters.FalseToVisible}}">
+            <TextBlock Text="{Binding SignInPrompt}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,14" />
+            <Button Style="{StaticResource MaPrimaryButton}" Command="{Binding SignInTabCommand}" Content="Sign in" Padding="18,6"
+                    HorizontalAlignment="Center" AutomationProperties.Name="{Binding TabTitle, StringFormat='Sign {0} in'}" />
+            <TextBlock Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,12,0,0"
+                       Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" AutomationProperties.LiveSetting="Polite" />
+        </StackPanel>
+
         <!-- Body: grouped tiles, and the selected repo's detail pane. -->
-        <Grid Grid.Row="4">
+        <Grid Grid.Row="4" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />

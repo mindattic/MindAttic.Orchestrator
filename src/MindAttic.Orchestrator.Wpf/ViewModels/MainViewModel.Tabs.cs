@@ -15,6 +15,8 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 /// Launcher tabs on it), its toasts, and Start opening on its login. Tickets stay workspace-wide, so the queue and the audit
 /// read the same everywhere; the Accounts view stays the overview of every login. The global login's tab owns the one
 /// shared refresh and hands each tab its part of the snapshot (<see cref="LoginScope.For"/>): no tab refreshes on its own.
+/// A known roster account not signed in yet has a tab too, with only its Sign in (M.ORCH-T615); each signed-in tab can open
+/// the Launcher as its login.
 /// </summary>
 public sealed partial class MainViewModel
 {
@@ -111,6 +113,40 @@ public sealed partial class MainViewModel
         if (next == tab) return;
         tab = next;
         Raise(nameof(Tab)); Raise(nameof(TabTitle)); Raise(nameof(TabTip)); Raise(nameof(TabBrush));
+        Raise(nameof(IsTabSignedIn)); Raise(nameof(SignInPrompt)); Raise(nameof(TerminalsVisibility));
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    private ICommand? openLauncherCommand, signInTabCommand;
+
+    /// <summary>Whether this tab's login is signed in (M.ORCH-T615). A roster account that isn't yet has a tab showing only its
+    /// Sign in; once signed in, the next refresh gives it the whole dashboard and Open Launcher.</summary>
+    public bool IsTabSignedIn => tab.SignedIn;
+
+    /// <summary>What a tab not signed in yet says above its Sign in.</summary>
+    public string SignInPrompt => tab.SignedIn ? "" :
+        $"{tab.Title} ({tab.Email}) isn't signed in on this machine yet. Sign in to see its dashboard and open the Launcher as {tab.Title}.";
+
+    /// <summary>Open Launcher (M.ORCH-T615): the Launcher's menu as this tab's login (<c>MindAttic.Launcher --account &lt;email&gt;</c>),
+    /// so every repo CLI started from it runs on that login and shows in this tab; on the global login's tab, the Launcher
+    /// unscoped. One login may own many CLIs.</summary>
+    public ICommand OpenLauncherCommand => openLauncherCommand ??= new RelayCommand(OpenLauncher, () => tab.SignedIn);
+
+    /// <summary>Sign in, on a tab whose login isn't signed in yet: its own sign-in in a private browser window, then the tab
+    /// becomes its dashboard.</summary>
+    public ICommand SignInTabCommand => signInTabCommand ??= new RelayCommand(async () =>
+    {
+        if (ScopeEmail is not { } email) return;
+        if (await SignInOwnAsync(email)) await RefreshAsync();
+    }, () => !tab.SignedIn && ScopeEmail is not null && !IsSigningIn);
+
+    private void OpenLauncher()
+    {
+        var error = control.OpenLauncher(ScopeEmail);
+        StatusMessage = error ?? (ScopeEmail is null
+            ? "Opened the Launcher on the global login."
+            : $"Opened the Launcher as {TabTitle}: every repo CLI started from it runs on {ScopeEmail} and shows in this tab.");
+        if (error is not null) Toasts.Insert(0, new ToastViewModel("Launcher not opened", error, Palette.Over, null));
     }
 
     /// <summary>Tags each new toast with this tab while there's more than one (toasts tagged by tab), and tells the window.</summary>
