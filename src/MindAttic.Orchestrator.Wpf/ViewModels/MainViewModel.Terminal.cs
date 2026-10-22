@@ -49,10 +49,10 @@ public sealed partial class MainViewModel
 
     private async Task<GoToResult> GoToAsync(HostSession host)
     {
-        // A CLI in a pane here (M.ORCH-T618): its pane, in the Terminals view.
-        if (Terminals.Select(host.ProcessId))
+        // A CLI in a pane here (M.ORCH-T618): its pane, on its person's Terminals tab (M.ORCH-T622).
+        if (AllTerminals.Find(host.ProcessId) is { } pane)
         {
-            ViewChoice = "Terminals";
+            Root.ShowPane(pane);
             return new GoToResult(GoToOutcome.Tab, "Brought up its pane.");
         }
         var all = full?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];

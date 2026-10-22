@@ -146,13 +146,19 @@ Settings' *Where CLIs open* (or `orchestrator settings --terminal-host windows-t
 Orchestrator starts (Start, Queue, autopilot, `orchestrator start`) runs:
 
 - **Windows Terminal** (the default): a tab in its login's own Windows Terminal window, as before (M.ORCH-T616).
-- **Orchestrator**: a terminal pane in the dashboard's *Terminals* view: the Windows Terminal renderer for WPF
+- **Orchestrator**: a terminal pane on its person's *Terminals* tab: the Windows Terminal renderer for WPF
   (`Microsoft.Terminal.Wpf` through the `EasyWindowsTerminalControl` package) over ConPTY, running the same
   `MindAttic.Launcher host --path … --title … --provider …` command with the login's `CLAUDE_CONFIG_DIR` set inside it, so
   restart-resume, account moves and idle detection work unchanged. Each pane is a tab with its login's `[JR]` badge and color;
   closing one ends its CLI. A start from another process reaches the dashboard on a per-user pipe; with no dashboard open it
   falls back to Windows Terminal. Panes die with the dashboard, so it records each one's repo, login and Claude session and,
   the next time it opens, offers to reopen them with `claude --resume`.
+
+Each login's tab (each person) has two tabs of its own (M.ORCH-T622): *Dashboard* and *Terminals*. *Terminals* holds one
+terminal tab per CLI of theirs open in a pane (its badge, repo, *Go to* its repo on the dashboard, *Move to* another login,
+and close), and fills the window below the person tabs: the header tiles, the utilization chart and the view pills fold
+away while it shows. A pane goes to the person whose login its CLI runs on (and follows a *Move to*). A newly opened pane,
+*Go to tab* on one and a needs-you toast about one switch to its person and their *Terminals* tab.
 
 Switching it affects only CLIs opened afterwards.
 

@@ -75,6 +75,8 @@ public sealed partial class MainViewModel
         selectedTab = next;
         foreach (var t in loginTabs) t.Raise(nameof(SelectedTab));
         SelectedTabChanged?.Invoke(this, EventArgs.Empty);
+        // The person shown is the one whose chosen terminal shows (M.ORCH-T622).
+        ShowChosenPane();
         // The Accounts view reads its cards only while open: one opened in the newly shown tab gets them now.
         if (next.IsAccountsView) _ = next.RefreshLoginCardsAsync();
     }
@@ -106,14 +108,59 @@ public sealed partial class MainViewModel
         var options = aggregator.Options;
         foreach (var t in loginTabs.ToList())
             t.Apply(all, LoginScope.For(all, t.ScopeEmail, options.WorkingWindow, options.WaitingWindow));
+        // A login's tab come or gone takes its panes with it (to the global login's when gone).
+        if (before != loginTabs.Count) SyncTerminals();
     }
+
+    // ── Each person's terminals (M.ORCH-T622) ─────────────────────────────────
+
+    private ICommand? showPaneRepoCommand;
+
+    /// <summary>The tab whose Terminals tab <paramref name="pane"/> is on: its CLI's login's, else (no tab for that login) the global login's.</summary>
+    private MainViewModel OwnerOf(TerminalPaneViewModel pane) =>
+        loginTabs.FirstOrDefault(t => string.Equals(t.tab.Key, pane.Login ?? "", StringComparison.OrdinalIgnoreCase)) ?? this;
+
+    /// <summary>Hands each login's tab its own panes (on the global login's tab, which holds them all), then shows the chosen one.</summary>
+    private void SyncTerminals()
+    {
+        if (!IsGlobalTab) { Root.SyncTerminals(); return; }
+        var owners = AllTerminals.Panes.ToLookup(OwnerOf);
+        foreach (var t in loginTabs) t.Terminals.SyncTo([.. owners[t]]);
+        ShowChosenPane();
+    }
+
+    /// <summary>The one pane on screen is the shown person's chosen one; every other pane's terminal is hidden.</summary>
+    private void ShowChosenPane()
+    {
+        if (!IsGlobalTab) { Root.ShowChosenPane(); return; }
+        AllTerminals.SelectedPane = SelectedTab.Terminals.SelectedPane;
+    }
+
+    /// <summary>Brings <paramref name="pane"/> up (a pane just opened, Go to tab, a toast): its person's tab, their Terminals
+    /// tab, and it chosen there.</summary>
+    internal void ShowPane(TerminalPaneViewModel pane)
+    {
+        if (!IsGlobalTab) { Root.ShowPane(pane); return; }
+        SyncTerminals();
+        var owner = OwnerOf(pane);
+        Select(owner);
+        owner.Page = TerminalsPage;
+        owner.Terminals.SelectedPane = pane;
+        ShowChosenPane();
+    }
+
+    /// <summary>"Go to" on a terminal tab: its repo, on this person's dashboard (its detail, with its tickets and Start).</summary>
+    public ICommand ShowPaneRepoCommand => showPaneRepoCommand ??= new RelayCommand(p =>
+    {
+        if (p is TerminalPaneViewModel pane) SelectRepo(pane.Request.Repo);
+    });
 
     private void Retitle(LoginTab next)
     {
         if (next == tab) return;
         tab = next;
         Raise(nameof(Tab)); Raise(nameof(TabTitle)); Raise(nameof(TabTip)); Raise(nameof(TabBrush));
-        Raise(nameof(IsTabSignedIn)); Raise(nameof(SignInPrompt)); Raise(nameof(TerminalsVisibility));
+        Raise(nameof(IsTabSignedIn)); Raise(nameof(ShowsDashboard)); Raise(nameof(SignInPrompt)); Raise(nameof(TerminalsVisibility));
         CommandManager.InvalidateRequerySuggested();
     }
 
