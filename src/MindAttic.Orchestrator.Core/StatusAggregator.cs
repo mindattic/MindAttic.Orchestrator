@@ -208,10 +208,10 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         }
     }
 
-    /// <summary>A CLI's login in words (M.ORCH-T606): its own login's email, else the global login's marked "(global)"; null
-    /// when neither is known.</summary>
-    internal static string? LoginText(string? ownEmail, string? globalEmail) =>
-        ownEmail ?? (globalEmail is null ? null : $"{globalEmail} (global)");
+    /// <summary>A CLI's login in words (M.ORCH-T606): its own login's name, else the global login's marked "(global)"; null
+    /// when neither is known. The names are the logins' aliases (M.ORCH-T614), their emails' part before the @ by default.</summary>
+    internal static string? LoginText(string? ownName, string? globalName) =>
+        ownName ?? (globalName is null ? null : $"{globalName} (global)");
 
     private Snapshot Build(DateTime now)
     {
@@ -377,11 +377,17 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         var runningSubagents = subagents.Poll(contextCycler, now);
         var agentBoard = AgentBoard.Build(result, pace, Store.LoadAssignments(), runningSubagents, options.WorkingWindow, now, contextCycler.LiveSessions(now),
             contextCycler.Load().Where(c => c.Pid is not null).ToDictionary(c => c.SessionId, c => c.Pid!.Value, StringComparer.Ordinal));
-        // The Claude login each CLI bills, on its card (M.ORCH-T606): its own login's email, else the global login's.
+        // The Claude login each CLI bills, on its card (M.ORCH-T606): its own login's name, else the global login's, by the
+        // name each login's folder gives it (M.ORCH-T614) with the email for the tooltip.
         var globalLogin = SignIn?.Profile?.Email;
+        var globalName = globalLogin is null ? null : LoginLook.For(Accounts.Dirs.ClaudeDir, globalLogin).Alias;
+        var ownNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         string? OwnOf(string session) => ownLogin.TryGetValue(session, out var dir) ? Accounts.Dirs.Of(dir)?.Email : null;
-        string? LoginOf(string session) => LoginText(OwnOf(session), globalLogin);
-        agentBoard = [.. agentBoard.Select(a => a with { Login = LoginOf(a.SessionId), OwnLogin = OwnOf(a.SessionId) })];
+        string? LoginOf(string session) => LoginText(OwnOf(session) is { } own
+            ? ownNames.TryGetValue(own, out var n) ? n : ownNames[own] = LoginLook.For(Accounts.Dirs.For(own).Directory, own).Alias
+            : null, globalName);
+        string? LoginEmailOf(string session) => OwnOf(session) ?? globalLogin;
+        agentBoard = [.. agentBoard.Select(a => a with { Login = LoginOf(a.SessionId), LoginEmail = LoginEmailOf(a.SessionId), OwnLogin = OwnOf(a.SessionId) })];
         // Who's billed, and each CLI's own billing on its card (M.ORCH-T436); never the refresh's failure.
         Billing.BillingStatus? billing = null;
         try
@@ -395,10 +401,10 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             agentBoard = [.. agentBoard.Select(a => hostBySession.TryGetValue(a.SessionId, out var h) ? a with { Host = h } : a)];
             // Each Launcher tab's login, by the CLI running in it (M.ORCH-T606).
             var hostLogins = billing.Clis.Where(c => c.Host is not null).GroupBy(c => c.Host!.ProcessId)
-                .ToDictionary(g => g.Key, g => LoginOf(g.First().SessionId));
+                .ToDictionary(g => g.Key, g => (Name: LoginOf(g.First().SessionId), Email: LoginEmailOf(g.First().SessionId)));
             for (var i = 0; i < result.Count; i++)
                 if (result[i].Hosts.Any(h => hostLogins.ContainsKey(h.ProcessId)))
-                    result[i] = result[i] with { Hosts = [.. result[i].Hosts.Select(h => hostLogins.TryGetValue(h.ProcessId, out var l) ? h with { Login = l } : h)] };
+                    result[i] = result[i] with { Hosts = [.. result[i].Hosts.Select(h => hostLogins.TryGetValue(h.ProcessId, out var l) ? h with { Login = l.Name, LoginEmail = l.Email } : h)] };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidOperationException)
         {

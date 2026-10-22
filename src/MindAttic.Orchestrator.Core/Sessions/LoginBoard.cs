@@ -76,6 +76,13 @@ public sealed record LoginCard(
 {
     public bool IsGlobal => Email is null;
 
+    /// <summary>The login's name (M.ORCH-T614): its <see cref="LoginLook.Alias"/>, defaulting to the email's part before the @;
+    /// null for a global login whose email isn't known.</summary>
+    public string? Alias { get; init; }
+
+    /// <summary>The email the name stands for, for its tooltip: the per-CLI login's, else whoever's signed in to the global one.</summary>
+    public string? AliasEmail => Email ?? SignedInAs;
+
     /// <summary>Where this login's CLIs stop in its week (M.ORCH-T609): the line the daemon wrote for it, else the weekly
     /// reserve's default.</summary>
     public int WeeklyStopPercent => Pace?.WeeklyStopPercent
@@ -104,7 +111,10 @@ public static class LoginBoard
         var five = ReportedUsage.Usable(usage?.FiveHour, nowUtc);
         var week = usage?.Week is { } w && w.ResetUtc > nowUtc ? w : null;
         return new LoginCard(dir.Email, dir.Directory, dir.SignedIn, profile?.Email, profile?.Plan,
-            five?.Percent, five?.ResetUtc, week?.Percent, week?.ResetUtc, LoginPace.Read(dir.StatusPath), []);
+            five?.Percent, five?.ResetUtc, week?.Percent, week?.ResetUtc, LoginPace.Read(dir.StatusPath), [])
+        {
+            Alias = LoginLook.For(dir.Directory, dir.Email).Alias,
+        };
     }
 
     /// <summary>The global login's card: who's signed in (<paramref name="current"/>, the roster's row for it), its meter as the
@@ -112,7 +122,10 @@ public static class LoginBoard
     public static LoginCard Global(string directory, AccountRow? current, bool signedIn, string statusPath, DateTime nowUtc) =>
         new(null, directory, signedIn, current?.Email, current?.Plan,
             current?.FiveHourUsedAt(nowUtc), current?.FiveHourResetAt(nowUtc),
-            current?.WeekUsedAt(nowUtc), current?.WeekResetAt(nowUtc), LoginPace.Read(statusPath), []);
+            current?.WeekUsedAt(nowUtc), current?.WeekResetAt(nowUtc), LoginPace.Read(statusPath), [])
+        {
+            Alias = current?.Email is { } email ? LoginLook.For(directory, email).Alias : null,
+        };
 
     /// <summary>
     /// Every login's card: <paramref name="global"/> first, then each per-CLI login <paramref name="dirs"/> has, with the live

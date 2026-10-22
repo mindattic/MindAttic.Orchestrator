@@ -45,6 +45,9 @@ public sealed record AgentBoardRow(
     /// <summary>Its claude.exe process id, as the context gate recorded it; null when not known.</summary>
     public int? CliPid { get; init; }
 
+    /// <summary>The email behind <see cref="Login"/>'s name (M.ORCH-T614), for its tooltip; null when not known.</summary>
+    public string? LoginEmail { get; init; }
+
     /// <summary>The tickets its CLI claimed for its subagents (<c>orchestrator next --claim</c>, M.ORCH-T532), in claim order:
     /// only its own, never another CLI's on the same repo.</summary>
     public IReadOnlyList<string> Claims { get; init; } = [];

@@ -243,8 +243,61 @@ public sealed class AccountDirsTests
         File.WriteAllText(Path.Combine(b.Directory, LoginLook.FileName), "not json");
         Assert.That(LoginLook.For(b.Directory, b.Email).Initials, Is.EqualTo("RY"), "a broken file is ignored");
 
+        File.WriteAllText(Path.Combine(b.Directory, LoginLook.FileName), """{ "alias": "Jordan" }""");
+        Assert.That(LoginLook.For(b.Directory, b.Email).Initials, Is.EqualTo("JO"), "one word gives its own first two letters");
+
         Assert.That(LoginLook.WindowName("42"), Is.EqualTo("claude-42"), "a number would be a window id");
         Assert.That(LoginLook.WindowName("new"), Is.EqualTo("claude-new"));
+    }
+
+    [Test]
+    public void A_logins_name_belongs_to_its_email_not_its_folder()
+    {
+        // The global login's folder still holds the name of whoever was signed in to it before a /login as someone else.
+        File.WriteAllText(Path.Combine(ClaudeDir, LoginLook.FileName), """{ "alias": "Jordan", "initials": "JR" }""");
+        var look = LoginLook.For(ClaudeDir, "ohleo199@example.com");
+        Assert.That((look.Alias, look.Initials), Is.EqualTo(("ohleo199", "OH")), "a file with no email isn't trusted in the global folder");
+        Assert.That(LoginLook.For(ClaudeDir, null).Alias, Is.EqualTo("claude"), "nor when nobody's known to be signed in");
+
+        File.WriteAllText(Path.Combine(ClaudeDir, LoginLook.FileName), """{ "email": "PDF@example.com", "alias": "Jordan", "initials": "JR" }""");
+        Assert.That(LoginLook.For(ClaudeDir, "pdf@example.com").Alias, Is.EqualTo("Jordan"), "the email it was given for");
+        Assert.That(LoginLook.For(ClaudeDir, "ohleo199@example.com").Alias, Is.EqualTo("ohleo199"), "anyone else gets the default");
+
+        // Naming the new sign-in replaces the other email's look, and keeps anything else the file holds.
+        var json = JsonNode.Parse(File.ReadAllText(Path.Combine(ClaudeDir, LoginLook.FileName)))!.AsObject();
+        json["launcher"] = "kept";
+        File.WriteAllText(Path.Combine(ClaudeDir, LoginLook.FileName), json.ToJsonString());
+        Assert.That(LoginLook.SetAlias(ClaudeDir, "ohleo199@example.com", "Ryan"), Is.EqualTo("Ryan"));
+        var saved = JsonNode.Parse(File.ReadAllText(Path.Combine(ClaudeDir, LoginLook.FileName)))!.AsObject();
+        Assert.That((string?)saved["email"], Is.EqualTo("ohleo199@example.com"));
+        Assert.That((string?)saved["alias"], Is.EqualTo("Ryan"));
+        Assert.That(saved.ContainsKey("initials"), Is.False, "JR was Jordan's");
+        Assert.That((string?)saved["launcher"], Is.EqualTo("kept"));
+        Assert.That(LoginLook.For(ClaudeDir, "ohleo199@example.com").Initials, Is.EqualTo("RY"));
+
+        Assert.That(LoginLook.SetAlias(ClaudeDir, "ohleo199@example.com", "  "), Is.EqualTo("ohleo199"), "a blank name goes back to the default");
+    }
+
+    [Test]
+    public void Naming_an_email_names_each_folder_that_is_its_login()
+    {
+        var b = dirs.For("b@example.com");
+        Directory.CreateDirectory(b.Directory);
+        File.WriteAllText(HomeConfig, JsonSerializer.Serialize(new { oauthAccount = new { accountUuid = "g", emailAddress = "b@example.com" } }));
+
+        var written = LoginLook.SetAlias(dirs, "B@example.com", "Bee");
+        Assert.That(written, Is.EquivalentTo(new[] { b.Directory, ClaudeDir }), "its per-CLI login and the global one signed in as it");
+        Assert.That(LoginLook.For(b.Directory, b.Email).Alias, Is.EqualTo("Bee"));
+        Assert.That(LoginLook.For(ClaudeDir, "b@example.com").Alias, Is.EqualTo("Bee"));
+
+        Assert.That(LoginLook.SetAlias(dirs, "nobody@example.com", "X"), Is.Empty, "an email with no login here names nothing");
+        Assert.That(File.Exists(Path.Combine(dirs.For("nobody@example.com").Directory, LoginLook.FileName)), Is.False);
+
+        // The cards show the name, and the email for the tooltip.
+        var card = LoginBoard.Own(b, DateTime.UtcNow);
+        Assert.That((card.Alias, card.AliasEmail), Is.EqualTo(("Bee", "b@example.com")));
+        var global = LoginBoard.Global(ClaudeDir, new AccountRow { Account = "g", Email = "b@example.com" }, true, Path.Combine(ClaudeDir, "rl-status.json"), DateTime.UtcNow);
+        Assert.That((global.Alias, global.AliasEmail), Is.EqualTo(("Bee", "b@example.com")));
     }
 
     [Test]
@@ -269,10 +322,15 @@ public sealed class AccountDirsTests
         var line = Draw(42);
         Assert.That(line, Does.Contain("s1"), "the shared statusline got the rest of the status");
         Assert.That(line, Does.Not.Contain("rate_limits"), "but not the account's meter, which it would write as the global login's");
-        Assert.That(line, Does.Contain("[b@example.com]"), "the line names the account");
+        Assert.That(line, Does.Contain("[b]"), "the line names the account, by its email's part before the @ until it has a name");
         Assert.That(ReportedUsage.Load(DateTime.UtcNow, b.UsagePath)?.FiveHour?.Percent, Is.EqualTo(42));
         Draw(30);
         Assert.That(ReportedUsage.Load(DateTime.UtcNow, b.UsagePath)?.FiveHour?.Percent, Is.EqualTo(42), "an idle tab's lower reading never lowers it");
+
+        LoginLook.SetAlias(b.Directory, b.Email, "Bee Dee");
+        Assert.That(Draw(50), Does.Contain("[Bee Dee]"), "a name shows at once, read from the login's own folder");
+        File.WriteAllText(Path.Combine(b.Directory, LoginLook.FileName), """{ "email": "other@example.com", "alias": "Other" }""");
+        Assert.That(Draw(50), Does.Contain("[b]"), "another email's name isn't this login's");
     }
 
     [Test]

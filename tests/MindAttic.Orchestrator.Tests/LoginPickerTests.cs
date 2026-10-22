@@ -179,8 +179,24 @@ public sealed class LoginPickerTests
     }
 
     [Test]
+    public void Accounts_alias_names_a_login_and_says_its_name()
+    {
+        var a = Account("a@example.com");
+        AccountsCommand.LoginsOverride = () => dirs;
+        Assert.That(RunCli("accounts", "alias", "a@example.com"), Is.EqualTo((0, "a" + Environment.NewLine)), "the email's default until it's named");
+        Assert.That(RunCli("accounts", "alias", "A@example.com", "Amy Reed").Code, Is.Zero);
+        Assert.That(LoginLook.For(a.Directory, a.Email).Alias, Is.EqualTo("Amy Reed"));
+        Assert.That(RunCli("accounts", "alias", "a@example.com").Text.Trim(), Is.EqualTo("Amy Reed"));
+        Assert.That(RunCli("accounts", "alias", "a@example.com", "--reset").Code, Is.Zero);
+        Assert.That(LoginLook.For(a.Directory, a.Email).Alias, Is.EqualTo("a"));
+        Assert.That(RunCli("accounts", "alias", "nobody@example.com", "X").Code, Is.EqualTo(1), "no login of its own here, nor the global one");
+        Assert.That(RunCli("accounts", "alias", "not-an-email", "X").Code, Is.EqualTo(1));
+    }
+
+    [Test]
     public void The_accounts_branch_still_takes_its_own_options_and_help()
     {
+        Assert.That(RunCli("accounts", "alias", "--help").Code, Is.Zero);
         Assert.That(RunCli("accounts", "--help").Code, Is.Zero);
         Assert.That(RunCli("accounts", "pick", "--help").Code, Is.Zero);
     }

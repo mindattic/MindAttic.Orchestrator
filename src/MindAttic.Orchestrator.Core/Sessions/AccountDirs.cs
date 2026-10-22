@@ -290,7 +290,15 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
             [void]$p.WaitForExit(10000)
           } catch { }
         }
-        $tag = "$([char]27)[2m[{{account.Email}}]$([char]27)[0m"
+        # The login's name (M.ORCH-T614), read each time so a rename shows at once: its mindattic-account.json's alias while
+        # that's for this email, else the email's part before the @.
+        $name = {{Ps(LoginLook.DefaultAlias(account.Email) ?? account.Email)}}
+        try {
+          $look = Get-Content -LiteralPath {{Ps(Path.Combine(account.Directory, LoginLook.FileName))}} -Raw -ErrorAction Stop | ConvertFrom-Json
+          $for = "$($look.email)".Trim()
+          if ((-not $for -or $for -eq {{Ps(account.Email)}}) -and "$($look.alias)".Trim()) { $name = "$($look.alias)".Trim() }
+        } catch { }
+        $tag = "$([char]27)[2m[$name]$([char]27)[0m"
         if ($out) {
           $lines = $out -split "`r?`n"
           $lines[0] = $lines[0] + '  ' + $tag

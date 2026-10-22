@@ -119,6 +119,28 @@ public sealed class AccountsViewTests
     }
 
     [Test]
+    public void A_card_shows_its_logins_name_with_the_email_in_the_tooltip_and_renames_it()
+    {
+        var b = Folder("b@example.com", signedIn: true);
+        var card = new LoginCardViewModel(b.Email);
+        card.Update(LoginBoard.Own(b, Now), Now);
+        Assert.That((card.Title, card.TitleTip, card.CanRename), Is.EqualTo(("b", "b@example.com", true)), "the email's part before the @ by default");
+
+        card.BeginRename();
+        Assert.That((card.IsRenaming, card.AliasDraft), Is.EqualTo((true, "b")));
+        Assert.That(MainViewModel.SaveAlias(dirs, b.Directory, b.Email, "Bee"), Is.EqualTo("b@example.com is now called Bee."));
+        card.Update(LoginBoard.Own(b, Now), Now);
+        Assert.That(card.Title, Is.EqualTo("Bee"));
+
+        // The global login is named for whoever's signed in to it, marked "(global)".
+        MainViewModel.SaveAlias(dirs, dirs.ClaudeDir, "g@example.com", "Gee");
+        var global = new LoginCardViewModel("");
+        global.Update(LoginBoard.Global(dirs.ClaudeDir, new AccountRow { Account = "g", Email = "g@example.com" }, true, Path.Combine(dirs.ClaudeDir, "rl-status.json"), Now), Now);
+        Assert.That(global.Title, Is.EqualTo("Gee (global)"));
+        Assert.That(global.TitleTip, Does.StartWith("g@example.com"));
+    }
+
+    [Test]
     public void Accounts_is_a_view_beside_the_others()
     {
         Assert.That(MainViewModel.ViewNames, Is.EqualTo(new[] { "Agents", "Repos", "Queue", "Audit", "Accounts" }));

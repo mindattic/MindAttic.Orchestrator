@@ -504,7 +504,7 @@
                                                             Command="{Binding DataContext.GoToTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                             CommandParameter="{Binding}" ToolTip="Bring this tab's terminal to the front, on this tab"
                                                             AutomationProperties.Name="{Binding Detail, StringFormat='Go to the tab, {0}'}" />
-                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Detail}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" />
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Detail}" ToolTip="{Binding DetailTip}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" />
                                                     <TextBlock Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center" />
                                                 </DockPanel>
                                                 <DockPanel Margin="0,8,0,0">
@@ -970,7 +970,7 @@
                                             </DockPanel>
                                             <!-- The Claude login this CLI bills (M.ORCH-T606), so one on the wrong account shows. -->
                                             <TextBlock Text="{Binding Login}" Style="{StaticResource MaMutedText}" FontSize="11" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
-                                                       ToolTip="The Claude login this CLI bills" Visibility="{Binding Login, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                                                       ToolTip="{Binding LoginTip}" Visibility="{Binding Login, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                                             <!-- The ticket opens its history; with no ticket, the line is plain text, not a dead button. -->
                                             <Button Command="{Binding DataContext.ShowTicketCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}" Style="{StaticResource MaTextButton}" Padding="4,2" MinHeight="24" Margin="-4,6,0,0"
@@ -1094,7 +1094,26 @@
                                             <DockPanel>
                                                 <mc:MaBadge DockPanel.Dock="Right" Glyph="{Binding StateGlyph}" Content="{Binding SignedInText}"
                                                             Foreground="{Binding StateBrush}" Margin="10,0,0,0" VerticalAlignment="Center" />
-                                                <TextBlock Text="{Binding Title}" Style="{StaticResource MaHeading}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                                <!-- The login's name (M.ORCH-T614), its email in the tooltip; Rename sets it. -->
+                                                <Button DockPanel.Dock="Right" Style="{StaticResource MaTextButton}" Content="Rename" Padding="6,2" Margin="8,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        Command="{Binding DataContext.RenameLoginCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        Visibility="{Binding CanRename, Converter={StaticResource Visible}}"
+                                                        AutomationProperties.Name="{Binding Title, StringFormat='Rename {0}'}"
+                                                        ToolTip="Give this login a name (orchestrator accounts alias &lt;email&gt; &lt;name&gt;)" />
+                                                <TextBlock Text="{Binding Title}" ToolTip="{Binding TitleTip}" Style="{StaticResource MaHeading}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                            </DockPanel>
+                                            <DockPanel Margin="0,6,0,0" Visibility="{Binding IsRenaming, Converter={StaticResource Visible}}">
+                                                <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Content="Cancel" Padding="10,4" Margin="6,0,0,0"
+                                                        Command="{Binding DataContext.CancelRenameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}" />
+                                                <Button DockPanel.Dock="Right" Style="{StaticResource MaPrimaryButton}" Content="Save" Padding="12,4" Margin="6,0,0,0"
+                                                        Command="{Binding DataContext.SaveLoginAliasCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip="Save the name; a blank name goes back to the email's part before the @" />
+                                                <TextBox Style="{StaticResource MaTextBox}" Height="32" Text="{Binding AliasDraft, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"
+                                                         AutomationProperties.Name="{Binding AliasEmail, StringFormat='Name for {0}'}" ToolTip="{Binding AliasEmail}" />
                                             </DockPanel>
                                             <TextBlock Style="{StaticResource MaMutedText}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis">
                                                 <Run Text="{Binding Kind, Mode=OneWay}" /><Run Text="   " /><Run Text="{Binding Plan, Mode=OneWay}" Foreground="{DynamicResource MaText}" />

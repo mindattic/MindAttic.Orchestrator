@@ -47,6 +47,64 @@ internal sealed class AccountsPickCommand : Command<AccountsPickCommand.Settings
     }
 }
 
+/// <summary>
+/// <c>orchestrator accounts alias &lt;email&gt; &lt;name&gt;</c> (M.ORCH-T614): names a Claude login, as the Accounts view's Rename
+/// does. The name is kept in the login's own folder (<see cref="LoginLook.FileName"/> in its <c>~/.claude-accounts</c> folder,
+/// and in <c>~/.claude</c> while the global login is signed in as it), stamped with the email, so the Launcher and the
+/// account's status line read it without the Orchestrator. Without a name it says the login's name; <c>--reset</c> goes back
+/// to the email's part before the @.
+/// </summary>
+internal sealed class AccountsAliasCommand : Command<AccountsAliasCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandArgument(0, "<EMAIL>")]
+        [Description("The login's email.")]
+        public string Email { get; init; } = "";
+
+        [CommandArgument(1, "[NAME]")]
+        [Description("Its name (quote one with spaces).")]
+        public string? Name { get; init; }
+
+        [CommandOption("--reset")]
+        [Description("Go back to the email's part before the @.")]
+        public bool Reset { get; init; }
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        var dirs = AccountsCommand.LoginsOverride?.Invoke() ?? new AccountDirs();
+        if (AccountDirs.Normalize(settings.Email) is not { } email)
+        {
+            AnsiConsole.MarkupLine($"[red]\"{Markup.Escape(settings.Email)}\" isn't an email address.[/]");
+            return 1;
+        }
+        var own = dirs.For(email);
+        var isGlobal = LoginLook.GlobalEmail(dirs) is { } g && string.Equals(g, email, StringComparison.OrdinalIgnoreCase);
+        var folder = Directory.Exists(own.Directory) ? own.Directory : isGlobal ? dirs.ClaudeDir : null;
+        if (folder is null)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(email)} has no login here: neither a per-CLI one (orchestrator login --account {Markup.Escape(email)}) nor the global one.[/]");
+            return 1;
+        }
+        if (settings.Name is null && !settings.Reset)
+        {
+            Console.WriteLine(LoginLook.For(folder, email).Alias);
+            return 0;
+        }
+        IReadOnlyList<string> written;
+        try { written = LoginLook.SetAlias(dirs, email, settings.Reset ? null : settings.Name); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            AnsiConsole.MarkupLine($"[red]Couldn't name {Markup.Escape(email)}: {Markup.Escape(ex.Message)}[/]");
+            return 1;
+        }
+        var name = LoginLook.For(folder, email).Alias;
+        AnsiConsole.MarkupLine($"{Markup.Escape(email)} is now called [bold]{Markup.Escape(name)}[/] [grey]({Markup.Escape(string.Join(", ", written.Select(f => Path.Combine(f, LoginLook.FileName))))})[/].");
+        return 0;
+    }
+}
+
 /// <summary><c>orchestrator accounts</c> (M.ORCH-T490): every Claude account signed in to on this machine, with how much of
 /// its week and 5-hour window it has used and when each resets, from the accounts table in the repo's <c>data/orchestrator.db</c>. It brings the signed-in account's
 /// row up to date first, from Claude's last reading, so the roster is there without the daemon.</summary>
@@ -93,7 +151,7 @@ internal sealed class AccountsCommand : Command<AccountsCommand.Settings>
             // The same card the dashboard's Accounts view shows (M.ORCH-T603).
             var card = LoginBoard.Own(dir, now);
             table.AddRow(
-                Markup.Escape(dir.Email),
+                (card.Alias is { } alias ? $"{Markup.Escape(alias)} [grey]{Markup.Escape(dir.Email)}[/]" : Markup.Escape(dir.Email)),
                 card.SignedIn ? Markup.Escape(card.SignedInAs ?? "(signed in)") : "[red]not signed in[/] [grey](orchestrator login --account)[/]",
                 AccountRoster.Percent(card.FiveHourPercent),
                 card.FiveHourResetUtc is { } r ? Formatting.ResetTime(r, now) : "",
@@ -103,7 +161,7 @@ internal sealed class AccountsCommand : Command<AccountsCommand.Settings>
                 card.Pace?.AtUtc is { } a ? Formatting.Ago(a, now) : "[grey]not yet[/]");
         }
         AnsiConsole.Write(table);
-        AnsiConsole.MarkupLine("[grey]orchestrator start <repo> --account <email> runs a CLI on one of these; orchestrator login --account <email> adds one.[/]");
+        AnsiConsole.MarkupLine("[grey]orchestrator start <repo> --account <email> runs a CLI on one of these; orchestrator login --account <email> adds one; orchestrator accounts alias <email> <name> names one.[/]");
     }
 
     /// <summary>The roster with the signed-in account's row brought up to date from Claude's last reading, and who's signed in.</summary>

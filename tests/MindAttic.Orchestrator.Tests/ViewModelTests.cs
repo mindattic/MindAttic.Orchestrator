@@ -130,8 +130,11 @@ public sealed class ViewModelTests
         card.Update(row with { Login = null }, null, now);
         Assert.That(card.Login, Is.Empty, "nothing shown when the login isn't known");
 
-        var host = new HostRowViewModel(new HostSession("Claude", 7, "p", null) { Login = "g@b.com (global)" });
-        Assert.That(host.Detail, Is.EqualTo("PID 7 · g@b.com (global)"));
+        card.Update(row with { Login = "Jordan", LoginEmail = "j@b.com" }, null, now);
+        Assert.That((card.Login, card.LoginTip), Is.EqualTo(("Login: Jordan", "The Claude login this CLI bills: j@b.com")), "the name, the email in the tooltip (M.ORCH-T614)");
+
+        var host = new HostRowViewModel(new HostSession("Claude", 7, "p", null) { Login = "g (global)", LoginEmail = "g@b.com" });
+        Assert.That((host.Detail, host.DetailTip), Is.EqualTo(("PID 7 · g (global)", "Bills the Claude login g@b.com")));
         host.Update(new HostSession("Claude", 7, "p", null));
         Assert.That(host.Detail, Is.EqualTo("PID 7"));
     }
