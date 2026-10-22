@@ -77,6 +77,7 @@ internal static class CliApp
             {
                 a.SetDescription("Every Claude account signed in to here: weekly % used and left, its reset, the 5-hour % and reset, and when each was last read (orchestrator.db).");
                 a.SetDefaultCommand<AccountsCommand>();
+                a.AddCommand<AccountsAliasCommand>("alias").WithDescription("Name a Claude login (alias <email> \"<name>\"): the dashboard, the Accounts view, agent cards and its status line show the name, the email in the tooltip; without a name, says its name; --reset goes back to the email's part before the @.");
                 a.AddCommand<AccountsPickCommand>("pick").WithDescription("The Auto login a new Claude CLI should start on (one CLI per account): prints its CLAUDE_CONFIG_DIR, or an empty line for the global login.");
             });
             config.AddCommand<LoginCommand>("login").WithDescription("The account roster (as the dashboard's account menu shows it); with an email or short name, opens that account's login (claude auth login --email); --account <email> signs in a per-CLI login of its own instead; --api-key bills the Vault's API key.");

@@ -44,11 +44,93 @@ public sealed class AccountDirsTests
         dirs = new AccountDirs(Path.Combine(dir, ".claude-accounts"), ClaudeDir, HomeConfig);
     }
 
+    private Func<LoginBrowser.Browser?> realFind = null!;
+
+    [SetUp]
+    public void NoRealBrowser()
+    {
+        realFind = LoginBrowser.Find;
+        LoginBrowser.Find = () => new LoginBrowser.Browser("Edge", @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe", "--inprivate");
+    }
+
     [TearDown]
     public void TearDown()
     {
+        LoginBrowser.Find = realFind;
         LoginCommand.DirsOverride = null;
         temps.DeleteAll();
+    }
+
+    [Test]
+    public void An_accounts_sign_in_opens_in_a_private_window_of_its_own_browser_profile()
+    {
+        var b = dirs.For("b@example.com");
+        var opener = LoginBrowser.Prepare(b, out var note);
+        Assert.That(note, Is.Null);
+        Assert.That(opener, Is.EqualTo(b.LoginOpenerPath));
+        var script = File.ReadAllText(opener!);
+        Assert.That(script, Does.Contain("start \"\" \"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\""));
+        Assert.That(script, Does.Contain($"--user-data-dir=\"{b.BrowserProfileDirectory}\"").And.Contain("--inprivate %1"),
+            "its own profile, a private window, and the sign-in URL claude passes (already quoted)");
+        Assert.That(LoginBrowser.Script(new("Chrome", "chrome.exe", "--incognito"), b), Does.Contain("--incognito %1"));
+
+        LoginBrowser.Find = () => null;
+        Assert.That(LoginBrowser.Prepare(b, out note), Is.Null);
+        Assert.That(note, Does.Contain("default browser").And.Contain("b@example.com"));
+        Assert.That(File.Exists(b.LoginOpenerPath), Is.False, "an opener for a browser that's gone is removed");
+    }
+
+    [Test]
+    public void Login_with_account_opens_through_the_accounts_opener_and_a_wrong_account_is_signed_out_again()
+    {
+        var real = AccountSwitch.LoginInto;
+        var previous = AnsiConsole.Console;
+        var output = new StringWriter();
+        AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings { Out = new AnsiConsoleOutput(output), Ansi = AnsiSupport.No, ColorSystem = ColorSystemSupport.NoColors, Interactive = InteractionSupport.No });
+        AnsiConsole.Profile.Width = 600;
+        LoginCommand.DirsOverride = () => dirs;
+        try
+        {
+            var b = dirs.For("b@example.com");
+            AccountSwitch.LoginInto = (_, _, configDir) =>
+            {
+                Assert.That(File.Exists(Path.Combine(configDir, "open-login.cmd")), Is.True, "the opener is there before claude runs");
+                File.WriteAllText(Path.Combine(configDir, ".claude.json"), JsonSerializer.Serialize(new { oauthAccount = new { accountUuid = "acct-x", emailAddress = "other@example.com" }, projects = new { } }));
+                File.WriteAllText(Path.Combine(configDir, ".credentials.json"), "{}");
+                return 0;
+            };
+            Assert.That(CliApp.Create().Run(["login", "--account", "b@example.com"]), Is.EqualTo(1));
+            Assert.That(b.SignedIn, Is.False);
+            Assert.That(File.Exists(b.CredentialsPath), Is.False, "its token is gone");
+            Assert.That(File.ReadAllText(b.ConfigPath), Does.Contain("projects").And.Not.Contain("oauthAccount"), "the rest of its config is kept");
+            Assert.That(output.ToString(), Does.Contain("private browser window").And.Contain($"BROWSER={b.LoginOpenerPath}")
+                .And.Contain("Signed in as other@example.com, not b@example.com"));
+
+            var result = OwnLogins.SignIn(dirs, "b@example.com", sso: false);
+            Assert.That(result.Outcome, Is.EqualTo(OwnLoginOutcome.SignedInAsOther));
+            Assert.That(result.Ok, Is.False);
+            Assert.That(OwnLogins.Summary([result]), Is.EqualTo("1 signed in as someone else (signed out again)."));
+        }
+        finally
+        {
+            AccountSwitch.LoginInto = real;
+            AnsiConsole.Console = previous;
+        }
+    }
+
+    [Test]
+    public void The_start_pills_list_every_roster_account_once_by_email()
+    {
+        AccountRow[] roster =
+        [
+            new() { Account = "acct-c/org", Email = "C@example.com" },
+            new() { Account = "acct-b/org", Email = "b@example.com" },
+            new() { Account = "acct-d/org" }, // no email yet: nothing to sign in
+        ];
+        Assert.That(MindAttic.Orchestrator.Wpf.ViewModels.MainViewModel.LoginsOf(true, ["b@example.com", "z@example.com"], roster),
+            Is.EqualTo(new[] { "Auto", "Global login", "b@example.com", "c@example.com", "z@example.com" }));
+        Assert.That(MindAttic.Orchestrator.Wpf.ViewModels.MainViewModel.LoginsOf(false, [], roster),
+            Is.EqualTo(new[] { "Global login", "b@example.com", "c@example.com" }));
     }
 
     private static void SignIn(AccountDir account, string uuid = "acct-b") =>
@@ -161,8 +243,61 @@ public sealed class AccountDirsTests
         File.WriteAllText(Path.Combine(b.Directory, LoginLook.FileName), "not json");
         Assert.That(LoginLook.For(b.Directory, b.Email).Initials, Is.EqualTo("RY"), "a broken file is ignored");
 
+        File.WriteAllText(Path.Combine(b.Directory, LoginLook.FileName), """{ "alias": "Jordan" }""");
+        Assert.That(LoginLook.For(b.Directory, b.Email).Initials, Is.EqualTo("JO"), "one word gives its own first two letters");
+
         Assert.That(LoginLook.WindowName("42"), Is.EqualTo("claude-42"), "a number would be a window id");
         Assert.That(LoginLook.WindowName("new"), Is.EqualTo("claude-new"));
+    }
+
+    [Test]
+    public void A_logins_name_belongs_to_its_email_not_its_folder()
+    {
+        // The global login's folder still holds the name of whoever was signed in to it before a /login as someone else.
+        File.WriteAllText(Path.Combine(ClaudeDir, LoginLook.FileName), """{ "alias": "Jordan", "initials": "JR" }""");
+        var look = LoginLook.For(ClaudeDir, "ohleo199@example.com");
+        Assert.That((look.Alias, look.Initials), Is.EqualTo(("ohleo199", "OH")), "a file with no email isn't trusted in the global folder");
+        Assert.That(LoginLook.For(ClaudeDir, null).Alias, Is.EqualTo("claude"), "nor when nobody's known to be signed in");
+
+        File.WriteAllText(Path.Combine(ClaudeDir, LoginLook.FileName), """{ "email": "PDF@example.com", "alias": "Jordan", "initials": "JR" }""");
+        Assert.That(LoginLook.For(ClaudeDir, "pdf@example.com").Alias, Is.EqualTo("Jordan"), "the email it was given for");
+        Assert.That(LoginLook.For(ClaudeDir, "ohleo199@example.com").Alias, Is.EqualTo("ohleo199"), "anyone else gets the default");
+
+        // Naming the new sign-in replaces the other email's look, and keeps anything else the file holds.
+        var json = JsonNode.Parse(File.ReadAllText(Path.Combine(ClaudeDir, LoginLook.FileName)))!.AsObject();
+        json["launcher"] = "kept";
+        File.WriteAllText(Path.Combine(ClaudeDir, LoginLook.FileName), json.ToJsonString());
+        Assert.That(LoginLook.SetAlias(ClaudeDir, "ohleo199@example.com", "Ryan"), Is.EqualTo("Ryan"));
+        var saved = JsonNode.Parse(File.ReadAllText(Path.Combine(ClaudeDir, LoginLook.FileName)))!.AsObject();
+        Assert.That((string?)saved["email"], Is.EqualTo("ohleo199@example.com"));
+        Assert.That((string?)saved["alias"], Is.EqualTo("Ryan"));
+        Assert.That(saved.ContainsKey("initials"), Is.False, "JR was Jordan's");
+        Assert.That((string?)saved["launcher"], Is.EqualTo("kept"));
+        Assert.That(LoginLook.For(ClaudeDir, "ohleo199@example.com").Initials, Is.EqualTo("RY"));
+
+        Assert.That(LoginLook.SetAlias(ClaudeDir, "ohleo199@example.com", "  "), Is.EqualTo("ohleo199"), "a blank name goes back to the default");
+    }
+
+    [Test]
+    public void Naming_an_email_names_each_folder_that_is_its_login()
+    {
+        var b = dirs.For("b@example.com");
+        Directory.CreateDirectory(b.Directory);
+        File.WriteAllText(HomeConfig, JsonSerializer.Serialize(new { oauthAccount = new { accountUuid = "g", emailAddress = "b@example.com" } }));
+
+        var written = LoginLook.SetAlias(dirs, "B@example.com", "Bee");
+        Assert.That(written, Is.EquivalentTo(new[] { b.Directory, ClaudeDir }), "its per-CLI login and the global one signed in as it");
+        Assert.That(LoginLook.For(b.Directory, b.Email).Alias, Is.EqualTo("Bee"));
+        Assert.That(LoginLook.For(ClaudeDir, "b@example.com").Alias, Is.EqualTo("Bee"));
+
+        Assert.That(LoginLook.SetAlias(dirs, "nobody@example.com", "X"), Is.Empty, "an email with no login here names nothing");
+        Assert.That(File.Exists(Path.Combine(dirs.For("nobody@example.com").Directory, LoginLook.FileName)), Is.False);
+
+        // The cards show the name, and the email for the tooltip.
+        var card = LoginBoard.Own(b, DateTime.UtcNow);
+        Assert.That((card.Alias, card.AliasEmail), Is.EqualTo(("Bee", "b@example.com")));
+        var global = LoginBoard.Global(ClaudeDir, new AccountRow { Account = "g", Email = "b@example.com" }, true, Path.Combine(ClaudeDir, "rl-status.json"), DateTime.UtcNow);
+        Assert.That((global.Alias, global.AliasEmail), Is.EqualTo(("Bee", "b@example.com")));
     }
 
     [Test]
@@ -187,10 +322,15 @@ public sealed class AccountDirsTests
         var line = Draw(42);
         Assert.That(line, Does.Contain("s1"), "the shared statusline got the rest of the status");
         Assert.That(line, Does.Not.Contain("rate_limits"), "but not the account's meter, which it would write as the global login's");
-        Assert.That(line, Does.Contain("[b@example.com]"), "the line names the account");
+        Assert.That(line, Does.Contain("[b]"), "the line names the account, by its email's part before the @ until it has a name");
         Assert.That(ReportedUsage.Load(DateTime.UtcNow, b.UsagePath)?.FiveHour?.Percent, Is.EqualTo(42));
         Draw(30);
         Assert.That(ReportedUsage.Load(DateTime.UtcNow, b.UsagePath)?.FiveHour?.Percent, Is.EqualTo(42), "an idle tab's lower reading never lowers it");
+
+        LoginLook.SetAlias(b.Directory, b.Email, "Bee Dee");
+        Assert.That(Draw(50), Does.Contain("[Bee Dee]"), "a name shows at once, read from the login's own folder");
+        File.WriteAllText(Path.Combine(b.Directory, LoginLook.FileName), """{ "email": "other@example.com", "alias": "Other" }""");
+        Assert.That(Draw(50), Does.Contain("[b]"), "another email's name isn't this login's");
     }
 
     [Test]
@@ -253,7 +393,7 @@ public sealed class AccountDirsTests
         var previous = AnsiConsole.Console;
         var output = new StringWriter();
         AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings { Out = new AnsiConsoleOutput(output), Ansi = AnsiSupport.No, ColorSystem = ColorSystemSupport.NoColors, Interactive = InteractionSupport.No });
-        AnsiConsole.Profile.Width = 300;
+        AnsiConsole.Profile.Width = 600;
         LoginCommand.DirsOverride = () => dirs;
         try
         {
@@ -290,7 +430,7 @@ public sealed class AccountDirsTests
         var previous = AnsiConsole.Console;
         var output = new StringWriter();
         AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings { Out = new AnsiConsoleOutput(output), Ansi = AnsiSupport.No, ColorSystem = ColorSystemSupport.NoColors, Interactive = InteractionSupport.No });
-        AnsiConsole.Profile.Width = 300;
+        AnsiConsole.Profile.Width = 600;
         var c = dirs.For("c@example.com");
         Directory.CreateDirectory(c.Directory);
         SignIn(c, "acct-c");
@@ -347,7 +487,7 @@ public sealed class AccountDirsTests
         var previous = AnsiConsole.Console;
         var output = new StringWriter();
         AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings { Out = new AnsiConsoleOutput(output), Ansi = AnsiSupport.No, ColorSystem = ColorSystemSupport.NoColors, Interactive = InteractionSupport.No });
-        AnsiConsole.Profile.Width = 300;
+        AnsiConsole.Profile.Width = 600;
         try
         {
             AccountSwitch.LoginInto = (_, _, _) => 0; // finished, but nobody signed in
@@ -361,6 +501,8 @@ public sealed class AccountDirsTests
                 return 0;
             };
             Assert.That(StartCommand.OwnLogin(dirs, "c@example.com", "Claude"), Is.Null, "signed in as another account: no tab");
+            Assert.That(dirs.For("c@example.com").SignedIn, Is.False, "and the folder is signed out again (M.ORCH-T610)");
+            Assert.That(output.ToString(), Does.Contain("Signed in as someone-else@example.com, not c@example.com: signed c@example.com's login out again"));
 
             var calls = 0;
             AccountSwitch.LoginInto = (email, _, configDir) =>

@@ -11,7 +11,7 @@ using MindAttic.Orchestrator.Settings;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
-public enum View { Agents, Repos, Queue, Audit, Accounts }
+public enum View { Agents, Repos, Queue, Audit, Accounts, Terminals }
 
 /// <summary>Budget (phase 2), the cross-repo queue (phase 3) and the audit (phase 4).</summary>
 public sealed partial class MainViewModel
@@ -38,6 +38,8 @@ public sealed partial class MainViewModel
     }
 
     private sealed class Seen { public DateTime LastSeenUtc { get; init; } }
+    /// <summary>The newest rebalance move toasted; moves made before the window opened aren't.</summary>
+    private DateTime rebalanceSeenUtc = DateTime.UtcNow;
     private View view;
     private string viewChoice = "Agents";
     private bool isSettingsOpen;
@@ -70,7 +72,7 @@ public sealed partial class MainViewModel
     /// <summary>Accounts (M.ORCH-T603): which Claude login each live CLI runs on.</summary>
     public IReadOnlyList<string> ViewChoices { get; } = ViewNames;
 
-    internal static readonly IReadOnlyList<string> ViewNames = ["Agents", "Repos", "Queue", "Audit", "Accounts"];
+    internal static readonly IReadOnlyList<string> ViewNames = ["Agents", "Repos", "Queue", "Audit", "Accounts", "Terminals"];
 
     public string ViewChoice
     {
@@ -81,7 +83,7 @@ public sealed partial class MainViewModel
             if (value is null || !Set(ref viewChoice, value)) return;
             view = Enum.TryParse<View>(value, out var v) ? v : View.Agents;
             Raise(nameof(IsReposView)); Raise(nameof(IsQueueView)); Raise(nameof(IsAuditView)); Raise(nameof(IsAgentsView)); Raise(nameof(ShowDetail));
-            Raise(nameof(IsAccountsView));
+            Raise(nameof(IsAccountsView)); Raise(nameof(IsTerminalsView)); Raise(nameof(TerminalsVisibility));
             if (IsAccountsView) _ = RefreshLoginCardsAsync();
         }
     }
@@ -93,12 +95,18 @@ public sealed partial class MainViewModel
     public bool IsAuditView => view == View.Audit;
     public bool IsAgentsView => view == View.Agents;
     public bool IsAccountsView => view == View.Accounts;
+    public bool IsTerminalsView => view == View.Terminals;
+
+    /// <summary>The Terminals view's (M.ORCH-T618): its terminals are native windows WPF can't draw over, so the view is hidden
+    /// while Settings or the loader covers the window, not only in another view; hidden, never collapsed, so each keeps its size.</summary>
+    public System.Windows.Visibility TerminalsVisibility =>
+        IsTerminalsView && !IsSettingsOpen && !IsLoading ? System.Windows.Visibility.Visible : System.Windows.Visibility.Hidden;
     public ICommand ShowViewCommand { get; private set; } = null!;
 
     // ── Settings ────────────────────────────────────────────────────────────
 
     public SettingsViewModel Settings { get; private set; } = null!;
-    public bool IsSettingsOpen { get => isSettingsOpen; set => Set(ref isSettingsOpen, value); }
+    public bool IsSettingsOpen { get => isSettingsOpen; set { if (Set(ref isSettingsOpen, value)) Raise(nameof(TerminalsVisibility)); } }
     public ICommand ToggleSettingsCommand { get; private set; } = null!;
 
     // ── Budget ──────────────────────────────────────────────────────────────
@@ -568,6 +576,13 @@ public sealed partial class MainViewModel
             var news = AuditNews.Between(shownAudit, latest);
             ShowAudit(latest);
             if (news.Any) Toasts.Insert(0, new ToastViewModel("Audit found something new", news.ToString(), Palette.Waiting, null));
+        }
+
+        // The daemon moved a CLI off a login that ran low (M.ORCH-T608): each move since the last one shown, from the window's open.
+        foreach (var move in Sessions.AccountRebalancer.Since(store, rebalanceSeenUtc))
+        {
+            Toasts.Insert(0, new ToastViewModel("Moved a CLI", move.Text, Palette.Working, null));
+            rebalanceSeenUtc = move.AtUtc;
         }
 
         ApplyPlan(next);

@@ -67,6 +67,9 @@ public sealed class AgentRowViewModel(string sessionId) : ObservableObject
     /// <summary>The Claude login its CLI bills (M.ORCH-T606): "Login: a@b.com", or the global login's "(global)"; empty when unknown.</summary>
     public string Login => row.Login is { } l ? $"Login: {l}" : "";
 
+    /// <summary>The login's email behind its name (M.ORCH-T614), as the login line's tooltip.</summary>
+    public string LoginTip => row.LoginEmail is { } e ? $"The Claude login this CLI bills: {e}" : "The Claude login this CLI bills";
+
     /// <summary>"Claude CLI · Claude Team · 3.2M tokens today", without a dangling separator for a part not known yet.</summary>
     public string Meta => string.Join(" · ", new[] { Kind, Billing, Tokens }.Where(p => p.Length > 0));
 

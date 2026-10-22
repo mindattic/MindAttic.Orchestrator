@@ -119,7 +119,10 @@ public partial class App : Application
 
         // Closing the window quits: there's no tray to hide in (M.ORCH-T501).
         ShutdownMode = ShutdownMode.OnMainWindowClose;
-        MainWindow = new MainWindow();
+        var main = new MainWindow();
+        MainWindow = main;
+        // This dashboard holds the terminal panes CLIs open in when Settings says Orchestrator (M.ORCH-T618).
+        main.HostPanes();
         MainWindow.Show();
         DashboardWindow.Track(MainWindow);
         instance.OnShowRequested(() => Dispatcher.BeginInvoke(() => { if (MainWindow is { } window) DashboardWindow.Restore(window); }));

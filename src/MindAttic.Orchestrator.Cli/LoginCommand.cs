@@ -133,7 +133,7 @@ internal sealed class LoginCommand : Command<LoginCommand.Settings>
         AnsiConsole.MarkupLine(Markup.Escape(OwnLogins.Summary(results)));
         if (results.Any(r => r.Ok))
             AnsiConsole.MarkupLine("[grey]Start a CLI on any of them with orchestrator start <repo> --account <email>; the global login stays the default.[/]");
-        return results.Any(r => r.Outcome == OwnLoginOutcome.Failed) ? 1 : 0;
+        return results.Any(r => r.Outcome is OwnLoginOutcome.Failed or OwnLoginOutcome.SignedInAsOther) ? 1 : 0;
     }
 
     /// <summary>Signs <paramref name="email"/>'s own folder in for <c>start --account</c>, said as <c>login --account</c> says it.</summary>
@@ -145,15 +145,16 @@ internal sealed class LoginCommand : Command<LoginCommand.Settings>
     }
 
     private static void Opening(AccountDir dir, string command) =>
-        AnsiConsole.MarkupLine($"Opening {Markup.Escape(dir.Email)}'s login in the browser ({Markup.Escape(command)}).");
+        AnsiConsole.MarkupLine($"Opening {Markup.Escape(dir.Email)}'s own sign-in in " +
+            (command.Contains("BROWSER=", StringComparison.Ordinal) ? "a private browser window" : "the browser") +
+            $" ({Markup.Escape(command)}): sign in there as {Markup.Escape(dir.Email)}.");
 
     private static void Report(OwnLoginResult result)
     {
         foreach (var line in result.Notes) AnsiConsole.MarkupLine($"[grey]{Markup.Escape(line)}[/]");
         var color = result.Outcome switch
         {
-            OwnLoginOutcome.Failed => "red",
-            OwnLoginOutcome.SignedInAsOther => "yellow",
+            OwnLoginOutcome.Failed or OwnLoginOutcome.SignedInAsOther => "red",
             OwnLoginOutcome.NoEmail or OwnLoginOutcome.AlreadySignedIn => "grey",
             _ => "default",
         };

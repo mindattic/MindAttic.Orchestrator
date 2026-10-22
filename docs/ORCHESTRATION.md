@@ -172,6 +172,12 @@ The request goes to the host, never into the CLI, on a pipe of its own beside th
   `configDir` is the login to restart under: a per-CLI login's folder becomes `CLAUDE_CONFIG_DIR`, `""` is the global
   login (`CLAUDE_CONFIG_DIR` removed). The tab keeps it for every later restart, and a request without one (a billing
   restart) keeps the login the CLI is on. Only signed-in logins are offered, never the one the CLI is already on.
+
+  **Rebalance (M.ORCH-T608):** the daemon sends the same request on its own when a CLI's login runs low (Claude's meter
+  puts its 5-hour window at the pace target or its week at the weekly reserve's stop line, or its pace is at a limit) and a
+  signed-in per-CLI login has no CLI and at least 10 points more headroom. The CLI isn't moved again for 30 minutes, its
+  target stays taken until it arrives, and a login that's low itself is never a target. Setting `RebalanceLogins` (on by
+  default; `orchestrator settings --rebalance false`) turns it off.
 - **What the Launcher does:**
   1. Act only if `cliPid` is still the CLI this tab runs; otherwise drop the request.
   2. Wait for the CLI's next idle point: its turn has ended and it's waiting for input (the context gate's

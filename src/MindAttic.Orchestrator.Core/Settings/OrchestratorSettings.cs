@@ -169,6 +169,35 @@ public sealed record OrchestratorSettings
     /// (<see cref="Sessions.LoginPicker"/>), else the global login. False starts every such tab on the global login.</summary>
     public bool AutoLogin { get; init; } = true;
 
+    /// <summary>Rebalance when an account runs low (M.ORCH-T608): a CLI whose login crosses its 5-hour pace target or its weekly
+    /// stop line is moved by the daemon to a signed-in per-CLI login with no CLI and more headroom, restarting with
+    /// <c>claude --resume</c> at its next idle point, and you're toasted (<see cref="Sessions.AccountRebalancer"/>).
+    /// False leaves every CLI on its login.</summary>
+    public bool RebalanceLogins { get; init; } = true;
+
+    /// <summary>Where CLIs the Orchestrator opens run (M.ORCH-T618): <see cref="WindowsTerminalHost"/> (the default) opens each
+    /// tab in Windows Terminal, one window per person; <see cref="OrchestratorHost"/> opens it as a terminal pane inside the
+    /// dashboard (its Terminals view), falling back to Windows Terminal while no dashboard is open to hold it. Read at each
+    /// start, so a switch affects only tabs opened afterwards.</summary>
+    public string TerminalHost { get; init; } = WindowsTerminalHost;
+
+    public const string WindowsTerminalHost = "windows-terminal", OrchestratorHost = "orchestrator";
+
+    public static IReadOnlyList<string> TerminalHosts { get; } = [WindowsTerminalHost, OrchestratorHost];
+
+    /// <summary>A typed host ("Windows Terminal", "wt", "Orchestrator", "dashboard") as saved, or null when it's neither.</summary>
+    public static string? ParseTerminalHost(string? text) =>
+        text?.Trim().ToLowerInvariant().Replace("-", "").Replace("_", "").Replace(" ", "") switch
+        {
+            "windowsterminal" or "wt" or "terminal" or "windows" => WindowsTerminalHost,
+            "orchestrator" or "dashboard" or "embedded" => OrchestratorHost,
+            _ => null,
+        };
+
+    /// <summary>New CLIs open inside the Orchestrator (anything else, a hand-edited typo included, opens Windows Terminal).</summary>
+    [JsonIgnore]
+    public bool EmbeddedTerminals => ParseTerminalHost(TerminalHost) == OrchestratorHost;
+
     /// <summary>Minutes since a repo's own CLI last ended a turn that it still counts as worked by hand, so autopilot
     /// leaves the repo alone through the pauses between your prompts. 0 counts only a CLI that's mid-turn.</summary>
     public int AutopilotHandMinutes { get; init; } = 15;

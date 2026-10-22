@@ -117,6 +117,8 @@ public sealed class HostRowViewModel : ObservableObject
     public string Title => $"{host.Provider} tab";
     /// <summary>"PID 1234 · a@b.com": the tab's process and the Claude login its CLI bills (M.ORCH-T606), when known.</summary>
     public string Detail => host.Login is { } l ? $"PID {host.ProcessId} · {l}" : $"PID {host.ProcessId}";
+    /// <summary>The email behind the login's name (M.ORCH-T614); null when the login isn't known.</summary>
+    public string? DetailTip => host.LoginEmail is { } e ? $"Bills the Claude login {e}" : null;
     public string Draft { get => draft; set => Set(ref draft, value); }
     public string Feedback { get => feedback; private set => Set(ref feedback, value); }
     public ICommand SendCommand { get; }
@@ -128,6 +130,7 @@ public sealed class HostRowViewModel : ObservableObject
     {
         host = next;
         Raise(nameof(Detail));
+        Raise(nameof(DetailTip));
     }
 
     /// <summary>Set while a send is under way: Enter follows the text a second later, and a second click in that time

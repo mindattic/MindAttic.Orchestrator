@@ -25,6 +25,16 @@ public sealed class SessionControl(OrchestratorOptions options)
         if (!Directory.Exists(directory))
             return $"Folder not found: {directory}";
 
+        // Where CLIs open (M.ORCH-T618), read now so a switch affects only tabs opened from here on.
+        if (Embedded())
+        {
+            var request = PaneRequestFor(title, directory, provider, prompt, configDir);
+            if (PaneBroker.Local is { } local) return local(request);
+            if (PaneBroker.TrySend(request, out var paneError)) return paneError;
+            // No dashboard open to hold the pane: a Windows Terminal tab, as before, rather than no CLI at all.
+            OrchestratorLog.For("Sessions").Information("No dashboard open for {Repo:l}'s pane; opening it in Windows Terminal", title);
+        }
+
         var psi = new ProcessStartInfo("wt.exe") { UseShellExecute = false };
         foreach (var a in StartArguments(title, directory, provider, prompt, configDir)) psi.ArgumentList.Add(a);
         try
@@ -41,11 +51,82 @@ public sealed class SessionControl(OrchestratorOptions options)
     /// <summary>The look of a login's tabs (M.ORCH-T616); tests set their own rather than read the real ~/.claude.</summary>
     internal Func<string?, LoginLook> Look { get; init; } = LoginLook.ForConfigDir;
 
+    /// <summary>Whether new CLIs open inside the Orchestrator (<see cref="OrchestratorSettings.EmbeddedTerminals"/>); tests set
+    /// their own rather than read the real settings.</summary>
+    internal Func<bool> Embedded { get; init; } = EmbeddedFromSettings;
+
+    private static bool EmbeddedFromSettings()
+    {
+        try { return new Settings.JsonStore().LoadSettings().EmbeddedTerminals; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { return false; }
+    }
+
+    private static string TabTitle(string title, string provider, LoginLook? look) =>
+        look is null ? $"{title} [{provider}]" : $"[{look.Initials}] {title} [{provider}]";
+
+    /// <summary>A pane for <paramref name="directory"/> (M.ORCH-T618): the same Launcher host command, title, badge and color a
+    /// Windows Terminal tab gets, with the login's <c>CLAUDE_CONFIG_DIR</c> set inside the pane's own command.</summary>
+    public PaneRequest PaneRequestFor(string title, string directory, string provider, string? prompt, string? configDir = null)
+    {
+        var look = provider == "Claude" ? Look(configDir) : null;
+        var tabTitle = TabTitle(title, provider, look);
+        string[] host =
+        [
+            options.LauncherExe, "host", "--path", directory, "--title", tabTitle, "--provider", provider,
+            .. string.IsNullOrWhiteSpace(prompt) ? Array.Empty<string>() : new[] { "--prompt", SafePrompt(prompt) },
+        ];
+        var command = configDir is null
+            ? JoinCommandLine(host)
+            : PowerShell($"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; & {string.Join(' ', host.Select(AccountDirs.Ps))}; exit $LASTEXITCODE");
+        return new PaneRequest(title, tabTitle, directory, provider, command) { ConfigDir = configDir, Initials = look?.Initials, TabColor = look?.TabColor };
+    }
+
+    /// <summary>A pane that picks a recorded Claude conversation back up (<c>claude --resume</c>) under the login it ran on, once
+    /// the dashboard that held it has closed (M.ORCH-T618). Without a session, a new tab for the repo as <see cref="PaneRequestFor"/>.</summary>
+    public PaneRequest ResumeRequest(PaneRecord record)
+    {
+        if (record.SessionId is not { Length: > 0 } session || record.Provider != "Claude")
+            return PaneRequestFor(record.Repo, record.Directory, record.Provider, null, record.ConfigDir);
+        var look = Look(record.ConfigDir);
+        var login = record.ConfigDir is { } dir
+            ? $"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(dir)}; "
+            : $"Remove-Item Env:{AccountDirs.EnvVar} -ErrorAction SilentlyContinue; ";
+        var script = login + $"Set-Location -LiteralPath {AccountDirs.Ps(record.Directory)}; & claude --resume {AccountDirs.Ps(session)}; exit $LASTEXITCODE";
+        return new PaneRequest(record.Repo, TabTitle(record.Repo, record.Provider, look), record.Directory, record.Provider, PowerShell(script))
+        {
+            ConfigDir = record.ConfigDir, Initials = look.Initials, TabColor = look.TabColor, ResumeSession = session,
+        };
+    }
+
+    /// <summary>PowerShell running <paramref name="script"/>, encoded so no quote, space or ';' in a folder, title or prompt is
+    /// parsed on the way.</summary>
+    private static string PowerShell(string script) =>
+        JoinCommandLine(["powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", Convert.ToBase64String(Encoding.Unicode.GetBytes(script))]);
+
+    /// <summary>Arguments joined into one command line that <c>CommandLineToArgvW</c> splits back into the same arguments.</summary>
+    internal static string JoinCommandLine(IEnumerable<string> args) => string.Join(' ', args.Select(QuoteArgument));
+
+    internal static string QuoteArgument(string arg)
+    {
+        if (arg.Length > 0 && arg.IndexOfAny([' ', '\t', '\n', '\v', '"']) < 0) return arg;
+        var quoted = new StringBuilder("\"");
+        var slashes = 0;
+        foreach (var c in arg)
+        {
+            if (c == '\\') { slashes++; continue; }
+            // Backslashes before a quote are doubled, and the quote escaped; anywhere else they stand as they are.
+            quoted.Append('\\', c == '"' ? slashes * 2 + 1 : slashes).Append(c);
+            slashes = 0;
+        }
+        // Before the closing quote they're doubled too, or the last one would escape it.
+        return quoted.Append('\\', slashes * 2).Append('"').ToString();
+    }
+
     internal IEnumerable<string> StartArguments(string title, string directory, string provider, string? prompt, string? configDir = null)
     {
         // A Claude tab gathers in its login's own window, badged and colored as that login; other providers have no login.
         var look = provider == "Claude" ? Look(configDir) : null;
-        var tabTitle = look is null ? $"{title} [{provider}]" : $"[{look.Initials}] {title} [{provider}]";
+        var tabTitle = TabTitle(title, provider, look);
         string[] tab = look is null
             ? ["-w", "0", "new-tab", "--title", tabTitle]
             : ["-w", look.Window, "new-tab", "--title", tabTitle, "--tabColor", look.TabColor];

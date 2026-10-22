@@ -40,7 +40,46 @@ public sealed partial class MainViewModel
 
     public bool IsSigningIn { get => signingIn; private set => Set(ref signingIn, value); }
 
-    private ICommand? signInLoginCommand, addAccountCommand;
+    private ICommand? signInLoginCommand, addAccountCommand, renameLoginCommand, saveLoginAliasCommand, cancelRenameCommand;
+
+    /// <summary>Opens a card's rename box (M.ORCH-T614; the parameter is its <see cref="LoginCardViewModel"/>).</summary>
+    public ICommand RenameLoginCommand => renameLoginCommand ??= new RelayCommand(p =>
+    {
+        if (p is LoginCardViewModel { CanRename: true } card) card.BeginRename();
+    });
+
+    /// <summary>Closes a card's rename box without saving.</summary>
+    public ICommand CancelRenameCommand => cancelRenameCommand ??= new RelayCommand(p =>
+    {
+        if (p is LoginCardViewModel card) card.IsRenaming = false;
+    });
+
+    /// <summary>Saves the name typed in a card's rename box as its login's alias (blank: back to the email's default).</summary>
+    public ICommand SaveLoginAliasCommand => saveLoginAliasCommand ??= new RelayCommand(async p =>
+    {
+        if (p is not LoginCardViewModel { AliasEmail: { } email } card) return;
+        AccountsMessage = SaveAlias(OwnLoginDirs(), card.Card.Directory, email, card.AliasDraft);
+        card.IsRenaming = false;
+        await RefreshLoginCardsAsync();
+    });
+
+    /// <summary>Names <paramref name="email"/>'s logins <paramref name="alias"/>: every folder that's its login
+    /// (<see cref="LoginLook.SetAlias(AccountDirs, string, string?)"/>) and the card's own <paramref name="folder"/>. Says what it did.</summary>
+    internal static string SaveAlias(AccountDirs dirs, string folder, string email, string alias)
+    {
+        try
+        {
+            var written = LoginLook.SetAlias(dirs, email, alias);
+            if (!written.Any(f => string.Equals(Path.GetFullPath(f), Path.GetFullPath(folder), StringComparison.OrdinalIgnoreCase)))
+                LoginLook.SetAlias(folder, email, alias);
+            var name = LoginLook.For(folder, email).Alias;
+            return $"{email} is now called {name}.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return $"Couldn't rename {email}: {ex.Message}";
+        }
+    }
 
     /// <summary>Signs the card's per-CLI login in (the parameter is its <see cref="LoginCardViewModel"/>).</summary>
     public ICommand SignInLoginCommand => signInLoginCommand ??= new RelayCommand(async p =>
@@ -68,7 +107,9 @@ public sealed partial class MainViewModel
     {
         if (IsSigningIn) return false;
         IsSigningIn = true;
-        AccountsMessage = $"Opening {email}'s login in the browser…";
+        CommandManager.InvalidateRequerySuggested();
+        // Its own login screen (M.ORCH-T610): a private window of the account's own browser profile, prefilled with its email.
+        AccountsMessage = $"Opening {email}'s own sign-in in a private browser window: sign in there as {email}…";
         try
         {
             var dirs = OwnLoginDirs();
@@ -86,6 +127,7 @@ public sealed partial class MainViewModel
         finally
         {
             IsSigningIn = false;
+            CommandManager.InvalidateRequerySuggested();
             RefreshLogins();
             await RefreshLoginCardsAsync();
         }

@@ -7,7 +7,7 @@ public enum OwnLoginOutcome
 {
     /// <summary>Signed in to the account it was opened for.</summary>
     SignedIn,
-    /// <summary>Signed in, but to another account than the one asked for (CLIs on it spend that account's tokens).</summary>
+    /// <summary>The sign-in landed on another account than the one asked for, so the folder was signed out again (M.ORCH-T610).</summary>
     SignedInAsOther,
     /// <summary>It already had its own login: left alone.</summary>
     AlreadySignedIn,
@@ -21,7 +21,7 @@ public enum OwnLoginOutcome
 /// <see cref="Notes"/> are what preparing its folder had to say.</summary>
 public sealed record OwnLoginResult(string Label, string? Email, string? Directory, OwnLoginOutcome Outcome, string Message, IReadOnlyList<string> Notes)
 {
-    public bool Ok => Outcome is OwnLoginOutcome.SignedIn or OwnLoginOutcome.SignedInAsOther or OwnLoginOutcome.AlreadySignedIn;
+    public bool Ok => Outcome is OwnLoginOutcome.SignedIn or OwnLoginOutcome.AlreadySignedIn;
 }
 
 /// <summary>
@@ -39,8 +39,12 @@ public static class OwnLogins
         if (AccountDirs.Normalize(email) is null)
             return new OwnLoginResult(email, null, null, OwnLoginOutcome.Failed, $"\"{email}\" isn't an email address.", []);
         var dir = dirs.For(email);
-        var notes = dirs.Prepare(dir);
-        var command = $"{AccountDirs.EnvVar}={dir.Directory} {AccountSwitch.LoginCommand(dir.Email, sso)}";
+        var notes = new List<string>(dirs.Prepare(dir));
+        // Its own login screen (M.ORCH-T610): a private window of the account's own browser profile, not the default browser
+        // already signed in to claude.ai as whoever, so the page asks for this person's email and code.
+        var opener = LoginBrowser.Prepare(dir, out var browserNote);
+        if (browserNote is not null) notes.Add(browserNote);
+        var command = $"{AccountDirs.EnvVar}={dir.Directory} " + (opener is null ? "" : $"BROWSER={opener} ") + AccountSwitch.LoginCommand(dir.Email, sso);
         opening?.Invoke(dir, command);
         OwnLoginResult Done(OwnLoginOutcome outcome, string message) => new(dir.Email, dir.Email, dir.Directory, outcome, message, notes);
         int code;
@@ -51,9 +55,11 @@ public static class OwnLogins
         }
         if (code != 0) return Done(OwnLoginOutcome.Failed, $"{command} ended with exit code {code}; {dir.Email} isn't signed in.");
         if (!dir.SignedIn) return Done(OwnLoginOutcome.Failed, $"The login finished but no Claude account is signed in to in {dir.Directory}.");
+        // The folder is the chosen account's: one signed in as anybody else is signed out again, so no CLI spends their tokens.
         if (dir.SignedInEmail is { } signed && !signed.Equals(dir.Email, StringComparison.OrdinalIgnoreCase))
-            return Done(OwnLoginOutcome.SignedInAsOther,
-                $"Signed in as {signed}, not {dir.Email}: CLIs started with --account {dir.Email} spend {signed}'s tokens.");
+            return Done(OwnLoginOutcome.SignedInAsOther, AccountDirs.SignOut(dir) is { } why
+                ? $"Signed in as {signed}, not {dir.Email}, and couldn't sign the folder out again ({why}): CLIs started with --account {dir.Email} would spend {signed}'s tokens."
+                : $"Signed in as {signed}, not {dir.Email}: signed {dir.Email}'s login out again. Sign in once more as {dir.Email}.");
         return Done(OwnLoginOutcome.SignedIn, $"Signed in: {dir.Email} has its own login in {dir.Directory}.");
     }
 
@@ -90,8 +96,9 @@ public static class OwnLogins
         if (results.Count == 0) return "No accounts in the roster to sign in.";
         var parts = new List<string>();
         void Add(int n, string text) { if (n > 0) parts.Add($"{n} {text}"); }
-        Add(results.Count(r => r.Outcome is OwnLoginOutcome.SignedIn or OwnLoginOutcome.SignedInAsOther), "signed in");
+        Add(results.Count(r => r.Outcome == OwnLoginOutcome.SignedIn), "signed in");
         Add(results.Count(r => r.Outcome == OwnLoginOutcome.AlreadySignedIn), "already had its own login");
+        Add(results.Count(r => r.Outcome == OwnLoginOutcome.SignedInAsOther), "signed in as someone else (signed out again)");
         Add(results.Count(r => r.Outcome == OwnLoginOutcome.Failed), "failed");
         Add(results.Count(r => r.Outcome == OwnLoginOutcome.NoEmail), "with no email yet");
         return string.Join(", ", parts) + ".";

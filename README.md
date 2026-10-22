@@ -46,6 +46,7 @@ A Windows daemon, dashboard and CLI that keeps Claude agents working the workspa
 - `/allocate off` (this CLI) or `/allocate off all` (every CLI) winds down: no new ticket is claimed, working subagents finish, land and close, and once a CLI's last one has, it quicksaves its repo's handoff (as `/quicksave` does) and says `<repo> quiet, handoff saved`. It replaced `/handoff` (M.ORCH-T572).
 - Per-CLI logins: `orchestrator start <repo> --account <email>` (or the dashboard's login choice) runs that CLI on another account's token pool beside the others, each paced on its own.
 - Move to account: each CLI on the Accounts view and the agent board has a "Move to" menu of the other signed-in logins (and `orchestrator move <repo|pid> --account <email>|--global`); its Launcher tab restarts it with `claude --resume` on that login at its next idle point, so it keeps its session and spends the other account's tokens from then on.
+- Rebalance when an account runs low: when a CLI's login crosses its 5-hour pace target or its weekly stop line and another signed-in login has no CLI and at least 10 points more headroom, the daemon moves it there the same way (restart-resume at its next idle point) and toasts it, keeping one CLI per account. A moved CLI isn't moved again for 30 minutes, and a login that's low itself is never a target. `orchestrator settings --rebalance false` (or the Settings toggle) turns it off.
 
 **Dashboard**
 
@@ -134,7 +135,24 @@ Several CLIs can run at once, each on a different Claude account's token pool (M
 - **Its own:** the sign-in, Claude's meter (its own statusline writes `claude-usage.json` in the folder and hands the rest of the line to the shared one, tagged with the account), the pace (`rl-status.json` in the folder, written by the daemon), its subagents' marks, slots and waits (`session-context` in the folder), and its 5-hour readings (`usage-samples.json`).
 - **Paced apart:** the context gate records each session's config folder, so the global login's budget, pace and subagent allowance leave those sessions out. Each account gets its own budget, pace, allowance and meter probe, and its finished windows are graded in the pace ledger under its own account. `orchestrator next` (what `/allocate` asks) run from such a CLI hands out what its account has room for, and `orchestrator accounts` lists the per-CLI logins with their meter and pace.
 - The global `rl-check.py` prompt hook is left out of an account's settings: it only reads the global login's pace.
+- **Its own login screen:** an account's sign-in (`login --account`, `login --all`, `start --account`, the Accounts view's Sign in / Add account, and a Start pill for an account not signed in yet) opens in a private window of a browser profile of its own (`login-browser` in its folder; Chrome, Edge or Brave, the default one first), prefilled with its email, through the folder's `open-login.cmd` set as `BROWSER` for `claude auth login`. So the page asks for that person's email and code instead of authorizing whoever your default browser is signed in to claude.ai as. Afterwards the folder's account is checked against the chosen email: a mismatch signs the folder out again and says so. The dashboard's Start pills list every roster account; starting on one not signed in yet signs it in first, then opens the tab on it.
 - **One CLI per account by default (Auto, M.ORCH-T605):** a Claude tab started without a login chosen for it (the dashboard's *Auto* pill, `orchestrator start` without `--account`, Queue starts) goes on a signed-in per-CLI login no live CLI runs on yet, the one with the most headroom (the smaller of its 5-hour and weekly room) first, and falls back to the global login once every account has a CLI or none is signed in. A pick is held for 3 minutes so tabs started back to back spread out. `--account` or *Global login* still wins; `orchestrator settings --auto-login false` (or the Settings toggle) turns Auto off. `orchestrator accounts pick` prints the chosen login's `CLAUDE_CONFIG_DIR` (an empty line for the global login), which is what the Launcher starts a new tab with; `--json` adds the email and why.
+
+### Where CLIs open (M.ORCH-T618)
+
+Settings' *Where CLIs open* (or `orchestrator settings --terminal-host windows-terminal|orchestrator`) picks where a CLI the
+Orchestrator starts (Start, Queue, autopilot, `orchestrator start`) runs:
+
+- **Windows Terminal** (the default): a tab in its login's own Windows Terminal window, as before (M.ORCH-T616).
+- **Orchestrator**: a terminal pane in the dashboard's *Terminals* view: the Windows Terminal renderer for WPF
+  (`Microsoft.Terminal.Wpf` through the `EasyWindowsTerminalControl` package) over ConPTY, running the same
+  `MindAttic.Launcher host --path … --title … --provider …` command with the login's `CLAUDE_CONFIG_DIR` set inside it, so
+  restart-resume, account moves and idle detection work unchanged. Each pane is a tab with its login's `[JR]` badge and color;
+  closing one ends its CLI. A start from another process reaches the dashboard on a per-user pipe; with no dashboard open it
+  falls back to Windows Terminal. Panes die with the dashboard, so it records each one's repo, login and Claude session and,
+  the next time it opens, offers to reopen them with `claude --resume`.
+
+Switching it affects only CLIs opened afterwards.
 
 ## Autopilot
 
@@ -170,6 +188,7 @@ The same core drives a CLI, deployed as `orchestrator.exe` in `C:\Apps\MindAttic
 | `login [<email-or-short-name>] [--sso] [--api-key]` | bare: the account roster, the signed-in one marked and the most headroom suggested; with an account, runs `claude auth login --email <address>` (`--sso` for SSO orgs), which opens its login in the browser; `--api-key` bills every CLI to the Vault's API key (emergencies) |
 | `login --account <email> [--sso]` | signs in a per-CLI login once: that account's own folder (`%USERPROFILE%\.claude-accounts\<email>`), leaving the global login every other CLI uses as it is (see [Per-CLI logins](#per-cli-logins)) |
 | `start <Repo> [--provider] [--prompt] [--account <email>]` | open a Launcher tab for a repo; `--account` runs its Claude CLI on that per-CLI login's token pool; without it a Claude CLI goes on the Auto login (a free per-CLI login, else the global one) |
+| `accounts alias <email> ["<name>"] [--reset]` | names a Claude login (M.ORCH-T614); without a name, prints its name. Kept as `alias` (with the `email` it's for) in `mindattic-account.json` in the login's own folder, so the Launcher and its status line read it without the Orchestrator |
 | `accounts pick [--json]` | the Auto login a new Claude CLI should start on: one line, its `CLAUDE_CONFIG_DIR`, or empty for the global login (exit 0) |
 | `send <Repo> "text" [--no-submit]` | type text + Enter (or just the text) into that repo's Launcher tab(s) |
 | `budget [--block 20M] [--weekly 150M] [--weekly-reset "Mon 9:00"] [--warn 80] [--pace true] [--target 98] [--hits] [--week]` | current 5-hour block, week and pace, and Codex/Gemini usage; set limits (`0` clears back to learned, `none` drops the reset); `--hits` lists the limit hits the learned limits come from; `--week` charts the week day by day and projects it against the weekly limit |

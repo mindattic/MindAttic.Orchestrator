@@ -78,7 +78,10 @@ public sealed partial class MainViewModel
         IReadOnlyList<AccountRow> rows;
         try { rows = AccountRoster.Load(aggregator.Db, next.Account); }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
+        var rosterChanged = !rows.Select(r => r.Email).SequenceEqual(accountRows.Select(r => r.Email));
         accountRows = rows;
+        // The Start pills list every roster account (M.ORCH-T610): a new one shows as soon as the roster has it.
+        if (rosterChanged && Selected is not null) RefreshLogins();
         try { weeklyStopPercent = store.LoadSettings().WeeklyStopPercent; }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException) { }
         currentAccount = next.Account == ClaudeAccount.ApiKey ? null : next.Account;
