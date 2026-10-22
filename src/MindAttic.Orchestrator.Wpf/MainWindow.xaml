@@ -1009,7 +1009,8 @@
                                             <Setter Property="Margin" Value="0" />
                                         </Style>
                                     </Border.Style>
-                                    <DockPanel>
+                                    <Grid>
+                                    <DockPanel IsEnabled="{Binding IsUnlocked}">
                                         <!-- The state's colour down the left edge: a cue, never the only one. -->
                                         <Border DockPanel.Dock="Left" Width="5" Background="{Binding StateBrush}" CornerRadius="5,0,0,5" />
                                         <StackPanel Margin="14,12,14,12">
@@ -1092,6 +1093,15 @@
                                             </Border>
                                         </StackPanel>
                                     </DockPanel>
+                                    <!-- A move in flight (M.ORCH-T638): the card is locked under a translucent veil until its CLI lands on the new login. -->
+                                    <Grid x:Name="AgentMovingOverlay" Visibility="{Binding IsMoving, Converter={StaticResource Visible}}">
+                                        <Border Background="{DynamicResource MaChrome}" Opacity="0.82" CornerRadius="5" />
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <mc:MaSpinner Width="20" Height="20" StrokeThickness="2" Margin="0,0,10,0" />
+                                            <TextBlock Text="{Binding MovingText}" FontWeight="SemiBold" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+                                        </StackPanel>
+                                    </Grid>
+                                    </Grid>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -1209,7 +1219,8 @@
                                                     <ItemsControl ItemsSource="{Binding Clis}" Focusable="False">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate DataType="{x:Type vm:LoginCliViewModel}">
-                                                                <DockPanel x:Name="LoginCliRow" Margin="0,2,0,2" ToolTip="{Binding SessionId}">
+                                                                <Grid>
+                                                                <DockPanel x:Name="LoginCliRow" Margin="0,2,0,2" ToolTip="{Binding SessionId}" IsEnabled="{Binding IsUnlocked}">
                                                                     <!-- Move to another signed-in login (M.ORCH-T607). -->
                                                                     <Button x:Name="LoginCliMoveToButton" DockPanel.Dock="Right" Click="OnMoveToClick" Style="{StaticResource MaTextButton}"
                                                                             Content="Move to ▾" FontSize="12" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center"
@@ -1221,6 +1232,14 @@
                                                                                FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center" />
                                                                     <TextBlock Text="{Binding Repo}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                                                 </DockPanel>
+                                                                <Grid x:Name="LoginCliMovingOverlay" Visibility="{Binding IsMoving, Converter={StaticResource Visible}}">
+                                                                    <Border Background="{DynamicResource MaChrome}" Opacity="0.82" />
+                                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                                        <mc:MaSpinner Width="14" Height="14" StrokeThickness="2" Margin="0,0,6,0" />
+                                                                        <TextBlock Text="{Binding MovingText}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                                    </StackPanel>
+                                                                </Grid>
+                                                                </Grid>
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>
@@ -1271,7 +1290,8 @@
                         <DataTemplate DataType="{x:Type vm:TerminalPaneViewModel}">
                             <Border x:Name="TerminalTab" BorderBrush="{Binding TabBrush}" BorderThickness="0,0,0,3" Padding="8,4,4,4"
                                     ToolTip="{Binding Tooltip}" AutomationProperties.Name="{Binding Title}">
-                                <StackPanel Orientation="Horizontal">
+                                <Grid>
+                                <StackPanel Orientation="Horizontal" IsEnabled="{Binding IsUnlocked}">
                                     <Border Background="{Binding TabBrush}" CornerRadius="3" Padding="4,0" Margin="0,0,6,0" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Badge}" Foreground="{Binding BadgeForeground}" FontWeight="SemiBold" />
                                     </Border>
@@ -1294,6 +1314,14 @@
                                             AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
                                             ToolTip="Close this pane, ending its CLI" />
                                 </StackPanel>
+                                <Grid x:Name="PaneMovingOverlay" Visibility="{Binding IsMoving, Converter={StaticResource Visible}}">
+                                    <Border Background="{DynamicResource MaChrome}" Opacity="0.82" />
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <mc:MaSpinner Width="14" Height="14" StrokeThickness="2" Margin="0,0,6,0" />
+                                        <TextBlock Text="{Binding MovingText}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Grid>
+                                </Grid>
                             </Border>
                         </DataTemplate>
                     </ListBox.ItemTemplate>

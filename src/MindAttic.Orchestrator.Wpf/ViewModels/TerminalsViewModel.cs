@@ -47,6 +47,12 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>claude.exe running in it, once the dashboard has seen it (for "Move to").</summary>
     public int? CliPid { get; internal set; }
 
+    /// <summary>Its CLI's move in flight (M.ORCH-T638): the tab's controls stay locked under "Moving to …" until it lands.</summary>
+    public bool IsMoving => PendingMoves.For(Record.SessionId) is not null;
+    public bool IsUnlocked => !IsMoving;
+    public string MovingText => PendingMoves.For(Record.SessionId) is { } m ? $"Moving to {m.TargetName}…" : "";
+    public void RaiseMoving() { Raise(nameof(IsMoving)); Raise(nameof(IsUnlocked)); Raise(nameof(MovingText)); }
+
     public PaneRequest Request { get; }
 
     /// <summary>As kept in the store; its session is filled in once the dashboard sees its CLI's.</summary>

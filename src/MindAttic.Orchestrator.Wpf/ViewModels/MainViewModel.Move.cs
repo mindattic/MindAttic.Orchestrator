@@ -31,8 +31,10 @@ public sealed partial class MainViewModel
     /// <paramref name="target"/>, saying what it did in the status bar and the Accounts view, and a toast when it couldn't.</summary>
     public async Task MoveToAccountAsync(string repo, string sessionId, int? cliPid, MoveTarget target)
     {
-        if (moving) return;
+        if (moving || PendingMoves.For(sessionId) is not null) return;
         moving = true;
+        // Locked at once (M.ORCH-T638): the CLI only moves at its next idle point, so without this it looks like nothing happened.
+        PendingMoves.Begin(new PendingMoves.Move(sessionId, repo, target.Email, NameOf(target), DateTime.UtcNow));
         var hosts = full?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
         var mover = AccountMover;
         AccountMoveResult result;
@@ -57,6 +59,34 @@ public sealed partial class MainViewModel
         finally { moving = false; }
         StatusMessage = result.Message;
         AccountsMessage = result.Message;
-        if (!result.Ok) Toasts.Insert(0, new ToastViewModel($"{repo} not moved to {target.Label}", result.Message, Palette.Over, null));
+        if (!result.Ok)
+        {
+            PendingMoves.End(sessionId);
+            Toasts.Insert(0, new ToastViewModel($"{repo} not moved to {target.Label}", result.Message, Palette.Over, null));
+        }
+    }
+
+    /// <summary>The target's name (M.ORCH-T614), else its email or "Global login".</summary>
+    private static string NameOf(MoveTarget target)
+    {
+        try { return LoginLook.ForConfigDir(target.IsGlobal ? null : target.ConfigDir).Alias; }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or ArgumentException) { return target.Label; }
+    }
+
+    /// <summary>Ends the moves this tab's agents show landed, says which timed out, and refreshes every locked control.</summary>
+    private void ReconcileMoves(Snapshot next)
+    {
+        foreach (var m in PendingMoves.Reconcile(next.Agents, next.TakenUtc))
+            Toasts.Insert(0, new ToastViewModel($"{m.Repo} hasn't moved to {m.TargetName}",
+                $"Its CLI didn't show up on {m.TargetName} within {PendingMoves.Timeout.TotalMinutes:0} minutes, so its controls are unlocked again. It may still move at its next idle point.",
+                Palette.Over, null));
+    }
+
+    /// <summary>Re-reads every moving flag this tab shows, when any move begins, lands or times out.</summary>
+    private void OnMovesChanged()
+    {
+        foreach (var a in Agents) a.RaiseMoving();
+        foreach (var card in LoginCards) foreach (var c in card.Clis) c.RaiseMoving();
+        foreach (var p in Terminals.Panes) p.RaiseMoving();
     }
 }
