@@ -303,6 +303,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("true (default): once the window a CLI stopped for resets, a resume prompt is typed into its Launcher tab; false only alerts you that it's waiting.")]
         public bool? ResumeAfterReset { get; init; }
 
+        [CommandOption("--auto-login <ON>")]
+        [Description("true (default): a Claude tab started without a login chosen (dashboard Auto, start without --account, Queue starts, accounts pick) goes on a signed-in per-CLI login no CLI runs on yet, most headroom first, else the global login; false: always the global login.")]
+        public bool? AutoLogin { get; init; }
+
         [CommandOption("--hand-minutes <N>")]
         [Description("Kept for older setups; it has no effect now: /allocate hands tickets to the typing CLI's own subagents, each in its own worktree.")]
         public int? HandMinutes { get; init; }
@@ -430,6 +434,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { ResumeAfterReset = resume };
             changed = true;
         }
+        if (settings.AutoLogin is { } autoLogin)
+        {
+            s = s with { AutoLogin = autoLogin };
+            changed = true;
+        }
         if (settings.AutopilotSkip is { } skip)
         {
             s = s with { AutopilotSkip = skip.Equals("none", StringComparison.OrdinalIgnoreCase) ? [] : [.. skip.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)] };
@@ -521,7 +530,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
                   Markup.Escape(string.Join("; ", clis.Select(c => $"CLI {c.Key} for {string.Join(", ", c.Value)}")))) +
             " · a new CLI starts with it off until /allocate is typed there" +
             (s.KeepGoing ? " · /allocate CLIs keep going through their workable tickets without asking" : " · /allocate CLIs may stop between tickets") +
-            (s.ResumeAfterReset ? " · a CLI stopped for a window is told to carry on once it resets" : " · you're alerted when a CLI stopped for a window could carry on after its reset"));
+            (s.ResumeAfterReset ? " · a CLI stopped for a window is told to carry on once it resets" : " · you're alerted when a CLI stopped for a window could carry on after its reset") +
+            (s.AutoLogin ? " · a new Claude tab goes on a free per-CLI login (one CLI per account), else the global login" : " · a new Claude tab uses the global login unless given --account"));
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (Claude's report, else learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (Claude's report, else learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display + " unless Claude reports another" : "as Claude reports, else learned, else rolling 7 days")} · warn at {s.WarnPercent}%");
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +
             (s.FrontLoaded ? $" · profile front-loaded (target × elapsed^{s.PaceExponent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}; no new subagent or ticket past {MindAttic.Orchestrator.Budget.Pacer.FrontLoadedWindDownShare:P0})" : " · profile linear") +

@@ -12,7 +12,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly Action saved;
     private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "",
         maxDelay = "", contextPercent = "", exemptCommands = "", paceProfile = OrchestratorSettings.LinearProfile, paceCurveK = "";
-    private bool autopilot, pacing, throttleAgents;
+    private bool autopilot, pacing, throttleAgents, autoLogin;
 
     public SettingsViewModel(JsonStore store, Action saved)
     {
@@ -39,6 +39,8 @@ public sealed class SettingsViewModel : ObservableObject
     /// <summary>The front-loaded curve's exponent (0.1 to 1).</summary>
     public string PaceCurveK { get => paceCurveK; set => Set(ref paceCurveK, value); }
     public bool ThrottleAgents { get => throttleAgents; set => Set(ref throttleAgents, value); }
+    /// <summary>One CLI per account (M.ORCH-T605): new Claude tabs default to the Auto login.</summary>
+    public bool AutoLogin { get => autoLogin; set => Set(ref autoLogin, value); }
     public string MaxDelay { get => maxDelay; set => Set(ref maxDelay, value); }
     public string ContextPercent { get => contextPercent; set => Set(ref contextPercent, value); }
     /// <summary>The commands exempt from pacing (M.ORCH-T198), comma-separated; blank exempts none.</summary>
@@ -54,13 +56,13 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>Every field as the panel read it. The CLI and agents change settings too while it's open (budget, pace,
     /// settings --max-sessions, --exempt): a Save writes only the fields edited here, not what it read back then (M.ORCH-T338).</summary>
-    private Fields loaded = new("", "", "", "", "", "", false, "", false, "", "", "", "", "");
+    private Fields loaded = new("", "", "", "", "", "", false, "", false, "", "", "", "", "", true);
 
     private sealed record Fields(string Block, string Weekly, string Reset, string Warn, string Max, string Provider, bool Pacing, string Target,
-        bool Throttle, string Delay, string Context, string Exempt, string Profile, string CurveK);
+        bool Throttle, string Delay, string Context, string Exempt, string Profile, string CurveK, bool AutoLogin);
 
     private Fields Current() => new(BlockBudget, WeeklyBudget, WeeklyReset, WarnPercent, MaxSessions, Provider, Pacing, PaceTarget,
-        ThrottleAgents, MaxDelay, ContextPercent, ExemptCommands, PaceProfile, PaceCurveK);
+        ThrottleAgents, MaxDelay, ContextPercent, ExemptCommands, PaceProfile, PaceCurveK, AutoLogin);
 
     public void Load()
     {
@@ -77,6 +79,7 @@ public sealed class SettingsViewModel : ObservableObject
         PaceProfile = OrchestratorSettings.ParsePaceProfile(s.PaceProfile) ?? OrchestratorSettings.LinearProfile;
         PaceCurveK = s.PaceCurveK.ToString(CultureInfo.InvariantCulture);
         ThrottleAgents = s.ThrottleAgents;
+        AutoLogin = s.AutoLogin;
         MaxDelay = s.MaxAgentDelaySeconds.ToString(CultureInfo.InvariantCulture);
         // No field shows it (context cycling is off), so an out-of-range hand edit mustn't make every Save fail on it.
         ContextPercent = Math.Clamp(s.ContextCyclePercent, 10, 95).ToString(CultureInfo.InvariantCulture);
@@ -117,6 +120,7 @@ public sealed class SettingsViewModel : ObservableObject
                 PaceProfile = PaceProfile == was.Profile ? s.PaceProfile : OrchestratorSettings.ParsePaceProfile(PaceProfile) ?? OrchestratorSettings.LinearProfile,
                 PaceCurveK = PaceCurveK == was.CurveK ? s.PaceCurveK : curveK,
                 ThrottleAgents = ThrottleAgents == was.Throttle ? s.ThrottleAgents : ThrottleAgents,
+                AutoLogin = AutoLogin == was.AutoLogin ? s.AutoLogin : AutoLogin,
                 MaxAgentDelaySeconds = MaxDelay == was.Delay ? s.MaxAgentDelaySeconds : delay,
                 ContextCyclePercent = ContextPercent == was.Context ? s.ContextCyclePercent : cycleAt,
                 ExemptCommands = ExemptCommands == was.Exempt ? s.ExemptCommands : OrchestratorSettings.ParseCommands(ExemptCommands),

@@ -58,11 +58,16 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
     /// task that says whether it came up. Tests swap it so no Windows Terminal tab opens.</summary>
     internal Func<string, string, string, string, bool, (string? Error, Task<bool>? CameUp)>? OpenTab { get; init; }
 
+    /// <summary>Seam: the Auto login picker a Claude tab's login comes from (M.ORCH-T605); null uses the real per-CLI logins.</summary>
+    internal LoginPicker? Logins { get; init; }
+
     private (string? Error, Task<bool>? CameUp) Open(string title, string directory, string provider, string prompt, bool submit)
     {
         var before = sessions.HostIds();
         var focus = Foreground.Current();
-        var startError = sessions.Start(title, directory, provider, prompt);
+        // One CLI per account (M.ORCH-T605): a Claude tab goes on a free per-CLI login, else the global one.
+        var account = (Logins ?? new LoginPicker()).ForNewTab(provider, store.LoadSettings().AutoLogin, DateTime.UtcNow, out _);
+        var startError = sessions.Start(title, directory, provider, prompt, account?.Directory);
         if (startError is not null) return (startError, null);
         _ = Foreground.RestoreAsync(focus, TimeSpan.FromSeconds(2));
         // Every tab is checked: one whose agent never starts would otherwise look like a free slot.

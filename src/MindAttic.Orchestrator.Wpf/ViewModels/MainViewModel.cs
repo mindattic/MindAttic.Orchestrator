@@ -177,27 +177,37 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>What <see cref="Logins"/> lists for the login every CLI uses unless started on one of its own.</summary>
     public const string GlobalLogin = "Global login";
 
+    /// <summary>What <see cref="Logins"/> lists first, and starts on by default (M.ORCH-T605): one CLI per account, a per-CLI
+    /// login no CLI runs on yet (most headroom first), else the global login (<see cref="LoginPicker"/>).</summary>
+    public const string AutoLogin = "Auto";
+
     private readonly AccountDirs accountDirs = new();
     private string login = GlobalLogin;
 
-    /// <summary>The logins a Claude tab can start on (M.ORCH-T559): the global one, then each per-CLI login signed in to
-    /// (orchestrator login --account), as the CLI's <c>start --account</c> takes them.</summary>
+    /// <summary>The logins a Claude tab can start on (M.ORCH-T559): Auto (unless turned off in Settings), the global one, then
+    /// each per-CLI login signed in to (orchestrator login --account), as the CLI's <c>start --account</c> takes them.</summary>
     public IReadOnlyList<string> Logins { get; private set; } = [GlobalLogin];
 
     /// <summary>Shown only for Claude, and only once there's a per-CLI login to choose.</summary>
-    public bool ShowLogins => Provider == "Claude" && Logins.Count > 1;
+    public bool ShowLogins => Provider == "Claude" && Logins.Any(l => l != GlobalLogin && l != AutoLogin);
 
     // Ctrl+click on the selected pill deselects it, writing null: it stays on the one it was.
     public string Login { get => login; set { if (value is not null) Set(ref login, value); } }
 
     private void RefreshLogins()
     {
+        var auto = true;
+        try { auto = store.LoadSettings().AutoLogin; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
+        IReadOnlyList<string> head = auto ? [AutoLogin, GlobalLogin] : [GlobalLogin];
         IReadOnlyList<string> found;
-        try { found = [GlobalLogin, .. accountDirs.SignedIn().Select(a => a.Email)]; }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { found = [GlobalLogin]; }
+        try { found = [.. head, .. accountDirs.SignedIn().Select(a => a.Email)]; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { found = head; }
         if (found.SequenceEqual(Logins)) return;
+        // Auto just offered (first time, or turned back on) is the default; a login gone falls back to the first choice.
+        var autoNew = auto && !Logins.Contains(AutoLogin);
         Logins = found;
-        if (!found.Contains(Login)) Login = GlobalLogin;
+        if (autoNew || !found.Contains(Login)) Login = found[0];
         Raise(nameof(Logins));
         Raise(nameof(ShowLogins));
     }
@@ -383,7 +393,15 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (Selected is null) return;
         string? configDir = null;
-        if (ShowLogins && Login != GlobalLogin)
+        var on = Login;
+        if (Provider == "Claude" && Login == AutoLogin)
+        {
+            // Auto (M.ORCH-T605): a free per-CLI login, else the global one; held for this tab so the next Start goes elsewhere.
+            var auto = new LoginPicker(accountDirs).ForNewTab(Provider, autoLogin: true, DateTime.UtcNow, out _);
+            configDir = auto?.Directory;
+            on = auto?.Email ?? GlobalLogin;
+        }
+        else if (ShowLogins && Login != GlobalLogin)
         {
             var dir = accountDirs.For(Login);
             if (!dir.SignedIn)
@@ -396,7 +414,7 @@ public sealed partial class MainViewModel : ObservableObject
             configDir = dir.Directory;
         }
         var error = control.Start(Selected.Name, Selected.Path, Provider, string.IsNullOrWhiteSpace(Prompt) ? null : Prompt, configDir);
-        StatusMessage = error ?? $"Opened a {Provider} tab for {Selected.Name}" + (configDir is null ? "" : $" on {Login}'s own login") + ". It'll appear here within a few seconds.";
+        StatusMessage = error ?? $"Opened a {Provider} tab for {Selected.Name}" + (configDir is null ? "" : $" on {on}'s own login") + ". It'll appear here within a few seconds.";
         if (error is null) Prompt = "";
     }
 }

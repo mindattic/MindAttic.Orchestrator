@@ -149,6 +149,12 @@ public sealed record OrchestratorSettings
     /// (<see cref="Sessions.LimitWaker"/>). False only alerts you that it's waiting; so does a CLI in a plain terminal.</summary>
     public bool ResumeAfterReset { get; init; } = true;
 
+    /// <summary>One CLI per account (M.ORCH-T605): a Claude tab started without a login chosen for it (dashboard Start on
+    /// Auto, <c>orchestrator start</c> without <c>--account</c>, Queue and autopilot starts, <c>orchestrator accounts pick</c>)
+    /// goes on a signed-in per-CLI login no live CLI runs on, the one with the most headroom first
+    /// (<see cref="Sessions.LoginPicker"/>), else the global login. False starts every such tab on the global login.</summary>
+    public bool AutoLogin { get; init; } = true;
+
     /// <summary>Minutes since a repo's own CLI last ended a turn that it still counts as worked by hand, so autopilot
     /// leaves the repo alone through the pauses between your prompts. 0 counts only a CLI that's mid-turn.</summary>
     public int AutopilotHandMinutes { get; init; } = 15;

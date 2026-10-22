@@ -7,6 +7,46 @@ using MindAttic.Orchestrator.Settings;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
+/// <summary>
+/// <c>orchestrator accounts pick</c> (M.ORCH-T605): the Auto login (<see cref="LoginPicker"/>) a new Claude CLI should start
+/// on, for the Launcher to set as its <c>CLAUDE_CONFIG_DIR</c>. Prints exactly one line, the login's full folder, or an empty
+/// line for the global login (also when Auto is off); exits 0 either way. The pick is held for the CLI about to start, so the
+/// next pick goes elsewhere. <c>--json</c> writes <c>{"configDir", "email", "reason"}</c> instead.
+/// </summary>
+internal sealed class AccountsPickCommand : Command<AccountsPickCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandOption("--json")]
+        [Description("Write {configDir, email, reason} as JSON instead of the bare folder.")]
+        public bool Json { get; init; }
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        LoginPick pick;
+        try
+        {
+            pick = Ctx.Settings.AutoLogin
+                ? new LoginPicker(AccountsCommand.LoginsOverride?.Invoke(), StartCommand.LiveOverride).Pick(DateTime.UtcNow, claim: true)
+                : new LoginPick(null, "Auto login is off (settings --auto-login): global login");
+        }
+        // The contract is one line and exit 0: anything unreadable means the global login.
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            pick = new LoginPick(null, $"couldn't pick ({ex.Message}): global login");
+        }
+        if (pick.Account is { } account)
+            try { (AccountsCommand.LoginsOverride?.Invoke() ?? new AccountDirs()).Prepare(account); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { pick = new LoginPick(null, $"couldn't prepare {account.Email}'s login ({ex.Message}): global login"); }
+        // Plain Console, not AnsiConsole: the Launcher reads this line as is, with no markup or wrapping.
+        Console.WriteLine(settings.Json
+            ? JsonSerializer.Serialize(new { configDir = pick.ConfigDir, email = pick.Account?.Email, reason = pick.Reason })
+            : pick.ConfigDir);
+        return 0;
+    }
+}
+
 /// <summary><c>orchestrator accounts</c> (M.ORCH-T490): every Claude account signed in to on this machine, with how much of
 /// its week and 5-hour window it has used and when each resets, from the accounts table in the repo's <c>data/orchestrator.db</c>. It brings the signed-in account's
 /// row up to date first, from Claude's last reading, so the roster is there without the daemon.</summary>

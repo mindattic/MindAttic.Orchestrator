@@ -73,7 +73,12 @@ internal static class CliApp
             config.AddCommand<IntakeCommand>("intake").WithDescription("File GitHub issues labelled orchestrator and CI failures on main as tickets (--dry-run to preview).");
             config.AddCommand<ReportCommand>("report").WithDescription("Uncached tokens by week, repo, provider and ticket type, and cost per completed ticket by model; --csv writes it out.");
             config.AddCommand<BillingCommand>("billing").WithDescription("Who every CLI bills (Claude Team or the Vault's API key) and each open CLI's own billing; team or api switches every CLI.");
-            config.AddCommand<AccountsCommand>("accounts").WithDescription("Every Claude account signed in to here: weekly % used and left, its reset, the 5-hour % and reset, and when each was last read (orchestrator.db).");
+            config.AddBranch("accounts", a =>
+            {
+                a.SetDescription("Every Claude account signed in to here: weekly % used and left, its reset, the 5-hour % and reset, and when each was last read (orchestrator.db).");
+                a.SetDefaultCommand<AccountsCommand>();
+                a.AddCommand<AccountsPickCommand>("pick").WithDescription("The Auto login a new Claude CLI should start on (one CLI per account): prints its CLAUDE_CONFIG_DIR, or an empty line for the global login.");
+            });
             config.AddCommand<LoginCommand>("login").WithDescription("The account roster (as the dashboard's account menu shows it); with an email or short name, opens that account's login (claude auth login --email); --account <email> signs in a per-CLI login of its own instead; --api-key bills the Vault's API key.");
             config.AddCommand<ClisCommand>("clis").WithDescription("Every open Claude CLI and whether /allocate is on in it (the roster the daemon keeps in orchestrator.db).");
             config.AddCommand<LedgerCommand>("ledger").WithDescription("Every 5-hour window graded against 99%-never-over (ok, under, blind, over) and the record so far; --csv writes it out. Exits 1 if one went over in --days.");
@@ -166,12 +171,15 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
         public string? Prompt { get; init; }
 
         [CommandOption("--account <EMAIL>")]
-        [Description("Run the CLI on this account's own login (signed in once with 'orchestrator login --account <email>'), paced on its own token pool. Without it the CLI uses the global login.")]
+        [Description("Run the CLI on this account's own login (signed in once with 'orchestrator login --account <email>'), paced on its own token pool. Without it a Claude CLI goes on the Auto login: a signed-in per-CLI login no CLI runs on yet (most headroom first), else the global login (settings --auto-login false: always the global login).")]
         public string? Account { get; init; }
     }
 
     /// <summary>Where per-CLI logins' folders are; tests point it elsewhere (never the real ~/.claude-accounts).</summary>
     internal static Func<AccountDirs>? DirsOverride { get; set; }
+
+    /// <summary>The live CLIs' config folders the Auto login sees as taken; tests replace it (null reads the context gate).</summary>
+    internal static Func<IEnumerable<string?>>? LiveOverride { get; set; }
 
     public override int Execute(CommandContext context, Settings settings)
     {
@@ -179,16 +187,20 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
         var repo = new MindAttic.Tickets.Workspace(options.WorkspaceRoot).Find(settings.Repo);
         if (repo is null) { AnsiConsole.MarkupLine($"[red]No repo named {Markup.Escape(settings.Repo)}.[/]"); return 1; }
         if (Ctx.Provider(settings.Provider) is not { } provider) return 1;
-        string? configDir = null;
+        string? configDir = null, email = null;
+        var dirs = DirsOverride?.Invoke() ?? new AccountDirs();
         if (settings.Account is not null)
         {
-            if (OwnLogin(DirsOverride?.Invoke() ?? new AccountDirs(), settings.Account, provider) is not { } dir) return 1;
-            configDir = dir.Directory;
+            if (OwnLogin(dirs, settings.Account, provider) is not { } dir) return 1;
+            (configDir, email) = (dir.Directory, dir.Email);
         }
+        // No --account: the Auto login (M.ORCH-T605) puts it on a per-CLI login no CLI runs on yet, else the global one.
+        else if (new LoginPicker(dirs, LiveOverride).ForNewTab(provider, Ctx.Settings.AutoLogin, DateTime.UtcNow, out _) is { } auto)
+            (configDir, email) = (auto.Directory, auto.Email);
         var error = new SessionControl(options).Start(repo.Name, repo.Path, provider, settings.Prompt, configDir);
         if (error is not null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(error)}[/]"); return 1; }
         AnsiConsole.MarkupLine($"Started [bold]{provider}[/] in {Markup.Escape(repo.Name)}" +
-            (settings.Account is null ? "." : $" on {Markup.Escape(AccountDirs.Normalize(settings.Account)!)}'s own login."));
+            (email is null ? "." : $" on {Markup.Escape(email)}'s own login."));
         return 0;
     }
 

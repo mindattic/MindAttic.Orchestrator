@@ -1230,6 +1230,10 @@
                            Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
 
                 <TextBlock Text="SCHEDULER" Style="{StaticResource MaSectionLabel}" />
+                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding AutoLogin}" Margin="0,0,0,0" HorizontalAlignment="Left"
+                              Content="One CLI per account (Auto login)" />
+                <TextBlock Text="A new Claude tab (Start on Auto, orchestrator start without --account, Queue starts, the Launcher's accounts pick) goes on a signed-in per-CLI login no CLI runs on yet, most headroom first, else the global login. Off: the global login unless one is chosen."
+                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,10" />
                 <TextBlock Text="Max concurrent sessions (working + waiting)" Margin="0,0,0,4" />
                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
                          Text="{Binding MaxSessions, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Max concurrent sessions" />
