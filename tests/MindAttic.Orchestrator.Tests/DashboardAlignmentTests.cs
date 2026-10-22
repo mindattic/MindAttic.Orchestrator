@@ -142,7 +142,7 @@ public sealed class DashboardAlignmentTests
     }
 
     [Test]
-    public void The_clock_refresh_and_settings_sit_upper_left_and_the_upper_right_holds_only_the_account_menu()
+    public void The_clock_refresh_and_settings_sit_upper_left_and_nothing_sits_upper_right()
     {
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
@@ -150,13 +150,13 @@ public sealed class DashboardAlignmentTests
         XElement Named(string name) => doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == name);
         static string? Binding(XElement e, string attribute) => (string?)e.Attribute(attribute);
 
-        var row = Named("AccountRow");
+        var row = Named("HeaderRow");
         var controls = Named("HeaderControls");
-        Assert.That(controls.Parent, Is.EqualTo(row), "the controls share the header's top row with the account menu");
+        Assert.That(controls.Parent, Is.EqualTo(row), "the controls are the header's top row");
         Assert.That((string?)controls.Attribute("DockPanel.Dock"), Is.EqualTo("Left"), "upper left");
         Assert.That(row.Elements().First(), Is.EqualTo(controls), "docked first, so it takes the left edge");
         Assert.That(row.Elements().Where(e => (string?)e.Attribute("DockPanel.Dock") == "Right").Select(e => (string?)e.Attribute(X + "Name")),
-            Is.EqualTo(new[] { "AccountMenuButton" }), "the account menu is the only thing on the right");
+            Is.Empty, "no account menu on the right any more (M.ORCH-T628)");
 
         var clock = controls.Elements(P + "TextBlock").Single(t => Binding(t, "Text") == "{Binding Clock.Text}");
         Assert.That((string?)clock.Attribute("AutomationProperties.Name"), Is.EqualTo("Current time"));

@@ -104,6 +104,13 @@ public sealed class AccountsViewTests
         Assert.That(global.Title, Is.EqualTo(MainViewModel.GlobalLogin));
         Assert.That(global.CanSignIn, Is.False);
         Assert.That(global.SignInHint, Does.Contain("/login"));
+        Assert.That(global.CanMakeDefault, Is.False, "the global login is the default it would set");
+
+        // M.ORCH-T628: Make default, from the old account menu, on a per-CLI login the global one isn't signed in to.
+        Assert.That(card.CanMakeDefault, Is.True);
+        card.Update(signedOut, Now, defaultEmail: "C@Example.com");
+        Assert.That(card.IsDefault, Is.True);
+        Assert.That(card.CanMakeDefault, Is.False, "already the global default");
 
         var other = new LoginCardViewModel("b@example.com");
         other.Update(new LoginCard("b@example.com", "x", true, "z@example.com", "Team", 40, Now.AddHours(2), 12, Now.AddDays(3),

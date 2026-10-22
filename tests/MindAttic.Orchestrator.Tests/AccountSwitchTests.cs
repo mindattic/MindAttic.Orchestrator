@@ -181,34 +181,40 @@ public sealed class AccountSwitchTests
     }
 
     [Test]
-    public void The_menu_lists_every_account_then_the_api_key_and_the_corner_names_who_bills()
+    public void Each_tab_finds_its_own_logins_roster_row_and_the_most_headroom_skips_any_at_its_weekly_stop()
     {
-        var menu = MainViewModel.MenuOf(Rows, "b/org", BillingModes.Team, Now);
-        Assert.That(menu.Select(m => m.Id), Is.EqualTo(new[] { "b/org", "a/org", MainViewModel.ApiKeyItem }));
-        Assert.That(menu[0].Label, Does.StartWith("b@mindattic.com (signed in) · standard · week 80% used, 20% left"));
-        Assert.That(menu[0].Icon, Is.EqualTo(""));
-        Assert.That(menu[1].Label, Does.StartWith("a@mindattic.com (most headroom) · premium").And.Contain("5h 10%").And.Contain("read "));
-        Assert.That(menu[2].Label, Is.EqualTo("Use API key (emergencies)"));
+        // M.ORCH-T628: the global login's tab reads whoever's signed in to it; a per-CLI login's tab the account with its email.
+        Assert.That(MainViewModel.RowFor(Rows, null, "b/org")?.Account, Is.EqualTo("b/org"));
+        Assert.That(MainViewModel.RowFor(Rows, "A@MindAttic.com", "b/org")?.Account, Is.EqualTo("a/org"), "by email, any case");
+        Assert.That(MainViewModel.RowFor(Rows, "nobody@x.com", "b/org"), Is.Null);
+        Assert.That(MainViewModel.RowFor(Rows, null, null), Is.Null, "the global login signed out (or on the API key)");
 
-        Assert.That(MainViewModel.CornerOf(BillingModes.Team, Rows, "b/org"), Is.EqualTo("b@mindattic.com"));
-        Assert.That(MainViewModel.CornerOf(BillingModes.Api, Rows, "b/org"), Is.EqualTo("API key"));
-        var onKey = MainViewModel.MenuOf(Rows, "b/org", BillingModes.Api, Now);
-        Assert.That(onKey[0].Label, Does.Not.Contain("(signed in)"), "the key bills, not the account");
-        Assert.That(onKey[^1].Label, Is.EqualTo("Use API key (emergencies) (in use)"));
-    }
-
-    [Test]
-    public void The_menu_shows_each_accounts_weekly_stop_line_and_never_suggests_one_at_it()
-    {
         // M.ORCH-T609: a 30%, b 80%. With the line at 75%, b's CLIs are stopped; at 25%, both are.
-        var menu = MainViewModel.MenuOf(Rows, "b/org", BillingModes.Team, Now, weeklyStopPercent: 75);
-        Assert.That(menu[0].WeekUsage, Is.EqualTo("80%, stopped at 75%"));
-        Assert.That(menu[1].WeekUsage, Is.EqualTo("30%, stops at 75%"));
-        Assert.That(menu[1].Label, Does.Contain("(most headroom)").And.Contain("70% left, stops at 75%"));
-        Assert.That(menu[0].ToolTip, Does.Contain("75% stop line"));
+        Assert.That(AccountSwitch.Columns(Rows.Single(r => r.Account == "b/org"), Now, 75).WeekUsage, Is.EqualTo("80%, stopped at 75%"));
+        Assert.That(AccountSwitch.Columns(Rows.Single(r => r.Account == "a/org"), Now, 75).WeekUsage, Is.EqualTo("30%, stops at 75%"));
         Assert.That(AccountSwitch.MostHeadroom(Rows, Now, 25), Is.Null, "every account at its stop: none to move to");
         Assert.That(AccountSwitch.MostHeadroom(Rows, Now, 85)?.Account, Is.EqualTo("a/org"));
         Assert.That(AccountSwitch.Columns(Rows[0], Now).WeekUsage, Does.Not.Contain("stop"), "no line given, the bare percent");
+    }
+
+    [Test]
+    public void The_weekly_tile_reads_as_percent_left_with_its_reset_day_and_its_stop_line_and_the_plan_and_last_check()
+    {
+        // M.ORCH-T628: "23% left", "resets Mon 10/27 5:00 PM · stops at 95%", "Team · Max 5x · checked 3m ago".
+        Assert.That(MainViewModel.WeeklyHeadlineOf(77), Is.EqualTo("23% left"));
+        Assert.That(MainViewModel.WeeklyHeadlineOf(null), Is.EqualTo("—"));
+        var reset = new DateTime(2026, 10, 27, 17, 0, 0, DateTimeKind.Local).ToUniversalTime();
+        Assert.That(Formatting.ResetOnDay(reset), Is.EqualTo("Tue 10/27 5:00 PM"));
+        Assert.That(MainViewModel.WeeklyCaptionOf(77, reset, 95, Now), Is.EqualTo("resets Tue 10/27 5:00 PM · stops at 95%"));
+        Assert.That(MainViewModel.WeeklyCaptionOf(96, reset, 95, Now), Does.EndWith("stopped at 95%"));
+        Assert.That(MainViewModel.WeeklyCaptionOf(10, null, 95, Now), Is.EqualTo("rolling 7 days · stops at 95%"));
+        Assert.That(MainViewModel.WeeklyCaptionOf(null, reset, 95, Now), Is.EqualTo("no weekly limit known yet"));
+
+        var b = Rows.Single(r => r.Account == "b/org");
+        Assert.That(MainViewModel.AccountLineOf(b with { Plan = "Team · Max 5x", ReadUtc = Now.AddMinutes(-3) }, Now),
+            Is.EqualTo($"Team · Max 5x · checked {Formatting.Ago(Now.AddMinutes(-3), Now)}"));
+        Assert.That(MainViewModel.AccountLineOf(b with { Plan = null, ReadUtc = null }, Now), Is.EqualTo("not checked yet"));
+        Assert.That(MainViewModel.AccountLineOf(null, Now), Is.Empty);
     }
 
     [Test]
@@ -230,19 +236,26 @@ public sealed class AccountSwitchTests
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
-        Assert.That(xaml, Does.Contain("Text=\"Week usage\"").And.Contain("Text=\"Last Checked\"")
-            .And.Not.Contain("Text=\"Seat\"").And.Not.Contain("Text=\"Week used\"").And.Not.Contain("Text=\"Read\""));
+        Assert.That(xaml, Does.Not.Contain("Text=\"Seat\"").And.Not.Contain("Text=\"Week used\"").And.Not.Contain("Text=\"Read\""));
     }
 
     [Test]
-    public void The_dashboard_lists_accounts_as_a_table_and_the_billing_toggle_and_Accounts_card_are_gone_from_the_window()
+    public void The_account_menu_is_gone_and_billing_and_the_global_default_live_in_the_Accounts_view()
     {
+        // M.ORCH-T628: every person is signed in at once, each on a tab of their own; no upper-right account menu.
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
         var code = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml.cs"));
         Assert.That(xaml, Does.Not.Contain("BillingChoice").And.Not.Contain("x:Name=\"AccountsCard\"")
-            .And.Contain("x:Name=\"AccountMenuButton\"").And.Contain("x:Name=\"AccountPopup\"").And.Contain("x:Name=\"AccountRows\""));
-        Assert.That(code, Does.Contain("AccountPopup.IsOpen"));
+            .And.Not.Contain("AccountMenuButton").And.Not.Contain("AccountPopup").And.Not.Contain("AccountMenuItems"));
+        Assert.That(code, Does.Not.Contain("AccountPopup"));
+
+        var accounts = xaml[xaml.IndexOf("x:Name=\"AccountsBody\"", StringComparison.Ordinal)..];
+        Assert.That(accounts, Does.Contain("x:Name=\"BillingToggleButton\"").And.Contain("{Binding ToggleBillingCommand}")
+            .And.Contain("{Binding BillingHeadline, Mode=OneWay}").And.Contain("x:Name=\"BillingDetailLine\"")
+            .And.Contain("DataContext.MakeDefaultCommand"), "the menu's switches, tooltip and detail line moved to the Accounts view");
+        var header = xaml[..xaml.IndexOf("x:Name=\"Toolbar\"", StringComparison.Ordinal)];
+        Assert.That(header, Does.Contain("{Binding WeeklyAccountLine}").And.Not.Contain("{Binding BillingDetail}"));
     }
 }

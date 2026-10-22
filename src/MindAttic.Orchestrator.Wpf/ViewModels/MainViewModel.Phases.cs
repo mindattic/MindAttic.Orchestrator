@@ -164,11 +164,14 @@ public sealed partial class MainViewModel
     public BudgetStatus? Budget => snapshot?.Budget;
     public bool BudgetIsPeak => Budget?.BlockLimitIsPeak ?? true;
 
-    public string BudgetHeadline => Budget?.CurrentBlock is null ? "Idle" : Formatting.FiveHourPercent(Budget.BlockPercent);
+    /// <summary>The tab's login's 5-hour window, % used (M.ORCH-T628): from its own pace, else (a login the daemon hasn't paced
+    /// yet) the roster's last reading of it.</summary>
+    public string BudgetHeadline => Budget is null && OwnRow?.FiveHourUsedAt(DateTime.UtcNow) is { } read ? Formatting.FiveHourPercent(read)
+        : Budget?.CurrentBlock is null ? "Idle" : Formatting.FiveHourPercent(Budget.BlockPercent);
 
     public string BudgetCaption => Budget switch
     {
-        null => "",
+        null => OwnRow?.FiveHourUsedAt(DateTime.UtcNow) is null ? "" : "of your 5-hour limit (Claude's count)",
         { CurrentBlock: null } => "No 5-hour block running",
         { BlockLimitIsPeak: true } => "of your busiest 5h block",
         { BlockLimitSource: LimitSource.Learned } => "of your learned 5-hour limit",
@@ -181,7 +184,7 @@ public sealed partial class MainViewModel
         get
         {
             if (Budget is not { CurrentBlock: { } block } b)
-                return Budget is null ? "" : Budget.WeeklyPercent is { } wp ? $"week {Left(wp)}% left" : $"{Formatting.Tokens(Budget.Today.Fresh)} uncached today";
+                return Budget is null ? OwnRow?.FiveHourResetAt(DateTime.UtcNow) is { } fr ? $"resets {Formatting.ResetTime(fr, DateTime.UtcNow)}" : "" : Budget.WeeklyPercent is { } wp ? $"week {Left(wp)}% left" : $"{Formatting.Tokens(Budget.Today.Fresh)} uncached today";
             var parts = new List<string> { $"resets {Formatting.ResetTime(block.EndUtc, DateTime.UtcNow)}", $"{Formatting.Tokens((long)b.FreshPerHour)}/h" };
             if (b.ProjectedLimitUtc is { } at) parts.Add($"limit ~{Formatting.ResetTime(at, DateTime.UtcNow)}");
             if (b.WeeklyPercent is { } weekPercent) parts.Add($"week {Left(weekPercent)}% left");
@@ -302,17 +305,49 @@ public sealed partial class MainViewModel
     /// <summary>5-hour reset, for the agent board's header.</summary>
     public string BlockResetText => Budget?.CurrentBlock is { } b ? $"resets {Formatting.ResetTime(b.EndUtc, DateTime.UtcNow)}" : "";
 
-    /// <summary>How much of the week is used, matching the 5-hour gauge; the caption gives what's left.</summary>
-    public string WeeklyHeadline => Budget?.WeeklyPercent is { } w ? $"{w:0}% used" : "—";
-
     private static string Left(double usedPercent) => Math.Max(0, 100 - usedPercent).ToString("0");
 
-    public string WeeklyCaption => Budget switch
+    /// <summary>The tab's login's week used (M.ORCH-T628): its own pace's, else the roster's last reading of it.</summary>
+    private double? WeekUsed => Budget?.WeeklyPercent ?? OwnRow?.WeekUsedAt(DateTime.UtcNow);
+
+    /// <summary>When the tab's login's week resets: its own pace's, else the roster's; null on a rolling 7 days.</summary>
+    private DateTime? WeekReset => Budget?.WeekResetUtc ?? OwnRow?.WeekResetAt(DateTime.UtcNow);
+
+    /// <summary>How much of the tab's login's week is left (M.ORCH-T628): "23% left".</summary>
+    public string WeeklyHeadline => WeeklyHeadlineOf(WeekUsed);
+
+    internal static string WeeklyHeadlineOf(double? usedPercent) => usedPercent is { } u ? $"{Left(u)}% left" : "—";
+
+    /// <summary>"resets Mon 10/27 5:00 PM · stops at 95%": the week's reset, then its weekly stop line (M.ORCH-T609).</summary>
+    public string WeeklyCaption => WeeklyCaptionOf(WeekUsed, WeekReset, weeklyStopPercent, DateTime.UtcNow);
+
+    internal static string WeeklyCaptionOf(double? usedPercent, DateTime? resetUtc, int stopPercent, DateTime nowUtc)
     {
-        { WeeklyPercent: null } or null => "no weekly limit known yet",
-        { WeekResetUtc: { } r, WeeklyPercent: { } u } => $"{Left(u)}% left resets {Formatting.ResetInDays(r, DateTime.UtcNow)}",
-        { WeeklyPercent: { } u } => $"{Left(u)}% left · rolling 7 days",
-    };
+        if (usedPercent is not { } used) return "no weekly limit known yet";
+        var reset = resetUtc is { } r ? $"resets {Formatting.ResetOnDay(r)}" : "rolling 7 days";
+        return $"{reset} · {(used >= stopPercent ? "stopped" : "stops")} at {stopPercent}%";
+    }
+
+    /// <summary>What the account menu also showed for the login (M.ORCH-T628): its plan and when its usage was last checked,
+    /// "Team · Max 5x · checked 3m ago"; empty when the roster doesn't know it.</summary>
+    public string WeeklyAccountLine => AccountLineOf(OwnRow, DateTime.UtcNow);
+
+    internal static string AccountLineOf(AccountRow? row, DateTime nowUtc)
+    {
+        if (row is null) return "";
+        var parts = new List<string>();
+        if (row.Plan is { Length: > 0 } plan) parts.Add(plan);
+        parts.Add(row.ReadUtc is { } r ? $"checked {Formatting.Ago(r, nowUtc)}" : "not checked yet");
+        return string.Join(" · ", parts);
+    }
+
+    /// <summary>Raises every tile figure that reads the tab's login's roster row.</summary>
+    private void RaiseOwnNumbers()
+    {
+        foreach (var name in new[] { nameof(BudgetHeadline), nameof(BudgetCaption), nameof(BudgetDetail),
+                                     nameof(WeeklyHeadline), nameof(WeeklyCaption), nameof(WeeklyAccountLine) })
+            Raise(name);
+    }
 
     // ── Agent board ─────────────────────────────────────────────────────────
 
@@ -597,7 +632,7 @@ public sealed partial class MainViewModel
     {
         foreach (var name in new[] { nameof(Budget), nameof(BudgetIsPeak), nameof(BudgetHeadline), nameof(BudgetCaption),
                                      nameof(BudgetDetail), nameof(BudgetTooltip), nameof(BudgetFill), nameof(BudgetBrush),
-                                     nameof(BlockResetText), nameof(WeeklyHeadline), nameof(WeeklyCaption),
+                                     nameof(BlockResetText), nameof(WeeklyHeadline), nameof(WeeklyCaption), nameof(WeeklyAccountLine),
                                      nameof(Pace), nameof(PaceText), nameof(PaceBrush), nameof(Utilization), nameof(UtilizationText) })
             Raise(name);
 
