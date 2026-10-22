@@ -379,8 +379,9 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             contextCycler.Load().Where(c => c.Pid is not null).ToDictionary(c => c.SessionId, c => c.Pid!.Value, StringComparer.Ordinal));
         // The Claude login each CLI bills, on its card (M.ORCH-T606): its own login's email, else the global login's.
         var globalLogin = SignIn?.Profile?.Email;
-        string? LoginOf(string session) => LoginText(ownLogin.TryGetValue(session, out var dir) ? Accounts.Dirs.Of(dir)?.Email : null, globalLogin);
-        agentBoard = [.. agentBoard.Select(a => a with { Login = LoginOf(a.SessionId) })];
+        string? OwnOf(string session) => ownLogin.TryGetValue(session, out var dir) ? Accounts.Dirs.Of(dir)?.Email : null;
+        string? LoginOf(string session) => LoginText(OwnOf(session), globalLogin);
+        agentBoard = [.. agentBoard.Select(a => a with { Login = LoginOf(a.SessionId), OwnLogin = OwnOf(a.SessionId) })];
         // Who's billed, and each CLI's own billing on its card (M.ORCH-T436); never the refresh's failure.
         Billing.BillingStatus? billing = null;
         try

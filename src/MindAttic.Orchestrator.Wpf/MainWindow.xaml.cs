@@ -104,6 +104,32 @@ public partial class MainWindow : Window
         Dispatcher.BeginInvoke(async () => await model.ChooseAccountAsync(id), DispatcherPriority.Background);
     }
 
+    /// <summary>"Move to" on an agent card or an Accounts-view CLI row (M.ORCH-T607): a menu of the other signed-in logins,
+    /// read when it's opened, each moving that CLI to its login.</summary>
+    private async void OnMoveToClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button) return;
+        (string Repo, string Session, int? Pid, string? Own)? cli = button.DataContext switch
+        {
+            AgentRowViewModel a => (a.Repo, a.SessionId, a.CliPid, a.OwnLogin),
+            LoginCliViewModel c => (c.Repo, c.SessionId, c.CliPid, c.OwnLogin),
+            _ => null,
+        };
+        if (cli is not { } it) return;
+        var targets = await model.MoveTargetsAsync(it.Own);
+        var menu = new ContextMenu { PlacementTarget = button, Placement = PlacementMode.Bottom };
+        AutomationProperties.SetName(menu, $"Move the {it.Repo} CLI to");
+        if (targets.Count == 0)
+            menu.Items.Add(new MenuItem { Header = "No other signed-in login", IsEnabled = false });
+        foreach (var target in targets)
+        {
+            var item = new MenuItem { Header = target.Label, ToolTip = target.IsGlobal ? "The global login (~/.claude)" : $"{target.Email}'s own login (~/.claude-accounts)" };
+            item.Click += async (_, _) => await model.MoveToAccountAsync(it.Repo, it.Session, it.Pid, target);
+            menu.Items.Add(item);
+        }
+        menu.IsOpen = true;
+    }
+
     private bool Hidden => !IsVisible || WindowState == WindowState.Minimized;
 
     private void Retime()

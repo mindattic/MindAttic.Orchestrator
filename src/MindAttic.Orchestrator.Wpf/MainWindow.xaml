@@ -991,12 +991,17 @@
                                             </DockPanel>
                                             <TextBlock Text="{Binding Doing}" Margin="0,6,0,0" TextWrapping="Wrap" MaxHeight="38" TextTrimming="CharacterEllipsis"
                                                        Visibility="{Binding Doing, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                                            <!-- To this CLI's own terminal tab (M.ORCH-T619); only a CLI in a Launcher tab has one. -->
-                                            <Button Command="{Binding DataContext.GoToTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                    CommandParameter="{Binding}" Style="{StaticResource MaButton}" Content="Go to tab" Padding="12,5" Margin="0,8,0,0"
-                                                    HorizontalAlignment="Left" Visibility="{Binding HasHost, Converter={StaticResource Visible}}"
-                                                    ToolTip="Bring this CLI's terminal to the front, on its tab"
-                                                    AutomationProperties.Name="{Binding Repo, StringFormat='Go to the {0} tab'}" />
+                                            <!-- To this CLI's own terminal tab (M.ORCH-T619), and Move to another signed-in login (M.ORCH-T607);
+                                                 only a CLI in a Launcher tab has either. -->
+                                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0" Visibility="{Binding HasHost, Converter={StaticResource Visible}}">
+                                                <Button Command="{Binding DataContext.GoToTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}" Style="{StaticResource MaButton}" Content="Go to tab" Padding="12,5"
+                                                        ToolTip="Bring this CLI's terminal to the front, on its tab"
+                                                        AutomationProperties.Name="{Binding Repo, StringFormat='Go to the {0} tab'}" />
+                                                <Button x:Name="AgentMoveToButton" Click="OnMoveToClick" Style="{StaticResource MaButton}" Content="Move to ▾" Padding="12,5" Margin="8,0,0,0"
+                                                        ToolTip="Move this CLI to another signed-in login: its Launcher tab restarts it with claude --resume on that login at its next idle point, keeping its session"
+                                                        AutomationProperties.Name="{Binding Repo, StringFormat='Move the {0} CLI to another login'}" />
+                                            </StackPanel>
                                             <TextBlock Text="{Binding HoldNote}" Foreground="{DynamicResource MaWarn}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
                                                        Visibility="{Binding HoldNote, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                                             <!-- The tickets this CLI claimed, only its own (M.ORCH-T532). -->
@@ -1133,6 +1138,11 @@
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate DataType="{x:Type vm:LoginCliViewModel}">
                                                                 <DockPanel x:Name="LoginCliRow" Margin="0,2,0,2" ToolTip="{Binding SessionId}">
+                                                                    <!-- Move to another signed-in login (M.ORCH-T607). -->
+                                                                    <Button x:Name="LoginCliMoveToButton" DockPanel.Dock="Right" Click="OnMoveToClick" Style="{StaticResource MaTextButton}"
+                                                                            Content="Move to ▾" FontSize="12" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                                            ToolTip="Move this CLI to another signed-in login at its next idle point, keeping its session"
+                                                                            AutomationProperties.Name="{Binding Repo, StringFormat='Move the {0} CLI to another login'}" />
                                                                     <TextBlock DockPanel.Dock="Right" Text="{Binding ShortId}" Style="{StaticResource MaMutedText}"
                                                                                FontFamily="Cascadia Mono, Consolas" FontSize="11" Margin="8,0,0,0" VerticalAlignment="Center" />
                                                                     <TextBlock DockPanel.Dock="Right" Text="{Binding StateLabel}" Foreground="{Binding StateBrush}"

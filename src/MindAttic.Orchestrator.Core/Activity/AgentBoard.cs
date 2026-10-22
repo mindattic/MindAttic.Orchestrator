@@ -39,6 +39,12 @@ public sealed record AgentBoardRow(
     /// "(global)"; null when not known.</summary>
     public string? Login { get; init; }
 
+    /// <summary>The per-CLI login its CLI runs on (its email, M.ORCH-T607), null on the global login: what its "Move to" menu leaves out.</summary>
+    public string? OwnLogin { get; init; }
+
+    /// <summary>Its claude.exe process id, as the context gate recorded it; null when not known.</summary>
+    public int? CliPid { get; init; }
+
     /// <summary>The tickets its CLI claimed for its subagents (<c>orchestrator next --claim</c>, M.ORCH-T532), in claim order:
     /// only its own, never another CLI's on the same repo.</summary>
     public IReadOnlyList<string> Claims { get; init; } = [];
@@ -105,7 +111,7 @@ public static class AgentBoard
                     session.SessionId, repo.Name, session.TicketId, session.TicketType,
                     started, session.LastWriteUtc, state, detail,
                     assignment?.Pilot is not null, session.UsageToday,
-                    [.. byParent[session.SessionId]]) { Doing = session.Doing, DoingAtUtc = session.DoingAtUtc, Claims = claims });
+                    [.. byParent[session.SessionId]]) { Doing = session.Doing, DoingAtUtc = session.DoingAtUtc, Claims = claims, CliPid = cli });
             }
         }
         return [.. rows.OrderByDescending(r => r.LastActivityUtc)];

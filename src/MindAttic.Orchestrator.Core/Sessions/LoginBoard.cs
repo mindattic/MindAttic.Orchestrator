@@ -45,7 +45,14 @@ public sealed record LoginPace(string? Pace, string? SubagentsRunning, string? S
 }
 
 /// <summary>A live Claude CLI (a repo's tab, or an autopilot agent) and the login it runs on.</summary>
-public sealed record LoginCli(string SessionId, string Repo, AgentState State);
+public sealed record LoginCli(string SessionId, string Repo, AgentState State)
+{
+    /// <summary>The per-CLI login it runs on (its email), null on the global login: what its "Move to" menu leaves out (M.ORCH-T607).</summary>
+    public string? OwnLogin { get; init; }
+
+    /// <summary>Its claude.exe process id; null when not known.</summary>
+    public int? CliPid { get; init; }
+}
 
 /// <summary>
 /// One Claude login on this machine (M.ORCH-T603): the global <c>~/.claude</c> one every CLI uses unless started on its own, or
@@ -124,7 +131,7 @@ public static class LoginBoard
             if (key.Length > 0 && cards.All(c => !string.Equals(c.Email, key, StringComparison.OrdinalIgnoreCase)))
                 cards.Add(Own(dirs.For(key), nowUtc));
             if (!clis.TryGetValue(key, out var list)) clis[key] = list = [];
-            list.Add(new LoginCli(agent.SessionId, agent.Repo, agent.State));
+            list.Add(new LoginCli(agent.SessionId, agent.Repo, agent.State) { OwnLogin = key.Length > 0 ? key : null, CliPid = agent.CliPid });
         }
         return [.. cards.Select(c => clis.TryGetValue(c.Email ?? "", out var mine)
             ? c with { Clis = [.. mine.OrderBy(x => x.Repo, StringComparer.OrdinalIgnoreCase).ThenBy(x => x.SessionId, StringComparer.Ordinal)] }

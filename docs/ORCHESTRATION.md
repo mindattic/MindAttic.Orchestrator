@@ -161,6 +161,17 @@ The request goes to the host, never into the CLI, on a pipe of its own beside th
   `type` is the only field every request has; ignore a `type` you don't know. `billing` is the mode the CLI is to bill
   (`team` or `api`), `session` the Claude session to resume, `cliPid` the claude.exe the request is about, `cwd` the
   folder it runs in.
+
+  **Move to account (M.ORCH-T607, M.LNCH-T52):** the dashboard's "Move to" menu and `orchestrator move <repo|pid>
+  --account <email>|--global` send the same request with `"reason":"account"`, a `configDir` and no `billing`:
+
+  ```json
+  {"type":"restart-resume","reason":"account","configDir":"C:\Users\me\.claude-accounts\b@x.com","session":"<claude session id>","cliPid":4242,"cwd":"D:\Projects\Prose","requestedAt":"2026-10-22T16:00:00Z"}
+  ```
+
+  `configDir` is the login to restart under: a per-CLI login's folder becomes `CLAUDE_CONFIG_DIR`, `""` is the global
+  login (`CLAUDE_CONFIG_DIR` removed). The tab keeps it for every later restart, and a request without one (a billing
+  restart) keeps the login the CLI is on. Only signed-in logins are offered, never the one the CLI is already on.
 - **What the Launcher does:**
   1. Act only if `cliPid` is still the CLI this tab runs; otherwise drop the request.
   2. Wait for the CLI's next idle point: its turn has ended and it's waiting for input (the context gate's

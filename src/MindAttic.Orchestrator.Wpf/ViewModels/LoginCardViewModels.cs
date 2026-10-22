@@ -16,6 +16,10 @@ public sealed class LoginCliViewModel(string sessionId) : ObservableObject
     public string Repo => cli.Repo;
     public AgentState State => cli.State;
 
+    /// <summary>The per-CLI login it runs on (null: the global login) and its claude.exe, for its "Move to" menu (M.ORCH-T607).</summary>
+    public string? OwnLogin => cli.OwnLogin;
+    public int? CliPid => cli.CliPid;
+
     /// <summary>The state in words, as the agent board says it.</summary>
     public string StateLabel => cli.State switch
     {
@@ -30,7 +34,7 @@ public sealed class LoginCliViewModel(string sessionId) : ObservableObject
     public void Update(LoginCli next)
     {
         cli = next;
-        Raise(nameof(Repo)); Raise(nameof(State)); Raise(nameof(StateLabel)); Raise(nameof(StateBrush));
+        Raise(nameof(Repo)); Raise(nameof(State)); Raise(nameof(OwnLogin)); Raise(nameof(CliPid)); Raise(nameof(StateLabel)); Raise(nameof(StateBrush));
     }
 }
 

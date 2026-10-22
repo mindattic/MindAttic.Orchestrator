@@ -22,6 +22,10 @@ public sealed class AgentRowViewModel(string sessionId) : ObservableObject
     public HostSession? Host => row.Host;
     public bool HasHost => row.Host is not null;
 
+    /// <summary>The per-CLI login it runs on (null: the global login) and its claude.exe, for its "Move to" menu (M.ORCH-T607).</summary>
+    public string? OwnLogin => row.OwnLogin;
+    public int? CliPid => row.CliPid;
+
     /// <summary>"M.ORCH-T84: Agent board …" when the ticket's title is known, else just the id, else what it's for.</summary>
     public string Headline => TicketId is not { Length: > 0 } ? "No ticket: working on what you typed"
         : ticketTitle is { Length: > 0 } ? $"{TicketId}: {ticketTitle}" : TicketId;

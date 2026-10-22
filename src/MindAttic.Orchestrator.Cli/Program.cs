@@ -80,6 +80,7 @@ internal static class CliApp
                 a.AddCommand<AccountsPickCommand>("pick").WithDescription("The Auto login a new Claude CLI should start on (one CLI per account): prints its CLAUDE_CONFIG_DIR, or an empty line for the global login.");
             });
             config.AddCommand<LoginCommand>("login").WithDescription("The account roster (as the dashboard's account menu shows it); with an email or short name, opens that account's login (claude auth login --email); --account <email> signs in a per-CLI login of its own instead; --api-key bills the Vault's API key.");
+            config.AddCommand<MoveCommand>("move").WithDescription("Move a running Claude CLI (<repo|pid>) to another signed-in login (--account <email> or --global): its Launcher tab restarts it with claude --resume on that login at its next idle point, keeping its session.");
             config.AddCommand<ClisCommand>("clis").WithDescription("Every open Claude CLI and whether /allocate is on in it (the roster the daemon keeps in orchestrator.db).");
             config.AddCommand<LedgerCommand>("ledger").WithDescription("Every 5-hour window graded against 99%-never-over (ok, under, blind, over) and the record so far; --csv writes it out. Exits 1 if one went over in --days.");
             config.AddCommand<RemindCommand>("remind").WithDescription("Save a reminder the daemon texts through Psst when it's due (\"<text>\" --at \"tomorrow 9am\" [[--to <contact>]]); --list, --cancel <id>.");
