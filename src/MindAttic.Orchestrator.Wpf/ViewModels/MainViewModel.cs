@@ -315,6 +315,8 @@ public sealed partial class MainViewModel : ObservableObject
         ApplyBilling(next);
         ApplyReminders(DateTime.UtcNow);
         ApplyAccounts(next, DateTime.UtcNow);
+        // The Accounts view's cards, read off the UI thread, only while it's open (M.ORCH-T603).
+        _ = RefreshLoginCardsAsync();
         // After the phases' own toasts (pace, budget, stuck, audit, Needs you), or they'd go past the cap (M.ORCH-T340).
         PruneToasts(Toasts, DateTime.UtcNow);
         Raise(nameof(WorkingCount)); Raise(nameof(WaitingCount)); Raise(nameof(HostCount));

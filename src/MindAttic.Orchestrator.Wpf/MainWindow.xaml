@@ -230,10 +230,6 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <!-- Sign in all (M.ORCH-T604): every account in the roster with no per-CLI login yet gets its own one, in turn. -->
-                    <Button x:Name="SignInAllButton" Style="{StaticResource MaButton}" Command="{Binding SignInAllCommand}"
-                            Content="Sign in all" HorizontalAlignment="Right" Margin="8,6,8,0"
-                            ToolTip="Give every account here with no per-CLI login yet its own (~/.claude-accounts), opening each one's login in the browser in turn, so every Claude Team seat stays signed in side by side. The global login stays the default." />
                 </StackPanel>
             </Border>
         </Popup>
@@ -1020,6 +1016,118 @@
                                                                     <TextBlock Grid.Column="2" Text="{Binding Meta}" Style="{StaticResource MaMutedText}" Margin="8,0,0,0" VerticalAlignment="Top" />
                                                                     <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Doing}" Style="{StaticResource MaMutedText}" Margin="0,2,0,0" />
                                                                 </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Accounts view (M.ORCH-T603): one card per Claude login (the global ~/.claude one, then each per-CLI login under
+                 ~/.claude-accounts), with who's signed in, its plan, its 5-hour and weekly use, the daemon's pace for it and every
+                 live CLI on it. Signed in or not is a word and a glyph as well as a colour (WCAG 1.4.1). -->
+            <ScrollViewer x:Name="AccountsBody" Grid.ColumnSpan="2" Style="{StaticResource BodyScroll}"
+                          Visibility="{Binding IsAccountsView, Converter={StaticResource Visible}}">
+                <StackPanel>
+                    <!-- The view's toolbar: Add account and Sign in all (M.ORCH-T604); room for more account actions here. -->
+                    <DockPanel x:Name="AccountsToolbar" Margin="0,4,0,8">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom">
+                            <TextBox x:Name="NewAccountBox" Style="{StaticResource MaTextBox}" Width="260" Height="32" VerticalAlignment="Center"
+                                     Text="{Binding NewAccountEmail, UpdateSourceTrigger=PropertyChanged}"
+                                     mc:MaTextBox.Placeholder="name@company.com"
+                                     AutomationProperties.Name="Email of the account to add" />
+                            <Button Style="{StaticResource MaPrimaryButton}" Content="Add account" Padding="14,5" Margin="8,0,0,0"
+                                    Command="{Binding AddAccountCommand}" VerticalAlignment="Center"
+                                    ToolTip="Sign in a per-CLI login of its own for this email (orchestrator login --account), opening its login in the browser. The global login is left as it is." />
+                            <Button x:Name="SignInAllButton" Style="{StaticResource MaButton}" Content="Sign in all" Padding="14,5" Margin="8,0,0,0"
+                                    Command="{Binding SignInAllCommand}" VerticalAlignment="Center"
+                                    ToolTip="Give every account in the roster with no per-CLI login yet its own (~/.claude-accounts), opening each one's login in the browser in turn, so every Claude Team seat stays signed in side by side. The global login stays the default." />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Accounts" Style="{StaticResource MaHeading}" />
+                            <TextBlock Text="{Binding LoginCardsSummary}" Style="{StaticResource MaMutedText}" Margin="12,0,0,0" VerticalAlignment="Bottom" />
+                        </StackPanel>
+                    </DockPanel>
+                    <TextBlock Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,0,0,10"
+                               AutomationProperties.LiveSetting="Polite"
+                               Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+
+                    <ItemsControl x:Name="LoginCardList" ItemsSource="{Binding LoginCards}" Focusable="False" AutomationProperties.Name="Claude logins">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><local:AlignedGrid MinItemWidth="420" Gap="12" RowGap="12" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:LoginCardViewModel}">
+                                <Border x:Name="LoginCard" Padding="0">
+                                    <Border.Style>
+                                        <Style TargetType="Border" BasedOn="{StaticResource MaCard}">
+                                            <Setter Property="Margin" Value="0" />
+                                        </Style>
+                                    </Border.Style>
+                                    <DockPanel>
+                                        <Border DockPanel.Dock="Left" Width="5" Background="{Binding StateBrush}" CornerRadius="5,0,0,5" />
+                                        <StackPanel Margin="14,12,14,12">
+                                            <DockPanel>
+                                                <mc:MaBadge DockPanel.Dock="Right" Glyph="{Binding StateGlyph}" Content="{Binding SignedInText}"
+                                                            Foreground="{Binding StateBrush}" Margin="10,0,0,0" VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding Title}" Style="{StaticResource MaHeading}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                            </DockPanel>
+                                            <TextBlock Style="{StaticResource MaMutedText}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis">
+                                                <Run Text="{Binding Kind, Mode=OneWay}" /><Run Text="   " /><Run Text="{Binding Plan, Mode=OneWay}" Foreground="{DynamicResource MaText}" />
+                                            </TextBlock>
+                                            <TextBlock Text="{Binding Mismatch}" Foreground="{DynamicResource MaWarn}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
+                                                       Visibility="{Binding Mismatch, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                                            <Grid Margin="0,10,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="80" />
+                                                    <ColumnDefinition Width="60" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <TextBlock Text="5 hours" Style="{StaticResource MaMutedText}" />
+                                                <TextBlock Grid.Column="1" Text="{Binding FiveHourUsed}" FontWeight="SemiBold" />
+                                                <TextBlock Grid.Column="2" Text="{Binding FiveHourResets}" Style="{StaticResource MaMutedText}" />
+                                                <TextBlock Grid.Row="1" Text="Week" Style="{StaticResource MaMutedText}" Margin="0,2,0,0" />
+                                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding WeekUsed}" FontWeight="SemiBold" Margin="0,2,0,0" />
+                                                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding WeekResets}" Style="{StaticResource MaMutedText}" Margin="0,2,0,0" />
+                                            </Grid>
+                                            <TextBlock Text="{Binding PaceText}" Style="{StaticResource MaMutedText}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                                            <DockPanel Margin="0,8,0,0" Visibility="{Binding CanSignIn, Converter={StaticResource Visible}}">
+                                                <Button DockPanel.Dock="Right" Style="{StaticResource MaPrimaryButton}" Content="Sign in" Padding="14,4"
+                                                        Command="{Binding DataContext.SignInLoginCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        AutomationProperties.Name="{Binding Title, StringFormat='Sign in {0}'}"
+                                                        ToolTip="Open this account's login in the browser (orchestrator login --account)" />
+                                                <TextBlock Text="Nobody is signed in to this login, so no CLI can run on it." Style="{StaticResource MaMutedText}"
+                                                           TextWrapping="Wrap" VerticalAlignment="Center" />
+                                            </DockPanel>
+                                            <TextBlock Text="{Binding SignInHint}" Foreground="{DynamicResource MaWarn}" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0"
+                                                       Visibility="{Binding SignInHint, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+
+                                            <!-- The live CLIs on this login, one row each. -->
+                                            <Border x:Name="LoginCliPanel" Style="{StaticResource MaCard}" Background="{DynamicResource MaChrome}" Padding="10,8" Margin="0,10,0,0">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding ClisHeader}" Style="{StaticResource MaSectionLabel}" Margin="0,0,0,4" />
+                                                    <ItemsControl ItemsSource="{Binding Clis}" Focusable="False">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate DataType="{x:Type vm:LoginCliViewModel}">
+                                                                <DockPanel x:Name="LoginCliRow" Margin="0,2,0,2" ToolTip="{Binding SessionId}">
+                                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding ShortId}" Style="{StaticResource MaMutedText}"
+                                                                               FontFamily="Cascadia Mono, Consolas" FontSize="11" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding StateLabel}" Foreground="{Binding StateBrush}"
+                                                                               FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                                                    <TextBlock Text="{Binding Repo}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                                                </DockPanel>
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>

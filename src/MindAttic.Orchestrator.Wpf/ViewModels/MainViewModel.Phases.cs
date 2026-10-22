@@ -11,7 +11,7 @@ using MindAttic.Orchestrator.Settings;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
-public enum View { Agents, Repos, Queue, Audit }
+public enum View { Agents, Repos, Queue, Audit, Accounts }
 
 /// <summary>Budget (phase 2), the cross-repo queue (phase 3) and the audit (phase 4).</summary>
 public sealed partial class MainViewModel
@@ -67,7 +67,10 @@ public sealed partial class MainViewModel
     // ── View switching ──────────────────────────────────────────────────────
 
     /// <summary>Agents first: the live picture (each CLI with its subagents inside) is what the window opens on.</summary>
-    public IReadOnlyList<string> ViewChoices { get; } = ["Agents", "Repos", "Queue", "Audit"];
+    /// <summary>Accounts (M.ORCH-T603): which Claude login each live CLI runs on.</summary>
+    public IReadOnlyList<string> ViewChoices { get; } = ViewNames;
+
+    internal static readonly IReadOnlyList<string> ViewNames = ["Agents", "Repos", "Queue", "Audit", "Accounts"];
 
     public string ViewChoice
     {
@@ -78,6 +81,8 @@ public sealed partial class MainViewModel
             if (value is null || !Set(ref viewChoice, value)) return;
             view = Enum.TryParse<View>(value, out var v) ? v : View.Agents;
             Raise(nameof(IsReposView)); Raise(nameof(IsQueueView)); Raise(nameof(IsAuditView)); Raise(nameof(IsAgentsView)); Raise(nameof(ShowDetail));
+            Raise(nameof(IsAccountsView));
+            if (IsAccountsView) _ = RefreshLoginCardsAsync();
         }
     }
 
@@ -87,6 +92,7 @@ public sealed partial class MainViewModel
     public bool IsQueueView => view == View.Queue;
     public bool IsAuditView => view == View.Audit;
     public bool IsAgentsView => view == View.Agents;
+    public bool IsAccountsView => view == View.Accounts;
     public ICommand ShowViewCommand { get; private set; } = null!;
 
     // ── Settings ────────────────────────────────────────────────────────────

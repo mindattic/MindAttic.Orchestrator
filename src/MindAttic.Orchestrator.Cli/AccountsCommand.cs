@@ -50,39 +50,20 @@ internal sealed class AccountsCommand : Command<AccountsCommand.Settings>
             .AddColumns("Account", "Signed in as", "5h used", "5h resets", "Week used", "Pace", "Subagents", "Paced");
         foreach (var dir in all)
         {
-            var usage = ReportedUsage.Load(now, dir.UsagePath);
-            var status = Status(dir.StatusPath);
-            string? Text(string name) => status is { } s && s.TryGetProperty(name, out var v) ? v.ValueKind switch
-            {
-                JsonValueKind.String => v.GetString(),
-                JsonValueKind.Number => v.GetDouble().ToString("0.#", System.Globalization.CultureInfo.InvariantCulture),
-                _ => null,
-            } : null;
-            var at = Text("timestamp") is { } t && DateTime.TryParse(t, System.Globalization.CultureInfo.InvariantCulture,
-                System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var stamp) ? stamp : (DateTime?)null;
+            // The same card the dashboard's Accounts view shows (M.ORCH-T603).
+            var card = LoginBoard.Own(dir, now);
             table.AddRow(
                 Markup.Escape(dir.Email),
-                dir.SignedIn ? Markup.Escape(dir.SignedInEmail ?? "(signed in)") : "[red]not signed in[/] [grey](orchestrator login --account)[/]",
-                AccountRoster.Percent(ReportedUsage.Usable(usage?.FiveHour, now)?.Percent),
-                ReportedUsage.Usable(usage?.FiveHour, now) is { } w ? Formatting.ResetTime(w.ResetUtc, now) : "",
-                AccountRoster.Percent(usage?.Week is { } week && week.ResetUtc > now ? week.Percent : null),
-                Markup.Escape(Text("pace") ?? (Text("stop") is not null ? "stop" : "—")),
-                Text("subagent_allowance") is { } allowed ? $"{Text("subagents_running") ?? "0"} of {allowed}" : "—",
-                at is { } a ? Formatting.Ago(a, now) : "[grey]not yet[/]");
+                card.SignedIn ? Markup.Escape(card.SignedInAs ?? "(signed in)") : "[red]not signed in[/] [grey](orchestrator login --account)[/]",
+                AccountRoster.Percent(card.FiveHourPercent),
+                card.FiveHourResetUtc is { } r ? Formatting.ResetTime(r, now) : "",
+                AccountRoster.Percent(card.WeekPercent),
+                Markup.Escape(card.Pace?.Pace ?? "—"),
+                card.Pace?.Subagents ?? "—",
+                card.Pace?.AtUtc is { } a ? Formatting.Ago(a, now) : "[grey]not yet[/]");
         }
         AnsiConsole.Write(table);
         AnsiConsole.MarkupLine("[grey]orchestrator start <repo> --account <email> runs a CLI on one of these; orchestrator login --account <email> adds one.[/]");
-
-        static JsonElement? Status(string path)
-        {
-            try
-            {
-                if (!File.Exists(path)) return null;
-                using var doc = JsonDocument.Parse(File.ReadAllText(path));
-                return doc.RootElement.Clone();
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return null; }
-        }
     }
 
     /// <summary>The roster with the signed-in account's row brought up to date from Claude's last reading, and who's signed in.</summary>
