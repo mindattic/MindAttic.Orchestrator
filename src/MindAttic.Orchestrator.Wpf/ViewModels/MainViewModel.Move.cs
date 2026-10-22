@@ -33,7 +33,7 @@ public sealed partial class MainViewModel
     {
         if (moving) return;
         moving = true;
-        var hosts = snapshot?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
+        var hosts = full?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
         var mover = AccountMover;
         AccountMoveResult result;
         try

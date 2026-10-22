@@ -55,7 +55,7 @@ public sealed partial class MainViewModel
             ViewChoice = "Terminals";
             return new GoToResult(GoToOutcome.Tab, "Brought up its pane.");
         }
-        var all = snapshot?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
+        var all = full?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
         try
         {
             // UI Automation over another process's windows can block: never on the UI thread.

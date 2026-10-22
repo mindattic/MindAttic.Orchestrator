@@ -60,7 +60,7 @@ public sealed partial class MainViewModel
         Raise(nameof(BillingDetail));
         try
         {
-            var hosts = snapshot?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
+            var hosts = full?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
             var result = await Task.Run(() => aggregator.BillingSwitch.Switch(mode, "dashboard", hosts, DateTime.UtcNow));
             billing = result.Status;
             billingMessage = result.Error ?? string.Join(" ", result.Lines.Take(1));

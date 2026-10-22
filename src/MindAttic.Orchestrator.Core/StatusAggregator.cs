@@ -401,10 +401,10 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             agentBoard = [.. agentBoard.Select(a => hostBySession.TryGetValue(a.SessionId, out var h) ? a with { Host = h } : a)];
             // Each Launcher tab's login, by the CLI running in it (M.ORCH-T606).
             var hostLogins = billing.Clis.Where(c => c.Host is not null).GroupBy(c => c.Host!.ProcessId)
-                .ToDictionary(g => g.Key, g => (Name: LoginOf(g.First().SessionId), Email: LoginEmailOf(g.First().SessionId)));
+                .ToDictionary(g => g.Key, g => (Name: LoginOf(g.First().SessionId), Email: LoginEmailOf(g.First().SessionId), Own: OwnOf(g.First().SessionId)));
             for (var i = 0; i < result.Count; i++)
                 if (result[i].Hosts.Any(h => hostLogins.ContainsKey(h.ProcessId)))
-                    result[i] = result[i] with { Hosts = [.. result[i].Hosts.Select(h => hostLogins.TryGetValue(h.ProcessId, out var l) ? h with { Login = l.Name, LoginEmail = l.Email } : h)] };
+                    result[i] = result[i] with { Hosts = [.. result[i].Hosts.Select(h => hostLogins.TryGetValue(h.ProcessId, out var l) ? h with { Login = l.Name, LoginEmail = l.Email, OwnLogin = l.Own } : h)] };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidOperationException)
         {
@@ -453,7 +453,11 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { }
         }
 
-        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = utilization, ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, Approved = tickets.Approved, Priorities = tickets.Priorities, Agents = agentBoard, Billing = billing, Accounts = accountPaces };
+        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = utilization, ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, Approved = tickets.Approved, Priorities = tickets.Priorities, Agents = agentBoard, Billing = billing, Accounts = accountPaces,
+            // Each session's per-CLI login, and the global login's email: what the dashboard's tabs split it by (M.ORCH-T613).
+            OwnLogins = ownLogin.Select(o => (Session: o.Key, Email: Accounts.Dirs.Of(o.Value)?.Email)).Where(o => o.Email is not null)
+                .ToDictionary(o => o.Session, o => o.Email!, StringComparer.Ordinal),
+            GlobalEmail = globalLogin };
 
         RepoStatus Repo(string name, string path, IReadOnlyList<MindAttic.Tickets.Log.Ticket> open)
         {
@@ -604,11 +608,6 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         return links = map.ToDictionary(kv => kv.Key, kv => (IReadOnlySet<string>)kv.Value, StringComparer.OrdinalIgnoreCase);
     }
 
-    internal RepoState Classify(DateTime? lastActivityUtc, int hostCount, DateTime nowUtc)
-    {
-        var age = lastActivityUtc is null ? TimeSpan.MaxValue : nowUtc - lastActivityUtc.Value;
-        if (age <= options.WorkingWindow) return RepoState.Working;
-        if (hostCount > 0 || age <= options.WaitingWindow) return RepoState.Waiting;
-        return RepoState.Dormant;
-    }
+    internal RepoState Classify(DateTime? lastActivityUtc, int hostCount, DateTime nowUtc) =>
+        LoginScope.Classify(lastActivityUtc, hostCount, nowUtc, options.WorkingWindow, options.WaitingWindow);
 }

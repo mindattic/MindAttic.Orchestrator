@@ -49,14 +49,19 @@ public sealed partial class MainViewModel
 
     private void InitPhases()
     {
-        dispatcher = new Dispatcher(control, store);
+        // One of each for every tab (M.ORCH-T613): a login's tab shares the global login's.
+        dispatcher = root?.dispatcher ?? new Dispatcher(control, store);
         // The same lease the status refresh uses (M.ORCH-T112): one FileStream per path per process, so a second
         // one here would just fail to acquire what the first already holds. Held until the app exits; while
         // the logon daemon holds it, the daemon feeds the /allocate CLIs and keeps rl-status.json fresh, and
         // this window only shows.
-        autopilot = new Autopilot(store, new MindAttic.Orchestrator.Sessions.ContextCycler(), lease) { WaitingPath = Autopilot.DefaultWaitingPath };
-        auditRunner = new AuditRunner(aggregator.Options, store);
-        Settings = new SettingsViewModel(store, () => { IsSettingsOpen = false; _ = RefreshAsync(); });
+        autopilot = root?.autopilot ?? new Autopilot(store, new MindAttic.Orchestrator.Sessions.ContextCycler(), lease) { WaitingPath = Autopilot.DefaultWaitingPath };
+        auditRunner = root?.auditRunner ?? new AuditRunner(aggregator.Options, store);
+        Settings = root?.Settings ?? new SettingsViewModel(store, () =>
+        {
+            foreach (var t in LoginTabs) t.IsSettingsOpen = false;
+            _ = RefreshAsync();
+        });
 
         ToggleSettingsCommand = new RelayCommand(() => { Settings.Load(); IsSettingsOpen = !IsSettingsOpen; });
         RunAuditCommand = new RelayCommand(async () => await RunAuditAsync(), () => !IsAuditing);
@@ -355,13 +360,21 @@ public sealed partial class MainViewModel
         {
             QueueMessage = $"Starting {item.Id}…";
             var providerKey = store.LoadSettings().DefaultProvider;
-            var r = await Task.Run(() => dispatcher.Dispatch(item, providerKey, worktree));
+            // On this tab's login (M.ORCH-T613): the global login's tab opens it on the global login, a login's own tab on
+            // its own (signed in first if it's been signed out since).
+            Dispatcher.TabLogin login = new(null);
+            if (providerKey == "Claude" && ScopeEmail is { } own)
+            {
+                if (await OwnLoginDirAsync(own, m => QueueMessage = m) is not { } dir) return;
+                login = new(dir);
+            }
+            var r = await Task.Run(() => dispatcher.Dispatch(item, providerKey, worktree, login: login));
             QueueMessage = r.Message;
             Record(r, "Dispatch");
             await RefreshAsync();
             // A refresh already under way returns at once above: the queue is replanned from the assignments now, so the row
             // reads as assigned before the guard below lets go.
-            if (snapshot is not null) ApplyPlan(snapshot);
+            if (full is not null) ApplyPlan(full);
         }
         // async void: an escaped exception (a corrupt assignments.json, a locked file) would close the dashboard.
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -393,13 +406,13 @@ public sealed partial class MainViewModel
         var next = MindAttic.Orchestrator.Tickets.TicketQueue.Bump(store, db, ticketId, by);
         NoteLocalChange();
         // Shown at once, not at the next refresh: the plan is made again over the snapshot with the new priority.
-        if (!inDb) { if (snapshot is not null) ApplyPlan(snapshot); }
-        else if (snapshot is not null)
+        if (!inDb) { if (full is not null) ApplyPlan(full); }
+        else if (full is not null)
         {
-            var p = new Dictionary<string, long>(snapshot.Priorities, StringComparer.OrdinalIgnoreCase);
+            var p = new Dictionary<string, long>(full.Priorities, StringComparer.OrdinalIgnoreCase);
             if (next == 0) p.Remove(ticketId); else p[ticketId] = next;
-            snapshot = snapshot with { Priorities = p };
-            ApplyPlan(snapshot);
+            full = full with { Priorities = p };
+            ApplyPlan(full);
         }
     });
 
@@ -408,7 +421,7 @@ public sealed partial class MainViewModel
         dispatcher.Release(ticketId);
         QueueMessage = $"{ticketId} is back in the queue.";
         queueLog.Information("Released {Ticket:l}", ticketId);
-        if (snapshot is not null) ApplyPlan(snapshot);
+        if (full is not null) ApplyPlan(full);
     });
 
     /// <summary>Runs a click's change to the shared files: one that can't be saved (locked past the store's retries, or
@@ -480,7 +493,7 @@ public sealed partial class MainViewModel
             var r = await Task.Run(() => dispatcher.RemoveWorktree(a, repoPath));
             QueueMessage = r.Message;
             Record(r, "Remove worktree");
-            if (snapshot is not null) ApplyPlan(snapshot);
+            if (full is not null) ApplyPlan(full);
         }
         // async void: an escaped exception (a corrupt assignments.json, a locked file) would close the dashboard.
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -575,18 +588,25 @@ public sealed partial class MainViewModel
         {
             var news = AuditNews.Between(shownAudit, latest);
             ShowAudit(latest);
-            if (news.Any) Toasts.Insert(0, new ToastViewModel("Audit found something new", news.ToString(), Palette.Waiting, null));
+            // Said once, on the global login's tab: the audit is the workspace's, not a login's.
+            if (news.Any && IsGlobalTab) Toasts.Insert(0, new ToastViewModel("Audit found something new", news.ToString(), Palette.Waiting, null));
         }
 
-        // The daemon moved a CLI off a login that ran low (M.ORCH-T608): each move since the last one shown, from the window's open.
-        foreach (var move in Sessions.AccountRebalancer.Since(store, rebalanceSeenUtc))
+        // The daemon moved a CLI off a login that ran low (M.ORCH-T608): each move since the last one shown, from the window's
+        // open; said once, on the global login's tab, as moves go between logins.
+        if (IsGlobalTab)
+            foreach (var move in Sessions.AccountRebalancer.Since(store, rebalanceSeenUtc))
+            {
+                Toasts.Insert(0, new ToastViewModel("Moved a CLI", move.Text, Palette.Working, null));
+                rebalanceSeenUtc = move.AtUtc;
+            }
+
+        // The queue and the "while you were away" summary are the whole workspace's, the same in every tab (M.ORCH-T613).
+        if (full is { } all)
         {
-            Toasts.Insert(0, new ToastViewModel("Moved a CLI", move.Text, Palette.Working, null));
-            rebalanceSeenUtc = move.AtUtc;
+            ApplyPlan(all);
+            if (IsGlobalTab) Brief(all);
         }
-
-        ApplyPlan(next);
-        Brief(next);
     }
 
     /// <summary>
@@ -623,7 +643,7 @@ public sealed partial class MainViewModel
             }
             PruneToasts(Toasts, DateTime.UtcNow);
         }
-        Raise(nameof(AutopilotText));
+        foreach (var t in LoginTabs) t.Raise(nameof(AutopilotText));
     }
 
     /// <summary>Once per open: if you've been away, say what happened. Then remember you're here.</summary>

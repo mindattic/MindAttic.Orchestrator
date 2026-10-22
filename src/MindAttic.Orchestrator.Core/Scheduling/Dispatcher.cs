@@ -18,8 +18,13 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
     /// <summary>How long a new tab gets to load its agent before Enter is pressed, and to appear at all.</summary>
     public static readonly TimeSpan SubmitSettle = TimeSpan.FromSeconds(15), SubmitTimeout = TimeSpan.FromMinutes(2);
 
+    /// <summary>The Claude login a dispatched tab opens on, chosen rather than picked (M.ORCH-T613: the dashboard tab it was
+    /// started from): <see cref="ConfigDir"/> is the per-CLI login's folder, null for the global login.</summary>
+    public sealed record TabLogin(string? ConfigDir);
+
     /// <param name="submit">Press Enter on the pre-filled prompt once the agent is up (auto-submit repos only).</param>
-    public Result Dispatch(QueueItem item, string provider, bool useWorktree, bool submit = false)
+    /// <param name="login">The login a Claude tab opens on; null picks one as a new tab's is (Auto, else the global login).</param>
+    public Result Dispatch(QueueItem item, string provider, bool useWorktree, bool submit = false, TabLogin? login = null)
     {
         var settings = store.LoadSettings();
         // The caller's plan may be seconds old: an /allocate CLI's `next --claim` (or another window) may have taken the
@@ -35,7 +40,8 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         }
 
         var title = useWorktree ? $"{item.Repo} {item.Id}" : item.Repo;
-        var (startError, cameUp) = (OpenTab ?? Open)(title, directory, provider, Scheduler.PromptFor(item), submit);
+        var (startError, cameUp) = OpenTab is { } seam ? seam(title, directory, provider, Scheduler.PromptFor(item), submit)
+            : Open(title, directory, provider, Scheduler.PromptFor(item), submit, login);
         if (startError is not null) return new Result(false, startError, null);
 
         var assignment = new Assignment(item.Id, item.Repo, directory, provider, DateTime.UtcNow, useWorktree);
@@ -61,14 +67,16 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
     /// <summary>Seam: the Auto login picker a Claude tab's login comes from (M.ORCH-T605); null uses the real per-CLI logins.</summary>
     internal LoginPicker? Logins { get; init; }
 
-    private (string? Error, Task<bool>? CameUp) Open(string title, string directory, string provider, string prompt, bool submit)
+    private (string? Error, Task<bool>? CameUp) Open(string title, string directory, string provider, string prompt, bool submit, TabLogin? login)
     {
         var before = sessions.HostIds();
         var focus = Foreground.Current();
-        // One CLI per account (M.ORCH-T605): a Claude tab goes on a free per-CLI login, else the global one.
-        var loaded = store.LoadSettings();
-        var account = (Logins ?? new LoginPicker()).ForNewTab(provider, loaded.AutoLogin, DateTime.UtcNow, out _, loaded.WeeklyStopPercent);
-        var startError = sessions.Start(title, directory, provider, prompt, account?.Directory);
+        var startError = sessions.Start(title, directory, provider, prompt, ConfigDirFor(provider, login, () =>
+        {
+            // One CLI per account (M.ORCH-T605): a Claude tab goes on a free per-CLI login, else the global one.
+            var loaded = store.LoadSettings();
+            return (Logins ?? new LoginPicker()).ForNewTab(provider, loaded.AutoLogin, DateTime.UtcNow, out _, loaded.WeeklyStopPercent)?.Directory;
+        }));
         if (startError is not null) return (startError, null);
         _ = Foreground.RestoreAsync(focus, TimeSpan.FromSeconds(2));
         // Every tab is checked: one whose agent never starts would otherwise look like a free slot.
@@ -76,6 +84,11 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
             ? await sessions.SubmitWhenReadyAsync(directory, before, SubmitSettle, SubmitTimeout)
             : await sessions.WaitForHostAsync(directory, before, SubmitTimeout) is not null));
     }
+
+    /// <summary>The config folder a new tab's CLI runs under: none for a provider with no Claude login; the chosen
+    /// <paramref name="login"/>'s; else what <paramref name="picked"/> picks.</summary>
+    internal static string? ConfigDirFor(string provider, TabLogin? login, Func<string?> picked) =>
+        provider != "Claude" ? null : login is not null ? login.ConfigDir : picked();
 
     /// <summary>Drops an assignment (the ticket returns to the queue). Never touches the worktree.</summary>
     public void Release(string ticketId)

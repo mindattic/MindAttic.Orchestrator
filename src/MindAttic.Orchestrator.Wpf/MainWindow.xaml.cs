@@ -1,4 +1,3 @@
-using System.Collections.Specialized;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
@@ -22,20 +21,34 @@ public partial class MainWindow : Window
     /// <summary>Hidden but holding the lease (no daemon running): the daemon's own pace, since rl-status.json and autopilot depend on it.</summary>
     private static readonly TimeSpan HiddenHolderInterval = TimeSpan.FromSeconds(15);
 
+    /// <summary>The global login's tab, which owns the refresh and every login's tab (M.ORCH-T613).</summary>
     private readonly MainViewModel model = new();
     private readonly DispatcherTimer timer;
+
+    /// <summary>The login's tab on screen: the window shows its view model.</summary>
+    private MainViewModel Shown => DataContext as MainViewModel ?? model;
 
     public MainWindow()
     {
         InitializeComponent();
         DataContext = model;
+        // One dashboard tab per Claude login (M.ORCH-T613): the whole window shows the chosen login's tab, while the tab strip
+        // keeps the global login's, which lists them all.
+        LoginTabStrip.DataContext = model;
+        model.SelectedTabChanged += (_, _) => DataContext = model.SelectedTab;
+        DataContextChanged += (_, e) =>
+        {
+            if (e.OldValue is MainViewModel was) was.PropertyChanged -= OnShownChanged;
+            if (e.NewValue is MainViewModel now) now.PropertyChanged += OnShownChanged;
+        };
+        model.PropertyChanged += OnShownChanged;
         // Scales the window's content and binds Ctrl+Plus / Ctrl+Minus / Ctrl+0 on the window, wherever focus is.
         model.Zoom.Attach(Root, this);
 
         CommandBindings.Add(new CommandBinding(WindowCommands.FocusSearch, (_, _) =>
         {
             // The search box is only shown in the Repos view, and a collapsed box can't take focus: show it first.
-            model.ShowViewCommand.Execute("Repos");
+            Shown.ShowViewCommand.Execute("Repos");
             Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
             {
                 SearchBox.Focus();
@@ -68,12 +81,8 @@ public partial class MainWindow : Window
             foreach (var added in e.NewItems?.OfType<TerminalPaneViewModel>() ?? []) TerminalPanesHost.Children.Add(added.Control);
         };
 
-        model.Toasts.CollectionChanged += OnToastsChanged;
-        model.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(MainViewModel.StatusMessage)) Announce(model.StatusMessage);
-            else if (e.PropertyName == nameof(MainViewModel.QueueMessage)) Announce(model.QueueMessage);
-        };
+        // A toast on any login's tab flashes the window.
+        model.ToastRaised += (_, _) => OnToastAdded();
 
         timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = PollInterval };
         timer.Tick += async (_, _) =>
@@ -97,6 +106,9 @@ public partial class MainWindow : Window
         StateChanged += async (_, _) => await OnShownOrHidden();
     }
 
+    /// <summary>Lines up the account menu table's right edge with the trigger button's right edge, directly beneath it,
+    /// rather than the left-aligned spot a plain Placement="Bottom" would give a trigger sitting at the window's right
+    /// edge (which would push most of a ~750px table off past that edge).</summary>
     private CancellationTokenSource? paneBroker;
 
     /// <summary>
@@ -116,9 +128,14 @@ public partial class MainWindow : Window
         };
     }
 
-    /// <summary>Lines up the account menu table's right edge with the trigger button's right edge, directly beneath it,
-    /// rather than the left-aligned spot a plain Placement="Bottom" would give a trigger sitting at the window's right
-    /// edge (which would push most of a ~750px table off past that edge).</summary>
+    /// <summary>Reads out the shown tab's status and queue lines.</summary>
+    private void OnShownChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (sender != Shown) return;
+        if (e.PropertyName == nameof(MainViewModel.StatusMessage)) Announce(Shown.StatusMessage);
+        else if (e.PropertyName == nameof(MainViewModel.QueueMessage)) Announce(Shown.QueueMessage);
+    }
+
     private static CustomPopupPlacement[] PlaceAccountPopup(Size popupSize, Size targetSize, Point offset) =>
         [new CustomPopupPlacement(new Point(targetSize.Width - popupSize.Width, targetSize.Height), PopupPrimaryAxis.Horizontal)];
 
@@ -128,7 +145,8 @@ public partial class MainWindow : Window
     {
         AccountPopup.IsOpen = false;
         if (e.OriginalSource is not Button { CommandParameter: string id }) return;
-        Dispatcher.BeginInvoke(async () => await model.ChooseAccountAsync(id), DispatcherPriority.Background);
+        var tab = Shown;
+        Dispatcher.BeginInvoke(async () => await tab.ChooseAccountAsync(id), DispatcherPriority.Background);
     }
 
     /// <summary>"Move to" on an agent card or an Accounts-view CLI row (M.ORCH-T607): a menu of the other signed-in logins,
@@ -143,7 +161,8 @@ public partial class MainWindow : Window
             _ => null,
         };
         if (cli is not { } it) return;
-        var targets = await model.MoveTargetsAsync(it.Own);
+        var tab = Shown;
+        var targets = await tab.MoveTargetsAsync(it.Own);
         var menu = new ContextMenu { PlacementTarget = button, Placement = PlacementMode.Bottom };
         AutomationProperties.SetName(menu, $"Move the {it.Repo} CLI to");
         if (targets.Count == 0)
@@ -151,7 +170,7 @@ public partial class MainWindow : Window
         foreach (var target in targets)
         {
             var item = new MenuItem { Header = target.Label, ToolTip = target.IsGlobal ? "The global login (~/.claude)" : $"{target.Email}'s own login (~/.claude-accounts)" };
-            item.Click += async (_, _) => await model.MoveToAccountAsync(it.Repo, it.Session, it.Pid, target);
+            item.Click += async (_, _) => await tab.MoveToAccountAsync(it.Repo, it.Session, it.Pid, target);
             menu.Items.Add(item);
         }
         menu.IsOpen = true;
@@ -183,11 +202,12 @@ public partial class MainWindow : Window
 
     private void OnEscape()
     {
+        var shown = Shown;
         if (AccountPopup.IsOpen) AccountPopup.IsOpen = false;
-        else if (model.IsSettingsOpen) model.IsSettingsOpen = false;
-        else if (SearchBox.IsKeyboardFocusWithin && model.Search.Length > 0) model.Search = "";
-        else if (model.Selected is not null) model.SelectCommand.Execute(model.Selected);
-        else model.Search = "";
+        else if (shown.IsSettingsOpen) shown.IsSettingsOpen = false;
+        else if (SearchBox.IsKeyboardFocusWithin && shown.Search.Length > 0) shown.Search = "";
+        else if (shown.Selected is not null) shown.SelectCommand.Execute(shown.Selected);
+        else shown.Search = "";
     }
 
     /// <summary>Says <paramref name="text"/> through a screen reader without moving focus (WCAG 4.1.3, status messages):
@@ -202,9 +222,9 @@ public partial class MainWindow : Window
 
     /// <summary>A session that needs you should be noticed even when this window is behind others. The toast row (MaToastHost)
     /// reads each new one out itself.</summary>
-    private void OnToastsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    private void OnToastAdded()
     {
-        if (e.Action != NotifyCollectionChangedAction.Add || IsActive) return;
+        if (IsActive) return;
         var info = new FlashInfo
         {
             Size = (uint)Marshal.SizeOf<FlashInfo>(),

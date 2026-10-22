@@ -13,7 +13,8 @@ public sealed partial class MainViewModel
 
     private void ApplyReminders(DateTime nowUtc)
     {
-        var lines = ReminderLines(ReminderBook.Pending(store), nowUtc);
+        // Read once a refresh, by the global login's tab (applied first); every login's tab shows the same.
+        var lines = root?.Reminders ?? ReminderLines(ReminderBook.Pending(store), nowUtc);
         if (lines.SequenceEqual(Reminders)) return;
         Reminders = lines;
         Raise(nameof(HasReminders));

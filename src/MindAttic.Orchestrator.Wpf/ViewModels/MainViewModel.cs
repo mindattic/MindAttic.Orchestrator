@@ -32,7 +32,13 @@ public sealed class ToastViewModel(string title, string body, Brush accent, Repo
 
     /// <summary>How long it stays up; null uses the default two minutes.</summary>
     public TimeSpan? Lifetime { get; init; }
-    public string Title { get; } = title;
+
+    /// <summary>The dashboard tab it was raised on (M.ORCH-T613), the login's name; set as it's shown, and only while there's
+    /// more than one tab.</summary>
+    public string? Tab { get; set; }
+
+    /// <summary>Its title, tagged with its <see cref="Tab"/> ("Jordan · Repo needs you") when it has one.</summary>
+    public string Title => Tab is null ? title : $"{Tab} · {title}";
     public string Body { get; } = body;
     public Brush Accent { get; } = accent;
     public RepoTileViewModel? Target { get; } = target;
@@ -42,7 +48,11 @@ public sealed partial class MainViewModel : ObservableObject
 {
     private static readonly TimeSpan ToastLifetime = TimeSpan.FromMinutes(2);
 
-    private readonly JsonStore store = new();
+    /// <summary>The global login's tab, which owns the one shared refresh, the lease, autopilot and every login's tab; null on
+    /// the global login's tab itself (M.ORCH-T613).</summary>
+    private readonly MainViewModel? root;
+    private MainViewModel Root => root ?? this;
+    private readonly JsonStore store;
     // Shared with the headless daemon (same lock file): whichever process grabs it first is the one that
     // dispatches autopilot and writes rl-status.json, so every open window doesn't race to overwrite it
     // (M.ORCH-T112); released when this process exits, same as the daemon's own.
@@ -50,7 +60,11 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly StatusAggregator aggregator;
     private readonly SessionControl control;
     private readonly Dictionary<string, RepoTileViewModel> tiles = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>The snapshot as this tab sees it: only its login's CLIs, tabs and sessions, and its login's meter (M.ORCH-T613).</summary>
     private Snapshot? snapshot;
+
+    /// <summary>The whole workspace's snapshot, for what reads the same in every tab (the queue, billing, the Accounts view).</summary>
+    private Snapshot? full;
     private bool refreshing;
     private string search = "";
     private bool showQuiet;
@@ -62,11 +76,23 @@ public sealed partial class MainViewModel : ObservableObject
     private string statusMessage = "";
     private string refreshInfo = "Loading…";
 
-    public MainViewModel()
+    public MainViewModel() : this(null, null) { }
+
+    /// <summary>A login's tab under <paramref name="root"/> (the global login's), sharing its store, lease, refresh and
+    /// autopilot; or, with no root, the global login's tab, which makes them.</summary>
+    private MainViewModel(MainViewModel? root, LoginTab? tab)
     {
-        lease = new DispatchLease(store.Directory, db: store.Db);
-        aggregator = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter { Db = store.Db }, lease);
-        control = new SessionControl(aggregator.Options);
+        this.root = root;
+        this.tab = tab ?? new LoginTab(null, GlobalLogin, "The global login (~/.claude), every CLI's unless started on its own", "");
+        isLoading = root is null;
+        store = root?.store ?? new JsonStore();
+        lease = root?.lease ?? new DispatchLease(store.Directory, db: store.Db);
+        aggregator = root?.aggregator ?? new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter { Db = store.Db }, lease);
+        control = root?.control ?? new SessionControl(aggregator.Options);
+        Clock = root?.Clock ?? new();
+        Zoom = root?.Zoom ?? new();
+        if (root is null) loginTabs = [this];
+        Toasts.CollectionChanged += OnToastsChanged;
         Waiting = new("Needs you", "Sessions that stopped and are waiting for input, longest wait first", Palette.Waiting);
         Working = new("Working", "Agents mid-turn right now", Palette.Working);
         Tickets = new("Open tickets, no session", "Work that's queued but nobody's on", Palette.Tickets);
@@ -92,9 +118,14 @@ public sealed partial class MainViewModel : ObservableObject
         OpenInTicketsCommand = new RelayCommand(p => OpenInTickets(p as string));
         InitPhases();
         // Terminals inside the Orchestrator (M.ORCH-T618): a pane opened shows its view; panes left from last time open on it.
-        Terminals = new TerminalsViewModel(control, store);
-        Terminals.Opened += () => ViewChoice = "Terminals";
-        if (Terminals.HasReopen) ViewChoice = "Terminals";
+        // One host of panes for the window, so one for every login's tab: the global login's.
+        if (root is null)
+        {
+            Terminals = new TerminalsViewModel(control, store);
+            Terminals.Opened += () => SelectedTab.ViewChoice = "Terminals";
+            if (Terminals.HasReopen) ViewChoice = "Terminals";
+        }
+        else Terminals = root.Terminals;
         if (store.Load<ReposView>(ReposViewName).Sort is { } sort && RepoSorts.Contains(sort)) repoSort = sort;
     }
 
@@ -109,11 +140,11 @@ public sealed partial class MainViewModel : ObservableObject
     public TerminalsViewModel Terminals { get; }
 
     /// <summary>The header's live clock, ticking every second on its own timer, not with the refresh (M.ORCH-T193).</summary>
-    public ClockViewModel Clock { get; } = new();
+    public ClockViewModel Clock { get; }
 
     /// <summary>The window's zoom, 80-200% (WCAG 1.4.4): the library's ZoomLevel, which MainWindow attaches to its content
     /// with Ctrl+Plus / Ctrl+Minus / Ctrl+0; the tiles and cards wrap and the views scroll, so nothing is cut off as it grows.</summary>
-    public ZoomLevel Zoom { get; } = new();
+    public ZoomLevel Zoom { get; }
     public IReadOnlyList<string> Providers => SessionControl.Providers;
 
     public ICommand SelectCommand { get; }
@@ -185,49 +216,41 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>What <see cref="Logins"/> lists for the login every CLI uses unless started on one of its own.</summary>
     public const string GlobalLogin = "Global login";
 
-    /// <summary>What <see cref="Logins"/> lists first, and starts on by default (M.ORCH-T605): one CLI per account, a per-CLI
-    /// login no CLI runs on yet (most headroom first), else the global login (<see cref="LoginPicker"/>).</summary>
+    /// <summary>The global login's tab's other choice (M.ORCH-T605): one CLI per account, a per-CLI login no CLI runs on yet
+    /// (most headroom first), else the global login (<see cref="LoginPicker"/>).</summary>
     public const string AutoLogin = "Auto";
 
     private readonly AccountDirs accountDirs = new();
     private string login = GlobalLogin;
 
-    /// <summary>The logins a Claude tab can start on (M.ORCH-T559): Auto (unless turned off in Settings), the global one, then
-    /// every account in the roster and every per-CLI login signed in to (M.ORCH-T610), as the CLI's <c>start --account</c>
-    /// takes them. Starting on one that isn't signed in yet opens its own sign-in first.</summary>
+    /// <summary>The logins Start can open a Claude tab on from this dashboard tab (M.ORCH-T613): a login's own tab starts on
+    /// its login and offers no choice; the global login's tab starts on the global login, or on Auto while it's on in
+    /// Settings. Every other login has a tab of its own to start from.</summary>
     public IReadOnlyList<string> Logins { get; private set; } = [GlobalLogin];
 
-    /// <summary>The <see cref="Logins"/> pills: the head (Auto when <paramref name="auto"/>, the global login), then each email
-    /// signed in on its own or in the roster, once, by email.</summary>
-    internal static IReadOnlyList<string> LoginsOf(bool auto, IEnumerable<string> signedIn, IEnumerable<AccountRow> roster)
-    {
-        IReadOnlyList<string> head = auto ? [AutoLogin, GlobalLogin] : [GlobalLogin];
-        var emails = signedIn.Concat(roster.Select(r => r.Email ?? ""))
-            .Select(AccountDirs.Normalize).OfType<string>()
-            .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal);
-        return [.. head, .. emails];
-    }
+    /// <summary>The <see cref="Logins"/> pills on the global login's tab: the global login, then Auto when <paramref name="auto"/>.</summary>
+    internal static IReadOnlyList<string> GlobalTabLogins(bool auto) => auto ? [GlobalLogin, AutoLogin] : [GlobalLogin];
 
-    /// <summary>Shown only for Claude, and only once there's a per-CLI login to choose.</summary>
-    public bool ShowLogins => Provider == "Claude" && Logins.Any(l => l != GlobalLogin && l != AutoLogin);
+    /// <summary>Shown only for Claude, and only while there's a choice.</summary>
+    public bool ShowLogins => Provider == "Claude" && Logins.Count > 1;
 
     // Ctrl+click on the selected pill deselects it, writing null: it stays on the one it was.
     public string Login { get => login; set { if (value is not null) Set(ref login, value); } }
 
     private void RefreshLogins()
     {
-        var auto = true;
-        try { auto = store.LoadSettings().AutoLogin; }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
-        IReadOnlyList<string> signedIn;
-        try { signedIn = [.. accountDirs.SignedIn().Select(a => a.Email)]; }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { signedIn = []; }
-        var found = LoginsOf(auto, signedIn, accountRows);
+        IReadOnlyList<string> found = [];
+        if (ScopeEmail is null)
+        {
+            var auto = true;
+            try { auto = store.LoadSettings().AutoLogin; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
+            found = GlobalTabLogins(auto);
+        }
         if (found.SequenceEqual(Logins)) return;
-        // Auto just offered (first time, or turned back on) is the default; a login gone falls back to the first choice.
-        var autoNew = auto && !Logins.Contains(AutoLogin);
         Logins = found;
-        if (autoNew || !found.Contains(Login)) Login = found[0];
+        // A choice gone falls back to the tab's own login.
+        if (!found.Contains(Login)) Login = found.Count > 0 ? found[0] : GlobalLogin;
         Raise(nameof(Logins));
         Raise(nameof(ShowLogins));
     }
@@ -264,31 +287,45 @@ public sealed partial class MainViewModel : ObservableObject
     internal static string WarningLine(int count) =>
         count == 1 ? "1 problem reading the workspace, hover for details" : $"{count} problems reading the workspace, hover for details";
 
-    private bool isLoading = true;
+    private bool isLoading;
 
     /// <summary>True until the first refresh finishes, either way (a failure shows in RefreshInfo): the full-screen
     /// loader covers the dashboard until then, so it never shows empty or half-filled panels (M.ORCH-T184).</summary>
     public bool IsLoading { get => isLoading; private set { if (Set(ref isLoading, value)) Raise(nameof(TerminalsVisibility)); } }
 
+    /// <summary>The one refresh every tab shares (M.ORCH-T613): a login's tab asks the global login's, which builds the
+    /// workspace's snapshot once, keeps a tab per login, and hands each its own view of it.</summary>
     public async Task RefreshAsync()
     {
+        if (root is not null)
+        {
+            await root.RefreshAsync();
+            return;
+        }
         if (refreshing) return;
         refreshing = true;
         try
         {
             var clock = Stopwatch.StartNew();
-            var next = await BuiltAfterChanges(() => Task.Run(() => aggregator.Refresh()), () => localChanges);
-            Apply(next);
+            var dirs = OwnLoginDirs();
+            var (next, tabs) = await BuiltAfterChanges(() => Task.Run(() =>
+            {
+                var built = aggregator.Refresh();
+                // Each login's name and color, read with the snapshot, off the UI thread.
+                return (built, LoginScope.Tabs(built, dirs));
+            }), () => localChanges);
+            ApplyTabs(next, tabs);
             await TickAutopilotAsync(next);
-            RefreshInfo = aggregator.LastWasShared
+            var info = aggregator.LastWasShared
                 ? $"Updated {next.TakenUtc.ToLocalTime():T} · shared"
                 : $"Updated {DateTime.Now:T} · {clock.ElapsedMilliseconds} ms";
+            foreach (var tab in LoginTabs) tab.RefreshInfo = info;
         }
         // Any failure is shown and retried next tick: this runs from an async void timer, so an escaped exception would
         // close the dashboard, and with it autopilot and rl-status.json if this window holds the lease.
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            RefreshInfo = $"Refresh failed: {ex.Message}";
+            foreach (var tab in LoginTabs) tab.RefreshInfo = $"Refresh failed: {ex.Message}";
             OrchestratorLog.For("Dashboard").Error(ex, "refresh failed");
         }
         finally
@@ -306,7 +343,7 @@ public sealed partial class MainViewModel : ObservableObject
     private int localChanges;
 
     /// <summary>A change made here is in every snapshot built from now on.</summary>
-    private void NoteLocalChange() => localChanges++;
+    private void NoteLocalChange() => Root.localChanges++;
 
     /// <summary>
     /// A snapshot built after the last change made here: one whose build began before a billing switch or a bump landed read
@@ -323,8 +360,10 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    private void Apply(Snapshot next)
+    /// <summary>This tab's view of the workspace's snapshot <paramref name="all"/>: <paramref name="next"/>, the part on its login.</summary>
+    private void Apply(Snapshot all, Snapshot next)
     {
+        full = all;
         var first = snapshot is null;
         foreach (var repo in next.Repos)
         {
@@ -344,8 +383,8 @@ public sealed partial class MainViewModel : ObservableObject
         ApplyPhases(next);
         ApplyBilling(next);
         ApplyReminders(DateTime.UtcNow);
-        ApplyAccounts(next, DateTime.UtcNow);
-        Terminals.Update(next);
+        ApplyAccounts(all, DateTime.UtcNow);
+        if (IsGlobalTab) Terminals.Update(all);
         // The Accounts view's cards, read off the UI thread, only while it's open (M.ORCH-T603).
         _ = RefreshLoginCardsAsync();
         // After the phases' own toasts (pace, budget, stuck, audit, Needs you), or they'd go past the cap (M.ORCH-T340).
@@ -353,6 +392,7 @@ public sealed partial class MainViewModel : ObservableObject
         Raise(nameof(WorkingCount)); Raise(nameof(WaitingCount)); Raise(nameof(HostCount));
         Raise(nameof(TicketCount)); Raise(nameof(RepoCount)); Raise(nameof(TokensToday));
         Raise(nameof(TokensDetail)); Raise(nameof(Warnings)); Raise(nameof(HasWarnings)); Raise(nameof(WarningsText));
+        Raise(nameof(TabBadge)); Raise(nameof(TabTip));
     }
 
     /// <summary>The most toasts shown at once; the oldest (last) go first.</summary>
@@ -420,33 +460,49 @@ public sealed partial class MainViewModel : ObservableObject
         var text = string.IsNullOrWhiteSpace(Prompt) ? null : Prompt;
         string? configDir = null;
         var on = login;
-        if (kind == "Claude" && login == AutoLogin)
+        if (kind == "Claude" && ScopeEmail is { } own)
+        {
+            // This tab's login (M.ORCH-T613): the CLI opens on it, and shows on this tab.
+            if (await OwnLoginDirAsync(own, m => StatusMessage = m) is not { } dir) return;
+            configDir = dir;
+            on = TabTitle;
+        }
+        else if (kind == "Claude" && login == AutoLogin)
         {
             // Auto (M.ORCH-T605): a free per-CLI login, else the global one; held for this tab so the next Start goes elsewhere.
             var auto = new LoginPicker(accountDirs).ForNewTab(kind, autoLogin: true, DateTime.UtcNow, out _, weeklyStopPercent);
             configDir = auto?.Directory;
             on = auto?.Email ?? GlobalLogin;
         }
-        else if (ShowLogins && login != GlobalLogin)
-        {
-            var dir = accountDirs.For(login);
-            if (!dir.SignedIn)
-            {
-                // Not signed in yet (M.ORCH-T610): its own sign-in opens first, in a private window of its own browser
-                // profile, and the tab opens on it once the folder is signed in as that account.
-                StatusMessage = $"{dir.Email} isn't signed in yet: sign in as {dir.Email} in the browser window that opens, and the tab opens on it.";
-                if (!await SignInOwnAsync(dir.Email) || !dir.SignedIn)
-                {
-                    StatusMessage = $"No tab opened: {dir.Email} isn't signed in as itself. {AccountsMessage}";
-                    return;
-                }
-            }
-            try { accountDirs.Prepare(dir); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { StatusMessage = $"Couldn't prepare {login}'s login: {ex.Message}"; return; }
-            configDir = dir.Directory;
-        }
         var error = control.Start(tile.Name, tile.Path, kind, text, configDir);
         StatusMessage = error ?? $"Opened a {kind} tab for {tile.Name}" + (configDir is null ? "" : $" on {on}'s own login") + ". It'll appear here within a few seconds.";
         if (error is null && Selected == tile) Prompt = "";
+    }
+
+    /// <summary>
+    /// <paramref name="email"/>'s own login folder, signed in and made ready for a CLI to start on; null, with why said through
+    /// <paramref name="say"/>, when it can't be. A login signed out since its tab opened gets its own sign-in first (M.ORCH-T610),
+    /// in a private window of its own browser profile, and the CLI opens once the folder is signed in as that account.
+    /// </summary>
+    private async Task<string?> OwnLoginDirAsync(string email, Action<string> say)
+    {
+        var dir = accountDirs.For(email);
+        // A login's .claude.json can run to megabytes: read off the UI thread.
+        if (!await Task.Run(() => dir.SignedIn))
+        {
+            say($"{dir.Email} isn't signed in yet: sign in as {dir.Email} in the browser window that opens, and the tab opens on it.");
+            if (!await SignInOwnAsync(dir.Email) || !await Task.Run(() => dir.SignedIn))
+            {
+                say($"No tab opened: {dir.Email} isn't signed in as itself. {AccountsMessage}");
+                return null;
+            }
+        }
+        try { await Task.Run(() => accountDirs.Prepare(dir)); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            say($"Couldn't prepare {email}'s login: {ex.Message}");
+            return null;
+        }
+        return dir.Directory;
     }
 }

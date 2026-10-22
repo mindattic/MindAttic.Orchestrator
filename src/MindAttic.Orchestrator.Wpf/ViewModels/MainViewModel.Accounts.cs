@@ -75,15 +75,19 @@ public sealed partial class MainViewModel
 
     private void ApplyAccounts(Snapshot next, DateTime nowUtc)
     {
-        IReadOnlyList<AccountRow> rows;
-        try { rows = AccountRoster.Load(aggregator.Db, next.Account); }
-        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
-        var rosterChanged = !rows.Select(r => r.Email).SequenceEqual(accountRows.Select(r => r.Email));
-        accountRows = rows;
-        // The Start pills list every roster account (M.ORCH-T610): a new one shows as soon as the roster has it.
-        if (rosterChanged && Selected is not null) RefreshLogins();
-        try { weeklyStopPercent = store.LoadSettings().WeeklyStopPercent; }
-        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException) { }
+        // The roster is read once a refresh, by the global login's tab, which is applied first; every login's tab shows the same.
+        if (root is not null)
+        {
+            accountRows = root.accountRows;
+            weeklyStopPercent = root.weeklyStopPercent;
+        }
+        else
+        {
+            try { accountRows = AccountRoster.Load(aggregator.Db, next.Account); }
+            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
+            try { weeklyStopPercent = store.LoadSettings().WeeklyStopPercent; }
+            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException) { }
+        }
         currentAccount = next.Account == ClaudeAccount.ApiKey ? null : next.Account;
         Raise(nameof(AccountCorner));
         Raise(nameof(AccountMenuItems));
@@ -105,7 +109,7 @@ public sealed partial class MainViewModel
         Raise(nameof(BillingDetail));
         try
         {
-            var hosts = snapshot?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
+            var hosts = full?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
             var current = currentAccount;
             var result = await Task.Run(() => AccountSwitch.SignIn(row, current, aggregator.BillingSwitch, hosts, "dashboard", sso: false, DateTime.UtcNow));
             billingMessage = result.Error ?? result.Lines.LastOrDefault() ?? "";

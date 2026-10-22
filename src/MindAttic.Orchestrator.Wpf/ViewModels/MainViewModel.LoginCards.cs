@@ -142,9 +142,10 @@ public sealed partial class MainViewModel
         try
         {
             var now = DateTime.UtcNow;
-            var agents = snapshot?.Agents ?? [];
+            // Every login's, whichever tab it's opened in: the Accounts view is the overview of them all (M.ORCH-T613).
+            var agents = full?.Agents ?? [];
             var current = accountRows.FirstOrDefault(r => r.Account == currentAccount);
-            var signedIn = snapshot?.Account is { } a && a != ClaudeAccount.ApiKey;
+            var signedIn = full?.Account is { } a && a != ClaudeAccount.ApiKey;
             var dirs = OwnLoginDirs();
             var cycler = loginCycler;
             var cards = await Task.Run(() => CardsOf(dirs, current, signedIn, agents, cycler.OnOwnLogin(), now));

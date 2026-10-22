@@ -15,6 +15,9 @@
         <KeyBinding Key="F5" Command="{Binding RefreshCommand}" />
         <KeyBinding Key="F" Modifiers="Control" Command="{x:Static vm:WindowCommands.FocusSearch}" />
         <KeyBinding Key="Escape" Command="{x:Static vm:WindowCommands.Escape}" />
+        <!-- The next and the previous login's tab (M.ORCH-T613). -->
+        <KeyBinding Key="Tab" Modifiers="Control" Command="{Binding NextTabCommand}" />
+        <KeyBinding Key="Tab" Modifiers="Control+Shift" Command="{Binding PreviousTabCommand}" />
         <!-- Ctrl+Plus / Ctrl+Minus / Ctrl+0 (main row and number pad) are the library's ZoomLevel's, added in MainWindow.xaml.cs. -->
     </Window.InputBindings>
 
@@ -106,15 +109,39 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
+
+        <!-- One dashboard tab per Claude login (M.ORCH-T613): the global ~/.claude login first, then each per-CLI login under
+             ~/.claude-accounts, by its name (M.ORCH-T614, its email in the tooltip) and its terminal tabs' color (M.ORCH-T616),
+             with how many of its repos need you. Everything below is the chosen login's: the window shows that tab's view model
+             (MainWindow.xaml.cs sets its DataContext), and this strip keeps the global login's tab's, which holds every tab.
+             Shown once there's a second login; Ctrl+Tab and Ctrl+Shift+Tab step through them. Its own row above the header,
+             so the header, chart and view pills can fold away on a tab while the strip stays. -->
+        <ListBox x:Name="LoginTabStrip" Grid.Row="0" Style="{StaticResource MaPillChoice}" ItemsSource="{Binding LoginTabs}" SelectedItem="{Binding SelectedTab}"
+                 Padding="0" Margin="24,14,24,0" AutomationProperties.Name="Claude logins, one dashboard tab each"
+                 Visibility="{Binding HasLoginTabs, Converter={StaticResource Visible}}">
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:MainViewModel}">
+                    <StackPanel Orientation="Horizontal" ToolTip="{Binding TabTip}" AutomationProperties.Name="{Binding TabTip}">
+                        <Ellipse Width="10" Height="10" Fill="{Binding TabBrush}" VerticalAlignment="Center" Margin="0,1,8,0" />
+                        <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock VerticalAlignment="Center" Margin="8,0,0,0"
+                                   Visibility="{Binding TabBadge, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
+                            <Run Text="&#x2022; " /><Run Text="{Binding TabBadge, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=" need you" />
+                        </TextBlock>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
 
         <!-- Header, read left to right: the work (who needs you, who's working, their subagents, what's queued), then the
              tokens (this 5-hour window, the week, the pace ledger, today). Every card is a button that goes somewhere. -->
         <!-- The header owns the window's left/right gutter; nothing inside it adds its own, so the tiles and the chart
              share both edges (M.ORCH-T192). The tiles are equal cells that together span the row at any width. -->
-        <StackPanel x:Name="Header" Grid.Row="0" Margin="24,18,24,0">
+        <StackPanel x:Name="Header" Grid.Row="1" Margin="24,18,24,0">
         <!-- The account menu, upper right (M.ORCH-T492), as a normal app has it: the signed-in account's email ("API key" while
              the Vault's key bills, M.ORCH-T436), which opens a table of every account in the roster (seat, week used and
              left, its reset, the 5-hour window, when it was read; the signed-in one marked, the most headroom starred).
@@ -351,7 +378,7 @@
         </StackPanel>
 
         <!-- Toolbar -->
-        <Grid x:Name="Toolbar" Grid.Row="1" Margin="24,8,24,10">
+        <Grid x:Name="Toolbar" Grid.Row="2" Margin="24,8,24,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -386,12 +413,12 @@
              down instead of covering whatever has keyboard focus (WCAG 2.4.11). The library's MaToastHost: each ToastViewModel's
              Title, Body and Accent on an MaToast, clicking it opens what it's about, its x dismisses it, and each new one is read
              out politely. -->
-        <mc:MaToastHost x:Name="ToastRow" Grid.Row="2" ItemsSource="{Binding Toasts}" Margin="24,0,24,6"
+        <mc:MaToastHost x:Name="ToastRow" Grid.Row="3" ItemsSource="{Binding Toasts}" Margin="24,0,24,6"
                         OpenCommand="{Binding OpenToastCommand}" DismissCommand="{Binding DismissToastCommand}"
                         AutomationProperties.Name="Notifications" />
 
         <!-- Body: grouped tiles, and the selected repo's detail pane. -->
-        <Grid Grid.Row="3">
+        <Grid Grid.Row="4">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -462,8 +489,8 @@
                         <TextBlock Text="START A SESSION" Style="{StaticResource MaSectionLabel}" />
                         <ListBox Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Providers}" SelectedItem="{Binding Provider}"
                                  AutomationProperties.Name="Agent provider" />
-                        <!-- Per-CLI Claude logins (M.ORCH-T559): the tab's CLI spends this account's token pool. Every roster
-                             account is listed (M.ORCH-T610); one not signed in yet opens its own sign-in first. -->
+                        <!-- The Claude login it opens on (M.ORCH-T613): a login's own dashboard tab starts on that login and
+                             shows no choice; the global login's tab starts on the global login, or on Auto (M.ORCH-T605). -->
                         <ListBox Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Logins}" SelectedItem="{Binding Login}" Margin="0,4,0,0"
                                  Visibility="{Binding ShowLogins, Converter={StaticResource Visible}}"
                                  AutomationProperties.Name="Claude login" />
@@ -1237,10 +1264,10 @@
         </Grid>
 
         <!-- Status bar -->
-        <Border Grid.Row="4" BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,1,0,0" Padding="24,6">
+        <Border Grid.Row="5" BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,1,0,0" Padding="24,6">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Right" Style="{StaticResource MaMutedText}"
-                           Text="F5 refresh · Ctrl+F search · Ctrl +/− zoom · Esc close" />
+                           Text="F5 refresh · Ctrl+Tab next login · Ctrl+F search · Ctrl +/− zoom · Esc close" />
                 <TextBlock DockPanel.Dock="Left" Style="{StaticResource MaMutedText}" Margin="0,0,16,0">
                     <Run Text="{Binding RepoCount, Mode=OneWay}" /><Run Text=" repos under " /><Run Text="{Binding WorkspaceRoot, Mode=OneWay}" />
                 </TextBlock>
@@ -1255,7 +1282,7 @@
         </Border>
 
         <!-- Covers every row until the first refresh lands (M.ORCH-T184). -->
-        <Border x:Name="Loader" Grid.RowSpan="5" Panel.ZIndex="100" Background="{DynamicResource MaChrome}"
+        <Border x:Name="Loader" Grid.RowSpan="6" Panel.ZIndex="100" Background="{DynamicResource MaChrome}"
                 Visibility="{Binding IsLoading, Converter={StaticResource Visible}}"
                 AutomationProperties.Name="Loading the dashboard" AutomationProperties.LiveSetting="Polite">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -1273,7 +1300,7 @@
              Esc, its close button and the backdrop all close it through ToggleSettingsCommand (which reloads the saved
              settings, dropping unsaved edits, as the flyout's close did); focus is held inside while open and goes back to
              the Settings button (or stat card) after. Last in the root grid, spanning every row, over the loader too. -->
-        <mc:MaModal x:Name="SettingsModal" Grid.RowSpan="5" Title="Settings" AutomationProperties.Name="Settings"
+        <mc:MaModal x:Name="SettingsModal" Grid.RowSpan="6" Title="Settings" AutomationProperties.Name="Settings"
                     IsOpen="{Binding IsSettingsOpen}" CloseCommand="{Binding ToggleSettingsCommand}">
             <StackPanel DataContext="{Binding Settings}">
                 <TextBlock Text="TOKEN BUDGET" Style="{StaticResource MaSectionLabel}" Margin="0,4,0,8" />
@@ -1329,7 +1356,7 @@
                 <TextBlock Text="SCHEDULER" Style="{StaticResource MaSectionLabel}" />
                 <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding AutoLogin}" Margin="0,0,0,0" HorizontalAlignment="Left"
                               Content="One CLI per account (Auto login)" />
-                <TextBlock Text="A new Claude tab (Start on Auto, orchestrator start without --account, Queue starts, the Launcher's accounts pick) goes on a signed-in per-CLI login no CLI runs on yet, most headroom first, else the global login. Off: the global login unless one is chosen."
+                <TextBlock Text="A new Claude tab (Start on Auto in the global login's tab, orchestrator start without --account, autopilot's starts, the Launcher's accounts pick) goes on a signed-in per-CLI login no CLI runs on yet, most headroom first, else the global login. Off: the global login unless one is chosen."
                            Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,10" />
                 <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding RebalanceLogins}" Margin="0,0,0,0" HorizontalAlignment="Left"
                               Content="Rebalance when an account runs low" />

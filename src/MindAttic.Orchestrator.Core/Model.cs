@@ -21,6 +21,10 @@ public sealed record HostSession(string Provider, int ProcessId, string PipeName
     /// <summary>The email behind <see cref="Login"/>'s name (M.ORCH-T614), for its tooltip; null when not known.</summary>
     public string? LoginEmail { get; init; }
 
+    /// <summary>The per-CLI login the tab's CLI runs on (its email), null on the global login or when not known: the
+    /// dashboard tab it shows on (M.ORCH-T613).</summary>
+    public string? OwnLogin { get; init; }
+
     /// <summary>The tab's title as the Launcher was given it (<c>host --title</c>), which its Windows Terminal tab shows
     /// behind a status glyph (M.ORCH-T619); null when the command line had none.</summary>
     public string? Title { get; init; }
@@ -145,6 +149,13 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// <summary>Each per-CLI Claude login's own budget and pace (M.ORCH-T559), apart from the global login's
     /// <see cref="Budget"/> and <see cref="Pace"/>; empty when no CLI runs on a login of its own.</summary>
     public IReadOnlyList<Budget.AccountPace> Accounts { get; init; } = [];
+
+    /// <summary>Session → the per-CLI login it runs on (its email, M.ORCH-T613); a session not here is on the global login.
+    /// What splits the snapshot into one dashboard tab per login (<see cref="Sessions.LoginScope"/>).</summary>
+    public IReadOnlyDictionary<string, string> OwnLogins { get; init; } = new Dictionary<string, string>(StringComparer.Ordinal);
+
+    /// <summary>The email signed in to the global <c>~/.claude</c> login; null when not known.</summary>
+    public string? GlobalEmail { get; init; }
 
     /// <summary>Repos that share duplicated code (from the last audit): editing them at once risks conflicting fixes.</summary>
     public IReadOnlyDictionary<string, IReadOnlySet<string>> LinkedRepos { get; init; } = new Dictionary<string, IReadOnlySet<string>>();

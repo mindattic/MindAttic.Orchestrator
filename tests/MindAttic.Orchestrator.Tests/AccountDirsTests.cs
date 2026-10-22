@@ -119,18 +119,11 @@ public sealed class AccountDirsTests
     }
 
     [Test]
-    public void The_start_pills_list_every_roster_account_once_by_email()
+    public void The_global_logins_tab_starts_on_the_global_login_and_offers_auto_only_while_its_on()
     {
-        AccountRow[] roster =
-        [
-            new() { Account = "acct-c/org", Email = "C@example.com" },
-            new() { Account = "acct-b/org", Email = "b@example.com" },
-            new() { Account = "acct-d/org" }, // no email yet: nothing to sign in
-        ];
-        Assert.That(MindAttic.Orchestrator.Wpf.ViewModels.MainViewModel.LoginsOf(true, ["b@example.com", "z@example.com"], roster),
-            Is.EqualTo(new[] { "Auto", "Global login", "b@example.com", "c@example.com", "z@example.com" }));
-        Assert.That(MindAttic.Orchestrator.Wpf.ViewModels.MainViewModel.LoginsOf(false, [], roster),
-            Is.EqualTo(new[] { "Global login", "b@example.com", "c@example.com" }));
+        // M.ORCH-T613: every other login has a dashboard tab of its own to start from, so none is listed here.
+        Assert.That(MindAttic.Orchestrator.Wpf.ViewModels.MainViewModel.GlobalTabLogins(auto: true), Is.EqualTo(new[] { "Global login", "Auto" }));
+        Assert.That(MindAttic.Orchestrator.Wpf.ViewModels.MainViewModel.GlobalTabLogins(auto: false), Is.EqualTo(new[] { "Global login" }));
     }
 
     private static void SignIn(AccountDir account, string uuid = "acct-b") =>
