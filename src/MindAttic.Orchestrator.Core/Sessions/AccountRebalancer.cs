@@ -22,6 +22,10 @@ public sealed record Rebalanced(bool Moved, string Line)
     /// <summary>Set when someone started using Claude outside the orchestrator on a login (M.ORCH-T682), once per stretch: what
     /// the daemon texts through Psst when that login is watched (M.ORCH-T702).</summary>
     public OutsideStart? Started { get; init; }
+
+    /// <summary>Set when a login reached its own weekly or 5-hour cutoff (M.ORCH-T742), once per crossing: the owner is alerted
+    /// urgently and texted through Psst.</summary>
+    public CutoffCrossing? Cutoff { get; init; }
 }
 
 /// <summary>A stretch of outside use that just started: the login's email (null when unknown), its name, and what the meter
@@ -270,12 +274,12 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
 
         // Each login's own weekly line: the target, or the wall while the user lets it past (M.ORCH-T694). Only read here.
         var allowed = AllowedNow(nowUtc);
-        var globalEmail = allowed.Count == 0 ? null : SafeGlobalEmail();
         var cutoffs = UsageCutoffs.Load(Store);
-        globalEmail ??= cutoffs.Count == 0 ? null : SafeGlobalEmail();
+        var globalEmail = SafeGlobalEmail();
         int StopOf(string? email) => WeeklyAllowances.StopFor(allowed, email ?? globalEmail, UsageCutoffs.Apply(cutoffs, email ?? globalEmail, settings), nowUtc);
         bool AllowedFor(string? email) => WeeklyAllowances.For(allowed, email ?? globalEmail, nowUtc) is not null;
-        var target = settings.PaceTargetPercent;
+        // Each login's own 5-hour cutoff (org limit --5h), the default for one with none set (M.ORCH-T742).
+        int TargetOf(string? email) => UsageCutoffs.FiveHourFor(cutoffs, email ?? globalEmail);
         var own = mover.OnOwnLogin();
         string? LoginOf(CliBilling cli) => own.TryGetValue(cli.SessionId, out var dir) ? mover.Dirs.Of(dir)?.Email : null;
         var live = mover.Live(hosts, nowUtc);
@@ -294,7 +298,8 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
         var results = new List<Rebalanced>();
         // Someone using Claude outside the orchestrator (M.ORCH-T682): judged first, so their login's line is judged by the meter.
         WatchOutside(signedIn, live, LoginOf, settings, nowUtc, results);
-        var onKey = MoveBack(live, DirOf, UsageOf, globalUsage, globalPace, paces, target, StopOf, AllowedFor, nowUtc, results, locked: !settings.FailoverToApiKey);
+        CheckCutoffs(signedIn, DirOf, UsageOf, globalUsage, globalEmail, cutoffs, allowed, nowUtc, results);
+        var onKey = MoveBack(live, DirOf, UsageOf, globalUsage, globalPace, paces, TargetOf, StopOf, AllowedFor, nowUtc, results, locked: !settings.FailoverToApiKey);
         // Rebalancing is off, and failover to the API key is hard-coded off: nothing more to move.
         if (!settings.RebalanceLogins && !settings.FailoverToApiKey) return results;
 
@@ -305,7 +310,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
         foreach (var f in Book()) if (f.FromEmail is { } e) busy.Add(e);
         // Never a target while low itself: its CLIs would only be moved off again.
         foreach (var a in signedIn)
-            if (Low(LinePace(a.Email, paces.GetValueOrDefault(a.Email)), UsageOf(a), nowUtc, target, StopOf(a.Email)) is not null) busy.Add(a.Email);
+            if (Low(LinePace(a.Email, paces.GetValueOrDefault(a.Email)), UsageOf(a), nowUtc, TargetOf(a.Email), StopOf(a.Email)) is not null) busy.Add(a.Email);
 
         var hits = InForce(sessions, nowUtc);
         foreach (var cli in live.OrderBy(c => c.Pid))
@@ -320,6 +325,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             var fromUsage = fromDir is null ? globalUsage.Value : UsageOf(fromDir);
             var fromPace = LinePace(from, fromDir is null ? globalPace : paces.GetValueOrDefault(fromDir.Email));
             var stop = StopOf(from);
+            var target = TargetOf(from);
             var why = hit is { } lh ? $"its {LimitWords(lh)} limit was hit" : Low(fromPace, fromUsage, nowUtc, target, stop);
             if (why is null) continue;
 
@@ -455,6 +461,29 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
         foreach (var line in learned) results.Add(new(false, $"rebalance: {line}") { Asked = true });
     }
 
+    private CutoffAlerts? cutoffAlerts;
+
+    /// <summary>
+    /// Each login that reached its own weekly or 5-hour cutoff gets one urgent alert and one Psst text to the owner, once per
+    /// crossing (M.ORCH-T742): it's cut off, and the owner decides (<c>org allow</c> for the week, <c>org limit</c> to change a cutoff).
+    /// </summary>
+    private void CheckCutoffs(IReadOnlyList<AccountDir> signedIn, Func<string?, AccountDir?> dirOf, Func<AccountDir, ReportedUsage?> usageOf,
+        Lazy<ReportedUsage?> globalUsage, string? globalEmail, IReadOnlyList<UsageCutoff> cutoffs, IReadOnlyList<WeeklyAllowance> allowed,
+        DateTime nowUtc, List<Rebalanced> results)
+    {
+        cutoffAlerts ??= new CutoffAlerts(Store);
+        var logins = signedIn.Select(a => (a.Email, Name: mover.NameFor(a.Directory, a.Email), Usage: (Func<ReportedUsage?>)(() => usageOf(a)))).ToList();
+        if (globalEmail is { Length: > 0 } g && dirOf(g) is null)
+            logins.Add((g, mover.NameFor(mover.Dirs.ClaudeDir, g), () => globalUsage.Value));
+        foreach (var (email, name, usage) in logins)
+        {
+            var crossed = cutoffAlerts.Check(email, name, usage(), UsageCutoffs.WeeklyFor(cutoffs, email), UsageCutoffs.FiveHourFor(cutoffs, email),
+                WeeklyAllowances.For(allowed, email, nowUtc) is not null, nowUtc);
+            foreach (var c in crossed)
+                results.Add(new(false, $"rebalance: {c.Text}") { Cutoff = c });
+        }
+    }
+
     /// <summary>Fails <paramref name="cli"/> over to the API key: the key approved in its login's config, then its tab asked to
     /// restart it billing the key under the same login. It's booked as pending: counted (and <paramref name="toast"/>ed, else the
     /// usual line) only once the CLI shows it billing the key (<see cref="MoveBack"/>).</summary>
@@ -502,7 +531,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
     /// <summary>Moves each failed-over CLI whose login has reset back onto it, forgets the ones gone, and returns the sessions
     /// still on the key.</summary>
     private HashSet<string> MoveBack(IReadOnlyList<CliBilling> live, Func<string?, AccountDir?> dirOf, Func<AccountDir, ReportedUsage?> usageOf,
-        Lazy<ReportedUsage?> globalUsage, Pace? globalPace, IReadOnlyDictionary<string, Pace> paces, int target, Func<string?, int> stopOf,
+        Lazy<ReportedUsage?> globalUsage, Pace? globalPace, IReadOnlyDictionary<string, Pace> paces, Func<string?, int> targetOf, Func<string?, int> stopOf,
         Func<string?, bool> allowedFor, DateTime nowUtc,
         List<Rebalanced> results, bool locked = false)
     {
@@ -602,7 +631,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             if (!locked && seen.UntilUtc is { } until && nowUtc < until && !allowedFor(seen.FromEmail)) continue;
             var homeUsage = home is null ? globalUsage.Value : usageOf(home);
             var homePace = LinePace(seen.FromEmail, home is null ? globalPace : paces.GetValueOrDefault(home.Email));
-            if (!locked && Low(homePace, homeUsage, nowUtc, target, stopOf(seen.FromEmail)) is not null) continue;
+            if (!locked && Low(homePace, homeUsage, nowUtc, targetOf(seen.FromEmail), stopOf(seen.FromEmail)) is not null) continue;
             if (backTried.TryGetValue(seen.SessionId, out var at) && nowUtc - at < BackRetry) continue;
 
             backTried[seen.SessionId] = nowUtc;
