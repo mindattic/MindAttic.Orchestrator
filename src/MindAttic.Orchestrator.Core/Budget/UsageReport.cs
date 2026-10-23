@@ -280,7 +280,7 @@ public sealed record UsageReport
 
     /// <summary>The main table's columns, in order.</summary>
     public IReadOnlyList<string> Headers =>
-        ["Member", "5-hour used", "5h resets", "Week used", "Week left", "Week resets", "Week resets in", "Reading", "Accurate?"];
+        ["Member", "5-hour used", "5h resets", "Week used", "Week left", "Week resets", "Week resets in", "Last updated"];
 
     /// <summary>The member's name as the table shows it: "Erin (~/.claude login)" for the global login's, "(not a member)" for a login nobody entered.</summary>
     public static string MemberText(UsageReportRow r) =>
@@ -297,7 +297,6 @@ public sealed record UsageReport
         When(r.WeekResetUtc, GeneratedUtc),
         Countdown(r.WeekResetUtc, GeneratedUtc),
         Age(r.ReadUtc, GeneratedUtc),
-        r.ReadUtc is null ? "No reading" : r.Stale ? "Stale" : "Yes",
     ])];
 
     /// <summary>A reset in local time: "2:20 PM today", "Fri 10/30, 9:00 AM"; "—" when not known.</summary>
@@ -329,15 +328,15 @@ public sealed record UsageReport
         return points > 0 ? $"{points} pt{(points == 1 ? "" : "s")}" : points == 0 ? "at target" : $"over by {-points}";
     }
 
-    /// <summary>How old a reading is: "just now", "3 min ago", "2 hr 5 min ago", "3 days ago"; "never".</summary>
+    /// <summary>How old a reading is: "just now", "3m ago", "2hr 44m ago", "1d 3hr ago"; "never".</summary>
     public static string Age(DateTime? utc, DateTime nowUtc)
     {
         if (utc is not { } t) return "never";
         var d = nowUtc - t;
         if (d < TimeSpan.FromMinutes(1)) return "just now";
-        if (d < TimeSpan.FromHours(1)) return $"{(int)d.TotalMinutes} min ago";
-        if (d < TimeSpan.FromDays(2)) return d.Minutes == 0 ? $"{(int)d.TotalHours} hr ago" : $"{(int)d.TotalHours} hr {d.Minutes} min ago";
-        return $"{(int)d.TotalDays} days ago";
+        if (d < TimeSpan.FromHours(1)) return $"{(int)d.TotalMinutes}m ago";
+        if (d < TimeSpan.FromDays(1)) return d.Minutes == 0 ? $"{(int)d.TotalHours}hr ago" : $"{(int)d.TotalHours}hr {d.Minutes}m ago";
+        return d.Hours == 0 ? $"{(int)d.TotalDays}d ago" : $"{(int)d.TotalDays}d {d.Hours}hr ago";
     }
 
     /// <summary>A percent left, whole: "9%".</summary>

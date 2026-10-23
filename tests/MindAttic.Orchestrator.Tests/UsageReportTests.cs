@@ -55,15 +55,15 @@ public sealed class UsageReportTests
         Assert.That(erin.IsGlobalLogin, Is.True);
 
         var cells = report.Cells();
-        Assert.That(report.Headers, Is.EqualTo(new[] { "Member", "5-hour used", "5h resets", "Week used", "Week left", "Week resets", "Week resets in", "Reading", "Accurate?" }));
+        Assert.That(report.Headers, Is.EqualTo(new[] { "Member", "5-hour used", "5h resets", "Week used", "Week left", "Week resets", "Week resets in", "Last updated" }));
         Assert.That(cells[0][0], Is.EqualTo("Amy"));
-        Assert.That(cells[0][7], Is.EqualTo("3 min ago"));
-        Assert.That(cells[0][8], Is.EqualTo("Yes"));
+        Assert.That(cells[0][7], Is.EqualTo("3m ago"));
+        Assert.That(cells[0], Has.Count.EqualTo(report.Headers.Count));
         Assert.That(report.Rows[0].LeftToTarget, Is.EqualTo(20).Within(0.5), "the points left stay in the data and the notes, not a column");
         Assert.That(cells[1][0], Is.EqualTo("Erin (~/.claude login)"));
         Assert.That(cells[1][1], Is.EqualTo("unknown"));
         Assert.That(report.Headers, Has.None.StartsWith("Left to"));
-        Assert.That(cells[1][8], Is.EqualTo("Stale"));
+        Assert.That(report.Rows[1].Stale, Is.True, "still stale, said in the note under the table");
     }
 
     [Test]
@@ -123,7 +123,7 @@ public sealed class UsageReportTests
         var report = Build([M("amy@x.com", "Amy")], logins: [new LoginReading("zed@x.com", "zed-key", "Zeddy", null)]);
         Assert.That(report.Rows.Select(r => (r.Name, r.IsMember)), Is.EqualTo(new[] { ("Amy", true), ("Zeddy", false) }));
         Assert.That(report.Cells()[1][0], Is.EqualTo("Zeddy (not a member)"));
-        Assert.That(report.Cells()[1][8], Is.EqualTo("No reading"));
+        Assert.That(report.Cells()[1][7], Is.EqualTo("never"));
     }
 
     [Test]
@@ -143,7 +143,7 @@ public sealed class UsageReportTests
         Assert.That(notes[0], Does.StartWith("At or past the 90% weekly target").And.Contain("Ann (" + UsageReport.When(Now.AddDays(2), Now) + ", in 2d 0h 0m)"));
         Assert.That(notes[1], Does.StartWith("Past the 75% line, weekly-aware pacing is limiting them").And.Contain("Bob (10 pts left)"));
         Assert.That(notes[2], Does.StartWith("Plenty of room").And.Contain("Cat (70 pts to the target)"));
-        Assert.That(notes[3], Does.Contain("Cat (read 1 hr ago): its login here isn't signed in"));
+        Assert.That(notes[3], Does.Contain("Cat (read 1hr ago): its login here isn't signed in"));
     }
 
     [Test]
@@ -156,8 +156,8 @@ public sealed class UsageReportTests
         Assert.That(UsageReport.ToTarget(1), Is.EqualTo("1 pt"));
         Assert.That(UsageReport.ToTarget(0.2), Is.EqualTo("at target"));
         Assert.That(UsageReport.ToTarget(-4), Is.EqualTo("over by 4"));
-        Assert.That(UsageReport.Age(Now.AddMinutes(-3), Now), Is.EqualTo("3 min ago"));
-        Assert.That(UsageReport.Age(Now.AddMinutes(-125), Now), Is.EqualTo("2 hr 5 min ago"));
+        Assert.That(UsageReport.Age(Now.AddMinutes(-3), Now), Is.EqualTo("3m ago"));
+        Assert.That(UsageReport.Age(Now.AddMinutes(-125), Now), Is.EqualTo("2hr 5m ago"));
         Assert.That(UsageReport.Age(null, Now), Is.EqualTo("never"));
     }
 
