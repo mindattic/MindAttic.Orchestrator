@@ -3172,7 +3172,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.Incognito', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1890);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.Multiplayer', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1250923);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.QuickDuel', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1156822);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.Ricochet', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3052916);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.Ricochet', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3072650);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.SpaceGod', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 12151155);
 
 -- ticket_costs
@@ -3942,7 +3942,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c57d7bd3-fe9a-4798-b92d-5eb892c5c7f2/agent-a8ea4003ef4d578a2', 'UR-T14', 'feature', 'Unity.Ricochet', 148213, '2026-10-23T11:20:23.33Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c57d7bd3-fe9a-4798-b92d-5eb892c5c7f2/agent-aa150fd81fdd6aa26', 'UR-T8', 'feature', 'Unity.Ricochet', 341246, '2026-10-23T07:03:32.622Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c57d7bd3-fe9a-4798-b92d-5eb892c5c7f2/agent-aaee9917070c9258b', 'UR-T13', 'feature', 'Unity.Ricochet', 197970, '2026-10-23T10:42:46.321Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c57d7bd3-fe9a-4798-b92d-5eb892c5c7f2/agent-ab2c6d363e17e0a13', 'UR-T17', 'fix', 'Unity.Ricochet', 112919, '2026-10-23T12:39:36.581Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c57d7bd3-fe9a-4798-b92d-5eb892c5c7f2/agent-ab2c6d363e17e0a13', 'UR-T17', 'fix', 'Unity.Ricochet', 118124, '2026-10-23T12:40:06.174Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c57d7bd3-fe9a-4798-b92d-5eb892c5c7f2/agent-ab93a7fb124c5df9f', 'UR-T7', 'feature', 'Unity.Ricochet', 312849, '2026-10-23T05:57:44.26Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c57d7bd3-fe9a-4798-b92d-5eb892c5c7f2/agent-abeded40af42e6b6d', 'UR-T11', 'feature', 'Unity.Ricochet', 245439, '2026-10-23T09:47:28.899Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('c57d7bd3-fe9a-4798-b92d-5eb892c5c7f2/agent-adb40ec41d5ddd7c0', 'UR-T6', 'feature', 'Unity.Ricochet', 462425, '2026-10-23T06:22:59.282Z', 0, 'opus');
@@ -4132,7 +4132,6 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc) VALUES (45, 'UH-T16', 'Unity.Hare', 'D:\Projects\MindAttic.worktrees\Unity.Hare\UH-T16', 'Claude', '2026-10-23T11:09:58.2931203Z', 1, NULL, NULL, NULL, 60612, 'dfd6fc55-5321-493f-bbc2-601cca3fa859', 'opus', NULL);
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc) VALUES (46, 'UNI-T20', 'Unity.Chain', 'D:\Projects\MindAttic.worktrees\Unity.Chain\UNI-T20', 'Claude', '2026-10-23T11:09:56.8891711Z', 1, NULL, NULL, NULL, 66804, '4ef11499-eaa9-4435-bc12-c068b0d0ba06', 'sonnet', NULL);
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc) VALUES (47, 'UH-T17', 'Unity.Hare', 'D:\Projects\MindAttic.worktrees\Unity.Hare\UH-T17', 'Claude', '2026-10-23T11:09:58.2931203Z', 1, NULL, NULL, NULL, 60612, 'dfd6fc55-5321-493f-bbc2-601cca3fa859', 'opus', NULL);
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc) VALUES (48, 'UR-T17', 'Unity.Ricochet', 'D:\Projects\MindAttic.worktrees\Unity.Ricochet\UR-T17', 'Claude', '2026-10-23T12:35:42.817388Z', 1, NULL, NULL, NULL, 72768, 'c57d7bd3-fe9a-4798-b92d-5eb892c5c7f2', 'sonnet', NULL);
 
 -- state
 INSERT INTO state (name, value) VALUES ('audit', '{
@@ -7248,7 +7247,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "353c5389ca0ff0ddd31229b4118288799603ae53"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "800b413011a3d85f3a7c3cc26c9cf7a90622df20",
+    "Tested": "3e0d956c6ef6e116961dd51118eaec4d993ee5e5",
     "Green": "e19c95aaaaa2ee3888663839d46b26987f29bb44"
   },
   "MindAttic.Psst": {
@@ -7380,8 +7379,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "ce156088adcfa4fa38c9bfa81ade030af7624698"
   },
   "Unity.Ricochet": {
-    "Tested": "a4941716a226538c34efa290b157178af5377eaf",
-    "Green": "a4941716a226538c34efa290b157178af5377eaf"
+    "Tested": "f5130c0957d97b32eb0124521eb470628336c83c",
+    "Green": "f5130c0957d97b32eb0124521eb470628336c83c"
   },
   "Unity.SongOfDawn": {
     "Tested": "cf0ba56cfe8bbe4f709056e977efe83667c974c8"
