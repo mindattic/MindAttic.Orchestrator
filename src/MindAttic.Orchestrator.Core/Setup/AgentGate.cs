@@ -16,6 +16,9 @@ public static class AgentGate
     /// <summary>Claude Code's limit on the hook; above <see cref="MaxHoldSeconds"/> so a hold is never cut off as a failure.</summary>
     public const int HookTimeoutSeconds = 330;
 
+    /// <summary>The context gate's hooks' timeout: 10s timed out on a pegged machine and dropped the prompt's notes (M.ORCH-T683).</summary>
+    public const int ContextHookTimeoutSeconds = 60;
+
     public const int MaxHoldSeconds = 300;
 
     public const int StatusLineRefreshSeconds = 60;
@@ -3041,7 +3044,7 @@ public static class AgentGate
                 + (did.Count > 0 ? $" ({string.Join(", ", did)})" : ""));
         var changed = AddHook(root, "PreToolUse", ScriptName, Command(script), HookTimeoutSeconds);
         foreach (var hookEvent in new[] { "PostToolUse", "Stop", "UserPromptSubmit", "SubagentStart", "SubagentStop", "SessionStart" })
-            changed |= AddHook(root, hookEvent, ContextScriptName, Command(contextScript), 10);
+            changed |= AddHook(root, hookEvent, ContextScriptName, Command(contextScript), ContextHookTimeoutSeconds);
         // Claude's own usage reaches the orchestrator only through a statusline redraw; an idle tab redraws on this
         // timer too, so the real percent stays fresh while any tab is open (M.ORCH-T125).
         if (root["statusLine"] is JsonObject statusLine && statusLine["refreshInterval"] is null)

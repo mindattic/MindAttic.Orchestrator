@@ -115,6 +115,34 @@ public sealed class AgentGateTests
         Assert.That(pre.ToJsonString(), Does.Contain($"\"timeout\":{AgentGate.HookTimeoutSeconds}"));
     }
 
+    /// <summary>M.ORCH-T683: on a pegged machine the context gate timed out at 10s and the prompt's notes were dropped.</summary>
+    [Test]
+    public void The_context_gate_hooks_wait_long_enough_for_a_busy_machine_and_a_stale_10s_is_rewritten()
+    {
+        Directory.CreateDirectory(Claude);
+        var command = AgentGate.Command(Path.Combine(Claude, AgentGate.ContextScriptName));
+        File.WriteAllText(Settings, new JsonObject
+        {
+            ["hooks"] = new JsonObject
+            {
+                ["UserPromptSubmit"] = new JsonArray(new JsonObject
+                {
+                    ["matcher"] = "", ["hooks"] = new JsonArray(new JsonObject { ["type"] = "command", ["command"] = command, ["timeout"] = 10 }),
+                }),
+            },
+        }.ToJsonString());
+
+        AgentGate.Ensure(Claude);
+
+        var hooks = Json(Settings)["hooks"]!.AsObject();
+        foreach (var hookEvent in new[] { "UserPromptSubmit", "Stop", "PostToolUse", "SubagentStart", "SubagentStop", "SessionStart" })
+        {
+            var entries = hooks[hookEvent]!.AsArray().SelectMany(e => e!["hooks"]!.AsArray()).Where(h => h!["command"]!.GetValue<string>() == command).ToList();
+            Assert.That(entries.Select(h => h!["timeout"]!.GetValue<int>()), Is.EqualTo(new[] { AgentGate.ContextHookTimeoutSeconds }), hookEvent);
+        }
+        Assert.That(AgentGate.ContextHookTimeoutSeconds, Is.GreaterThanOrEqualTo(60));
+    }
+
     [Test]
     public void The_context_percent_and_keep_going_flag_reach_the_written_script()
     {
