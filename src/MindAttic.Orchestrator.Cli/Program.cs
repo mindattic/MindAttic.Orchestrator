@@ -31,7 +31,8 @@ catch (InvalidDataException ex)
 }
 catch (Exception ex)
 {
-    OrchestratorLog.For("Cli").Fatal(ex, "orchestrator {Args:l} crashed", string.Join(' ', args));
+    // Only the command's name: its options and arguments may hold secrets, such as db migrate --connection's password (M.ORCH-T716).
+    OrchestratorLog.For("Cli").Fatal(ex, "orchestrator {Command:l} crashed", CliApp.CommandName(args));
     AnsiConsole.WriteException(ex, ExceptionFormats.ShortenEverything);
     return 1;
 }
@@ -43,6 +44,14 @@ finally
 /// <summary>Every command the CLI has, so tests can run them in-process (see <see cref="Ctx.StoreDirectory"/>).</summary>
 internal static class CliApp
 {
+    /// <summary>The command <paramref name="args"/> runs (say "db migrate"), without its options or arguments, which may
+    /// hold secrets: the leading words that are plain lower-case command names (M.ORCH-T716).</summary>
+    public static string CommandName(IEnumerable<string> args)
+    {
+        var words = args.TakeWhile(a => a.Length > 0 && a.All(c => c is (>= 'a' and <= 'z') or '-') && a[0] != '-').Take(3).ToList();
+        return words.Count == 0 ? "(no command)" : string.Join(' ', words);
+    }
+
     public static CommandApp Create()
     {
         var app = new CommandApp();

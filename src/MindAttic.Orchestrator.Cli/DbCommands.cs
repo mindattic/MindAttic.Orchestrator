@@ -58,8 +58,16 @@ internal sealed class DbMigrateCommand : Command<DbMigrateCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        var db = new OrchestratorDb(OrchestratorDb.LivePath);
         var connection = settings.Connection ?? OrchestratorServer.DefaultConnection(settings.Server, settings.Database);
+        try { _ = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(connection); }
+        catch (ArgumentException ex)
+        {
+            // A malformed --connection is a bad option, not a crash: said in one line and never echoed, since it may hold
+            // a password (M.ORCH-T716). The builder's message names only the keyword or index it stopped at.
+            AnsiConsole.MarkupLine($"[red]--connection isn't a valid SQL Server connection string: {Markup.Escape(ex.Message)}[/]");
+            return 2;
+        }
+        var db = new OrchestratorDb(OrchestratorDb.LivePath);
         try
         {
             // Held for the copy: no daemon, dashboard or CLI writes the file between its rows being read and SQL Server taking over.
