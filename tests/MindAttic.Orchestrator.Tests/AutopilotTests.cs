@@ -333,6 +333,13 @@ public sealed class AutopilotTests
 
         var next = Autopilot.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cliRunning: _ => true);
         Assert.That(next.Handed, Has.Count.EqualTo(2), "4 places, 2 already claimed with no subagent on yet");
+
+        // A claim of a CLI that has closed starts nothing: it isn't counted (M.ORCH-T550).
+        store.SaveAssignments([new Assignment("A-T1", "A", @"D:\WT\A\A-T1", "Claude", Now, true),
+            new Assignment("A-T2", "A", @"D:\WT\A\A-T2", "Claude", Now, true) { Cli = 99 }]);
+        plan = Scheduler.Plan(snap, settings, store.LoadAssignments()) with { Pace = plan.Pace };
+        var gone = Autopilot.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cliRunning: c => c != 99);
+        Assert.That(gone.Handed, Has.Count.EqualTo(3), "4 places, 1 live claim");
     }
 
     /// <summary>M.ORCH-T674: three /allocate CLIs on three logins (the fallback, Honey's, Amy's) split one allowance, though each
