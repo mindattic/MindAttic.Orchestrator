@@ -311,6 +311,8 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 // Only a folder named as a ticket is (PREFIX-T<n>) is a ticket's worktree: a bughunt or hand-made one isn't a closed
                 // ticket because the database doesn't know its name, and a subagent may be working in it unseen (M.ORCH-T547).
                 if (!TicketName.IsMatch(id)) continue;
+                // A junction to a sibling repo (M.ORCH-T652) is never a worktree to tidy, whatever it's named.
+                if (new DirectoryInfo(tree).Attributes.HasFlag(FileAttributes.ReparsePoint)) continue;
                 // Only a ticket's own worktree (a .git file, not a full clone that ended up here) whose ticket is finished.
                 if (assigned.Contains(id) || open.Contains(id) || !File.Exists(Path.Combine(tree, ".git"))) continue;
                 // Nor one a tab is open in or a session wrote from lately: a tab's or a claim's assignment is gone as soon as its

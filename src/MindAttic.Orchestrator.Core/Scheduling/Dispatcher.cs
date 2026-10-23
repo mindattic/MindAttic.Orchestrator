@@ -142,6 +142,7 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
             if (current.Length > 0 && Git(path, "status", "--porcelain").Output.Trim().Length == 0 &&
                 Git(path, "merge-base", "--is-ancestor", "HEAD", current).Code == 0)
                 Git(path, "merge", "--ff-only", "-q", current);
+            LinkSiblingPackages(repoPath, path);
             return (true, path, "");
         }
 
@@ -157,7 +158,44 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         var (code, output) = exists == 0 && !landed
             ? Git(repoPath, "worktree", "add", path, branch)
             : Git(repoPath, "worktree", "add", landed ? "-B" : "-b", branch, path, start);
+        if (code == 0) LinkSiblingPackages(repoPath, path);
         return code == 0 ? (true, path, "") : (false, path, $"git worktree add failed: {output.Trim()}");
+    }
+
+    /// <summary>A Unity manifest's <c>file:../../Sibling/...</c> package paths resolve from the repo's Packages folder to its
+    /// sibling repos; from a worktree (root\Repo\Ticket) they'd land in root\Repo. Junction each referenced sibling into
+    /// that folder so the packages load unedited (M.ORCH-T652). Best effort: a failure leaves the worktree as it was.</summary>
+    internal static void LinkSiblingPackages(string repoPath, string worktree)
+    {
+        try
+        {
+            var manifest = Path.Combine(worktree, "Packages", "manifest.json");
+            if (!File.Exists(manifest)) return;
+            var siblings = Path.GetDirectoryName(Path.GetFullPath(repoPath).TrimEnd('\\', '/'));
+            var linkDir = Path.GetDirectoryName(Path.GetFullPath(worktree).TrimEnd('\\', '/'));
+            if (siblings is null || linkDir is null) return;
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(
+                         File.ReadAllText(manifest), "\"file:\\.\\./\\.\\./([^/\\\\\"]+)"))
+                names.Add(m.Groups[1].Value);
+            foreach (var name in names)
+            {
+                var target = Path.Combine(siblings, name);
+                var link = Path.Combine(linkDir, name);
+                if (!Directory.Exists(target) || Directory.Exists(link) || File.Exists(link)) continue;
+                if (OperatingSystem.IsWindows())
+                {
+                    var psi = new ProcessStartInfo("cmd.exe") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                    foreach (var a in new[] { "/c", "mklink", "/J", link, target }) psi.ArgumentList.Add(a);
+                    using var p = Process.Start(psi);
+                    p?.StandardOutput.ReadToEnd();
+                    p?.StandardError.ReadToEnd();
+                    p?.WaitForExit(10_000);
+                }
+                else Directory.CreateSymbolicLink(link, target);
+            }
+        }
+        catch (Exception) { } // the worktree exists by now: nothing here may fail it
     }
 
     /// <summary>Where a new ticket branch starts: the repo's main line as origin has it, not whatever your checkout has
