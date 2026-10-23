@@ -762,6 +762,13 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             // push is rejected as non-fast-forward (M.ORCH-T620). A merge, not a rebase --autostash: the daemon keeps the
             // dirty data/ files open and changing so the autostash itself fails (M.ORCH-T624), and incoming commits never touch
             // them, so no stash is needed (merge commits pass the commit-msg hook).
+            // Not while the user is resolving a merge, rebase, cherry-pick or revert here: the merge --abort below would throw
+            // away their resolutions (M.ORCH-T721). Tried again on the next try.
+            if (GitOperationInProgress(repo))
+            {
+                orchestratorDbUnpushed = true;
+                return;
+            }
             var fetch = Git("fetch", "-q", "origin");
             if (fetch.ExitCode == 0 && !fetch.TimedOut)
             {
@@ -787,6 +794,21 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         }
         // git may hand the committed text back with CRLF (core.autocrlf).
         static bool Same(string a, string b) => a.ReplaceLineEndings("\n") == b.ReplaceLineEndings("\n");
+    }
+
+    /// <summary>True while the checkout is mid-merge, rebase, cherry-pick or revert, which a daemon merge or abort must not touch.</summary>
+    internal static bool GitOperationInProgress(string repo)
+    {
+        var gitDir = Path.Combine(repo, ".git");
+        if (File.Exists(gitDir)) // a linked worktree: ".git" is a "gitdir: <path>" file
+        {
+            var line = File.ReadLines(gitDir).FirstOrDefault(l => l.StartsWith("gitdir:", StringComparison.Ordinal));
+            if (line is null) return false;
+            gitDir = Path.GetFullPath(line["gitdir:".Length..].Trim(), repo);
+        }
+        if (!Directory.Exists(gitDir)) return false;
+        return new[] { "MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD" }.Any(f => File.Exists(Path.Combine(gitDir, f)))
+            || new[] { "rebase-merge", "rebase-apply" }.Any(d => Directory.Exists(Path.Combine(gitDir, d)));
     }
 
     /// <summary>Files new GitHub issues and CI failures as tickets in every repo that has a GitHub origin.</summary>
