@@ -62,7 +62,7 @@ public sealed class LoginCardViewModel(string key) : ObservableObject
     public bool SignedIn => card.SignedIn;
 
     /// <summary>The login's name (M.ORCH-T614): "Jordan", the global one's marked "(fallback)"; its email until it has a name.</summary>
-    public string Title => card.Alias is { } a ? IsGlobal && !onApiKey ? $"{a} (fallback)" : a : card.Email ?? MainViewModel.GlobalLogin;
+    public string Title => card.Alias is { } a ? a : card.Email ?? MainViewModel.GlobalLogin;
 
     /// <summary>The email behind the name, as the title's tooltip.</summary>
     public string TitleTip => card.AliasEmail is { } e ? $"{e}{(IsGlobal ? " · the global login (~/.claude)" : "")}" : Kind;

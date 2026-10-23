@@ -21,7 +21,7 @@ public sealed record LoginTab(string? Email, string Title, string ToolTip, strin
     /// <summary>The 'API key' tab as billing has it (M.ORCH-T672): marked "(fallback)" while the API key bills, since a CLI
     /// started with no account of its own then runs on the key, else as <see cref="ApiKey"/>.</summary>
     public static LoginTab ApiKeyTab(bool billingIsApiKey) =>
-        billingIsApiKey ? ApiKey with { Title = "API key (fallback)", ToolTip = "The Vault's API key, billing now: the fallback every CLI not started on a login of its own runs on" } : ApiKey;
+        billingIsApiKey ? ApiKey with { Title = "API key (fallback)", ToolTip = "The Vault's API key, billing now: the fallback for a CLI with no login of its own" } : ApiKey;
 
     public bool IsGlobal => Email is null && !IsApiKey;
 
@@ -90,7 +90,7 @@ public static class LoginScope
     /// paces) or with a live CLI or Launcher tab on it, and every member of the organization (<paramref name="members"/>,
     /// M.ORCH-T670) not signed in on this machine, which gets a tab that only signs it in (M.ORCH-T615); by email. A member's
     /// tab is titled by its member name, else its login's name (<see cref="LoginLook.Alias"/>), else its email's part before the
-    /// @; any other login's by its login's name. The global one is marked "(fallback)" while Claude Team bills (the API key tab is, while the key bills), each has its email in the tooltip and
+    /// @; any other login's by its login's name. The global one is its member's own seat, never marked a fallback (the API key tab is, while the key bills), each has its email in the tooltip and
     /// its terminal tabs' color as its accent. The global login's own account gets no second tab: the fallback one is its.
     /// </summary>
     public static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, AccountDirs dirs, IEnumerable<Member>? members = null) =>
@@ -108,10 +108,10 @@ public static class LoginScope
         var global = snapshot.GlobalEmail is { } g
             ? onKey
                 ? new LoginTab(null, Title(globalEmail ?? g, globalLook.Alias), $"{g}: the global login (~/.claude)", globalLook.TabColor)
-                : new LoginTab(null, $"{Title(globalEmail ?? g, globalLook.Alias)} (fallback)", $"{g}: the global login (~/.claude), every CLI's unless started on its own", globalLook.TabColor)
+                : new LoginTab(null, Title(globalEmail ?? g, globalLook.Alias), $"{g}: the global login (~/.claude), this member's own seat", globalLook.TabColor)
             : onKey
                 ? new LoginTab(null, "Global login", "The global login (~/.claude): nobody's email is known for it yet", globalLook.TabColor)
-                : new LoginTab(null, "Fallback login", "The global login (~/.claude): nobody's email is known for it yet", globalLook.TabColor);
+                : new LoginTab(null, "Global login", "The global login (~/.claude): nobody's email is known for it yet", globalLook.TabColor);
         var live = snapshot.Accounts.Select(a => a.Email)
             .Concat(snapshot.Agents.Select(a => a.OwnLogin))
             .Concat(snapshot.Repos.SelectMany(r => r.Hosts).Select(h => h.OwnLogin))

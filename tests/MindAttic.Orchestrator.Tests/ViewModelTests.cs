@@ -110,7 +110,7 @@ public sealed class ViewModelTests
     }
 
     [TestCase("a@b.com", null, "a@b.com")]
-    [TestCase(null, "g@b.com", "g@b.com (fallback)")]
+    [TestCase(null, "g@b.com", "g@b.com")]
     [TestCase("a@b.com", "g@b.com", "a@b.com")]
     [TestCase(null, null, null)]
     public void A_cli_names_its_own_login_else_the_global_one(string? own, string? global, string? expected) =>

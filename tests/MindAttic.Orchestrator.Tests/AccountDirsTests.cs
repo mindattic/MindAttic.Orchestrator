@@ -125,8 +125,8 @@ public sealed class AccountDirsTests
     public void The_global_logins_tab_starts_on_the_global_login_and_offers_auto_only_while_its_on()
     {
         // M.ORCH-T613: every other login has a dashboard tab of its own to start from, so none is listed here.
-        Assert.That(MindAttic.Orchestrator.Wpf.ViewModels.MainViewModel.GlobalTabLogins(auto: true), Is.EqualTo(new[] { "Fallback login", "Auto" }));
-        Assert.That(MindAttic.Orchestrator.Wpf.ViewModels.MainViewModel.GlobalTabLogins(auto: false), Is.EqualTo(new[] { "Fallback login" }));
+        Assert.That(MindAttic.Orchestrator.Wpf.ViewModels.MainViewModel.GlobalTabLogins(auto: true), Is.EqualTo(new[] { "Global login", "Auto" }));
+        Assert.That(MindAttic.Orchestrator.Wpf.ViewModels.MainViewModel.GlobalTabLogins(auto: false), Is.EqualTo(new[] { "Global login" }));
     }
 
     private static void SignIn(AccountDir account, string uuid = "acct-b") =>

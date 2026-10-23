@@ -244,10 +244,10 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         }
     }
 
-    /// <summary>A CLI's login in words (M.ORCH-T606): its own login's name, else the fallback (M.ORCH-T672): the API key while it bills, else the global login's, marked "(fallback)"; null
+    /// <summary>A CLI's login in words (M.ORCH-T606): its own login's name, else the fallback (M.ORCH-T672): the API key while it bills, else the global login's (its member's own seat, never marked a fallback); null
     /// when neither is known. The names are the logins' aliases (M.ORCH-T614), their emails' part before the @ by default.</summary>
     internal static string? LoginText(string? ownName, string? globalName, bool billingIsApiKey = false) =>
-        ownName ?? (billingIsApiKey ? "API key (fallback)" : globalName is null ? null : $"{globalName} (fallback)");
+        ownName ?? (billingIsApiKey ? "API key (fallback)" : globalName);
 
     private Snapshot Build(DateTime now)
     {

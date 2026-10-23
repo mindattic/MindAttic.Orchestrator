@@ -86,7 +86,7 @@ public sealed partial class MainViewModel : ObservableObject
     private MainViewModel(MainViewModel? root, LoginTab? tab)
     {
         this.root = root;
-        this.tab = tab ?? new LoginTab(null, GlobalLogin, "The global login (~/.claude), every CLI's unless started on its own", "");
+        this.tab = tab ?? new LoginTab(null, GlobalLogin, "The global login (~/.claude), its member's own seat", "");
         isLoading = root is null;
         store = root?.store ?? new JsonStore();
         lease = root?.lease ?? new DispatchLease(store.Directory, db: store.Db);
@@ -251,8 +251,8 @@ public sealed partial class MainViewModel : ObservableObject
     // Ctrl+click on the selected pill deselects it, writing null: Start would crash the dashboard on it.
     public string Provider { get => provider; set { if (value is not null && Set(ref provider, value)) Raise(nameof(ShowLogins)); } }
 
-    /// <summary>What <see cref="Logins"/> lists for the login every CLI uses unless started on one of its own.</summary>
-    public const string GlobalLogin = "Fallback login";
+    /// <summary>What <see cref="Logins"/> lists for the global login (~/.claude), its member's own seat.</summary>
+    public const string GlobalLogin = "Global login";
 
     /// <summary>The global login's tab's other choice (M.ORCH-T605): one CLI per account, a per-CLI login no CLI runs on yet
     /// (most headroom first), else the global login (<see cref="LoginPicker"/>).</summary>
@@ -513,9 +513,15 @@ public sealed partial class MainViewModel : ObservableObject
         }
         else if (kind == "Claude" && login == AutoLogin)
         {
-            // Auto (M.ORCH-T605): a free per-CLI login, else the global one; held for this tab so the next Start goes elsewhere.
+            // Auto (M.ORCH-T605): a free per-CLI login (never the global one, a member's own seat); held for this tab so the next Start goes elsewhere.
             var auto = new LoginPicker(accountDirs).ForNewTab(kind, autoLogin: true, DateTime.UtcNow, out _, weeklyStopPercent);
             configDir = auto?.Directory;
+            if (auto is null && full?.Billing?.Mode != MindAttic.Orchestrator.Billing.BillingModes.Api)
+            {
+                // Never the global login, a member's own seat (M.ORCH-T747): the API key when billing is on, else it waits.
+                StatusMessage = "No login of its own has room and API billing is off: not started on the global login. Pick a login's tab, or switch API billing on.";
+                return;
+            }
             on = auto?.Email ?? GlobalLogin;
         }
         var error = control.Start(tile.Name, tile.Path, kind, text, configDir);

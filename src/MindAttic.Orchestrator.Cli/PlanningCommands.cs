@@ -278,7 +278,7 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
             unthrottled: unthrottled, self: self,
             cli: cli, pilots: cycler.AutopilotClis(), onSince: cycler.AutopilotSince(), loginOf: cycler.LoginOfCli(),
             login: login,
-            logins: logins, redelegate: Redelegate, canFallBack: own is not null);
+            logins: logins, redelegate: Redelegate, canFallBack: own is not null && snapshot.Billing?.Mode == MindAttic.Orchestrator.Billing.BillingModes.Api);
         foreach (var d in all.Where(h => h.DelegatedTo is not null))
             Console.WriteLine($"=== {d.Item.Id} ({d.Item.Repo}) {d.Delegated}. A tab opened on {d.DelegatedTo!.Label} works it: it isn't this CLI's to start.");
         var handed = all.Where(h => h.DelegatedTo is null).ToList();
