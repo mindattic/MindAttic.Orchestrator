@@ -524,7 +524,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         // Capped at a century: a huge value typed to mean "never" overflowed and ended every tick here, before autopilot's turn.
         var every = TimeSpan.FromHours(Math.Min(s.AuditEveryHours, 36_525 * 24));
         var runner = new Audit.AuditRunner(options, store);
-        var before = runner.Latest();
+        // A failed read isn't "no audit yet": running now would diff against nothing and hide what's new, so wait for a readable one.
+        if (!runner.TryLatest(out var before)) return;
         if (before is not null && DateTime.UtcNow - before.RanUtc < every) return;
         // A run whose save failed isn't retried every tick (it scans the whole workspace), and the failure doesn't end
         // the tick before autopilot's turn: it's said, and tried again when the next one is due.
