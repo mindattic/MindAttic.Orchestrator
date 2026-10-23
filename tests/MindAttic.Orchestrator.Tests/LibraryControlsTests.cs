@@ -273,8 +273,12 @@ public sealed class LibraryControlsTests
 
         // The terminal pane tabs and their badge chips, the status light and the tab underline take their colours from
         // view-model brushes (themed in Palette), never from a literal.
-        foreach (var name in new[] { "TabStatusLight", "TerminalTab" })
-            Assert.That(Named(window, name).Attributes().Select(a => a.Value), Has.None.Matches(@"^#[0-9A-Fa-f]{6,8}$"), name);
+        foreach (var name in new[] { "TabStatusLight", "TerminalTab", "LoginTabItem" })
+        {
+            var brushes = Named(window, name).DescendantsAndSelf().Attributes()
+                .Where(a => a.Name.LocalName is "Background" or "Foreground" or "Fill" or "Stroke" or "BorderBrush");
+            Assert.That(brushes.Where(a => !a.Value.StartsWith('{')).Select(a => a.ToString()), Is.Empty, name);
+        }
 
         // The sign-in-only panel's button is the library's primary button.
         var signIn = window.Descendants(P + "Button").Single(b => (string?)b.Attribute("Command") == "{Binding SignInTabCommand}");
