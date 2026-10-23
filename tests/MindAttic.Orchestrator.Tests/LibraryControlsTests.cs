@@ -268,22 +268,20 @@ public sealed class LibraryControlsTests
     {
         var window = Window();
 
-        // The person tab strip, the Dashboard/Terminals sub-tabs and the terminal pane tabs are the library's MaTabControl, a bare
-        // strip (ShowContent false) whose selection drives the window (M.ORCH-T667).
-        foreach (var name in new[] { "LoginTabStrip", "PageTabStrip", "TerminalTabs" })
-        {
-            Assert.That(Named(window, name).Name, Is.EqualTo(Mc + "MaTabControl"), name);
-            Assert.That((string?)Named(window, name).Attribute("ShowContent"), Is.EqualTo("False"), name);
-        }
+        // The person tab strip is the library's MaTabControl, a bare strip (ShowContent false) whose selection drives the window
+        // (M.ORCH-T667). It's the only one: there are no Dashboard/Terminals page tabs (M.ORCH-T751).
+        Assert.That(Named(window, "LoginTabStrip").Name, Is.EqualTo(Mc + "MaTabControl"));
+        Assert.That((string?)Named(window, "LoginTabStrip").Attribute("ShowContent"), Is.EqualTo("False"));
+        Assert.That(window.Descendants(Mc + "MaTabControl").Count(), Is.EqualTo(1), "no page tabs, no terminal pane tabs");
+        // The dashboard is always on screen on a signed-in login's tab: no page decides whether its header and toolbar show.
+        foreach (var name in new[] { "Header", "Toolbar" })
+            Assert.That((string?)Named(window, name).Attribute("Visibility"), Is.EqualTo("{Binding IsTabSignedIn, Converter={StaticResource Visible}}"), name);
+        Assert.That(typeof(Wpf.ViewModels.MainViewModel).GetProperty("Page"), Is.Null);
 
-        // The terminal pane tabs and their badge chips, the status light and the tab underline take their colours from
-        // view-model brushes (themed in Palette), never from a literal.
-        foreach (var name in new[] { "TerminalTab", "LoginTabItem" })
-        {
-            var brushes = Named(window, name).DescendantsAndSelf().Attributes()
-                .Where(a => a.Name.LocalName is "Background" or "Foreground" or "Fill" or "Stroke" or "BorderBrush");
-            Assert.That(brushes.Where(a => !a.Value.StartsWith('{')).Select(a => a.ToString()), Is.Empty, name);
-        }
+        // The status light and the tab underline take their colours from view-model brushes (themed in Palette), never from a literal.
+        var brushes = Named(window, "LoginTabItem").DescendantsAndSelf().Attributes()
+            .Where(a => a.Name.LocalName is "Background" or "Foreground" or "Fill" or "Stroke" or "BorderBrush");
+        Assert.That(brushes.Where(a => !a.Value.StartsWith('{')).Select(a => a.ToString()), Is.Empty);
 
         // The sign-in-only panel's button is the library's primary button.
         var signIn = window.Descendants(P + "Button").Single(b => (string?)b.Attribute("Command") == "{Binding SignInTabCommand}");

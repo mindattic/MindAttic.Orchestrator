@@ -182,19 +182,46 @@ public sealed class LoginScopeTests
         {
             Dirs = dirs,
             Look = d => { lookedUp = d; return d is null ? new LoginLook("ryan", "RD", "#654321") : new LoginLook("Amy", "AR", "#123456"); },
+            TokenEnv = d => d is null ? "CLEAR; " : "SET; ",
         };
 
         var amy = control.LauncherArguments("Amy@Example.com").ToList();
-        Assert.That(lookedUp, Is.EqualTo(dirs.For("amy@example.com").Directory), "colored as Amy's own login");
+        var amyDir = dirs.For("amy@example.com").Directory;
+        Assert.That(lookedUp, Is.EqualTo(amyDir), "colored as Amy's own login");
         Assert.That(amy.Take(7), Is.EqualTo(new[] { "-w", "Amy", "new-tab", "--title", "AR: MindAttic.Launcher", "--tabColor", "#123456" }));
-        Assert.That(amy.SkipWhile(a => a != "--").Skip(1), Is.EqualTo(new[] { @"C:\L\MindAttic.Launcher.exe", "--account", "amy@example.com" }));
+        // M.ORCH-T751: in Windows Terminal, its login's folder and long-lived token are set before the Launcher starts (M.ORCH-T696).
+        Assert.That(amy.SkipWhile(a => a != "--").Skip(1).Take(6), Is.EqualTo(new[] { "powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand" }));
+        var script = System.Text.Encoding.Unicode.GetString(Convert.FromBase64String(amy[^1]));
+        Assert.That(script, Is.EqualTo($@"$env:CLAUDE_CONFIG_DIR = '{amyDir}'; SET; & 'C:\L\MindAttic.Launcher.exe' '--account' 'amy@example.com'; exit $LASTEXITCODE"));
 
         var global = control.LauncherArguments(null).ToList();
         Assert.That(lookedUp, Is.Null);
         Assert.That(global.SkipWhile(a => a != "--").Skip(1), Is.EqualTo(new[] { @"C:\L\MindAttic.Launcher.exe" }), "the global login's tab: unscoped");
+        Assert.That(control.LauncherTitleOf("Amy@Example.com"), Is.EqualTo("AR: MindAttic.Launcher"));
 
-        Assert.That(control.OpenLauncher("not an email"), Does.Contain("isn't an email address"));
-        Assert.That(control.OpenLauncher("amy@example.com"), Does.StartWith("Launcher not found"));
+        Assert.That(control.OpenLauncher("not an email", out _), Does.Contain("isn't an email address"));
+        Assert.That(control.OpenLauncher("amy@example.com", out _), Does.StartWith("Launcher not found"));
+    }
+
+    [Test]
+    public void A_login_whose_Launcher_menu_is_running_is_reused_not_opened_twice()
+    {
+        // M.ORCH-T699 / M.ORCH-T751: one Launcher tab per login, found by its running menu's --account.
+        var launchers = new Dictionary<int, string>
+        {
+            [10] = @"""C:\L\MindAttic.Launcher.exe"" host --path D:\W\Repo --title ""AR: Repo [Claude]"" --provider Claude",
+            [20] = @"""C:\L\MindAttic.Launcher.exe"" --account Amy@Example.com",
+            [30] = @"C:\L\MindAttic.Launcher.exe",
+        };
+        Assert.That(SessionControl.LauncherMenuOf(launchers, "amy@example.com"), Is.EqualTo(20));
+        Assert.That(SessionControl.LauncherMenuOf(launchers, null), Is.EqualTo(30), "the global login's: no --account");
+        Assert.That(SessionControl.LauncherMenuOf(launchers, "lee@example.com"), Is.Null);
+        Assert.That(SessionControl.LauncherMenuOf(new Dictionary<int, string> { [10] = launchers[10] }, null), Is.Null, "a host tab is never a menu");
+
+        var launcher = typeof(LoginScopeTests).Assembly.Location; // any file that exists stands in for the Launcher
+        var control = new SessionControl(new OrchestratorOptions { LauncherExe = launcher }) { LauncherMenus = () => launchers };
+        Assert.That(control.OpenLauncher("AMY@example.com", out var running), Is.Null);
+        Assert.That(running, Is.EqualTo(20), "brought up, never a second tab");
     }
 
     [Test]

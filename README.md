@@ -145,27 +145,17 @@ Several CLIs can run at once, each on a different Claude account's token pool (M
 - **Open Launcher as this person (M.ORCH-T615):** each signed-in login's tab has an **Open Launcher** button next to Settings that opens the Launcher's menu scoped to that login (`MindAttic.Launcher --account <email>`, in that login's own Windows Terminal window and color), so every repo CLI started from it runs on that login and shows in that tab; one login may own many CLIs. On the global login's tab it opens the Launcher unscoped. A member of the organization (`orchestrator members`, M.ORCH-T670) who isn't signed in on this machine yet still gets a tab, showing only a **Sign in** button (its own sign-in in a private browser window); once signed in, the next refresh gives it the full dashboard and Open Launcher.
 - **Tickets per user (M.ORCH-T668):** under each person's open CLIs (their tab's Agents view) a **Tickets** view lists the tickets assigned to them and the unassigned queue, each with an *Assigned to* picker (the library's `MaPicker`) that assigns it, reassigns it to another person, or takes it off them; `orchestrator assign <TICKET> <email or member name>` does the same (`--unassign`). The assignment records the person's login (its email, in the settings' `Assignees`; each claim's or tab's assignment records the login it was dispatched on, in `assignments.account`), and it's a pin: `orchestrator next --claim` hands it only to a CLI on that login, autopilot's background agents never take it, and Start opens it only on that login (signed in on this machine, or it isn't started). While its person is out of room (their week at the weekly stop line, their 5-hour window at the pace target, or not signed in here) it waits for them, its card saying why ("Waiting for Ryan: week at 97%"), and nothing moves it to another login on its own; its **Redelegate now** (`orchestrator assign <TICKET> --redelegate`) drops the pin, so it's handed on like an unassigned ticket. Unassigned tickets are handed out as before.
 
-### Where CLIs open (M.ORCH-T618)
+### Where CLIs open
 
-Settings' *Where CLIs open* (or `orchestrator settings --terminal-host windows-terminal|orchestrator`) picks where a CLI the
-Orchestrator starts (Start, Queue, autopilot, `orchestrator start`) runs:
+Every CLI the Orchestrator starts (Start, Queue, autopilot, `orchestrator start`) and every login's Launcher opens in
+Windows Terminal: a tab in its login's own window, titled and colored as that login (M.ORCH-T616). The dashboard shows only
+the dashboard: the terminal panes inside it (M.ORCH-T618) and each person's *Dashboard*/*Terminals* tabs (M.ORCH-T622) were
+removed by M.ORCH-T751, with Settings' *Where CLIs open* and `orchestrator settings --terminal-host`.
 
-- **Windows Terminal** (the default): a tab in its login's own Windows Terminal window, as before (M.ORCH-T616).
-- **Orchestrator**: a terminal pane on its person's *Terminals* tab: the Windows Terminal renderer for WPF
-  (`Microsoft.Terminal.Wpf` through the `EasyWindowsTerminalControl` package) over ConPTY, running the same
-  `MindAttic.Launcher host --path … --title … --provider …` command with the login's `CLAUDE_CONFIG_DIR` set inside it, so
-  restart-resume, account moves and idle detection work unchanged. Each pane is a tab with its login's `[JR]` badge and color;
-  closing one ends its CLI. A start from another process reaches the dashboard on a per-user pipe; with no dashboard open it
-  falls back to Windows Terminal. Panes die with the dashboard, so it records each one's repo, login and Claude session and,
-  the next time it opens, offers to reopen them with `claude --resume`.
-
-Each login's tab (each person) has two tabs of its own (M.ORCH-T622): *Dashboard* and *Terminals*. *Terminals* holds one
-terminal tab per CLI of theirs open in a pane (its badge, repo, *Go to* its repo on the dashboard, *Move to* another login,
-and close), and fills the window below the person tabs: the header tiles, the utilization chart and the view pills fold
-away while it shows. A pane goes to the person whose login its CLI runs on (and follows a *Move to*). A newly opened pane,
-*Go to tab* on one and a needs-you toast about one switch to its person and their *Terminals* tab.
-
-Switching it affects only CLIs opened afterwards.
+Each signed-in login gets its own Launcher tab (M.ORCH-T699), opened idle when the dashboard first sees the login: the
+Launcher's menu signed in to it (`--account <email>`, with its `CLAUDE_CONFIG_DIR` and long-lived token set first), so
+every CLI started from it runs on that login. A login whose Launcher menu is already running keeps it: *Open Launcher*
+brings that tab up instead of opening a second.
 
 ## Autopilot
 

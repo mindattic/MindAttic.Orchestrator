@@ -20,7 +20,7 @@ public sealed partial class HostSessionScanner(OrchestratorOptions options)
             .ToList();
         if (pipes.Count == 0) return [];
 
-        var commandLines = QueryLauncherCommandLines();
+        var commandLines = LauncherCommandLines();
         var roster = LoadRoster();
         return [.. pipes.Select(p =>
         {
@@ -82,7 +82,8 @@ public sealed partial class HostSessionScanner(OrchestratorOptions options)
         catch (UnauthorizedAccessException) { return []; }
     }
 
-    private static Dictionary<int, string> QueryLauncherCommandLines()
+    /// <summary>Every MindAttic.Launcher.exe running now, its command line by pid: its host tabs and its menus alike.</summary>
+    public static IReadOnlyDictionary<int, string> LauncherCommandLines()
     {
         var result = new Dictionary<int, string>();
         try

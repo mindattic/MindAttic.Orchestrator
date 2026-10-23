@@ -381,7 +381,7 @@ public sealed class OrchestratorDb(string path)
          "handoff", // the retired /handoff's mark (M.ORCH-T572), should a row of it be left
          Billing.BillingModeFile.StateName, Budget.ClaudeAccount.StateName, Budget.ReportedUsage.StateName,
          OrchestratorHistory.GateLogImportedName,
-         Sessions.PaneRecords.StateName, // this machine's open terminal panes (M.ORCH-T618)
+         "terminal-panes", // the retired terminal panes (M.ORCH-T618, removed by M.ORCH-T751), should a row of them be left
          Sessions.MoveLocks.StateName, // the account moves in flight (M.ORCH-T637)
          Budget.AccountPacer.ProbeStateName, // each login's meter probe: its asks and what came of them (M.ORCH-T659)
          Budget.PacePlan.StateName]; // each login's windows, planned against actual end percent (M.ORCH-T669)

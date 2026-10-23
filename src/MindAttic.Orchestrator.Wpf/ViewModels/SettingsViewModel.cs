@@ -11,7 +11,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly JsonStore store;
     private readonly Action saved;
     private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "",
-        contextPercent = "", orphanRedispatches = "", orphanQuiet = "", exemptCommands = "", weeklyTarget = "", terminalHost = WindowsTerminalChoice;
+        contextPercent = "", orphanRedispatches = "", orphanQuiet = "", exemptCommands = "", weeklyTarget = "";
     private bool autopilot, pacing, autoLogin, rebalanceLogins = true;
 
     public SettingsViewModel(JsonStore store, Action saved)
@@ -39,12 +39,6 @@ public sealed class SettingsViewModel : ObservableObject
     public bool AutoLogin { get => autoLogin; set => Set(ref autoLogin, value); }
     /// <summary>Rebalance when an account runs low (M.ORCH-T608).</summary>
     public bool RebalanceLogins { get => rebalanceLogins; set => Set(ref rebalanceLogins, value); }
-    /// <summary>Where CLIs open (M.ORCH-T618): <see cref="WindowsTerminalChoice"/> or <see cref="OrchestratorChoice"/>; only tabs
-    /// opened after a Save follow it.</summary>
-    // Ctrl+click on the selected pill deselects it, writing null: it stays on the one it was.
-    public string TerminalHost { get => terminalHost; set { if (value is not null) Set(ref terminalHost, value); } }
-    public const string WindowsTerminalChoice = "Windows Terminal", OrchestratorChoice = "Orchestrator";
-    public IReadOnlyList<string> TerminalHosts { get; } = [WindowsTerminalChoice, OrchestratorChoice];
     /// <summary>How many times an orphaned ticket is redispatched (M.ORCH-T748), 0 to 20; 0 only shows it as orphaned.</summary>
     public string OrphanRedispatches { get => orphanRedispatches; set => Set(ref orphanRedispatches, value); }
     /// <summary>Minutes a dispatch's owner must be gone, nothing written in its worktree, before it's orphaned, 1 to 1440.</summary>
@@ -171,13 +165,13 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>Every field as the panel read it. The CLI and agents change settings too while it's open (budget, pace,
     /// settings --max-sessions, --exempt): a Save writes only the fields edited here, not what it read back then (M.ORCH-T338).</summary>
-    private Fields loaded = new("", "", "", "", "", "", false, "", "", "", true, "", true, WindowsTerminalChoice, "", "");
+    private Fields loaded = new("", "", "", "", "", "", false, "", "", "", true, "", true, "", "");
 
     private sealed record Fields(string Block, string Weekly, string Reset, string Warn, string Max, string Provider, bool Pacing, string Target,
-        string Context, string Exempt, bool AutoLogin, string WeekTarget, bool Rebalance, string Host, string Orphans, string OrphanQuiet);
+        string Context, string Exempt, bool AutoLogin, string WeekTarget, bool Rebalance, string Orphans, string OrphanQuiet);
 
     private Fields Current() => new(BlockBudget, WeeklyBudget, WeeklyReset, WarnPercent, MaxSessions, Provider, Pacing, PaceTarget,
-        ContextPercent, ExemptCommands, AutoLogin, WeeklyTarget, RebalanceLogins, TerminalHost, OrphanRedispatches, OrphanQuiet);
+        ContextPercent, ExemptCommands, AutoLogin, WeeklyTarget, RebalanceLogins, OrphanRedispatches, OrphanQuiet);
 
     public void Load()
     {
@@ -194,7 +188,6 @@ public sealed class SettingsViewModel : ObservableObject
         WeeklyTarget = s.WeeklyAwareTarget.ToString(CultureInfo.InvariantCulture);
         AutoLogin = s.AutoLogin;
         RebalanceLogins = s.RebalanceLogins;
-        TerminalHost = s.EmbeddedTerminals ? OrchestratorChoice : WindowsTerminalChoice;
         // No field shows it (context cycling is off), so an out-of-range hand edit mustn't make every Save fail on it.
         ContextPercent = Math.Clamp(s.ContextCyclePercent, 10, 95).ToString(CultureInfo.InvariantCulture);
         ExemptCommands = string.Join(", ", s.ExemptCommands);
@@ -249,8 +242,6 @@ public sealed class SettingsViewModel : ObservableObject
                 WeeklyReservePercent = WeeklyTarget == was.WeekTarget ? s.WeeklyReservePercent : 100 - weekTarget,
                 AutoLogin = AutoLogin == was.AutoLogin ? s.AutoLogin : AutoLogin,
                 RebalanceLogins = RebalanceLogins == was.Rebalance ? s.RebalanceLogins : RebalanceLogins,
-                TerminalHost = TerminalHost == was.Host ? s.TerminalHost
-                    : TerminalHost == OrchestratorChoice ? OrchestratorSettings.OrchestratorHost : OrchestratorSettings.WindowsTerminalHost,
                 ContextCyclePercent = ContextPercent == was.Context ? s.ContextCyclePercent : cycleAt,
                 OrphanRedispatches = OrphanRedispatches == was.Orphans ? s.OrphanRedispatches : orphans,
                 OrphanQuietMinutes = OrphanQuiet == was.OrphanQuiet ? s.OrphanQuietMinutes : orphanQuiet,

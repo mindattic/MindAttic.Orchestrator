@@ -25,16 +25,6 @@ public sealed class SessionControl(OrchestratorOptions options)
         if (!Directory.Exists(directory))
             return $"Folder not found: {directory}";
 
-        // Where CLIs open (M.ORCH-T618), read now so a switch affects only tabs opened from here on.
-        if (Embedded())
-        {
-            var request = PaneRequestFor(title, directory, provider, prompt, configDir);
-            if (PaneBroker.Local is { } local) return local(request);
-            if (PaneBroker.TrySend(request, out var paneError)) return paneError;
-            // No dashboard open to hold the pane: a Windows Terminal tab, as before, rather than no CLI at all.
-            OrchestratorLog.For("Sessions").Information("No dashboard open for {Repo:l}'s pane; opening it in Windows Terminal", title);
-        }
-
         var psi = new ProcessStartInfo("wt.exe") { UseShellExecute = false };
         foreach (var a in StartArguments(title, directory, provider, prompt, configDir)) psi.ArgumentList.Add(a);
         try
@@ -52,14 +42,17 @@ public sealed class SessionControl(OrchestratorOptions options)
     /// Opens the Launcher's menu as one person (M.ORCH-T615): <c>MindAttic.Launcher --account &lt;email&gt;</c> (M.LNCH-T54), so
     /// every repo CLI started from it runs on that per-CLI login and shows in its dashboard tab; <paramref name="email"/> null
     /// opens it unscoped, on the global login. It goes in that login's own Windows Terminal window, colored as it (M.ORCH-T616).
-    /// Returns an error, or null on success.
+    /// One per login (M.ORCH-T699): a login whose Launcher menu is already running keeps it rather than getting a second, and
+    /// <paramref name="running"/> is that menu's process (null when a new tab was opened). Returns an error, or null on success.
     /// </summary>
-    public string? OpenLauncher(string? email)
+    public string? OpenLauncher(string? email, out int? running)
     {
+        running = null;
         if (email is not null && AccountDirs.Normalize(email) is null)
             return $"\"{email}\" isn't an email address: the Launcher's --account takes the account's whole email.";
         if (!File.Exists(options.LauncherExe))
             return $"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/deploy.ps1).";
+        if ((running = LauncherMenuOf(LauncherMenus(), email)) is not null) return null;
         var psi = new ProcessStartInfo("wt.exe") { UseShellExecute = false };
         foreach (var a in LauncherArguments(email)) psi.ArgumentList.Add(a);
         try
@@ -77,62 +70,50 @@ public sealed class SessionControl(OrchestratorOptions options)
     internal AccountDirs Dirs { get; init; } = new();
 
     /// <summary><c>wt</c>'s arguments for <see cref="OpenLauncher"/>: a tab in the login's window, titled and colored as it, at the
-    /// workspace root, running the Launcher (with <c>--account</c> for a per-CLI login).</summary>
+    /// workspace root, running the Launcher (with <c>--account</c> for a per-CLI login). A per-CLI login's Launcher is started by
+    /// a PowerShell that sets its <c>CLAUDE_CONFIG_DIR</c> and long-lived token first (M.ORCH-T696), as a repo tab on it is, so
+    /// every CLI started from its menu inherits both.</summary>
     internal IEnumerable<string> LauncherArguments(string? email)
     {
         var normalized = AccountDirs.Normalize(email);
-        var look = Look(normalized is null ? null : Dirs.For(normalized).Directory);
-        var title = LauncherTitle(look);
-        var root = Directory.Exists(options.WorkspaceRoot) ? options.WorkspaceRoot : Path.GetDirectoryName(options.LauncherExe) ?? ".";
-        string[] all =
-        [
-            "-w", look.Window, "new-tab", "--title", title, "--tabColor", look.TabColor, "-d", root, "--",
-            options.LauncherExe, .. normalized is null ? Array.Empty<string>() : ["--account", normalized],
-        ];
-        // wt splits its whole command line into subcommands on ';' unless it's escaped.
-        return all.Select(a => a.Replace(";", @"\;"));
-    }
-
-    /// <summary>The title of a login's Launcher tab, in Windows Terminal or as a pane: "RD: MindAttic.Launcher".</summary>
-    internal static string LauncherTitle(LoginLook look) => $"{look.Initials}: MindAttic.Launcher";
-
-    /// <summary>
-    /// A login's own terminal tab inside the dashboard (M.ORCH-T699): its pane running the Launcher's menu signed in to that
-    /// login (<c>--account &lt;email&gt;</c>, with its <c>CLAUDE_CONFIG_DIR</c> set inside the pane's command as well) at the
-    /// workspace root, left idle for you to drive: no repo, no prompt. <paramref name="email"/> null is the global login's,
-    /// unscoped (the variable the dashboard may carry cleared). Returns null with <paramref name="error"/> set when it can't.
-    /// </summary>
-    public PaneRequest? LauncherPaneRequest(string? email, out string? error)
-    {
-        error = null;
-        var normalized = AccountDirs.Normalize(email);
-        if (email is not null && normalized is null)
-        {
-            error = $"\"{email}\" isn't an email address: the Launcher's --account takes the account's whole email.";
-            return null;
-        }
-        if (!File.Exists(options.LauncherExe))
-        {
-            error = $"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/deploy.ps1).";
-            return null;
-        }
         var configDir = normalized is null ? null : Dirs.For(normalized).Directory;
         var look = Look(configDir);
         var title = LauncherTitle(look);
         var root = Directory.Exists(options.WorkspaceRoot) ? options.WorkspaceRoot : Path.GetDirectoryName(options.LauncherExe) ?? ".";
-        string[] launcher = [options.LauncherExe, .. normalized is null ? Array.Empty<string>() : ["--account", normalized]];
-        var run = string.Join(' ', launcher.Select(AccountDirs.Ps));
-        var command = configDir is null
-            ? PowerShell($"Remove-Item Env:{AccountDirs.EnvVar} -ErrorAction SilentlyContinue; {TokenEnv(null)}& {run}; exit $LASTEXITCODE")
-            : PowerShell($"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; {TokenEnv(configDir)}& {run}; exit $LASTEXITCODE");
-        return new PaneRequest(LauncherRepo, title, root, "Claude", command)
-        {
-            ConfigDir = configDir, Initials = look.Initials, TabColor = look.TabColor, IsLauncher = true,
-        };
+        string[] tab = ["-w", look.Window, "new-tab", "--title", title, "--tabColor", look.TabColor, "-d", root, "--"];
+        string[] all = configDir is null
+            ? [.. tab, options.LauncherExe]
+            : [.. tab, "powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", Convert.ToBase64String(Encoding.Unicode.GetBytes(
+                $"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; {TokenEnv(configDir)}& {AccountDirs.Ps(options.LauncherExe)} '--account' {AccountDirs.Ps(normalized!)}; exit $LASTEXITCODE"))];
+        // wt splits its whole command line into subcommands on ';' unless it's escaped.
+        return all.Select(a => a.Replace(";", @"\;"));
     }
 
-    /// <summary>What a login's Launcher pane is "for", where a repo pane names its repo.</summary>
-    public const string LauncherRepo = "MindAttic.Launcher";
+    /// <summary>The title of a login's Launcher tab: "RD: MindAttic.Launcher".</summary>
+    internal static string LauncherTitle(LoginLook look) => $"{look.Initials}: MindAttic.Launcher";
+
+    /// <summary>The title <see cref="OpenLauncher"/> gives <paramref name="email"/>'s Launcher tab (null: the global login's), to find it again.</summary>
+    public string LauncherTitleOf(string? email) =>
+        LauncherTitle(Look(AccountDirs.Normalize(email) is { } normalized ? Dirs.For(normalized).Directory : null));
+
+    /// <summary>The command lines of the Launcher processes running now, by pid; tests set their own.</summary>
+    internal Func<IReadOnlyDictionary<int, string>> LauncherMenus { get; init; } = HostSessionScanner.LauncherCommandLines;
+
+    /// <summary>The Launcher menu (not a <c>host</c> tab) already running for <paramref name="email"/>'s login among
+    /// <paramref name="launchers"/>: its <c>--account</c> is that email, or it has none for the global login. Null when none is.</summary>
+    internal static int? LauncherMenuOf(IReadOnlyDictionary<int, string> launchers, string? email)
+    {
+        var wanted = AccountDirs.Normalize(email);
+        foreach (var (pid, commandLine) in launchers.OrderBy(l => l.Key))
+        {
+            var args = HostSessionScanner.SplitCommandLine(commandLine).Skip(1).ToList();
+            if (args.Any(a => a.Equals("host", StringComparison.OrdinalIgnoreCase))) continue;
+            var at = args.FindIndex(a => a.Equals("--account", StringComparison.OrdinalIgnoreCase));
+            var account = at >= 0 && at + 1 < args.Count ? AccountDirs.Normalize(args[at + 1]) : null;
+            if (string.Equals(account, wanted, StringComparison.Ordinal)) return pid;
+        }
+        return null;
+    }
 
     /// <summary>The look of a login's tabs (M.ORCH-T616); tests set their own rather than read the real ~/.claude.</summary>
     internal Func<string?, LoginLook> Look { get; init; } = LoginLook.ForConfigDir;
@@ -140,16 +121,6 @@ public sealed class SessionControl(OrchestratorOptions options)
     /// <summary>The PowerShell a tab on a login (null: the global one) runs first for its long-lived token (M.ORCH-T696,
     /// <see cref="LoginTokens.TabEnv"/>): sets <c>CLAUDE_CODE_OAUTH_TOKEN</c> from the Vault, or clears one it would inherit.</summary>
     internal Func<string?, string> TokenEnv { get; init; } = configDir => LoginTokens.Default.TabEnv(configDir, DateTime.UtcNow);
-
-    /// <summary>Whether new CLIs open inside the Orchestrator (<see cref="OrchestratorSettings.EmbeddedTerminals"/>); tests set
-    /// their own rather than read the real settings.</summary>
-    internal Func<bool> Embedded { get; init; } = EmbeddedFromSettings;
-
-    private static bool EmbeddedFromSettings()
-    {
-        try { return new Settings.JsonStore().LoadSettings().EmbeddedTerminals; }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { return false; }
-    }
 
     /// <summary>A tab's title (M.ORCH-T632): "JR: Repo [Claude]", the login's initials (when it has one) then the repo's
     /// <see cref="ShortName"/> and its provider.</summary>
@@ -166,60 +137,6 @@ public sealed class SessionControl(OrchestratorOptions options)
         foreach (var prefix in NamePrefixes)
             if (repo.Length > prefix.Length && repo.StartsWith(prefix, StringComparison.Ordinal)) return repo[prefix.Length..];
         return repo;
-    }
-
-    /// <summary>A pane for <paramref name="directory"/> (M.ORCH-T618): the same Launcher host command, title, badge and color a
-    /// Windows Terminal tab gets, with the login's <c>CLAUDE_CONFIG_DIR</c> set inside the pane's own command.</summary>
-    public PaneRequest PaneRequestFor(string title, string directory, string provider, string? prompt, string? configDir = null, string? resumeSession = null)
-    {
-        var look = provider == "Claude" ? Look(configDir) : null;
-        var tabTitle = TabTitle(title, provider, look);
-        string[] host =
-        [
-            options.LauncherExe, "host", "--path", directory, "--title", tabTitle, "--provider", provider,
-            .. resumeSession is { Length: > 0 } ? new[] { "--resume", resumeSession } : [],
-            .. resumeSession is { Length: > 0 } && configDir is not null ? new[] { "--config-dir", configDir } : [],
-            .. string.IsNullOrWhiteSpace(prompt) ? Array.Empty<string>() : new[] { "--prompt", SafePrompt(prompt) },
-        ];
-        // The global login clears the variable and token the dashboard itself may carry (M.ORCH-T712).
-        var command = configDir is null
-            ? PowerShell($"Remove-Item Env:{AccountDirs.EnvVar} -ErrorAction SilentlyContinue; {TokenEnv(null)}& {string.Join(' ', host.Select(AccountDirs.Ps))}; exit $LASTEXITCODE")
-            : PowerShell($"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; {TokenEnv(configDir)}& {string.Join(' ', host.Select(AccountDirs.Ps))}; exit $LASTEXITCODE");
-        return new PaneRequest(title, tabTitle, directory, provider, command) { ConfigDir = configDir, Initials = look?.Initials, TabColor = look?.TabColor };
-    }
-
-    /// <summary>A pane that picks a recorded Claude conversation back up (the Launcher host's <c>--resume</c>, so it has the input and control pipes, restart-resume and account moves) under the login it ran on, once
-    /// the dashboard that held it has closed (M.ORCH-T618). Without a session, a new tab for the repo as <see cref="PaneRequestFor"/>.</summary>
-    public PaneRequest ResumeRequest(PaneRecord record)
-    {
-        if (record.SessionId is not { Length: > 0 } session || record.Provider != "Claude")
-            return PaneRequestFor(record.Repo, record.Directory, record.Provider, null, record.ConfigDir);
-        var request = PaneRequestFor(record.Repo, record.Directory, record.Provider, null, record.ConfigDir, session);
-        return request with { ResumeSession = session };
-    }
-
-    /// <summary>PowerShell running <paramref name="script"/>, encoded so no quote, space or ';' in a folder, title or prompt is
-    /// parsed on the way.</summary>
-    private static string PowerShell(string script) =>
-        JoinCommandLine(["powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", Convert.ToBase64String(Encoding.Unicode.GetBytes(script))]);
-
-    /// <summary>Arguments joined into one command line that <c>CommandLineToArgvW</c> splits back into the same arguments.</summary>
-    internal static string JoinCommandLine(IEnumerable<string> args) => string.Join(' ', args.Select(QuoteArgument));
-
-    internal static string QuoteArgument(string arg)
-    {
-        if (arg.Length > 0 && arg.IndexOfAny([' ', '\t', '\n', '\v', '"']) < 0) return arg;
-        var quoted = new StringBuilder("\"");
-        var slashes = 0;
-        foreach (var c in arg)
-        {
-            if (c == '\\') { slashes++; continue; }
-            // Backslashes before a quote are doubled, and the quote escaped; anywhere else they stand as they are.
-            quoted.Append('\\', c == '"' ? slashes * 2 + 1 : slashes).Append(c);
-            slashes = 0;
-        }
-        // Before the closing quote they're doubled too, or the last one would escape it.
-        return quoted.Append('\\', slashes * 2).Append('"').ToString();
     }
 
     internal IEnumerable<string> StartArguments(string title, string directory, string provider, string? prompt, string? configDir = null)

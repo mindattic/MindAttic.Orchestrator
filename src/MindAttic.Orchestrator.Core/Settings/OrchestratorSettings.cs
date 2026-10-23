@@ -280,29 +280,6 @@ public sealed record OrchestratorSettings
     [JsonIgnore]
     public int? WeeklyStopCapPercent { get; init; }
 
-    /// <summary>Where CLIs the Orchestrator opens run (M.ORCH-T618): <see cref="WindowsTerminalHost"/> (the default) opens each
-    /// tab in Windows Terminal, one window per person; <see cref="OrchestratorHost"/> opens it as a terminal pane inside the
-    /// dashboard (its Terminals view), falling back to Windows Terminal while no dashboard is open to hold it. Read at each
-    /// start, so a switch affects only tabs opened afterwards.</summary>
-    public string TerminalHost { get; init; } = WindowsTerminalHost;
-
-    public const string WindowsTerminalHost = "windows-terminal", OrchestratorHost = "orchestrator";
-
-    public static IReadOnlyList<string> TerminalHosts { get; } = [WindowsTerminalHost, OrchestratorHost];
-
-    /// <summary>A typed host ("Windows Terminal", "wt", "Orchestrator", "dashboard") as saved, or null when it's neither.</summary>
-    public static string? ParseTerminalHost(string? text) =>
-        text?.Trim().ToLowerInvariant().Replace("-", "").Replace("_", "").Replace(" ", "") switch
-        {
-            "windowsterminal" or "wt" or "terminal" or "windows" => WindowsTerminalHost,
-            "orchestrator" or "dashboard" or "embedded" => OrchestratorHost,
-            _ => null,
-        };
-
-    /// <summary>New CLIs open inside the Orchestrator (anything else, a hand-edited typo included, opens Windows Terminal).</summary>
-    [JsonIgnore]
-    public bool EmbeddedTerminals => ParseTerminalHost(TerminalHost) == OrchestratorHost;
-
     /// <summary>The dashboard's theme (M.ORCH-T678): "Light" or "Dark", as its sun/moon switch saved it. Null (never switched),
     /// or anything else, is dark, the default; the dashboard reads it at start and writes it at each switch.</summary>
     public string? Theme { get; init; }

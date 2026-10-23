@@ -81,8 +81,6 @@ public sealed partial class MainViewModel
         selectedTab = next;
         foreach (var t in loginTabs) t.Raise(nameof(SelectedTab));
         SelectedTabChanged?.Invoke(this, EventArgs.Empty);
-        // The person shown is the one whose chosen terminal shows (M.ORCH-T622).
-        ShowChosenPane();
         // The Accounts view reads its cards only while open: one opened in the newly shown tab gets them now.
         if (next.IsAccountsView) _ = next.RefreshLoginCardsAsync();
     }
@@ -102,7 +100,6 @@ public sealed partial class MainViewModel
     private void ApplyTabs(Snapshot all, IReadOnlyList<LoginTab> tabs)
     {
         var before = loginTabs.Count;
-        var keysBefore = loginTabs.Select(t => t.tab.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var previous = loginTabs.ToList();
         // The 'API key' tab after every person's (M.ORCH-T630).
         loginTabs.SyncBy([.. tabs.Where(t => !t.IsApiKey), LoginTab.ApiKeyTab(all.Billing?.Mode == BillingModes.Api)], t => t.Key, v => v.tab.Key,
@@ -111,11 +108,10 @@ public sealed partial class MainViewModel
         // The global login's tab is always here, whatever the list said; it sits by its name among the others (M.ORCH-T752).
         if (!loginTabs.Contains(this)) loginTabs.Insert(0, this);
         if (selectedTab is not null && !loginTabs.Contains(selectedTab)) Select(this);
-        // A tab signed out is gone for good: it stops listening to the static move and terminal events (M.ORCH-T734).
+        // A tab signed out is gone for good: it stops listening to the static move events (M.ORCH-T734).
         foreach (var gone in previous.Where(t => !ReferenceEquals(t, this) && !loginTabs.Contains(t))) gone.Detach();
         if (before != loginTabs.Count) foreach (var t in loginTabs) t.Raise(nameof(HasLoginTabs));
 
-        var loginsChanged = !keysBefore.SetEquals(loginTabs.Select(t => t.tab.Key));
         var options = aggregator.Options;
         foreach (var t in loginTabs.ToList())
         {
@@ -123,9 +119,6 @@ public sealed partial class MainViewModel
             t.Apply(all, LoginScope.For(all, t.IsApiKeyTab ? LoginTab.ApiKeyKey : t.ScopeEmail, options.WorkingWindow, options.WaitingWindow));
             t.RaiseTabStatus();
         }
-        // A login's tab come or gone takes its panes with it (to the global login's when gone).
-        // (a tab gone and another arrived in one refresh leaves the count alone, so compare the logins themselves.)
-        if (loginsChanged) SyncTerminals();
         OpenLaunchers();
     }
 
@@ -134,70 +127,29 @@ public sealed partial class MainViewModel
     private readonly HashSet<string> launchersOpened = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// One terminal tab per account (M.ORCH-T699): every signed-in login's tab gets a pane on its Terminals tab running the
-    /// Launcher already signed in to it, left idle for you to drive, opened quietly so it doesn't take the window. A login
-    /// that already has its Launcher tab keeps it rather than getting a second.
+    /// One terminal tab per account (M.ORCH-T699): every signed-in login gets a Windows Terminal tab, in its own window, running
+    /// the Launcher already signed in to it, left idle for you to drive. A login whose Launcher is already running keeps it
+    /// rather than getting a second. Off the UI thread: finding the running ones asks WMI.
     /// </summary>
     private void OpenLaunchers()
     {
         if (!IsGlobalTab) return;
-        foreach (var t in loginTabs.ToList())
+        var wanted = loginTabs.Where(t => t.IsTabSignedIn && launchersOpened.Add(t.tab.Key)).Select(t => (t.ScopeEmail, t.TabTitle)).ToList();
+        if (wanted.Count == 0) return;
+        _ = Task.Run(() =>
         {
-            if (!t.IsTabSignedIn || !launchersOpened.Add(t.tab.Key)) continue;
-            if (control.LauncherPaneRequest(t.ScopeEmail, out var error) is { } request) error = AllTerminals.OpenLauncher(request, show: false);
-            if (error is not null) OrchestratorLog.For("Terminals").Warning("Couldn't open {Login:l}'s Launcher tab: {Error:l}", t.TabTitle, error);
-        }
+            foreach (var (email, title) in wanted)
+                if (control.OpenLauncher(email, out _) is { } error)
+                    OrchestratorLog.For("Launcher").Warning("Couldn't open {Login:l}'s Launcher tab: {Error:l}", title, error);
+        });
     }
-
-    // ── Each person's terminals (M.ORCH-T622) ─────────────────────────────────
-
-    private ICommand? showPaneRepoCommand;
-
-    /// <summary>The tab whose Terminals tab <paramref name="pane"/> is on: its CLI's login's, else (no tab for that login) the global login's.</summary>
-    private MainViewModel OwnerOf(TerminalPaneViewModel pane) =>
-        loginTabs.FirstOrDefault(t => string.Equals(t.tab.Key, pane.Login ?? "", StringComparison.OrdinalIgnoreCase)) ?? this;
-
-    /// <summary>Hands each login's tab its own panes (on the global login's tab, which holds them all), then shows the chosen one.</summary>
-    private void SyncTerminals()
-    {
-        if (!IsGlobalTab) { Root.SyncTerminals(); return; }
-        var owners = AllTerminals.Panes.ToLookup(OwnerOf);
-        foreach (var t in loginTabs) t.Terminals.SyncTo([.. owners[t]]);
-        ShowChosenPane();
-    }
-
-    /// <summary>The one pane on screen is the shown person's chosen one; every other pane's terminal is hidden.</summary>
-    private void ShowChosenPane()
-    {
-        if (!IsGlobalTab) { Root.ShowChosenPane(); return; }
-        AllTerminals.SelectedPane = SelectedTab.Terminals.SelectedPane;
-    }
-
-    /// <summary>Brings <paramref name="pane"/> up (a pane just opened, Go to tab, a toast): its person's tab, their Terminals
-    /// tab, and it chosen there.</summary>
-    internal void ShowPane(TerminalPaneViewModel pane)
-    {
-        if (!IsGlobalTab) { Root.ShowPane(pane); return; }
-        SyncTerminals();
-        var owner = OwnerOf(pane);
-        Select(owner);
-        owner.Page = TerminalsPage;
-        owner.Terminals.SelectedPane = pane;
-        ShowChosenPane();
-    }
-
-    /// <summary>"Go to" on a terminal tab: its repo, on this person's dashboard (its detail, with its tickets and Start).</summary>
-    public ICommand ShowPaneRepoCommand => showPaneRepoCommand ??= new RelayCommand(p =>
-    {
-        if (p is TerminalPaneViewModel pane) SelectRepo(pane.Request.Repo);
-    });
 
     private void Retitle(LoginTab next)
     {
         if (next == tab) return;
         tab = next;
         Raise(nameof(Tab)); Raise(nameof(TabTitle)); Raise(nameof(TabTip)); Raise(nameof(TabBrush));
-        Raise(nameof(IsTabSignedIn)); Raise(nameof(ShowsDashboard)); Raise(nameof(SignInPrompt)); Raise(nameof(TerminalsVisibility));
+        Raise(nameof(IsTabSignedIn)); Raise(nameof(SignInPrompt));
         Raise(nameof(IsApiKeyTab)); Raise(nameof(IsPersonTab)); Raise(nameof(ShowsSignIn)); RaiseTabStatus();
         CommandManager.InvalidateRequerySuggested();
     }
@@ -220,9 +172,9 @@ public sealed partial class MainViewModel
 
     /// <summary>Open Launcher (M.ORCH-T615): the Launcher's menu as this tab's login (<c>MindAttic.Launcher --account &lt;email&gt;</c>),
     /// so every repo CLI started from it runs on that login and shows in this tab; on the global login's tab, the Launcher
-    /// unscoped. One login may own many CLIs. It brings up the login's own Launcher tab on its Terminals (M.ORCH-T699), the
-    /// one already open when there is one; Windows Terminal only when a pane can't be made.</summary>
-    public ICommand OpenLauncherCommand => openLauncherCommand ??= new RelayCommand(OpenLauncher, () => tab.SignedIn && !tab.IsApiKey);
+    /// unscoped. One login may own many CLIs. It opens in the login's own Windows Terminal window; a login whose Launcher is
+    /// already running gets that one brought up rather than a second (M.ORCH-T699).</summary>
+    public ICommand OpenLauncherCommand => openLauncherCommand ??= new RelayCommand(async () => await OpenLauncherAsync(),() => tab.SignedIn && !tab.IsApiKey);
 
     /// <summary>Sign in, on a tab whose login isn't signed in yet: its own sign-in in a private browser window, then the tab
     /// becomes its dashboard.</summary>
@@ -232,24 +184,30 @@ public sealed partial class MainViewModel
         if (await SignInOwnAsync(email)) await RefreshAsync();
     }, () => !tab.SignedIn && ScopeEmail is not null && !IsSigningIn);
 
-    private void OpenLauncher()
+    private async Task OpenLauncherAsync()
     {
-        // Its own terminal tab here (M.ORCH-T699), the one it has reused rather than a second; Windows Terminal only when a
-        // pane can't be made.
-        if (control.LauncherPaneRequest(ScopeEmail, out var error) is { } request && (error = AllTerminals.OpenLauncher(request, show: true)) is null)
+        var email = ScopeEmail;
+        Root.launchersOpened.Add(tab.Key);
+        // Finding a running Launcher asks WMI, and bringing its tab up uses UI Automation over Windows Terminal: off the UI thread.
+        var (error, running) = await Task.Run(() => (control.OpenLauncher(email, out var pid), pid));
+        if (error is not null)
         {
-            Root.launchersOpened.Add(tab.Key);
-            StatusMessage = ScopeEmail is null
-                ? "The Launcher on the global login is on this tab's Terminals."
-                : $"The Launcher as {TabTitle} is on this tab's Terminals: every repo CLI started from it runs on {ScopeEmail} and shows in this tab.";
+            StatusMessage = error;
+            Toasts.Insert(0, new ToastViewModel("Launcher not opened", error, Palette.Over, null));
             return;
         }
-        if (error is not null) OrchestratorLog.For("Terminals").Warning("No Launcher pane for {Login:l}: {Error:l}; opening it in Windows Terminal", TabTitle, error);
-        error = control.OpenLauncher(ScopeEmail);
-        StatusMessage = error ?? (ScopeEmail is null
+        if (running is { } pid)
+        {
+            var title = control.LauncherTitleOf(email);
+            var result = await Task.Run(() => TerminalFocus.GoTo(new HostSession("Claude", pid, "", null) { Title = title }, []));
+            StatusMessage = result.Outcome == GoToOutcome.NotFound
+                ? $"The Launcher as {TabTitle} is already open (\"{title}\"): {result.Note}"
+                : $"The Launcher as {TabTitle} was already open: {result.Note}";
+            return;
+        }
+        StatusMessage = email is null
             ? "Opened the Launcher on the global login."
-            : $"Opened the Launcher as {TabTitle}: every repo CLI started from it runs on {ScopeEmail} and shows in this tab.");
-        if (error is not null) Toasts.Insert(0, new ToastViewModel("Launcher not opened", error, Palette.Over, null));
+            : $"Opened the Launcher as {TabTitle}: every repo CLI started from it runs on {email} and shows in this tab.";
     }
 
     /// <summary>Tags each new toast with this tab while there's more than one (toasts tagged by tab), and tells the window.</summary>

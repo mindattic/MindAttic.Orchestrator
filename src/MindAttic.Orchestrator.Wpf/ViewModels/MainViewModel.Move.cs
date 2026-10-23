@@ -108,7 +108,6 @@ public sealed partial class MainViewModel
     {
         foreach (var a in Agents) a.RaiseMoving();
         foreach (var card in LoginCards) foreach (var c in card.Clis) c.RaiseMoving();
-        foreach (var p in Terminals.Panes) p.RaiseMoving();
         // Every ticket a move holds, wherever it shows (M.ORCH-T637): the repo's open tickets, the queue and finished work.
         foreach (var r in tiles.Values)
         {

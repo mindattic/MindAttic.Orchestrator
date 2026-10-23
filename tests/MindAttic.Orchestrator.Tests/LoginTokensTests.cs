@@ -168,10 +168,17 @@ public sealed class LoginTokensTests
         Assert.That(seen, Is.EqualTo($"{b.Directory}|{Token}||"),
             "the folder and its own token; the API key and gateway token that would outrank it are gone");
 
-        // A pane on the global login clears an inherited token as well.
-        var pane = control.PaneRequestFor("Repo", b.Directory, "Claude", null, null, "abc-123");
-        var paneScript = Encoding.Unicode.GetString(Convert.FromBase64String(HostSessionScanner.SplitCommandLine(pane.CommandLine)[^1]));
-        Assert.That(paneScript, Does.StartWith("Remove-Item Env:CLAUDE_CONFIG_DIR -ErrorAction SilentlyContinue; Remove-Item Env:CLAUDE_CODE_OAUTH_TOKEN"));
+        // The login's own Launcher tab (M.ORCH-T699, in Windows Terminal since M.ORCH-T751) sets them the same way, so every
+        // CLI started from its menu inherits them.
+        var launcherArgs = new SessionControl(new OrchestratorOptions { LauncherExe = stub })
+        {
+            Dirs = dirs,
+            Look = d => LoginLook.For(d ?? @"C:\nowhere\global", "b@example.com"),
+            TokenEnv = d => tokens.TabEnv(d, Now),
+        }.LauncherArguments(b.Email).ToList();
+        var launcherScript = Encoding.Unicode.GetString(Convert.FromBase64String(launcherArgs[launcherArgs.IndexOf("-EncodedCommand") + 1]));
+        Assert.That(launcherScript, Does.StartWith($"$env:CLAUDE_CONFIG_DIR = '{b.Directory}'; Remove-Item Env:ANTHROPIC_API_KEY"));
+        Assert.That(launcherScript, Does.EndWith($"'--account' '{b.Email}'; exit $LASTEXITCODE").And.Not.Contain(Token));
     }
 
     [Test]

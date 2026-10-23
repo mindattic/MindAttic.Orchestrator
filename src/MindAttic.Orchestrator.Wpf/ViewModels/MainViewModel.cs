@@ -124,21 +124,7 @@ public sealed partial class MainViewModel : ObservableObject
         // each of them, the whole queue's, on every tab switch. It acts on the tab on screen.
         OpenInTicketsCommand = root?.OpenInTicketsCommand ?? new RelayCommand(p => Shown.OpenInTickets(p as string));
         InitPhases();
-        // Terminals inside the Orchestrator (M.ORCH-T618): one host of panes for the window, so one for every login's tab, the
-        // global login's; each tab's Terminals tab shows its own person's panes (M.ORCH-T622). A pane opened shows on its
-        // person's Terminals tab; panes left from last time are offered on the global login's.
-        if (root is null)
-        {
-            AllTerminals = new TerminalsViewModel(control, store);
-            AllTerminals.Opened += ShowPane;
-            AllTerminals.LoginsChanged += SyncTerminals;
-            AllTerminals.Panes.CollectionChanged += (_, _) => SyncTerminals();
-        }
-        else AllTerminals = root.AllTerminals;
-        Terminals = new PersonTerminalsViewModel(AllTerminals);
         PendingMoves.Changed += OnMovesChanged;
-        Terminals.SelectionChanged += () => Root.ShowChosenPane();
-        if (root is null && AllTerminals.HasReopen) Page = TerminalsPage;
         if (store.Load<ReposView>(ReposViewName).Sort is { } sort && RepoSorts.Contains(sort)) repoSort = sort;
     }
 
@@ -149,19 +135,9 @@ public sealed partial class MainViewModel : ObservableObject
     public IReadOnlyList<TileGroupViewModel> Groups { get; }
     public ObservableCollection<ToastViewModel> Toasts { get; } = [];
 
-    /// <summary>Every CLI running inside the dashboard (M.ORCH-T618), whoever's; the same in every tab.</summary>
-    public TerminalsViewModel AllTerminals { get; }
-
-    /// <summary>Drops this tab's subscriptions to the static <see cref="PendingMoves.Changed"/> and its terminals' events, so
-    /// a login tab removed on sign-out isn't kept alive handling every move (M.ORCH-T734).</summary>
-    public void Detach()
-    {
-        PendingMoves.Changed -= OnMovesChanged;
-        Terminals.Detach();
-    }
-
-    /// <summary>This person's CLIs running inside the dashboard, on their Terminals tab (M.ORCH-T622).</summary>
-    public PersonTerminalsViewModel Terminals { get; }
+    /// <summary>Drops this tab's subscription to the static <see cref="PendingMoves.Changed"/>, so a login tab removed on
+    /// sign-out isn't kept alive handling every move (M.ORCH-T734).</summary>
+    public void Detach() => PendingMoves.Changed -= OnMovesChanged;
 
     /// <summary>The header's live clock, ticking every second on its own timer, not with the refresh (M.ORCH-T193).</summary>
     public ClockViewModel Clock { get; }
@@ -329,7 +305,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>True until the first refresh finishes, either way (a failure shows in RefreshInfo): the full-screen
     /// loader covers the dashboard until then, so it never shows empty or half-filled panels (M.ORCH-T184).</summary>
-    public bool IsLoading { get => isLoading; private set { if (Set(ref isLoading, value)) Raise(nameof(TerminalsVisibility)); } }
+    public bool IsLoading { get => isLoading; private set => Set(ref isLoading, value); }
 
     /// <summary>The one refresh every tab shares (M.ORCH-T613): a login's tab asks the global login's, which builds the
     /// workspace's snapshot once, keeps a tab per login, and hands each its own view of it.</summary>
@@ -428,7 +404,6 @@ public sealed partial class MainViewModel : ObservableObject
         ApplyAccounts(all, DateTime.UtcNow);
         // Who's out of room is read with the roster, just above (M.ORCH-T668).
         if (IsGlobalTab) ApplyUserTickets();
-        if (IsGlobalTab) AllTerminals.Update(all);
         // The Accounts view's cards, read off the UI thread, only while it's open (M.ORCH-T603).
         _ = RefreshLoginCardsAsync();
         // After the phases' own toasts (pace, budget, stuck, audit, Needs you), or they'd go past the cap (M.ORCH-T340).

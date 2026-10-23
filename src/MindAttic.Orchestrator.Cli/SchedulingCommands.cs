@@ -414,10 +414,6 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("true (default): a CLI whose login runs out with no other login to rebalance it onto is moved onto the Vault's API key on its own (the billing mode unchanged), resuming its session, and moved back once its login resets; false leaves it waiting for the reset.")]
         public bool? Failover { get; init; }
 
-        [CommandOption("--terminal-host <HOST>")]
-        [Description("Where CLIs the Orchestrator opens run: windows-terminal (default; a Windows Terminal window per person) or orchestrator (a terminal pane inside the dashboard, falling back to Windows Terminal while no dashboard is open). Affects only tabs opened afterwards.")]
-        public string? TerminalHost { get; init; }
-
         [CommandOption("--weekly-reserve <PERCENT>")]
         [Description("The share of each account's week kept back, 0 to 50 (default 5): every CLI on an account stops at 100 minus this of that account's week (95% by default), each login on its own.")]
         public int? WeeklyReserve { get; init; }
@@ -636,16 +632,6 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { RebalanceLogins = rebalance };
             changed = true;
         }
-        if (settings.TerminalHost is { } typedHost)
-        {
-            if (OrchestratorSettings.ParseTerminalHost(typedHost) is not { } terminalHost)
-            {
-                AnsiConsole.MarkupLine($"[red]No terminal host \"{Markup.Escape(typedHost)}\"; use {string.Join(" or ", OrchestratorSettings.TerminalHosts)}.[/]");
-                return 1;
-            }
-            s = s with { TerminalHost = terminalHost };
-            changed = true;
-        }
         if (settings.WeeklyReserve is { } weeklyReserve)
         {
             if (weeklyReserve is < 0 or > OrchestratorSettings.MaxWeeklyReservePercent) { AnsiConsole.MarkupLine($"[red]--weekly-reserve is 0 to {OrchestratorSettings.MaxWeeklyReservePercent}.[/]"); return 1; }
@@ -829,7 +815,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (s.AutoLogin ? " · a new Claude tab goes on a free per-CLI login (one CLI per account), else the global login" : " · a new Claude tab uses the global login unless given --account") +
             (s.RebalanceLogins ? " · a CLI on a login that runs low moves to a free login with more headroom" : " · a CLI stays on its login when it runs low") +
             " · a CLI whose login runs out waits for its reset (API billing is only ever switched on by you)" +
-            (s.EmbeddedTerminals ? " · CLIs open as panes inside the Orchestrator (Windows Terminal while no dashboard is open)" : " · CLIs open in Windows Terminal, a window per person"));
+            " · CLIs open in Windows Terminal, a window per person");
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (Claude's report, else learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (Claude's report, else learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display + " unless Claude reports another" : "as Claude reports, else learned, else rolling 7 days")} · warn at {s.WarnPercent}%" +
             $" · weekly reserve {s.WeeklyReservePercent}% (each account's CLIs stop at {s.WeeklyStopPercent}% of its week) · no weekly-aware pacing, ever");
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +

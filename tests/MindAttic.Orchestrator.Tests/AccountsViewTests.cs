@@ -176,7 +176,7 @@ public sealed class AccountsViewTests
     [Test]
     public void Accounts_is_a_view_beside_the_others()
     {
-        Assert.That(MainViewModel.ViewNames, Is.EqualTo(new[] { "Agents", "Repos", "Queue", "Audit", "Accounts" }), "Terminals is each person's own tab beside Dashboard (M.ORCH-T622), not a view");
+        Assert.That(MainViewModel.ViewNames, Is.EqualTo(new[] { "Agents", "Repos", "Queue", "Audit", "Accounts" }), "no Terminals view: every CLI opens in Windows Terminal (M.ORCH-T751)");
         Assert.That(MainViewModel.ViewNames.Select(n => Enum.TryParse<View>(n, out _)), Is.All.True);
         Assert.That(MainViewModel.LoginsSummary(1, 1), Is.EqualTo("1 login · 1 live CLI"));
         Assert.That(MainViewModel.LoginsSummary(3, 4), Is.EqualTo("3 logins · 4 live CLIs"));

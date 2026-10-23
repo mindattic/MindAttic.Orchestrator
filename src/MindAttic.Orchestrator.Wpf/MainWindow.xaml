@@ -75,7 +75,6 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -124,19 +123,11 @@
         </mc:MaTabControl>
         </DockPanel>
 
-        <!-- Each person's two tabs (M.ORCH-T622): their Dashboard (the tiles, the chart, the view pills and the chosen view) and
-             their Terminals (one terminal tab per CLI of theirs open in a pane here). On Terminals the header, the chart and the
-             view pills fold away, so the panes fill the window below the person tabs. -->
-        <mc:MaTabControl x:Name="PageTabStrip" Grid.Row="1" ShowContent="False" ItemsSource="{Binding Pages}" SelectedItem="{Binding Page}"
-                 Margin="24,10,24,0" AutomationProperties.Name="{Binding TabTitle, StringFormat='{}{0}: dashboard or terminals'}"
-                 AutomationProperties.HelpText="{Binding Terminals.Summary}" ToolTip="{Binding Terminals.Summary}"
-                 Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}" />
-
         <!-- Header, read left to right: the work (who needs you, who's working, their subagents, what's queued), then the
              tokens (this 5-hour window, the week, the pace ledger, today). Every card is a button that goes somewhere. -->
         <!-- The header owns the window's left/right gutter; nothing inside it adds its own, so the tiles and the chart
              share both edges (M.ORCH-T192). The tiles are equal cells that together span the row at any width. -->
-        <StackPanel x:Name="Header" Grid.Row="2" Margin="24,18,24,0" Visibility="{Binding ShowsDashboard, Converter={StaticResource Visible}}">
+        <StackPanel x:Name="Header" Grid.Row="1" Margin="24,18,24,0" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
 
         <mc:MaTileGrid x:Name="StatTiles" MinItemWidth="160" Spacing="10" RowSpacing="10" Balanced="True" UniformRows="True"
                            AutomationProperties.Name="Summary">
@@ -232,7 +223,7 @@
         </StackPanel>
 
         <!-- Toolbar -->
-        <Grid x:Name="Toolbar" Grid.Row="3" Margin="24,8,24,10" Visibility="{Binding ShowsDashboard, Converter={StaticResource Visible}}">
+        <Grid x:Name="Toolbar" Grid.Row="2" Margin="24,8,24,10" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -284,13 +275,13 @@
              down instead of covering whatever has keyboard focus (WCAG 2.4.11). The library's MaToastHost: each ToastViewModel's
              Title, Body and Accent on an MaToast, clicking it opens what it's about, its x dismisses it, and each new one is read
              out politely. -->
-        <mc:MaToastHost x:Name="ToastRow" Grid.Row="4" ItemsSource="{Binding Toasts}" Margin="24,0,24,6"
+        <mc:MaToastHost x:Name="ToastRow" Grid.Row="3" ItemsSource="{Binding Toasts}" Margin="24,0,24,6"
                         OpenCommand="{Binding OpenToastCommand}" DismissCommand="{Binding DismissToastCommand}"
                         AutomationProperties.Name="Notifications" />
 
         <!-- A roster account not signed in on this machine yet (M.ORCH-T615): its tab shows only its Sign in, then, once signed
              in, the whole dashboard and Open Launcher at the next refresh. -->
-        <StackPanel Grid.Row="5" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520" Margin="24"
+        <StackPanel Grid.Row="4" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520" Margin="24"
                     Visibility="{Binding ShowsSignIn, Converter={StaticResource Visible}}">
             <TextBlock Text="{Binding SignInPrompt}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,14" />
             <Button Style="{StaticResource MaPrimaryButton}" Command="{Binding SignInTabCommand}" Content="Sign in" Padding="18,6"
@@ -301,7 +292,7 @@
 
         <!-- The 'API key' tab (M.ORCH-T630): the Vault API key's billing, for emergencies, and back to Claude Team (M.ORCH-T436,
              off the old account menu by M.ORCH-T628), what the CLIs billing it spent today and which CLIs bill it. -->
-        <ScrollViewer x:Name="ApiKeyBody" Grid.Row="5" Style="{StaticResource MaBodyScroll}"
+        <ScrollViewer x:Name="ApiKeyBody" Grid.Row="4" Style="{StaticResource MaBodyScroll}"
                       Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}">
             <StackPanel MaxWidth="760" HorizontalAlignment="Left" Margin="0,18,0,0">
                 <TextBlock Text="API key" Style="{StaticResource MaHeading}" AutomationProperties.HeadingLevel="Level2" />
@@ -329,8 +320,8 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Body: grouped tiles, and the selected repo's detail pane; or, on the Terminals tab, only the person's terminals. -->
-        <Grid Grid.Row="5" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
+        <!-- Body: grouped tiles, and the selected repo's detail pane. -->
+        <Grid Grid.Row="4" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -1166,108 +1157,16 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- The person's Terminals tab (M.ORCH-T618, M.ORCH-T622): their CLIs opened inside the Orchestrator ("Where CLIs
-                 open" in Settings), one terminal tab each with its login's badge and color (M.ORCH-T616), filling the window
-                 below the person tabs (the header, chart and view pills fold away). The terminals are native windows drawn over
-                 WPF, so the whole view is hidden (never collapsed: they keep their size) while Settings or the loader is over it.
-                 Every pane's terminal lives in the one host grid below; only the shown person's chosen one is visible.
-                 Visibility reads the window's view model: this element's own DataContext is Terminals, which has none. -->
             <!-- A refresh really running behind the shown view (M.ORCH-T634): a small spinner at its bottom; switching never waits. -->
             <mc:MaSpinner x:Name="ViewSpinner" Grid.ColumnSpan="2" Width="20" Height="20" StrokeThickness="2"
                           HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,8" Panel.ZIndex="5" IsHitTestVisible="False"
                           Visibility="{Binding IsViewBusy, Converter={StaticResource Visible}}"
                           AutomationProperties.Name="Refreshing this view" />
 
-            <DockPanel x:Name="TerminalsBody" Grid.ColumnSpan="2" Margin="24,0,24,16"
-                       Visibility="{Binding DataContext.TerminalsVisibility, RelativeSource={RelativeSource AncestorType=Window}}"
-                       DataContext="{Binding Terminals}">
-                <DockPanel x:Name="TerminalsReopen" DockPanel.Dock="Top" Margin="0,0,0,8"
-                           Visibility="{Binding HasReopen, Converter={StaticResource Visible}}">
-                    <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Content="Dismiss" Padding="14,4" Margin="8,0,0,0"
-                            Command="{Binding DismissReopenCommand}" VerticalAlignment="Center"
-                            ToolTip="Forget them: nothing is reopened" />
-                    <Button DockPanel.Dock="Right" Style="{StaticResource MaPrimaryButton}" Content="Reopen" Padding="14,4" Margin="8,0,0,0"
-                            Command="{Binding ReopenCommand}" VerticalAlignment="Center"
-                            ToolTip="Open each one again in a pane of its own, on the login it ran on, resuming its Claude conversation (claude --resume)" />
-                    <TextBlock Text="{Binding ReopenText}" TextWrapping="Wrap" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
-                </DockPanel>
-
-                <!-- One tab per pane (the library's MaTabItem, M.ORCH-T667): underlined in its login's colour, led by its login's
-                     badge (an MaTag in that colour), a bare strip whose selection shows that pane's terminal below. -->
-                <mc:MaTabControl x:Name="TerminalTabs" DockPanel.Dock="Top" ShowContent="False" ItemsSource="{Binding Panes}" SelectedItem="{Binding SelectedPane}"
-                                 Margin="0,0,0,6" AutomationProperties.Name="Terminal panes"
-                                 Visibility="{Binding HasPanes, Converter={StaticResource Visible}}">
-                    <mc:MaTabControl.ItemContainerStyle>
-                        <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
-                            <Setter Property="Accent" Value="{Binding TabBrush}" />
-                            <Setter Property="ToolTip" Value="{Binding Tooltip}" />
-                            <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
-                        </Style>
-                    </mc:MaTabControl.ItemContainerStyle>
-                    <mc:MaTabControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:TerminalPaneViewModel}">
-                            <Grid x:Name="TerminalTab">
-                                <StackPanel Orientation="Horizontal" IsEnabled="{Binding IsUnlocked}">
-                                    <mc:MaBadge x:Name="TerminalBadge" Style="{StaticResource MaTag}" Content="{Binding Badge}" Background="{Binding TabBrush}"
-                                                Foreground="{Binding BadgeForeground}" Margin="0,0,6,0" VerticalAlignment="Center" />
-                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
-                                    <TextBlock Text="{Binding StateText}" Style="{StaticResource MaMutedText}" Margin="6,0,0,0" VerticalAlignment="Center" />
-                                    <!-- Go to: its repo on this person's dashboard; Move to: its CLI to another signed-in login (M.ORCH-T622). -->
-                                    <Button x:Name="PaneGoToButton" Style="{StaticResource MaTextButton}" Content="Go to" FontSize="12" Padding="6,1" Margin="10,0,0,0"
-                                            VerticalAlignment="Center" Visibility="{Binding HasRepoButtons, Converter={StaticResource Visible}}"
-                                            Command="{Binding DataContext.ShowPaneRepoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                            CommandParameter="{Binding}"
-                                            AutomationProperties.Name="{Binding Request.Repo, StringFormat='Go to {0} on the dashboard'}"
-                                            ToolTip="Show its repo on this person's dashboard: its detail, tickets and agents" />
-                                    <Button x:Name="PaneMoveToButton" Click="OnMoveToClick" Style="{StaticResource MaTextButton}" Content="Move to ▾" FontSize="12"
-                                            Padding="6,1" Margin="4,0,0,0" VerticalAlignment="Center" Visibility="{Binding HasRepoButtons, Converter={StaticResource Visible}}"
-                                            AutomationProperties.Name="{Binding Request.Repo, StringFormat='Move the {0} CLI to another login'}"
-                                            ToolTip="Move this CLI to another signed-in login at its next idle point, keeping its session; its pane moves to that person's Terminals" />
-                                    <Button Style="{StaticResource MaButton}" Content="✕" Padding="6,0" Margin="8,0,0,0" FontSize="11"
-                                            Command="{Binding DataContext.CloseCommand, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}"
-                                            CommandParameter="{Binding}"
-                                            AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
-                                            ToolTip="Close this pane, ending its CLI" />
-                                </StackPanel>
-                                <Grid x:Name="PaneMovingOverlay" Visibility="{Binding IsMoving, Converter={StaticResource Visible}}">
-                                    <Border Style="{StaticResource MaVeil}" CornerRadius="0" />
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <mc:MaSpinner Width="14" Height="14" StrokeThickness="2" Margin="0,0,6,0" />
-                                        <TextBlock Text="{Binding MovingText}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Grid>
-                            </Grid>
-                        </DataTemplate>
-                    </mc:MaTabControl.ItemTemplate>
-                </mc:MaTabControl>
-
-                <!-- Only in the Terminals view (M.ORCH-T625): collapsed elsewhere so it can never draw over another view's heading. -->
-                <TextBlock x:Name="TerminalsEmptyHint" DockPanel.Dock="Top" TextWrapping="Wrap"
-                           Text="No terminals open for this login. With Settings, Where CLIs open: Orchestrator, a CLI started from the Orchestrator (Start, the Queue, autopilot, orchestrator start) opens as a pane of its own here, on the Terminals tab of the login it runs on.">
-                    <TextBlock.Style>
-                        <Style TargetType="TextBlock" BasedOn="{StaticResource MaMutedText}">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                            <Style.Triggers>
-                                <MultiDataTrigger>
-                                    <MultiDataTrigger.Conditions>
-                                        <Condition Binding="{Binding HasPanes}" Value="False" />
-                                        <Condition Binding="{Binding DataContext.IsTerminalsView, RelativeSource={RelativeSource AncestorType=Window}}" Value="True" />
-                                    </MultiDataTrigger.Conditions>
-                                    <Setter Property="Visibility" Value="Visible" />
-                                </MultiDataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </TextBlock.Style>
-                </TextBlock>
-
-                <!-- The panes' terminals, one per pane, stacked: only the selected one shows (MainWindow.xaml.cs adds and removes them). -->
-                <Grid x:Name="TerminalPanesHost" />
-            </DockPanel>
-
         </Grid>
 
         <!-- Status bar -->
-        <Border x:Name="StatusBar" Grid.Row="6" Style="{StaticResource MaStatusBar}">
+        <Border x:Name="StatusBar" Grid.Row="5" Style="{StaticResource MaStatusBar}">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Right" Style="{StaticResource MaMutedText}"
                            Text="F5 refresh · Ctrl+Tab next login · Ctrl+F search · Ctrl +/− zoom · Esc close" />
@@ -1285,7 +1184,7 @@
         </Border>
 
         <!-- Covers every row until the first refresh lands (M.ORCH-T184). -->
-        <Border x:Name="Loader" Grid.RowSpan="7" Style="{StaticResource MaCover}"
+        <Border x:Name="Loader" Grid.RowSpan="6" Style="{StaticResource MaCover}"
                 Visibility="{Binding IsLoading, Converter={StaticResource Visible}}"
                 AutomationProperties.Name="Loading the dashboard" AutomationProperties.LiveSetting="Polite">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -1303,7 +1202,7 @@
              Esc, its close button and the backdrop all close it through ToggleSettingsCommand (which reloads the saved
              settings, dropping unsaved edits, as the flyout's close did); focus is held inside while open and goes back to
              the Settings button (or stat card) after. Last in the root grid, spanning every row, over the loader too. -->
-        <mc:MaModal x:Name="SettingsModal" Grid.RowSpan="7" Title="Settings" AutomationProperties.Name="Settings"
+        <mc:MaModal x:Name="SettingsModal" Grid.RowSpan="6" Title="Settings" AutomationProperties.Name="Settings"
                     IsOpen="{Binding IsSettingsOpen}" CloseCommand="{Binding ToggleSettingsCommand}">
             <StackPanel DataContext="{Binding Settings}">
                 <TextBlock Text="TOKEN BUDGET" Style="{StaticResource MaSectionLabel}" Margin="0,4,0,8" />
@@ -1416,11 +1315,6 @@
                          Text="{Binding OrphanQuiet, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Orphan quiet minutes" />
                 <TextBlock Text="1 to 1440 (10 by default). How long a dispatch's CLI or tab must be gone, with nothing written in its worktree, before the ticket counts as orphaned."
                            Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,10" />
-                <TextBlock Text="Where CLIs open" Margin="0,0,0,4" />
-                <ListBox x:Name="TerminalHostChoice" Style="{StaticResource MaPillChoice}" ItemsSource="{Binding TerminalHosts}" SelectedItem="{Binding TerminalHost}"
-                         AutomationProperties.Name="Where CLIs open" />
-                <TextBlock Text="Windows Terminal opens each CLI in a Windows Terminal window of its login's own. Orchestrator opens it as a terminal pane in the Terminals view here, running the same Launcher tab; the panes close with this window, which then offers to resume them (claude --resume) the next time it opens. Only CLIs opened after a Save follow it."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,10" />
                 <TextBlock Text="Max concurrent sessions (working + waiting)" Margin="0,0,0,4" />
                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
                          Text="{Binding MaxSessions, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Max concurrent sessions" />
@@ -1447,7 +1341,7 @@
 
         <!-- Rename (M.ORCH-T633), from a login card's right-click menu: the account's email (its ID, never edited), its Name
              (the card's title; the member's name too) and its Prefix (the badge its terminal titles start with). -->
-        <mc:MaModal x:Name="RenameModal" Grid.RowSpan="7" Title="Rename login" AutomationProperties.Name="Rename login" DialogWidth="460"
+        <mc:MaModal x:Name="RenameModal" Grid.RowSpan="6" Title="Rename login" AutomationProperties.Name="Rename login" DialogWidth="460"
                     IsOpen="{Binding IsRenameOpen}" CloseCommand="{Binding CancelRenameCommand}">
             <StackPanel>
                 <TextBlock Text="Email" Margin="0,0,0,4" />

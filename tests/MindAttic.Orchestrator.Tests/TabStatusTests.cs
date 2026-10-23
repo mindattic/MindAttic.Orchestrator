@@ -96,7 +96,7 @@ public sealed class TabStatusTests
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
 
-        var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"PageTabStrip\"", StringComparison.Ordinal)];
+        var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"Header\"", StringComparison.Ordinal)];
         // The library's MaTabItem draws the light before the name and the trailing text after it (M.ORCH-T667).
         Assert.That(strip, Does.Contain("<mc:MaTabControl").And.Contain("TargetType=\"mc:MaTabItem\""));
         Assert.That(strip, Does.Contain("Property=\"Status\" Value=\"{Binding TabLightStatus}\"")

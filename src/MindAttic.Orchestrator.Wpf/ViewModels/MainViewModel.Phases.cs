@@ -79,7 +79,7 @@ public sealed partial class MainViewModel
 
     internal static readonly IReadOnlyList<string> ViewNames = ["Agents", "Repos", "Queue", "Audit", "Accounts"];
 
-    /// <summary>A view of the dashboard: choosing one (a pill, a tile, a toast that opens a repo) shows the Dashboard tab.</summary>
+    /// <summary>A view of the dashboard, chosen by a pill, a tile or a toast that opens a repo.</summary>
     public string ViewChoice
     {
         get => viewChoice;
@@ -87,7 +87,6 @@ public sealed partial class MainViewModel
         {
             // Ctrl+click on the selected pill deselects it: the window jumped to Agents with no pill lit (M.ORCH-T432).
             if (value is null) return;
-            Page = DashboardPage;
             if (!Set(ref viewChoice, value)) return;
             view = Enum.TryParse<View>(value, out var v) ? v : View.Agents;
             RaiseViews();
@@ -112,60 +111,22 @@ public sealed partial class MainViewModel
 
     /// <summary>A refresh really running behind the shown view (M.ORCH-T634): the Accounts cards being read, or the audit running.
     /// Every view stays loaded in memory and switching never waits on this; it only drives the small spinner at the view's bottom.</summary>
-    public bool IsViewBusy => IsDashboardPage && (view == View.Accounts ? loadingLoginCards : view == View.Audit && IsAuditing);
+    public bool IsViewBusy => view == View.Accounts ? loadingLoginCards : view == View.Audit && IsAuditing;
 
     public bool ShowDetail => IsReposView && HasSelection;
 
-    // The dashboard's views show only on its Dashboard tab (M.ORCH-T622): on Terminals the panes have the whole body.
-    public bool IsReposView => view == View.Repos && IsDashboardPage;
-    public bool IsQueueView => view == View.Queue && IsDashboardPage;
-    public bool IsAuditView => view == View.Audit && IsDashboardPage;
-    public bool IsAgentsView => view == View.Agents && IsDashboardPage;
-    public bool IsAccountsView => view == View.Accounts && IsDashboardPage;
+    public bool IsReposView => view == View.Repos;
+    public bool IsQueueView => view == View.Queue;
+    public bool IsAuditView => view == View.Audit;
+    public bool IsAgentsView => view == View.Agents;
+    public bool IsAccountsView => view == View.Accounts;
 
-    // ── Dashboard and Terminals, each person's two tabs (M.ORCH-T622) ─────────
-
-    public const string DashboardPage = "Dashboard", TerminalsPage = "Terminals";
-    private string page = DashboardPage;
-
-    /// <summary>The two tabs under the person's tab: their dashboard, and their terminals.</summary>
-    public IReadOnlyList<string> Pages => PageNames;
-    private static readonly IReadOnlyList<string> PageNames = [DashboardPage, TerminalsPage];
-
-    /// <summary>The person's tab showing: <see cref="DashboardPage"/> (tiles, chart, view pills and the chosen view) or
-    /// <see cref="TerminalsPage"/> (only their terminals, filling the window below the person tabs).</summary>
-    public string Page
-    {
-        get => page;
-        set
-        {
-            // Ctrl+click on the selected tab deselects it, writing null: it stays on the one it was.
-            if (value is not (DashboardPage or TerminalsPage) || !Set(ref page, value)) return;
-            Raise(nameof(IsDashboardPage)); Raise(nameof(ShowsDashboard)); Raise(nameof(IsTerminalsView)); Raise(nameof(TerminalsVisibility));
-            RaiseViews();
-            if (IsAccountsView) _ = RefreshLoginCardsAsync();
-        }
-    }
-
-    public bool IsDashboardPage => page == DashboardPage;
-
-    /// <summary>The Terminals tab is showing: the header tiles, the chart and the view pills fold away for the panes.</summary>
-    public bool IsTerminalsView => page == TerminalsPage;
-
-    /// <summary>The header tiles, the chart and the view pills: on a signed-in login's Dashboard tab only.</summary>
-    public bool ShowsDashboard => IsDashboardPage && IsTabSignedIn;
-
-    /// <summary>The Terminals tab's (M.ORCH-T618): its terminals are native windows WPF can't draw over, so they're hidden while
-    /// Settings or the loader covers the window, or on a tab that only signs its login in (M.ORCH-T615), not only on the
-    /// Dashboard tab; hidden, never collapsed, so each keeps its size.</summary>
-    public System.Windows.Visibility TerminalsVisibility =>
-        IsTerminalsView && !IsSettingsOpen && !IsLoading && IsTabSignedIn ? System.Windows.Visibility.Visible : System.Windows.Visibility.Hidden;
     public ICommand ShowViewCommand { get; private set; } = null!;
 
     // ── Settings ────────────────────────────────────────────────────────────
 
     public SettingsViewModel Settings { get; private set; } = null!;
-    public bool IsSettingsOpen { get => isSettingsOpen; set { if (Set(ref isSettingsOpen, value)) Raise(nameof(TerminalsVisibility)); } }
+    public bool IsSettingsOpen { get => isSettingsOpen; set => Set(ref isSettingsOpen, value); }
     public ICommand ToggleSettingsCommand { get; private set; } = null!;
 
     // ── Budget ──────────────────────────────────────────────────────────────
