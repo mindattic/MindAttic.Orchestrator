@@ -102,16 +102,17 @@ public static class PaneBroker
     {
         while (!ct.IsCancellationRequested)
         {
-            NamedPipeServerStream pipe;
+            NamedPipeServerStream? pipe = null;
             try
             {
                 pipe = new NamedPipeServerStream(pipeName ?? PipeName, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
                     PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
                 await pipe.WaitForConnectionAsync(ct).ConfigureAwait(false);
             }
-            catch (OperationCanceledException) { return; }
-            catch (IOException ex)
+            catch (OperationCanceledException) { pipe?.Dispose(); return; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
+                pipe?.Dispose();
                 OrchestratorLog.For("Terminals").Error(ex, "The terminal pane pipe couldn't listen; retrying");
                 try { await Task.Delay(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false); } catch (OperationCanceledException) { return; }
                 continue;
@@ -136,6 +137,12 @@ public static class PaneBroker
                         ? await open(request).ConfigureAwait(false) : "No request.";
                 }
                 catch (JsonException ex) { error = $"Unreadable request: {ex.Message}"; }
+                catch (Exception ex) when (ex is not (IOException or OperationCanceledException or ObjectDisposedException))
+                {
+                    // Anything else open() throws still gets an answer, so the caller falls back to Windows Terminal at once.
+                    OrchestratorLog.For("Terminals").Error(ex, "Opening a terminal pane failed");
+                    error = $"The dashboard couldn't open the pane: {ex.Message}";
+                }
                 await writer.WriteLineAsync((error ?? "").ReplaceLineEndings(" ")).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is IOException or OperationCanceledException or ObjectDisposedException) { }

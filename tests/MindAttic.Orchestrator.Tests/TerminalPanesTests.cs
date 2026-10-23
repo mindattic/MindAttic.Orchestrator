@@ -190,6 +190,22 @@ public sealed class TerminalPanesTests
     }
 
     [Test]
+    public async Task A_dashboard_that_throws_opening_a_pane_still_answers_so_the_caller_doesn_t_wait()
+    {
+        var pipe = "orch-panes-test-" + Guid.NewGuid().ToString("N");
+        using var cts = new CancellationTokenSource();
+        var serving = PaneBroker.ServeAsync(_ => throw new InvalidOperationException("boom"), cts.Token, pipe);
+        var request = new PaneRequest("Repo", "R", @"D:\W\Repo", "Claude", "x.exe host");
+        var started = DateTime.UtcNow;
+        var (taken, error) = await Task.Run(() => (PaneBroker.TrySend(request, out var e, pipe), e));
+        Assert.That(taken, Is.True);
+        Assert.That(error, Does.Contain("boom"));
+        Assert.That(DateTime.UtcNow - started, Is.LessThan(TimeSpan.FromSeconds(20)));
+        cts.Cancel();
+        await serving.WaitAsync(TimeSpan.FromSeconds(10));
+    }
+
+    [Test]
     public void With_no_dashboard_listening_a_pane_request_says_so_at_once()
     {
         var started = DateTime.UtcNow;
