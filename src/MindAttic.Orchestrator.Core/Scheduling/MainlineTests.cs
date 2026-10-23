@@ -37,6 +37,8 @@ public sealed partial class MainlineTests(JsonStore store)
     public const string BuildName = "the build";
 
     internal static readonly TimeSpan CheckEvery = TimeSpan.FromMinutes(1);
+    /// <summary>How long a repo waits before a run that didn't complete is tried again (M.ORCH-T731).</summary>
+    internal static readonly TimeSpan RetryIncompleteAfter = TimeSpan.FromMinutes(10);
     internal static readonly TimeSpan SuiteTimeout = TimeSpan.FromMinutes(90);
 
     /// <summary>What a repo's main line was last tested at, and last passed at.</summary>
@@ -68,7 +70,7 @@ public sealed partial class MainlineTests(JsonStore store)
         work => Task.Factory.StartNew(work, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
     private readonly Dictionary<string, Run> running = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, string> mainlines = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, DateTime> retryAfter = new(StringComparer.OrdinalIgnoreCase);
     private DateTime checkedUtc = DateTime.MinValue;
 
     /// <summary>The repos whose suite is running now.</summary>
@@ -91,8 +93,12 @@ public sealed partial class MainlineTests(JsonStore store)
             var result = done.Task.IsCompletedSuccessfully ? done.Task.Result
                 : new SuiteResult(false, [], new HashSet<string>(), done.Task.Exception?.GetBaseException().Message ?? "it was cancelled");
             lines.AddRange(Report(done, result, openTickets));
+            // A run that didn't complete (timeout, file lock, dotnet missing, Prepare error) tested nothing: the head stays
+            // untested so it's tried again after a pause, not skipped for good (M.ORCH-T731).
+            if (!result.Completed) { retryAfter[done.Repo] = nowUtc + RetryIncompleteAfter; continue; }
+            retryAfter.Remove(done.Repo);
             st.Tested = done.Head;
-            if (result.Completed && result.Failed.Count == 0) st.Green = done.Head;
+            if (result.Failed.Count == 0) st.Green = done.Head;
             changed = true;
         }
 
@@ -102,7 +108,9 @@ public sealed partial class MainlineTests(JsonStore store)
             foreach (var (name, path) in repos)
             {
                 if (running.ContainsKey(name)) continue;
-                if (!mainlines.TryGetValue(name, out var mainline)) mainlines[name] = mainline = MainlineOf(path);
+                if (retryAfter.TryGetValue(name, out var again) && nowUtc < again) continue;
+                // Asked each check, not cached: a renamed default branch is followed (M.ORCH-T731).
+                var mainline = MainlineOf(path);
                 var (code, output) = Git(path, ["rev-parse", "--verify", "--quiet", "refs/remotes/origin/" + mainline]);
                 if (code != 0 || output.Trim() is not { Length: > 0 } head) continue;
                 if (!state.TryGetValue(name, out var st))

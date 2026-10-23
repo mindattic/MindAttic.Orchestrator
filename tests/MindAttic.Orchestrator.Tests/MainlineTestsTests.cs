@@ -217,6 +217,41 @@ public sealed class MainlineTestsTests
     }
 
     [Test]
+    public void A_run_that_did_not_complete_leaves_the_head_untested_and_is_retried_after_a_pause()
+    {
+        var tests = Make();
+        Tick(tests, Now);
+        head = "aaaaaaa2";
+        Tick(tests, Now.AddMinutes(1));
+        runs[0].SetResult(new MainlineTests.SuiteResult(false, [], new HashSet<string>(), "couldn't run dotnet"));
+        Tick(tests, Now.AddMinutes(2));
+        var state = store.Load<Dictionary<string, MainlineTests.RepoState>>(MainlineTests.StateName)["A"];
+        Assert.That(state.Tested, Is.EqualTo("aaaaaaa1"));
+        Tick(tests, Now.AddMinutes(4));
+        Assert.That(runs, Has.Count.EqualTo(1));
+        Tick(tests, Now.AddMinutes(13));
+        Assert.That(runs, Has.Count.EqualTo(2));
+    }
+
+    [Test]
+    public void A_renamed_main_line_is_followed()
+    {
+        var name = "main";
+        var inner = Make();
+        var tests = new MainlineTests(store)
+        {
+            Git = inner.Git,
+            MainlineOf = _ => name,
+            RunSuite = _ => Result([], []),
+            Spawn = w => Task.FromResult(w()),
+        };
+        Tick(tests, Now);
+        name = "trunk";
+        Tick(tests, Now.AddMinutes(1));
+        Assert.That(git.Any(g => g.Contains("refs/remotes/origin/trunk")), Is.True);
+    }
+
+    [Test]
     public void A_landing_of_only_data_docs_or_markdown_is_not_run_and_keeps_green()
     {
         var tests = Make();
