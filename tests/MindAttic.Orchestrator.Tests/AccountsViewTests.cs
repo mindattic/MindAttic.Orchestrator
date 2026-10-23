@@ -144,6 +144,8 @@ public sealed class AccountsViewTests
         var global = new LoginCardViewModel("");
         global.Update(LoginBoard.Global(dirs.ClaudeDir, new AccountRow { Account = "g", Email = "g@example.com" }, true, Path.Combine(dirs.ClaudeDir, "rl-status.json"), Now), Now);
         Assert.That(global.Title, Is.EqualTo("Gee (fallback)"));
+        global.Update(LoginBoard.Global(dirs.ClaudeDir, new AccountRow { Account = "g", Email = "g@example.com" }, true, Path.Combine(dirs.ClaudeDir, "rl-status.json"), Now), Now, null, billingIsApiKey: true);
+        Assert.That(global.Title, Is.EqualTo("Gee"), "the API key is the fallback while it bills (M.ORCH-T672)");
         Assert.That(global.TitleTip, Does.StartWith("g@example.com"));
     }
 

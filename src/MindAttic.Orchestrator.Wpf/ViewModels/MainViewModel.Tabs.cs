@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using System.Windows.Input;
 using System.Windows.Media;
 using MindAttic.Components.Wpf.Mvvm;
+using MindAttic.Orchestrator.Billing;
 using MindAttic.Orchestrator.Sessions;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
@@ -102,7 +103,7 @@ public sealed partial class MainViewModel
     {
         var before = loginTabs.Count;
         // The 'API key' tab after every person's (M.ORCH-T630).
-        loginTabs.SyncBy([.. tabs.Where(t => !t.IsApiKey), LoginTab.ApiKey], t => t.Key, v => v.tab.Key,
+        loginTabs.SyncBy([.. tabs.Where(t => !t.IsApiKey), LoginTab.ApiKeyTab(all.Billing?.Mode == BillingModes.Api)], t => t.Key, v => v.tab.Key,
             t => t.IsGlobal ? this : new MainViewModel(this, t),
             (v, t) => v.Retitle(t));
         // The global login's tab is always first and always here, whatever the list said.

@@ -118,6 +118,12 @@ public sealed class ViewModelTests
     public void A_cli_names_its_own_login_else_the_global_one(string? own, string? global, string? expected) =>
         Assert.That(StatusAggregator.LoginText(own, global), Is.EqualTo(expected));
 
+    [TestCase("a@b.com", "g@b.com", "a@b.com")]
+    [TestCase(null, "g@b.com", "API key (fallback)")]
+    [TestCase(null, null, "API key (fallback)")]
+    public void While_the_api_key_bills_a_cli_with_no_login_of_its_own_runs_on_the_key(string? own, string? global, string? expected) =>
+        Assert.That(StatusAggregator.LoginText(own, global, billingIsApiKey: true), Is.EqualTo(expected));
+
     [Test]
     public void Agent_cards_and_launcher_tabs_show_the_login_each_cli_bills()
     {

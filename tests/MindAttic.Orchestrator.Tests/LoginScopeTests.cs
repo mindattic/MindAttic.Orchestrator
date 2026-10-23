@@ -111,6 +111,29 @@ public sealed class LoginScopeTests
     }
 
     [Test]
+    public void The_fallback_marker_follows_billing_the_global_tab_while_team_bills_the_api_key_tab_while_the_key_does()
+    {
+        // M.ORCH-T672
+        LoginLook Look(string _) => new("w", "XX", "#123456") { Alias = "amy" };
+        var globalLook = new LoginLook("ryan", "RY", "#654321") { Alias = "Ryan" };
+        Billing.BillingStatus Status(string mode) => new(mode, null, "", []);
+
+        var team = Workspace() with { Billing = Status(Billing.BillingModes.Team) };
+        Assert.That(LoginScope.Tabs(team, Look, globalLook)[0].Title, Is.EqualTo("Ryan (fallback)"));
+        Assert.That(LoginTab.ApiKeyTab(false).Title, Is.EqualTo("API key"));
+
+        var key = Workspace() with { Billing = Status(Billing.BillingModes.Api) };
+        var tabs = LoginScope.Tabs(key, Look, globalLook);
+        Assert.That(tabs[0].Title, Is.EqualTo("Ryan"), "titled like any member's");
+        Assert.That(tabs.Any(t => t.Title.Contains("fallback")), Is.False);
+        Assert.That(LoginTab.ApiKeyTab(true).Title, Is.EqualTo("API key (fallback)"));
+        Assert.That(LoginTab.ApiKeyTab(true).IsApiKey, Is.True);
+
+        var member = new Member { Email = "ryan@example.com", Name = "Ryan D", Role = "admin", Tier = "premium" };
+        Assert.That(LoginScope.Tabs(key, Look, globalLook, [member])[0].Title, Is.EqualTo("Ryan D"), "its member name");
+    }
+
+    [Test]
     public void Every_member_gets_a_tab_titled_by_its_name_and_one_not_signed_in_yet_a_tab_that_only_signs_it_in()
     {
         // M.ORCH-T615, M.ORCH-T670: Amy's a member but not signed in here; Jordan's a member signed in; Ryan is the global

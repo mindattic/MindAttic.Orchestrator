@@ -54,6 +54,7 @@ public sealed class LoginCardViewModel(string key) : ObservableObject
     private DateTime nowUtc;
     private bool renaming;
     private string aliasDraft = "";
+    private bool onApiKey;
 
     /// <summary>"" for the global login, else the per-CLI login's email.</summary>
     public string Key { get; } = key;
@@ -63,7 +64,7 @@ public sealed class LoginCardViewModel(string key) : ObservableObject
     public bool SignedIn => card.SignedIn;
 
     /// <summary>The login's name (M.ORCH-T614): "Jordan", the global one's marked "(fallback)"; its email until it has a name.</summary>
-    public string Title => card.Alias is { } a ? IsGlobal ? $"{a} (fallback)" : a : card.Email ?? MainViewModel.GlobalLogin;
+    public string Title => card.Alias is { } a ? IsGlobal && !onApiKey ? $"{a} (fallback)" : a : card.Email ?? MainViewModel.GlobalLogin;
 
     /// <summary>The email behind the name, as the title's tooltip.</summary>
     public string TitleTip => card.AliasEmail is { } e ? $"{e}{(IsGlobal ? " · the global login (~/.claude)" : "")}" : Kind;
@@ -143,8 +144,9 @@ public sealed class LoginCardViewModel(string key) : ObservableObject
     };
 
     /// <param name="defaultEmail">Who the global login is signed in to, for <see cref="CanMakeDefault"/>.</param>
-    public void Update(LoginCard next, DateTime now, string? defaultEmail = null)
+    public void Update(LoginCard next, DateTime now, string? defaultEmail = null, bool billingIsApiKey = false)
     {
+        onApiKey = billingIsApiKey; // the API key is the fallback then (M.ORCH-T672): the global login is named like any other
         card = next;
         nowUtc = now;
         isDefault = !next.IsGlobal && next.Email is not null && string.Equals(next.Email, defaultEmail, StringComparison.OrdinalIgnoreCase);

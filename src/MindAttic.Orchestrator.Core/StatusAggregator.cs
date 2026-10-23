@@ -214,10 +214,10 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         }
     }
 
-    /// <summary>A CLI's login in words (M.ORCH-T606): its own login's name, else the global login's marked "(fallback)"; null
+    /// <summary>A CLI's login in words (M.ORCH-T606): its own login's name, else the fallback (M.ORCH-T672): the API key while it bills, else the global login's, marked "(fallback)"; null
     /// when neither is known. The names are the logins' aliases (M.ORCH-T614), their emails' part before the @ by default.</summary>
-    internal static string? LoginText(string? ownName, string? globalName) =>
-        ownName ?? (globalName is null ? null : $"{globalName} (fallback)");
+    internal static string? LoginText(string? ownName, string? globalName, bool billingIsApiKey = false) =>
+        ownName ?? (billingIsApiKey ? "API key (fallback)" : globalName is null ? null : $"{globalName} (fallback)");
 
     private Snapshot Build(DateTime now)
     {
@@ -389,10 +389,13 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         var globalLogin = SignIn?.Profile?.Email;
         var globalName = globalLogin is null ? null : LoginLook.For(Accounts.Dirs.ClaudeDir, globalLogin).Alias;
         var ownNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var onKey = false;
+        try { onKey = BillingSwitch.Mode(out _) == Billing.BillingModes.Api; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidOperationException) { }
         string? OwnOf(string session) => ownLogin.TryGetValue(session, out var dir) ? Accounts.Dirs.Of(dir)?.Email : null;
         string? LoginOf(string session) => LoginText(OwnOf(session) is { } own
             ? ownNames.TryGetValue(own, out var n) ? n : ownNames[own] = LoginLook.For(Accounts.Dirs.For(own).Directory, own).Alias
-            : null, globalName);
+            : null, globalName, onKey);
         string? LoginEmailOf(string session) => OwnOf(session) ?? globalLogin;
         agentBoard = [.. agentBoard.Select(a => a with { Login = LoginOf(a.SessionId), LoginEmail = LoginEmailOf(a.SessionId), OwnLogin = OwnOf(a.SessionId) })];
         // Who's billed, and each CLI's own billing on its card (M.ORCH-T436); never the refresh's failure.
