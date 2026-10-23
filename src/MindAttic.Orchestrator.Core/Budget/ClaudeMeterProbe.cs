@@ -75,7 +75,7 @@ public sealed class ClaudeMeterProbe
     public ReportedUsage? LastReading { get; private set; }
 
     /// <summary>Whether a fresh reading is needed: the last report (null when there is none) is
-    /// <see cref="StaleAfter"/> old and tokens were spent after it, the latest of them within <see cref="StaleAfter"/>.</summary>
+    /// <see cref="StaleAfter"/> old and tokens were spent after it, the latest of them within <see cref="PaceLedger.MinGap"/> (M.ORCH-T651: within StaleAfter, a login whose events come in bursts further apart than that, long turns, went unasked for an hour).</summary>
     public static bool Due(DateTime? reportedAtUtc, IReadOnlyList<UsageEvent> events, DateTime nowUtc)
     {
         if (reportedAtUtc is { } at && nowUtc - at < StaleAfter) return false;
@@ -84,7 +84,7 @@ public sealed class ClaudeMeterProbe
         {
             var e = events[i];
             if (e.AtUtc > nowUtc) continue;
-            if (e.AtUtc <= since || nowUtc - e.AtUtc > StaleAfter) return false;
+            if (e.AtUtc <= since || nowUtc - e.AtUtc > PaceLedger.MinGap) return false;
             if (e.Usage.Fresh > 0) return true;
         }
         return false;

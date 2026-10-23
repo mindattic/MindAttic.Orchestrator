@@ -220,7 +220,7 @@ public sealed class LibraryControlsTests
         bool MaCardStyled(XElement b) => (string?)b.Attribute("Style") == "{StaticResource MaCard}"
             || (string?)b.Element(P + "Border.Style")?.Element(P + "Style")?.Attribute("BasedOn") == "{StaticResource MaCard}";
         var handMade = window.Descendants(P + "Border")
-            .Where(b => b.Attribute("CornerRadius") is not null && Regex.IsMatch((string?)b.Attribute("Background") ?? "", @"^\{(Static|Dynamic)Resource Mc"))
+            .Where(b => b.Attribute("CornerRadius") is not null && Regex.IsMatch((string?)b.Attribute("Background") ?? "", @"^\{(Static|Dynamic)Resource Ma"))
             .Where(b => !MaCardStyled(b));
         Assert.That(handMade.Select(b => b.ToString()), Is.Empty);
     }

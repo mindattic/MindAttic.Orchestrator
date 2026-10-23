@@ -37,6 +37,14 @@ public sealed class ClaudeMeterProbeTests
     };
 
     [Test]
+    public void A_login_spending_in_bursts_is_asked_at_least_every_MinGap()
+    {
+        // T651: the last spend 10 minutes ago (a long turn between events) with the report an hour old: still asked.
+        Assert.That(ClaudeMeterProbe.Due(Now.AddMinutes(-60), [E(Now.AddMinutes(-10), 500)], Now), Is.True);
+        Assert.That(ClaudeMeterProbe.Due(Now.AddMinutes(-60), [E(PaceLedger.MinGap is var g ? Now - g - TimeSpan.FromMinutes(1) : Now, 500)], Now), Is.False, "idle past MinGap");
+    }
+
+    [Test]
     public void Due_only_when_the_report_is_stale_and_tokens_are_being_spent_after_it()
     {
         var spending = new[] { E(Now.AddMinutes(-30), 500), E(Now.AddMinutes(-1), 500) };
