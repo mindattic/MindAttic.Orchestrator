@@ -93,7 +93,7 @@ internal static class CliApp
             // The global /org and /organization commands run these (M.ORCH-T686); each is a command above, a member named any way.
             config.AddBranch("org", o =>
             {
-                o.SetDescription("The organization: usage (the usage report), login <who>, members, start <repo> <who>; <who> is a member's email, the part before the @, name, first name, login alias or initials.");
+                o.SetDescription("The organization: usage (the usage report), login <who>, members, start <repo> <who>, allow <who> [[--until reset|<time>]], disallow <who>; <who> is a member's email, the part before the @, name, first name, login alias or initials.");
                 o.SetDefaultCommand<OrgHelpCommand>();
                 o.AddCommand<OrgHelpCommand>("help").WithDescription("List the org subcommands.");
                 o.AddCommand<UsageReportCommand>("usage").WithDescription("The usage report, as orchestrator report prints it: --detail, --since <date>, --csv, --json, --md/--html <file>.");
@@ -107,6 +107,8 @@ internal static class CliApp
                     m.AddCommand<MembersRemoveCommand>("remove").WithDescription("Remove a member: remove <email>.");
                 });
                 o.AddCommand<OrgStartCommand>("start").WithDescription("Start a CLI in <repo> on a member's login (orchestrator start <repo> --account <their email>).");
+                o.AddCommand<OrgAllowCommand>("allow").WithDescription("Let a member's login take work past its weekly target: allow <who> [[--until reset|<time>]], until its weekly reset by default (M.ORCH-T694).");
+                o.AddCommand<OrgDisallowCommand>("disallow").WithDescription("Take back org allow: disallow <who>; that login stops at its weekly target again.");
             });
             config.AddCommand<LoginCommand>("login").WithDescription("The account roster (as the dashboard's account menu shows it); with an email or short name, opens that account's login (claude auth login --email); --account <email> signs in a per-CLI login of its own instead; --api-key bills the Vault's API key.");
             config.AddCommand<MoveCommand>("move").WithDescription("Move a running Claude CLI (<repo|pid>) to another signed-in login (--account <email> or --global): its Launcher tab restarts it with claude --resume on that login at its next idle point, keeping its session.");
@@ -232,7 +234,7 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
             (configDir, email) = (dir.Directory, dir.Email);
         }
         // No --account: the Auto login (M.ORCH-T605) puts it on a per-CLI login no CLI runs on yet, else the global one.
-        else if (new LoginPicker(dirs, LiveOverride).ForNewTab(provider, Ctx.Settings.AutoLogin, DateTime.UtcNow, out _, Ctx.Settings.WeeklyStopPercent) is { } auto)
+        else if (new LoginPicker(dirs, LiveOverride) { Allowances = () => WeeklyAllowances.Active(Ctx.Store(), DateTime.UtcNow) }.ForNewTab(provider, Ctx.Settings.AutoLogin, DateTime.UtcNow, out _, Ctx.Settings.WeeklyStopPercent) is { } auto)
             (configDir, email) = (auto.Directory, auto.Email);
         var error = new SessionControl(options).Start(repo.Name, repo.Path, provider, settings.Prompt, configDir);
         if (error is not null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(error)}[/]"); return 1; }

@@ -118,6 +118,20 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
 
     private DateTime lastWatchUtc = DateTime.MinValue;
 
+    /// <summary>The logins the user let past their weekly target (M.ORCH-T694), in place of <see cref="Store"/>'s (seam).</summary>
+    internal Func<IReadOnlyList<WeeklyAllowance>>? AllowancesOverride { get; init; }
+
+    /// <summary>The email the global login is signed in as; null: unknown (seam).</summary>
+    internal Func<string?> GlobalEmail { get; init; } = () => LoginLook.GlobalEmail(mover.Dirs);
+
+    private IReadOnlyList<WeeklyAllowance> AllowedNow(DateTime nowUtc) => AllowancesOverride?.Invoke() ?? WeeklyAllowances.Active(Store, nowUtc);
+
+    private string? SafeGlobalEmail()
+    {
+        try { return GlobalEmail(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { return null; }
+    }
+
     /// <summary>A login's pace as its line is judged: while its member uses Claude elsewhere the pace is held to a lowered
     /// ceiling, and its stop there is the pace slowing the CLIs, not the login's line (M.ORCH-T682), so only the meter counts.</summary>
     private Pace? LinePace(string? email, Pace? pace) => Outside.InUse(email) ? null : pace;
@@ -246,7 +260,11 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
         try { signedIn = mover.Dirs.SignedIn(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return []; }
 
-        var stop = settings.WeeklyStopPercent;
+        // Each login's own weekly line: the target, or the wall while the user lets it past (M.ORCH-T694). Only read here.
+        var allowed = AllowedNow(nowUtc);
+        var globalEmail = allowed.Count == 0 ? null : SafeGlobalEmail();
+        int StopOf(string? email) => WeeklyAllowances.StopFor(allowed, email ?? globalEmail, settings, nowUtc);
+        bool AllowedFor(string? email) => WeeklyAllowances.For(allowed, email ?? globalEmail, nowUtc) is not null;
         var target = settings.PaceTargetPercent;
         var own = mover.OnOwnLogin();
         string? LoginOf(CliBilling cli) => own.TryGetValue(cli.SessionId, out var dir) ? mover.Dirs.Of(dir)?.Email : null;
@@ -266,7 +284,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
         var results = new List<Rebalanced>();
         // Someone using Claude outside the orchestrator (M.ORCH-T682): judged first, so their login's line is judged by the meter.
         WatchOutside(signedIn, live, LoginOf, settings, nowUtc, results);
-        var onKey = MoveBack(live, DirOf, UsageOf, globalUsage, globalPace, paces, target, stop, nowUtc, results);
+        var onKey = MoveBack(live, DirOf, UsageOf, globalUsage, globalPace, paces, target, StopOf, AllowedFor, nowUtc, results);
 
         var busy = new HashSet<string>(picker.Busy(nowUtc), StringComparer.OrdinalIgnoreCase);
         foreach (var cli in live) if (LoginOf(cli) is { } e) busy.Add(e);
@@ -275,7 +293,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
         foreach (var f in Book()) if (f.FromEmail is { } e) busy.Add(e);
         // Never a target while low itself: its CLIs would only be moved off again.
         foreach (var a in signedIn)
-            if (Low(LinePace(a.Email, paces.GetValueOrDefault(a.Email)), UsageOf(a), nowUtc, target, stop) is not null) busy.Add(a.Email);
+            if (Low(LinePace(a.Email, paces.GetValueOrDefault(a.Email)), UsageOf(a), nowUtc, target, StopOf(a.Email)) is not null) busy.Add(a.Email);
 
         var hits = InForce(sessions, nowUtc);
         foreach (var cli in live.OrderBy(c => c.Pid))
@@ -289,6 +307,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             if (from is not null && fromDir is null) continue; // a folder nobody's signed in to: nothing to measure
             var fromUsage = fromDir is null ? globalUsage.Value : UsageOf(fromDir);
             var fromPace = LinePace(from, fromDir is null ? globalPace : paces.GetValueOrDefault(fromDir.Email));
+            var stop = StopOf(from);
             var why = hit is { } lh ? $"its {LimitWords(lh)} limit was hit" : Low(fromPace, fromUsage, nowUtc, target, stop);
             if (why is null) continue;
 
@@ -318,8 +337,8 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
 
             // A pace at its limit (or a limit hit) has no room left, whatever the meter last said (it may not have been read lately).
             var fromRoom = hit is not null || fromPace is { } fp && (fp.Stop || fp.Mode == PaceMode.Over) ? 0 : LoginPicker.Headroom(fromUsage, nowUtc, stop);
-            var to = LoginPicker.Choose(signedIn, busy, UsageOf, nowUtc, stop);
-            var toRoom = to is null ? 0 : LoginPicker.Headroom(UsageOf(to), nowUtc, stop);
+            var to = LoginPicker.Choose(signedIn, busy, UsageOf, nowUtc, settings.WeeklyStopPercent, StopOf);
+            var toRoom = to is null ? 0 : LoginPicker.Headroom(UsageOf(to), nowUtc, StopOf(to.Email));
             var fromLabel = from ?? AccountMove.GlobalLabel.ToLowerInvariant();
 
             if (to is not null && toRoom - fromRoom >= MinGain)
@@ -470,7 +489,8 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
     /// <summary>Moves each failed-over CLI whose login has reset back onto it, forgets the ones gone, and returns the sessions
     /// still on the key.</summary>
     private HashSet<string> MoveBack(IReadOnlyList<CliBilling> live, Func<string?, AccountDir?> dirOf, Func<AccountDir, ReportedUsage?> usageOf,
-        Lazy<ReportedUsage?> globalUsage, Pace? globalPace, IReadOnlyDictionary<string, Pace> paces, int target, int stop, DateTime nowUtc,
+        Lazy<ReportedUsage?> globalUsage, Pace? globalPace, IReadOnlyDictionary<string, Pace> paces, int target, Func<string?, int> stopOf,
+        Func<string?, bool> allowedFor, DateTime nowUtc,
         List<Rebalanced> results)
     {
         var book = Book();
@@ -555,10 +575,11 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             onKey.Add(cli.SessionId);
 
             if (seen.FromEmail is not null && home is null) continue; // signed out meanwhile: it stays on the key
-            if (seen.UntilUtc is { } until && nowUtc < until) continue;
+            // It waits for its reset, unless the user lets its login past the weekly target meanwhile (M.ORCH-T694).
+            if (seen.UntilUtc is { } until && nowUtc < until && !allowedFor(seen.FromEmail)) continue;
             var homeUsage = home is null ? globalUsage.Value : usageOf(home);
             var homePace = LinePace(seen.FromEmail, home is null ? globalPace : paces.GetValueOrDefault(home.Email));
-            if (Low(homePace, homeUsage, nowUtc, target, stop) is not null) continue;
+            if (Low(homePace, homeUsage, nowUtc, target, stopOf(seen.FromEmail)) is not null) continue;
             if (backTried.TryGetValue(seen.SessionId, out var at) && nowUtc - at < BackRetry) continue;
 
             backTried[seen.SessionId] = nowUtc;

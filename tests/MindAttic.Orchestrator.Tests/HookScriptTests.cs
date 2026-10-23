@@ -468,6 +468,34 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void A_login_allowed_past_its_weekly_target_runs_past_it_and_only_while_its_status_says_so()
+    {
+        // M.ORCH-T694: past the 90% target (a 10% reserve) the gate refuses; /org allow has the daemon write the wall (100) as
+        // that login's weekly line, and the gate lets its calls through, the latch from the refusal included.
+        var settings = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "settings.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
+        File.WriteAllText(settings, JsonSerializer.Serialize(new { WorkspaceRoot = ws, WeeklyReservePercent = 10 }));
+        File.WriteAllText(Path.Combine(Claude, "claude-usage.json"), JsonSerializer.Serialize(new
+        {
+            rate_limits = new
+            {
+                five_hour = new { used_percentage = 10, resets_at = new DateTimeOffset(DateTime.UtcNow.AddHours(2)).ToUnixTimeSeconds() },
+                seven_day = new { used_percentage = 92, resets_at = new DateTimeOffset(DateTime.UtcNow.AddDays(3)).ToUnixTimeSeconds() },
+            },
+            at = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+        }));
+        var read = new { tool_name = "Read", tool_input = new { file_path = "x" } };
+        Status(new { stop = false, weekly_stop_percent = 90 });
+        Assert.That(GateHeld(read, maxHold: 2).Output, Does.Contain("\"deny\"").And.Contain("92% of the weekly window used"), "held to the target");
+
+        Status(new { stop = false, weekly_stop_percent = 100 });
+        Assert.That(Gate(read).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "allowed: it runs past the target");
+
+        Status(new { stop = false, weekly_stop_percent = 90 });
+        Assert.That(GateHeld(read, maxHold: 2).Output, Does.Contain("\"deny\""), "taken back (or its reset passed): held again");
+    }
+
+    [Test]
     public void With_weekly_aware_pacing_on_the_gate_stops_the_week_at_its_target_from_the_reserve_not_a_fixed_line()
     {
         // M.ORCH-T680: weekly-aware pacing's target is 100 minus the weekly reserve; the gate used a fixed 98% with it on.

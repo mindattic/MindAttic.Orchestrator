@@ -38,7 +38,7 @@ public sealed partial class MainViewModel
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { settings = new OrchestratorSettings(); }
                 var now = DateTime.UtcNow;
                 var report = UsageReport.Gather(aggregator.Db, snapshot, dirs, settings, now, null, ReportedUsage.Load(now), ReportedUsage.DefaultDb,
-                    OutsideUseWatch.Stats(OutsideUseWatch.Load(store), settings));
+                    OutsideUseWatch.Stats(OutsideUseWatch.Load(store), settings), WeeklyAllowances.Active(store, now));
                 return WriteUsageReport(report, folder);
             });
             AccountsMessage = $"Usage report written to {path} (and its Markdown beside it).";
