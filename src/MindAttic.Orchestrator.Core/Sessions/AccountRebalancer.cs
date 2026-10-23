@@ -292,7 +292,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
         var results = new List<Rebalanced>();
         // Someone using Claude outside the orchestrator (M.ORCH-T682): judged first, so their login's line is judged by the meter.
         WatchOutside(signedIn, live, LoginOf, settings, nowUtc, results);
-        var onKey = MoveBack(live, DirOf, UsageOf, globalUsage, globalPace, paces, target, StopOf, AllowedFor, nowUtc, results);
+        var onKey = MoveBack(live, DirOf, UsageOf, globalUsage, globalPace, paces, target, StopOf, AllowedFor, nowUtc, results, locked: !settings.FailoverToApiKey);
         // Rebalancing is off, and failover to the API key is hard-coded off: nothing more to move.
         if (!settings.RebalanceLogins && !settings.FailoverToApiKey) return results;
 
@@ -502,8 +502,10 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
     private HashSet<string> MoveBack(IReadOnlyList<CliBilling> live, Func<string?, AccountDir?> dirOf, Func<AccountDir, ReportedUsage?> usageOf,
         Lazy<ReportedUsage?> globalUsage, Pace? globalPace, IReadOnlyDictionary<string, Pace> paces, int target, Func<string?, int> stopOf,
         Func<string?, bool> allowedFor, DateTime nowUtc,
-        List<Rebalanced> results)
+        List<Rebalanced> results, bool locked = false)
     {
+        // locked: failover to the API key is hard-coded off (M.ORCH-T706). A failover from before that is cancelled if it's still only asked
+        // for, and one already on the key goes back to its login at once instead of waiting for the reset.
         var book = Book();
         var changed = false;
         var onKey = new HashSet<string>(StringComparer.Ordinal);
@@ -516,6 +518,14 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
 
             // Asked onto the key and not yet seen there (M.ORCH-T681): counted (and toasted) only once the CLI bills the key; a tab
             // that took the request and dropped it (one opened before M.LNCH-T67) is said, and the failover asked again later.
+            if (f.Pending && locked)
+            {
+                book.Remove(f);
+                changed = true;
+                if (home is not null) SetKeyChoice(home.ConfigPath, false);
+                results.Add(new(false, $"rebalance: cancelled the move to the API key asked for {f.Name}: API billing is only ever switched on by you.") { NeedsYou = true });
+                continue;
+            }
             if (f.Pending)
             {
                 if (cli is { Bills: BillingModes.Api })
@@ -587,10 +597,10 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
 
             if (seen.FromEmail is not null && home is null) continue; // signed out meanwhile: it stays on the key
             // It waits for its reset, unless the user lets its login past the weekly target meanwhile (M.ORCH-T694).
-            if (seen.UntilUtc is { } until && nowUtc < until && !allowedFor(seen.FromEmail)) continue;
+            if (!locked && seen.UntilUtc is { } until && nowUtc < until && !allowedFor(seen.FromEmail)) continue;
             var homeUsage = home is null ? globalUsage.Value : usageOf(home);
             var homePace = LinePace(seen.FromEmail, home is null ? globalPace : paces.GetValueOrDefault(home.Email));
-            if (Low(homePace, homeUsage, nowUtc, target, stopOf(seen.FromEmail)) is not null) continue;
+            if (!locked && Low(homePace, homeUsage, nowUtc, target, stopOf(seen.FromEmail)) is not null) continue;
             if (backTried.TryGetValue(seen.SessionId, out var at) && nowUtc - at < BackRetry) continue;
 
             backTried[seen.SessionId] = nowUtc;
