@@ -52,6 +52,25 @@ public sealed class DispatcherTests
     // ---- EnsureWorktree ----
 
     [Test]
+    public void A_unity_worktree_gets_its_manifests_sibling_repos_linked_beside_it()
+    {
+        // M.ORCH-T652: file:../../Sib from Packages resolves to wtRoot\A inside a worktree, not to the real sibling.
+        var sib = Path.Combine(dir, "Sib");
+        Directory.CreateDirectory(Path.Combine(sib, "unity"));
+        File.WriteAllText(Path.Combine(sib, "unity", "marker.txt"), "x");
+        Directory.CreateDirectory(Path.Combine(repo, "Packages"));
+        File.WriteAllText(Path.Combine(repo, "Packages", "manifest.json"), "{\"dependencies\":{\"com.x\":\"file:../../Sib/unity\"}}");
+        Git(repo, "add", "-A");
+        Git(repo, "commit", "-qm", "manifest");
+        var tree = Path.Combine(wtRoot, "A", "A-T9");
+
+        Assert.That(Dispatcher.EnsureWorktree(repo, tree, "orch/a-t9").Ok, Is.True);
+
+        var resolved = Path.GetFullPath(Path.Combine(tree, "Packages", "../../Sib/unity", "marker.txt"));
+        Assert.That(File.Exists(resolved), Is.True, resolved);
+    }
+
+    [Test]
     public void A_worktree_folder_deleted_by_hand_is_made_again_not_refused_for_good()
     {
         var tree = Path.Combine(wtRoot, "A", "A-T5");
