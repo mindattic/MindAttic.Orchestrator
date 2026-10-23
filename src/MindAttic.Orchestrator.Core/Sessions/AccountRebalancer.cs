@@ -271,7 +271,9 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
         // Each login's own weekly line: the target, or the wall while the user lets it past (M.ORCH-T694). Only read here.
         var allowed = AllowedNow(nowUtc);
         var globalEmail = allowed.Count == 0 ? null : SafeGlobalEmail();
-        int StopOf(string? email) => WeeklyAllowances.StopFor(allowed, email ?? globalEmail, settings, nowUtc);
+        var cutoffs = UsageCutoffs.Load(Store);
+        globalEmail ??= cutoffs.Count == 0 ? null : SafeGlobalEmail();
+        int StopOf(string? email) => WeeklyAllowances.StopFor(allowed, email ?? globalEmail, UsageCutoffs.Apply(cutoffs, email ?? globalEmail, settings), nowUtc);
         bool AllowedFor(string? email) => WeeklyAllowances.For(allowed, email ?? globalEmail, nowUtc) is not null;
         var target = settings.PaceTargetPercent;
         var own = mover.OnOwnLogin();

@@ -33,6 +33,11 @@ public sealed record UsageReportRow
     public double? WeekLeft => WeekUsed is { } u ? Math.Max(0, 100 - u) : null;
     /// <summary>Points left before the weekly target (<see cref="UsageReport.WeeklyTargetPercent"/>); negative once past it.</summary>
     public double? LeftToTarget { get; init; }
+    /// <summary>This member's cutoffs (M.ORCH-T707): the percent of its week and of its 5-hour window where its access is cut off (90 and 98 unless the user set others with <c>org limit</c>).</summary>
+    public int WeeklyCutoff { get; init; } = UsageCutoffs.DefaultWeeklyPercent;
+    public int FiveHourCutoff { get; init; } = UsageCutoffs.DefaultFiveHourPercent;
+    /// <summary>The cutoffs differ from the defaults.</summary>
+    public bool CustomCutoff => WeeklyCutoff != UsageCutoffs.DefaultWeeklyPercent || FiveHourCutoff != UsageCutoffs.DefaultFiveHourPercent;
     public DateTime? WeekResetUtc { get; init; }
 
     /// <summary>Read fresh with no 5-hour window running (none started since the last ended): both 5-hour columns read "—".</summary>
@@ -58,7 +63,7 @@ public sealed record UsageReportRow
 /// <summary>
 /// The usage report (M.ORCH-T685): one row per member with the 5-hour and weekly use of Claude and their resets, the points
 /// left to the weekly target, how old each reading is and whether it's still accurate, then a line each for who's at the
-/// target, who weekly-aware pacing is limiting, who has room, and why any reading is stale. A second table has what the
+/// target, each member's cutoffs, who has room, and why any reading is stale. A second table has what the
 /// orchestrator's CLIs spent on each login against the member's own outside use, and the API key's spend. Printed by
 /// <c>orchestrator report</c> (as plain text, CSV or JSON) and written as Markdown or HTML to share, from the CLI or the
 /// dashboard's Accounts view; anything else that shows the table (<c>orchestrator org usage</c>) renders it from here.
@@ -77,10 +82,6 @@ public sealed record UsageReport
     public DateTime GeneratedUtc { get; init; }
     public DateOnly? Since { get; init; }
     public int WeeklyTargetPercent { get; init; }
-    /// <summary>Where weekly-aware pacing starts taking the week in (<see cref="OrchestratorSettings.WeeklyAwareLine"/>).</summary>
-    public int PacingLinePercent { get; init; } = OrchestratorSettings.DefaultWeeklyAwareLinePercent;
-    /// <summary>Whether weekly-aware pacing is on (<see cref="OrchestratorSettings.WeeklyAwarePacing"/>).</summary>
-    public bool PacingOn { get; init; }
     public IReadOnlyList<UsageReportRow> Rows { get; init; } = [];
     /// <summary>Tokens billed to the API key (or any other off-subscription billing) today, over the last 7 days, and since <see cref="Since"/>.</summary>
     public long ApiKeyToday { get; init; }
@@ -101,7 +102,7 @@ public sealed record UsageReport
     public static UsageReport Build(IReadOnlyList<Member> members, IReadOnlyList<AccountRow> roster, IReadOnlyList<LoginReading> logins,
         IReadOnlyList<DayUsage> history, IReadOnlyDictionary<string, BudgetStatus> estimates, int weeklyTargetPercent, DateTime nowUtc,
         DateOnly? since = null, string? globalAccount = null, Func<string, string?>? outsideUse = null, Func<string, string?>? staleReason = null,
-        IReadOnlyList<WeeklyAllowance>? allowances = null)
+        IReadOnlyList<WeeklyAllowance>? allowances = null, IReadOnlyList<UsageCutoff>? cutoffs = null)
     {
         var people = members.Select(m => (m.Email, m.Name, IsMember: true)).ToList();
         var known = people.Select(p => p.Email).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -169,7 +170,9 @@ public sealed record UsageReport
                 NoFiveHourWindow = noWindow,
                 FiveHourResetUtc = fiveReset,
                 WeekUsed = week,
-                LeftToTarget = week is { } used ? weeklyTargetPercent - used : null,
+                WeeklyCutoff = UsageCutoffs.Custom(cutoffs, email) is null ? weeklyTargetPercent : UsageCutoffs.WeeklyFor(cutoffs, email),
+                FiveHourCutoff = UsageCutoffs.FiveHourFor(cutoffs, email),
+                LeftToTarget = week is { } used ? (UsageCutoffs.Custom(cutoffs, email) is null ? weeklyTargetPercent : UsageCutoffs.WeeklyFor(cutoffs, email)) - used : null,
                 WeekResetUtc = weekReset,
                 ReadUtc = read,
                 Stale = stale,
@@ -215,7 +218,7 @@ public sealed record UsageReport
     /// </summary>
     public static UsageReport Gather(OrchestratorDb db, Snapshot snapshot, AccountDirs dirs, OrchestratorSettings settings, DateTime nowUtc,
         DateOnly? since = null, ReportedUsage? globalReading = null, OrchestratorDb? stateDb = null, IReadOnlyList<OutsideUseStats>? outside = null,
-        IReadOnlyList<WeeklyAllowance>? allowances = null)
+        IReadOnlyList<WeeklyAllowance>? allowances = null, IReadOnlyList<UsageCutoff>? cutoffs = null)
     {
         var members = MemberRoster.Load(db);
         var current = snapshot.Account is { } key && key != ClaudeAccount.ApiKey ? key : null;
@@ -248,11 +251,7 @@ public sealed record UsageReport
         string? OutsideOf(string email) => outside?.FirstOrDefault(o => string.Equals(o.Key, email, StringComparison.OrdinalIgnoreCase)
             || (o.Key.Length == 0 && string.Equals(globalEmail, email, StringComparison.OrdinalIgnoreCase))) is { } o ? OutsideText(o) : null;
         return Build(members, roster, logins, snapshot.History, estimates, settings.WeeklyStopPercent, nowUtc, since, current, OutsideOf,
-                email => reasons.GetValueOrDefault(email), allowances) with
-        {
-            PacingLinePercent = settings.WeeklyAwareLine,
-            PacingOn = settings.WeeklyAwarePacing,
-        };
+                email => reasons.GetValueOrDefault(email), allowances, cutoffs);
     }
 
     /// <summary>A member's outside use for the spend table: "using Claude now; 3% a window, 6% a week on average (12 windows)";
@@ -364,18 +363,14 @@ public sealed record UsageReport
         var notes = new List<string>();
         var known = Rows.Where(r => r.WeekUsed is not null).ToList();
         // One the user let past the target (M.ORCH-T694) takes work all the same: said on its own line instead.
-        var atTarget = known.Where(r => r.WeekUsed >= WeeklyTargetPercent && r.Allowed is null).ToList();
+        var atTarget = known.Where(r => r.WeekUsed >= r.WeeklyCutoff && r.Allowed is null).ToList();
         if (atTarget.Count > 0)
-            notes.Add($"At or past the {WeeklyTargetPercent}% weekly target, so no new work until their week resets: " +
-                string.Join(", ", atTarget.Select(r => $"{r.Name} ({When(r.WeekResetUtc, GeneratedUtc)}, in {Countdown(r.WeekResetUtc, GeneratedUtc)})")) + ".");
+            notes.Add("At or past their weekly cutoff, so access is cut off until their week resets (org allow <who> lets one past): " +
+                string.Join(", ", atTarget.Select(r => $"{r.Name} ({r.WeeklyCutoff}%; {When(r.WeekResetUtc, GeneratedUtc)}, in {Countdown(r.WeekResetUtc, GeneratedUtc)})")) + ".");
         foreach (var r in Rows.Where(r => r.Allowed is not null)) notes.Add(r.Allowed + ".");
-        var paced = known.Where(r => r.WeekUsed >= PacingLinePercent && r.WeekUsed < WeeklyTargetPercent).OrderByDescending(r => r.WeekUsed).ToList();
-        if (paced.Count > 0)
-            notes.Add((PacingOn
-                    ? $"Past the {PacingLinePercent}% line, weekly-aware pacing is limiting them: "
-                    : $"Past the {PacingLinePercent}% line (weekly-aware pacing is off, so nothing slows them before the target): ") +
-                string.Join(", ", paced.Select(r => $"{r.Name} ({ToTarget(r.LeftToTarget)} left)")) + ".");
-        var room = known.Where(r => r.WeekUsed < PacingLinePercent && !(r.FiveHourUsed >= 90))
+        notes.Add("Cutoffs (week / 5-hour; nothing throttles below them, access is cut off at them): " +
+            string.Join("; ", Rows.Select(r => $"{r.Name} {r.WeeklyCutoff}% / {r.FiveHourCutoff}%" + (r.CustomCutoff ? " (set)" : ""))) + ".");
+        var room = known.Where(r => r.WeekUsed < r.WeeklyCutoff && !(r.FiveHourUsed >= r.FiveHourCutoff))
             .OrderByDescending(r => r.LeftToTarget).ToList();
         if (room.Count > 0)
             notes.Add("Plenty of room, where most of the work should go: " +
@@ -465,8 +460,6 @@ public sealed record UsageReport
         generatedUtc = GeneratedUtc,
         since = Since?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
         weeklyTargetPercent = WeeklyTargetPercent,
-        pacingLinePercent = PacingLinePercent,
-        pacingOn = PacingOn,
         staleAfterMinutes = StaleAfter.TotalMinutes,
         members = Rows,
         notes = Notes(),

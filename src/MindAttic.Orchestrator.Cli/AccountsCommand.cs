@@ -28,7 +28,7 @@ internal sealed class AccountsPickCommand : Command<AccountsPickCommand.Settings
         try
         {
             pick = Ctx.Settings.AutoLogin
-                ? new LoginPicker(AccountsCommand.LoginsOverride?.Invoke(), StartCommand.LiveOverride) { Allowances = () => WeeklyAllowances.Active(Ctx.Store(), DateTime.UtcNow) }.Pick(DateTime.UtcNow, claim: true, Ctx.Settings.WeeklyStopPercent)
+                ? new LoginPicker(AccountsCommand.LoginsOverride?.Invoke(), StartCommand.LiveOverride) { Allowances = () => WeeklyAllowances.Active(Ctx.Store(), DateTime.UtcNow), Cutoffs = () => UsageCutoffs.Load(Ctx.Store()) }.Pick(DateTime.UtcNow, claim: true, Ctx.Settings.WeeklyStopPercent)
                 : new LoginPick(null, "Auto login is off (settings --auto-login): global login");
         }
         // The contract is one line and exit 0: anything unreadable means the global login.

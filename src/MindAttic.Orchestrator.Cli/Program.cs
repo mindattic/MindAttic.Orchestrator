@@ -52,7 +52,19 @@ internal static class CliApp
         return words.Count == 0 ? "(no command)" : string.Join(' ', words);
     }
 
-    public static CommandApp Create()
+    /// <summary>The app, which takes <c>--5h</c> as typed: Spectre won't name an option with a leading digit, so it's declared as
+    /// <c>--five-hour</c> and the argument is renamed before parsing (M.ORCH-T707).</summary>
+    public sealed class Runner(CommandApp app)
+    {
+        public int Run(IEnumerable<string> args) => app.Run(args.Select(a =>
+            a.Equals("--5h", StringComparison.OrdinalIgnoreCase) ? "--five-hour"
+            : a.StartsWith("--5h=", StringComparison.OrdinalIgnoreCase) ? "--five-hour" + a[4..]
+            : a));
+    }
+
+    public static Runner Create() => new(CreateApp());
+
+    private static CommandApp CreateApp()
     {
         var app = new CommandApp();
         app.Configure(config =>
@@ -102,7 +114,7 @@ internal static class CliApp
             // The global /org and /organization commands run these (M.ORCH-T686); each is a command above, a member named any way.
             config.AddBranch("org", o =>
             {
-                o.SetDescription("The organization: usage (the usage report), login <who>, members, start <repo> <who>, allow <who> [[--until reset|<time>]], disallow <who>; <who> is a member's email, the part before the @, name, first name, login alias or initials.");
+                o.SetDescription("The organization: usage (the usage report), login <who>, members, start <repo> <who>, allow <who> [[--until reset|<time>]], disallow <who>, limit [[<who> --weekly <pct> --5h <pct> | --reset]]; <who> is a member's email, the part before the @, name, first name, login alias or initials.");
                 o.SetDefaultCommand<OrgHelpCommand>();
                 o.AddCommand<OrgHelpCommand>("help").WithDescription("List the org subcommands.");
                 o.AddCommand<UsageReportCommand>("usage").WithDescription("The usage report, as orchestrator report prints it: --detail, --since <date>, --csv, --json, --md/--html <file>.");
@@ -117,6 +129,7 @@ internal static class CliApp
                 });
                 o.AddCommand<OrgStartCommand>("start").WithDescription("Start a CLI in <repo> on a member's login (orchestrator start <repo> --account <their email>).");
                 o.AddCommand<OrgAllowCommand>("allow").WithDescription("Let a member's login take work past its weekly target: allow <who> [[--until reset|<time>]], until its weekly reset by default (M.ORCH-T694).");
+                o.AddCommand<OrgLimitCommand>("limit").WithDescription("Per-user usage cutoffs (M.ORCH-T707): limit alone lists them; limit <who> --weekly <pct> --5h <pct> sets them, --reset puts back 90 and 98.");
                 o.AddCommand<OrgDisallowCommand>("disallow").WithDescription("Take back org allow: disallow <who>; that login stops at its weekly target again.");
             });
             config.AddCommand<LoginCommand>("login").WithDescription("The account roster (as the dashboard's account menu shows it); with an email or short name, opens that account's login (claude auth login --email); --account <email> signs in a per-CLI login of its own instead; --api-key bills the Vault's API key.");
@@ -243,7 +256,7 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
             (configDir, email) = (dir.Directory, dir.Email);
         }
         // No --account: the Auto login (M.ORCH-T605) puts it on a per-CLI login no CLI runs on yet, else the global one.
-        else if (new LoginPicker(dirs, LiveOverride) { Allowances = () => WeeklyAllowances.Active(Ctx.Store(), DateTime.UtcNow) }.ForNewTab(provider, Ctx.Settings.AutoLogin, DateTime.UtcNow, out _, Ctx.Settings.WeeklyStopPercent) is { } auto)
+        else if (new LoginPicker(dirs, LiveOverride) { Allowances = () => WeeklyAllowances.Active(Ctx.Store(), DateTime.UtcNow), Cutoffs = () => UsageCutoffs.Load(Ctx.Store()) }.ForNewTab(provider, Ctx.Settings.AutoLogin, DateTime.UtcNow, out _, Ctx.Settings.WeeklyStopPercent) is { } auto)
             (configDir, email) = (auto.Directory, auto.Email);
         var error = new SessionControl(options).Start(repo.Name, repo.Path, provider, settings.Prompt, configDir);
         if (error is not null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(error)}[/]"); return 1; }

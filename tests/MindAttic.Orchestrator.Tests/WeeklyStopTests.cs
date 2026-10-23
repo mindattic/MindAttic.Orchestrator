@@ -38,7 +38,7 @@ public sealed class WeeklyStopTests
         Assert.That((p.Mode, p.SessionCap, p.SubagentAllowance), Is.EqualTo((PaceMode.Over, 0, (int?)0)));
         Assert.That(p.Governing, Is.EqualTo("weekly"));
         Assert.That(p.ResetUtc, Is.EqualTo(WeekReset), "lifted at the weekly reset, not the 5-hour block's end");
-        Assert.That(p.Note, Does.Contain("week at 95%").And.Not.Contain("On pace"));
+        Assert.That(p.Note, Does.Contain("week at 90%").And.Not.Contain("On pace"));
     }
 
     [Test]
@@ -116,9 +116,9 @@ public sealed class WeeklyStopTests
     public void The_weekly_reserve_sets_the_stop_line_five_percent_by_default()
     {
         // M.ORCH-T609: every CLI on an account stops at 100 minus the reserve of its week instead of burning it all.
-        Assert.That((new OrchestratorSettings().WeeklyReservePercent, new OrchestratorSettings().WeeklyStopPercent), Is.EqualTo((5, 95)));
-        Assert.That(Budget(95).WeeklyStopped(Now), Is.True, "95% is the default line");
-        Assert.That(Budget(94.5).WeeklyStopped(Now), Is.False);
+        Assert.That((new OrchestratorSettings().WeeklyReservePercent, new OrchestratorSettings().WeeklyStopPercent), Is.EqualTo((10, 90)));
+        Assert.That(Budget(90).WeeklyStopped(Now), Is.True, "90% is the default line");
+        Assert.That(Budget(89.5).WeeklyStopped(Now), Is.False);
 
         var two = Settings with { WeeklyReservePercent = 2 };
         Assert.That(Budget(96, two).WeeklyStopped(Now), Is.False, "a 2% reserve lets the week run to 98%");

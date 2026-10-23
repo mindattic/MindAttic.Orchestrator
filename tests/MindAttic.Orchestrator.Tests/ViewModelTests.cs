@@ -212,7 +212,7 @@ public sealed class ViewModelTests
         var store = new JsonStore(dir);
         store.SaveSettings(store.LoadSettings());
         var vm = new SettingsViewModel(store, () => { });
-        Assert.That((vm.WeeklyTarget, vm.WeeklyLine, vm.WeeklyWindDown), Is.EqualTo(("95", "75", "3")), "the defaults");
+        Assert.That((vm.WeeklyTarget, vm.WeeklyLine, vm.WeeklyWindDown), Is.EqualTo(("90", "75", "3")), "the defaults");
 
         (vm.WeeklyTarget, vm.WeeklyLine, vm.WeeklyWindDown) = ("85", "70", "4");
         vm.SaveCommand.Execute(null);

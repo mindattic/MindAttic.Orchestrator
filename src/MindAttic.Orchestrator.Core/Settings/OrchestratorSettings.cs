@@ -37,7 +37,7 @@ public sealed record OrchestratorSettings
     /// <see cref="MaxWeeklyReservePercent"/>; applies to each login on its own.</summary>
     public int WeeklyReservePercent { get; init; } = DefaultWeeklyReservePercent;
 
-    public const int DefaultWeeklyReservePercent = 5, MaxWeeklyReservePercent = 50;
+    public const int DefaultWeeklyReservePercent = 10, MaxWeeklyReservePercent = 50;
 
     /// <summary>The percent of an account's week at which its CLIs stop: 100 minus <see cref="WeeklyReservePercent"/>
     /// (kept to 0–<see cref="MaxWeeklyReservePercent"/>, so a hand-edited value can't stop it at nothing). Weekly-aware pacing

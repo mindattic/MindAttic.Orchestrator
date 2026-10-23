@@ -21,6 +21,7 @@ internal sealed class OrgHelpCommand : Command
         ("start <repo> <who>", "start a CLI in <repo> on that member's login"),
         ("allow <who> [--until <reset|time>]", "let that member's login take work past its weekly target, until its weekly reset (the default) or the time given"),
         ("disallow <who>", "take that back: the login stops at its weekly target again"),
+        ("limit [<who> --weekly <pct> --5h <pct> | --reset]", "each member's usage cutoffs (90% of the week and 98% of the 5-hour window by default); with <who>, set them or put the defaults back with --reset"),
         ("help", "this list"),
     ];
 
@@ -214,6 +215,84 @@ internal sealed class OrgDisallowCommand : Command<OrgDisallowCommand.Settings>
         AnsiConsole.MarkupLine(line is null
             ? $"{Markup.Escape(name)}'s login isn't allowed past the weekly target: nothing to take back."
             : Markup.Escape(line));
+        return 0;
+    }
+}
+
+/// <summary>
+/// <c>orchestrator org limit [&lt;who&gt; [--weekly &lt;pct&gt;] [--5h &lt;pct&gt;] | --reset]</c> (M.ORCH-T707): each member's usage
+/// cutoffs. Alone it lists every member's; with a member it sets the cutoffs given, or <c>--reset</c> puts back the defaults (90% of
+/// the week, 98% of the 5-hour window). The only way to change a cutoff. Below a cutoff nothing throttles; at it, access is cut off.
+/// </summary>
+internal sealed class OrgLimitCommand : Command<OrgLimitCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandArgument(0, "[WHO]")]
+        [Description("The member: email, the part before the @, name (quoted or not), first name, login alias or initials. Left out: list every member's cutoffs.")]
+        public string[] Who { get; init; } = [];
+
+        [CommandOption("--weekly <PERCENT>")]
+        [Description("The percent of the member's week where its access is cut off (50 to 100; 90 by default).")]
+        public int? Weekly { get; init; }
+
+        [CommandOption("--five-hour <PERCENT>")] // typed --5h: see CliApp.Runner
+        [Description("The percent of the member's 5-hour window where its access is cut off (1 to 100; 98 by default).")]
+        public int? FiveHour { get; init; }
+
+        [CommandOption("--reset")]
+        [Description("Put the member's cutoffs back to the defaults, 90 (week) and 98 (5-hour).")]
+        public bool Reset { get; init; }
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        var store = Ctx.Store();
+        if (settings.Who.Length == 0)
+        {
+            if (settings.Weekly is not null || settings.FiveHour is not null || settings.Reset)
+            {
+                AnsiConsole.MarkupLine("[red]Name the member: org limit <who> --weekly <pct> --5h <pct>, or --reset.[/]");
+                return 1;
+            }
+            var cutoffs = UsageCutoffs.Load(store);
+            var people = OrgHelpCommand.PeopleOverride?.Invoke() ?? MemberLookup.People(MembersCommand.Db(), LoginCommand.DirsOverride?.Invoke() ?? new AccountDirs());
+            foreach (var p in people)
+            {
+                var custom = UsageCutoffs.Custom(cutoffs, p.Email) is not null;
+                AnsiConsole.MarkupLine($"  {Markup.Escape(OrgDisallowCommand.NameOf(p))} ({Markup.Escape(p.Email)}): " +
+                    Markup.Escape(UsageCutoffs.Text(UsageCutoffs.WeeklyFor(cutoffs, p.Email), UsageCutoffs.FiveHourFor(cutoffs, p.Email))) + (custom ? " (set)" : " (default)"));
+            }
+            AnsiConsole.MarkupLine("[grey]Below a cutoff nothing throttles; at it, access is cut off and you are asked. org limit <who> --weekly <pct> --5h <pct> changes one; --reset puts back 90 and 98.[/]");
+            return 0;
+        }
+        if (settings.Reset && (settings.Weekly is not null || settings.FiveHour is not null))
+        {
+            AnsiConsole.MarkupLine("[red]--reset takes no percents.[/]");
+            return 1;
+        }
+        if (!settings.Reset && settings.Weekly is null && settings.FiveHour is null)
+        {
+            AnsiConsole.MarkupLine("[red]Give --weekly <pct>, --5h <pct> or --reset.[/]");
+            return 1;
+        }
+        if (settings.Weekly is { } w && w is < UsageCutoffs.MinWeeklyPercent or > 100)
+        {
+            AnsiConsole.MarkupLine($"[red]--weekly is {UsageCutoffs.MinWeeklyPercent} to 100.[/]");
+            return 1;
+        }
+        if (settings.FiveHour is { } f && f is < UsageCutoffs.MinFiveHourPercent or > 100)
+        {
+            AnsiConsole.MarkupLine($"[red]--5h is {UsageCutoffs.MinFiveHourPercent} to 100.[/]");
+            return 1;
+        }
+        if (OrgHelpCommand.Resolve(string.Join(' ', settings.Who)) is not { } who) return 1;
+        var name = OrgDisallowCommand.NameOf(who);
+        var result = settings.Reset ? UsageCutoffs.Reset(store, who.Email, name) : UsageCutoffs.Set(store, who.Email, name, settings.Weekly, settings.FiveHour);
+        var line = $"{name} ({who.Email}) cutoffs{(settings.Reset ? " back to the defaults" : "")}: {UsageCutoffs.Text(result.WeeklyPercent, result.FiveHourPercent)}.";
+        AnsiConsole.MarkupLine(Markup.Escape(line));
+        try { MindAttic.Orchestrator.OrchestratorLog.For("Org").Information("{Cutoff:l}", line); }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException) { }
         return 0;
     }
 }

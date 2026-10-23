@@ -131,12 +131,12 @@ public sealed class WeeklyAllowanceTests
         var members = new[] { new Member { Email = Erin, Name = "Erin" } };
         var logins = new[] { new LoginReading(Erin, "acct", null, new ReportedUsage(new ReportedWindow(20, Now.AddHours(3)), new ReportedWindow(93, WeekReset), Now.AddMinutes(-2))) };
         var held = UsageReport.Build(members, [], logins, [], new Dictionary<string, BudgetStatus>(), 90, Now);
-        Assert.That(held.Notes(), Has.Some.Contains("At or past the 90% weekly target").And.Some.Contains("Erin"));
+        Assert.That(held.Notes(), Has.Some.Contains("At or past their weekly cutoff").And.Some.Contains("Erin"));
 
         var allowed = UsageReport.Build(members, [], logins, [], new Dictionary<string, BudgetStatus>(), 90, Now, allowances: [Allowed()]);
         var until = WeekReset.ToLocalTime().ToString("ddd h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
         Assert.That(allowed.Notes(), Has.Some.EqualTo($"Erin: allowed past the target by you until {until}."));
-        Assert.That(allowed.Notes(), Has.None.Contains("At or past the 90% weekly target"), "it takes work: not listed as held");
+        Assert.That(allowed.Notes(), Has.None.Contains("At or past their weekly cutoff"), "it takes work: not listed as held");
         Assert.That(allowed.Headers, Is.EqualTo(held.Headers), "no new column");
     }
 

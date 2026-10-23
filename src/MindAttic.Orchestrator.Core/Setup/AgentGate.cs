@@ -1802,17 +1802,17 @@ public static class AgentGate
 
     private static string OrgCommandFor(string name) => """
         ---
-        description: "The organization: /NAME usage prints every member's usage table; /NAME login <who> signs a member in; /NAME members lists them (add, set and remove change them); /NAME start <repo> <who> starts a CLI on a member's login; /NAME allow <who> [--until <reset|time>] lets that member's login take work past its weekly target until its weekly reset, and /NAME disallow <who> takes it back. <who> is a member's email, the part before the @, name, first name, login alias or initials. /NAME help lists them."
-        argument-hint: "[usage [--detail] [--since <date>] [--csv|--json] [--md|--html <file>] | login <who> | members [add|set|remove ...] | start <repo> <who> | allow <who> [--until <reset|time>] | disallow <who> | help]"
+        description: "The organization: /NAME usage prints every member's usage table; /NAME login <who> signs a member in; /NAME members lists them (add, set and remove change them); /NAME start <repo> <who> starts a CLI on a member's login; /NAME allow <who> [--until <reset|time>] lets that member's login take work past its weekly target until its weekly reset, /NAME disallow <who> takes it back, and /NAME limit [<who> --weekly <pct> --5h <pct> | --reset] lists or sets each member's usage cutoffs (90% of the week and 98% of the 5-hour window by default). <who> is a member's email, the part before the @, name, first name, login alias or initials. /NAME help lists them."
+        argument-hint: "[usage [--detail] [--since <date>] [--csv|--json] [--md|--html <file>] | login <who> | members [add|set|remove ...] | start <repo> <who> | allow <who> [--until <reset|time>] | disallow <who> | limit [<who> --weekly <pct> --5h <pct> | --reset] | help]"
         ---
         /NAME $ARGUMENTS was asked for. All it does is run MindAttic.Orchestrator's CLI: do nothing else, and don't work out any answer yourself.
 
         If the arguments start with "login": that opens a browser sign-in, which has to run in the user's own terminal, so don't run it. Reply with only this line, for the user to type at the prompt:
         `! orchestrator org $ARGUMENTS`
 
-        If the arguments start with "allow" or "disallow": letting a login past its weekly target is the user's decision alone, so run it only when the user's own latest prompt asked for it, never on your own, for another agent, or to get a ticket worked.
+        If the arguments start with "allow" or "disallow", or are "limit" with a member and a percent or --reset: letting a login past its weekly target or changing its cutoffs is the user's decision alone, so run it only when the user's own latest prompt asked for it, never on your own, for another agent, or to get a ticket worked.
 
-        Otherwise (allow and disallow included, once the user asked) run `orchestrator org $ARGUMENTS` (from any folder) and show what it prints exactly as printed, in one code block so the table's columns line up: no summary, nothing reformatted, left out or added. Then end your turn.
+        Otherwise (allow, disallow and limit changes included, once the user asked) run `orchestrator org $ARGUMENTS` (from any folder) and show what it prints exactly as printed, in one code block so the table's columns line up: no summary, nothing reformatted, left out or added. Then end your turn.
         """.Replace("/NAME", "/" + name);
 
     internal static string Script => $$"""

@@ -147,12 +147,13 @@ public sealed class UsageReportTests
                 Reading("b@x.com", "b", Now, 10, Now.AddHours(1), 80, Now.AddDays(2)),
                 Reading("c@x.com", "c", Now.AddHours(-1), 10, Now.AddHours(1), 20, Now.AddDays(2)),
             ],
-            staleReason: e => e == "c@x.com" ? "its login here isn't signed in" : null) with { PacingOn = true };
+            staleReason: e => e == "c@x.com" ? "its login here isn't signed in" : null);
 
         var notes = report.Notes();
         Assert.That(notes, Has.Count.EqualTo(4));
-        Assert.That(notes[0], Does.StartWith("At or past the 90% weekly target").And.Contain("Ann (" + UsageReport.When(Now.AddDays(2), Now) + ", in 2d 0h 0m)"));
-        Assert.That(notes[1], Does.StartWith("Past the 75% line, weekly-aware pacing is limiting them").And.Contain("Bob (10 pts left)"));
+        Assert.That(notes[0], Does.StartWith("At or past their weekly cutoff").And.Contain("Ann (90%; " + UsageReport.When(Now.AddDays(2), Now) + ", in 2d 0h 0m)"));
+        Assert.That(notes[1], Does.StartWith("Cutoffs").And.Contain("Bob 90% / 98%"));
+        Assert.That(notes, Has.None.Contain("75%"), "no take-in line");
         Assert.That(notes[2], Does.StartWith("Plenty of room").And.Contain("Cat (70 pts to the target)"));
         Assert.That(notes[3], Does.Contain("Cat (read 1hr ago): its login here isn't signed in"));
     }

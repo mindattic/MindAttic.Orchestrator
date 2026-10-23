@@ -69,7 +69,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// process writing the real rl-status.json writes theirs, and only for the real account folders.</summary>
     public AccountPacer Accounts
     {
-        get => accountPacer ??= new AccountPacer { ProjectsDir = options.ClaudeProjectsDir, Probe = ReportedUsagePath is null, OutsideHolds = OutsideHolds, Allowances = Allowances };
+        get => accountPacer ??= new AccountPacer { ProjectsDir = options.ClaudeProjectsDir, Probe = ReportedUsagePath is null, OutsideHolds = OutsideHolds, Allowances = Allowances, Cutoffs = Cutoffs };
         init => accountPacer = value;
     }
 
@@ -142,6 +142,9 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         WeeklyAllowances.Prune(Store, now);
         return WeeklyAllowances.Active(Store, now);
     }
+
+    /// <summary>The members' own usage cutoffs (M.ORCH-T707).</summary>
+    private IReadOnlyList<UsageCutoff> Cutoffs() => UsageCutoffs.Load(Store);
 
     /// <summary>Keeps the members table's names and roles claude.ai's (M.ORCH-T701).</summary>
     internal MemberProfileSync MemberProfiles { get; } = new();
@@ -385,7 +388,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         reported = ReportedLimit.Highest(mine, reported, now);
         reported = KeepWindow(reported, now);
         // A member using Claude outside the orchestrator on the global login (M.ORCH-T682): its pace held to the lowered ceiling.
-        var (paceSettings, outsideWhy) = OutsideUseWatch.Apply(OutsideHolds(), "", settings);
+        var (paceSettings, outsideWhy) = OutsideUseWatch.Apply(OutsideHolds(), "", UsageCutoffs.Apply(Cutoffs(), SignIn?.Profile?.Email, settings));
         // The global login's member let past the weekly target by the user (M.ORCH-T694): its week stops at the wall meanwhile.
         if (SignIn?.Profile?.Email is { Length: > 0 } allowedEmail)
         {

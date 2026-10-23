@@ -115,7 +115,7 @@ public sealed class AccountRebalancerTests
 
         var moves = Rebalancer().Tick(null, [], [], settings, Now);
 
-        Assert.That(moves.Single().Line, Does.Contain("to b@x.com").And.Contain("week is at 96% (stops at 95%)"));
+        Assert.That(moves.Single().Line, Does.Contain("to b@x.com").And.Contain("week is at 96% (stops at 90%)"));
         Assert.That(ConfigDirOf(sent.Single().Message), Is.EqualTo(b.Directory));
     }
 

@@ -35,6 +35,9 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
     /// <summary>The logins the user let past their weekly target (M.ORCH-T694, <see cref="WeeklyAllowances"/>); null: none.</summary>
     public Func<IReadOnlyList<WeeklyAllowance>>? Allowances { get; init; }
 
+    /// <summary>The members' own usage cutoffs (M.ORCH-T707); null: <c>weeklyStopPercent</c> for every login.</summary>
+    public Func<IReadOnlyList<UsageCutoff>>? Cutoffs { get; init; }
+
     /// <summary>The <c>CLAUDE_CONFIG_DIR</c> of every live Claude CLI on a login of its own, as the context gate recorded it
     /// (a session whose CLI process is still running).</summary>
     public static IEnumerable<string?> LiveFromContextGate()
@@ -75,7 +78,11 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
         IReadOnlyList<WeeklyAllowance> allowed;
         try { allowed = Allowances?.Invoke() ?? []; }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { allowed = []; }
-        int StopOf(string? email) => WeeklyAllowances.For(allowed, email, nowUtc) is null ? stop : Settings.OrchestratorSettings.WeeklyStopFor(0);
+        IReadOnlyList<UsageCutoff>? cutoffs = null;
+        try { cutoffs = Cutoffs?.Invoke(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
+        int StopOf(string? email) => WeeklyAllowances.For(allowed, email, nowUtc) is not null ? Settings.OrchestratorSettings.WeeklyStopFor(0)
+            : cutoffs is null ? stop : UsageCutoffs.WeeklyFor(cutoffs, email);
         var chosen = Choose(signedIn, busy, a => ReportedUsage.Load(nowUtc, a.UsagePath), nowUtc, stop, StopOf);
         if (chosen is null)
             return new(null, signedIn.All(a => busy.Contains(a.Email))
