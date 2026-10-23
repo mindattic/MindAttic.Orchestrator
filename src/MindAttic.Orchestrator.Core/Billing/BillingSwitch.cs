@@ -338,13 +338,13 @@ public sealed class BillingSwitch
         catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException or OperationCanceledException) { return false; }
     }
 
+    /// <summary>The per-CLI logins' folders, to tell which account a CLI's own config folder is (seam).</summary>
+    internal AccountDirs Accounts { get; init; } = new();
+
     /// <summary>
     /// The newest session of every running Claude CLI, from the context gate's state files written in the last day, with what
     /// it bills and the Launcher tab it's in.
     /// </summary>
-    /// <summary>The per-CLI logins' folders, to tell which account a CLI's own config folder is (seam).</summary>
-    internal AccountDirs Accounts { get; init; } = new();
-
     internal IReadOnlyList<CliBilling> LiveClis(IReadOnlyList<HostSession> hosts, DateTime nowUtc)
     {
         if (!Directory.Exists(SessionContextDir)) return [];

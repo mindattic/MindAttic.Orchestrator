@@ -11,15 +11,20 @@ internal static class Ctx
 {
     public static (StatusAggregator Aggregator, JsonStore Store, Snapshot Snapshot, SchedulePlan Plan) Load(int? cli = null)
     {
+        cli ??= CallingCli();
         var store = Ctx.Store();
         var aggregator = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter(), Lease(store));
-        var snapshot = OnOwnLogin(aggregator.Refresh(), CurrentLogin is { } seam ? seam() : new AccountDirs().Current() ?? LoginOfCli(cli));
+        var snapshot = OnOwnLogin(aggregator.Refresh(), CurrentLogin is { } seam ? seam() : LoginOfCli(cli) ?? new AccountDirs().Current());
         var plan = Scheduler.Plan(snapshot, store.LoadSettings(), store.LoadAssignments());
         return (aggregator, store, snapshot, plan);
     }
 
+    /// <summary>The calling CLI, as the pace gate finds it: MINDATTIC_CLI_PID, else the claude.exe this runs under (M.ORCH-T195).</summary>
+    internal static int? CallingCli() => int.TryParse(Environment.GetEnvironmentVariable("MINDATTIC_CLI_PID"), out var envPid) && envPid > 0 ? envPid
+        : MindAttic.Orchestrator.Sessions.ProcessTree.ClaudeAncestor(Environment.ProcessId);
+
     /// <summary>The login the CLI with process id <paramref name="cli"/> runs on, from its session's state (M.ORCH-T673), for a command
-    /// whose own environment doesn't name it; null when it's on the global login or isn't known.</summary>
+    /// (its recorded login is authoritative over this process's environment); null when it's on the global login or isn't known.</summary>
     internal static AccountDir? LoginOfCli(int? cli)
     {
         if (cli is not { } pid) return null;
