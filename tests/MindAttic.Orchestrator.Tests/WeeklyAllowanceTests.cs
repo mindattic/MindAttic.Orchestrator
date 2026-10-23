@@ -167,11 +167,11 @@ public sealed class WeeklyAllowanceTests
         var failover = Settings;
 
         allowances = [Allowed()];
-        Assert.That(Rebalancer().Tick(null, [], [], failover, Now), Is.Empty, "allowed: its CLI keeps working on its login");
+        Assert.That(Rebalancer().Tick(null, [], [], failover, Now), Is.Empty, "allowed: its CLI keeps working on its login (and no weekly-cutoff report)");
         Assert.That(sent, Is.Empty);
 
         allowances = [];
-        Assert.That(Rebalancer().Tick(null, [], [], failover, Now), Is.Empty, "held to the target: past it, it still never fails over to the API key (M.ORCH-T706)");
+        Assert.That(Rebalancer().Tick(null, [], [], failover, Now).Where(m => m.Cutoff is null), Is.Empty, "held to the target: past it, it still never fails over to the API key (M.ORCH-T706)");
         Assert.That(sent, Is.Empty);
     }
 
