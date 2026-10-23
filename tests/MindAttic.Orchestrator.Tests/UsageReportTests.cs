@@ -23,14 +23,14 @@ public sealed class UsageReportTests
         UsageReport.Build(members, roster ?? [], logins ?? [], history ?? [], estimates ?? new Dictionary<string, BudgetStatus>(), 90, Now, since, global,
             staleReason: staleReason);
 
-    /// <summary>M.ORCH-T692: a fresh reading with no 5-hour window running read "—"; nothing's been spent in one, so 0.</summary>
+    /// <summary>M.ORCH-T695: with no 5-hour window running none has started, so nothing is running or wasted: "—".</summary>
     [Test]
-    public void A_fresh_reading_with_no_5_hour_window_running_shows_0()
+    public void A_fresh_reading_with_no_5_hour_window_running_shows_a_dash()
     {
         var report = Build([M("erin@x.com", "Erin")],
             logins: [new LoginReading("erin@x.com", "erin-key", null, new ReportedUsage(null, new ReportedWindow(91, Now.AddDays(4)), Now.AddMinutes(-1)))]);
         var cells = report.Cells()[0];
-        Assert.That((cells[1], cells[2]), Is.EqualTo(("0%", "0")));
+        Assert.That((cells[1], cells[2]), Is.EqualTo(("—", "—")));
         Assert.That(report.Rows[0].NoFiveHourWindow, Is.True);
     }
 

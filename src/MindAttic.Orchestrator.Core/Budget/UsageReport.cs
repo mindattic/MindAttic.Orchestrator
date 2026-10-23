@@ -35,7 +35,7 @@ public sealed record UsageReportRow
     public double? LeftToTarget { get; init; }
     public DateTime? WeekResetUtc { get; init; }
 
-    /// <summary>Read fresh with no 5-hour window running: shown as 0 used, 0 for its reset.</summary>
+    /// <summary>Read fresh with no 5-hour window running (none started since the last ended): both 5-hour columns read "—".</summary>
     public bool NoFiveHourWindow { get; init; }
     /// <summary>When Claude's meter was last read for this login; null when it never was.</summary>
     public DateTime? ReadUtc { get; init; }
@@ -147,9 +147,9 @@ public sealed record UsageReport
                 }
             }
 
-            // A fresh reading with no 5-hour window running: nothing spent in one yet, 0 (M.ORCH-T692).
+            // A fresh reading with no 5-hour window running: none has started since the last ended (M.ORCH-T695).
             var noWindow = !stale && five is null && !fiveUnknown;
-            if (noWindow) (five, fiveReset) = (0, null);
+            if (noWindow) fiveReset = null;
 
             // This week is the login's own, from its weekly reset; a login whose reset isn't known counts the last 7 days.
             var weekStart = weekReset is { } reset ? reset.AddDays(-7) : nowUtc.ToLocalTime().Date.AddDays(-6).ToUniversalTime();
@@ -299,7 +299,7 @@ public sealed record UsageReport
     [
         MemberText(r),
         r.FiveHourUnknown ? "unknown" : Pct(r.FiveHourUsed),
-        r.NoFiveHourWindow ? "0" : When(r.FiveHourResetUtc, GeneratedUtc),
+        When(r.FiveHourResetUtc, GeneratedUtc),
         Whole(r.WeekLeft),
         Countdown(r.WeekResetUtc, GeneratedUtc),
         Age(r.ReadUtc, GeneratedUtc),
