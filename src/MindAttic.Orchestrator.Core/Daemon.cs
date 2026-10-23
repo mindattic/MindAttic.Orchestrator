@@ -333,6 +333,12 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             Say(m.Moved || m.Asked ? LogEventLevel.Information : LogEventLevel.Warning, m.Line);
             var text = m.Line.StartsWith("rebalance: ", StringComparison.Ordinal) ? m.Line["rebalance: ".Length..] : m.Line;
             if (m.NeedsYou) Alert("Needs you", text);
+            // Someone started or stopped using Claude outside the orchestrator (M.ORCH-T682): "Honey is using Claude".
+            if (m.Title is { } title)
+            {
+                Alert(title, text);
+                AccountRebalancer.Record(store, text, DateTime.UtcNow);
+            }
             if (!m.Moved) continue;
             Alert("Moved a CLI", text);
             AccountRebalancer.Record(store, text, DateTime.UtcNow);

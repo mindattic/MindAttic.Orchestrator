@@ -29,6 +29,7 @@ public sealed class AccountRebalancerTests
     private bool hasKey = true;
     private string fallbackMode = BillingModes.Api;
     private JsonStore? store;
+    private Dictionary<string, List<UsageSample>> samples = new(StringComparer.OrdinalIgnoreCase); // "" is the global login
 
     [SetUp]
     public void SetUp()
@@ -38,6 +39,7 @@ public sealed class AccountRebalancerTests
         hasKey = true;
         fallbackMode = BillingModes.Api;
         store = null;
+        samples = new(StringComparer.OrdinalIgnoreCase);
         onOwn = new(StringComparer.Ordinal);
         usage = new(StringComparer.OrdinalIgnoreCase);
         var dir = temps.New();
@@ -67,6 +69,8 @@ public sealed class AccountRebalancerTests
             FallbackMode = () => fallbackMode,
             SetKeyChoice = (path, approve) => { keyChoices.Add((path, approve)); return null; },
             Store = store,
+            Samples = a => samples.GetValueOrDefault(a?.Email ?? "") ?? [],
+            GlobalAccount = () => null,
         };
     }
 
@@ -446,6 +450,148 @@ public sealed class AccountRebalancerTests
         Assert.That(moves[0].Line, Does.Contain("didn't move back").And.Contain("Close and reopen this tab"));
         Assert.That(rebalancer.Failovers, Has.Count.EqualTo(1));
         Assert.That(keyChoices.Last(), Is.EqualTo((a.ConfigPath, true)));
+    }
+
+    // A member using Claude outside the orchestrator (M.ORCH-T682): their login's CLIs stay on it, held to a lower ceiling.
+
+    private static readonly DateTime Window = Now.AddMinutes(25), Week = Now.AddDays(3);
+
+    /// <summary>a@x.com's readings: a past window that taught it 100k tokens a point (and 0.2 week points per 5-hour point),
+    /// then one every 5 minutes of the running window (resetting 25 minutes from now) from <paramref name="from"/>.</summary>
+    private void Readings(DateTime from, double[] percents, long[] fresh, double[]? week = null)
+    {
+        var past = Now.AddHours(-1);
+        var list = new List<UsageSample>
+        {
+            new(past.AddHours(-4), 0, past, 0) { WeekPercent = 30, WeekResetUtc = Week },
+            new(past.AddHours(-1), 10, past, 1_100_000) { WeekPercent = 32, WeekResetUtc = Week },
+        };
+        for (var i = 0; i < percents.Length; i++)
+            list.Add(new(from.AddMinutes(5 * i), percents[i], Window, fresh[i]) { WeekPercent = week?[i] ?? 40, WeekResetUtc = Week });
+        samples["a@x.com"] = list;
+    }
+
+    private static long[] Idle(int n) => [.. Enumerable.Repeat(500_000L, n)];
+
+    private AccountDir OnA()
+    {
+        var a = SignedIn("a@x.com");
+        onOwn["sess-1"] = a.Directory;
+        usage["a@x.com"] = Used(26, week: 41);
+        return a;
+    }
+
+    private (OrchestratorSettings Settings, string? Why) PacedAs(AccountRebalancer rebalancer, string email = "a@x.com") =>
+        OutsideUseWatch.Apply(rebalancer.Outside.Logins, email, failover);
+
+    [Test]
+    public void A_meter_rise_the_clis_explain_changes_nothing()
+    {
+        OnA();
+        // 10 points in half an hour, and the CLIs spent 1M (10 points at 100k a point) of it.
+        Readings(Now.AddMinutes(-30), [20, 21, 23, 25, 27, 29, 30], [0, 100_000, 300_000, 500_000, 700_000, 900_000, 1_000_000]);
+        var rebalancer = Rebalancer();
+
+        Assert.That(rebalancer.Tick(null, [], [], failover, Now), Is.Empty);
+        Assert.That(rebalancer.Outside.InUse("a@x.com"), Is.False);
+
+        // Two points with nothing spent here is the meter's rounding at each end, not someone: still nothing.
+        Readings(Now.AddMinutes(-25), [30, 30, 31, 31, 31, 32], Idle(6));
+        Assert.That(rebalancer.Tick(null, [], [], failover, Now.AddMinutes(5)), Is.Empty);
+        Assert.That(sent, Is.Empty);
+        Assert.That(PacedAs(rebalancer).Settings.PaceTargetPercent, Is.EqualTo(98), "the full target");
+        Assert.That(rebalancer.Outside.Logins.Single().Windows.Single().Points, Is.Zero, "the window is recorded, with no outside use");
+    }
+
+    [Test]
+    public void An_unexplained_rise_holds_that_logins_clis_to_90_percent_without_moving_them_and_restores_after_the_quiet_period()
+    {
+        OnA();
+        var b = SignedIn("b@x.com");
+        usage["b@x.com"] = Used(0);
+        live.Add(new CliBilling(5151, "sess-2", @"D:\Projects\Ideas", "subscription", Tab2));
+        onOwn["sess-2"] = b.Directory;
+        // Six points in 25 minutes while the CLIs here spent nothing: someone's on claude.ai.
+        Readings(Now.AddMinutes(-25), [20, 20, 22, 23, 25, 26], Idle(6));
+        var rebalancer = Rebalancer();
+
+        var told = rebalancer.Tick(null, [], [], failover, Now).Single();
+        Assert.That(told.Title, Is.EqualTo("Ryan of a@x.com is using Claude"));
+        Assert.That(told.Line, Does.Contain("the meter rose 6 points in 25 min; the CLIs here spent 0 of them")
+            .And.Contain("Ryan of a@x.com's CLIs are held to 90% of this window").And.Contain("back to 98% about 20 minutes after"));
+        Assert.That(sent, Is.Empty, "its CLIs stay on its login");
+        var (paced, why) = PacedAs(rebalancer);
+        Assert.That(paced.PaceTargetPercent, Is.EqualTo(90));
+        Assert.That(why, Does.Contain("Held to 90% of this window").And.Contain("Ryan of a@x.com is using Claude outside the orchestrator"));
+        Assert.That(PacedAs(rebalancer, "b@x.com").Settings.PaceTargetPercent, Is.EqualTo(98), "only the login whose meter shows it");
+
+        // Its pace stops the CLIs at the lowered ceiling: that's the pace slowing them, not its line, so nothing moves.
+        var stopped = new Pace(PaceMode.Over, 0, 0, 0, null, "5-hour", Window, "At the ceiling.") { Stop = true };
+        var paces = new[] { new AccountPace("a@x.com", "", null, null!, stopped, null, 1) };
+        Assert.That(rebalancer.Tick(null, paces, [], failover, Now.AddMinutes(10)), Is.Empty);
+        Assert.That(sent, Is.Empty);
+
+        // Twenty minutes with nothing new: the full target is back.
+        var ended = rebalancer.Tick(null, [], [], failover, Now.AddMinutes(20)).Single();
+        Assert.That(ended.Title, Is.EqualTo("Ryan of a@x.com stopped using Claude"));
+        Assert.That(ended.Line, Does.Contain("back to 98% of this window"));
+        Assert.That(PacedAs(rebalancer).Settings.PaceTargetPercent, Is.EqualTo(98));
+        Assert.That(sent, Is.Empty);
+    }
+
+    [Test]
+    public void A_heavy_outside_rate_lowers_the_ceiling_further_but_never_below_what_is_spent()
+    {
+        OnA();
+        // Twenty points in 25 minutes, 25 minutes before the reset: at that rate they'd need 20 more, plus the headroom.
+        Readings(Now.AddMinutes(-25), [20, 24, 28, 32, 36, 40], Idle(6));
+        var rebalancer = Rebalancer();
+
+        Assert.That(rebalancer.Tick(null, [], [], failover, Now).Single().Line, Does.Contain("held to 78% of this window"));
+        Assert.That(PacedAs(rebalancer).Settings.PaceTargetPercent, Is.EqualTo(78));
+
+        // At 90 points spent, the same rate can't take it under what's spent.
+        Readings(Now.AddMinutes(-25), [70, 74, 78, 82, 86, 90], Idle(6));
+        var heavy = Rebalancer();
+        heavy.Tick(null, [], [], failover, Now);
+        Assert.That(PacedAs(heavy).Settings.PaceTargetPercent, Is.EqualTo(90));
+    }
+
+    [Test]
+    public void Use_seen_again_keeps_the_ceiling_down()
+    {
+        OnA();
+        Readings(Now.AddMinutes(-25), [20, 20, 22, 23, 25, 26], Idle(6));
+        var rebalancer = Rebalancer();
+        Assert.That(rebalancer.Tick(null, [], [], failover, Now).Single().Title, Is.Not.Null);
+
+        // Two more points ten minutes on, with nothing spent here: still them.
+        Readings(Now.AddMinutes(-25), [20, 20, 22, 23, 25, 26, 27, 28], Idle(8));
+        rebalancer.Tick(null, [], [], failover, Now.AddMinutes(10));
+        Assert.That(rebalancer.Tick(null, [], [], failover, Now.AddMinutes(20)).Where(m => m.Title is not null), Is.Empty, "seen 10 minutes ago");
+        Assert.That(rebalancer.Outside.InUse("a@x.com"), Is.True);
+    }
+
+    [Test]
+    public void Each_members_outside_use_is_recorded_per_window_and_week_with_suggested_reserves()
+    {
+        OnA();
+        store = new JsonStore(Path.Combine(temps.New(), "store"));
+        Readings(Now.AddMinutes(-25), [20, 20, 22, 23, 25, 26], Idle(6), week: [40, 40, 40.5, 41, 41, 42.5]);
+        Rebalancer().Tick(null, [], [], failover, Now);
+
+        var stats = OutsideUseWatch.Stats(OutsideUseWatch.Load(store), failover).Single();
+        Assert.That(stats.Key, Is.EqualTo("a@x.com"));
+        Assert.That(stats.Name, Is.EqualTo("Ryan of a@x.com"));
+        Assert.That(stats.InUse, Is.True);
+        Assert.That(stats.HeldTo, Is.EqualTo(90));
+        Assert.That(stats.WindowCount, Is.EqualTo(1));
+        Assert.That(stats.PerWindow, Is.EqualTo(6).Within(1e-9));
+        Assert.That(stats.PerWeek, Is.EqualTo(2.5).Within(1e-9));
+        Assert.That(stats.FiveHourReserve, Is.EqualTo(6));
+        Assert.That(stats.WeeklyReserve, Is.EqualTo(3));
+        Assert.That(stats.Text, Does.Contain("held to 90% of this window").And.Contain("6% a window, 2.5% a week on average")
+            .And.Contain("5-hour reserve 6% (pace target 94%), weekly reserve 3%, outside-use ceiling 90%"));
     }
 
 }

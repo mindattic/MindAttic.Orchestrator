@@ -43,7 +43,7 @@ public sealed record OrchestratorSettings
     /// (kept to 0–<see cref="MaxWeeklyReservePercent"/>, so a hand-edited value can't stop it at nothing). Weekly-aware pacing
     /// lands the week on this same line (<see cref="WeeklyAwareTarget"/>, M.ORCH-T680), so on or off it's one line.</summary>
     [JsonIgnore]
-    public int WeeklyStopPercent => WeeklyStopFor(WeeklyReservePercent);
+    public int WeeklyStopPercent => Math.Min(WeeklyStopCapPercent ?? 100, WeeklyStopFor(WeeklyReservePercent));
 
     public static int WeeklyStopFor(int reservePercent) => 100 - Math.Clamp(reservePercent, 0, MaxWeeklyReservePercent);
 
@@ -225,6 +225,41 @@ public sealed record OrchestratorSettings
     /// once its login resets. A CLI on someone's own per-CLI login goes straight to the key at its 5-hour pace target or weekly
     /// target, never to another person's login, while the fallback is the API key (M.ORCH-T681). False leaves it waiting for the reset.</summary>
     public bool FailoverToApiKey { get; init; } = true;
+
+    // ---- A member's own use outside the orchestrator (M.ORCH-T682) ----
+    // When a login's meter rises by more than its CLIs here spent (the desktop app, claude.ai, a phone), that login's 5-hour pace
+    // ceiling drops from the pace target to OutsideUseCeilingPercent (lower still when their measured rate needs it) and its
+    // weekly stop keeps extra headroom, until OutsideUseQuietMinutes pass with no new outside activity. Each value is the
+    // starting point; each login learns its own within the Min/Max bounds (Sessions.OutsideUseWatch), never past them.
+
+    /// <summary>The 5-hour ceiling a login's CLIs are held to while its member uses Claude elsewhere.</summary>
+    public int OutsideUseCeilingPercent { get; init; } = 90;
+    public int OutsideUseCeilingMinPercent { get; init; } = 70;
+    public int OutsideUseCeilingMaxPercent { get; init; } = 95;
+
+    /// <summary>How long with no new outside activity before the full target comes back.</summary>
+    public int OutsideUseQuietMinutes { get; init; } = 20;
+    public int OutsideUseQuietMinMinutes { get; init; } = 10;
+    public int OutsideUseQuietMaxMinutes { get; init; } = 60;
+
+    /// <summary>The noise margin: meter points a stretch's rise must exceed what the CLIs explain by (plus
+    /// <see cref="OutsideUseMarginSharePercent"/> of what they explain) to count as someone's.</summary>
+    public int OutsideUseMarginPoints { get; init; } = 2;
+    public int OutsideUseMarginMinPoints { get; init; } = 1;
+    public int OutsideUseMarginMaxPoints { get; init; } = 5;
+
+    /// <summary>The share of what the CLIs explain allowed as the error of the learned tokens per percent.</summary>
+    public int OutsideUseMarginSharePercent { get; init; } = 25;
+
+    /// <summary>Extra headroom, in points, kept above the member's projected use (5-hour and weekly) while it lasts.</summary>
+    public int OutsideUseHeadroomPoints { get; init; } = 2;
+    public int OutsideUseHeadroomMinPoints { get; init; } = 1;
+    public int OutsideUseHeadroomMaxPoints { get; init; } = 10;
+
+    /// <summary>A lower weekly stop for one login while its member uses Claude elsewhere (M.ORCH-T682): set per login by the
+    /// pacer, never saved.</summary>
+    [JsonIgnore]
+    public int? WeeklyStopCapPercent { get; init; }
 
     /// <summary>Where CLIs the Orchestrator opens run (M.ORCH-T618): <see cref="WindowsTerminalHost"/> (the default) opens each
     /// tab in Windows Terminal, one window per person; <see cref="OrchestratorHost"/> opens it as a terminal pane inside the

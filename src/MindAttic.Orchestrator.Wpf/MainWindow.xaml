@@ -1097,6 +1097,10 @@
                                                 <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding WeekResets}" Style="{StaticResource MaMutedText}" Margin="0,2,0,0" />
                                             </Grid>
                                             <TextBlock Text="{Binding PaceText}" Style="{StaticResource MaMutedText}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                                            <!-- The member's own use outside the orchestrator (M.ORCH-T682): averages and suggested reserves. -->
+                                            <TextBlock Text="{Binding OutsideUseText}" Style="{StaticResource MaMutedText}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                                       Visibility="{Binding HasOutsideUse, Converter={StaticResource Visible}}"
+                                                       ToolTip="Measured by subtraction: the rise in Claude's meter beyond what this login's CLIs here spent. The 5-hour reserve is 100 minus the pace target." />
                                             <DockPanel Margin="0,8,0,0" Visibility="{Binding CanSignIn, Converter={StaticResource Visible}}">
                                                 <Button DockPanel.Dock="Right" Style="{StaticResource MaPrimaryButton}" Content="Sign in" Padding="14,4"
                                                         Command="{Binding DataContext.SignInLoginCommand, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -1346,6 +1350,48 @@
                               Content="Pace to the reset" />
                 <TextBlock Text="Caps new sessions so spend lands on the target as the 5-hour window resets, instead of hitting the wall and waiting. The week is shown, and paced only with weekly-aware pacing on. Off: new work holds at the warn line."
                            Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                <!-- A member's own use outside the orchestrator (M.ORCH-T682): each number, the bounds each login's learned value stays in, and what each has learned. -->
+                <TextBlock Text="When someone uses Claude outside the orchestrator (the desktop app, claude.ai, a phone), their login's CLIs stay on it but are paced to a lower 5-hour ceiling (lower still when their measured rate needs it) and its weekly stop keeps extra headroom, until the quiet period passes with nothing new. Measured by subtraction: the meter's rise beyond what that login's CLIs here spent, past the noise margin. Each number is the starting point; each login learns its own within the MIN-MAX bounds, never past them, and every change is logged with its reason."
+                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                <TextBlock Text="Outside-use ceiling (% of the 5-hour window)" Margin="0,10,0,4" />
+                <StackPanel Orientation="Horizontal">
+                    <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" Text="{Binding OutsideCeiling, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Outside-use ceiling percent" />
+                    <TextBlock Text="learned within" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="10,0,6,0" />
+                    <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" Text="{Binding OutsideCeilingBounds, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Outside-use ceiling percent bounds" />
+                </StackPanel>
+                <TextBlock Text="{Binding OutsideCeilingLearned}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                <TextBlock Text="Quiet period (minutes with no new outside activity)" Margin="0,10,0,4" />
+                <StackPanel Orientation="Horizontal">
+                    <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" Text="{Binding OutsideQuiet, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Outside-use quiet minutes" />
+                    <TextBlock Text="learned within" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="10,0,6,0" />
+                    <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" Text="{Binding OutsideQuietBounds, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Outside-use quiet minutes bounds" />
+                </StackPanel>
+                <TextBlock Text="{Binding OutsideQuietLearned}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                <TextBlock Text="Noise margin (points)" Margin="0,10,0,4" />
+                <StackPanel Orientation="Horizontal">
+                    <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" Text="{Binding OutsideMargin, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Outside-use noise margin points" />
+                    <TextBlock Text="learned within" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="10,0,6,0" />
+                    <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" Text="{Binding OutsideMarginBounds, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Outside-use noise margin points bounds" />
+                </StackPanel>
+                <TextBlock Text="{Binding OutsideMarginLearned}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                <TextBlock Text="Headroom (points above their projected use)" Margin="0,10,0,4" />
+                <StackPanel Orientation="Horizontal">
+                    <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" Text="{Binding OutsideHeadroom, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Outside-use headroom points" />
+                    <TextBlock Text="learned within" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="10,0,6,0" />
+                    <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" Text="{Binding OutsideHeadroomBounds, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Outside-use headroom points bounds" />
+                </StackPanel>
+                <TextBlock Text="{Binding OutsideHeadroomLearned}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                <TextBlock Text="Noise margin share (% of what the CLIs explain)" Margin="0,10,0,4" />
+                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
+                         Text="{Binding OutsideMarginShare, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Outside-use noise margin share percent" />
                 <TextBlock Text="Pace target (% of the 5-hour limit by its reset)" Margin="0,10,0,4" />
                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
                          Text="{Binding PaceTarget, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Pace target percent" />

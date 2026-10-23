@@ -62,6 +62,91 @@ public sealed class SettingsViewModel : ObservableObject
     public string ContextPercent { get => contextPercent; set => Set(ref contextPercent, value); }
     /// <summary>The commands exempt from pacing (M.ORCH-T198), comma-separated; blank exempts none.</summary>
     public string ExemptCommands { get => exemptCommands; set => Set(ref exemptCommands, value); }
+    // A member's own use outside the orchestrator (M.ORCH-T682): each number, the MIN-MAX its per-login learned value stays in,
+    // and what each login has learned (read-only, beside the setting).
+    private string outsideCeiling = "", outsideCeilingBounds = "", outsideQuiet = "", outsideQuietBounds = "", outsideMargin = "",
+        outsideMarginBounds = "", outsideMarginShare = "", outsideHeadroom = "", outsideHeadroomBounds = "";
+    public string OutsideCeiling { get => outsideCeiling; set => Set(ref outsideCeiling, value); }
+    public string OutsideCeilingBounds { get => outsideCeilingBounds; set => Set(ref outsideCeilingBounds, value); }
+    public string OutsideQuiet { get => outsideQuiet; set => Set(ref outsideQuiet, value); }
+    public string OutsideQuietBounds { get => outsideQuietBounds; set => Set(ref outsideQuietBounds, value); }
+    public string OutsideMargin { get => outsideMargin; set => Set(ref outsideMargin, value); }
+    public string OutsideMarginBounds { get => outsideMarginBounds; set => Set(ref outsideMarginBounds, value); }
+    public string OutsideMarginShare { get => outsideMarginShare; set => Set(ref outsideMarginShare, value); }
+    public string OutsideHeadroom { get => outsideHeadroom; set => Set(ref outsideHeadroom, value); }
+    public string OutsideHeadroomBounds { get => outsideHeadroomBounds; set => Set(ref outsideHeadroomBounds, value); }
+
+    /// <summary>"Learned: Honey 88% · Ryan 92%" for each number; "Learned: none yet" until a login has.</summary>
+    public string OutsideCeilingLearned { get; private set; } = "";
+    public string OutsideQuietLearned { get; private set; } = "";
+    public string OutsideMarginLearned { get; private set; } = "";
+    public string OutsideHeadroomLearned { get; private set; } = "";
+
+    private string[] loadedOutside = [];
+    private string[] OutsideCurrent() => [OutsideCeiling, OutsideCeilingBounds, OutsideQuiet, OutsideQuietBounds, OutsideMargin, OutsideMarginBounds,
+        OutsideMarginShare, OutsideHeadroom, OutsideHeadroomBounds];
+
+    private static string Bounds(int min, int max) => $"{min}-{max}";
+
+    private void LoadOutside(OrchestratorSettings s)
+    {
+        OutsideCeiling = s.OutsideUseCeilingPercent.ToString(CultureInfo.InvariantCulture);
+        OutsideCeilingBounds = Bounds(s.OutsideUseCeilingMinPercent, s.OutsideUseCeilingMaxPercent);
+        OutsideQuiet = s.OutsideUseQuietMinutes.ToString(CultureInfo.InvariantCulture);
+        OutsideQuietBounds = Bounds(s.OutsideUseQuietMinMinutes, s.OutsideUseQuietMaxMinutes);
+        OutsideMargin = s.OutsideUseMarginPoints.ToString(CultureInfo.InvariantCulture);
+        OutsideMarginBounds = Bounds(s.OutsideUseMarginMinPoints, s.OutsideUseMarginMaxPoints);
+        OutsideMarginShare = s.OutsideUseMarginSharePercent.ToString(CultureInfo.InvariantCulture);
+        OutsideHeadroom = s.OutsideUseHeadroomPoints.ToString(CultureInfo.InvariantCulture);
+        OutsideHeadroomBounds = Bounds(s.OutsideUseHeadroomMinPoints, s.OutsideUseHeadroomMaxPoints);
+        loadedOutside = OutsideCurrent();
+        var logins = Sessions.OutsideUseWatch.Load(store);
+        static string Say(string text) => "Learned: " + (text.Length == 0 ? "none yet" : text);
+        OutsideCeilingLearned = Say(Sessions.OutsideUseWatch.Learned(logins, l => l.LearnedCeiling, "%"));
+        OutsideQuietLearned = Say(Sessions.OutsideUseWatch.Learned(logins, l => l.LearnedQuietMinutes, " min"));
+        OutsideMarginLearned = Say(Sessions.OutsideUseWatch.Learned(logins, l => l.LearnedMargin, " points"));
+        OutsideHeadroomLearned = Say(Sessions.OutsideUseWatch.Learned(logins, l => l.LearnedHeadroom, " points"));
+        Raise(nameof(OutsideCeilingLearned));
+        Raise(nameof(OutsideQuietLearned));
+        Raise(nameof(OutsideMarginLearned));
+        Raise(nameof(OutsideHeadroomLearned));
+    }
+
+    /// <summary>The outside-use fields edited here applied to <paramref name="s"/>; null (and <see cref="Error"/> said) when one
+    /// doesn't parse. Only edited fields are checked or saved, as with the rest of the panel.</summary>
+    private OrchestratorSettings? SaveOutside(OrchestratorSettings s)
+    {
+        var was = loadedOutside.Length == 9 ? loadedOutside : OutsideCurrent();
+        int? Number(string text, string old, int lo, int hi, string what)
+        {
+            if (text == old) return null;
+            if (int.TryParse(text, out var n) && n >= lo && n <= hi) return n;
+            Error = $"{what}: {lo} to {hi}.";
+            throw new FormatException();
+        }
+        (int Min, int Max)? Range(string text, string old, int lo, int hi, string what)
+        {
+            if (text == old) return null;
+            if (Sessions.OutsideTuning.ParseBounds(text, lo, hi) is { } b) return b;
+            Error = $"{what}: MIN-MAX, each {lo} to {hi}, like 70-95.";
+            throw new FormatException();
+        }
+        try
+        {
+            if (Number(OutsideCeiling, was[0], 1, 100, "Outside-use ceiling") is { } c) s = s with { OutsideUseCeilingPercent = c };
+            if (Range(OutsideCeilingBounds, was[1], 1, 100, "Outside-use ceiling bounds") is { } cb) s = s with { OutsideUseCeilingMinPercent = cb.Min, OutsideUseCeilingMaxPercent = cb.Max };
+            if (Number(OutsideQuiet, was[2], 1, 240, "Quiet period") is { } q) s = s with { OutsideUseQuietMinutes = q };
+            if (Range(OutsideQuietBounds, was[3], 1, 240, "Quiet period bounds") is { } qb) s = s with { OutsideUseQuietMinMinutes = qb.Min, OutsideUseQuietMaxMinutes = qb.Max };
+            if (Number(OutsideMargin, was[4], 0, 20, "Noise margin") is { } m) s = s with { OutsideUseMarginPoints = m };
+            if (Range(OutsideMarginBounds, was[5], 0, 20, "Noise margin bounds") is { } mb) s = s with { OutsideUseMarginMinPoints = mb.Min, OutsideUseMarginMaxPoints = mb.Max };
+            if (Number(OutsideMarginShare, was[6], 0, 100, "Noise margin share") is { } ms) s = s with { OutsideUseMarginSharePercent = ms };
+            if (Number(OutsideHeadroom, was[7], 0, 50, "Headroom") is { } h) s = s with { OutsideUseHeadroomPoints = h };
+            if (Range(OutsideHeadroomBounds, was[8], 0, 50, "Headroom bounds") is { } hb) s = s with { OutsideUseHeadroomMinPoints = hb.Min, OutsideUseHeadroomMaxPoints = hb.Max };
+            return s;
+        }
+        catch (FormatException) { return null; }
+    }
+
     public string Error { get => error; private set => Set(ref error, value); }
     public IReadOnlyList<string> Providers => Sessions.SessionControl.Providers;
     public string FilePath => store.Describe(JsonStore.SettingsName);
@@ -110,6 +195,7 @@ public sealed class SettingsViewModel : ObservableObject
         ContextPercent = Math.Clamp(s.ContextCyclePercent, 10, 95).ToString(CultureInfo.InvariantCulture);
         ExemptCommands = string.Join(", ", s.ExemptCommands);
         loaded = Current();
+        LoadOutside(s);
         Error = "";
     }
 
@@ -140,9 +226,10 @@ public sealed class SettingsViewModel : ObservableObject
         if (!(int.TryParse(MaxDelay, out var delay) && delay >= 0 && delay <= Setup.AgentGate.MaxHoldSeconds) && MaxDelay != was.Delay) { Error = $"Longest hold: 0 to {Setup.AgentGate.MaxHoldSeconds} seconds."; return; }
         if (!(int.TryParse(ContextPercent, out var cycleAt) && cycleAt is >= 10 and <= 95) && ContextPercent != was.Context) { Error = "Cycle context at: 10 to 95."; return; }
 
+        if (SaveOutside(store.LoadSettings()) is null) return;
         try
         {
-            var s = store.LoadSettingsToChange();
+            var s = SaveOutside(store.LoadSettingsToChange())!;
             store.SaveSettings(s with
             {
                 BlockBudget = BlockBudget == was.Block ? s.BlockBudget : block,

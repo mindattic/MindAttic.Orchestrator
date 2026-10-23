@@ -121,6 +121,14 @@ public sealed class LoginCardViewModel(string key) : ObservableObject
         return string.Join(" · ", parts);
     }
 
+    private OutsideUseStats? outsideUse;
+
+    /// <summary>The member's own use outside the orchestrator (M.ORCH-T682): its averages per window and week and the reserves
+    /// they suggest, and whether they're using Claude now; "" when none is kept.</summary>
+    public string OutsideUseText => outsideUse?.Text ?? "";
+
+    public bool HasOutsideUse => outsideUse is not null;
+
     /// <summary>A per-CLI login nobody's signed in to offers Sign in; the global login signs in with /login in any CLI.</summary>
     public bool CanSignIn => !SignedIn && !IsGlobal;
 
@@ -144,8 +152,10 @@ public sealed class LoginCardViewModel(string key) : ObservableObject
     };
 
     /// <param name="defaultEmail">Who the global login is signed in to, for <see cref="CanMakeDefault"/>.</param>
-    public void Update(LoginCard next, DateTime now, string? defaultEmail = null, bool billingIsApiKey = false)
+    /// <param name="outside">The member's own use outside the orchestrator (M.ORCH-T682); null when none is kept.</param>
+    public void Update(LoginCard next, DateTime now, string? defaultEmail = null, bool billingIsApiKey = false, OutsideUseStats? outside = null)
     {
+        outsideUse = outside;
         onApiKey = billingIsApiKey; // the API key is the fallback then (M.ORCH-T672): the global login is named like any other
         card = next;
         nowUtc = now;

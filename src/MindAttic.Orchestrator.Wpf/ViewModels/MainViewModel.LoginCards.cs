@@ -154,7 +154,9 @@ public sealed partial class MainViewModel
             var dirs = OwnLoginDirs();
             var cycler = loginCycler;
             var cards = await Task.Run(() => CardsOf(dirs, current, signedIn, agents, cycler.OnOwnLogin(), now));
-            ApplyLoginCards(cards, now);
+            // Each member's own use outside the orchestrator, as the daemon keeps it (M.ORCH-T682).
+            var outside = await Task.Run(() => OutsideUseWatch.Stats(OutsideUseWatch.Load(store), store.LoadSettings()));
+            ApplyLoginCards(cards, now, outside);
         }
         // Fire-and-forget from the refresh: any failure is shown, never thrown into the dispatcher.
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -171,13 +173,15 @@ public sealed partial class MainViewModel
         LoginBoard.Build(LoginBoard.Global(dirs.ClaudeDir, current, signedIn, Path.Combine(dirs.ClaudeDir, "rl-status.json"), nowUtc),
             dirs, agents, onOwnLogin, nowUtc);
 
-    internal void ApplyLoginCards(IReadOnlyList<LoginCard> cards, DateTime nowUtc)
+    internal void ApplyLoginCards(IReadOnlyList<LoginCard> cards, DateTime nowUtc, IReadOnlyList<OutsideUseStats>? outside = null)
     {
+        OutsideUseStats? OutsideOf(LoginCard c) =>
+            outside?.FirstOrDefault(o => string.Equals(o.Key, c.Email ?? "", StringComparison.OrdinalIgnoreCase));
         // Who the global login is signed in to: that per-CLI login's card is the default already (no Make default).
         var defaultEmail = IsOnApiKey ? null : cards.FirstOrDefault(c => c.IsGlobal)?.SignedInAs;
         LoginCards.SyncBy([.. cards], c => c.Email ?? "", v => v.Key,
-            c => { var v = new LoginCardViewModel(c.Email ?? ""); v.Update(c, nowUtc, defaultEmail, IsOnApiKey); return v; },
-            (v, c) => v.Update(c, nowUtc, defaultEmail, IsOnApiKey));
+            c => { var v = new LoginCardViewModel(c.Email ?? ""); v.Update(c, nowUtc, defaultEmail, IsOnApiKey, OutsideOf(c)); return v; },
+            (v, c) => v.Update(c, nowUtc, defaultEmail, IsOnApiKey, OutsideOf(c)));
         Raise(nameof(LoginCardsSummary));
     }
 }

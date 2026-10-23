@@ -69,7 +69,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// process writing the real rl-status.json writes theirs, and only for the real account folders.</summary>
     public AccountPacer Accounts
     {
-        get => accountPacer ??= new AccountPacer { ProjectsDir = options.ClaudeProjectsDir, Probe = ReportedUsagePath is null };
+        get => accountPacer ??= new AccountPacer { ProjectsDir = options.ClaudeProjectsDir, Probe = ReportedUsagePath is null, OutsideHolds = OutsideHolds };
         init => accountPacer = value;
     }
 
@@ -118,6 +118,10 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
     public OrchestratorOptions Options => options;
     public JsonStore Store { get; } = store ?? new JsonStore();
+
+    /// <summary>Each login's outside use as the daemon keeps it (M.ORCH-T682): a login whose member is using Claude elsewhere is
+    /// paced to its lowered ceiling.</summary>
+    private IReadOnlyList<OutsideUseLogin> OutsideHolds() => OutsideUseWatch.Load(Store);
 
     private OrchestratorDb? db;
 
@@ -350,14 +354,16 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         List<UsageSample> mine = signIn is null ? samples ?? [] : [.. (samples ?? []).Where(s => signIn.Contains(s.AtUtc))];
         reported = ReportedLimit.Highest(mine, reported, now);
         reported = KeepWindow(reported, now);
-        var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration,
+        // A member using Claude outside the orchestrator on the global login (M.ORCH-T682): its pace held to the lowered ceiling.
+        var (paceSettings, outsideWhy) = OutsideUseWatch.Apply(OutsideHolds(), "", settings);
+        var budget = BudgetCalculator.Compute(events, paceSettings, now, startOfTodayUtc, learned: calibration,
             reported: reported, reportedLimit: reportedLimit, ledgerFromUtc: signIn?.LedgerFrom);
         budget = HoldWeeklyStop(budget, now);
 
         var recentFrom = now - BudgetCalculator.RecentWindow;
         var active = subscriptionSessions.Count(s => s.Events.Count > 0 && s.Events[^1].AtUtc >= recentFrom);
         DateTime? marksSeenThrough = null;
-        var pace = Pacer.Compute(budget, active, typicalPerSession, settings, now,
+        var pace = Pacer.Compute(budget, active, typicalPerSession, paceSettings, now,
             rateLimitFile?.AgentDelay(now) ?? 0, rateLimitFile is null ? 0 : contextCycler.Subagents(out marksSeenThrough));
         pace = pace with
         {
@@ -365,7 +371,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             SubagentsByCli = rateLimitFile is null ? new Dictionary<int, int>() : contextCycler.AliveSubagents(now)
                 .Where(x => x.Cli is not null).GroupBy(x => x.Cli!.Value).ToDictionary(g => g.Key, g => g.Count()),
         };
-        var utilization = UtilizationSeries.Build(mine, budget, settings.PaceTargetPercent, now, settings.PaceExponent);
+        if (outsideWhy is not null) pace = pace with { Note = $"{pace.Note} {outsideWhy}" };
+        var utilization = UtilizationSeries.Build(mine, budget, paceSettings.PaceTargetPercent, now, settings.PaceExponent);
         // On course to end under its target: the allowance shown to the CLIs (and held to by the pace gate) says to start more (M.ORCH-T529).
         pace = Pacer.UnderTarget(pace, utilization, settings.MaxSubagents);
         // An API key has no 5-hour or weekly window: nothing it spends is held against the subscription's learned limits.
