@@ -80,7 +80,15 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     private ClaudeMeterProbe? defaultProbe;
     private ClaudeMeterProbe? Probe => MeterProbe ??
         (ReportedUsagePath is null && statusLease is not null && rateLimitFile?.Path == new RateLimitStatusWriter().Path
-            ? defaultProbe ??= new ClaudeMeterProbe { AccountKey = () => ClaudeAccount.Current(new ClaudeAccount().ConfigPath) } : null);
+            ? defaultProbe ??= new ClaudeMeterProbe { AccountKey = () => ClaudeAccount.Current(new ClaudeAccount().ConfigPath), MayRefresh = NoCliOnGlobalLogin } : null);
+
+    /// <summary>Whether no Claude CLI runs on the global login (M.ORCH-T684): then its saved token is refreshed by the probe, since
+    /// nothing else would, and no CLI holds a refresh token that refreshing here would spend.</summary>
+    private bool NoCliOnGlobalLogin()
+    {
+        var own = contextCycler.OnOwnLogin();
+        return !contextCycler.LiveSessions(DateTime.UtcNow).Keys.Any(id => !own.ContainsKey(id));
+    }
     private DateTime auditStamp;
 
     /// <summary>Which Claude account is signed in, so a switch to another leaves the old one's usage behind. Like the

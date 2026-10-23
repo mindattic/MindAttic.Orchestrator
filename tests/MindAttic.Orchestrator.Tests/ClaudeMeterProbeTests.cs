@@ -322,6 +322,7 @@ public sealed class ClaudeMeterProbeTests
         var probe = new ClaudeMeterProbe
         {
             UsagePath = Path.Combine(dir, "claude-usage.json"), CredentialsPath = path,
+            MayRefresh = () => true,
             Renew = (r, _) => Task.FromResult<ClaudeMeterProbe.RefreshedToken?>(r == "r1" ? new("new", "r2", 3600) : null),
             Fetch = (t, _) => { used = t; return Task.FromResult<string?>(Body); },
         };
@@ -344,11 +345,39 @@ public sealed class ClaudeMeterProbeTests
         var probe = new ClaudeMeterProbe
         {
             UsagePath = Path.Combine(dir, "claude-usage.json"), CredentialsPath = path,
+            MayRefresh = () => true,
             Renew = (_, _) => { renewed = true; return Task.FromResult<ClaudeMeterProbe.RefreshedToken?>(null); },
             Fetch = (_, _) => Task.FromResult<string?>(Body),
         };
         probe.Tick(null, [], Now, force: true);
         await probe.Pending;
         Assert.That(renewed, Is.False);
+    }
+
+    [Test]
+    public async Task A_login_with_a_CLI_running_is_not_refreshed_and_a_refused_refresh_says_so_and_backs_off()
+    {
+        var path = Path.Combine(dir, ".credentials.json");
+        var expired = new DateTimeOffset(DateTime.UtcNow.AddHours(-17)).ToUnixTimeMilliseconds();
+        File.WriteAllText(path, $$$"""{"claudeAiOauth":{"accessToken":"old","refreshToken":"r1","expiresAt":{{{expired}}}}}""");
+        var renews = 0;
+        var may = false;
+        var probe = new ClaudeMeterProbe
+        {
+            UsagePath = Path.Combine(dir, "claude-usage.json"), CredentialsPath = path,
+            MayRefresh = () => may,
+            Renew = (_, _) => { renews++; return Task.FromResult<ClaudeMeterProbe.RefreshedToken?>(null); },
+            Fetch = (_, _) => Task.FromResult<string?>(Body),
+        };
+        probe.Tick(null, [], Now, force: true);
+        await probe.Pending;
+        Assert.That(renews, Is.EqualTo(0), "a CLI holds the refresh token");
+        may = true;
+        probe.Reset();
+        probe.Tick(null, [], Now, force: true);
+        await probe.Pending;
+        Assert.That(renews, Is.EqualTo(1));
+        Assert.That(probe.LastResult, Does.Contain("refused to refresh"));
+        Assert.That(probe.NextAskUtc, Is.GreaterThanOrEqualTo(Now + ClaudeMeterProbe.NoMeterBackoff));
     }
 }

@@ -70,6 +70,10 @@ public sealed class ClaudeMeterProbe
     /// <summary>Exchanges a refresh token for a new access token; null when refused. Tests swap it.</summary>
     internal Func<string, CancellationToken, Task<RefreshedToken?>> Renew { get; init; } = RenewAsync;
 
+    /// <summary>Whether this login may be refreshed here now (M.ORCH-T684): false while a Claude CLI runs on it, since refreshing
+    /// rotates the refresh token and an open CLI still holding the old one would be signed out. Unset, never refreshes.</summary>
+    public Func<bool>? MayRefresh { get; init; }
+
     private readonly object gate = new();
     private DateTime nextUtc;
     /// <summary>Bumped by <see cref="Reset"/>: an ask started before it that then fails doesn't put the backoff back (M.ORCH-T342).</summary>
@@ -256,9 +260,19 @@ public sealed class ClaudeMeterProbe
         try
         {
             token = Token(CredentialsPath, DateTime.UtcNow);
-            if (token is null) token = await RefreshStaleAsync().ConfigureAwait(false);
+            if (token is null && MayRefresh?.Invoke() == true) token = await RefreshStaleAsync().ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or HttpRequestException or TaskCanceledException) { }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or HttpRequestException or TaskCanceledException)
+        {
+            Fail($"refreshing the Claude sign-in failed ({ex.GetType().Name}); sign in again if this keeps happening", NoMeterBackoff);
+            return;
+        }
+        if (refusedRefresh)
+        {
+            refusedRefresh = false;
+            Fail("Claude refused to refresh the sign-in (revoked or expired); sign in again", NoMeterBackoff);
+            return;
+        }
         if (token is null)
         {
             Fail("no usable Claude sign-in to read the meter with");
@@ -316,6 +330,8 @@ public sealed class ClaudeMeterProbe
 
     /// <summary>Refreshes the saved sign-in when its access token has been expired for <see cref="RefreshAfterExpired"/>, writing
     /// the new tokens back beside the rest of the file; returns the new access token, null when it isn't stale or was refused.</summary>
+    private bool refusedRefresh;
+
     private async Task<string?> RefreshStaleAsync()
     {
         var now = DateTime.UtcNow;
@@ -326,7 +342,11 @@ public sealed class ClaudeMeterProbe
             now - DateTimeOffset.FromUnixTimeMilliseconds(expiresAt).UtcDateTime < RefreshAfterExpired)
             return null;
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        if (await Renew(refresh, cts.Token).ConfigureAwait(false) is not { } fresh) return null;
+        if (await Renew(refresh, cts.Token).ConfigureAwait(false) is not { } fresh)
+        {
+            refusedRefresh = true;
+            return null;
+        }
         // A CLI may have refreshed it while this asked: its tokens are the live ones, not these.
         if (JsonNode.Parse(File.ReadAllText(CredentialsPath)) is not JsonObject again || again["claudeAiOauth"] is not JsonObject current ||
             current["refreshToken"]?.GetValue<string>() != refresh)
