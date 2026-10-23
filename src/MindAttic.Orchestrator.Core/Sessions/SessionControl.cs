@@ -123,8 +123,8 @@ public sealed class SessionControl(OrchestratorOptions options)
         string[] launcher = [options.LauncherExe, .. normalized is null ? Array.Empty<string>() : ["--account", normalized]];
         var run = string.Join(' ', launcher.Select(AccountDirs.Ps));
         var command = configDir is null
-            ? PowerShell($"Remove-Item Env:{AccountDirs.EnvVar} -ErrorAction SilentlyContinue; & {run}; exit $LASTEXITCODE")
-            : PowerShell($"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; & {run}; exit $LASTEXITCODE");
+            ? PowerShell($"Remove-Item Env:{AccountDirs.EnvVar} -ErrorAction SilentlyContinue; {TokenEnv(null)}& {run}; exit $LASTEXITCODE")
+            : PowerShell($"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; {TokenEnv(configDir)}& {run}; exit $LASTEXITCODE");
         return new PaneRequest(LauncherRepo, title, root, "Claude", command)
         {
             ConfigDir = configDir, Initials = look.Initials, TabColor = look.TabColor, IsLauncher = true,
@@ -181,10 +181,8 @@ public sealed class SessionControl(OrchestratorOptions options)
             .. resumeSession is { Length: > 0 } && configDir is not null ? new[] { "--config-dir", configDir } : [],
             .. string.IsNullOrWhiteSpace(prompt) ? Array.Empty<string>() : new[] { "--prompt", SafePrompt(prompt) },
         ];
-        // A resumed pane on the global login clears the variable the dashboard itself may carry.
-        var command = configDir is null && resumeSession is not { Length: > 0 }
-            ? JoinCommandLine(host)
-            : configDir is null
+        // The global login clears the variable and token the dashboard itself may carry (M.ORCH-T712).
+        var command = configDir is null
             ? PowerShell($"Remove-Item Env:{AccountDirs.EnvVar} -ErrorAction SilentlyContinue; {TokenEnv(null)}& {string.Join(' ', host.Select(AccountDirs.Ps))}; exit $LASTEXITCODE")
             : PowerShell($"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; {TokenEnv(configDir)}& {string.Join(' ', host.Select(AccountDirs.Ps))}; exit $LASTEXITCODE");
         return new PaneRequest(title, tabTitle, directory, provider, command) { ConfigDir = configDir, Initials = look?.Initials, TabColor = look?.TabColor };
