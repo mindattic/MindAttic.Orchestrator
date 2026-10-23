@@ -61,6 +61,14 @@ public sealed partial class LoginTokens(TokenStore? store = null)
     /// <summary>A Claude OAuth token as <c>claude setup-token</c> prints it.</summary>
     private static readonly Regex TokenPattern = new(@"sk-ant-oat\d{2}-[A-Za-z0-9_\-]{20,}", RegexOptions.CultureInvariant);
 
+    /// <summary>A token that redirected output may have hard-wrapped: the start, then any following lines made only of token characters.</summary>
+    private static readonly Regex WrappedTokenPattern = new(@"sk-ant-oat\d{2}-[A-Za-z0-9_\-]*(?:\r?\n[A-Za-z0-9_\-]+(?=\r?\n|$))*", RegexOptions.CultureInvariant);
+
+    /// <summary>The shape a whole token has once its wrapped lines are joined; anything outside it is a fragment or noise.</summary>
+    private const int MinTokenLength = 50, MaxTokenLength = 200;
+
+    private static bool IsToken(string joined) => joined.Length is >= MinTokenLength and <= MaxTokenLength && TokenPattern.IsMatch(joined);
+
     public static LoginTokens Default { get; } = new();
 
     /// <summary>One store for the whole process (M.ORCH-T711): the Vault's in-process lock is per instance, so a store built per
@@ -156,10 +164,17 @@ public sealed partial class LoginTokens(TokenStore? store = null)
 
     /// <summary>The token in <paramref name="output"/> (the last one, should it be printed twice); null when there's none.</summary>
     public static string? Find(string? output) =>
-        output is null ? null : TokenPattern.Matches(output) is { Count: > 0 } m ? m[^1].Value : null;
+        output is null ? null
+        : WrappedTokenPattern.Matches(output).Select(m => JoinLines(m.Value)).LastOrDefault(IsToken);
+
+    private static string JoinLines(string s) => s.Replace("\r", "").Replace("\n", "");
 
     /// <summary><paramref name="text"/> with any token in it masked, for saying what <c>setup-token</c> printed.</summary>
-    public static string Mask(string text) => TokenPattern.Replace(text, t => t.Value[..14] + "…" + t.Value[^4..]);
+    public static string Mask(string text) => WrappedTokenPattern.Replace(text, m =>
+    {
+        var joined = JoinLines(m.Value);
+        return joined.Length >= 24 ? joined[..14] + "…" + joined[^4..] : m.Value;
+    });
 
     /// <summary>
     /// The PowerShell statements a tab on <paramref name="configDir"/> runs before its Launcher host: with a token kept for the
