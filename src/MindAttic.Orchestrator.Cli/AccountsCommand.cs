@@ -95,7 +95,7 @@ internal sealed class AccountsAliasCommand : Command<AccountsAliasCommand.Settin
         IReadOnlyList<string> written;
         // The same call as the dashboard's Rename (M.ORCH-T698): the login's files and the member's name in the members table.
         try { written = LoginLook.Rename(dirs, folder, email, settings.Reset ? null : settings.Name, null, Ctx.Store().Db); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.Data.Common.DbException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.Data.Common.DbException)
         {
             AnsiConsole.MarkupLine($"[red]Couldn't name {Markup.Escape(email)}: {Markup.Escape(ex.Message)}[/]");
             return 1;
