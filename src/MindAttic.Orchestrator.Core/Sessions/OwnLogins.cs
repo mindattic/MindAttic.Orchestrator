@@ -111,7 +111,7 @@ public static class OwnLogins
     }
 
     /// <summary>A login already signed in that has no good long-lived token gets one, through its own private browser window.</summary>
-    private static MintResult? MintSignedIn(AccountDir dir, Action<AccountDir, string>? opening, TokenMinting? minting)
+    public static MintResult? MintSignedIn(AccountDir dir, Action<AccountDir, string>? opening, TokenMinting? minting)
     {
         if (minting is null || (!minting.Renew && !minting.Tokens.NeedsMint(dir.Email, DateTime.UtcNow))) return null;
         var opener = LoginBrowser.Prepare(dir, out _);

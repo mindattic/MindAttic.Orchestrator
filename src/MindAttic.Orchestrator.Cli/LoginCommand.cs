@@ -152,10 +152,10 @@ internal sealed class LoginCommand : Command<LoginCommand.Settings>
             return 1;
         }
         var minting = Minting(newToken);
-        // Signed in already with a good token: only a new token asked for (--new-token) opens the browser again.
-        var result = dirs.For(email) is { SignedIn: true } signed && signed.SignedInEmail is { } e && e.Equals(signed.Email, StringComparison.OrdinalIgnoreCase) && newToken
+        // Signed in already as itself: no browser login again; only a missing or expiring token (or --new-token) is minted, as --all does.
+        var result = dirs.For(email) is { SignedIn: true } signed && signed.SignedInEmail is { } e && e.Equals(signed.Email, StringComparison.OrdinalIgnoreCase)
             ? new OwnLoginResult(signed.Email, signed.Email, signed.Directory, OwnLoginOutcome.AlreadySignedIn, $"{signed.Email} already has its own login.", [])
-                { Token = OwnLogins.Mint(signed, LoginBrowser.Prepare(signed, out _), minting) }
+                { Token = OwnLogins.MintSignedIn(signed, Opening, minting) }
             : OwnLogins.SignIn(dirs, email, sso, Opening, minting);
         Report(result);
         if (!result.Ok) return 1;
