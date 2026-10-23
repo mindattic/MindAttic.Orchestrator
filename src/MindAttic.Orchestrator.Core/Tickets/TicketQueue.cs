@@ -46,10 +46,11 @@ public static class TicketQueue
             if (approved) db.Approve(id); else db.Unapprove(id);
             return;
         }
-        var s = store.LoadSettingsToChange();
-        var list = s.StoryApproved.Where(x => !x.Equals(id, StringComparison.OrdinalIgnoreCase)).ToList();
-        if (approved) list.Add(id);
-        store.SaveSettings(s with { StoryApproved = list });
+        store.Update<OrchestratorSettings>(JsonStore.SettingsName, s =>
+        {
+            s.StoryApproved.RemoveAll(x => x.Equals(id, StringComparison.OrdinalIgnoreCase));
+            if (approved) s.StoryApproved.Add(id);
+        });
     }
 
     /// <summary><paramref name="id"/>'s priority moved by <paramref name="by"/>, where its approval lives; the new priority.</summary>
@@ -61,12 +62,14 @@ public static class TicketQueue
             db.SetPriority(id, next);
             return next;
         }
-        var s = store.LoadSettingsToChange();
-        var map = s.StoryPriorities.Where(kv => !kv.Key.Equals(id, StringComparison.OrdinalIgnoreCase))
-            .ToDictionary(kv => kv.Key, kv => kv.Value);
-        var moved = s.StoryPriorities.Where(kv => kv.Key.Equals(id, StringComparison.OrdinalIgnoreCase)).Sum(kv => kv.Value) + by;
-        if (moved != 0) map[id] = moved;
-        store.SaveSettings(s with { StoryPriorities = map });
+        long moved = 0;
+        store.Update<OrchestratorSettings>(JsonStore.SettingsName, s =>
+        {
+            var same = s.StoryPriorities.Where(kv => kv.Key.Equals(id, StringComparison.OrdinalIgnoreCase)).ToList();
+            moved = same.Sum(kv => kv.Value) + by;
+            foreach (var kv in same) s.StoryPriorities.Remove(kv.Key);
+            if (moved != 0) s.StoryPriorities[id] = moved;
+        });
         return moved;
     }
 
@@ -93,11 +96,10 @@ public static class TicketQueue
         // Which ids the database holds is asked first: each is a query that can wait on its lock, and a settings change saved
         // (the Settings panel, orchestrator reserve) between this load and its save would be lost.
         var moved = approved.Concat(prioritized.Select(kv => kv.Key)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var current = store.LoadSettingsToChange();
-        store.SaveSettings(current with
+        store.Update<OrchestratorSettings>(JsonStore.SettingsName, s =>
         {
-            StoryApproved = current.StoryApproved.Where(id => !moved.Contains(id)).ToList(),
-            StoryPriorities = current.StoryPriorities.Where(kv => !moved.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value),
+            s.StoryApproved.RemoveAll(moved.Contains);
+            foreach (var k in s.StoryPriorities.Keys.Where(moved.Contains).ToList()) s.StoryPriorities.Remove(k);
         });
         return approved.Count + prioritized.Count;
     }
