@@ -118,12 +118,15 @@ internal sealed class QueueCommand : Command<QueueCommand.Settings>
             AnsiConsole.MarkupLine($"[yellow]stale:[/] {q.Id} was dispatched {Formatting.Ago(q.Assignment!.StartedUtc, DateTime.UtcNow)} but nothing has happened in {Markup.Escape(q.Assignment.Directory)} since {Formatting.Ago(q.StaleSinceUtc, DateTime.UtcNow)}; it's back in the queue");
         foreach (var f in plan.Finished)
             AnsiConsole.MarkupLine($"[aqua]done:[/] {f.TicketId} is closed{(f.Worktree ? $"; worktree {Markup.Escape(f.Directory)} can go: orchestrator release {f.TicketId} --remove-worktree" : "")}");
+        // Went dark mid-task (M.ORCH-T748): apart from an ordinary open ticket, at once rather than at the next session's start.
+        var orphaned = WriteOrphans(Ctx.Store()).Where(r => r.Open).ToDictionary(r => r.TicketId, StringComparer.OrdinalIgnoreCase);
 
         var table = new Table().Border(TableBorder.Rounded).AddColumns("#", "Ticket", "Repo", "Type", "Pri", "Opened", "Summary", "");
         var i = 0;
         foreach (var q in (settings.Groom ? plan.Groom : plan.Queue).Take(settings.Top))
         {
-            var note = q.BlockedBy.Count > 0 ? $"[grey]waits for {string.Join(", ", q.BlockedBy)}[/]"
+            var note = orphaned.TryGetValue(q.Id, out var orphan) ? (orphan.State == OrphanRecord.NeedsYou ? "[red]orphaned: needs you[/]" : "[red]orphaned[/]")
+                : q.BlockedBy.Count > 0 ? $"[grey]waits for {string.Join(", ", q.BlockedBy)}[/]"
                 : q.Reserved > 0 && !q.IsAssigned ? $"[aqua]{Formatting.Tokens(q.Reserved)} reserved[/]"
                 : q.TooBig ? "[yellow]too big for now[/]" : q.IsStale ? $"[yellow]stale since {Formatting.Ago(q.StaleSinceUtc, DateTime.UtcNow)}[/]"
                 : q.IsAssigned ? $"[aqua]assigned {Formatting.Ago(q.Assignment!.StartedUtc, DateTime.UtcNow)}[/]"
@@ -136,6 +139,17 @@ internal sealed class QueueCommand : Command<QueueCommand.Settings>
     }
 
     private static string Trim(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "…";
+
+    /// <summary>Says each ticket that went dark mid-task and what became of it (M.ORCH-T748): waiting or given up on in red,
+    /// redispatched in grey. Returns the records.</summary>
+    internal static IReadOnlyList<OrphanRecord> WriteOrphans(JsonStore store)
+    {
+        var records = OrphanWatch.Load(store);
+        foreach (var r in records.OrderByDescending(r => r.Open).ThenBy(r => r.TicketId, StringComparer.OrdinalIgnoreCase))
+            AnsiConsole.MarkupLine(r.Open ? $"[red]orphaned:[/] {Markup.Escape(OrphanWatch.Describe(r, DateTime.UtcNow))}"
+                : $"[grey]redispatched: {Markup.Escape(OrphanWatch.Describe(r, DateTime.UtcNow))}[/]");
+        return records;
+    }
 }
 
 internal sealed class BumpCommand : Command<BumpCommand.Settings>
@@ -220,6 +234,10 @@ internal sealed class ReleaseCommand : Command<ReleaseCommand.Settings>
     {
         var store = Ctx.Store();
         var a = store.LoadAssignments().FirstOrDefault(x => x.TicketId.Equals(settings.Ticket, StringComparison.OrdinalIgnoreCase));
+        // An orphaned ticket released is yours (M.ORCH-T748): the daemon no longer redispatches or holds it back.
+        var wasOrphan = OrphanWatch.Forget(store, settings.Ticket);
+        if (wasOrphan) AnsiConsole.MarkupLine($"{Markup.Escape(settings.Ticket)} is no longer tracked as orphaned; its worktree is left as it is.");
+        if (a is null && wasOrphan) return 0;
         if (a is null) { AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(settings.Ticket)} isn't assigned.[/]"); return 1; }
         var dispatcher = Ctx.Dispatcher(store);
         if (!settings.RemoveWorktree)
@@ -375,6 +393,14 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [CommandOption("--resume-after-reset <ON>")]
         [Description("true (default): once the window a CLI stopped for resets, a resume prompt is typed into its Launcher tab; false only alerts you that it's waiting.")]
         public bool? ResumeAfterReset { get; init; }
+
+        [CommandOption("--orphan-redispatches <N>")]
+        [Description("How many times a ticket whose CLI or tab exited mid-task (orphaned) is redispatched, handed back to its repo's /allocate CLI or started again in a new tab in its worktree, before it's left for you as one that keeps dying (default 3; 0 only shows it as orphaned).")]
+        public int? OrphanRedispatches { get; init; }
+
+        [CommandOption("--orphan-quiet <MINUTES>")]
+        [Description("Minutes a dispatch's CLI or tab must be gone, with nothing written in its worktree, before it counts as orphaned (default 10).")]
+        public int? OrphanQuiet { get; init; }
 
         [CommandOption("--auto-login <ON>")]
         [Description("true (default): a Claude tab started without a login chosen (dashboard Auto, start without --account, Queue starts, accounts pick) goes on a signed-in per-CLI login no CLI runs on yet, most headroom first, else the global login; false: always the global login.")]
@@ -588,6 +614,18 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { ResumeAfterReset = resume };
             changed = true;
         }
+        if (settings.OrphanRedispatches is { } redispatches)
+        {
+            if (redispatches is < 0 or > 20) { AnsiConsole.MarkupLine("[red]--orphan-redispatches is 0 to 20.[/]"); return 1; }
+            s = s with { OrphanRedispatches = redispatches };
+            changed = true;
+        }
+        if (settings.OrphanQuiet is { } orphanQuiet)
+        {
+            if (orphanQuiet is < 1 or > 1440) { AnsiConsole.MarkupLine("[red]--orphan-quiet is 1 to 1440 minutes.[/]"); return 1; }
+            s = s with { OrphanQuietMinutes = orphanQuiet };
+            changed = true;
+        }
         if (settings.AutoLogin is { } autoLogin)
         {
             s = s with { AutoLogin = autoLogin };
@@ -786,6 +824,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             " · a new CLI starts with it off until /allocate is typed there" +
             (s.KeepGoing ? " · /allocate CLIs keep going through their workable tickets without asking" : " · /allocate CLIs may stop between tickets") +
             (s.ResumeAfterReset ? " · a CLI stopped for a window is told to carry on once it resets" : " · you're alerted when a CLI stopped for a window could carry on after its reset") +
+            (s.OrphanRedispatches > 0 ? $" · a ticket whose CLI or tab exited mid-task is orphaned after {s.OrphanQuietMinutes} quiet min and redispatched in its worktree, up to {s.OrphanRedispatches} times"
+                : $" · a ticket whose CLI or tab exited mid-task is shown as orphaned after {s.OrphanQuietMinutes} quiet min, not redispatched") +
             (s.AutoLogin ? " · a new Claude tab goes on a free per-CLI login (one CLI per account), else the global login" : " · a new Claude tab uses the global login unless given --account") +
             (s.RebalanceLogins ? " · a CLI on a login that runs low moves to a free login with more headroom" : " · a CLI stays on its login when it runs low") +
             " · a CLI whose login runs out waits for its reset (API billing is only ever switched on by you)" +

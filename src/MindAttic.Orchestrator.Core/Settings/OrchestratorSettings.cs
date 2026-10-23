@@ -197,6 +197,14 @@ public sealed record OrchestratorSettings
     /// (<see cref="Sessions.LimitWaker"/>). False only alerts you that it's waiting; so does a CLI in a plain terminal.</summary>
     public bool ResumeAfterReset { get; init; } = true;
 
+    /// <summary>How many times the daemon redispatches a ticket whose session went dark (M.ORCH-T748: its CLI or tab exited
+    /// mid-task, the ticket still open) before it stops and says the ticket keeps dying (<see cref="Scheduling.OrphanWatch"/>).
+    /// 0 only shows it as orphaned.</summary>
+    public int OrphanRedispatches { get; init; } = 3;
+
+    /// <summary>Minutes a dispatch's owner must be gone with nothing written in its worktree before it counts as orphaned.</summary>
+    public int OrphanQuietMinutes { get; init; } = 10;
+
     /// <summary>One CLI per account (M.ORCH-T605): a Claude tab started without a login chosen for it (dashboard Start on
     /// Auto, <c>orchestrator start</c> without <c>--account</c>, Queue and autopilot starts, <c>orchestrator accounts pick</c>)
     /// goes on a signed-in per-CLI login no live CLI runs on, the one with the most headroom first

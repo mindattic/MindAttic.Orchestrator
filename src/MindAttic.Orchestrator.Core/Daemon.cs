@@ -130,6 +130,20 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     // On course to end under target with room for more: a CLI holding claims no subagent is on is told to start
                     // them now (M.ORCH-T529: two sat unstarted at a projected 65% of 98% until the user asked).
                     ReportAutopilotWakes(pilotWaker.TickClaims(snapshot, plan, s, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
+                    // A dispatch whose CLI or tab exited mid-task (closed, crashed, slept) is orphaned: said at once, and handed back to
+                    // the repo's /allocate CLI or started again in a new tab in its worktree (M.ORCH-T748), as a window's stop is resumed.
+                    try
+                    {
+                        orphans ??= new OrphanWatch(store)
+                        {
+                            OpenTab = (item, prompt) => new Dispatcher(new SessionControl(options), store).Dispatch(item, Providers.Claude, useWorktree: true, submit: true, prompt: prompt),
+                        };
+                        ReportOrphans(orphans.Tick(plan, snapshot, s, cycler.AutopilotClis(), DateTime.UtcNow));
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+                    {
+                        Say(LogEventLevel.Warning, $"orphaned: {ex.Message}");
+                    }
                     // The billing switch (M.ORCH-T436): a /login to another claude.ai account is noted, not switched back (M.ORCH-T676), and each
                     // open CLI billing the other mode is asked to restart (one daemon asks, as one wakes); one only you can
                     // restart is said to you.
@@ -321,6 +335,18 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     }
 
     private AccountRebalancer? rebalancer;
+
+    private OrphanWatch? orphans;
+
+    /// <summary>Logs what <see cref="OrphanWatch"/> found and did, and raises each alert it carries (M.ORCH-T748).</summary>
+    internal void ReportOrphans(IEnumerable<OrphanWatch.Event> events)
+    {
+        foreach (var e in events)
+        {
+            Say(e.Warn ? LogEventLevel.Warning : LogEventLevel.Information, e.Line);
+            if (e.Alert is { } a) Alert(a.Title, a.Text, a.Urgent);
+        }
+    }
 
     /// <summary>Ends the moves in flight that landed, failed or timed out, and hands each one's tickets back (M.ORCH-T637):
     /// logged, and toasted when it didn't land or its CLI couldn't be typed into.</summary>

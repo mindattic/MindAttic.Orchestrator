@@ -198,6 +198,8 @@ internal sealed class StatusCommand : Command<StatusCommand.Settings>
         if (snapshot.Billing is { } billing) BillingCommand.Write(billing, snapshot.TakenUtc);
         foreach (var x in MindAttic.Orchestrator.Activity.Watchdog.Stuck(snapshot))
             AnsiConsole.MarkupLine($"[red]looks stuck:[/] a session in {Markup.Escape(x.Repo)} is repeating {Markup.Escape(x.Loop.Describe())} since {x.Loop.SinceUtc.ToLocalTime():t}");
+        // Tickets whose CLI or tab exited mid-task (M.ORCH-T748), and what the daemon did about them.
+        QueueCommand.WriteOrphans(store);
 
         var table = new Table().Border(TableBorder.Rounded)
             .AddColumns("Repo", "State", "Sessions", "Open", "Last active", "Tokens today");

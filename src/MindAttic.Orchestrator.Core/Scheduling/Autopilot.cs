@@ -532,8 +532,12 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         bool Free(QueueItem q) => !settings.AutopilotSkip.Contains(q.Repo, StringComparer.OrdinalIgnoreCase) &&
             q.RepoPath.Length > 0 && !Busy(q) && q.BlockedBy.Count == 0 &&
             q.MayWork && !TooBigNow(q); // a stale unapproved one waits for your yes (M.ORCH-T383)
+        // A ticket that went dark (M.ORCH-T748): one that kept dying, or whose work can't be carried forward, is yours, never
+        // handed out again by itself; one handed back is claimed with its predecessor's work carried forward.
+        var orphans = OrphanWatch.Load(store).ToDictionary(r => r.TicketId, StringComparer.OrdinalIgnoreCase);
+        bool GivenUp(QueueItem q) => orphans.TryGetValue(q.Id, out var r) && r.State == OrphanRecord.NeedsYou;
         // A pinned ticket (M.ORCH-T668) is only its user's: on another login it waits for them, never handed on from here.
-        bool Workable(QueueItem q) => Free(q) && TicketPins.MayTake(q, login);
+        bool Workable(QueueItem q) => Free(q) && TicketPins.MayTake(q, login) && !GivenUp(q);
         var open = plan.Queue.Where(q => Named(q.Repo) && Workable(q)).ToList();
         if (open.Count == 0)
         {
@@ -656,7 +660,8 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 all.Add(new Assignment(item.Id, item.Repo, tree, Providers.Claude, nowUtc, true) { Cli = cli, CliSession = self, Model = model.Model, Account = AccountDirs.Normalize(login) });
             });
             if (taken) { claimedElsewhere++; continue; }
-            handed.Add(new Handout(item, tree, PromptFor(item, tree, branch, mainlineOf(item.RepoPath), model), model));
+            var carried = orphans.TryGetValue(item.Id, out var orphan) && orphan.State == OrphanRecord.HandedBack ? OrphanWatch.CarryForward(orphan) : "";
+            handed.Add(new Handout(item, tree, carried + PromptFor(item, tree, branch, mainlineOf(item.RepoPath), model), model));
             inRepo[item.Repo] = inRepo.GetValueOrDefault(item.Repo) + 1;
             committed += item.Estimate?.Fresh ?? 0;
         }

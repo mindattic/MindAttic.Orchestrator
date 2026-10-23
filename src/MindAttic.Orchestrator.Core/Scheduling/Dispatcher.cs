@@ -25,8 +25,10 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
 
     /// <param name="submit">Press Enter on the pre-filled prompt once the agent is up (auto-submit repos only).</param>
     /// <param name="login">The login a Claude tab opens on; null picks one as a new tab's is (Auto, else the global login).</param>
-    public Result Dispatch(QueueItem item, string provider, bool useWorktree, bool submit = false, TabLogin? login = null)
+    /// <param name="prompt">The tab's opening prompt; null is <see cref="Scheduler.PromptFor"/>'s (M.ORCH-T748: a redispatch carries its work forward).</param>
+    public Result Dispatch(QueueItem item, string provider, bool useWorktree, bool submit = false, TabLogin? login = null, string? prompt = null)
     {
+        prompt ??= Scheduler.PromptFor(item);
         var settings = store.LoadSettings();
         // The caller's plan may be seconds old: an /allocate CLI's `next --claim` (or another window) may have taken the
         // ticket since. Only the assignment the plan saw (a stale one) may be replaced.
@@ -52,8 +54,8 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         }
 
         var title = useWorktree ? $"{item.Repo} {item.Id}" : item.Repo;
-        var (startError, cameUp) = OpenTab is { } seam ? seam(title, directory, provider, Scheduler.PromptFor(item), submit)
-            : Open(title, directory, provider, Scheduler.PromptFor(item), submit, login);
+        var (startError, cameUp) = OpenTab is { } seam ? seam(title, directory, provider, prompt, submit)
+            : Open(title, directory, provider, prompt, submit, login);
         if (startError is not null) return new Result(false, startError, null);
 
         var assignment = new Assignment(item.Id, item.Repo, directory, provider, DateTime.UtcNow, useWorktree) { Account = AccountDirs.Normalize(login?.Email) };
