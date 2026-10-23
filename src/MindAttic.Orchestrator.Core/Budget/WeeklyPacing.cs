@@ -88,9 +88,6 @@ public sealed record WeeklyCap(double? WeekPercent, DateTime? WeekResetUtc, doub
     /// <summary>The line the week is taken in from (<see cref="OrchestratorSettings.WeeklyAwareLine"/>).</summary>
     public double LinePercent { get; init; } = Defaults.WeeklyAwareLine;
 
-    /// <summary>Where the week winds down without a plan (<see cref="OrchestratorSettings.WeeklyAwareWindDown"/>).</summary>
-    public double WindDownPercent { get; init; } = Defaults.WeeklyAwareWindDown;
-
     /// <summary>The week is at or past <see cref="LinePercent"/>: it's taken in.</summary>
     public bool Watching => WeekPercent >= LinePercent;
 
@@ -119,11 +116,6 @@ public sealed record WeeklyCap(double? WeekPercent, DateTime? WeekResetUtc, doub
     /// week isn't taken in.</summary>
     public double? WeekRoom5HourPoints => Watching && Ratio is > 0 and var r && WeekPercent is { } w
         ? Math.Max(0, StopPercent - w) / r : null;
-
-    /// <summary>Past <see cref="WindDownPercent"/> with no plan for the week (no ratio learned): only
-    /// what can finish starts. With a plan, the window's own ceiling winds down instead, so the week isn't wound down hours before
-    /// it resets while it still has room (M.ORCH-T669).</summary>
-    public bool WindDown => WeekPercent >= WindDownPercent && CeilingPercent is null;
 
     /// <summary>What every pace note says of it, so it's plain the toggle is on and which limit governs.</summary>
     public string Note
@@ -187,7 +179,7 @@ public static class WeeklyPacing
         var stop = (double)s.WeeklyAwareTarget;
         if (week is not { } w || w < s.WeeklyAwareLine || ratio is not > 0 || b.BlockLimitIsPeak || reset is null)
             return new WeeklyCap(week, reset, ratio is > 0 && !b.BlockLimitIsPeak && reset is not null ? ratio : null, null, windows, target)
-                { HoursLeft = hours, WeekPerHour = weekPerHour, StopPercent = stop, LinePercent = s.WeeklyAwareLine, WindDownPercent = s.WeeklyAwareWindDown };
+                { HoursLeft = hours, WeekPerHour = weekPerHour, StopPercent = stop, LinePercent = s.WeeklyAwareLine };
         var used = b.CurrentBlock is { } current && current.IsActive(nowUtc) ? b.BlockPercent : 0;
         var weekAtStart = Math.Max(0, w - ratio.Value * used);
         var room = Math.Max(0, stop - weekAtStart);
@@ -201,7 +193,7 @@ public static class WeeklyPacing
         return new WeeklyCap(w, reset, ratio, Math.Max(0, ceiling), windows, target)
             {
                 HoursLeft = hours, WeekPerHour = weekPerHour, ProjectedEndPercent = weekAtStart + need,
-                StopPercent = stop, LinePercent = s.WeeklyAwareLine, WindDownPercent = s.WeeklyAwareWindDown,
+                StopPercent = stop, LinePercent = s.WeeklyAwareLine,
             };
     }
 }

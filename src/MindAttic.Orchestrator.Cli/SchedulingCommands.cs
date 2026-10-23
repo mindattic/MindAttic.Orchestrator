@@ -401,7 +401,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         public int? WeeklyTarget { get; init; }
 
         [CommandOption("--weekly-aware <ON>")]
-        [Description("true: weekly-aware pacing, per login: from its take-in line (--weekly-line, 75% by default) of its week a 5-hour window is held only when the week, spent as it's being spent, would reach the weekly target (100 minus --weekly-reserve, 95% by default) before its reset, and then only as far as needed, so the week lands on the target as it resets; scarce room goes to higher-priority tickets first, a ticket its login can't fit goes to another signed-in login with room (else the fallback login), and the week stops at the target (winding down --weekly-wind-down points under it only while there's no plan for the week); false (default): only the 5-hour target paces.")]
+        [Description("true: weekly-aware pacing, per login: from its take-in line (--weekly-line, 75% by default) of its week a 5-hour window is held only when the week, spent as it's being spent, would reach the weekly target (100 minus --weekly-reserve, 95% by default) before its reset, and then only as far as needed, so the week lands on the target as it resets; scarce room goes to higher-priority tickets first, a ticket its login can't fit goes to another signed-in login with room (else the fallback login), and the week stops at the target; false (default): only the 5-hour target paces.")]
         public bool? WeeklyAware { get; init; }
 
         [CommandOption("--weekly-line <PERCENT>")]

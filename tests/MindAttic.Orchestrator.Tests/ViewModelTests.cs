@@ -208,30 +208,24 @@ public sealed class ViewModelTests
     [Test]
     public void The_weekly_pacing_fields_round_trip_through_the_panel_and_are_validated()
     {
-        // M.ORCH-T680: the weekly target (saved as the reserve), the take-in line and the wind-down margin.
+        // M.ORCH-T680: the weekly target (saved as the reserve).
         var store = new JsonStore(dir);
         store.SaveSettings(store.LoadSettings());
         var vm = new SettingsViewModel(store, () => { });
-        Assert.That((vm.WeeklyTarget, vm.WeeklyLine, vm.WeeklyWindDown), Is.EqualTo(("90", "75", "3")), "the defaults");
+        Assert.That(vm.WeeklyTarget, Is.EqualTo("90"), "the defaults");
 
-        (vm.WeeklyTarget, vm.WeeklyLine, vm.WeeklyWindDown) = ("85", "70", "4");
+        vm.WeeklyTarget = "85";
         vm.SaveCommand.Execute(null);
         var saved = store.LoadSettings();
-        Assert.That((vm.Error, saved.WeeklyAwarePacing, saved.WeeklyReservePercent, saved.WeeklyAwareLinePercent, saved.WeeklyWindDownMargin),
-            Is.EqualTo(("", false, 15, 70, 4)), "weekly-aware pacing can't be switched on");
-        Assert.That((saved.WeeklyAwareTarget, saved.WeeklyAwareWindDown), Is.EqualTo((85, 81)));
+        Assert.That((vm.Error, saved.WeeklyAwarePacing, saved.WeeklyReservePercent),
+            Is.EqualTo(("", false, 15)), "weekly-aware pacing can't be switched on");
+        Assert.That(saved.WeeklyAwareTarget, Is.EqualTo(85));
         var again = new SettingsViewModel(store, () => { });
-        Assert.That((again.WeeklyTarget, again.WeeklyLine, again.WeeklyWindDown), Is.EqualTo(("85", "70", "4")));
+        Assert.That(again.WeeklyTarget, Is.EqualTo("85"));
 
-        again.WeeklyTarget = "65";
-        again.SaveCommand.Execute(null);
-        Assert.That(again.Error, Does.StartWith("Weekly take-in line"), "the saved 70% line isn't below a 65% target");
         again.WeeklyTarget = "40";
         again.SaveCommand.Execute(null);
         Assert.That(again.Error, Does.StartWith("Weekly target"));
-        (again.WeeklyTarget, again.WeeklyWindDown) = ("90", "25");
-        again.SaveCommand.Execute(null);
-        Assert.That(again.Error, Does.StartWith("Weekly wind-down"));
         Assert.That(store.LoadSettings().WeeklyReservePercent, Is.EqualTo(15), "nothing invalid was saved");
     }
 

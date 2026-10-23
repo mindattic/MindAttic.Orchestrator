@@ -11,7 +11,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly JsonStore store;
     private readonly Action saved;
     private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "",
-        contextPercent = "", exemptCommands = "", weeklyTarget = "", weeklyLine = "", weeklyWindDown = "", terminalHost = WindowsTerminalChoice;
+        contextPercent = "", exemptCommands = "", weeklyTarget = "", terminalHost = WindowsTerminalChoice;
     private bool autopilot, pacing, autoLogin, rebalanceLogins = true;
 
     public SettingsViewModel(JsonStore store, Action saved)
@@ -35,10 +35,6 @@ public sealed class SettingsViewModel : ObservableObject
     /// <summary>The weekly target (M.ORCH-T680): 100 minus the weekly reserve (M.ORCH-T609), so it's saved as the reserve;
     /// every CLI on an account stops there, and weekly-aware pacing lands the week on it. 50 to 100.</summary>
     public string WeeklyTarget { get => weeklyTarget; set => Set(ref weeklyTarget, value); }
-    /// <summary>Weekly-aware pacing's take-in line (M.ORCH-T680): below the weekly target.</summary>
-    public string WeeklyLine { get => weeklyLine; set => Set(ref weeklyLine, value); }
-    /// <summary>Weekly-aware pacing's wind-down margin under the target (M.ORCH-T680), 0 to 20.</summary>
-    public string WeeklyWindDown { get => weeklyWindDown; set => Set(ref weeklyWindDown, value); }
     /// <summary>One CLI per account (M.ORCH-T605): new Claude tabs default to the Auto login.</summary>
     public bool AutoLogin { get => autoLogin; set => Set(ref autoLogin, value); }
     /// <summary>Rebalance when an account runs low (M.ORCH-T608).</summary>
@@ -171,15 +167,13 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>Every field as the panel read it. The CLI and agents change settings too while it's open (budget, pace,
     /// settings --max-sessions, --exempt): a Save writes only the fields edited here, not what it read back then (M.ORCH-T338).</summary>
-    private Fields loaded = new("", "", "", "", "", "", false, "", "", "", true, "", true, WindowsTerminalChoice, "", "");
+    private Fields loaded = new("", "", "", "", "", "", false, "", "", "", true, "", true, WindowsTerminalChoice);
 
     private sealed record Fields(string Block, string Weekly, string Reset, string Warn, string Max, string Provider, bool Pacing, string Target,
-        string Context, string Exempt, bool AutoLogin, string WeekTarget, bool Rebalance, string Host,
-        string Line, string WindDown);
+        string Context, string Exempt, bool AutoLogin, string WeekTarget, bool Rebalance, string Host);
 
     private Fields Current() => new(BlockBudget, WeeklyBudget, WeeklyReset, WarnPercent, MaxSessions, Provider, Pacing, PaceTarget,
-        ContextPercent, ExemptCommands, AutoLogin, WeeklyTarget, RebalanceLogins, TerminalHost,
-        WeeklyLine, WeeklyWindDown);
+        ContextPercent, ExemptCommands, AutoLogin, WeeklyTarget, RebalanceLogins, TerminalHost);
 
     public void Load()
     {
@@ -194,8 +188,6 @@ public sealed class SettingsViewModel : ObservableObject
         Pacing = s.Pacing;
         PaceTarget = s.PaceTargetPercent.ToString(CultureInfo.InvariantCulture);
         WeeklyTarget = s.WeeklyAwareTarget.ToString(CultureInfo.InvariantCulture);
-        WeeklyLine = s.WeeklyAwareLinePercent.ToString(CultureInfo.InvariantCulture);
-        WeeklyWindDown = s.WeeklyWindDownMargin.ToString(CultureInfo.InvariantCulture);
         AutoLogin = s.AutoLogin;
         RebalanceLogins = s.RebalanceLogins;
         TerminalHost = s.EmbeddedTerminals ? OrchestratorChoice : WindowsTerminalChoice;
@@ -220,15 +212,13 @@ public sealed class SettingsViewModel : ObservableObject
         if (!(int.TryParse(PaceTarget, out var target) && target is >= 1 and <= 100) && PaceTarget != was.Target) { Error = "Pace target: 1 to 100."; return; }
         // Weekly pacing's numbers are checked together (M.ORCH-T680): the line must sit below the target, so a changed target
         // is checked against the line too, as saved or as typed; one not edited here is taken as saved.
-        var weeklyEdited = WeeklyTarget != was.WeekTarget || WeeklyLine != was.Line || WeeklyWindDown != was.WindDown;
-        int weekTarget = 0, weekLine = 0, weekMargin = 0;
+        var weeklyEdited = WeeklyTarget != was.WeekTarget;
+        int weekTarget = 0;
         if (weeklyEdited)
         {
             var onDisk = store.LoadSettings();
             if (!WeeklyNumber(WeeklyTarget, was.WeekTarget, onDisk.WeeklyAwareTarget, out weekTarget)) { Error = $"Weekly target: {100 - OrchestratorSettings.MaxWeeklyReservePercent} to 100."; return; }
-            if (!WeeklyNumber(WeeklyLine, was.Line, onDisk.WeeklyAwareLinePercent, out weekLine)) { Error = "Weekly take-in line: a whole percent below the weekly target."; return; }
-            if (!WeeklyNumber(WeeklyWindDown, was.WindDown, onDisk.WeeklyWindDownMargin, out weekMargin)) { Error = $"Weekly wind-down margin: 0 to {OrchestratorSettings.MaxWeeklyWindDownMargin}."; return; }
-            if (OrchestratorSettings.WeeklyPacingError(weekTarget, weekLine, weekMargin) is { } weeklyError) { Error = weeklyError; return; }
+            if (OrchestratorSettings.WeeklyTargetError(weekTarget) is { } weeklyError) { Error = weeklyError; return; }
         }
         if (!(int.TryParse(ContextPercent, out var cycleAt) && cycleAt is >= 10 and <= 95) && ContextPercent != was.Context) { Error = "Cycle context at: 10 to 95."; return; }
 
@@ -248,8 +238,6 @@ public sealed class SettingsViewModel : ObservableObject
                 Pacing = Pacing == was.Pacing ? s.Pacing : Pacing,
                 PaceTargetPercent = PaceTarget == was.Target ? s.PaceTargetPercent : target,
                 WeeklyReservePercent = WeeklyTarget == was.WeekTarget ? s.WeeklyReservePercent : 100 - weekTarget,
-                WeeklyAwareLinePercent = WeeklyLine == was.Line ? s.WeeklyAwareLinePercent : weekLine,
-                WeeklyWindDownMargin = WeeklyWindDown == was.WindDown ? s.WeeklyWindDownMargin : weekMargin,
                 AutoLogin = AutoLogin == was.AutoLogin ? s.AutoLogin : AutoLogin,
                 RebalanceLogins = RebalanceLogins == was.Rebalance ? s.RebalanceLogins : RebalanceLogins,
                 TerminalHost = TerminalHost == was.Host ? s.TerminalHost

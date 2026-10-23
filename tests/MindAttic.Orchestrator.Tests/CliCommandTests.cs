@@ -561,8 +561,8 @@ public sealed class CliCommandTests
                      new[] { "--weekly-aware", "true" }, new[] { "--failover", "true" }, new[] { "--throttle-agents", "true" }, new[] { "--pace-profile", "front-loaded" }, new[] { "--pace-curve-k", "0.5" } })
             Assert.That(Run(["settings", .. locked]), Is.EqualTo(1), string.Join(" ", locked));
         var after = Store.LoadSettings();
-        Assert.That((after.WeeklyReservePercent, after.WeeklyAwareLinePercent, after.WeeklyWindDownMargin, after.WeeklyAwarePacing, after.ThrottleAgents, after.FailoverToApiKey, after.PaceProfile),
-            Is.EqualTo((before.WeeklyReservePercent, before.WeeklyAwareLinePercent, before.WeeklyWindDownMargin, false, false, false, OrchestratorSettings.LinearProfile)));
+        Assert.That((after.WeeklyReservePercent, after.WeeklyAwareLinePercent, after.WeeklyAwarePacing, after.ThrottleAgents, after.FailoverToApiKey, after.PaceProfile),
+            Is.EqualTo((before.WeeklyReservePercent, before.WeeklyAwareLinePercent, false, false, false, OrchestratorSettings.LinearProfile)));
     }
 
     [Test]
