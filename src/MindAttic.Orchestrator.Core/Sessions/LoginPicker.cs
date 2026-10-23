@@ -3,10 +3,10 @@ using MindAttic.Orchestrator.Budget;
 
 namespace MindAttic.Orchestrator.Sessions;
 
-/// <summary>What <see cref="LoginPicker"/> chose: a per-CLI login, or null for the global login, and why.</summary>
+/// <summary>What <see cref="LoginPicker"/> chose: a per-CLI login, or null for none (the API key when billing is on, else it waits), and why.</summary>
 public sealed record LoginPick(AccountDir? Account, string Reason)
 {
-    /// <summary>The <c>CLAUDE_CONFIG_DIR</c> a CLI starts with: the account's folder, or "" for the global login.</summary>
+    /// <summary>The <c>CLAUDE_CONFIG_DIR</c> a CLI starts with: the account's folder, or "" for none.</summary>
     public string ConfigDir => Account?.Directory ?? "";
 }
 
@@ -14,8 +14,8 @@ public sealed record LoginPick(AccountDir? Account, string Reason)
 /// The 'Auto' login (M.ORCH-T605): one CLI per account, so many CLIs spend many accounts' tokens instead of draining one.
 /// A new Claude CLI goes on a signed-in per-CLI login (<see cref="AccountDirs"/>) that no live CLI runs on yet, the one with
 /// the most headroom first (the smaller of what's left of its 5-hour window and its week, by Claude's own meter for it);
-/// when every signed-in account already has a CLI, or has nothing left, or none is signed in, it falls back to the global
-/// login. A login just picked is held for <see cref="ClaimFor"/>, so tabs started back to back don't all land on the same
+/// when every signed-in account already has a CLI, or has nothing left, or none is signed in, there is no login for it:
+/// never the global login (a member's own seat), the API key only when API billing is on, else it waits (M.ORCH-T747). A login just picked is held for <see cref="ClaimFor"/>, so tabs started back to back don't all land on the same
 /// account before their CLIs' hooks have recorded which login they run on.
 /// </summary>
 public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<string?>>? liveConfigDirs = null)
@@ -34,6 +34,19 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
 
     /// <summary>The logins the user let past their weekly target (M.ORCH-T694, <see cref="WeeklyAllowances"/>); null: none.</summary>
     public Func<IReadOnlyList<WeeklyAllowance>>? Allowances { get; init; }
+
+    /// <summary>Seam: whether the owner has API billing on (M.ORCH-T706); null reads the billing mode in force.</summary>
+    public Func<bool>? ApiBilling { get; init; }
+
+    /// <summary>What a CLI with no login of its own gets, never a member's global login (M.ORCH-T747/T749): the API key when the
+    /// owner has API billing on, else nothing (it waits).</summary>
+    private string Fallback()
+    {
+        bool on;
+        try { on = ApiBilling is { } seam ? seam() : Scheduling.Dispatcher.ApiBillingInForce(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { on = false; }
+        return on ? "the API key (API billing is on)" : "none: it waits (API billing is off)";
+    }
 
     /// <summary>The members' own usage cutoffs (M.ORCH-T707); null: <c>weeklyStopPercent</c> for every login.</summary>
     public Func<IReadOnlyList<UsageCutoff>>? Cutoffs { get; init; }
@@ -62,7 +75,7 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
 
     /// <summary>
     /// Picks the login a new Claude CLI should run on now; with <paramref name="claim"/>, holds it (<see cref="ClaimFor"/>)
-    /// for the CLI about to start. Never throws for an unreadable folder: anything it can't read falls back to the global login.
+    /// for the CLI about to start. Never throws for an unreadable folder: anything it can't read gets no login of its own.
     /// <paramref name="weeklyStopPercent"/> is where every account's CLIs stop in its week (M.ORCH-T609: 100 minus the weekly
     /// reserve setting, 95% by default); an account at or past it has no headroom, so it's never picked.
     /// </summary>
@@ -71,8 +84,8 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
         var stop = weeklyStopPercent ?? DefaultWeeklyStop;
         IReadOnlyList<AccountDir> signedIn;
         try { signedIn = Dirs.SignedIn(); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return new(null, $"couldn't read the per-CLI logins ({ex.Message}): global login"); }
-        if (signedIn.Count == 0) return new(null, "no per-CLI login is signed in: global login");
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return new(null, $"couldn't read the per-CLI logins ({ex.Message}): {Fallback()}"); }
+        if (signedIn.Count == 0) return new(null, $"no per-CLI login is signed in: {Fallback()}");
         var busy = Busy(nowUtc);
         // A login the user let past its weekly target (M.ORCH-T694) has its week up to the wall to give.
         IReadOnlyList<WeeklyAllowance> allowed;
@@ -86,8 +99,8 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
         var chosen = Choose(signedIn, busy, a => ReportedUsage.Load(nowUtc, a.UsagePath), nowUtc, stop, StopOf);
         if (chosen is null)
             return new(null, signedIn.All(a => busy.Contains(a.Email))
-                ? $"every per-CLI login ({signedIn.Count}) already has a CLI: global login"
-                : $"no free per-CLI login has headroom left (each stops at {stop}% of its week): global login");
+                ? $"every per-CLI login ({signedIn.Count}) already has a CLI: {Fallback()}"
+                : $"no free per-CLI login has headroom left (each stops at {stop}% of its week): {Fallback()}");
         if (claim) Claim(chosen, nowUtc);
         var room = Headroom(ReportedUsage.Load(nowUtc, chosen.UsagePath), nowUtc, StopOf(chosen.Email));
         return new(chosen, $"{chosen.Email}: no CLI on it yet, {room.ToString("0", CultureInfo.InvariantCulture)}% headroom");
@@ -96,7 +109,7 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
     /// <summary>
     /// The rule itself: among <paramref name="signedIn"/> accounts not in <paramref name="busy"/> and with headroom left, the
     /// one with the most (<see cref="Headroom"/>), then the most of its week left, then by email. Null when there's none,
-    /// which means the global login. An account at or past its weekly stop line (<paramref name="weeklyStopPercent"/>, the
+    /// which means no login of its own (never the global login). An account at or past its weekly stop line (<paramref name="weeklyStopPercent"/>, the
     /// weekly reserve's, M.ORCH-T609) has no headroom: its CLIs would be stopped at once.
     /// </summary>
     /// <param name="stopFor">Each login's own line by email, where it differs (the wall for one the user let past the target,
@@ -147,7 +160,7 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
 
     /// <summary>
     /// The login a Claude tab starts on when nothing was chosen for it: the Auto pick (claimed for it) when
-    /// <paramref name="autoLogin"/> is on, prepared as a Claude home; null (the global login) when it's off, the provider isn't
+    /// <paramref name="autoLogin"/> is on, prepared as a Claude home; null (no login of its own) when it's off, the provider isn't
     /// Claude, or nothing is free. <paramref name="note"/> says what was picked, for the caller to show.
     /// </summary>
     public AccountDir? ForNewTab(string provider, bool autoLogin, DateTime nowUtc, out string? note, int? weeklyStopPercent = null)
@@ -160,7 +173,7 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
         try { Dirs.Prepare(account); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            note = $"couldn't prepare {account.Email}'s login ({ex.Message}): global login";
+            note = $"couldn't prepare {account.Email}'s login ({ex.Message}): no login of its own";
             return null;
         }
         return account;

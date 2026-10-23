@@ -29,16 +29,16 @@ internal sealed class AccountsPickCommand : Command<AccountsPickCommand.Settings
         {
             pick = Ctx.Settings.AutoLogin
                 ? new LoginPicker(AccountsCommand.LoginsOverride?.Invoke(), StartCommand.LiveOverride) { Allowances = () => WeeklyAllowances.Active(Ctx.Store(), DateTime.UtcNow), Cutoffs = () => UsageCutoffs.Load(Ctx.Store()) }.Pick(DateTime.UtcNow, claim: true, Ctx.Settings.WeeklyStopPercent)
-                : new LoginPick(null, "Auto login is off (settings --auto-login): global login");
+                : new LoginPick(null, "Auto login is off (settings --auto-login): no per-CLI login");
         }
-        // The contract is one line and exit 0: anything unreadable means the global login.
+        // The contract is one line and exit 0: anything unreadable means no per-CLI login.
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
-            pick = new LoginPick(null, $"couldn't pick ({ex.Message}): global login");
+            pick = new LoginPick(null, $"couldn't pick ({ex.Message}): no per-CLI login");
         }
         if (pick.Account is { } account)
             try { (AccountsCommand.LoginsOverride?.Invoke() ?? new AccountDirs()).Prepare(account); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { pick = new LoginPick(null, $"couldn't prepare {account.Email}'s login ({ex.Message}): global login"); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { pick = new LoginPick(null, $"couldn't prepare {account.Email}'s login ({ex.Message}): no per-CLI login"); }
         // Plain Console, not AnsiConsole: the Launcher reads this line as is, with no markup or wrapping.
         Console.WriteLine(settings.Json
             ? JsonSerializer.Serialize(new { configDir = pick.ConfigDir, email = pick.Account?.Email, reason = pick.Reason })

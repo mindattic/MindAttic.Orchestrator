@@ -387,6 +387,31 @@ public sealed class DispatcherTests
         Assert.That(store.LoadAssignments(), Is.Empty);
     }
 
+    [Test]
+    public void A_Claude_tab_with_no_login_of_its_own_waits_unless_API_billing_is_on()
+    {
+        // M.ORCH-T747/T749: never the global login (a member's seat); the API key only when the owner has API billing on.
+        var empty = new AccountDirs(Path.Combine(dir, "accounts"), Path.Combine(dir, ".claude"), Path.Combine(dir, ".claude.json"));
+        Dispatcher Real(bool billing) =>
+            new(new SessionControl(new OrchestratorOptions { LauncherExe = Path.Combine(dir, "no-launcher.exe") }), store)
+            {
+                ApiBilling = () => billing,
+                Logins = new LoginPicker(empty, () => []),
+            };
+
+        var off = Real(false).Dispatch(Item("A-T1"), "Claude", useWorktree: false);
+        Assert.That(off.Ok, Is.False);
+        Assert.That(off.Message, Does.Contain("API billing is off"));
+        Assert.That(store.LoadAssignments(), Is.Empty, "it waits: nothing is claimed");
+
+        var on = Real(true).Dispatch(Item("A-T1"), "Claude", useWorktree: false);
+        Assert.That(on.Message, Does.Not.Contain("API billing is off"), "past the gate; the missing launcher is what stops it here");
+        Assert.That(on.Message, Does.Contain("Launcher not found"));
+
+        var codex = Real(false).Dispatch(Item("A-T1"), "Codex", useWorktree: false);
+        Assert.That(codex.Message, Does.Not.Contain("API billing is off"), "Codex has no Claude login to wait for");
+    }
+
     private Dispatcher Make(Func<string, string, string, string, bool, (string?, Task<bool>?)>? open = null) =>
         new(new SessionControl(new OrchestratorOptions { LauncherExe = Path.Combine(dir, "no-launcher.exe") }), store)
         {

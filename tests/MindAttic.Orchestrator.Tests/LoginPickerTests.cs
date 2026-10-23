@@ -6,8 +6,8 @@ using Spectre.Console;
 
 namespace MindAttic.Orchestrator.Tests;
 
-/// <summary>The Auto login (M.ORCH-T605): one CLI per account, most headroom first, the global login when every account has
-/// a CLI or none is signed in, and <c>orchestrator accounts pick</c>'s one-line contract. Scratch folders only, never ~/.claude*.</summary>
+/// <summary>The Auto login (M.ORCH-T605): one CLI per account, most headroom first, no login at all (never the global one, a member's seat) when every account has
+/// a CLI or none is signed in (the API key when API billing is on, else it waits, M.ORCH-T747/T749), and <c>orchestrator accounts pick</c>'s one-line contract. Scratch folders only, never ~/.claude*.</summary>
 [NonParallelizable] // the CLI tests swap Ctx.StoreDirectory, the console and the commands' overrides, which are process-wide
 public sealed class LoginPickerTests
 {
@@ -30,10 +30,15 @@ public sealed class LoginPickerTests
     {
         AccountsCommand.LoginsOverride = null;
         StartCommand.LiveOverride = null;
+        StartCommand.DirsOverride = null;
+        StartCommand.BillingOverride = null;
         temps.DeleteAll();
     }
 
-    private LoginPicker Picker => new(dirs, () => live);
+    private bool apiBilling;
+    private string consoleText = "";
+
+    private LoginPicker Picker => new(dirs, () => live) { ApiBilling = () => apiBilling };
 
     private AccountDir Account(string email, double? fiveHour = null, double? week = null, bool signedIn = true)
     {
@@ -53,7 +58,7 @@ public sealed class LoginPickerTests
     }
 
     [Test]
-    public void No_signed_in_account_is_the_global_login()
+    public void No_signed_in_account_gets_no_login_of_its_own()
     {
         Account("a@example.com", signedIn: false);
         var pick = Picker.Pick(Now);
@@ -89,7 +94,7 @@ public sealed class LoginPickerTests
     }
 
     [Test]
-    public void Every_account_busy_falls_back_to_the_global_login()
+    public void Every_account_busy_gets_no_login_never_the_global_one()
     {
         var a = Account("a@example.com");
         var b = Account("b@example.com");
@@ -97,6 +102,23 @@ public sealed class LoginPickerTests
         var pick = Picker.Pick(Now);
         Assert.That(pick.Account, Is.Null);
         Assert.That(pick.Reason, Does.Contain("already has a CLI"));
+        Assert.That(pick.Reason, Does.Not.Contain("global login"));
+        Assert.That(pick.Reason, Does.Contain("it waits"), "API billing is off: nothing is picked and the work waits");
+    }
+
+    [Test]
+    public void With_API_billing_on_the_fallback_is_the_API_key_not_the_global_login()
+    {
+        var a = Account("a@example.com");
+        live.Add(a.Directory);
+        apiBilling = true;
+        var pick = Picker.Pick(Now);
+        Assert.That(pick.Account, Is.Null);
+        Assert.That(pick.Reason, Does.Contain("the API key"));
+        Assert.That(pick.Reason, Does.Not.Contain("global login"));
+        Account("b@example.com", signedIn: false);
+        Assert.That(new LoginPicker(new AccountDirs(Path.Combine(dir, "none"), Path.Combine(dir, ".claude"), Path.Combine(dir, ".claude.json")), () => []) { ApiBilling = () => true }.Pick(Now).Reason,
+            Does.Contain("the API key"), "no per-CLI login signed in at all");
     }
 
     [Test]
@@ -115,7 +137,7 @@ public sealed class LoginPickerTests
         Assert.That(Picker.Pick(Now).Account?.Email, Is.EqualTo("b@example.com"), "a at 95% of its week is at the default line");
         Assert.That(LoginPicker.Headroom(Budget.ReportedUsage.Load(Now, dirs.For("a@example.com").UsagePath), Now), Is.Zero);
         live.Add(dirs.For("b@example.com").Directory);
-        Assert.That(Picker.Pick(Now).Account, Is.Null, "with b busy, nothing is free below its line: the global login");
+        Assert.That(Picker.Pick(Now).Account, Is.Null, "with b busy, nothing is free below its line: no login");
         Assert.That(Picker.Pick(Now, weeklyStopPercent: 98).Account?.Email, Is.EqualTo("a@example.com"), "a 2% reserve leaves a 3% of its week");
     }
 
@@ -161,7 +183,7 @@ public sealed class LoginPickerTests
 
         (code, text) = RunCli("accounts", "pick");
         Assert.That(code, Is.Zero);
-        Assert.That(text, Is.EqualTo(Environment.NewLine), "held for the CLI just started: the global login");
+        Assert.That(text, Is.EqualTo(Environment.NewLine), "held for the CLI just started: no login of its own");
 
         (code, text) = RunCli("accounts", "pick", "--json");
         using var doc = JsonDocument.Parse(text);
@@ -169,13 +191,28 @@ public sealed class LoginPickerTests
     }
 
     [Test]
-    public void Accounts_pick_is_the_global_login_while_Auto_is_off()
+    public void Accounts_pick_is_no_per_CLI_login_while_Auto_is_off()
     {
         Account("a@example.com");
         AccountsCommand.LoginsOverride = () => dirs;
         StartCommand.LiveOverride = () => live;
         var (code, text) = RunCli(store => store.SaveSettings(store.LoadSettings() with { AutoLogin = false }), "accounts", "pick");
         Assert.That((code, text), Is.EqualTo((0, Environment.NewLine)));
+    }
+
+    [Test]
+    public void Start_without_a_free_login_waits_when_API_billing_is_off()
+    {
+        // M.ORCH-T747/T749 (the billing-on path would start a real launcher tab, so the Dispatcher test covers it): no login of its own has room, so the CLI never starts on the global login (a member's seat).
+        var root = Path.Combine(temps.New(), "ws");
+        Directory.CreateDirectory(Path.Combine(root, "Repo", ".git"));
+        StartCommand.DirsOverride = () => dirs;
+        StartCommand.LiveOverride = () => live;
+        void Setup(JsonStore store) => store.SaveSettings(store.LoadSettings() with { WorkspaceRoot = root });
+
+        StartCommand.BillingOverride = () => false;
+        Assert.That(RunCli(Setup, "start", "Repo").Code, Is.EqualTo(1));
+        Assert.That(consoleText, Does.Contain("API billing is off"), "it waits: nothing was started");
     }
 
     [Test]
@@ -232,15 +269,17 @@ public sealed class LoginPickerTests
         {
             Ctx.StoreDirectory = store;
             setup?.Invoke(new JsonStore(store));
+            var markup = new StringWriter();
             AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings
             {
-                Out = new AnsiConsoleOutput(new StringWriter()),
+                Out = new AnsiConsoleOutput(markup),
                 Ansi = AnsiSupport.No,
                 ColorSystem = ColorSystemSupport.NoColors,
                 Interactive = InteractionSupport.No,
             });
             Console.SetOut(output);
             var code = CliApp.Create().Run(args);
+            consoleText = markup.ToString();
             return (code, output.ToString());
         }
         finally
