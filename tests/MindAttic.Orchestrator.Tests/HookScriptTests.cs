@@ -2165,15 +2165,15 @@ public sealed class HookScriptTests
     }
 
     [Test]
-    public void A_login_to_another_claude_ai_account_sets_the_mode_back_to_claude_team_and_the_key_aside()
+    public void A_login_to_another_claude_ai_account_leaves_api_key_billing_on()
     {
         SignedIn("{" + TeamLogin + "," + KeyResponses([KeyTail], []) + "}");
         BillingMode("api", "acct-1/org-before");
-        Assert.That(StartLine(WithKey), Does.Contain("The key has now been set aside"));
+        Assert.That(StartLine(WithKey), Does.Not.Contain("The key has now been set aside"));
         using var mode = JsonDocument.Parse(File.ReadAllText(Path.Combine(Marks, MindAttic.Orchestrator.Billing.BillingModeFile.FileName)));
-        Assert.That((mode.RootElement.GetProperty("mode").GetString(), mode.RootElement.GetProperty("by").GetString(), mode.RootElement.GetProperty("login").GetString()),
-            Is.EqualTo(("team", "login", "acct-1/org-1")));
-        Assert.That(Responses().GetProperty("rejected")[0].GetString(), Is.EqualTo(KeyTail));
+        Assert.That((mode.RootElement.GetProperty("mode").GetString(), mode.RootElement.GetProperty("login").GetString()),
+            Is.EqualTo(("api", "acct-1/org-before")));
+        Assert.That(Responses().GetProperty("approved")[0].GetString(), Is.EqualTo(KeyTail));
     }
 
     // ---- /allocate off winds a CLI down and quicksaves it (M.ORCH-T572, which retired /handoff) ----
