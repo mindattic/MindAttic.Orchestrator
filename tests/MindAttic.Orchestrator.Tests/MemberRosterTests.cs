@@ -1,4 +1,5 @@
 using MindAttic.Orchestrator.Budget;
+using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
 using NUnit.Framework;
 using Spectre.Console;
@@ -97,6 +98,8 @@ public sealed class MemberRosterTests
         try
         {
             int Run(params string[] args) => CliApp.Create().Run(args);
+            var noLogins = () => new AccountDirs(Path.Combine(temps.New(), "none"), Path.Combine(temps.New(), ".claude"), Path.Combine(temps.New(), ".claude.json")); // never the real ~/.claude-accounts
+            LoginCommand.DirsOverride = noLogins;
             var db = new OrchestratorDb(OrchestratorDb.LivePath);
             Assert.That(db.Path, Does.Not.Contain(Path.Combine("MindAttic.Orchestrator", "data")), "a scratch database");
             using (var c = db.Open())
@@ -119,6 +122,28 @@ public sealed class MemberRosterTests
             Assert.That(signedLine, Does.Contain("yes"), "signed in here: the accounts table, by email");
             Assert.That(invitedLine, Does.Contain("no"));
 
+            Assert.That(signedLine, Does.Contain("fallback login"));
+
+            // M.ORCH-T671: a member signed in only through its own folder under ~/.claude-accounts reads as signed in, via its own login.
+            var accountsRoot = Path.Combine(temps.New(), ".claude-accounts");
+            var ownDirs = new AccountDirs(accountsRoot, Path.Combine(accountsRoot, "..", ".claude"), Path.Combine(accountsRoot, "..", ".claude.json"));
+            var honey = ownDirs.For("honey@example.com");
+            Directory.CreateDirectory(honey.Directory);
+            File.WriteAllText(honey.ConfigPath, """{"oauthAccount":{"accountUuid":"acct-honey","emailAddress":"honey@example.com"}}""");
+            LoginCommand.DirsOverride = () => ownDirs;
+            try
+            {
+                Assert.That(Run("members", "add", "honey@example.com", "--role", "member", "--tier", "standard"), Is.Zero, output.ToString());
+                output.GetStringBuilder().Clear();
+                Assert.That(Run("members"), Is.Zero, output.ToString());
+                var lines = output.ToString().Split((char)10);
+                var honeyLine = lines.Single(l => l.Contains("honey@example.com", StringComparison.Ordinal));
+                Assert.That(honeyLine, Does.Contain("yes").And.Contain("own login").And.Not.Contain("fallback"));
+                Assert.That(lines.Single(l => l.Contains("signed@example.com", StringComparison.Ordinal)), Does.Not.Contain("own login"));
+                Assert.That(Run("members", "remove", "honey@example.com"), Is.Zero, output.ToString());
+            }
+            finally { LoginCommand.DirsOverride = noLogins; }
+
             Assert.That(Run("members", "remove", "invited@example.com"), Is.Zero, output.ToString());
             Assert.That(Run("members", "remove", "invited@example.com"), Is.EqualTo(1));
             Assert.That(MemberRoster.Load(db).Select(m => m.Email), Is.EqualTo(new[] { "signed@example.com" }));
@@ -126,6 +151,6 @@ public sealed class MemberRosterTests
             Assert.That(Run("members", "--help"), Is.Zero, output.ToString());
             Assert.That(Run("members", "add", "--help"), Is.Zero, output.ToString());
         }
-        finally { AnsiConsole.Console = previous; }
+        finally { AnsiConsole.Console = previous; LoginCommand.DirsOverride = null; }
     }
 }

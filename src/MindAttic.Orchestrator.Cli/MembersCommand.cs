@@ -27,12 +27,15 @@ internal sealed class MembersCommand : Command<MembersCommand.Settings>
         var accounts = AccountRoster.Load(db).Where(a => a.Email is not null)
             .GroupBy(a => AccountDirs.Normalize(a.Email) ?? a.Email!, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.Max(a => a.SignedInUtc), StringComparer.Ordinal);
+        var own = OwnLogins();
         if (settings.Json)
         {
             Console.WriteLine(JsonSerializer.Serialize(members.Select(m => new
             {
                 m.Email, m.Name, m.Role, m.Tier, m.Status, m.JoinedUtc, m.UpdatedUtc,
-                SignedInHere = accounts.ContainsKey(m.Email),
+                SignedInHere = accounts.ContainsKey(m.Email) || own.Contains(m.Email),
+                SignedInOwnLogin = own.Contains(m.Email),
+                SignedInFallbackLogin = accounts.ContainsKey(m.Email),
                 SignedInUtc = accounts.GetValueOrDefault(m.Email),
             }), new JsonSerializerOptions { WriteIndented = true }));
             return 0;
@@ -51,11 +54,24 @@ internal sealed class MembersCommand : Command<MembersCommand.Settings>
                 Markup.Escape(m.Role),
                 Markup.Escape(m.Tier),
                 m.Status == "active" ? m.Status : $"[yellow]{Markup.Escape(m.Status)}[/]",
-                accounts.TryGetValue(m.Email, out var at)
-                    ? "[green]yes[/]" + (at is { } t ? $" [grey](last {Markup.Escape(Formatting.Ago(t, now))})[/]" : "")
-                    : "[grey]no[/]");
+                SignedInCell(own.Contains(m.Email), accounts.TryGetValue(m.Email, out var at), at, now));
         AnsiConsole.Write(table);
         return 0;
+    }
+
+    /// <summary>The emails with a Claude login signed in under their own folder in ~/.claude-accounts (M.ORCH-T671).</summary>
+    internal static HashSet<string> OwnLogins() =>
+        (LoginCommand.DirsOverride?.Invoke() ?? new AccountDirs()).SignedIn()
+            .Select(d => AccountDirs.Normalize(d.Email)).OfType<string>().ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>The "Signed in here" cell: yes through its own login and/or the fallback (global) login, else no.</summary>
+    internal static string SignedInCell(bool ownLogin, bool fallbackLogin, DateTime? fallbackAt, DateTime now)
+    {
+        if (!ownLogin && !fallbackLogin) return "[grey]no[/]";
+        var via = new List<string>();
+        if (ownLogin) via.Add("own login");
+        if (fallbackLogin) via.Add("fallback login" + (fallbackAt is { } t ? $", last {Formatting.Ago(t, now)}" : ""));
+        return $"[green]yes[/] [grey]({Markup.Escape(string.Join("; ", via))})[/]";
     }
 
     /// <summary>Runs a change, saying an invalid value or a missing/duplicate member in one red line (exit 1).</summary>
