@@ -59,6 +59,8 @@ public sealed class ViewModelTests
             (v => v.PaceTarget = "0", "Pace target: 1 to 100"),
             (v => v.ContextPercent = "9", "Cycle context at: 10 to 95"),
             (v => v.ContextPercent = "96", "Cycle context at: 10 to 95"),
+            (v => v.OrphanRedispatches = "21", "Orphan redispatches: 0 to 20"),
+            (v => v.OrphanQuiet = "0", "Orphan quiet minutes: 1 to 1440"),
         };
         foreach (var (set, error) in cases)
         {
@@ -77,6 +79,19 @@ public sealed class ViewModelTests
         var saved = store.LoadSettings();
         Assert.That((vm.Error, saves, saved.BlockBudget, saved.WarnPercent, saved.ContextCyclePercent), Is.EqualTo(("", 1, (long?)20_000_000, 75, 85)));
         Assert.That(vm.BlockBudget, Is.EqualTo("20M"), "reloaded from what was saved");
+    }
+
+    [Test]
+    public void The_orphan_settings_round_trip_through_the_panel()
+    {
+        var store = new JsonStore(dir);
+        var vm = new SettingsViewModel(store, () => { });
+        Assert.That((vm.OrphanRedispatches, vm.OrphanQuiet), Is.EqualTo(("3", "10")));
+        vm.OrphanRedispatches = "0";
+        vm.OrphanQuiet = "30";
+        vm.SaveCommand.Execute(null);
+        var s = store.LoadSettings();
+        Assert.That((vm.Error, s.OrphanRedispatches, s.OrphanQuietMinutes), Is.EqualTo(("", 0, 30)));
     }
 
     [Test]

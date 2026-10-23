@@ -1406,6 +1406,16 @@
                               Content="Rebalance when an account runs low" />
                 <TextBlock Text="A CLI whose login crosses its 5-hour pace target or its weekly stop line is moved by the daemon to a signed-in per-CLI login with no CLI and more headroom: it restarts with claude --resume at its next idle point, keeping its session, and you're toasted. Off: every CLI stays on its login."
                            Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,10" />
+                <TextBlock Text="Orphaned tickets: redispatches" Margin="0,0,0,4" />
+                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
+                         Text="{Binding OrphanRedispatches, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Orphan redispatches" />
+                <TextBlock Text="0 to 20 (3 by default). How many times a ticket whose CLI or tab exited mid-task is started again in its worktree before it's left for you. 0 only shows it as orphaned."
+                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,10" />
+                <TextBlock Text="Orphaned tickets: quiet minutes" Margin="0,0,0,4" />
+                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
+                         Text="{Binding OrphanQuiet, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Orphan quiet minutes" />
+                <TextBlock Text="1 to 1440 (10 by default). How long a dispatch's CLI or tab must be gone, with nothing written in its worktree, before the ticket counts as orphaned."
+                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,10" />
                 <TextBlock Text="Where CLIs open" Margin="0,0,0,4" />
                 <ListBox x:Name="TerminalHostChoice" Style="{StaticResource MaPillChoice}" ItemsSource="{Binding TerminalHosts}" SelectedItem="{Binding TerminalHost}"
                          AutomationProperties.Name="Where CLIs open" />

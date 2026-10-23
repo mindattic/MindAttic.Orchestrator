@@ -11,7 +11,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly JsonStore store;
     private readonly Action saved;
     private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "",
-        contextPercent = "", exemptCommands = "", weeklyTarget = "", terminalHost = WindowsTerminalChoice;
+        contextPercent = "", orphanRedispatches = "", orphanQuiet = "", exemptCommands = "", weeklyTarget = "", terminalHost = WindowsTerminalChoice;
     private bool autopilot, pacing, autoLogin, rebalanceLogins = true;
 
     public SettingsViewModel(JsonStore store, Action saved)
@@ -45,6 +45,10 @@ public sealed class SettingsViewModel : ObservableObject
     public string TerminalHost { get => terminalHost; set { if (value is not null) Set(ref terminalHost, value); } }
     public const string WindowsTerminalChoice = "Windows Terminal", OrchestratorChoice = "Orchestrator";
     public IReadOnlyList<string> TerminalHosts { get; } = [WindowsTerminalChoice, OrchestratorChoice];
+    /// <summary>How many times an orphaned ticket is redispatched (M.ORCH-T748), 0 to 20; 0 only shows it as orphaned.</summary>
+    public string OrphanRedispatches { get => orphanRedispatches; set => Set(ref orphanRedispatches, value); }
+    /// <summary>Minutes a dispatch's owner must be gone, nothing written in its worktree, before it's orphaned, 1 to 1440.</summary>
+    public string OrphanQuiet { get => orphanQuiet; set => Set(ref orphanQuiet, value); }
     public string ContextPercent { get => contextPercent; set => Set(ref contextPercent, value); }
     /// <summary>The commands exempt from pacing (M.ORCH-T198), comma-separated; blank exempts none.</summary>
     public string ExemptCommands { get => exemptCommands; set => Set(ref exemptCommands, value); }
@@ -167,13 +171,13 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>Every field as the panel read it. The CLI and agents change settings too while it's open (budget, pace,
     /// settings --max-sessions, --exempt): a Save writes only the fields edited here, not what it read back then (M.ORCH-T338).</summary>
-    private Fields loaded = new("", "", "", "", "", "", false, "", "", "", true, "", true, WindowsTerminalChoice);
+    private Fields loaded = new("", "", "", "", "", "", false, "", "", "", true, "", true, WindowsTerminalChoice, "", "");
 
     private sealed record Fields(string Block, string Weekly, string Reset, string Warn, string Max, string Provider, bool Pacing, string Target,
-        string Context, string Exempt, bool AutoLogin, string WeekTarget, bool Rebalance, string Host);
+        string Context, string Exempt, bool AutoLogin, string WeekTarget, bool Rebalance, string Host, string Orphans, string OrphanQuiet);
 
     private Fields Current() => new(BlockBudget, WeeklyBudget, WeeklyReset, WarnPercent, MaxSessions, Provider, Pacing, PaceTarget,
-        ContextPercent, ExemptCommands, AutoLogin, WeeklyTarget, RebalanceLogins, TerminalHost);
+        ContextPercent, ExemptCommands, AutoLogin, WeeklyTarget, RebalanceLogins, TerminalHost, OrphanRedispatches, OrphanQuiet);
 
     public void Load()
     {
@@ -194,6 +198,8 @@ public sealed class SettingsViewModel : ObservableObject
         // No field shows it (context cycling is off), so an out-of-range hand edit mustn't make every Save fail on it.
         ContextPercent = Math.Clamp(s.ContextCyclePercent, 10, 95).ToString(CultureInfo.InvariantCulture);
         ExemptCommands = string.Join(", ", s.ExemptCommands);
+        OrphanRedispatches = s.OrphanRedispatches.ToString(CultureInfo.InvariantCulture);
+        OrphanQuiet = s.OrphanQuietMinutes.ToString(CultureInfo.InvariantCulture);
         loaded = Current();
         LoadOutside(s);
         Error = "";
@@ -222,6 +228,9 @@ public sealed class SettingsViewModel : ObservableObject
         }
         if (!(int.TryParse(ContextPercent, out var cycleAt) && cycleAt is >= 10 and <= 95) && ContextPercent != was.Context) { Error = "Cycle context at: 10 to 95."; return; }
 
+        if (!(int.TryParse(OrphanRedispatches, out var orphans) && orphans is >= 0 and <= 20) && OrphanRedispatches != was.Orphans) { Error = "Orphan redispatches: 0 to 20."; return; }
+        if (!(int.TryParse(OrphanQuiet, out var orphanQuiet) && orphanQuiet is >= 1 and <= 1440) && OrphanQuiet != was.OrphanQuiet) { Error = "Orphan quiet minutes: 1 to 1440."; return; }
+
         if (SaveOutside(store.LoadSettings()) is null) return;
         try
         {
@@ -243,6 +252,8 @@ public sealed class SettingsViewModel : ObservableObject
                 TerminalHost = TerminalHost == was.Host ? s.TerminalHost
                     : TerminalHost == OrchestratorChoice ? OrchestratorSettings.OrchestratorHost : OrchestratorSettings.WindowsTerminalHost,
                 ContextCyclePercent = ContextPercent == was.Context ? s.ContextCyclePercent : cycleAt,
+                OrphanRedispatches = OrphanRedispatches == was.Orphans ? s.OrphanRedispatches : orphans,
+                OrphanQuietMinutes = OrphanQuiet == was.OrphanQuiet ? s.OrphanQuietMinutes : orphanQuiet,
                 ExemptCommands = ExemptCommands == was.Exempt ? s.ExemptCommands : OrchestratorSettings.ParseCommands(ExemptCommands),
             });
         }
