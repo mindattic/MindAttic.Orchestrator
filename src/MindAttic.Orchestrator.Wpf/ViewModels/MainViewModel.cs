@@ -53,6 +53,9 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly MainViewModel? root;
     private MainViewModel Root => root ?? this;
     private readonly JsonStore store;
+
+    /// <summary>The settings store every login's tab shares (the window saves the theme switch to it, M.ORCH-T678).</summary>
+    internal JsonStore Store => store;
     // Shared with the headless daemon (same lock file): whichever process grabs it first is the one that
     // dispatches autopilot and writes rl-status.json, so every open window doesn't race to overwrite it
     // (M.ORCH-T112); released when this process exits, same as the daemon's own.

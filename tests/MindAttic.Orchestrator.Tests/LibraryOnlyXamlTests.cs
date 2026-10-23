@@ -47,7 +47,7 @@ public sealed class LibraryOnlyXamlTests
     /// <summary>The only elements allowed without a library style, and why. Keep this list short.</summary>
     internal static readonly IReadOnlyDictionary<string, string> Exceptions = new Dictionary<string, string>
     {
-        ["Window"] = "the document root: its title bar is the library's MaWindow.DarkTitleBar and its colours library tokens",
+        ["Window"] = "the document root: its title bar is the library's MaWindow.ThemedTitleBar and its colours library tokens",
         ["TextBlock"] = "unstyled body text: the library has no body-text key or implicit TextBlock style (an implicit TextBlock " +
                         "style would leak into every control template), so plain text inherits the window's library font and " +
                         "MaText; it may set no colour but a library token or a binding",

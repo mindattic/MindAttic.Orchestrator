@@ -44,6 +44,8 @@ public partial class MainWindow : Window
         model.PropertyChanged += OnShownChanged;
         // Scales the window's content and binds Ctrl+Plus / Ctrl+Minus / Ctrl+0 on the window, wherever focus is.
         model.Zoom.Attach(Root, this);
+        // The upper-right sun/moon switch (M.ORCH-T678) changes the theme live; each switch is saved, so it holds at the next start.
+        ThemeChoice.SaveSwitches(this, model.Store);
 
         CommandBindings.Add(new CommandBinding(WindowCommands.FocusSearch, (_, _) =>
         {
