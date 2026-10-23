@@ -155,8 +155,9 @@ public sealed class ClaudeMeterProbeTests
 
         Assert.That(asked, Is.Zero);
         Assert.That(File.Exists(probe.UsagePath), Is.False);
-        var later = Now + ClaudeMeterProbe.StaleAfter + TimeSpan.FromMinutes(1);
+        var later = Now + TimeSpan.FromMinutes(1);
         Assert.That(probe.Tick(null, [E(later, 500)], later), Is.False, "backing off after a failed ask");
+        Assert.That(ClaudeMeterProbe.Backoff, Is.LessThan(PaceLedger.MinGap), "a failed ask is retried before the ledger calls the gap blind");
         var after = Now + ClaudeMeterProbe.Backoff + TimeSpan.FromMinutes(1);
         Assert.That(probe.Tick(null, [E(after, 500)], after), Is.True);
         await probe.Pending;

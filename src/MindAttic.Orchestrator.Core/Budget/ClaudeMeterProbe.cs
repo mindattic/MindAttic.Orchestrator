@@ -23,8 +23,14 @@ public sealed class ClaudeMeterProbe
     /// pace ledger's <see cref="PaceLedger.MinGap"/>, so a window no longer goes blind while anything is spending.</summary>
     public static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(4);
 
-    /// <summary>How long to wait after a failed ask (no sign-in, rejected, offline) before trying again.</summary>
-    public static readonly TimeSpan Backoff = TimeSpan.FromMinutes(15);
+    /// <summary>How long to wait after a failed ask (no sign-in, an expired token Claude Code is about to refresh, rejected,
+    /// offline) before trying again. Kept well under <see cref="PaceLedger.MinGap"/> (M.ORCH-T647): at 15 minutes a few failed
+    /// asks in a row left the window unseen for an hour while tokens were spent. An ask is one small request, and only
+    /// happens while tokens are being spent.</summary>
+    public static readonly TimeSpan Backoff = TimeSpan.FromMinutes(2);
+
+    /// <summary>The wait after an API-key login, which has no meter to read at all (so no point asking again soon).</summary>
+    public static readonly TimeSpan NoMeterBackoff = TimeSpan.FromMinutes(15);
 
     public const string Endpoint = "https://api.anthropic.com/api/oauth/usage";
 
@@ -144,7 +150,7 @@ public sealed class ClaudeMeterProbe
         var account = Who();
         if (account == ClaudeAccount.ApiKey)
         {
-            Fail("an API key has no subscription meter to read");
+            Fail("an API key has no subscription meter to read", NoMeterBackoff);
             return;
         }
         string? token = null;
@@ -186,12 +192,12 @@ public sealed class ClaudeMeterProbe
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return null; }
         }
 
-        void Fail(string why)
+        void Fail(string why, TimeSpan? wait = null)
         {
             LastResult = why;
             // The old account's ask failing (its credentials mid-rewrite by the /login) mustn't hold off reading the new one.
             lock (gate)
-                if (generation == asked) nextUtc = nowUtc + Backoff;
+                if (generation == asked) nextUtc = nowUtc + (wait ?? Backoff);
         }
     }
 
