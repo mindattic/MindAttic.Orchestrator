@@ -10,6 +10,10 @@ internal static class StoreFaults
     public static void Garble(JsonStore store, string name, string text) =>
         Sql(store, "INSERT OR REPLACE INTO state (name, value, written_at) VALUES ($name, $text, 1760533200);", ("$name", name), ("$text", text));
 
+    /// <summary>Puts <paramref name="text"/> in as setting <paramref name="name"/>'s row as it stands, readable JSON or not.</summary>
+    public static void GarbleSetting(JsonStore store, string name, string text) =>
+        Sql(store, "INSERT OR REPLACE INTO settings (name, value) VALUES ($name, $text);", ("$name", name), ("$text", text));
+
     /// <summary>Until disposed, saving <paramref name="name"/> fails as a held database does.</summary>
     public static IDisposable Unwritable(JsonStore store, string name)
     {

@@ -77,7 +77,14 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 var snapshot = aggregator.Refresh();
                 tick.Lap("refresh");
                 ReportStatusFile(statusFile);
-                var s = store.LoadSettings();
+                // Only from settings that could be read: defaults would run autopilot, keep-going and the subagent cap on
+                // nothing anyone set and rewrite the hooks with them, every tick a bad row stays (M.ORCH-T720).
+                if (!store.TryLoadSettings(out var s)) throw new SettingsUnreadableException(store.Describe(JsonStore.SettingsName));
+                if (settingsUnreadable)
+                {
+                    settingsUnreadable = false;
+                    Say(LogEventLevel.Information, "settings read again; the tick's work runs again");
+                }
                 var plan = Scheduler.Plan(snapshot, s, store.LoadAssignments());
                 notifyUrl = s.NotifyUrl;
 
@@ -267,6 +274,12 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     lastHeldElsewhere = autopilot.HeldElsewhere;
                 }
             }
+            catch (SettingsUnreadableException ex)
+            {
+                // Said once, not every minute it stays unreadable.
+                if (!settingsUnreadable) Say(LogEventLevel.Warning, ex.Message);
+                settingsUnreadable = true;
+            }
             catch (Exception ex)
             {
                 Say(LogEventLevel.Error, $"refresh failed: {ex.Message}", ex);
@@ -356,13 +369,19 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
     private Reminders.OutsideUsePsst? outsidePsst;
 
+    // Whether the last tick skipped its settings-driven work because the settings couldn't be read (M.ORCH-T720).
+    private bool settingsUnreadable;
+
+    /// <summary>The settings couldn't be read this tick: its settings-driven work is skipped rather than run on defaults.</summary>
+    private sealed class SettingsUnreadableException(string where)
+        : Exception($"settings in {where} couldn't be read; skipping this tick's settings-driven work (autopilot, keep-going, hooks) rather than running it on defaults");
+
     /// <summary>Texts the outside-use recipient that someone started using Claude elsewhere on a watched login (M.ORCH-T702);
     /// the send runs on its own thread (<see cref="Reminders.OutsideUsePsst"/>).</summary>
     internal Task? TextOutsideUse(OutsideStart started)
     {
-        OrchestratorSettings s;
-        try { s = store.LoadSettings(); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { return null; }
+        // Unreadable settings send nothing, rather than text on defaults (M.ORCH-T720).
+        if (!store.TryLoadSettings(out var s)) return null;
         outsidePsst ??= new Reminders.OutsideUsePsst(new Reminders.PsstClient(Runner), (level, line) => Say(level, line));
         return outsidePsst.Started(started.Email, started.Name, started.Seen, s);
     }

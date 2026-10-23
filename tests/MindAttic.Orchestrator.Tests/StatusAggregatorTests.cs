@@ -375,6 +375,23 @@ public sealed class StatusAggregatorTests
     }
 
     [Test]
+    public void Settings_unreadable_for_a_refresh_keep_the_last_ones_read()
+    {
+        // M.ORCH-T720: one bad settings row read as defaults, so pace and the subagent cap ran on nothing anyone set.
+        store.SaveSettings(new OrchestratorSettings { WorktreeRoot = worktrees, MaxConcurrentSessions = 3 });
+        var aggregator = new StatusAggregator(new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null }, store)
+        {
+            ScanHosts = () => hosts, OtherProviders = new ProviderLogReader(Path.Combine(dir, "codex"), Path.Combine(dir, "gemini")),
+            ReportedUsagePath = Path.Combine(dir, "no-report.json"),
+        };
+        Assert.That(aggregator.Refresh().Warnings, Has.None.Contains("couldn't be read"));
+        StoreFaults.GarbleSetting(store, "MaxConcurrentSessions", "\"three\"");
+        var held = aggregator.Refresh(DateTime.UtcNow.AddSeconds(5));
+        Assert.That(held.Warnings, Has.Some.Contains("using the last ones read"));
+        Assert.That(held.Pace!.SessionCap, Is.EqualTo(3), "the cap last read, not the default");
+    }
+
+    [Test]
     public void A_held_database_does_not_fail_the_refresh()
     {
         var options = new OrchestratorOptions { WorkspaceRoot = ws, ClaudeProjectsDir = projects, TranscriptCache = null };

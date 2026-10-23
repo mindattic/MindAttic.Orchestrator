@@ -102,6 +102,9 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     // What the transcripts add up to only changes when they do (M.ORCH-T116): kept until the reader's version, the day or the
     // sessions billed elsewhere move.
     private (long Version, DateTime Today, string OffSubscription) claudeKey = (-1, default, "");
+
+    // The last settings read, kept through a refresh that can't read them (M.ORCH-T720).
+    private OrchestratorSettings? lastSettings;
     private List<TranscriptSession> claudeSessions = [];
     private List<TranscriptSession> subscriptionSessions = [];
     private List<UsageEvent> claudeEvents = [];
@@ -266,7 +269,11 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         {
             warnings.Add($"moving settings.json's story-file approvals into the ticket database: {ex.Message} (tried again next refresh)");
         }
-        var settings = Store.LoadSettings();
+        // Settings that can't be read now keep the last ones read, rather than pace and the subagent cap on defaults (M.ORCH-T720).
+        if (Store.TryLoadSettings(out var read)) lastSettings = read;
+        else warnings.Add($"settings in {Store.Describe(JsonStore.SettingsName)} couldn't be read; " +
+            (lastSettings is null ? "showing defaults until they can be" : "using the last ones read until they can be"));
+        var settings = lastSettings ?? read;
         var repos = workspace.Repos();
 
         // Worktrees the scheduler creates live outside the workspace; credit them to their repo.
