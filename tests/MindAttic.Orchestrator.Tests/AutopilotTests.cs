@@ -317,6 +317,29 @@ public sealed class AutopilotTests
         Assert.That(Autopilot.Next(Planned(), settings, store, ["A"], 6, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots).Handed, Has.Count.EqualTo(6));
     }
 
+    /// <summary>M.ORCH-T674: three /allocate CLIs on three logins (the fallback, Honey's, Amy's) split one allowance, though each
+    /// login has its own limits: this CLI was held to "4 running of 7 across 3 CLIs".</summary>
+    [Test]
+    public void Only_clis_on_the_same_login_share_its_allowance()
+    {
+        var snap = Snap(("A", [.. Enumerable.Range(1, 10).Select(i => T($"A-T{i}"))]), ("B", [T("B-T1"), T("B-T2"), T("B-T3")]));
+        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
+        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
+        var plan = Paced(snap, 5) with { Pace = Paced(snap, 5).Pace! with { SubagentAllowance = 8, Subagents = 0 } };
+        Dictionary<int, IReadOnlyList<string>> pilots = new() { [1] = ["A"], [2] = ["B"] };
+        // CLI 2 has an unstarted claim of its own on another login: it isn't counted against this login's places either.
+        store.SaveAssignments([new Assignment("B-T1", "B", @"D:\WT\B\B-T1", "Claude", Now, true) { Pilot = 2 }]);
+        plan = Scheduler.Plan(snap, settings, store.LoadAssignments()) with { Pace = plan.Pace };
+
+        var apart = Autopilot.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots,
+            cliRunning: _ => true, loginOf: pid => pid == 2 ? @"C:\Users\x\.claude-accounts\honey@mindattic.com" : null);
+        Assert.That(apart.Handed, Has.Count.EqualTo(8), "CLI 2 bills Honey's login: CLI 1's login keeps all 8 of its own places");
+
+        var together = Autopilot.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots,
+            cliRunning: _ => true, loginOf: _ => null);
+        Assert.That(together.Handed, Has.Count.LessThan(8), "on the same login, CLI 2's share and claim are still kept for it");
+    }
+
     /// <summary>M.ORCH-T601: a CLI running nothing was told it "has its fair share (0 running of 14)" when other CLIs' running
     /// subagents and unstarted claims had taken every place.</summary>
     [Test]

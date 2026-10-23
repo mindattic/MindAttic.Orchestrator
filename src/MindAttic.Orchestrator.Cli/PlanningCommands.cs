@@ -236,7 +236,7 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
         var self = cli is { } me ? cycler.LatestSessionOf(me) : null;
         var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, settings.Count, settings.Claim, DateTime.UtcNow,
             unthrottled: unthrottled, self: self,
-            cli: cli, pilots: cycler.AutopilotClis(), onSince: cycler.AutopilotSince());
+            cli: cli, pilots: cycler.AutopilotClis(), onSince: cycler.AutopilotSince(), loginOf: cycler.LoginOfCli());
         foreach (var h in handed)
         {
             Console.WriteLine($"=== {h.Item.Id} ({h.Item.Repo}, {h.Item.Ticket.Type}): {h.Item.Ticket.Summary}");

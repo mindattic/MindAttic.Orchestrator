@@ -411,7 +411,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree = null, Func<string, string>? mainlineOf = null, bool unthrottled = false,
         string? self = null, Func<Assignment, bool>? pilotRunning = null, Func<string, string, bool>? stillOpen = null,
         int? cli = null, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots = null, Func<int, bool>? cliRunning = null,
-        IReadOnlyDictionary<int, DateTime>? onSince = null)
+        IReadOnlyDictionary<int, DateTime>? onSince = null, Func<int, string?>? loginOf = null)
     {
         cliRunning ??= ContextCycler.IsClaude;
         stillOpen ??= StillOpen;
@@ -477,10 +477,14 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             // A CLI's claims no subagent has shown up on yet are its subagents about to run (M.ORCH-T532): they count against its
             // own share, not against whichever CLI covers their repo. A claim whose CLI isn't known counts for nobody.
             // A live /allocate CLI (pilots holds only running ones) or this one is running; any other claimer is asked of Windows.
-            var pending = PendingClaims(plan, c => c == me || pilots?.ContainsKey(c) == true || cliRunning(c));
+            // Only CLIs billing the same login share its allowance (M.ORCH-T674): another login's CLIs have their own limits.
+            var myLogin = loginOf?.Invoke(me);
+            bool SameLogin(int c) => loginOf is null || string.Equals(loginOf(c), myLogin, StringComparison.OrdinalIgnoreCase);
+            var pending = PendingClaims(plan, c => (c == me || pilots?.ContainsKey(c) == true || cliRunning(c)) && SameLogin(c));
             var running = plan.Pace.SubagentsByCli.Keys.Union(pending.Keys)
                 .ToDictionary(c => c, c => plan.Pace.SubagentsByCli.GetValueOrDefault(c) + pending.GetValueOrDefault(c));
-            var wanting = (pilots ?? new Dictionary<int, IReadOnlyList<string>>()).Where(p => p.Key != me && plan.Queue.Any(q => Autopilot.Named(p.Value, q.Repo) && Workable(q)))
+            var wanting = (pilots ?? new Dictionary<int, IReadOnlyList<string>>())
+                .Where(p => p.Key != me && SameLogin(p.Key) && plan.Queue.Any(q => Autopilot.Named(p.Value, q.Repo) && Workable(q)))
                 .Select(p => p.Key).ToList();
             var total = plan.Pace.Subagents + pending.Values.Sum();
             var fair = SubagentShare.Room(cap, total, me, running, wanting);

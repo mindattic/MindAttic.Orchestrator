@@ -47,6 +47,17 @@ public sealed class ContextCycler(string? directory = null)
     /// all with its process id, and the first of those by file name is any of them.</summary>
     public string? LatestSessionOf(int pid) => Load().Where(s => s.Pid == pid).MaxBy(s => s.TurnUtc)?.SessionId;
 
+    /// <summary>Each CLI's login, by process id: the config folder its newest session runs under (<see cref="OnOwnLogin"/>),
+    /// null on the global login (M.ORCH-T674).</summary>
+    public Func<int, string?> LoginOfCli()
+    {
+        var own = OnOwnLogin();
+        var newest = Load().Where(s => s.Pid is not null).GroupBy(s => s.Pid!.Value)
+            .ToDictionary(g => g.Key, g => g.MaxBy(s => s.TurnUtc)!.SessionId);
+        return pid => newest.TryGetValue(pid, out var session) && own.TryGetValue(session, out var dir)
+            ? Path.TrimEndingDirectorySeparator(Path.GetFullPath(dir)) : null;
+    }
+
     internal SessionContext? Read(string sessionId, IReadOnlyDictionary<string, (string Value, DateTime WrittenUtc)>? rows = null)
     {
         try

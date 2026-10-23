@@ -70,6 +70,10 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
         var moving = Moving();
         var own = snapshot is null ? null : (OwnLogins?.Invoke() ?? cycler.OnOwnLogin());
         var plans = new Dictionary<string, SchedulePlan>(StringComparer.OrdinalIgnoreCase);
+        // Each CLI's login, from its newest session, so only CLIs on the same login share its allowance (M.ORCH-T674).
+        var sessionOf = newest.ToDictionary(n => n.Key, n => n.Value.SessionId);
+        string? loginOf(int pid) => own is not null && sessionOf.TryGetValue(pid, out var s) && own.TryGetValue(s, out var d)
+            ? Path.TrimEndingDirectorySeparator(Path.GetFullPath(d)) : null;
 
         var due = new List<(int Pid, SessionContext Session, IReadOnlyList<string> Repos, IReadOnlyList<string> Ids)>();
         foreach (var (pid, repos) in pilots)
@@ -94,7 +98,7 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
                 cliPlan = forLogin;
             }
             var (handed, _) = Autopilot.Next(cliPlan, settings, store, repos, null, claim: false, nowUtc,
-                unthrottled: cycler.IsUnthrottled(pid), self: c.SessionId, cli: pid, pilots: pilots, onSince: since);
+                unthrottled: cycler.IsUnthrottled(pid), self: c.SessionId, cli: pid, pilots: pilots, onSince: since, loginOf: loginOf);
             if (handed.Count > 0) due.Add((pid, c, repos, [.. handed.Select(h => h.Item.Id)]));
         }
         if (due.Count == 0) return [];
