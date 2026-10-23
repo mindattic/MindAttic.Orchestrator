@@ -2287,7 +2287,7 @@ public static class AgentGate
             def locked():
                 # One pace gate at a time decides; a lock left by a killed gate is broken after a few seconds.
                 SUBAGENT_MARKS.mkdir(parents=True, exist_ok=True)
-                give_up = time.monotonic() + 15
+                give_up = time.monotonic() + max(0.05, min(15, MAX_HOLD - (time.monotonic() - start)))  # never past MAX_HOLD
                 while time.monotonic() < give_up:
                     try:
                         os.close(os.open(str(LOCK), os.O_CREAT | os.O_EXCL | os.O_WRONLY))
@@ -2337,14 +2337,14 @@ public static class AgentGate
                     allowed = s.get("subagent_allowance")
                     try:
                         busy = running(s) + slots() if allowed is not None else 0
-                        go = not blind and (allowed is None or busy < allowed)
+                        go = allowed is None or (not blind and busy < allowed)
                         limit = None
                         warming = turn = False
                         if go:
                             mine, limit, clis, warming, turn = fair_limit(s, allowed, int(allowed) - busy)
                             go = mine < limit and not turn
                     except Exception:
-                        go = not blind
+                        go = allowed is None or not blind
                     if go:
                         slot = take()
                         want(False)
