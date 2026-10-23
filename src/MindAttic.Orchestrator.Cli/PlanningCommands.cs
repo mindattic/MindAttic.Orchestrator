@@ -235,6 +235,13 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
             ? [.. list.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)]
             : Autopilot.RepoFor(Environment.CurrentDirectory, snapshot) is { } here ? [here.Name] : [];
         if (repos.Count == 0) { Console.Error.WriteLine("No repo here; name them with --repos A,B (or \"*\")."); return 1; }
+        // A name that matches no repo is said as one, not read as a repo that ran dry with a bug hunt offered (M.ORCH-T728).
+        if (Autopilot.Unmatched(repos, snapshot) is { Count: > 0 } unknown)
+        {
+            Console.Error.WriteLine($"No repo named {string.Join(", ", unknown)} in the workspace.");
+            if (unknown.Count == repos.Count) return 1;
+            repos = [.. repos.Except(unknown)];
+        }
         var cycler = new MindAttic.Orchestrator.Sessions.ContextCycler();
         var unthrottled = cli is { } pid && cycler.IsUnthrottled(pid);
         // What the calling CLI filed itself isn't held from its own subagents; what anyone else (its subagents included) filed
