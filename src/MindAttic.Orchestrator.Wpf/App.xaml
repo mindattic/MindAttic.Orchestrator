@@ -3,30 +3,15 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
         <ResourceDictionary>
-            <!-- Every control, text style, card, pill, focus ring, chart, scroll bar and colour comes from MindAttic.Components.Wpf
-                 (M.ORCH-T499, M.ORCH-T531, M.ORCH-T181), whose palette meets WCAG 2.2 AA by itself (the text fields' 3:1
-                 MaFieldBorder outline, MaRec at 4.5:1) and follows Windows high contrast. Only the repo tile is the dashboard's own. -->
+            <!-- Every control, text style, card, list, tile, tab strip, scroll area, focus ring, chart, scroll bar and colour comes
+                 from MindAttic.Components.Wpf (M.ORCH-T499, M.ORCH-T531, M.ORCH-T181, M.ORCH-T667), whose palette meets WCAG 2.2 AA
+                 by itself (the text fields' 3:1 MaFieldBorder outline, MaRec at 4.5:1) and follows Windows high contrast. The
+                 dashboard has no style of its own: LibraryOnlyXamlTests fails any element that isn't the library's. -->
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/MindAttic.Components.Wpf;component/Theme.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="Visible" />
-
-            <!-- A repo tile: MaTileButton with room for a state bar, two lines and a token count. -->
-            <Style x:Key="RepoTile" TargetType="Button" BasedOn="{StaticResource MaTileButton}">
-                <!-- No width or margin: the repo grid (an AlignedGrid) sizes every tile and the gaps between them. -->
-                <Setter Property="Height" Value="78" />
-                <Setter Property="Margin" Value="0" />
-                <Setter Property="Padding" Value="0" />
-                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                <Setter Property="FocusVisualStyle" Value="{StaticResource MaFocusRing}" />
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                        <Setter Property="BorderBrush" Value="{DynamicResource MaFocus}" />
-                        <Setter Property="BorderThickness" Value="2" />
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

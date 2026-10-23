@@ -134,12 +134,20 @@ public partial class MainWindow : Window
         var tab = Shown;
         var targets = await tab.MoveTargetsAsync(it.Own);
         var menu = new ContextMenu { PlacementTarget = button, Placement = PlacementMode.Bottom };
+        // The library's dark dropdown (M.ORCH-T667): a bare ContextMenu and MenuItem draw WPF's light system menu.
+        menu.SetResourceReference(StyleProperty, "MaDropdownMenu");
+        MenuItem Item(object header) { var i = new MenuItem { Header = header }; i.SetResourceReference(StyleProperty, "MaDropdownMenuItem"); return i; }
         AutomationProperties.SetName(menu, $"Move the {it.Repo} CLI to");
         if (targets.Count == 0)
-            menu.Items.Add(new MenuItem { Header = "No other signed-in login", IsEnabled = false });
+        {
+            var none = Item("No other signed-in login");
+            none.IsEnabled = false;
+            menu.Items.Add(none);
+        }
         foreach (var target in targets)
         {
-            var item = new MenuItem { Header = target.Label, ToolTip = target.IsGlobal ? "The global login (~/.claude)" : $"{target.Email}'s own login (~/.claude-accounts)" };
+            var item = Item(target.Label);
+            item.ToolTip = target.IsGlobal ? "The global login (~/.claude)" : $"{target.Email}'s own login (~/.claude-accounts)";
             item.Click += async (_, _) => await tab.MoveToAccountAsync(it.Repo, it.Session, it.Pid, target);
             menu.Items.Add(item);
         }

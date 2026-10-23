@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Xml.Linq;
-using MindAttic.Orchestrator.Wpf;
+using MindAttic.Components.Wpf.Controls;
 using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
@@ -19,7 +19,10 @@ public sealed class DashboardAlignmentTests
     private static readonly XNamespace P = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
     private static readonly XNamespace X = "http://schemas.microsoft.com/winfx/2006/xaml";
 
-    private static AlignedGrid Lay(AlignedGrid grid, int children, double width, Func<int, double>? height = null)
+    /// <summary>Every row of the dashboard starts and ends this far from the window's edges.</summary>
+    private const double Side = 24;
+
+    private static MaTileGrid Lay(MaTileGrid grid, int children, double width, Func<int, double>? height = null)
     {
         for (var i = 0; i < children; i++) grid.Children.Add(new Border { Height = height?.Invoke(i) ?? 74 });
         grid.Measure(new Size(width, double.PositiveInfinity));
@@ -37,7 +40,7 @@ public sealed class DashboardAlignmentTests
     [TestCase(2500)]
     public void The_stat_tiles_share_one_size_and_together_span_the_full_row(double width)
     {
-        var grid = Lay(new AlignedGrid { MinItemWidth = 160, Gap = 10, RowGap = 10, Balanced = true, UniformRows = true }, 8, width, i => i == 4 ? 80 : 74);
+        var grid = Lay(new MaTileGrid { MinItemWidth = 160, Spacing = 10, RowSpacing = 10, Balanced = true, UniformRows = true }, 8, width, i => i == 4 ? 80 : 74);
         var slots = grid.Children.Cast<UIElement>().Select(Slot).ToList();
 
         Assert.That(slots.Select(s => Math.Round(s.Width, 3)).Distinct().Count(), Is.EqualTo(1), "every tile is the same width");
@@ -53,7 +56,7 @@ public sealed class DashboardAlignmentTests
     [Test]
     public void The_tiles_reflow_in_step_when_the_window_resizes()
     {
-        var grid = Lay(new AlignedGrid { MinItemWidth = 160, Gap = 10, Balanced = true }, 8, 1432);
+        var grid = Lay(new MaTileGrid { MinItemWidth = 160, Spacing = 10, Balanced = true }, 8, 1432);
         Assert.That(grid.Children.Cast<UIElement>().Select(Slot).Select(s => s.Y).Distinct().Count(), Is.EqualTo(1), "one row at the default size");
 
         grid.Measure(new Size(932, double.PositiveInfinity));
@@ -69,7 +72,7 @@ public sealed class DashboardAlignmentTests
     [TestCase(400, 1)]
     public void The_agent_cards_fill_the_width_with_equal_columns_and_gaps(double width, int columns)
     {
-        var grid = Lay(new AlignedGrid { MinItemWidth = 420, Gap = 12, RowGap = 12 }, 5, width, i => 100 + 30 * i);
+        var grid = Lay(new MaTileGrid { MinItemWidth = 420, Spacing = 12, RowSpacing = 12 }, 5, width, i => 100 + 30 * i);
         var slots = grid.Children.Cast<UIElement>().Select(Slot).ToList();
 
         Assert.That(slots.Select(s => s.Left).Distinct().Count(), Is.EqualTo(columns));
@@ -84,7 +87,7 @@ public sealed class DashboardAlignmentTests
     [Test]
     public void Hidden_children_take_no_cell()
     {
-        var grid = new AlignedGrid { MinItemWidth = 100, Gap = 10, Balanced = true };
+        var grid = new MaTileGrid { MinItemWidth = 100, Spacing = 10, Balanced = true };
         grid.Children.Add(new Border { Height = 10 });
         grid.Children.Add(new Border { Height = 10, Visibility = Visibility.Collapsed });
         grid.Children.Add(new Border { Height = 10 });
@@ -108,9 +111,9 @@ public sealed class DashboardAlignmentTests
             return parts.Length switch { 1 => [parts[0], parts[0]], 2 => [parts[0], parts[0]], _ => [parts[0], parts[2]] };
         }
 
-        Assert.That(Sides((string?)Named("Header").Attribute("Margin")), Is.EqualTo(new[] { Gutters.Side, Gutters.Side }), "the header owns the gutter");
-        Assert.That(Sides((string?)Named("Toolbar").Attribute("Margin")), Is.EqualTo(new[] { Gutters.Side, Gutters.Side }), "the tab row and the zoom");
-        Assert.That(Sides((string?)Named("ToastRow").Attribute("Margin")), Is.EqualTo(new[] { Gutters.Side, Gutters.Side }));
+        Assert.That(Sides((string?)Named("Header").Attribute("Margin")), Is.EqualTo(new[] { Side, Side }), "the header owns the gutter");
+        Assert.That(Sides((string?)Named("Toolbar").Attribute("Margin")), Is.EqualTo(new[] { Side, Side }), "the tab row and the zoom");
+        Assert.That(Sides((string?)Named("ToastRow").Attribute("Margin")), Is.EqualTo(new[] { Side, Side }));
 
         // Nothing inside the header adds a side margin of its own, so the tiles and the chart share both edges.
         var tiles = Named("StatTiles");
@@ -125,24 +128,26 @@ public sealed class DashboardAlignmentTests
             Assert.That(tile.Descendants(P + "StackPanel").Select(s => s.Attribute("Width")).Where(a => a != null), Is.Empty, "no fixed-width tile content");
         }
 
-        // Every body view uses the one gutter style, which keeps the right edge beside the scroll bar too.
-        var bodyStyle = doc.Descendants(P + "Style").Single(s => (string?)s.Attribute(X + "Key") == "BodyScroll");
-        var padding = bodyStyle.Elements(P + "Setter").Single(s => (string?)s.Attribute("Property") == "Padding");
-        Assert.That(Sides((string?)padding.Attribute("Value")), Is.EqualTo(new[] { Gutters.Side, Gutters.Side }));
-        foreach (var body in new[] { "ReposBody", "QueueBody", "AuditBody", "AgentsBody" })
-            Assert.That((string?)Named(body).Attribute("Style"), Is.EqualTo("{StaticResource BodyScroll}"), body);
-        Assert.That(Gutters.BesideScrollBar.Left, Is.EqualTo(Gutters.Side));
-        Assert.That(Gutters.BesideScrollBar.Right + Gutters.ScrollBarWidth, Is.EqualTo(Gutters.Side), "the scroll bar sits inside the gutter");
+        // Every body view uses the library's one gutter style (M.ORCH-T667), which keeps the right edge beside the scroll bar too.
+        _ = System.IO.Packaging.PackUriHelper.UriSchemePack; // registers pack:// outside an Application
+        var theme = (ResourceDictionary)Application.LoadComponent(new Uri("/MindAttic.Components.Wpf;component/Theme.xaml", UriKind.Relative));
+        var gutter = (Thickness)((Style)theme["MaBodyScroll"]).Setters.OfType<Setter>().Single(x => x.Property == MaScrollArea.GutterProperty).Value;
+        Assert.That(new[] { gutter.Left, gutter.Right }, Is.EqualTo(new[] { Side, Side }));
+        foreach (var body in new[] { "ReposBody", "QueueBody", "AuditBody", "AgentsBody", "AccountsBody", "ApiKeyBody" })
+            Assert.That((string?)Named(body).Attribute("Style"), Is.EqualTo("{StaticResource MaBodyScroll}"), body);
+        var beside = MaScrollArea.PaddingFor(gutter, Visibility.Visible);
+        Assert.That(beside.Left, Is.EqualTo(Side));
+        Assert.That(beside.Right + MaScrollArea.ScrollBarWidth, Is.EqualTo(Side), "the scroll bar sits inside the gutter");
 
-        // The agent cards are laid out by an AlignedGrid and carry no fixed width or margin of their own.
+        // The agent cards are laid out by the library's MaTileList and carry no fixed width or margin of their own.
         var agents = Named("AgentCards");
-        Assert.That(agents.Descendants().Any(d => d.Name.LocalName == "AlignedGrid"), Is.True);
+        Assert.That((string?)agents.Attribute("Style"), Is.EqualTo("{StaticResource MaTileList}"));
         var card = agents.Descendants(P + "DataTemplate").First().Elements().First();
         Assert.That(card.Attribute("Width") ?? card.Attribute("Margin"), Is.Null);
     }
 
     [Test]
-    public void The_clock_refresh_and_settings_sit_upper_left_and_nothing_sits_upper_right()
+    public void The_clock_refresh_settings_and_launcher_sit_right_of_the_view_tabs_under_the_chart()
     {
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
@@ -150,13 +155,14 @@ public sealed class DashboardAlignmentTests
         XElement Named(string name) => doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == name);
         static string? Binding(XElement e, string attribute) => (string?)e.Attribute(attribute);
 
-        var row = Named("HeaderRow");
+        // Below the chart, on the view tabs' row and right of them (M.ORCH-T667): the toolbar's right-hand column.
+        var toolbar = Named("Toolbar");
         var controls = Named("HeaderControls");
-        Assert.That(controls.Parent, Is.EqualTo(row), "the controls are the header's top row");
-        Assert.That((string?)controls.Attribute("DockPanel.Dock"), Is.EqualTo("Left"), "upper left");
-        Assert.That(row.Elements().First(), Is.EqualTo(controls), "docked first, so it takes the left edge");
-        Assert.That(row.Elements().Where(e => (string?)e.Attribute("DockPanel.Dock") == "Right").Select(e => (string?)e.Attribute(X + "Name")),
-            Is.Empty, "no account menu on the right any more (M.ORCH-T628)");
+        Assert.That(controls.Ancestors().Contains(toolbar), Is.True, "on the toolbar's row, under the chart");
+        Assert.That((string?)controls.Parent!.Attribute("Grid.Column"), Is.EqualTo("1"), "right of the view tabs");
+        Assert.That(Named("Header").Descendants().Contains(controls), Is.False, "no longer above the tiles");
+        var pills = toolbar.Descendants(P + "ListBox").First(l => (string?)l.Attribute("ItemsSource") == "{Binding ViewChoices}");
+        Assert.That((string?)pills.Ancestors().First(e => e.Parent == toolbar).Attribute("Grid.Column"), Is.Null, "the view tabs on the left");
 
         var clock = controls.Elements(P + "TextBlock").Single(t => Binding(t, "Text") == "{Binding Clock.Text}");
         Assert.That((string?)clock.Attribute("AutomationProperties.Name"), Is.EqualTo("Current time"));
@@ -168,8 +174,7 @@ public sealed class DashboardAlignmentTests
         Assert.That(Binding(settings, "Command"), Is.EqualTo("{Binding ToggleSettingsCommand}"));
         Assert.That(doc.Descendants(P + "KeyBinding").Any(k => (string?)k.Attribute("Key") == "F5" && Binding(k, "Command") == "{Binding RefreshCommand}"), Is.True, "F5 still refreshes");
 
-        var toolbar = Named("Toolbar");
-        Assert.That(toolbar.Descendants().Any(e => Binding(e, "Text") is "{Binding Clock.Text}" or "{Binding RefreshInfo}"
-                                                    || (string?)e.Attribute("Content") is "Refresh" or "Settings"), Is.False, "no second copy in the toolbar");
+        Assert.That(doc.Descendants().Count(e => Binding(e, "Text") is "{Binding Clock.Text}" or "{Binding RefreshInfo}"
+                                                 || (string?)e.Attribute("Content") is "Refresh" or "Settings"), Is.EqualTo(4), "one of each");
     }
 }

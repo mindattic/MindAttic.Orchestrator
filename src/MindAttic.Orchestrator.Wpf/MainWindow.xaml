@@ -22,37 +22,6 @@
     </Window.InputBindings>
 
     <Window.Resources>
-        <!-- One repo tile. -->
-        <DataTemplate x:Key="TileTemplate" DataType="{x:Type vm:RepoTileViewModel}">
-            <Button Style="{StaticResource RepoTile}"
-                    Command="{Binding DataContext.SelectCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                    CommandParameter="{Binding}" ToolTip="{Binding Headline}"
-                    AutomationProperties.Name="{Binding Name}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="4" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Border Background="{Binding Accent}" CornerRadius="3,0,0,3" />
-                    <Grid Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <DockPanel LastChildFill="True">
-                            <TextBlock DockPanel.Dock="Right" Text="{Binding TokensText}" Style="{StaticResource MaTileSubtitle}"
-                                       VerticalAlignment="Center" Margin="8,0,0,0" ToolTip="Tokens today" />
-                            <Ellipse DockPanel.Dock="Left" Width="8" Height="8" Fill="{Binding Accent}"
-                                     VerticalAlignment="Center" Margin="0,1,8,0" />
-                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" />
-                        </DockPanel>
-                        <TextBlock Grid.Row="1" Text="{Binding Subtitle}" Style="{StaticResource MaTileSubtitle}"
-                                   Margin="16,4,0,0" TextTrimming="CharacterEllipsis" />
-                    </Grid>
-                </Grid>
-            </Button>
-        </DataTemplate>
-
         <!-- A ticket id: a link that opens the ticket in Tickets Desktop to view, approve, prioritize or close it (M.ORCH-T500).
              Its CommandParameter is the id. The library's MaHyperlink (MaLink, SemiBold, underlined on hover and keyboard focus,
              so it reads as a link without colour), plus the command and tooltip. -->
@@ -86,43 +55,18 @@
                             <Run Text="{Binding Priority, Mode=OneWay}" Foreground="{DynamicResource MaWarn}" FontWeight="SemiBold" />
                         </TextBlock>
                         <TextBlock Text="{Binding Summary}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Summary}" Margin="0,4,0,0" />
-                        <TextBlock x:Name="UserTicketStatus" Text="{Binding Status}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
-                                   Visibility="{Binding Status, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource MaMutedText}">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsWaiting}" Value="True">
-                                            <Setter Property="Foreground" Value="{DynamicResource MaWarn}" />
-                                            <Setter Property="FontWeight" Value="SemiBold" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
+                        <!-- Its status, muted; while it waits for its user, in MaWarn and SemiBold (M.ORCH-T667: one line each,
+                             the other collapsed, so no style of the dashboard's own). -->
+                        <Grid x:Name="UserTicketStatus" Margin="0,4,0,0" Visibility="{Binding Status, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
+                            <TextBlock Text="{Binding Status}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
+                                       Visibility="{Binding IsWaiting, Converter={x:Static vm:Converters.FalseToVisible}}" />
+                            <TextBlock Text="{Binding Status}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" TextWrapping="Wrap"
+                                       Visibility="{Binding IsWaiting, Converter={StaticResource Visible}}" />
+                        </Grid>
                     </StackPanel>
                 </DockPanel>
             </Border>
         </DataTemplate>
-
-        <Style x:Key="StatValue" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="24" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-        </Style>
-
-        <!-- A body view (repos, queue, audit, agents): the same 24px gutters as the header and toolbar. While the vertical
-             scroll bar shows, it sits inside the right gutter instead of pushing the content in (M.ORCH-T192). Based on the
-             theme's implicit ScrollViewer, so it keeps the dark corner and scroll bars. -->
-        <Style x:Key="BodyScroll" TargetType="ScrollViewer" BasedOn="{StaticResource {x:Type ScrollViewer}}">
-            <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
-            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
-            <Setter Property="Focusable" Value="False" />
-            <Setter Property="Padding" Value="24,0,24,16" />
-            <Style.Triggers>
-                <Trigger Property="ComputedVerticalScrollBarVisibility" Value="Visible">
-                    <Setter Property="Padding" Value="{x:Static local:Gutters.BesideScrollBar}" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
     </Window.Resources>
 
     <Grid x:Name="Root">
@@ -142,38 +86,42 @@
              (MainWindow.xaml.cs sets its DataContext), and this strip keeps the global login's tab's, which holds every tab.
              Shown once there's a second login; Ctrl+Tab and Ctrl+Shift+Tab step through them. Its own row above the header,
              so the header, chart and view pills can fold away on a tab while the strip stays. -->
-        <ListBox x:Name="LoginTabStrip" Grid.Row="0" Style="{StaticResource MaPillChoice}" ItemsSource="{Binding LoginTabs}" SelectedItem="{Binding SelectedTab}"
-                 Padding="0" Margin="24,14,24,0" AutomationProperties.Name="Claude logins, one dashboard tab each"
-                 Visibility="{Binding HasLoginTabs, Converter={StaticResource Visible}}">
-            <ListBox.ItemTemplate>
+        <mc:MaTabControl x:Name="LoginTabStrip" Grid.Row="0" ShowContent="False" ItemsSource="{Binding LoginTabs}" SelectedItem="{Binding SelectedTab}"
+                         Margin="24,14,24,0" AutomationProperties.Name="Claude logins, one dashboard tab each"
+                         Visibility="{Binding HasLoginTabs, Converter={StaticResource Visible}}">
+            <!-- Status at a glance (M.ORCH-T630), all the library's MaTabItem (M.ORCH-T667): a status light before the name
+                 (green signed in and usable, red signed out, purple any other state; the 'API key' tab's orange), its word in
+                 the tooltip, the accessible name and the tab's item status so colour is never the only cue, the person's
+                 terminal colour as the tab's accent, and the week left after the reserve as its trailing text ('API key': what
+                 the CLIs billing it spent today). -->
+            <mc:MaTabControl.ItemContainerStyle>
+                <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
+                    <Setter Property="Accent" Value="{Binding TabBrush}" />
+                    <Setter Property="Status" Value="{Binding TabLightStatus}" />
+                    <Setter Property="StatusLabel" Value="{Binding TabStatusWord}" />
+                    <Setter Property="Trailing" Value="{Binding TabTrailing}" />
+                    <Setter Property="ToolTip" Value="{Binding TabTip}" />
+                    <Setter Property="AutomationProperties.Name" Value="{Binding TabTip}" />
+                </Style>
+            </mc:MaTabControl.ItemContainerStyle>
+            <mc:MaTabControl.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:MainViewModel}">
-                    <!-- Status at a glance (M.ORCH-T630): a status light before the name (green signed in and usable, red signed
-                         out, purple any other state; the 'API key' tab's orange), its word in the tooltip and accessible name so
-                         colour is never the only cue, the person's terminal colour under the name, and the week left after the
-                         reserve on the far right ('API key': what the CLIs billing it spent today). -->
-                    <StackPanel x:Name="LoginTabItem" Orientation="Horizontal" ToolTip="{Binding TabTip}" AutomationProperties.Name="{Binding TabTip}">
-                        <Ellipse x:Name="TabStatusLight" Width="9" Height="9" Fill="{Binding TabLightBrush}" VerticalAlignment="Center" Margin="0,1,8,0"
-                                 AutomationProperties.Name="{Binding TabStatusWord}" />
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" />
-                            <Rectangle Height="2" Fill="{Binding TabBrush}" Margin="0,1,0,0" RadiusX="1" RadiusY="1" />
-                        </StackPanel>
+                    <StackPanel x:Name="LoginTabItem" Orientation="Horizontal">
+                        <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <TextBlock VerticalAlignment="Center" Margin="8,0,0,0"
                                    Visibility="{Binding TabBadge, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
                             <Run Text="&#x2022; " /><Run Text="{Binding TabBadge, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=" need you" />
                         </TextBlock>
-                        <TextBlock x:Name="TabTrailingText" Text="{Binding TabTrailing}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center"
-                                   Margin="14,0,0,0" Typography.NumeralAlignment="Tabular" />
                     </StackPanel>
                 </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+            </mc:MaTabControl.ItemTemplate>
+        </mc:MaTabControl>
 
         <!-- Each person's two tabs (M.ORCH-T622): their Dashboard (the tiles, the chart, the view pills and the chosen view) and
              their Terminals (one terminal tab per CLI of theirs open in a pane here). On Terminals the header, the chart and the
              view pills fold away, so the panes fill the window below the person tabs. -->
-        <ListBox x:Name="PageTabStrip" Grid.Row="1" Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Pages}" SelectedItem="{Binding Page}"
-                 Padding="0" Margin="24,10,24,0" AutomationProperties.Name="{Binding TabTitle, StringFormat='{}{0}: dashboard or terminals'}"
+        <mc:MaTabControl x:Name="PageTabStrip" Grid.Row="1" ShowContent="False" ItemsSource="{Binding Pages}" SelectedItem="{Binding Page}"
+                 Margin="24,10,24,0" AutomationProperties.Name="{Binding TabTitle, StringFormat='{}{0}: dashboard or terminals'}"
                  AutomationProperties.HelpText="{Binding Terminals.Summary}" ToolTip="{Binding Terminals.Summary}"
                  Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}" />
 
@@ -182,57 +130,22 @@
         <!-- The header owns the window's left/right gutter; nothing inside it adds its own, so the tiles and the chart
              share both edges (M.ORCH-T192). The tiles are equal cells that together span the row at any width. -->
         <StackPanel x:Name="Header" Grid.Row="2" Margin="24,18,24,0" Visibility="{Binding ShowsDashboard, Converter={StaticResource Visible}}">
-        <!-- Upper left (M.ORCH-T493): the clock, when the dashboard last refreshed, Refresh (F5), Settings and Open Launcher.
-             The account menu that sat upper right is gone (M.ORCH-T628): every person is signed in at once, each on a tab of
-             their own whose tiles carry their numbers; billing and the global default moved to the Accounts view. -->
-        <DockPanel x:Name="HeaderRow" Margin="0,0,0,10" LastChildFill="True">
-            <StackPanel x:Name="HeaderControls" DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="{Binding Clock.Text}" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" VerticalAlignment="Center" Margin="0,0,12,0"
-                           AutomationProperties.Name="Current time" ToolTip="Current time" />
-                <TextBlock Text="{Binding RefreshInfo}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                <Button Style="{StaticResource MaButton}" Command="{Binding RefreshCommand}" Content="Refresh" ToolTip="F5" />
-                <Button Style="{StaticResource MaButton}" Command="{Binding ToggleSettingsCommand}" Content="Settings" Margin="8,0,0,0" />
-                <!-- Open Launcher (M.ORCH-T615): the Launcher's menu as this tab's login (MindAttic.Launcher with its account), so
-                     every repo CLI started from it runs on that login and shows in this tab; on the global login's tab, unscoped. -->
-                <Button Style="{StaticResource MaButton}" Command="{Binding OpenLauncherCommand}" Content="Open Launcher" Margin="8,0,0,0"
-                        ToolTip="{Binding TabTitle}" ToolTipService.ShowOnDisabled="False"
-                        AutomationProperties.Name="{Binding TabTitle, StringFormat='Open the Launcher as {0}'}" />
-            </StackPanel>
-        </DockPanel>
 
-        <local:AlignedGrid x:Name="StatTiles" MinItemWidth="160" Gap="10" RowGap="10" Balanced="True" UniformRows="True"
+        <mc:MaTileGrid x:Name="StatTiles" MinItemWidth="160" Spacing="10" RowSpacing="10" Balanced="True" UniformRows="True"
                            AutomationProperties.Name="Summary">
-            <Button Command="{Binding FocusCommand}" CommandParameter="Waiting" ToolTip="Repos whose agent stopped and is waiting for you. Shows only those."
+            <Button Style="{StaticResource MaSmallStat}" Command="{Binding FocusCommand}" CommandParameter="Waiting"
+                    mc:MaTile.IsSelected="{Binding IsWaitingFocus}" mc:MaTile.SelectedBrush="{DynamicResource MaWarn}" ToolTip="Repos whose agent stopped and is waiting for you. Shows only those."
                     AutomationProperties.Name="{Binding WaitingCount, StringFormat='{}{0} need you: show only those repos'}">
-                <Button.Style>
-                    <Style TargetType="Button" BasedOn="{StaticResource MaSmallStat}">
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding Focus}" Value="Waiting">
-                                <Setter Property="BorderBrush" Value="{DynamicResource MaWarn}" />
-                                <Setter Property="BorderThickness" Value="2" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Button.Style>
                 <StackPanel>
-                    <TextBlock Text="{Binding WaitingCount}" Style="{StaticResource StatValue}" Foreground="{DynamicResource MaWarn}" />
+                    <TextBlock Text="{Binding WaitingCount}" Style="{StaticResource MaStatValue}" Foreground="{DynamicResource MaWarn}" />
                     <TextBlock Text="Need you" Style="{StaticResource MaTileSubtitle}" />
                 </StackPanel>
             </Button>
-            <Button Command="{Binding FocusCommand}" CommandParameter="Working" ToolTip="Repos with an agent mid-turn right now. Shows only those."
+            <Button Style="{StaticResource MaSmallStat}" Command="{Binding FocusCommand}" CommandParameter="Working"
+                    mc:MaTile.IsSelected="{Binding IsWorkingFocus}" mc:MaTile.SelectedBrush="{DynamicResource MaGood}" ToolTip="Repos with an agent mid-turn right now. Shows only those."
                     AutomationProperties.Name="{Binding WorkingCount, StringFormat='{}{0} working: show only those repos'}">
-                <Button.Style>
-                    <Style TargetType="Button" BasedOn="{StaticResource MaSmallStat}">
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding Focus}" Value="Working">
-                                <Setter Property="BorderBrush" Value="{DynamicResource MaGood}" />
-                                <Setter Property="BorderThickness" Value="2" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Button.Style>
                 <StackPanel>
-                    <TextBlock Text="{Binding WorkingCount}" Style="{StaticResource StatValue}" Foreground="{DynamicResource MaGood}" />
+                    <TextBlock Text="{Binding WorkingCount}" Style="{StaticResource MaStatValue}" Foreground="{DynamicResource MaGood}" />
                     <TextBlock Text="Working" Style="{StaticResource MaTileSubtitle}" />
                 </StackPanel>
             </Button>
@@ -240,24 +153,15 @@
                     ToolTip="Subagents running inside every CLI and autopilot agent. Opens the agent board."
                     AutomationProperties.Name="{Binding SubagentCount, StringFormat='{}{0} subagents running: open the agent board'}">
                 <StackPanel>
-                    <TextBlock Text="{Binding SubagentCount}" Style="{StaticResource StatValue}" />
+                    <TextBlock Text="{Binding SubagentCount}" Style="{StaticResource MaStatValue}" />
                     <TextBlock Text="Subagents" Style="{StaticResource MaTileSubtitle}" />
                 </StackPanel>
             </Button>
-            <Button Command="{Binding FocusCommand}" CommandParameter="Tickets" ToolTip="Repos with open tickets and no session. Shows only those."
+            <Button Style="{StaticResource MaSmallStat}" Command="{Binding FocusCommand}" CommandParameter="Tickets"
+                    mc:MaTile.IsSelected="{Binding IsTicketsFocus}" mc:MaTile.SelectedBrush="{DynamicResource MaLink}" ToolTip="Repos with open tickets and no session. Shows only those."
                     AutomationProperties.Name="{Binding TicketCount, StringFormat='{}{0} open tickets: show repos with tickets and no session'}">
-                <Button.Style>
-                    <Style TargetType="Button" BasedOn="{StaticResource MaSmallStat}">
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding Focus}" Value="Tickets">
-                                <Setter Property="BorderBrush" Value="{DynamicResource MaLink}" />
-                                <Setter Property="BorderThickness" Value="2" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Button.Style>
                 <StackPanel>
-                    <TextBlock Text="{Binding TicketCount}" Style="{StaticResource StatValue}" Foreground="{DynamicResource MaLink}" />
+                    <TextBlock Text="{Binding TicketCount}" Style="{StaticResource MaStatValue}" Foreground="{DynamicResource MaLink}" />
                     <TextBlock Text="Open tickets" Style="{StaticResource MaTileSubtitle}" />
                 </StackPanel>
             </Button>
@@ -268,7 +172,7 @@
                     AutomationProperties.Name="{Binding BudgetHeadline, StringFormat='5-hour window {0} used: open budget settings'}">
                 <StackPanel>
                     <DockPanel>
-                        <TextBlock DockPanel.Dock="Left" Text="{Binding BudgetHeadline}" Style="{StaticResource StatValue}"
+                        <TextBlock DockPanel.Dock="Left" Text="{Binding BudgetHeadline}" Style="{StaticResource MaStatValue}"
                                    Foreground="{Binding BudgetBrush}" />
                         <TextBlock Text="{Binding BudgetCaption}" Style="{StaticResource MaTileSubtitle}" VerticalAlignment="Center"
                                    Margin="8,4,0,0" TextWrapping="Wrap" />
@@ -290,7 +194,7 @@
                     ToolTip="How much of this login's weekly limit is left (/status reports the used share), when it resets, and where its CLIs stop (the weekly reserve). Opens settings, where the weekly reset is set."
                     AutomationProperties.Name="{Binding WeeklyHeadline, StringFormat='Week {0}: open settings'}">
                 <StackPanel>
-                    <TextBlock Text="{Binding WeeklyHeadline}" Style="{StaticResource StatValue}" />
+                    <TextBlock Text="{Binding WeeklyHeadline}" Style="{StaticResource MaStatValue}" />
                     <TextBlock Text="{Binding WeeklyCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
                     <TextBlock Text="{Binding WeeklyAccountLine}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis"
                                Visibility="{Binding WeeklyAccountLine, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
@@ -300,11 +204,11 @@
                     ToolTip="Claude Code tokens since midnight, every session (cache reads included). Opens the repos, busiest first."
                     AutomationProperties.Name="{Binding TokensToday, StringFormat='{}{0} tokens today: open the repos'}">
                 <StackPanel>
-                    <TextBlock Text="{Binding TokensToday}" Style="{StaticResource StatValue}" />
+                    <TextBlock Text="{Binding TokensToday}" Style="{StaticResource MaStatValue}" />
                     <TextBlock Text="{Binding TokensDetail}" Style="{StaticResource MaTileSubtitle}" />
                 </StackPanel>
             </Button>
-        </local:AlignedGrid>
+        </mc:MaTileGrid>
         <!-- This 5-hour window's utilization (M.ORCH-T191): its own full-width row under the tiles, tall enough that the
              pace line straight to the target at the reset, the window's own line (red while over that pace, green under)
              and where the recent rate ends up are easy to read. The caption says it in words. -->
@@ -346,8 +250,25 @@
                              AutomationProperties.Name="Sort repos by" />
                 </StackPanel>
             </WrapPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="{Binding Zoom.Text}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="0,0,12,0"
+            <!-- Right of the view tabs (M.ORCH-T667, from above the tiles; M.ORCH-T493): the clock, when the dashboard last
+                 refreshed, Refresh (F5), Settings and Open Launcher, then the zoom. The account menu that sat upper right is gone
+                 (M.ORCH-T628): every person is signed in at once, each on a tab of their own whose tiles carry their numbers;
+                 billing and the global default moved to the Accounts view. Top-aligned with the view tabs' first line, so it stays
+                 on their line when the Repos view's search and sort wrap under them. -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="0,6,0,0">
+                <StackPanel x:Name="HeaderControls" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Clock.Text}" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" VerticalAlignment="Center" Margin="0,0,12,0"
+                               AutomationProperties.Name="Current time" ToolTip="Current time" />
+                    <TextBlock Text="{Binding RefreshInfo}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                    <Button Style="{StaticResource MaButton}" Command="{Binding RefreshCommand}" Content="Refresh" ToolTip="F5" />
+                    <Button Style="{StaticResource MaButton}" Command="{Binding ToggleSettingsCommand}" Content="Settings" Margin="8,0,0,0" />
+                    <!-- Open Launcher (M.ORCH-T615): the Launcher's menu as this tab's login (MindAttic.Launcher with its account), so
+                         every repo CLI started from it runs on that login and shows in this tab; on the global login's tab, unscoped. -->
+                    <Button Style="{StaticResource MaButton}" Command="{Binding OpenLauncherCommand}" Content="Open Launcher" Margin="8,0,0,0"
+                            ToolTip="{Binding TabTitle}" ToolTipService.ShowOnDisabled="False"
+                            AutomationProperties.Name="{Binding TabTitle, StringFormat='Open the Launcher as {0}'}" />
+                </StackPanel>
+                <TextBlock Text="{Binding Zoom.Text}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="12,0,0,0"
                            ToolTip="Ctrl+0 resets the zoom" />
             </StackPanel>
         </Grid>
@@ -373,7 +294,7 @@
 
         <!-- The 'API key' tab (M.ORCH-T630): the Vault API key's billing, for emergencies, and back to Claude Team (M.ORCH-T436,
              off the old account menu by M.ORCH-T628), what the CLIs billing it spent today and which CLIs bill it. -->
-        <ScrollViewer x:Name="ApiKeyBody" Grid.Row="5" Style="{StaticResource BodyScroll}"
+        <ScrollViewer x:Name="ApiKeyBody" Grid.Row="5" Style="{StaticResource MaBodyScroll}"
                       Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}">
             <StackPanel MaxWidth="760" HorizontalAlignment="Left" Margin="0,18,0,0">
                 <TextBlock Text="API key" Style="{StaticResource MaHeading}" AutomationProperties.HeadingLevel="Level2" />
@@ -408,25 +329,42 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <ScrollViewer x:Name="ReposBody" Style="{StaticResource BodyScroll}"
+            <ScrollViewer x:Name="ReposBody" Style="{StaticResource MaBodyScroll}"
                           Visibility="{Binding IsReposView, Converter={StaticResource Visible}}">
                 <Grid>
-                    <ItemsControl ItemsSource="{Binding GroupsInView}" Focusable="False">
+                    <ItemsControl ItemsSource="{Binding GroupsInView}" Style="{StaticResource MaList}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:TileGroupViewModel}">
                                 <StackPanel Visibility="{Binding IsVisible, Converter={StaticResource Visible}}" Margin="0,4,0,10">
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                        <Ellipse Width="8" Height="8" Fill="{Binding Accent}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <mc:MaStatusLight Foreground="{Binding Accent}" Label="{Binding Title}" Margin="0,0,8,0" />
                                         <TextBlock Text="{Binding Title}" Style="{StaticResource MaHeading}" FontSize="14" />
                                         <TextBlock Text="{Binding Count}" Style="{StaticResource MaMutedText}" Margin="8,0,0,0" VerticalAlignment="Bottom" />
                                         <TextBlock Text="{Binding Hint}" Style="{StaticResource MaMutedText}" Margin="14,0,0,0" VerticalAlignment="Bottom" />
                                     </StackPanel>
-                                    <ItemsControl ItemsSource="{Binding Tiles}" ItemTemplate="{StaticResource TileTemplate}" Focusable="False">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <local:AlignedGrid MinItemWidth="240" Gap="10" RowGap="10" UniformRows="True" />
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
+                                    <!-- The repo tiles: the library's MaAccentTile in an MaTileList, equal columns that fill the width. -->
+                                    <ItemsControl ItemsSource="{Binding Tiles}" Style="{StaticResource MaTileList}"
+                                                  mc:MaList.MinItemWidth="240" mc:MaList.UniformRows="True">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:RepoTileViewModel}">
+                                                <mc:MaAccentTile Accent="{Binding Accent}" mc:MaTile.IsSelected="{Binding IsSelected}"
+                                                                 Command="{Binding DataContext.SelectCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                 CommandParameter="{Binding}" ToolTip="{Binding Headline}"
+                                                                 AutomationProperties.Name="{Binding Name}">
+                                                    <StackPanel>
+                                                        <DockPanel LastChildFill="True">
+                                                            <TextBlock DockPanel.Dock="Right" Text="{Binding TokensText}" Style="{StaticResource MaTileSubtitle}"
+                                                                       VerticalAlignment="Center" Margin="8,0,0,0" ToolTip="Tokens today" />
+                                                            <mc:MaStatusLight DockPanel.Dock="Left" Foreground="{Binding Accent}" Label="{Binding StateLabel}"
+                                                                              Margin="0,1,8,0" />
+                                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" />
+                                                        </DockPanel>
+                                                        <TextBlock Text="{Binding Subtitle}" Style="{StaticResource MaTileSubtitle}"
+                                                                   Margin="16,4,0,0" TextTrimming="CharacterEllipsis" />
+                                                    </StackPanel>
+                                                </mc:MaAccentTile>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                 </StackPanel>
                             </DataTemplate>
@@ -444,9 +382,9 @@
             </ScrollViewer>
 
             <!-- Detail pane: the window's own MaChrome, set off by its left border, so its MaCards stand out from it. -->
-            <Border x:Name="DetailPane" Grid.Column="1" Width="420" Background="{DynamicResource MaChrome}" BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="1,0,0,0"
+            <Border x:Name="DetailPane" Grid.Column="1" Width="420" Style="{StaticResource MaSidePane}"
                     Visibility="{Binding ShowDetail, Converter={StaticResource Visible}}">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,16,20,20" DataContext="{Binding}">
+                <ScrollViewer x:Name="DetailBody" Style="{StaticResource MaPaneScroll}">
                     <StackPanel>
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="&#xE711;"
@@ -504,10 +442,10 @@
                                 </Style>
                             </StackPanel.Style>
                             <TextBlock Text="LAUNCHER TABS" Style="{StaticResource MaSectionLabel}" />
-                            <ItemsControl ItemsSource="{Binding Selected.Hosts}" Focusable="False">
+                            <ItemsControl ItemsSource="{Binding Selected.Hosts}" Style="{StaticResource MaRowList}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:HostRowViewModel}">
-                                        <Border Style="{StaticResource MaCard}">
+                                        <Border Style="{StaticResource MaListCard}">
                                             <StackPanel>
                                                 <DockPanel>
                                                     <!-- Brings this tab's own Windows Terminal window up, on this tab (M.ORCH-T619). -->
@@ -557,10 +495,10 @@
                             <TextBlock Style="{StaticResource MaSectionLabel}">
                                 <Run Text="OPEN TICKETS · " /><Run Text="{Binding Selected.Tickets.Count, Mode=OneWay}" />
                             </TextBlock>
-                            <ItemsControl ItemsSource="{Binding Selected.Tickets}" Focusable="False">
+                            <ItemsControl ItemsSource="{Binding Selected.Tickets}" Style="{StaticResource MaRowList}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:TicketRowViewModel}">
-                                        <Border Style="{StaticResource MaCard}">
+                                        <Border Style="{StaticResource MaListCard}">
                                             <StackPanel>
                                                 <DockPanel>
                                                     <Button DockPanel.Dock="Right" Style="{StaticResource MaTextButton}" Padding="10,3" MinHeight="24"
@@ -624,10 +562,10 @@
                                 </Style>
                             </StackPanel.Style>
                             <TextBlock Text="RECENT CLAUDE SESSIONS" Style="{StaticResource MaSectionLabel}" />
-                            <ItemsControl ItemsSource="{Binding Selected.Sessions}" Focusable="False">
+                            <ItemsControl ItemsSource="{Binding Selected.Sessions}" Style="{StaticResource MaRowList}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:SessionRowViewModel}">
-                                        <Grid Margin="0,0,0,6" ToolTip="{Binding SessionId}">
+                                        <Grid ToolTip="{Binding SessionId}">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="80" />
                                                 <ColumnDefinition Width="*" />
@@ -648,7 +586,7 @@
             </Border>
 
             <!-- Queue view: every open ticket across the workspace, and what the scheduler proposes. -->
-            <ScrollViewer x:Name="QueueBody" Grid.ColumnSpan="2" Style="{StaticResource BodyScroll}"
+            <ScrollViewer x:Name="QueueBody" Grid.ColumnSpan="2" Style="{StaticResource MaBodyScroll}"
                           Visibility="{Binding IsQueueView, Converter={StaticResource Visible}}">
                 <StackPanel MaxWidth="1200" HorizontalAlignment="Left">
                     <DockPanel>
@@ -665,7 +603,7 @@
                             Visibility="{Binding HasReminders, Converter={StaticResource Visible}}">
                         <StackPanel>
                             <TextBlock Text="{Binding RemindersTitle}" FontWeight="SemiBold" />
-                            <ItemsControl ItemsSource="{Binding Reminders}" Focusable="False" Margin="0,4,0,0">
+                            <ItemsControl ItemsSource="{Binding Reminders}" Style="{StaticResource MaList}" Margin="0,4,0,0">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,2,0,0" />
@@ -679,10 +617,10 @@
                                Visibility="{Binding QueueMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
 
                     <!-- Finished work: closed tickets whose assignment or worktree is still around. -->
-                    <ItemsControl ItemsSource="{Binding Finished}" Focusable="False" Margin="0,10,0,0">
+                    <ItemsControl ItemsSource="{Binding Finished}" Style="{StaticResource MaRowList}" Margin="0,10,0,0">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:FinishedViewModel}">
-                                <Border Style="{StaticResource MaCard}" BorderBrush="{DynamicResource MaGood}">
+                                <Border Style="{StaticResource MaListCard}" BorderBrush="{DynamicResource MaGood}">
                                     <DockPanel>
                                         <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Padding="12,5"
                                                 Content="{Binding ActionLabel}" Command="{Binding ActionCommand}"
@@ -712,13 +650,10 @@
                             </Style>
                         </StackPanel.Style>
                         <TextBlock Text="NEXT UP" Style="{StaticResource MaSectionLabel}" />
-                        <ItemsControl ItemsSource="{Binding Proposals}" Focusable="False">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
+                        <ItemsControl ItemsSource="{Binding Proposals}" Style="{StaticResource MaTileList}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type vm:QueueRowViewModel}">
-                                    <Border Style="{StaticResource MaCard}" Width="370" Margin="0,0,10,10" BorderBrush="{DynamicResource MaGood}">
+                                    <Border Style="{StaticResource MaListCard}" Width="370" BorderBrush="{DynamicResource MaGood}">
                                         <StackPanel>
                                             <TextBlock>
                                                 <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding Id}" Foreground="{DynamicResource MaGood}"
@@ -757,19 +692,10 @@
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
-                    <ItemsControl ItemsSource="{Binding Queue}" Focusable="False">
+                    <ItemsControl ItemsSource="{Binding Queue}" Style="{StaticResource MaRowList}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:QueueRowViewModel}">
-                                <Border Padding="10,8">
-                                    <Border.Style>
-                                        <Style TargetType="Border" BasedOn="{StaticResource MaCard}">
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsAssigned}" Value="True">
-                                                    <Setter Property="Opacity" Value="0.6" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
+                                <Border Style="{StaticResource MaRowCard}" Opacity="{Binding RowOpacity}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="36" />
@@ -816,7 +742,7 @@
             </ScrollViewer>
 
             <!-- Audit view: what's duplicated across repos and which shared agent files drifted. -->
-            <ScrollViewer x:Name="AuditBody" Grid.ColumnSpan="2" Style="{StaticResource BodyScroll}"
+            <ScrollViewer x:Name="AuditBody" Grid.ColumnSpan="2" Style="{StaticResource MaBodyScroll}"
                           Visibility="{Binding IsAuditView, Converter={StaticResource Visible}}">
                 <StackPanel MaxWidth="1200" HorizontalAlignment="Left">
                     <DockPanel>
@@ -828,32 +754,24 @@
                     <TextBlock Text="{Binding DuplicatesHeader}" Style="{StaticResource MaSectionLabel}" />
                     <TextBlock Text="Code that lives in more than one repo. Identical copies are the easiest wins: move one into the suggested home and reference it."
                                Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,0,0,8" />
-                    <ItemsControl ItemsSource="{Binding Duplicates}" Focusable="False">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
+                    <ItemsControl ItemsSource="{Binding Duplicates}" Style="{StaticResource MaTileList}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:DuplicateGroupViewModel}">
-                                <Border Style="{StaticResource MaCard}" Width="380" Margin="0,0,10,10">
+                                <Border Style="{StaticResource MaListCard}" Width="380">
                                     <StackPanel>
                                         <DockPanel>
                                             <Button DockPanel.Dock="Right" Style="{StaticResource MaTextButton}" Padding="10,3" Content="Compare"
                                                     Command="{Binding CompareCommand}" ToolTip="Diff the first two copies (VS Code if installed)" />
-                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Foreground" Value="{DynamicResource MaWarn}" />
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Identical}" Value="True">
-                                                                <Setter Property="Foreground" Value="{DynamicResource MaGood}" />
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
+                                            <!-- Identical copies in MaGood, near ones in MaWarn: one title each, the other collapsed. -->
+                                            <Grid VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{DynamicResource MaGood}"
+                                                           Visibility="{Binding Identical, Converter={StaticResource Visible}}" />
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}"
+                                                           Visibility="{Binding Identical, Converter={x:Static vm:Converters.FalseToVisible}}" />
+                                            </Grid>
                                         </DockPanel>
                                         <TextBlock Text="{Binding Detail}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,2,0,6" />
-                                        <ItemsControl ItemsSource="{Binding Files}" Focusable="False">
+                                        <ItemsControl ItemsSource="{Binding Files}" Style="{StaticResource MaList}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate DataType="{x:Type vm:AuditFileViewModel}">
                                                     <!-- MaTextButton with no fill (M.ORCH-T499), its content left-aligned (M.COMP-T36). -->
@@ -885,10 +803,10 @@
                     <TextBlock Text="{Binding DriftHeader}" Style="{StaticResource MaSectionLabel}" />
                     <TextBlock Text="For each agent file most repos share, the version most repos have is canonical. Drifted copies are stale edits of it; custom ones are different files under the same name."
                                Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,0,0,8" />
-                    <ItemsControl ItemsSource="{Binding Drift}" Focusable="False">
+                    <ItemsControl ItemsSource="{Binding Drift}" Style="{StaticResource MaRowList}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:DriftViewModel}">
-                                <Border Style="{StaticResource MaCard}" Padding="10,8">
+                                <Border Style="{StaticResource MaRowCard}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="72" />
@@ -897,18 +815,13 @@
                                             <ColumnDefinition Width="90" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{Binding Kind}" FontWeight="SemiBold" VerticalAlignment="Center">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Foreground" Value="{DynamicResource MaWarn}" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsCustom}" Value="True">
-                                                            <Setter Property="Foreground" Value="{DynamicResource MaMuted}" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
+                                        <!-- A drifted copy in MaWarn, a custom one in MaMuted: one word each, the other collapsed. -->
+                                        <Grid VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Kind}" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}"
+                                                       Visibility="{Binding IsCustom, Converter={x:Static vm:Converters.FalseToVisible}}" />
+                                            <TextBlock Text="{Binding Kind}" FontWeight="SemiBold" Foreground="{DynamicResource MaMuted}"
+                                                       Visibility="{Binding IsCustom, Converter={StaticResource Visible}}" />
+                                        </Grid>
                                         <TextBlock Grid.Column="1" Text="{Binding Repo}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                         <StackPanel Grid.Column="2" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding File}" FontFamily="Cascadia Mono, Consolas" FontSize="12" />
@@ -924,10 +837,10 @@
                     </ItemsControl>
 
                     <TextBlock Text="{Binding MissingHeader}" Style="{StaticResource MaSectionLabel}" />
-                    <ItemsControl ItemsSource="{Binding Missing}" Focusable="False">
+                    <ItemsControl ItemsSource="{Binding Missing}" Style="{StaticResource MaRowList}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:MissingViewModel}">
-                                <Border Style="{StaticResource MaCard}" Padding="10,8">
+                                <Border Style="{StaticResource MaRowCard}">
                                     <DockPanel>
                                         <Button DockPanel.Dock="Right" Style="{StaticResource MaTextButton}" Padding="10,3" Content="See a copy"
                                                 Command="{Binding ExampleCommand}" VerticalAlignment="Top" />
@@ -948,7 +861,7 @@
 
             <!-- Agent board: every Claude CLI and autopilot agent as a card, its running subagents inside it. Waiting-on-you
                  first. State is a word and a glyph as well as a colour (WCAG 1.4.1). -->
-            <ScrollViewer x:Name="AgentsBody" Grid.ColumnSpan="2" Style="{StaticResource BodyScroll}"
+            <ScrollViewer x:Name="AgentsBody" Grid.ColumnSpan="2" Style="{StaticResource MaBodyScroll}"
                           Visibility="{Binding IsAgentsView, Converter={StaticResource Visible}}">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,4,0,12">
@@ -963,25 +876,18 @@
                                    Style="{StaticResource MaMutedText}" Margin="0,4,0,0" />
                     </StackPanel>
 
-                    <ItemsControl x:Name="AgentCards" ItemsSource="{Binding AgentsInView}" Focusable="False" AutomationProperties.Name="Agents">
-                        <ItemsControl.ItemsPanel>
-                            <!-- Equal columns and gaps that fill the width, flush with the tiles' edges (M.ORCH-T192). -->
-                            <ItemsPanelTemplate><local:AlignedGrid MinItemWidth="420" Gap="12" RowGap="12" /></ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
+                    <!-- Equal columns and gaps that fill the width, flush with the tiles' edges (M.ORCH-T192): the library's MaTileList. -->
+                    <ItemsControl x:Name="AgentCards" ItemsSource="{Binding AgentsInView}" Style="{StaticResource MaTileList}" AutomationProperties.Name="Agents"
+                                  mc:MaList.MinItemWidth="420" mc:MaList.Spacing="12" mc:MaList.RowSpacing="12">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:AgentRowViewModel}">
-                                <!-- The library's MaCard without its bottom margin (the AlignedGrid owns the gaps, M.ORCH-T192) and without
-                                     its padding (the state stripe runs to the card's edge) (M.ORCH-T182). -->
-                                <Border x:Name="AgentCard" Padding="0">
-                                    <Border.Style>
-                                        <Style TargetType="Border" BasedOn="{StaticResource MaCard}">
-                                            <Setter Property="Margin" Value="0" />
-                                        </Style>
-                                    </Border.Style>
+                                <!-- The library's MaAccentCard: no margin (the list owns the gaps, M.ORCH-T192) and no padding (the state
+                                     stripe, an MaAccentBar, runs to the card's edge) (M.ORCH-T182). -->
+                                <Border x:Name="AgentCard" Style="{StaticResource MaAccentCard}">
                                     <Grid>
                                     <DockPanel IsEnabled="{Binding IsUnlocked}">
                                         <!-- The state's colour down the left edge: a cue, never the only one. -->
-                                        <Border DockPanel.Dock="Left" Width="5" Background="{Binding StateBrush}" CornerRadius="5,0,0,5" />
+                                        <Border Style="{StaticResource MaAccentBar}" Background="{Binding StateBrush}" />
                                         <StackPanel Margin="14,12,14,12">
                                             <DockPanel>
                                                 <mc:MaBadge x:Name="StatePill" DockPanel.Dock="Left" Glyph="{Binding StateGlyph}" Content="{Binding StateLabel}"
@@ -1032,14 +938,14 @@
                                                        Visibility="{Binding Claims, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
 
                                             <!-- Its subagents, inside it. -->
-                                            <Border x:Name="SubagentPanel" Style="{StaticResource MaCard}" Background="{DynamicResource MaChrome}" Padding="10,8" Margin="0,10,0,0"
+                                            <Border x:Name="SubagentPanel" Style="{StaticResource MaInsetCard}"
                                                     Visibility="{Binding HasSubagents, Converter={StaticResource Visible}}">
                                                 <StackPanel>
                                                     <TextBlock Text="{Binding SubagentsHeader}" Style="{StaticResource MaSectionLabel}" Margin="0,0,0,6" />
-                                                    <ItemsControl ItemsSource="{Binding Subagents}" Focusable="False">
+                                                    <ItemsControl ItemsSource="{Binding Subagents}" Style="{StaticResource MaRowList}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate DataType="{x:Type vm:SubagentRowViewModel}">
-                                                                <Grid Margin="0,0,0,8">
+                                                                <Grid>
                                                                     <Grid.ColumnDefinitions>
                                                                         <ColumnDefinition Width="Auto" />
                                                                         <ColumnDefinition Width="*" />
@@ -1058,23 +964,6 @@
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>
-                                                </StackPanel>
-                                            </Border>
-                                        </StackPanel>
-                                    </DockPanel>
-                                    <!-- A move in flight (M.ORCH-T638): the card is locked under a translucent veil until its CLI lands on the new login. -->
-                                    <Grid x:Name="AgentMovingOverlay" Visibility="{Binding IsMoving, Converter={StaticResource Visible}}">
-                                        <Border Style="{StaticResource MaCard}" Margin="0" Padding="0" Opacity="0.82" />
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <mc:MaSpinner Width="20" Height="20" StrokeThickness="2" Margin="0,0,10,0" />
-                                            <TextBlock Text="{Binding MovingText}" FontWeight="SemiBold" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
-                                        </StackPanel>
-                                    </Grid>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
 
                     <!-- Tickets per user (M.ORCH-T668), below the person's open CLIs: the tickets assigned to them, then the unassigned
                          queue, each with who it's assigned to. An assigned ticket is dispatched only on its user's login. -->
@@ -1091,13 +980,30 @@
                         <ItemsControl x:Name="UnassignedTicketList" Style="{StaticResource MaRowList}" ItemsSource="{Binding UnassignedTickets}"
                                       ItemTemplate="{StaticResource UserTicketTemplate}" AutomationProperties.Name="{Binding UnassignedHeader}" />
                     </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                    </DockPanel>
+                                    <!-- A move in flight (M.ORCH-T638): the card is locked under a translucent veil until its CLI lands on the new login. -->
+                                    <Grid x:Name="AgentMovingOverlay" Visibility="{Binding IsMoving, Converter={StaticResource Visible}}">
+                                        <Border Style="{StaticResource MaVeil}" />
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <mc:MaSpinner Width="20" Height="20" StrokeThickness="2" Margin="0,0,10,0" />
+                                            <TextBlock Text="{Binding MovingText}" FontWeight="SemiBold" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+                                        </StackPanel>
+                                    </Grid>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </StackPanel>
             </ScrollViewer>
 
             <!-- Accounts view (M.ORCH-T603): one card per Claude login (the global ~/.claude one, then each per-CLI login under
                  ~/.claude-accounts), with who's signed in, its plan, its 5-hour and weekly use, the daemon's pace for it and every
                  live CLI on it. Signed in or not is a word and a glyph as well as a colour (WCAG 1.4.1). -->
-            <ScrollViewer x:Name="AccountsBody" Grid.ColumnSpan="2" Style="{StaticResource BodyScroll}"
+            <ScrollViewer x:Name="AccountsBody" Grid.ColumnSpan="2" Style="{StaticResource MaBodyScroll}"
                           Visibility="{Binding IsAccountsView, Converter={StaticResource Visible}}">
                 <StackPanel>
                     <!-- The view's toolbar: Add account and Sign in all (M.ORCH-T604). Billing the Vault's API key moved on to the
@@ -1129,20 +1035,13 @@
                                AutomationProperties.LiveSetting="Polite"
                                Visibility="{Binding BillingDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
 
-                    <ItemsControl x:Name="LoginCardList" ItemsSource="{Binding LoginCardsInView}" Focusable="False" AutomationProperties.Name="Claude logins">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate><local:AlignedGrid MinItemWidth="420" Gap="12" RowGap="12" /></ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
+                    <ItemsControl x:Name="LoginCardList" ItemsSource="{Binding LoginCardsInView}" Style="{StaticResource MaTileList}" AutomationProperties.Name="Claude logins"
+                                  mc:MaList.MinItemWidth="420" mc:MaList.Spacing="12" mc:MaList.RowSpacing="12">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:LoginCardViewModel}">
-                                <Border x:Name="LoginCard" Padding="0">
-                                    <Border.Style>
-                                        <Style TargetType="Border" BasedOn="{StaticResource MaCard}">
-                                            <Setter Property="Margin" Value="0" />
-                                        </Style>
-                                    </Border.Style>
+                                <Border x:Name="LoginCard" Style="{StaticResource MaAccentCard}">
                                     <DockPanel>
-                                        <Border DockPanel.Dock="Left" Width="5" Background="{Binding StateBrush}" CornerRadius="5,0,0,5" />
+                                        <Border Style="{StaticResource MaAccentBar}" Background="{Binding StateBrush}" />
                                         <StackPanel Margin="14,12,14,12">
                                             <DockPanel>
                                                 <mc:MaBadge DockPanel.Dock="Right" Glyph="{Binding StateGlyph}" Content="{Binding SignedInText}"
@@ -1216,10 +1115,10 @@
                                                        Visibility="{Binding SignInHint, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
 
                                             <!-- The live CLIs on this login, one row each. -->
-                                            <Border x:Name="LoginCliPanel" Style="{StaticResource MaCard}" Background="{DynamicResource MaChrome}" Padding="10,8" Margin="0,10,0,0">
+                                            <Border x:Name="LoginCliPanel" Style="{StaticResource MaInsetCard}">
                                                 <StackPanel>
                                                     <TextBlock Text="{Binding ClisHeader}" Style="{StaticResource MaSectionLabel}" Margin="0,0,0,4" />
-                                                    <ItemsControl ItemsSource="{Binding Clis}" Focusable="False">
+                                                    <ItemsControl ItemsSource="{Binding Clis}" Style="{StaticResource MaList}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate DataType="{x:Type vm:LoginCliViewModel}">
                                                                 <Grid>
@@ -1236,7 +1135,7 @@
                                                                     <TextBlock Text="{Binding Repo}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                                                 </DockPanel>
                                                                 <Grid x:Name="LoginCliMovingOverlay" Visibility="{Binding IsMoving, Converter={StaticResource Visible}}">
-                                                                    <Border Style="{StaticResource MaCard}" Margin="0" Padding="0" CornerRadius="0" Opacity="0.82" />
+                                                                    <Border Style="{StaticResource MaVeil}" CornerRadius="0" />
                                                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                                                                         <mc:MaSpinner Width="14" Height="14" StrokeThickness="2" Margin="0,0,6,0" />
                                                                         <TextBlock Text="{Binding MovingText}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
@@ -1283,21 +1182,24 @@
                     <TextBlock Text="{Binding ReopenText}" TextWrapping="Wrap" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
                 </DockPanel>
 
-                <ListBox x:Name="TerminalTabs" DockPanel.Dock="Top" ItemsSource="{Binding Panes}" SelectedItem="{Binding SelectedPane}"
-                         Background="Transparent" BorderThickness="0" Margin="0,0,0,6" AutomationProperties.Name="Terminal panes"
-                         ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                    <ListBox.ItemsPanel>
-                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                    </ListBox.ItemsPanel>
-                    <ListBox.ItemTemplate>
+                <!-- One tab per pane (the library's MaTabItem, M.ORCH-T667): underlined in its login's colour, led by its login's
+                     badge (an MaTag in that colour), a bare strip whose selection shows that pane's terminal below. -->
+                <mc:MaTabControl x:Name="TerminalTabs" DockPanel.Dock="Top" ShowContent="False" ItemsSource="{Binding Panes}" SelectedItem="{Binding SelectedPane}"
+                                 Margin="0,0,0,6" AutomationProperties.Name="Terminal panes"
+                                 Visibility="{Binding HasPanes, Converter={StaticResource Visible}}">
+                    <mc:MaTabControl.ItemContainerStyle>
+                        <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
+                            <Setter Property="Accent" Value="{Binding TabBrush}" />
+                            <Setter Property="ToolTip" Value="{Binding Tooltip}" />
+                            <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+                        </Style>
+                    </mc:MaTabControl.ItemContainerStyle>
+                    <mc:MaTabControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:TerminalPaneViewModel}">
-                            <Border x:Name="TerminalTab" BorderBrush="{Binding TabBrush}" BorderThickness="0,0,0,3" Padding="8,4,4,4"
-                                    ToolTip="{Binding Tooltip}" AutomationProperties.Name="{Binding Title}">
-                                <Grid>
+                            <Grid x:Name="TerminalTab">
                                 <StackPanel Orientation="Horizontal" IsEnabled="{Binding IsUnlocked}">
-                                    <Border Background="{Binding TabBrush}" CornerRadius="3" Padding="4,0" Margin="0,0,6,0" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Badge}" Foreground="{Binding BadgeForeground}" FontWeight="SemiBold" />
-                                    </Border>
+                                    <mc:MaBadge x:Name="TerminalBadge" Style="{StaticResource MaTag}" Content="{Binding Badge}" Background="{Binding TabBrush}"
+                                                Foreground="{Binding BadgeForeground}" Margin="0,0,6,0" VerticalAlignment="Center" />
                                     <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
                                     <TextBlock Text="{Binding StateText}" Style="{StaticResource MaMutedText}" Margin="6,0,0,0" VerticalAlignment="Center" />
                                     <!-- Go to: its repo on this person's dashboard; Move to: its CLI to another signed-in login (M.ORCH-T622). -->
@@ -1312,23 +1214,22 @@
                                             AutomationProperties.Name="{Binding Request.Repo, StringFormat='Move the {0} CLI to another login'}"
                                             ToolTip="Move this CLI to another signed-in login at its next idle point, keeping its session; its pane moves to that person's Terminals" />
                                     <Button Style="{StaticResource MaButton}" Content="✕" Padding="6,0" Margin="8,0,0,0" FontSize="11"
-                                            Command="{Binding DataContext.CloseCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                            Command="{Binding DataContext.CloseCommand, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}"
                                             CommandParameter="{Binding}"
                                             AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
                                             ToolTip="Close this pane, ending its CLI" />
                                 </StackPanel>
                                 <Grid x:Name="PaneMovingOverlay" Visibility="{Binding IsMoving, Converter={StaticResource Visible}}">
-                                    <Border Style="{StaticResource MaCard}" Margin="0" Padding="0" CornerRadius="0" Opacity="0.82" />
+                                    <Border Style="{StaticResource MaVeil}" CornerRadius="0" />
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <mc:MaSpinner Width="14" Height="14" StrokeThickness="2" Margin="0,0,6,0" />
                                         <TextBlock Text="{Binding MovingText}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Grid>
-                                </Grid>
-                            </Border>
+                            </Grid>
                         </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+                    </mc:MaTabControl.ItemTemplate>
+                </mc:MaTabControl>
 
                 <!-- Only in the Terminals view (M.ORCH-T625): collapsed elsewhere so it can never draw over another view's heading. -->
                 <TextBlock x:Name="TerminalsEmptyHint" DockPanel.Dock="Top" TextWrapping="Wrap"
@@ -1356,7 +1257,7 @@
         </Grid>
 
         <!-- Status bar -->
-        <Border Grid.Row="6" BorderBrush="{DynamicResource MaChromeBorder}" BorderThickness="0,1,0,0" Padding="24,6">
+        <Border x:Name="StatusBar" Grid.Row="6" Style="{StaticResource MaStatusBar}">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Right" Style="{StaticResource MaMutedText}"
                            Text="F5 refresh · Ctrl+Tab next login · Ctrl+F search · Ctrl +/− zoom · Esc close" />
@@ -1366,7 +1267,7 @@
                 <TextBlock x:Name="Announcer" DockPanel.Dock="Left" Width="0" Height="0" Opacity="0" AutomationProperties.LiveSetting="Polite" />
                 <TextBlock Foreground="{DynamicResource MaBad}" Visibility="{Binding HasWarnings, Converter={StaticResource Visible}}">
                     <TextBlock.ToolTip>
-                        <ItemsControl ItemsSource="{Binding Warnings}" />
+                        <ItemsControl ItemsSource="{Binding Warnings}" Style="{StaticResource MaList}" />
                     </TextBlock.ToolTip>
                     <Run Text="{Binding WarningsText, Mode=OneWay}" />
                 </TextBlock>
@@ -1374,7 +1275,7 @@
         </Border>
 
         <!-- Covers every row until the first refresh lands (M.ORCH-T184). -->
-        <Border x:Name="Loader" Grid.RowSpan="7" Panel.ZIndex="100" Background="{DynamicResource MaChrome}"
+        <Border x:Name="Loader" Grid.RowSpan="7" Style="{StaticResource MaCover}"
                 Visibility="{Binding IsLoading, Converter={StaticResource Visible}}"
                 AutomationProperties.Name="Loading the dashboard" AutomationProperties.LiveSetting="Polite">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">

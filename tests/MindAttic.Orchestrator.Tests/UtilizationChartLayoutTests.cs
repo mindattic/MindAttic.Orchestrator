@@ -143,7 +143,7 @@ public sealed class UtilizationChartLayoutTests
         var header = card.Parent!;
         Assert.That(header.Name, Is.EqualTo(p + "StackPanel"));
         var siblings = header.Elements().ToList();
-        Assert.That(siblings.IndexOf(card), Is.GreaterThan(siblings.FindIndex(e => e.Name.LocalName == "AlignedGrid")), "it sits under the tiles");
+        Assert.That(siblings.IndexOf(card), Is.GreaterThan(siblings.FindIndex(e => e.Name.LocalName == "MaTileGrid")), "it sits under the tiles");
         Assert.That(card.Attribute("Width"), Is.Null, "no fixed width: it stretches across the window");
         Assert.That(chart.Attribute("Width"), Is.Null);
         Assert.That((string?)chart.Attribute("Data"), Is.EqualTo("{Binding Utilization, Converter={x:Static local:UtilizationChartData.Converter}}"));

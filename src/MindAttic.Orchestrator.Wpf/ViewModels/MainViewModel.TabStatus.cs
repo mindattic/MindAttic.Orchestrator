@@ -1,4 +1,5 @@
 using System.Windows.Media;
+using MindAttic.Components.Wpf.Controls;
 using MindAttic.Orchestrator.Billing;
 using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Sessions;
@@ -41,6 +42,17 @@ public sealed partial class MainViewModel
 
     /// <summary>The light's word: "Usable", "Signed out", "At its weekly stop line", "API key billing".</summary>
     public string TabStatusWord => TabStatus.Word;
+
+    /// <summary>The light as the library's status, for the tab's MaTabItem.Status (M.ORCH-T667): MaGood, MaBad, MaWarn or MaOther.</summary>
+    public MaStatus TabLightStatus => StatusOf(TabLight);
+
+    internal static MaStatus StatusOf(TabLight light) => light switch
+    {
+        TabLight.Good => MaStatus.Good,
+        TabLight.Bad => MaStatus.Bad,
+        TabLight.Warning => MaStatus.Warning,
+        _ => MaStatus.Other,
+    };
 
     /// <summary>The light in the theme's colour.</summary>
     public Brush TabLightBrush => LightBrush(TabLight);
@@ -129,7 +141,7 @@ public sealed partial class MainViewModel
     /// <summary>Raises everything the tab strip shows for this tab.</summary>
     private void RaiseTabStatus()
     {
-        foreach (var name in new[] { nameof(TabLight), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(TabTip),
+        foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(TabTip),
                                      nameof(ApiKeyClis), nameof(ApiKeyCostText) })
             Raise(name);
     }

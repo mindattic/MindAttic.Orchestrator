@@ -32,8 +32,8 @@ public sealed class LibraryControlsTests
     [Test]
     public void Every_dashboard_button_uses_a_library_button_style()
     {
-        // RepoTile, App.xaml's one button style, is based on MaTileButton.
-        string[] libraryBased = ["MaToolButton", "MaTextButton", "MaButton", "MaPrimaryButton", "MaTileButton", "MaStatCard", "MaSmallStat", "RepoTile"];
+        // The repo tile is the library's MaAccentTile, not a Button (M.ORCH-T667); every Button takes a library style itself.
+        string[] libraryBased = ["MaToolButton", "MaTextButton", "MaButton", "MaPrimaryButton", "MaTileButton", "MaStatCard", "MaSmallStat"];
 
         bool Styled(XElement button)
         {
@@ -56,16 +56,17 @@ public sealed class LibraryControlsTests
             var colours = root.Descendants().Attributes().Where(a => Regex.IsMatch(a.Value, "^#[0-9A-Fa-f]{6,8}$"));
             Assert.That(colours.Select(a => $"{a.Parent!.Name.LocalName}.{a.Name}={a.Value}"), Is.Empty);
         }
-        Assert.That((string?)Named(Window(), "DetailPane").Attribute("Background"), Is.EqualTo("{DynamicResource MaChrome}"));
+        Assert.That((string?)Named(Window(), "DetailPane").Attribute("Style"), Is.EqualTo("{StaticResource MaSidePane}"), "MaChrome with its left rule");
     }
 
     [Test]
-    public void App_xaml_keeps_only_the_repo_tile_of_its_own()
+    public void App_xaml_keeps_no_style_of_its_own()
     {
         var keys = App().Descendants().Select(e => (string?)e.Attribute(X + "Key")).OfType<string>().ToList();
 
         // No FieldBorder, MaTextBox or MaTextArea override: the library's MaFieldBorder outline is 3:1 (M.COMP-T11).
-        Assert.That(keys, Is.EquivalentTo(new[] { "Visible", "RepoTile" }));
+        // The repo tile is the library's MaAccentTile now (M.ORCH-T667).
+        Assert.That(keys, Is.EquivalentTo(new[] { "Visible" }));
 
         // The old copies are gone, and nothing refers to them.
         var window = File.ReadAllText(Wpf("MainWindow.xaml"));
@@ -206,19 +207,20 @@ public sealed class LibraryControlsTests
     {
         var window = Window();
 
-        // The agent card is MaCard with only its margin dropped: the AlignedGrid owns the gaps (DashboardAlignmentTests).
-        var card = Named(window, "AgentCard");
-        var style = card.Element(P + "Border.Style")?.Element(P + "Style");
-        Assert.That(style, Is.Not.Null, "the agent card takes a style based on MaCard");
-        Assert.That((string?)style!.Attribute("BasedOn"), Is.EqualTo("{StaticResource MaCard}"));
-        Assert.That(style.Elements(P + "Setter").Select(s => (string?)s.Attribute("Property")), Is.EqualTo(new[] { "Margin" }));
-        Assert.That(card.Attribute("Background") ?? card.Attribute("BorderBrush") ?? card.Attribute("CornerRadius"), Is.Null, "the card's look is MaCard's");
-
-        Assert.That((string?)Named(window, "SubagentPanel").Attribute("Style"), Is.EqualTo("{StaticResource MaCard}"));
+        // The agent and login cards are the library's MaAccentCard (MaCard with no margin, the list owns the gaps, and no padding,
+        // the MaAccentBar runs to its edge), their sub-lists MaInsetCards (M.ORCH-T667).
+        foreach (var name in new[] { "AgentCard", "LoginCard" })
+        {
+            var card = Named(window, name);
+            Assert.That((string?)card.Attribute("Style"), Is.EqualTo("{StaticResource MaAccentCard}"), name);
+            Assert.That(card.Attribute("Background") ?? card.Attribute("BorderBrush") ?? card.Attribute("CornerRadius") ?? card.Attribute("Padding"), Is.Null, "the card's look is the library's");
+            Assert.That(card.Descendants(P + "Border").Count(b => (string?)b.Attribute("Style") == "{StaticResource MaAccentBar}"), Is.EqualTo(1), name);
+        }
+        foreach (var name in new[] { "SubagentPanel", "LoginCliPanel" })
+            Assert.That((string?)Named(window, name).Attribute("Style"), Is.EqualTo("{StaticResource MaInsetCard}"), name);
 
         // A rounded surface drawn by hand is a card the library already has.
-        bool MaCardStyled(XElement b) => (string?)b.Attribute("Style") == "{StaticResource MaCard}"
-            || (string?)b.Element(P + "Border.Style")?.Element(P + "Style")?.Attribute("BasedOn") == "{StaticResource MaCard}";
+        bool MaCardStyled(XElement b) => ((string?)b.Attribute("Style"))?.StartsWith("{StaticResource Ma") == true;
         var handMade = window.Descendants(P + "Border")
             .Where(b => b.Attribute("CornerRadius") is not null && Regex.IsMatch((string?)b.Attribute("Background") ?? "", @"^\{(Static|Dynamic)Resource Ma"))
             .Where(b => !MaCardStyled(b));
@@ -266,14 +268,17 @@ public sealed class LibraryControlsTests
     {
         var window = Window();
 
-        // The person tab strip and the Dashboard/Terminals sub-tabs are MaPillChoice list boxes (M.ORCH-T631); the library's own
-        // tab strip replaces them once it ships (the follow-up ticket), and until then no other hand-made strip is added.
-        foreach (var name in new[] { "LoginTabStrip", "PageTabStrip" })
-            Assert.That((string?)Named(window, name).Attribute("Style"), Is.EqualTo("{StaticResource MaPillChoice}"), name);
+        // The person tab strip, the Dashboard/Terminals sub-tabs and the terminal pane tabs are the library's MaTabControl, a bare
+        // strip (ShowContent false) whose selection drives the window (M.ORCH-T667).
+        foreach (var name in new[] { "LoginTabStrip", "PageTabStrip", "TerminalTabs" })
+        {
+            Assert.That(Named(window, name).Name, Is.EqualTo(Mc + "MaTabControl"), name);
+            Assert.That((string?)Named(window, name).Attribute("ShowContent"), Is.EqualTo("False"), name);
+        }
 
         // The terminal pane tabs and their badge chips, the status light and the tab underline take their colours from
         // view-model brushes (themed in Palette), never from a literal.
-        foreach (var name in new[] { "TabStatusLight", "TerminalTab", "LoginTabItem" })
+        foreach (var name in new[] { "TerminalTab", "LoginTabItem" })
         {
             var brushes = Named(window, name).DescendantsAndSelf().Attributes()
                 .Where(a => a.Name.LocalName is "Background" or "Foreground" or "Fill" or "Stroke" or "BorderBrush");
@@ -307,7 +312,7 @@ public sealed class LibraryControlsTests
         Assert.That(named.Where(k => !keys.Contains(k)), Is.Empty);
         // The scroll bar the gutter makes room for is the theme's.
         var scrollBar = (System.Windows.Style)theme["MaScrollBar"];
-        Assert.That(scrollBar.Setters.OfType<System.Windows.Setter>().Single(s => s.Property.Name == "Width").Value, Is.EqualTo(MindAttic.Orchestrator.Wpf.Gutters.ScrollBarWidth));
+        Assert.That(scrollBar.Setters.OfType<System.Windows.Setter>().Single(s => s.Property.Name == "Width").Value, Is.EqualTo(MindAttic.Components.Wpf.Controls.MaScrollArea.ScrollBarWidth));
     }
 
     [Test]

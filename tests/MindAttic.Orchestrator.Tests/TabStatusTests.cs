@@ -43,6 +43,11 @@ public sealed class TabStatusTests
         Assert.That(MainViewModel.LightBrush(TabLight.Bad), Is.SameAs(Palette.Over));
         Assert.That(MainViewModel.LightBrush(TabLight.Warning), Is.SameAs(Palette.Waiting));
         Assert.That(MainViewModel.LightBrush(TabLight.Other), Is.SameAs(Palette.Other));
+        // The same light as the library's MaStatus, for the tab's MaTabItem (M.ORCH-T667).
+        Assert.That(MainViewModel.StatusOf(TabLight.Good), Is.EqualTo(MindAttic.Components.Wpf.Controls.MaStatus.Good));
+        Assert.That(MainViewModel.StatusOf(TabLight.Bad), Is.EqualTo(MindAttic.Components.Wpf.Controls.MaStatus.Bad));
+        Assert.That(MainViewModel.StatusOf(TabLight.Warning), Is.EqualTo(MindAttic.Components.Wpf.Controls.MaStatus.Warning));
+        Assert.That(MainViewModel.StatusOf(TabLight.Other), Is.EqualTo(MindAttic.Components.Wpf.Controls.MaStatus.Other));
         Assert.That(Palette.Other, Is.Not.Null);
     }
 
@@ -92,10 +97,14 @@ public sealed class TabStatusTests
         var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
 
         var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"PageTabStrip\"", StringComparison.Ordinal)];
-        Assert.That(strip, Does.Contain("{Binding TabLightBrush}").And.Contain("{Binding TabStatusWord}").And.Contain("{Binding TabTrailing}")
-            .And.Contain("AutomationProperties.Name=\"{Binding TabTip}\""));
-        Assert.That(strip.IndexOf("TabStatusLight", StringComparison.Ordinal), Is.LessThan(strip.IndexOf("{Binding TabTitle}", StringComparison.Ordinal)), "the light before the name");
-        Assert.That(strip.IndexOf("{Binding TabTitle}", StringComparison.Ordinal), Is.LessThan(strip.IndexOf("TabTrailingText", StringComparison.Ordinal)), "the week left on its far right");
+        // The library's MaTabItem draws the light before the name and the trailing text after it (M.ORCH-T667).
+        Assert.That(strip, Does.Contain("<mc:MaTabControl").And.Contain("TargetType=\"mc:MaTabItem\""));
+        Assert.That(strip, Does.Contain("Property=\"Status\" Value=\"{Binding TabLightStatus}\"")
+            .And.Contain("Property=\"StatusLabel\" Value=\"{Binding TabStatusWord}\"")
+            .And.Contain("Property=\"Trailing\" Value=\"{Binding TabTrailing}\"")
+            .And.Contain("Property=\"Accent\" Value=\"{Binding TabBrush}\"")
+            .And.Contain("Property=\"AutomationProperties.Name\" Value=\"{Binding TabTip}\"")
+            .And.Contain("{Binding TabTitle}"));
 
         var api = xaml[xaml.IndexOf("x:Name=\"ApiKeyBody\"", StringComparison.Ordinal)..];
         api = api[..api.IndexOf("</ScrollViewer>", StringComparison.Ordinal)];

@@ -38,6 +38,9 @@ public sealed class QueueRowViewModel : ObservableObject
     public string Date => item.Ticket.Date;
     public string Priority => item.Priority == 0 ? "" : item.Priority.ToString("+#;-#");
     public bool IsAssigned => item.IsAssigned;
+
+    /// <summary>An assigned row is dimmed (it's someone's already): the row card's opacity, so the view needs no style of its own.</summary>
+    public double RowOpacity => IsAssigned ? 0.6 : 1;
     public bool IsNext => proposal is not null;
     public string Reason => proposal?.Reason ?? "";
     public string Where => proposal?.UseWorktree == true || (proposal is null && item.NeedsWorktree) ? "in a worktree" : "in the repo";

@@ -182,7 +182,20 @@ public sealed partial class MainViewModel : ObservableObject
 
     public string Search { get => search; set { if (Set(ref search, value)) Regroup(); } }
     public bool ShowQuiet { get => showQuiet; set { if (Set(ref showQuiet, value)) Regroup(); } }
-    public Focus Focus { get => focus; private set => Set(ref focus, value); }
+    public Focus Focus
+    {
+        get => focus;
+        private set
+        {
+            if (!Set(ref focus, value)) return;
+            Raise(nameof(IsWaitingFocus)); Raise(nameof(IsWorkingFocus)); Raise(nameof(IsTicketsFocus));
+        }
+    }
+
+    /// <summary>Which stat tile filters the repos right now: the library's MaTile.IsSelected outlines it (M.ORCH-T667).</summary>
+    public bool IsWaitingFocus => Focus == Focus.Waiting;
+    public bool IsWorkingFocus => Focus == Focus.Working;
+    public bool IsTicketsFocus => Focus == Focus.Tickets;
 
     public const string SortByName = "Name", SortByTickets = "Open tickets";
     public IReadOnlyList<string> RepoSorts => RepoSortNames;
