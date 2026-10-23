@@ -107,6 +107,8 @@ public sealed partial class MainViewModel
     {
         if (IsSigningIn) return false;
         IsSigningIn = true;
+        // Every tab's light: the one signing in goes purple while it does (M.ORCH-T630).
+        SetSigningInEmail(email);
         CommandManager.InvalidateRequerySuggested();
         // Its own login screen (M.ORCH-T610): a private window of the account's own browser profile, prefilled with its email.
         AccountsMessage = $"Opening {email}'s own sign-in in a private browser window: sign in there as {email}…";
@@ -127,6 +129,7 @@ public sealed partial class MainViewModel
         finally
         {
             IsSigningIn = false;
+            SetSigningInEmail(null);
             CommandManager.InvalidateRequerySuggested();
             RefreshLogins();
             await RefreshLoginCardsAsync();

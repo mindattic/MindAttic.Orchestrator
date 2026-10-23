@@ -8,10 +8,21 @@ namespace MindAttic.Orchestrator.Sessions;
 /// (M.ORCH-T615), <see cref="SignedIn"/> false: it shows only its Sign in until it is.</summary>
 public sealed record LoginTab(string? Email, string Title, string ToolTip, string Color, bool SignedIn = true)
 {
-    public bool IsGlobal => Email is null;
+    /// <summary>The 'API key' tab's key: never an email, so never a login's.</summary>
+    public const string ApiKeyKey = "api-key";
 
-    /// <summary>The key a tab is kept by across refreshes: "" for the global login, else its email.</summary>
-    public string Key => Email ?? "";
+    /// <summary>The 'API key' tab (M.ORCH-T630): no login, but the Vault API key's billing, after every person's tab.</summary>
+    public static readonly LoginTab ApiKey = new(null, "API key",
+        "The Vault's API key: billing every CLI on it for emergencies, and back to Claude Team", "") { IsApiKey = true };
+
+    /// <summary>Whether this is the 'API key' tab rather than a login's.</summary>
+    public bool IsApiKey { get; init; }
+
+    public bool IsGlobal => Email is null && !IsApiKey;
+
+    /// <summary>The key a tab is kept by across refreshes: "" for the global login, <see cref="ApiKeyKey"/> for the 'API key'
+    /// tab, else its email.</summary>
+    public string Key => IsApiKey ? ApiKeyKey : Email ?? "";
 }
 
 /// <summary>
