@@ -100,6 +100,30 @@ public static class MemberRoster
         return result!;
     }
 
+    /// <summary>Writes claude.ai's <paramref name="profile"/> over its member's row (M.ORCH-T701): its name and role, when
+    /// claude.ai gave them, and active, since the member has signed in. Whether anything changed; false when the login isn't a
+    /// member (members are still added by hand).</summary>
+    /// <exception cref="ArgumentException">Not an email address.</exception>
+    public static bool Sync(OrchestratorDb db, ClaudeProfile profile, DateTime nowUtc)
+    {
+        var key = Key(profile.Email);
+        var changed = false;
+        db.WriteDataIf((connection, tx) =>
+        {
+            if (Rows(connection, tx).FirstOrDefault(m => m.Email == key) is not { } was) return false;
+            var next = was with
+            {
+                Name = string.IsNullOrWhiteSpace(profile.Name) ? was.Name : profile.Name.Trim(),
+                Role = Canonical(profile.Role, Roles) ?? was.Role,
+                Status = Statuses[0],
+            };
+            if (next == was) return false;
+            Upsert(connection, tx, next with { UpdatedUtc = nowUtc });
+            return changed = true;
+        });
+        return changed;
+    }
+
     /// <summary>Removes a member; false when <paramref name="email"/> wasn't one.</summary>
     /// <exception cref="ArgumentException">Not an email address.</exception>
     public static bool Remove(OrchestratorDb db, string email)
