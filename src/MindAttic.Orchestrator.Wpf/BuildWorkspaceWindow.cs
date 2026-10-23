@@ -34,7 +34,7 @@ public sealed class BuildWorkspaceWindow : Window
         Width = 720;
         Height = 480;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        MaWindow.SetDarkTitleBar(this, true);
+        MaWindow.SetThemedTitleBar(this, true);
         SetResourceReference(BackgroundProperty, "MaChrome");
         SetResourceReference(ForegroundProperty, "MaText");
         output.SetResourceReference(StyleProperty, "MaTextArea");

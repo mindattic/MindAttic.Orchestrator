@@ -48,6 +48,10 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += (_, args) => log.Fatal(args.ExceptionObject as Exception, "Dashboard crashed");
         TaskScheduler.UnobservedTaskException += (_, args) => log.Error(args.Exception, "Unobserved task exception");
 
+        // Dark unless light was chosen (M.ORCH-T678): the saved choice, before any window (the first-run prompts and the
+        // workspace builder too) opens. High contrast still wins over either.
+        ThemeChoice.Apply(Resources, new JsonStore());
+
         var installer = new Installer();
         if (e.Args.Contains("--uninstall", StringComparer.OrdinalIgnoreCase))
         {

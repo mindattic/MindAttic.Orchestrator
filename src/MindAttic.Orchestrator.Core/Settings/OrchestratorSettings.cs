@@ -239,6 +239,10 @@ public sealed record OrchestratorSettings
     [JsonIgnore]
     public bool EmbeddedTerminals => ParseTerminalHost(TerminalHost) == OrchestratorHost;
 
+    /// <summary>The dashboard's theme (M.ORCH-T678): "Light" or "Dark", as its sun/moon switch saved it. Null (never switched),
+    /// or anything else, is dark, the default; the dashboard reads it at start and writes it at each switch.</summary>
+    public string? Theme { get; init; }
+
     /// <summary>Minutes since a repo's own CLI last ended a turn that it still counts as worked by hand, so autopilot
     /// leaves the repo alone through the pauses between your prompts. 0 counts only a CLI that's mid-turn.</summary>
     public int AutopilotHandMinutes { get; init; } = 15;

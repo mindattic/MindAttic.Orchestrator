@@ -4,7 +4,7 @@
         xmlns:mc="clr-namespace:MindAttic.Components.Wpf.Controls;assembly=MindAttic.Components.Wpf"
         xmlns:vm="clr-namespace:MindAttic.Orchestrator.Wpf.ViewModels"
         xmlns:local="clr-namespace:MindAttic.Orchestrator.Wpf"
-        mc:MaWindow.DarkTitleBar="True"
+        mc:MaWindow.ThemedTitleBar="True"
         Title="MindAttic Orchestrator" Width="1480" Height="920" MinWidth="980" MinHeight="600"
         WindowStartupLocation="CenterScreen" Icon="/logo.ico"
         Background="{DynamicResource MaChrome}" Foreground="{DynamicResource MaText}"
@@ -86,8 +86,14 @@
              (MainWindow.xaml.cs sets its DataContext), and this strip keeps the global login's tab's, which holds every tab.
              Shown once there's a second login; Ctrl+Tab and Ctrl+Shift+Tab step through them. Its own row above the header,
              so the header, chart and view pills can fold away on a tab while the strip stays. -->
-        <mc:MaTabControl x:Name="LoginTabStrip" Grid.Row="0" ShowContent="False" ItemsSource="{Binding LoginTabs}" SelectedItem="{Binding SelectedTab}"
-                         Margin="24,14,24,0" AutomationProperties.Name="Claude logins, one dashboard tab each"
+        <!-- The window's upper-right corner (M.ORCH-T678): the library's sun/moon MaThemeToggle switches the whole dashboard
+             between dark (the default) and light at once, every view following, and the choice is saved in the orchestrator's
+             settings (ThemeChoice, wired in MainWindow.xaml.cs) so it holds across restarts. It shares the login strip's row and
+             stays when the strip is hidden. -->
+        <DockPanel x:Name="TopRow" Grid.Row="0" Margin="24,14,24,0">
+        <mc:MaThemeToggle x:Name="ThemeToggle" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="12,0,0,0" />
+        <mc:MaTabControl x:Name="LoginTabStrip" ShowContent="False" ItemsSource="{Binding LoginTabs}" SelectedItem="{Binding SelectedTab}"
+                         AutomationProperties.Name="Claude logins, one dashboard tab each"
                          Visibility="{Binding HasLoginTabs, Converter={StaticResource Visible}}">
             <!-- Status at a glance (M.ORCH-T630), all the library's MaTabItem (M.ORCH-T667): a status light before the name
                  (green signed in and usable, red signed out, purple any other state; the 'API key' tab's orange), its word in
@@ -116,6 +122,7 @@
                 </DataTemplate>
             </mc:MaTabControl.ItemTemplate>
         </mc:MaTabControl>
+        </DockPanel>
 
         <!-- Each person's two tabs (M.ORCH-T622): their Dashboard (the tiles, the chart, the view pills and the chosen view) and
              their Terminals (one terminal tab per CLI of theirs open in a pane here). On Terminals the header, the chart and the
