@@ -163,7 +163,17 @@ public sealed class JsonStore
 
     /// <summary>Where <paramref name="name"/> is read from: a volatile row from this machine's file, the rest from the store of the
     /// orchestrator's data (SQL Server once configured, M.ORCH-T658).</summary>
-    private DbConnection Connect(string name) => IsVolatile(name) ? Db.Open() : Db.OpenData();
+    private DbConnection Connect(string name)
+    {
+        if (IsVolatile(name)) return Db.Open();
+        // SQL Server down: read this machine's copy (written on every change, so at worst a minute behind) rather than take
+        // the defaults for the truth, which would put every budget, block and pace setting back to its default.
+        try { return Db.OpenData(); }
+        catch (Exception ex) when (Db.Server is not null && (ex is DbException or InvalidOperationException))
+        {
+            return Db.Open();
+        }
+    }
 
     /// <summary>One write transaction on <paramref name="name"/>'s store; a change to the settings, the assignments or a saved
     /// state row is copied into this machine's file for the hooks.</summary>
