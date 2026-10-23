@@ -76,6 +76,16 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
     /// task that says whether it came up. Tests swap it so no Windows Terminal tab opens.</summary>
     internal Func<string, string, string, string, bool, (string? Error, Task<bool>? CameUp)>? OpenTab { get; init; }
 
+    /// <summary>Seam: whether the owner has API billing on (M.ORCH-T706); null reads the billing mode in force.</summary>
+    internal Func<bool>? ApiBilling { get; init; }
+
+    private bool ApiBillingOn()
+    {
+        if (ApiBilling is { } seam) return seam();
+        try { return new Billing.BillingSwitch().Mode(out _) == Billing.BillingModes.Api; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
+    }
+
     /// <summary>Seam: the Auto login picker a Claude tab's login comes from (M.ORCH-T605); null uses the real per-CLI logins.</summary>
     internal LoginPicker? Logins { get; init; }
 
@@ -104,12 +114,18 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
     {
         var before = sessions.HostIds();
         var focus = Foreground.Current();
-        var startError = sessions.Start(title, directory, provider, prompt, ConfigDirFor(provider, login, () =>
+        var noLogin = false;
+        var configDir = ConfigDirFor(provider, login, () =>
         {
-            // One CLI per account (M.ORCH-T605): a Claude tab goes on a free per-CLI login, else the global one.
+            // One CLI per account (M.ORCH-T605): a Claude tab goes on a free per-CLI login. With none free it never lands on the
+            // global login, a member's own seat (M.ORCH-T747): the API key when the owner has API billing on (M.ORCH-T706), else it waits.
             var loaded = store.LoadSettings();
-            return (Logins ?? new LoginPicker { Allowances = () => Budget.WeeklyAllowances.Active(store, DateTime.UtcNow), Cutoffs = () => Budget.UsageCutoffs.Load(store) }).ForNewTab(provider, loaded.AutoLogin, DateTime.UtcNow, out _, loaded.WeeklyStopPercent)?.Directory;
-        }));
+            var dir = (Logins ?? new LoginPicker { Allowances = () => Budget.WeeklyAllowances.Active(store, DateTime.UtcNow), Cutoffs = () => Budget.UsageCutoffs.Load(store) }).ForNewTab(provider, loaded.AutoLogin, DateTime.UtcNow, out _, loaded.WeeklyStopPercent)?.Directory;
+            noLogin = dir is null && !ApiBillingOn();
+            return dir;
+        });
+        if (noLogin) return ("no login of its own has room and API billing is off: it waits for a login with room, or for API billing to be switched on (the API key is the only fallback, never a member's seat)", null);
+        var startError = sessions.Start(title, directory, provider, prompt, configDir);
         if (startError is not null) return (startError, null);
         _ = Foreground.RestoreAsync(focus, TimeSpan.FromSeconds(2));
         // Every tab is checked: one whose agent never starts would otherwise look like a free slot.

@@ -100,14 +100,14 @@ public sealed class LoginScopeTests
             new LoginLook("ryan", "RY", "#654321") { Alias = "Ryan" });
 
         Assert.That(tabs.Select(t => t.Email), Is.EqualTo(new[] { null, "amy@example.com", "jordan@example.com" }));
-        Assert.That(tabs.Select(t => t.Title), Is.EqualTo(new[] { "Ryan (fallback)", "AMY", "JORDAN" }));
+        Assert.That(tabs.Select(t => t.Title), Is.EqualTo(new[] { "Ryan", "AMY", "JORDAN" }));
         Assert.That(tabs[0].ToolTip, Does.StartWith("ryan@example.com"));
         Assert.That(tabs[2].ToolTip, Does.StartWith("jordan@example.com"));
         Assert.That((tabs[0].Color, tabs[1].Color), Is.EqualTo(("#654321", "#123456")));
         Assert.That(tabs.Select(t => t.Key), Is.EqualTo(new[] { "", "amy@example.com", "jordan@example.com" }));
 
         var unknown = LoginScope.Tabs(new Snapshot(Now, [], []), _ => throw new AssertionException("no per-CLI login"), new LoginLook("claude", "CL", "#000000"));
-        Assert.That(unknown.Single().Title, Is.EqualTo("Fallback login"), "only the global login, and nobody's email known for it");
+        Assert.That(unknown.Single().Title, Is.EqualTo("Global login"), "only the global login, and nobody's email known for it");
     }
 
     [Test]
@@ -119,7 +119,7 @@ public sealed class LoginScopeTests
         Billing.BillingStatus Status(string mode) => new(mode, null, "", []);
 
         var team = Workspace() with { Billing = Status(Billing.BillingModes.Team) };
-        Assert.That(LoginScope.Tabs(team, Look, globalLook)[0].Title, Is.EqualTo("Ryan (fallback)"));
+        Assert.That(LoginScope.Tabs(team, Look, globalLook)[0].Title, Is.EqualTo("Ryan"));
         Assert.That(LoginTab.ApiKeyTab(false).Title, Is.EqualTo("API key"));
 
         var key = Workspace() with { Billing = Status(Billing.BillingModes.Api) };
@@ -145,7 +145,7 @@ public sealed class LoginScopeTests
 
         Assert.That(tabs.Select(t => t.Email), Is.EqualTo(new[] { null, "amy@example.com", "casey@example.com", "jordan@example.com" }),
             "every member gets a tab; the global login's own account gets no second one; a row with no valid email gets none");
-        Assert.That(tabs.Select(t => t.Title), Is.EqualTo(new[] { "Ryan D (fallback)", "Amy R", "Case", "Jordan J" }), "by member name, else its login's alias");
+        Assert.That(tabs.Select(t => t.Title), Is.EqualTo(new[] { "Ryan D", "Amy R", "Case", "Jordan J" }), "by member name, else its login's alias");
         Assert.That(tabs.Select(t => t.SignedIn), Is.EqualTo(new[] { true, false, false, true }));
         Assert.That(tabs[1].ToolTip, Does.Contain("not signed in"));
 
@@ -156,7 +156,7 @@ public sealed class LoginScopeTests
         Assert.That(MemberRoster.TitleOf(M("lee@example.com", null), null), Is.EqualTo("lee"));
         // A signed-in login that isn't a member still has its tab, by its alias.
         var none = LoginScope.Tabs(Workspace(), email => new LoginLook("w", "XX", "#123456") { Alias = "JJ" }, new LoginLook("ryan", "RY", "#654321") { Alias = "ryan" }, []);
-        Assert.That(none.Select(t => t.Title), Is.EqualTo(new[] { "ryan (fallback)", "JJ" }));
+        Assert.That(none.Select(t => t.Title), Is.EqualTo(new[] { "ryan", "JJ" }));
     }
 
     [Test]

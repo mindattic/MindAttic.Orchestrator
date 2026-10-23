@@ -11,7 +11,7 @@ public sealed record MoveTarget(string? Email, string ConfigDir)
 {
     public bool IsGlobal => Email is null;
 
-    /// <summary>The menu's words for it: the email, or "Fallback login".</summary>
+    /// <summary>The menu's words for it: the email, or "Global login".</summary>
     public string Label => Email ?? AccountMove.GlobalLabel;
 }
 

@@ -15,7 +15,7 @@ public sealed record LoginRoom(string? Email, string? ConfigDir, double? RoomTok
 {
     public bool IsFallback => Email is null;
 
-    /// <summary>The login in words: its email, or "the fallback login".</summary>
+    /// <summary>The login in words: its email, or "the API key".</summary>
     public string Label => Email ?? "the fallback login";
 
     /// <summary>Whether <paramref name="item"/>'s estimate fits here: anything while unpaced, a ticket with no estimate while
@@ -70,7 +70,7 @@ public static class Redelegation
         if (here?.Weekly is { WeekPercent: { } w }) why += $" (its week at {w.ToString("0", CultureInfo.InvariantCulture)}%)";
         var who = from ?? "this login";
         return to.IsFallback
-            ? $"fell back to the fallback login (API key): {who} {why} and no signed-in login has room"
+            ? $"fell back to the API key: {who} {why} and no signed-in login has room"
             : $"redelegated from {who} to {to.Email}: {who} {why}";
     }
 

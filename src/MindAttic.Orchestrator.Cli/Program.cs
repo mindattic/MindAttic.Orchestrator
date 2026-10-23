@@ -249,6 +249,9 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
     /// <summary>The live CLIs' config folders the Auto login sees as taken; tests replace it (null reads the context gate).</summary>
     internal static Func<IEnumerable<string?>>? LiveOverride { get; set; }
 
+    /// <summary>Seam: whether API billing is on; null reads the billing mode in force.</summary>
+    internal static Func<bool>? BillingOverride { get; set; }
+
     public override int Execute(CommandContext context, Settings settings)
     {
         var options = OrchestratorOptions.Load();
@@ -265,6 +268,13 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
         // No --account: the Auto login (M.ORCH-T605) puts it on a per-CLI login no CLI runs on yet, else the global one.
         else if (new LoginPicker(dirs, LiveOverride) { Allowances = () => WeeklyAllowances.Active(Ctx.Store(), DateTime.UtcNow), Cutoffs = () => UsageCutoffs.Load(Ctx.Store()) }.ForNewTab(provider, Ctx.Settings.AutoLogin, DateTime.UtcNow, out _, Ctx.Settings.WeeklyStopPercent) is { } auto)
             (configDir, email) = (auto.Directory, auto.Email);
+        // No login of its own has room: never the global login, a member's own seat (M.ORCH-T747); the API key when billing is on (M.ORCH-T706), else it waits.
+        if (settings.Account is null && configDir is null && provider == "Claude"
+            && !(BillingOverride?.Invoke() ?? new MindAttic.Orchestrator.Billing.BillingSwitch().Mode(out _) == MindAttic.Orchestrator.Billing.BillingModes.Api))
+        {
+            AnsiConsole.MarkupLine("[red]No login of its own has room and API billing is off: not started on the global login (a member's own seat). Pass --account, or switch API billing on.[/]");
+            return 1;
+        }
         var error = new SessionControl(options).Start(repo.Name, repo.Path, provider, settings.Prompt, configDir);
         if (error is not null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(error)}[/]"); return 1; }
         AnsiConsole.MarkupLine($"Started [bold]{provider}[/] in {Markup.Escape(repo.Name)}" +
