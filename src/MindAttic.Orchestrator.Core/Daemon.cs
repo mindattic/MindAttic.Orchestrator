@@ -729,12 +729,20 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             }
             try
             {
-                // Staged under the database's write lock, so the commit never takes a write's half-applied pages (M.ORCH-T536).
-                ProcessResult add;
-                try { add = new Settings.OrchestratorDb(dbPath).HoldingWrites(() => Git(["add", "--", .. files])); }
+                // Staged and committed under the database's write lock, so the commit never takes a write's half-applied pages
+                // (M.ORCH-T536): the commit reads the working tree, which a write between the add and the commit would tear (M.ORCH-T719).
+                ProcessResult add, commit = default!;
+                try
+                {
+                    (add, commit) = new Settings.OrchestratorDb(dbPath).HoldingWrites(() =>
+                    {
+                        var added = Git(["add", "--", .. files]);
+                        if (added.ExitCode != 0 || added.TimedOut) return (added, default!);
+                        return (added, Git(["commit", "-q", "-m", OrchestratorDbSyncSubject, "--", .. files]));
+                    });
+                }
                 catch (System.Data.Common.DbException ex) { throw new InvalidOperationException("couldn't lock the database: " + ex.Message); }
                 if (add.ExitCode != 0 || add.TimedOut) throw new InvalidOperationException("git add failed: " + (add.Output + add.Error).Trim());
-                var commit = Git(["commit", "-q", "-m", OrchestratorDbSyncSubject, "--", .. files]);
                 if (commit.ExitCode != 0 || commit.TimedOut) throw new InvalidOperationException("git commit failed: " + (commit.Output + commit.Error).Trim());
             }
             catch (InvalidOperationException ex)
