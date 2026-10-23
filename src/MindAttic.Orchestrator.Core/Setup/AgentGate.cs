@@ -780,6 +780,21 @@ public static class AgentGate
             return str(ORCH_DIR / "orchestrator.db")
         ORCH_DB = orchestrator_db()
         _held = {}  # "long": a read already waited and found the database held; "at": when a mark's read last did
+        # One budget for every wait on the database in a hook run (M.ORCH-T653): a hook's several reads each waited out their
+        # own timeout while a write held it (25s in all). The waits that found it locked add up here; once DB_BUDGET seconds
+        # are spent, every access goes straight to the files without connecting.
+        DB_BUDGET = 3.0
+        _db_spent = [0.0]
+        def db_connect(timeout, **kw):
+            import sqlite3
+            left = DB_BUDGET - _db_spent[0]
+            if left <= 0:
+                raise sqlite3.OperationalError("database is locked (budget spent)")
+            return sqlite3.connect(ORCH_DB, timeout=max(0.05, min(timeout, left)), **kw)
+        def db_locked(e, started):
+            # Counts the time a use of the database waited when it found it locked.
+            if "locked" in str(e) and "budget spent" not in str(e):
+                _db_spent[0] += time.monotonic() - started
         def orch_rows(sql, args=(), timeout=5):
             # Rows from the orchestrator's database; None when it isn't there (a read never creates it) or couldn't be read
             # (held by a write past timeout seconds, or from before the table).
@@ -787,11 +802,16 @@ public static class AgentGate
                 import sqlite3
                 if not os.path.isfile(ORCH_DB):
                     return None
-                db = sqlite3.connect(ORCH_DB, timeout=(min(timeout, 1) if _held.get("long") else timeout))
+                started = time.monotonic()
                 try:
-                    return db.execute(sql, args).fetchall()
-                finally:
-                    db.close()
+                    db = db_connect(min(timeout, 1) if _held.get("long") else timeout)
+                    try:
+                        return db.execute(sql, args).fetchall()
+                    finally:
+                        db.close()
+                except Exception as e:
+                    db_locked(e, started)
+                    raise
             except Exception as e:
                 if "locked" in str(e):
                     _held["long"] = True
@@ -839,14 +859,18 @@ public static class AgentGate
             try:
                 import sqlite3
                 if os.path.isfile(ORCH_DB):
-                    db = sqlite3.connect(ORCH_DB, timeout=2)
+                    started = time.monotonic()
                     try:
-                        db.execute("INSERT INTO gate_events (at, decision, held, tool, percent) VALUES (?, ?, ?, ?, ?)",
-                                   (at, decision, float(held), tool, percent if isinstance(percent, (int, float)) else None))
-                        db.commit()
-                        return
-                    finally:
-                        db.close()
+                        db = db_connect(2)
+                        try:
+                            db.execute("INSERT INTO gate_events (at, decision, held, tool, percent) VALUES (?, ?, ?, ?, ?)",
+                                       (at, decision, float(held), tool, percent if isinstance(percent, (int, float)) else None))
+                            db.commit()
+                            return
+                        finally:
+                            db.close()
+                    except Exception as e:
+                        db_locked(e, started)
             except Exception:
                 pass
             try:
@@ -862,14 +886,16 @@ public static class AgentGate
                 import sqlite3
                 if not os.path.isfile(ORCH_DB):
                     return None
-                db = sqlite3.connect(ORCH_DB, timeout=timeout, isolation_level=None)
+                db = db_connect(timeout, isolation_level=None)
             except Exception:
                 return None
+            started = time.monotonic()
             try:
                 db.execute("BEGIN IMMEDIATE")
                 db.execute("SELECT 1 FROM " + table + " LIMIT 0")
                 return db
-            except Exception:
+            except Exception as e:
+                db_locked(e, started)
                 db.close()
                 return None
         def mark_file(path):
@@ -925,13 +951,15 @@ public static class AgentGate
             if not os.path.isfile(ORCH_DB):
                 return []
             def query(timeout):
+                started = time.monotonic()
                 try:
-                    db = sqlite3.connect(ORCH_DB, timeout=timeout)
+                    db = db_connect(timeout)
                     try:
                         return db.execute(sql, args).fetchall()
                     finally:
                         db.close()
                 except sqlite3.OperationalError as e:
+                    db_locked(e, started)
                     return [] if "no such table" in str(e) else None
                 except Exception:
                     return None
@@ -1203,14 +1231,16 @@ public static class AgentGate
                 import sqlite3
                 if not os.path.isfile(ORCH_DB):
                     return None
-                db = sqlite3.connect(ORCH_DB, timeout=timeout, isolation_level=None)
+                db = db_connect(timeout, isolation_level=None)
             except Exception:
                 return None
+            started = time.monotonic()
             try:
                 db.execute("BEGIN IMMEDIATE")
                 db.execute("SELECT 1 FROM subagent_slots, subagent_wants LIMIT 0")
                 return db
-            except Exception:
+            except Exception as e:
+                db_locked(e, started)
                 db.close()
                 return None
         def slot_done(db, commit=True):
