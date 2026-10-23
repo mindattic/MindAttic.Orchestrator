@@ -82,7 +82,7 @@ public sealed class SessionControl(OrchestratorOptions options)
     {
         var normalized = AccountDirs.Normalize(email);
         var look = Look(normalized is null ? null : Dirs.For(normalized).Directory);
-        var title = $"{look.Initials}: MindAttic.Launcher";
+        var title = LauncherTitle(look);
         var root = Directory.Exists(options.WorkspaceRoot) ? options.WorkspaceRoot : Path.GetDirectoryName(options.LauncherExe) ?? ".";
         string[] all =
         [
@@ -92,6 +92,47 @@ public sealed class SessionControl(OrchestratorOptions options)
         // wt splits its whole command line into subcommands on ';' unless it's escaped.
         return all.Select(a => a.Replace(";", @"\;"));
     }
+
+    /// <summary>The title of a login's Launcher tab, in Windows Terminal or as a pane: "RD: MindAttic.Launcher".</summary>
+    internal static string LauncherTitle(LoginLook look) => $"{look.Initials}: MindAttic.Launcher";
+
+    /// <summary>
+    /// A login's own terminal tab inside the dashboard (M.ORCH-T699): its pane running the Launcher's menu signed in to that
+    /// login (<c>--account &lt;email&gt;</c>, with its <c>CLAUDE_CONFIG_DIR</c> set inside the pane's command as well) at the
+    /// workspace root, left idle for you to drive: no repo, no prompt. <paramref name="email"/> null is the global login's,
+    /// unscoped (the variable the dashboard may carry cleared). Returns null with <paramref name="error"/> set when it can't.
+    /// </summary>
+    public PaneRequest? LauncherPaneRequest(string? email, out string? error)
+    {
+        error = null;
+        var normalized = AccountDirs.Normalize(email);
+        if (email is not null && normalized is null)
+        {
+            error = $"\"{email}\" isn't an email address: the Launcher's --account takes the account's whole email.";
+            return null;
+        }
+        if (!File.Exists(options.LauncherExe))
+        {
+            error = $"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/deploy.ps1).";
+            return null;
+        }
+        var configDir = normalized is null ? null : Dirs.For(normalized).Directory;
+        var look = Look(configDir);
+        var title = LauncherTitle(look);
+        var root = Directory.Exists(options.WorkspaceRoot) ? options.WorkspaceRoot : Path.GetDirectoryName(options.LauncherExe) ?? ".";
+        string[] launcher = [options.LauncherExe, .. normalized is null ? Array.Empty<string>() : ["--account", normalized]];
+        var run = string.Join(' ', launcher.Select(AccountDirs.Ps));
+        var command = configDir is null
+            ? PowerShell($"Remove-Item Env:{AccountDirs.EnvVar} -ErrorAction SilentlyContinue; & {run}; exit $LASTEXITCODE")
+            : PowerShell($"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; & {run}; exit $LASTEXITCODE");
+        return new PaneRequest(LauncherRepo, title, root, "Claude", command)
+        {
+            ConfigDir = configDir, Initials = look.Initials, TabColor = look.TabColor, IsLauncher = true,
+        };
+    }
+
+    /// <summary>What a login's Launcher pane is "for", where a repo pane names its repo.</summary>
+    public const string LauncherRepo = "MindAttic.Launcher";
 
     /// <summary>The look of a login's tabs (M.ORCH-T616); tests set their own rather than read the real ~/.claude.</summary>
     internal Func<string?, LoginLook> Look { get; init; } = LoginLook.ForConfigDir;

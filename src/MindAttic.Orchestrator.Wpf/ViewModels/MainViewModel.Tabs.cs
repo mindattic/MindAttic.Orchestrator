@@ -121,6 +121,27 @@ public sealed partial class MainViewModel
         }
         // A login's tab come or gone takes its panes with it (to the global login's when gone).
         if (before != loginTabs.Count) SyncTerminals();
+        OpenLaunchers();
+    }
+
+    /// <summary>The logins whose Launcher tab this dashboard has opened (or tried to): each once per run, so one you close
+    /// or exit stays closed until you ask for it again with Open Launcher.</summary>
+    private readonly HashSet<string> launchersOpened = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// One terminal tab per account (M.ORCH-T699): every signed-in login's tab gets a pane on its Terminals tab running the
+    /// Launcher already signed in to it, left idle for you to drive, opened quietly so it doesn't take the window. A login
+    /// that already has its Launcher tab keeps it rather than getting a second.
+    /// </summary>
+    private void OpenLaunchers()
+    {
+        if (!IsGlobalTab) return;
+        foreach (var t in loginTabs.ToList())
+        {
+            if (!t.IsTabSignedIn || !launchersOpened.Add(t.tab.Key)) continue;
+            if (control.LauncherPaneRequest(t.ScopeEmail, out var error) is { } request) error = AllTerminals.OpenLauncher(request, show: false);
+            if (error is not null) OrchestratorLog.For("Terminals").Warning("Couldn't open {Login:l}'s Launcher tab: {Error:l}", t.TabTitle, error);
+        }
     }
 
     // ── Each person's terminals (M.ORCH-T622) ─────────────────────────────────
@@ -194,7 +215,8 @@ public sealed partial class MainViewModel
 
     /// <summary>Open Launcher (M.ORCH-T615): the Launcher's menu as this tab's login (<c>MindAttic.Launcher --account &lt;email&gt;</c>),
     /// so every repo CLI started from it runs on that login and shows in this tab; on the global login's tab, the Launcher
-    /// unscoped. One login may own many CLIs.</summary>
+    /// unscoped. One login may own many CLIs. It brings up the login's own Launcher tab on its Terminals (M.ORCH-T699), the
+    /// one already open when there is one; Windows Terminal only when a pane can't be made.</summary>
     public ICommand OpenLauncherCommand => openLauncherCommand ??= new RelayCommand(OpenLauncher, () => tab.SignedIn && !tab.IsApiKey);
 
     /// <summary>Sign in, on a tab whose login isn't signed in yet: its own sign-in in a private browser window, then the tab
@@ -207,7 +229,18 @@ public sealed partial class MainViewModel
 
     private void OpenLauncher()
     {
-        var error = control.OpenLauncher(ScopeEmail);
+        // Its own terminal tab here (M.ORCH-T699), the one it has reused rather than a second; Windows Terminal only when a
+        // pane can't be made.
+        if (control.LauncherPaneRequest(ScopeEmail, out var error) is { } request && (error = AllTerminals.OpenLauncher(request, show: true)) is null)
+        {
+            Root.launchersOpened.Add(tab.Key);
+            StatusMessage = ScopeEmail is null
+                ? "The Launcher on the global login is on this tab's Terminals."
+                : $"The Launcher as {TabTitle} is on this tab's Terminals: every repo CLI started from it runs on {ScopeEmail} and shows in this tab.";
+            return;
+        }
+        if (error is not null) OrchestratorLog.For("Terminals").Warning("No Launcher pane for {Login:l}: {Error:l}; opening it in Windows Terminal", TabTitle, error);
+        error = control.OpenLauncher(ScopeEmail);
         StatusMessage = error ?? (ScopeEmail is null
             ? "Opened the Launcher on the global login."
             : $"Opened the Launcher as {TabTitle}: every repo CLI started from it runs on {ScopeEmail} and shows in this tab.");

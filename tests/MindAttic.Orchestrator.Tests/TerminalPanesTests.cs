@@ -93,6 +93,69 @@ public sealed class TerminalPanesTests
     }
 
     [Test]
+    public void A_login_s_Launcher_tab_runs_the_Launcher_menu_signed_in_to_it_idle()
+    {
+        // M.ORCH-T699: one terminal tab per account, the Launcher already on its login, no repo and no prompt.
+        var launcher = typeof(TerminalPanesTests).Assembly.Location; // any file that exists stands in for the Launcher
+        var accounts = temp.New();
+        var control = new SessionControl(new OrchestratorOptions { LauncherExe = launcher, WorkspaceRoot = accounts })
+        {
+            Look = d => LoginLook.For(d ?? @"C:\nowhere\global", d is null ? "jordan.reed@example.com" : "amy@example.com"),
+            Dirs = new AccountDirs(accounts),
+        };
+
+        var amy = control.LauncherPaneRequest("Amy@Example.com", out var error);
+        Assert.That(error, Is.Null);
+        var dir = Path.Combine(accounts, "amy@example.com");
+        Assert.That(amy!.IsLauncher, Is.True);
+        Assert.That(amy.ConfigDir, Is.EqualTo(dir));
+        Assert.That(TerminalPaneViewModel.LoginOf(amy.ConfigDir), Is.EqualTo("amy@example.com"), "it lands on Amy's Terminals tab");
+        Assert.That(amy.Title, Is.EqualTo("AM: MindAttic.Launcher"));
+        Assert.That(amy.Directory, Is.EqualTo(accounts), "at the workspace root, in no repo");
+        Assert.That(Script(amy.CommandLine), Is.EqualTo($"$env:CLAUDE_CONFIG_DIR = '{dir}'; & '{launcher}' '--account' 'amy@example.com'; exit $LASTEXITCODE"));
+
+        var global = control.LauncherPaneRequest(null, out error);
+        Assert.That(error, Is.Null);
+        Assert.That(global!.ConfigDir, Is.Null);
+        Assert.That(Script(global.CommandLine), Is.EqualTo($"Remove-Item Env:CLAUDE_CONFIG_DIR -ErrorAction SilentlyContinue; & '{launcher}'; exit $LASTEXITCODE"));
+
+        Assert.That(control.LauncherPaneRequest("not an email", out error), Is.Null);
+        Assert.That(error, Does.Contain("isn't an email"));
+        Assert.That(new SessionControl(new OrchestratorOptions { LauncherExe = @"C:\nope.exe" }).LauncherPaneRequest(null, out error), Is.Null);
+        Assert.That(error, Does.StartWith("Launcher not found"));
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void An_account_that_already_has_its_Launcher_tab_reuses_it_instead_of_opening_a_second()
+    {
+        var store = new JsonStore(temp.New());
+        var terminals = new TerminalsViewModel(Control(@"C:\nope.exe"), store);
+        var shown = new List<TerminalPaneViewModel>();
+        terminals.Opened += shown.Add;
+        PaneRequest Launcher(string? configDir) => new(SessionControl.LauncherRepo, "AM: MindAttic.Launcher", temp.New(), "Claude", "cmd.exe") { ConfigDir = configDir, IsLauncher = true };
+        const string amy = @"C:\a\.claude-accounts\amy@example.com";
+
+        Assert.That(terminals.OpenLauncher(Launcher(amy), show: false), Is.Null);
+        var pane = terminals.Panes.Single();
+        Assert.That(shown, Is.Empty, "opened quietly: it doesn't take the window");
+        Assert.That(terminals.SelectedPane, Is.Null);
+        Assert.That(PaneRecords.Load(store), Is.Empty, "a Launcher tab isn't offered again from last time");
+        Assert.That(terminals.LauncherOf("AMY@example.com"), Is.SameAs(pane));
+
+        Assert.That(terminals.OpenLauncher(Launcher(amy), show: false), Is.Null);
+        Assert.That(terminals.OpenLauncher(Launcher(amy), show: true), Is.Null);
+        Assert.That(terminals.Panes.Single(), Is.SameAs(pane), "reused, never a second");
+        Assert.That(shown, Is.EqualTo(new[] { pane }), "asked for, the one open is brought up");
+
+        Assert.That(terminals.OpenLauncher(Launcher(null), show: false), Is.Null);
+        Assert.That(terminals.Panes, Has.Count.EqualTo(2), "the global login has a Launcher tab of its own");
+        Assert.That(terminals.LauncherOf(null), Is.Not.SameAs(pane));
+
+        terminals.Close(pane);
+        Assert.That(terminals.LauncherOf("amy@example.com"), Is.Null);
+    }
+
+    [Test]
     public void On_Orchestrator_Start_opens_a_pane_in_the_dashboard_instead_of_Windows_Terminal()
     {
         var dir = temp.New();

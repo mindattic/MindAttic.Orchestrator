@@ -25,6 +25,10 @@ public sealed record PaneRequest(string Repo, string Title, string Directory, st
 
     /// <summary>The Claude conversation it resumes (<c>claude --resume</c>); null for a new one.</summary>
     public string? ResumeSession { get; init; }
+
+    /// <summary>A login's own Launcher tab (M.ORCH-T699): its menu, idle, rather than a repo's CLI. One per login: asked for
+    /// again, the one open is reused; and never recorded to be offered again, since each login gets its own anew.</summary>
+    public bool IsLauncher { get; init; }
 }
 
 /// <summary>A pane the dashboard has open, as it keeps it so the pane can be offered again once the dashboard (and every
