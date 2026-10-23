@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Serilog.Events;
 
 namespace MindAttic.Orchestrator.Budget;
 
@@ -76,7 +77,11 @@ public sealed class ClaudeMeterProbe
 
     /// <summary>Whether a fresh reading is needed: the last report (null when there is none) is
     /// <see cref="StaleAfter"/> old and tokens were spent after it, the latest of them within <see cref="PaceLedger.MinGap"/> (M.ORCH-T651: within StaleAfter, a login whose events come in bursts further apart than that, long turns, went unasked for an hour).</summary>
-    public static bool Due(DateTime? reportedAtUtc, IReadOnlyList<UsageEvent> events, DateTime nowUtc)
+    /// <param name="samples">The login's recorded readings. Also due while the running window's percent rose within
+    /// <see cref="ActiveFor"/> (M.ORCH-T659): the events are the transcripts of the sessions known to be on this login, and a
+    /// session that isn't (yet) mapped to it, or whose transcript isn't read yet, spends without showing there, so the
+    /// Oct 23 12:20-5:20 AM window went 25 minutes unseen with 1.3M spent while the probe, seeing no events, never asked.</param>
+    public static bool Due(DateTime? reportedAtUtc, IReadOnlyList<UsageEvent> events, DateTime nowUtc, IEnumerable<UsageSample>? samples = null)
     {
         if (reportedAtUtc is { } at && nowUtc - at < StaleAfter) return false;
         var since = reportedAtUtc ?? nowUtc - BudgetCalculator.BlockLength;
@@ -84,10 +89,24 @@ public sealed class ClaudeMeterProbe
         {
             var e = events[i];
             if (e.AtUtc > nowUtc) continue;
-            if (e.AtUtc <= since || nowUtc - e.AtUtc > PaceLedger.MinGap) return false;
+            if (e.AtUtc <= since || nowUtc - e.AtUtc > PaceLedger.MinGap) break;
             if (e.Usage.Fresh > 0) return true;
         }
-        return false;
+        return samples is not null && LastRise(samples, nowUtc) is { } rose && nowUtc - rose <= ActiveFor;
+    }
+
+    /// <summary>How long after the running window's percent last rose the login still counts as spending, whatever the
+    /// transcripts say (M.ORCH-T659). Bounded, so an idle login is asked a few times at most after its last reading.</summary>
+    public static readonly TimeSpan ActiveFor = TimeSpan.FromMinutes(30);
+
+    /// <summary>When the running window's percent first reached its highest recorded value; null with no reading of a
+    /// running window.</summary>
+    public static DateTime? LastRise(IEnumerable<UsageSample> samples, DateTime nowUtc)
+    {
+        var running = samples.Where(s => s.ResetUtc > nowUtc && s.AtUtc <= nowUtc).OrderBy(s => s.AtUtc).ToList();
+        if (running.Count == 0) return null;
+        var top = running.Max(s => s.Percent);
+        return running.First(s => s.Percent >= top).AtUtc;
     }
 
     /// <summary>
@@ -121,18 +140,51 @@ public sealed class ClaudeMeterProbe
     /// whether it started. The reading lands in <see cref="UsagePath"/> for the next refresh to pick up.</summary>
     /// <param name="force">Ask whether or not it's due (still one at a time, and not while backing off): the account
     /// just signed in to has no window confirmed yet.</param>
-    public bool Tick(DateTime? reportedAtUtc, IReadOnlyList<UsageEvent> events, DateTime nowUtc, bool force = false)
+    public bool Tick(DateTime? reportedAtUtc, IReadOnlyList<UsageEvent> events, DateTime nowUtc, bool force = false, IEnumerable<UsageSample>? samples = null)
     {
-        if (!force && !Due(reportedAtUtc, events, nowUtc)) return false;
+        if (!force && !Due(reportedAtUtc, events, nowUtc, samples))
+        {
+            IsDue = false;
+            return false;
+        }
+        IsDue = true;
         lock (gate)
         {
-            if (!Pending.IsCompleted || nowUtc < nextUtc) return false;
+            if (!Pending.IsCompleted || nowUtc < nextUtc)
+            {
+                Skipped = !Pending.IsCompleted ? "an ask is still in flight" : $"waiting until {nextUtc:HH:mm:ss}Z after the last ask";
+                return false;
+            }
+            Skipped = null;
             nextUtc = nowUtc + StaleAfter;
             var asked = generation;
+            LastAskUtc = nowUtc;
+            Asks++;
             Pending = Task.Run(() => AskAsync(nowUtc, asked));
         }
         return true;
     }
+
+    /// <summary>Whether the last <see cref="Tick"/> found a reading needed.</summary>
+    public bool IsDue { get; private set; }
+
+    /// <summary>Why the last due <see cref="Tick"/> didn't ask (an ask in flight, or waiting out the last one); null when it asked.</summary>
+    public string? Skipped { get; private set; }
+
+    /// <summary>When the last ask started, how many have, and how many failed in a row since the last reading.</summary>
+    public DateTime? LastAskUtc { get; private set; }
+    public int Asks { get; private set; }
+    public int FailuresInRow { get; private set; }
+
+    /// <summary>When the next ask may start (<see cref="Tick"/> won't before).</summary>
+    public DateTime NextAskUtc => nextUtc;
+
+    /// <summary>Names this probe in the log (the login's email); null for the global login's.</summary>
+    public string? Label { get; init; }
+
+    /// <summary>Where each ask and what came of it is logged (M.ORCH-T659: <see cref="LastResult"/> alone was in memory, so two
+    /// fixes for a blind window were guesses). The daemon sets it.</summary>
+    public static Action<LogEventLevel, string>? Say { get; set; }
 
     /// <summary>Drops the wait after the last ask, so the next forced <see cref="Tick"/> asks at once: a switch to another
     /// account is read within seconds, not after the old one's backoff.</summary>
@@ -146,6 +198,25 @@ public sealed class ClaudeMeterProbe
     }
 
     private async Task AskAsync(DateTime nowUtc, int asked)
+    {
+        try { await AskCoreAsync(nowUtc, asked).ConfigureAwait(false); }
+        catch (Exception ex)
+        {
+            // Whatever it was (a half-written credentials file, a number that isn't one), the ask is over and says why.
+            LastResult = $"the ask failed: {ex.GetType().Name}: {ex.Message}";
+            lock (gate)
+                if (generation == asked) nextUtc = nowUtc + Backoff;
+        }
+        FailuresInRow = LastResult?.StartsWith("read Claude's meter", StringComparison.Ordinal) == true ? 0 : FailuresInRow + 1;
+        try
+        {
+            Say?.Invoke(FailuresInRow == 0 ? LogEventLevel.Information : LogEventLevel.Warning,
+                $"meter probe{(Label is null ? "" : $" [{Label}]")}: ask #{Asks}: {LastResult}{(FailuresInRow > 1 ? $" ({FailuresInRow} in a row)" : "")}");
+        }
+        catch (Exception) { }
+    }
+
+    private async Task AskCoreAsync(DateTime nowUtc, int asked)
     {
         var account = Who();
         if (account == ClaudeAccount.ApiKey)
@@ -162,11 +233,21 @@ public sealed class ClaudeMeterProbe
             return;
         }
         string? body;
-        try { body = await Fetch(token, CancellationToken.None).ConfigureAwait(false); }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException) { body = null; }
+        string? why = null;
+        try
+        {
+            // Bounded here too, so an ask that never answers can't hold every later one off.
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            body = await Fetch(token, cts.Token).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
+        {
+            body = null;
+            why = ex is HttpRequestException { StatusCode: { } code } ? $"HTTP {(int)code}" : ex.GetType().Name;
+        }
         if (body is null || Parse(body) is not { } reading)
         {
-            Fail("Claude's usage endpoint gave no reading");
+            Fail($"Claude's usage endpoint gave no reading{(why is null ? "" : $" ({why})")}");
             return;
         }
         // The credentials and the config are both rewritten by a /login: a token read just before one is the old account's.
@@ -222,7 +303,8 @@ public sealed class ClaudeMeterProbe
         request.Headers.Add("anthropic-beta", "oauth-2025-04-20");
         request.Headers.UserAgent.ParseAdd("MindAttic.Orchestrator");
         using var response = await Http.SendAsync(request, ct).ConfigureAwait(false);
-        return response.IsSuccessStatusCode ? await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false) : null;
+        if (!response.IsSuccessStatusCode) throw new HttpRequestException($"the usage endpoint answered {(int)response.StatusCode}", null, response.StatusCode);
+        return await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>The endpoint's 5-hour and 7-day windows; null when it has no 5-hour one. Resets come back a fraction of a

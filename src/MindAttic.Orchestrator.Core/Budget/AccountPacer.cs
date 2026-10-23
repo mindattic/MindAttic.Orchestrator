@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
 
@@ -33,7 +34,7 @@ public sealed class AccountPacer
         public ContextCycler Marks { get; } = owner.ProjectsDir is { } p ? new(dir.MarksDirectory) { ProjectsDir = p } : new(dir.MarksDirectory);
         private ClaudeMeterProbe? meter;
         public ClaudeMeterProbe? Meter => owner.Probe
-            ? meter ??= new ClaudeMeterProbe { UsagePath = dir.UsagePath, CredentialsPath = dir.CredentialsPath, AccountKey = () => Account }
+            ? meter ??= new ClaudeMeterProbe { UsagePath = dir.UsagePath, CredentialsPath = dir.CredentialsPath, AccountKey = () => Account, Label = dir.Email }
             : null;
         public List<UsageSample>? Samples;
         /// <summary>Who's signed in to the folder, as of this tick.</summary>
@@ -71,7 +72,7 @@ public sealed class AccountPacer
         return result;
     }
 
-    private static AccountPace Pace(AccountDir dir, State state, List<TranscriptSession> sessions, OrchestratorSettings settings,
+    private AccountPace Pace(AccountDir dir, State state, List<TranscriptSession> sessions, OrchestratorSettings settings,
         DateTime now, DateTime startOfTodayUtc, double? typicalPerSession, bool write)
     {
         var events = sessions.SelectMany(s => s.Events).OrderBy(e => e.AtUtc).ToList();
@@ -99,9 +100,52 @@ public sealed class AccountPacer
             state.Writer.Write(budget, pace);
             state.Marks.PruneSubagentMarks();
             // No statusline on this login has reported lately while it spends (a CLI waiting on its subagents): ask Claude.
-            state.Meter?.Tick(ClaudeMeterProbe.SeenAt(reported, samples, now), events, now);
+            state.Meter?.Tick(ClaudeMeterProbe.SeenAt(reported, samples, now), events, now, samples: samples);
+            if (state.Meter is { } probe) Observe(dir, state, probe, sessions.Count, events, now);
         }
         return new AccountPace(dir.Email, dir.Directory, state.Account, budget, pace, utilization, active);
+    }
+
+    /// <summary>The <c>state</c> row (this machine's, left out of the dump) holding each login's meter probe: when it last asked
+    /// and what came of it, so a window that went unseen can be traced afterwards (M.ORCH-T659).</summary>
+    public const string ProbeStateName = "meter-probe";
+
+    private readonly Dictionary<string, JsonObject> probeRows = new(StringComparer.OrdinalIgnoreCase);
+    private string? probeRowsWritten;
+    private readonly Dictionary<string, DateTime> notAskedSince = new(StringComparer.OrdinalIgnoreCase);
+
+    private void Observe(AccountDir dir, State state, ClaudeMeterProbe probe, int sessions, List<UsageEvent> events, DateTime now)
+    {
+        // Due but not asked for a while says why, once, in the log: that's the gap the next blind window would be.
+        if (probe.IsDue && probe.Skipped is { } why)
+        {
+            if (!notAskedSince.TryGetValue(dir.Email, out var since)) notAskedSince[dir.Email] = since = now;
+            if (now - since >= TimeSpan.FromMinutes(10))
+            {
+                ClaudeMeterProbe.Say?.Invoke(Serilog.Events.LogEventLevel.Warning, $"meter probe [{dir.Email}]: due for {(now - since).TotalMinutes:0} min but not asking: {why}");
+                notAskedSince[dir.Email] = now;
+            }
+        }
+        else notAskedSince.Remove(dir.Email);
+        probeRows[dir.Email] = new JsonObject
+        {
+            ["asks"] = probe.Asks,
+            ["lastAskUtc"] = probe.LastAskUtc?.ToString("O"),
+            ["lastResult"] = probe.LastResult,
+            ["failuresInRow"] = probe.FailuresInRow,
+            ["due"] = probe.IsDue,
+            ["skipped"] = probe.Skipped,
+            ["sessions"] = sessions,
+            ["lastEventUtc"] = events.Count == 0 ? null : events[^1].AtUtc.ToString("O"),
+        };
+        var json = new JsonObject(probeRows.Select(r => KeyValuePair.Create(r.Key, (JsonNode?)r.Value.DeepClone()))).ToJsonString();
+        if (json == probeRowsWritten) return;
+        try
+        {
+            ReportedUsage.DefaultDb.SaveState(ProbeStateName, json);
+            probeRowsWritten = json;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
     }
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = false };

@@ -30,6 +30,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         Build();
 
         Say(LogEventLevel.Information, $"daemon started (pid {Environment.ProcessId}, every {interval.TotalSeconds:0}s, workspace {options.WorkspaceRoot})");
+        // Every meter ask and what came of it is on the record (M.ORCH-T659), to trace a window that went unseen.
+        ClaudeMeterProbe.Say = (level, line) => Say(level, line);
         var cycler = new ContextCycler();
         var autopilot = new Autopilot(store, cycler, lease) { WaitingPath = Autopilot.DefaultWaitingPath };
         var waker = new LimitWaker(cycler, store);

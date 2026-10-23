@@ -337,7 +337,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             // holds the old account's last reading until a CLI replies, minutes on, and the budget, dashboard and statusline
             // showed nothing of the new one's meter until then (M.ORCH-T486).
             // The week moved a point since the roster's reading: read the meter again for it (M.ORCH-T490).
-            probe.Tick(seen, events, now, force: switchedNow || weekMoved || lapsed is not null || signIn is { Switched: true } && !signIn.HasWindow(now));
+            probe.Tick(seen, events, now, force: switchedNow || weekMoved || lapsed is not null || signIn is { Switched: true } && !signIn.HasWindow(now),
+                samples: signIn is null ? samples ?? [] : (samples ?? []).Where(s => signIn.Contains(s.AtUtc)));
         }
         var reportedLimit = ReportedLimitFrom(reported, events, now, signIn);
         List<UsageSample> mine = signIn is null ? samples ?? [] : [.. (samples ?? []).Where(s => signIn.Contains(s.AtUtc))];

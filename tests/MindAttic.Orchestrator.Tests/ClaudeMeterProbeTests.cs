@@ -104,6 +104,55 @@ public sealed class ClaudeMeterProbeTests
     }
 
     [Test]
+    public void A_login_whose_percent_is_rising_is_asked_though_no_transcript_shows_its_spend()
+    {
+        // T659: the Oct 23 12:20-5:20 AM window went 25 minutes unseen with 1.3M spent: the probe asks only when the
+        // login's own sessions' transcripts show spend, and those can be missing (a session not yet mapped to the login).
+        var reset = Now.AddHours(3);
+        UsageSample S(int minutesAgo, double percent) => new(Now.AddMinutes(-minutesAgo), percent, reset, 0);
+        List<UsageSample> rising = [S(20, 60), S(10, 63), S(6, 64)];
+        Assert.That(ClaudeMeterProbe.Due(Now.AddMinutes(-6), [], Now, rising), Is.True, "rose 6 minutes ago, no events: asked");
+        Assert.That(ClaudeMeterProbe.Due(Now.AddMinutes(-6), [], Now), Is.False, "without the readings it can't tell (as before)");
+        Assert.That(ClaudeMeterProbe.Due(Now.AddMinutes(-2), [], Now, rising), Is.False, "a reading just now");
+        List<UsageSample> idle = [S(90, 60), S(60, 64), S(45, 64)];
+        Assert.That(ClaudeMeterProbe.Due(Now.AddMinutes(-45), [], Now, idle), Is.False, "flat for longer than ActiveFor: idle, not asked");
+        Assert.That(ClaudeMeterProbe.Due(Now.AddMinutes(-45), [], Now, [new UsageSample(Now.AddMinutes(-5), 70, Now.AddMinutes(-1), 0)]), Is.False, "a window that has reset");
+    }
+
+    [Test]
+    public async Task Every_ask_and_what_came_of_it_is_logged_with_the_http_status()
+    {
+        var lines = new List<string>();
+        ClaudeMeterProbe.Say = (_, line) => { lock (lines) lines.Add(line); };
+        try
+        {
+            var fail = true;
+            var probe = new ClaudeMeterProbe
+            {
+                UsagePath = Path.Combine(dir, "claude-usage.json"),
+                CredentialsPath = Credentials(DateTime.UtcNow.AddHours(1)),
+                Label = "amy@example.com",
+                Fetch = (_, _) => fail ? throw new System.Net.Http.HttpRequestException("limited", null, System.Net.HttpStatusCode.TooManyRequests) : Task.FromResult<string?>(Body),
+            };
+            Assert.That(probe.Tick(null, [E(Now.AddMinutes(-1), 500)], Now), Is.True);
+            await probe.Pending;
+            Assert.That(probe.FailuresInRow, Is.EqualTo(1));
+            Assert.That(probe.LastAskUtc, Is.EqualTo(Now));
+            Assert.That(probe.Tick(null, [E(Now.AddSeconds(10), 500)], Now.AddSeconds(30)), Is.False);
+            Assert.That(probe.IsDue && probe.Skipped is not null, Is.True, "due, and says why it didn't ask");
+
+            fail = false;
+            Assert.That(probe.Tick(null, [E(Now.AddMinutes(2), 500)], Now.AddMinutes(3)), Is.True);
+            await probe.Pending;
+            Assert.That(probe.FailuresInRow, Is.EqualTo(0));
+            Assert.That(lines, Has.Count.EqualTo(2));
+            Assert.That(lines[0], Does.Contain("[amy@example.com]").And.Contain("HTTP 429"));
+            Assert.That(lines[1], Does.Contain("read Claude's meter"));
+        }
+        finally { ClaudeMeterProbe.Say = null; }
+    }
+
+    [Test]
     public async Task A_stale_meter_while_subagents_spend_is_read_and_written_where_the_budget_reads_it()
     {
         string? token = null;
