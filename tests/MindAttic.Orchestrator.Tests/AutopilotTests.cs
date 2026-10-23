@@ -318,6 +318,23 @@ public sealed class AutopilotTests
         Assert.That(Autopilot.Next(Planned(), settings, store, ["A"], 6, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots).Handed, Has.Count.EqualTo(6));
     }
 
+    /// <summary>M.ORCH-T732: with no CLI resolved the fair-share block is skipped, so unstarted claims weren't counted and each
+    /// next --claim handed out the full allowance again.</summary>
+    [Test]
+    public void An_unresolved_cli_counts_unstarted_claims_against_the_allowance()
+    {
+        var snap = Snap(("A", [.. Enumerable.Range(1, 10).Select(i => T($"A-T{i}"))]));
+        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
+        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
+        var plan = Paced(snap, 5) with { Pace = Paced(snap, 5).Pace! with { SubagentAllowance = 4, Subagents = 0 } };
+        store.SaveAssignments([new Assignment("A-T1", "A", @"D:\WT\A\A-T1", "Claude", Now, true),
+            new Assignment("A-T2", "A", @"D:\WT\A\A-T2", "Claude", Now, true)]);
+        plan = Scheduler.Plan(snap, settings, store.LoadAssignments()) with { Pace = plan.Pace };
+
+        var next = Autopilot.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cliRunning: _ => true);
+        Assert.That(next.Handed, Has.Count.EqualTo(2), "4 places, 2 already claimed with no subagent on yet");
+    }
+
     /// <summary>M.ORCH-T674: three /allocate CLIs on three logins (the fallback, Honey's, Amy's) split one allowance, though each
     /// login has its own limits: this CLI was held to "4 running of 7 across 3 CLIs".</summary>
     [Test]
@@ -421,13 +438,13 @@ public sealed class AutopilotTests
 
         // Other logins' CLIs have 6 tickets busy workspace-wide: more than this login's own MaxConcurrentSessions.
         var snap = Snap(("A", [T("A-T1")]), ("B", [.. Enumerable.Range(1, 6).Select(i => T($"B-T{i}"))]));
-        store.SaveAssignments([.. Enumerable.Range(1, 6).Select(i => new Assignment($"B-T{i}", "B", @"D:\W\B", "Claude", Now, true))]);
+        store.SaveAssignments([.. Enumerable.Range(1, 6).Select(i => new Assignment($"B-T{i}", "B", @"D:\W\B", "Claude", Now, true) { Account = "other@example.com" })]);
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
         var plan = Scheduler.Plan(snap, settings, store.LoadAssignments()) with { Pace = pace };
         Assert.That(plan.Queue.Count(q => q.IsAssigned), Is.GreaterThanOrEqualTo(6));
         (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
 
-        var (handed, why) = Autopilot.Next(plan, settings, store, ["A"], null, claim: true, Now, Make, _ => "master");
+        var (handed, why) = Autopilot.Next(plan, settings, store, ["A"], null, claim: true, Now, Make, _ => "master", login: "fresh@example.com");
 
         Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T1" }), "the fresh login's own room, not the workspace's busy count");
         Assert.That(why, Is.Null);

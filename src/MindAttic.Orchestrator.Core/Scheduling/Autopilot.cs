@@ -561,7 +561,10 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         }
         // Without the pace's allowance the session setting caps it, less what's already being worked or claimed, as Tick
         // subtracts its running agents: with nothing subtracted, each call handed out the whole setting again (M.ORCH-T549).
-        var more = count ?? (!unthrottled && plan.Pace?.SubagentAllowance is { } allowed ? allowed - plan.Pace.Subagents
+        // With no CLI resolved the fair-share block below is skipped, so unstarted claims count here too (M.ORCH-T732): else
+        // each next --claim handed out the full allowance again.
+        var unstarted = cli is null && !unthrottled && plan.Pace?.SubagentAllowance is not null ? UnstartedClaims(plan, cliRunning, login) : 0;
+        var more = count ?? (!unthrottled && plan.Pace?.SubagentAllowance is { } allowed ? allowed - plan.Pace.Subagents - unstarted
             : settings.MaxConcurrentSessions - plan.Queue.Count(Busy));
         if (more <= 0) return ([], "the pace has no room for another subagent right now; run it again in a few minutes");
         // Its fair share, not every free place (M.ORCH-T495): another /allocate CLI with workable tickets of its own keeps its share.
@@ -660,6 +663,16 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             : claimedElsewhere > 0 ? "another CLI claimed them first; nothing else is ready"
             : closedSince > 0 ? "they were closed since the queue was read; nothing else is ready"
             : "couldn't make a worktree for any of them (see orchestrator queue)");
+    }
+
+    /// <summary>Every claim no subagent has shown up on yet, whether or not its CLI is known (a claim made where the CLI
+    /// couldn't be resolved has none); one whose CLI is known counts only while that CLI runs (M.ORCH-T732).</summary>
+    internal static int UnstartedClaims(SchedulePlan plan, Func<int, bool>? cliRunning, string? login)
+    {
+        var worked = plan.Worked.Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return plan.Queue.Count(q => q.IsAssigned && q.Assignment is { IsClaim: true } a && !worked.Contains(q.Id) &&
+            (a.Cli is not { } c || cliRunning?.Invoke(c) != false) &&
+            (login is null || a.Account is null || string.Equals(a.Account, login, StringComparison.OrdinalIgnoreCase))); // another login's claims use its own allowance
     }
 
     /// <summary>Each CLI's claims (by the CLI that made them, M.ORCH-T532) that no subagent is seen working yet
