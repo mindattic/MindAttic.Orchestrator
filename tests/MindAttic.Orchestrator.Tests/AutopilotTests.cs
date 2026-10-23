@@ -2,6 +2,7 @@ using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
+using MindAttic.Orchestrator.Setup;
 using MindAttic.Tickets.Log;
 using NUnit.Framework;
 
@@ -496,6 +497,28 @@ public sealed class AutopilotTests
             (repo, path, branch) => (true, path, ""), _ => "main");
         Assert.That(handed, Is.Empty);
         Assert.That(why, Does.Contain("1 wait on other open tickets").And.Not.Contain("no open fixes"));
+    }
+
+    [Test]
+    public void A_dry_queue_offers_a_bug_hunt_and_leaves_it_to_the_user()
+    {
+        // M.ORCH-T700: "Ask but don't do unless explicitly given permission."
+        var snap = Snap(("A", []));
+        var (handed, why) = Autopilot.Next(Paced(snap, 5), new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: true, Now,
+            (repo, path, branch) => (true, path, ""), _ => "main");
+        Assert.That(handed, Is.Empty);
+        Assert.That(why, Does.StartWith("no open fixes or approved tickets left there").And.Contain("Ask the user whether to run /bughunt on A")
+            .And.Contain("explicit yes").And.Contain("fix ticket"));
+        Assert.That(Autopilot.Dry(["*"]), Does.Contain("/bughunt on these repos"));
+
+        var held = Snap(("A", [new Ticket("A-T1", "2026-10-01", "fix", "open", "crash, blocked by A-T2", ""),
+                               new Ticket("A-T2", "2026-10-01", "feature", "open", "the API (not approved)", "")]));
+        var (_, notDry) = Autopilot.Next(Paced(held, 5), new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: false, Now,
+            (repo, path, branch) => (true, path, ""), _ => "main");
+        Assert.That(notDry, Does.Not.Contain("/bughunt"), "open tickets held back aren't a dry queue");
+
+        Assert.That(AgentGate.AllocateCommand, Does.Contain("ask the user in one line whether to run /bughunt").And.Contain("Never start a hunt unasked")
+            .And.Contain("explicit yes").And.Contain("--type fix"), "the /allocate command asks, and hunts only on a yes");
     }
 
     [Test]
