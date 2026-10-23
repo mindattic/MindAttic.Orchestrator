@@ -55,15 +55,15 @@ public sealed class UsageReportTests
         Assert.That(erin.IsGlobalLogin, Is.True);
 
         var cells = report.Cells();
-        Assert.That(report.Headers, Is.EqualTo(new[] { "Member", "5-hour used", "5h resets", "Week used", "Week left", "Left to 90% target", "Week resets", "Week resets in", "Reading", "Accurate?" }));
+        Assert.That(report.Headers, Is.EqualTo(new[] { "Member", "5-hour used", "5h resets", "Week used", "Week left", "Week resets", "Week resets in", "Reading", "Accurate?" }));
         Assert.That(cells[0][0], Is.EqualTo("Amy"));
-        Assert.That(cells[0][8], Is.EqualTo("3 min ago"));
-        Assert.That(cells[0][9], Is.EqualTo("Yes"));
-        Assert.That(cells[0][5], Is.EqualTo("20 pts"));
+        Assert.That(cells[0][7], Is.EqualTo("3 min ago"));
+        Assert.That(cells[0][8], Is.EqualTo("Yes"));
+        Assert.That(report.Rows[0].LeftToTarget, Is.EqualTo(20).Within(0.5), "the points left stay in the data and the notes, not a column");
         Assert.That(cells[1][0], Is.EqualTo("Erin (~/.claude login)"));
         Assert.That(cells[1][1], Is.EqualTo("unknown"));
-        Assert.That(cells[1][5], Is.EqualTo("over by 4"));
-        Assert.That(cells[1][9], Is.EqualTo("Stale"));
+        Assert.That(report.Headers, Has.None.StartsWith("Left to"));
+        Assert.That(cells[1][8], Is.EqualTo("Stale"));
     }
 
     [Test]
@@ -123,7 +123,7 @@ public sealed class UsageReportTests
         var report = Build([M("amy@x.com", "Amy")], logins: [new LoginReading("zed@x.com", "zed-key", "Zeddy", null)]);
         Assert.That(report.Rows.Select(r => (r.Name, r.IsMember)), Is.EqualTo(new[] { ("Amy", true), ("Zeddy", false) }));
         Assert.That(report.Cells()[1][0], Is.EqualTo("Zeddy (not a member)"));
-        Assert.That(report.Cells()[1][9], Is.EqualTo("No reading"));
+        Assert.That(report.Cells()[1][8], Is.EqualTo("No reading"));
     }
 
     [Test]
