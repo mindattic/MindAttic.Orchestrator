@@ -314,6 +314,7 @@ public sealed class PacerTests
                 var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "pace-gate.py")}\"")
                     { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
                 psi.Environment["USERPROFILE"] = dir; // no status file there: nothing to hold for
+                psi.Environment.Remove("CLAUDE_CONFIG_DIR");
                 using var p = System.Diagnostics.Process.Start(psi)!;
                 p.StandardInput.Write(JsonSerializer.Serialize(new { tool_name = tool, tool_input = new { command } }));
                 p.StandardInput.Close();
@@ -353,6 +354,7 @@ public sealed class PacerTests
                 var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "pace-gate.py")}\"")
                     { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
                 psi.Environment["USERPROFILE"] = dir;
+                psi.Environment.Remove("CLAUDE_CONFIG_DIR");
                 psi.Environment["MINDATTIC_WORKSPACE"] = ws;
                 using var p = System.Diagnostics.Process.Start(psi)!;
                 p.StandardInput.Write(JsonSerializer.Serialize(new { tool_name = tool, tool_input = input, cwd }));
