@@ -76,6 +76,16 @@ public sealed class SettingsViewModel : ObservableObject
     public string OutsideHeadroom { get => outsideHeadroom; set => Set(ref outsideHeadroom, value); }
     public string OutsideHeadroomBounds { get => outsideHeadroomBounds; set => Set(ref outsideHeadroomBounds, value); }
 
+    // Psst on outside use (M.ORCH-T702): the watched logins, comma-separated, and who's texted.
+    private string outsidePsstLogins = "", outsidePsstTo = "", loadedPsstLogins = "", loadedPsstTo = "";
+    /// <summary>The logins whose outside use is texted: emails, the parts before the @, or names, comma-separated; blank none.</summary>
+    public string OutsidePsstLogins { get => outsidePsstLogins; set => Set(ref outsidePsstLogins, value); }
+    /// <summary>Who's texted: a Psst contact or a US number; blank nobody.</summary>
+    public string OutsidePsstTo { get => outsidePsstTo; set => Set(ref outsidePsstTo, value); }
+
+    /// <summary>Psst's contact book, for checking the recipient on Save; tests point it at their own.</summary>
+    internal string? PsstContactsPath { get; init; }
+
     /// <summary>"Learned: Honey 88% · Ryan 92%" for each number; "Learned: none yet" until a login has.</summary>
     public string OutsideCeilingLearned { get; private set; } = "";
     public string OutsideQuietLearned { get; private set; } = "";
@@ -100,6 +110,8 @@ public sealed class SettingsViewModel : ObservableObject
         OutsideHeadroom = s.OutsideUseHeadroomPoints.ToString(CultureInfo.InvariantCulture);
         OutsideHeadroomBounds = Bounds(s.OutsideUseHeadroomMinPoints, s.OutsideUseHeadroomMaxPoints);
         loadedOutside = OutsideCurrent();
+        OutsidePsstLogins = loadedPsstLogins = string.Join(", ", s.OutsideUsePsstLogins);
+        OutsidePsstTo = loadedPsstTo = s.OutsideUsePsstTo ?? "";
         var logins = Sessions.OutsideUseWatch.Load(store);
         static string Say(string text) => "Learned: " + (text.Length == 0 ? "none yet" : text);
         OutsideCeilingLearned = Say(Sessions.OutsideUseWatch.Learned(logins, l => l.LearnedCeiling, "%"));
@@ -142,6 +154,17 @@ public sealed class SettingsViewModel : ObservableObject
             if (Number(OutsideMarginShare, was[6], 0, 100, "Noise margin share") is { } ms) s = s with { OutsideUseMarginSharePercent = ms };
             if (Number(OutsideHeadroom, was[7], 0, 50, "Headroom") is { } h) s = s with { OutsideUseHeadroomPoints = h };
             if (Range(OutsideHeadroomBounds, was[8], 0, 50, "Headroom bounds") is { } hb) s = s with { OutsideUseHeadroomMinPoints = hb.Min, OutsideUseHeadroomMaxPoints = hb.Max };
+            if (OutsidePsstLogins != loadedPsstLogins) s = s with { OutsideUsePsstLogins = OrchestratorSettings.ParseLogins(OutsidePsstLogins) };
+            if (OutsidePsstTo != loadedPsstTo)
+            {
+                var to = OutsidePsstTo.Trim();
+                if (to.Length > 0 && !Reminders.PsstClient.Addressable(to, PsstContactsPath))
+                {
+                    Error = $"Text to: \"{to}\" isn't a Psst contact or a US number (add it with psst contacts add <name> <phone>), or blank for nobody.";
+                    throw new FormatException();
+                }
+                s = s with { OutsideUsePsstTo = to };
+            }
             return s;
         }
         catch (FormatException) { return null; }

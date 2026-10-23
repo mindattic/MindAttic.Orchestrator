@@ -517,6 +517,8 @@ public sealed class AccountRebalancerTests
 
         var told = rebalancer.Tick(null, [], [], failover, Now).Single();
         Assert.That(told.Title, Is.EqualTo("Ryan of a@x.com is using Claude"));
+        Assert.That(told.Started, Is.EqualTo(new OutsideStart("a@x.com", "Ryan of a@x.com", "the meter rose 6 points in 25 min; the CLIs here spent 0 of them")),
+            "the start, for the Psst text (M.ORCH-T702)");
         Assert.That(told.Line, Does.Contain("the meter rose 6 points in 25 min; the CLIs here spent 0 of them")
             .And.Contain("Ryan of a@x.com's CLIs are held to 90% of this window").And.Contain("back to 98% about 20 minutes after"));
         Assert.That(sent, Is.Empty, "its CLIs stay on its login");
@@ -534,6 +536,7 @@ public sealed class AccountRebalancerTests
         // Twenty minutes with nothing new: the full target is back.
         var ended = rebalancer.Tick(null, [], [], failover, Now.AddMinutes(20)).Single();
         Assert.That(ended.Title, Is.EqualTo("Ryan of a@x.com stopped using Claude"));
+        Assert.That(ended.Started, Is.Null, "only a stretch's start is texted");
         Assert.That(ended.Line, Does.Contain("back to 98% of this window"));
         Assert.That(PacedAs(rebalancer).Settings.PaceTargetPercent, Is.EqualTo(98));
         Assert.That(sent, Is.Empty);

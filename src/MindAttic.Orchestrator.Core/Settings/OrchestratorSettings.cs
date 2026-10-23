@@ -256,6 +256,25 @@ public sealed record OrchestratorSettings
     public int OutsideUseHeadroomMinPoints { get; init; } = 1;
     public int OutsideUseHeadroomMaxPoints { get; init; } = 10;
 
+    /// <summary>Psst on outside use (M.ORCH-T702): the logins whose outside use is texted to <see cref="OutsideUsePsstTo"/>,
+    /// once at the start of each stretch (<see cref="Reminders.OutsideUsePsst"/>). Each is a login's email, the part before the
+    /// @, or its name, any case; empty texts nobody.</summary>
+    public List<string> OutsideUsePsstLogins { get; init; } = [.. DefaultOutsideUsePsstLogins];
+
+    /// <summary>Jordan's login, as the user first asked for it.</summary>
+    public static IReadOnlyList<string> DefaultOutsideUsePsstLogins { get; } = ["pdftransferjr@mindattic.com"];
+
+    /// <summary>Who the outside-use text goes to: a Psst contact ("ryan") or a US number; blank texts nobody (blank, not null:
+    /// a null isn't written, so it would read back as the default).</summary>
+    public string? OutsideUsePsstTo { get; init; } = DefaultOutsideUsePsstTo;
+
+    public const string DefaultOutsideUsePsstTo = "ryan";
+
+    /// <summary>A typed list of watched logins ("Jordan, amy@x.com") as saved; "none" or blank is none.</summary>
+    public static List<string> ParseLogins(string? text) =>
+        text is null || text.Trim().Equals("none", StringComparison.OrdinalIgnoreCase) ? []
+            : [.. text.Split([',', ';'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Distinct(StringComparer.OrdinalIgnoreCase)];
+
     /// <summary>A lower weekly stop for one login while its member uses Claude elsewhere (M.ORCH-T682): set per login by the
     /// pacer, never saved.</summary>
     [JsonIgnore]
