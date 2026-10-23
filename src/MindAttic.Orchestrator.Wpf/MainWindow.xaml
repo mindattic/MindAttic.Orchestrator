@@ -1320,18 +1320,31 @@
                 <TextBlock Text="Warn at (%)" Margin="0,10,0,4" />
                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
                          Text="{Binding WarnPercent, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Warn percent" />
-                <TextBlock Text="Weekly reserve (% of each account's week kept back)" Margin="0,10,0,4" />
+                <!-- Weekly pacing (M.ORCH-T680): the toggle and its numbers together, each saved in the database. -->
+                <TextBlock Text="WEEKLY PACING" Style="{StaticResource MaSectionLabel}" Margin="0,16,0,8" />
+                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding WeeklyAware}" HorizontalAlignment="Left"
+                              Content="Weekly-aware pacing" AutomationProperties.Name="Weekly-aware pacing" />
+                <TextBlock Text="Each login on its own: every 5-hour window still aims at the pace target, and under the take-in line nothing else changes. From there the week is taken in: each window's ceiling becomes the week's room to the weekly target spread over the windows left before its reset, so the week lands on the target as it resets; a ticket a login can't fit goes to another signed-in login with room, else the fallback login (the API key); a ticket assigned to a user waits for them instead. Every pace note says it's on and which limit governs."
+                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                <TextBlock Text="Weekly target (% of each account's week)" Margin="0,10,0,4" />
                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
-                         Text="{Binding WeeklyReserve, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Weekly reserve percent" />
-                <TextBlock Text="0 to 50. Every CLI on an account stops at 100 minus this of that account's week (95% at the default 5), so the CLIs never burn the whole week. Each login is held to its own line."
+                         Text="{Binding WeeklyTarget, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Weekly target percent" />
+                <TextBlock Text="50 to 100 (95 by default). Every CLI on an account stops here, on or off, and weekly-aware pacing lands the week on it. The rest is the weekly reserve, kept for your own questions in the Claude app and claude.ai: 95 keeps 5% of each week back."
                            Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding Pacing}" Margin="0,12,0,0" HorizontalAlignment="Left"
+                <TextBlock Text="Take-in line (% of the week)" Margin="0,10,0,4" />
+                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
+                         Text="{Binding WeeklyLine, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Weekly take-in line percent" />
+                <TextBlock Text="Below the target (75 by default). Under it only the 5-hour target paces; from it each window is capped by what's left of the week."
+                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                <TextBlock Text="Wind-down margin (points under the target)" Margin="0,10,0,4" />
+                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
+                         Text="{Binding WeeklyWindDown, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Weekly wind-down margin" />
+                <TextBlock Text="0 to 20 (3 by default, so 92% at a 95% target). Past it only what can finish starts, and the week stops at the target."
+                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                <TextBlock Text="5-HOUR PACING" Style="{StaticResource MaSectionLabel}" Margin="0,16,0,8" />
+                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding Pacing}" HorizontalAlignment="Left"
                               Content="Pace to the reset" />
                 <TextBlock Text="Caps new sessions so spend lands on the target as the 5-hour window resets, instead of hitting the wall and waiting. The week is shown, and paced only with weekly-aware pacing on. Off: new work holds at the warn line."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding WeeklyAware}" Margin="0,12,0,0" HorizontalAlignment="Left"
-                              Content="Weekly-aware pacing" AutomationProperties.Name="Weekly-aware pacing" />
-                <TextBlock Text="Each login on its own: every 5-hour window still aims at the pace target, and under 75% of the week nothing else changes. From 75% the week is taken in: each window's ceiling becomes the week's room to 98% spread over the windows left before its reset, so the week lands at 98% as it resets; a ticket a login can't fit goes to another signed-in login with room, else the fallback login (the API key); a ticket assigned to a user waits for them instead; the week winds down at 95% and stops at 98%, in place of the weekly reserve. Every pace note says it's on and which limit governs."
                            Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,0" />
                 <TextBlock Text="Pace target (% of the 5-hour limit by its reset)" Margin="0,10,0,4" />
                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"

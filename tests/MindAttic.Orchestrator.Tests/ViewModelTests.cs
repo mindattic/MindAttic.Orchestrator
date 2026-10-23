@@ -176,6 +176,36 @@ public sealed class ViewModelTests
     }
 
     [Test]
+    public void The_weekly_pacing_fields_round_trip_through_the_panel_and_are_validated()
+    {
+        // M.ORCH-T680: the toggle, the weekly target (saved as the reserve), the take-in line and the wind-down margin.
+        var store = new JsonStore(dir);
+        store.SaveSettings(store.LoadSettings());
+        var vm = new SettingsViewModel(store, () => { });
+        Assert.That((vm.WeeklyAware, vm.WeeklyTarget, vm.WeeklyLine, vm.WeeklyWindDown), Is.EqualTo((false, "95", "75", "3")), "the defaults");
+
+        (vm.WeeklyAware, vm.WeeklyTarget, vm.WeeklyLine, vm.WeeklyWindDown) = (true, "90", "70", "4");
+        vm.SaveCommand.Execute(null);
+        var saved = store.LoadSettings();
+        Assert.That((vm.Error, saved.WeeklyAwarePacing, saved.WeeklyReservePercent, saved.WeeklyAwareLinePercent, saved.WeeklyWindDownMargin),
+            Is.EqualTo(("", true, 10, 70, 4)));
+        Assert.That((saved.WeeklyAwareTarget, saved.WeeklyAwareWindDown), Is.EqualTo((90, 86)));
+        var again = new SettingsViewModel(store, () => { });
+        Assert.That((again.WeeklyAware, again.WeeklyTarget, again.WeeklyLine, again.WeeklyWindDown), Is.EqualTo((true, "90", "70", "4")));
+
+        again.WeeklyTarget = "65";
+        again.SaveCommand.Execute(null);
+        Assert.That(again.Error, Does.StartWith("Weekly take-in line"), "the saved 70% line isn't below a 65% target");
+        again.WeeklyTarget = "40";
+        again.SaveCommand.Execute(null);
+        Assert.That(again.Error, Does.StartWith("Weekly target"));
+        (again.WeeklyTarget, again.WeeklyWindDown) = ("90", "25");
+        again.SaveCommand.Execute(null);
+        Assert.That(again.Error, Does.StartWith("Weekly wind-down"));
+        Assert.That(store.LoadSettings().WeeklyReservePercent, Is.EqualTo(10), "nothing invalid was saved");
+    }
+
+    [Test]
     public void Saving_the_panel_writes_only_the_fields_edited_in_it_not_what_it_read_before_the_cli_changed_others()
     {
         // M.ORCH-T338: every field was written back as the panel read it, undoing a change made from the CLI meanwhile.

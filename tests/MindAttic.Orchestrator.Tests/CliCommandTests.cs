@@ -507,6 +507,22 @@ public sealed class CliCommandTests
     }
 
     [Test]
+    public void Settings_sets_weekly_pacings_target_line_and_wind_down_and_refuses_bad_ones()
+    {
+        // M.ORCH-T680: the weekly target is 100 minus the reserve; the line must sit below it; the margin is 0 to 20.
+        Assert.That(Run("settings", "--weekly-aware", "true", "--weekly-target", "90", "--weekly-line", "70", "--weekly-wind-down", "4"), Is.Zero);
+        var s = Store.LoadSettings();
+        Assert.That((s.WeeklyAwarePacing, s.WeeklyReservePercent, s.WeeklyAwareLinePercent, s.WeeklyWindDownMargin, s.WeeklyAwareWindDown),
+            Is.EqualTo((true, 10, 70, 4, 86)));
+        Assert.That(Run("settings", "--weekly-line", "90"), Is.EqualTo(1), "the line isn't below the target");
+        Assert.That(Run("settings", "--weekly-reserve", "35"), Is.EqualTo(1), "a 65% target would sit under the 70% line");
+        Assert.That(Run("settings", "--weekly-wind-down", "21"), Is.EqualTo(1));
+        Assert.That(Run("settings", "--weekly-target", "45"), Is.EqualTo(1));
+        var after = Store.LoadSettings();
+        Assert.That((after.WeeklyReservePercent, after.WeeklyAwareLinePercent, after.WeeklyWindDownMargin), Is.EqualTo((10, 70, 4)), "nothing refused was saved");
+    }
+
+    [Test]
     public void Settings_stores_a_known_provider_in_its_own_casing()
     {
         Assert.That(Run("settings", "--provider", "codex"), Is.Zero);

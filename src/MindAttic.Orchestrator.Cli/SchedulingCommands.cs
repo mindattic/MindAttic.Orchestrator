@@ -396,9 +396,21 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("The share of each account's week kept back, 0 to 50 (default 5): every CLI on an account stops at 100 minus this of that account's week (95% by default), each login on its own.")]
         public int? WeeklyReserve { get; init; }
 
+        [CommandOption("--weekly-target <PERCENT>")]
+        [Description("The weekly target, 50 to 100 (default 95): 100 minus the weekly reserve, so this sets --weekly-reserve to 100 minus it. Every CLI on an account stops there, and weekly-aware pacing lands each login's week on it.")]
+        public int? WeeklyTarget { get; init; }
+
         [CommandOption("--weekly-aware <ON>")]
-        [Description("true: weekly-aware pacing, per login: from 75% of its week each 5-hour window's ceiling is the week's room to 98% spread over the windows left before its reset, a ticket its login can't fit goes to another signed-in login with room (else the fallback login), and the week winds down at 95% and stops at 98% in place of the weekly reserve; false (default): only the 5-hour target paces.")]
+        [Description("true: weekly-aware pacing, per login: from its take-in line (--weekly-line, 75% by default) of its week a 5-hour window is held only when the week, spent as it's being spent, would reach the weekly target (100 minus --weekly-reserve, 95% by default) before its reset, and then only as far as needed, so the week lands on the target as it resets; scarce room goes to higher-priority tickets first, a ticket its login can't fit goes to another signed-in login with room (else the fallback login), and the week stops at the target (winding down --weekly-wind-down points under it only while there's no plan for the week); false (default): only the 5-hour target paces.")]
         public bool? WeeklyAware { get; init; }
+
+        [CommandOption("--weekly-line <PERCENT>")]
+        [Description("Weekly-aware pacing's take-in line: from this percent of a login's week (default 75) its 5-hour windows are capped by the week. Below the weekly target.")]
+        public int? WeeklyLine { get; init; }
+
+        [CommandOption("--weekly-wind-down <POINTS>")]
+        [Description("Weekly-aware pacing's wind-down margin, 0 to 20 (default 3): this many points under the weekly target, while there's no plan for the week, only what can finish starts.")]
+        public int? WeeklyWindDown { get; init; }
 
         [CommandOption("--hand-minutes <N>")]
         [Description("Kept for older setups; it has no effect now: /allocate hands tickets to the typing CLI's own subagents, each in its own worktree.")]
@@ -558,9 +570,32 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { WeeklyReservePercent = weeklyReserve };
             changed = true;
         }
+        if (settings.WeeklyTarget is not null && settings.WeeklyReserve is not null && settings.WeeklyTarget != 100 - settings.WeeklyReserve)
+        {
+            AnsiConsole.MarkupLine("[red]--weekly-target is 100 minus --weekly-reserve; give one of them.[/]");
+            return 1;
+        }
         if (settings.WeeklyAware is { } weeklyAware)
         {
             s = s with { WeeklyAwarePacing = weeklyAware };
+            changed = true;
+        }
+        if (settings.WeeklyTarget is not null || settings.WeeklyReserve is not null || settings.WeeklyLine is not null || settings.WeeklyWindDown is not null)
+        {
+            var weeklyTarget = settings.WeeklyTarget ?? s.WeeklyAwareTarget;
+            var weeklyLine = settings.WeeklyLine ?? s.WeeklyAwareLinePercent;
+            var weeklyMargin = settings.WeeklyWindDown ?? s.WeeklyWindDownMargin;
+            if (OrchestratorSettings.WeeklyPacingError(weeklyTarget, weeklyLine, weeklyMargin) is { } weeklyError)
+            {
+                AnsiConsole.MarkupLine($"[red]{Markup.Escape(weeklyError)}[/]");
+                return 1;
+            }
+            s = s with
+            {
+                WeeklyReservePercent = settings.WeeklyTarget is { } t ? 100 - t : s.WeeklyReservePercent,
+                WeeklyAwareLinePercent = weeklyLine,
+                WeeklyWindDownMargin = weeklyMargin,
+            };
             changed = true;
         }
         if (settings.AutopilotSkip is { } skip)
@@ -661,7 +696,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (s.EmbeddedTerminals ? " · CLIs open as panes inside the Orchestrator (Windows Terminal while no dashboard is open)" : " · CLIs open in Windows Terminal, a window per person"));
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (Claude's report, else learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (Claude's report, else learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display + " unless Claude reports another" : "as Claude reports, else learned, else rolling 7 days")} · warn at {s.WarnPercent}%" +
             (s.WeeklyAwarePacing
-                ? $" · weekly-aware pacing [green]on[/]: from {OrchestratorSettings.WeeklyAwareLinePercent}% of its week each login's 5-hour windows are held only as far as its week needs to land at {OrchestratorSettings.WeeklyAwareStopPercent}% as it resets (stops at {s.WeeklyStopPercent}%; winds down at {OrchestratorSettings.WeeklyAwareWindDownPercent}% only while there's no plan for the week), scarce room going to higher-priority tickets first, and a ticket a login can't fit goes to one that can, else the fallback login"
+                ? $" · weekly-aware pacing [green]on[/]: from {s.WeeklyAwareLine}% of its week each login's 5-hour windows are held only as far as its week needs to land at its {s.WeeklyAwareTarget}% target as it resets (weekly reserve {s.WeeklyReservePercent}%; stops at {s.WeeklyStopPercent}%; winds down at {s.WeeklyAwareWindDown}% only while there's no plan for the week), scarce room going to higher-priority tickets first, and a ticket a login can't fit goes to one that can, else the fallback login"
                 : $" · weekly reserve {s.WeeklyReservePercent}% (each account's CLIs stop at {s.WeeklyStopPercent}% of its week) · weekly-aware pacing off"));
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +
             (s.FrontLoaded ? $" · profile front-loaded (target × elapsed^{s.PaceExponent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}; no new subagent or ticket past {MindAttic.Orchestrator.Budget.Pacer.FrontLoadedWindDownShare:P0})" : " · profile linear") +

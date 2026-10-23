@@ -6,8 +6,8 @@ using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
 
-/// <summary>M.ORCH-T666: weekly-aware pacing, per login: from 75% of its week each 5-hour window is capped so the week lands at 98%
-/// as it resets, and a ticket a login can't fit goes to another login with room, else the fallback login (the API key).</summary>
+/// <summary>M.ORCH-T666: weekly-aware pacing, per login: from 75% of its week each 5-hour window is capped so the week lands on its
+/// target (100 minus the weekly reserve, 95% by default, M.ORCH-T680) as it resets, and a ticket a login can't fit goes to another login with room, else the fallback login (the API key).</summary>
 public sealed class WeeklyAwarePacingTests
 {
     private static readonly DateTime Now = new(2026, 10, 15, 6, 0, 0, DateTimeKind.Utc);
@@ -87,7 +87,7 @@ public sealed class WeeklyAwarePacingTests
         Assert.That(on.Note, Does.StartWith(off.Note).And.Contain("Weekly-aware: the week is at 60%, under its 75% line"), "the note says it's on");
     }
 
-    /// <summary>Where the week lands and stops, as the settings have it (98 now; M.ORCH-T680 makes it a setting).</summary>
+    /// <summary>Where the week lands and stops, as the settings have it (100 minus the weekly reserve: 95 by default, M.ORCH-T680).</summary>
     private static double Stop => On.WeeklyAwareTarget;
 
     [Test]
@@ -193,6 +193,54 @@ public sealed class WeeklyAwarePacingTests
         // Planned, the last window gets all the week has left and is paced to the weekly reset: it isn't wound down hours early.
         var planned = Pacer.Compute(b, 1, 100_000, On, Now, week: WeeklyPacing.Cap(b, 0.1, On, Now));
         Assert.That((planned.WindDown, planned.Stop, planned.ResetUtc), Is.EqualTo((false, false, (DateTime?)Now.AddHours(3))));
+    }
+
+    // M.ORCH-T680: the weekly target, take-in line and wind-down are settings, read wherever weekly-aware pacing applies.
+    [Test]
+    public void The_defaults_give_a_95_target_a_75_line_and_a_92_wind_down()
+    {
+        var d = new OrchestratorSettings();
+        Assert.That((d.WeeklyAwareTarget, d.WeeklyAwareLine, d.WeeklyAwareWindDown, d.WeeklyStopPercent), Is.EqualTo((95, 75, 92, 95)));
+        var cap = WeeklyPacing.Cap(Budget(fivePercent: 10, weekPercent: 90, weekResetHours: 20), 0.1, On, Now)!;
+        Assert.That((cap.StopPercent, cap.LinePercent, cap.WindDownPercent), Is.EqualTo((95.0, 75.0, 92.0)));
+        Assert.That(new WeeklyCap(90, null, null, null, 1, 98), Has.Property(nameof(WeeklyCap.StopPercent)).EqualTo(95.0),
+            "a cap built without settings takes the settings' defaults, not an old fixed line");
+    }
+
+    [Test]
+    public void A_reserve_of_10_gives_a_90_target_and_an_87_wind_down_and_moves_the_cap()
+    {
+        var ten = On with { WeeklyReservePercent = 10 };
+        Assert.That((ten.WeeklyAwareTarget, ten.WeeklyAwareWindDown, ten.WeeklyStopPercent), Is.EqualTo((90, 87, 90)));
+        // Week at 85%, 1 point of it this window's: (90 − 84) week points over 21 hours, this window's 5 of them.
+        var b = Budget(fivePercent: 10, weekPercent: 85, weekResetHours: 20);
+        var cap = WeeklyPacing.Cap(b, 0.1, ten, Now)!;
+        Assert.That(cap.CeilingPercent, Is.EqualTo((90 - 84) * 5.0 / 21 / 0.1).Within(1e-9));
+        Assert.That(cap.Note, Does.Contain("its room to 90%"));
+        var near = Budget(fivePercent: 5, weekPercent: 88, weekResetHours: 3);
+        var p = Pacer.Compute(near, 1, 100_000, ten, Now, week: WeeklyPacing.Cap(near, null, ten, Now));
+        Assert.That(p.WindDownHold, Does.StartWith("the weekly window is past 87% of its limit"), "no plan: it winds down 3 under 90");
+    }
+
+    [Test]
+    public void A_moved_line_and_margin_apply_and_a_line_at_the_target_is_held_under_it()
+    {
+        var s = On with { WeeklyAwareLinePercent = 85, WeeklyWindDownMargin = 5 };
+        Assert.That((s.WeeklyAwareLine, s.WeeklyAwareWindDown), Is.EqualTo((85, 90)));
+        var cap = WeeklyPacing.Cap(Budget(fivePercent: 10, weekPercent: 80, weekResetHours: 20), 0.1, s, Now)!;
+        Assert.That((cap.Watching, cap.Capped), Is.EqualTo((false, false)), "under the moved line nothing changes");
+        Assert.That((On with { WeeklyAwareLinePercent = 99 }).WeeklyAwareLine, Is.EqualTo(94), "a hand edit past the target is held under it");
+    }
+
+    [Test]
+    public void The_weekly_numbers_are_validated()
+    {
+        Assert.That(OrchestratorSettings.WeeklyPacingError(95, 75, 3), Is.Null);
+        Assert.That(OrchestratorSettings.WeeklyPacingError(49, 40, 3), Does.StartWith("Weekly target"));
+        Assert.That(OrchestratorSettings.WeeklyPacingError(101, 75, 3), Does.StartWith("Weekly target"));
+        Assert.That(OrchestratorSettings.WeeklyPacingError(80, 80, 3), Does.StartWith("Weekly take-in line"));
+        Assert.That(OrchestratorSettings.WeeklyPacingError(95, 75, 21), Does.StartWith("Weekly wind-down"));
+        Assert.That(OrchestratorSettings.WeeklyPacingError(95, 75, -1), Does.StartWith("Weekly wind-down"));
     }
 
     [Test]
@@ -310,8 +358,7 @@ public sealed class WeeklyAwarePacingTests
         plan = plan with { Queue = [.. plan.Queue.Select(q => q.Id == "A-T1" ? q with { Assignee = "alice@x.com" } : q)] };
 
         var (handed, _) = Autopilot.Next(plan, On, store, ["A"], null, claim: true, Now, Make, _ => "main", stillOpen: (_, _) => true,
-            pilotRunning: _ => false, logins: [new LoginRoom("roomy@x.com", @"C:cc
-oomy", 8_000_000, 40, true)], redelegate: Open,
+            pilotRunning: _ => false, logins: [new LoginRoom("roomy@x.com", @"C:\acc\roomy", 8_000_000, 40, true)], redelegate: Open,
             login: "alice@x.com", canFallBack: true);
 
         Assert.That(handed.Select(h => h.Item.Id), Does.Not.Contain("A-T1"), "a pinned ticket waits for its user");
@@ -320,8 +367,7 @@ oomy", 8_000_000, 40, true)], redelegate: Open,
         // "Redelegate now" drops the pin: then it's handed on like any unassigned ticket.
         var unpinned = plan with { Queue = [.. plan.Queue.Where(q => q.Id == "A-T1").Select(q => q with { Assignee = null })] };
         var (after, _) = Autopilot.Next(unpinned, On, store, ["A"], null, claim: true, Now, Make, _ => "main", stillOpen: (_, _) => true,
-            pilotRunning: _ => false, logins: [new LoginRoom("roomy@x.com", @"C:cc
-oomy", 8_000_000, 40, true)], redelegate: Open,
+            pilotRunning: _ => false, logins: [new LoginRoom("roomy@x.com", @"C:\acc\roomy", 8_000_000, 40, true)], redelegate: Open,
             login: "alice@x.com", canFallBack: true);
         Assert.That(after.Single().DelegatedTo?.Email, Is.EqualTo("roomy@x.com"));
     }

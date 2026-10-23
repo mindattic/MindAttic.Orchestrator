@@ -11,7 +11,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly JsonStore store;
     private readonly Action saved;
     private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "",
-        maxDelay = "", contextPercent = "", exemptCommands = "", paceProfile = OrchestratorSettings.LinearProfile, paceCurveK = "", weeklyReserve = "", terminalHost = WindowsTerminalChoice;
+        maxDelay = "", contextPercent = "", exemptCommands = "", paceProfile = OrchestratorSettings.LinearProfile, paceCurveK = "", weeklyTarget = "", weeklyLine = "", weeklyWindDown = "", terminalHost = WindowsTerminalChoice;
     private bool autopilot, pacing, throttleAgents, autoLogin, rebalanceLogins = true, weeklyAware;
 
     public SettingsViewModel(JsonStore store, Action saved)
@@ -32,8 +32,13 @@ public sealed class SettingsViewModel : ObservableObject
     public bool Autopilot { get => autopilot; set => Set(ref autopilot, value); }
     public bool Pacing { get => pacing; set => Set(ref pacing, value); }
     public string PaceTarget { get => paceTarget; set => Set(ref paceTarget, value); }
-    /// <summary>The share of each account's week kept back (M.ORCH-T609): its CLIs stop at 100 minus this.</summary>
-    public string WeeklyReserve { get => weeklyReserve; set => Set(ref weeklyReserve, value); }
+    /// <summary>The weekly target (M.ORCH-T680): 100 minus the weekly reserve (M.ORCH-T609), so it's saved as the reserve;
+    /// every CLI on an account stops there, and weekly-aware pacing lands the week on it. 50 to 100.</summary>
+    public string WeeklyTarget { get => weeklyTarget; set => Set(ref weeklyTarget, value); }
+    /// <summary>Weekly-aware pacing's take-in line (M.ORCH-T680): below the weekly target.</summary>
+    public string WeeklyLine { get => weeklyLine; set => Set(ref weeklyLine, value); }
+    /// <summary>Weekly-aware pacing's wind-down margin under the target (M.ORCH-T680), 0 to 20.</summary>
+    public string WeeklyWindDown { get => weeklyWindDown; set => Set(ref weeklyWindDown, value); }
     /// <summary>The pace curve (M.ORCH-T234): linear or front-loaded; switchable mid-window.</summary>
     // Ctrl+click deselects this pill too: Save stored linear in place of the profile you had (M.ORCH-T431).
     public string PaceProfile { get => paceProfile; set { if (value is not null) Set(ref paceProfile, value); } }
@@ -68,14 +73,15 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>Every field as the panel read it. The CLI and agents change settings too while it's open (budget, pace,
     /// settings --max-sessions, --exempt): a Save writes only the fields edited here, not what it read back then (M.ORCH-T338).</summary>
-    private Fields loaded = new("", "", "", "", "", "", false, "", false, "", "", "", "", "", true, "", true, WindowsTerminalChoice, false);
+    private Fields loaded = new("", "", "", "", "", "", false, "", false, "", "", "", "", "", true, "", true, WindowsTerminalChoice, false, "", "");
 
     private sealed record Fields(string Block, string Weekly, string Reset, string Warn, string Max, string Provider, bool Pacing, string Target,
-        bool Throttle, string Delay, string Context, string Exempt, string Profile, string CurveK, bool AutoLogin, string Reserve, bool Rebalance, string Host,
-        bool WeeklyAware);
+        bool Throttle, string Delay, string Context, string Exempt, string Profile, string CurveK, bool AutoLogin, string WeekTarget, bool Rebalance, string Host,
+        bool WeeklyAware, string Line, string WindDown);
 
     private Fields Current() => new(BlockBudget, WeeklyBudget, WeeklyReset, WarnPercent, MaxSessions, Provider, Pacing, PaceTarget,
-        ThrottleAgents, MaxDelay, ContextPercent, ExemptCommands, PaceProfile, PaceCurveK, AutoLogin, WeeklyReserve, RebalanceLogins, TerminalHost, WeeklyAware);
+        ThrottleAgents, MaxDelay, ContextPercent, ExemptCommands, PaceProfile, PaceCurveK, AutoLogin, WeeklyTarget, RebalanceLogins, TerminalHost, WeeklyAware,
+        WeeklyLine, WeeklyWindDown);
 
     public void Load()
     {
@@ -89,7 +95,9 @@ public sealed class SettingsViewModel : ObservableObject
         Autopilot = loadedAutopilot = s.Autopilot;
         Pacing = s.Pacing;
         PaceTarget = s.PaceTargetPercent.ToString(CultureInfo.InvariantCulture);
-        WeeklyReserve = s.WeeklyReservePercent.ToString(CultureInfo.InvariantCulture);
+        WeeklyTarget = s.WeeklyAwareTarget.ToString(CultureInfo.InvariantCulture);
+        WeeklyLine = s.WeeklyAwareLinePercent.ToString(CultureInfo.InvariantCulture);
+        WeeklyWindDown = s.WeeklyWindDownMargin.ToString(CultureInfo.InvariantCulture);
         PaceProfile = OrchestratorSettings.ParsePaceProfile(s.PaceProfile) ?? OrchestratorSettings.LinearProfile;
         PaceCurveK = s.PaceCurveK.ToString(CultureInfo.InvariantCulture);
         ThrottleAgents = s.ThrottleAgents;
@@ -116,7 +124,18 @@ public sealed class SettingsViewModel : ObservableObject
         if (!(int.TryParse(WarnPercent, out var warn) && warn is >= 1 and <= 100) && WarnPercent != was.Warn) { Error = "Warn at: 1 to 100."; return; }
         if (!(int.TryParse(MaxSessions, out var max) && max is >= 1 and <= 50) && MaxSessions != was.Max) { Error = "Max sessions: 1 to 50."; return; }
         if (!(int.TryParse(PaceTarget, out var target) && target is >= 1 and <= 100) && PaceTarget != was.Target) { Error = "Pace target: 1 to 100."; return; }
-        if (!(int.TryParse(WeeklyReserve, out var reserve) && reserve is >= 0 and <= OrchestratorSettings.MaxWeeklyReservePercent) && WeeklyReserve != was.Reserve) { Error = $"Weekly reserve: 0 to {OrchestratorSettings.MaxWeeklyReservePercent}."; return; }
+        // Weekly pacing's numbers are checked together (M.ORCH-T680): the line must sit below the target, so a changed target
+        // is checked against the line too, as saved or as typed; one not edited here is taken as saved.
+        var weeklyEdited = WeeklyTarget != was.WeekTarget || WeeklyLine != was.Line || WeeklyWindDown != was.WindDown;
+        int weekTarget = 0, weekLine = 0, weekMargin = 0;
+        if (weeklyEdited)
+        {
+            var onDisk = store.LoadSettings();
+            if (!WeeklyNumber(WeeklyTarget, was.WeekTarget, onDisk.WeeklyAwareTarget, out weekTarget)) { Error = $"Weekly target: {100 - OrchestratorSettings.MaxWeeklyReservePercent} to 100."; return; }
+            if (!WeeklyNumber(WeeklyLine, was.Line, onDisk.WeeklyAwareLinePercent, out weekLine)) { Error = "Weekly take-in line: a whole percent below the weekly target."; return; }
+            if (!WeeklyNumber(WeeklyWindDown, was.WindDown, onDisk.WeeklyWindDownMargin, out weekMargin)) { Error = $"Weekly wind-down margin: 0 to {OrchestratorSettings.MaxWeeklyWindDownMargin}."; return; }
+            if (OrchestratorSettings.WeeklyPacingError(weekTarget, weekLine, weekMargin) is { } weeklyError) { Error = weeklyError; return; }
+        }
         if (!(double.TryParse(PaceCurveK, NumberStyles.Float, CultureInfo.InvariantCulture, out var curveK) && curveK is >= 0.1 and <= 1) && PaceCurveK != was.CurveK) { Error = "Front-loaded curve exponent: 0.1 to 1."; return; }
         if (!(int.TryParse(MaxDelay, out var delay) && delay >= 0 && delay <= Setup.AgentGate.MaxHoldSeconds) && MaxDelay != was.Delay) { Error = $"Longest hold: 0 to {Setup.AgentGate.MaxHoldSeconds} seconds."; return; }
         if (!(int.TryParse(ContextPercent, out var cycleAt) && cycleAt is >= 10 and <= 95) && ContextPercent != was.Context) { Error = "Cycle context at: 10 to 95."; return; }
@@ -135,7 +154,9 @@ public sealed class SettingsViewModel : ObservableObject
                 Autopilot = Autopilot == loadedAutopilot ? s.Autopilot : Autopilot,
                 Pacing = Pacing == was.Pacing ? s.Pacing : Pacing,
                 PaceTargetPercent = PaceTarget == was.Target ? s.PaceTargetPercent : target,
-                WeeklyReservePercent = WeeklyReserve == was.Reserve ? s.WeeklyReservePercent : reserve,
+                WeeklyReservePercent = WeeklyTarget == was.WeekTarget ? s.WeeklyReservePercent : 100 - weekTarget,
+                WeeklyAwareLinePercent = WeeklyLine == was.Line ? s.WeeklyAwareLinePercent : weekLine,
+                WeeklyWindDownMargin = WeeklyWindDown == was.WindDown ? s.WeeklyWindDownMargin : weekMargin,
                 PaceProfile = PaceProfile == was.Profile ? s.PaceProfile : OrchestratorSettings.ParsePaceProfile(PaceProfile) ?? OrchestratorSettings.LinearProfile,
                 PaceCurveK = PaceCurveK == was.CurveK ? s.PaceCurveK : curveK,
                 ThrottleAgents = ThrottleAgents == was.Throttle ? s.ThrottleAgents : ThrottleAgents,
@@ -157,6 +178,13 @@ public sealed class SettingsViewModel : ObservableObject
         }
         Load();
         saved();
+    }
+
+    /// <summary>A weekly-pacing field as a number: what was typed, or the saved value when it wasn't edited here.</summary>
+    private static bool WeeklyNumber(string typed, string loaded, int saved, out int value)
+    {
+        if (typed == loaded) { value = saved; return true; }
+        return int.TryParse(typed, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
     }
 
     /// <summary>The short form (20M) when it reads back as exactly <paramref name="tokens"/>, else every digit: the field is

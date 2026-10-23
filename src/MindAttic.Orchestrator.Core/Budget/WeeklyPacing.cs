@@ -78,14 +78,18 @@ public static class WeeklyBurn
 /// <param name="TargetPercent">The 5-hour pace target the ceiling is held to at most.</param>
 public sealed record WeeklyCap(double? WeekPercent, DateTime? WeekResetUtc, double? Ratio, double? CeilingPercent, int WindowsLeft, double TargetPercent)
 {
+    /// <summary>The settings' defaults, for a cap built without settings (M.ORCH-T680): <see cref="WeeklyPacing.Cap"/> always sets
+    /// all three from the settings it's given.</summary>
+    private static readonly OrchestratorSettings Defaults = new();
+
     /// <summary>Where the week lands and stops (<see cref="OrchestratorSettings.WeeklyAwareTarget"/>), as the settings had it.</summary>
-    public double StopPercent { get; init; } = OrchestratorSettings.WeeklyAwareStopPercent;
+    public double StopPercent { get; init; } = Defaults.WeeklyAwareTarget;
 
     /// <summary>The line the week is taken in from (<see cref="OrchestratorSettings.WeeklyAwareLine"/>).</summary>
-    public double LinePercent { get; init; } = OrchestratorSettings.WeeklyAwareLinePercent;
+    public double LinePercent { get; init; } = Defaults.WeeklyAwareLine;
 
     /// <summary>Where the week winds down without a plan (<see cref="OrchestratorSettings.WeeklyAwareWindDown"/>).</summary>
-    public double WindDownPercent { get; init; } = OrchestratorSettings.WeeklyAwareWindDownPercent;
+    public double WindDownPercent { get; init; } = Defaults.WeeklyAwareWindDown;
 
     /// <summary>The week is at or past <see cref="LinePercent"/>: it's taken in.</summary>
     public bool Watching => WeekPercent >= LinePercent;

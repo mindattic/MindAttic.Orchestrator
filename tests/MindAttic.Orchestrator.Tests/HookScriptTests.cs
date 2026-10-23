@@ -468,6 +468,31 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void With_weekly_aware_pacing_on_the_gate_stops_the_week_at_its_target_from_the_reserve_not_a_fixed_line()
+    {
+        // M.ORCH-T680: weekly-aware pacing's target is 100 minus the weekly reserve; the gate used a fixed 98% with it on.
+        var settings = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator", "settings.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(settings)!);
+        File.WriteAllText(settings, JsonSerializer.Serialize(new { WorkspaceRoot = ws, WeeklyAwarePacing = true, WeeklyReservePercent = 10 }));
+        void Week(double percent) => File.WriteAllText(Path.Combine(Claude, "claude-usage.json"), JsonSerializer.Serialize(new
+        {
+            rate_limits = new
+            {
+                five_hour = new { used_percentage = 10, resets_at = new DateTimeOffset(DateTime.UtcNow.AddHours(2)).ToUnixTimeSeconds() },
+                seven_day = new { used_percentage = percent, resets_at = new DateTimeOffset(DateTime.UtcNow.AddDays(3)).ToUnixTimeSeconds() },
+            },
+            at = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+        }));
+        var read = new { tool_name = "Read", tool_input = new { file_path = "x" } };
+        Status(new { stop = false });
+        Week(89);
+        Assert.That(Gate(read).Took, Is.LessThan(TimeSpan.FromSeconds(10)), "under the 90% target it runs");
+        Week(91);
+        Assert.That(GateHeld(read, maxHold: 2).Output, Does.Contain("\"deny\"").And.Contain("91% of the weekly window used"),
+            "a 10% reserve stops the week at 90%, not 98%");
+    }
+
+    [Test]
     public void With_the_daemon_down_claudes_own_weekly_percent_at_the_line_stops_too()
     {
         // The week at 99% (its wall locks you out for days), the 5 hours at 50%, the daemon dead.
