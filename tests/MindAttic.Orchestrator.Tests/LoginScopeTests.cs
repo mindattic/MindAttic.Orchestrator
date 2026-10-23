@@ -111,19 +111,29 @@ public sealed class LoginScopeTests
     }
 
     [Test]
-    public void A_roster_account_not_signed_in_yet_still_gets_a_tab_that_only_signs_it_in()
+    public void Every_member_gets_a_tab_titled_by_its_name_and_one_not_signed_in_yet_a_tab_that_only_signs_it_in()
     {
-        // M.ORCH-T615: Amy's in the roster but not signed in here; Jordan's signed in; Ryan is the global login's own account.
-        var tabs = LoginScope.Tabs(Workspace(), email => new LoginLook("w", "XX", "#123456") { Alias = email[..email.IndexOf('@')] },
-            new LoginLook("ryan", "RY", "#654321") { Alias = "Ryan" }, ["Amy@Example.com", "jordan@example.com", "ryan@example.com", null, "not an email"]);
+        // M.ORCH-T615, M.ORCH-T670: Amy's a member but not signed in here; Jordan's a member signed in; Ryan is the global
+        // login's own account; Casey is a member with no name, whose login has an alias; Amy's alias is never used, her name is.
+        Member M(string email, string? name) => new() { Email = email, Name = name, Role = "admin", Tier = "premium" };
+        var tabs = LoginScope.Tabs(Workspace(), email => new LoginLook("w", "XX", "#123456") { Alias = email.StartsWith("casey", StringComparison.Ordinal) ? "Case" : email[..email.IndexOf('@')] },
+            new LoginLook("ryan", "RY", "#654321") { Alias = "ryan" },
+            [M("Amy@Example.com", "Amy R"), M("jordan@example.com", "Jordan J"), M("ryan@example.com", "Ryan D"), M("casey@example.com", null), M("not an email", "X")]);
 
-        Assert.That(tabs.Select(t => t.Email), Is.EqualTo(new[] { null, "amy@example.com", "jordan@example.com" }),
-            "Amy gets a tab; the global login's own account gets no second one; a row with no email gets none");
-        Assert.That(tabs.Select(t => t.SignedIn), Is.EqualTo(new[] { true, false, true }));
+        Assert.That(tabs.Select(t => t.Email), Is.EqualTo(new[] { null, "amy@example.com", "casey@example.com", "jordan@example.com" }),
+            "every member gets a tab; the global login's own account gets no second one; a row with no valid email gets none");
+        Assert.That(tabs.Select(t => t.Title), Is.EqualTo(new[] { "Ryan D (fallback)", "Amy R", "Case", "Jordan J" }), "by member name, else its login's alias");
+        Assert.That(tabs.Select(t => t.SignedIn), Is.EqualTo(new[] { true, false, false, true }));
         Assert.That(tabs[1].ToolTip, Does.Contain("not signed in"));
 
         var amy = LoginScope.For(Workspace(), "amy@example.com", WorkingWindow, WaitingWindow);
         Assert.That(amy.Repos.SelectMany(r => r.Hosts), Is.Empty, "no CLI of anyone else's shows on Amy's tab");
+
+        // No alias at all: the email's part before the @.
+        Assert.That(MemberRoster.TitleOf(M("lee@example.com", null), null), Is.EqualTo("lee"));
+        // A signed-in login that isn't a member still has its tab, by its alias.
+        var none = LoginScope.Tabs(Workspace(), email => new LoginLook("w", "XX", "#123456") { Alias = "JJ" }, new LoginLook("ryan", "RY", "#654321") { Alias = "ryan" }, []);
+        Assert.That(none.Select(t => t.Title), Is.EqualTo(new[] { "ryan (fallback)", "JJ" }));
     }
 
     [Test]

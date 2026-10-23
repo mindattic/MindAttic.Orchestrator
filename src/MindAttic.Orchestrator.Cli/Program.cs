@@ -80,6 +80,14 @@ internal static class CliApp
                 a.AddCommand<AccountsAliasCommand>("alias").WithDescription("Name a Claude login (alias <email> \"<name>\"): the dashboard, the Accounts view, agent cards and its status line show the name, the email in the tooltip; without a name, says its name; --reset goes back to the email's part before the @.");
                 a.AddCommand<AccountsPickCommand>("pick").WithDescription("The Auto login a new Claude CLI should start on (one CLI per account): prints its CLAUDE_CONFIG_DIR, or an empty line for the global login.");
             });
+            config.AddBranch("members", m =>
+            {
+                m.SetDescription("The organization's members (orchestrator.db): name, email, role, tier, status, and whether each has signed in here; the dashboard has a tab for each.");
+                m.SetDefaultCommand<MembersCommand>();
+                m.AddCommand<MembersAddCommand>("add").WithDescription("Add a member: add <email> --name \"<name>\" --role primary-owner|owner|admin|member --tier premium|standard [[--status active|pending]].");
+                m.AddCommand<MembersSetCommand>("set").WithDescription("Change a member: set <email> with any of --name, --role, --tier, --status (--name \"\" clears the name).");
+                m.AddCommand<MembersRemoveCommand>("remove").WithDescription("Remove a member: remove <email>.");
+            });
             config.AddCommand<LoginCommand>("login").WithDescription("The account roster (as the dashboard's account menu shows it); with an email or short name, opens that account's login (claude auth login --email); --account <email> signs in a per-CLI login of its own instead; --api-key bills the Vault's API key.");
             config.AddCommand<MoveCommand>("move").WithDescription("Move a running Claude CLI (<repo|pid>) to another signed-in login (--account <email> or --global): its Launcher tab restarts it with claude --resume on that login at its next idle point, keeping its session.");
             config.AddCommand<ClisCommand>("clis").WithDescription("Every open Claude CLI and whether /allocate is on in it (the roster the daemon keeps in orchestrator.db).");

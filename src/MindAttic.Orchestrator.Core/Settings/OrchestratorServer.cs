@@ -130,6 +130,10 @@ public sealed class OrchestratorServer(string connectionString)
             five_hour_percent float NULL, five_hour_reset float NULL, week_percent float NULL, week_reset float NULL,
             read_at float NULL, signed_in_at float NULL
             """, null),
+        ("members", """
+            email nvarchar(450) NOT NULL PRIMARY KEY, name nvarchar(max) NULL, role nvarchar(64) NOT NULL, tier nvarchar(64) NOT NULL,
+            status nvarchar(64) NOT NULL, joined_at float NOT NULL, updated_at float NOT NULL
+            """, null),
         ("usage_samples", """
             at nvarchar(64) NOT NULL PRIMARY KEY, "percent" float NOT NULL, reset nvarchar(64) NOT NULL, window_fresh bigint NOT NULL
             """, null),
@@ -156,8 +160,16 @@ public sealed class OrchestratorServer(string connectionString)
         ("state", "name nvarchar(450) NOT NULL PRIMARY KEY, value nvarchar(max) NOT NULL, written_at float NOT NULL", null),
     ];
 
-    /// <summary>The schema's version: one more than SQLite's last step it was written for.</summary>
-    public const int SchemaVersion = 1;
+    /// <summary>The schema's version: 1, the tables of SQLite's first ten steps; 2, <c>members</c> (M.ORCH-T670).</summary>
+    public const int SchemaVersion = 2;
+
+    /// <summary>The changes to tables already there, one step per version past 1, as SQLite's migrations add them: a column
+    /// added to a table there is one more step here (an <c>ALTER TABLE ... ADD</c>, also added to its <see cref="Tables"/> row so
+    /// a new database has it). A new table needs no statement: every table missing is created at any version change.</summary>
+    private static readonly (string Table, string Sql)[] Steps =
+    [
+        ("members", ""), // 2: members, a new table (created with the rest below)
+    ];
 
     private void EnsureSchema(SqlConnection connection)
     {
@@ -167,14 +179,22 @@ public sealed class OrchestratorServer(string connectionString)
             Lock(connection, tx);
             Sql.Run(connection, tx, "IF OBJECT_ID(N'schema_version') IS NULL CREATE TABLE schema_version (version int NOT NULL);");
             var version = Sql.Scalar(connection, tx, "SELECT MAX(version) FROM schema_version;") is { } v ? Convert.ToInt32(v, System.Globalization.CultureInfo.InvariantCulture) : 0;
-            if (version < 1)
+            if (version < SchemaVersion)
             {
+                // A database already at 1 or later has its tables' older columns: only the steps past its version alter them.
+                // Created now, a table has every column its row lists, so no step runs on it.
+                var created = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var (table, columns, index) in Tables)
                 {
-                    Sql.Run(connection, tx, $"IF OBJECT_ID(N'{table}') IS NULL CREATE TABLE {table} ({columns});");
+                    if (Sql.Scalar(connection, tx, $"SELECT OBJECT_ID(N'{table}');") is not (null or DBNull)) continue;
+                    Sql.Run(connection, tx, $"CREATE TABLE {table} ({columns});");
                     if (index is not null) Sql.Run(connection, tx, index);
+                    created.Add(table);
                 }
-                Sql.Run(connection, tx, "INSERT INTO schema_version (version) VALUES (1);");
+                if (version >= 1)
+                    for (var step = Math.Max(version, 1); step < SchemaVersion; step++)
+                        if (Steps[step - 1] is { Sql.Length: > 0 } change && !created.Contains(change.Table)) Sql.Run(connection, tx, change.Sql);
+                Sql.Run(connection, tx, $"INSERT INTO schema_version (version) VALUES ({SchemaVersion});");
             }
             tx.Commit();
         }

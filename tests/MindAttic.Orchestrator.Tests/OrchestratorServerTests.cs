@@ -39,6 +39,33 @@ public sealed class OrchestratorServerTests
             var server = columns.Split(',').Select(d => Regex.Match(d.Trim(), "^\"?(\\w+)\"?").Groups[1].Value).ToList();
             Assert.That(server, Is.EqualTo(sqlite), table);
         }
+        // Every table the dump lists is one the server keeps (M.ORCH-T670: members among them), so either store dumps it.
+        var dumped = OrchestratorDb.Dump(c).Split('\n').Skip(1).Where(l => l.StartsWith("-- ", StringComparison.Ordinal)).Select(l => l[3..]).ToList();
+        Assert.That(dumped, Does.Contain("members"));
+        Assert.That(OrchestratorServer.Tables.Select(t => t.Table), Is.SupersetOf(dumped));
+    }
+
+    [Test]
+    public void A_version_1_server_database_gets_the_members_table_and_keeps_its_rows()
+    {
+        // M.ORCH-T670: the live server was made at version 1, before members; its next open adds the table.
+        var connection = Connection();
+        using (var c = new OrchestratorServer(connection).Open())
+        {
+            Sql.Run(c, null, "INSERT INTO accounts (id, email) VALUES ('acct', 'a@example.com');");
+            Sql.Run(c, null, "DROP TABLE members; DELETE FROM schema_version; INSERT INTO schema_version (version) VALUES (1);");
+        }
+        // Another connection string to the same database: a process that hasn't checked its schema yet.
+        var fresh = new SqlConnectionStringBuilder(connection) { ApplicationName = "MindAttic.Orchestrator.Test" }.ConnectionString;
+        using (var c = new OrchestratorServer(fresh).Open())
+        {
+            Assert.That(Sql.Scalar(c, null, "SELECT MAX(version) FROM schema_version;"), Is.EqualTo(OrchestratorServer.SchemaVersion));
+            Assert.That(Sql.Scalar(c, null, "SELECT COUNT(*) FROM members;"), Is.EqualTo(0));
+            Assert.That(Sql.Scalar(c, null, "SELECT email FROM accounts;"), Is.EqualTo("a@example.com"));
+        }
+        var db = new OrchestratorDb(Path.Combine(temps.New(), "orchestrator.db")) { TestServer = new OrchestratorServer(fresh) };
+        MemberRoster.Add(db, "n@example.com", "N", "member", "premium", null, DateTime.UtcNow);
+        Assert.That(MemberRoster.Load(db).Single().Email, Is.EqualTo("n@example.com"));
     }
 
     [Test]
