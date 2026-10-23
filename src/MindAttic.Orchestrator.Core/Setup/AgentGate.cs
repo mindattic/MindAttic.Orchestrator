@@ -1231,16 +1231,16 @@ public static class AgentGate
                 import sqlite3
                 if not os.path.isfile(ORCH_DB):
                     return None
-                db = db_connect(timeout, isolation_level=None)
+                # Not held to the run's wait budget (M.ORCH-T653): the slot claim has no file fallback that
+                # keeps the allowance, so it waits its own timeout.
+                db = sqlite3.connect(ORCH_DB, timeout=timeout, isolation_level=None)
             except Exception:
                 return None
-            started = time.monotonic()
             try:
                 db.execute("BEGIN IMMEDIATE")
                 db.execute("SELECT 1 FROM subagent_slots, subagent_wants LIMIT 0")
                 return db
-            except Exception as e:
-                db_locked(e, started)
+            except Exception:
                 db.close()
                 return None
         def slot_done(db, commit=True):
