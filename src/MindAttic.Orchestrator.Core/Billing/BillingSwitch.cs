@@ -18,6 +18,10 @@ public sealed record CliBilling(int Pid, string SessionId, string? Cwd, string? 
     /// <summary>The context gate's <c>[Billing]</c> line from the CLI's start.</summary>
     public string? Line { get; init; }
 
+    /// <summary>The account of its own per-CLI login (the folder's email) when it runs on one; null on the global login, whose
+    /// account is the headline's (M.ORCH-T673).</summary>
+    public string? Account { get; init; }
+
     /// <summary>For a CLI billing the other mode: <c>requested</c> (its Launcher tab will restart it), <c>refused</c> (its tab
     /// couldn't be asked), <c>pending</c> (not asked yet) or <c>manual</c> (outside the Launcher); null when it bills the mode.</summary>
     public string? Restart { get; init; }
@@ -338,6 +342,9 @@ public sealed class BillingSwitch
     /// The newest session of every running Claude CLI, from the context gate's state files written in the last day, with what
     /// it bills and the Launcher tab it's in.
     /// </summary>
+    /// <summary>The per-CLI logins' folders, to tell which account a CLI's own config folder is (seam).</summary>
+    internal AccountDirs Accounts { get; init; } = new();
+
     internal IReadOnlyList<CliBilling> LiveClis(IReadOnlyList<HostSession> hosts, DateTime nowUtc)
     {
         if (!Directory.Exists(SessionContextDir)) return [];
@@ -352,7 +359,8 @@ public sealed class BillingSwitch
                 if (o["pid"] is not JsonValue p || !p.TryGetValue<int>(out var pid)) continue;
                 var session = Path.GetFileName(file)[..^".state.json".Length];
                 string? Text(string n) => o[n] is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
-                var cli = new CliBilling(pid, session, Text("cwd"), Text("auth"), null) { Line = Text("billing") };
+                var cli = new CliBilling(pid, session, Text("cwd"), Text("auth"), null) { Line = Text("billing"),
+                    Account = Accounts.Of(Text("config_dir"))?.Email };
                 if (!newest.TryGetValue(pid, out var seen) || written > seen.At) newest[pid] = (written, cli);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or FormatException) { }

@@ -8,7 +8,7 @@ public static class BillingText
     public static string Of(CliBilling cli)
     {
         if (cli.Bills is not { } bills) return cli.Auth is { } other ? $"bills {other}, not Claude Team or the API key" : "billing not known yet";
-        var name = BillingModes.Name(bills);
+        var name = BillingModes.Name(bills) + (bills == BillingModes.Team && cli.Account is { } account ? $" {account}" : "");
         var to = BillingModes.Name(BillingModes.Other(bills));
         return cli.Restart switch
         {

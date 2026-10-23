@@ -9,13 +9,22 @@ using Spectre.Console.Cli;
 
 internal static class Ctx
 {
-    public static (StatusAggregator Aggregator, JsonStore Store, Snapshot Snapshot, SchedulePlan Plan) Load()
+    public static (StatusAggregator Aggregator, JsonStore Store, Snapshot Snapshot, SchedulePlan Plan) Load(int? cli = null)
     {
         var store = Ctx.Store();
         var aggregator = new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter(), Lease(store));
-        var snapshot = OnOwnLogin(aggregator.Refresh(), CurrentLogin?.Invoke() ?? new AccountDirs().Current());
+        var snapshot = OnOwnLogin(aggregator.Refresh(), CurrentLogin is { } seam ? seam() : new AccountDirs().Current() ?? LoginOfCli(cli));
         var plan = Scheduler.Plan(snapshot, store.LoadSettings(), store.LoadAssignments());
         return (aggregator, store, snapshot, plan);
+    }
+
+    /// <summary>The login the CLI with process id <paramref name="cli"/> runs on, from its session's state (M.ORCH-T673), for a command
+    /// whose own environment doesn't name it; null when it's on the global login or isn't known.</summary>
+    internal static AccountDir? LoginOfCli(int? cli)
+    {
+        if (cli is not { } pid) return null;
+        try { return new AccountDirs().Of(new MindAttic.Orchestrator.Sessions.ContextCycler().LoginOfCli()(pid)); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
     }
 
     /// <summary>The per-CLI login this command runs under (its CLI's CLAUDE_CONFIG_DIR); tests set their own.</summary>

@@ -418,6 +418,20 @@ public sealed class BillingTests
         Assert.That(BillingText.Of(status.Clis.Single()), Is.EqualTo("Claude Team"));
     }
 
+    [Test]
+    public void A_cli_on_its_own_login_shows_that_logins_account_not_the_headlines()
+    {
+        var now = new DateTime(2026, 10, 18, 16, 0, 0, DateTimeKind.Utc);
+        var accounts = new MindAttic.Orchestrator.Sessions.AccountDirs(Path.Combine(dir, "accounts"));
+        File.WriteAllText(Path.Combine(Contexts, "own.state.json"), JsonSerializer.Serialize(new
+        { pid = 72544, state = "idle", auth = "subscription", cwd = @"D:\Projects\Unity.SpaceGod", config_dir = accounts.For("honey@mindattic.com").Directory }));
+        Cli(100, "global", "subscription", @"D:\Projects\Prose");
+        var clis = new BillingSwitch(Contexts) { Accounts = accounts, IsAlive = _ => true }.LiveClis([], now);
+        Assert.That(clis.Single(c => c.Pid == 72544).Account, Is.EqualTo("honey@mindattic.com"));
+        Assert.That(BillingText.Of(clis.Single(c => c.Pid == 72544)), Is.EqualTo("Claude Team honey@mindattic.com"));
+        Assert.That(BillingText.Of(clis.Single(c => c.Pid == 100)), Is.EqualTo("Claude Team"));
+    }
+
     // ── Status lines ────────────────────────────────────────────────────────
 
     [Test]

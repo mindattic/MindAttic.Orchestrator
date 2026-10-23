@@ -221,14 +221,15 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        var (_, store, snapshot, plan) = Ctx.Load();
+        // The calling CLI, as the pace gate finds it: MINDATTIC_CLI_PID, else the claude.exe this runs under (M.ORCH-T195).
+        var cli = int.TryParse(Environment.GetEnvironmentVariable("MINDATTIC_CLI_PID"), out var envPid) && envPid > 0 ? envPid
+            : MindAttic.Orchestrator.Sessions.ProcessTree.ClaudeAncestor(Environment.ProcessId);
+        // Planned on the account that CLI itself runs on, not the global or latest login (M.ORCH-T673).
+        var (_, store, snapshot, plan) = Ctx.Load(cli);
         IReadOnlyList<string> repos = (settings.Repos ?? settings.Repo) is { } list
             ? [.. list.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)]
             : Autopilot.RepoFor(Environment.CurrentDirectory, snapshot) is { } here ? [here.Name] : [];
         if (repos.Count == 0) { Console.Error.WriteLine("No repo here; name them with --repos A,B (or \"*\")."); return 1; }
-        // The calling CLI, as the pace gate finds it: MINDATTIC_CLI_PID, else the claude.exe this runs under (M.ORCH-T195).
-        var cli = int.TryParse(Environment.GetEnvironmentVariable("MINDATTIC_CLI_PID"), out var envPid) && envPid > 0 ? envPid
-            : MindAttic.Orchestrator.Sessions.ProcessTree.ClaudeAncestor(Environment.ProcessId);
         var cycler = new MindAttic.Orchestrator.Sessions.ContextCycler();
         var unthrottled = cli is { } pid && cycler.IsUnthrottled(pid);
         // What the calling CLI filed itself isn't held from its own subagents; what anyone else (its subagents included) filed
