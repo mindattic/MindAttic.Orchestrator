@@ -368,7 +368,7 @@
             <ScrollViewer x:Name="ReposBody" Style="{StaticResource BodyScroll}"
                           Visibility="{Binding IsReposView, Converter={StaticResource Visible}}">
                 <Grid>
-                    <ItemsControl ItemsSource="{Binding Groups}" Focusable="False">
+                    <ItemsControl ItemsSource="{Binding GroupsInView}" Focusable="False">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:TileGroupViewModel}">
                                 <StackPanel Visibility="{Binding IsVisible, Converter={StaticResource Visible}}" Margin="0,4,0,10">
@@ -920,7 +920,7 @@
                                    Style="{StaticResource MaMutedText}" Margin="0,4,0,0" />
                     </StackPanel>
 
-                    <ItemsControl x:Name="AgentCards" ItemsSource="{Binding Agents}" Focusable="False" AutomationProperties.Name="Agents">
+                    <ItemsControl x:Name="AgentCards" ItemsSource="{Binding AgentsInView}" Focusable="False" AutomationProperties.Name="Agents">
                         <ItemsControl.ItemsPanel>
                             <!-- Equal columns and gaps that fill the width, flush with the tiles' edges (M.ORCH-T192). -->
                             <ItemsPanelTemplate><local:AlignedGrid MinItemWidth="420" Gap="12" RowGap="12" /></ItemsPanelTemplate>
@@ -1070,7 +1070,7 @@
                                AutomationProperties.LiveSetting="Polite"
                                Visibility="{Binding BillingDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
 
-                    <ItemsControl x:Name="LoginCardList" ItemsSource="{Binding LoginCards}" Focusable="False" AutomationProperties.Name="Claude logins">
+                    <ItemsControl x:Name="LoginCardList" ItemsSource="{Binding LoginCardsInView}" Focusable="False" AutomationProperties.Name="Claude logins">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate><local:AlignedGrid MinItemWidth="420" Gap="12" RowGap="12" /></ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>

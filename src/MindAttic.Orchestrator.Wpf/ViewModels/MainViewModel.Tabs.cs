@@ -61,6 +61,9 @@ public sealed partial class MainViewModel
         set => Root.Select(value);
     }
 
+    /// <summary>The tab on screen, which the shared queue's rows act through (M.ORCH-T654).</summary>
+    internal MainViewModel Shown => Root.SelectedTab;
+
     /// <summary>Raised on the global login's tab when another tab is chosen.</summary>
     public event EventHandler? SelectedTabChanged;
 

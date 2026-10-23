@@ -12,13 +12,15 @@ public sealed class QueueRowViewModel : ObservableObject
     private int rank;
     private Proposal? proposal;
 
+    /// <summary>A row of the one queue every tab shows (M.ORCH-T654): its buttons act on the tab on screen, so Start opens
+    /// the CLI on that tab's login.</summary>
     public QueueRowViewModel(QueueItem item, MainViewModel owner)
     {
         this.item = item;
-        StartCommand = new RelayCommand(() => owner.Dispatch(this.item, this.proposal?.UseWorktree ?? this.item.NeedsWorktree), () => !this.item.IsAssigned && this.item.MayWork && !owner.IsStarting(this.item.Id) && !IsMoving);
-        UpCommand = new RelayCommand(() => owner.Bump(this.item.Id, +1), () => !IsMoving);
-        DownCommand = new RelayCommand(() => owner.Bump(this.item.Id, -1), () => !IsMoving);
-        ReleaseCommand = new RelayCommand(() => owner.Release(this.item.Id), () => this.item.IsAssigned && !IsMoving);
+        StartCommand = new RelayCommand(() => owner.Shown.Dispatch(this.item, this.proposal?.UseWorktree ?? this.item.NeedsWorktree), () => !this.item.IsAssigned && this.item.MayWork && !owner.IsStarting(this.item.Id) && !IsMoving);
+        UpCommand = new RelayCommand(() => owner.Shown.Bump(this.item.Id, +1), () => !IsMoving);
+        DownCommand = new RelayCommand(() => owner.Shown.Bump(this.item.Id, -1), () => !IsMoving);
+        ReleaseCommand = new RelayCommand(() => owner.Shown.Release(this.item.Id), () => this.item.IsAssigned && !IsMoving);
     }
 
     /// <summary>Held by a CLI moving to another login (M.ORCH-T637): its controls are off until the move lands.</summary>
@@ -76,8 +78,8 @@ public sealed class FinishedViewModel(Assignment assignment, MainViewModel owner
         : $" in {assignment.Repo} is closed.";
     public string ActionLabel => assignment.Worktree ? "Remove worktree" : "Clear";
     /// <summary>Off while a CLI moving to another login holds the ticket (M.ORCH-T637): its worktree is handed back to it.</summary>
-    public ICommand ActionCommand { get; } = new RelayCommand(() => owner.Finish(assignment), () => PendingMoves.ForTicket(assignment.TicketId) is null);
-    public ICommand DetailsCommand { get; } = new RelayCommand(() => owner.ShowDetails(assignment));
+    public ICommand ActionCommand { get; } = new RelayCommand(() => owner.Shown.Finish(assignment), () => PendingMoves.ForTicket(assignment.TicketId) is null);
+    public ICommand DetailsCommand { get; } = new RelayCommand(() => owner.Shown.ShowDetails(assignment));
 
     /// <summary>The ticket's assignment as the latest refresh has it (reopened, dispatched again elsewhere and closed): its
     /// text, its button and what they act on follow it (M.ORCH-T341).</summary>

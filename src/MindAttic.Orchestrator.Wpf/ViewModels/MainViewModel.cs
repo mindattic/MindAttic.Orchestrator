@@ -117,7 +117,9 @@ public sealed partial class MainViewModel : ObservableObject
             await OpenToastAsync(t);
         });
         ClearSearchCommand = new RelayCommand(() => Search = "");
-        OpenInTicketsCommand = new RelayCommand(p => OpenInTickets(p as string));
+        // One command for every tab (M.ORCH-T654): every ticket link in the window binds it, so a tab of its own re-bound
+        // each of them, the whole queue's, on every tab switch. It acts on the tab on screen.
+        OpenInTicketsCommand = root?.OpenInTicketsCommand ?? new RelayCommand(p => Shown.OpenInTickets(p as string));
         InitPhases();
         // Terminals inside the Orchestrator (M.ORCH-T618): one host of panes for the window, so one for every login's tab, the
         // global login's; each tab's Terminals tab shows its own person's panes (M.ORCH-T622). A pane opened shows on its
@@ -183,7 +185,8 @@ public sealed partial class MainViewModel : ObservableObject
     public Focus Focus { get => focus; private set => Set(ref focus, value); }
 
     public const string SortByName = "Name", SortByTickets = "Open tickets";
-    public IReadOnlyList<string> RepoSorts { get; } = [SortByName, SortByTickets];
+    public IReadOnlyList<string> RepoSorts => RepoSortNames;
+    private static readonly IReadOnlyList<string> RepoSortNames = [SortByName, SortByTickets];
 
     private const string ReposViewName = "dashboard-repos";
     private sealed class ReposView { public string? Sort { get; init; } }
