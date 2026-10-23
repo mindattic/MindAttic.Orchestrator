@@ -7,15 +7,21 @@ using MindAttic.Orchestrator.Settings;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
+/// <summary>The settings of the members branch: Spectre only parses a branch's default command's options when the branch
+/// has them too, so <c>members --json</c> printed the table until every members command shared this (M.ORCH-T697).</summary>
+public class MembersBranchSettings : CommandSettings
+{
+    [CommandOption("--json")]
+    [Description("Write the members as a JSON array.")]
+    public bool Json { get; init; }
+}
+
 /// <summary><c>orchestrator members</c> (M.ORCH-T670): the organization's members, from the members table in the repo's
 /// <c>data/orchestrator.db</c>, each with whether it has signed in on this machine (the accounts table, joined by email).</summary>
 internal sealed class MembersCommand : Command<MembersCommand.Settings>
 {
-    public sealed class Settings : CommandSettings
+    public sealed class Settings : MembersBranchSettings
     {
-        [CommandOption("--json")]
-        [Description("Write the members as JSON.")]
-        public bool Json { get; init; }
     }
 
     internal static OrchestratorDb Db() => new(OrchestratorDb.LivePath);
@@ -98,7 +104,7 @@ internal sealed class MembersCommand : Command<MembersCommand.Settings>
 /// <summary><c>orchestrator members add &lt;email&gt; --name --role --tier [--status]</c> (M.ORCH-T670).</summary>
 internal sealed class MembersAddCommand : Command<MembersAddCommand.Settings>
 {
-    public sealed class Settings : CommandSettings
+    public sealed class Settings : MembersBranchSettings
     {
         [CommandArgument(0, "<EMAIL>")]
         [Description("The member's email.")]
@@ -136,7 +142,7 @@ internal sealed class MembersAddCommand : Command<MembersAddCommand.Settings>
 /// <summary><c>orchestrator members set &lt;email&gt; [--name] [--role] [--tier] [--status]</c> (M.ORCH-T670).</summary>
 internal sealed class MembersSetCommand : Command<MembersSetCommand.Settings>
 {
-    public sealed class Settings : CommandSettings
+    public sealed class Settings : MembersBranchSettings
     {
         [CommandArgument(0, "<EMAIL>")]
         [Description("The member's email.")]
@@ -174,7 +180,7 @@ internal sealed class MembersSetCommand : Command<MembersSetCommand.Settings>
 /// <summary><c>orchestrator members remove &lt;email&gt;</c> (M.ORCH-T670).</summary>
 internal sealed class MembersRemoveCommand : Command<MembersRemoveCommand.Settings>
 {
-    public sealed class Settings : CommandSettings
+    public sealed class Settings : MembersBranchSettings
     {
         [CommandArgument(0, "<EMAIL>")]
         [Description("The member's email.")]

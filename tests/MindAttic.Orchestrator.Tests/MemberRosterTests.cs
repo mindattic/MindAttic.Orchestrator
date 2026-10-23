@@ -124,6 +124,24 @@ public sealed class MemberRosterTests
 
             Assert.That(signedLine, Does.Contain("fallback login"));
 
+            // M.ORCH-T697: --json prints the members as a JSON array (also through org members), never the table.
+            foreach (var args in new[] { new[] { "members", "--json" }, new[] { "org", "members", "--json" } })
+            {
+                var stdout = new StringWriter();
+                var realOut = Console.Out;
+                Console.SetOut(stdout);
+                try { Assert.That(Run(args), Is.Zero, output.ToString()); }
+                finally { Console.SetOut(realOut); }
+                using var json = System.Text.Json.JsonDocument.Parse(stdout.ToString());
+                Assert.That(json.RootElement.ValueKind, Is.EqualTo(System.Text.Json.JsonValueKind.Array));
+                var signed = json.RootElement.EnumerateArray().Single(e => e.GetProperty("Email").GetString() == "signed@example.com");
+                Assert.That(signed.GetProperty("Name").GetString(), Is.EqualTo("Sig Ned"));
+                Assert.That(signed.GetProperty("Role").GetString(), Is.EqualTo("owner"));
+                Assert.That(signed.GetProperty("Tier").GetString(), Is.EqualTo("premium"));
+                Assert.That(signed.GetProperty("SignedInHere").GetBoolean(), Is.True);
+                Assert.That(signed.GetProperty("SignedInFallbackLogin").GetBoolean(), Is.True);
+            }
+
             // M.ORCH-T671: a member signed in only through its own folder under ~/.claude-accounts reads as signed in, via its own login.
             var accountsRoot = Path.Combine(temps.New(), ".claude-accounts");
             var ownDirs = new AccountDirs(accountsRoot, Path.Combine(accountsRoot, "..", ".claude"), Path.Combine(accountsRoot, "..", ".claude.json"));
