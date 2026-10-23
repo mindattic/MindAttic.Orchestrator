@@ -44,6 +44,9 @@ public static class Palette
 
     static Palette()
     {
+        // MaTheme's own initializer builds a pack:// Uri, which throws UriFormatException when no Application has registered
+        // the scheme yet (tests); touching the helper registers it first.
+        _ = System.IO.Packaging.PackUriHelper.UriSchemePack;
         MaTheme.Changed += (_, _) => Follow();
         // MaHighContrast rewrites the theme's entries when Windows high contrast goes on or off; recolour once it has.
         SystemParameters.StaticPropertyChanged += OnSystemChanged;
