@@ -133,9 +133,7 @@ public sealed class AccountsViewTests
         card.Update(LoginBoard.Own(b, Now), Now);
         Assert.That((card.Title, card.TitleTip, card.CanRename), Is.EqualTo(("b", "b@example.com", true)), "the email's part before the @ by default");
 
-        card.BeginRename();
-        Assert.That((card.IsRenaming, card.AliasDraft), Is.EqualTo((true, "b")));
-        Assert.That(MainViewModel.SaveAlias(dirs, b.Directory, b.Email, "Bee"), Is.EqualTo("b@example.com is now called Bee."));
+        Assert.That(MainViewModel.SaveAlias(dirs, b.Directory, b.Email, "Bee"), Is.EqualTo("b@example.com is now called Bee [BE]."));
         card.Update(LoginBoard.Own(b, Now), Now);
         Assert.That(card.Title, Is.EqualTo("Bee"));
 
@@ -147,6 +145,32 @@ public sealed class AccountsViewTests
         global.Update(LoginBoard.Global(dirs.ClaudeDir, new AccountRow { Account = "g", Email = "g@example.com" }, true, Path.Combine(dirs.ClaudeDir, "rl-status.json"), Now), Now, null, billingIsApiKey: true);
         Assert.That(global.Title, Is.EqualTo("Gee"), "the API key is the fallback while it bills (M.ORCH-T672)");
         Assert.That(global.TitleTip, Does.StartWith("g@example.com"));
+    }
+
+    [Test]
+    public void The_rename_dialog_saves_the_name_the_prefix_and_the_members_name()
+    {
+        // M.ORCH-T633: Name and Prefix from the dialog; the Prefix is the login file's initials, blank derives it again.
+        var b = Folder("b@example.com", signedIn: true);
+        var db = new MindAttic.Orchestrator.Settings.OrchestratorDb(Path.Combine(temps.New(), "data", "orchestrator.db"));
+        MemberRoster.Add(db, b.Email, "Old", "member", "standard", null, Now);
+
+        Assert.That(MainViewModel.SaveAlias(dirs, b.Directory, b.Email, "Jordan", "jr", db), Is.EqualTo("b@example.com is now called Jordan [JR]."));
+        var look = LoginLook.For(b.Directory, b.Email);
+        Assert.That((look.Alias, look.Initials, LoginLook.InitialsOverride(b.Directory, b.Email)), Is.EqualTo(("Jordan", "JR", "jr")));
+        Assert.That(MemberRoster.Find(db, b.Email)!.Name, Is.EqualTo("Jordan"), "the member's name kept in step (M.ORCH-T670)");
+
+        MainViewModel.SaveAlias(dirs, b.Directory, b.Email, "Jordan Reed", "", db);
+        look = LoginLook.For(b.Directory, b.Email);
+        Assert.That((look.Initials, LoginLook.InitialsOverride(b.Directory, b.Email)), Is.EqualTo(("JR", (string?)null)), "a blank prefix comes from the name");
+
+        MainViewModel.SaveAlias(dirs, b.Directory, b.Email, "Amy", null, db);
+        Assert.That(LoginLook.For(b.Directory, b.Email).Initials, Is.EqualTo("AM"));
+
+        // A login that isn't a member is renamed all the same, and adds no member.
+        var c = Folder("c@example.com", signedIn: true);
+        Assert.That(MainViewModel.SaveAlias(dirs, c.Directory, c.Email, "Cee", "CC", db), Is.EqualTo("c@example.com is now called Cee [CC]."));
+        Assert.That(MemberRoster.Find(db, c.Email), Is.Null);
     }
 
     [Test]

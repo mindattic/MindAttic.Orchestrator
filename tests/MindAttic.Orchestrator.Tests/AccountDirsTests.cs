@@ -282,6 +282,14 @@ public sealed class AccountDirsTests
         Assert.That(LoginLook.For(ClaudeDir, "ohleo199@example.com").Initials, Is.EqualTo("RY"));
 
         Assert.That(LoginLook.SetAlias(ClaudeDir, "ohleo199@example.com", "  "), Is.EqualTo("ohleo199"), "a blank name goes back to the default");
+
+        // M.ORCH-T633: initials given are kept even as the name changes; blank goes back to the name's.
+        LoginLook.SetAlias(ClaudeDir, "ohleo199@example.com", "Ryan", "rdb");
+        Assert.That(LoginLook.For(ClaudeDir, "ohleo199@example.com").Initials, Is.EqualTo("RDB"));
+        LoginLook.SetAlias(ClaudeDir, "ohleo199@example.com", "Ryan D", "rdb");
+        Assert.That(LoginLook.For(ClaudeDir, "ohleo199@example.com").Initials, Is.EqualTo("RDB"));
+        LoginLook.SetAlias(ClaudeDir, "ohleo199@example.com", "Ryan D", " ");
+        Assert.That(LoginLook.For(ClaudeDir, "ohleo199@example.com").Initials, Is.EqualTo("RD"));
     }
 
     [Test]

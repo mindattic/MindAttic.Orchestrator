@@ -52,8 +52,6 @@ public sealed class LoginCardViewModel(string key) : ObservableObject
 {
     private LoginCard card = null!;
     private DateTime nowUtc;
-    private bool renaming;
-    private string aliasDraft = "";
     private bool onApiKey;
 
     /// <summary>"" for the global login, else the per-CLI login's email.</summary>
@@ -72,21 +70,8 @@ public sealed class LoginCardViewModel(string key) : ObservableObject
     /// <summary>Whose name Rename sets: the per-CLI login's email, or whoever's signed in to the global login; null when unknown.</summary>
     public string? AliasEmail => card.AliasEmail;
 
-    /// <summary>The login can be named: its email is known.</summary>
+    /// <summary>The login can be named: its email is known (its right-click menu's Rename, M.ORCH-T633).</summary>
     public bool CanRename => AliasEmail is not null;
-
-    /// <summary>The rename box is open.</summary>
-    public bool IsRenaming { get => renaming; set => Set(ref renaming, value); }
-
-    /// <summary>The name being typed in the rename box.</summary>
-    public string AliasDraft { get => aliasDraft; set => Set(ref aliasDraft, value ?? ""); }
-
-    /// <summary>Opens the rename box on the login's current name.</summary>
-    public void BeginRename()
-    {
-        AliasDraft = card.Alias ?? LoginLook.DefaultAlias(AliasEmail) ?? "";
-        IsRenaming = true;
-    }
 
     public string Kind => IsGlobal ? "Every CLI not started on a login of its own (~/.claude)" : "A per-CLI login (~/.claude-accounts)";
 

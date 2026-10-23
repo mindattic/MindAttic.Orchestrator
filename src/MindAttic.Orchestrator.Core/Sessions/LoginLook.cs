@@ -39,9 +39,20 @@ public sealed record LoginLook(string Window, string Initials, string TabColor)
     }
 
     /// <summary>The look kept in <paramref name="folder"/>, filled in from <paramref name="email"/> where it says nothing.</summary>
-    public static LoginLook For(string folder, string? email)
+    public static LoginLook For(string folder, string? email) => Read(folder, email, out _);
+
+    /// <summary>The file's own <c>initials</c> for <paramref name="email"/> (M.ORCH-T633, the Rename dialog's Prefix), as
+    /// given; null when the badge is derived from the name instead.</summary>
+    public static string? InitialsOverride(string folder, string? email)
     {
-        string? alias = null, initials = null, color = null;
+        Read(folder, email, out var initials);
+        return initials;
+    }
+
+    private static LoginLook Read(string folder, string? email, out string? initials)
+    {
+        string? alias = null, color = null;
+        initials = null;
         try
         {
             var path = Path.Combine(folder, FileName);
@@ -91,8 +102,10 @@ public sealed record LoginLook(string Window, string Initials, string TabColor)
     /// Names the login in <paramref name="folder"/>, signed in as <paramref name="email"/>, <paramref name="alias"/> (blank goes
     /// back to the email's default) in its <see cref="FileName"/>: the file is stamped with the email and keeps anything else it
     /// holds, but drops another email's look, and the initials when the name changes (they follow the name). Returns the name.
+    /// <para><paramref name="initials"/> (M.ORCH-T633): null leaves them as just said; given, it's the badge from now on
+    /// (blank: derived from the name again).</para>
     /// </summary>
-    public static string SetAlias(string folder, string email, string? alias)
+    public static string SetAlias(string folder, string email, string? alias, string? initials = null)
     {
         var e = email.Trim().ToLowerInvariant();
         var path = Path.Combine(folder, FileName);
@@ -110,6 +123,10 @@ public sealed record LoginLook(string Window, string Initials, string TabColor)
             file.Remove("initials");
         file["email"] = e;
         if (name is null) file.Remove("alias"); else file["alias"] = name;
+        if (initials is not null)
+        {
+            if (initials.Trim() is { Length: > 0 } i) file["initials"] = i; else file.Remove("initials");
+        }
         Directory.CreateDirectory(folder);
         var temp = path + ".tmp";
         File.WriteAllText(temp, file.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), new UTF8Encoding(false));
@@ -122,14 +139,14 @@ public sealed record LoginLook(string Window, string Initials, string TabColor)
     /// login: its per-CLI one under <see cref="AccountDirs.Root"/> when it has one, and the global login when that's signed in
     /// as it. Returns the folders written; none when the email has no login on this machine.
     /// </summary>
-    public static IReadOnlyList<string> SetAlias(AccountDirs dirs, string email, string? alias)
+    public static IReadOnlyList<string> SetAlias(AccountDirs dirs, string email, string? alias, string? initials = null)
     {
         var e = AccountDirs.Normalize(email) ?? throw new ArgumentException($"\"{email}\" isn't an email address.", nameof(email));
         var folders = new List<string>();
         var own = dirs.For(e);
         if (Directory.Exists(own.Directory)) folders.Add(own.Directory);
         if (GlobalEmail(dirs) is { } g && string.Equals(g, e, StringComparison.OrdinalIgnoreCase)) folders.Add(dirs.ClaudeDir);
-        foreach (var folder in folders) SetAlias(folder, e, alias);
+        foreach (var folder in folders) SetAlias(folder, e, alias, initials);
         return folders;
     }
 

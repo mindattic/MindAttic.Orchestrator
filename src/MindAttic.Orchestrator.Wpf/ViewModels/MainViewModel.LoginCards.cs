@@ -5,6 +5,7 @@ using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Activity;
 using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Sessions;
+using MindAttic.Orchestrator.Settings;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
@@ -42,40 +43,76 @@ public sealed partial class MainViewModel
 
     private ICommand? signInLoginCommand, addAccountCommand, renameLoginCommand, saveLoginAliasCommand, cancelRenameCommand;
 
-    /// <summary>Opens a card's rename box (M.ORCH-T614; the parameter is its <see cref="LoginCardViewModel"/>).</summary>
+    private LoginCardViewModel? renaming;
+    private string renameName = "", renamePrefix = "";
+
+    /// <summary>The Rename dialog is open (M.ORCH-T633): opened from a card's right-click menu.</summary>
+    public bool IsRenameOpen
+    {
+        get => renaming is not null;
+        set { if (!value && renaming is not null) { renaming = null; RaiseRename(); } }
+    }
+
+    /// <summary>The dialog's Email: the login's account, shown and never edited.</summary>
+    public string RenameEmail => renaming?.AliasEmail ?? "";
+
+    /// <summary>The dialog's Name: the login's alias, its card's title (blank: the email's part before the @).</summary>
+    public string RenameName { get => renameName; set => Set(ref renameName, value ?? ""); }
+
+    /// <summary>The dialog's Prefix: the badge its terminal titles start with ("[JR] Repo [Claude]"), the login file's
+    /// <c>initials</c>; blank derives it from the name.</summary>
+    public string RenamePrefix { get => renamePrefix; set => Set(ref renamePrefix, value ?? ""); }
+
+    /// <summary>Opens the Rename dialog on a card's login (M.ORCH-T614, M.ORCH-T633; the parameter is its <see cref="LoginCardViewModel"/>).</summary>
     public ICommand RenameLoginCommand => renameLoginCommand ??= new RelayCommand(p =>
     {
-        if (p is LoginCardViewModel { CanRename: true } card) card.BeginRename();
+        if (p is LoginCardViewModel { CanRename: true } card) BeginRename(card);
     });
 
-    /// <summary>Closes a card's rename box without saving.</summary>
-    public ICommand CancelRenameCommand => cancelRenameCommand ??= new RelayCommand(p =>
+    internal void BeginRename(LoginCardViewModel card)
     {
-        if (p is LoginCardViewModel card) card.IsRenaming = false;
-    });
+        renaming = card;
+        RenameName = card.Card.Alias ?? LoginLook.DefaultAlias(card.AliasEmail) ?? "";
+        RenamePrefix = LoginLook.InitialsOverride(card.Card.Directory, card.AliasEmail) ?? "";
+        RaiseRename();
+    }
 
-    /// <summary>Saves the name typed in a card's rename box as its login's alias (blank: back to the email's default).</summary>
-    public ICommand SaveLoginAliasCommand => saveLoginAliasCommand ??= new RelayCommand(async p =>
+    private void RaiseRename()
     {
-        if (p is not LoginCardViewModel { AliasEmail: { } email } card) return;
-        AccountsMessage = SaveAlias(OwnLoginDirs(), card.Card.Directory, email, card.AliasDraft);
-        card.IsRenaming = false;
+        Raise(nameof(IsRenameOpen)); Raise(nameof(RenameEmail));
+    }
+
+    /// <summary>Closes the Rename dialog without saving (Cancel, Esc, its close button, the backdrop).</summary>
+    public ICommand CancelRenameCommand => cancelRenameCommand ??= new RelayCommand(() => { renaming = null; RaiseRename(); });
+
+    /// <summary>Saves the dialog's Name and Prefix for its login, and the member's name in the members table (M.ORCH-T670).</summary>
+    public ICommand SaveLoginAliasCommand => saveLoginAliasCommand ??= new RelayCommand(async () =>
+    {
+        if (renaming is not { AliasEmail: { } email } card) return;
+        AccountsMessage = SaveAlias(OwnLoginDirs(), card.Card.Directory, email, RenameName, RenamePrefix, aggregator.Db);
+        renaming = null;
+        RaiseRename();
         await RefreshLoginCardsAsync();
     });
 
-    /// <summary>Names <paramref name="email"/>'s logins <paramref name="alias"/>: every folder that's its login
-    /// (<see cref="LoginLook.SetAlias(AccountDirs, string, string?)"/>) and the card's own <paramref name="folder"/>. Says what it did.</summary>
-    internal static string SaveAlias(AccountDirs dirs, string folder, string email, string alias)
+    /// <summary>Names <paramref name="email"/>'s logins <paramref name="alias"/> with the badge <paramref name="initials"/>
+    /// (null leaves it; blank derives it from the name): every folder that's its login
+    /// (<see cref="LoginLook.SetAlias(AccountDirs, string, string?, string?)"/>) and the card's own <paramref name="folder"/>;
+    /// and, when <paramref name="db"/> holds the email as a member, the member's name in step (blank clears it, back to the
+    /// alias). Says what it did.</summary>
+    internal static string SaveAlias(AccountDirs dirs, string folder, string email, string alias, string? initials = null, OrchestratorDb? db = null)
     {
         try
         {
-            var written = LoginLook.SetAlias(dirs, email, alias);
+            var written = LoginLook.SetAlias(dirs, email, alias, initials);
             if (!written.Any(f => string.Equals(Path.GetFullPath(f), Path.GetFullPath(folder), StringComparison.OrdinalIgnoreCase)))
-                LoginLook.SetAlias(folder, email, alias);
-            var name = LoginLook.For(folder, email).Alias;
-            return $"{email} is now called {name}.";
+                LoginLook.SetAlias(folder, email, alias, initials);
+            var look = LoginLook.For(folder, email);
+            if (db is not null && MemberRoster.Find(db, email) is not null)
+                MemberRoster.Set(db, email, alias.Trim(), null, null, null, DateTime.UtcNow);
+            return $"{email} is now called {look.Alias} [{look.Initials}].";
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.Data.Common.DbException)
         {
             return $"Couldn't rename {email}: {ex.Message}";
         }
