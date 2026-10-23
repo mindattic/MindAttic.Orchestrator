@@ -52,7 +52,7 @@ public sealed class ClaudeMeterProbeTests
         Assert.That(ClaudeMeterProbe.Due(Now.AddMinutes(-45), spending, Now), Is.True, "45 minutes unseen while a subagent spends");
         Assert.That(ClaudeMeterProbe.Due(null, spending, Now), Is.True, "no report at all");
         Assert.That(ClaudeMeterProbe.Due(Now.AddMinutes(-2), spending, Now), Is.False, "a statusline reported just now");
-        Assert.That(ClaudeMeterProbe.Due(Now.AddMinutes(-45), [E(Now.AddMinutes(-30), 500)], Now), Is.False, "nothing spending now: idle, nothing to read");
+        Assert.That(ClaudeMeterProbe.Due(Now.AddMinutes(-45), [E(Now.AddMinutes(-30), 500)], Now), Is.False, "nothing spending now: idle (read on IdleDue's schedule instead)");
         Assert.That(ClaudeMeterProbe.Due(Now.AddMinutes(-5), [E(Now.AddMinutes(-1), 0)], Now), Is.False, "cache reads only aren't spend");
         Assert.That(ClaudeMeterProbe.Due(Now.AddMinutes(-5), [E(Now.AddMinutes(-6), 500)], Now), Is.False, "spent before the report: it's counted");
     }
@@ -117,6 +117,34 @@ public sealed class ClaudeMeterProbeTests
         List<UsageSample> idle = [S(90, 60), S(60, 64), S(45, 64)];
         Assert.That(ClaudeMeterProbe.Due(Now.AddMinutes(-45), [], Now, idle), Is.False, "flat for longer than ActiveFor: idle, not asked");
         Assert.That(ClaudeMeterProbe.Due(Now.AddMinutes(-45), [], Now, [new UsageSample(Now.AddMinutes(-5), 70, Now.AddMinutes(-1), 0)]), Is.False, "a window that has reset");
+    }
+
+    [Test]
+    public void An_idle_login_is_read_every_IdleEvery_and_no_more_often()
+    {
+        // T661: a signed-in login nothing seemed to spend on was never asked, so its tile drew no pace at all.
+        Assert.That(ClaudeMeterProbe.IdleDue(null, null, Now), Is.True, "never read, never asked");
+        Assert.That(ClaudeMeterProbe.IdleDue(Now - ClaudeMeterProbe.IdleEvery, null, Now), Is.True, "last read IdleEvery ago");
+        Assert.That(ClaudeMeterProbe.IdleDue(Now.AddMinutes(-1), null, Now), Is.False, "read a minute ago");
+        Assert.That(ClaudeMeterProbe.IdleDue(null, Now.AddMinutes(-2), Now), Is.False, "no window to read, asked 2 minutes ago: not again yet");
+        Assert.That(ClaudeMeterProbe.IdleDue(null, Now - ClaudeMeterProbe.IdleEvery, Now), Is.True);
+        Assert.That(ClaudeMeterProbe.IdleEvery, Is.LessThan(PaceLedger.MinGap), "every login has a reading inside the ledger's gap");
+    }
+
+    [Test]
+    public async Task An_idle_login_is_asked_and_asked_again_after_IdleEvery()
+    {
+        var asked = 0;
+        var probe = Probe((_, _) => { asked++; return Task.FromResult<string?>(Body); });
+
+        Assert.That(probe.Tick(null, [], Now), Is.True, "no spend at all, still read");
+        await probe.Pending;
+        var at = Now.AddMinutes(1);
+        Assert.That(probe.Tick(at, [], at.AddMinutes(1)), Is.False, "just read");
+        var later = Now + ClaudeMeterProbe.IdleEvery + TimeSpan.FromMinutes(1);
+        Assert.That(probe.Tick(at, [], later), Is.True);
+        await probe.Pending;
+        Assert.That(asked, Is.EqualTo(2));
     }
 
     [Test]

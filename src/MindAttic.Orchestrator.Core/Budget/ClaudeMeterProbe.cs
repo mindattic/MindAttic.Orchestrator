@@ -99,6 +99,21 @@ public sealed class ClaudeMeterProbe
     /// transcripts say (M.ORCH-T659). Bounded, so an idle login is asked a few times at most after its last reading.</summary>
     public static readonly TimeSpan ActiveFor = TimeSpan.FromMinutes(30);
 
+    /// <summary>How often a signed-in login is read even while idle (M.ORCH-T661): a login nothing seemed to spend on was never
+    /// asked, so a fresh or just-reset account never got a reading, its limit was never learned and its tile drew no pace while
+    /// the others showed real percents. Every login's meter is read at least this often, each reading kept with its time
+    /// (the samples), so a rise in it can be set against what that login's CLIs spent over the same stretch (M.ORCH-T682).
+    /// Five minutes: at five logins that is one small request a minute in all, twelve an hour per login, and a spending login
+    /// is already read every <see cref="StaleAfter"/>.</summary>
+    public static readonly TimeSpan IdleEvery = TimeSpan.FromMinutes(5);
+
+    /// <summary>Whether an idle login is due its periodic reading (M.ORCH-T661): its running window was last seen
+    /// <see cref="IdleEvery"/> ago or never, and the probe last asked that long ago or never, so a login with no running
+    /// window to read (the endpoint gives no reading) is still asked only every <see cref="IdleEvery"/>, not every failed ask's
+    /// <see cref="Backoff"/>.</summary>
+    public static bool IdleDue(DateTime? reportedAtUtc, DateTime? lastAskUtc, DateTime nowUtc) =>
+        (reportedAtUtc is not { } at || nowUtc - at >= IdleEvery) && (lastAskUtc is not { } asked || nowUtc - asked >= IdleEvery);
+
     /// <summary>When the running window's percent first reached its highest recorded value; null with no reading of a
     /// running window.</summary>
     public static DateTime? LastRise(IEnumerable<UsageSample> samples, DateTime nowUtc)
@@ -140,9 +155,10 @@ public sealed class ClaudeMeterProbe
     /// whether it started. The reading lands in <see cref="UsagePath"/> for the next refresh to pick up.</summary>
     /// <param name="force">Ask whether or not it's due (still one at a time, and not while backing off): the account
     /// just signed in to has no window confirmed yet.</param>
+    /// <remarks>Also asks an idle login every <see cref="IdleEvery"/> (<see cref="IdleDue"/>, M.ORCH-T661).</remarks>
     public bool Tick(DateTime? reportedAtUtc, IReadOnlyList<UsageEvent> events, DateTime nowUtc, bool force = false, IEnumerable<UsageSample>? samples = null)
     {
-        if (!force && !Due(reportedAtUtc, events, nowUtc, samples))
+        if (!force && !Due(reportedAtUtc, events, nowUtc, samples) && !IdleDue(reportedAtUtc, LastAskUtc, nowUtc))
         {
             IsDue = false;
             return false;
