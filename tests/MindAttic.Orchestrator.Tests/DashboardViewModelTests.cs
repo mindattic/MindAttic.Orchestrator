@@ -30,6 +30,25 @@ public sealed class DashboardViewModelTests
     // ── 5-hour utilization card ─────────────────────────────────────────────
 
     [Test]
+    public void A_peak_only_5h_tile_reads_as_an_estimate_not_a_known_limit()
+    {
+        // M.ORCH-T636: against only the busiest block the chart beside the tile draws nothing, so the tile mustn't look like a
+        // precise, known limit either: a rough "~100%", muted whatever its level, and a caption saying it's an estimate.
+        _ = System.IO.Packaging.PackUriHelper.UriSchemePack; // registers pack:// outside an Application
+        var day = new DateTime(2026, 10, 13, 0, 0, 0, DateTimeKind.Utc);
+        UsageEvent E(double hour, long output) => new(day.AddHours(hour), new TokenUsage(0, 0, 0, output));
+        var peak = BudgetCalculator.Compute([E(1, 1000), E(10, 1000)], new OrchestratorSettings(), day.AddHours(11), day);
+        var real = BudgetCalculator.Compute([E(1, 1000), E(10, 1000)], new OrchestratorSettings { BlockBudget = 1000 }, day.AddHours(11), day);
+        Assert.That((peak.BlockLimitIsPeak, real.BlockLimitIsPeak), Is.EqualTo((true, false)));
+
+        Assert.That(MainViewModel.BlockHeadline(peak), Is.EqualTo("~100%"));
+        Assert.That(MainViewModel.BlockHeadline(real), Is.EqualTo("100.0%"), "a real limit keeps its precise figure");
+        Assert.That(MainViewModel.BlockBrush(peak), Is.SameAs(Palette.Quiet), "muted, not the warn/over colour of a real limit");
+        Assert.That(MainViewModel.BlockBrush(real), Is.Not.SameAs(Palette.Quiet));
+        Assert.That(MainViewModel.PeakCaption, Does.StartWith("estimate"));
+    }
+
+    [Test]
     public void The_utilization_card_stays_visible_while_idle_between_windows()
     {
         // M.ORCH-T502: the card collapses only on an empty caption (MainWindow.xaml binds its Visibility to UtilizationText),

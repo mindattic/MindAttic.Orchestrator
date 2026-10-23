@@ -176,17 +176,29 @@ public sealed partial class MainViewModel
     /// <summary>The tab's login's 5-hour window, % used (M.ORCH-T628): from its own pace, else (a login the daemon hasn't paced
     /// yet) the roster's last reading of it.</summary>
     public string BudgetHeadline => Budget is null && OwnRow?.FiveHourUsedAt(DateTime.UtcNow) is { } read ? Formatting.FiveHourPercent(read)
-        : Budget?.CurrentBlock is null ? "Idle" : Formatting.FiveHourPercent(Budget.BlockPercent);
+        : BlockHeadline(Budget);
+
+    /// <summary>The 5-hour tile's figure for a pace (M.ORCH-T636): against only the busiest block (no real limit known, so the
+    /// chart beside it draws nothing) it's a rough "~100%", never a precise-looking "100.0%" a real limit gets.</summary>
+    internal static string BlockHeadline(BudgetStatus? b) => b switch
+    {
+        null or { CurrentBlock: null } => "Idle",
+        { BlockLimitIsPeak: true } => $"~{Math.Round(b.BlockPercent, MidpointRounding.AwayFromZero).ToString("0", System.Globalization.CultureInfo.InvariantCulture)}%",
+        _ => Formatting.FiveHourPercent(b.BlockPercent),
+    };
 
     public string BudgetCaption => Budget switch
     {
         null => OwnRow?.FiveHourUsedAt(DateTime.UtcNow) is null ? "" : "of your 5-hour limit (Claude's count)",
         { CurrentBlock: null } => "No 5-hour block running",
-        { BlockLimitIsPeak: true } => "of your busiest 5h block",
+        { BlockLimitIsPeak: true } => PeakCaption,
         { BlockLimitSource: LimitSource.Learned } => "of your learned 5-hour limit",
         { BlockLimitSource: LimitSource.Reported } => "of your 5-hour limit (Claude's count)",
         _ => "of your 5-hour budget",
     };
+
+    /// <summary>The caption under a peak-only figure: says outright it's an estimate, not a limit (M.ORCH-T636).</summary>
+    internal const string PeakCaption = "estimate: of your busiest 5h block (no 5-hour limit known yet)";
 
     public string BudgetDetail
     {
@@ -280,10 +292,14 @@ public sealed partial class MainViewModel
     /// <summary>0..1 fill for the bar; peak mode can pass 100% but the bar stops full.</summary>
     public double BudgetFill => Math.Clamp((Budget?.CurrentBlock is null ? 0 : Budget.BlockPercent) / 100, 0, 1);
 
-    public Brush BudgetBrush => Budget switch
+    public Brush BudgetBrush => BlockBrush(Budget);
+
+    /// <summary>The 5-hour tile's figure and bar colour. Against only the busiest block it's always the muted MaMuted, whatever
+    /// its level (M.ORCH-T636): the warn/over colours are for a real, known limit, so a peak-only guess never looks like one.</summary>
+    internal static Brush BlockBrush(BudgetStatus? b) => b switch
     {
         null or { CurrentBlock: null } => Palette.Quiet,
-        { BlockLimitIsPeak: true, Level: BudgetLevel.Ok } => Palette.Tickets,
+        { BlockLimitIsPeak: true } => Palette.Quiet,
         { Level: BudgetLevel.Over } => Palette.Over,
         { Level: BudgetLevel.Warn } => Palette.Waiting,
         _ => Palette.Working,
