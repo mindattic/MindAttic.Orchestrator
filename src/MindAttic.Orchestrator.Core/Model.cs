@@ -163,6 +163,10 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// <summary>Ticket → the tickets it requires (prerequisite links in the ticket database).</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>> Requires { get; init; } = new Dictionary<string, IReadOnlyList<string>>();
 
+    /// <summary>Repos whose open tickets could not be read (the ticket database locked on a first read): their claims
+    /// are not finished and nothing is proposed from them (M.ORCH-T727).</summary>
+    public IReadOnlySet<string> UnknownRepos { get; init; } = new HashSet<string>();
+
     /// <summary>Tickets approved for work in the ticket database's queue. Fixes need no approval; any other open ticket
     /// waits outside the queue until it's here, so no agent works a feature you didn't ask for (M.ORCH-T384).</summary>
     public IReadOnlySet<string> Approved { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

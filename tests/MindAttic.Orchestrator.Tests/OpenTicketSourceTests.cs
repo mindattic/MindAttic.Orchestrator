@@ -120,6 +120,29 @@ public sealed class OpenTicketSourceTests
     }
 
     [Test]
+    public void A_first_database_read_that_fails_marks_the_repo_unknown_not_empty()
+    {
+        var a = Repo("A", "A", "| A-T1 | 2026-10-01 | fix | open | one | — |\n");
+        var path = TicketsDb.DefaultPath(root);
+        using (var db = TicketsDb.Open(path)) db.Import([a]);
+        SqliteConnection.ClearAllPools();
+        var saved = File.ReadAllBytes(path);
+        File.WriteAllText(path, "not a database: caught mid-write");
+
+        var source = new OpenTicketSource();
+        var warnings = new List<string>();
+        Assert.That(source.OpenFor(a, warnings), Is.Empty);
+        Assert.That(source.Unknown, Does.Contain("A"));
+
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        File.WriteAllBytes(path, saved);
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(10));
+        Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(new[] { "A-T1" }));
+        Assert.That(source.Unknown, Is.Empty, "read once it can be");
+    }
+
+    [Test]
     public void A_database_read_that_fails_keeps_the_last_good_read_not_the_markdown()
     {
         // The markdown lags the database: it still lists A-T1 open, and lacks A-T3, which autopilot is working.

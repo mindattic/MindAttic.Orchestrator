@@ -198,7 +198,7 @@ public static partial class Scheduler
             .ToList();
 
         // A ticket that's no longer open was finished (or closed by hand): its assignment is done.
-        var finished = assignments.Where(a => !openIds.Contains(a.TicketId)).ToList();
+        var finished = assignments.Where(a => !openIds.Contains(a.TicketId) && !snapshot.UnknownRepos.Contains(a.Repo)).ToList();
 
         // Every repo with an agent working or waiting holds a slot, as does every live assignment.
         var occupied = snapshot.Repos.Count(r => r.State != RepoState.Dormant);
