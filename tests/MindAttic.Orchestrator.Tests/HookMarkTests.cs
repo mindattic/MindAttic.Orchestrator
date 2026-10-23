@@ -38,6 +38,7 @@ public sealed class HookMarkTests
         psi.ArgumentList.Add(script);
         psi.Environment["USERPROFILE"] = dir;
         psi.Environment["APPDATA"] = dir;
+        psi.Environment.Remove("CLAUDE_CONFIG_DIR");  // the agent running the tests may be on its own login
         return Process.Start(psi)!;
     }
 
