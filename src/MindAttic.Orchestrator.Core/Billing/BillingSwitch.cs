@@ -164,7 +164,7 @@ public sealed class BillingSwitch
         // Until a switch writes a mode, nothing is enforced (Tick asks no Launcher tab), so no CLI is said to be restarting or
         // to need restarting for a mode only read from Claude Code's config (M.ORCH-T453).
         var failedOver = SafeFailedOver().Select(f => f.SessionId).ToHashSet(StringComparer.Ordinal);
-        var clis = LiveClis(hosts, nowUtc).Select(c => state is not null && c.Bills is { } bills && bills != mode && !failedOver.Contains(c.SessionId)
+        var clis = LiveClis(hosts, nowUtc).Select(c => state is not null && c.Account is null && c.Bills is { } bills && bills != mode && !failedOver.Contains(c.SessionId)
             ? c with { Restart = c.Host is null ? "manual"
                 : state.Requested.Contains(c.SessionId) ? "requested" : state.Refused.Contains(c.SessionId) ? "refused" : "pending" }
             : c).ToList();
@@ -268,7 +268,8 @@ public sealed class BillingSwitch
         var stamp = state.SinceUtc.ToString("O", CultureInfo.InvariantCulture);
         var due = new List<CliBilling>();
         var failedOver = SafeFailedOver().Select(f => f.SessionId).ToHashSet(StringComparer.Ordinal);
-        foreach (var c in LiveClis(hosts, nowUtc).Where(c => c.Bills is { } b && b != state.Mode && !failedOver.Contains(c.SessionId)))
+        // The mode is the global login's (the fallback's): a CLI on its own per-CLI login bills that account (M.ORCH-T677).
+        foreach (var c in LiveClis(hosts, nowUtc).Where(c => c.Account is null && c.Bills is { } b && b != state.Mode && !failedOver.Contains(c.SessionId)))
         {
             if (c.Host is null)
             {

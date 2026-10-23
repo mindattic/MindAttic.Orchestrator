@@ -432,6 +432,31 @@ public sealed class BillingTests
         Assert.That(BillingText.Of(clis.Single(c => c.Pid == 100)), Is.EqualTo("Claude Team"));
     }
 
+    /// <summary>M.ORCH-T677: a switch to the API key would have restarted CLIs on Ryan's, Amy's and Honey's own logins onto it.</summary>
+    [Test]
+    public void Switching_billing_leaves_a_cli_on_its_own_login_alone()
+    {
+        File.WriteAllText(ConfigPath, "{" + TeamLogin + ", \"customApiKeyResponses\": {\"approved\": [], \"rejected\": [\"" + KeyTail + "\"]}}");
+        var accounts = new MindAttic.Orchestrator.Sessions.AccountDirs(Path.Combine(dir, "accounts"));
+        Cli(100, "global", "subscription", @"D:\Projects\Prose");
+        File.WriteAllText(Path.Combine(Contexts, "own.state.json"), JsonSerializer.Serialize(new
+        { pid = 72544, state = "idle", auth = "subscription", cwd = @"D:\Projects\Unity.SpaceGod", config_dir = accounts.For("honey@mindattic.com").Directory }));
+        var now = new DateTime(2026, 10, 18, 16, 0, 0, DateTimeKind.Utc);
+        var billing = new BillingSwitch(Contexts)
+        {
+            ConfigPath = ConfigPath, VaultKey = () => Key, IsAlive = _ => true, Accounts = accounts,
+            HostOf = (pid, hosts) => hosts.FirstOrDefault(),
+            Send = (host, message) => { lock (sent) sent.Add((host, message)); return Task.FromResult(true); },
+        };
+
+        var result = billing.Switch("api", "cli", [Tab], now);
+
+        Assert.That(result.Error, Is.Null);
+        Assert.That(sent.Select(s => JsonDocument.Parse(s.Message).RootElement.GetProperty("session").GetString()), Is.EqualTo(new[] { "global" }),
+            "only the CLI on the global login is asked to move to the key; Honey's own login keeps billing Honey");
+        Assert.That(result.Status.Clis.Single(c => c.SessionId == "own").Restart, Is.Null);
+    }
+
     // ── Status lines ────────────────────────────────────────────────────────
 
     [Test]
