@@ -482,9 +482,15 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
 
     /// <summary>What `next` says when the named repos' queue has run dry (M.ORCH-T700): nothing open, waiting, busy or held.
     /// It offers a bug hunt and leaves it to the user: "Ask but don't do unless explicitly given permission."</summary>
-    internal static string Dry(IReadOnlyList<string> repos)
+    internal static string Dry(IReadOnlyList<string> repos, IReadOnlySet<string>? unknownRepos = null)
     {
-        var named = repos.Count == 0 || repos.Any(IsAll) ? "these repos" : string.Join(", ", repos);
+        // A repo whose Tickets.db couldn't be read isn't dry, its tickets are unknown (M.ORCH-T740): no bug hunt on that.
+        var every = repos.Count == 0 || repos.Any(IsAll);
+        var unread = unknownRepos is { Count: > 0 } ? unknownRepos.Where(r => every || Named(repos, r)).OrderBy(r => r, StringComparer.OrdinalIgnoreCase).ToList() : [];
+        if (unread.Count > 0)
+            return $"couldn't read the tickets of {string.Join(", ", unread)} (its Tickets.db failed to open), so its queue isn't known to be empty; " +
+                "nothing else is ready. Try again shortly, and don't offer a bug hunt for it";
+        var named = every ? "these repos" : string.Join(", ", repos);
         return $"no open fixes or approved tickets left there: {named} ran dry. Ask the user whether to run /bughunt on {named}, " +
             "and hunt only after an explicit yes (anything else means no); each bug it finds becomes a fix ticket that /allocate then works";
     }
@@ -557,7 +563,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                         tooBig > 0 ? $"{tooBig} estimated past what's left before the reset" : null,
                         waiting > 0 ? $"{waiting} wait for your approval" : null,
                     }.OfType<string>())
-                : Dry(repos));
+                : Dry(repos, plan.UnknownRepos));
         }
         // Without the pace's allowance the session setting caps it, less what's already being worked or claimed, as Tick
         // subtracts its running agents: with nothing subtracted, each call handed out the whole setting again (M.ORCH-T549).

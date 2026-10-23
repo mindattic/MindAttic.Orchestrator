@@ -87,6 +87,9 @@ public sealed record SchedulePlan(
     /// <summary>Open tickets whose session went quiet without closing them; they're back in <see cref="Queue"/>.</summary>
     public IReadOnlyList<QueueItem> Stale { get; init; } = [];
 
+    /// <summary>Repos whose Tickets.db couldn't be read (M.ORCH-T727): their open tickets are unknown, not none (M.ORCH-T740).</summary>
+    public IReadOnlySet<string> UnknownRepos { get; init; } = new HashSet<string>();
+
     /// <summary>Tickets that would have been proposed but are estimated to cost more than is left before
     /// the reset: better split, or started after it, than run out of room halfway.</summary>
     public IReadOnlyList<QueueItem> TooBig { get; init; } = [];
@@ -306,7 +309,7 @@ public static partial class Scheduler
 
         return new SchedulePlan(queue, proposals, settings.MaxConcurrentSessions, occupied, hold, finished)
         {
-            Cap = cap, Pace = pace, Stop = snapshot.Pace is { Stop: true }, Stale = [.. queue.Where(q => q.IsStale)], TooBig = tooBig, RoomForRest = roomForRest,
+            Cap = cap, UnknownRepos = snapshot.UnknownRepos, Pace = pace, Stop = snapshot.Pace is { Stop: true }, Stale = [.. queue.Where(q => q.IsStale)], TooBig = tooBig, RoomForRest = roomForRest,
             // Waiting for approval too: an old feature nobody approved is the likeliest to close as wont-do.
             Groom = [.. queue.Concat(awaiting).Where(q => q.Old && q.Assignment is null)],
             AwaitingApproval = awaiting, Worked = worked,

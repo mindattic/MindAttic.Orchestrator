@@ -524,6 +524,16 @@ public sealed class AutopilotTests
     }
 
     [Test]
+    public void An_unreadable_Tickets_db_is_not_a_dry_queue()
+    {
+        // M.ORCH-T740
+        Assert.That(Autopilot.Dry(["A"], new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "a" }),
+            Does.Contain("couldn't read the tickets of a").And.Not.Contain("bughunt on").And.Not.Contain("ran dry"));
+        Assert.That(Autopilot.Dry(["A"], new HashSet<string> { "B" }), Does.Contain("ran dry"));
+        Assert.That(Autopilot.Dry(["all"], new HashSet<string> { "B" }), Does.Contain("couldn't read the tickets of B"));
+    }
+
+    [Test]
     public void A_dry_queue_offers_a_bug_hunt_and_leaves_it_to_the_user()
     {
         // M.ORCH-T700: "Ask but don't do unless explicitly given permission."
