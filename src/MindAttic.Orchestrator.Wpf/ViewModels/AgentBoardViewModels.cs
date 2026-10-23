@@ -70,7 +70,7 @@ public sealed class AgentRowViewModel(string sessionId) : ObservableObject
     /// <summary>What its CLI bills (M.ORCH-T436): "Claude Team", or "API key: the Launcher restarts it…" while it bills the other thing.</summary>
     public string Billing => row.Billing ?? "";
 
-    /// <summary>The Claude login its CLI bills (M.ORCH-T606): "Login: a@b.com", or the global login's "(global)"; empty when unknown.</summary>
+    /// <summary>The Claude login its CLI bills (M.ORCH-T606): "Login: a@b.com", or the global login's "(fallback)"; empty when unknown.</summary>
     public string Login => row.Login is { } l ? $"Login: {l}" : "";
 
     /// <summary>The login's email behind its name (M.ORCH-T614), as the login line's tooltip.</summary>

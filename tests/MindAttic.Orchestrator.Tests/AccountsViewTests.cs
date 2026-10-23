@@ -139,11 +139,11 @@ public sealed class AccountsViewTests
         card.Update(LoginBoard.Own(b, Now), Now);
         Assert.That(card.Title, Is.EqualTo("Bee"));
 
-        // The global login is named for whoever's signed in to it, marked "(global)".
+        // The global login is named for whoever's signed in to it, marked "(fallback)".
         MainViewModel.SaveAlias(dirs, dirs.ClaudeDir, "g@example.com", "Gee");
         var global = new LoginCardViewModel("");
         global.Update(LoginBoard.Global(dirs.ClaudeDir, new AccountRow { Account = "g", Email = "g@example.com" }, true, Path.Combine(dirs.ClaudeDir, "rl-status.json"), Now), Now);
-        Assert.That(global.Title, Is.EqualTo("Gee (global)"));
+        Assert.That(global.Title, Is.EqualTo("Gee (fallback)"));
         Assert.That(global.TitleTip, Does.StartWith("g@example.com"));
     }
 

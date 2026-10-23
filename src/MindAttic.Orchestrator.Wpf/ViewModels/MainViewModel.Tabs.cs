@@ -33,7 +33,7 @@ public sealed partial class MainViewModel
 
     public bool IsGlobalTab => root is null;
 
-    /// <summary>The login's name ("Jordan", "Ryan (global)").</summary>
+    /// <summary>The login's name ("Jordan", "Ryan (fallback)").</summary>
     public string TabTitle => tab.Title;
 
     /// <summary>Its title and its light's word (M.ORCH-T630: colour is never the only cue), its week left, its email and which

@@ -36,7 +36,7 @@ public sealed record AgentBoardRow(
     public string? Billing { get; init; }
 
     /// <summary>The Claude login its CLI bills (M.ORCH-T606): its per-CLI login's email, or the global login's marked
-    /// "(global)"; null when not known.</summary>
+    /// "(fallback)"; null when not known.</summary>
     public string? Login { get; init; }
 
     /// <summary>The per-CLI login its CLI runs on (its email, M.ORCH-T607), null on the global login: what its "Move to" menu leaves out.</summary>

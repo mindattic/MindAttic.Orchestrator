@@ -208,10 +208,10 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         }
     }
 
-    /// <summary>A CLI's login in words (M.ORCH-T606): its own login's name, else the global login's marked "(global)"; null
+    /// <summary>A CLI's login in words (M.ORCH-T606): its own login's name, else the global login's marked "(fallback)"; null
     /// when neither is known. The names are the logins' aliases (M.ORCH-T614), their emails' part before the @ by default.</summary>
     internal static string? LoginText(string? ownName, string? globalName) =>
-        ownName ?? (globalName is null ? null : $"{globalName} (global)");
+        ownName ?? (globalName is null ? null : $"{globalName} (fallback)");
 
     private Snapshot Build(DateTime now)
     {

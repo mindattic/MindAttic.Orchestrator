@@ -100,14 +100,14 @@ public sealed class LoginScopeTests
             new LoginLook("ryan", "RY", "#654321") { Alias = "Ryan" });
 
         Assert.That(tabs.Select(t => t.Email), Is.EqualTo(new[] { null, "amy@example.com", "jordan@example.com" }));
-        Assert.That(tabs.Select(t => t.Title), Is.EqualTo(new[] { "Ryan (global)", "AMY", "JORDAN" }));
+        Assert.That(tabs.Select(t => t.Title), Is.EqualTo(new[] { "Ryan (fallback)", "AMY", "JORDAN" }));
         Assert.That(tabs[0].ToolTip, Does.StartWith("ryan@example.com"));
         Assert.That(tabs[2].ToolTip, Does.StartWith("jordan@example.com"));
         Assert.That((tabs[0].Color, tabs[1].Color), Is.EqualTo(("#654321", "#123456")));
         Assert.That(tabs.Select(t => t.Key), Is.EqualTo(new[] { "", "amy@example.com", "jordan@example.com" }));
 
         var unknown = LoginScope.Tabs(new Snapshot(Now, [], []), _ => throw new AssertionException("no per-CLI login"), new LoginLook("claude", "CL", "#000000"));
-        Assert.That(unknown.Single().Title, Is.EqualTo("Global login"), "only the global login, and nobody's email known for it");
+        Assert.That(unknown.Single().Title, Is.EqualTo("Fallback login"), "only the global login, and nobody's email known for it");
     }
 
     [Test]

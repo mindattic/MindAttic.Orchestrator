@@ -228,7 +228,7 @@ public sealed partial class MainViewModel : ObservableObject
     public string Provider { get => provider; set { if (value is not null && Set(ref provider, value)) Raise(nameof(ShowLogins)); } }
 
     /// <summary>What <see cref="Logins"/> lists for the login every CLI uses unless started on one of its own.</summary>
-    public const string GlobalLogin = "Global login";
+    public const string GlobalLogin = "Fallback login";
 
     /// <summary>The global login's tab's other choice (M.ORCH-T605): one CLI per account, a per-CLI login no CLI runs on yet
     /// (most headroom first), else the global login (<see cref="LoginPicker"/>).</summary>

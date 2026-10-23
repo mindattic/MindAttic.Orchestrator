@@ -112,7 +112,7 @@ public sealed class ViewModelTests
     }
 
     [TestCase("a@b.com", null, "a@b.com")]
-    [TestCase(null, "g@b.com", "g@b.com (global)")]
+    [TestCase(null, "g@b.com", "g@b.com (fallback)")]
     [TestCase("a@b.com", "g@b.com", "a@b.com")]
     [TestCase(null, null, null)]
     public void A_cli_names_its_own_login_else_the_global_one(string? own, string? global, string? expected) =>
@@ -133,8 +133,8 @@ public sealed class ViewModelTests
         card.Update(row with { Login = "Jordan", LoginEmail = "j@b.com" }, null, now);
         Assert.That((card.Login, card.LoginTip), Is.EqualTo(("Login: Jordan", "The Claude login this CLI bills: j@b.com")), "the name, the email in the tooltip (M.ORCH-T614)");
 
-        var host = new HostRowViewModel(new HostSession("Claude", 7, "p", null) { Login = "g (global)", LoginEmail = "g@b.com" });
-        Assert.That((host.Detail, host.DetailTip), Is.EqualTo(("PID 7 · g (global)", "Bills the Claude login g@b.com")));
+        var host = new HostRowViewModel(new HostSession("Claude", 7, "p", null) { Login = "g (fallback)", LoginEmail = "g@b.com" });
+        Assert.That((host.Detail, host.DetailTip), Is.EqualTo(("PID 7 · g (fallback)", "Bills the Claude login g@b.com")));
         host.Update(new HostSession("Claude", 7, "p", null));
         Assert.That(host.Detail, Is.EqualTo("PID 7"));
     }

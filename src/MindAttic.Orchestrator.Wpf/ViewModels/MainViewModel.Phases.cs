@@ -292,8 +292,8 @@ public sealed partial class MainViewModel
     /// how long it ran over it, and where the recent rate ends up.</summary>
     public string UtilizationText => UtilizationCaption(Utilization, snapshot is not null, LoginName) + NoWorkText;
 
-    /// <summary>The tab's person, for the idle caption: its title without "(global)".</summary>
-    private string LoginName => tab.Title.EndsWith(" (global)", StringComparison.Ordinal) ? tab.Title[..^" (global)".Length]
+    /// <summary>The tab's person, for the idle caption: its title without "(fallback)".</summary>
+    private string LoginName => tab.Title.EndsWith(" (fallback)", StringComparison.Ordinal) ? tab.Title[..^" (fallback)".Length]
         : tab.IsGlobal ? "the global login" : tab.Title;
 
     /// <summary>Nothing running on the login (M.ORCH-T629): none of its repos working and none of its agents working or with a

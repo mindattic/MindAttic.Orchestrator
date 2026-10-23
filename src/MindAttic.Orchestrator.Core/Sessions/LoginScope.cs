@@ -84,7 +84,7 @@ public static class LoginScope
     /// The dashboard's tabs: the global login first, then each per-CLI login signed in (the ones <see cref="Snapshot.Accounts"/>
     /// paces) or with a live CLI or Launcher tab on it, and each known roster account (<paramref name="roster"/>'s emails) not
     /// signed in yet (M.ORCH-T615), which gets a tab that only signs it in; by email. Each is titled by its name
-    /// (<see cref="LoginLook.Alias"/>), the global one marked "(global)", with its email in the tooltip and its terminal tabs'
+    /// (<see cref="LoginLook.Alias"/>), the global one marked "(fallback)", with its email in the tooltip and its terminal tabs'
     /// color as its accent. The global login's own account gets no second tab.
     /// </summary>
     public static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, AccountDirs dirs, IEnumerable<string?>? roster = null) =>
@@ -93,8 +93,8 @@ public static class LoginScope
     internal static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, Func<string, LoginLook> ownLook, LoginLook globalLook, IEnumerable<string?>? roster = null)
     {
         var global = snapshot.GlobalEmail is { } g
-            ? new LoginTab(null, $"{globalLook.Alias} (global)", $"{g}: the global login (~/.claude), every CLI's unless started on its own", globalLook.TabColor)
-            : new LoginTab(null, "Global login", "The global login (~/.claude): nobody's email is known for it yet", globalLook.TabColor);
+            ? new LoginTab(null, $"{globalLook.Alias} (fallback)", $"{g}: the global login (~/.claude), every CLI's unless started on its own", globalLook.TabColor)
+            : new LoginTab(null, "Fallback login", "The global login (~/.claude): nobody's email is known for it yet", globalLook.TabColor);
         var live = snapshot.Accounts.Select(a => a.Email)
             .Concat(snapshot.Agents.Select(a => a.OwnLogin))
             .Concat(snapshot.Repos.SelectMany(r => r.Hosts).Select(h => h.OwnLogin))

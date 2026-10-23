@@ -80,7 +80,7 @@ public sealed class TabStatusTests
         Assert.That(LoginTab.ApiKey.IsApiKey, Is.True);
         Assert.That(LoginTab.ApiKey.IsGlobal, Is.False);
         Assert.That(LoginTab.ApiKey.Key, Is.EqualTo(LoginTab.ApiKeyKey).And.Not.Contains("@").And.Not.Empty);
-        Assert.That(new LoginTab(null, "Ryan (global)", "", "").Key, Is.Empty);
+        Assert.That(new LoginTab(null, "Ryan (fallback)", "", "").Key, Is.Empty);
     }
 
     [Test]

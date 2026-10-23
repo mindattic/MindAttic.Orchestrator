@@ -1147,11 +1147,11 @@
                                                 <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Content="Make default" Padding="14,4"
                                                         Command="{Binding DataContext.MakeDefaultCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding}"
-                                                        AutomationProperties.Name="{Binding Title, StringFormat='Make {0} the global default'}"
+                                                        AutomationProperties.Name="{Binding Title, StringFormat='Make {0} the fallback'}"
                                                         ToolTip="Sign the global login (~/.claude) in to this account, opening its login in the browser: every CLI not started on a login of its own follows at its next turn. Billing goes back to Claude Team first if the API key bills." />
-                                                <TextBlock Text="Not the global default." Style="{StaticResource MaMutedText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                                <TextBlock Text="Not the fallback." Style="{StaticResource MaMutedText}" TextWrapping="Wrap" VerticalAlignment="Center" />
                                             </DockPanel>
-                                            <TextBlock Text="The global default: every CLI not started on a login of its own runs on this account." Style="{StaticResource MaMutedText}"
+                                            <TextBlock Text="The fallback: every CLI not started on a login of its own runs on this account." Style="{StaticResource MaMutedText}"
                                                        TextWrapping="Wrap" Margin="0,8,0,0" Visibility="{Binding IsDefault, Converter={StaticResource Visible}}" />
                                             <TextBlock Text="{Binding SignInHint}" Foreground="{DynamicResource MaWarn}" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0"
                                                        Visibility="{Binding SignInHint, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
