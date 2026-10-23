@@ -202,6 +202,26 @@ public sealed class ClaudeMeterProbeTests
         await probe.Pending;
     }
 
+    private const string WeekOnly = """{"five_hour":null,"seven_day":{"utilization":91.0,"resets_at":"2026-10-27T22:00:00+00:00"}}""";
+
+    [Test]
+    public async Task A_login_with_no_5_hour_window_running_still_gives_its_week_as_a_reading()
+    {
+        // T687: Erin's idle global login answers with only the week; it parsed to "no reading" and was never recorded.
+        var week = ClaudeMeterProbe.Parse(WeekOnly)!;
+        Assert.That((week.FiveHour, week.Week!.Percent), Is.EqualTo(((ReportedWindow?)null, 91d)));
+
+        var probe = Probe((_, _) => Task.FromResult<string?>(WeekOnly));
+        Assert.That(probe.Tick(null, [], Now), Is.True, "an idle login is asked on the idle schedule");
+        await probe.Pending;
+
+        Assert.That(probe.LastResult, Does.StartWith("read Claude's meter"));
+        Assert.That(probe.FailuresInRow, Is.EqualTo(0));
+        var read = ReportedUsage.Load(DateTime.UtcNow, probe.UsagePath)!;
+        Assert.That((read.FiveHour, read.Week!.Percent), Is.EqualTo(((ReportedWindow?)null, 91d)));
+        Assert.That(DateTime.UtcNow - read.AtUtc, Is.LessThan(TimeSpan.FromMinutes(1)));
+    }
+
     [Test]
     public async Task A_higher_percent_already_reported_for_the_window_is_kept()
     {

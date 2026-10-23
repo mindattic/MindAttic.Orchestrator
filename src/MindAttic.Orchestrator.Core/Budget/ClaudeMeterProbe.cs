@@ -305,7 +305,9 @@ public sealed class ClaudeMeterProbe
         try
         {
             LastReading = Write(UsagePath, reading, DateTime.UtcNow, account, Store);
-            LastResult = $"read Claude's meter: {reading.FiveHour?.Percent:0}% of the 5-hour window";
+            // An idle login has no running 5-hour window: the endpoint gives only the week (M.ORCH-T687).
+            LastResult = reading.FiveHour is { } shown ? $"read Claude's meter: {shown.Percent:0}% of the 5-hour window"
+                : $"read Claude's meter: no 5-hour window running, week {reading.Week?.Percent:0}%";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException)
         {
@@ -411,7 +413,9 @@ public sealed class ClaudeMeterProbe
         return await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
     }
 
-    /// <summary>The endpoint's 5-hour and 7-day windows; null when it has no 5-hour one. Resets come back a fraction of a
+    /// <summary>The endpoint's 5-hour and 7-day windows; null when it has neither. A login with no 5-hour window running (idle
+    /// since it reset) gives only the week, which is still a reading (M.ORCH-T687: Erin's global login went "no reading" for
+    /// 20 hours, every ask parsed to nothing). Resets come back a fraction of a
     /// second off the statusline's (20:29:59.89 for 20:30), so they're rounded to the minute to match its windows.</summary>
     internal static ReportedUsage? Parse(string body)
     {
@@ -419,7 +423,8 @@ public sealed class ClaudeMeterProbe
         {
             using var doc = JsonDocument.Parse(body);
             var five = Window(doc.RootElement, "five_hour");
-            return five is null ? null : new ReportedUsage(five, Window(doc.RootElement, "seven_day"), default);
+            var week = Window(doc.RootElement, "seven_day");
+            return five is null && week is null ? null : new ReportedUsage(five, week, default);
         }
         catch (JsonException) { return null; }
 
@@ -432,16 +437,17 @@ public sealed class ClaudeMeterProbe
                 : null;
     }
 
-    /// <summary>Writes <paramref name="reading"/> as the statusline does, stamped <paramref name="atUtc"/> and tagged with
+    /// <summary>Writes <paramref name="reading"/> (its 5-hour window may be missing) as the statusline does, stamped <paramref name="atUtc"/> and tagged with
     /// <paramref name="account"/>. Usage never falls within a window, so a higher percent already in the file for the same
     /// window is kept (with this, newer, time), when it's the same account's: an untagged statusline reading may be another
     /// account's whose window happens to reset at the same minute, and its percent would be written tagged as this one's.</summary>
     internal static ReportedUsage Write(string path, ReportedUsage reading, DateTime atUtc, string? account = null, Settings.OrchestratorDb? db = null)
     {
-        var five = reading.FiveHour!;
-        if (ReportedUsage.Load(atUtc, path, db) is { FiveHour: { } old } was && was.Account == account && old.ResetUtc == five.ResetUtc && old.Percent > five.Percent)
+        var five = reading.FiveHour;
+        if (five is not null && ReportedUsage.Load(atUtc, path, db) is { FiveHour: { } old } was && was.Account == account && old.ResetUtc == five.ResetUtc && old.Percent > five.Percent)
             five = old;
-        var limits = new JsonObject { ["five_hour"] = Node(five) };
+        var limits = new JsonObject();
+        if (five is not null) limits["five_hour"] = Node(five);
         if (reading.Week is { } week) limits["seven_day"] = Node(week);
         var json = new JsonObject
         {

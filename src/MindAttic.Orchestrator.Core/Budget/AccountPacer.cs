@@ -136,20 +136,28 @@ public sealed class AccountPacer
     private string? probeRowsWritten;
     private readonly Dictionary<string, DateTime> notAskedSince = new(StringComparer.OrdinalIgnoreCase);
 
-    private void Observe(AccountDir dir, State state, ClaudeMeterProbe probe, int sessions, List<UsageEvent> events, DateTime now)
+    private void Observe(AccountDir dir, State state, ClaudeMeterProbe probe, int sessions, List<UsageEvent> events, DateTime now) =>
+        Observe(dir.Email, probe, sessions, events, now);
+
+    /// <summary>Records the global login's probe in the same row as the own logins' (M.ORCH-T687), under <paramref name="key"/>
+    /// (its email): the usage report found no row for it and said the meter "wasn't asked" while it asked every few minutes.</summary>
+    public void ObserveGlobal(string key, ClaudeMeterProbe probe, int sessions, IReadOnlyList<UsageEvent> events, DateTime now) =>
+        Observe(key, probe, sessions, [.. events], now);
+
+    private void Observe(string email, ClaudeMeterProbe probe, int sessions, List<UsageEvent> events, DateTime now)
     {
         // Due but not asked for a while says why, once, in the log: that's the gap the next blind window would be.
         if (probe.IsDue && probe.Skipped is { } why)
         {
-            if (!notAskedSince.TryGetValue(dir.Email, out var since)) notAskedSince[dir.Email] = since = now;
+            if (!notAskedSince.TryGetValue(email, out var since)) notAskedSince[email] = since = now;
             if (now - since >= TimeSpan.FromMinutes(10))
             {
-                ClaudeMeterProbe.Say?.Invoke(Serilog.Events.LogEventLevel.Warning, $"meter probe [{dir.Email}]: due for {(now - since).TotalMinutes:0} min but not asking: {why}");
-                notAskedSince[dir.Email] = now;
+                ClaudeMeterProbe.Say?.Invoke(Serilog.Events.LogEventLevel.Warning, $"meter probe [{email}]: due for {(now - since).TotalMinutes:0} min but not asking: {why}");
+                notAskedSince[email] = now;
             }
         }
-        else notAskedSince.Remove(dir.Email);
-        probeRows[dir.Email] = new JsonObject
+        else notAskedSince.Remove(email);
+        probeRows[email] = new JsonObject
         {
             ["asks"] = probe.Asks,
             ["lastAskUtc"] = probe.LastAskUtc?.ToString("O"),

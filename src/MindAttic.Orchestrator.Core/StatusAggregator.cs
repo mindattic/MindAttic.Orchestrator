@@ -357,6 +357,9 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             // The week moved a point since the roster's reading: read the meter again for it (M.ORCH-T490).
             probe.Tick(seen, events, now, force: switchedNow || weekMoved || lapsed is not null || signIn is { Switched: true } && !signIn.HasWindow(now),
                 samples: signIn is null ? samples ?? [] : (samples ?? []).Where(s => signIn.Contains(s.AtUtc)));
+            // The global login's probe is recorded beside the own logins' (M.ORCH-T687), so the usage report can say what it did.
+            if (ReferenceEquals(probe, defaultProbe) && SignIn?.Profile?.Email is { Length: > 0 } globalEmail)
+                Accounts.ObserveGlobal(globalEmail, probe, subscriptionSessions.Count, events, now);
         }
         var reportedLimit = ReportedLimitFrom(reported, events, now, signIn);
         List<UsageSample> mine = signIn is null ? samples ?? [] : [.. (samples ?? []).Where(s => signIn.Contains(s.AtUtc))];
