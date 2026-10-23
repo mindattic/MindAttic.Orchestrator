@@ -71,6 +71,8 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>The terminal itself: kept for the pane's whole life, since a new control would start a new process.</summary>
     public EasyTerminalControl Control { get; }
 
+    /// <summary>Repo-pane buttons (Go to, Move to) are hidden on a per-account Launcher pane: it has no repo tile of its own and no CLI to move (M.ORCH-T736).</summary>
+    public bool HasRepoButtons => !Request.IsLauncher;
     public string Title => Request.Title;
     public string Badge => Request.Initials is { } i ? $"{i}:" : "";
     public string Name => $"{SessionControl.ShortName(Request.Repo)} [{Request.Provider}]";
