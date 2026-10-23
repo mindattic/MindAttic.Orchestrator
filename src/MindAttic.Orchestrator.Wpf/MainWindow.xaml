@@ -91,7 +91,27 @@
              stays when the strip is hidden. -->
         <DockPanel x:Name="TopRow" Grid.Row="0" Margin="24,14,24,0">
         <mc:MaThemeToggle x:Name="ThemeToggle" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="12,0,0,0" />
-        <mc:MaTabControl x:Name="LoginTabStrip" ShowContent="False" ItemsSource="{Binding LoginTabs}" SelectedItem="{Binding SelectedTab}"
+        <!-- Organizations above people (M.ORCH-T655): one pill per org (orchestrator orgs add), shown once there's a second,
+             with how many of its people's repos need you; the person tabs below are the chosen org's. Kept on the global login's
+             tab (MainWindow.xaml.cs), which holds every org, like the person strip under it. -->
+        <StackPanel>
+        <ListBox x:Name="OrgStrip" Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Orgs}" SelectedItem="{Binding SelectedOrg}"
+                 Padding="0" Margin="0,0,0,10" AutomationProperties.Name="Organizations, each with its own people"
+                 Visibility="{Binding HasOrgs, Converter={StaticResource Visible}}">
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:OrgViewModel}">
+                    <StackPanel x:Name="OrgItem" Orientation="Horizontal" ToolTip="{Binding Tip}" AutomationProperties.Name="{Binding Tip}">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Summary}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="10,0,0,0" />
+                        <TextBlock VerticalAlignment="Center" Margin="8,0,0,0"
+                                   Visibility="{Binding Badge, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
+                            <Run Text="&#x2022; " /><Run Text="{Binding Badge, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=" need you" />
+                        </TextBlock>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        <mc:MaTabControl x:Name="LoginTabStrip" ShowContent="False" ItemsSource="{Binding OrgTabs}" SelectedItem="{Binding SelectedTab}"
                          AutomationProperties.Name="Claude logins, one dashboard tab each"
                          Visibility="{Binding HasLoginTabs, Converter={StaticResource Visible}}">
             <!-- Status at a glance (M.ORCH-T630), all the library's MaTabItem (M.ORCH-T667): a status light before the name
@@ -121,6 +141,7 @@
                 </DataTemplate>
             </mc:MaTabControl.ItemTemplate>
         </mc:MaTabControl>
+        </StackPanel>
         </DockPanel>
 
         <!-- Header, read left to right: the work (who needs you, who's working, their subagents, what's queued), then the
@@ -583,9 +604,16 @@
                 </ScrollViewer>
             </Border>
 
-            <!-- Queue view: every open ticket across the workspace, and what the scheduler proposes. -->
-            <ScrollViewer x:Name="QueueBody" Grid.ColumnSpan="2" Style="{StaticResource MaBodyScroll}"
-                          Visibility="{Binding IsQueueView, Converter={StaticResource Visible}}">
+            <!-- Queue view: every open ticket across the workspace, and what the scheduler proposes. The full queue is its own
+                 virtualized list below the rest (M.ORCH-T655): only the rows on screen are built, so a queue of hundreds costs a
+                 screenful on every tab or org switch; the autopilot line, holds, reminders, finished work and Next up scroll above
+                 it, in at most a little under half the view (MainWindow.xaml.cs), so the queue always has the rest. -->
+            <Grid x:Name="QueueView" Grid.ColumnSpan="2" Visibility="{Binding IsQueueView, Converter={StaticResource Visible}}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+            <ScrollViewer x:Name="QueueBody" Style="{StaticResource MaBodyScroll}">
                 <StackPanel MaxWidth="1200" HorizontalAlignment="Left">
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Right" Text="{Binding SlotsText}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" />
@@ -690,10 +718,18 @@
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
-                    <ItemsControl ItemsSource="{Binding Queue}" Style="{StaticResource MaRowList}">
+                </StackPanel>
+            </ScrollViewer>
+                    <local:VirtualList x:Name="QueueList" Grid.Row="1" ItemsSource="{Binding Queue}" ScrollStyle="{StaticResource MaBodyScroll}"
+                                       AutomationProperties.Name="Queue" VirtualizingPanel.IsVirtualizing="True">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel MaxWidth="1200" HorizontalAlignment="Left" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:QueueRowViewModel}">
-                                <Border Style="{StaticResource MaRowCard}" Opacity="{Binding RowOpacity}">
+                                <Border Style="{StaticResource MaRowCard}" Opacity="{Binding RowOpacity}" Margin="0,0,0,8">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="36" />
@@ -735,9 +771,8 @@
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-            </ScrollViewer>
+                    </local:VirtualList>
+            </Grid>
 
             <!-- Audit view: what's duplicated across repos and which shared agent files drifted. -->
             <ScrollViewer x:Name="AuditBody" Grid.ColumnSpan="2" Style="{StaticResource MaBodyScroll}"
@@ -1164,6 +1199,14 @@
                           AutomationProperties.Name="Refreshing this view" />
 
         </Grid>
+
+        <!-- An org with no Claude login yet (M.ORCH-T655): said over the body rather than showing another org's person. On the
+             global login's tab (MainWindow.xaml.cs), which knows the orgs. -->
+        <Border x:Name="OrgEmptyPanel" Grid.Row="1" Grid.RowSpan="4" Background="{DynamicResource MaChrome}"
+                Visibility="{Binding IsOrgEmpty, Converter={StaticResource Visible}}">
+            <TextBlock Text="{Binding OrgEmptyText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" TextAlignment="Center"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560" Margin="24" AutomationProperties.LiveSetting="Polite" />
+        </Border>
 
         <!-- Status bar -->
         <Border x:Name="StatusBar" Grid.Row="5" Style="{StaticResource MaStatusBar}">

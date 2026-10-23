@@ -77,8 +77,11 @@ public sealed class LeaseTests
     /// <summary>Undoes step 7 (M.ORCH-T532's claimer columns), so an older version's steps run again from there.</summary>
     private const string DropStep7 = DropStep10 + "ALTER TABLE assignments DROP COLUMN cli; ALTER TABLE assignments DROP COLUMN cli_session;";
 
-    /// <summary>Undoes step 12 (M.ORCH-T668's assignments.account).</summary>
-    internal const string DropStep12 = "ALTER TABLE assignments DROP COLUMN account; ";
+    /// <summary>Undoes step 13 (M.ORCH-T655's organizations and org_members).</summary>
+    internal const string DropStep13 = "DROP TABLE org_members; DROP TABLE organizations; ";
+
+    /// <summary>Undoes steps 12 (M.ORCH-T668's assignments.account) and later.</summary>
+    internal const string DropStep12 = DropStep13 + "ALTER TABLE assignments DROP COLUMN account; ";
 
     /// <summary>Undoes steps 11 (M.ORCH-T670's members table) and later.</summary>
     internal const string DropStep11 = DropStep12 + "DROP TABLE members; ";
@@ -128,7 +131,7 @@ public sealed class LeaseTests
             command.CommandText = "SELECT count(*) FROM pragma_table_info('cli_marks') WHERE name = 'since';";
             Assert.That(command.ExecuteScalar(), Is.EqualTo(1L), "step 9 (M.ORCH-T558): when each CLI's mark was first written");
         }
-        Assert.That(OrchestratorDb.Version, Is.EqualTo(12), "step 8 (M.ORCH-T528) adds session_states, step 9 (M.ORCH-T558) cli_marks.since, step 10 (M.ORCH-T563) the models, step 11 (M.ORCH-T670) the members, step 12 (M.ORCH-T668) assignments.account");
+        Assert.That(OrchestratorDb.Version, Is.EqualTo(13), "step 8 (M.ORCH-T528) adds session_states, step 9 (M.ORCH-T558) cli_marks.since, step 10 (M.ORCH-T563) the models, step 11 (M.ORCH-T670) the members, step 12 (M.ORCH-T668) assignments.account, step 13 (M.ORCH-T655) the organizations");
         Assert.That(new JsonStore(dir, new OrchestratorDb(path)).LoadSettings().BlockBudget, Is.EqualTo(5555), "what it held is kept");
     }
 

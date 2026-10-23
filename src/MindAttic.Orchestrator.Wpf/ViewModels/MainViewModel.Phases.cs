@@ -7,6 +7,7 @@ using MindAttic.Orchestrator.Activity;
 using MindAttic.Orchestrator.Audit;
 using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Scheduling;
+using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
@@ -425,10 +426,19 @@ public sealed partial class MainViewModel
     // ── Queue ───────────────────────────────────────────────────────────────
 
     // The queue is the whole workspace's (M.ORCH-T613), so one plan and one set of rows, on the global login's tab, are what
-    // every tab shows (M.ORCH-T654): a tab switch hands the window the same collections, and WPF keeps their rows.
-    private readonly ObservableCollection<QueueRowViewModel> queue = [], proposals = [];
+    // every tab shows (M.ORCH-T654): a tab switch hands the window the same collections, and WPF keeps their rows. Each org has
+    // its own set (M.ORCH-T655: every unclaimed ticket, and only its own claims), all kept current by each plan, so an org switch
+    // hands the window another org's rows as they are, rather than moving hundreds of rows in and out of one list.
+    private readonly Dictionary<string, ObservableCollection<QueueRowViewModel>> queues = new(StringComparer.Ordinal);
+    private readonly ObservableCollection<QueueRowViewModel> proposals = [];
     private readonly ObservableCollection<FinishedViewModel> finished = [];
-    public ObservableCollection<QueueRowViewModel> Queue => Root.queue;
+    public ObservableCollection<QueueRowViewModel> Queue => Root.QueueOf(Root.selectedOrgId);
+
+    private ObservableCollection<QueueRowViewModel> QueueOf(string org) =>
+        queues.TryGetValue(org, out var rows) ? rows : queues[org] = [];
+
+    /// <summary>Every org's queue rows (a ticket listed in several orgs has a row in each).</summary>
+    private IEnumerable<QueueRowViewModel> AllQueueRows => Root.queues.Values.SelectMany(q => q);
     public ObservableCollection<QueueRowViewModel> Proposals => Root.proposals;
     public ObservableCollection<FinishedViewModel> Finished => Root.finished;
     private SchedulePlan? Plan => Root.plan;
@@ -820,14 +830,21 @@ public sealed partial class MainViewModel
     private void ApplyPlan(Snapshot next)
     {
         if (!IsGlobalTab) { Root.ApplyPlan(next); return; }
+        // Planned from the whole workspace, every org's (M.ORCH-T655), with any priority just bumped on the tab's own view.
+        if (workspace is { } w) next = workspace = ReferenceEquals(w.Priorities, next.Priorities) ? w : w with { Priorities = next.Priorities };
         plan = Scheduler.Plan(next, store.LoadSettings(), store.LoadAssignments());
         var proposals = plan.Proposals.ToDictionary(p => p.Item.Id, StringComparer.Ordinal);
-        var rank = 0;
         // Which tickets weekly-aware pacing sent to another login, and why (M.ORCH-T666).
         var delegations = Redelegation.Load(store);
-        Queue.SyncBy(plan.Queue, q => q.Id, r => r.Id,
-            q => { var row = new QueueRowViewModel(q, this); row.Update(q, ++rank, proposals.GetValueOrDefault(q.Id), delegations.GetValueOrDefault(q.Id)); return row; },
-            (row, q) => row.Update(q, ++rank, proposals.GetValueOrDefault(q.Id), delegations.GetValueOrDefault(q.Id)));
+        // Each org's queue: every unclaimed ticket, and only its own CLIs' claims; each row keeps its rank in the whole queue.
+        var all = next;
+        var ranks = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var (item, at) in plan.Queue.Select((q, i) => (q, i + 1))) ranks.TryAdd(item.Id, at);
+        foreach (var org in orgs.Orgs)
+            QueueOf(org.Id).SyncBy(plan.Queue.Where(q => OrgScope.Lists(all, orgs, org.Id, q)), q => q.Id, r => r.Id,
+                q => { var row = new QueueRowViewModel(q, this); row.Update(q, ranks[q.Id], proposals.GetValueOrDefault(q.Id), delegations.GetValueOrDefault(q.Id)); return row; },
+                (row, q) => row.Update(q, ranks[q.Id], proposals.GetValueOrDefault(q.Id), delegations.GetValueOrDefault(q.Id)));
+        foreach (var gone in queues.Keys.Where(k => orgs.Find(k) is null).ToList()) queues.Remove(gone);
         Proposals.ReorderTo([.. Queue.Where(q => q.IsNext)]);
         Finished.SyncBy(plan.Finished, a => a.TicketId, f => f.TicketId, a => new FinishedViewModel(a, this), (row, a) => row.Update(a));
         // Every person's Tickets view (M.ORCH-T668): theirs and the unassigned queue, from the same plan.

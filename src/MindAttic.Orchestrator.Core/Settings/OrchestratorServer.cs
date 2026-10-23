@@ -159,11 +159,17 @@ public sealed class OrchestratorServer(string connectionString)
             account nvarchar(450) NULL
             """, null),
         ("state", "name nvarchar(450) NOT NULL PRIMARY KEY, value nvarchar(max) NOT NULL, written_at float NOT NULL", null),
+        // Organizations above people (M.ORCH-T655): each org, and each login's org and person (a login by its provider and itself).
+        ("organizations", "id nvarchar(450) NOT NULL PRIMARY KEY, name nvarchar(max) NOT NULL, position bigint NOT NULL, created_utc nvarchar(64) NULL", null),
+        ("org_members", """
+            provider nvarchar(64) NOT NULL, login nvarchar(386) NOT NULL, org_id nvarchar(450) NOT NULL, person nvarchar(max) NOT NULL,
+            added_utc nvarchar(64) NULL
+            """, "ALTER TABLE org_members ADD CONSTRAINT org_members_key PRIMARY KEY (provider, login); CREATE INDEX org_members_org ON org_members (org_id);"),
     ];
 
     /// <summary>The schema's version: 1, the tables of SQLite's first ten steps; 2, <c>members</c> (M.ORCH-T670); 3,
-    /// <c>assignments.account</c> (M.ORCH-T668).</summary>
-    public const int SchemaVersion = 3;
+    /// <c>assignments.account</c> (M.ORCH-T668); 4, <c>organizations</c> and <c>org_members</c> (M.ORCH-T655).</summary>
+    public const int SchemaVersion = 4;
 
     /// <summary>The changes to tables already there, one step per version past 1, as SQLite's migrations add them: a column
     /// added to a table there is one more step here (an <c>ALTER TABLE ... ADD</c>, also added to its <see cref="Tables"/> row so
@@ -172,6 +178,7 @@ public sealed class OrchestratorServer(string connectionString)
     [
         ("members", ""), // 2: members, a new table (created with the rest below)
         ("assignments", "IF COL_LENGTH(N'assignments', N'account') IS NULL ALTER TABLE assignments ADD account nvarchar(450) NULL;"), // 3: the login each was dispatched on (M.ORCH-T668)
+        ("organizations", ""), // 4: organizations and org_members, new tables (created with the rest below; M.ORCH-T655)
     ];
 
     private void EnsureSchema(SqlConnection connection)

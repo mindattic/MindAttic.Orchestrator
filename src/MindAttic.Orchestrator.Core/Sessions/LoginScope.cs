@@ -52,10 +52,28 @@ public static class LoginScope
     /// </summary>
     public static Snapshot For(Snapshot all, string? email, TimeSpan workingWindow, TimeSpan waitingWindow)
     {
+        var scoped = Keep(all, login => Same(login, email), workingWindow, waitingWindow);
+        if (email is null) return scoped;
+        var own = all.Accounts.FirstOrDefault(a => Same(a.Email, email));
+        return scoped with
+        {
+            Budget = own?.Budget, Pace = own?.Pace, Utilization = own?.Utilization, Account = own?.Account,
+            // Codex's and Gemini's usage runs on no Claude login: the global tab shows it.
+            ProviderUsage = [.. all.ProviderUsage.Where(u => u.Provider == Providers.Claude)],
+        };
+    }
+
+    /// <summary>
+    /// <paramref name="all"/> with only the sessions, Launcher tabs and agents on the logins <paramref name="keep"/> takes (its
+    /// email, null for the global login), each repo's state worked out again from what's left: a login's tab keeps one login,
+    /// an org's view (<see cref="OrgScope"/>) its members' (M.ORCH-T655).
+    /// </summary>
+    internal static Snapshot Keep(Snapshot all, Func<string?, bool> keep, TimeSpan workingWindow, TimeSpan waitingWindow)
+    {
         var repos = all.Repos.Select(r =>
         {
-            var sessions = r.Sessions.Where(s => Same(LoginOf(all, s.SessionId), email)).ToList();
-            var hosts = r.Hosts.Where(h => Same(h.OwnLogin, email)).ToList();
+            var sessions = r.Sessions.Where(s => keep(LoginOf(all, s.SessionId))).ToList();
+            var hosts = r.Hosts.Where(h => keep(h.OwnLogin)).ToList();
             if (sessions.Count == r.Sessions.Count && hosts.Count == r.Hosts.Count) return r;
             DateTime? last = sessions.Count > 0 ? sessions.Max(s => s.LastWriteUtc) : null;
             var usage = sessions.Aggregate(default(TokenUsage), (sum, s) => sum + s.UsageToday);
@@ -65,15 +83,7 @@ public static class LoginScope
                 Hosts = hosts, Sessions = sessions, LastActivityUtc = last, UsageToday = usage,
             };
         }).ToList();
-        var scoped = all with { Repos = repos, Agents = [.. all.Agents.Where(a => Same(a.OwnLogin, email))] };
-        if (email is null) return scoped;
-        var own = all.Accounts.FirstOrDefault(a => Same(a.Email, email));
-        return scoped with
-        {
-            Budget = own?.Budget, Pace = own?.Pace, Utilization = own?.Utilization, Account = own?.Account,
-            // Codex's and Gemini's usage runs on no Claude login: the global tab shows it.
-            ProviderUsage = [.. all.ProviderUsage.Where(u => u.Provider == Providers.Claude)],
-        };
+        return all with { Repos = repos, Agents = [.. all.Agents.Where(a => keep(a.OwnLogin))] };
     }
 
     /// <summary>A repo's state from its last write and its open Launcher tabs, as <see cref="StatusAggregator"/> classifies it.</summary>

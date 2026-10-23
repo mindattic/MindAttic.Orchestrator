@@ -368,6 +368,27 @@ public sealed class OrchestratorDb(string path)
         """
         ALTER TABLE assignments ADD COLUMN account TEXT;
         """,
+        // 13: organizations above people (M.ORCH-T655): each org by id, its name and its place in the switcher; and who's in
+        // each, one row per login (its LLM provider and the login, for Claude its email or '' for the global login) naming its
+        // org and the person it's theirs. A login no row names is the default org's ('default', MindAttic; not a row until
+        // renamed), so everything that was here before is that one org.
+        """
+        CREATE TABLE organizations (
+            id          TEXT PRIMARY KEY,
+            name        TEXT NOT NULL,
+            position    INTEGER NOT NULL,
+            created_utc TEXT
+        );
+        CREATE TABLE org_members (
+            provider  TEXT NOT NULL,
+            login     TEXT NOT NULL,
+            org_id    TEXT NOT NULL,
+            person    TEXT NOT NULL,
+            added_utc TEXT,
+            PRIMARY KEY (provider, login)
+        );
+        CREATE INDEX org_members_org ON org_members (org_id);
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a
@@ -397,6 +418,8 @@ public sealed class OrchestratorDb(string path)
         ("ticket_costs", "session_id", ""),
         ("settings", "name", ""),
         ("assignments", "position", ""),
+        ("organizations", "id", ""),
+        ("org_members", "provider, login", ""),
         ("state", "name", " WHERE name NOT IN (" + string.Join(", ", Volatile.Select(v => "'" + v + "'")) + ")"),
     ];
 

@@ -114,7 +114,7 @@ public sealed partial class MainViewModel
             foreach (var t in r.Tickets) t.RaiseMoving();
             foreach (var h in r.Hosts) h.RaiseMoving();
         }
-        foreach (var q in Queue) q.RaiseMoving();
+        foreach (var q in AllQueueRows) q.RaiseMoving();
         System.Windows.Input.CommandManager.InvalidateRequerySuggested();
     }
 }

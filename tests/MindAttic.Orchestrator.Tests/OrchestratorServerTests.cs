@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.Data.SqlClient;
 using MindAttic.Orchestrator.Budget;
+using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
 using NUnit.Framework;
 
@@ -133,6 +134,36 @@ public sealed class OrchestratorServerTests
         Assert.That(new JsonStore(store.Directory, file).LoadSettings().MaxSessionsPerRepo, Is.EqualTo(9), "back in the file, with what was changed on the server");
         Assert.That(file.LoadUsageSamples(), Has.Count.EqualTo(2));
         Assert.That(file.LoadLedger(), Has.Count.EqualTo(2));
+    }
+
+    [Test]
+    public void The_orgs_live_on_SQL_Server_and_a_schema_3_database_gains_their_tables_keeping_its_data()
+    {
+        // M.ORCH-T655: the organizations and who's in each are the server's, behind the same store as the rest.
+        var connection = Connection();
+        var db = new OrchestratorDb(Path.Combine(temps.New(), "orchestrator.db")) { TestServer = new OrchestratorServer(connection) };
+        db.SaveOrg(new Organization("sales", "Sales", 1));
+        db.SetMember(new OrgMember("sales", "Jordan", "Jordan@Example.com"));
+        db.SetMember(new OrgMember("sales", "Jordan", "jordan", "codex"));
+        Assert.That(db.LoadOrgs().OrgOf(Providers.Codex, "jordan"), Is.EqualTo("sales"));
+        Assert.That(db.LoadOrgs().OrgOfClaude("jordan@example.com"), Is.EqualTo("sales"));
+        using (var c = new OrchestratorDb(db.Path).Open())
+            Assert.That(Sql.Scalar(c, null, "SELECT COUNT(*) FROM org_members;"), Is.EqualTo(0L), "the server alone keeps them");
+
+        // A server made at schema 3, before the orgs: its next open adds their tables and loses nothing.
+        using (var c = new OrchestratorServer(connection).Open())
+        {
+            Sql.Run(c, null, "INSERT INTO accounts (id, email) VALUES ('acct', 'a@example.com');");
+            Sql.Run(c, null, "DROP TABLE org_members; DROP TABLE organizations; DELETE FROM schema_version; INSERT INTO schema_version (version) VALUES (3);");
+        }
+        var fresh = new SqlConnectionStringBuilder(connection) { ApplicationName = "MindAttic.Orchestrator.Test" }.ConnectionString;
+        var reopened = new OrchestratorDb(db.Path) { TestServer = new OrchestratorServer(fresh) };
+        Assert.That(reopened.LoadOrgs().HasOrgs, Is.False, "one org, the default, until another is added");
+        using (var c = new OrchestratorServer(fresh).Open())
+        {
+            Assert.That(Sql.Scalar(c, null, "SELECT MAX(version) FROM schema_version;"), Is.EqualTo(OrchestratorServer.SchemaVersion));
+            Assert.That(Sql.Scalar(c, null, "SELECT email FROM accounts;"), Is.EqualTo("a@example.com"));
+        }
     }
 
     private (OrchestratorDb Db, JsonStore Store) Scratch()
