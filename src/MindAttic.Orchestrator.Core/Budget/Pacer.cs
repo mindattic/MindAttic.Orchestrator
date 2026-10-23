@@ -238,11 +238,9 @@ public static class Pacer
         // At the target: nothing more is spent before the reset. Under the front-loaded curve the rate is also 0 while usage is
         // above the curve, but that only holds agents until the curve catches up; it never stops them.
         var atTarget = windows.Any(w => w.Used >= w.Limit * target);
-        // A window the week caps winds down as far under its ceiling as an uncapped one does under its target.
-        var windDownAt = (s.FrontLoaded ? FrontLoadedWindDownShare : WindDownShare) * (target / fiveTarget);
-        var windDown = windows.Any(w => w.Used >= w.Limit * windDownAt);
-        // Weekly-aware: the week winds down too, at its own line, while the 5-hour window hasn't.
-        var weekWindDown = !windDown && week is { WindDown: true };
+        // No wind-down (M.ORCH-T741): the owner's rule is to run to the cutoff, with nothing throttled or held before it.
+        const bool windDown = false, weekWindDown = false;
+        var windDownAt = WindDownShare;
 
         // What one more session costs: today's sessions if any are running, else your usual session. A
         // held session burns less than it will once let go, so judge it by what it would draw unheld.

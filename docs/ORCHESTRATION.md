@@ -59,8 +59,6 @@ The daemon starts at logon and refreshes every 15 seconds, sooner when a turn en
      tickets of its own (`rl-status.json` → `subagents_by_cli`).
    - *Hold:* each tool call waits `20s × (demand ÷ sustainable − 1)`, up to 5 minutes, while the draw is over what
      the window can sustain. It's 0 as soon as the draw fits.
-   - *Wind-down:* past 90% of the limit, agents are told to start only what they can finish, and to commit and
-     file the rest as a ticket. Autopilot starts no new ticket until the window resets.
    - *Stop:* at the target, every tool call is refused and every typed prompt is answered without being sent, so
      nothing more is spent until the reset. The orchestrator's own commands (`/allocate`, `/pacing`) still work.
 

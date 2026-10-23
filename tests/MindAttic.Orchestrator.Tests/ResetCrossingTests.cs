@@ -44,7 +44,7 @@ public sealed class ResetCrossingTests
 
         var before = Budget(events, Five.AddSeconds(-10), reported, reportedLimit: 10_000);
         var paceBefore = Pacer.Compute(before, 1, 1_000, Settings, Five.AddSeconds(-10));
-        Assert.That(paceBefore.WindDown, Is.True, "95% of the old window");
+        Assert.That(paceBefore.WindDown, Is.False, "95% of the old window: no wind-down (M.ORCH-T741)");
 
         var now = Five.AddSeconds(10);
         var after = Budget(events, now, reported, reportedLimit: 10_000);
