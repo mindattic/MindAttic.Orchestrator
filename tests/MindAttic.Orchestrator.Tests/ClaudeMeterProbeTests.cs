@@ -142,7 +142,8 @@ public sealed class ClaudeMeterProbeTests
             Assert.That(probe.IsDue && probe.Skipped is not null, Is.True, "due, and says why it didn't ask");
 
             fail = false;
-            Assert.That(probe.Tick(null, [E(Now.AddMinutes(2), 500)], Now.AddMinutes(3)), Is.True);
+            var after = Now + ClaudeMeterProbe.Backoff + TimeSpan.FromMinutes(1);
+            Assert.That(probe.Tick(null, [E(after.AddMinutes(-1), 500)], after), Is.True);
             await probe.Pending;
             Assert.That(probe.FailuresInRow, Is.EqualTo(0));
             Assert.That(lines, Has.Count.EqualTo(2));
