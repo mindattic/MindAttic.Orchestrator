@@ -11,7 +11,7 @@ INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VAL
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'admin', 'premium', 'active', 1792771886.302, 1792788626.7491517);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'admin', 'premium', 'active', 1792771887.249, 1792788626.7491517);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'primary-owner', 'premium', 'active', 1792771885.463, 1792781244.8570905);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'owner', 'premium', 'active', 1792771885.882, 1792788626.7491517);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'admin', 'premium', 'active', 1792771885.882, 1792792145.1011758);
 
 -- usage_samples
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-18T02:13:34Z', 0, '2026-10-18T06:10:00Z', 162425);
@@ -7616,8 +7616,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "353c5389ca0ff0ddd31229b4118288799603ae53"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "9055e198ddc70a5483f7a78c283f3bfcd111a2b9",
-    "Green": "9055e198ddc70a5483f7a78c283f3bfcd111a2b9"
+    "Tested": "a0aa08b9912448943e953b427c6d733b010d95ae",
+    "Green": "a0aa08b9912448943e953b427c6d733b010d95ae"
   },
   "MindAttic.Psst": {
     "Tested": "11224b271ff95cb232162fc5b5d2e26ceebe801e"
@@ -7986,9 +7986,11 @@ INSERT INTO state (name, value) VALUES ('outside-use', '[
       0,
       0,
       0,
+      0,
+      0,
       0
     ],
-    "NoiseThroughUtc": "2026-10-23T21:34:57Z",
+    "NoiseThroughUtc": "2026-10-23T21:45:27Z",
     "Windows": [
       {
         "ResetUtc": "2026-10-23T19:20:00Z",
