@@ -396,6 +396,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("The share of each account's week kept back, 0 to 50 (default 5): every CLI on an account stops at 100 minus this of that account's week (95% by default), each login on its own.")]
         public int? WeeklyReserve { get; init; }
 
+        [CommandOption("--weekly-aware <ON>")]
+        [Description("true: weekly-aware pacing, per login: from 75% of its week each 5-hour window's ceiling is the week's room to 98% spread over the windows left before its reset, a ticket its login can't fit goes to another signed-in login with room (else the fallback login), and the week winds down at 95% and stops at 98% in place of the weekly reserve; false (default): only the 5-hour target paces.")]
+        public bool? WeeklyAware { get; init; }
+
         [CommandOption("--hand-minutes <N>")]
         [Description("Kept for older setups; it has no effect now: /allocate hands tickets to the typing CLI's own subagents, each in its own worktree.")]
         public int? HandMinutes { get; init; }
@@ -554,6 +558,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { WeeklyReservePercent = weeklyReserve };
             changed = true;
         }
+        if (settings.WeeklyAware is { } weeklyAware)
+        {
+            s = s with { WeeklyAwarePacing = weeklyAware };
+            changed = true;
+        }
         if (settings.AutopilotSkip is { } skip)
         {
             s = s with { AutopilotSkip = skip.Equals("none", StringComparison.OrdinalIgnoreCase) ? [] : [.. skip.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)] };
@@ -651,7 +660,9 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (s.FailoverToApiKey ? " · a CLI whose login runs out with no login to move to bills the API key until it resets" : " · a CLI whose login runs out waits for its reset") +
             (s.EmbeddedTerminals ? " · CLIs open as panes inside the Orchestrator (Windows Terminal while no dashboard is open)" : " · CLIs open in Windows Terminal, a window per person"));
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (Claude's report, else learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (Claude's report, else learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display + " unless Claude reports another" : "as Claude reports, else learned, else rolling 7 days")} · warn at {s.WarnPercent}%" +
-            $" · weekly reserve {s.WeeklyReservePercent}% (each account's CLIs stop at {s.WeeklyStopPercent}% of its week)");
+            (s.WeeklyAwarePacing
+                ? $" · weekly-aware pacing [green]on[/]: from {OrchestratorSettings.WeeklyAwareLinePercent}% of its week each login's 5-hour windows are capped so the week lands at {OrchestratorSettings.WeeklyAwareStopPercent}% as it resets (winds down at {OrchestratorSettings.WeeklyAwareWindDownPercent}%, stops at {s.WeeklyStopPercent}%), and a ticket a login can't fit goes to one that can, else the fallback login"
+                : $" · weekly reserve {s.WeeklyReservePercent}% (each account's CLIs stop at {s.WeeklyStopPercent}% of its week) · weekly-aware pacing off"));
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +
             (s.FrontLoaded ? $" · profile front-loaded (target × elapsed^{s.PaceExponent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}; no new subagent or ticket past {MindAttic.Orchestrator.Budget.Pacer.FrontLoadedWindDownShare:P0})" : " · profile linear") +
             (s.ThrottleAgents ? $" · running agents held up to {s.MaxAgentDelaySeconds}s per tool call when the burn won't last" : " · running agents never held") +

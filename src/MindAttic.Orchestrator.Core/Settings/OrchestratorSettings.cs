@@ -42,9 +42,27 @@ public sealed record OrchestratorSettings
     /// <summary>The percent of an account's week at which its CLIs stop: 100 minus <see cref="WeeklyReservePercent"/>
     /// (kept to 0–<see cref="MaxWeeklyReservePercent"/>, so a hand-edited value can't stop it at nothing).</summary>
     [JsonIgnore]
-    public int WeeklyStopPercent => WeeklyStopFor(WeeklyReservePercent);
+    public int WeeklyStopPercent => WeeklyAwarePacing ? WeeklyAwareStopPercent : WeeklyStopFor(WeeklyReservePercent);
 
     public static int WeeklyStopFor(int reservePercent) => 100 - Math.Clamp(reservePercent, 0, MaxWeeklyReservePercent);
+
+    /// <summary>Weekly-aware pacing (M.ORCH-T666), per login: each 5-hour window still aims at <see cref="PaceTargetPercent"/>, and
+    /// while a login's week is under <see cref="WeeklyAwareLinePercent"/> nothing else changes. From there the week is taken in
+    /// too: each window's ceiling becomes the smaller of its target and the week's room to <see cref="WeeklyAwareStopPercent"/>
+    /// spread over the 5-hour windows left before the weekly reset (<see cref="Budget.WeeklyPacing"/>), so the week lands at 98%
+    /// as it resets; <c>next --claim</c> hands a ticket that doesn't fit what's left to another signed-in login with room, else
+    /// to the fallback login; the week winds down at <see cref="WeeklyAwareWindDownPercent"/> and stops at
+    /// <see cref="WeeklyAwareStopPercent"/>, in place of the weekly reserve's stop. Off by default: nothing changes.</summary>
+    public bool WeeklyAwarePacing { get; init; }
+
+    /// <summary>The week's percent from which weekly-aware pacing takes the week in.</summary>
+    public const int WeeklyAwareLinePercent = 75;
+
+    /// <summary>Where weekly-aware pacing lands each week, and its hard stop.</summary>
+    public const int WeeklyAwareStopPercent = 98;
+
+    /// <summary>Past this share of the week, weekly-aware pacing winds down: only what can finish starts.</summary>
+    public const int WeeklyAwareWindDownPercent = 95;
 
     /// <summary>The curve the 5-hour window is paced along (M.ORCH-T234): <see cref="LinearProfile"/> (the default) spreads what's
     /// left of the target evenly to the reset; <see cref="FrontLoadedProfile"/> aims at <see cref="PaceTargetPercent"/> ×

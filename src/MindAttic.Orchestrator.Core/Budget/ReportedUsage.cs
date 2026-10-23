@@ -7,7 +7,15 @@ namespace MindAttic.Orchestrator.Budget;
 public sealed record ReportedWindow(double Percent, DateTime ResetUtc);
 
 /// <summary>One 5-hour report, with the local uncached tokens counted in its window by then.</summary>
-public sealed record UsageSample(DateTime AtUtc, double Percent, DateTime ResetUtc, long WindowFresh);
+public sealed record UsageSample(DateTime AtUtc, double Percent, DateTime ResetUtc, long WindowFresh)
+{
+    /// <summary>The week's percent in the same report (M.ORCH-T666), to learn how much of the week a 5-hour point costs
+    /// (<see cref="WeeklyRatio"/>); null when it didn't carry one, or for a sample kept before it was recorded.</summary>
+    public double? WeekPercent { get; init; }
+
+    /// <summary>When that week resets; null with <see cref="WeekPercent"/>.</summary>
+    public DateTime? WeekResetUtc { get; init; }
+}
 
 /// <summary>
 /// The 5-hour limit in tokens, from how far Claude's percent moved while local transcripts recorded a
@@ -21,9 +29,10 @@ public static class ReportedLimit
 
     /// <summary>Records <paramref name="reported"/> once (keyed by its time) and trims to a week. A report below one
     /// already recorded for its window is stale (see <see cref="Highest"/>) and isn't recorded; only samples <paramref name="mine"/>
-    /// says are the current account's count for that, since another account's window may reset at the same time.</summary>
+    /// says are the current account's count for that, since another account's window may reset at the same time. With
+    /// <paramref name="withWeek"/> the week's percent is kept beside it (<see cref="UsageSample.WeekPercent"/>).</summary>
     public static bool Record(List<UsageSample> samples, ReportedUsage? reported, IReadOnlyList<UsageEvent> events, DateTime nowUtc,
-        Func<DateTime, bool>? mine = null)
+        Func<DateTime, bool>? mine = null, bool withWeek = false)
     {
         if (reported?.FiveHour is not { } w || samples.Any(s => s.AtUtc == reported.AtUtc)) return false;
         if (samples.Any(s => s.ResetUtc == w.ResetUtc && s.Percent > w.Percent && (mine is null || mine(s.AtUtc)))) return false;
@@ -32,7 +41,9 @@ public static class ReportedLimit
         if (w.ResetUtc <= reported.AtUtc) return false;
         var start = w.ResetUtc - BudgetCalculator.BlockLength;
         var fresh = events.Where(e => e.AtUtc >= start && e.AtUtc <= reported.AtUtc).Sum(e => e.Usage.Fresh);
-        samples.Add(new UsageSample(reported.AtUtc, w.Percent, w.ResetUtc, fresh));
+        // A per-CLI login's samples keep the week's percent too (M.ORCH-T666); the global login's table has no column for it.
+        var week = withWeek ? ReportedUsage.Usable(reported.Week, reported.AtUtc) : null;
+        samples.Add(new UsageSample(reported.AtUtc, w.Percent, w.ResetUtc, fresh) { WeekPercent = week?.Percent, WeekResetUtc = week?.ResetUtc });
         samples.RemoveAll(s => nowUtc - s.AtUtc > TimeSpan.FromDays(7));
         return true;
     }

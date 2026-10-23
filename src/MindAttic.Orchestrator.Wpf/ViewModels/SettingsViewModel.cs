@@ -12,7 +12,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly Action saved;
     private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "",
         maxDelay = "", contextPercent = "", exemptCommands = "", paceProfile = OrchestratorSettings.LinearProfile, paceCurveK = "", weeklyReserve = "", terminalHost = WindowsTerminalChoice;
-    private bool autopilot, pacing, throttleAgents, autoLogin, rebalanceLogins = true;
+    private bool autopilot, pacing, throttleAgents, autoLogin, rebalanceLogins = true, weeklyAware;
 
     public SettingsViewModel(JsonStore store, Action saved)
     {
@@ -45,6 +45,8 @@ public sealed class SettingsViewModel : ObservableObject
     public bool AutoLogin { get => autoLogin; set => Set(ref autoLogin, value); }
     /// <summary>Rebalance when an account runs low (M.ORCH-T608).</summary>
     public bool RebalanceLogins { get => rebalanceLogins; set => Set(ref rebalanceLogins, value); }
+    /// <summary>Weekly-aware pacing (M.ORCH-T666), per login.</summary>
+    public bool WeeklyAware { get => weeklyAware; set => Set(ref weeklyAware, value); }
     /// <summary>Where CLIs open (M.ORCH-T618): <see cref="WindowsTerminalChoice"/> or <see cref="OrchestratorChoice"/>; only tabs
     /// opened after a Save follow it.</summary>
     // Ctrl+click on the selected pill deselects it, writing null: it stays on the one it was.
@@ -66,13 +68,14 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>Every field as the panel read it. The CLI and agents change settings too while it's open (budget, pace,
     /// settings --max-sessions, --exempt): a Save writes only the fields edited here, not what it read back then (M.ORCH-T338).</summary>
-    private Fields loaded = new("", "", "", "", "", "", false, "", false, "", "", "", "", "", true, "", true, WindowsTerminalChoice);
+    private Fields loaded = new("", "", "", "", "", "", false, "", false, "", "", "", "", "", true, "", true, WindowsTerminalChoice, false);
 
     private sealed record Fields(string Block, string Weekly, string Reset, string Warn, string Max, string Provider, bool Pacing, string Target,
-        bool Throttle, string Delay, string Context, string Exempt, string Profile, string CurveK, bool AutoLogin, string Reserve, bool Rebalance, string Host);
+        bool Throttle, string Delay, string Context, string Exempt, string Profile, string CurveK, bool AutoLogin, string Reserve, bool Rebalance, string Host,
+        bool WeeklyAware);
 
     private Fields Current() => new(BlockBudget, WeeklyBudget, WeeklyReset, WarnPercent, MaxSessions, Provider, Pacing, PaceTarget,
-        ThrottleAgents, MaxDelay, ContextPercent, ExemptCommands, PaceProfile, PaceCurveK, AutoLogin, WeeklyReserve, RebalanceLogins, TerminalHost);
+        ThrottleAgents, MaxDelay, ContextPercent, ExemptCommands, PaceProfile, PaceCurveK, AutoLogin, WeeklyReserve, RebalanceLogins, TerminalHost, WeeklyAware);
 
     public void Load()
     {
@@ -92,6 +95,7 @@ public sealed class SettingsViewModel : ObservableObject
         ThrottleAgents = s.ThrottleAgents;
         AutoLogin = s.AutoLogin;
         RebalanceLogins = s.RebalanceLogins;
+        WeeklyAware = s.WeeklyAwarePacing;
         TerminalHost = s.EmbeddedTerminals ? OrchestratorChoice : WindowsTerminalChoice;
         MaxDelay = s.MaxAgentDelaySeconds.ToString(CultureInfo.InvariantCulture);
         // No field shows it (context cycling is off), so an out-of-range hand edit mustn't make every Save fail on it.
@@ -137,6 +141,7 @@ public sealed class SettingsViewModel : ObservableObject
                 ThrottleAgents = ThrottleAgents == was.Throttle ? s.ThrottleAgents : ThrottleAgents,
                 AutoLogin = AutoLogin == was.AutoLogin ? s.AutoLogin : AutoLogin,
                 RebalanceLogins = RebalanceLogins == was.Rebalance ? s.RebalanceLogins : RebalanceLogins,
+                WeeklyAwarePacing = WeeklyAware == was.WeeklyAware ? s.WeeklyAwarePacing : WeeklyAware,
                 TerminalHost = TerminalHost == was.Host ? s.TerminalHost
                     : TerminalHost == OrchestratorChoice ? OrchestratorSettings.OrchestratorHost : OrchestratorSettings.WindowsTerminalHost,
                 MaxAgentDelaySeconds = MaxDelay == was.Delay ? s.MaxAgentDelaySeconds : delay,

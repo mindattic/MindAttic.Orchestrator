@@ -11,6 +11,7 @@ public sealed class QueueRowViewModel : ObservableObject
     private QueueItem item;
     private int rank;
     private Proposal? proposal;
+    private string? delegation;
 
     /// <summary>A row of the one queue every tab shows (M.ORCH-T654): its buttons act on the tab on screen, so Start opens
     /// the CLI on that tab's login.</summary>
@@ -46,7 +47,9 @@ public sealed class QueueRowViewModel : ObservableObject
         { BlockedBy.Count: > 0 } => $"Waits for {string.Join(", ", item.BlockedBy)}",
         { IsStale: true } => $"Stale: quiet {Formatting.Ago(item.StaleSinceUtc, DateTime.UtcNow)}",
         { TooBig: true } => $"Too big for what's left ({item.Estimate}): split it or wait for the reset",
-        { Assignment: { } a } => $"{a.Provider} since {Formatting.Ago(a.StartedUtc, DateTime.UtcNow)}{(a.Worktree ? " · worktree" : "")}",
+        { Assignment: { } a } => $"{a.Provider} since {Formatting.Ago(a.StartedUtc, DateTime.UtcNow)}{(a.Worktree ? " · worktree" : "")}" +
+            // Weekly-aware pacing sent it to another login (M.ORCH-T666): redelegated, or fell back to the fallback login.
+            (delegation is { Length: > 0 } d ? $" · {d}" : ""),
         _ => (IsNext ? "Next up" : item.RepoBusy ? "Repo busy" : item.Old ? "Old: groom it?" : "") +
              (item.Reserved > 0 ? $" · {Formatting.Tokens(item.Reserved)} reserved" : "") +
              (item.Estimate is { } e ? $" · ~{Formatting.Tokens(e.Fresh)}" : "") +
@@ -59,11 +62,12 @@ public sealed class QueueRowViewModel : ObservableObject
     public ICommand DownCommand { get; }
     public ICommand ReleaseCommand { get; }
 
-    public void Update(QueueItem next, int nextRank, Proposal? nextProposal)
+    public void Update(QueueItem next, int nextRank, Proposal? nextProposal, string? nextDelegation = null)
     {
         item = next;
         rank = nextRank;
         proposal = nextProposal;
+        delegation = nextDelegation;
         Raise(string.Empty);
     }
 }

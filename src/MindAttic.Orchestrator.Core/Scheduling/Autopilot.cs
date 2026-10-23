@@ -121,7 +121,8 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         // Every agent gets its own worktree, so a repo runs as many stories at once as its session limit and the
         // pace allow, and nobody's checkout (yours included) is ever edited under them.
         var running = Working.Count;
-        var room = plan.Pace?.RoomTokens;
+        // Weekly-aware (M.ORCH-T666): a ticket must fit the week's room too.
+        var room = settings.WeeklyAwarePacing ? plan.Pace?.FitRoomTokens : plan.Pace?.RoomTokens;
         // How many more the pace pays for, worked out fresh every tick. An agent started in the last control
         // window isn't in the measured draw yet, so it's counted as drawing already; unpaced, the session setting decides.
         var fresh = Working.Count(a => nowUtc - a.StartedUtc < BudgetCalculator.ControlWindow);
@@ -377,7 +378,14 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     }
 
     /// <summary>A ticket handed to a CLI's subagent: where it works, what it's told, and the model it runs on (M.ORCH-T563).</summary>
-    public sealed record Handout(QueueItem Item, string? Worktree, string? Prompt, ModelChoice.Choice? Model = null);
+    public sealed record Handout(QueueItem Item, string? Worktree, string? Prompt, ModelChoice.Choice? Model = null)
+    {
+        /// <summary>Not this CLI's: sent to another login, which opens a tab on it (M.ORCH-T666); null for this CLI's own.</summary>
+        public LoginRoom? DelegatedTo { get; init; }
+
+        /// <summary>Why it went there (<see cref="Redelegation.Text"/>); null for this CLI's own.</summary>
+        public string? Delegated { get; init; }
+    }
 
     /// <summary>What <c>orchestrator next --claim</c> ends with once it claimed some (M.ORCH-T529: a CLI held two claims unstarted
     /// to avoid merge conflicts while the window ran under its target): start every one now, at once, each on its model.</summary>
@@ -414,7 +422,70 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree = null, Func<string, string>? mainlineOf = null, bool unthrottled = false,
         string? self = null, Func<Assignment, bool>? pilotRunning = null, Func<string, string, bool>? stillOpen = null,
         int? cli = null, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots = null, Func<int, bool>? cliRunning = null,
-        IReadOnlyDictionary<int, DateTime>? onSince = null, Func<int, string?>? loginOf = null, string? login = null)
+        IReadOnlyDictionary<int, DateTime>? onSince = null, Func<int, string?>? loginOf = null,
+        IReadOnlyList<LoginRoom>? logins = null, Func<QueueItem, LoginRoom, string?>? redelegate = null, string? login = null,
+        bool canFallBack = false)
+    {
+        var (handed, why) = NextHere(plan, settings, store, repos, count, claim, nowUtc, makeWorktree, mainlineOf, unthrottled, self,
+            pilotRunning, stillOpen, cli, pilots, cliRunning, onSince, loginOf, login);
+        // Weekly-aware pacing (M.ORCH-T666): what this CLI's login can't fit goes to a login that can, else the fallback login, so
+        // no ticket waits on a full account. Only for a claim (a dry run hands nothing out), and never for a /pacing off CLI,
+        // whose own room isn't held to.
+        if (!claim || unthrottled || redelegate is null || !settings.WeeklyAwarePacing) return (handed, why);
+        var delegated = Redelegate(plan, settings, store, repos, handed, nowUtc, logins ?? [], redelegate, login, canFallBack, self,
+            pilotRunning ?? (a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc)), stillOpen ?? StillOpen, cli);
+        return delegated.Count == 0 ? (handed, why) : ([.. handed, .. delegated], why);
+    }
+
+    /// <summary>
+    /// The tickets of <paramref name="repos"/> this CLI could work but its login can't fit (M.ORCH-T666): estimated past what's
+    /// left of its 5-hour room or its week's (<see cref="Pace.FitRoomTokens"/>), or every one while its login is stopped or
+    /// winding down. A ticket assigned to a user (M.ORCH-T668) is never redelegated (<see cref="TicketPins.Redelegable"/>): it
+    /// waits for its user until "Redelegate now" drops its pin. Each goes to the roomiest other signed-in login it fits (<paramref name="logins"/>), one per login per
+    /// call, else, while this CLI runs on a login of its own (<paramref name="canFallBack"/>), to the fallback login, once per
+    /// <see cref="Redelegation.FallbackHold"/>;
+    /// <paramref name="redelegate"/> opens it there (an error, or null once it's open), and its reason is kept for the dashboard.
+    /// </summary>
+    private static List<Handout> Redelegate(SchedulePlan plan, OrchestratorSettings settings, JsonStore store, IReadOnlyList<string> repos,
+        IReadOnlyList<Handout> handed, DateTime nowUtc, IReadOnlyList<LoginRoom> logins, Func<QueueItem, LoginRoom, string?> redelegate,
+        string? login, bool canFallBack, string? self, Func<Assignment, bool> pilotRunning, Func<string, string, bool> stillOpen, int? cli)
+    {
+        var delegated = new List<Handout>();
+        if (!settings.Autopilot || QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is not null) return delegated;
+        if (cli is { } moving && new Sessions.MoveLocks(store).All().Any(m => m.Pid == moving || (self is not null && m.SessionId == self))) return delegated;
+        var pace = plan.Pace;
+        var closedHere = plan.Stopped || pace is { WindDown: true };
+        var room = pace?.FitRoomTokens;
+        bool FitsHere(QueueItem q) => !closedHere && (room is not { } left || q.Estimate is not { } e || e.Fresh <= left);
+        var mine = handed.Select(h => h.Item.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var elsewhere = plan.Worked.Where(w => !(w.Filed && w.AgentId is null && self is not null && w.SessionId == self))
+            .Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var candidates = plan.Queue.Where(q => Named(repos, q.Repo) && !mine.Contains(q.Id) &&
+            !settings.AutopilotSkip.Contains(q.Repo, StringComparer.OrdinalIgnoreCase) && q.RepoPath.Length > 0 &&
+            !q.IsAssigned && !elsewhere.Contains(q.Id) && !(q.Assignment is { } a && pilotRunning(a)) &&
+            q.BlockedBy.Count == 0 && q.MayWork && TicketPins.Redelegable(q) && !plan.OverRepoCap.Contains(q.Repo) && !FitsHere(q)).ToList();
+        var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // One to the fallback login at a time: the next waits out its hold rather than piling tabs on it.
+        var fallback = !canFallBack || Redelegation.FallbackHeld(store, nowUtc) ? null : LoginRoom.Fallback;
+        foreach (var item in candidates)
+        {
+            if (Redelegation.Choose(item, logins, fallback, taken) is not { } to) continue;
+            if (!stillOpen(item.RepoPath, item.Id)) continue;
+            var text = Redelegation.Text(item, login, pace, to);
+            if (redelegate(item, to) is not null) { taken.Add(to.Email ?? Redelegation.FallbackKey); continue; }
+            taken.Add(to.Email ?? Redelegation.FallbackKey);
+            Redelegation.Record(store, item.Id, text, to.IsFallback ? nowUtc : null);
+            delegated.Add(new Handout(item, null, null, ModelChoice.For(item.Ticket, item.Repo, settings)) { DelegatedTo = to, Delegated = text });
+        }
+        return delegated;
+    }
+
+    private static (IReadOnlyList<Handout> Handed, string? Why) NextHere(SchedulePlan plan, OrchestratorSettings settings, JsonStore store,
+        IReadOnlyList<string> repos, int? count, bool claim, DateTime nowUtc,
+        Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree, Func<string, string>? mainlineOf, bool unthrottled,
+        string? self, Func<Assignment, bool>? pilotRunning, Func<string, string, bool>? stillOpen,
+        int? cli, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots, Func<int, bool>? cliRunning,
+        IReadOnlyDictionary<int, DateTime>? onSince, Func<int, string?>? loginOf, string? login)
     {
         cliRunning ??= ContextCycler.IsClaude;
         stillOpen ??= StillOpen;
@@ -436,9 +507,12 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         if (!settings.Autopilot) return ([], "autopilot is paused (orchestrator settings --autopilot true, or the dashboard's Settings, resumes it)");
         if (QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is { } quiet) return ([], $"quiet hours ({quiet}): nothing starts until they end");
         bool Named(string repo) => Autopilot.Named(repos, repo);
-        var room = unthrottled ? null : plan.Pace?.RoomTokens;
+        // Weekly-aware (M.ORCH-T666): a ticket must fit the week's room as well as the 5-hour window's; off, there's none.
+        var weekRoom = unthrottled || !settings.WeeklyAwarePacing ? null : plan.Pace?.WeeklyRoomTokens;
+        static double? Least(double? a, double? b) => a is { } x ? b is { } y ? Math.Min(x, y) : x : b;
+        var room = unthrottled ? null : Least(plan.Pace?.RoomTokens, weekRoom);
         // As the queue judges too big: a reserved ticket against the whole room, the rest against what isn't reserved.
-        bool TooBigNow(QueueItem q) => (q.Reserved > 0 ? room : unthrottled ? null : plan.RoomForRest ?? room) is { } left && q.Estimate is { } e && e.Fresh > left;
+        bool TooBigNow(QueueItem q) => (q.Reserved > 0 ? room : unthrottled ? null : Least(plan.RoomForRest, weekRoom) ?? room) is { } left && q.Estimate is { } e && e.Fresh > left;
         // Only what the calling CLI filed itself is free to it: the ticket it was started on is its own work (M.ORCH-T328).
         var elsewhere = plan.Worked.Where(w => !(w.Filed && w.AgentId is null && self is not null && w.SessionId == self))
             .Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);

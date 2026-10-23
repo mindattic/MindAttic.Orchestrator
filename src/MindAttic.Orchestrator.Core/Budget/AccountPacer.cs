@@ -79,7 +79,8 @@ public sealed class AccountPacer
         var reported = ReportedUsage.Load(now, dir.UsagePath);
         if (state.Meter?.LastReading is { } probed) reported = ClaudeMeterProbe.Fresher(reported, probed, now);
         var samples = state.Samples ??= LoadSamples(dir);
-        if (ReportedLimit.Record(samples, reported, events, now) && write) SaveSamples(dir, samples);
+        // The week's percent is kept with each reading, to learn how much of the week a 5-hour point costs (M.ORCH-T666).
+        if (ReportedLimit.Record(samples, reported, events, now, withWeek: true) && write) SaveSamples(dir, samples);
         var limit = ReportedLimit.Estimate(samples);
         reported = ReportedLimit.Highest(samples, reported, now);
         var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, reported: reported, reportedLimit: limit);
@@ -87,13 +88,17 @@ public sealed class AccountPacer
         var recentFrom = now - BudgetCalculator.RecentWindow;
         var active = sessions.Count(s => s.Events.Count > 0 && s.Events[^1].AtUtc >= recentFrom);
         var subagents = state.Marks.Subagents(out var seenThrough);
-        var pace = Pacer.Compute(budget, active, typicalPerSession, settings, now, state.Writer.AgentDelay(now), subagents) with
+        // Weekly-aware pacing (M.ORCH-T666): from its line the week caps this login's window; off, the cap is null and nothing changes.
+        var week = WeeklyPacing.Cap(budget, WeeklyRatio.Learn(samples), settings, now);
+        var pace = Pacer.Compute(budget, active, typicalPerSession, settings, now, state.Writer.AgentDelay(now), subagents, week) with
         {
             SubagentsSeenThroughUtc = seenThrough,
             SubagentsByCli = state.Marks.AliveSubagents(now).Where(x => x.Cli is not null)
                 .GroupBy(x => x.Cli!.Value).ToDictionary(g => g.Key, g => g.Count()),
         };
-        var utilization = UtilizationSeries.Build(samples, budget, settings.PaceTargetPercent, now, settings.PaceExponent);
+        // A window the week caps is on course for its ceiling, not the 5-hour target: under it, more subagents start only as far as the cap allows.
+        var utilization = UtilizationSeries.Build(samples, budget, week is { Capped: true, CeilingPercent: { } ceiling } ? ceiling : settings.PaceTargetPercent,
+            now, settings.PaceExponent);
         pace = Pacer.UnderTarget(pace, utilization, settings.MaxSubagents);
         // A login with no limit learned yet is Unpaced with SubagentAllowance null, which otherwise falls back (Autopilot.More)
         // to MaxConcurrentSessions minus every busy ticket across the whole workspace, leaving a fresh account no room of its

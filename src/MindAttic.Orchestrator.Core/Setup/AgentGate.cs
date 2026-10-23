@@ -352,6 +352,13 @@ public static class AgentGate
                 pass
             if line is None:
                 try:
+                    # Weekly-aware pacing (M.ORCH-T666) stops the week at its own line in place of the reserve's.
+                    if orch_settings().get("WeeklyAwarePacing") is True:
+                        line = {{Settings.OrchestratorSettings.WeeklyAwareStopPercent}}.0
+                except Exception:
+                    pass
+            if line is None:
+                try:
                     reserve = orch_settings().get("WeeklyReservePercent")
                     if isinstance(reserve, (int, float)) and not isinstance(reserve, bool):
                         line = 100.0 - min(max(float(reserve), 0.0), {{Settings.OrchestratorSettings.MaxWeeklyReservePercent}}.0)

@@ -253,7 +253,12 @@ public sealed partial class MainViewModel
     public Pace? Pace => snapshot?.Pace;
 
     /// <summary>Replaces the budget card's detail line while pacing is holding work back; empty otherwise.</summary>
-    public string PaceText => Pace switch
+    // Weekly-aware pacing says first when the week caps this window (M.ORCH-T666): "Capped by the week: 31% of this window".
+    public string PaceText => Pace is { Weekly: { Capped: true } week } capped && capped.IsPaced
+        ? week.Short + (PaceCore is { Length: > 0 } core ? " · " + core : "")
+        : PaceCore;
+
+    private string PaceCore => Pace switch
     {
         null or { IsPaced: false } or { Mode: PaceMode.Open } => "",
         // The reset with its weekday when it's another day: the week can govern (M.ORCH-T408).
@@ -834,9 +839,11 @@ public sealed partial class MainViewModel
         plan = Scheduler.Plan(next, store.LoadSettings(), store.LoadAssignments());
         var proposals = plan.Proposals.ToDictionary(p => p.Item.Id, StringComparer.Ordinal);
         var rank = 0;
+        // Which tickets weekly-aware pacing sent to another login, and why (M.ORCH-T666).
+        var delegations = Redelegation.Load(store);
         Queue.SyncBy(plan.Queue, q => q.Id, r => r.Id,
-            q => { var row = new QueueRowViewModel(q, this); row.Update(q, ++rank, proposals.GetValueOrDefault(q.Id)); return row; },
-            (row, q) => row.Update(q, ++rank, proposals.GetValueOrDefault(q.Id)));
+            q => { var row = new QueueRowViewModel(q, this); row.Update(q, ++rank, proposals.GetValueOrDefault(q.Id), delegations.GetValueOrDefault(q.Id)); return row; },
+            (row, q) => row.Update(q, ++rank, proposals.GetValueOrDefault(q.Id), delegations.GetValueOrDefault(q.Id)));
         Proposals.ReorderTo([.. Queue.Where(q => q.IsNext)]);
         Finished.SyncBy(plan.Finished, a => a.TicketId, f => f.TicketId, a => new FinishedViewModel(a, this), (row, a) => row.Update(a));
         // Every person's Tickets view (M.ORCH-T668): theirs and the unassigned queue, from the same plan.

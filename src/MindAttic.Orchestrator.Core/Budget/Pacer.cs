@@ -79,16 +79,40 @@ public sealed record Pace(
     /// <summary>The profile the pace was worked out on (<see cref="OrchestratorSettings.PaceProfile"/>).</summary>
     public string Profile { get; init; } = OrchestratorSettings.LinearProfile;
 
+    /// <summary>Weekly-aware pacing's view of the week (M.ORCH-T666): whether it caps this window and why; null while it's off.</summary>
+    public WeeklyCap? Weekly { get; init; }
+
+    /// <summary>Uncached tokens left before the week reaches its weekly-aware stop (M.ORCH-T666); null while the week isn't
+    /// taken in (the toggle off, the week under its line, or no ratio learned).</summary>
+    public double? WeeklyRoomTokens { get; init; }
+
+    /// <summary>What a new ticket's estimate must fit: the smaller of <see cref="RoomTokens"/> and <see cref="WeeklyRoomTokens"/>.</summary>
+    public double? FitRoomTokens => (RoomTokens, WeeklyRoomTokens) switch
+    {
+        ({ } five, { } week) => Math.Min(five, week),
+        (var five, var week) => five ?? week,
+    };
+
+    /// <summary>The window the wind-down is for, when it isn't <see cref="Governing"/>'s: "weekly" past weekly-aware pacing's
+    /// wind-down line (M.ORCH-T666).</summary>
+    public string? WindDownWindow { get; init; }
+
+    /// <summary>That window's reset, when it isn't <see cref="ResetUtc"/>.</summary>
+    public DateTime? WindDownResetUtc { get; init; }
+
+    private string WindDownName => WindDownWindow ?? Governing ?? "5-hour";
+    private DateTime? WindDownReset => WindDownResetUtc ?? ResetUtc;
+
     /// <summary>Why no new ticket starts past the wind-down line; empty when it isn't passed (or the window is stopped).</summary>
     public string WindDownHold => !WindDown || Stop ? "" :
-        $"the {Governing ?? "5-hour"} window is past {WindDownPercent} of its limit: no new ticket starts before it resets" +
-        (ResetUtc is { } r ? $" at {Formatting.ResetTime(r, DateTime.UtcNow)}" : "");
+        $"the {WindDownName} window is past {WindDownPercent} of its limit: no new ticket starts before it resets" +
+        (WindDownReset is { } r ? $" at {Formatting.ResetTime(r, DateTime.UtcNow)}" : "");
 
     // Written the same on any Windows language, as the rest of the notes are (M.ORCH-T404).
-    private string WindDownPercent => (WindDownAt * 100).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "%";
+    private string WindDownPercent => (WindDownAt * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "%";
 
     public string WindDownNote => !WindDown || Stop ? "" :
-        $"The {Governing ?? "5-hour"} window is past {WindDownPercent} of its limit" + (ResetUtc is { } r ? $" (resets {Formatting.ResetTime(r, DateTime.UtcNow)})" : "") +
+        $"The {WindDownName} window is past {WindDownPercent} of its limit" + (WindDownReset is { } r ? $" (resets {Formatting.ResetTime(r, DateTime.UtcNow)})" : "") +
         ", and work stops outright at the target. Don't start anything you can't finish before then. If the task you're on " +
         "won't finish, commit what's done and file the rest as a ticket (tickets ticket new --type <type> --summary \"...\").";
 
@@ -135,8 +159,10 @@ public static class Pacer
     /// <param name="recentDelaySeconds">The agent delay averaged over the recent-rate window (see
     /// <see cref="RateLimitStatusWriter.AgentDelay"/>): what the measured rate was slowed by.</param>
     /// <param name="subagents">Subagents running now across every CLI (the context gate's SubagentStart/Stop marks).</param>
+    /// <param name="week">Weekly-aware pacing's cap on this window (<see cref="WeeklyPacing.Cap"/>, M.ORCH-T666); null while it's
+    /// off, which changes nothing.</param>
     public static Pace Compute(BudgetStatus b, int activeSessions, double? typicalPerSession, OrchestratorSettings s, DateTime nowUtc,
-        double recentDelaySeconds = 0, int subagents = 0)
+        double recentDelaySeconds = 0, int subagents = 0, WeeklyCap? week = null)
     {
         var max = s.MaxConcurrentSessions;
         var recent = b.RecentFreshPerHour;
@@ -197,6 +223,10 @@ public static class Pacer
             { AgentDelaySeconds = AgentDelay(b.ControlFreshPerHour, 0, recentDelaySeconds, s), SubagentAllowance = 0, Subagents = subagents, Stop = true };
 
         var target = Math.Clamp(s.PaceTargetPercent, 1, 100) / 100.0;
+        // Weekly-aware (M.ORCH-T666): a week past its line with less room than this window's share lowers the window's ceiling;
+        // the stop, the room and the rate all follow it, so the week lands at its stop line as it resets.
+        var fiveTarget = target;
+        if (week is { Capped: true, CeilingPercent: { } ceiling }) target = Math.Clamp(ceiling / 100, 0, target);
         var k = s.PaceExponent;
         var (gov, sustainable) = windows
             .Select(w => (w, Rate: SustainableRate(w.Limit, w.Used, target, w.StartUtc, w.ResetUtc, nowUtc, k)))
@@ -204,8 +234,11 @@ public static class Pacer
         // At the target: nothing more is spent before the reset. Under the front-loaded curve the rate is also 0 while usage is
         // above the curve, but that only holds agents until the curve catches up; it never stops them.
         var atTarget = windows.Any(w => w.Used >= w.Limit * target);
-        var windDownAt = s.FrontLoaded ? FrontLoadedWindDownShare : WindDownShare;
+        // A window the week caps winds down as far under its ceiling as an uncapped one does under its target.
+        var windDownAt = (s.FrontLoaded ? FrontLoadedWindDownShare : WindDownShare) * (target / fiveTarget);
         var windDown = windows.Any(w => w.Used >= w.Limit * windDownAt);
+        // Weekly-aware: the week winds down too, at its own line, while the 5-hour window hasn't.
+        var weekWindDown = !windDown && week is { WindDown: true };
 
         // What one more session costs: today's sessions if any are running, else your usual session. A
         // held session burns less than it will once let go, so judge it by what it would draw unheld.
@@ -228,7 +261,7 @@ public static class Pacer
             PaceMode.Open => $"On pace: {rates}.",
             PaceMode.Throttled => $"Pacing: {rates}; capped at {cap} of {max} sessions.",
             _ => atTarget
-                ? $"Coasting: the {gov.Name} window is at its {s.PaceTargetPercent}% target until {Clock(gov.ResetUtc, nowUtc)}; no new sessions."
+                ? $"Coasting: the {gov.Name} window is at its {(target * 100).ToString("0", System.Globalization.CultureInfo.InvariantCulture)}% {(target < fiveTarget ? "ceiling" : "target")} until {Clock(gov.ResetUtc, nowUtc)}; no new sessions."
                 : sustainable <= 0
                 ? $"Coasting: the {gov.Name} window is ahead of its front-loaded curve; held until the curve catches up (resets {Clock(gov.ResetUtc, nowUtc)})."
                 : $"Coasting: {rates}; not even one more session fits.",
@@ -238,7 +271,10 @@ public static class Pacer
                         (delay > 0 ? $" by holding each tool call about {delay:0}s" : "") +
                         ". Keep working normally; the subagent allowance says how many subagents may run at once.";
         if (delay > 0) note += $" Agents held {delay:0}s per tool call.";
+        // Every pace note says weekly-aware pacing is on, and which limit governs (M.ORCH-T666).
+        if (week is not null) note += " " + week.Note;
         var room = windows.Min(w => Math.Max(0, w.Limit * target - w.Used));
+        double? weekRoom = week?.WeekRoom5HourPoints is { } points && b.BlockLimit > 0 ? points / 100 * b.BlockLimit : null;
         var demand = Unheld(b.ControlFreshPerHour, recentDelaySeconds);
         // Front-loaded: past its wind-down line no new subagent starts at all (the ones running finish), however much the
         // curve's rate would still pay for, so the last stretch to the target isn't overrun by a burst started late.
@@ -248,7 +284,11 @@ public static class Pacer
             RoomTokens = room, AgentDelaySeconds = delay, SubagentAllowance = allowance, Subagents = subagents,
             SpareSessions = SpareSessions(sustainable, demand, perSession),
             Stop = atTarget,
-            WindDown = windDown, WindDownAt = windDownAt,
+            WindDown = windDown || weekWindDown,
+            WindDownAt = weekWindDown ? OrchestratorSettings.WeeklyAwareWindDownPercent / 100.0 : windDownAt,
+            WindDownWindow = weekWindDown ? "weekly" : null,
+            WindDownResetUtc = weekWindDown ? week!.WeekResetUtc : null,
+            Weekly = week, WeeklyRoomTokens = weekRoom,
             Profile = s.FrontLoaded ? OrchestratorSettings.FrontLoadedProfile : OrchestratorSettings.LinearProfile,
         };
     }

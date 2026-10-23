@@ -240,13 +240,41 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
         // What the calling CLI filed itself isn't held from its own subagents; what anyone else (its subagents included) filed
         // and is fixing is (M.ORCH-T255).
         var self = cli is { } me ? cycler.LatestSessionOf(me) : null;
+        var orchestratorSettings = store.LoadSettings();
+        // Weekly-aware pacing (M.ORCH-T666): a ticket this CLI's login can't fit goes to another signed-in login with room (a tab
+        // opened on it), else the fallback login.
+        var dirs = new MindAttic.Orchestrator.Sessions.AccountDirs();
         // The calling CLI's login (M.ORCH-T668), as its plan was made (M.ORCH-T673): its recorded per-CLI login, else this process's
         // CLAUDE_CONFIG_DIR's, else the global login's. A ticket assigned to a user is handed only to a CLI on theirs.
-        var login = (Ctx.CurrentLogin is { } seam ? seam() : Ctx.LoginOfCli(cli) ?? new MindAttic.Orchestrator.Sessions.AccountDirs().Current())?.Email
-            ?? snapshot.GlobalEmail;
-        var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, settings.Count, settings.Claim, DateTime.UtcNow,
+        var own = Ctx.CurrentLogin is { } seam ? seam() : Ctx.LoginOfCli(cli) ?? dirs.Current();
+        var login = own?.Email ?? snapshot.GlobalEmail;
+        // A login a ticket was just sent to (picked within LoginPicker.ClaimFor) takes no second one until its CLI's spend shows.
+        var justPicked = dirs.All().Where(d => MindAttic.Orchestrator.Sessions.LoginPicker.ClaimedAt(d) is { } at &&
+                DateTime.UtcNow - at < MindAttic.Orchestrator.Sessions.LoginPicker.ClaimFor)
+            .Select(d => d.Email).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var logins = snapshot.Accounts.Where(a => own is null || !a.Email.Equals(own.Email, StringComparison.OrdinalIgnoreCase))
+            .Select(a => LoginRoom.Of(a, orchestratorSettings))
+            .Select(l => l.Email is { } e && justPicked.Contains(e) ? l with { Open = false } : l).ToList();
+        string? Redelegate(QueueItem item, LoginRoom to)
+        {
+            if (to.Email is { } email && dirs.All().FirstOrDefault(d => d.Email.Equals(email, StringComparison.OrdinalIgnoreCase)) is { } account)
+            {
+                try { dirs.Prepare(account); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return $"couldn't prepare {email}'s login: {ex.Message}"; }
+                MindAttic.Orchestrator.Sessions.LoginPicker.Claim(account, DateTime.UtcNow);
+            }
+            var r = Ctx.Dispatcher(store).Dispatch(item, MindAttic.Orchestrator.Providers.Claude, useWorktree: true, submit: true,
+                login: new Dispatcher.TabLogin(to.ConfigDir));
+            return r.Ok ? null : r.Message;
+        }
+        var (all, why) = Autopilot.Next(plan, orchestratorSettings, store, repos, settings.Count, settings.Claim, DateTime.UtcNow,
             unthrottled: unthrottled, self: self,
-            cli: cli, pilots: cycler.AutopilotClis(), onSince: cycler.AutopilotSince(), loginOf: cycler.LoginOfCli(), login: login);
+            cli: cli, pilots: cycler.AutopilotClis(), onSince: cycler.AutopilotSince(), loginOf: cycler.LoginOfCli(),
+            login: login,
+            logins: logins, redelegate: Redelegate, canFallBack: own is not null);
+        foreach (var d in all.Where(h => h.DelegatedTo is not null))
+            Console.WriteLine($"=== {d.Item.Id} ({d.Item.Repo}) {d.Delegated}. A tab opened on {d.DelegatedTo!.Label} works it: it isn't this CLI's to start.");
+        var handed = all.Where(h => h.DelegatedTo is null).ToList();
         foreach (var h in handed)
         {
             Console.WriteLine($"=== {h.Item.Id} ({h.Item.Repo}, {h.Item.Ticket.Type}): {h.Item.Ticket.Summary}");
