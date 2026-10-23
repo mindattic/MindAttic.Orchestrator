@@ -720,13 +720,8 @@
                     </TextBlock>
                 </StackPanel>
             </ScrollViewer>
-                    <local:VirtualList x:Name="QueueList" Grid.Row="1" ItemsSource="{Binding Queue}" ScrollStyle="{StaticResource MaBodyScroll}"
-                                       AutomationProperties.Name="Queue" VirtualizingPanel.IsVirtualizing="True">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <VirtualizingStackPanel MaxWidth="1200" HorizontalAlignment="Left" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
+                    <ItemsControl x:Name="QueueList" Grid.Row="1" ItemsSource="{Binding Queue}" Style="{StaticResource MaList}"
+                                       AutomationProperties.Name="Queue">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:QueueRowViewModel}">
                                 <Border Style="{StaticResource MaRowCard}" Opacity="{Binding RowOpacity}" Margin="0,0,0,8">
@@ -771,7 +766,7 @@
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
-                    </local:VirtualList>
+                    </ItemsControl>
             </Grid>
 
             <!-- Audit view: what's duplicated across repos and which shared agent files drifted. -->
@@ -1202,7 +1197,7 @@
 
         <!-- An org with no Claude login yet (M.ORCH-T655): said over the body rather than showing another org's person. On the
              global login's tab (MainWindow.xaml.cs), which knows the orgs. -->
-        <Border x:Name="OrgEmptyPanel" Grid.Row="1" Grid.RowSpan="4" Background="{DynamicResource MaChrome}"
+        <Border x:Name="OrgEmptyPanel" Grid.Row="1" Grid.RowSpan="4" Style="{StaticResource MaCover}"
                 Visibility="{Binding IsOrgEmpty, Converter={StaticResource Visible}}">
             <TextBlock Text="{Binding OrgEmptyText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" TextAlignment="Center"
                        HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560" Margin="24" AutomationProperties.LiveSetting="Polite" />

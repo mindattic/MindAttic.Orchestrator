@@ -51,18 +51,20 @@ public sealed class TabSwitchTests
         // M.ORCH-T655: a 9-person and a 2-person org switch equally fast; the queue's rows are built only as they scroll in.
         var doc = XDocument.Load(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
         var list = doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == "QueueList");
-        Assert.That(list.Name.LocalName, Is.EqualTo(nameof(MindAttic.Orchestrator.Wpf.VirtualList)));
+        Assert.That(list.Name.LocalName, Is.EqualTo("ItemsControl"), "a library-styled list; LibraryOnlyXamlTests allows no control of the dashboard's own");
+        Assert.That((string?)list.Attribute("Style"), Is.EqualTo("{StaticResource MaList}"));
         Assert.That((string?)list.Attribute("ItemsSource"), Is.EqualTo("{Binding Queue}"));
-        Assert.That((string?)list.Attribute("VirtualizingPanel.IsVirtualizing"), Is.EqualTo("True"));
-        Assert.That(list.Descendants().Any(e => e.Name.LocalName == "VirtualizingStackPanel"), Is.True);
         Assert.That(list.Ancestors().Any(e => e.Name.LocalName == "ScrollViewer"), Is.False, "inside another scroll view every row would be built");
+        Assert.That(File.ReadAllText(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml.cs")),
+            Does.Contain("VirtualizedList.Apply(QueueList"));
 
         // The list scrolls itself, by its panel (logical scrolling), or it isn't virtualized.
-        var code = File.ReadAllText(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "VirtualList.cs"));
-        Assert.That(code, Does.Contain("ScrollViewer.CanContentScrollProperty, true").And.Contain("VirtualizationMode.Recycling"));
-        // Its template is set on the list itself: as default metadata, the theme's ItemsControl style replaced it with one that
+        var code = File.ReadAllText(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "VirtualizedList.cs"));
+        Assert.That(code, Does.Contain("ScrollViewer.CanContentScrollProperty, true").And.Contain("VirtualizationMode.Recycling")
+            .And.Contain("typeof(VirtualizingStackPanel)"));
+        // Its template is set on the list itself: as a style's setter, the theme's ItemsControl style replaced it with one that
         // has no scroll view, and every one of 405 rows was built on each org switch (measured: 1.1s, then 4 rows and 100ms).
-        Assert.That(code, Does.Contain("Template = Scrolling;"));
+        Assert.That(code, Does.Contain("list.Template ="));
         Assert.That(MindAttic.Orchestrator.Wpf.MainWindow.QueueHeaderHeight(280), Is.EqualTo(126), "the queue keeps most of a short view");
         Assert.That(MindAttic.Orchestrator.Wpf.MainWindow.QueueHeaderHeight(100), Is.EqualTo(120));
     }

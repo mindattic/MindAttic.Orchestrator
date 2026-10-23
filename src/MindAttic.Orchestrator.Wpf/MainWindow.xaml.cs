@@ -38,6 +38,7 @@ public partial class MainWindow : Window
         // The org switcher above it, and what an org with no Claude login says, are the global login's tab's too (M.ORCH-T655).
         OrgStrip.DataContext = model;
         OrgEmptyPanel.DataContext = model;
+        VirtualizedList.Apply(QueueList, 1200);
         // The Queue view's header scrolls in at most 45% of the view, so the virtualized queue below it always has room.
         QueueView.SizeChanged += (_, e) => QueueBody.MaxHeight = QueueHeaderHeight(e.NewSize.Height);
         model.SelectedTabChanged += (_, _) => DataContext = model.SelectedTab;
