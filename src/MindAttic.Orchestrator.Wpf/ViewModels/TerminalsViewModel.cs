@@ -114,8 +114,8 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>Ends its CLI: the whole tree under the pane's process, the Launcher host and the CLI it runs.</summary>
     internal void Kill()
     {
-        // A process that's already gone is a no-op, however it reports that (it can exit between any check and the kill).
-        try { if (!HasExited) Control.ConPTYTerm?.Process?.Kill(true); }
+        // A process that's already gone is a no-op, however it reports that (it can exit just before the kill).
+        try { Control.ConPTYTerm?.Process?.Kill(true); }
         catch (Exception) { }
     }
 }
