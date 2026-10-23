@@ -195,7 +195,7 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
                 else Directory.CreateSymbolicLink(link, target);
             }
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception) { }
+        catch (Exception) { } // the worktree exists by now: nothing here may fail it
     }
 
     /// <summary>Where a new ticket branch starts: the repo's main line as origin has it, not whatever your checkout has
