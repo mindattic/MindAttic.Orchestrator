@@ -94,8 +94,7 @@ public sealed record OrchestratorSettings
 
     /// <summary>The curve the 5-hour window is paced along (M.ORCH-T234): <see cref="LinearProfile"/> (the default) spreads what's
     /// left of the target evenly to the reset; <see cref="FrontLoadedProfile"/> aims at <see cref="PaceTargetPercent"/> ×
-    /// elapsed^<see cref="PaceCurveK"/>, spending faster early and easing off toward the reset, and starts no new subagent past
-    /// <see cref="Budget.Pacer.FrontLoadedWindDownShare"/>. Read on every pace check, so a switch mid-window applies at once.</summary>
+    /// elapsed^<see cref="PaceCurveK"/>, spending faster early and easing off toward the reset. Read on every pace check, so a switch mid-window applies at once.</summary>
     [JsonIgnore]
     public string PaceProfile => LinearProfile;
 

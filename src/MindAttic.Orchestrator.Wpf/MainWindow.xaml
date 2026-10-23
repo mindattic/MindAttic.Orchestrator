@@ -1328,7 +1328,7 @@
                 <TextBlock Text="Weekly target (% of each account's week)" Margin="0,10,0,4" />
                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
                          Text="{Binding WeeklyTarget, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Weekly target percent" />
-                <TextBlock Text="50 to 100 (95 by default). Every CLI on an account stops here, on or off, and weekly-aware pacing lands the week on it. The rest is the weekly reserve, kept for your own questions in the Claude app and claude.ai: 95 keeps 5% of each week back."
+                <TextBlock Text="50 to 100 (95 by default). Every CLI on an account stops here. The rest is the weekly reserve, kept for your own questions in the Claude app and claude.ai: 95 keeps 5% of each week back."
                            Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
                 <TextBlock Text="Take-in line (% of the week)" Margin="0,10,0,4" />
                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
@@ -1343,7 +1343,7 @@
                 <TextBlock Text="5-HOUR PACING" Style="{StaticResource MaSectionLabel}" Margin="0,16,0,8" />
                 <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding Pacing}" HorizontalAlignment="Left"
                               Content="Pace to the reset" />
-                <TextBlock Text="Caps new sessions so spend lands on the target as the 5-hour window resets, instead of hitting the wall and waiting. The week is shown, and paced only with weekly-aware pacing on. Off: new work holds at the warn line."
+                <TextBlock Text="Caps new sessions so spend lands on the target as the 5-hour window resets, instead of hitting the wall and waiting. The week is shown, not paced. Off: new work holds at the warn line."
                            Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,0" />
                 <!-- A member's own use outside the orchestrator (M.ORCH-T682): each number, the bounds each login's learned value stays in, and what each has learned. -->
                 <TextBlock Text="When someone uses Claude outside the orchestrator (the desktop app, claude.ai, a phone), their login's CLIs stay on it but are paced to a lower 5-hour ceiling (lower still when their measured rate needs it) and its weekly stop keeps extra headroom, until the quiet period passes with nothing new. Measured by subtraction: the meter's rise beyond what that login's CLIs here spent, past the noise margin. Each number is the starting point; each login learns its own within the MIN-MAX bounds, never past them, and every change is logged with its reason."

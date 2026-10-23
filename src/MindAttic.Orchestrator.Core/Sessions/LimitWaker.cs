@@ -5,10 +5,9 @@ using MindAttic.Orchestrator.Settings;
 namespace MindAttic.Orchestrator.Sessions;
 
 /// <summary>
-/// Wakes the CLIs that stopped for a window once it has reset (M.ORCH-T256). A turn that ends at the window's stop, or past
-/// the wind-down line saying it leaves work for the reset, is recorded by the context gate (<c>limit_stop</c> in its state);
+/// Wakes the CLIs that stopped for a window once it has reset (M.ORCH-T256). A turn that ends at the window's stop is recorded by the context gate (<c>limit_stop</c> in its state);
 /// nothing used to wake it, so it sat idle with its handoff ("continue after 3:30 PM") until its author noticed. Once that
-/// window's reset is past and the pace no longer stops or winds down (the reset itself is the status' to decide), the CLI's
+/// window's reset is past and the pace no longer stops (the reset itself is the status' to decide), the CLI's
 /// Launcher tab is typed a resume prompt; a CLI in a plain terminal, or with <see cref="OrchestratorSettings.ResumeAfterReset"/>
 /// off, is said to you instead. Each stop is acted on once: its typed prompt clears the record, and the ones said or typed are
 /// remembered (<see cref="WokenName"/>) so a restart doesn't say them again. As a last resort, every CLI still working when the
@@ -77,10 +76,10 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
 
     /// <summary>What to wake now, woken: the newest session of each live CLI, idle, recorded as stopped for a window whose
     /// reset is at least <see cref="Grace"/> and at most <see cref="Forget"/> past (or the pace held on past it until lately), while <paramref name="pace"/> doesn't stop
-    /// or wind down. <paramref name="type"/> false only says each.</summary>
+    /// . <paramref name="type"/> false only says each.</summary>
     public IReadOnlyList<Wake> Tick(Pace? pace, IReadOnlyList<HostSession> hosts, bool type, DateTime nowUtc)
     {
-        if (pace is { Stop: true } or { WindDown: true })
+        if (pace is { Stop: true })
         {
             if (!holding) holdStartUtc = nowUtc;
             holding = true;

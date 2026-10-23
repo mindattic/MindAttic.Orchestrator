@@ -432,10 +432,12 @@ public sealed class DaemonSafetyTests
     [Platform("Win")]
     public void The_real_runner_does_not_wait_past_its_timeout_on_a_grandchild_holding_the_pipes()
     {
-        // cmd exits at once, but the ping it started in the background inherited its stdout and holds it for ~6s.
+        // cmd exits at once, but the ping it started in the background inherited its stdout and holds it for ~20s.
+        // The timeout leaves cmd room to start and exit on a loaded machine (the full suite): at 2s it sometimes
+        // hadn't, so the runner took the kill path (-1) and this test never reached the grandchild case (M.ORCH-T744).
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        var r = ProcessRunner.Default.Run("cmd.exe", ["/c", "start /b ping -n 7 127.0.0.1"], TimeSpan.FromSeconds(2));
-        Assert.That(sw.Elapsed, Is.LessThan(TimeSpan.FromSeconds(4.5)));
+        var r = ProcessRunner.Default.Run("cmd.exe", ["/c", "start /b ping -n 21 127.0.0.1"], TimeSpan.FromSeconds(6));
+        Assert.That(sw.Elapsed, Is.LessThan(TimeSpan.FromSeconds(12)), "it returned at its timeout, not when the grandchild let go of the pipes");
         Assert.That((r.ExitCode, r.TimedOut), Is.EqualTo((0, true)), "its output was cut short, so it isn't taken as a success with none");
     }
 

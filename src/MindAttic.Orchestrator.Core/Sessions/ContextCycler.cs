@@ -13,8 +13,7 @@ public sealed record SessionContext(string SessionId, string? Cwd, double Percen
     /// <summary>The condition of a <c>/goal</c> running in the session (the context gate records it, <c>/goal clear</c> ends it); null when none.</summary>
     public string? Goal { get; init; }
 
-    /// <summary>The window this session's last turn stopped for (the context gate's <c>limit_stop</c>: at its stop, or past the
-    /// wind-down line with work left for the reset), and when that window resets; null when it isn't waiting on one.</summary>
+    /// <summary>The window this session's last turn stopped for (the context gate's <c>limit_stop</c>, at its stop), and when that window resets; null when it isn't waiting on one.</summary>
     public LimitStop? LimitStop { get; init; }
 }
 

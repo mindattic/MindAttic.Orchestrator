@@ -10,7 +10,7 @@ namespace MindAttic.Orchestrator.Scheduling;
 /// <param name="RoomTokens">What a new ticket's estimate must fit there (<see cref="Pace.FitRoomTokens"/>); null when it isn't paced
 /// (the fallback on an API key, or a login with no limit learned yet), which fits anything.</param>
 /// <param name="Headroom">Percent left before its tighter limit, to pick the roomiest first.</param>
-/// <param name="Open">It may start new work now (not stopped, not winding down).</param>
+/// <param name="Open">It may start new work now (not stopped).</param>
 public sealed record LoginRoom(string? Email, string? ConfigDir, double? RoomTokens, double Headroom, bool Open)
 {
     public bool IsFallback => Email is null;
@@ -30,7 +30,7 @@ public sealed record LoginRoom(string? Email, string? ConfigDir, double? RoomTok
         var five = b.BlockLimitIsPeak || b.CurrentBlock is null ? 0 : b.BlockPercent;
         // The login's own weekly line, as its budget was worked out: the wall while the user lets it past the target (M.ORCH-T694).
         var headroom = Math.Max(0, Math.Min(Math.Clamp(s.PaceTargetPercent, 1, 100) - five, b.WeeklyStopPercent - (b.WeeklyPercent ?? 0)));
-        var open = !p.Stop && !p.WindDown && p.Mode != PaceMode.Over;
+        var open = !p.Stop && p.Mode != PaceMode.Over;
         return new LoginRoom(a.Email, a.Directory, p.IsPaced ? p.FitRoomTokens : null, headroom, open);
     }
 
@@ -64,7 +64,6 @@ public static class Redelegation
         var why = here switch
         {
             { Stop: true } => "is at its limit",
-            { WindDown: true } => "is winding down",
             { FitRoomTokens: { } room } => $"has {Formatting.Tokens((long)room)} left, too little for {cost}",
             _ => "has no room for it",
         };

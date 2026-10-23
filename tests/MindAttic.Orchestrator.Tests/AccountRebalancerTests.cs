@@ -151,7 +151,7 @@ public sealed class AccountRebalancerTests
         usage["b@x.com"] = Used(0);
         usage["c@x.com"] = Used(10, week: 97); // c is past its stop line
 
-        Assert.That(Rebalancer().Tick(null, [], [], settings, Now), Is.Empty);
+        Assert.That(Rebalancer().Tick(null, [], [], settings, Now).Where(m => m.Cutoff is null), Is.Empty);
         Assert.That(sent, Is.Empty);
     }
 
@@ -162,7 +162,7 @@ public sealed class AccountRebalancerTests
         usage[""] = Used(20, week: 95);          // headroom 0
         usage["b@x.com"] = Used(20, week: 90);   // headroom 5: under MinGain
 
-        Assert.That(Rebalancer().Tick(null, [], [], settings, Now), Is.Empty);
+        Assert.That(Rebalancer().Tick(null, [], [], settings, Now).Where(m => m.Cutoff is null), Is.Empty);
     }
 
     [Test]
@@ -191,7 +191,7 @@ public sealed class AccountRebalancerTests
         live = [new CliBilling(1, "s-plain", @"D:\Projects\Prose", "subscription", null),
                 new CliBilling(2, "s-api", @"D:\Projects\Ideas", "api-key", Tab2)];
 
-        Assert.That(Rebalancer().Tick(null, [], [], settings, Now), Is.Empty);
+        Assert.That(Rebalancer().Tick(null, [], [], settings, Now).Where(m => m.Cutoff is null), Is.Empty);
     }
 
     [Test]

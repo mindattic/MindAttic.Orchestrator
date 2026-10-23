@@ -402,7 +402,6 @@ public sealed class RateLimitStatusWriter(string? path = null)
         {
             body["pace"] = pace.Key;
             if (pace.Advise) body["pace_note"] = pace.AgentNote;
-            if (!pace.Stop && pace.WindDown) body["wind_down_note"] = pace.WindDownNote;
             // pace-gate.py holds a new subagent while this many run; context-gate.py tells each turn.
             if (pace.SubagentAllowance is { } allowed)
             {

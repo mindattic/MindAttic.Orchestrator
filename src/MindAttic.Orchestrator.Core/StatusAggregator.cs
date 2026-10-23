@@ -388,9 +388,11 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         reported = ReportedLimit.Highest(mine, reported, now);
         reported = KeepWindow(reported, now);
         // A member using Claude outside the orchestrator on the global login (M.ORCH-T682): its pace held to the lowered ceiling.
-        var (paceSettings, outsideWhy) = OutsideUseWatch.Apply(OutsideHolds(), "", UsageCutoffs.Apply(Cutoffs(), SignIn?.Profile?.Email, settings));
+        // The login's email falls back to the one its profile file names, so its member's own cutoffs apply before the sign-in read lands (M.ORCH-T742).
+        var cutoffEmail = SignIn?.Profile?.Email is { Length: > 0 } profileEmail ? profileEmail : LoginLook.GlobalEmail(Accounts.Dirs);
+        var (paceSettings, outsideWhy) = OutsideUseWatch.Apply(OutsideHolds(), "", UsageCutoffs.Apply(Cutoffs(), cutoffEmail, settings));
         // The global login's member let past the weekly target by the user (M.ORCH-T694): its week stops at the wall meanwhile.
-        if (SignIn?.Profile?.Email is { Length: > 0 } allowedEmail)
+        if (cutoffEmail is { Length: > 0 } allowedEmail)
         {
             var (allowedSettings, allowedWhy) = WeeklyAllowances.Apply(Allowances(), allowedEmail, paceSettings, now);
             paceSettings = allowedSettings;
