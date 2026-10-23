@@ -191,13 +191,34 @@ The request goes to the host, never into the CLI, on a pipe of its own beside th
   signed-in per-CLI login has no CLI and at least 10 points more headroom. The CLI isn't moved again for 30 minutes, its
   target stays taken until it arrives, and a login that's low itself is never a target. Setting `RebalanceLogins` (on by
   default; `orchestrator settings --rebalance false`) turns it off.
+
+  **Emergency failover to the API key (M.ORCH-T664, M.LNCH-T67):** when a CLI's login is low (as above, or a limit error ended its
+  turn: a "You've hit your limit" in its transcript) and no signed-in login has room for it, the daemon moves that one
+  CLI onto the Vault's API key instead, with `"reason":"failover"`, the `billing` it is to bill and the login it keeps:
+
+  ```json
+  {"type":"restart-resume","reason":"failover","billing":"api","configDir":"","now":true,"session":"<claude session id>","cliPid":4242,"cwd":"D:\Projects\Prose","requestedAt":"2026-10-23T16:00:00Z"}
+  ```
+
+  `billing` is for this CLI alone: `billing.json`'s mode is left as it is, so the Launcher must not drop a failover
+  request whose `billing` differs from it (step 3), and keeps that billing for the CLI's later restarts until another
+  request says otherwise. `configDir` is the login it's on (kept). `now: true` (the turn already ended at a limit error)
+  restarts it at once rather than at the next idle point. Before sending, the daemon approves the key in that login's
+  Claude Code config (`<configDir>/.claude.json`, or `~/.claude.json` for the global login, which the billing switch then
+  doesn't put back to rejected while the CLI is on it). Each failover is kept in `data/orchestrator.db`'s `api-failovers`
+  state row; the billing switch never asks such a CLI back onto the mode. Once its login resets (the window that ran out
+  is past, and the login isn't low), the daemon sends the same request with `"billing":"team"` and `now: false`, the key
+  is rejected again in a per-CLI login's config, and the CLI goes back to its login, so the key (no rate ceiling, only
+  cost) bills only the gap. A login with room is always preferred to the key. Each failover and move back is logged and
+  toasted ("U.SPC CLI moved to API key: Ryan's week is at 98% (stops at 95%)..."). Setting `FailoverToApiKey` (on by
+  default; `orchestrator settings --failover false`) turns it off.
 - **What the Launcher does:**
   1. Act only if `cliPid` is still the CLI this tab runs; otherwise drop the request.
   2. Wait for the CLI's next idle point: its turn has ended and it's waiting for input (the context gate's
      `~/.claude/session-context/<session>.state.json` says `"state": "idle"`, or the host's own idle detection). Never
      mid-turn, and never while a subagent of it runs.
   3. Re-read `billing.json`. If its `mode` is no longer the request's `billing` (switched back meanwhile), drop the
-     request.
+     request. A `"reason":"failover"` request is never dropped for this: its `billing` is the CLI's own.
   4. End the CLI and start `claude --resume <session>` in the same tab and folder, with the environment for the mode:
      `team` with `ANTHROPIC_API_KEY` removed; `api` with `ANTHROPIC_API_KEY` set to the Vault's `Claude` key (Claude Code
      uses it because the switch approved it).

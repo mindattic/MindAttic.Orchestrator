@@ -222,6 +222,36 @@ public sealed class BillingTests
     }
 
     [Test]
+    public void A_cli_failed_over_to_the_api_key_is_never_asked_back_onto_the_mode()
+    {
+        // M.ORCH-T664: the rebalancer moved one CLI onto the key with the mode left on Claude Team; the switch leaves it there,
+        // and doesn't reject the key under it on the global login.
+        File.WriteAllText(ConfigPath, "{" + TeamLogin + ", \"customApiKeyResponses\": {\"approved\": [\"" + KeyTail + "\"], \"rejected\": []}}");
+        Cli(100, "hosted", "api-key", @"D:\Projects\Prose");
+        var now = new DateTime(2026, 10, 18, 16, 0, 0, DateTimeKind.Utc);
+        var billing = Switch();
+        billing.ModeFile.Write(new BillingState(BillingModes.Team, now, "acct-1/org-1", "dashboard"));
+        billing.FailedOver = () => [new ApiFailover("hosted", 100, 9001, @"D:\Projects\Prose", null, "", "Ryan", "its week is at 98%", now)];
+
+        Assert.That(billing.Tick([Tab], now.AddMinutes(1)), Is.Empty);
+        Assert.That(sent, Is.Empty);
+        Assert.That(List(Responses(), "approved"), Is.EqualTo(new[] { KeyTail }), "still approved for the failed-over CLI");
+        Assert.That(billing.Status([Tab], now.AddMinutes(1)).Mismatched, Is.Empty);
+    }
+
+    [Test]
+    public void The_key_can_be_approved_in_one_logins_config_alone()
+    {
+        File.WriteAllText(ConfigPath, "{" + TeamLogin + "}");
+        Assert.That(Switch().SetKeyChoice(ConfigPath, approve: true), Is.Null);
+        Assert.That(List(Responses(), "approved"), Is.EqualTo(new[] { KeyTail }));
+        Assert.That(Switch().SetKeyChoice(ConfigPath, approve: false), Is.Null);
+        Assert.That(List(Responses(), "rejected"), Is.EqualTo(new[] { KeyTail }));
+        Assert.That(Switch(key: null).SetKeyChoice(ConfigPath, approve: true), Does.Contain("no Claude key"));
+        Assert.That(File.Exists(Path.Combine(Contexts, BillingModeFile.FileName)), Is.False, "the mode is left alone");
+    }
+
+    [Test]
     public void A_switch_made_while_restart_requests_are_sent_is_never_overwritten_with_the_older_mode()
     {
         // M.ORCH-T454: sending takes seconds; the context gate switching back to Claude Team meanwhile (a /login) was overwritten

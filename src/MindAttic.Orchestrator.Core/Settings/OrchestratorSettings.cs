@@ -175,6 +175,12 @@ public sealed record OrchestratorSettings
     /// False leaves every CLI on its login.</summary>
     public bool RebalanceLogins { get; init; } = true;
 
+    /// <summary>Emergency failover to the API key (M.ORCH-T664): when a CLI's login runs out (its 5-hour or weekly limit, or its
+    /// pace says stop) and no signed-in login has room to rebalance it onto, the daemon moves that one CLI onto the Vault key,
+    /// resuming its session (at once when a limit error ended its turn), with the billing mode left as it is, and moves it back
+    /// once its login resets. False leaves it waiting for the reset.</summary>
+    public bool FailoverToApiKey { get; init; } = true;
+
     /// <summary>Where CLIs the Orchestrator opens run (M.ORCH-T618): <see cref="WindowsTerminalHost"/> (the default) opens each
     /// tab in Windows Terminal, one window per person; <see cref="OrchestratorHost"/> opens it as a terminal pane inside the
     /// dashboard (its Terminals view), falling back to Windows Terminal while no dashboard is open to hold it. Read at each

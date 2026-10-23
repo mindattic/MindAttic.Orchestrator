@@ -44,8 +44,14 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
     private Billing.BillingSwitch? billingSwitch;
 
-    /// <summary>The billing switch (M.ORCH-T436) whose mode and CLIs each snapshot shows; the dashboard's toggle switches it.</summary>
-    public Billing.BillingSwitch BillingSwitch { get => billingSwitch ??= new(SessionContextDir); init => billingSwitch = value; }
+    /// <summary>The billing switch (M.ORCH-T436) whose mode and CLIs each snapshot shows; the dashboard's toggle switches it.
+    /// The CLIs the rebalancer failed over to the API key (M.ORCH-T664) are read from <see cref="Store"/>, so they're never asked
+    /// back onto the mode.</summary>
+    public Billing.BillingSwitch BillingSwitch
+    {
+        get => billingSwitch ??= new(SessionContextDir) { FailedOver = () => Sessions.AccountRebalancer.LoadFailovers(Store) };
+        init => billingSwitch = value;
+    }
     private readonly SubagentActivityReader subagents = new(options.ClaudeProjectsDir);
 
     /// <summary>The Launcher tabs open now (a live pipe scan); replaceable for tests.</summary>

@@ -31,7 +31,8 @@ public sealed class AccountMove(AccountDirs? dirs = null, BillingSwitch? billing
 
     public AccountDirs Dirs { get; } = dirs ?? new AccountDirs();
 
-    private readonly BillingSwitch billing = billing ?? new BillingSwitch();
+    /// <summary>The billing switch: what each CLI bills, and the Vault key a failover bills (M.ORCH-T664).</summary>
+    public BillingSwitch Billing { get; } = billing ?? new BillingSwitch();
 
     /// <summary>Sends the request to a Launcher tab's control pipe (seam): true when it took it.</summary>
     internal Func<HostSession, string, Task<bool>> Send { get; init; } =
@@ -103,9 +104,45 @@ public sealed class AccountMove(AccountDirs? dirs = null, BillingSwitch? billing
         ["requestedAt"] = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture),
     });
 
+    /// <summary>
+    /// The restart-resume request of an emergency failover (M.ORCH-T664): <c>"reason":"failover"</c> with the <c>billing</c> this
+    /// one CLI is to bill (<c>api</c> onto the Vault key, <c>team</c> back to its login) whatever <c>billing.json</c>'s mode says,
+    /// and the login it runs under (<paramref name="configDir"/>, "" the global one). <paramref name="now"/> asks for it at once
+    /// rather than at the next idle point: the CLI's turn already ended at a limit error.
+    /// </summary>
+    public static string FailoverMessage(CliBilling cli, string configDir, string billing, bool now, DateTime nowUtc) => JsonSerializer.Serialize(new JsonObject
+    {
+        ["type"] = "restart-resume",
+        ["reason"] = "failover",
+        ["billing"] = billing,
+        ["configDir"] = configDir,
+        ["now"] = now,
+        ["session"] = cli.SessionId,
+        ["cliPid"] = cli.Pid,
+        ["cwd"] = cli.Cwd,
+        ["requestedAt"] = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture),
+    });
+
+    /// <summary>Asks <paramref name="cli"/>'s Launcher tab to restart it billing <paramref name="billing"/> on its own
+    /// (<see cref="FailoverMessage"/>): true when the tab took the request.</summary>
+    public async Task<bool> FailoverAsync(CliBilling cli, string configDir, string billing, bool now, DateTime nowUtc)
+    {
+        if (cli.Host is null) return false;
+        try { return await Send(cli.Host, FailoverMessage(cli, configDir, billing, now, nowUtc)).ConfigureAwait(false); }
+        catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException or OperationCanceledException) { return false; }
+    }
+
+    /// <summary>A login's name as the dashboard shows it, from its folder ("" the global login); <paramref name="fallback"/> when
+    /// it can't be read.</summary>
+    public string NameFor(string configDir, string fallback)
+    {
+        try { return NameOf(configDir) is { Length: > 0 } n ? n : fallback; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or JsonException) { return fallback; }
+    }
+
     /// <summary>Every live Claude CLI, with its Launcher tab.</summary>
     public IReadOnlyList<CliBilling> Live(IReadOnlyList<HostSession> hosts, DateTime nowUtc) =>
-        LiveOverride?.Invoke(hosts, nowUtc) ?? billing.LiveClis(hosts, nowUtc);
+        LiveOverride?.Invoke(hosts, nowUtc) ?? Billing.LiveClis(hosts, nowUtc);
 
     /// <summary>
     /// The live CLIs <paramref name="repoOrPid"/> names: a claude.exe process id, a session id, or a repo (the folder it runs

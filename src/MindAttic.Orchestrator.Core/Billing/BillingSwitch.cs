@@ -103,6 +103,35 @@ public sealed class BillingSwitch
     internal Func<HostSession, string, Task<bool>> Send { get; init; } =
         (host, message) => SessionControl.SendAsync(SessionControl.ControlPipeName(host), message, submit: true);
 
+    /// <summary>The CLIs moved onto the API key on their own (M.ORCH-T664's emergency failover): each bills the key while the
+    /// mode stays as it is, so it's never asked to restart onto the mode, and while one runs on the global login the key's choice
+    /// in <see cref="ConfigPath"/> isn't put back to rejected under it. Set by the daemon; none by default.</summary>
+    public Func<IReadOnlyCollection<Sessions.ApiFailover>> FailedOver { get; set; } = () => [];
+
+    private IReadOnlyCollection<Sessions.ApiFailover> SafeFailedOver()
+    {
+        try { return FailedOver(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or JsonException) { return []; }
+    }
+
+    /// <summary>Whether the MindAttic Vault holds a Claude key to bill.</summary>
+    public bool HasKey => SafeKey() is not null;
+
+    /// <summary>
+    /// Approves (<paramref name="approve"/>) or rejects the Vault key in one login's Claude Code config (<paramref name="configPath"/>:
+    /// a per-CLI login's <c>.claude.json</c>, or <see cref="ConfigPath"/>), for one CLI moved onto or off the key on its own while the
+    /// mode stays; the mode file is left alone. Null when done (or nothing to change), else why not.
+    /// </summary>
+    public string? SetKeyChoice(string configPath, bool approve)
+    {
+        if (SafeKey() is not { } key) return $"There's no {VaultProvider} key in the MindAttic Vault keyring.";
+        try { ClaudeKeyChoice.Set(configPath, ClaudeKeyChoice.Tail(key), approve); return null; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            return $"Couldn't set Claude Code's choice of the Vault key in {configPath}: {ex.Message}";
+        }
+    }
+
     private readonly Dictionary<string, DateTime> asked = new(StringComparer.Ordinal);
     private readonly HashSet<string> told = new(StringComparer.Ordinal);
 
@@ -130,7 +159,8 @@ public sealed class BillingSwitch
                 : (login.Describe(), null);
         // Until a switch writes a mode, nothing is enforced (Tick asks no Launcher tab), so no CLI is said to be restarting or
         // to need restarting for a mode only read from Claude Code's config (M.ORCH-T453).
-        var clis = LiveClis(hosts, nowUtc).Select(c => state is not null && c.Bills is { } bills && bills != mode
+        var failedOver = SafeFailedOver().Select(f => f.SessionId).ToHashSet(StringComparer.Ordinal);
+        var clis = LiveClis(hosts, nowUtc).Select(c => state is not null && c.Bills is { } bills && bills != mode && !failedOver.Contains(c.SessionId)
             ? c with { Restart = c.Host is null ? "manual"
                 : state.Requested.Contains(c.SessionId) ? "requested" : state.Refused.Contains(c.SessionId) ? "refused" : "pending" }
             : c).ToList();
@@ -203,7 +233,9 @@ public sealed class BillingSwitch
         }
         // Claude Code's choice of the Vault key follows the mode: a "yes" or "no" answered in a CLI's prompt since, or a mode
         // the context gate switched on its own (a /login it saw first), is put back in line.
-        if (File.Exists(ConfigPath) && SafeKey() is { } key && (enforcedUtc is not { } at || nowUtc - at >= RetryAfter) &&
+        // A CLI failed over to the key on the global login needs it approved there, whatever the mode (M.ORCH-T664).
+        var globalFailover = state.Mode == BillingModes.Team && SafeFailedOver().Any(f => f.ConfigDir.Length == 0);
+        if (!globalFailover && File.Exists(ConfigPath) && SafeKey() is { } key && (enforcedUtc is not { } at || nowUtc - at >= RetryAfter) &&
             Config(ClaudeKeyChoice.Tail(key)).Choice != (state.Mode == BillingModes.Api ? KeyChoice.Approved : KeyChoice.Rejected))
         {
             enforcedUtc = nowUtc;
@@ -231,7 +263,8 @@ public sealed class BillingSwitch
         var name = BillingModes.Name(state.Mode);
         var stamp = state.SinceUtc.ToString("O", CultureInfo.InvariantCulture);
         var due = new List<CliBilling>();
-        foreach (var c in LiveClis(hosts, nowUtc).Where(c => c.Bills is { } b && b != state.Mode))
+        var failedOver = SafeFailedOver().Select(f => f.SessionId).ToHashSet(StringComparer.Ordinal);
+        foreach (var c in LiveClis(hosts, nowUtc).Where(c => c.Bills is { } b && b != state.Mode && !failedOver.Contains(c.SessionId)))
         {
             if (c.Host is null)
             {

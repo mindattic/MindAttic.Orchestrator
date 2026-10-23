@@ -140,8 +140,10 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     // line moves to a free login with more headroom at its next idle point.
                     try
                     {
-                        rebalancer ??= new AccountRebalancer(AccountMove.Default(billing: aggregator.BillingSwitch, store: store));
-                        ReportRebalance(rebalancer.Tick(snapshot.Pace, snapshot.Accounts, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s, DateTime.UtcNow));
+                        // With no login to move to, it fails over to the API key until its login resets (M.ORCH-T664).
+                        rebalancer ??= new AccountRebalancer(AccountMove.Default(billing: aggregator.BillingSwitch, store: store)) { Store = store };
+                        ReportRebalance(rebalancer.Tick(snapshot.Pace, snapshot.Accounts, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s, DateTime.UtcNow,
+                            [.. snapshot.Repos.SelectMany(r => r.Sessions)]));
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidDataException)
                     {
