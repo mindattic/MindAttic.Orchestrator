@@ -67,15 +67,6 @@ public sealed record Pace(
     /// passes the limit, whatever the hold settings.</summary>
     public bool Stop { get; init; }
 
-    /// <summary>The window is past <see cref="WindDownAt"/> of its limit: agents start only what they can finish
-    /// before the stop, and file what they can't as a ticket; autopilot starts no new ticket until the window resets
-    /// (M.ORCH-T254: tickets whose estimate fit what was left still went out, five at once as the reset neared).</summary>
-    public bool WindDown { get; init; }
-
-    /// <summary>The share of the limit the wind-down starts at: <see cref="Pacer.WindDownShare"/>, or
-    /// <see cref="Pacer.FrontLoadedWindDownShare"/> on the front-loaded profile (which also starts no new subagent past it).</summary>
-    public double WindDownAt { get; init; } = Pacer.WindDownShare;
-
     /// <summary>The profile the pace was worked out on (<see cref="OrchestratorSettings.PaceProfile"/>).</summary>
     public string Profile { get; init; } = OrchestratorSettings.LinearProfile;
 
@@ -93,34 +84,11 @@ public sealed record Pace(
         (var five, var week) => five ?? week,
     };
 
-    /// <summary>The window the wind-down is for, when it isn't <see cref="Governing"/>'s: "weekly" past weekly-aware pacing's
-    /// wind-down line (M.ORCH-T666).</summary>
-    public string? WindDownWindow { get; init; }
-
-    /// <summary>That window's reset, when it isn't <see cref="ResetUtc"/>.</summary>
-    public DateTime? WindDownResetUtc { get; init; }
-
-    private string WindDownName => WindDownWindow ?? Governing ?? "5-hour";
-    private DateTime? WindDownReset => WindDownResetUtc ?? ResetUtc;
-
-    /// <summary>Why no new ticket starts past the wind-down line; empty when it isn't passed (or the window is stopped).</summary>
-    public string WindDownHold => !WindDown || Stop ? "" :
-        $"the {WindDownName} window is past {WindDownPercent} of its limit: no new ticket starts before it resets" +
-        (WindDownReset is { } r ? $" at {Formatting.ResetTime(r, DateTime.UtcNow)}" : "");
-
-    // Written the same on any Windows language, as the rest of the notes are (M.ORCH-T404).
-    private string WindDownPercent => (WindDownAt * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "%";
-
-    public string WindDownNote => !WindDown || Stop ? "" :
-        $"The {WindDownName} window is past {WindDownPercent} of its limit" + (WindDownReset is { } r ? $" (resets {Formatting.ResetTime(r, DateTime.UtcNow)})" : "") +
-        ", and work stops outright at the target. Don't start anything you can't finish before then. If the task you're on " +
-        "won't finish, commit what's done and file the rest as a ticket (tickets ticket new --type <type> --summary \"...\").";
-
     /// <summary>What agents are told about the allowance at the start of each turn.</summary>
     public string SubagentNote => SubagentAllowance switch
     {
         null => "",
-        0 => $"Subagents: none new right now ({(WindDown && !Stop && Profile == OrchestratorSettings.FrontLoadedProfile ? $"the {Governing ?? "5-hour"} window is past its {WindDownPercent} wind-down line" : Note)}). Finish with the {Subagents} running; a new one waits until there's room.",
+        0 => $"Subagents: none new right now ({Note}). Finish with the {Subagents} running; a new one waits until there's room.",
         var a when a > Subagents && UnderTargetPercent is { } projected => $"Subagents: up to {a} may run at once across all agents ({Subagents} running now). " +
             $"The 5-hour window is on course to end near {projected:0}%, under its {TargetPercent:0}% target, so start more now: a subagent on every ticket " +
             "you've claimed or been handed, all at once, and parallel subagents for independent pieces. Don't hold one back because its files overlap " +
@@ -149,9 +117,6 @@ public sealed record Pace(
 public static class Pacer
 {
     private static readonly TimeSpan Bucket = TimeSpan.FromMinutes(10);
-
-    /// <summary>Past this share of the 5-hour limit, only work that can finish before the stop starts.</summary>
-    public const double WindDownShare = 0.90;
 
     /// <summary>Why nothing is paced while the sign-in is an API key: it's billed per token, with no window to run into.</summary>
     public const string ApiKeyNote = "API key: no 5-hour or weekly windows, so nothing is paced or stopped.";
@@ -310,10 +275,6 @@ public static class Pacer
     /// swing with every reading.</summary>
     public static readonly TimeSpan CurveHorizon = TimeSpan.FromMinutes(30);
 
-    /// <summary>On the front-loaded profile, past this share of the 5-hour limit no new subagent starts and no new ticket
-    /// either (the wind-down), since the curve leaves less slack near the target than the straight line does.</summary>
-    public const double FrontLoadedWindDownShare = 0.85;
-
     /// <summary>
     /// Sessions the spare rate pays for: (<paramref name="sustainable"/> − <paramref name="demand"/>) ÷ one session's
     /// draw, rounded down; negative when over. With no session history yet, one while there's any room, to measure it.
@@ -328,12 +289,12 @@ public static class Pacer
     /// <summary>
     /// Raises the subagent allowance while the 5-hour window is on course to end under its target (M.ORCH-T529: it projected ~65%
     /// of a 98% target while claimed tickets sat unstarted): to the ones running plus one more for every 10 points it's short
-    /// (at least one), never past <paramref name="max"/> and never lower than it was. Left as it is at the stop, past the
-    /// wind-down line, when the pace says none new (0), or when the window isn't under its target.
+    /// (at least one), never past <paramref name="max"/> and never lower than it was. Left as it is at the stop, when the pace
+    /// says none new (0), or when the window isn't under its target.
     /// </summary>
     public static Pace UnderTarget(Pace pace, Utilization? window, int max)
     {
-        if (pace is not { IsPaced: true, Stop: false, WindDown: false, SubagentAllowance: { } allowed and > 0 } || max <= 0) return pace;
+        if (pace is not { IsPaced: true, Stop: false, SubagentAllowance: { } allowed and > 0 } || max <= 0) return pace;
         if (window is not { Ended: false } u || u.ProjectedEndPercent >= u.TargetPercent) return pace;
         var shortBy = u.TargetPercent - Math.Max(0, u.ProjectedEndPercent);
         var raised = (int)Math.Min(max, Math.Max(allowed, (long)pace.Subagents + Math.Max(1, (int)Math.Ceiling(shortBy / 10))));

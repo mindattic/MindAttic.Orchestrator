@@ -96,9 +96,9 @@ public sealed class UnderTarget
     // anything left to start, that is said once a window (CheckNoWork) and on the dashboard (NoWorkLine).
 
     /// <summary>Where the running window is on course to end, when that's under its pace target and new work may still start
-    /// (not at the stop, not past the wind-down line); null otherwise.</summary>
+    /// (not at the stop); null otherwise.</summary>
     public static double? Projected(Snapshot snapshot, SchedulePlan plan) =>
-        snapshot.Utilization is { Ended: false } u && u.EndUtc > snapshot.TakenUtc && !plan.Stopped && plan.Pace is not { WindDown: true } &&
+        snapshot.Utilization is { Ended: false } u && u.EndUtc > snapshot.TakenUtc && !plan.Stopped &&
         u.ProjectedEndPercent < u.TargetPercent ? Math.Max(0, u.ProjectedEndPercent) : null;
 
     /// <summary>The pace's subagent allowance has room for another one across every CLI.</summary>

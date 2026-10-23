@@ -688,19 +688,8 @@ public sealed class HookScriptTests
     }
 
     [Test]
-    public void Wind_down_is_told_at_the_turn_and_once_mid_turn_and_a_stop_is_never_pushed_back_to_work()
+    public void A_stop_is_never_pushed_back_to_work()
     {
-        Status(new { wind_down_note = "Past 90%: finish or file it." });
-        Assert.That(Gate(new { hook_event_name = "UserPromptSubmit", session_id = "w1", prompt = "go", cwd = ws }, AgentGate.ContextScriptName).Output,
-            Does.Contain("Past 90%"));
-
-        Status(new { });
-        Gate(new { hook_event_name = "UserPromptSubmit", session_id = "w2", prompt = "go", cwd = ws }, AgentGate.ContextScriptName);
-        Status(new { wind_down_note = "Past 90%: finish or file it." });
-        object Tool() => new { hook_event_name = "PostToolUse", session_id = "w2", cwd = ws, tool_input = new { command = "ls" } };
-        Assert.That(Gate(Tool(), AgentGate.ContextScriptName).Output, Does.Contain("Past 90%"), "crossed mid-turn");
-        Assert.That(Gate(Tool(), AgentGate.ContextScriptName).Output, Is.Empty, "once");
-
         var db = Path.Combine(ws, "MindAttic.Tickets", "data", "Tickets.db");
         Directory.CreateDirectory(Path.GetDirectoryName(db)!);
         using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
@@ -708,6 +697,7 @@ public sealed class HookScriptTests
             "d.execute(\"insert into tickets values('U.SPC-T1','UnitySolarSystem','open',1,'fix')\"); d.commit()", db }, UseShellExecute = false })!)
             mk.WaitForExit(20_000);
         var uss = Path.Combine(ws, "UnitySolarSystem");
+        Directory.CreateDirectory(Marks);
         File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem"); // keep-going acts only in the CLI /allocate is on in
         object Asking(string sid) => new { hook_event_name = "Stop", session_id = sid, cwd = uss, last_assistant_message = "Shall I start the next one?" };
         Status(new { });
@@ -752,12 +742,6 @@ public sealed class HookScriptTests
         Status(new { stop = true, stop_window = "weekly", stop_until = week.ToString("yyyy-MM-ddTHH:mm:ssZ") });
         Gate(Ends("h2", "Stopped."), AgentGate.ContextScriptName);
         Assert.That(Held("h2")!.Value.GetProperty("window").GetString(), Is.EqualTo("weekly"), "a weekly stop is held until the week resets");
-
-        Status(new { wind_down_note = "Past 90%.", window_reset = reset.ToString("yyyy-MM-ddTHH:mm:ssZ") });
-        Gate(Ends("h3", "Handoff saved: continue after 3:30 PM with the docket review."), AgentGate.ContextScriptName);
-        Assert.That(Held("h3")!.Value.GetProperty("until").GetDouble(), Is.EqualTo(Epoch(reset)).Within(1), "past the wind-down line, leaving work for the reset");
-        Gate(Ends("h4", "All done: the tests pass and it's pushed."), AgentGate.ContextScriptName);
-        Assert.That(Held("h4"), Is.Null, "past the wind-down line with nothing left for the reset: not waiting on it");
 
         Status(new { });
         Gate(Ends("h5", "Stopping until the limit resets."), AgentGate.ContextScriptName);
@@ -1416,20 +1400,6 @@ public sealed class HookScriptTests
     }
 
     [Test]
-    public void Past_the_wind_down_line_only_an_unthrottled_cli_is_nudged_and_hears_the_note()
-    {
-        AutopilotWithOpenFixes();
-        Status(new { wind_down_note = "Past 90%: finish or file it." });
-        Assert.That(Stopped("k1"), Is.Empty, "orchestrator next starts nothing new past the line (M.ORCH-T254): a nudge would only waste a turn");
-        File.WriteAllText(Path.Combine(Marks, $"unthrottled-{Cli}"), "x");
-        var reason = Reason(Stopped("k2"));
-        Assert.That(reason, Does.StartWith("Don't stop").And.EndWith(" Past 90%: finish or file it."), "after the carry-on, so the agent hears both");
-
-        Status(new { });
-        Assert.That(Reason(Stopped("k3")), Does.Not.Contain("Past 90%"), "no note, nothing appended");
-    }
-
-    [Test]
     public void A_goal_turn_is_not_nudged_until_goal_clear_or_its_stop_summary_ends_the_goal()
     {
         AutopilotWithOpenFixes();
@@ -1613,7 +1583,7 @@ public sealed class HookScriptTests
         object Weekly(int reset) => new
         {
             stop = true, stop_window = "weekly", stop_note = "The weekly window is at its target. End your turn now.", stop_until = At(reset), window_reset = At(reset),
-            pace_delay_seconds = 60, subagent_allowance = 0, subagents_running = 0, wind_down_note = "Past 90%.",
+            pace_delay_seconds = 60, subagent_allowance = 0, subagents_running = 0,
         };
         // 6:59:50: the weekly stop until 7:00, latched.
         Status(Weekly(10));

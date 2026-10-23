@@ -209,15 +209,15 @@ public sealed class PacerTests
     }
 
     [Test]
-    public void Past_90_percent_nothing_winds_down_and_at_its_target_everything_stops()
+    public void At_its_target_everything_stops()
     {
         var s = new OrchestratorSettings { BlockBudget = 1_000 };
         var early = Pace(10.5, 1, s, E(10, 500));
-        Assert.That((early.WindDown, early.Stop, early.WindDownNote), Is.EqualTo((false, false, "")));
+        Assert.That(early.Stop, Is.False);
 
         var late = Pace(10.5, 1, s, E(10, 920));
         // M.ORCH-T741: no wind-down before the target; past 90% agents run on unchanged.
-        Assert.That((late.WindDown, late.Stop, late.WindDownNote, late.WindDownHold), Is.EqualTo((false, false, "", "")));
+        Assert.That(late.Stop, Is.False);
 
         var spent = Pace(10.5, 1, s, E(10, 990));
         Assert.That(spent.Stop, Is.True, "99% is the target: nothing more is spent");

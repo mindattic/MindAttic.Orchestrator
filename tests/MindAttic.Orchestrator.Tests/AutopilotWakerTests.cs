@@ -128,7 +128,6 @@ public sealed class AutopilotWakerTests
         State("idle", Now.AddHours(-1));
         Assert.That(Waker().Tick(Plan(4, 0), Settings, [Tab], true, Now), Is.Empty, "nothing workable");
         Assert.That(Waker().Tick(plan with { Stop = true }, Settings, [Tab], true, Now), Is.Empty, "at the window's stop");
-        Assert.That(Waker().Tick(plan with { Pace = plan.Pace! with { WindDown = true } }, Settings, [Tab], true, Now), Is.Empty, "past the wind-down line");
         Assert.That(Waker().Tick(plan, Settings with { KeepGoing = false }, [Tab], true, Now), Is.Empty, "keep-going off");
         Assert.That(typed, Is.Empty);
     }

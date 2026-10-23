@@ -184,8 +184,6 @@ public sealed class UnderTargetTests
         Assert.That(raised.SubagentNote, Does.StartWith("Subagents: up to 6 may run at once").And.Contain("near 65%, under its 98% target, so start more now"));
         Assert.That(Pacer.UnderTarget(pace, under, 4).SubagentAllowance, Is.EqualTo(4), "never past the ceiling");
         Assert.That(Pacer.UnderTarget(pace, under with { ProjectedEndPercent = 98.5 }, 16), Is.SameAs(pace), "on course: left as it is");
-        var wound = pace with { WindDown = true };
-        Assert.That(Pacer.UnderTarget(wound, under, 16), Is.SameAs(wound), "past the wind-down line");
         var none = pace with { SubagentAllowance = 0 };
         Assert.That(Pacer.UnderTarget(none, under, 16), Is.SameAs(none), "the pace says none new");
     }

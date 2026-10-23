@@ -96,7 +96,6 @@ public sealed class LimitWakerTests
         var waker = Waker(alive: pid => pid != 45);
         Assert.That(waker.Tick(Open, [Tab], true, Now), Is.Empty, "inside the grace, busy, never held, or its CLI closed");
         Assert.That(waker.Tick(Open with { Stop = true }, [Tab], true, Now.AddMinutes(2)), Is.Empty, "the pace still stops: the reset isn't in yet");
-        Assert.That(waker.Tick(Open with { WindDown = true }, [Tab], true, Now.AddMinutes(2)), Is.Empty);
         Assert.That(typed, Is.Empty);
     }
 
@@ -132,17 +131,6 @@ public sealed class LimitWakerTests
 
         State("w1", 42, "idle", Now.AddMinutes(1), until: Now.AddHours(30), window: "weekly");
         Assert.That(waker.Tick(Open, [Tab], true, Now.AddHours(30).AddMinutes(2)).Single().Line, Does.Contain("weekly window reset"));
-    }
-
-    [Test]
-    public void A_stop_already_forgotten_isnt_brought_back_by_a_later_windows_wind_down()
-    {
-        State("s1", 42, "idle", Now.AddHours(-1), until: Now.AddMinutes(-5));
-        var waker = Waker();
-        Assert.That(waker.Tick(Open, [Tab], true, Now.AddHours(7)), Is.Empty, "the daemon was down through it: forgotten");
-        Assert.That(waker.Tick(Open with { WindDown = true }, [Tab], true, Now.AddHours(8)), Is.Empty);
-        Assert.That(waker.Tick(Open, [Tab], true, Now.AddHours(8).AddMinutes(1)), Is.Empty, "the next window's wind-down began long after its reset");
-        Assert.That(typed, Is.Empty);
     }
 
     [Test]

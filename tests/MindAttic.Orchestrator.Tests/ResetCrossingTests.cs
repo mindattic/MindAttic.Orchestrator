@@ -44,7 +44,7 @@ public sealed class ResetCrossingTests
 
         var before = Budget(events, Five.AddSeconds(-10), reported, reportedLimit: 10_000);
         var paceBefore = Pacer.Compute(before, 1, 1_000, Settings, Five.AddSeconds(-10));
-        Assert.That(paceBefore.WindDown, Is.False, "95% of the old window: no wind-down (M.ORCH-T741)");
+        Assert.That(paceBefore.Stop, Is.False, "95% of the old window: nothing held yet (M.ORCH-T741)");
 
         var now = Five.AddSeconds(10);
         var after = Budget(events, now, reported, reportedLimit: 10_000);
@@ -52,7 +52,7 @@ public sealed class ResetCrossingTests
         Assert.That(after.CurrentBlock.Usage.Fresh, Is.EqualTo(50));
         Assert.That((after.BlockLimitSource, after.BlockLimit), Is.EqualTo((LimitSource.Reported, 10_000L)), "the size from the reports still holds");
         var pace = Pacer.Compute(after, 1, 1_000, Settings, now);
-        Assert.That((pace.Stop, pace.WindDown, pace.WindDownHold), Is.EqualTo((false, false, "")));
+        Assert.That(pace.Stop, Is.False);
         Assert.That(pace.RoomTokens, Is.EqualTo(10_000 * Settings.PaceTargetPercent / 100.0 - 50));
     }
 

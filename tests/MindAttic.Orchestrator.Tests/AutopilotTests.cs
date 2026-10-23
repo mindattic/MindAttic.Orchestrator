@@ -84,26 +84,6 @@ public sealed class AutopilotTests
     }
 
     [Test]
-    public void Past_the_wind_down_line_no_story_starts_until_the_reset_estimate_or_not()
-    {
-        // M.ORCH-T254: stories whose estimates each fit what was left still started past 90%, five at once near the reset.
-        Cli(100, @"D:\W\A");
-        var snap = Snap(("A", [T("A-T1"), T("A-T2")]));
-        var winding = Paced(snap, 5);
-        winding = winding with
-        {
-            Queue = [.. winding.Queue.Select(q => q.Id == "A-T1" ? q with { Estimate = new CostEstimate(1_000, 3, "fixes") } : q)],
-            Pace = winding.Pace! with { WindDown = true, RoomTokens = 1_000_000 },
-        };
-
-        var pilot = Pilot();
-        var said = pilot.Tick(winding, snap, new(), Now);
-
-        Assert.That(started, Is.Empty, "neither the story whose estimate fits nor the one with none starts before the reset");
-        Assert.That(pilot.Paused, Does.Contain("past 90%").And.Contain("resets"));
-    }
-
-    [Test]
     public void An_agent_is_told_to_land_on_its_repos_own_main_line()
     {
         // Found live: Automata lands on master; told to push HEAD:main, an agent created a stray main branch on GitHub.
@@ -707,26 +687,22 @@ public sealed class AutopilotTests
     }
 
     [Test]
-    public void An_unthrottled_cli_is_handed_tickets_past_the_subagent_allowance_room_and_wind_down_but_not_past_the_stop()
+    public void An_unthrottled_cli_is_handed_tickets_past_the_subagent_allowance_and_room_but_not_past_the_stop()
     {
         // M.ORCH-T195: /unthrottle reaches `orchestrator next --claim` as it reaches the pace gate's holds.
         var snap = Snap(("A", [T("A-T1"), T("A-T2"), T("A-T3")]));
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT", MaxConcurrentSessions = 2 };
         (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
         var plan = Paced(snap, 5);
-        // A-T1 costs more than is left, and past the wind-down line nothing new starts anyway.
+        // A-T1 costs more than is left.
         plan = plan with
         {
             Queue = [.. plan.Queue.Select(q => q.Id == "A-T1" ? q with { Estimate = new CostEstimate(5_000_000, 3, "fixes") } : q)],
-            Pace = plan.Pace! with { SubagentAllowance = 2, Subagents = 2, RoomTokens = 1_000, WindDown = true },
+            Pace = plan.Pace! with { SubagentAllowance = 2, Subagents = 2, RoomTokens = 1_000 },
         };
 
-        var (held, why) = Autopilot.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main");
-        Assert.That(held, Is.Empty, "a throttled CLI gets nothing past the wind-down line");
-        Assert.That(why, Does.Contain("past 90%").And.Contain("no new ticket starts before it resets"));
-
         var (handed, whyNot) = Autopilot.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", unthrottled: true);
-        Assert.That((handed.Count, whyNot), Is.EqualTo((2, (string?)null)), "MaxConcurrentSessions of them, whatever the allowance, room or wind-down");
+        Assert.That((handed.Count, whyNot), Is.EqualTo((2, (string?)null)), "MaxConcurrentSessions of them, whatever the allowance or room");
         Assert.That(Autopilot.Next(plan, settings, store, ["A"], 3, claim: false, Now, Make, _ => "main", unthrottled: true).Handed, Has.Count.EqualTo(3),
             "--count is honoured as asked");
 
@@ -757,33 +733,6 @@ public sealed class AutopilotTests
         Assert.That((none.Count, why), Is.EqualTo((0, "the pace has no room for another subagent right now; run it again in a few minutes")), "the next call: all four are taken");
         Assert.That(Autopilot.Next(plan, settings, store, ["A"], 2, claim: false, Now, Make, _ => "main", pilotRunning: _ => false).Handed, Has.Count.EqualTo(2),
             "an explicit --count is still honoured as asked");
-    }
-
-    [Test]
-    public void Past_the_wind_down_line_a_cli_is_handed_no_ticket_even_one_whose_estimate_fits_or_with_a_count()
-    {
-        // M.ORCH-T254: `next --claim` handed out five tickets at 96.6% (past the 90% wind-down) as the reset neared and the
-        // subagent allowance opened back up; each one's estimate fit what was left, but nothing new should start then.
-        var snap = Snap(("A", [T("A-T1"), T("A-T2"), T("A-T3")]));
-        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT", MaxConcurrentSessions = 6 };
-        var made = new List<string>();
-        (bool, string, string) Make(string repo, string path, string branch) { made.Add(path); return (true, path, ""); }
-        var plan = Paced(snap, 5);
-        plan = plan with
-        {
-            Queue = [.. plan.Queue.Select(q => q with { Estimate = new CostEstimate(1_000, 3, "fixes") })],
-            Pace = plan.Pace! with { SubagentAllowance = 6, Subagents = 0, RoomTokens = 1_000_000, WindDown = true },
-        };
-
-        var (handed, why) = Autopilot.Next(plan, settings, store, ["A"], null, claim: true, Now, Make, _ => "main");
-        Assert.That(handed, Is.Empty, "every estimate fits and the allowance has room, but the window is winding down");
-        Assert.That(why, Does.Contain("past 90%"));
-        Assert.That(Autopilot.Next(plan, settings, store, ["A"], 5, claim: true, Now, Make, _ => "main").Handed, Is.Empty, "--count doesn't get past it");
-        Assert.That((made.Count, store.LoadAssignments().Count), Is.EqualTo((0, 0)), "nothing claimed, no worktree made");
-
-        var reset = plan with { Pace = plan.Pace! with { WindDown = false } };
-        Assert.That(Autopilot.Next(reset, settings, store, ["A"], null, claim: false, Now, Make, _ => "main").Handed, Has.Count.EqualTo(3),
-            "once the window resets they go out again");
     }
 
     [Test]

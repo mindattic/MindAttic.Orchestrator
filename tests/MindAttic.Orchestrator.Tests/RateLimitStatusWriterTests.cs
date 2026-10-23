@@ -146,7 +146,7 @@ public sealed class RateLimitStatusWriterTests
         var writer = new RateLimitStatusWriter(path) { UtcNow = () => T0 };
         writer.Write(Budgeted(), Unpaced() with { SubagentAllowance = 3, Subagents = 2 });
         var root = Read();
-        foreach (var key in new[] { "subagent_allowance", "subagents_running", "subagent_note", "pace", "pace_note", "wind_down_note" })
+        foreach (var key in new[] { "subagent_allowance", "subagents_running", "subagent_note", "pace", "pace_note" })
             Assert.That(root.TryGetProperty(key, out _), Is.False, key);
 
         writer.Write(Budgeted(), Paced() with { SubagentAllowance = null });
@@ -204,23 +204,6 @@ public sealed class RateLimitStatusWriterTests
 
         writer.Write(Budgeted(), Paced() with { AgentDelaySeconds = 20 });
         Assert.That(Read().GetProperty("pace_delay_seconds").GetDouble(), Is.EqualTo(20));
-    }
-
-    [Test]
-    public void Stop_and_wind_down_note_are_never_written_together()
-    {
-        var writer = new RateLimitStatusWriter(path) { UtcNow = () => T0 };
-        foreach (var pace in new[] { Paced(PaceMode.Over), Paced(PaceMode.Throttled), Unpaced() })
-        {
-            writer.Write(Budgeted(), pace with { Stop = true, WindDown = true });
-            var root = Read();
-            Assert.That(root.GetProperty("stop").GetBoolean(), Is.True, pace.Mode.ToString());
-            Assert.That(root.TryGetProperty("wind_down_note", out _), Is.False, pace.Mode + ": stopped, so there's nothing to wind down");
-        }
-
-        writer.Write(Budgeted(), Paced() with { WindDown = true });
-        var wound = Read();
-        Assert.That((wound.TryGetProperty("stop", out _), wound.GetProperty("wind_down_note").GetString()), Is.EqualTo((false, (Paced() with { WindDown = true }).WindDownNote)));
     }
 
     [Test]

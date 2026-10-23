@@ -403,7 +403,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// as many as the pace's subagent allowance has room for (or <paramref name="count"/>). With <paramref name="claim"/>
     /// each gets its own worktree from the repo's main line and an assignment, so it isn't handed out twice; when nothing
     /// is handed out, <c>Why</c> says why. For an <paramref name="unthrottled"/> CLI (/pacing off, M.ORCH-T195/T483) the pace's
-    /// subagent allowance, room and wind-down don't apply, as the pace gate skips its holds for it: it gets <paramref name="count"/>
+    /// subagent allowance and room don't apply, as the pace gate skips its holds for it: it gets <paramref name="count"/>
     /// or <see cref="OrchestratorSettings.MaxConcurrentSessions"/> less the tickets already being worked or claimed (as unpaced), and the daemon's next measurement holds everyone else to make up
     /// for it. Only the window's hard stop still applies. A ticket another agent is working isn't handed out (M.ORCH-T255): one in
     /// <see cref="SchedulePlan.Worked"/> (filed this turn by an agent fixing it, or named in a live session's prompt or worktree),
@@ -439,8 +439,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
 
     /// <summary>
     /// The tickets of <paramref name="repos"/> this CLI could work but its login can't fit (M.ORCH-T666): estimated past what's
-    /// left of its 5-hour room or its week's (<see cref="Pace.FitRoomTokens"/>), or every one while its login is stopped or
-    /// winding down. A ticket assigned to a user (M.ORCH-T668) is never redelegated (<see cref="TicketPins.Redelegable"/>): it
+    /// left of its 5-hour room or its week's (<see cref="Pace.FitRoomTokens"/>), or every one while its login is stopped. A ticket assigned to a user (M.ORCH-T668) is never redelegated (<see cref="TicketPins.Redelegable"/>): it
     /// waits for its user until "Redelegate now" drops its pin. Each goes to the roomiest other signed-in login it fits (<paramref name="logins"/>), one per login per
     /// call, else, while this CLI runs on a login of its own (<paramref name="canFallBack"/>), to the fallback login, once per
     /// <see cref="Redelegation.FallbackHold"/>;
@@ -454,7 +453,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         if (!settings.Autopilot || QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is not null) return delegated;
         if (cli is { } moving && new Sessions.MoveLocks(store).All().Any(m => m.Pid == moving || (self is not null && m.SessionId == self))) return delegated;
         var pace = plan.Pace;
-        var closedHere = plan.Stopped || pace is { WindDown: true };
+        var closedHere = plan.Stopped;
         var room = pace?.FitRoomTokens;
         bool FitsHere(QueueItem q) => !closedHere && (room is not { } left || q.Estimate is not { } e || e.Fresh <= left);
         var mine = handed.Select(h => h.Item.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -514,9 +513,6 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         if (plan.Stopped)
             return ([], $"the {plan.Pace?.Governing ?? "5-hour"} window is at its target: nothing starts before it resets" +
                 (plan.Pace?.ResetUtc is { } reset ? $" ({Formatting.ResetTime(reset, nowUtc)})" : ""));
-        // Past the wind-down line nothing new starts until the reset, estimate or not (M.ORCH-T254: five tickets whose
-        // estimates each fit what was left went out at 96.6% as the reset neared and the allowance opened back up).
-        if (!unthrottled && plan.Pace is { WindDown: true } wound) return ([], wound.WindDownHold);
         // The switches the settings and the Settings panel offer apply to the CLIs that run /allocate: Tick, which
         // read them, starts nothing since M.ORCH-T164.
         if (!settings.Autopilot) return ([], "autopilot is paused (orchestrator settings --autopilot true, or the dashboard's Settings, resumes it)");
@@ -737,8 +733,6 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// <summary>Why the pace can't afford another story right now; null when it can.</summary>
     internal static string? PaceHold(SchedulePlan plan, Snapshot snapshot) =>
         plan.Pace is { Mode: PaceMode.Over or PaceMode.Coast } p ? $"pace: {p.Note}"
-        // Past the wind-down line no new story starts until the reset (M.ORCH-T254).
-        : plan.Pace is { WindDown: true } w ? $"pace: {w.WindDownHold}"
         : snapshot.Budget is { Level: BudgetLevel.Over } b ? $"budget at {b.WorstPercent:0}%"
         : null;
 

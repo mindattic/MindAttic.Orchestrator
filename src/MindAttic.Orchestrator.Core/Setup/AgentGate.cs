@@ -544,7 +544,7 @@ public static class AgentGate
             return (l.get("note") or ORCHESTRATOR_STOP) if l else None
         def lapsed(s):
             # A status worked out before its window reset holds nothing in the new one, though it's still fresh for up to a tick:
-            # past stop_until its stop, past window_reset its holds, wind-down and subagent allowance (M.ORCH-T387).
+            # past stop_until its stop, past window_reset its holds and subagent allowance (M.ORCH-T387).
             def passed(key):
                 try:
                     return datetime.fromisoformat(str(s[key]).replace("Z", "+00:00")).timestamp() <= time.time()
@@ -553,7 +553,7 @@ public static class AgentGate
             if s.get("stop") and passed("stop_until"):
                 s = {k: v for k, v in s.items() if k not in ("stop", "stop_note", "stop_until", "stop_window")}
             if passed("window_reset"):
-                s = {k: v for k, v in s.items() if k not in ("pace_delay_seconds", "pace_note", "wind_down_note", "subagent_allowance", "subagent_note")}
+                s = {k: v for k, v in s.items() if k not in ("pace_delay_seconds", "pace_note", "subagent_allowance", "subagent_note")}
             return s
         def daemon_down():
             # Seconds since the orchestrator last wrote rl-status.json, once that's past what the gates trust; else None.
@@ -2631,10 +2631,6 @@ public static class AgentGate
             except Exception:
                 pass
 
-        # A turn ending past the wind-down line that says it leaves work for the reset ("continue after 3:30 PM", "once the
-        # limit resets"): it's waiting on the window, not done (M.ORCH-T256).
-        LEFT_FOR_RESET = re.compile(r"\b(?:resets?|limit|wind[- ]?down|5-hour|weekly|continue\s+(?:after|once|when)|after\s+\d{1,2}(?::\d{2})?\s*[ap]\.?m\b)", re.I)
-
         def iso_epoch(text):
             try:
                 return datetime.fromisoformat(str(text).replace("Z", "+00:00")).timestamp()
@@ -2643,7 +2639,7 @@ public static class AgentGate
 
         def limit_held(limits, data, now):
             # {"until", "window", "at"} when this turn ended held by a window: at its stop (the orchestrator's, fresh or latched,
-            # or Claude's own line), or past the wind-down line saying it leaves work for after the reset; None otherwise. The
+            # or Claude's own line); None otherwise. The
             # daemon types a resume into the CLI (or asks you to) once that window has reset (M.ORCH-T256: a CLI that stopped
             # at 94% sat idle past the reset until its author noticed).
             until = window = None
@@ -2657,8 +2653,6 @@ public static class AgentGate
                 own = claude_stop()
                 if own:
                     until, window = own[1], own[2]
-            if until is None and limits.get("wind_down_note") and LEFT_FOR_RESET.search(last_said(data)):
-                until, window = iso_epoch(limits.get("window_reset")), "5-hour"
             if until is None or until <= time.time():
                 return None
             return {"until": until, "window": window or "5-hour", "at": now}
@@ -2683,25 +2677,6 @@ public static class AgentGate
                 if m.get("type") in ("assistant", "user", "system"):
                     return m.get("subtype") == "stop_hook_summary" and any(h.get("promptText") == goal for h in m.get("hookInfos") or [])
             return False
-
-        def last_said(data):
-            if data.get("last_assistant_message"):
-                return str(data["last_assistant_message"])
-            try:
-                lines = Path(data.get("transcript_path") or "").read_text(encoding="utf-8", errors="ignore").splitlines()
-            except Exception:
-                return ""
-            for line in reversed(lines[-200:]):
-                try:
-                    m = json.loads(line)
-                except Exception:
-                    continue
-                if m.get("type") == "assistant":
-                    parts = (m.get("message") or {}).get("content") or []
-                    text = " ".join(p.get("text", "") for p in parts if isinstance(p, dict) and p.get("type") == "text")
-                    if text.strip():
-                        return text
-            return ""
 
         # Hooks fire together (parallel tool calls, a Stop racing a SubagentStop). A read or replace Windows refuses while
         # another hook has the file open is retried: read as empty, the next save would wipe the session's goal and pid.
@@ -2833,10 +2808,7 @@ public static class AgentGate
             repos = autopilot_repos(my_pid())
             if repos and KEEP_GOING and not stopped and not state.get("goal"):
                 why = "autopilot"
-            # Past the wind-down line `orchestrator next` starts nothing new before the reset (M.ORCH-T254), unless this CLI is
-            # unthrottled: pushing the stop back would only spend a turn being told so.
-            wound = bool(limits.get("wind_down_note")) and not (DIR / ("unthrottled-" + str(my_pid()))).exists()
-            eligible = bool(why) and not wound and not no_subagent_room(limits, my_pid())
+            eligible = bool(why) and not no_subagent_room(limits, my_pid())
             ids = workable(repos, sid) if eligible else []
             if ids or (eligible and story_file_repos(repos)):
                 # Only what next would hand out: the count above is the cheap first look, next has the last word. A repo on
@@ -2845,8 +2817,6 @@ public static class AgentGate
                 if handed is not None:
                     ids = handed
             reason = keep_going(repos, ids, sid, why, insisted) if ids else None
-            if reason and limits.get("wind_down_note"):
-                reason += " " + limits["wind_down_note"]
             if reason:
                 state.update(nudged=True, worked=False)
                 state.pop("closed", None)
@@ -2856,9 +2826,9 @@ public static class AgentGate
             for k in ("nudged", "worked", "closed"):
                 state.pop(k, None)
             state.update(state="idle", at=now, pid=cli_pid(), cwd=data.get("cwd"), auth=auth, config_dir=str(PROFILE_DIR or ""))
-            # Held by a window (its stop, or the wind-down with work left for the reset): the daemon wakes it once that window
+            # Held by a window (its stop): the daemon wakes it once that window
             # resets. Any other end of a turn isn't waiting on anything.
-            held = limit_held(limits, data, now) if paced and (stopped or limits.get("wind_down_note")) else None
+            held = limit_held(limits, data, now) if paced and stopped else None
             if held:
                 state["limit_stop"] = held
             else:
@@ -2944,14 +2914,13 @@ public static class AgentGate
                         why = "/pacing takes on or off; nothing changed. " + why
                     print(json.dumps({"decision": "block", "reason": why}))
                     sys.exit(0)
-            # Each turn starts knowing how many subagents the pace allows right now, and whether the window is winding down.
+            # Each turn starts knowing how many subagents the pace allows right now, and whether the window is at its stop.
             s = orchestrator_status()
-            notes = [n for n in (s.get("subagent_note"), s.get("stop_note") or s.get("wind_down_note")) if n]
+            notes = [n for n in (s.get("subagent_note"), s.get("stop_note")) if n]
             if CROSSREPO_NOTE[0]:
                 notes.append(CROSSREPO_NOTE[0])
             if ALLOCATE_NOTE[0]:
                 notes.append(ALLOCATE_NOTE[0])
-            state["wind_down_told"] = bool(s.get("wind_down_note") or s.get("stop_note"))
             out = {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": " ".join(notes)}} if notes else {}
             # A CLI that started before its SessionStart hook was registered is checked on its first prompt instead, and told
             # only when it's billing the key rather than the claude.ai login (M.ORCH-T434).
@@ -3015,12 +2984,6 @@ public static class AgentGate
             if touched:
                 save(state_file, state)
             said = []
-            # A turn that crosses the window's wind-down line (a long autopilot run has only the one prompt) hears it once.
-            if not state.get("wind_down_told"):
-                s = orchestrator_status()
-                if s.get("wind_down_note"):
-                    state["wind_down_told"] = True
-                    said.append(s["wind_down_note"])
             # No context warning any more: nothing quicksaves, clears or reloads a session for it (2026-10-16), so a turn
             # is never told to stop for its context; Claude's own compaction handles a full one.
             if not said:
