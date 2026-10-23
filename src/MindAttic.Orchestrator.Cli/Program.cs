@@ -149,6 +149,17 @@ internal static class CliApp
                 d.AddCommand<DbMigrateCommand>("migrate").WithDescription("Copy the orchestrator's data from data/orchestrator.db into SQL Server (--server, --database or --connection; the database is created), check every table's row count, then use it on this machine; --replace copies over a database that already holds data.");
                 d.AddCommand<DbBackCommand>("back").WithDescription("Copy the data back from SQL Server into data/orchestrator.db and stop using SQL Server on this machine.");
             });
+            // Organizations above people (M.ORCH-T655); org (above) stays about the members of the current one.
+            config.AddBranch("orgs", o =>
+            {
+                o.SetDescription("The organizations the dashboard switches between above the person tabs, each with its people and their logins (each on its own LLM provider); with none added, one org (MindAttic, id default) holds every login.");
+                o.SetDefaultCommand<OrgsListCommand>();
+                o.AddCommand<OrgsAddCommand>("add").WithDescription("Add an org (add \"Sales\" [[--id sales]]).");
+                o.AddCommand<OrgsRenameCommand>("rename").WithDescription("Rename an org (rename <id> \"<name>\"; default is the default org).");
+                o.AddCommand<OrgsRemoveCommand>("remove").WithDescription("Remove an org; its logins go back to the default org.");
+                o.AddCommand<OrgsMemberCommand>("member").WithDescription("Put a login in an org as a person's (member <org> \"<person>\" <email|global> [[--provider Codex]]), moving it from any other org.");
+                o.AddCommand<OrgsUnmemberCommand>("unmember").WithDescription("Take a login out of its org, back to the default one (unmember <email|global> [[--provider Codex]]).");
+            });
             config.AddCommand<LedgerCommand>("ledger").WithDescription("Every 5-hour window graded against 99%-never-over (ok, under, blind, over) and the record so far; --csv writes it out. Exits 1 if one went over in --days.");
             config.AddCommand<RemindCommand>("remind").WithDescription("Save a reminder the daemon texts through Psst when it's due (\"<text>\" --at \"tomorrow 9am\" [[--to <contact>]]); --list, --cancel <id>.");
             config.AddBranch("workspace", w =>

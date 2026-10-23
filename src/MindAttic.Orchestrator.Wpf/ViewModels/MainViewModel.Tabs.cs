@@ -51,8 +51,9 @@ public sealed partial class MainViewModel
     /// <summary>Every login's tab, the global login's first; the same list in every tab.</summary>
     public ObservableCollection<MainViewModel> LoginTabs => Root.loginTabs;
 
-    /// <summary>The tab strip shows once there's a second login: with only the global one it would be a lone tab.</summary>
-    public bool HasLoginTabs => LoginTabs.Count > 1;
+    /// <summary>The tab strip shows once the shown org has a second login (with only the global one it would be a lone tab), or
+    /// once there's a second org (M.ORCH-T655), so an org's lone person is still named under the org switcher.</summary>
+    public bool HasLoginTabs => OrgTabs.Count > 1 || (HasOrgs && OrgTabs.Count > 0);
 
     /// <summary>The tab on screen; the same in every tab. The window shows it (its DataContext follows this).</summary>
     public MainViewModel SelectedTab
@@ -71,7 +72,7 @@ public sealed partial class MainViewModel
     /// <summary>Raised on the global login's tab when a toast goes up on any tab, so the window can flash for it.</summary>
     public event EventHandler<ToastViewModel>? ToastRaised;
 
-    /// <summary>Ctrl+Tab and Ctrl+Shift+Tab: the next and the previous login's tab.</summary>
+    /// <summary>Ctrl+Tab and Ctrl+Shift+Tab: the next and the previous login's tab in the shown org.</summary>
     public ICommand NextTabCommand => nextTabCommand ??= new RelayCommand(() => Root.Step(+1));
     public ICommand PreviousTabCommand => previousTabCommand ??= new RelayCommand(() => Root.Step(-1));
 
@@ -87,18 +88,21 @@ public sealed partial class MainViewModel
 
     private void Step(int by)
     {
-        if (loginTabs.Count < 2) return;
-        var at = loginTabs.IndexOf(SelectedTab);
-        Select(loginTabs[((at + by) % loginTabs.Count + loginTabs.Count) % loginTabs.Count]);
+        if (orgTabs.Count < 2) return;
+        var at = orgTabs.IndexOf(SelectedTab);
+        Select(orgTabs[((at + by) % orgTabs.Count + orgTabs.Count) % orgTabs.Count]);
     }
 
     /// <summary>
     /// Keeps a tab per login in <paramref name="tabs"/> (in its order, by name, the 'API key' one last), adding a tab for a login just
     /// signed in and dropping one signed out (back to the global login's tab if it was showing), then hands each tab its own
-    /// view of <paramref name="all"/>, this one first: the others reuse the roster it reads.
+    /// view of <paramref name="all"/>, this one first: the others reuse the roster it reads. Each tab's view is cut from its
+    /// org's (M.ORCH-T655: <see cref="OrgScope"/>), and the strip lists the shown org's tabs.
     /// </summary>
-    private void ApplyTabs(Snapshot all, IReadOnlyList<LoginTab> tabs)
+    private void ApplyTabs(Snapshot all, IReadOnlyList<LoginTab> tabs, OrgDirectory nextOrgs)
     {
+        workspace = all;
+        ApplyOrgs(nextOrgs);
         var before = loginTabs.Count;
         var previous = loginTabs.ToList();
         // The 'API key' tab after every person's (M.ORCH-T630).
@@ -110,15 +114,20 @@ public sealed partial class MainViewModel
         if (selectedTab is not null && !loginTabs.Contains(selectedTab)) Select(this);
         // A tab signed out is gone for good: it stops listening to the static move events (M.ORCH-T734).
         foreach (var gone in previous.Where(t => !ReferenceEquals(t, this) && !loginTabs.Contains(t))) gone.Detach();
-        if (before != loginTabs.Count) foreach (var t in loginTabs) t.Raise(nameof(HasLoginTabs));
+        SyncOrgTabs();
 
         var options = aggregator.Options;
+        // One view per org, cut once and shared by its tabs.
+        var byOrg = new Dictionary<string, Snapshot>(StringComparer.Ordinal);
         foreach (var t in loginTabs.ToList())
         {
+            var org = t.OrgId;
+            if (!byOrg.TryGetValue(org, out var orgAll)) byOrg[org] = orgAll = OrgScope.For(all, orgs, org, options.WorkingWindow, options.WaitingWindow);
             // The 'API key' tab is no login's: scoped to a key no session runs on, it has no repos' sessions or toasts of its own.
-            t.Apply(all, LoginScope.For(all, t.IsApiKeyTab ? LoginTab.ApiKeyKey : t.ScopeEmail, options.WorkingWindow, options.WaitingWindow));
+            t.Apply(orgAll, LoginScope.For(orgAll, t.IsApiKeyTab ? LoginTab.ApiKeyKey : t.ScopeEmail, options.WorkingWindow, options.WaitingWindow));
             t.RaiseTabStatus();
         }
+        UpdateOrgPills();
         OpenLaunchers();
     }
 

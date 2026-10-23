@@ -35,6 +35,11 @@ public partial class MainWindow : Window
         // One dashboard tab per Claude login (M.ORCH-T613): the whole window shows the chosen login's tab, while the tab strip
         // keeps the global login's, which lists them all.
         LoginTabStrip.DataContext = model;
+        // The org switcher above it, and what an org with no Claude login says, are the global login's tab's too (M.ORCH-T655).
+        OrgStrip.DataContext = model;
+        OrgEmptyPanel.DataContext = model;
+        // The Queue view's header scrolls in at most 45% of the view, so the virtualized queue below it always has room.
+        QueueView.SizeChanged += (_, e) => QueueBody.MaxHeight = QueueHeaderHeight(e.NewSize.Height);
         model.SelectedTabChanged += (_, _) => DataContext = model.SelectedTab;
         DataContextChanged += (_, e) =>
         {
@@ -126,6 +131,10 @@ public partial class MainWindow : Window
         }
         menu.IsOpen = true;
     }
+
+    /// <summary>The most the Queue view's header (autopilot line, holds, reminders, finished work, Next up) takes of a view
+    /// <paramref name="viewHeight"/> tall: 45%, never under 120px.</summary>
+    internal static double QueueHeaderHeight(double viewHeight) => Math.Max(120, viewHeight * 0.45);
 
     private bool Hidden => !IsVisible || WindowState == WindowState.Minimized;
 

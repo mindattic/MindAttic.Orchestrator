@@ -66,8 +66,12 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>The snapshot as this tab sees it: only its login's CLIs, tabs and sessions, and its login's meter (M.ORCH-T613).</summary>
     private Snapshot? snapshot;
 
-    /// <summary>The whole workspace's snapshot, for what reads the same in every tab (the queue, billing, the Accounts view).</summary>
+    /// <summary>The snapshot of this tab's org (M.ORCH-T655; the whole workspace's with one org), for what reads the same in
+    /// every tab of it (billing, the Accounts view).</summary>
     private Snapshot? full;
+
+    /// <summary>The whole workspace's snapshot, every org's, on the global login's tab: the queue is planned from it.</summary>
+    private Snapshot? workspace;
     private bool refreshing;
     private string search = "";
     private bool showQuiet;
@@ -94,7 +98,7 @@ public sealed partial class MainViewModel : ObservableObject
         control = root?.control ?? new SessionControl(aggregator.Options);
         Clock = root?.Clock ?? new();
         Zoom = root?.Zoom ?? new();
-        if (root is null) loginTabs = [this];
+        if (root is null) { loginTabs = [this]; orgTabs.Add(this); }
         Toasts.CollectionChanged += OnToastsChanged;
         Waiting = new("Needs you", "Sessions that stopped and are waiting for input, longest wait first", Palette.Waiting);
         Working = new("Working", "Agents mid-turn right now", Palette.Working);
@@ -322,17 +326,19 @@ public sealed partial class MainViewModel : ObservableObject
         {
             var clock = Stopwatch.StartNew();
             var dirs = OwnLoginDirs();
-            var (next, tabs) = await BuiltAfterChanges(() => Task.Run(() =>
+            var (next, tabs, nextOrgs) = await BuiltAfterChanges(() => Task.Run(() =>
             {
                 var built = aggregator.Refresh();
                 // Each login's name and color, read with the snapshot, off the UI thread; and the organization's members, so
-                // every one has its tab, one not signed in here yet a tab to sign in from (M.ORCH-T615, M.ORCH-T670).
+                // every one has its tab, one not signed in here yet a tab to sign in from (M.ORCH-T615, M.ORCH-T670); and the orgs,
+                // which person tabs each one's switcher shows (M.ORCH-T655).
                 IReadOnlyList<Member> members = [];
                 try { members = MemberRoster.Load(aggregator.Db); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
-                return (built, LoginScope.Tabs(built, dirs, members));
+                var orgDirectory = aggregator.Db.TryLoadOrgs();
+                return (built, LoginScope.Tabs(built, dirs, members), orgDirectory);
             }), () => localChanges);
-            ApplyTabs(next, tabs);
+            ApplyTabs(next, tabs, nextOrgs);
             await TickAutopilotAsync(next);
             var info = aggregator.LastWasShared
                 ? $"Updated {next.TakenUtc.ToLocalTime():T} · shared"

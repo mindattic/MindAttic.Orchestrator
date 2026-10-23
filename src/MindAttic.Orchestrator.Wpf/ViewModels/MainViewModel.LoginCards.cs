@@ -190,7 +190,10 @@ public sealed partial class MainViewModel
             var cards = await Task.Run(() => CardsOf(dirs, current, signedIn, agents, cycler.OnOwnLogin(), now));
             // Each member's own use outside the orchestrator, as the daemon keeps it (M.ORCH-T682).
             var outside = await Task.Run(() => OutsideUseWatch.Stats(OutsideUseWatch.Load(store), store.LoadSettings()));
-            ApplyLoginCards(cards, now, outside);
+            // The overview of this tab's org's logins (M.ORCH-T655): with one org, every login's.
+            var orgDirectory = Root.orgs;
+            var org = OrgId;
+            ApplyLoginCards([.. cards.Where(c => !orgDirectory.HasOrgs || orgDirectory.OrgOfClaude(c.IsGlobal ? null : c.Email) == org)], now, outside);
         }
         // Fire-and-forget from the refresh: any failure is shown, never thrown into the dispatcher.
         catch (Exception ex) when (ex is not OutOfMemoryException)

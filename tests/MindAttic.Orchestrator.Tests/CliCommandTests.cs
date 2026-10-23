@@ -85,7 +85,7 @@ public sealed class CliCommandTests
         [
             "status", "start", "send", "budget", "queue", "bump", "dispatch", "release", "daemon", "settings", "audit",
             "block", "next", "approve", "reserve", "dryrun", "show", "hygiene", "intake", "report", "billing", "clis",
-            "ledger", "remind", "members", "members add", "members set", "members remove", "workspace", "workspace export", "workspace install-apps", "workspace build",
+            "ledger", "remind", "orgs", "orgs add", "orgs member", "members", "members add", "members set", "members remove", "workspace", "workspace export", "workspace install-apps", "workspace build",
         ];
         foreach (var command in commands)
             Assert.That(Run([.. command.Split(' '), "--help"]), Is.Zero, command + ": " + output);
