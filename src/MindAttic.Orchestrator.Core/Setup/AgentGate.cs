@@ -2325,22 +2325,26 @@ public static class AgentGate
                 return take_file()
             mine = limit = clis = None
             warming = turn = False
+            busy = allowed = 0
             while True:
                 TX = slot_db()
                 has_lock = TX is None and locked()
+                # Neither the db nor the lock: counting and taking a slot now would race the other gates (M.ORCH-T197), so
+                # this round only waits and tries again, until MAX_HOLD refuses it.
+                blind = TX is None and not has_lock
                 try:
                     s = status()
                     allowed = s.get("subagent_allowance")
                     try:
                         busy = running(s) + slots() if allowed is not None else 0
-                        go = allowed is None or busy < allowed
+                        go = not blind and (allowed is None or busy < allowed)
                         limit = None
                         warming = turn = False
                         if go:
                             mine, limit, clis, warming, turn = fair_limit(s, allowed, int(allowed) - busy)
                             go = mine < limit and not turn
                     except Exception:
-                        go = True
+                        go = not blind
                     if go:
                         slot = take()
                         want(False)
