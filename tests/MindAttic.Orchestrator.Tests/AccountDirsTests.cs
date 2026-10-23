@@ -50,6 +50,8 @@ public sealed class AccountDirsTests
     public void NoRealBrowser()
     {
         realFind = LoginBrowser.Find;
+        // No test mints a real long-lived token (M.ORCH-T696): LoginTokensTests covers minting, with stubs.
+        LoginCommand.TokensOverride = () => null;
         LoginBrowser.Find = () => new LoginBrowser.Browser("Edge", @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe", "--inprivate");
     }
 
@@ -58,6 +60,7 @@ public sealed class AccountDirsTests
     {
         LoginBrowser.Find = realFind;
         LoginCommand.DirsOverride = null;
+        LoginCommand.TokensOverride = () => LoginTokens.Default;
         temps.DeleteAll();
     }
 

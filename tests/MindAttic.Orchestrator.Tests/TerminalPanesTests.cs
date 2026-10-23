@@ -24,6 +24,7 @@ public sealed class TerminalPanesTests
         {
             Look = d => LoginLook.For(d ?? @"C:\nowhere\global", d is null ? "jordan.reed@example.com" : "amy@example.com"),
             Embedded = () => embedded,
+            TokenEnv = _ => "", // long-lived tokens in a pane's command: LoginTokensTests (never the real Vault here)
         };
 
     private static string Script(string commandLine)

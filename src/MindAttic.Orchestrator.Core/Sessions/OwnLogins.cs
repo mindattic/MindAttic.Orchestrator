@@ -22,7 +22,15 @@ public enum OwnLoginOutcome
 public sealed record OwnLoginResult(string Label, string? Email, string? Directory, OwnLoginOutcome Outcome, string Message, IReadOnlyList<string> Notes)
 {
     public bool Ok => Outcome is OwnLoginOutcome.SignedIn or OwnLoginOutcome.AlreadySignedIn;
+
+    /// <summary>How minting the login's long-lived token went (M.ORCH-T696); null when none was minted (one was kept already,
+    /// or minting wasn't asked for).</summary>
+    public MintResult? Token { get; init; }
 }
+
+/// <summary>Minting long-lived tokens along with the sign-ins (M.ORCH-T696): where they're kept, whether to mint one even
+/// though a good one is kept (<see cref="Renew"/>), and who to ask for the token when <c>setup-token</c>'s output had none.</summary>
+public sealed record TokenMinting(LoginTokens Tokens, bool Renew = false, Func<string?>? Paste = null);
 
 /// <summary>
 /// Signs per-CLI logins in (M.ORCH-T559, M.ORCH-T604): <see cref="SignIn"/> one account's own folder, or <see cref="SignInAll"/>
@@ -34,7 +42,9 @@ public static class OwnLogins
 {
     /// <summary>Prepares <paramref name="email"/>'s own folder and runs its login there; <paramref name="opening"/> hears of it
     /// just before the browser opens (with the command run), since the login waits on the user.</summary>
-    public static OwnLoginResult SignIn(AccountDirs dirs, string email, bool sso, Action<AccountDir, string>? opening = null)
+    /// <remarks>With <paramref name="minting"/> (M.ORCH-T696) a signed-in login also gets its long-lived token
+    /// (<c>claude setup-token</c>, <see cref="LoginTokens"/>) when it has no good one, so its tabs bill it for a year.</remarks>
+    public static OwnLoginResult SignIn(AccountDirs dirs, string email, bool sso, Action<AccountDir, string>? opening = null, TokenMinting? minting = null)
     {
         if (AccountDirs.Normalize(email) is null)
             return new OwnLoginResult(email, null, null, OwnLoginOutcome.Failed, $"\"{email}\" isn't an email address.", []);
@@ -60,7 +70,17 @@ public static class OwnLogins
             return Done(OwnLoginOutcome.SignedInAsOther, AccountDirs.SignOut(dir) is { } why
                 ? $"Signed in as {signed}, not {dir.Email}, and couldn't sign the folder out again ({why}): CLIs started with --account {dir.Email} would spend {signed}'s tokens."
                 : $"Signed in as {signed}, not {dir.Email}: signed {dir.Email}'s login out again. Sign in once more as {dir.Email}.");
-        return Done(OwnLoginOutcome.SignedIn, $"Signed in: {dir.Email} has its own login in {dir.Directory}.");
+        return Done(OwnLoginOutcome.SignedIn, $"Signed in: {dir.Email} has its own login in {dir.Directory}.") with { Token = Mint(dir, opener, minting) };
+    }
+
+    /// <summary>Mints <paramref name="dir"/>'s long-lived token when <paramref name="minting"/> asks for tokens and it has no good
+    /// one (or a new one is asked for); null when nothing was minted.</summary>
+    public static MintResult? Mint(AccountDir dir, string? opener, TokenMinting? minting)
+    {
+        if (minting is null) return null;
+        var now = DateTime.UtcNow;
+        if (!minting.Renew && !minting.Tokens.NeedsMint(dir.Email, now)) return null;
+        return minting.Tokens.MintFor(dir, opener, now, minting.Paste);
     }
 
     /// <summary>
@@ -69,7 +89,7 @@ public static class OwnLogins
     /// One email is signed in once, however many rows (orgs) carry it. <paramref name="done"/> hears of each as it finishes.
     /// </summary>
     public static IReadOnlyList<OwnLoginResult> SignInAll(AccountDirs dirs, IEnumerable<AccountRow> rows,
-        Action<AccountDir, string>? opening = null, Action<OwnLoginResult>? done = null)
+        Action<AccountDir, string>? opening = null, Action<OwnLoginResult>? done = null, TokenMinting? minting = null)
     {
         var results = new List<OwnLoginResult>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -82,12 +102,21 @@ public static class OwnLogins
             else if (!seen.Add(normalized)) continue;
             else if (dirs.For(normalized) is { SignedIn: true } already)
                 result = new OwnLoginResult(already.Email, already.Email, already.Directory, OwnLoginOutcome.AlreadySignedIn,
-                    $"{already.Email} already has its own login.", []);
-            else result = SignIn(dirs, normalized, AccountSwitch.UsesSso(row), opening);
+                    $"{already.Email} already has its own login.", []) { Token = MintSignedIn(already, opening, minting) };
+            else result = SignIn(dirs, normalized, AccountSwitch.UsesSso(row), opening, minting);
             results.Add(result);
             done?.Invoke(result);
         }
         return results;
+    }
+
+    /// <summary>A login already signed in that has no good long-lived token gets one, through its own private browser window.</summary>
+    private static MintResult? MintSignedIn(AccountDir dir, Action<AccountDir, string>? opening, TokenMinting? minting)
+    {
+        if (minting is null || (!minting.Renew && !minting.Tokens.NeedsMint(dir.Email, DateTime.UtcNow))) return null;
+        var opener = LoginBrowser.Prepare(dir, out _);
+        opening?.Invoke(dir, $"{AccountDirs.EnvVar}={dir.Directory} " + (opener is null ? "" : $"BROWSER={opener} ") + "claude setup-token");
+        return Mint(dir, opener, minting);
     }
 
     /// <summary>"3 signed in, 1 already was, 1 failed, 1 with no email": the tally of a <see cref="SignInAll"/>.</summary>

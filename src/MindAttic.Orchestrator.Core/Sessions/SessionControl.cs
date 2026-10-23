@@ -137,6 +137,10 @@ public sealed class SessionControl(OrchestratorOptions options)
     /// <summary>The look of a login's tabs (M.ORCH-T616); tests set their own rather than read the real ~/.claude.</summary>
     internal Func<string?, LoginLook> Look { get; init; } = LoginLook.ForConfigDir;
 
+    /// <summary>The PowerShell a tab on a login (null: the global one) runs first for its long-lived token (M.ORCH-T696,
+    /// <see cref="LoginTokens.TabEnv"/>): sets <c>CLAUDE_CODE_OAUTH_TOKEN</c> from the Vault, or clears one it would inherit.</summary>
+    internal Func<string?, string> TokenEnv { get; init; } = configDir => LoginTokens.Default.TabEnv(configDir, DateTime.UtcNow);
+
     /// <summary>Whether new CLIs open inside the Orchestrator (<see cref="OrchestratorSettings.EmbeddedTerminals"/>); tests set
     /// their own rather than read the real settings.</summary>
     internal Func<bool> Embedded { get; init; } = EmbeddedFromSettings;
@@ -181,8 +185,8 @@ public sealed class SessionControl(OrchestratorOptions options)
         var command = configDir is null && resumeSession is not { Length: > 0 }
             ? JoinCommandLine(host)
             : configDir is null
-            ? PowerShell($"Remove-Item Env:{AccountDirs.EnvVar} -ErrorAction SilentlyContinue; & {string.Join(' ', host.Select(AccountDirs.Ps))}; exit $LASTEXITCODE")
-            : PowerShell($"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; & {string.Join(' ', host.Select(AccountDirs.Ps))}; exit $LASTEXITCODE");
+            ? PowerShell($"Remove-Item Env:{AccountDirs.EnvVar} -ErrorAction SilentlyContinue; {TokenEnv(null)}& {string.Join(' ', host.Select(AccountDirs.Ps))}; exit $LASTEXITCODE")
+            : PowerShell($"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; {TokenEnv(configDir)}& {string.Join(' ', host.Select(AccountDirs.Ps))}; exit $LASTEXITCODE");
         return new PaneRequest(title, tabTitle, directory, provider, command) { ConfigDir = configDir, Initials = look?.Initials, TabColor = look?.TabColor };
     }
 
@@ -233,7 +237,8 @@ public sealed class SessionControl(OrchestratorOptions options)
             // Windows Terminal starts the tab itself, from its own environment, not this process's: the Launcher (and the
             // CLI it hosts) is started by a PowerShell that sets CLAUDE_CONFIG_DIR first. Encoded, so no quote, space or ';' in
             // the folder, title or prompt reaches wt's parse.
-            var script = $"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; & {AccountDirs.Ps(options.LauncherExe)} host --path {AccountDirs.Ps(directory)} " +
+            // Its long-lived token (M.ORCH-T696), when the login has one, goes in beside the folder.
+            var script = $"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; {TokenEnv(configDir)}& {AccountDirs.Ps(options.LauncherExe)} host --path {AccountDirs.Ps(directory)} " +
                 $"--title {AccountDirs.Ps(tabTitle)} --provider {AccountDirs.Ps(provider)}" +
                 (string.IsNullOrWhiteSpace(prompt) ? "" : $" --prompt {AccountDirs.Ps(SafePrompt(prompt))}") + "; exit $LASTEXITCODE";
             string[] wrapped = [.. tab, "-d", directory, "--",

@@ -154,7 +154,8 @@ public sealed partial class MainViewModel
             var rows = accountRows;
             var dirs = OwnLoginDirs();
             var results = await Task.Run(() => OwnLogins.SignInAll(dirs, rows,
-                (dir, _) => ((IProgress<string>)opening).Report(dir.Email), r => ((IProgress<OwnLoginResult>)finished).Report(r)));
+                (dir, _) => ((IProgress<string>)opening).Report(dir.Email), r => ((IProgress<OwnLoginResult>)finished).Report(r),
+                new TokenMinting(LoginTokens.Default)));
             var summary = OwnLogins.Summary(results);
             Say(summary);
             Toasts.Insert(0, new ToastViewModel("Sign in all", summary,

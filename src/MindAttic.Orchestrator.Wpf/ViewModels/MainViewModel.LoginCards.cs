@@ -148,8 +148,9 @@ public sealed partial class MainViewModel
         try
         {
             var dirs = OwnLoginDirs();
-            var result = await Task.Run(() => OwnLogins.SignIn(dirs, email, sso: false));
-            AccountsMessage = result.Message;
+            // Its long-lived token too (M.ORCH-T696): claude setup-token, kept in the Vault for the login's tabs.
+            var result = await Task.Run(() => OwnLogins.SignIn(dirs, email, sso: false, minting: new TokenMinting(LoginTokens.Default)));
+            AccountsMessage = result.Token is { } token ? $"{result.Message} {token.Message}" : result.Message;
             if (!result.Ok) Toasts.Insert(0, new ToastViewModel($"{email} isn't signed in", result.Message, Palette.Over, null));
             return result.Ok;
         }
