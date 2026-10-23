@@ -23,6 +23,17 @@ public sealed class UsageReportTests
         UsageReport.Build(members, roster ?? [], logins ?? [], history ?? [], estimates ?? new Dictionary<string, BudgetStatus>(), 90, Now, since, global,
             staleReason: staleReason);
 
+    /// <summary>M.ORCH-T692: a fresh reading with no 5-hour window running read "—"; nothing's been spent in one, so 0.</summary>
+    [Test]
+    public void A_fresh_reading_with_no_5_hour_window_running_shows_0()
+    {
+        var report = Build([M("erin@x.com", "Erin")],
+            logins: [new LoginReading("erin@x.com", "erin-key", null, new ReportedUsage(null, new ReportedWindow(91, Now.AddDays(4)), Now.AddMinutes(-1)))]);
+        var cells = report.Cells()[0];
+        Assert.That((cells[1], cells[2]), Is.EqualTo(("0%", "0")));
+        Assert.That(report.Rows[0].NoFiveHourWindow, Is.True);
+    }
+
     /// <summary>M.ORCH-T688: the reset dates alone didn't say how long is left.</summary>
     [TestCase(26 * 60 + 14, "1d 2h 14m")]
     [TestCase(4 * 24 * 60 + 19 * 60 + 22, "4d 19h 22m")]
@@ -60,7 +71,7 @@ public sealed class UsageReportTests
         Assert.That(cells[0][6], Is.EqualTo("3m ago"));
         Assert.That(cells[0], Has.Count.EqualTo(report.Headers.Count));
         Assert.That(report.Rows[0].LeftToTarget, Is.EqualTo(20).Within(0.5), "the points left stay in the data and the notes, not a column");
-        Assert.That(cells[1][0], Is.EqualTo("Erin (~/.claude login)"));
+        Assert.That(cells[1][0], Is.EqualTo("Erin"), "the fallback login is named like any member");
         Assert.That(cells[1][1], Is.EqualTo("unknown"));
         Assert.That(report.Headers, Has.None.StartsWith("Left to"));
         Assert.That(report.Rows[1].Stale, Is.True, "still stale, said in the note under the table");

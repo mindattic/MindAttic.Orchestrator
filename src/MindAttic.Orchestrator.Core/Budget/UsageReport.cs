@@ -34,6 +34,9 @@ public sealed record UsageReportRow
     /// <summary>Points left before the weekly target (<see cref="UsageReport.WeeklyTargetPercent"/>); negative once past it.</summary>
     public double? LeftToTarget { get; init; }
     public DateTime? WeekResetUtc { get; init; }
+
+    /// <summary>Read fresh with no 5-hour window running: shown as 0 used, 0 for its reset.</summary>
+    public bool NoFiveHourWindow { get; init; }
     /// <summary>When Claude's meter was last read for this login; null when it never was.</summary>
     public DateTime? ReadUtc { get; init; }
     /// <summary>The reading is older than <see cref="UsageReport.StaleAfter"/> (or there's none).</summary>
@@ -144,6 +147,10 @@ public sealed record UsageReport
                 }
             }
 
+            // A fresh reading with no 5-hour window running: nothing spent in one yet, 0 (M.ORCH-T692).
+            var noWindow = !stale && five is null && !fiveUnknown;
+            if (noWindow) (five, fiveReset) = (0, null);
+
             // This week is the login's own, from its weekly reset; a login whose reset isn't known counts the last 7 days.
             var weekStart = weekReset is { } reset ? reset.AddDays(-7) : nowUtc.ToLocalTime().Date.AddDays(-6).ToUniversalTime();
             var spent = claude.Where(d => d.Account is { } a && keys.Contains(a)).ToList();
@@ -156,6 +163,7 @@ public sealed record UsageReport
                 IsGlobalLogin = globalAccount is not null && keys.Contains(globalAccount),
                 FiveHourUsed = five,
                 FiveHourUnknown = fiveUnknown,
+                NoFiveHourWindow = noWindow,
                 FiveHourResetUtc = fiveReset,
                 WeekUsed = week,
                 LeftToTarget = week is { } used ? weeklyTargetPercent - used : null,
@@ -282,16 +290,16 @@ public sealed record UsageReport
     public IReadOnlyList<string> Headers =>
         ["Member", "5-hour used", "5h resets", "Week used", "Week left", "Week resets in", "Last updated"];
 
-    /// <summary>The member's name as the table shows it: "Erin (~/.claude login)" for the global login's, "(not a member)" for a login nobody entered.</summary>
+    /// <summary>The member's name as the table shows it, with "(not a member)" for a login nobody entered.</summary>
     public static string MemberText(UsageReportRow r) =>
-        r.Name + (r.IsGlobalLogin ? " (~/.claude login)" : "") + (r.IsMember ? "" : " (not a member)");
+        r.Name + (r.IsMember ? "" : " (not a member)");
 
     /// <summary>Each row's cells in <see cref="Headers"/>' order (times local).</summary>
     public IReadOnlyList<IReadOnlyList<string>> Cells() => [.. Rows.Select(r => (IReadOnlyList<string>)
     [
         MemberText(r),
         r.FiveHourUnknown ? "unknown" : Pct(r.FiveHourUsed),
-        When(r.FiveHourResetUtc, GeneratedUtc),
+        r.NoFiveHourWindow ? "0" : When(r.FiveHourResetUtc, GeneratedUtc),
         Pct(r.WeekUsed),
         Whole(r.WeekLeft),
         Countdown(r.WeekResetUtc, GeneratedUtc),
