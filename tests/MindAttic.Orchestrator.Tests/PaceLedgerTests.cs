@@ -350,11 +350,14 @@ public sealed class PaceLedgerTests
             EventsPath = h.Watch.EventsPath,
             FileTicket = s => { h.Filed.Add(s); return "M.ORCH-T999"; },
             AccountDirs = dirs,
-            Account = new ClaudeAccount { ConfigPath = Path.Combine(dir, ".claude.json"), StatePath = Path.Combine(dir, "account.json"), Db = watch0(h) },
+            Db = h.Watch.Db,
+            Account = new ClaudeAccount { ConfigPath = Path.Combine(dir, ".claude.json"), StatePath = Path.Combine(dir, "account.json"), Db = h.Watch.Db },
         };
 
         watch.Account!.Read(End.AddDays(-1));
         watch.Tick(End.AddMinutes(30));
+        Assert.That(watch.Db.LoadLedger().Select(w => (w.Account, w.Grade)), Does.Contain(((string?)"acct-a", WindowGrade.Over)), "the global window is graded");
+        Assert.That(h.Alerts.Count(a => a.Title == "Window went over"), Is.EqualTo(1));
         var rows = watch.Db.LoadLedger().Count;
         var alerts = h.Alerts.Count;
         watch.Tick(End.AddMinutes(45));
@@ -362,6 +365,4 @@ public sealed class PaceLedgerTests
         Assert.That(watch.Db.LoadLedger(), Has.Count.EqualTo(rows), "each window is recorded once");
         Assert.That(h.Alerts, Has.Count.EqualTo(alerts), "an over window is raised once");
     }
-
-    private static MindAttic.Orchestrator.Settings.OrchestratorDb watch0(Harness h) => h.Watch.Db;
 }
