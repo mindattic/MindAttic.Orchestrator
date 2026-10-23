@@ -203,10 +203,14 @@ public static class Pacer
         }
 
         var windows = new List<(string Name, long Limit, long Used, DateTime StartUtc, DateTime ResetUtc)>();
+        // Weekly-aware (M.ORCH-T669): a window the week caps that the weekly reset cuts short is paced to the weekly reset, not its
+        // own, so its ceiling (all the week has left) is spent as the week resets: the week lands at its stop seconds to minutes
+        // before it, not hours early.
+        DateTime EndOf(DateTime end) => week is { Capped: true, WeekResetUtc: { } weekReset } && weekReset < end && weekReset > nowUtc ? weekReset : end;
         if (!b.BlockLimitIsPeak && b.BlockLimit > 0)
             windows.Add(b.CurrentBlock is { } block
-                ? ("5-hour", b.BlockLimit, block.Usage.Fresh, block.StartUtc, block.EndUtc)
-                : ("5-hour", b.BlockLimit, 0, nowUtc, nowUtc + BudgetCalculator.BlockLength));
+                ? ("5-hour", b.BlockLimit, block.Usage.Fresh, block.StartUtc, EndOf(block.EndUtc))
+                : ("5-hour", b.BlockLimit, 0, nowUtc, EndOf(nowUtc + BudgetCalculator.BlockLength)));
         // The week is shown, never paced: spending each 5-hour window to its target is the goal, and a
         // week-long stretch would hold agents for days. Only a real weekly wall, or Claude's week at the hooks' stop line
         // (both above), stops new work.
@@ -273,6 +277,8 @@ public static class Pacer
         if (delay > 0) note += $" Agents held {delay:0}s per tool call.";
         // Every pace note says weekly-aware pacing is on, and which limit governs (M.ORCH-T666).
         if (week is not null) note += " " + week.Note;
+        // And what it plans this window and the week to end at, so the curve can be checked against how they end (M.ORCH-T669).
+        if (week is { Plan.Length: > 0 }) note += " (" + char.ToUpperInvariant(week.Plan[0]) + week.Plan[1..] + ".)";
         var room = windows.Min(w => Math.Max(0, w.Limit * target - w.Used));
         double? weekRoom = week?.WeekRoom5HourPoints is { } points && b.BlockLimit > 0 ? points / 100 * b.BlockLimit : null;
         var demand = Unheld(b.ControlFreshPerHour, recentDelaySeconds);
@@ -285,7 +291,7 @@ public static class Pacer
             SpareSessions = SpareSessions(sustainable, demand, perSession),
             Stop = atTarget,
             WindDown = windDown || weekWindDown,
-            WindDownAt = weekWindDown ? OrchestratorSettings.WeeklyAwareWindDownPercent / 100.0 : windDownAt,
+            WindDownAt = weekWindDown ? week!.WindDownPercent / 100.0 : windDownAt,
             WindDownWindow = weekWindDown ? "weekly" : null,
             WindDownResetUtc = weekWindDown ? week!.WeekResetUtc : null,
             Weekly = week, WeeklyRoomTokens = weekRoom,

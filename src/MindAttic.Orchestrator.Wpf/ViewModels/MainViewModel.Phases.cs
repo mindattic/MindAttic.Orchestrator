@@ -255,7 +255,8 @@ public sealed partial class MainViewModel
     /// <summary>Replaces the budget card's detail line while pacing is holding work back; empty otherwise.</summary>
     // Weekly-aware pacing says first when the week caps this window (M.ORCH-T666): "Capped by the week: 31% of this window".
     public string PaceText => Pace is { Weekly: { Capped: true } week } capped && capped.IsPaced
-        ? week.Short + (PaceCore is { Length: > 0 } core ? " · " + core : "")
+        // With its plan (M.ORCH-T669): "Capped by the week: 31% of this window (planned: this window to 31%, the week to 98% at its reset)".
+        ? week.Short + (week.Plan is { Length: > 0 } plan ? $" ({plan})" : "") + (PaceCore is { Length: > 0 } core ? " · " + core : "")
         : PaceCore;
 
     private string PaceCore => Pace switch

@@ -383,7 +383,8 @@ public sealed class OrchestratorDb(string path)
          OrchestratorHistory.GateLogImportedName,
          Sessions.PaneRecords.StateName, // this machine's open terminal panes (M.ORCH-T618)
          Sessions.MoveLocks.StateName, // the account moves in flight (M.ORCH-T637)
-         Budget.AccountPacer.ProbeStateName]; // each login's meter probe: its asks and what came of them (M.ORCH-T659)
+         Budget.AccountPacer.ProbeStateName, // each login's meter probe: its asks and what came of them (M.ORCH-T659)
+         Budget.PacePlan.StateName]; // each login's windows, planned against actual end percent (M.ORCH-T669)
 
     /// <summary>Every table, with the order the dump lists its rows in: by key, so a change shows up as a few lines in its diff.</summary>
     private static readonly (string Table, string Order, string Where)[] Tables =

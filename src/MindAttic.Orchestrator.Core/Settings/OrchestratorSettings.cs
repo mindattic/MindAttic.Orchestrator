@@ -48,12 +48,29 @@ public sealed record OrchestratorSettings
 
     /// <summary>Weekly-aware pacing (M.ORCH-T666), per login: each 5-hour window still aims at <see cref="PaceTargetPercent"/>, and
     /// while a login's week is under <see cref="WeeklyAwareLinePercent"/> nothing else changes. From there the week is taken in
-    /// too: each window's ceiling becomes the smaller of its target and the week's room to <see cref="WeeklyAwareStopPercent"/>
-    /// spread over the 5-hour windows left before the weekly reset (<see cref="Budget.WeeklyPacing"/>), so the week lands at 98%
-    /// as it resets; <c>next --claim</c> hands a ticket that doesn't fit what's left to another signed-in login with room, else
-    /// to the fallback login; the week winds down at <see cref="WeeklyAwareWindDownPercent"/> and stops at
-    /// <see cref="WeeklyAwareStopPercent"/>, in place of the weekly reserve's stop. Off by default: nothing changes.</summary>
+    /// too, against the login's own weekly reset: a window is held only when the week, spent as it's being spent, would reach
+    /// <see cref="WeeklyAwareStopPercent"/> before it resets, and then only as far as needed: the week's room spread over the hours
+    /// left, so it lands at 98% seconds to minutes before its reset (<see cref="Budget.WeeklyPacing"/>, M.ORCH-T669); scarce room
+    /// goes to higher-priority tickets first; <c>next --claim</c> hands a ticket that doesn't fit what's left to another signed-in
+    /// login with room, else to the fallback login; the week stops at <see cref="WeeklyAwareStopPercent"/>, in place of the weekly
+    /// reserve's stop (and winds down at <see cref="WeeklyAwareWindDownPercent"/> only while there's no plan for it). Each window's
+    /// planned and actual end percent is logged (<see cref="Budget.PacePlan"/>). Off by default: nothing changes.</summary>
     public bool WeeklyAwarePacing { get; init; }
+
+    /// <summary>Weekly-aware pacing's numbers as this settings object has them, the one place they're read from (M.ORCH-T669):
+    /// where each week lands and stops (<see cref="WeeklyAwareTarget"/>), the line it's taken in from (<see cref="WeeklyAwareLine"/>)
+    /// and where it winds down while there's no plan for it (<see cref="WeeklyAwareWindDown"/>). Fixed for now; M.ORCH-T680 makes
+    /// them settings.</summary>
+    [JsonIgnore]
+    public int WeeklyAwareTarget => WeeklyAwareStopPercent;
+
+    /// <summary>See <see cref="WeeklyAwareTarget"/>.</summary>
+    [JsonIgnore]
+    public int WeeklyAwareLine => WeeklyAwareLinePercent;
+
+    /// <summary>See <see cref="WeeklyAwareTarget"/>.</summary>
+    [JsonIgnore]
+    public int WeeklyAwareWindDown => WeeklyAwareWindDownPercent;
 
     /// <summary>The week's percent from which weekly-aware pacing takes the week in.</summary>
     public const int WeeklyAwareLinePercent = 75;

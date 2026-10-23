@@ -89,7 +89,8 @@ public sealed class AccountPacer
         var active = sessions.Count(s => s.Events.Count > 0 && s.Events[^1].AtUtc >= recentFrom);
         var subagents = state.Marks.Subagents(out var seenThrough);
         // Weekly-aware pacing (M.ORCH-T666): from its line the week caps this login's window; off, the cap is null and nothing changes.
-        var week = WeeklyPacing.Cap(budget, WeeklyRatio.Learn(samples), settings, now);
+        // Held only as far as the week, spent as it's being spent, needs (M.ORCH-T669), against this login's own weekly reset.
+        var week = WeeklyPacing.Cap(budget, WeeklyRatio.Learn(samples), settings, now, WeeklyBurn.PerHour(samples, budget.WeekResetUtc, now));
         var pace = Pacer.Compute(budget, active, typicalPerSession, settings, now, state.Writer.AgentDelay(now), subagents, week) with
         {
             SubagentsSeenThroughUtc = seenThrough,
@@ -112,6 +113,7 @@ public sealed class AccountPacer
             // No statusline on this login has reported lately while it spends (a CLI waiting on its subagents): ask Claude.
             state.Meter?.Tick(ClaudeMeterProbe.SeenAt(reported, samples, now), events, now, samples: samples);
             if (state.Meter is { } probe) Observe(dir, state, probe, sessions.Count, events, now);
+            if (settings.WeeklyAwarePacing) Plan(dir.Email, budget, week, now);
         }
         return new AccountPace(dir.Email, dir.Directory, state.Account, budget, pace, utilization, active);
     }
@@ -154,6 +156,27 @@ public sealed class AccountPacer
         {
             ReportedUsage.DefaultDb.SaveState(ProbeStateName, json);
             probeRowsWritten = json;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
+    }
+
+    private List<PlannedWindow>? planRows;
+    private string? planWritten;
+
+    /// <summary>Keeps the planned-against-actual log of each login's windows (M.ORCH-T669, <see cref="PacePlan"/>), and says in the
+    /// log how each window ended against its plan as it closes.</summary>
+    private void Plan(string email, BudgetStatus budget, WeeklyCap? week, DateTime now)
+    {
+        try
+        {
+            planRows ??= PacePlan.Load(ReportedUsage.DefaultDb);
+            var closed = new List<string>();
+            if (!PacePlan.Observe(planRows, email, budget, week, now, closed)) return;
+            foreach (var line in closed) ClaudeMeterProbe.Say?.Invoke(Serilog.Events.LogEventLevel.Information, line);
+            var json = PacePlan.Serialize(planRows);
+            if (json == planWritten) return;
+            ReportedUsage.DefaultDb.SaveState(PacePlan.StateName, json);
+            planWritten = json;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
     }

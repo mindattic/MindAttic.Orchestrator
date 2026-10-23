@@ -49,6 +49,21 @@ internal sealed class LedgerCommand : Command<LedgerCommand.Settings>
         if (PaceLedger.Current(samples, hits, events, now, accountAt) is { } current) table.AddRow(Row(current, "running"));
         AnsiConsole.Write(table);
 
+        // Weekly-aware pacing's plan for each login's windows against how they ended (M.ORCH-T669), to dial the curve in.
+        var plans = PacePlan.Load(db).Where(p => p.EndUtc >= from).OrderBy(p => p.EndUtc).ToList();
+        if (plans.Count > 0)
+        {
+            AnsiConsole.MarkupLine("[bold]Planned vs actual[/] (weekly-aware pacing):");
+            var planned = new Table().Border(TableBorder.Rounded)
+                .AddColumn("Login").AddColumn("Window").AddColumn("Ends").AddColumn("Planned", c => c.RightAligned())
+                .AddColumn("Actual", c => c.RightAligned()).AddColumn("Reached plan");
+            foreach (var p in plans)
+                planned.AddRow(Markup.Escape(p.Login), p.Kind, $"{p.EndUtc.ToLocalTime():MMM d HH:mm}", $"{p.PlannedPercent:0}%",
+                    $"{p.ActualPercent:0}%" + (p.Closed || p.EndUtc <= now ? "" : " so far"),
+                    p.ReachedUtc is { } at ? (p.EndUtc - at > TimeSpan.FromMinutes(1) ? $"{Formatting.Span(p.EndUtc - at)} before its reset" : "as it reset") : "");
+            AnsiConsole.Write(planned);
+        }
+
         if (settings.Csv is { } csv)
         {
             var sb = new StringBuilder("start_utc,end_utc,grade,peak_percent,final_percent,uncached_tokens,samples,minutes_at_target,limit_hit_utc,weekly_hit_utc,held,held_minutes,refused,prompts_answered,blind_minutes,why,exempt\n");

@@ -512,7 +512,8 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         static double? Least(double? a, double? b) => a is { } x ? b is { } y ? Math.Min(x, y) : x : b;
         var room = unthrottled ? null : Least(plan.Pace?.RoomTokens, weekRoom);
         // As the queue judges too big: a reserved ticket against the whole room, the rest against what isn't reserved.
-        bool TooBigNow(QueueItem q) => (q.Reserved > 0 ? room : unthrottled ? null : Least(plan.RoomForRest, weekRoom) ?? room) is { } left && q.Estimate is { } e && e.Fresh > left;
+        double? RoomFor(QueueItem q) => q.Reserved > 0 ? room : unthrottled ? null : Least(plan.RoomForRest, weekRoom) ?? room;
+        bool TooBigNow(QueueItem q) => RoomFor(q) is { } left && q.Estimate is { } e && e.Fresh > left;
         // Only what the calling CLI filed itself is free to it: the ticket it was started on is its own work (M.ORCH-T328).
         var elsewhere = plan.Worked.Where(w => !(w.Filed && w.AgentId is null && self is not null && w.SessionId == self))
             .Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -603,9 +604,14 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         // there: worktrees keep agents apart, so only a cap you set applies (M.ORCH-T358).
         var inRepo = plan.Queue.Where(Busy).GroupBy(q => q.Repo, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
         var capped = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // When room is scarce (M.ORCH-T669: the 5-hour window's or the week's), it goes to the higher-priority tickets first: each
+        // one handed out takes its estimate out of what's left, in queue order (priority, orchestrator bump, first; a user's own
+        // assigned tickets in the same order), so a lower-priority ticket waits behind them rather than taking the room they need.
+        double committed = 0;
         foreach (var item in open)
         {
             if (handed.Count >= more) break;
+            if (committed > 0 && RoomFor(item) is { } roomLeft && item.Estimate is { } cost && committed + cost.Fresh > roomLeft) continue;
             if (plan.OverRepoCap.Contains(item.Repo) ||
                 inRepo.GetValueOrDefault(item.Repo) >= OrchestratorSettings.ForRepo(settings.RepoMaxSessions, item.Repo, int.MaxValue))
             {
@@ -617,6 +623,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             {
                 handed.Add(new Handout(item, null, null, model));
                 inRepo[item.Repo] = inRepo.GetValueOrDefault(item.Repo) + 1;
+                committed += item.Estimate?.Fresh ?? 0;
                 continue;
             }
             // The plan's ticket list may be older than a `tickets ticket close` made a second ago: one closed since isn't
@@ -637,6 +644,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             if (taken) { claimedElsewhere++; continue; }
             handed.Add(new Handout(item, tree, PromptFor(item, tree, branch, mainlineOf(item.RepoPath), model), model));
             inRepo[item.Repo] = inRepo.GetValueOrDefault(item.Repo) + 1;
+            committed += item.Estimate?.Fresh ?? 0;
         }
         return (handed, handed.Count > 0 ? null
             : capped.Count > 0 ? $"{string.Join(", ", capped)} {(capped.Count == 1 ? "is" : "are")} at the cap you set (settings --repo-sessions or --repo-cap); nothing else is ready"
