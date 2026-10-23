@@ -139,6 +139,18 @@ public sealed class JsonStoreTests
     }
 
     [Test]
+    public void One_bad_settings_row_says_the_settings_were_not_read()
+    {
+        // M.ORCH-T720: LoadSettings' defaults ran the daemon's tick on nothing anyone set; TryLoadSettings says so.
+        var store = new JsonStore(dir);
+        store.SaveSettings(new OrchestratorSettings { MaxConcurrentSessions = 3 });
+        Assert.That(store.TryLoadSettings(out var read) && read.MaxConcurrentSessions == 3, Is.True);
+        StoreFaults.GarbleSetting(store, "MaxConcurrentSessions", "\"three\"");
+        Assert.That(store.TryLoadSettings(out var bad), Is.False);
+        Assert.That(bad.MaxConcurrentSessions, Is.EqualTo(new OrchestratorSettings().MaxConcurrentSessions), "defaults, to be skipped");
+    }
+
+    [Test]
     public void An_old_file_held_or_denied_right_now_is_read_in_once_it_can_be()
     {
         Write("settings.json", """{ "MaxConcurrentSessions": 9 }""");

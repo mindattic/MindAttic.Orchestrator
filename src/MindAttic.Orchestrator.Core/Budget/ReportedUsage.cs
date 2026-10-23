@@ -142,17 +142,23 @@ public sealed record ReportedUsage(ReportedWindow? FiveHour, ReportedWindow? Wee
     {
         db ??= path is null ? DefaultDb : null;
         var file = LoadFile(nowUtc, path ?? DefaultPath);
-        ReportedUsage? row = null;
+        var row = LoadRow(nowUtc, db);
+        return row is not null && (file is null || row.AtUtc > file.AtUtc) ? row : file;
+    }
+
+    /// <summary>Just the meter probe's row in <paramref name="db"/> (null when none, unreadable or too old), never the statusline's file.</summary>
+    internal static ReportedUsage? LoadRow(DateTime nowUtc, Settings.OrchestratorDb? db)
+    {
         try
         {
             if (db is not null && File.Exists(db.Path) && db.LoadState(StateName) is { } state)
             {
                 using var doc = JsonDocument.Parse(state.Value);
-                row = Parse(doc.RootElement, nowUtc);
+                return Parse(doc.RootElement, nowUtc);
             }
         }
         catch (Exception ex) when (ex is System.Data.Common.DbException or IOException or JsonException or InvalidOperationException or FormatException) { }
-        return row is not null && (file is null || row.AtUtc > file.AtUtc) ? row : file;
+        return null;
     }
 
     /// <summary>The reading in the statusline's file at <paramref name="path"/> whatever its age (the usage report shows how old

@@ -1214,13 +1214,13 @@
                                     <TextBlock Text="{Binding StateText}" Style="{StaticResource MaMutedText}" Margin="6,0,0,0" VerticalAlignment="Center" />
                                     <!-- Go to: its repo on this person's dashboard; Move to: its CLI to another signed-in login (M.ORCH-T622). -->
                                     <Button x:Name="PaneGoToButton" Style="{StaticResource MaTextButton}" Content="Go to" FontSize="12" Padding="6,1" Margin="10,0,0,0"
-                                            VerticalAlignment="Center"
+                                            VerticalAlignment="Center" Visibility="{Binding HasRepoButtons, Converter={StaticResource Visible}}"
                                             Command="{Binding DataContext.ShowPaneRepoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                             CommandParameter="{Binding}"
                                             AutomationProperties.Name="{Binding Request.Repo, StringFormat='Go to {0} on the dashboard'}"
                                             ToolTip="Show its repo on this person's dashboard: its detail, tickets and agents" />
                                     <Button x:Name="PaneMoveToButton" Click="OnMoveToClick" Style="{StaticResource MaTextButton}" Content="Move to ▾" FontSize="12"
-                                            Padding="6,1" Margin="4,0,0,0" VerticalAlignment="Center"
+                                            Padding="6,1" Margin="4,0,0,0" VerticalAlignment="Center" Visibility="{Binding HasRepoButtons, Converter={StaticResource Visible}}"
                                             AutomationProperties.Name="{Binding Request.Repo, StringFormat='Move the {0} CLI to another login'}"
                                             ToolTip="Move this CLI to another signed-in login at its next idle point, keeping its session; its pane moves to that person's Terminals" />
                                     <Button Style="{StaticResource MaButton}" Content="✕" Padding="6,0" Margin="8,0,0,0" FontSize="11"

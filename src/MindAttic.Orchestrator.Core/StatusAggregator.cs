@@ -102,6 +102,9 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     // What the transcripts add up to only changes when they do (M.ORCH-T116): kept until the reader's version, the day or the
     // sessions billed elsewhere move.
     private (long Version, DateTime Today, string OffSubscription) claudeKey = (-1, default, "");
+
+    // The last settings read, kept through a refresh that can't read them (M.ORCH-T720).
+    private OrchestratorSettings? lastSettings;
     private List<TranscriptSession> claudeSessions = [];
     private List<TranscriptSession> subscriptionSessions = [];
     private List<UsageEvent> claudeEvents = [];
@@ -266,7 +269,11 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         {
             warnings.Add($"moving settings.json's story-file approvals into the ticket database: {ex.Message} (tried again next refresh)");
         }
-        var settings = Store.LoadSettings();
+        // Settings that can't be read now keep the last ones read, rather than pace and the subagent cap on defaults (M.ORCH-T720).
+        if (Store.TryLoadSettings(out var read)) lastSettings = read;
+        else warnings.Add($"settings in {Store.Describe(JsonStore.SettingsName)} couldn't be read; " +
+            (lastSettings is null ? "showing defaults until they can be" : "using the last ones read until they can be"));
+        var settings = lastSettings ?? read;
         var repos = workspace.Repos();
 
         // Worktrees the scheduler creates live outside the workspace; credit them to their repo.
@@ -512,7 +519,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
         }
 
-        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = utilization, ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, Approved = tickets.Approved, Priorities = tickets.Priorities, Agents = agentBoard, Billing = billing, Accounts = accountPaces,
+        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = utilization, ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, UnknownRepos = new HashSet<string>(tickets.Unknown, StringComparer.OrdinalIgnoreCase), Approved = tickets.Approved, Priorities = tickets.Priorities, Agents = agentBoard, Billing = billing, Accounts = accountPaces,
             // Each session's per-CLI login, and the global login's email: what the dashboard's tabs split it by (M.ORCH-T613).
             OwnLogins = ownLogin.Select(o => (Session: o.Key, Email: Accounts.Dirs.Of(o.Value)?.Email)).Where(o => o.Email is not null)
                 .ToDictionary(o => o.Session, o => o.Email!, StringComparer.Ordinal),

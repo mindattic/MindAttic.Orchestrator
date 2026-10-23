@@ -19,11 +19,12 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 public sealed class TerminalPaneViewModel : ObservableObject
 {
     private bool isSelected, ended;
+    private PaneRecord record;
 
     public TerminalPaneViewModel(PaneRequest request, PaneRecord record)
     {
         Request = request;
-        Record = record;
+        this.record = record;
         Control = new EasyTerminalControl
         {
             StartupCommandLine = request.CommandLine,
@@ -56,11 +57,22 @@ public sealed class TerminalPaneViewModel : ObservableObject
     public PaneRequest Request { get; }
 
     /// <summary>As kept in the store; its session is filled in once the dashboard sees its CLI's.</summary>
-    public PaneRecord Record { get; internal set; }
+    public PaneRecord Record
+    {
+        get => record;
+        internal set
+        {
+            if (!Set(ref record, value)) return;
+            Raise(nameof(Tooltip));
+            RaiseMoving();
+        }
+    }
 
     /// <summary>The terminal itself: kept for the pane's whole life, since a new control would start a new process.</summary>
     public EasyTerminalControl Control { get; }
 
+    /// <summary>Repo-pane buttons (Go to, Move to) are hidden on a per-account Launcher pane: it has no repo tile of its own and no CLI to move (M.ORCH-T736).</summary>
+    public bool HasRepoButtons => !Request.IsLauncher;
     public string Title => Request.Title;
     public string Badge => Request.Initials is { } i ? $"{i}:" : "";
     public string Name => $"{SessionControl.ShortName(Request.Repo)} [{Request.Provider}]";
@@ -200,7 +212,7 @@ public sealed class TerminalsViewModel : ObservableObject
     {
         previous = [];
         try { PaneRecords.Remove(store, [.. records.Select(r => r.Id)]); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { OrchestratorLog.For("Terminals").Warning(ex, "Couldn't forget the closed pane record(s); they may be offered for Reopen next start"); }
         Raise(nameof(HasReopen));
         Raise(nameof(ReopenText));
     }
@@ -323,7 +335,7 @@ public sealed class TerminalsViewModel : ObservableObject
     private void Drop(PaneRecord record)
     {
         try { PaneRecords.Remove(store, [record.Id]); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { OrchestratorLog.For("Terminals").Warning(ex, "Couldn't drop the closed pane record; it may be offered for Reopen next start"); }
     }
 }
 
@@ -340,11 +352,16 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     public PersonTerminalsViewModel(TerminalsViewModel all)
     {
         this.all = all;
-        all.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName is nameof(TerminalsViewModel.HasReopen) or nameof(TerminalsViewModel.ReopenText)) Raise(e.PropertyName);
-        };
+        all.PropertyChanged += OnAllChanged;
     }
+
+    private void OnAllChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(TerminalsViewModel.HasReopen) or nameof(TerminalsViewModel.ReopenText)) Raise(e.PropertyName);
+    }
+
+    /// <summary>Stops following the shared terminals, for a login tab removed on sign-out (M.ORCH-T734).</summary>
+    public void Detach() => all.PropertyChanged -= OnAllChanged;
 
     /// <summary>This person's panes, in the order they opened.</summary>
     public ObservableCollection<TerminalPaneViewModel> Panes { get; } = [];

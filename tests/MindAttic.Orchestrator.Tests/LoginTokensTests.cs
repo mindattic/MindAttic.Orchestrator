@@ -242,4 +242,33 @@ public sealed class LoginTokensTests
         }
         finally { AccountSwitch.LoginInto = realLogin; }
     }
+
+    [Test]
+    public void Login_account_on_a_seat_already_signed_in_as_itself_skips_the_browser_login()
+    {
+        var realLogin = AccountSwitch.LoginInto;
+        var realOverride = LoginCommand.TokensOverride;
+        var mints = new List<string>();
+        LoginTokens.Run = (dir, _) => { mints.Add(dir.Email); return Token; };
+        var logins = 0;
+        AccountSwitch.LoginInto = (_, _, _) => { logins++; return 0; };
+        LoginCommand.TokensOverride = () => tokens;
+        try
+        {
+            var b = dirs.For("b@example.com");
+            dirs.Prepare(b);
+            File.WriteAllText(b.ConfigPath, JsonSerializer.Serialize(new { oauthAccount = new { accountUuid = "acct-b", emailAddress = b.Email } }));
+            Assert.That(LoginCommand.SignInOwn(dirs, "b@example.com", sso: false), Is.EqualTo(0));
+            Assert.That(logins, Is.EqualTo(0), "already signed in as itself: no browser login");
+            Assert.That(mints, Is.EqualTo(new[] { "b@example.com" }), "no good token yet: one is minted");
+            Assert.That(LoginCommand.SignInOwn(dirs, "b@example.com", sso: false), Is.EqualTo(0));
+            Assert.That(logins, Is.EqualTo(0));
+            Assert.That(mints, Has.Count.EqualTo(1), "a good token is kept");
+        }
+        finally
+        {
+            AccountSwitch.LoginInto = realLogin;
+            LoginCommand.TokensOverride = realOverride;
+        }
+    }
 }

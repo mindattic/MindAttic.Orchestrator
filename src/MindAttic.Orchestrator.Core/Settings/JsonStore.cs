@@ -139,6 +139,11 @@ public sealed class JsonStore
 
     public OrchestratorSettings LoadSettings() => Load<OrchestratorSettings>(SettingsName);
 
+    /// <summary>The settings, and whether they were read: false (with defaults) when they're there but couldn't be (a bad
+    /// settings row, the database held past its timeout), so a caller acting on them skips that work rather than running it on
+    /// defaults (M.ORCH-T720). None saved yet reads as the defaults.</summary>
+    public bool TryLoadSettings(out OrchestratorSettings s) => TryLoad(SettingsName, out s);
+
     /// <summary>The settings to change and save back: throws when they're there but can't be read (an old settings.json with a
     /// hand edit's typo, the database held past its timeout), where <see cref="LoadSettings"/>'s defaults would be saved over
     /// every budget, block and reservation in it.</summary>

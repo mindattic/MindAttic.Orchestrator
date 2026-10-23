@@ -42,6 +42,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         using var remindLease = new DispatchLease(store.Directory, Reminders.ReminderSender.LeaseName, store.Db);
         // Each repo's full suite on its main line after a landing, with no LLM (M.ORCH-T561); one daemon runs them.
         using var testsLease = new DispatchLease(store.Directory, MainlineTests.LeaseName, store.Db);
+        // The git-touching chores (audit, db syncs, mirror, GitHub intake) run in one daemon: two in the same checkout collide on
+        // index.lock and undo each other's reset and merge --abort (M.ORCH-T722).
+        using var gitChoresLease = new DispatchLease(store.Directory, GitChoresLeaseName, store.Db);
         var mainTests = new MainlineTests(store);
         var reminders = new Reminders.ReminderSender(store, new Reminders.PsstClient(Runner), (level, line) => Say(level, line), (title, message, urgent) => Alert(title, message, urgent));
         string? lastPaused = null;
@@ -74,7 +77,14 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 var snapshot = aggregator.Refresh();
                 tick.Lap("refresh");
                 ReportStatusFile(statusFile);
-                var s = store.LoadSettings();
+                // Only from settings that could be read: defaults would run autopilot, keep-going and the subagent cap on
+                // nothing anyone set and rewrite the hooks with them, every tick a bad row stays (M.ORCH-T720).
+                if (!store.TryLoadSettings(out var s)) throw new SettingsUnreadableException(store.Describe(JsonStore.SettingsName));
+                if (settingsUnreadable)
+                {
+                    settingsUnreadable = false;
+                    Say(LogEventLevel.Information, "settings read again; the tick's work runs again");
+                }
                 var plan = Scheduler.Plan(snapshot, s, store.LoadAssignments());
                 notifyUrl = s.NotifyUrl;
 
@@ -216,15 +226,19 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 ReportUnderTarget(snapshot, plan, cycler.AutopilotClis());
                 tick.Lap("keep-going, alerts and reminders");
 
-                RunAuditIfDue(options, s);
+                var gitChores = gitChoresLease.TryAcquire();
+                if (gitChores) RunAuditIfDue(options, s);
                 tick.Lap("audit");
-                SyncTicketsDbIfDue(options);
-                // The database everything writes (M.ORCH-T535), committed in the checkout that holds it.
-                if (Settings.OrchestratorDb.LivePath is var live && Settings.OrchestratorDb.RepoOf(live) is { } dbRepo)
-                    SyncOrchestratorDbIfDue(dbRepo, live, DateTime.UtcNow);
-                MirrorIfDue(DateTime.UtcNow);
+                if (gitChores)
+                {
+                    SyncTicketsDbIfDue(options);
+                    // The database everything writes (M.ORCH-T535), committed in the checkout that holds it.
+                    if (Settings.OrchestratorDb.LivePath is var live && Settings.OrchestratorDb.RepoOf(live) is { } dbRepo)
+                        SyncOrchestratorDbIfDue(dbRepo, live, DateTime.UtcNow);
+                    MirrorIfDue(DateTime.UtcNow);
+                }
                 tick.Lap("tickets db sync");
-                if (s.GitHubIntake && DateTime.UtcNow - intakeUtc >= TimeSpan.FromHours(1))
+                if (gitChores && s.GitHubIntake && DateTime.UtcNow - intakeUtc >= TimeSpan.FromHours(1))
                 {
                     intakeUtc = DateTime.UtcNow;
                     // One repo's malformed story file or a locked database ends the intake, not the tick: autopilot's reap
@@ -259,6 +273,12 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                         : "running autopilot from this process");
                     lastHeldElsewhere = autopilot.HeldElsewhere;
                 }
+            }
+            catch (SettingsUnreadableException ex)
+            {
+                // Said once, not every minute it stays unreadable.
+                if (!settingsUnreadable) Say(LogEventLevel.Warning, ex.Message);
+                settingsUnreadable = true;
             }
             catch (Exception ex)
             {
@@ -349,13 +369,19 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
     private Reminders.OutsideUsePsst? outsidePsst;
 
+    // Whether the last tick skipped its settings-driven work because the settings couldn't be read (M.ORCH-T720).
+    private bool settingsUnreadable;
+
+    /// <summary>The settings couldn't be read this tick: its settings-driven work is skipped rather than run on defaults.</summary>
+    private sealed class SettingsUnreadableException(string where)
+        : Exception($"settings in {where} couldn't be read; skipping this tick's settings-driven work (autopilot, keep-going, hooks) rather than running it on defaults");
+
     /// <summary>Texts the outside-use recipient that someone started using Claude elsewhere on a watched login (M.ORCH-T702);
     /// the send runs on its own thread (<see cref="Reminders.OutsideUsePsst"/>).</summary>
     internal Task? TextOutsideUse(OutsideStart started)
     {
-        OrchestratorSettings s;
-        try { s = store.LoadSettings(); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { return null; }
+        // Unreadable settings send nothing, rather than text on defaults (M.ORCH-T720).
+        if (!store.TryLoadSettings(out var s)) return null;
         outsidePsst ??= new Reminders.OutsideUsePsst(new Reminders.PsstClient(Runner), (level, line) => Say(level, line));
         return outsidePsst.Started(started.Email, started.Name, started.Seen, s);
     }
@@ -518,13 +544,17 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     private IReadOnlyList<string>? publishedStale;
     private DateTime publishedStaleUtc;
 
+    /// <summary>The lease of the git chores: only the daemon holding it audits, syncs the databases, mirrors and files GitHub intake.</summary>
+    public const string GitChoresLeaseName = "git-chores.lock";
+
     private void RunAuditIfDue(OrchestratorOptions options, OrchestratorSettings s)
     {
         if (s.AuditEveryHours <= 0) return;
         // Capped at a century: a huge value typed to mean "never" overflowed and ended every tick here, before autopilot's turn.
         var every = TimeSpan.FromHours(Math.Min(s.AuditEveryHours, 36_525 * 24));
         var runner = new Audit.AuditRunner(options, store);
-        var before = runner.Latest();
+        // A failed read isn't "no audit yet": running now would diff against nothing and hide what's new, so wait for a readable one.
+        if (!runner.TryLatest(out var before)) return;
         if (before is not null && DateTime.UtcNow - before.RanUtc < every) return;
         // A run whose save failed isn't retried every tick (it scans the whole workspace), and the failure doesn't end
         // the tick before autopilot's turn: it's said, and tried again when the next one is due.
@@ -729,12 +759,20 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             }
             try
             {
-                // Staged under the database's write lock, so the commit never takes a write's half-applied pages (M.ORCH-T536).
-                ProcessResult add;
-                try { add = new Settings.OrchestratorDb(dbPath).HoldingWrites(() => Git(["add", "--", .. files])); }
+                // Staged and committed under the database's write lock, so the commit never takes a write's half-applied pages
+                // (M.ORCH-T536): the commit reads the working tree, which a write between the add and the commit would tear (M.ORCH-T719).
+                ProcessResult add, commit = default!;
+                try
+                {
+                    (add, commit) = new Settings.OrchestratorDb(dbPath).HoldingWrites(() =>
+                    {
+                        var added = Git(["add", "--", .. files]);
+                        if (added.ExitCode != 0 || added.TimedOut) return (added, default!);
+                        return (added, Git(["commit", "-q", "-m", OrchestratorDbSyncSubject, "--", .. files]));
+                    });
+                }
                 catch (System.Data.Common.DbException ex) { throw new InvalidOperationException("couldn't lock the database: " + ex.Message); }
                 if (add.ExitCode != 0 || add.TimedOut) throw new InvalidOperationException("git add failed: " + (add.Output + add.Error).Trim());
-                var commit = Git(["commit", "-q", "-m", OrchestratorDbSyncSubject, "--", .. files]);
                 if (commit.ExitCode != 0 || commit.TimedOut) throw new InvalidOperationException("git commit failed: " + (commit.Output + commit.Error).Trim());
             }
             catch (InvalidOperationException ex)
@@ -753,6 +791,13 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             // push is rejected as non-fast-forward (M.ORCH-T620). A merge, not a rebase --autostash: the daemon keeps the
             // dirty data/ files open and changing so the autostash itself fails (M.ORCH-T624), and incoming commits never touch
             // them, so no stash is needed (merge commits pass the commit-msg hook).
+            // Not while the user is resolving a merge, rebase, cherry-pick or revert here: the merge --abort below would throw
+            // away their resolutions (M.ORCH-T721). Tried again on the next try.
+            if (GitOperationInProgress(repo))
+            {
+                orchestratorDbUnpushed = true;
+                return;
+            }
             var fetch = Git("fetch", "-q", "origin");
             if (fetch.ExitCode == 0 && !fetch.TimedOut)
             {
@@ -778,6 +823,21 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         }
         // git may hand the committed text back with CRLF (core.autocrlf).
         static bool Same(string a, string b) => a.ReplaceLineEndings("\n") == b.ReplaceLineEndings("\n");
+    }
+
+    /// <summary>True while the checkout is mid-merge, rebase, cherry-pick or revert, which a daemon merge or abort must not touch.</summary>
+    internal static bool GitOperationInProgress(string repo)
+    {
+        var gitDir = Path.Combine(repo, ".git");
+        if (File.Exists(gitDir)) // a linked worktree: ".git" is a "gitdir: <path>" file
+        {
+            var line = File.ReadLines(gitDir).FirstOrDefault(l => l.StartsWith("gitdir:", StringComparison.Ordinal));
+            if (line is null) return false;
+            gitDir = Path.GetFullPath(line["gitdir:".Length..].Trim(), repo);
+        }
+        if (!Directory.Exists(gitDir)) return false;
+        return new[] { "MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD" }.Any(f => File.Exists(Path.Combine(gitDir, f)))
+            || new[] { "rebase-merge", "rebase-apply" }.Any(d => Directory.Exists(Path.Combine(gitDir, d)));
     }
 
     /// <summary>Files new GitHub issues and CI failures as tickets in every repo that has a GitHub origin.</summary>

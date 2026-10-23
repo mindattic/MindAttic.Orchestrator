@@ -27,8 +27,15 @@ public sealed class OpenTicketSource
     /// <summary>Ticket → its manual priority in the database's queue (higher runs sooner); missing means 0.</summary>
     public IReadOnlyDictionary<string, long> Priorities => fromDb?.Priorities ?? new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
+    private readonly HashSet<string> unknown = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Repos whose last <see cref="OpenFor"/> could not read the ticket database and had no earlier read to
+    /// stand on: their open tickets are unknown, not empty (M.ORCH-T727).</summary>
+    public IReadOnlySet<string> Unknown => unknown;
+
     public IReadOnlyList<Ticket> OpenFor(Repo repo, ICollection<string> warnings)
     {
+        unknown.Remove(repo.Name);
         if (FromDatabase(repo, warnings) is { } db) return db;
 
         var path = repo.StoriesPath;
@@ -81,7 +88,13 @@ public sealed class OpenTicketSource
                 // A read that fails mid-write (the database locked) keeps the last good read rather than fall back to
                 // USER_STORIES.md, which can lag it: a ticket missing there reads as finished, and autopilot would reap
                 // its live assignment. The read is tried again next time, since the cached time still differs.
-                if (fromDb is not { } last || last.Path != path) return null;
+                // With no good read at all (a daemon just restarted), the open tickets are unknown, not none: say so, so
+                // nothing reads the claims in this repo as finished.
+                if (fromDb is not { } last || last.Path != path)
+                {
+                    unknown.Add(repo.Name);
+                    return [];
+                }
             }
         }
         return fromDb!.Value.Repos.Contains(repo.Name) ? [.. fromDb.Value.Open[repo.Name]] : null;

@@ -251,6 +251,22 @@ public sealed class ClaudeMeterProbeTests
     }
 
     [Test]
+    public void A_newer_untagged_statusline_file_doesnt_hide_the_probes_own_higher_row()
+    {
+        var path = Path.Combine(dir, "claude-usage.json");
+        var db = new MindAttic.Orchestrator.Settings.OrchestratorDb(Path.Combine(dir, "data", "orchestrator.db"));
+        var reset = new DateTimeOffset(2026, 10, 17, 15, 30, 0, TimeSpan.Zero).ToUnixTimeSeconds();
+        var now = DateTime.UtcNow;
+        ClaudeMeterProbe.Write(path, new ReportedUsage(new ReportedWindow(40, DateTimeOffset.FromUnixTimeSeconds(reset).UtcDateTime), null, default), now.AddMinutes(-5), "a/max", db);
+        // An idle tab restamps a stale, lower, untagged reading newer than the probe's row.
+        File.WriteAllText(path, $$$"""{"rate_limits":{"five_hour":{"used_percentage":10,"resets_at":{{{reset}}}}},"at":"{{{now.AddMinutes(-1):yyyy-MM-ddTHH:mm:ssZ}}}"}""");
+
+        var wrote = ClaudeMeterProbe.Write(path, new ReportedUsage(new ReportedWindow(20, DateTimeOffset.FromUnixTimeSeconds(reset).UtcDateTime), null, default), now, "a/max", db);
+
+        Assert.That(wrote.FiveHour!.Percent, Is.EqualTo(40));
+    }
+
+    [Test]
     public async Task An_expired_sign_in_is_never_used_or_refreshed_and_the_ask_backs_off()
     {
         var asked = 0;

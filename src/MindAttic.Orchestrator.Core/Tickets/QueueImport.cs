@@ -37,8 +37,7 @@ public static class QueueImport
             MarkDone(db.Path);
         }
         // Only once the database holds them; a save that fails leaves them to be dropped next time.
-        var current = store.LoadSettingsToChange();
-        store.SaveSettings(current with { Approved = null, Priorities = null });
+        store.Update<OrchestratorSettings>(JsonStore.SettingsName, s => { s.Approved = null; s.Priorities = null; });
         return result;
     }
 

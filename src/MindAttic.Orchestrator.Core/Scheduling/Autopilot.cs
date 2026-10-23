@@ -90,7 +90,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
 
         // Repos with an open Claude CLI (agents' own sessions aside), or the ones named.
         // "/allocate all" (order "*"): every repo in the workspace with an open story, CLI open or not.
-        var everyRepo = order?.Contains(AllRepos) == true;
+        var everyRepo = order?.Any(IsAll) == true;
         var repos = order is null ? []
             : everyRepo ? snapshot.Repos.Where(r => r.Path.Length > 0 && !r.Name.StartsWith('(') && r.OpenTickets.Count > 0).ToList()
             // Only the repos /allocate was turned on for (each CLI adds its own), never every repo that has a CLI open.
@@ -484,7 +484,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// It offers a bug hunt and leaves it to the user: "Ask but don't do unless explicitly given permission."</summary>
     internal static string Dry(IReadOnlyList<string> repos)
     {
-        var named = repos.Count == 0 || repos.Any(r => r is "*" or "all") ? "these repos" : string.Join(", ", repos);
+        var named = repos.Count == 0 || repos.Any(IsAll) ? "these repos" : string.Join(", ", repos);
         return $"no open fixes or approved tickets left there: {named} ran dry. Ask the user whether to run /bughunt on {named}, " +
             "and hunt only after an explicit yes (anything else means no); each bug it finds becomes a fix ticket that /allocate then works";
     }
@@ -696,6 +696,15 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// <summary>The order <c>/allocate all</c> writes: every repo with open stories.</summary>
     public const string AllRepos = "*";
 
+    /// <summary>Whether <paramref name="name"/> means every repo: <see cref="AllRepos"/>, or the word "all" as typed
+    /// (<c>orchestrator next --repos all</c>, M.ORCH-T728), which a literal match would take for a repo called "all".</summary>
+    public static bool IsAll(string name) => name.Trim() is var n && (n == AllRepos || n.Equals("all", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>The names in <paramref name="names"/> that match no repo in <paramref name="snapshot"/> (M.ORCH-T728), so a
+    /// typo is said as one rather than read as a repo that ran dry; "all" and "*" always match.</summary>
+    public static IReadOnlyList<string> Unmatched(IEnumerable<string> names, Snapshot snapshot) =>
+        [.. names.Where(n => !IsAll(n) && !snapshot.Repos.Any(r => Named([n], r.Name)))];
+
     /// <summary>The alert text when <paramref name="line"/> is one of <see cref="Tick"/>'s "needs you" lines; null for any other
     /// (a started line can carry "needs you" inside its ticket summary).</summary>
     public static string? NeedsYou(string line) =>
@@ -736,7 +745,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     private static bool Same(string a, string b) => a.Equals(b, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Whether <paramref name="repo"/> is one of <paramref name="names"/>: a name, or a wildcard (<c>*</c>, <c>?</c>)
-    /// such as <c>GTFO.*</c> for every repo whose name starts <c>GTFO.</c> (M.ORCH-T165); <c>*</c> alone is every repo.</summary>
+    /// such as <c>GTFO.*</c> for every repo whose name starts <c>GTFO.</c> (M.ORCH-T165); <c>*</c> or "all" alone is every repo.</summary>
     public static bool Named(IEnumerable<string> names, string repo) =>
-        names.Any(n => System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(n, repo, ignoreCase: true));
+        names.Any(n => IsAll(n) || System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(n.Trim(), repo, ignoreCase: true));
 }

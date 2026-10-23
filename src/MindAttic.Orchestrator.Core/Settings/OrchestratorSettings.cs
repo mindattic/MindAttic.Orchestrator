@@ -317,7 +317,7 @@ public sealed record OrchestratorSettings
     /// <summary>Approvals as settings.json kept them before the ticket database's queue held them (M.ORCH-T384): read only by
     /// <see cref="Tickets.QueueImport"/>, which moves them into <c>ticket_queue</c> once and drops them here. Approval is
     /// read from and written to the database alone, where <c>tickets ticket approve</c> and the Tickets Desktop write it.</summary>
-    public List<string>? Approved { get; init; }
+    public List<string>? Approved { get; set; }
 
     /// <summary>Open tickets older than this many days with nobody on them are listed for grooming. 0 means never.</summary>
     public int GroomAfterDays { get; init; } = 30;
@@ -342,7 +342,7 @@ public sealed record OrchestratorSettings
 
     /// <summary>Manual priorities as settings.json kept them before the ticket database (M.ORCH-T384): moved into
     /// <c>ticket_queue</c> once by <see cref="Tickets.QueueImport"/> and dropped here, like <see cref="Approved"/>.</summary>
-    public Dictionary<string, int>? Priorities { get; init; }
+    public Dictionary<string, int>? Priorities { get; set; }
 
     /// <summary>Approved tickets the ticket database doesn't hold: those of a repo still on its own <c>docs/USER_STORIES.md</c>
     /// (or every ticket, before the workspace is migrated). <c>ticket_queue</c> only takes tickets in the database, so without

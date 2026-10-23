@@ -291,6 +291,29 @@ public sealed class DaemonSafetyTests
     }
 
     [Test]
+    public void An_orchestrator_db_sync_leaves_a_merge_in_progress_alone()
+    {
+        // M.ORCH-T721: the retry's merge --abort threw away a merge the user was resolving in the checkout.
+        var repo = Path.Combine(dir, "MindAttic.Orchestrator");
+        Directory.CreateDirectory(Path.Combine(repo, "data"));
+        Directory.CreateDirectory(Path.Combine(repo, ".git"));
+        File.WriteAllText(Path.Combine(repo, ".git", "MERGE_HEAD"), "abc\n");
+        var dbPath = Path.Combine(repo, "data", "orchestrator.db");
+        new OrchestratorDb(dbPath).Dump();
+        File.WriteAllText(Path.Combine(repo, "data", "orchestrator.sql"), "-- new\n");
+        var runner = new FakeRunner(c => c.Args.Contains("show") ? new ProcessResult(0, "-- new\n", "", false) : new ProcessResult(0, "", "", false));
+        var daemon = Make(runner: runner);
+        var now = DateTime.UtcNow;
+        // Committed already but unpushed: the retry path.
+        daemon.SyncOrchestratorDbIfDue(repo, dbPath, now);
+        Assert.That(runner.Calls.Any(c => c.Args.Contains("merge") || c.Args.Contains("fetch") || c.Args.Contains("push")), Is.False);
+        Directory.Delete(Path.Combine(repo, ".git"), true);
+        Assert.That(Daemon.GitOperationInProgress(repo), Is.False);
+        Directory.CreateDirectory(Path.Combine(repo, ".git", "rebase-merge"));
+        Assert.That(Daemon.GitOperationInProgress(repo), Is.True);
+    }
+
+    [Test]
     public void The_orchestrator_db_is_staged_holding_its_write_lock()
     {
         // M.ORCH-T536: git add read the file while the daemon and hooks could be mid-write, so a commit could take half a write.

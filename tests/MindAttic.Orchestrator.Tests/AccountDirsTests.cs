@@ -440,6 +440,24 @@ public sealed class AccountDirsTests
     }
 
     [Test]
+    public void Login_refuses_new_token_where_it_cannot_apply_and_a_failed_mint_is_a_failure()
+    {
+        var previous = AnsiConsole.Console;
+        AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings { Out = new AnsiConsoleOutput(new StringWriter()), Ansi = AnsiSupport.No, ColorSystem = ColorSystemSupport.NoColors, Interactive = InteractionSupport.No });
+        try
+        {
+            Assert.That(CliApp.Create().Run(["login", "--new-token"]), Is.EqualTo(1));
+            Assert.That(CliApp.Create().Run(["login", "b", "--new-token"]), Is.EqualTo(1));
+            var ok = new OwnLoginResult("b", "b@example.com", "d", OwnLoginOutcome.SignedIn, "m", []);
+            Assert.That(LoginCommand.MintFailed(ok), Is.False, "no mint tried");
+            Assert.That(LoginCommand.MintFailed(ok with { Token = new MintResult(MintOutcome.Minted, "m") }), Is.False);
+            foreach (var outcome in new[] { MintOutcome.Failed, MintOutcome.NoToken, MintOutcome.WrongAccount })
+                Assert.That(LoginCommand.MintFailed(ok with { Token = new MintResult(outcome, "m") }), Is.True, outcome.ToString());
+        }
+        finally { AnsiConsole.Console = previous; }
+    }
+
+    [Test]
     public void Sign_in_all_gives_every_roster_account_without_its_own_login_one_in_turn()
     {
         var calls = new List<(string Email, bool Sso, string Dir)>();
@@ -546,5 +564,29 @@ public sealed class AccountDirsTests
     {
         Assert.That(AccountDirs.Ps("don't"), Is.EqualTo("'don''t'"));
         Assert.That(AccountDirs.Ps("don’t ‘x‚‛"), Is.EqualTo("'don’’t ‘‘x‚‚‛‛'"));
+    }
+
+    [Test]
+    public void MklinkArguments_QuoteBothPaths_AndRefuseCharactersCmdExpandsAnyway()
+    {
+        Assert.That(AccountDirs.TryMklinkArguments(@"C:\a&b\x", @"C:\t^|", out var line), Is.True);
+        Assert.That(line, Is.EqualTo("/d /c \"mklink /J \"C:\\a&b\\x\" \"C:\\t^|\"\""));
+        Assert.That(AccountDirs.TryMklinkArguments(@"C:\%PATH%", @"C:\t", out _), Is.False);
+        Assert.That(AccountDirs.TryMklinkArguments(@"C:\a", "C:\\q\"x", out _), Is.False);
+    }
+
+    [Test]
+    public void MklinkArguments_AJunctionWithAmpersandInItsNameIsMadeAndNothingElseRuns()
+    {
+        var root = temps.New();
+        var target = Path.Combine(root, "t");
+        Directory.CreateDirectory(target);
+        var marker = Path.Combine(root, "pwned");
+        var link = Path.Combine(root, "a&md pwned&b");
+        Assert.That(AccountDirs.TryMklinkArguments(link, target, out var line), Is.True);
+        using (var p = Process.Start(new ProcessStartInfo("cmd.exe", line) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = root })!)
+            p.WaitForExit();
+        Assert.That(Directory.Exists(link), Is.True);
+        Assert.That(File.Exists(marker), Is.False);
     }
 }

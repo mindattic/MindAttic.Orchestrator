@@ -88,6 +88,16 @@ public sealed class ReminderTests
     }
 
     [Test]
+    public void Now_in_the_ambiguous_hour_is_now_utc()
+    {
+        // M.ORCH-T724: 1:30 AM EST (second pass, 06:30 UTC) on the night clocks fall back; local time alone reads it as EDT.
+        var eastern = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+        var nowUtc = new DateTime(2026, 11, 1, 6, 30, 0, DateTimeKind.Utc);
+        Assert.That(ReminderTime.TryParseUtc("now", nowUtc, eastern, out var utc, out _), Is.True);
+        Assert.That(utc, Is.EqualTo(nowUtc));
+    }
+
+    [Test]
     public void A_span_across_a_dst_change_is_that_long_from_now()
     {
         // M.ORCH-T552: 1:30 AM EDT on the night clocks fall back (06:00 UTC). "in 2h" added to the wall clock read 3:30 AM

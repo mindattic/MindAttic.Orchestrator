@@ -522,6 +522,18 @@ public sealed class AutopilotTests
     }
 
     [Test]
+    public void Repos_all_is_every_repo_and_an_unknown_name_is_said()
+    {
+        // M.ORCH-T728: `next --repos all` matched "all" literally, so open tickets were reported as a dry queue with a bug hunt offered.
+        var snap = Snap(("A", [T("A-T1")]), ("B", [T("B-T1")]));
+        Assert.That((Autopilot.Named(["all"], "A"), Autopilot.Named(["ALL"], "B"), Autopilot.Named([" all "], "x")), Is.EqualTo((true, true, true)));
+        var (handed, why) = Autopilot.Next(Paced(snap, 5), new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["all"], null, claim: false, Now,
+            (repo, path, branch) => (true, path, ""), _ => "main");
+        Assert.That((handed.Select(h => h.Item.Id).Order().ToList(), why), Is.EqualTo((new List<string> { "A-T1", "B-T1" }, (string?)null)));
+        Assert.That(Autopilot.Unmatched(["all", "*", "A", "Nope", "B*"], snap), Is.EqualTo(new[] { "Nope" }));
+    }
+
+    [Test]
     public void With_pacing_off_the_windows_stop_still_hands_nothing_out()
     {
         // Unpaced, the plan keeps no pace; the stop (which doesn't depend on pacing) still has to reach `next --claim`.

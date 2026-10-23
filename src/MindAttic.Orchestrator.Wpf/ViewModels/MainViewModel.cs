@@ -152,6 +152,14 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Every CLI running inside the dashboard (M.ORCH-T618), whoever's; the same in every tab.</summary>
     public TerminalsViewModel AllTerminals { get; }
 
+    /// <summary>Drops this tab's subscriptions to the static <see cref="PendingMoves.Changed"/> and its terminals' events, so
+    /// a login tab removed on sign-out isn't kept alive handling every move (M.ORCH-T734).</summary>
+    public void Detach()
+    {
+        PendingMoves.Changed -= OnMovesChanged;
+        Terminals.Detach();
+    }
+
     /// <summary>This person's CLIs running inside the dashboard, on their Terminals tab (M.ORCH-T622).</summary>
     public PersonTerminalsViewModel Terminals { get; }
 

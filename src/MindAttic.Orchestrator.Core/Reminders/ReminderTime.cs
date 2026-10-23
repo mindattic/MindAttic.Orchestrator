@@ -48,7 +48,7 @@ public static partial class ReminderTime
         if (string.IsNullOrWhiteSpace(text)) return false;
         var t = Spaces().Replace(text.Trim().ToLowerInvariant(), " ");
         if (t.StartsWith("at ", StringComparison.Ordinal)) t = t[3..];
-        if (t == "now") { local = nowLocal; return true; }
+        if (t == "now") { local = nowLocal; fromNow = TimeSpan.Zero; return true; } // zero span: TryParseUtc takes nowUtc as is (M.ORCH-T724)
 
         if (Span().Match(t) is { Success: true } span && (span.Groups["d"].Success || span.Groups["h"].Success || span.Groups["m"].Success))
         {

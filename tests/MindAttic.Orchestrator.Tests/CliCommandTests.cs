@@ -52,6 +52,23 @@ public sealed class CliCommandTests
     }
 
     [Test]
+    public void A_malformed_connection_string_is_a_bad_option_that_is_never_echoed()
+    {
+        // M.ORCH-T716: SqlConnectionStringBuilder's ArgumentException escaped db migrate, so the crash handler logged the
+        // whole command line, password and all.
+        Assert.That(Run("db", "migrate", "--connection", "Server=x;Password=hunter2;Bogus"), Is.EqualTo(2));
+        Assert.That(output.ToString(), Does.Contain("--connection").And.Not.Contain("hunter2"));
+    }
+
+    [Test]
+    public void The_crash_log_names_only_the_command_never_its_options()
+    {
+        Assert.That(CliApp.CommandName(["db", "migrate", "--connection", "Password=hunter2"]), Is.EqualTo("db migrate"));
+        Assert.That(CliApp.CommandName(["send", "M.ORCH-T1", "secret text"]), Is.EqualTo("send"));
+        Assert.That(CliApp.CommandName(["--help"]), Is.EqualTo("(no command)"));
+    }
+
+    [Test]
     public void The_full_help_renders_without_a_markup_error()
     {
         // M.ORCH-T496: remind's description had an unescaped '[--to <contact>]', which Spectre read as markup, so
