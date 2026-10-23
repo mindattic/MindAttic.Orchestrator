@@ -438,13 +438,13 @@ public sealed class ClaudeMeterProbe
     }
 
     /// <summary>Writes <paramref name="reading"/> (its 5-hour window may be missing) as the statusline does, stamped <paramref name="atUtc"/> and tagged with
-    /// <paramref name="account"/>. Usage never falls within a window, so a higher percent already in the file for the same
+    /// <paramref name="account"/>. Usage never falls within a window, so a higher percent already in the probe's own row (db) or file for the same
     /// window is kept (with this, newer, time), when it's the same account's: an untagged statusline reading may be another
     /// account's whose window happens to reset at the same minute, and its percent would be written tagged as this one's.</summary>
     internal static ReportedUsage Write(string path, ReportedUsage reading, DateTime atUtc, string? account = null, Settings.OrchestratorDb? db = null)
     {
         var five = reading.FiveHour;
-        if (five is not null && ReportedUsage.Load(atUtc, path, db) is { FiveHour: { } old } was && was.Account == account && old.ResetUtc == five.ResetUtc && old.Percent > five.Percent)
+        if (five is not null && (db is not null ? ReportedUsage.LoadRow(atUtc, db) : ReportedUsage.Load(atUtc, path, db)) is { FiveHour: { } old } was && was.Account == account && old.ResetUtc == five.ResetUtc && old.Percent > five.Percent)
             five = old;
         var limits = new JsonObject();
         if (five is not null) limits["five_hour"] = Node(five);
