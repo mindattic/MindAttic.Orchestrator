@@ -138,6 +138,7 @@ public sealed class ContextCyclerTests
                 var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\" {provider}".TrimEnd())
                     { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
                 psi.Environment["USERPROFILE"] = dir;
+                psi.Environment.Remove("CLAUDE_CONFIG_DIR"); // the agent running the tests may be on its own login
                 psi.Environment["MINDATTIC_WORKSPACE"] = ws;
                 psi.Environment["APPDATA"] = dir; // approvals come from here, never this machine's settings
                 psi.Environment["MINDATTIC_CLI_PID"] = cli.ToString();
@@ -186,6 +187,7 @@ public sealed class ContextCyclerTests
                 var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\"")
                     { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
                 psi.Environment["USERPROFILE"] = dir;
+                psi.Environment.Remove("CLAUDE_CONFIG_DIR"); // the agent running the tests may be on its own login
                 using var p = System.Diagnostics.Process.Start(psi)!;
                 p.StandardInput.Write(System.Text.Json.JsonSerializer.Serialize(input));
                 p.StandardInput.Close();
@@ -239,6 +241,7 @@ public sealed class ContextCyclerTests
                 var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\"")
                     { RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
                 psi.Environment["USERPROFILE"] = dir;
+                psi.Environment.Remove("CLAUDE_CONFIG_DIR"); // the agent running the tests may be on its own login
                 var p = System.Diagnostics.Process.Start(psi)!;
                 p.StandardInput.Write(System.Text.Json.JsonSerializer.Serialize(input));
                 p.StandardInput.Close();
@@ -279,6 +282,7 @@ public sealed class ContextCyclerTests
                 var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\"")
                     { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
                 psi.Environment["USERPROFILE"] = dir;
+                psi.Environment.Remove("CLAUDE_CONFIG_DIR"); // the agent running the tests may be on its own login
                 psi.Environment["MINDATTIC_WORKSPACE"] = ws;
                 psi.Environment["MINDATTIC_CLI_PID"] = cli.ToString();
                 using var p = System.Diagnostics.Process.Start(psi)!;
@@ -348,6 +352,7 @@ public sealed class ContextCyclerTests
                 var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\"")
                     { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
                 psi.Environment["USERPROFILE"] = dir;
+                psi.Environment.Remove("CLAUDE_CONFIG_DIR"); // the agent running the tests may be on its own login
                 psi.Environment["APPDATA"] = dir;
                 psi.Environment["MINDATTIC_WORKSPACE"] = ws;
                 psi.Environment["MINDATTIC_CLI_PID"] = "1";
@@ -402,6 +407,7 @@ public sealed class ContextCyclerTests
                 var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\"")
                     { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
                 psi.Environment["USERPROFILE"] = dir;
+                psi.Environment.Remove("CLAUDE_CONFIG_DIR"); // the agent running the tests may be on its own login
                 psi.Environment["APPDATA"] = dir;
                 psi.Environment["MINDATTIC_WORKSPACE"] = ws;
                 psi.Environment["MINDATTIC_CLI_PID"] = cli.ToString();
@@ -453,6 +459,7 @@ public sealed class ContextCyclerTests
                 var psi = new System.Diagnostics.ProcessStartInfo("python", $"-I \"{Path.Combine(dir, "context-gate.py")}\"")
                     { RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false };
                 psi.Environment["USERPROFILE"] = dir;
+                psi.Environment.Remove("CLAUDE_CONFIG_DIR"); // the agent running the tests may be on its own login
                 psi.Environment["APPDATA"] = dir;
                 psi.Environment["MINDATTIC_WORKSPACE"] = ws;
                 psi.Environment["MINDATTIC_CLI_PID"] = "7";
