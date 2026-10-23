@@ -1324,11 +1324,7 @@
                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
                          Text="{Binding WarnPercent, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Warn percent" />
                 <!-- Weekly pacing (M.ORCH-T680): the toggle and its numbers together, each saved in the database. -->
-                <TextBlock Text="WEEKLY PACING" Style="{StaticResource MaSectionLabel}" Margin="0,16,0,8" />
-                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding WeeklyAware}" HorizontalAlignment="Left"
-                              Content="Weekly-aware pacing" AutomationProperties.Name="Weekly-aware pacing" />
-                <TextBlock Text="Each login on its own: every 5-hour window still aims at the pace target, and under the take-in line nothing else changes. From there the week is taken in: each window's ceiling becomes the week's room to the weekly target spread over the windows left before its reset, so the week lands on the target as it resets; a ticket a login can't fit goes to another signed-in login with room, else the fallback login (the API key); a ticket assigned to a user waits for them instead. Every pace note says it's on and which limit governs."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                <TextBlock Text="WEEKLY LIMIT" Style="{StaticResource MaSectionLabel}" Margin="0,16,0,8" />
                 <TextBlock Text="Weekly target (% of each account's week)" Margin="0,10,0,4" />
                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
                          Text="{Binding WeeklyTarget, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Weekly target percent" />
@@ -1405,21 +1401,6 @@
                 <TextBlock Text="Pace target (% of the 5-hour limit by its reset)" Margin="0,10,0,4" />
                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
                          Text="{Binding PaceTarget, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Pace target percent" />
-                <TextBlock Text="Pace profile" Margin="0,10,0,4" />
-                <ListBox Style="{StaticResource MaPillChoice}" ItemsSource="{Binding PaceProfiles}" SelectedItem="{Binding PaceProfile}"
-                         AutomationProperties.Name="Pace profile" />
-                <TextBlock Text="Linear spreads what's left evenly to the reset. Front-loaded aims at target × elapsed^k, spending faster early and easing off, and starts no new subagent or ticket past 85%. Switch any time: the next pace check follows the new curve."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                <TextBlock Text="Front-loaded curve exponent k (0.1 to 1; lower front-loads more)" Margin="0,10,0,4" />
-                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
-                         Text="{Binding PaceCurveK, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Front-loaded curve exponent" />
-                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding ThrottleAgents}" Margin="0,12,0,0" HorizontalAlignment="Left"
-                              Content="Hold running agents" />
-                <TextBlock Text="While the draw won't last until the reset, every Claude agent (subagents too) waits before each tool call, and is let go the moment it fits."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                <TextBlock Text="Longest hold per tool call (seconds)" Margin="0,10,0,4" />
-                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
-                         Text="{Binding MaxDelay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Longest hold in seconds" />
                 <TextBlock Text="Exempt from pacing" Margin="0,10,0,4" />
                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Text="{Binding ExemptCommands, UpdateSourceTrigger=PropertyChanged}"
                          AutomationProperties.Name="Commands exempt from pacing" />

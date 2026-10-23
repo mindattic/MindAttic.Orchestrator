@@ -89,34 +89,22 @@ public sealed class PacerHelperTests
     // ── AgentDelay ──────────────────────────────────────────────────────────
 
     [Test]
+    public void Agents_are_never_held_whatever_the_burn_since_throttling_is_locked_off()
+    {
+        // M.ORCH-T706: hard cutoffs only; the hold is gone, so no setting or burn can bring it back.
+        Assert.That(new OrchestratorSettings().ThrottleAgents, Is.False);
+        Assert.That(Pacer.AgentDelay(100_000, 2000, 0, new OrchestratorSettings { MaxAgentDelaySeconds = 300 }), Is.Zero);
+        Assert.That(Pacer.AgentDelay(100, 0, 0, new OrchestratorSettings { MaxAgentDelaySeconds = 300 }), Is.Zero);
+    }
+
+    [Test]
     public void With_agent_throttling_off_nobody_is_held()
     {
-        var off = new OrchestratorSettings { ThrottleAgents = false };
+        var off = new OrchestratorSettings();
         Assert.That(Pacer.AgentDelay(100_000, 2000, 0, off), Is.Zero);
         Assert.That(Pacer.AgentDelay(100, 0, 0, off), Is.Zero, "not even out of room");
         Assert.That(Pacer.AgentDelay(100_000, 2000, 0, new OrchestratorSettings { MaxAgentDelaySeconds = 0 }), Is.Zero, "a zero ceiling is off too");
         Assert.That(Pacer.AgentDelay(100_000, 2000, 0, new OrchestratorSettings { MaxAgentDelaySeconds = -5 }), Is.Zero, "and so is a negative one");
-    }
-
-    [Test]
-    public void With_no_sustainable_rate_agents_are_held_the_longest()
-    {
-        var s = new OrchestratorSettings { MaxAgentDelaySeconds = 120 };
-        Assert.That(Pacer.AgentDelay(100, 0, 0, s), Is.EqualTo(120));
-        Assert.That(Pacer.AgentDelay(100, -50, 0, s), Is.EqualTo(120));
-        Assert.That(Pacer.AgentDelay(0, 0, 0, s), Is.Zero, "nothing drawing, nothing to hold");
-    }
-
-    [Test]
-    public void The_agent_delay_is_rounded_and_capped()
-    {
-        var s = new OrchestratorSettings { MaxAgentDelaySeconds = 30 };
-        Assert.That(Pacer.AgentDelay(2000, 2000, 0, s), Is.Zero, "demand exactly fits");
-        Assert.That(Pacer.AgentDelay(2030, 2000, 0, s), Is.Zero, "0.3s rounds to nothing");
-        Assert.That(Pacer.AgentDelay(2060, 2000, 0, s), Is.EqualTo(1), "0.6s rounds up to a second");
-        Assert.That(Pacer.AgentDelay(3070, 2000, 0, s), Is.EqualTo(11), "10.7s rounds to 11");
-        Assert.That(Pacer.AgentDelay(10_000, 2000, 0, s), Is.EqualTo(30), "80s capped at MaxAgentDelaySeconds");
-        Assert.That(Pacer.AgentDelay(1000, 2000, 60, s), Is.EqualTo(20), "judged unheld: 4,000/h against 2,000/h");
     }
 
     // ── TypicalPerSession ───────────────────────────────────────────────────

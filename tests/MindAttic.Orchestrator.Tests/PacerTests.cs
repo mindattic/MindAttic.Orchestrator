@@ -113,30 +113,6 @@ public sealed class PacerTests
     // ── Holding running agents ──────────────────────────────────────────────
 
     [Test]
-    public void Outrunning_the_window_holds_running_agents_and_fitting_it_runs_them_free()
-    {
-        var over = Pace(10.5, 4, new OrchestratorSettings { BlockBudget = 11_000, PaceTargetPercent = 100 }, E(10, 1000), E(10.4, 1000));
-        Assert.That(over.AgentDelaySeconds, Is.EqualTo(40), "the last 10 minutes drew 6,000/h, three times what fits: a 20s step gets 40s more");
-        Assert.That(over.AgentNote, Does.Contain("holding each tool call about 40s"));
-
-        var fits = Pace(10.5, 4, new OrchestratorSettings { BlockBudget = 10_000 }, E(10, 500));
-        Assert.That((fits.AgentDelaySeconds, fits.Advise), Is.EqualTo((0.0, false)), "on pace: nobody is held or told to conserve");
-    }
-
-    [Test]
-    public void The_hold_judges_what_agents_would_burn_unheld_so_it_neither_flaps_nor_lingers()
-    {
-        var s = new OrchestratorSettings();
-        Assert.That(Pacer.AgentDelay(2000, 2000, 20, s), Is.EqualTo(20),
-            "the hold brought the rate down to what fits; releasing it would put it straight back at twice that");
-        Assert.That(Pacer.AgentDelay(1000, 2000, 20, s), Is.Zero, "unheld they'd burn 2,000/h, which fits: release at once");
-        Assert.That(Pacer.AgentDelay(100_000, 2000, 0, s), Is.EqualTo(300), "capped at the max");
-        Assert.That(Pacer.AgentDelay(100, 0, 0, s), Is.EqualTo(300), "out of room before the reset: slowest pace, still running");
-        Assert.That(Pacer.AgentDelay(0, 0, 0, s), Is.Zero, "nothing running, nothing to hold");
-        Assert.That(Pacer.AgentDelay(4000, 2000, 0, s with { ThrottleAgents = false }), Is.Zero);
-    }
-
-    [Test]
     public void A_held_session_is_costed_at_what_it_will_draw_once_let_go()
     {
         var (b, s) = Budget(10.5, new OrchestratorSettings { BlockBudget = 11_000, PaceTargetPercent = 100 }, E(10, 1000), E(10.4, 1000));
@@ -170,30 +146,18 @@ public sealed class PacerTests
     }
 
     [Test]
+    public void Outrunning_the_window_never_holds_running_agents()
+    {
+        // M.ORCH-T706: hard cutoffs only, no throttling before them.
+        var over = Pace(10.5, 4, new OrchestratorSettings { BlockBudget = 11_000, PaceTargetPercent = 100 }, E(10, 1000), E(10.4, 1000));
+        Assert.That(over.AgentDelaySeconds, Is.Zero, "three times what fits, and still nobody is held");
+    }
+
+    [Test]
     public void Coasting_only_closes_new_sessions_it_doesnt_slow_the_running_ones()
     {
         var coast = new Pace(PaceMode.Coast, 0, 2000, 1500, 3000, "5-hour", Day, "Coasting: not even one more session fits.");
         Assert.That(coast.Advise, Is.False);
-    }
-
-    [Test]
-    public void The_status_file_carries_the_hold_and_how_long_it_has_been_in_force()
-    {
-        var path = Path.Combine(Path.GetTempPath(), "rl-" + Guid.NewGuid().ToString("N") + ".json");
-        try
-        {
-            var (b, s) = Budget(10.5, new OrchestratorSettings { BlockBudget = 11_000, PaceTargetPercent = 100 }, E(10, 1000), E(10.4, 1000));
-            var writer = new RateLimitStatusWriter(path);
-            writer.Write(b, Pacer.Compute(b, 4, null, s, Day.AddHours(10.5)));
-
-            using (var doc = JsonDocument.Parse(File.ReadAllText(path)))
-                Assert.That(doc.RootElement.GetProperty("pace_delay_seconds").GetDouble(), Is.EqualTo(40));
-            var now = DateTime.UtcNow;
-            Assert.That(writer.AgentDelay(now), Is.EqualTo(0).Within(0.1), "just set: the recent rate hasn't felt it yet");
-            Assert.That(writer.AgentDelay(now.AddMinutes(2)), Is.EqualTo(40 * (1 - Math.Exp(-2.0 / 10))).Within(0.1));
-            Assert.That(writer.AgentDelay(now.AddHours(2)), Is.LessThan(0.1), "nobody refreshed it, so the gate stopped holding long ago");
-        }
-        finally { File.Delete(path); }
     }
 
     [Test]
@@ -266,7 +230,6 @@ public sealed class PacerTests
 
         var spent = Pace(10.5, 1, s, E(10, 990));
         Assert.That(spent.Stop, Is.True, "99% is the target: nothing more is spent");
-        Assert.That(Pace(10.5, 1, s with { ThrottleAgents = false }, E(10, 990)).Stop, Is.True, "holds off or not, the stop stands");
         var unpaced = Pace(10.5, 1, s with { Pacing = false }, E(10, 990));
         Assert.That((unpaced.IsPaced, unpaced.Stop), Is.EqualTo((false, true)), "found in review: with pacing off nothing ever said stop");
         // M.ORCH-T466: and its note says so, not only "Pacing is off." while every call is refused; the board holds it too.

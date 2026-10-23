@@ -11,8 +11,8 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly JsonStore store;
     private readonly Action saved;
     private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "",
-        maxDelay = "", contextPercent = "", exemptCommands = "", paceProfile = OrchestratorSettings.LinearProfile, paceCurveK = "", weeklyTarget = "", weeklyLine = "", weeklyWindDown = "", terminalHost = WindowsTerminalChoice;
-    private bool autopilot, pacing, throttleAgents, autoLogin, rebalanceLogins = true, weeklyAware;
+        contextPercent = "", exemptCommands = "", weeklyTarget = "", weeklyLine = "", weeklyWindDown = "", terminalHost = WindowsTerminalChoice;
+    private bool autopilot, pacing, autoLogin, rebalanceLogins = true;
 
     public SettingsViewModel(JsonStore store, Action saved)
     {
@@ -39,26 +39,16 @@ public sealed class SettingsViewModel : ObservableObject
     public string WeeklyLine { get => weeklyLine; set => Set(ref weeklyLine, value); }
     /// <summary>Weekly-aware pacing's wind-down margin under the target (M.ORCH-T680), 0 to 20.</summary>
     public string WeeklyWindDown { get => weeklyWindDown; set => Set(ref weeklyWindDown, value); }
-    /// <summary>The pace curve (M.ORCH-T234): linear or front-loaded; switchable mid-window.</summary>
-    // Ctrl+click deselects this pill too: Save stored linear in place of the profile you had (M.ORCH-T431).
-    public string PaceProfile { get => paceProfile; set { if (value is not null) Set(ref paceProfile, value); } }
-    public IReadOnlyList<string> PaceProfiles => OrchestratorSettings.PaceProfiles;
-    /// <summary>The front-loaded curve's exponent (0.1 to 1).</summary>
-    public string PaceCurveK { get => paceCurveK; set => Set(ref paceCurveK, value); }
-    public bool ThrottleAgents { get => throttleAgents; set => Set(ref throttleAgents, value); }
     /// <summary>One CLI per account (M.ORCH-T605): new Claude tabs default to the Auto login.</summary>
     public bool AutoLogin { get => autoLogin; set => Set(ref autoLogin, value); }
     /// <summary>Rebalance when an account runs low (M.ORCH-T608).</summary>
     public bool RebalanceLogins { get => rebalanceLogins; set => Set(ref rebalanceLogins, value); }
-    /// <summary>Weekly-aware pacing (M.ORCH-T666), per login.</summary>
-    public bool WeeklyAware { get => weeklyAware; set => Set(ref weeklyAware, value); }
     /// <summary>Where CLIs open (M.ORCH-T618): <see cref="WindowsTerminalChoice"/> or <see cref="OrchestratorChoice"/>; only tabs
     /// opened after a Save follow it.</summary>
     // Ctrl+click on the selected pill deselects it, writing null: it stays on the one it was.
     public string TerminalHost { get => terminalHost; set { if (value is not null) Set(ref terminalHost, value); } }
     public const string WindowsTerminalChoice = "Windows Terminal", OrchestratorChoice = "Orchestrator";
     public IReadOnlyList<string> TerminalHosts { get; } = [WindowsTerminalChoice, OrchestratorChoice];
-    public string MaxDelay { get => maxDelay; set => Set(ref maxDelay, value); }
     public string ContextPercent { get => contextPercent; set => Set(ref contextPercent, value); }
     /// <summary>The commands exempt from pacing (M.ORCH-T198), comma-separated; blank exempts none.</summary>
     public string ExemptCommands { get => exemptCommands; set => Set(ref exemptCommands, value); }
@@ -181,14 +171,14 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>Every field as the panel read it. The CLI and agents change settings too while it's open (budget, pace,
     /// settings --max-sessions, --exempt): a Save writes only the fields edited here, not what it read back then (M.ORCH-T338).</summary>
-    private Fields loaded = new("", "", "", "", "", "", false, "", false, "", "", "", "", "", true, "", true, WindowsTerminalChoice, false, "", "");
+    private Fields loaded = new("", "", "", "", "", "", false, "", "", "", true, "", true, WindowsTerminalChoice, "", "");
 
     private sealed record Fields(string Block, string Weekly, string Reset, string Warn, string Max, string Provider, bool Pacing, string Target,
-        bool Throttle, string Delay, string Context, string Exempt, string Profile, string CurveK, bool AutoLogin, string WeekTarget, bool Rebalance, string Host,
-        bool WeeklyAware, string Line, string WindDown);
+        string Context, string Exempt, bool AutoLogin, string WeekTarget, bool Rebalance, string Host,
+        string Line, string WindDown);
 
     private Fields Current() => new(BlockBudget, WeeklyBudget, WeeklyReset, WarnPercent, MaxSessions, Provider, Pacing, PaceTarget,
-        ThrottleAgents, MaxDelay, ContextPercent, ExemptCommands, PaceProfile, PaceCurveK, AutoLogin, WeeklyTarget, RebalanceLogins, TerminalHost, WeeklyAware,
+        ContextPercent, ExemptCommands, AutoLogin, WeeklyTarget, RebalanceLogins, TerminalHost,
         WeeklyLine, WeeklyWindDown);
 
     public void Load()
@@ -206,14 +196,9 @@ public sealed class SettingsViewModel : ObservableObject
         WeeklyTarget = s.WeeklyAwareTarget.ToString(CultureInfo.InvariantCulture);
         WeeklyLine = s.WeeklyAwareLinePercent.ToString(CultureInfo.InvariantCulture);
         WeeklyWindDown = s.WeeklyWindDownMargin.ToString(CultureInfo.InvariantCulture);
-        PaceProfile = OrchestratorSettings.ParsePaceProfile(s.PaceProfile) ?? OrchestratorSettings.LinearProfile;
-        PaceCurveK = s.PaceCurveK.ToString(CultureInfo.InvariantCulture);
-        ThrottleAgents = s.ThrottleAgents;
         AutoLogin = s.AutoLogin;
         RebalanceLogins = s.RebalanceLogins;
-        WeeklyAware = s.WeeklyAwarePacing;
         TerminalHost = s.EmbeddedTerminals ? OrchestratorChoice : WindowsTerminalChoice;
-        MaxDelay = s.MaxAgentDelaySeconds.ToString(CultureInfo.InvariantCulture);
         // No field shows it (context cycling is off), so an out-of-range hand edit mustn't make every Save fail on it.
         ContextPercent = Math.Clamp(s.ContextCyclePercent, 10, 95).ToString(CultureInfo.InvariantCulture);
         ExemptCommands = string.Join(", ", s.ExemptCommands);
@@ -245,8 +230,6 @@ public sealed class SettingsViewModel : ObservableObject
             if (!WeeklyNumber(WeeklyWindDown, was.WindDown, onDisk.WeeklyWindDownMargin, out weekMargin)) { Error = $"Weekly wind-down margin: 0 to {OrchestratorSettings.MaxWeeklyWindDownMargin}."; return; }
             if (OrchestratorSettings.WeeklyPacingError(weekTarget, weekLine, weekMargin) is { } weeklyError) { Error = weeklyError; return; }
         }
-        if (!(double.TryParse(PaceCurveK, NumberStyles.Float, CultureInfo.InvariantCulture, out var curveK) && curveK is >= 0.1 and <= 1) && PaceCurveK != was.CurveK) { Error = "Front-loaded curve exponent: 0.1 to 1."; return; }
-        if (!(int.TryParse(MaxDelay, out var delay) && delay >= 0 && delay <= Setup.AgentGate.MaxHoldSeconds) && MaxDelay != was.Delay) { Error = $"Longest hold: 0 to {Setup.AgentGate.MaxHoldSeconds} seconds."; return; }
         if (!(int.TryParse(ContextPercent, out var cycleAt) && cycleAt is >= 10 and <= 95) && ContextPercent != was.Context) { Error = "Cycle context at: 10 to 95."; return; }
 
         if (SaveOutside(store.LoadSettings()) is null) return;
@@ -267,15 +250,10 @@ public sealed class SettingsViewModel : ObservableObject
                 WeeklyReservePercent = WeeklyTarget == was.WeekTarget ? s.WeeklyReservePercent : 100 - weekTarget,
                 WeeklyAwareLinePercent = WeeklyLine == was.Line ? s.WeeklyAwareLinePercent : weekLine,
                 WeeklyWindDownMargin = WeeklyWindDown == was.WindDown ? s.WeeklyWindDownMargin : weekMargin,
-                PaceProfile = PaceProfile == was.Profile ? s.PaceProfile : OrchestratorSettings.ParsePaceProfile(PaceProfile) ?? OrchestratorSettings.LinearProfile,
-                PaceCurveK = PaceCurveK == was.CurveK ? s.PaceCurveK : curveK,
-                ThrottleAgents = ThrottleAgents == was.Throttle ? s.ThrottleAgents : ThrottleAgents,
                 AutoLogin = AutoLogin == was.AutoLogin ? s.AutoLogin : AutoLogin,
                 RebalanceLogins = RebalanceLogins == was.Rebalance ? s.RebalanceLogins : RebalanceLogins,
-                WeeklyAwarePacing = WeeklyAware == was.WeeklyAware ? s.WeeklyAwarePacing : WeeklyAware,
                 TerminalHost = TerminalHost == was.Host ? s.TerminalHost
                     : TerminalHost == OrchestratorChoice ? OrchestratorSettings.OrchestratorHost : OrchestratorSettings.WindowsTerminalHost,
-                MaxAgentDelaySeconds = MaxDelay == was.Delay ? s.MaxAgentDelaySeconds : delay,
                 ContextCyclePercent = ContextPercent == was.Context ? s.ContextCyclePercent : cycleAt,
                 ExemptCommands = ExemptCommands == was.Exempt ? s.ExemptCommands : OrchestratorSettings.ParseCommands(ExemptCommands),
             });

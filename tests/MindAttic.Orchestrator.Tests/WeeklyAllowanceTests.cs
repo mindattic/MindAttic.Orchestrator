@@ -141,7 +141,7 @@ public sealed class WeeklyAllowanceTests
     }
 
     [Test]
-    public void The_rebalancer_leaves_an_allowed_logins_cli_on_it_instead_of_failing_it_over()
+    public void The_rebalancer_leaves_an_allowed_logins_cli_on_it_and_never_fails_over()
     {
         var dir = temps.New();
         Directory.CreateDirectory(Path.Combine(dir, ".claude"));
@@ -164,15 +164,15 @@ public sealed class WeeklyAllowanceTests
             HasApiKey = () => true, FallbackMode = () => Billing.BillingModes.Api, SetKeyChoice = (_, _) => null,
             Samples = _ => [], GlobalAccount = () => null, GlobalEmail = () => null, AllowancesOverride = () => allowances,
         };
-        var failover = Settings with { FailoverToApiKey = true };
+        var failover = Settings;
 
         allowances = [Allowed()];
         Assert.That(Rebalancer().Tick(null, [], [], failover, Now), Is.Empty, "allowed: its CLI keeps working on its login");
         Assert.That(sent, Is.Empty);
 
         allowances = [];
-        Assert.That(Rebalancer().Tick(null, [], [], failover, Now).Single().Asked, Is.True, "held to the target: past it, it goes to the API key");
-        Assert.That(sent, Has.Count.EqualTo(1));
+        Assert.That(Rebalancer().Tick(null, [], [], failover, Now), Is.Empty, "held to the target: past it, it still never fails over to the API key (M.ORCH-T706)");
+        Assert.That(sent, Is.Empty);
     }
 
     [Test]

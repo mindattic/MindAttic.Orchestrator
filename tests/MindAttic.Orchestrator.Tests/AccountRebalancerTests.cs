@@ -22,8 +22,8 @@ public sealed class AccountRebalancerTests
     private Dictionary<string, string> onOwn = new(StringComparer.Ordinal);
     private List<CliBilling> live = [];
     private Dictionary<string, ReportedUsage?> usage = new(StringComparer.OrdinalIgnoreCase); // "" is the global login
-    // The rebalancing tests leave the API-key failover (M.ORCH-T664) off; its own tests turn it on.
-    private readonly OrchestratorSettings settings = new() { FailoverToApiKey = false };
+    // The API-key failover is hard-coded off (M.ORCH-T706): the daemon never moves a CLI onto the key by itself.
+    private readonly OrchestratorSettings settings = new();
     private readonly OrchestratorSettings failover = new();
     private List<(string ConfigPath, bool Approve)> keyChoices = [];
     private bool hasKey = true;
@@ -205,253 +205,6 @@ public sealed class AccountRebalancerTests
         Assert.That(AccountRebalancer.Since(store, Now.AddMinutes(-1)).Select(m => m.Text), Is.EqualTo(new[] { "first", "second" }));
     }
 
-    // Emergency failover to the API key (M.ORCH-T664).
-
-    [Test]
-    public void A_low_login_with_no_other_room_fails_over_to_the_api_key_for_that_cli_alone()
-    {
-        var a = SignedIn("a@x.com");
-        onOwn["sess-1"] = a.Directory;
-        usage["a@x.com"] = Used(20, week: 98);
-        var rebalancer = Rebalancer();
-
-        var moves = rebalancer.Tick(null, [], [], failover, Now);
-
-        Assert.That(moves.Single().Moved, Is.False, "asked, not yet counted");
-        Assert.That(moves[0].Asked, Is.True);
-        var message = sent.Single().Message;
-        Assert.That(Field(message, "reason"), Is.EqualTo("failover"));
-        Assert.That(Field(message, "billing"), Is.EqualTo(BillingModes.Api));
-        Assert.That(ConfigDirOf(message), Is.EqualTo(a.Directory), "it keeps its login; only its billing changes");
-        Assert.That(Field(message, "now"), Is.EqualTo("true"), "past its own login's line: at once (M.ORCH-T681)");
-        Assert.That(keyChoices, Is.EqualTo(new[] { (a.ConfigPath, true) }), "the key is approved in that login's config only");
-        Assert.That(rebalancer.Failovers.Single().FromEmail, Is.EqualTo("a@x.com"));
-
-        // Seen on the key: counted and toasted, then left there: not failed over again, nor asked to move.
-        live = [live[0] with { Auth = "api-key" }];
-        moves = rebalancer.Tick(null, [], [], failover, Now.AddMinutes(1));
-        Assert.That(moves.Single().Moved, Is.True);
-        Assert.That(moves[0].Line, Does.Contain("Prose moved to the API key: Ryan of a@x.com's week at 98%"));
-        Assert.That(rebalancer.Tick(null, [], [], failover, Now.AddMinutes(2)), Is.Empty);
-        Assert.That(sent, Has.Count.EqualTo(1));
-    }
-
-    [Test]
-    public void A_login_with_room_is_still_preferred_to_the_api_key()
-    {
-        var b = SignedIn("b@x.com");
-        usage[""] = Used(99);
-        usage["b@x.com"] = Used(10);
-        var rebalancer = Rebalancer();
-
-        Assert.That(rebalancer.Tick(null, [], [], failover, Now).Single().Moved, Is.True);
-        Assert.That(Field(sent.Single().Message, "reason"), Is.EqualTo("account"));
-        Assert.That(ConfigDirOf(sent.Single().Message), Is.EqualTo(b.Directory));
-        Assert.That(keyChoices, Is.Empty);
-        Assert.That(rebalancer.Failovers, Is.Empty);
-    }
-
-    [Test]
-    public void A_mid_turn_limit_error_resumes_on_the_api_key_at_once()
-    {
-        SignedIn("b@x.com");
-        usage[""] = Used(99);
-        usage["b@x.com"] = Used(10);
-        var rebalancer = Rebalancer();
-        Assert.That(rebalancer.Tick(null, [], [], failover, Now).Single().Moved, Is.True, "moved toward b at its idle point");
-
-        // Before it gets there a limit error ends its turn: b is taken (it's on its way), and it can't wait out the cool-down.
-        var hit = new LimitHit(Now.AddMinutes(2), LimitKind.Session, Now.AddHours(1));
-        TranscriptSession[] sessions = [new("sess-1", live[0].Cwd!, Now.AddMinutes(2), default, null) { Hits = [hit] }];
-        var moves = rebalancer.Tick(null, [], [], failover, Now.AddMinutes(3), sessions);
-
-        Assert.That(moves.Single().Asked, Is.True);
-        var message = sent.Last().Message;
-        Assert.That(Field(message, "reason"), Is.EqualTo("failover"));
-        Assert.That(Field(message, "now"), Is.EqualTo("true"));
-        Assert.That(ConfigDirOf(message), Is.EqualTo(""), "the global login it's on");
-        Assert.That(rebalancer.Failovers.Single().UntilUtc, Is.EqualTo(hit.ResetUtc));
-
-        live = [live[0] with { Auth = "api-key" }];
-        moves = rebalancer.Tick(null, [], [], failover, Now.AddMinutes(4), sessions);
-        Assert.That(moves.Single().Line, Does.Contain("Prose CLI moved to API key: Ryan's 5-hour limit was hit").And.Contain("at once"));
-    }
-
-    [Test]
-    public void A_failed_over_cli_moves_back_to_its_login_after_the_reset()
-    {
-        var a = SignedIn("a@x.com");
-        onOwn["sess-1"] = a.Directory;
-        usage["a@x.com"] = Used(99);
-        store = new JsonStore(Path.Combine(temps.New(), "store"));
-        Assert.That(Rebalancer().Tick(null, [], [], failover, Now).Single().Asked, Is.True);
-        live = [live[0] with { Auth = "api-key" }];
-
-        // The daemon restarts before the reset: the failover is remembered, and nothing moves back while the login's spent.
-        var rebalancer = Rebalancer();
-        Assert.That(rebalancer.Failovers.Single().SessionId, Is.EqualTo("sess-1"));
-        Assert.That(rebalancer.Tick(null, [], [], failover, Now.AddMinutes(1)).Single().Moved, Is.True, "seen on the key");
-        Assert.That(rebalancer.Tick(null, [], [], failover, Now.AddHours(1)), Is.Empty);
-
-        // Past the reset, with a fresh window: asked back onto its login, and the key rejected there.
-        var after = Now.AddHours(2).AddMinutes(1);
-        usage["a@x.com"] = new ReportedUsage(new ReportedWindow(3, after.AddHours(5)), new ReportedWindow(40, after.AddDays(3)), after);
-        var moves = rebalancer.Tick(null, [], [], failover, after);
-        Assert.That(moves.Single().Asked, Is.True);
-        Assert.That(rebalancer.Failovers, Has.Count.EqualTo(1), "not counted until it bills its login");
-
-        // Restarted billing its login again: counted.
-        live = [new CliBilling(4343, "sess-1", @"D:\Projects\Prose", "subscription", Tab)];
-        moves = rebalancer.Tick(null, [], [], failover, after.AddMinutes(5));
-        Assert.That(moves.Single().Moved, Is.True);
-        Assert.That(moves[0].Line, Does.Contain("Prose CLI moved back to Ryan of a@x.com").And.Contain("billed only the gap (2h 1m)"));
-        var message = sent.Last().Message;
-        Assert.That(Field(message, "reason"), Is.EqualTo("failover"));
-        Assert.That(Field(message, "billing"), Is.EqualTo(BillingModes.Team));
-        Assert.That(ConfigDirOf(message), Is.EqualTo(a.Directory));
-        Assert.That(keyChoices.Last(), Is.EqualTo((a.ConfigPath, false)));
-        Assert.That(rebalancer.Failovers, Is.Empty);
-        Assert.That(AccountRebalancer.LoadFailovers(store), Is.Empty);
-    }
-
-    [Test]
-    public void No_vault_key_or_the_setting_off_leaves_it_waiting()
-    {
-        usage[""] = Used(99);
-        hasKey = false;
-        var moves = Rebalancer().Tick(null, [], [], failover, Now);
-        Assert.That(moves.Single().Moved, Is.False);
-        Assert.That(moves[0].Line, Does.Contain("no Claude key in the MindAttic Vault"));
-
-        hasKey = true;
-        Assert.That(Rebalancer().Tick(null, [], [], settings, Now), Is.Empty);
-        Assert.That(sent, Is.Empty);
-    }
-
-    // Past a login's line, straight to the fallback, the API key (M.ORCH-T681).
-
-    /// <summary>Taken through a failover to the key: asked, then seen on it.</summary>
-    private IReadOnlyList<Rebalanced> FailOver(AccountRebalancer rebalancer, OrchestratorSettings with, DateTime at)
-    {
-        Assert.That(rebalancer.Tick(null, [], [], with, at).Single().Asked, Is.True);
-        live = [live[0] with { Auth = "api-key" }];
-        return rebalancer.Tick(null, [], [], with, at.AddSeconds(30));
-    }
-
-    [Test]
-    public void At_98_percent_of_the_5_hour_window_the_cli_moves_to_the_key_at_once_with_no_other_login_preferred()
-    {
-        var a = SignedIn("a@x.com");
-        SignedIn("b@x.com");                 // free, with all its room: never a target for a@x.com's CLI
-        onOwn["sess-1"] = a.Directory;
-        usage["a@x.com"] = Used(98);
-        usage["b@x.com"] = Used(0);
-        var rebalancer = Rebalancer();
-
-        var moves = FailOver(rebalancer, failover, Now);
-
-        var message = sent.Single().Message;
-        Assert.That(Field(message, "reason"), Is.EqualTo("failover"));
-        Assert.That(Field(message, "billing"), Is.EqualTo(BillingModes.Api));
-        Assert.That(Field(message, "now"), Is.EqualTo("true"), "at its next tool call, not its next idle point");
-        Assert.That(ConfigDirOf(message), Is.EqualTo(a.Directory), "it keeps its login and its session");
-        Assert.That(Field(message, "session"), Is.EqualTo("sess-1"));
-        Assert.That(moves.Single().Moved, Is.True);
-        Assert.That(moves[0].Line, Does.Contain("Prose moved to the API key: Ryan of a@x.com's 5-hour window at 98%"));
-    }
-
-    [Test]
-    public void At_the_weekly_target_from_the_settings_the_cli_moves_to_the_key()
-    {
-        var a = SignedIn("a@x.com");
-        SignedIn("b@x.com");
-        onOwn["sess-1"] = a.Directory;
-        usage["a@x.com"] = Used(20, week: 90);
-        usage["b@x.com"] = Used(0, week: 0);
-
-        // The line is the setting's (100 minus the weekly reserve): at the default reserve of 5, 90% isn't past it.
-        Assert.That(Rebalancer().Tick(null, [], [], failover, Now), Is.Empty);
-        Assert.That(sent, Is.Empty);
-
-        var reserve10 = failover with { WeeklyReservePercent = 10 };
-        var moves = FailOver(Rebalancer(), reserve10, Now);
-
-        Assert.That(Field(sent.Single().Message, "billing"), Is.EqualTo(BillingModes.Api));
-        Assert.That(ConfigDirOf(sent.Single().Message), Is.EqualTo(a.Directory), "not b@x.com's login, though it has room");
-        Assert.That(moves.Single().Line, Does.Contain("Prose moved to the API key: Ryan of a@x.com's week at 90%"));
-    }
-
-    [Test]
-    public void Nothing_moves_when_the_fallback_is_not_the_api_key_and_it_is_said_plainly_once()
-    {
-        var a = SignedIn("a@x.com");
-        SignedIn("b@x.com");
-        onOwn["sess-1"] = a.Directory;
-        usage["a@x.com"] = Used(99);
-        usage["b@x.com"] = Used(0);
-        fallbackMode = BillingModes.Team;
-        var rebalancer = Rebalancer();
-
-        var moves = rebalancer.Tick(null, [], [], failover, Now);
-
-        Assert.That(moves.Single().Moved, Is.False);
-        Assert.That(moves[0].NeedsYou, Is.True);
-        Assert.That(moves[0].Line, Does.Contain("the fallback isn't the API key").And.Contain("Claude Team"));
-        Assert.That(sent, Is.Empty, "neither to the key nor to another person's login");
-        Assert.That(keyChoices, Is.Empty);
-        Assert.That(rebalancer.Tick(null, [], [], failover, Now + AccountRebalancer.CoolDown + TimeSpan.FromMinutes(1)), Is.Empty, "said once");
-    }
-
-    [Test]
-    public void A_failover_the_tab_took_but_dropped_is_not_counted_and_is_asked_again()
-    {
-        var a = SignedIn("a@x.com");
-        onOwn["sess-1"] = a.Directory;
-        usage["a@x.com"] = Used(99);
-        var rebalancer = Rebalancer();
-        Assert.That(rebalancer.Tick(null, [], [], failover, Now).Single().Asked, Is.True);
-
-        // An old tab restarted it on its login without the key: not on the key, said, and the key rejected again.
-        live = [new CliBilling(4343, "sess-1", @"D:\Projects\Prose", "subscription", Tab)];
-        var moves = rebalancer.Tick(null, [], [], failover, Now.AddSeconds(30));
-        var dropped = moves.Single(m => m.NeedsYou);
-        Assert.That(dropped.Moved, Is.False);
-        Assert.That(dropped.Line, Does.Contain("didn't move to the API key").And.Contain("Close and reopen this tab"));
-        Assert.That(moves.Any(m => m.Moved), Is.False);
-        Assert.That(rebalancer.Failovers, Is.Empty);
-        Assert.That(keyChoices.Last(), Is.EqualTo((a.ConfigPath, false)));
-
-        // A tab that never restarts it is dropped too, once the time for it is up.
-        Assert.That(rebalancer.Tick(null, [], [], failover, Now.AddMinutes(1)), Is.Empty, "not asked again at once");
-        var again = rebalancer.Tick(null, [], [], failover, Now.AddSeconds(30) + AccountRebalancer.BackRetry);
-        Assert.That(again.Single().Asked, Is.True, "asked again after the retry");
-        Assert.That(sent, Has.Count.EqualTo(2));
-        var late = rebalancer.Tick(null, [], [], failover, Now.AddSeconds(30) + AccountRebalancer.BackRetry + AccountRebalancer.ConfirmWithin);
-        Assert.That(late.Single(m => m.NeedsYou).Line, Does.Contain("never restarted"));
-    }
-
-    [Test]
-    public void A_move_back_the_tab_dropped_keeps_it_on_the_key_and_is_said()
-    {
-        var a = SignedIn("a@x.com");
-        onOwn["sess-1"] = a.Directory;
-        usage["a@x.com"] = Used(99);
-        var rebalancer = Rebalancer();
-        Assert.That(FailOver(rebalancer, failover, Now).Single().Moved, Is.True);
-
-        var after = Now.AddHours(2).AddMinutes(1);
-        usage["a@x.com"] = new ReportedUsage(new ReportedWindow(3, after.AddHours(5)), new ReportedWindow(40, after.AddDays(3)), after);
-        Assert.That(rebalancer.Tick(null, [], [], failover, after).Single().Asked, Is.True);
-
-        // Restarted, still on the key: it stays booked on it, the key approved again, and you're told.
-        live = [new CliBilling(4343, "sess-1", @"D:\Projects\Prose", "api-key", Tab)];
-        var moves = rebalancer.Tick(null, [], [], failover, after.AddMinutes(1));
-        Assert.That(moves.Single().NeedsYou, Is.True);
-        Assert.That(moves[0].Line, Does.Contain("didn't move back").And.Contain("Close and reopen this tab"));
-        Assert.That(rebalancer.Failovers, Has.Count.EqualTo(1));
-        Assert.That(keyChoices.Last(), Is.EqualTo((a.ConfigPath, true)));
-    }
-
     // A member using Claude outside the orchestrator (M.ORCH-T682): their login's CLIs stay on it, held to a lower ceiling.
 
     private static readonly DateTime Window = Now.AddMinutes(25), Week = Now.AddDays(3);
@@ -539,6 +292,21 @@ public sealed class AccountRebalancerTests
         Assert.That(ended.Started, Is.Null, "only a stretch's start is texted");
         Assert.That(ended.Line, Does.Contain("back to 98% of this window"));
         Assert.That(PacedAs(rebalancer).Settings.PaceTargetPercent, Is.EqualTo(98));
+        Assert.That(sent, Is.Empty);
+    }
+
+    [Test]
+    public void Outside_use_is_still_watched_every_tick_with_rebalancing_off_and_failover_locked_off()
+    {
+        // M.ORCH-T706: Tick returned before WatchOutside when both were off, so detection, its end and its Psst text stopped.
+        OnA();
+        Readings(Now.AddMinutes(-25), [20, 20, 22, 23, 25, 26], Idle(6));
+        var rebalancer = Rebalancer();
+        var quiet = failover with { RebalanceLogins = false };
+
+        Assert.That(quiet.FailoverToApiKey, Is.False, "locked off");
+        Assert.That(rebalancer.Tick(null, [], [], quiet, Now).Single().Started, Is.Not.Null);
+        Assert.That(rebalancer.Tick(null, [], [], quiet, Now.AddMinutes(20)).Single().Title, Does.EndWith("stopped using Claude"));
         Assert.That(sent, Is.Empty);
     }
 

@@ -65,7 +65,7 @@ public sealed class JsonStoreTests
         Write("settings.json", """{ "MaxConcurrentSessions": 9, "QuietHours": ["22:00-07:00"], "PaceProfile": "front-loaded" }""");
         var store = new JsonStore(dir);
         var s = store.LoadSettings();
-        Assert.That((s.MaxConcurrentSessions, s.QuietHours.Single(), s.PaceProfile), Is.EqualTo((9, "22:00-07:00", "front-loaded")));
+        Assert.That((s.MaxConcurrentSessions, s.QuietHours.Single(), s.PaceProfile), Is.EqualTo((9, "22:00-07:00", "linear")), "a saved front-loaded profile is ignored (M.ORCH-T706)");
         Assert.That(System.IO.File.Exists(File("settings.json")), Is.False);
         Assert.That(System.IO.File.ReadAllText(File("settings.json.bak")), Does.Contain("\"MaxConcurrentSessions\": 9"), "the old file kept as .bak");
         Assert.That(Rows(store.Db, "SELECT name, value FROM settings WHERE name IN ('MaxConcurrentSessions', 'QuietHours') ORDER BY name"),

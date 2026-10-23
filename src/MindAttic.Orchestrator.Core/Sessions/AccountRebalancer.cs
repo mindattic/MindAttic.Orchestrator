@@ -261,7 +261,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
     public IReadOnlyList<Rebalanced> Tick(Pace? globalPace, IReadOnlyList<AccountPace> accounts, IReadOnlyList<HostSession> hosts,
         OrchestratorSettings settings, DateTime nowUtc, IReadOnlyList<TranscriptSession>? sessions = null)
     {
-        if (!settings.RebalanceLogins && !settings.FailoverToApiKey && Book().Count == 0) return [];
+        // No early return here: outside-use detection (M.ORCH-T682, T702) runs every tick, whatever else is off (M.ORCH-T706).
         foreach (var old in tried.Where(t => nowUtc - t.Value >= CoolDown).Select(t => t.Key).ToList()) tried.Remove(old);
 
         IReadOnlyList<AccountDir> signedIn;
@@ -293,6 +293,8 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
         // Someone using Claude outside the orchestrator (M.ORCH-T682): judged first, so their login's line is judged by the meter.
         WatchOutside(signedIn, live, LoginOf, settings, nowUtc, results);
         var onKey = MoveBack(live, DirOf, UsageOf, globalUsage, globalPace, paces, target, StopOf, AllowedFor, nowUtc, results);
+        // Rebalancing is off, and failover to the API key is hard-coded off: nothing more to move.
+        if (!settings.RebalanceLogins && !settings.FailoverToApiKey) return results;
 
         var busy = new HashSet<string>(picker.Busy(nowUtc), StringComparer.OrdinalIgnoreCase);
         foreach (var cli in live) if (LoginOf(cli) is { } e) busy.Add(e);

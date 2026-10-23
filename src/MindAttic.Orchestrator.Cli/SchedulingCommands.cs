@@ -507,6 +507,14 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
     /// second; null otherwise.</summary>
     internal static (int Min, int Max)? ParseBounds(string text, int lo, int hi) => OutsideTuning.ParseBounds(text, lo, hi);
 
+    /// <summary>Why a retired option is refused (M.ORCH-T706): the owner's usage rules are hard-coded, so these can't be set.</summary>
+    internal static string? LockedRule(Settings settings) =>
+        settings.WeeklyAware is not null ? "--weekly-aware is locked off: no weekly-aware pacing, ever (the owner's rule, M.ORCH-T706)."
+        : settings.Failover is not null ? "--failover is locked off: API billing is for emergencies and only the owner switches it on (M.ORCH-T706)."
+        : settings.ThrottleAgents is not null ? "--throttle-agents is locked off: hard cutoffs only, agents are never held (M.ORCH-T706)."
+        : settings.PaceProfile is not null || settings.PaceCurveK is not null ? "Pace profiles are gone: hard cutoffs only, no front-loaded or throttled curve (M.ORCH-T706)."
+        : null;
+
     public override int Execute(CommandContext context, Settings settings)
     {
         if (settings.StaleHours is < 0) { AnsiConsole.MarkupLine("[red]--stale-hours can't be negative.[/]"); return 1; }
@@ -519,13 +527,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             AnsiConsole.MarkupLine($"[red]No provider \"{Markup.Escape(typed)}\"; use one of {Markup.Escape(string.Join(", ", MindAttic.Orchestrator.Sessions.SessionControl.Providers))}.[/]");
             return 1;
         }
-        string? profile = null;
-        if (settings.PaceProfile is { } typedProfile && (profile = OrchestratorSettings.ParsePaceProfile(typedProfile)) is null)
-        {
-            AnsiConsole.MarkupLine($"[red]No pace profile \"{Markup.Escape(typedProfile)}\"; use {string.Join(" or ", OrchestratorSettings.PaceProfiles)}.[/]");
-            return 1;
-        }
-        if (settings.PaceCurveK is { } typedK && !(typedK is >= 0.1 and <= 1)) { AnsiConsole.MarkupLine("[red]--pace-curve-k is 0.1 to 1.[/]"); return 1; }
+        if (LockedRule(settings) is { } locked) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(locked)}[/]"); return 1; }
         var store = Ctx.Store();
         // Shown as defaults when settings.json can't be read, but never saved over it (that would wipe everything in it).
         var readable = store.TryLoad<OrchestratorSettings>("settings", out var s);
@@ -536,13 +538,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             DefaultProvider = provider ?? s.DefaultProvider,
             StaleAfterHours = settings.StaleHours ?? s.StaleAfterHours,
             GroomAfterDays = settings.GroomDays ?? s.GroomAfterDays,
-            PaceProfile = profile ?? s.PaceProfile,
-            PaceCurveK = settings.PaceCurveK ?? s.PaceCurveK,
         };
         if (settings.MaxDelay is < 0 or > MindAttic.Orchestrator.Setup.AgentGate.MaxHoldSeconds) { AnsiConsole.MarkupLine($"[red]--max-delay is 0 to {MindAttic.Orchestrator.Setup.AgentGate.MaxHoldSeconds}.[/]"); return 1; }
         s = s with
         {
-            ThrottleAgents = settings.ThrottleAgents ?? s.ThrottleAgents,
             MaxAgentDelaySeconds = settings.MaxDelay ?? s.MaxAgentDelaySeconds,
             MaxSubagents = settings.MaxSubagents ?? s.MaxSubagents,
         };
@@ -556,7 +555,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         var changed = settings.OutsideCeiling is not null || settings.OutsideQuiet is not null || settings.OutsideMargin is not null ||
             settings.OutsideMarginShare is not null || settings.OutsideHeadroom is not null || settings.OutsideCeilingBounds is not null ||
             settings.OutsideQuietBounds is not null || settings.OutsideMarginBounds is not null || settings.OutsideHeadroomBounds is not null ||
-            settings.GroomDays is not null || settings.GitHubIntake is not null || settings.ThrottleAgents is not null || settings.MaxDelay is not null || settings.MaxSubagents is not null
+            settings.GroomDays is not null || settings.GitHubIntake is not null || settings.MaxDelay is not null || settings.MaxSubagents is not null
             || settings.DiskWarnGb is not null || settings.DiskCriticalGb is not null;
         if (settings.GitHubIntake is { } intake) s = s with { GitHubIntake = intake };
         if (settings.Notify is { } notify)
@@ -597,11 +596,6 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         if (settings.Rebalance is { } rebalance)
         {
             s = s with { RebalanceLogins = rebalance };
-            changed = true;
-        }
-        if (settings.Failover is { } failover)
-        {
-            s = s with { FailoverToApiKey = failover };
             changed = true;
         }
         if (settings.TerminalHost is { } typedHost)
@@ -695,11 +689,6 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { OutsideUsePsstTo = off ? "" : psstTo.Trim() };
             changed = true;
         }
-        if (settings.WeeklyAware is { } weeklyAware)
-        {
-            s = s with { WeeklyAwarePacing = weeklyAware };
-            changed = true;
-        }
         if (settings.WeeklyTarget is not null || settings.WeeklyReserve is not null || settings.WeeklyLine is not null || settings.WeeklyWindDown is not null)
         {
             var weeklyTarget = settings.WeeklyTarget ?? s.WeeklyAwareTarget;
@@ -788,7 +777,6 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             };
             changed = true;
         }
-        changed |= profile is not null || settings.PaceCurveK is not null;
         changed |= settings.MaxSessions is not null || settings.Autopilot is not null || settings.Provider is not null || settings.StaleHours is not null;
         if (changed && !readable)
         {
@@ -812,15 +800,12 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             (s.ResumeAfterReset ? " · a CLI stopped for a window is told to carry on once it resets" : " · you're alerted when a CLI stopped for a window could carry on after its reset") +
             (s.AutoLogin ? " · a new Claude tab goes on a free per-CLI login (one CLI per account), else the global login" : " · a new Claude tab uses the global login unless given --account") +
             (s.RebalanceLogins ? " · a CLI on a login that runs low moves to a free login with more headroom" : " · a CLI stays on its login when it runs low") +
-            (s.FailoverToApiKey ? " · a CLI whose login runs out with no login to move to bills the API key until it resets" : " · a CLI whose login runs out waits for its reset") +
+            " · a CLI whose login runs out waits for its reset (API billing is only ever switched on by you)" +
             (s.EmbeddedTerminals ? " · CLIs open as panes inside the Orchestrator (Windows Terminal while no dashboard is open)" : " · CLIs open in Windows Terminal, a window per person"));
         AnsiConsole.MarkupLine($"  5h budget {(s.BlockBudget is { } b ? Formatting.Tokens(b) : "none (Claude's report, else learned from limit hits)")} · weekly {(s.WeeklyBudget is { } w ? Formatting.Tokens(w) : "none (Claude's report, else learned)")} · week resets {(WeeklyReset.TryParse(s.WeeklyReset, out var r) && r is { } wr ? wr.Display + " unless Claude reports another" : "as Claude reports, else learned, else rolling 7 days")} · warn at {s.WarnPercent}%" +
-            (s.WeeklyAwarePacing
-                ? $" · weekly-aware pacing [green]on[/]: from {s.WeeklyAwareLine}% of its week each login's 5-hour windows are held only as far as its week needs to land at its {s.WeeklyAwareTarget}% target as it resets (weekly reserve {s.WeeklyReservePercent}%; stops at {s.WeeklyStopPercent}%; winds down at {s.WeeklyAwareWindDown}% only while there's no plan for the week), scarce room going to higher-priority tickets first, and a ticket a login can't fit goes to one that can, else the fallback login"
-                : $" · weekly reserve {s.WeeklyReservePercent}% (each account's CLIs stop at {s.WeeklyStopPercent}% of its week) · weekly-aware pacing off"));
+            $" · weekly reserve {s.WeeklyReservePercent}% (each account's CLIs stop at {s.WeeklyStopPercent}% of its week) · no weekly-aware pacing, ever");
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +
-            (s.FrontLoaded ? $" · profile front-loaded (target × elapsed^{s.PaceExponent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}; no new subagent or ticket past {MindAttic.Orchestrator.Budget.Pacer.FrontLoadedWindDownShare:P0})" : " · profile linear") +
-            (s.ThrottleAgents ? $" · running agents held up to {s.MaxAgentDelaySeconds}s per tool call when the burn won't last" : " · running agents never held") +
+            " · running agents never held" +
             $" · subagents: as many as the pace allows, at most {s.MaxSubagents}");
         AnsiConsole.MarkupLine($"  outside use (someone using Claude elsewhere on a login): its 5-hour ceiling drops to {s.OutsideUseCeilingPercent}% " +
             $"(learned {s.OutsideUseCeilingMinPercent}-{s.OutsideUseCeilingMaxPercent}%) · back after {s.OutsideUseQuietMinutes} quiet min ({s.OutsideUseQuietMinMinutes}-{s.OutsideUseQuietMaxMinutes}) · " +

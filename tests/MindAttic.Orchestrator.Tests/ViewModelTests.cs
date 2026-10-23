@@ -57,8 +57,6 @@ public sealed class ViewModelTests
             (v => v.MaxSessions = "51", "Max sessions: 1 to 50"),
             (v => v.MaxSessions = "x", "Max sessions: 1 to 50"),
             (v => v.PaceTarget = "0", "Pace target: 1 to 100"),
-            (v => v.MaxDelay = "-1", "Longest hold"),
-            (v => v.MaxDelay = (Setup.AgentGate.MaxHoldSeconds + 1).ToString(), "Longest hold"),
             (v => v.ContextPercent = "9", "Cycle context at: 10 to 95"),
             (v => v.ContextPercent = "96", "Cycle context at: 10 to 95"),
         };
@@ -210,20 +208,20 @@ public sealed class ViewModelTests
     [Test]
     public void The_weekly_pacing_fields_round_trip_through_the_panel_and_are_validated()
     {
-        // M.ORCH-T680: the toggle, the weekly target (saved as the reserve), the take-in line and the wind-down margin.
+        // M.ORCH-T680: the weekly target (saved as the reserve), the take-in line and the wind-down margin.
         var store = new JsonStore(dir);
         store.SaveSettings(store.LoadSettings());
         var vm = new SettingsViewModel(store, () => { });
-        Assert.That((vm.WeeklyAware, vm.WeeklyTarget, vm.WeeklyLine, vm.WeeklyWindDown), Is.EqualTo((false, "95", "75", "3")), "the defaults");
+        Assert.That((vm.WeeklyTarget, vm.WeeklyLine, vm.WeeklyWindDown), Is.EqualTo(("95", "75", "3")), "the defaults");
 
-        (vm.WeeklyAware, vm.WeeklyTarget, vm.WeeklyLine, vm.WeeklyWindDown) = (true, "90", "70", "4");
+        (vm.WeeklyTarget, vm.WeeklyLine, vm.WeeklyWindDown) = ("85", "70", "4");
         vm.SaveCommand.Execute(null);
         var saved = store.LoadSettings();
         Assert.That((vm.Error, saved.WeeklyAwarePacing, saved.WeeklyReservePercent, saved.WeeklyAwareLinePercent, saved.WeeklyWindDownMargin),
-            Is.EqualTo(("", true, 10, 70, 4)));
-        Assert.That((saved.WeeklyAwareTarget, saved.WeeklyAwareWindDown), Is.EqualTo((90, 86)));
+            Is.EqualTo(("", false, 15, 70, 4)), "weekly-aware pacing can't be switched on");
+        Assert.That((saved.WeeklyAwareTarget, saved.WeeklyAwareWindDown), Is.EqualTo((85, 81)));
         var again = new SettingsViewModel(store, () => { });
-        Assert.That((again.WeeklyAware, again.WeeklyTarget, again.WeeklyLine, again.WeeklyWindDown), Is.EqualTo((true, "90", "70", "4")));
+        Assert.That((again.WeeklyTarget, again.WeeklyLine, again.WeeklyWindDown), Is.EqualTo(("85", "70", "4")));
 
         again.WeeklyTarget = "65";
         again.SaveCommand.Execute(null);
@@ -234,7 +232,7 @@ public sealed class ViewModelTests
         (again.WeeklyTarget, again.WeeklyWindDown) = ("90", "25");
         again.SaveCommand.Execute(null);
         Assert.That(again.Error, Does.StartWith("Weekly wind-down"));
-        Assert.That(store.LoadSettings().WeeklyReservePercent, Is.EqualTo(10), "nothing invalid was saved");
+        Assert.That(store.LoadSettings().WeeklyReservePercent, Is.EqualTo(15), "nothing invalid was saved");
     }
 
     [Test]
@@ -254,20 +252,6 @@ public sealed class ViewModelTests
         Assert.That((vm.Error, saved.WarnPercent, saved.BlockBudget, saved.MaxConcurrentSessions, saved.Pacing, string.Join(",", saved.ExemptCommands)),
             Is.EqualTo(("", 70, (long?)30_000_000, 8, false, "/do")));
         Assert.That((vm.BlockBudget, vm.MaxSessions), Is.EqualTo(("30M", "8")), "and the panel shows what's saved now");
-    }
-
-    [Test]
-    public void Deselecting_the_pace_profile_pill_keeps_the_profile()
-    {
-        // M.ORCH-T431: Ctrl+click on the selected pill wrote null, and Save stored linear.
-        var store = new JsonStore(dir);
-        store.SaveSettings(store.LoadSettings() with { PaceProfile = OrchestratorSettings.FrontLoadedProfile });
-        var vm = new SettingsViewModel(store, () => { });
-        vm.PaceProfile = null!;
-        vm.WarnPercent = "70";
-        vm.SaveCommand.Execute(null);
-
-        Assert.That((vm.PaceProfile, store.LoadSettings().PaceProfile), Is.EqualTo((OrchestratorSettings.FrontLoadedProfile, OrchestratorSettings.FrontLoadedProfile)));
     }
 
     [Test]

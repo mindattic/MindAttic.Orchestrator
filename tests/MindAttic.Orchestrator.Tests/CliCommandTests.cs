@@ -556,10 +556,15 @@ public sealed class CliCommandTests
     public void Settings_sets_weekly_pacings_target_line_and_wind_down_and_refuses_bad_ones()
     {
         // M.ORCH-T680: the weekly target is 100 minus the reserve; the line must sit below it; the margin is 0 to 20.
-        Assert.That(Run("settings", "--weekly-aware", "true", "--weekly-target", "90", "--weekly-line", "70", "--weekly-wind-down", "4"), Is.Zero);
+        Assert.That(Run("settings", "--weekly-target", "90", "--weekly-line", "70", "--weekly-wind-down", "4"), Is.Zero);
         var s = Store.LoadSettings();
         Assert.That((s.WeeklyAwarePacing, s.WeeklyReservePercent, s.WeeklyAwareLinePercent, s.WeeklyWindDownMargin, s.WeeklyAwareWindDown),
-            Is.EqualTo((true, 10, 70, 4, 86)));
+            Is.EqualTo((false, 10, 70, 4, 86)));
+        // M.ORCH-T706: the retired pacing, throttling, profile and failover options are refused, and nothing changes.
+        foreach (var locked in new[] { new[] { "--weekly-aware", "true" }, new[] { "--failover", "true" }, new[] { "--throttle-agents", "true" }, new[] { "--pace-profile", "front-loaded" }, new[] { "--pace-curve-k", "0.5" } })
+            Assert.That(Run(["settings", .. locked]), Is.EqualTo(1), string.Join(" ", locked));
+        Assert.That((Store.LoadSettings().WeeklyAwarePacing, Store.LoadSettings().ThrottleAgents, Store.LoadSettings().FailoverToApiKey, Store.LoadSettings().PaceProfile),
+            Is.EqualTo((false, false, false, OrchestratorSettings.LinearProfile)));
         Assert.That(Run("settings", "--weekly-line", "90"), Is.EqualTo(1), "the line isn't below the target");
         Assert.That(Run("settings", "--weekly-reserve", "35"), Is.EqualTo(1), "a 65% target would sit under the 70% line");
         Assert.That(Run("settings", "--weekly-wind-down", "21"), Is.EqualTo(1));

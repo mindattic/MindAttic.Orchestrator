@@ -55,8 +55,10 @@ public sealed record OrchestratorSettings
     /// room goes to higher-priority tickets first; <c>next --claim</c> hands a ticket that doesn't fit what's left to another
     /// signed-in login with room, else to the fallback login; the week stops at <see cref="WeeklyAwareTarget"/> (and winds down at
     /// <see cref="WeeklyAwareWindDown"/> only while there's no plan for it). Each window's planned and actual end percent is logged
-    /// (<see cref="Budget.PacePlan"/>). Off by default: nothing changes.</summary>
-    public bool WeeklyAwarePacing { get; init; }
+    /// (<see cref="Budget.PacePlan"/>). Hard-coded off (M.ORCH-T706): the owner's rule is no weekly-aware pacing, ever, so a saved
+    /// value can't turn it back on.</summary>
+    [JsonIgnore]
+    public bool WeeklyAwarePacing => false;
 
     /// <summary>The week's percent from which weekly-aware pacing takes the week in (M.ORCH-T680); below the weekly target.</summary>
     public int WeeklyAwareLinePercent { get; init; } = DefaultWeeklyAwareLinePercent;
@@ -94,7 +96,8 @@ public sealed record OrchestratorSettings
     /// left of the target evenly to the reset; <see cref="FrontLoadedProfile"/> aims at <see cref="PaceTargetPercent"/> ×
     /// elapsed^<see cref="PaceCurveK"/>, spending faster early and easing off toward the reset, and starts no new subagent past
     /// <see cref="Budget.Pacer.FrontLoadedWindDownShare"/>. Read on every pace check, so a switch mid-window applies at once.</summary>
-    public string PaceProfile { get; init; } = LinearProfile;
+    [JsonIgnore]
+    public string PaceProfile => LinearProfile;
 
     /// <summary>The front-loaded curve's exponent: under 1 bends it up early (0.55 by default); 1 is a straight line.</summary>
     public double PaceCurveK { get; init; } = 0.55;
@@ -123,7 +126,8 @@ public sealed record OrchestratorSettings
 
     /// <summary>On: while the forecast says the burn won't last until the reset, running Claude Code agents
     /// wait before each tool call (the pace-gate hook), so they slow down instead of hitting the wall.</summary>
-    public bool ThrottleAgents { get; init; } = true;
+    [JsonIgnore]
+    public bool ThrottleAgents => false;
 
     /// <summary>The slash commands exempt from orchestration pacing (M.ORCH-T198): a turn whose prompt starts with one skips
     /// every Orchestrator gate (no pace delay, no subagent hold, no stop refusal) until it ends, and a Skill call naming one
@@ -223,8 +227,10 @@ public sealed record OrchestratorSettings
     /// pace says stop) and no signed-in login has room to rebalance it onto, the daemon moves that one CLI onto the Vault key,
     /// resuming its session (at once when a limit error ended its turn), with the billing mode left as it is, and moves it back
     /// once its login resets. A CLI on someone's own per-CLI login goes straight to the key at its 5-hour pace target or weekly
-    /// target, never to another person's login, while the fallback is the API key (M.ORCH-T681). False leaves it waiting for the reset.</summary>
-    public bool FailoverToApiKey { get; init; } = true;
+    /// target, never to another person's login, while the fallback is the API key (M.ORCH-T681). Hard-coded off (M.ORCH-T706): API billing is for
+    /// real emergencies and only the owner switches it on, so the daemon never moves a CLI onto the key by itself.</summary>
+    [JsonIgnore]
+    public bool FailoverToApiKey => false;
 
     // ---- A member's own use outside the orchestrator (M.ORCH-T682) ----
     // When a login's meter rises by more than its CLIs here spent (the desktop app, claude.ai, a phone), that login's 5-hour pace

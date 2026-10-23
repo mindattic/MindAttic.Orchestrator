@@ -328,7 +328,7 @@ dotnet test MindAttic.Orchestrator.slnx
 
 - Budgets and pacing are Claude's (from Claude Code's own count, else learned from its limit hits). Codex (`~/.codex/sessions`) and Gemini CLI (`~/.gemini/tmp/*/chats`) usage counts toward repo activity and per-repo totals and is shown per provider, with Codex's own 5-hour and weekly percentages; Kimi writes no local session log, so its sessions show as Launcher tabs but aren't counted.
 - A session started outside the Launcher is tracked, counted and held, but `send` and the dashboard's reply box only reach Launcher tabs.
-- Holding is set in the dashboard's Settings panel (or the `settings` table: `ThrottleAgents`, `MaxAgentDelaySeconds`); the CLI only has `--throttle-agents` and `--max-delay`.
+- Agents are never held (M.ORCH-T706): the owner's rules are hard-coded, so there is no weekly-aware pacing, no throttling or pace profile, and no automatic failover to the Vault API key; each login runs to its 5-hour and weekly cutoff and then stops. `--weekly-aware`, `--failover`, `--throttle-agents` and `--pace-profile` are refused.
 - Claude Code prunes transcripts after about 30 days; the budget history window is 7 days, which always covers the current week.
 - The budget file only updates while the daemon or the dashboard is running, so pacing only steers while one of them is; Scheduler's job keeps the daemon up, and opening the dashboard restarts it if it died.
 - Building a workspace clones the repos; it doesn't install the other apps unless you pass `--install-apps` or run `workspace install-apps`. The repo list is only as current as the last `workspace export` that was pushed.
