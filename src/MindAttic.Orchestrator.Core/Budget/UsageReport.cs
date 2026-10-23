@@ -288,7 +288,7 @@ public sealed record UsageReport
 
     /// <summary>The main table's columns, in order.</summary>
     public IReadOnlyList<string> Headers =>
-        ["Member", "5-hour used", "5h resets", "Week used", "Week left", "Week resets in", "Last updated"];
+        ["Member", "5-hour used", "5h resets", "Week left", "Week resets in", "Last updated"];
 
     /// <summary>The member's name as the table shows it, with "(not a member)" for a login nobody entered.</summary>
     public static string MemberText(UsageReportRow r) =>
@@ -300,7 +300,6 @@ public sealed record UsageReport
         MemberText(r),
         r.FiveHourUnknown ? "unknown" : Pct(r.FiveHourUsed),
         r.NoFiveHourWindow ? "0" : When(r.FiveHourResetUtc, GeneratedUtc),
-        Pct(r.WeekUsed),
         Whole(r.WeekLeft),
         Countdown(r.WeekResetUtc, GeneratedUtc),
         Age(r.ReadUtc, GeneratedUtc),

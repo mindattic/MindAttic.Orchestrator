@@ -66,9 +66,9 @@ public sealed class UsageReportTests
         Assert.That(erin.IsGlobalLogin, Is.True);
 
         var cells = report.Cells();
-        Assert.That(report.Headers, Is.EqualTo(new[] { "Member", "5-hour used", "5h resets", "Week used", "Week left", "Week resets in", "Last updated" }));
+        Assert.That(report.Headers, Is.EqualTo(new[] { "Member", "5-hour used", "5h resets", "Week left", "Week resets in", "Last updated" }));
         Assert.That(cells[0][0], Is.EqualTo("Amy"));
-        Assert.That(cells[0][6], Is.EqualTo("3m ago"));
+        Assert.That(cells[0][5], Is.EqualTo("3m ago"));
         Assert.That(cells[0], Has.Count.EqualTo(report.Headers.Count));
         Assert.That(report.Rows[0].LeftToTarget, Is.EqualTo(20).Within(0.5), "the points left stay in the data and the notes, not a column");
         Assert.That(cells[1][0], Is.EqualTo("Erin"), "the fallback login is named like any member");
@@ -134,7 +134,7 @@ public sealed class UsageReportTests
         var report = Build([M("amy@x.com", "Amy")], logins: [new LoginReading("zed@x.com", "zed-key", "Zeddy", null)]);
         Assert.That(report.Rows.Select(r => (r.Name, r.IsMember)), Is.EqualTo(new[] { ("Amy", true), ("Zeddy", false) }));
         Assert.That(report.Cells()[1][0], Is.EqualTo("Zeddy (not a member)"));
-        Assert.That(report.Cells()[1][6], Is.EqualTo("never"));
+        Assert.That(report.Cells()[1][5], Is.EqualTo("never"));
     }
 
     [Test]
