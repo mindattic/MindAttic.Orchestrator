@@ -218,8 +218,8 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
                 if (!Directory.Exists(target) || Directory.Exists(link) || File.Exists(link)) continue;
                 if (OperatingSystem.IsWindows())
                 {
-                    var psi = new ProcessStartInfo("cmd.exe") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
-                    foreach (var a in new[] { "/c", "mklink", "/J", link, target }) psi.ArgumentList.Add(a);
+                    if (!AccountDirs.TryMklinkArguments(link, target, out var cmdLine)) continue;
+                    var psi = new ProcessStartInfo("cmd.exe") { Arguments = cmdLine, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
                     using var p = Process.Start(psi);
                     p?.StandardOutput.ReadToEnd();
                     p?.StandardError.ReadToEnd();
