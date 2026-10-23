@@ -376,6 +376,39 @@ public sealed class AutopilotTests
             Has.Count.EqualTo(12), "not known to be on: no warm-up");
     }
 
+    /// <summary>M.ORCH-T660: a fresh login with no limit learned yet planned Unpaced with SubagentAllowance null, so Next fell
+    /// back to MaxConcurrentSessions minus every busy ticket across the WHOLE workspace (every other login's too) and handed
+    /// out nothing.</summary>
+    [Test]
+    public void An_unpaced_fresh_login_hands_out_its_own_tickets_while_other_logins_hold_busy_tickets()
+    {
+        var accountsDir = Path.Combine(dir, ".claude-accounts");
+        Directory.CreateDirectory(Path.Combine(dir, ".claude"));
+        File.WriteAllText(Path.Combine(dir, ".claude.json"), "{}");
+        var dirs = new AccountDirs(accountsDir, Path.Combine(dir, ".claude"), Path.Combine(dir, ".claude.json"));
+        var fresh = dirs.For("fresh@example.com");
+        Directory.CreateDirectory(fresh.MarksDirectory); // its own folder, signed in, no Prepare() (the symlinked shares it makes aren't needed here)
+        File.WriteAllText(fresh.ConfigPath, """{"oauthAccount":{"accountUuid":"acct-fresh","emailAddress":"fresh@example.com"}}""");
+        var pacer = new AccountPacer { Dirs = dirs, Probe = false, ProjectsDir = Path.Combine(dir, "no-projects") };
+        var paces = pacer.Tick([], new Dictionary<string, string>(), new OrchestratorSettings(), Now, Now.Date, null, write: false);
+        var pace = paces.Single().Pace;
+        Assert.That((pace.IsPaced, pace.SubagentAllowance, pace.Subagents, pace.Stop), Is.EqualTo((false, 4, 0, false)),
+            "a fresh login's room is its own (MaxConcurrentSessions, default 4 here), not left null for Next to guess at");
+
+        // Other logins' CLIs have 6 tickets busy workspace-wide: more than this login's own MaxConcurrentSessions.
+        var snap = Snap(("A", [T("A-T1")]), ("B", [.. Enumerable.Range(1, 6).Select(i => T($"B-T{i}"))]));
+        store.SaveAssignments([.. Enumerable.Range(1, 6).Select(i => new Assignment($"B-T{i}", "B", @"D:\W\B", "Claude", Now, true))]);
+        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
+        var plan = Scheduler.Plan(snap, settings, store.LoadAssignments()) with { Pace = pace };
+        Assert.That(plan.Queue.Count(q => q.IsAssigned), Is.GreaterThanOrEqualTo(6));
+        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
+
+        var (handed, why) = Autopilot.Next(plan, settings, store, ["A"], null, claim: true, Now, Make, _ => "master");
+
+        Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T1" }), "the fresh login's own room, not the workspace's busy count");
+        Assert.That(why, Is.Null);
+    }
+
     [Test]
     public void A_ticket_closed_after_the_queue_was_read_is_not_claimed_or_given_a_worktree()
     {
