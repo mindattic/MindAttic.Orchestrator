@@ -194,6 +194,24 @@ public sealed class LoginPickerTests
     }
 
     [Test]
+    public void Accounts_alias_keeps_the_members_name_in_step_as_the_dashboards_Rename_does()
+    {
+        // M.ORCH-T698: the CLI goes through the same LoginLook.Rename as the Accounts view.
+        var a = Account("a@example.com");
+        AccountsCommand.LoginsOverride = () => dirs;
+        MindAttic.Orchestrator.Settings.OrchestratorDb? db = null;
+        Action<JsonStore> setup = store =>
+        {
+            db = store.Db;
+            MindAttic.Orchestrator.Budget.MemberRoster.Add(db, a.Email, "Old", "member", "standard", null, DateTime.UtcNow);
+        };
+        Assert.That(RunCli(setup, "accounts", "alias", "a@example.com", "Amy Reed").Code, Is.Zero);
+        Assert.That(LoginLook.For(a.Directory, a.Email).Alias, Is.EqualTo("Amy Reed"));
+        Assert.That(MindAttic.Orchestrator.Budget.MemberRoster.Find(db!, a.Email)!.Name, Is.EqualTo("Amy Reed"));
+        Assert.That(RunCli(_ => { }, "accounts", "alias", "a@example.com", "--reset").Code, Is.Zero, "a new store: no member there, still fine");
+    }
+
+    [Test]
     public void The_accounts_branch_still_takes_its_own_options_and_help()
     {
         Assert.That(RunCli("accounts", "alias", "--help").Code, Is.Zero);

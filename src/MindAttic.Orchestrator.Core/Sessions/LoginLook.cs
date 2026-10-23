@@ -150,6 +150,26 @@ public sealed record LoginLook(string Window, string Initials, string TabColor)
         return folders;
     }
 
+    /// <summary>
+    /// The one rename the Accounts view and <c>orchestrator accounts alias</c> share (M.ORCH-T698): names <paramref name="email"/>'s
+    /// logins <paramref name="alias"/> (blank: back to the default) with the badge <paramref name="initials"/> (null leaves it) in
+    /// every folder that's its login and in <paramref name="folder"/>, and, when <paramref name="db"/> holds the email as a member,
+    /// keeps the member's name in step (blank clears it, back to the alias). Returns the folders written.
+    /// </summary>
+    public static IReadOnlyList<string> Rename(AccountDirs dirs, string folder, string email, string? alias, string? initials = null,
+        Settings.OrchestratorDb? db = null)
+    {
+        var written = SetAlias(dirs, email, alias, initials).ToList();
+        if (!written.Any(f => string.Equals(Path.GetFullPath(f), Path.GetFullPath(folder), StringComparison.OrdinalIgnoreCase)))
+        {
+            SetAlias(folder, email, alias, initials);
+            written.Add(folder);
+        }
+        if (db is not null && MemberRoster.Find(db, email) is not null)
+            MemberRoster.Set(db, email, alias?.Trim() ?? "", null, null, null, DateTime.UtcNow);
+        return written;
+    }
+
     /// <summary>The email signed in to the global login (<see cref="AccountDirs.HomeConfigPath"/>); null when unknown.</summary>
     public static string? GlobalEmail(AccountDirs dirs)
     {

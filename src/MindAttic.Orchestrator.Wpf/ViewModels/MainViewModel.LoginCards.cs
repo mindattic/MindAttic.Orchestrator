@@ -104,12 +104,8 @@ public sealed partial class MainViewModel
     {
         try
         {
-            var written = LoginLook.SetAlias(dirs, email, alias, initials);
-            if (!written.Any(f => string.Equals(Path.GetFullPath(f), Path.GetFullPath(folder), StringComparison.OrdinalIgnoreCase)))
-                LoginLook.SetAlias(folder, email, alias, initials);
+            LoginLook.Rename(dirs, folder, email, alias, initials, db);
             var look = LoginLook.For(folder, email);
-            if (db is not null && MemberRoster.Find(db, email) is not null)
-                MemberRoster.Set(db, email, alias.Trim(), null, null, null, DateTime.UtcNow);
             return $"{email} is now called {look.Alias} [{look.Initials}].";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.Data.Common.DbException)
