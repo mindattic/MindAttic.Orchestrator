@@ -47,7 +47,7 @@ public sealed partial class MainViewModel
         else
         {
             try { accountRows = AccountRoster.Load(aggregator.Db, next.Account); }
-            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
+            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Data.Common.DbException) { return; }
             try { var settings = store.LoadSettings(); weeklyStopPercent = settings.WeeklyStopPercent; paceTargetPercent = settings.PaceTargetPercent; }
             catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException) { }
             currentAccount = next.Account == ClaudeAccount.ApiKey ? null : next.Account;

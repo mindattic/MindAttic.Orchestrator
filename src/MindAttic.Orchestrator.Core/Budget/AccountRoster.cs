@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
-using Microsoft.Data.Sqlite;
+using System.Data.Common;
 using MindAttic.Orchestrator.Settings;
 
 namespace MindAttic.Orchestrator.Budget;
@@ -108,7 +108,7 @@ public static class AccountRoster
     /// <summary>Every row, the signed-in account (<paramref name="current"/>) first, then by label.</summary>
     public static IReadOnlyList<AccountRow> Load(OrchestratorDb db, string? current = null)
     {
-        using var connection = db.Open();
+        using var connection = db.OpenData();
         return [.. Rows(connection).OrderBy(r => r.Account != current).ThenBy(r => r.Label, StringComparer.OrdinalIgnoreCase)];
     }
 
@@ -130,8 +130,13 @@ public static class AccountRoster
     /// </summary>
     public static bool Observe(OrchestratorDb db, SignInState signIn, AccountProfile? profile, ReportedUsage? reading, DateTime nowUtc)
     {
-        using var connection = db.Open();
-        using var tx = connection.BeginTransaction();
+        var readAgain = false;
+        db.WriteDataIf((connection, tx) => Observe(connection, tx, signIn, profile, reading, nowUtc, out readAgain));
+        return readAgain;
+    }
+
+    private static bool Observe(DbConnection connection, DbTransaction tx, SignInState signIn, AccountProfile? profile, ReportedUsage? reading, DateTime nowUtc, out bool readAgain)
+    {
         var rows = Rows(connection, tx);
         var changed = new List<AccountRow>();
         var known = signIn.History.Select(s => s.Account).Concat(signIn.Confirmed.Keys).Where(a => a != ClaudeAccount.ApiKey).Distinct().ToList();
@@ -148,7 +153,7 @@ public static class AccountRoster
             rows.Add(added);
             changed.Add(added);
         }
-        var readAgain = false;
+        readAgain = false;
         if (!signIn.IsApiKey)
         {
             var row = rows.Single(r => r.Account == signIn.Account);
@@ -178,19 +183,16 @@ public static class AccountRoster
             if (row != was) changed.Add(row);
         }
         foreach (var row in changed.GroupBy(r => r.Account).Select(g => g.Last())) Upsert(connection, tx, row);
-        string? dump = changed.Count > 0 ? OrchestratorDb.Dump(connection, tx) : null;
-        tx.Commit();
-        if (dump is not null) db.WriteDump(dump);
-        return readAgain;
+        return changed.Count > 0;
 
         static bool NewWindow(DateTime? known, ReportedWindow? w) => w is not null && !SignInState.Same(known, w.ResetUtc);
     }
 
-    private static List<AccountRow> Rows(SqliteConnection connection, SqliteTransaction? tx = null)
+    private static List<AccountRow> Rows(DbConnection connection, DbTransaction? tx = null)
     {
         using var command = connection.CreateCommand();
         command.Transaction = tx;
-        command.CommandText = "SELECT id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at FROM accounts;";
+        command.CommandText = "SELECT id, email, org, \"plan\", five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at FROM accounts;";
         using var r = command.ExecuteReader();
         var rows = new List<AccountRow>();
         while (r.Read())
@@ -209,37 +211,15 @@ public static class AccountRoster
             });
         return rows;
 
-        static string? Text(SqliteDataReader r, int i) => r.IsDBNull(i) ? null : r.GetString(i);
-        static double? Number(SqliteDataReader r, int i) => r.IsDBNull(i) ? null : r.GetDouble(i);
+        static string? Text(DbDataReader r, int i) => r.IsDBNull(i) ? null : r.GetString(i);
+        static double? Number(DbDataReader r, int i) => Sql.OptionalReal(r, i);
     }
 
-    private static void Upsert(SqliteConnection connection, SqliteTransaction tx, AccountRow row)
-    {
-        using var command = connection.CreateCommand();
-        command.Transaction = tx;
-        command.CommandText = """
-            INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at)
-            VALUES ($id, $email, $org, $plan, $fp, $fr, $wp, $wr, $read, $signed)
-            ON CONFLICT (id) DO UPDATE SET email = excluded.email, org = excluded.org, plan = excluded.plan,
-                five_hour_percent = excluded.five_hour_percent, five_hour_reset = excluded.five_hour_reset,
-                week_percent = excluded.week_percent, week_reset = excluded.week_reset,
-                read_at = excluded.read_at, signed_in_at = excluded.signed_in_at;
-            """;
-        Add(command, "$id", row.Account);
-        Add(command, "$email", row.Email);
-        Add(command, "$org", row.Org);
-        Add(command, "$plan", row.Plan);
-        Add(command, "$fp", row.FiveHourPercent);
-        Add(command, "$fr", Epoch(row.FiveHourResetUtc));
-        Add(command, "$wp", row.WeekPercent);
-        Add(command, "$wr", Epoch(row.WeekResetUtc));
-        Add(command, "$read", Epoch(row.ReadUtc));
-        Add(command, "$signed", Epoch(row.SignedInUtc));
-        command.ExecuteNonQuery();
-    }
-
-    private static void Add(SqliteCommand command, string name, object? value) => command.Parameters.AddWithValue(name, value ?? DBNull.Value);
-
+    private static void Upsert(DbConnection connection, DbTransaction tx, AccountRow row) =>
+        Sql.Upsert(connection, tx, "accounts", ["id"],
+            ("id", row.Account), ("email", row.Email), ("org", row.Org), ("plan", row.Plan), ("five_hour_percent", row.FiveHourPercent),
+            ("five_hour_reset", Epoch(row.FiveHourResetUtc)), ("week_percent", row.WeekPercent), ("week_reset", Epoch(row.WeekResetUtc)),
+            ("read_at", Epoch(row.ReadUtc)), ("signed_in_at", Epoch(row.SignedInUtc)));
     private static double? Epoch(DateTime? utc) => utc is { } t ? (t - DateTime.UnixEpoch).TotalSeconds : null;
 
     /// <summary>Back from Unix seconds, to the millisecond: a double's seconds don't round-trip every tick.</summary>

@@ -180,7 +180,7 @@ public sealed class ClaudeMeterProbe
             LastReading = Write(UsagePath, reading, DateTime.UtcNow, account, Store);
             LastResult = $"read Claude's meter: {reading.FiveHour?.Percent:0}% of the 5-hour window";
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException)
         {
             // A reader or the statusline had the file (or a write the database) at that moment: try again at the next due tick, not after a backoff.
             LastResult = $"couldn't write {Path.GetFileName(UsagePath)}: {ex.Message}";

@@ -441,7 +441,7 @@ public sealed class RateLimitStatusWriter(string? path = null)
         var json = JsonSerializer.Serialize(body, new JsonSerializerOptions { WriteIndented = true });
         string? rowError = null;
         try { Db?.SaveState(StateName, json); }
-        catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException) { rowError = ex.Message; }
+        catch (Exception ex) when (ex is System.Data.Common.DbException or IOException or UnauthorizedAccessException) { rowError = ex.Message; }
         try
         {
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path)!);
@@ -466,7 +466,7 @@ public sealed class RateLimitStatusWriter(string? path = null)
     {
         string? row = null, file = null;
         try { row = Db?.LoadState(StateName)?.Value; }
-        catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException) { }
+        catch (Exception ex) when (ex is System.Data.Common.DbException or IOException or UnauthorizedAccessException) { }
         try { if (File.Exists(Path)) file = File.ReadAllText(Path); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         if (row is null || file is null) return row ?? file;
@@ -560,7 +560,7 @@ public sealed class RateLimitStatusWriter(string? path = null)
     {
         lastWritten = null;
         try { Db?.DeleteState(StateName); }
-        catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException) { }
+        catch (Exception ex) when (ex is System.Data.Common.DbException or IOException or UnauthorizedAccessException) { }
         try
         {
             if (!File.Exists(Path)) return;

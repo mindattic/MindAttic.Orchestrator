@@ -64,7 +64,7 @@ public static class CliRoster
     public static void Write(OrchestratorDb db, IReadOnlyList<CliRow> clis, DateTime nowUtc, string? oldDirectory = null)
     {
         try { db.SaveState(StateName, JsonSerializer.Serialize(new CliRosterFile(nowUtc, clis), Json)); }
-        catch (SqliteException ex) { throw new IOException($"The orchestrator database couldn't be written: {ex.Message}", ex); }
+        catch (System.Data.Common.DbException ex) { throw new IOException($"The orchestrator database couldn't be written: {ex.Message}", ex); }
         if (oldDirectory is null) return;
         var old = Path.Combine(oldDirectory, FileName);
         try { if (File.Exists(old)) File.Move(old, old + ".bak", overwrite: true); }
@@ -75,6 +75,6 @@ public static class CliRoster
     public static CliRosterFile? Read(OrchestratorDb db)
     {
         try { return db.LoadState(StateName) is { } row ? JsonSerializer.Deserialize<CliRosterFile>(row.Value) : null; }
-        catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException or JsonException) { return null; }
+        catch (Exception ex) when (ex is System.Data.Common.DbException or IOException or UnauthorizedAccessException or JsonException) { return null; }
     }
 }

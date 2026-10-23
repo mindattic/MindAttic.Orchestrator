@@ -40,7 +40,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
     private List<GateEvent> Events(DateTime sinceUtc)
     {
         try { return Db.LoadGateEvents(sinceUtc); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return []; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { return []; }
     }
 
     /// <summary>Where its tickets are filed: the daemon moves it when the dashboard's first run picks another workspace (M.ORCH-T359).</summary>
@@ -66,7 +66,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
         // A held database or limits file reads as empty: a window graded from that is written for good (over with no hit, or
         // blind), so the check waits for the next tick instead.
         try { Db.ImportJson(store.Directory); Db.ImportGateLog(EventsPath); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { return; }
         if (!Db.TryLoadUsageSamples(out var samples) || !store.TryLoadLimits(out var hits)) return;
         var first = checkedUtc == default;
         checkedUtc = nowUtc;
@@ -84,10 +84,10 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
 
         List<LedgerWindow> recorded;
         try { recorded = Db.LoadLedger(); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { return; }
         List<GateEvent> events;
         try { events = Db.LoadGateEvents(nowUtc - KeepEvents); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { return; }
         // A per-CLI login's windows are its own (M.ORCH-T559): one of them ending near a global window isn't that window.
         var own = AccountDirs?.All().Select(d => d.Account).OfType<string>().ToHashSet(StringComparer.Ordinal) ?? [];
         var due = PaceLedger.Due([.. recorded.Where(r => r.Account is null || !own.Contains(r.Account))], samples, hits, events, nowUtc,
@@ -95,10 +95,10 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
         TickAccounts(recorded, nowUtc);
         if (due.Count == 0) return;
         try { Db.AppendLedger(due); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { return; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { return; }
         foreach (var w in due) Report(w, nowUtc);
         try { Db.TrimGateEvents(nowUtc - KeepEvents); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
     }
 
     /// <summary>The per-CLI Claude logins whose windows are graded on their own (M.ORCH-T559); null (tests) grades none.</summary>
@@ -120,7 +120,7 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
             var due = PaceLedger.Due([.. recorded.Where(r => r.Account == account)], samples, [], [], nowUtc, _ => account);
             if (due.Count == 0) continue;
             try { Db.AppendLedger(due); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { continue; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { continue; }
             foreach (var w in due) Report(w with { Why = $"{dir.Email}: {w.Why}" }, nowUtc);
         }
     }

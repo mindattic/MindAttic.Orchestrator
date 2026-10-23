@@ -140,7 +140,7 @@ public sealed record ReportedUsage(ReportedWindow? FiveHour, ReportedWindow? Wee
                 row = Parse(doc.RootElement, nowUtc);
             }
         }
-        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException or JsonException or InvalidOperationException or FormatException) { }
+        catch (Exception ex) when (ex is System.Data.Common.DbException or IOException or JsonException or InvalidOperationException or FormatException) { }
         return row is not null && (file is null || row.AtUtc > file.AtUtc) ? row : file;
     }
 

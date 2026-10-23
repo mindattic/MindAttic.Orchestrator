@@ -1,7 +1,7 @@
+using System.Data.Common;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using Microsoft.Data.Sqlite;
 
 namespace MindAttic.Orchestrator.Settings;
 
@@ -67,12 +67,12 @@ public sealed class JsonStore
         try
         {
             var imported = Import(name);
-            using var connection = Db.Open();
+            using var connection = Connect(name);
             if (Read(connection, null, name) is { } node) value = node.Deserialize<T>(Options) ?? new T();
             else if (!imported) return false;
             return true;
         }
-        catch (Exception ex) when (ex is JsonException or SqliteException or IOException or UnauthorizedAccessException or NotSupportedException)
+        catch (Exception ex) when (ex is JsonException or DbException or IOException or UnauthorizedAccessException or NotSupportedException)
         {
             value = new T();
             return false;
@@ -85,10 +85,10 @@ public sealed class JsonStore
         try
         {
             Import(name);
-            using var connection = Db.Open();
+            using var connection = Connect(name);
             return Read(connection, null, name) is not null;
         }
-        catch (Exception ex) when (ex is JsonException or SqliteException or IOException or UnauthorizedAccessException) { return false; }
+        catch (Exception ex) when (ex is JsonException or DbException or IOException or UnauthorizedAccessException) { return false; }
     }
 
     /// <summary>When a <c>state</c> value was last written (null when it isn't kept or couldn't be read), so a reader rereads
@@ -98,13 +98,11 @@ public sealed class JsonStore
         try
         {
             Import(name);
-            using var connection = Db.Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "SELECT written_at FROM state WHERE name = $name;";
-            command.Parameters.AddWithValue("$name", name);
-            return command.ExecuteScalar() is double at ? DateTime.UnixEpoch.AddTicks((long)(at * TimeSpan.TicksPerSecond)) : null;
+            using var connection = Connect(name);
+            return Sql.Scalar(connection, null, "SELECT written_at FROM state WHERE name = @name;", ("@name", name)) is { } at
+                ? DateTime.UnixEpoch.AddTicks((long)(Convert.ToDouble(at, System.Globalization.CultureInfo.InvariantCulture) * TimeSpan.TicksPerSecond)) : null;
         }
-        catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException) { return null; }
+        catch (Exception ex) when (ex is DbException or IOException or UnauthorizedAccessException) { return null; }
     }
 
     /// <summary>Replaces <paramref name="name"/>'s value. A database that stays busy past its timeout is an <see cref="IOException"/>,
@@ -112,10 +110,10 @@ public sealed class JsonStore
     public void Save<T>(string name, T value)
     {
         var node = JsonSerializer.SerializeToNode(value, Options);
-        Sql(() =>
+        Guard(() =>
         {
             Import(name);
-            Db.Write((connection, tx) => Write(connection, tx, name, node), dump: !IsVolatile(name));
+            WriteTo(name, (connection, tx) => Write(connection, tx, name, node));
             Retire(name);
         });
     }
@@ -125,18 +123,18 @@ public sealed class JsonStore
     /// (the daemon's autopilot, a dashboard's Dispatch, the CLI) waits for this one and is never dropped. A value that isn't
     /// readable JSON, or an old file that can't be read in, throws rather than having an empty one saved over it.
     /// </summary>
-    public void Update<T>(string name, Action<T> change) where T : new() => Sql(() =>
+    public void Update<T>(string name, Action<T> change) where T : new() => Guard(() =>
     {
         if (!Import(name))
             throw new InvalidDataException($"{Path.Combine(Directory, name + ".json")} couldn't be read in; left as it is rather than saved over");
-        Db.Write((connection, tx) =>
+        WriteTo(name, (connection, tx) =>
         {
             T value;
             try { value = Read(connection, tx, name) is { } node ? node.Deserialize<T>(Options) ?? new T() : new T(); }
             catch (JsonException ex) { throw new InvalidDataException($"{Describe(name)} isn't readable JSON; left as it is rather than saved over", ex); }
             change(value);
             Write(connection, tx, name, JsonSerializer.SerializeToNode(value, Options));
-        }, dump: !IsVolatile(name));
+        });
     });
 
     public OrchestratorSettings LoadSettings() => Load<OrchestratorSettings>(SettingsName);
@@ -163,10 +161,22 @@ public sealed class JsonStore
 
     private static bool IsVolatile(string name) => OrchestratorDb.Volatile.Contains(name);
 
-    private static void Sql(Action write)
+    /// <summary>Where <paramref name="name"/> is read from: a volatile row from this machine's file, the rest from the store of the
+    /// orchestrator's data (SQL Server once configured, M.ORCH-T658).</summary>
+    private DbConnection Connect(string name) => IsVolatile(name) ? Db.Open() : Db.OpenData();
+
+    /// <summary>One write transaction on <paramref name="name"/>'s store; a change to the settings, the assignments or a saved
+    /// state row is copied into this machine's file for the hooks.</summary>
+    private void WriteTo(string name, Action<DbConnection, DbTransaction> change)
+    {
+        if (IsVolatile(name)) Db.Write((connection, tx) => change(connection, tx), dump: false);
+        else Db.WriteData(change, true, name is SettingsName or AssignmentsName ? name : "state:" + name);
+    }
+
+    private static void Guard(Action write)
     {
         try { write(); }
-        catch (SqliteException ex) { throw new IOException($"The orchestrator database couldn't be written: {ex.Message}", ex); }
+        catch (DbException ex) { throw new IOException($"The orchestrator database couldn't be written: {ex.Message}", ex); }
     }
 
     // ---- the tables ----
@@ -191,7 +201,7 @@ public sealed class JsonStore
     ];
 
     /// <summary><paramref name="name"/>'s value as JSON, or null when nothing is kept for it.</summary>
-    private static JsonNode? Read(SqliteConnection connection, SqliteTransaction? tx, string name)
+    private static JsonNode? Read(DbConnection connection, DbTransaction? tx, string name)
     {
         using var command = connection.CreateCommand();
         command.Transaction = tx;
@@ -217,8 +227,8 @@ public sealed class JsonStore
                     {
                         if (r.IsDBNull(i)) continue;
                         var (_, property, kind) = AssignmentColumns[i];
-                        row[property] = kind == typeof(bool) ? JsonValue.Create(r.GetInt64(i) != 0)
-                            : kind == typeof(long) ? JsonValue.Create(r.GetInt64(i))
+                        row[property] = kind == typeof(bool) ? JsonValue.Create(Sql.Long(r, i) != 0)
+                            : kind == typeof(long) ? JsonValue.Create(Sql.Long(r, i))
                             : JsonValue.Create(r.GetString(i));
                     }
                     (list ??= new JsonArray()).Add(row);
@@ -226,47 +236,45 @@ public sealed class JsonStore
                 return list;
             }
             default:
-                command.CommandText = "SELECT value FROM state WHERE name = $name;";
-                command.Parameters.AddWithValue("$name", name);
-                return command.ExecuteScalar() is string json ? JsonNode.Parse(json) : null;
+                return Sql.Scalar(connection, tx, "SELECT value FROM state WHERE name = @name;", ("@name", name)) is string json ? JsonNode.Parse(json) : null;
         }
     }
 
     /// <summary>Replaces <paramref name="name"/>'s value with <paramref name="node"/> (null keeps nothing for it).</summary>
-    private static void Write(SqliteConnection connection, SqliteTransaction tx, string name, JsonNode? node)
+    private static void Write(DbConnection connection, DbTransaction tx, string name, JsonNode? node)
     {
         switch (name)
         {
             case SettingsName:
-                Run(connection, tx, "DELETE FROM settings;");
+                Sql.Run(connection, tx, "DELETE FROM settings;");
                 if (node is not JsonObject settings) break;
                 foreach (var (key, value) in settings)
                     if (value is not null) // left out, as the file left nulls out
-                        Run(connection, tx, "INSERT INTO settings (name, value) VALUES ($name, $value);",
-                            ("$name", key), ("$value", value.ToJsonString(Compact)));
+                        Sql.Run(connection, tx, "INSERT INTO settings (name, value) VALUES (@name, @value);",
+                            ("@name", key), ("@value", value.ToJsonString(Compact)));
                 break;
             case AssignmentsName:
-                Run(connection, tx, "DELETE FROM assignments;");
+                Sql.Run(connection, tx, "DELETE FROM assignments;");
                 if (node is not JsonArray list) break;
-                var position = 0;
+                var position = 0L;
                 foreach (var item in list.OfType<JsonObject>())
                 {
-                    var values = AssignmentColumns.Select(c => (Name: "$" + c.Column, Value: Cell(item[c.Property]))).ToArray();
-                    Run(connection, tx,
+                    var values = AssignmentColumns.Select(c => (Name: "@" + c.Column, Value: Cell(item[c.Property]))).ToArray();
+                    Sql.Run(connection, tx,
                         $"INSERT INTO assignments (position, {string.Join(", ", AssignmentColumns.Select(c => c.Column))}) " +
-                        $"VALUES ($position, {string.Join(", ", values.Select(v => v.Name))});",
-                        [("$position", position++), .. values]);
+                        $"VALUES (@position, {string.Join(", ", values.Select(v => v.Name))});",
+                        [("@position", position++), .. values]);
                 }
                 break;
             default:
                 if (node is null)
                 {
-                    Run(connection, tx, "DELETE FROM state WHERE name = $name;", ("$name", name));
+                    Sql.Run(connection, tx, "DELETE FROM state WHERE name = @name;", ("@name", name));
                     break;
                 }
-                Run(connection, tx, "INSERT OR REPLACE INTO state (name, value, written_at) VALUES ($name, $value, $at);",
-                    ("$name", name), ("$value", node.ToJsonString(Options)),
-                    ("$at", (DateTime.UtcNow - DateTime.UnixEpoch).Ticks / (double)TimeSpan.TicksPerSecond));
+                Sql.Upsert(connection, tx, "state", ["name"],
+                    ("name", name), ("value", node.ToJsonString(Options)),
+                    ("written_at", (DateTime.UtcNow - DateTime.UnixEpoch).Ticks / (double)TimeSpan.TicksPerSecond));
                 break;
         }
     }
@@ -281,15 +289,6 @@ public sealed class JsonStore
         JsonValueKind.Null => null,
         _ => v.ToJsonString(),
     };
-
-    private static void Run(SqliteConnection connection, SqliteTransaction tx, string sql, params (string Name, object? Value)[] parameters)
-    {
-        using var command = connection.CreateCommand();
-        command.Transaction = tx;
-        command.CommandText = sql;
-        foreach (var (name, value) in parameters) command.Parameters.AddWithValue(name, value ?? DBNull.Value);
-        command.ExecuteNonQuery();
-    }
 
     // ---- the one-time import ----
 
@@ -310,7 +309,7 @@ public sealed class JsonStore
         var taken = false;
         try
         {
-            Db.Write((connection, tx) =>
+            WriteTo(name, (connection, tx) =>
             {
                 // Read under the write lock: a process that got here first already took it in.
                 if (Read(connection, tx, name) is not null) { taken = true; return; }
@@ -323,9 +322,9 @@ public sealed class JsonStore
                 catch (JsonException) { return; }
                 Write(connection, tx, name, node);
                 taken = true;
-            }, dump: !IsVolatile(name));
+            });
         }
-        catch (SqliteException) { return false; }
+        catch (DbException) { return false; }
         if (taken) Retire(name);
         return taken;
     }

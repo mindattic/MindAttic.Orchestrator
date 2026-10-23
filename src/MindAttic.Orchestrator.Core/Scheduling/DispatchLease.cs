@@ -44,7 +44,7 @@ public sealed class DispatchLease(string directory, string name = "dispatch.lock
             if (!OldLockFree()) return false;
             return held = Take();
         }
-        catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is System.Data.Common.DbException or IOException or UnauthorizedAccessException)
         {
             // The database held past its timeout: a holder keeps what it has, and nobody takes it now.
             return held;
@@ -60,7 +60,7 @@ public sealed class DispatchLease(string directory, string name = "dispatch.lock
             Db.Write((connection, tx) => Run(connection, tx, "DELETE FROM leases WHERE name = $name AND holder = $holder;",
                 ("$name", Name), ("$holder", holder)), dump: false);
         }
-        catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException) { } // the next to ask sees this process gone
+        catch (Exception ex) when (ex is System.Data.Common.DbException or IOException or UnauthorizedAccessException) { } // the next to ask sees this process gone
     }
 
     /// <summary>Takes the row unless a live process other than this one holds it; true when it's this one's.</summary>

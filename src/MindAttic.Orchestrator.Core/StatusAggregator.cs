@@ -99,7 +99,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     // Claude's meter readings (orchestrator.db's usage_samples, M.ORCH-T494), reread only when another process has added some
     // since; those recorded here that couldn't be written yet go out with the next.
     private List<UsageSample>? samples;
-    private (long Count, long Last) samplesStamp;
+    private (long Count, string Last) samplesStamp;
     private readonly List<UsageSample> unsavedSamples = [];
     private long? samplesEstimate;
     // The last report with a usable 5-hour window: carried while that window runs, so one tick without one never drops the limit.
@@ -177,7 +177,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             }
             return shared with { Approved = liveQueue.Value.Approved, Priorities = liveQueue.Value.Priorities };
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or Microsoft.Data.Sqlite.SqliteException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.Data.Common.DbException)
         {
             return shared; // the holder's, as read then: tried again next refresh
         }
@@ -218,21 +218,21 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         var warnings = new List<string>();
         // The history JSON files (meter readings, pace ledger, usage by day, ticket costs) move into orchestrator.db once (M.ORCH-T494).
         try { Db.ImportJson(Store.Directory); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException)
         {
             warnings.Add($"history import: {ex.Message}");
         }
         // Approvals and priorities settings.json still holds move into the database's queue first, once (M.ORCH-T384).
         try { QueueImport.Run(Store, workspace.Root); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException
-                                       or Microsoft.Data.Sqlite.SqliteException)
+                                       or System.Data.Common.DbException)
         {
             warnings.Add($"moving settings.json's approvals into the ticket database: {ex.Message} (tried again next refresh)");
         }
         // So do those of tickets the database didn't hold when they were approved, once it holds them (M.ORCH-T441).
         try { TicketQueue.MoveIntoDatabase(Store, workspace.Root); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException
-                                       or KeyNotFoundException or Microsoft.Data.Sqlite.SqliteException)
+                                       or KeyNotFoundException or System.Data.Common.DbException)
         {
             warnings.Add($"moving settings.json's story-file approvals into the ticket database: {ex.Message} (tried again next refresh)");
         }
@@ -317,7 +317,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             // Every account's latest 5h and weekly percent and resets (M.ORCH-T490): a sign-in refreshes its row, and each
             // point the week moves refreshes it again and reads the meter.
             try { weekMoved = AccountRoster.Observe(Db, signIn, SignIn!.Profile, reported, now); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
         }
         // No statusline reporting while tokens are spent (a CLI waiting on subagents): read Claude's meter directly (M.ORCH-T203).
         // An account just signed in to has no window of its own yet (every other CLI still shows the old one's): read it now.
@@ -441,7 +441,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         {
             historySavedUtc = now;
             try { Db.SaveUsageHistory(history); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
         }
 
         var costsRead = Db.TryLoadTicketCosts(out var storedCosts);
@@ -450,7 +450,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         if (costsRead && !costs.SequenceEqual(storedCosts))
         {
             try { Db.SaveTicketCosts(costs); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
         }
 
         return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = utilization, ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, Approved = tickets.Approved, Priorities = tickets.Priorities, Agents = agentBoard, Billing = billing, Accounts = accountPaces,
@@ -506,7 +506,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
                 unsavedSamples.Clear();
                 if (Db.TryUsageSamplesStamp(out var saved)) samplesStamp = saved;
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
         }
         return samplesEstimate;
     }

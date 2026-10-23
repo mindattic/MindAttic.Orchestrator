@@ -174,7 +174,7 @@ internal sealed class AccountsCommand : Command<AccountsCommand.Settings>
         {
             var reading = ReportedUsage.Load(now, usagePath);
             try { AccountRoster.Observe(db, signIn, account.Profile, signIn.Owns(reading) ? reading : null, now); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
         }
         var current = signIn is { IsApiKey: false } ? signIn.Account : null;
         return (AccountRoster.Load(db, current), current, now);

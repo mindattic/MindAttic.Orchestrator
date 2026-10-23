@@ -218,6 +218,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 // The database everything writes (M.ORCH-T535), committed in the checkout that holds it.
                 if (Settings.OrchestratorDb.LivePath is var live && Settings.OrchestratorDb.RepoOf(live) is { } dbRepo)
                     SyncOrchestratorDbIfDue(dbRepo, live, DateTime.UtcNow);
+                MirrorIfDue(DateTime.UtcNow);
                 tick.Lap("tickets db sync");
                 if (s.GitHubIntake && DateTime.UtcNow - intakeUtc >= TimeSpan.FromHours(1))
                 {
@@ -619,6 +620,22 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// Every 10 minutes, when the ticket database has changed since the last sync, commits it (and its readable dump)
     /// in the MindAttic.Tickets repo and pushes, so tickets are backed up and reach other machines.
     /// </summary>
+    private DateTime mirroredUtc;
+
+    /// <summary>With SQL Server the store of record (M.ORCH-T658), copies the settings, assignments and saved state into
+    /// data/orchestrator.db once a minute, where the hooks read them: every write copies what it changed, and this makes good
+    /// a copy that couldn't be made then (the file held past its timeout).</summary>
+    private void MirrorIfDue(DateTime nowUtc)
+    {
+        if (nowUtc - mirroredUtc < TimeSpan.FromMinutes(1)) return;
+        mirroredUtc = nowUtc;
+        try { new Settings.OrchestratorDb(Settings.OrchestratorDb.LivePath).SyncMirror(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.Data.Common.DbException)
+        {
+            Say(LogEventLevel.Warning, $"mirroring SQL Server into orchestrator.db: {ex.Message}");
+        }
+    }
+
     private void SyncTicketsDbIfDue(OrchestratorOptions options) =>
         SyncTicketsDbIfDue(MindAttic.Tickets.Data.TicketsDb.DefaultPath(options.WorkspaceRoot), DateTime.UtcNow, options.WorkspaceRoot);
 
@@ -688,7 +705,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 // Staged under the database's write lock, so the commit never takes a write's half-applied pages (M.ORCH-T536).
                 ProcessResult add;
                 try { add = new Settings.OrchestratorDb(dbPath).HoldingWrites(() => Git(["add", "--", .. files])); }
-                catch (Microsoft.Data.Sqlite.SqliteException ex) { throw new InvalidOperationException("couldn't lock the database: " + ex.Message); }
+                catch (System.Data.Common.DbException ex) { throw new InvalidOperationException("couldn't lock the database: " + ex.Message); }
                 if (add.ExitCode != 0 || add.TimedOut) throw new InvalidOperationException("git add failed: " + (add.Output + add.Error).Trim());
                 var commit = Git(["commit", "-q", "-m", OrchestratorDbSyncSubject, "--", .. files]);
                 if (commit.ExitCode != 0 || commit.TimedOut) throw new InvalidOperationException("git commit failed: " + (commit.Output + commit.Error).Trim());

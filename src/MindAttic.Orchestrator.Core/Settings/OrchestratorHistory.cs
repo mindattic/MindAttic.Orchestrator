@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text.Json;
 using MindAttic.Orchestrator.Budget;
+using System.Data.Common;
 using Microsoft.Data.Sqlite;
 
 namespace MindAttic.Orchestrator.Settings;
@@ -33,63 +34,60 @@ public static class OrchestratorHistory
 
     public static List<UsageSample> LoadUsageSamples(this OrchestratorDb db)
     {
-        using var connection = db.Open();
-        return Read(connection, "SELECT at, percent, reset, window_fresh FROM usage_samples ORDER BY at;",
-            r => new UsageSample(Time(r.GetString(0)), r.GetDouble(1), Time(r.GetString(2)), r.GetInt64(3)))
+        using var connection = db.OpenData();
+        return Sql.Read(connection, null, "SELECT at, \"percent\", reset, window_fresh FROM usage_samples ORDER BY at;",
+            r => new UsageSample(Time(r.GetString(0)), Sql.Real(r, 1), Time(r.GetString(2)), Sql.Long(r, 3)))
             .OrderBy(s => s.AtUtc).ToList();
     }
 
-    /// <summary>What the samples table holds now, cheaply (its row count and newest row), so a reader rereads it only once
+    /// <summary>What the samples table holds now, cheaply (its row count and newest reading), so a reader rereads it only once
     /// another process has added or trimmed some; false when the database couldn't be read now.</summary>
-    public static bool TryUsageSamplesStamp(this OrchestratorDb db, out (long Count, long Last) stamp) =>
+    public static bool TryUsageSamplesStamp(this OrchestratorDb db, out (long Count, string Last) stamp) =>
         Try(() =>
         {
-            using var connection = db.Open();
-            return Read(connection, "SELECT count(*), IFNULL(max(rowid), 0) FROM usage_samples;", r => (r.GetInt64(0), r.GetInt64(1))).Single();
+            using var connection = db.OpenData();
+            return Sql.Read(connection, null, "SELECT count(*), COALESCE(max(at), '') FROM usage_samples;", r => (Sql.Long(r, 0), r.GetString(1))).Single();
         }, out stamp);
 
     /// <summary>Adds the readings not kept yet (a reading is keyed by its time) and drops those older than <paramref name="keepFromUtc"/>.</summary>
     public static void AddUsageSamples(this OrchestratorDb db, IEnumerable<UsageSample> samples, DateTime keepFromUtc) =>
-        db.Write((connection, tx) =>
+        db.WriteData((connection, tx) =>
         {
             foreach (var s in samples) InsertSample(connection, tx, s);
-            Run(connection, tx, "DELETE FROM usage_samples WHERE at < $from;", ("$from", Text(keepFromUtc)));
+            Sql.Run(connection, tx, "DELETE FROM usage_samples WHERE at < @from;", ("@from", Text(keepFromUtc)));
         });
 
-    private static void InsertSample(SqliteConnection connection, SqliteTransaction tx, UsageSample s) =>
-        Run(connection, tx, "INSERT OR IGNORE INTO usage_samples (at, percent, reset, window_fresh) VALUES ($at, $percent, $reset, $fresh);",
-            ("$at", Text(s.AtUtc)), ("$percent", s.Percent), ("$reset", Text(s.ResetUtc)), ("$fresh", s.WindowFresh));
+    private static void InsertSample(DbConnection connection, DbTransaction tx, UsageSample s) =>
+        Sql.InsertIfMissing(connection, tx, "usage_samples", ["at"],
+            ("at", Text(s.AtUtc)), ("percent", s.Percent), ("reset", Text(s.ResetUtc)), ("window_fresh", s.WindowFresh));
 
     // ---- pace_ledger ----
 
     /// <summary>Every window the ledger holds, oldest first.</summary>
     public static List<LedgerWindow> LoadLedger(this OrchestratorDb db)
     {
-        using var connection = db.Open();
-        return Read(connection,
+        using var connection = db.OpenData();
+        return Sql.Read(connection, null,
             "SELECT start_utc, end_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, " +
             "held, held_minutes, refused, prompts_answered, gaps, exempt, account FROM pace_ledger ORDER BY end_utc;",
             r => new LedgerWindow(Time(r.GetString(0)), Time(r.GetString(1)), Enum.Parse<WindowGrade>(r.GetString(2)), r.GetString(3),
-                Real(r, 4), Real(r, 5), r.GetInt64(6), r.GetInt32(7), r.GetDouble(8), OptionalTime(r, 9), OptionalTime(r, 10),
-                r.GetInt32(11), r.GetDouble(12), r.GetInt32(13), r.GetInt32(14),
-                JsonSerializer.Deserialize<List<MeterGap>>(r.GetString(15), Json) ?? [], r.GetInt32(16), r.IsDBNull(17) ? null : r.GetString(17)))
+                Sql.OptionalReal(r, 4), Sql.OptionalReal(r, 5), Sql.Long(r, 6), Sql.Int(r, 7), Sql.Real(r, 8), OptionalTime(r, 9), OptionalTime(r, 10),
+                Sql.Int(r, 11), Sql.Real(r, 12), Sql.Int(r, 13), Sql.Int(r, 14),
+                JsonSerializer.Deserialize<List<MeterGap>>(r.GetString(15), Json) ?? [], Sql.Int(r, 16), Sql.OptionalText(r, 17)))
             .OrderBy(w => w.EndUtc).ToList();
     }
 
     /// <summary>Records <paramref name="windows"/> for good; a window already recorded (same end, same account) is left as it was.</summary>
     public static void AppendLedger(this OrchestratorDb db, IEnumerable<LedgerWindow> windows) =>
-        db.Write((connection, tx) => { foreach (var w in windows) InsertWindow(connection, tx, w); });
+        db.WriteData((connection, tx) => { foreach (var w in windows) InsertWindow(connection, tx, w); });
 
-    private static void InsertWindow(SqliteConnection connection, SqliteTransaction tx, LedgerWindow w) =>
-        Run(connection, tx,
-            "INSERT OR IGNORE INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, " +
-            "limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ($end, $account, $start, $grade, $why, " +
-            "$peak, $final, $fresh, $samples, $target, $limit, $weekly, $held, $heldMinutes, $refused, $prompts, $exempt, $gaps);",
-            ("$end", Text(w.EndUtc)), ("$account", w.Account), ("$start", Text(w.StartUtc)), ("$grade", w.Grade.ToString()), ("$why", w.Why),
-            ("$peak", w.PeakPercent), ("$final", w.FinalPercent), ("$fresh", w.Fresh), ("$samples", w.Samples), ("$target", w.MinutesAtTarget),
-            ("$limit", w.LimitHitUtc is { } l ? Text(l) : null), ("$weekly", w.WeeklyHitUtc is { } h ? Text(h) : null), ("$held", w.Held),
-            ("$heldMinutes", w.HeldMinutes), ("$refused", w.Refused), ("$prompts", w.PromptsAnswered), ("$exempt", w.Exempt),
-            ("$gaps", JsonSerializer.Serialize(w.Gaps, Json)));
+    private static void InsertWindow(DbConnection connection, DbTransaction tx, LedgerWindow w) =>
+        Sql.InsertIfMissing(connection, tx, "pace_ledger", ["end_utc", "account"],
+            ("end_utc", Text(w.EndUtc)), ("account", w.Account), ("start_utc", Text(w.StartUtc)), ("grade", w.Grade.ToString()), ("why", w.Why),
+            ("peak_percent", w.PeakPercent), ("final_percent", w.FinalPercent), ("fresh", w.Fresh), ("samples", w.Samples), ("minutes_at_target", w.MinutesAtTarget),
+            ("limit_hit_utc", w.LimitHitUtc is { } l ? Text(l) : null), ("weekly_hit_utc", w.WeeklyHitUtc is { } h ? Text(h) : null), ("held", w.Held),
+            ("held_minutes", w.HeldMinutes), ("refused", w.Refused), ("prompts_answered", w.PromptsAnswered), ("exempt", w.Exempt),
+            ("gaps", JsonSerializer.Serialize(w.Gaps, Json)));
 
     // ---- usage_history ----
 
@@ -99,25 +97,32 @@ public static class OrchestratorHistory
 
     public static List<DayUsage> LoadUsageHistory(this OrchestratorDb db)
     {
-        using var connection = db.Open();
-        return UsageHistory.Order(Read(connection, "SELECT day, repo, provider, fresh, account, before_utc FROM usage_history;",
+        using var connection = db.OpenData();
+        return UsageHistory.Order(Sql.Read(connection, null, "SELECT day, repo, provider, fresh, account, before_utc FROM usage_history;",
             r => new DayUsage(DateOnly.ParseExact(r.GetString(0), "yyyy-MM-dd", CultureInfo.InvariantCulture), r.GetString(1), r.GetString(2),
-                r.GetInt64(3), r.IsDBNull(4) ? null : r.GetString(4), OptionalTime(r, 5))));
+                Sql.Long(r, 3), Sql.OptionalText(r, 4), OptionalTime(r, 5))));
     }
 
     /// <summary>Replaces the history with <paramref name="days"/> (a merge of what was loaded and what the transcripts show).</summary>
     public static void SaveUsageHistory(this OrchestratorDb db, IEnumerable<DayUsage> days) =>
-        db.Write((connection, tx) =>
+        db.WriteData((connection, tx) =>
         {
-            Run(connection, tx, "DELETE FROM usage_history;");
+            Sql.Run(connection, tx, "DELETE FROM usage_history;");
             foreach (var d in days) InsertDay(connection, tx, d, replace: true);
         });
 
-    private static void InsertDay(SqliteConnection connection, SqliteTransaction tx, DayUsage d, bool replace) =>
-        Run(connection, tx,
-            $"INSERT OR {(replace ? "REPLACE" : "IGNORE")} INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ($day, $repo, $provider, $account, $before, $fresh);",
-            ("$day", d.Day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)), ("$repo", d.Repo), ("$provider", d.Provider), ("$account", d.Account),
-            ("$before", d.BeforeUtc is { } b ? Text(b) : null), ("$fresh", d.Fresh));
+    private static readonly string[] DayKeys = ["day", "repo", "provider", "account", "before_utc"];
+
+    private static void InsertDay(DbConnection connection, DbTransaction tx, DayUsage d, bool replace)
+    {
+        (string, object?)[] row =
+        [
+            ("day", d.Day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)), ("repo", d.Repo), ("provider", d.Provider), ("account", d.Account),
+            ("before_utc", d.BeforeUtc is { } b ? Text(b) : null), ("fresh", d.Fresh),
+        ];
+        if (replace) Sql.Upsert(connection, tx, "usage_history", DayKeys, row);
+        else Sql.InsertIfMissing(connection, tx, "usage_history", DayKeys, row);
+    }
 
     // ---- ticket_costs ----
 
@@ -126,26 +131,31 @@ public static class OrchestratorHistory
 
     public static List<SessionCost> LoadTicketCosts(this OrchestratorDb db)
     {
-        using var connection = db.Open();
-        return Read(connection, "SELECT session_id, ticket_id, type, repo, fresh, last_utc, own_share, model FROM ticket_costs;",
-            r => new SessionCost(r.GetString(0), r.GetString(1), r.IsDBNull(2) ? null : r.GetString(2), r.GetString(3), r.GetInt64(4),
-                Time(r.GetString(5)), r.GetInt64(6) != 0, r.IsDBNull(7) ? null : r.GetString(7)))
+        using var connection = db.OpenData();
+        return Sql.Read(connection, null, "SELECT session_id, ticket_id, type, repo, fresh, last_utc, own_share, model FROM ticket_costs;",
+            r => new SessionCost(r.GetString(0), r.GetString(1), Sql.OptionalText(r, 2), r.GetString(3), Sql.Long(r, 4),
+                Time(r.GetString(5)), Sql.Long(r, 6) != 0, Sql.OptionalText(r, 7)))
             .OrderBy(s => s.LastUtc).ThenBy(s => s.SessionId, StringComparer.Ordinal).ToList();
     }
 
     /// <summary>Replaces the costs with <paramref name="costs"/> (<see cref="TicketCosts.Merge"/>'s result).</summary>
     public static void SaveTicketCosts(this OrchestratorDb db, IEnumerable<SessionCost> costs) =>
-        db.Write((connection, tx) =>
+        db.WriteData((connection, tx) =>
         {
-            Run(connection, tx, "DELETE FROM ticket_costs;");
+            Sql.Run(connection, tx, "DELETE FROM ticket_costs;");
             foreach (var c in costs) InsertCost(connection, tx, c, replace: true);
         });
 
-    private static void InsertCost(SqliteConnection connection, SqliteTransaction tx, SessionCost c, bool replace) =>
-        Run(connection, tx,
-            $"INSERT OR {(replace ? "REPLACE" : "IGNORE")} INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ($id, $ticket, $type, $repo, $fresh, $last, $own, $model);",
-            ("$id", c.SessionId), ("$ticket", c.TicketId), ("$type", c.Type), ("$repo", c.Repo), ("$fresh", c.Fresh), ("$last", Text(c.LastUtc)),
-            ("$own", c.OwnShare ? 1 : 0), ("$model", c.Model));
+    private static void InsertCost(DbConnection connection, DbTransaction tx, SessionCost c, bool replace)
+    {
+        (string, object?)[] row =
+        [
+            ("session_id", c.SessionId), ("ticket_id", c.TicketId), ("type", c.Type), ("repo", c.Repo), ("fresh", c.Fresh), ("last_utc", Text(c.LastUtc)),
+            ("own_share", c.OwnShare ? 1L : 0L), ("model", c.Model),
+        ];
+        if (replace) Sql.Upsert(connection, tx, "ticket_costs", ["session_id"], row);
+        else Sql.InsertIfMissing(connection, tx, "ticket_costs", ["session_id"], row);
+    }
 
     // ---- gate_events (M.ORCH-T526) ----
 
@@ -283,7 +293,7 @@ public static class OrchestratorHistory
 
         var done = new List<string>();
         var held = false;
-        db.Write((connection, tx) =>
+        db.WriteData((connection, tx) =>
         {
             // Read under the write lock: a process that got here first and already renamed the file leaves nothing to read.
             if (Take(SamplesFile, () => ReadList<UsageSample>(SamplesFile)) is { } samples)
@@ -341,8 +351,8 @@ public static class OrchestratorHistory
     internal static DateTime Time(string text) =>
         DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
 
-    private static DateTime? OptionalTime(SqliteDataReader r, int i) => r.IsDBNull(i) ? null : Time(r.GetString(i));
-    private static double? Real(SqliteDataReader r, int i) => r.IsDBNull(i) ? null : r.GetDouble(i);
+    private static DateTime? OptionalTime(DbDataReader r, int i) => r.IsDBNull(i) ? null : Time(r.GetString(i));
+
 
     private static bool Try<T>(Func<T> read, out T value) where T : new()
     {
@@ -351,7 +361,7 @@ public static class OrchestratorHistory
             value = read();
             return true;
         }
-        catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is DbException or IOException or UnauthorizedAccessException)
         {
             value = new T();
             return false;

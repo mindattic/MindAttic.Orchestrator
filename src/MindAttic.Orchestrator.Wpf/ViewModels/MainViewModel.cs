@@ -329,7 +329,7 @@ public sealed partial class MainViewModel : ObservableObject
                 // signed in yet still has its tab, to sign in from (M.ORCH-T615).
                 IReadOnlyList<string?> roster = [];
                 try { roster = [.. AccountRoster.Load(aggregator.Db).Select(r => r.Email)]; }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException) { }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
                 return (built, LoginScope.Tabs(built, dirs, roster));
             }), () => localChanges);
             ApplyTabs(next, tabs);

@@ -58,7 +58,7 @@ public static class CliMarks
             using var r = command.ExecuteReader();
             while (r.Read()) rows.Add(((int)r.GetInt64(0), r.GetString(1)));
         }
-        catch (Exception ex) when (ex is SqliteException or IOException) { }
+        catch (Exception ex) when (ex is System.Data.Common.DbException or IOException) { }
         return rows;
     }
 
@@ -81,7 +81,7 @@ public static class CliMarks
                 while (r.Read()) rows[(int)r.GetInt64(0)] = DateTime.UnixEpoch.AddSeconds(r.GetDouble(1));
             }
         }
-        catch (Exception ex) when (ex is SqliteException or IOException) { }
+        catch (Exception ex) when (ex is System.Data.Common.DbException or IOException) { }
         var since = new Dictionary<int, DateTime>();
         foreach (var pid in Read(directory, kind).Keys)
         {
@@ -142,7 +142,7 @@ public static class CliMarks
                         command.ExecuteNonQuery();
                     }, dump: false);
                 }
-                catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException) { continue; }
+                catch (Exception ex) when (ex is System.Data.Common.DbException or IOException or UnauthorizedAccessException) { continue; }
                 try
                 {
                     File.Move(f, claim);
@@ -180,7 +180,7 @@ public static class CliMarks
                 }
             }, dump: false);
         }
-        catch (Exception ex) when (ex is SqliteException or IOException) { }
+        catch (Exception ex) when (ex is System.Data.Common.DbException or IOException) { }
     }
 
     private static bool IsPid(string text, out int pid) =>

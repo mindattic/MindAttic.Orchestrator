@@ -581,7 +581,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             var stories = Path.Combine(repoPath, "docs", "USER_STORIES.md");
             return !File.Exists(stories) || !ClosedIn(File.ReadAllText(stories), id);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or Microsoft.Data.Sqlite.SqliteException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.Data.Common.DbException)
         {
             return true;
         }

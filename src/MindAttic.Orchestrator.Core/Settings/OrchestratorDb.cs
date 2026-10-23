@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Globalization;
 using System.Text;
 using Microsoft.Data.Sqlite;
@@ -59,6 +60,112 @@ public sealed class OrchestratorDb(string path)
 
     /// <summary>The readable dump written beside the database: <c>orchestrator.sql</c>.</summary>
     public string DumpPath => System.IO.Path.ChangeExtension(Path, ".sql");
+
+    // ---- SQL Server, the store of record once configured (M.ORCH-T658) ----
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, OrchestratorServer> Servers = new(StringComparer.Ordinal);
+
+    /// <summary>Whether this is the live database every process opens (not a test's or a scratch one), the one SQL Server
+    /// takes over from.</summary>
+    public bool IsLive => Environment.GetEnvironmentVariable(EnvVar) is not { Length: > 0 } &&
+        string.Equals(Path, System.IO.Path.GetFullPath(LivePath), StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The orchestrator's SQL Server database, the store of its data, when this is the live database and this machine
+    /// has one configured (<see cref="OrchestratorServer.Configured"/>); null keeps everything in this SQLite file.</summary>
+    public OrchestratorServer? Server => TestServer ?? (IsLive && OrchestratorServer.Configured() is { } c ? Servers.GetOrAdd(c, s => new OrchestratorServer(s)) : null);
+
+    /// <summary>A scratch SQL Server database for a test's scratch file, which the live setting never reaches.</summary>
+    internal OrchestratorServer? TestServer { get; init; }
+
+    /// <summary>The tables the hooks read through stdlib sqlite3 that SQL Server keeps: every change to them is copied into this
+    /// file as well (<see cref="WriteData(Action{DbConnection, DbTransaction}, bool, string[])"/>'s mirror).</summary>
+    public static readonly string[] Mirrored = ["settings", "assignments", "state"];
+
+    /// <summary>An open connection to the store of the orchestrator's data: SQL Server once configured, else this file.</summary>
+    public DbConnection OpenData() => Server is { } server ? server.Open() : Open();
+
+    /// <summary>
+    /// Runs <paramref name="change"/> in one write transaction on the store of the orchestrator's data (its write lock taken at
+    /// once, so writers queue rather than fail at commit), rewrites the dump from what it committed, then copies what
+    /// <paramref name="mirror"/> names ("settings", "assignments", "state:&lt;name&gt;") into this file for the hooks.
+    /// </summary>
+    public void WriteData(Action<DbConnection, DbTransaction> change, bool dump = true, params string[] mirror) =>
+        WriteDataIf((connection, tx) => { change(connection, tx); return dump; }, mirror);
+
+    /// <summary><see cref="WriteData(Action{DbConnection, DbTransaction}, bool, string[])"/>, the change saying whether the dump
+    /// needs writing (whether it changed anything the dump holds).</summary>
+    public void WriteDataIf(Func<DbConnection, DbTransaction, bool> change, params string[] mirror)
+    {
+        string? text = null;
+        var server = Server;
+        if (server is null)
+        {
+            using var local = Open();
+            using var localTx = local.BeginTransaction(deferred: false);
+            // Waited on the file's lock while orchestrator db migrate held it: the data is SQL Server's now, written there below.
+            server = Server;
+            if (server is null)
+            {
+                text = change(local, localTx) ? Dump(local, localTx) : null;
+                localTx.Commit();
+            }
+        }
+        if (server is not null) using (var connection = server.Open())
+        {
+            using var tx = connection.BeginTransaction();
+            OrchestratorServer.Lock(connection, tx);
+            text = change(connection, tx) ? Dump(connection, tx) : null;
+            tx.Commit();
+            // Committed: a copy that can't be made now (the file held past its timeout) is made by the daemon's SyncMirror.
+            if (mirror.Length > 0)
+                try { Mirror(connection, mirror); }
+                catch (Exception ex) when (ex is DbException or IOException or UnauthorizedAccessException) { }
+        }
+        if (text is null) return;
+        try { WriteDump(text); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+
+    /// <summary>Copies what <paramref name="what"/> names from SQL Server (<paramref name="server"/>) into this file, replacing it.</summary>
+    private void Mirror(DbConnection server, IEnumerable<string> what)
+    {
+        var copies = what.Select(w => (Name: w, Rows: w.StartsWith("state:", StringComparison.Ordinal)
+                ? Sql.Read(server, null, "SELECT name, value, written_at FROM state WHERE name = @name;", Row, ("@name", w["state:".Length..]))
+                : Sql.Read(server, null, $"SELECT * FROM {w};", Row)))
+            .ToList();
+        Write((connection, tx) =>
+        {
+            foreach (var (name, rows) in copies)
+            {
+                var table = name.StartsWith("state:", StringComparison.Ordinal) ? "state" : name;
+                if (table == "state") Sql.Run(connection, tx, "DELETE FROM state WHERE name = @name;", ("@name", name["state:".Length..]));
+                else Sql.Run(connection, tx, $"DELETE FROM {table};");
+                foreach (var row in rows)
+                    Sql.Run(connection, tx, $"INSERT INTO {table} ({string.Join(", ", row.Select(c => Sql.Quote(c.Column)))}) VALUES ({string.Join(", ", row.Select(c => "@" + c.Column))});",
+                        [.. row.Select(c => ("@" + c.Column, c.Value))]);
+            }
+        }, dump: false);
+
+        static (string Column, object? Value)[] Row(DbDataReader r) =>
+            [.. Enumerable.Range(0, r.FieldCount).Select(i => (r.GetName(i), r.IsDBNull(i) ? null : r.GetValue(i)))];
+    }
+
+    /// <summary>Copies every mirrored table (<see cref="Mirrored"/>, the saved state but its volatile rows, which stay here)
+    /// from SQL Server into this file: the daemon runs it now and then, so a copy a write couldn't make (this file held past
+    /// its timeout) is made later.</summary>
+    public void SyncMirror()
+    {
+        if (Server is not { } server) return;
+        using var connection = server.Open();
+        var names = Sql.Read(connection, null, "SELECT name FROM state;", r => r.GetString(0)).Where(n => !Volatile.Contains(n)).ToList();
+        Mirror(connection, ["settings", "assignments", .. names.Select(n => "state:" + n)]);
+        // A saved row gone from the server (deleted there) goes from here too, but never a volatile one, which only this file keeps.
+        Write((c, tx) =>
+        {
+            foreach (var stale in Sql.Read(c, tx, "SELECT name FROM state;", r => r.GetString(0)).Where(n => !Volatile.Contains(n) && !names.Contains(n)))
+                Sql.Run(c, tx, "DELETE FROM state WHERE name = @name;", ("@name", stale));
+        }, dump: false);
+    }
 
     /// <summary>The schema, one step per version: step i takes the database from version i to i + 1.</summary>
     private static readonly string[] Migrations =
@@ -306,7 +413,7 @@ public sealed class OrchestratorDb(string path)
     }
 
     /// <summary>A readable, deterministic SQL dump of the whole database (one INSERT per row, in key order), committed beside it.</summary>
-    public static string Dump(SqliteConnection connection, SqliteTransaction? tx = null)
+    public static string Dump(DbConnection connection, DbTransaction? tx = null)
     {
         var sb = new StringBuilder("-- MindAttic.Orchestrator database dump (written with every change; the .db file is the store).\n");
         foreach (var (table, order, where) in Tables)
@@ -332,10 +439,10 @@ public sealed class OrchestratorDb(string path)
         return sb.ToString();
     }
 
-    /// <summary>The dump as it stands now.</summary>
+    /// <summary>The dump as it stands now, from the store of the orchestrator's data.</summary>
     public string Dump()
     {
-        using var connection = Open();
+        using var connection = OpenData();
         return Dump(connection);
     }
 
@@ -364,8 +471,9 @@ public sealed class OrchestratorDb(string path)
         using var connection = Open();
         using var tx = connection.BeginTransaction(deferred: false);
         change(connection, tx);
-        // A change only to rows the dump leaves out (Volatile) can't change it: not worth reading every table for.
-        var text = dump ? Dump(connection, tx) : null;
+        // A change only to rows the dump leaves out (Volatile) can't change it: not worth reading every table for. With SQL
+        // Server the store of record, this file holds only what this machine shares, and the dump is written from the server.
+        var text = dump && Server is null ? Dump(connection, tx) : null;
         tx.Commit();
         if (text is null) return;
         try { WriteDump(text); }
@@ -387,35 +495,27 @@ public sealed class OrchestratorDb(string path)
     /// <summary><paramref name="name"/>'s <c>state</c> value and when it was written; null when none is kept.</summary>
     public (string Value, DateTime WrittenUtc)? LoadState(string name)
     {
-        using var connection = Open();
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT value, written_at FROM state WHERE name = $name;";
-        command.Parameters.AddWithValue("$name", name);
-        using var r = command.ExecuteReader();
-        return r.Read() ? (r.GetString(0), DateTime.UnixEpoch.AddTicks((long)(r.GetDouble(1) * TimeSpan.TicksPerSecond))) : null;
+        // A volatile row is this machine's, kept in this file; the rest are the orchestrator's data (M.ORCH-T658).
+        using var connection = Volatile.Contains(name) ? Open() : OpenData();
+        return Sql.Read(connection, null, "SELECT value, written_at FROM state WHERE name = @name;",
+                r => (r.GetString(0), DateTime.UnixEpoch.AddTicks((long)(Sql.Real(r, 1) * TimeSpan.TicksPerSecond))), ("@name", name))
+            .Select(row => ((string, DateTime)?)row).FirstOrDefault();
     }
 
     /// <summary>Replaces <paramref name="name"/>'s <c>state</c> value (a volatile one without rewriting the dump).</summary>
-    public void SaveState(string name, string json) => Write((connection, tx) =>
+    public void SaveState(string name, string json)
     {
-        using var command = connection.CreateCommand();
-        command.Transaction = tx;
-        command.CommandText = "INSERT OR REPLACE INTO state (name, value, written_at) VALUES ($name, $value, $at);";
-        command.Parameters.AddWithValue("$name", name);
-        command.Parameters.AddWithValue("$value", json);
-        command.Parameters.AddWithValue("$at", (DateTime.UtcNow - DateTime.UnixEpoch).Ticks / (double)TimeSpan.TicksPerSecond);
-        command.ExecuteNonQuery();
-    }, dump: !Volatile.Contains(name));
+        (string, object?)[] row = [("name", name), ("value", json), ("written_at", (DateTime.UtcNow - DateTime.UnixEpoch).Ticks / (double)TimeSpan.TicksPerSecond)];
+        if (Volatile.Contains(name)) Write((connection, tx) => Sql.Upsert(connection, tx, "state", ["name"], row), dump: false);
+        else WriteData((connection, tx) => Sql.Upsert(connection, tx, "state", ["name"], row), true, "state:" + name);
+    }
 
     /// <summary>Drops <paramref name="name"/>'s <c>state</c> value.</summary>
-    public void DeleteState(string name) => Write((connection, tx) =>
+    public void DeleteState(string name)
     {
-        using var command = connection.CreateCommand();
-        command.Transaction = tx;
-        command.CommandText = "DELETE FROM state WHERE name = $name;";
-        command.Parameters.AddWithValue("$name", name);
-        command.ExecuteNonQuery();
-    }, dump: !Volatile.Contains(name));
+        if (Volatile.Contains(name)) Write((connection, tx) => Sql.Run(connection, tx, "DELETE FROM state WHERE name = @name;", ("@name", name)), dump: false);
+        else WriteData((connection, tx) => Sql.Run(connection, tx, "DELETE FROM state WHERE name = @name;", ("@name", name)), true, "state:" + name);
+    }
 
     private static void Migrate(SqliteConnection connection)
     {

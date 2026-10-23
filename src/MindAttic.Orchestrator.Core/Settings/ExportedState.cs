@@ -19,7 +19,7 @@ public static class ExportedState
         var dbThere = File.Exists(db.Path);
         if (dbThere)
             try { row = db.LoadState(name); }
-            catch (SqliteException) { } // held past the busy timeout: the file stands in
+            catch (System.Data.Common.DbException) { } // held past the busy timeout: the file stands in
         string? file = null;
         var fileUtc = DateTime.MinValue;
         try
@@ -37,7 +37,7 @@ public static class ExportedState
                 db.SaveState(name, file);
                 if (!File.Exists(path + ".bak")) File.Copy(path, path + ".bak");
             }
-            catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException) { }
+            catch (Exception ex) when (ex is System.Data.Common.DbException or IOException or UnauthorizedAccessException) { }
         if (row is { } r && (file is null || r.WrittenUtc > fileUtc)) return r.Value;
         return file;
     }
@@ -47,7 +47,7 @@ public static class ExportedState
     public static void Write(OrchestratorDb db, string name, string path, string json)
     {
         try { db.SaveState(name, json); }
-        catch (SqliteException) { } // held past the busy timeout: the file alone, which reads newer
+        catch (System.Data.Common.DbException) { } // held past the busy timeout: the file alone, which reads newer
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var tmp = $"{path}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
         File.WriteAllText(tmp, json, new UTF8Encoding(false));

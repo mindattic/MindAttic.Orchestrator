@@ -31,7 +31,7 @@ public static class SessionStates
             using var r = command.ExecuteReader();
             while (r.Read()) rows[r.GetString(0)] = (r.GetString(1), DateTime.UnixEpoch.AddTicks((long)(r.GetDouble(2) * TimeSpan.TicksPerSecond)));
         }
-        catch (Exception ex) when (ex is SqliteException or IOException) { }
+        catch (Exception ex) when (ex is System.Data.Common.DbException or IOException) { }
         return rows;
     }
 
@@ -76,7 +76,7 @@ public static class SessionStates
                 }
             }, dump: false);
         }
-        catch (SqliteException) { return; } // held: the next tick
+        catch (System.Data.Common.DbException) { return; } // held: the next tick
         foreach (var (session, _, _, first) in due.Where(d => d.First))
         {
             var f = Path.Combine(directory, session + Suffix);
@@ -101,6 +101,6 @@ public static class SessionStates
                 command.ExecuteNonQuery();
             }, dump: false);
         }
-        catch (Exception ex) when (ex is SqliteException or IOException) { }
+        catch (Exception ex) when (ex is System.Data.Common.DbException or IOException) { }
     }
 }

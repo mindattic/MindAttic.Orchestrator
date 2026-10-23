@@ -75,7 +75,7 @@ public sealed class OpenTicketSource
                     queue.Where(q => q.Value.Approval == TicketsDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
                     queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase));
             }
-            catch (Exception ex) when (ex is IOException or InvalidOperationException or Microsoft.Data.Sqlite.SqliteException)
+            catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Data.Common.DbException)
             {
                 warnings.Add($"ticket database: {ex.Message}");
                 // A read that fails mid-write (the database locked) keeps the last good read rather than fall back to
