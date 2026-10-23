@@ -1,4 +1,5 @@
 using MindAttic.Orchestrator.Budget;
+using MindAttic.Orchestrator.Sessions;
 using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
@@ -88,8 +89,18 @@ public sealed class UsageReportTests
         Assert.That((amy.CliToday, amy.CliWeek, amy.CliSince), Is.EqualTo((100L, 150L, (long?)157)));
         Assert.That((report.ApiKeyToday, report.ApiKeyWeek, report.ApiKeySince), Is.EqualTo((30L, 50L, (long?)50)));
         Assert.That(amy.OutsideUse, Is.Null);
-        Assert.That(report.DetailCells()[0][^1], Is.EqualTo(UsageReport.NotMeasured), "outside use waits for M.ORCH-T682");
+        Assert.That(report.DetailCells()[0][^1], Is.EqualTo(UsageReport.NotMeasured), "no outside use measured for this login");
         Assert.That(report.DetailHeaders, Does.Contain($"CLIs since {Today.AddDays(-6):yyyy-MM-dd}"));
+    }
+
+    [Test]
+    public void Outside_use_is_what_the_daemon_measured_for_the_login()
+    {
+        Assert.That(UsageReport.OutsideText(new OutsideUseStats("a@x.com", "Amy", false, 0, 0, 0, null, 5, null)), Is.Null, "nothing measured yet");
+        Assert.That(UsageReport.OutsideText(new OutsideUseStats("a@x.com", "Amy", false, 12, 3, 2, 6.5, 5, 8)),
+            Is.EqualTo("3% a window, 6.5% a week on average (12 windows)"));
+        Assert.That(UsageReport.OutsideText(new OutsideUseStats("", "Erin", true, 1, 12, 0, null, 5, null, HeldTo: 80)),
+            Is.EqualTo("using Claude now; 12% a window on average (1 window)"));
     }
 
     [Test]

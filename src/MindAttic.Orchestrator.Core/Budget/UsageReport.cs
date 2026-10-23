@@ -46,7 +46,7 @@ public sealed record UsageReportRow
     public long CliWeek { get; init; }
     /// <summary>Since <see cref="UsageReport.Since"/>; null when no --since was given.</summary>
     public long? CliSince { get; init; }
-    /// <summary>The member's own use of Claude outside the orchestrator (M.ORCH-T682); null until it's measured.</summary>
+    /// <summary>The member's own use of Claude outside the orchestrator (M.ORCH-T682, <see cref="UsageReport.OutsideText"/>); null until it's measured.</summary>
     public string? OutsideUse { get; init; }
 }
 
@@ -196,10 +196,11 @@ public sealed record UsageReport
     /// login's reading in <paramref name="dirs"/>, the global login's <paramref name="globalReading"/> (put on the account the
     /// snapshot says is signed in to it), <paramref name="snapshot"/>'s usage history and budgets (the global login's and each
     /// per-CLI login's) for the spend and the estimates, the weekly target and pacing line from <paramref name="settings"/>, and
-    /// the meter probe's last word for each login in <paramref name="stateDb"/> for why a reading is stale.
+    /// the meter probe's last word for each login in <paramref name="stateDb"/> for why a reading is stale, and each login's
+    /// <paramref name="outside"/> use as the daemon measures it (M.ORCH-T682; keyed by email, "" for the global login).
     /// </summary>
     public static UsageReport Gather(OrchestratorDb db, Snapshot snapshot, AccountDirs dirs, OrchestratorSettings settings, DateTime nowUtc,
-        DateOnly? since = null, ReportedUsage? globalReading = null, OrchestratorDb? stateDb = null, Func<string, string?>? outsideUse = null)
+        DateOnly? since = null, ReportedUsage? globalReading = null, OrchestratorDb? stateDb = null, IReadOnlyList<OutsideUseStats>? outside = null)
     {
         var members = MemberRoster.Load(db);
         var current = snapshot.Account is { } key && key != ClaudeAccount.ApiKey ? key : null;
@@ -229,12 +230,26 @@ public sealed record UsageReport
         if (current is not null && snapshot.Budget is { } global) estimates[current] = global;
         foreach (var a in snapshot.Accounts)
             if (a.Account is { } k) estimates[k] = a.Budget;
-        return Build(members, roster, logins, snapshot.History, estimates, settings.WeeklyStopPercent, nowUtc, since, current, outsideUse,
+        string? OutsideOf(string email) => outside?.FirstOrDefault(o => string.Equals(o.Key, email, StringComparison.OrdinalIgnoreCase)
+            || (o.Key.Length == 0 && string.Equals(globalEmail, email, StringComparison.OrdinalIgnoreCase))) is { } o ? OutsideText(o) : null;
+        return Build(members, roster, logins, snapshot.History, estimates, settings.WeeklyStopPercent, nowUtc, since, current, OutsideOf,
                 email => reasons.GetValueOrDefault(email)) with
         {
             PacingLinePercent = settings.WeeklyAwareLine,
             PacingOn = settings.WeeklyAwarePacing,
         };
+    }
+
+    /// <summary>A member's outside use for the spend table: "using Claude now; 3% a window, 6% a week on average (12 windows)";
+    /// null (not measured yet) before any window was measured.</summary>
+    public static string? OutsideText(OutsideUseStats o)
+    {
+        var now = o.InUse ? "using Claude now" : null;
+        if (o.WindowCount == 0) return now;
+        static string P(double v) => v.ToString(v < 10 ? "0.#" : "0", CultureInfo.InvariantCulture) + "%";
+        var average = $"{P(o.PerWindow)} a window" + (o.PerWeek is { } w ? $", {P(w)} a week" : "") +
+            $" on average ({o.WindowCount} window{(o.WindowCount == 1 ? "" : "s")})";
+        return now is null ? average : $"{now}; {average}";
     }
 
     /// <summary>Each login's meter probe trouble from its <see cref="AccountPacer.ProbeStateName"/> row: why it isn't asking, or

@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows.Input;
 using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Budget;
+using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
@@ -36,7 +37,8 @@ public sealed partial class MainViewModel
                 try { settings = store.LoadSettings(); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { settings = new OrchestratorSettings(); }
                 var now = DateTime.UtcNow;
-                var report = UsageReport.Gather(aggregator.Db, snapshot, dirs, settings, now, null, ReportedUsage.Load(now), ReportedUsage.DefaultDb);
+                var report = UsageReport.Gather(aggregator.Db, snapshot, dirs, settings, now, null, ReportedUsage.Load(now), ReportedUsage.DefaultDb,
+                    OutsideUseWatch.Stats(OutsideUseWatch.Load(store), settings));
                 return WriteUsageReport(report, folder);
             });
             AccountsMessage = $"Usage report written to {path} (and its Markdown beside it).";
