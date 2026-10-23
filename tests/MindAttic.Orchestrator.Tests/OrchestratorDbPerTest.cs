@@ -14,6 +14,7 @@ public sealed class OrchestratorDbPerTestAttribute : Attribute, ITestAction
     private string? dir;
     private string? before;
     private string? serverBefore;
+    private string? ticketsServerBefore;
 
     public ActionTargets Targets => ActionTargets.Test;
 
@@ -22,6 +23,8 @@ public sealed class OrchestratorDbPerTestAttribute : Attribute, ITestAction
         before = Environment.GetEnvironmentVariable(OrchestratorDb.EnvVar);
         serverBefore = Environment.GetEnvironmentVariable(OrchestratorServer.EnvVar);
         Environment.SetEnvironmentVariable(OrchestratorServer.EnvVar, "off");
+        ticketsServerBefore = Environment.GetEnvironmentVariable(MindAttic.Tickets.Data.TicketsServer.EnvVar);
+        Environment.SetEnvironmentVariable(MindAttic.Tickets.Data.TicketsServer.EnvVar, "off"); // nor the live ticket database (M.TIX-T131)
         dir = Path.Combine(Path.GetTempPath(), "orchestrator-db-test-" + Guid.NewGuid().ToString("N"));
         Environment.SetEnvironmentVariable(OrchestratorDb.EnvVar, Path.Combine(dir, "orchestrator.db"));
     }
@@ -30,6 +33,7 @@ public sealed class OrchestratorDbPerTestAttribute : Attribute, ITestAction
     {
         Environment.SetEnvironmentVariable(OrchestratorDb.EnvVar, before);
         Environment.SetEnvironmentVariable(OrchestratorServer.EnvVar, serverBefore);
+        Environment.SetEnvironmentVariable(MindAttic.Tickets.Data.TicketsServer.EnvVar, ticketsServerBefore);
         try { if (dir is not null && Directory.Exists(dir)) Directory.Delete(dir, recursive: true); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
