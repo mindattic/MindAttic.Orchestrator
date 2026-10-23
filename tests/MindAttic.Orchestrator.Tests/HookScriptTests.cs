@@ -747,8 +747,8 @@ public sealed class HookScriptTests
         Gate(Ends("h5", "Stopping until the limit resets."), AgentGate.ContextScriptName);
         Assert.That(Held("h5"), Is.Null, "nothing holds the window: not waiting on it");
 
-        Gate(new { hook_event_name = "UserPromptSubmit", session_id = "h3", prompt = "carry on", cwd = ws }, AgentGate.ContextScriptName);
-        Assert.That(Held("h3"), Is.Null, "a new prompt (the daemon's resume, or yours) is the CLI going on");
+        Gate(new { hook_event_name = "UserPromptSubmit", session_id = "h1", prompt = "carry on", cwd = ws }, AgentGate.ContextScriptName);
+        Assert.That(Held("h1"), Is.Null, "a new prompt (the daemon's resume, or yours) is the CLI going on");
     }
 
     [Test]

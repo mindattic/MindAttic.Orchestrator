@@ -1328,7 +1328,7 @@
                 <TextBlock Text="Weekly target (% of each account's week)" Margin="0,10,0,4" />
                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
                          Text="{Binding WeeklyTarget, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Weekly target percent" />
-                <TextBlock Text="50 to 100 (95 by default). Every CLI on an account stops here, on or off, and the week stops there. The rest is the weekly reserve, kept for your own questions in the Claude app and claude.ai: 95 keeps 5% of each week back."
+                <TextBlock Text="50 to 100 (95 by default). Every CLI on an account stops here. The rest is the weekly reserve, kept for your own questions in the Claude app and claude.ai: 95 keeps 5% of each week back."
                            Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
                 <TextBlock Text="Take-in line (% of the week)" Margin="0,10,0,4" />
                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
