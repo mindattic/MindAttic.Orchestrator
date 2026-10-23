@@ -212,6 +212,17 @@ The request goes to the host, never into the CLI, on a pipe of its own beside th
   cost) bills only the gap. A login with room is always preferred to the key. Each failover and move back is logged and
   toasted ("U.SPC CLI moved to API key: Ryan's week is at 98% (stops at 95%)..."). Setting `FailoverToApiKey` (on by
   default; `orchestrator settings --failover false`) turns it off.
+
+  **Past a login's line, straight to the key (M.ORCH-T681):** a CLI on someone's own per-CLI login that reaches the
+  5-hour pace target (`PaceTargetPercent`, 98%) or the weekly target (`WeeklyStopPercent`: 100 minus the weekly reserve),
+  or whose pace stops or limit is hit, is never moved to another person's login (each person's remainder stays theirs):
+  it fails over to the API key with `now: true`, so the tab restarts it at once instead of the pace gate refusing its
+  calls, keeping its session and login, and moves back when that login's window resets. Only while the fallback is the API
+  key (billing mode `api`); otherwise the daemon says so once ("the fallback isn't the API key") and nothing moves. A
+  failover, and a move back, counts only once the CLI's session state shows it billing what was asked: a tab that took the
+  request but restarted the CLI on the old billing, or never restarted it (2 minutes for `now`, 30 at an idle point), is
+  toasted as Needs you ("close and reopen this tab": one opened before M.LNCH-T67 drops it) and asked again 5 minutes later.
+  Toasted when seen: "Unity.SpaceGod moved to the API key: Honey's week at 90%".
 - **What the Launcher does:**
   1. Act only if `cliPid` is still the CLI this tab runs; otherwise drop the request.
   2. Wait for the CLI's next idle point: its turn has ended and it's waiting for input (the context gate's

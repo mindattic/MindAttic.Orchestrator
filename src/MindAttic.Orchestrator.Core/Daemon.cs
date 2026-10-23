@@ -324,14 +324,16 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         }
     }
 
-    /// <summary>Logs each CLI the rebalancer moved and toasts it; one it couldn't move is only logged, as a warning.</summary>
+    /// <summary>Logs each CLI the rebalancer moved and toasts it; one only asked of its tab (not yet seen to have moved) is only
+    /// logged; one it couldn't move is logged as a warning, and toasted as Needs you when only you can fix it (M.ORCH-T681).</summary>
     internal void ReportRebalance(IEnumerable<Rebalanced> moves)
     {
         foreach (var m in moves)
         {
-            Say(m.Moved ? LogEventLevel.Information : LogEventLevel.Warning, m.Line);
-            if (!m.Moved) continue;
+            Say(m.Moved || m.Asked ? LogEventLevel.Information : LogEventLevel.Warning, m.Line);
             var text = m.Line.StartsWith("rebalance: ", StringComparison.Ordinal) ? m.Line["rebalance: ".Length..] : m.Line;
+            if (m.NeedsYou) Alert("Needs you", text);
+            if (!m.Moved) continue;
             Alert("Moved a CLI", text);
             AccountRebalancer.Record(store, text, DateTime.UtcNow);
         }

@@ -5,8 +5,16 @@ using MindAttic.Orchestrator.Settings;
 
 namespace MindAttic.Orchestrator.Sessions;
 
-/// <summary>One CLI the rebalancer moved, or tried to: what to log, and whether the Launcher tab took the request (toasted).</summary>
-public sealed record Rebalanced(bool Moved, string Line);
+/// <summary>One CLI the rebalancer moved, or tried to: what to log, and whether it moved (toasted).</summary>
+public sealed record Rebalanced(bool Moved, string Line)
+{
+    /// <summary>Asked of its Launcher tab, not yet seen to have taken: logged, not toasted (M.ORCH-T681: a failover counts only
+    /// once the CLI shows it billing the key).</summary>
+    public bool Asked { get; init; }
+
+    /// <summary>Only you can fix it (a tab that dropped the request, a fallback that isn't the API key): toasted as Needs you.</summary>
+    public bool NeedsYou { get; init; }
+}
 
 /// <summary>A move the daemon made, as the store keeps it for the dashboard's toast.</summary>
 public sealed class RebalanceMove
@@ -28,6 +36,13 @@ public sealed class RebalanceMove
 /// API key instead (<see cref="AccountMove.FailoverAsync"/>: a restart-resume billing the key for it alone, the global mode left
 /// as it is), at once when a limit error ended its turn, and moved back to its login once that login resets, so the key (no
 /// rate ceiling, only cost) bills only the gap. <see cref="OrchestratorSettings.FailoverToApiKey"/> turns it off.</para>
+/// <para>Past a per-CLI login's line (M.ORCH-T681): a CLI on someone's own login that reaches its 5-hour pace target or its
+/// weekly target (<see cref="OrchestratorSettings.WeeklyStopPercent"/>), or whose pace stops or limit is hit, goes straight to
+/// the fallback, the API key, at once (<c>now</c>) rather than at its next idle point, keeping its session and its login; never
+/// to another person's login, so each person's remainder stays theirs. Only while the fallback is the API key (billing API
+/// mode); otherwise it's said plainly and nothing moves. A failover (and a move back) counts only once the CLI shows it billing
+/// what was asked: a Launcher tab from before M.LNCH-T67 takes the request and drops it, which is toasted ("close and reopen
+/// this tab") and asked again after <see cref="BackRetry"/>.</para>
 /// </summary>
 public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = null)
 {
@@ -54,6 +69,16 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
 
     /// <summary>Approves or rejects the Vault key in a login's Claude Code config (seam): null when done, else why not.</summary>
     internal Func<string, bool, string?> SetKeyChoice { get; init; } = (configPath, approve) => mover.Billing.SetKeyChoice(configPath, approve);
+
+    /// <summary>The fallback's billing, the mode in force (seam): only <see cref="BillingModes.Api"/> lets a CLI past its own
+    /// login's line move to the key (M.ORCH-T681).</summary>
+    internal Func<string> FallbackMode { get; init; } = () => mover.Billing.Mode(out _);
+
+    /// <summary>How long a failover asked for at once has to show the CLI billing the key before it's counted as dropped.</summary>
+    public static readonly TimeSpan ConfirmWithin = TimeSpan.FromMinutes(2);
+
+    /// <summary>The same for one asked for at the CLI's next idle point (a long turn can hold it that long).</summary>
+    public static readonly TimeSpan IdleConfirmWithin = TimeSpan.FromMinutes(30);
 
     /// <summary>Claude's meter for a login (null: the global one) (seam).</summary>
     internal Func<AccountDir?, DateTime, ReportedUsage?> Usage { get; init; } = (a, now) => ReportedUsage.Load(now, a?.UsagePath);
@@ -153,6 +178,19 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
 
     private static string LimitWords(LimitHit hit) => hit.Kind == LimitKind.Weekly ? "weekly" : "5-hour";
 
+    /// <summary>What put <paramref name="name"/>'s login past its line, in the toast's words: "Honey's week at 90%".</summary>
+    internal static string PastLine(string name, LimitHit? hit, Pace? pace, ReportedUsage? usage, DateTime nowUtc, int paceTargetPercent, int weeklyStopPercent)
+    {
+        if (hit is { } h) return $"{name}'s {LimitWords(h)} limit was hit";
+        if (ReportedUsage.Usable(usage?.Week, nowUtc) is { } week && week.Percent >= weeklyStopPercent) return $"{name}'s week at {Pct(week.Percent)}%";
+        if (ReportedUsage.Usable(usage?.FiveHour, nowUtc) is { } five && five.Percent >= Math.Clamp(paceTargetPercent, 1, 100))
+            return $"{name}'s 5-hour window at {Pct(five.Percent)}%";
+        return $"{name}'s {pace?.Governing ?? "5-hour"} pace at the limit";
+    }
+
+    /// <summary>Logins already told their fallback isn't the API key, by login and the reset it waits for.</summary>
+    private readonly HashSet<string> toldNotApi = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Moves each movable CLI on a low login to a free login with more headroom, one CLI to a login; with none to move to, fails
     /// it over to the API key (M.ORCH-T664), and moves each failed-over CLI back once its login resets. <paramref name="globalPace"/>
@@ -213,6 +251,30 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             var why = hit is { } lh ? $"its {LimitWords(lh)} limit was hit" : Low(fromPace, fromUsage, nowUtc, target, stop);
             if (why is null) continue;
 
+            // Past someone's own login's line (M.ORCH-T681): straight to the fallback, the API key, at once; never to another
+            // person's login, so each person's remainder stays theirs.
+            if (fromDir is not null)
+            {
+                if (!settings.FailoverToApiKey) continue;
+                var name = mover.NameFor(fromDir.Directory, fromDir.Email);
+                var past = PastLine(name, hit, fromPace, fromUsage, nowUtc, target, stop);
+                var until = Until(hit, fromPace, fromUsage, nowUtc, target, stop);
+                string mode;
+                try { mode = FallbackMode(); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Text.Json.JsonException) { mode = BillingModes.Team; }
+                if (mode != BillingModes.Api)
+                {
+                    if (toldNotApi.Add($"{fromDir.Email}@{until?.ToString("O", CultureInfo.InvariantCulture)}"))
+                        results.Add(new(false, $"rebalance: {cli.Where} can't move to the API key ({past}): the fallback isn't the API key, billing is " +
+                                               $"{BillingModes.Name(mode)}, so it stays on {name}'s login and waits for the reset ('orchestrator billing api' makes the key the fallback).")
+                            { NeedsYou = true });
+                    continue;
+                }
+                tried[cli.SessionId] = nowUtc;
+                results.Add(Failover(cli, from, fromDir, why, until, now: true, nowUtc, toast: $"{cli.Where} moved to the API key: {past}"));
+                continue;
+            }
+
             // A pace at its limit (or a limit hit) has no room left, whatever the meter last said (it may not have been read lately).
             var fromRoom = hit is not null || fromPace is { } fp && (fp.Stop || fp.Mode == PaceMode.Over) ? 0 : LoginPicker.Headroom(fromUsage, nowUtc, stop);
             var to = LoginPicker.Choose(signedIn, busy, UsageOf, nowUtc, stop);
@@ -249,8 +311,9 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
     }
 
     /// <summary>Fails <paramref name="cli"/> over to the API key: the key approved in its login's config, then its tab asked to
-    /// restart it billing the key under the same login.</summary>
-    private Rebalanced Failover(CliBilling cli, string? from, AccountDir? fromDir, string why, DateTime? untilUtc, bool now, DateTime nowUtc)
+    /// restart it billing the key under the same login. It's booked as pending: counted (and <paramref name="toast"/>ed, else the
+    /// usual line) only once the CLI shows it billing the key (<see cref="MoveBack"/>).</summary>
+    private Rebalanced Failover(CliBilling cli, string? from, AccountDir? fromDir, string why, DateTime? untilUtc, bool now, DateTime nowUtc, string? toast = null)
     {
         var configDir = fromDir?.Directory ?? "";
         var name = mover.NameFor(configDir, from ?? AccountMove.GlobalLabel);
@@ -269,12 +332,27 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             if (fromDir is not null) SetKeyChoice(configPath, false);
             return new(false, $"rebalance: the CLI in {cli.Where} (pid {cli.Pid}) couldn't fail over to the API key ({reason}): its Launcher tab has no control pipe to ask.");
         }
-        Book().Add(new ApiFailover(cli.SessionId, cli.Pid, cli.Host?.ProcessId, cli.Cwd, from, configDir, name, why, nowUtc) { UntilUtc = untilUtc, SeenUtc = nowUtc });
-        SaveBook();
         var back = untilUtc is { } u ? $" at {u.ToLocalTime().ToString("t", CultureInfo.CurrentCulture)}" : "";
-        return new(true, $"rebalance: {cli.Where} CLI moved to API key: {reason}. No login has room, so it resumes its session on the key " +
-                         $"{(now ? "at once (a limit error ended its turn)" : "at its next idle point")}, the billing mode unchanged, and moves back to {name} once it resets{back}.");
+        var line = toast is not null
+            ? $"rebalance: {toast}. It resumes its session on the key at once, keeping {name}'s login, and moves back once it resets{back}."
+            : $"rebalance: {cli.Where} CLI moved to API key: {reason}. No login has room, so it resumes its session on the key " +
+              $"{(now ? "at once (a limit error ended its turn)" : "at its next idle point")}, the billing mode unchanged, and moves back to {name} once it resets{back}.";
+        Book().Add(new ApiFailover(cli.SessionId, cli.Pid, cli.Host?.ProcessId, cli.Cwd, from, configDir, name, why, nowUtc)
+        {
+            UntilUtc = untilUtc, SeenUtc = nowUtc, Pending = true, AskedPid = cli.Pid, AskedNow = now, Line = line,
+        });
+        SaveBook();
+        return new(false, $"rebalance: asked the Launcher tab running the CLI in {cli.Where} (pid {cli.Pid}) to move it to the API key ({reason}); " +
+                          "it's counted once the CLI shows it billing the key.") { Asked = true };
     }
+
+    /// <summary>Whether a request asked of a CLI's tab has had its chance and didn't take: the CLI restarted (a new process)
+    /// without billing what was asked, or the time for it is up.</summary>
+    private static bool Dropped(CliBilling? cli, int? askedPid, DateTime askedUtc, bool now, DateTime nowUtc) =>
+        cli is not null && askedPid is { } p && cli.Pid != p || nowUtc - askedUtc >= (now ? ConfirmWithin : IdleConfirmWithin);
+
+    private static string Gap(TimeSpan gap) =>
+        gap.TotalHours >= 1 ? $"{(int)gap.TotalHours}h {gap.Minutes}m" : $"{Math.Max(1, (int)gap.TotalMinutes)}m";
 
     /// <summary>Moves each failed-over CLI whose login has reset back onto it, forgets the ones gone, and returns the sessions
     /// still on the key.</summary>
@@ -290,17 +368,79 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             // The same session, else the CLI its Launcher tab runs now (a resume may start a new session id).
             var cli = live.FirstOrDefault(c => c.SessionId == f.SessionId) ??
                       (f.HostPid is { } hp ? live.FirstOrDefault(c => c.Host?.ProcessId == hp) : null);
+            var home = dirOf(f.FromEmail);
+
+            // Asked onto the key and not yet seen there (M.ORCH-T681): counted (and toasted) only once the CLI bills the key; a tab
+            // that took the request and dropped it (one opened before M.LNCH-T67) is said, and the failover asked again later.
+            if (f.Pending)
+            {
+                if (cli is { Bills: BillingModes.Api })
+                {
+                    book[book.IndexOf(f)] = f with { SessionId = cli.SessionId, Pid = cli.Pid, SeenUtc = nowUtc, Pending = false };
+                    changed = true;
+                    onKey.Add(cli.SessionId);
+                    results.Add(new(true, f.Line ?? $"rebalance: {cli.Where} moved to the API key: {f.Name}: {f.Why}."));
+                    continue;
+                }
+                if (Dropped(cli, f.AskedPid, f.SinceUtc, f.AskedNow, nowUtc))
+                {
+                    book.Remove(f);
+                    changed = true;
+                    if (home is not null) SetKeyChoice(home.ConfigPath, false);
+                    // Asked again once BackRetry passes, not after the whole cool-down.
+                    tried[cli?.SessionId ?? f.SessionId] = nowUtc - CoolDown + BackRetry;
+                    var where = cli?.Where ?? LimitWaker.Where(f.Cwd);
+                    results.Add(new(false, $"rebalance: the CLI in {where} didn't move to the API key ({f.Name}: {f.Why}): its Launcher tab took the request " +
+                                           $"but it {(cli is not null && cli.Pid != f.AskedPid ? "restarted still billing its login" : "never restarted")} " +
+                                           "(a tab opened before M.LNCH-T67 drops it). Close and reopen this tab; it's asked again in a few minutes.")
+                        { NeedsYou = true });
+                    continue;
+                }
+                if (cli is not null) onKey.Add(cli.SessionId);
+                continue;
+            }
+
             if (cli is null)
             {
                 if (nowUtc - f.SeenUtc >= GoneFor) { book.Remove(f); changed = true; }
                 continue;
             }
+
+            // Asked back onto its login: done once it bills the login again; one whose tab dropped it stays on the key, said,
+            // and is asked again after BackRetry.
+            if (f.BackAskedUtc is { } backAt)
+            {
+                if (cli.Bills == BillingModes.Team)
+                {
+                    book.Remove(f);
+                    changed = true;
+                    backTried.Remove(f.SessionId);
+                    tried[cli.SessionId] = nowUtc;
+                    results.Add(new(true, $"rebalance: {cli.Where} CLI moved back to {f.Name}: it has reset, so the API key billed only the gap " +
+                                          $"({Gap(backAt - f.SinceUtc)}); it resumed its session on its login."));
+                    continue;
+                }
+                if (!Dropped(cli, f.AskedPid, backAt, now: false, nowUtc))
+                {
+                    onKey.Add(cli.SessionId);
+                    continue;
+                }
+                book[book.IndexOf(f)] = f with { SessionId = cli.SessionId, Pid = cli.Pid, SeenUtc = nowUtc, BackAskedUtc = null };
+                changed = true;
+                onKey.Add(cli.SessionId);
+                if (home is not null) SetKeyChoice(home.ConfigPath, true);
+                backTried[cli.SessionId] = nowUtc;
+                results.Add(new(false, $"rebalance: the CLI in {cli.Where} didn't move back to {f.Name} off the API key: its Launcher tab took the request but " +
+                                       $"{(cli.Pid != f.AskedPid ? "restarted it still on the key" : "never restarted it")} (a tab opened before M.LNCH-T67 drops it). " +
+                                       "Close and reopen this tab; it keeps billing the key and is asked again in a few minutes.") { NeedsYou = true });
+                continue;
+            }
+
             var seen = f with { SessionId = cli.SessionId, Pid = cli.Pid, SeenUtc = nowUtc };
             book[book.IndexOf(f)] = seen;
             changed = true;
             onKey.Add(cli.SessionId);
 
-            var home = dirOf(seen.FromEmail);
             if (seen.FromEmail is not null && home is null) continue; // signed out meanwhile: it stays on the key
             if (seen.UntilUtc is { } until && nowUtc < until) continue;
             var homeUsage = home is null ? globalUsage.Value : usageOf(home);
@@ -318,15 +458,11 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
                                        "to move it back off the API key; it keeps billing the key until it can."));
                 continue;
             }
-            book.Remove(seen);
-            onKey.Remove(cli.SessionId);
-            backTried.Remove(seen.SessionId);
-            tried[cli.SessionId] = nowUtc;
+            // Counted once it bills its login again (M.ORCH-T681); until then it stays booked, and on the key.
+            book[book.IndexOf(seen)] = seen with { BackAskedUtc = nowUtc, AskedPid = cli.Pid };
             if (home is not null) SetKeyChoice(home.ConfigPath, false);
-            var gap = nowUtc - seen.SinceUtc;
-            var gapText = gap.TotalHours >= 1 ? $"{(int)gap.TotalHours}h {gap.Minutes}m" : $"{Math.Max(1, (int)gap.TotalMinutes)}m";
-            results.Add(new(true, $"rebalance: {cli.Where} CLI moved back to {seen.Name}: it has reset, so the API key billed only the gap ({gapText}); " +
-                                  "it restarts with claude --resume at its next idle point."));
+            results.Add(new(false, $"rebalance: {seen.Name} has reset: asked the Launcher tab running the CLI in {cli.Where} (pid {cli.Pid}) to move it back " +
+                                   "off the API key at its next idle point; it's counted once the CLI shows it billing its login.") { Asked = true });
         }
         if (changed) SaveBook();
         return onKey;
@@ -339,6 +475,22 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
 public sealed record ApiFailover(string SessionId, int Pid, int? HostPid, string? Cwd, string? FromEmail, string ConfigDir, string Name, string Why, DateTime SinceUtc)
 {
     public DateTime? UntilUtc { get; init; }
+
+    /// <summary>Asked of its tab and not yet seen billing the key (M.ORCH-T681): not counted until it is.</summary>
+    public bool Pending { get; init; }
+
+    /// <summary>The CLI's process when its tab was last asked (onto the key, or back): a new one billing the old thing means
+    /// the tab dropped the request.</summary>
+    public int? AskedPid { get; init; }
+
+    /// <summary>Whether the failover was asked for at once (<c>now</c>) rather than at the CLI's next idle point.</summary>
+    public bool AskedNow { get; init; }
+
+    /// <summary>What to log and toast once it's seen on the key.</summary>
+    public string? Line { get; init; }
+
+    /// <summary>When its tab was asked to move it back onto its login; null while it isn't.</summary>
+    public DateTime? BackAskedUtc { get; init; }
 
     /// <summary>When its CLI was last seen running.</summary>
     public DateTime SeenUtc { get; init; }

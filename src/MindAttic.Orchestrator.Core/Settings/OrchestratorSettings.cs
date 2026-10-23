@@ -213,7 +213,8 @@ public sealed record OrchestratorSettings
     /// <summary>Emergency failover to the API key (M.ORCH-T664): when a CLI's login runs out (its 5-hour or weekly limit, or its
     /// pace says stop) and no signed-in login has room to rebalance it onto, the daemon moves that one CLI onto the Vault key,
     /// resuming its session (at once when a limit error ended its turn), with the billing mode left as it is, and moves it back
-    /// once its login resets. False leaves it waiting for the reset.</summary>
+    /// once its login resets. A CLI on someone's own per-CLI login goes straight to the key at its 5-hour pace target or weekly
+    /// target, never to another person's login, while the fallback is the API key (M.ORCH-T681). False leaves it waiting for the reset.</summary>
     public bool FailoverToApiKey { get; init; } = true;
 
     /// <summary>Where CLIs the Orchestrator opens run (M.ORCH-T618): <see cref="WindowsTerminalHost"/> (the default) opens each
