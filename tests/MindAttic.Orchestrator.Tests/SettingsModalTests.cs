@@ -28,8 +28,10 @@ public sealed class SettingsModalTests
         var grid = doc.Root!.Element(P + "Grid")!;
         var rows = grid.Element(P + "Grid.RowDefinitions")!.Elements(P + "RowDefinition").Count();
 
-        var modal = grid.Elements().Last();
-        Assert.That(modal.Name, Is.EqualTo(Mc + "MaModal"), "the modal is the root grid's last child, over everything");
+        // Other dialogs (Rename, M.ORCH-T633) follow Settings, so find it by its binding; it must sit in the trailing run of modals, over the page.
+        var children = grid.Elements().ToList();
+        var modal = children.Single(e => e.Name == Mc + "MaModal" && (string?)e.Attribute("IsOpen") == "{Binding IsSettingsOpen}");
+        Assert.That(children.Skip(children.IndexOf(modal)).All(e => e.Name == Mc + "MaModal"), Is.True, "the modals come last in the root grid, over everything");
         Assert.That((string?)modal.Attribute("Grid.RowSpan"), Is.EqualTo(rows.ToString()), "it spans every row");
         Assert.That((string?)modal.Attribute("Grid.Row"), Is.Null.Or.EqualTo("0"));
         Assert.That((string?)modal.Attribute("IsOpen"), Is.EqualTo("{Binding IsSettingsOpen}"));
