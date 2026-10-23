@@ -363,6 +363,11 @@ public sealed class OrchestratorDb(string path)
             updated_at REAL NOT NULL
         );
         """,
+        // 12: the login each assignment was dispatched on, by its account email (M.ORCH-T668): a ticket assigned to a user is
+        // dispatched only on that user's login, and its claim says so. Rows already there keep NULL: not known.
+        """
+        ALTER TABLE assignments ADD COLUMN account TEXT;
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a

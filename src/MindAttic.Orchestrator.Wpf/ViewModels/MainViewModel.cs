@@ -402,6 +402,8 @@ public sealed partial class MainViewModel : ObservableObject
         ApplyBilling(next);
         ApplyReminders(DateTime.UtcNow);
         ApplyAccounts(all, DateTime.UtcNow);
+        // Who's out of room is read with the roster, just above (M.ORCH-T668).
+        if (IsGlobalTab) ApplyUserTickets();
         if (IsGlobalTab) AllTerminals.Update(all);
         // The Accounts view's cards, read off the UI thread, only while it's open (M.ORCH-T603).
         _ = RefreshLoginCardsAsync();

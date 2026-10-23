@@ -19,8 +19,9 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
     public static readonly TimeSpan SubmitSettle = TimeSpan.FromSeconds(15), SubmitTimeout = TimeSpan.FromMinutes(2);
 
     /// <summary>The Claude login a dispatched tab opens on, chosen rather than picked (M.ORCH-T613: the dashboard tab it was
-    /// started from): <see cref="ConfigDir"/> is the per-CLI login's folder, null for the global login.</summary>
-    public sealed record TabLogin(string? ConfigDir);
+    /// started from): <see cref="ConfigDir"/> is the per-CLI login's folder, null for the global login; <see cref="Email"/> its
+    /// account's email when known, which the assignment records (M.ORCH-T668).</summary>
+    public sealed record TabLogin(string? ConfigDir, string? Email = null);
 
     /// <param name="submit">Press Enter on the pre-filled prompt once the agent is up (auto-submit repos only).</param>
     /// <param name="login">The login a Claude tab opens on; null picks one as a new tab's is (Auto, else the global login).</param>
@@ -31,6 +32,17 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         // ticket since. Only the assignment the plan saw (a stale one) may be replaced.
         bool ClaimedElsewhere(IEnumerable<Assignment> all) => all.Any(a => a.TicketId == item.Id && a != item.Assignment);
         if (ClaimedElsewhere(store.LoadAssignments())) return new Result(false, $"{item.Id} was just claimed elsewhere; it isn't started twice.", null);
+        // A ticket assigned to a user (M.ORCH-T668) starts only on their login: chosen for it when nothing was, refused on another.
+        if (item.Assignee is { } who)
+        {
+            if (provider != Providers.Claude)
+                return new Result(false, $"{item.Id} is assigned to {who}: it starts only on {who}'s Claude login, not in {provider}.", null);
+            if (login is not null && !TicketPins.Same(login.Email, who))
+                return new Result(false, $"{item.Id} is assigned to {who}: it starts only on {who}'s login. Reassign it, or Redelegate now, to start it elsewhere.", null);
+            login ??= (PinnedLogin ?? LoginOf)(who);
+            if (login is null)
+                return new Result(false, $"{item.Id} is assigned to {who}, who isn't signed in on this machine: it waits for them (or Redelegate now).", null);
+        }
         var directory = item.RepoPath;
         if (useWorktree)
         {
@@ -44,7 +56,7 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
             : Open(title, directory, provider, Scheduler.PromptFor(item), submit, login);
         if (startError is not null) return new Result(false, startError, null);
 
-        var assignment = new Assignment(item.Id, item.Repo, directory, provider, DateTime.UtcNow, useWorktree);
+        var assignment = new Assignment(item.Id, item.Repo, directory, provider, DateTime.UtcNow, useWorktree) { Account = AccountDirs.Normalize(login?.Email) };
         var raced = false;
         store.UpdateAssignments(all =>
         {
@@ -66,6 +78,27 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
 
     /// <summary>Seam: the Auto login picker a Claude tab's login comes from (M.ORCH-T605); null uses the real per-CLI logins.</summary>
     internal LoginPicker? Logins { get; init; }
+
+    /// <summary>Seam: the login a ticket assigned to a user (by email) opens on when nothing was chosen (M.ORCH-T668); null uses
+    /// <see cref="LoginOf"/>.</summary>
+    internal Func<string, TabLogin?>? PinnedLogin { get; init; }
+
+    /// <summary>The login of the user signed in as <paramref name="email"/> on this machine: their per-CLI login, made ready for a
+    /// CLI, else the global login when it's signed in as them; null when neither is.</summary>
+    internal static TabLogin? LoginOf(string email)
+    {
+        var dirs = new AccountDirs();
+        try
+        {
+            if (AccountDirs.Normalize(email) is { } e && dirs.For(e) is { SignedIn: true } own)
+            {
+                dirs.Prepare(own);
+                return new TabLogin(own.Directory, e);
+            }
+            return TicketPins.Same(Budget.AccountProfile.Read(dirs.HomeConfigPath)?.Email, email) ? new TabLogin(null, email) : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+    }
 
     private (string? Error, Task<bool>? CameUp) Open(string title, string directory, string provider, string prompt, bool submit, TabLogin? login)
     {

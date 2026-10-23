@@ -488,11 +488,24 @@ public sealed partial class MainViewModel
             var providerKey = store.LoadSettings().DefaultProvider;
             // On this tab's login (M.ORCH-T613): the global login's tab opens it on the global login, a login's own tab on
             // its own (signed in first if it's been signed out since).
-            Dispatcher.TabLogin login = new(null);
-            if (providerKey == "Claude" && ScopeEmail is { } own)
+            Dispatcher.TabLogin login = new(null, full?.GlobalEmail);
+            if (providerKey == "Claude" && item.Assignee is { } who)
+            {
+                // A ticket assigned to a user opens only on their login (M.ORCH-T668), whichever tab Start was pressed on; one
+                // whose user isn't signed in here waits for them, not for a sign-in of someone else's account from here.
+                if (TicketPins.Same(who, full?.GlobalEmail)) login = new(null, who);
+                else if (!await Task.Run(() => accountDirs.For(who).SignedIn))
+                {
+                    QueueMessage = TicketPins.WaitingText(NameOf(who), "not signed in on this machine") + ". Reassign it, or Redelegate now, to start it elsewhere.";
+                    return;
+                }
+                else if (await OwnLoginDirAsync(who, m => QueueMessage = m) is not { } pinned) return;
+                else login = new(pinned, who);
+            }
+            else if (providerKey == "Claude" && ScopeEmail is { } own)
             {
                 if (await OwnLoginDirAsync(own, m => QueueMessage = m) is not { } dir) return;
-                login = new(dir);
+                login = new(dir, own);
             }
             var r = await Task.Run(() => dispatcher.Dispatch(item, providerKey, worktree, login: login));
             QueueMessage = r.Message;
@@ -826,6 +839,8 @@ public sealed partial class MainViewModel
             (row, q) => row.Update(q, ++rank, proposals.GetValueOrDefault(q.Id)));
         Proposals.ReorderTo([.. Queue.Where(q => q.IsNext)]);
         Finished.SyncBy(plan.Finished, a => a.TicketId, f => f.TicketId, a => new FinishedViewModel(a, this), (row, a) => row.Update(a));
+        // Every person's Tickets view (M.ORCH-T668): theirs and the unassigned queue, from the same plan.
+        ApplyUserTickets();
 
         foreach (var t in LoginTabs)
             foreach (var name in new[] { nameof(Hold), nameof(HasHold), nameof(SlotsText), nameof(AutopilotText), nameof(QueueCount), nameof(EmptyQueueText), nameof(UtilizationText) })

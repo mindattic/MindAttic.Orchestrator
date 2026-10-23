@@ -44,6 +44,13 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
 
     public bool IsAssigned => (Assignment is not null && !IsStale) || Moving is not null;
 
+    /// <summary>The user it's assigned to (M.ORCH-T668), by their login's email (<see cref="OrchestratorSettings.Assignees"/>);
+    /// null for an unassigned ticket. A pin: it's dispatched only on that login, and waits for them while they're out of room.</summary>
+    public string? Assignee { get; init; }
+
+    /// <summary>Whether it's assigned to a user (<see cref="Assignee"/>): see <see cref="TicketPins"/>.</summary>
+    public bool IsPinned => Assignee is not null;
+
     /// <summary>Whether starting it takes a worktree: its repo has a session, or it went stale in a worktree, where its
     /// partial work is. Every way of starting it (the proposal, the dashboard's Start, orchestrator dispatch) asks this.</summary>
     public bool NeedsWorktree => RepoBusy || (IsStale && Assignment!.Worktree);
@@ -152,12 +159,14 @@ public static partial class Scheduler
         // Clamped to what a queue item holds.
         int Priority(string id) => (int)Math.Clamp(snapshot.Priorities.TryGetValue(id, out var held) ? held : storyPriorities.GetValueOrDefault(id),
             int.MinValue, int.MaxValue);
+        // Who each ticket is assigned to (M.ORCH-T668), whatever case its id was saved in.
+        var assignees = TicketPins.Assignees(settings);
         bool IsOld(Ticket t) => DateOnly.TryParse(t.Date, System.Globalization.CultureInfo.InvariantCulture, out var opened) && opened < groomBefore;
         // Only fixes and tickets you approved are work; the rest wait for your yes outside the queue (one already
         // being worked stays, so its agent is still tracked). One whose assignment went stale waits for it too (M.ORCH-T394).
         var awaiting = snapshot.Repos
             .SelectMany(r => r.OpenTickets.Where(t => !MayWork(t) && (assigned.GetValueOrDefault(t.Id) is not { } a || StaleSince(a) is not null))
-                .Select(t => new QueueItem(r.Name, r.Path, t, Priority(t.Id), null, false) { Old = IsOld(t), Approved = IsApproved(t.Id) }))
+                .Select(t => new QueueItem(r.Name, r.Path, t, Priority(t.Id), null, false) { Old = IsOld(t), Approved = IsApproved(t.Id), Assignee = assignees.GetValueOrDefault(t.Id) }))
             .OrderBy(q => q.Repo, StringComparer.OrdinalIgnoreCase).ThenBy(q => q.Ticket.Number ?? int.MaxValue)
             .ToList();
         var queue = snapshot.Repos
@@ -174,6 +183,7 @@ public static partial class Scheduler
                     Old = IsOld(t),
                     Approved = IsApproved(t.Id),
                     Moving = MovingOf(t.Id),
+                    Assignee = assignees.GetValueOrDefault(t.Id),
                 }))
             .OrderBy(q => q.IsAssigned)
             .ThenByDescending(q => q.Reserved > 0)

@@ -135,7 +135,8 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         foreach (var next in plan.Queue)
         {
             if (!byName.TryGetValue(next.Repo, out var repo) || failed.Contains(repo.Name)) continue;
-            if (next.IsAssigned || next.BlockedBy.Count > 0 || parked.Contains(next.Id) || !next.MayWork ||
+            // A ticket assigned to a user (M.ORCH-T668) goes only to a CLI on their login, never to a background agent.
+            if (next.IsAssigned || next.IsPinned || next.BlockedBy.Count > 0 || parked.Contains(next.Id) || !next.MayWork ||
                 (room is { } left && next.Estimate is { } e && e.Fresh > left)) continue;
             if (more <= 0)
             {
@@ -405,13 +406,15 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// /allocate CLI (<paramref name="pilots"/>) that has workable tickets of its own, are left to them (<see cref="SubagentShare"/>).
     /// It also warms up (M.ORCH-T558): one subagent the minute its /allocate turned on (<paramref name="onSince"/>, by CLI), one
     /// more each minute after, up to its share, so a CLI opened just after it gets to claim its own before every place is taken.
+    /// A ticket assigned to a user (M.ORCH-T668) is handed only to a CLI on that user's login (<paramref name="login"/>, the calling
+    /// CLI's account email; null when not known, which takes no pinned ticket), and its claim records that login.
     /// </summary>
     public static (IReadOnlyList<Handout> Handed, string? Why) Next(SchedulePlan plan, OrchestratorSettings settings, JsonStore store,
         IReadOnlyList<string> repos, int? count, bool claim, DateTime nowUtc,
         Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree = null, Func<string, string>? mainlineOf = null, bool unthrottled = false,
         string? self = null, Func<Assignment, bool>? pilotRunning = null, Func<string, string, bool>? stillOpen = null,
         int? cli = null, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots = null, Func<int, bool>? cliRunning = null,
-        IReadOnlyDictionary<int, DateTime>? onSince = null, Func<int, string?>? loginOf = null)
+        IReadOnlyDictionary<int, DateTime>? onSince = null, Func<int, string?>? loginOf = null, string? login = null)
     {
         cliRunning ??= ContextCycler.IsClaude;
         stillOpen ??= StillOpen;
@@ -440,9 +443,11 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         var elsewhere = plan.Worked.Where(w => !(w.Filed && w.AgentId is null && self is not null && w.SessionId == self))
             .Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
         bool Busy(QueueItem q) => q.IsAssigned || elsewhere.Contains(q.Id) || (q.Assignment is { } a && pilotRunning(a));
-        bool Workable(QueueItem q) => !settings.AutopilotSkip.Contains(q.Repo, StringComparer.OrdinalIgnoreCase) &&
+        bool Free(QueueItem q) => !settings.AutopilotSkip.Contains(q.Repo, StringComparer.OrdinalIgnoreCase) &&
             q.RepoPath.Length > 0 && !Busy(q) && q.BlockedBy.Count == 0 &&
             q.MayWork && !TooBigNow(q); // a stale unapproved one waits for your yes (M.ORCH-T383)
+        // A pinned ticket (M.ORCH-T668) is only its user's: on another login it waits for them, never handed on from here.
+        bool Workable(QueueItem q) => Free(q) && TicketPins.MayTake(q, login);
         var open = plan.Queue.Where(q => Named(q.Repo) && Workable(q)).ToList();
         if (open.Count == 0)
         {
@@ -454,6 +459,10 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             var free = plan.Queue.Where(q => Named(q.Repo) && !Skipped(q.Repo) && !Busy(q) && q.RepoPath.Length > 0 && q.MayWork).ToList(); // an unapproved one is counted as waiting (M.ORCH-T401)
             var blocked = free.Count(q => q.BlockedBy.Count > 0);
             var tooBig = free.Count(q => q.BlockedBy.Count == 0 && TooBigNow(q));
+            var pinned = free.Where(q => q.BlockedBy.Count == 0 && !TooBigNow(q) && !TicketPins.MayTake(q, login)).ToList();
+            if (pinned.Count > 0 && busy == 0 && blocked == 0 && tooBig == 0)
+                return ([], $"nothing else is ready: {pinned.Count} assigned to other users wait for them on their own logins (" +
+                    string.Join(", ", pinned.Select(q => q.Assignee).Distinct(StringComparer.OrdinalIgnoreCase)) + ")");
             return ([], waiting == 0 && busy == 0 && blocked == 0 && tooBig == 0 && skipped.Count > 0 ? $"{string.Join(", ", skipped)} set to be skipped (settings --autopilot-skip); nothing else is ready"
                 : waiting > 0 && busy == 0 && blocked == 0 && tooBig == 0 ? $"none left that may be worked: {waiting} wait for your approval (orchestrator approve)"
                 : busy > 0 && blocked == 0 && tooBig == 0 ? $"{busy} already being worked; nothing else is ready"
@@ -484,7 +493,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             var running = plan.Pace.SubagentsByCli.Keys.Union(pending.Keys)
                 .ToDictionary(c => c, c => plan.Pace.SubagentsByCli.GetValueOrDefault(c) + pending.GetValueOrDefault(c));
             var wanting = (pilots ?? new Dictionary<int, IReadOnlyList<string>>())
-                .Where(p => p.Key != me && SameLogin(p.Key) && plan.Queue.Any(q => Autopilot.Named(p.Value, q.Repo) && Workable(q)))
+                .Where(p => p.Key != me && SameLogin(p.Key) && plan.Queue.Any(q => Autopilot.Named(p.Value, q.Repo) && Free(q)))
                 .Select(p => p.Key).ToList();
             var total = plan.Pace.Subagents + pending.Values.Sum();
             var fair = SubagentShare.Room(cap, total, me, running, wanting);
@@ -549,7 +558,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             {
                 if (all.Any(a => a.TicketId == item.Id && a != item.Assignment)) { taken = true; return; }
                 all.RemoveAll(a => a.TicketId == item.Id);
-                all.Add(new Assignment(item.Id, item.Repo, tree, Providers.Claude, nowUtc, true) { Cli = cli, CliSession = self, Model = model.Model });
+                all.Add(new Assignment(item.Id, item.Repo, tree, Providers.Claude, nowUtc, true) { Cli = cli, CliSession = self, Model = model.Model, Account = AccountDirs.Normalize(login) });
             });
             if (taken) { claimedElsewhere++; continue; }
             handed.Add(new Handout(item, tree, PromptFor(item, tree, branch, mainlineOf(item.RepoPath), model), model));

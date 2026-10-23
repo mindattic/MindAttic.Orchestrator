@@ -49,7 +49,9 @@ public sealed class QueueRowViewModel : ObservableObject
         { Assignment: { } a } => $"{a.Provider} since {Formatting.Ago(a.StartedUtc, DateTime.UtcNow)}{(a.Worktree ? " · worktree" : "")}",
         _ => (IsNext ? "Next up" : item.RepoBusy ? "Repo busy" : item.Old ? "Old: groom it?" : "") +
              (item.Reserved > 0 ? $" · {Formatting.Tokens(item.Reserved)} reserved" : "") +
-             (item.Estimate is { } e ? $" · ~{Formatting.Tokens(e.Fresh)}" : ""),
+             (item.Estimate is { } e ? $" · ~{Formatting.Tokens(e.Fresh)}" : "") +
+             // Assigned to a user (M.ORCH-T668): dispatched only on their login.
+             (item.Assignee is { } who ? $" · for {who}" : ""),
     };
 
     public ICommand StartCommand { get; }

@@ -59,6 +59,7 @@ internal static class CliApp
             config.AddCommand<BumpCommand>("bump").WithDescription("Raise (or with a negative --by, lower) a ticket's priority.");
             config.AddCommand<DispatchCommand>("dispatch").WithDescription("Start a session on a ticket (a worktree when its repo is busy).");
             config.AddCommand<ReleaseCommand>("release").WithDescription("Return a ticket to the queue; --remove-worktree also deletes its clean worktree.");
+            config.AddCommand<AssignCommand>("assign").WithDescription("Assign a ticket to a user (assign <TICKET> <email or member name>), or reassign it: it is dispatched only on that login and waits for them while they are out of room; --unassign takes it off them, --redelegate hands it on like an unassigned ticket.");
             config.AddCommand<DaemonCommand>("daemon").WithDescription("Keep the budget file, pace and hooks fresh without the dashboard open.");
             config.AddCommand<SettingsCommand>("settings").WithDescription("Show or change scheduler settings.");
             config.AddCommand<AuditCommand>("audit").WithDescription("Find drift in shared agent files and code duplicated across repos.");

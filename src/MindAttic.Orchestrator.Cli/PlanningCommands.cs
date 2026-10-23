@@ -178,17 +178,22 @@ internal sealed class DryRunCommand : Command
 {
     public override int Execute(CommandContext context)
     {
-        var (_, store, _, plan) = Ctx.Load();
+        var (_, store, snapshot, plan) = Ctx.Load();
         var cycler = new MindAttic.Orchestrator.Sessions.ContextCycler();
         var clis = cycler.AutopilotClis();
         if (clis.Count == 0) { AnsiConsole.MarkupLine("[grey]/allocate is off in every CLI; type /allocate (optionally -repo=A,B) in the CLI that should work the tickets.[/]"); return 0; }
         var since = cycler.AutopilotSince();
+        var own = cycler.OnOwnLogin();
+        var dirs = new MindAttic.Orchestrator.Sessions.AccountDirs();
         foreach (var (pid, repos) in clis)
         {
             AnsiConsole.MarkupLine($"/allocate is on in CLI {pid} for {Markup.Escape(string.Join(", ", repos))}:");
+            var self = cycler.LatestSessionOf(pid);
+            // Its login (M.ORCH-T668): a ticket assigned to a user goes only to a CLI on theirs.
+            var login = (self is not null && own.TryGetValue(self, out var dir) ? dirs.Of(dir)?.Email : null) ?? snapshot.GlobalEmail;
             var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, null, claim: false, DateTime.UtcNow,
-                self: cycler.LatestSessionOf(pid),
-                cli: pid, pilots: clis, onSince: since);
+                self: self,
+                cli: pid, pilots: clis, onSince: since, login: login);
             foreach (var h in handed) AnsiConsole.MarkupLine($"  next: {Markup.Escape(h.Item.Id)} in {Markup.Escape(h.Item.Repo)}" +
                 (h.Model is { } m ? $" on {m.Model}" : "") + $": {Markup.Escape(h.Item.Ticket.Summary)}");
             if (why is not null) AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(why)}[/]");
@@ -235,9 +240,13 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
         // What the calling CLI filed itself isn't held from its own subagents; what anyone else (its subagents included) filed
         // and is fixing is (M.ORCH-T255).
         var self = cli is { } me ? cycler.LatestSessionOf(me) : null;
+        // The calling CLI's login (M.ORCH-T668), as its plan was made (M.ORCH-T673): its recorded per-CLI login, else this process's
+        // CLAUDE_CONFIG_DIR's, else the global login's. A ticket assigned to a user is handed only to a CLI on theirs.
+        var login = (Ctx.CurrentLogin is { } seam ? seam() : Ctx.LoginOfCli(cli) ?? new MindAttic.Orchestrator.Sessions.AccountDirs().Current())?.Email
+            ?? snapshot.GlobalEmail;
         var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, settings.Count, settings.Claim, DateTime.UtcNow,
             unthrottled: unthrottled, self: self,
-            cli: cli, pilots: cycler.AutopilotClis(), onSince: cycler.AutopilotSince(), loginOf: cycler.LoginOfCli());
+            cli: cli, pilots: cycler.AutopilotClis(), onSince: cycler.AutopilotSince(), loginOf: cycler.LoginOfCli(), login: login);
         foreach (var h in handed)
         {
             Console.WriteLine($"=== {h.Item.Id} ({h.Item.Repo}, {h.Item.Ticket.Type}): {h.Item.Ticket.Summary}");

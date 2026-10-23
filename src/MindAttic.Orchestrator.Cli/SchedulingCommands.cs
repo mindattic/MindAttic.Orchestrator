@@ -236,6 +236,65 @@ internal sealed class ReleaseCommand : Command<ReleaseCommand.Settings>
     }
 }
 
+/// <summary><c>orchestrator assign &lt;TICKET&gt; [&lt;USER&gt;]</c> (M.ORCH-T668): assign a ticket to a user, or reassign it, by their
+/// login's email or member name; it's then dispatched only on that login. <c>--unassign</c> takes it off them; <c>--redelegate</c>
+/// is the card's "Redelegate now": the pin goes, and it's handed on like an unassigned ticket.</summary>
+internal sealed class AssignCommand : Command<AssignCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandArgument(0, "<TICKET>")]
+        public string Ticket { get; init; } = "";
+
+        [CommandArgument(1, "[USER]")]
+        [Description("The user's login email, or their member name (orchestrator members). Without it, says who has the ticket.")]
+        public string? User { get; init; }
+
+        [CommandOption("--unassign")]
+        [Description("Take the ticket off whoever it's assigned to.")]
+        public bool Unassign { get; init; }
+
+        [CommandOption("--redelegate")]
+        [Description("Redelegate now: drop the pin so it's handed on like an unassigned ticket (another user with room, else the API key).")]
+        public bool Redelegate { get; init; }
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        var store = Ctx.Store();
+        var id = Ctx.Id(settings.Ticket);
+        if (settings.Unassign || settings.Redelegate)
+        {
+            var change = settings.Redelegate ? TicketPins.Redelegate(store, id) : TicketPins.Unassign(store, id);
+            AnsiConsole.MarkupLine(Markup.Escape(change.Text));
+            return 0;
+        }
+        if (settings.User is not { Length: > 0 } user)
+        {
+            AnsiConsole.MarkupLine(Markup.Escape(TicketPins.AssigneeOf(store.LoadSettings(), id) is { } who
+                ? $"{id} is assigned to {who}: it's dispatched only on that login." : $"{id} isn't assigned to anyone."));
+            return 0;
+        }
+        if (Ctx.RefuseUnknown(store, [id])) return 1;
+        var email = AccountDirs.Normalize(user);
+        if (email is null)
+        {
+            IReadOnlyList<Member> members = [];
+            try { members = MemberRoster.Load(store.Db); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
+            var named = members.Where(m => string.Equals(m.Name, user.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
+            if (named.Count != 1)
+            {
+                AnsiConsole.MarkupLine($"[red]{Markup.Escape(named.Count == 0 ? $"\"{user}\" is neither an email nor a member's name (orchestrator members)." : $"More than one member is named \"{user}\": give their email.")}[/]");
+                return 1;
+            }
+            email = named[0].Email;
+        }
+        AnsiConsole.MarkupLine(Markup.Escape(TicketPins.Assign(store, id, email).Text));
+        return 0;
+    }
+}
+
 internal sealed class DaemonCommand : Command<DaemonCommand.Settings>
 {
     public sealed class Settings : CommandSettings

@@ -53,7 +53,7 @@ public sealed class OrchestratorServerTests
         using (var c = new OrchestratorServer(connection).Open())
         {
             Sql.Run(c, null, "INSERT INTO accounts (id, email) VALUES ('acct', 'a@example.com');");
-            Sql.Run(c, null, "DROP TABLE members; DELETE FROM schema_version; INSERT INTO schema_version (version) VALUES (1);");
+            Sql.Run(c, null, "DROP TABLE members; ALTER TABLE assignments DROP COLUMN account; DELETE FROM schema_version; INSERT INTO schema_version (version) VALUES (1);");
         }
         // Another connection string to the same database: a process that hasn't checked its schema yet.
         var fresh = new SqlConnectionStringBuilder(connection) { ApplicationName = "MindAttic.Orchestrator.Test" }.ConnectionString;
@@ -62,6 +62,8 @@ public sealed class OrchestratorServerTests
             Assert.That(Sql.Scalar(c, null, "SELECT MAX(version) FROM schema_version;"), Is.EqualTo(OrchestratorServer.SchemaVersion));
             Assert.That(Sql.Scalar(c, null, "SELECT COUNT(*) FROM members;"), Is.EqualTo(0));
             Assert.That(Sql.Scalar(c, null, "SELECT email FROM accounts;"), Is.EqualTo("a@example.com"));
+            Assert.That(Sql.Scalar(c, null, "SELECT COL_LENGTH(N'assignments', N'account');"), Is.Not.Null.And.Not.EqualTo(DBNull.Value),
+                "step 3 (M.ORCH-T668): the login each assignment was dispatched on");
         }
         var db = new OrchestratorDb(Path.Combine(temps.New(), "orchestrator.db")) { TestServer = new OrchestratorServer(fresh) };
         MemberRoster.Add(db, "n@example.com", "N", "member", "premium", null, DateTime.UtcNow);

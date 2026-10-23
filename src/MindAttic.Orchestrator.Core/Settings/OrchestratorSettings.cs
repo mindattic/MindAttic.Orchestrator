@@ -255,6 +255,12 @@ public sealed record OrchestratorSettings
     /// or "opus" (M.ORCH-T563). A ticket's entry wins over its repo's; with neither, <see cref="Scheduling.ModelChoice"/> picks.</summary>
     public Dictionary<string, string> ModelOverrides { get; init; } = [];
 
+    /// <summary>Tickets assigned to a user (M.ORCH-T668), ticket id → that user's login (its email, as
+    /// <see cref="Sessions.AccountDirs.Normalize"/> keeps it). An assigned ticket is a pin: <c>next --claim</c>, autopilot and
+    /// Start dispatch it only on that login, and while its user is out of room it waits for them instead of being redelegated,
+    /// until "Redelegate now" drops the pin (<see cref="Scheduling.TicketPins"/>).</summary>
+    public Dictionary<string, string> Assignees { get; init; } = [];
+
     /// <summary>Lines changed (added + removed) past which a Sonnet ticket's diff gets one Opus review before it lands. 0 reviews
     /// every Sonnet diff; a negative number none for size (risky files still are).</summary>
     public int ReviewDiffLines { get; init; } = 300;
@@ -299,6 +305,11 @@ public sealed record Assignment(string TicketId, string Repo, string Directory, 
 
     /// <summary>When its diff had its one Opus review (<c>orchestrator review</c>); null before it has.</summary>
     public DateTime? ReviewedUtc { get; init; }
+
+    /// <summary>The login it was dispatched on, by its account email (M.ORCH-T668): the claiming CLI's for a claim, the tab's
+    /// for a Start. For a ticket assigned to a user it is always that user's login; null when not known (the global login
+    /// with no email read yet, or an assignment made before this was recorded).</summary>
+    public string? Account { get; init; }
 
     /// <summary>A claim for a CLI's subagent: a worktree, no background agent on it.</summary>
     [JsonIgnore]

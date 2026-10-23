@@ -208,6 +208,7 @@ public sealed class JsonStore
         ("cli_session", nameof(Assignment.CliSession), typeof(string)),
         ("model", nameof(Assignment.Model), typeof(string)),
         ("reviewed_utc", nameof(Assignment.ReviewedUtc), typeof(string)),
+        ("account", nameof(Assignment.Account), typeof(string)),
     ];
 
     /// <summary><paramref name="name"/>'s value as JSON, or null when nothing is kept for it.</summary>

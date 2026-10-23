@@ -155,13 +155,15 @@ public sealed class OrchestratorServer(string connectionString)
         ("assignments", """
             position bigint NOT NULL PRIMARY KEY, ticket_id nvarchar(450) NULL, repo nvarchar(450) NULL, directory nvarchar(max) NULL,
             provider nvarchar(64) NULL, started_utc nvarchar(64) NULL, worktree bigint NULL, pilot bigint NULL, pilot_started_utc nvarchar(64) NULL,
-            log nvarchar(max) NULL, cli bigint NULL, cli_session nvarchar(450) NULL, model nvarchar(128) NULL, reviewed_utc nvarchar(64) NULL
+            log nvarchar(max) NULL, cli bigint NULL, cli_session nvarchar(450) NULL, model nvarchar(128) NULL, reviewed_utc nvarchar(64) NULL,
+            account nvarchar(450) NULL
             """, null),
         ("state", "name nvarchar(450) NOT NULL PRIMARY KEY, value nvarchar(max) NOT NULL, written_at float NOT NULL", null),
     ];
 
-    /// <summary>The schema's version: 1, the tables of SQLite's first ten steps; 2, <c>members</c> (M.ORCH-T670).</summary>
-    public const int SchemaVersion = 2;
+    /// <summary>The schema's version: 1, the tables of SQLite's first ten steps; 2, <c>members</c> (M.ORCH-T670); 3,
+    /// <c>assignments.account</c> (M.ORCH-T668).</summary>
+    public const int SchemaVersion = 3;
 
     /// <summary>The changes to tables already there, one step per version past 1, as SQLite's migrations add them: a column
     /// added to a table there is one more step here (an <c>ALTER TABLE ... ADD</c>, also added to its <see cref="Tables"/> row so
@@ -169,6 +171,7 @@ public sealed class OrchestratorServer(string connectionString)
     private static readonly (string Table, string Sql)[] Steps =
     [
         ("members", ""), // 2: members, a new table (created with the rest below)
+        ("assignments", "IF COL_LENGTH(N'assignments', N'account') IS NULL ALTER TABLE assignments ADD account nvarchar(450) NULL;"), // 3: the login each was dispatched on (M.ORCH-T668)
     ];
 
     private void EnsureSchema(SqlConnection connection)

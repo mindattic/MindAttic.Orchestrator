@@ -61,6 +61,49 @@
             <Setter Property="ToolTip" Value="Open it in Tickets Desktop to view, approve, prioritize or close it" />
         </Style>
 
+        <!-- A ticket on a person's Tickets view (M.ORCH-T668): who it's assigned to is the library's MaPicker (M.COMP-T52), which
+             assigns or reassigns it; while its user is out of room it says why it waits, with its Redelegate now. -->
+        <DataTemplate x:Key="UserTicketTemplate" DataType="{x:Type vm:UserTicketRowViewModel}">
+            <Border x:Name="UserTicketCard" Style="{StaticResource MaRowCard}">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                        <Button x:Name="RedelegateButton" Style="{StaticResource MaButton}" Content="Redelegate now" Padding="12,4" Margin="0,0,8,0"
+                                Command="{Binding RedelegateCommand}" Visibility="{Binding IsWaiting, Converter={StaticResource Visible}}"
+                                ToolTip="Stop waiting for its user: hand it on like an unassigned ticket, to another user with room, else the API key"
+                                AutomationProperties.Name="{Binding Id, StringFormat='Redelegate {0} now'}" />
+                        <mc:MaPicker x:Name="AssigneePicker" Width="230" ItemsSource="{Binding People}" SelectedItem="{Binding Assignee, Mode=TwoWay}"
+                                     DisplayMemberPath="Name" StatusMemberPath="Status" StatusLabelMemberPath="StatusLabel" TrailingMemberPath="Trailing"
+                                     Placeholder="Unassigned" IsEnabled="{Binding CanAssign}"
+                                     ToolTip="Who it's assigned to: it's dispatched only on their login, and waits for them while they're out of room"
+                                     AutomationProperties.Name="{Binding Id, StringFormat='Who {0} is assigned to'}" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock>
+                            <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding Id}"
+                                       AutomationProperties.Name="{Binding Id, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding Id, Mode=OneWay}" /></Hyperlink>
+                            <Run Text="  " /><Run Text="{Binding Repo, Mode=OneWay}" FontWeight="SemiBold" />
+                            <Run Text="  " /><Run Text="{Binding Type, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
+                            <Run Text="{Binding Priority, Mode=OneWay}" Foreground="{DynamicResource MaWarn}" FontWeight="SemiBold" />
+                        </TextBlock>
+                        <TextBlock Text="{Binding Summary}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Summary}" Margin="0,4,0,0" />
+                        <TextBlock x:Name="UserTicketStatus" Text="{Binding Status}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Visibility="{Binding Status, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource MaMutedText}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsWaiting}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource MaWarn}" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </DataTemplate>
+
         <Style x:Key="StatValue" TargetType="TextBlock">
             <Setter Property="FontSize" Value="24" />
             <Setter Property="FontWeight" Value="SemiBold" />
@@ -1032,6 +1075,22 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <!-- Tickets per user (M.ORCH-T668), below the person's open CLIs: the tickets assigned to them, then the unassigned
+                         queue, each with who it's assigned to. An assigned ticket is dispatched only on its user's login. -->
+                    <StackPanel x:Name="UserTickets" Margin="0,24,0,0" Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}">
+                        <TextBlock Text="Tickets" Style="{StaticResource MaHeading}" />
+                        <TextBlock Text="Assign a ticket to a person and it's dispatched only on their login (next --claim, autopilot and Start); while they're out of room it waits for them, and Redelegate now hands it on."
+                                   Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                        <TextBlock Text="{Binding AssignedHeader}" Style="{StaticResource MaSectionLabel}" />
+                        <TextBlock Text="{Binding NoAssignedText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
+                                   Visibility="{Binding HasNoAssigned, Converter={StaticResource Visible}}" />
+                        <ItemsControl x:Name="AssignedTicketList" Style="{StaticResource MaRowList}" ItemsSource="{Binding AssignedTickets}"
+                                      ItemTemplate="{StaticResource UserTicketTemplate}" AutomationProperties.Name="{Binding AssignedHeader}" />
+                        <TextBlock Text="{Binding UnassignedHeader}" Style="{StaticResource MaSectionLabel}" />
+                        <ItemsControl x:Name="UnassignedTicketList" Style="{StaticResource MaRowList}" ItemsSource="{Binding UnassignedTickets}"
+                                      ItemTemplate="{StaticResource UserTicketTemplate}" AutomationProperties.Name="{Binding UnassignedHeader}" />
+                    </StackPanel>
                 </StackPanel>
             </ScrollViewer>
 

@@ -87,8 +87,11 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
             // As its own `orchestrator next --claim` plans it (M.ORCH-T640): a CLI on a login of its own is held to that account's
             // pace and allowance, not the global login's, or the nudge fired every tick for a claim that was answered "no room".
             var cliPlan = plan;
+            // Its login (M.ORCH-T668): a ticket assigned to a user is offered only to a CLI on theirs.
+            var email = snapshot?.GlobalEmail;
             if (snapshot is not null && own is not null && own.TryGetValue(c.SessionId, out var dir) && Dirs.Of(dir) is { } login)
             {
+                email = login.Email;
                 if (!plans.TryGetValue(login.Email, out var forLogin))
                 {
                     var account = snapshot.Accounts.FirstOrDefault(a => a.Email.Equals(login.Email, StringComparison.OrdinalIgnoreCase));
@@ -98,7 +101,7 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
                 cliPlan = forLogin;
             }
             var (handed, _) = Autopilot.Next(cliPlan, settings, store, repos, null, claim: false, nowUtc,
-                unthrottled: cycler.IsUnthrottled(pid), self: c.SessionId, cli: pid, pilots: pilots, onSince: since, loginOf: loginOf);
+                unthrottled: cycler.IsUnthrottled(pid), self: c.SessionId, cli: pid, pilots: pilots, onSince: since, loginOf: loginOf, login: email);
             if (handed.Count > 0) due.Add((pid, c, repos, [.. handed.Select(h => h.Item.Id)]));
         }
         if (due.Count == 0) return [];
