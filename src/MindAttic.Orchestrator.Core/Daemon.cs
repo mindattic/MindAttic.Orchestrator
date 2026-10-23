@@ -42,6 +42,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         using var remindLease = new DispatchLease(store.Directory, Reminders.ReminderSender.LeaseName, store.Db);
         // Each repo's full suite on its main line after a landing, with no LLM (M.ORCH-T561); one daemon runs them.
         using var testsLease = new DispatchLease(store.Directory, MainlineTests.LeaseName, store.Db);
+        // The git-touching chores (audit, db syncs, mirror, GitHub intake) run in one daemon: two in the same checkout collide on
+        // index.lock and undo each other's reset and merge --abort (M.ORCH-T722).
+        using var gitChoresLease = new DispatchLease(store.Directory, GitChoresLeaseName, store.Db);
         var mainTests = new MainlineTests(store);
         var reminders = new Reminders.ReminderSender(store, new Reminders.PsstClient(Runner), (level, line) => Say(level, line), (title, message, urgent) => Alert(title, message, urgent));
         string? lastPaused = null;
@@ -216,15 +219,19 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 ReportUnderTarget(snapshot, plan, cycler.AutopilotClis());
                 tick.Lap("keep-going, alerts and reminders");
 
-                RunAuditIfDue(options, s);
+                var gitChores = gitChoresLease.TryAcquire();
+                if (gitChores) RunAuditIfDue(options, s);
                 tick.Lap("audit");
-                SyncTicketsDbIfDue(options);
-                // The database everything writes (M.ORCH-T535), committed in the checkout that holds it.
-                if (Settings.OrchestratorDb.LivePath is var live && Settings.OrchestratorDb.RepoOf(live) is { } dbRepo)
-                    SyncOrchestratorDbIfDue(dbRepo, live, DateTime.UtcNow);
-                MirrorIfDue(DateTime.UtcNow);
+                if (gitChores)
+                {
+                    SyncTicketsDbIfDue(options);
+                    // The database everything writes (M.ORCH-T535), committed in the checkout that holds it.
+                    if (Settings.OrchestratorDb.LivePath is var live && Settings.OrchestratorDb.RepoOf(live) is { } dbRepo)
+                        SyncOrchestratorDbIfDue(dbRepo, live, DateTime.UtcNow);
+                    MirrorIfDue(DateTime.UtcNow);
+                }
                 tick.Lap("tickets db sync");
-                if (s.GitHubIntake && DateTime.UtcNow - intakeUtc >= TimeSpan.FromHours(1))
+                if (gitChores && s.GitHubIntake && DateTime.UtcNow - intakeUtc >= TimeSpan.FromHours(1))
                 {
                     intakeUtc = DateTime.UtcNow;
                     // One repo's malformed story file or a locked database ends the intake, not the tick: autopilot's reap
@@ -517,6 +524,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     public sealed record AutopilotHolds(bool Quiet, IReadOnlyList<Scheduling.WorkedTicket> Worked, IReadOnlyList<string> LivePilot);
     private IReadOnlyList<string>? publishedStale;
     private DateTime publishedStaleUtc;
+
+    /// <summary>The lease of the git chores: only the daemon holding it audits, syncs the databases, mirrors and files GitHub intake.</summary>
+    public const string GitChoresLeaseName = "git-chores.lock";
 
     private void RunAuditIfDue(OrchestratorOptions options, OrchestratorSettings s)
     {
