@@ -239,8 +239,6 @@ public static class Pacer
         // above the curve, but that only holds agents until the curve catches up; it never stops them.
         var atTarget = windows.Any(w => w.Used >= w.Limit * target);
         // No wind-down (M.ORCH-T741): the owner's rule is to run to the cutoff, with nothing throttled or held before it.
-        const bool windDown = false, weekWindDown = false;
-        var windDownAt = WindDownShare;
 
         // What one more session costs: today's sessions if any are running, else your usual session. A
         // held session burns less than it will once let go, so judge it by what it would draw unheld.
@@ -280,18 +278,12 @@ public static class Pacer
         var room = windows.Min(w => Math.Max(0, w.Limit * target - w.Used));
         double? weekRoom = week?.WeekRoom5HourPoints is { } points && b.BlockLimit > 0 ? points / 100 * b.BlockLimit : null;
         var demand = Unheld(b.ControlFreshPerHour, recentDelaySeconds);
-        // Front-loaded: past its wind-down line no new subagent starts at all (the ones running finish), however much the
-        // curve's rate would still pay for, so the last stretch to the target isn't overrun by a burst started late.
-        var allowance = s.FrontLoaded && windDown ? 0 : SubagentAllowance(sustainable, demand, perSession, subagents, s.MaxSubagents);
+        var allowance = SubagentAllowance(sustainable, demand, perSession, subagents, s.MaxSubagents);
         return new Pace(mode, cap, sustainable, recent, perSession, gov.Name, gov.ResetUtc, note, agentNote)
         {
             RoomTokens = room, AgentDelaySeconds = delay, SubagentAllowance = allowance, Subagents = subagents,
             SpareSessions = SpareSessions(sustainable, demand, perSession),
             Stop = atTarget,
-            WindDown = windDown || weekWindDown,
-            WindDownAt = weekWindDown ? week!.WindDownPercent / 100.0 : windDownAt,
-            WindDownWindow = weekWindDown ? "weekly" : null,
-            WindDownResetUtc = weekWindDown ? week!.WeekResetUtc : null,
             Weekly = week, WeeklyRoomTokens = weekRoom,
             Profile = s.FrontLoaded ? OrchestratorSettings.FrontLoadedProfile : OrchestratorSettings.LinearProfile,
         };
