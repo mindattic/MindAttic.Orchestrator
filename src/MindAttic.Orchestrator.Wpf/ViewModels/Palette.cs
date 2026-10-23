@@ -17,6 +17,11 @@ public static class Palette
     public static Brush Quiet => Theme("MaMuted");
     public static Brush Over => Theme("MaBad");
 
+    /// <summary>The fourth status, neither good, warning nor bad (a tab's light in any other state, M.ORCH-T630): the theme's
+    /// purple MaOther, which MindAttic.Components.Wpf 20 adds; until the dashboard is on it, MaLink.</summary>
+    public static Brush Other => Application.Current?.TryFindResource("MaOther") as Brush
+        ?? (LibraryTheme.Value.TryGetValue("MaOther", out var other) ? other : Tickets);
+
     public static Brush For(RepoState state, bool hasTickets) => state switch
     {
         RepoState.Working => Working,
@@ -35,8 +40,9 @@ public static class Palette
         _ = System.IO.Packaging.PackUriHelper.UriSchemePack; // registers pack:// outside an Application
         var theme = (ResourceDictionary)Application.LoadComponent(new Uri("/MindAttic.Components.Wpf;component/Theme.xaml", UriKind.Relative));
         var brushes = new Dictionary<string, Brush>();
-        foreach (var key in new[] { "MaGood", "MaWarn", "MaLink", "MaMuted", "MaBad", "MaAccent" })
+        foreach (var key in new[] { "MaGood", "MaWarn", "MaLink", "MaMuted", "MaBad", "MaAccent", "MaOther" })
         {
+            if (!theme.Contains(key)) continue;
             var brush = ((Brush)theme[key]).CloneCurrentValue();
             brush.Freeze();
             brushes[key] = brush;

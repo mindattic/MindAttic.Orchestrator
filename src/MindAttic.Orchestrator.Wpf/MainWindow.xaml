@@ -104,13 +104,23 @@
                  Visibility="{Binding HasLoginTabs, Converter={StaticResource Visible}}">
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:MainViewModel}">
-                    <StackPanel Orientation="Horizontal" ToolTip="{Binding TabTip}" AutomationProperties.Name="{Binding TabTip}">
-                        <Ellipse Width="10" Height="10" Fill="{Binding TabBrush}" VerticalAlignment="Center" Margin="0,1,8,0" />
-                        <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <!-- Status at a glance (M.ORCH-T630): a status light before the name (green signed in and usable, red signed
+                         out, purple any other state; the 'API key' tab's orange), its word in the tooltip and accessible name so
+                         colour is never the only cue, the person's terminal colour under the name, and the week left after the
+                         reserve on the far right ('API key': what the CLIs billing it spent today). -->
+                    <StackPanel x:Name="LoginTabItem" Orientation="Horizontal" ToolTip="{Binding TabTip}" AutomationProperties.Name="{Binding TabTip}">
+                        <Ellipse x:Name="TabStatusLight" Width="9" Height="9" Fill="{Binding TabLightBrush}" VerticalAlignment="Center" Margin="0,1,8,0"
+                                 AutomationProperties.Name="{Binding TabStatusWord}" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" />
+                            <Rectangle Height="2" Fill="{Binding TabBrush}" Margin="0,1,0,0" RadiusX="1" RadiusY="1" />
+                        </StackPanel>
                         <TextBlock VerticalAlignment="Center" Margin="8,0,0,0"
                                    Visibility="{Binding TabBadge, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
                             <Run Text="&#x2022; " /><Run Text="{Binding TabBadge, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=" need you" />
                         </TextBlock>
+                        <TextBlock x:Name="TabTrailingText" Text="{Binding TabTrailing}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center"
+                                   Margin="14,0,0,0" Typography.NumeralAlignment="Tabular" />
                     </StackPanel>
                 </DataTemplate>
             </ListBox.ItemTemplate>
@@ -310,13 +320,43 @@
         <!-- A roster account not signed in on this machine yet (M.ORCH-T615): its tab shows only its Sign in, then, once signed
              in, the whole dashboard and Open Launcher at the next refresh. -->
         <StackPanel Grid.Row="5" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520" Margin="24"
-                    Visibility="{Binding IsTabSignedIn, Converter={x:Static vm:Converters.FalseToVisible}}">
+                    Visibility="{Binding ShowsSignIn, Converter={StaticResource Visible}}">
             <TextBlock Text="{Binding SignInPrompt}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,14" />
             <Button Style="{StaticResource MaPrimaryButton}" Command="{Binding SignInTabCommand}" Content="Sign in" Padding="18,6"
                     HorizontalAlignment="Center" AutomationProperties.Name="{Binding TabTitle, StringFormat='Sign {0} in'}" />
             <TextBlock Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,12,0,0"
                        Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" AutomationProperties.LiveSetting="Polite" />
         </StackPanel>
+
+        <!-- The 'API key' tab (M.ORCH-T630): the Vault API key's billing, for emergencies, and back to Claude Team (M.ORCH-T436,
+             off the old account menu by M.ORCH-T628), what the CLIs billing it spent today and which CLIs bill it. -->
+        <ScrollViewer x:Name="ApiKeyBody" Grid.Row="5" Style="{StaticResource BodyScroll}"
+                      Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}">
+            <StackPanel MaxWidth="760" HorizontalAlignment="Left" Margin="0,18,0,0">
+                <TextBlock Text="API key" Style="{StaticResource MaHeading}" AutomationProperties.HeadingLevel="Level2" />
+                <TextBlock Text="{Binding BillingHeadline}" FontWeight="SemiBold" Foreground="{Binding BillingBrush}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                <TextBlock Text="Bill every CLI to the Vault's API key only in an emergency (every Claude Team seat out of room), and switch back to Claude Team when it's over."
+                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,12" />
+                <Button x:Name="BillingToggleButton" Style="{StaticResource MaButton}" Content="{Binding BillingToggleText}" Padding="14,5"
+                        Command="{Binding ToggleBillingCommand}" HorizontalAlignment="Left" Foreground="{Binding BillingBrush}"
+                        AutomationProperties.Name="{Binding BillingToggleText}" AutomationProperties.HelpText="{Binding BillingClis}">
+                    <Button.ToolTip>
+                        <TextBlock>
+                            <Run Text="{Binding BillingHeadline, Mode=OneWay}" FontWeight="SemiBold" /><LineBreak />
+                            <Run Text="{Binding BillingClis, Mode=OneWay}" />
+                        </TextBlock>
+                    </Button.ToolTip>
+                </Button>
+                <TextBlock x:Name="ApiKeyBillingDetail" Text="{Binding BillingDetail}" Style="{StaticResource MaTileSubtitle}" TextWrapping="Wrap" Margin="0,10,0,0"
+                           AutomationProperties.LiveSetting="Polite"
+                           Visibility="{Binding BillingDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                <TextBlock Text="TODAY" Style="{StaticResource MaSectionLabel}" />
+                <TextBlock x:Name="ApiKeyCost" Text="{Binding ApiKeyCostText}" TextWrapping="Wrap" />
+                <TextBlock Text="WHO BILLS IT" Style="{StaticResource MaSectionLabel}" />
+                <TextBlock x:Name="ApiKeyCliList" Text="{Binding ApiKeyClis}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding BillingClis}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,8,0,0" />
+            </StackPanel>
+        </ScrollViewer>
 
         <!-- Body: grouped tiles, and the selected repo's detail pane; or, on the Terminals tab, only the person's terminals. -->
         <Grid Grid.Row="5" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
@@ -1001,21 +1041,10 @@
             <ScrollViewer x:Name="AccountsBody" Grid.ColumnSpan="2" Style="{StaticResource BodyScroll}"
                           Visibility="{Binding IsAccountsView, Converter={StaticResource Visible}}">
                 <StackPanel>
-                    <!-- The view's toolbar: Add account and Sign in all (M.ORCH-T604), and billing the Vault's API key for
-                         emergencies or back to Claude Team (M.ORCH-T436), moved here from the account menu (M.ORCH-T628) with its
-                         tooltip of who every CLI bills. -->
+                    <!-- The view's toolbar: Add account and Sign in all (M.ORCH-T604). Billing the Vault's API key moved on to the
+                         'API key' tab (M.ORCH-T630). -->
                     <DockPanel x:Name="AccountsToolbar" Margin="0,4,0,8">
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom">
-                            <Button x:Name="BillingToggleButton" Style="{StaticResource MaButton}" Content="{Binding BillingToggleText}" Padding="14,5" Margin="0,0,8,0"
-                                    Command="{Binding ToggleBillingCommand}" VerticalAlignment="Center" Foreground="{Binding BillingBrush}"
-                                    AutomationProperties.Name="{Binding BillingToggleText}" AutomationProperties.HelpText="{Binding BillingClis}">
-                                <Button.ToolTip>
-                                    <TextBlock>
-                                        <Run Text="{Binding BillingHeadline, Mode=OneWay}" FontWeight="SemiBold" /><LineBreak />
-                                        <Run Text="{Binding BillingClis, Mode=OneWay}" />
-                                    </TextBlock>
-                                </Button.ToolTip>
-                            </Button>
                             <TextBox x:Name="NewAccountBox" Style="{StaticResource MaTextBox}" Width="260" Height="32" VerticalAlignment="Center"
                                      Text="{Binding NewAccountEmail, UpdateSourceTrigger=PropertyChanged}"
                                      mc:MaTextBox.Placeholder="name@company.com"

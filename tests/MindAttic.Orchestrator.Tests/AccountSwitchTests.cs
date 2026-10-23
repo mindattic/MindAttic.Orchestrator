@@ -252,9 +252,12 @@ public sealed class AccountSwitchTests
         Assert.That(code, Does.Not.Contain("AccountPopup"));
 
         var accounts = xaml[xaml.IndexOf("x:Name=\"AccountsBody\"", StringComparison.Ordinal)..];
-        Assert.That(accounts, Does.Contain("x:Name=\"BillingToggleButton\"").And.Contain("{Binding ToggleBillingCommand}")
-            .And.Contain("{Binding BillingHeadline, Mode=OneWay}").And.Contain("x:Name=\"BillingDetailLine\"")
-            .And.Contain("DataContext.MakeDefaultCommand"), "the menu's switches, tooltip and detail line moved to the Accounts view");
+        Assert.That(accounts, Does.Contain("x:Name=\"BillingDetailLine\"")
+            .And.Contain("DataContext.MakeDefaultCommand"), "the menu's global default and detail line moved to the Accounts view");
+        // M.ORCH-T630: the API-key switch, with its tooltip of who every CLI bills, moved on again to the 'API key' tab.
+        var apiKey = xaml[xaml.IndexOf("x:Name=\"ApiKeyBody\"", StringComparison.Ordinal)..];
+        Assert.That(apiKey, Does.Contain("x:Name=\"BillingToggleButton\"").And.Contain("{Binding ToggleBillingCommand}")
+            .And.Contain("{Binding BillingHeadline, Mode=OneWay}"));
         var header = xaml[..xaml.IndexOf("x:Name=\"Toolbar\"", StringComparison.Ordinal)];
         Assert.That(header, Does.Contain("{Binding WeeklyAccountLine}").And.Not.Contain("{Binding BillingDetail}"));
     }

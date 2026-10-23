@@ -51,6 +51,7 @@ public sealed partial class MainViewModel
         // What the last switch did stays up for a couple of minutes, as a toast would.
         if (!switchingBilling && DateTime.UtcNow - billingMessageUtc > TimeSpan.FromMinutes(2)) billingMessage = "";
         Raise(nameof(IsOnApiKey)); Raise(nameof(BillingToggleText)); Raise(nameof(BillingHeadline)); Raise(nameof(BillingBrush)); Raise(nameof(BillingDetail)); Raise(nameof(BillingClis));
+        RaiseTabStatus();
     }
 
     private async Task SwitchBillingAsync(string mode)
@@ -82,6 +83,7 @@ public sealed partial class MainViewModel
             switchingBilling = false;
             System.Windows.Input.CommandManager.InvalidateRequerySuggested();
             Raise(nameof(IsOnApiKey)); Raise(nameof(BillingToggleText)); Raise(nameof(BillingHeadline)); Raise(nameof(BillingBrush)); Raise(nameof(BillingDetail)); Raise(nameof(BillingClis));
+        RaiseTabStatus();
         }
         await RefreshAsync();
     }
