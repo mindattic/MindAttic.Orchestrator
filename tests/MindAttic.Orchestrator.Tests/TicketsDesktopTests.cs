@@ -48,9 +48,11 @@ public sealed class TicketsDesktopTests
             Does.Contain("OpenInTicketsCommand"));
 
         var links = doc.Descendants(p + "Hyperlink").Where(h => (string?)h.Attribute("Style") == "{StaticResource TicketLink}").ToList();
-        // The repo's open tickets, Next up, the full queue, a finished ticket and an agent's ticket.
+        // The repo's open tickets, Next up, the full queue, a finished ticket, an agent's ticket and the per-user Tickets view's ticket (M.ORCH-T668).
         Assert.That(links.Select(h => (string)h.Attribute("CommandParameter")!),
-            Is.EquivalentTo(new[] { "{Binding Id}", "{Binding Id}", "{Binding Id}", "{Binding TicketId}", "{Binding TicketId}" }));
+            Is.EquivalentTo(new[] { "{Binding Id}", "{Binding Id}", "{Binding Id}", "{Binding Id}", "{Binding TicketId}", "{Binding TicketId}" }));
+        // Each one opens through the same style's OpenInTicketsCommand (no link overrides it with its own Command).
+        Assert.That(links, Has.None.Matches<XElement>(h => h.Attribute("Command") is not null));
         Assert.That(links, Has.All.Matches<XElement>(h => h.Attribute(XName.Get("AutomationProperties.Name")) is not null));
 
         // No ticket id left as plain text: a Run or TextBlock bound to an id outside a link.
