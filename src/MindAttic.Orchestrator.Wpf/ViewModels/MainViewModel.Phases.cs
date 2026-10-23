@@ -375,12 +375,18 @@ public sealed partial class MainViewModel
     /// "Team · Max 5x · checked 3m ago"; empty when the roster doesn't know it.</summary>
     public string WeeklyAccountLine => AccountLineOf(OwnRow, DateTime.UtcNow);
 
+    /// <summary>A roster reading older than this is called stale on the tab (a login is read every <see cref="ClaudeMeterProbe.IdleEvery"/>).</summary>
+    internal static readonly TimeSpan StaleReading = TimeSpan.FromMinutes(30);
+
     internal static string AccountLineOf(AccountRow? row, DateTime nowUtc)
     {
         if (row is null) return "";
         var parts = new List<string>();
         if (row.Plan is { Length: > 0 } plan) parts.Add(plan);
-        parts.Add(row.ReadUtc is { } r ? $"checked {Formatting.Ago(r, nowUtc)}" : "not checked yet");
+        // Said plainly once the figures are old (M.ORCH-T684): a login nothing refreshes shows its last reading as if current.
+        parts.Add(row.ReadUtc is { } r
+            ? nowUtc - r > StaleReading ? $"STALE: last read {Formatting.Ago(r, nowUtc)}, these figures may be out of date" : $"checked {Formatting.Ago(r, nowUtc)}"
+            : "not checked yet");
         return string.Join(" · ", parts);
     }
 

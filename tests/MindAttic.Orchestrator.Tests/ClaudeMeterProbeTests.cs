@@ -310,4 +310,45 @@ public sealed class ClaudeMeterProbeTests
         await keyed.Pending;
         Assert.That(asked, Is.False, "an API key has no subscription meter");
     }
+
+    [Test]
+    public async Task A_token_expired_for_a_while_is_refreshed_and_written_back_and_the_meter_read()
+    {
+        // T684: the global login with billing on the API key has no CLI refreshing its token, so it went 20 hours unread.
+        var path = Path.Combine(dir, ".credentials.json");
+        var expired = new DateTimeOffset(DateTime.UtcNow.AddHours(-17)).ToUnixTimeMilliseconds();
+        File.WriteAllText(path, $$$"""{"claudeAiOauth":{"accessToken":"old","refreshToken":"r1","expiresAt":{{{expired}}},"subscriptionType":"max"}}""");
+        string? used = null;
+        var probe = new ClaudeMeterProbe
+        {
+            UsagePath = Path.Combine(dir, "claude-usage.json"), CredentialsPath = path,
+            Renew = (r, _) => Task.FromResult<ClaudeMeterProbe.RefreshedToken?>(r == "r1" ? new("new", "r2", 3600) : null),
+            Fetch = (t, _) => { used = t; return Task.FromResult<string?>(Body); },
+        };
+        probe.Tick(null, [], Now, force: true);
+        await probe.Pending;
+        Assert.That(used, Is.EqualTo("new"));
+        Assert.That(probe.LastResult, Does.StartWith("read Claude's meter"));
+        var saved = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!["claudeAiOauth"]!;
+        Assert.That((string?)saved["refreshToken"], Is.EqualTo("r2"));
+        Assert.That((string?)saved["subscriptionType"], Is.EqualTo("max"), "the rest of the file is kept");
+    }
+
+    [Test]
+    public async Task A_token_that_just_expired_is_left_for_Claude_Code_to_refresh()
+    {
+        var path = Path.Combine(dir, ".credentials.json");
+        var expired = new DateTimeOffset(DateTime.UtcNow.AddMinutes(-1)).ToUnixTimeMilliseconds();
+        File.WriteAllText(path, $$$"""{"claudeAiOauth":{"accessToken":"old","refreshToken":"r1","expiresAt":{{{expired}}}}}""");
+        var renewed = false;
+        var probe = new ClaudeMeterProbe
+        {
+            UsagePath = Path.Combine(dir, "claude-usage.json"), CredentialsPath = path,
+            Renew = (_, _) => { renewed = true; return Task.FromResult<ClaudeMeterProbe.RefreshedToken?>(null); },
+            Fetch = (_, _) => Task.FromResult<string?>(Body),
+        };
+        probe.Tick(null, [], Now, force: true);
+        await probe.Pending;
+        Assert.That(renewed, Is.False);
+    }
 }

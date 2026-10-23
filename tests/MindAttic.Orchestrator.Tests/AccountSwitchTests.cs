@@ -214,6 +214,7 @@ public sealed class AccountSwitchTests
         Assert.That(MainViewModel.AccountLineOf(b with { Plan = "Team · Max 5x", ReadUtc = Now.AddMinutes(-3) }, Now),
             Is.EqualTo($"Team · Max 5x · checked {Formatting.Ago(Now.AddMinutes(-3), Now)}"));
         Assert.That(MainViewModel.AccountLineOf(b with { Plan = null, ReadUtc = null }, Now), Is.EqualTo("not checked yet"));
+        Assert.That(MainViewModel.AccountLineOf(b with { Plan = null, ReadUtc = Now.AddHours(-20) }, Now), Does.StartWith("STALE: last read"));
         Assert.That(MainViewModel.AccountLineOf(null, Now), Is.Empty);
     }
 

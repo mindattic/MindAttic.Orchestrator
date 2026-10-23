@@ -16,8 +16,10 @@ namespace MindAttic.Orchestrator.Budget;
 /// endpoint (what <c>/usage</c> shows) and writes the answer to <c>claude-usage.json</c> in the statusline's format,
 /// where the samples, the budget and the pace hooks already read it.
 /// </summary>
-/// <remarks>Uses Claude Code's saved sign-in read-only: an expired token is skipped (Claude Code refreshes it), never
-/// refreshed here, since refreshing rotates the token Claude Code holds.</remarks>
+/// <remarks>Uses Claude Code's saved sign-in. A token that has only just expired is skipped (Claude Code, if one is running
+/// on the login, refreshes it, and refreshing here would rotate the token it holds). One expired for
+/// <see cref="RefreshAfterExpired"/> has no CLI keeping it fresh (M.ORCH-T684: the global login, with billing on the API key,
+/// went 20 hours unread on a dead token), so it is refreshed here and the new tokens written back to the file.</remarks>
 public sealed class ClaudeMeterProbe
 {
     /// <summary>A report this old, with tokens spent since, is refreshed by asking Claude directly. Well inside the
@@ -32,6 +34,13 @@ public sealed class ClaudeMeterProbe
 
     /// <summary>The wait after an API-key login, which has no meter to read at all (so no point asking again soon).</summary>
     public static readonly TimeSpan NoMeterBackoff = TimeSpan.FromMinutes(15);
+
+    /// <summary>How long a token must have been expired before the probe refreshes it itself (M.ORCH-T684): a CLI on the login
+    /// refreshes its token as it expires, so one this stale has none running.</summary>
+    public static readonly TimeSpan RefreshAfterExpired = TimeSpan.FromMinutes(10);
+
+    public const string TokenEndpoint = "https://console.anthropic.com/v1/oauth/token";
+    private const string ClientId = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
 
     public const string Endpoint = "https://api.anthropic.com/api/oauth/usage";
 
@@ -57,6 +66,9 @@ public sealed class ClaudeMeterProbe
 
     /// <summary>Gets Claude's usage JSON; null when it couldn't. Tests swap it.</summary>
     internal Func<string, CancellationToken, Task<string?>> Fetch { get; init; } = FetchAsync;
+
+    /// <summary>Exchanges a refresh token for a new access token; null when refused. Tests swap it.</summary>
+    internal Func<string, CancellationToken, Task<RefreshedToken?>> Renew { get; init; } = RenewAsync;
 
     private readonly object gate = new();
     private DateTime nextUtc;
@@ -241,8 +253,12 @@ public sealed class ClaudeMeterProbe
             return;
         }
         string? token = null;
-        try { token = Token(CredentialsPath, DateTime.UtcNow); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { }
+        try
+        {
+            token = Token(CredentialsPath, DateTime.UtcNow);
+            if (token is null) token = await RefreshStaleAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or HttpRequestException or TaskCanceledException) { }
         if (token is null)
         {
             Fail("no usable Claude sign-in to read the meter with");
@@ -296,6 +312,58 @@ public sealed class ClaudeMeterProbe
             lock (gate)
                 if (generation == asked) nextUtc = nowUtc + (wait ?? Backoff);
         }
+    }
+
+    /// <summary>Refreshes the saved sign-in when its access token has been expired for <see cref="RefreshAfterExpired"/>, writing
+    /// the new tokens back beside the rest of the file; returns the new access token, null when it isn't stale or was refused.</summary>
+    private async Task<string?> RefreshStaleAsync()
+    {
+        var now = DateTime.UtcNow;
+        if (!File.Exists(CredentialsPath) || JsonNode.Parse(File.ReadAllText(CredentialsPath)) is not JsonObject root ||
+            root["claudeAiOauth"] is not JsonObject oauth ||
+            oauth["refreshToken"] is not JsonValue rv || !rv.TryGetValue<string>(out var refresh) || refresh.Length == 0 ||
+            oauth["expiresAt"] is not JsonValue xv || !xv.TryGetValue<long>(out var expiresAt) ||
+            now - DateTimeOffset.FromUnixTimeMilliseconds(expiresAt).UtcDateTime < RefreshAfterExpired)
+            return null;
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        if (await Renew(refresh, cts.Token).ConfigureAwait(false) is not { } fresh) return null;
+        // A CLI may have refreshed it while this asked: its tokens are the live ones, not these.
+        if (JsonNode.Parse(File.ReadAllText(CredentialsPath)) is not JsonObject again || again["claudeAiOauth"] is not JsonObject current ||
+            current["refreshToken"]?.GetValue<string>() != refresh)
+            return Token(CredentialsPath, DateTime.UtcNow);
+        current["accessToken"] = fresh.AccessToken;
+        if (fresh.RefreshToken is { Length: > 0 } rt) current["refreshToken"] = rt;
+        current["expiresAt"] = DateTimeOffset.UtcNow.AddSeconds(fresh.ExpiresInSeconds).ToUnixTimeMilliseconds();
+        var tmp = $"{CredentialsPath}.{Environment.ProcessId}.tmp";
+        File.WriteAllText(tmp, again.ToJsonString());
+        try { File.Move(tmp, CredentialsPath, overwrite: true); }
+        catch
+        {
+            try { File.Delete(tmp); } catch (IOException) { }
+            throw;
+        }
+        return fresh.AccessToken;
+    }
+
+    /// <summary>A refreshed sign-in from the token endpoint.</summary>
+    internal sealed record RefreshedToken(string AccessToken, string? RefreshToken, long ExpiresInSeconds);
+
+    private static async Task<RefreshedToken?> RenewAsync(string refreshToken, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint)
+        {
+            Content = new StringContent(new JsonObject { ["grant_type"] = "refresh_token", ["refresh_token"] = refreshToken, ["client_id"] = ClientId }.ToJsonString(),
+                System.Text.Encoding.UTF8, "application/json"),
+        };
+        request.Headers.UserAgent.ParseAdd("MindAttic.Orchestrator");
+        using var response = await Http.SendAsync(request, ct).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode) return null;
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
+        var root = doc.RootElement;
+        if (!root.TryGetProperty("access_token", out var a) || a.ValueKind != JsonValueKind.String || a.GetString() is not { Length: > 0 } access) return null;
+        var refreshed = root.TryGetProperty("refresh_token", out var r) && r.ValueKind == JsonValueKind.String ? r.GetString() : null;
+        var seconds = root.TryGetProperty("expires_in", out var e) && e.ValueKind == JsonValueKind.Number ? e.GetInt64() : 3600;
+        return new RefreshedToken(access, refreshed, seconds);
     }
 
     /// <summary>Claude Code's saved access token, or null when there's none or it has expired.</summary>
