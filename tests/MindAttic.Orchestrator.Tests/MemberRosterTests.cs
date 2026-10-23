@@ -98,6 +98,8 @@ public sealed class MemberRosterTests
         try
         {
             int Run(params string[] args) => CliApp.Create().Run(args);
+            var noLogins = () => new AccountDirs(Path.Combine(temps.New(), "none"), Path.Combine(temps.New(), ".claude"), Path.Combine(temps.New(), ".claude.json")); // never the real ~/.claude-accounts
+            LoginCommand.DirsOverride = noLogins;
             var db = new OrchestratorDb(OrchestratorDb.LivePath);
             Assert.That(db.Path, Does.Not.Contain(Path.Combine("MindAttic.Orchestrator", "data")), "a scratch database");
             using (var c = db.Open())
@@ -140,7 +142,7 @@ public sealed class MemberRosterTests
                 Assert.That(lines.Single(l => l.Contains("signed@example.com", StringComparison.Ordinal)), Does.Not.Contain("own login"));
                 Assert.That(Run("members", "remove", "honey@example.com"), Is.Zero, output.ToString());
             }
-            finally { LoginCommand.DirsOverride = null; }
+            finally { LoginCommand.DirsOverride = noLogins; }
 
             Assert.That(Run("members", "remove", "invited@example.com"), Is.Zero, output.ToString());
             Assert.That(Run("members", "remove", "invited@example.com"), Is.EqualTo(1));
@@ -149,6 +151,6 @@ public sealed class MemberRosterTests
             Assert.That(Run("members", "--help"), Is.Zero, output.ToString());
             Assert.That(Run("members", "add", "--help"), Is.Zero, output.ToString());
         }
-        finally { AnsiConsole.Console = previous; }
+        finally { AnsiConsole.Console = previous; LoginCommand.DirsOverride = null; }
     }
 }

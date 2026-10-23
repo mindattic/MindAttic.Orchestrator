@@ -62,7 +62,7 @@ internal sealed class MembersCommand : Command<MembersCommand.Settings>
     /// <summary>The emails with a Claude login signed in under their own folder in ~/.claude-accounts (M.ORCH-T671).</summary>
     internal static HashSet<string> OwnLogins() =>
         (LoginCommand.DirsOverride?.Invoke() ?? new AccountDirs()).SignedIn()
-            .Select(d => d.Email).ToHashSet(StringComparer.Ordinal);
+            .Select(d => AccountDirs.Normalize(d.Email)).OfType<string>().ToHashSet(StringComparer.Ordinal);
 
     /// <summary>The "Signed in here" cell: yes through its own login and/or the fallback (global) login, else no.</summary>
     internal static string SignedInCell(bool ownLogin, bool fallbackLogin, DateTime? fallbackAt, DateTime now)
