@@ -7,7 +7,7 @@ using NUnit.Framework;
 namespace MindAttic.Orchestrator.Tests;
 
 /// <summary>Status at a glance on the person tab strip (M.ORCH-T630): each person's tab has a status light (green usable, red
-/// signed out, purple any other state) with its word, and its week left after the reserve on its far right; an 'API key' tab
+/// signed out, purple any other state) with its word, and its week left on its far right; an 'API key' tab
 /// with an orange light holds the API key's switch, what it spent today and which CLIs bill it.</summary>
 public sealed class TabStatusTests
 {
@@ -16,10 +16,11 @@ public sealed class TabStatusTests
     [Test]
     public void The_week_left_is_what_remains_before_the_stop_line_and_a_dash_when_never_read()
     {
-        Assert.That(MainViewModel.TabWeekLeftOf(72, 95), Is.EqualTo("23% left"));
-        Assert.That(MainViewModel.TabWeekLeftOf(97, 95), Is.EqualTo("0% left"), "past its stop line, never below 0");
-        Assert.That(MainViewModel.TabWeekLeftOf(0, 100), Is.EqualTo("100% left"));
-        Assert.That(MainViewModel.TabWeekLeftOf(null, 95), Is.EqualTo("—"));
+        Assert.That(MainViewModel.TabWeekLeftOf(72), Is.EqualTo("28% left"));
+        Assert.That(MainViewModel.TabWeekLeftOf(4), Is.EqualTo("96% left"), "the card's 100 - used, no reserve taken off");
+        Assert.That(MainViewModel.TabWeekLeftOf(94), Is.EqualTo("6% left"));
+        Assert.That(MainViewModel.TabWeekLeftOf(104), Is.EqualTo("0% left"), "never below 0");
+        Assert.That(MainViewModel.TabWeekLeftOf(null), Is.EqualTo("—"));
     }
 
     [Test]

@@ -53,14 +53,14 @@ public sealed partial class MainViewModel
         _ => Palette.Other,
     };
 
-    /// <summary>The tab's far-right figure: a person's weekly % left after the reserve ("23% left", "—" never read); on the
+    /// <summary>The tab's far-right figure: a person's weekly % left, as the weekly card shows it ("23% left", "—" never read); on the
     /// 'API key' tab, the tokens the CLIs billing it spent today.</summary>
-    public string TabTrailing => tab.IsApiKey ? $"{Formatting.Tokens(ApiKeyUsageToday.Fresh)} today" : TabWeekLeftOf(WeekUsed, weeklyStopPercent);
+    public string TabTrailing => tab.IsApiKey ? $"{Formatting.Tokens(ApiKeyUsageToday.Fresh)} today" : TabWeekLeftOf(WeekUsed);
 
-    /// <summary>"23% left": the week left before its stop line (<paramref name="stopPercent"/>, M.ORCH-T609), never below 0;
-    /// "—" when the week was never read.</summary>
-    internal static string TabWeekLeftOf(double? usedPercent, int stopPercent) =>
-        usedPercent is { } used ? $"{Math.Max(0, stopPercent - used):0}% left" : "—";
+    /// <summary>"23% left": 100 minus the week used, never below 0, the same figure as the weekly card (the M.ORCH-T609 reserve
+    /// shows only in its "stops at 95%"); "—" when the week was never read.</summary>
+    internal static string TabWeekLeftOf(double? usedPercent) =>
+        usedPercent is { } used ? $"{Math.Max(0, 100 - used):0}% left" : "—";
 
     private (TabLight Light, string Word) TabStatus => tab.IsApiKey
         ? (TabLight.Warning, IsOnApiKey ? "API key billing every CLI" : "API key on standby (Claude Team bills)")
