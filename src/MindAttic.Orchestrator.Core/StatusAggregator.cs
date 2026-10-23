@@ -69,7 +69,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// process writing the real rl-status.json writes theirs, and only for the real account folders.</summary>
     public AccountPacer Accounts
     {
-        get => accountPacer ??= new AccountPacer { ProjectsDir = options.ClaudeProjectsDir, Probe = ReportedUsagePath is null, OutsideHolds = OutsideHolds };
+        get => accountPacer ??= new AccountPacer { ProjectsDir = options.ClaudeProjectsDir, Probe = ReportedUsagePath is null, OutsideHolds = OutsideHolds, Allowances = Allowances };
         init => accountPacer = value;
     }
 
@@ -130,6 +130,15 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// <summary>Each login's outside use as the daemon keeps it (M.ORCH-T682): a login whose member is using Claude elsewhere is
     /// paced to its lowered ceiling.</summary>
     private IReadOnlyList<OutsideUseLogin> OutsideHolds() => OutsideUseWatch.Load(Store);
+
+    /// <summary>The logins the user let past their weekly target (M.ORCH-T694), those whose time or weekly reset has come ended
+    /// (and logged) first.</summary>
+    private IReadOnlyList<WeeklyAllowance> Allowances()
+    {
+        var now = DateTime.UtcNow;
+        WeeklyAllowances.Prune(Store, now);
+        return WeeklyAllowances.Active(Store, now);
+    }
 
     private OrchestratorDb? db;
 
@@ -367,6 +376,13 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         reported = KeepWindow(reported, now);
         // A member using Claude outside the orchestrator on the global login (M.ORCH-T682): its pace held to the lowered ceiling.
         var (paceSettings, outsideWhy) = OutsideUseWatch.Apply(OutsideHolds(), "", settings);
+        // The global login's member let past the weekly target by the user (M.ORCH-T694): its week stops at the wall meanwhile.
+        if (SignIn?.Profile?.Email is { Length: > 0 } allowedEmail)
+        {
+            var (allowedSettings, allowedWhy) = WeeklyAllowances.Apply(Allowances(), allowedEmail, paceSettings, now);
+            paceSettings = allowedSettings;
+            if (allowedWhy is not null) outsideWhy = outsideWhy is null ? allowedWhy : $"{outsideWhy} {allowedWhy}";
+        }
         var budget = BudgetCalculator.Compute(events, paceSettings, now, startOfTodayUtc, learned: calibration,
             reported: reported, reportedLimit: reportedLimit, ledgerFromUtc: signIn?.LedgerFrom);
         budget = HoldWeeklyStop(budget, now);

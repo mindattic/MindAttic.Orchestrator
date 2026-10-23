@@ -95,6 +95,7 @@ internal sealed class UsageReportCommand : Command<UsageReportCommand.Settings>
         try { settings = store.LoadSettings(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { settings = new OrchestratorSettings(); }
         return UsageReport.Gather(new OrchestratorDb(OrchestratorDb.LivePath), snapshot, new AccountDirs(), settings, now, since,
-            ReportedUsage.Load(now), ReportedUsage.DefaultDb, OutsideUseWatch.Stats(OutsideUseWatch.Load(store), settings));
+            ReportedUsage.Load(now), ReportedUsage.DefaultDb, OutsideUseWatch.Stats(OutsideUseWatch.Load(store), settings),
+            WeeklyAllowances.Active(store, now));
     }
 }

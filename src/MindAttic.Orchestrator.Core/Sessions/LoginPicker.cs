@@ -32,6 +32,9 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
 
     private readonly Func<IEnumerable<string?>> live = liveConfigDirs ?? LiveFromContextGate;
 
+    /// <summary>The logins the user let past their weekly target (M.ORCH-T694, <see cref="WeeklyAllowances"/>); null: none.</summary>
+    public Func<IReadOnlyList<WeeklyAllowance>>? Allowances { get; init; }
+
     /// <summary>The <c>CLAUDE_CONFIG_DIR</c> of every live Claude CLI on a login of its own, as the context gate recorded it
     /// (a session whose CLI process is still running).</summary>
     public static IEnumerable<string?> LiveFromContextGate()
@@ -68,13 +71,18 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return new(null, $"couldn't read the per-CLI logins ({ex.Message}): global login"); }
         if (signedIn.Count == 0) return new(null, "no per-CLI login is signed in: global login");
         var busy = Busy(nowUtc);
-        var chosen = Choose(signedIn, busy, a => ReportedUsage.Load(nowUtc, a.UsagePath), nowUtc, stop);
+        // A login the user let past its weekly target (M.ORCH-T694) has its week up to the wall to give.
+        IReadOnlyList<WeeklyAllowance> allowed;
+        try { allowed = Allowances?.Invoke() ?? []; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { allowed = []; }
+        int StopOf(string? email) => WeeklyAllowances.For(allowed, email, nowUtc) is null ? stop : Settings.OrchestratorSettings.WeeklyStopFor(0);
+        var chosen = Choose(signedIn, busy, a => ReportedUsage.Load(nowUtc, a.UsagePath), nowUtc, stop, StopOf);
         if (chosen is null)
             return new(null, signedIn.All(a => busy.Contains(a.Email))
                 ? $"every per-CLI login ({signedIn.Count}) already has a CLI: global login"
                 : $"no free per-CLI login has headroom left (each stops at {stop}% of its week): global login");
         if (claim) Claim(chosen, nowUtc);
-        var room = Headroom(ReportedUsage.Load(nowUtc, chosen.UsagePath), nowUtc, stop);
+        var room = Headroom(ReportedUsage.Load(nowUtc, chosen.UsagePath), nowUtc, StopOf(chosen.Email));
         return new(chosen, $"{chosen.Email}: no CLI on it yet, {room.ToString("0", CultureInfo.InvariantCulture)}% headroom");
     }
 
@@ -84,11 +92,13 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
     /// which means the global login. An account at or past its weekly stop line (<paramref name="weeklyStopPercent"/>, the
     /// weekly reserve's, M.ORCH-T609) has no headroom: its CLIs would be stopped at once.
     /// </summary>
+    /// <param name="stopFor">Each login's own line by email, where it differs (the wall for one the user let past the target,
+    /// M.ORCH-T694); null: <paramref name="weeklyStopPercent"/> for all.</param>
     public static AccountDir? Choose(IEnumerable<AccountDir> signedIn, IReadOnlySet<string> busy, Func<AccountDir, ReportedUsage?> usage, DateTime nowUtc,
-        int? weeklyStopPercent = null) =>
+        int? weeklyStopPercent = null, Func<string?, int>? stopFor = null) =>
         signedIn.Where(a => !busy.Contains(a.Email))
             .Select(a => (Account: a, Usage: usage(a)))
-            .Select(x => (x.Account, Room: Headroom(x.Usage, nowUtc, weeklyStopPercent), Week: 100 - (WeekUsed(x.Usage, nowUtc) ?? 0)))
+            .Select(x => (x.Account, Room: Headroom(x.Usage, nowUtc, stopFor?.Invoke(x.Account.Email) ?? weeklyStopPercent), Week: 100 - (WeekUsed(x.Usage, nowUtc) ?? 0)))
             .Where(x => x.Room > 0)
             .OrderByDescending(x => x.Room)
             .ThenByDescending(x => x.Week)

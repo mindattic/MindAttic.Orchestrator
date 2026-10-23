@@ -28,7 +28,8 @@ public sealed record LoginRoom(string? Email, string? ConfigDir, double? RoomTok
         var p = a.Pace;
         var b = a.Budget;
         var five = b.BlockLimitIsPeak || b.CurrentBlock is null ? 0 : b.BlockPercent;
-        var headroom = Math.Max(0, Math.Min(Math.Clamp(s.PaceTargetPercent, 1, 100) - five, s.WeeklyStopPercent - (b.WeeklyPercent ?? 0)));
+        // The login's own weekly line, as its budget was worked out: the wall while the user lets it past the target (M.ORCH-T694).
+        var headroom = Math.Max(0, Math.Min(Math.Clamp(s.PaceTargetPercent, 1, 100) - five, b.WeeklyStopPercent - (b.WeeklyPercent ?? 0)));
         var open = !p.Stop && !p.WindDown && p.Mode != PaceMode.Over;
         return new LoginRoom(a.Email, a.Directory, p.IsPaced ? p.FitRoomTokens : null, headroom, open);
     }

@@ -51,6 +51,8 @@ public sealed record UsageReportRow
     public long? CliSince { get; init; }
     /// <summary>The member's own use of Claude outside the orchestrator (M.ORCH-T682, <see cref="UsageReport.OutsideText"/>); null until it's measured.</summary>
     public string? OutsideUse { get; init; }
+    /// <summary>The user let this login past the weekly target (M.ORCH-T694, <see cref="WeeklyAllowance.Text"/>); null when not.</summary>
+    public string? Allowed { get; init; }
 }
 
 /// <summary>
@@ -98,7 +100,8 @@ public sealed record UsageReport
     /// <param name="staleReason">Email → why its reading may be old, when known.</param>
     public static UsageReport Build(IReadOnlyList<Member> members, IReadOnlyList<AccountRow> roster, IReadOnlyList<LoginReading> logins,
         IReadOnlyList<DayUsage> history, IReadOnlyDictionary<string, BudgetStatus> estimates, int weeklyTargetPercent, DateTime nowUtc,
-        DateOnly? since = null, string? globalAccount = null, Func<string, string?>? outsideUse = null, Func<string, string?>? staleReason = null)
+        DateOnly? since = null, string? globalAccount = null, Func<string, string?>? outsideUse = null, Func<string, string?>? staleReason = null,
+        IReadOnlyList<WeeklyAllowance>? allowances = null)
     {
         var people = members.Select(m => (m.Email, m.Name, IsMember: true)).ToList();
         var known = people.Select(p => p.Email).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -176,6 +179,9 @@ public sealed record UsageReport
                 CliWeek = spent.Where(d => InWeek(d, weekStart)).Sum(d => d.Fresh),
                 CliSince = since is { } s ? spent.Where(d => d.Day >= s).Sum(d => d.Fresh) : null,
                 OutsideUse = outsideUse?.Invoke(email),
+                Allowed = WeeklyAllowances.For(allowances, email, nowUtc) is { } allowed
+                    ? new WeeklyAllowance { Name = name ?? alias ?? LoginLook.DefaultAlias(email) ?? email, UntilUtc = allowed.EndsUtc, By = allowed.By }.Text
+                    : null,
             });
         }
 
@@ -208,7 +214,8 @@ public sealed record UsageReport
     /// <paramref name="outside"/> use as the daemon measures it (M.ORCH-T682; keyed by email, "" for the global login).
     /// </summary>
     public static UsageReport Gather(OrchestratorDb db, Snapshot snapshot, AccountDirs dirs, OrchestratorSettings settings, DateTime nowUtc,
-        DateOnly? since = null, ReportedUsage? globalReading = null, OrchestratorDb? stateDb = null, IReadOnlyList<OutsideUseStats>? outside = null)
+        DateOnly? since = null, ReportedUsage? globalReading = null, OrchestratorDb? stateDb = null, IReadOnlyList<OutsideUseStats>? outside = null,
+        IReadOnlyList<WeeklyAllowance>? allowances = null)
     {
         var members = MemberRoster.Load(db);
         var current = snapshot.Account is { } key && key != ClaudeAccount.ApiKey ? key : null;
@@ -241,7 +248,7 @@ public sealed record UsageReport
         string? OutsideOf(string email) => outside?.FirstOrDefault(o => string.Equals(o.Key, email, StringComparison.OrdinalIgnoreCase)
             || (o.Key.Length == 0 && string.Equals(globalEmail, email, StringComparison.OrdinalIgnoreCase))) is { } o ? OutsideText(o) : null;
         return Build(members, roster, logins, snapshot.History, estimates, settings.WeeklyStopPercent, nowUtc, since, current, OutsideOf,
-                email => reasons.GetValueOrDefault(email)) with
+                email => reasons.GetValueOrDefault(email), allowances) with
         {
             PacingLinePercent = settings.WeeklyAwareLine,
             PacingOn = settings.WeeklyAwarePacing,
@@ -356,10 +363,12 @@ public sealed record UsageReport
     {
         var notes = new List<string>();
         var known = Rows.Where(r => r.WeekUsed is not null).ToList();
-        var atTarget = known.Where(r => r.WeekUsed >= WeeklyTargetPercent).ToList();
+        // One the user let past the target (M.ORCH-T694) takes work all the same: said on its own line instead.
+        var atTarget = known.Where(r => r.WeekUsed >= WeeklyTargetPercent && r.Allowed is null).ToList();
         if (atTarget.Count > 0)
             notes.Add($"At or past the {WeeklyTargetPercent}% weekly target, so no new work until their week resets: " +
                 string.Join(", ", atTarget.Select(r => $"{r.Name} ({When(r.WeekResetUtc, GeneratedUtc)}, in {Countdown(r.WeekResetUtc, GeneratedUtc)})")) + ".");
+        foreach (var r in Rows.Where(r => r.Allowed is not null)) notes.Add(r.Allowed + ".");
         var paced = known.Where(r => r.WeekUsed >= PacingLinePercent && r.WeekUsed < WeeklyTargetPercent).OrderByDescending(r => r.WeekUsed).ToList();
         if (paced.Count > 0)
             notes.Add((PacingOn

@@ -32,6 +32,10 @@ public sealed class AccountPacer
     /// ceiling and weekly stop kept there (<see cref="OutsideUseWatch.Apply"/>). Null paces every login to the settings.</summary>
     public Func<IReadOnlyList<OutsideUseLogin>>? OutsideHolds { get; init; }
 
+    /// <summary>The logins the user let past their weekly target (M.ORCH-T694, <see cref="WeeklyAllowances"/>): each is paced to
+    /// its week's wall, not the weekly target, until its allowance ends. Null holds every login to the target.</summary>
+    public Func<IReadOnlyList<WeeklyAllowance>>? Allowances { get; init; }
+
     private sealed class State(AccountDir dir, AccountPacer owner)
     {
         public RateLimitStatusWriter Writer { get; } = new(dir.StatusPath) { Db = null };
@@ -68,13 +72,19 @@ public sealed class AccountPacer
         IReadOnlyList<OutsideUseLogin>? holds = null;
         try { holds = OutsideHolds?.Invoke(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
+        IReadOnlyList<WeeklyAllowance>? allowed = null;
+        try { allowed = Allowances?.Invoke(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
         foreach (var (dir, account) in accounts)
         {
             if (!states.TryGetValue(dir.Email, out var state)) states[dir.Email] = state = new State(dir, this);
             state.Account = account;
             var ids = byEmail[dir.Email].ToHashSet(StringComparer.Ordinal);
             var mine = sessions.Where(s => ids.Contains(s.SessionId)).ToList();
-            var (own, why) = OutsideUseWatch.Apply(holds, dir.Email, settings);
+            var (held, outsideWhy) = OutsideUseWatch.Apply(holds, dir.Email, settings);
+            // Let past its weekly target by the user (M.ORCH-T694): its week stops at the wall until the allowance ends.
+            var (own, allowedWhy) = WeeklyAllowances.Apply(allowed, dir.Email, held, nowUtc);
+            var why = allowedWhy is null ? outsideWhy : outsideWhy is null ? allowedWhy : $"{outsideWhy} {allowedWhy}";
             result.Add(Pace(dir, state, mine, own, nowUtc, startOfTodayUtc, typicalPerSession, write, why));
         }
         return result;
