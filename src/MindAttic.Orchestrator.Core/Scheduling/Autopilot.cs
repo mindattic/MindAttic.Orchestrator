@@ -480,6 +480,15 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         return delegated;
     }
 
+    /// <summary>What `next` says when the named repos' queue has run dry (M.ORCH-T700): nothing open, waiting, busy or held.
+    /// It offers a bug hunt and leaves it to the user: "Ask but don't do unless explicitly given permission."</summary>
+    internal static string Dry(IReadOnlyList<string> repos)
+    {
+        var named = repos.Count == 0 || repos.Any(r => r is "*" or "all") ? "these repos" : string.Join(", ", repos);
+        return $"no open fixes or approved tickets left there: {named} ran dry. Ask the user whether to run /bughunt on {named}, " +
+            "and hunt only after an explicit yes (anything else means no); each bug it finds becomes a fix ticket that /allocate then works";
+    }
+
     private static (IReadOnlyList<Handout> Handed, string? Why) NextHere(SchedulePlan plan, OrchestratorSettings settings, JsonStore store,
         IReadOnlyList<string> repos, int? count, bool claim, DateTime nowUtc,
         Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree, Func<string, string>? mainlineOf, bool unthrottled,
@@ -548,7 +557,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                         tooBig > 0 ? $"{tooBig} estimated past what's left before the reset" : null,
                         waiting > 0 ? $"{waiting} wait for your approval" : null,
                     }.OfType<string>())
-                : "no open fixes or approved tickets left there");
+                : Dry(repos));
         }
         // Without the pace's allowance the session setting caps it, less what's already being worked or claimed, as Tick
         // subtracts its running agents: with nothing subtracted, each call handed out the whole setting again (M.ORCH-T549).

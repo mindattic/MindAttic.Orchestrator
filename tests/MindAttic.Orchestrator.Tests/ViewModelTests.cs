@@ -176,6 +176,38 @@ public sealed class ViewModelTests
     }
 
     [Test]
+    public void The_outside_use_psst_fields_round_trip_through_the_panel_and_the_recipient_is_checked()
+    {
+        // M.ORCH-T702: Jordan's login watched and Ryan texted to start with; both editable here.
+        var store = new JsonStore(dir);
+        store.SaveSettings(store.LoadSettings());
+        Directory.CreateDirectory(dir);
+        var contacts = Path.Combine(dir, "contacts.json");
+        File.WriteAllText(contacts, """{ "contacts": [ { "name": "ryan", "phone": "+15555550101" } ] }""");
+        var vm = new SettingsViewModel(store, () => { }) { PsstContactsPath = contacts };
+        Assert.That((vm.OutsidePsstLogins, vm.OutsidePsstTo), Is.EqualTo(("pdftransferjr@mindattic.com", "ryan")), "the defaults");
+
+        vm.OutsidePsstLogins = "Jordan, amy@x.com";
+        vm.OutsidePsstTo = "nobody-known";
+        vm.SaveCommand.Execute(null);
+        Assert.That(vm.Error, Does.StartWith("Text to"));
+        Assert.That(store.LoadSettings().OutsideUsePsstLogins, Is.EqualTo(new[] { "pdftransferjr@mindattic.com" }), "nothing saved");
+
+        vm.OutsidePsstTo = "920 555 0101";
+        vm.SaveCommand.Execute(null);
+        var saved = store.LoadSettings();
+        Assert.That((vm.Error, saved.OutsideUsePsstTo), Is.EqualTo(("", "920 555 0101")));
+        Assert.That(saved.OutsideUsePsstLogins, Is.EqualTo(new[] { "Jordan", "amy@x.com" }));
+
+        vm.OutsidePsstLogins = "";
+        vm.OutsidePsstTo = "";
+        vm.SaveCommand.Execute(null);
+        saved = store.LoadSettings();
+        Assert.That((vm.Error, saved.OutsideUsePsstLogins.Count, saved.OutsideUsePsstTo), Is.EqualTo(("", 0, "")), "blank texts nobody, and stays blank");
+        Assert.That((new SettingsViewModel(store, () => { }).OutsidePsstTo), Is.EqualTo(""));
+    }
+
+    [Test]
     public void The_weekly_pacing_fields_round_trip_through_the_panel_and_are_validated()
     {
         // M.ORCH-T680: the toggle, the weekly target (saved as the reserve), the take-in line and the wind-down margin.

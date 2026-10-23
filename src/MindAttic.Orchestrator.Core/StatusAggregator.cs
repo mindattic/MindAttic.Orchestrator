@@ -140,6 +140,9 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         return WeeklyAllowances.Active(Store, now);
     }
 
+    /// <summary>Keeps the members table's names and roles claude.ai's (M.ORCH-T701).</summary>
+    internal MemberProfileSync MemberProfiles { get; } = new();
+
     private OrchestratorDb? db;
 
     /// <summary>The repo's data/orchestrator.db in the workspace's main checkout (M.ORCH-T490): the account roster.</summary>
@@ -414,6 +417,18 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         IReadOnlyList<AccountPace> accountPaces = [];
         try { accountPaces = Accounts.Tick(claudeSessions, ownLogin, settings, now, startOfTodayUtc, typicalPerSession, writing && rateLimitFile?.Path == new RateLimitStatusWriter().Path); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { warnings.Add($"per-CLI logins: {ex.Message}"); }
+        // Each member's name and role as claude.ai has them (M.ORCH-T701), read at each sign-in and periodically after, by the
+        // process keeping the real status.
+        if (writing && ReportedUsagePath is null && rateLimitFile?.Path == new RateLimitStatusWriter().Path)
+        {
+            try
+            {
+                IEnumerable<(string, string)> configs = Accounts.Dirs.All().Select(d => (d.ConfigPath, d.CredentialsPath));
+                if (SignIn is { } global) configs = configs.Prepend((global.ConfigPath, ClaudeMeterProbe.DefaultCredentialsPath));
+                MemberProfiles.Tick(Db, [.. configs], now);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { warnings.Add($"member sync: {ex.Message}"); }
+        }
 
         var runningSubagents = subagents.Poll(contextCycler, now);
         var agentBoard = AgentBoard.Build(result, pace, Store.LoadAssignments(), runningSubagents, options.WorkingWindow, now, contextCycler.LiveSessions(now),

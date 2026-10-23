@@ -1391,6 +1391,17 @@
                 <TextBlock Text="Noise margin share (% of what the CLIs explain)" Margin="0,10,0,4" />
                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
                          Text="{Binding OutsideMarginShare, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Outside-use noise margin share percent" />
+                <!-- Psst on outside use (M.ORCH-T702): who's watched and who gets the text. -->
+                <TextBlock Text="Text through Psst when these logins are used outside the orchestrator" Margin="0,10,0,4" />
+                <TextBox Style="{StaticResource MaTextBox}" Height="32" Text="{Binding OutsidePsstLogins, UpdateSourceTrigger=PropertyChanged}"
+                         AutomationProperties.Name="Logins whose outside use is texted" />
+                <TextBlock Text="Comma-separated: each a login's email, the part before the @, or its name (Jordan). Texted once as each stretch of outside use starts, not again while it lasts. Blank texts nobody."
+                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                <TextBlock Text="Text to" Margin="0,10,0,4" />
+                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="200" HorizontalAlignment="Left"
+                         Text="{Binding OutsidePsstTo, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Outside-use text recipient" />
+                <TextBlock Text="A Psst contact (ryan) or a US number; blank texts nobody."
+                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
                 <TextBlock Text="Pace target (% of the 5-hour limit by its reset)" Margin="0,10,0,4" />
                 <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
                          Text="{Binding PaceTarget, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Pace target percent" />

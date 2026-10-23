@@ -361,4 +361,45 @@ public sealed class ReminderTests
         var lines = MindAttic.Orchestrator.Wpf.ViewModels.MainViewModel.ReminderLines([r], utc);
         Assert.That(lines.Single(), Does.StartWith("abc123").And.Contain("→ jordan: pay rent"));
     }
+
+    // ---- Psst on outside use (M.ORCH-T702) ----
+
+    [TestCase("pdftransferjr@mindattic.com", true)]
+    [TestCase("PDFTRANSFERJR", true)]   // the part before the @
+    [TestCase("jordan", true)]          // the login's name
+    [TestCase("ryan", false)]
+    [TestCase("", false)]
+    public void A_login_is_watched_by_its_email_the_part_before_the_at_or_its_name(string entry, bool watched) =>
+        Assert.That(OutsideUsePsst.Watched([entry], "pdftransferjr@mindattic.com", "Jordan"), Is.EqualTo(watched));
+
+    [Test]
+    public void A_watched_logins_outside_use_is_texted_to_the_recipient_and_others_are_not()
+    {
+        var psst = Psst();
+        var notify = new OutsideUsePsst(new PsstClient(psst), (level, line) => said.Add((level, line)));
+        var s = new OrchestratorSettings();
+        Assert.That((s.OutsideUsePsstLogins.Single(), s.OutsideUsePsstTo), Is.EqualTo(("pdftransferjr@mindattic.com", "ryan")), "Jordan watched, Ryan texted");
+
+        notify.Started("pdftransferjr@mindattic.com", "Jordan", "the meter rose 6 points in 25 min; the CLIs here spent 0 of them", s)!.Wait();
+        Assert.That(psst.Calls.Single(), Is.EqualTo(new[]
+        {
+            "sms", "ryan", "Orchestrator: Jordan is using Claude outside the Orchestrator (the meter rose 6 points in 25 min; the CLIs here spent 0 of them).",
+        }));
+        Assert.That(said.Single(), Is.EqualTo((LogEventLevel.Information, "psst: texted ryan that Jordan is using Claude outside the orchestrator")));
+
+        Assert.That(notify.Started("ryandebraal@mindattic.com", "Ryan", null, s), Is.Null, "not watched");
+        Assert.That(notify.Started("pdftransferjr@mindattic.com", "Jordan", null, s with { OutsideUsePsstTo = "" }), Is.Null, "nobody to text");
+        Assert.That(notify.Started("pdftransferjr@mindattic.com", "Jordan", null, s with { OutsideUsePsstLogins = [] }), Is.Null, "nobody watched");
+        Assert.That(psst.Calls, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void A_failed_outside_use_text_is_logged_as_a_warning()
+    {
+        var psst = Psst(sms: _ => new ProcessResult(1, "", "no such contact", false));
+        var notify = new OutsideUsePsst(new PsstClient(psst), (level, line) => said.Add((level, line)));
+        notify.Started("pdftransferjr@mindattic.com", "Jordan", null, new OrchestratorSettings())!.Wait();
+        Assert.That(said.Single().Level, Is.EqualTo(LogEventLevel.Warning));
+        Assert.That(said.Single().Line, Does.Contain("couldn't text ryan that Jordan is using Claude").And.Contain("no such contact"));
+    }
 }

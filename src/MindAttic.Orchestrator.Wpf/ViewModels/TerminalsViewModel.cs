@@ -207,7 +207,11 @@ public sealed class TerminalsViewModel : ObservableObject
     // ── Panes ───────────────────────────────────────────────────────────────
 
     /// <summary>Opens <paramref name="request"/> as a new pane and shows it; returns an error, or null.</summary>
-    public string? Open(PaneRequest request)
+    public string? Open(PaneRequest request) => Open(request, show: true);
+
+    /// <summary>Opens <paramref name="request"/> as a new pane; <paramref name="show"/> brings it up, else it waits on its
+    /// person's Terminals tab without taking the window from whatever is on screen. Returns an error, or null.</summary>
+    private string? Open(PaneRequest request, bool show)
     {
         var record = new PaneRecord(Guid.NewGuid().ToString("N"), request.Repo, request.Directory, request.Provider, DateTime.UtcNow)
         {
@@ -221,12 +225,33 @@ public sealed class TerminalsViewModel : ObservableObject
             OrchestratorLog.For("Terminals").Error(ex, "Couldn't open a terminal pane for {Repo:l}", request.Repo);
             return $"Couldn't open a terminal pane: {ex.Message}";
         }
-        Save(record);
+        // A login's Launcher tab isn't offered again from last time: every login gets its own anew (M.ORCH-T699).
+        if (!request.IsLauncher) Save(record);
         Panes.Add(pane);
-        SelectedPane = pane;
+        if (show) SelectedPane = pane;
         Raise(nameof(HasPanes));
-        Opened?.Invoke(pane);
+        if (show) Opened?.Invoke(pane);
         return null;
+    }
+
+    /// <summary>The live Launcher tab of <paramref name="login"/> (its email; null for the global login), if it has one open.</summary>
+    public TerminalPaneViewModel? LauncherOf(string? login) =>
+        Panes.FirstOrDefault(p => p.Request.IsLauncher && !p.Ended && !p.HasExited && string.Equals(p.Login ?? "", login ?? "", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// A login's own terminal tab (M.ORCH-T699): the Launcher signed in to it (<paramref name="request"/>, from
+    /// <see cref="SessionControl.LauncherPaneRequest"/>). A login that already has one open keeps it: it's reused, never a
+    /// second. <paramref name="show"/> brings it up, opened or reused; without it a new one waits quietly on its person's
+    /// Terminals tab. Returns an error, or null.
+    /// </summary>
+    public string? OpenLauncher(PaneRequest request, bool show)
+    {
+        if (LauncherOf(TerminalPaneViewModel.LoginOf(request.ConfigDir)) is { } open)
+        {
+            if (show) { SelectedPane = open; Opened?.Invoke(open); }
+            return null;
+        }
+        return Open(request with { IsLauncher = true }, show);
     }
 
     /// <summary>Closes <paramref name="pane"/>, ending its CLI.</summary>

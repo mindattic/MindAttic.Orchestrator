@@ -447,6 +447,14 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("Where each login's learned headroom stays, like 1-10 (the default).")]
         public string? OutsideHeadroomBounds { get; init; }
 
+        [CommandOption("--psst-outside <LOGINS>")]
+        [Description("Logins whose use of Claude outside the orchestrator is texted through Psst (once at the start of each stretch), comma-separated: each a login's email, the part before the @, or its name, like \"Jordan\"; \"none\" stops it, \"default\" restores Jordan's (pdftransferjr@mindattic.com).")]
+        public string? PsstOutside { get; init; }
+
+        [CommandOption("--psst-outside-to <CONTACT>")]
+        [Description("Who that text goes to: a Psst contact or a US number (default ryan); \"none\" stops it.")]
+        public string? PsstOutsideTo { get; init; }
+
         [CommandOption("--hand-minutes <N>")]
         [Description("Kept for older setups; it has no effect now: /allocate hands tickets to the typing CLI's own subagents, each in its own worktree.")]
         public int? HandMinutes { get; init; }
@@ -665,6 +673,28 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             };
             changed = true;
         }
+        // Psst on outside use (M.ORCH-T702): which logins are watched and who's texted.
+        if (settings.PsstOutside is { } watched)
+        {
+            s = s with
+            {
+                OutsideUsePsstLogins = watched.Trim().Equals("default", StringComparison.OrdinalIgnoreCase)
+                    ? [.. OrchestratorSettings.DefaultOutsideUsePsstLogins]
+                    : OrchestratorSettings.ParseLogins(watched),
+            };
+            changed = true;
+        }
+        if (settings.PsstOutsideTo is { } psstTo)
+        {
+            var off = psstTo.Trim().Length == 0 || psstTo.Trim().Equals("none", StringComparison.OrdinalIgnoreCase);
+            if (!off && !MindAttic.Orchestrator.Reminders.PsstClient.Addressable(psstTo, RemindCommand.ContactsPath))
+            {
+                AnsiConsole.MarkupLine($"[red]\"{Markup.Escape(psstTo)}\" isn't a Psst contact or a US number, so Psst would refuse it. Add it with: psst contacts add <name> <phone>[/]");
+                return 1;
+            }
+            s = s with { OutsideUsePsstTo = off ? "" : psstTo.Trim() };
+            changed = true;
+        }
         if (settings.WeeklyAware is { } weeklyAware)
         {
             s = s with { WeeklyAwarePacing = weeklyAware };
@@ -795,7 +825,10 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         AnsiConsole.MarkupLine($"  outside use (someone using Claude elsewhere on a login): its 5-hour ceiling drops to {s.OutsideUseCeilingPercent}% " +
             $"(learned {s.OutsideUseCeilingMinPercent}-{s.OutsideUseCeilingMaxPercent}%) · back after {s.OutsideUseQuietMinutes} quiet min ({s.OutsideUseQuietMinMinutes}-{s.OutsideUseQuietMaxMinutes}) · " +
             $"noise margin {s.OutsideUseMarginPoints} points ({s.OutsideUseMarginMinPoints}-{s.OutsideUseMarginMaxPoints}) + {s.OutsideUseMarginSharePercent}% of what the CLIs explain · " +
-            $"headroom {s.OutsideUseHeadroomPoints} points ({s.OutsideUseHeadroomMinPoints}-{s.OutsideUseHeadroomMaxPoints})");
+            $"headroom {s.OutsideUseHeadroomPoints} points ({s.OutsideUseHeadroomMinPoints}-{s.OutsideUseHeadroomMaxPoints}) · " +
+            (s.OutsideUsePsstLogins.Count > 0 && !string.IsNullOrWhiteSpace(s.OutsideUsePsstTo)
+                ? $"texts {Markup.Escape(s.OutsideUsePsstTo!)} through Psst when {Markup.Escape(string.Join(", ", s.OutsideUsePsstLogins))} starts using it (--psst-outside, --psst-outside-to)"
+                : "texts nobody when someone starts using it (--psst-outside, --psst-outside-to)"));
         AnsiConsole.MarkupLine("  exempt from pacing (their turns skip every gate, spend still counted): " +
             (s.ExemptCommands.Count > 0 ? Markup.Escape(string.Join(", ", s.ExemptCommands)) : "none"));
         AnsiConsole.MarkupLine($"  worktrees under {Markup.Escape(s.WorktreeRoot)} · " +

@@ -242,6 +242,11 @@ The request goes to the host, never into the CLI, on a pipe of its own beside th
   period (the gaps between bursts), noise margin (up after a lone blip, down when idle stretches sit well under it) and
   headroom (from how far use outran the projection), each within its `...Min`/`...Max` bounds; every change is logged with
   its reason, and the Settings modal shows the learned values beside the settings (`orchestrator settings --outside-*`).
+  Psst on outside use (M.ORCH-T702): when a stretch starts on a login in `OutsideUsePsstLogins` (an email, the part before
+  the @, or the login's name; Jordan's, pdftransferjr@mindattic.com, by default), `psst sms` texts `OutsideUsePsstTo` (the
+  Psst contact `ryan` by default) once, "Orchestrator: Jordan is using Claude outside the Orchestrator (the meter rose ...)",
+  not again while the stretch lasts; sent on its own thread so a slow Psst never holds the tick. Both are in the Settings
+  modal and `orchestrator settings --psst-outside <logins|none|default> --psst-outside-to <contact|number|none>`.
 - **What the Launcher does:**
   1. Act only if `cliPid` is still the CLI this tab runs; otherwise drop the request.
   2. Wait for the CLI's next idle point: its turn has ended and it's waiting for input (the context gate's

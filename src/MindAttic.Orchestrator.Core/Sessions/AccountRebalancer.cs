@@ -18,7 +18,15 @@ public sealed record Rebalanced(bool Moved, string Line)
     /// <summary>Toasted under this title and kept for the dashboard, though no CLI moved by it: someone started or stopped using
     /// Claude outside the orchestrator (M.ORCH-T682).</summary>
     public string? Title { get; init; }
+
+    /// <summary>Set when someone started using Claude outside the orchestrator on a login (M.ORCH-T682), once per stretch: what
+    /// the daemon texts through Psst when that login is watched (M.ORCH-T702).</summary>
+    public OutsideStart? Started { get; init; }
 }
+
+/// <summary>A stretch of outside use that just started: the login's email (null when unknown), its name, and what the meter
+/// showed ("the meter rose 6 points in 25 min; the CLIs here spent 0 of them"), if anything.</summary>
+public sealed record OutsideStart(string? Email, string Name, string? Seen);
 
 /// <summary>A move the daemon made, as the store keeps it for the dashboard's toast.</summary>
 public sealed class RebalanceMove
@@ -417,12 +425,13 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             switch (change)
             {
                 case OutsideChange.Started:
-                    var seen = stretch is null ? "" :
-                        $" (the meter rose {Pct(stretch.Rise)} points in {Math.Max(1, (int)(stretch.ToUtc - stretch.FromUtc).TotalMinutes)} min; the CLIs here spent " +
-                        $"{Pct(stretch.Explained)} of them)";
+                    var meter = stretch is null ? null :
+                        $"the meter rose {Pct(stretch.Rise)} points in {Math.Max(1, (int)(stretch.ToUtc - stretch.FromUtc).TotalMinutes)} min; the CLIs here spent " +
+                        $"{Pct(stretch.Explained)} of them";
+                    var seen = meter is null ? "" : $" ({meter})";
                     results.Add(new(false, $"rebalance: {name} is using Claude{seen}: {(nobody ? "no CLI here is on that login, but " : "")}{name}'s CLIs are held to " +
                                            $"{held}{week}, and back to {settings.PaceTargetPercent}% about {Pct(tuning.QuietMinutes)} minutes after {name} stops.")
-                        { Title = nobody ? null : $"{name} is using Claude", Asked = nobody });
+                        { Title = nobody ? null : $"{name} is using Claude", Asked = nobody, Started = new(dir?.Email ?? SafeGlobalEmail(), name, meter) });
                     break;
                 case OutsideChange.Lowered:
                     results.Add(new(false, $"rebalance: at {name}'s rate of use the window would run out above the last ceiling: " +

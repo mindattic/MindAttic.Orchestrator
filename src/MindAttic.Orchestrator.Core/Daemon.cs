@@ -339,10 +339,25 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 Alert(title, text);
                 AccountRebalancer.Record(store, text, DateTime.UtcNow);
             }
+            // And texted through Psst when that login is watched, once per stretch (M.ORCH-T702): "Jordan is using Claude".
+            if (m.Started is { } started) TextOutsideUse(started);
             if (!m.Moved) continue;
             Alert("Moved a CLI", text);
             AccountRebalancer.Record(store, text, DateTime.UtcNow);
         }
+    }
+
+    private Reminders.OutsideUsePsst? outsidePsst;
+
+    /// <summary>Texts the outside-use recipient that someone started using Claude elsewhere on a watched login (M.ORCH-T702);
+    /// the send runs on its own thread (<see cref="Reminders.OutsideUsePsst"/>).</summary>
+    internal Task? TextOutsideUse(OutsideStart started)
+    {
+        OrchestratorSettings s;
+        try { s = store.LoadSettings(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { return null; }
+        outsidePsst ??= new Reminders.OutsideUsePsst(new Reminders.PsstClient(Runner), (level, line) => Say(level, line));
+        return outsidePsst.Started(started.Email, started.Name, started.Seen, s);
     }
 
     private readonly UnderTarget underTarget = new();
