@@ -280,7 +280,7 @@ public sealed record UsageReport
 
     /// <summary>The main table's columns, in order.</summary>
     public IReadOnlyList<string> Headers =>
-        ["Member", "5-hour used", "5h resets", "Week used", "Week left", $"Left to {WeeklyTargetPercent}% target", "Week resets", "Reading", "Accurate?"];
+        ["Member", "5-hour used", "5h resets", "Week used", "Week left", $"Left to {WeeklyTargetPercent}% target", "Week resets", "Week resets in", "Reading", "Accurate?"];
 
     /// <summary>The member's name as the table shows it: "Erin (~/.claude login)" for the global login's, "(not a member)" for a login nobody entered.</summary>
     public static string MemberText(UsageReportRow r) =>
@@ -296,6 +296,7 @@ public sealed record UsageReport
         Whole(r.WeekLeft),
         ToTarget(r.LeftToTarget),
         When(r.WeekResetUtc, GeneratedUtc),
+        Countdown(r.WeekResetUtc, GeneratedUtc),
         Age(r.ReadUtc, GeneratedUtc),
         r.ReadUtc is null ? "No reading" : r.Stale ? "Stale" : "Yes",
     ])];
@@ -308,6 +309,17 @@ public sealed record UsageReport
         return local.Date == nowUtc.ToLocalTime().Date
             ? local.ToString("h:mm tt", CultureInfo.InvariantCulture) + " today"
             : local.ToString("ddd M/d, h:mm tt", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>How long until a reset: "1d 2h 14m", "19h 22m", "14m", "now"; "—" when not known.</summary>
+    public static string Countdown(DateTime? utc, DateTime nowUtc)
+    {
+        if (utc is not { } t) return "—";
+        var left = t - nowUtc;
+        if (left <= TimeSpan.Zero) return "now";
+        var minutes = (long)Math.Ceiling(left.TotalMinutes);
+        long d = minutes / (24 * 60), h = minutes / 60 % 24, m = minutes % 60;
+        return d > 0 ? $"{d}d {h}h {m}m" : h > 0 ? $"{h}h {m}m" : $"{m}m";
     }
 
     /// <summary>"82 pts", "1 pt", "at target", "over by 4"; "—" when the week isn't known.</summary>
@@ -343,7 +355,7 @@ public sealed record UsageReport
         var atTarget = known.Where(r => r.WeekUsed >= WeeklyTargetPercent).ToList();
         if (atTarget.Count > 0)
             notes.Add($"At or past the {WeeklyTargetPercent}% weekly target, so no new work until their week resets: " +
-                string.Join(", ", atTarget.Select(r => $"{r.Name} ({When(r.WeekResetUtc, GeneratedUtc)})")) + ".");
+                string.Join(", ", atTarget.Select(r => $"{r.Name} ({When(r.WeekResetUtc, GeneratedUtc)}, in {Countdown(r.WeekResetUtc, GeneratedUtc)})")) + ".");
         var paced = known.Where(r => r.WeekUsed >= PacingLinePercent && r.WeekUsed < WeeklyTargetPercent).OrderByDescending(r => r.WeekUsed).ToList();
         if (paced.Count > 0)
             notes.Add((PacingOn

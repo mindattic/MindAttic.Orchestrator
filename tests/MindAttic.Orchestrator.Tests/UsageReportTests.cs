@@ -23,6 +23,20 @@ public sealed class UsageReportTests
         UsageReport.Build(members, roster ?? [], logins ?? [], history ?? [], estimates ?? new Dictionary<string, BudgetStatus>(), 90, Now, since, global,
             staleReason: staleReason);
 
+    /// <summary>M.ORCH-T688: the reset dates alone didn't say how long is left.</summary>
+    [TestCase(26 * 60 + 14, "1d 2h 14m")]
+    [TestCase(4 * 24 * 60 + 19 * 60 + 22, "4d 19h 22m")]
+    [TestCase(19 * 60 + 22, "19h 22m")]
+    [TestCase(14, "14m")]
+    [TestCase(24 * 60, "1d 0h 0m")]
+    [TestCase(0, "now")]
+    public void Week_resets_in_counts_down_in_days_hours_and_minutes(int minutes, string expected)
+    {
+        var now = new DateTime(2026, 10, 23, 18, 0, 0, DateTimeKind.Utc);
+        Assert.That(UsageReport.Countdown(now.AddMinutes(minutes), now), Is.EqualTo(expected));
+        Assert.That(UsageReport.Countdown(null, now), Is.EqualTo("—"));
+    }
+
     [Test]
     public void Each_member_gets_the_freshest_reading_with_what_is_left_and_whether_it_is_still_accurate()
     {
@@ -41,15 +55,15 @@ public sealed class UsageReportTests
         Assert.That(erin.IsGlobalLogin, Is.True);
 
         var cells = report.Cells();
-        Assert.That(report.Headers, Is.EqualTo(new[] { "Member", "5-hour used", "5h resets", "Week used", "Week left", "Left to 90% target", "Week resets", "Reading", "Accurate?" }));
+        Assert.That(report.Headers, Is.EqualTo(new[] { "Member", "5-hour used", "5h resets", "Week used", "Week left", "Left to 90% target", "Week resets", "Week resets in", "Reading", "Accurate?" }));
         Assert.That(cells[0][0], Is.EqualTo("Amy"));
-        Assert.That(cells[0][7], Is.EqualTo("3 min ago"));
-        Assert.That(cells[0][8], Is.EqualTo("Yes"));
+        Assert.That(cells[0][8], Is.EqualTo("3 min ago"));
+        Assert.That(cells[0][9], Is.EqualTo("Yes"));
         Assert.That(cells[0][5], Is.EqualTo("20 pts"));
         Assert.That(cells[1][0], Is.EqualTo("Erin (~/.claude login)"));
         Assert.That(cells[1][1], Is.EqualTo("unknown"));
         Assert.That(cells[1][5], Is.EqualTo("over by 4"));
-        Assert.That(cells[1][8], Is.EqualTo("Stale"));
+        Assert.That(cells[1][9], Is.EqualTo("Stale"));
     }
 
     [Test]
@@ -109,7 +123,7 @@ public sealed class UsageReportTests
         var report = Build([M("amy@x.com", "Amy")], logins: [new LoginReading("zed@x.com", "zed-key", "Zeddy", null)]);
         Assert.That(report.Rows.Select(r => (r.Name, r.IsMember)), Is.EqualTo(new[] { ("Amy", true), ("Zeddy", false) }));
         Assert.That(report.Cells()[1][0], Is.EqualTo("Zeddy (not a member)"));
-        Assert.That(report.Cells()[1][8], Is.EqualTo("No reading"));
+        Assert.That(report.Cells()[1][9], Is.EqualTo("No reading"));
     }
 
     [Test]
@@ -126,7 +140,7 @@ public sealed class UsageReportTests
 
         var notes = report.Notes();
         Assert.That(notes, Has.Count.EqualTo(4));
-        Assert.That(notes[0], Does.StartWith("At or past the 90% weekly target").And.Contain("Ann (" + UsageReport.When(Now.AddDays(2), Now) + ")"));
+        Assert.That(notes[0], Does.StartWith("At or past the 90% weekly target").And.Contain("Ann (" + UsageReport.When(Now.AddDays(2), Now) + ", in 2d 0h 0m)"));
         Assert.That(notes[1], Does.StartWith("Past the 75% line, weekly-aware pacing is limiting them").And.Contain("Bob (10 pts left)"));
         Assert.That(notes[2], Does.StartWith("Plenty of room").And.Contain("Cat (70 pts to the target)"));
         Assert.That(notes[3], Does.Contain("Cat (read 1 hr ago): its login here isn't signed in"));
