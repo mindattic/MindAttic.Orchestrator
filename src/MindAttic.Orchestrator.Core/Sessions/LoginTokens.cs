@@ -61,9 +61,63 @@ public sealed partial class LoginTokens(TokenStore? store = null)
     /// <summary>A Claude OAuth token as <c>claude setup-token</c> prints it.</summary>
     private static readonly Regex TokenPattern = new(@"sk-ant-oat\d{2}-[A-Za-z0-9_\-]{20,}", RegexOptions.CultureInvariant);
 
+    /// <summary>A token that redirected output may have hard-wrapped: the start, then any following lines made only of token characters.</summary>
+    private static readonly Regex WrappedTokenPattern = new(@"sk-ant-oat\d{2}-[A-Za-z0-9_\-]*(?:\r?\n[A-Za-z0-9_\-]+(?=\r?\n|$))*", RegexOptions.CultureInvariant);
+
+    /// <summary>The shape a whole token has once its wrapped lines are joined; anything outside it is a fragment or noise.</summary>
+    private const int MinTokenLength = 50, MaxTokenLength = 200;
+
+    private static bool IsToken(string joined) => joined.Length is >= MinTokenLength and <= MaxTokenLength && TokenPattern.IsMatch(joined);
+
     public static LoginTokens Default { get; } = new();
 
-    private TokenStore Store => store ?? TokenStore.ForBucket(Bucket);
+    /// <summary>One store for the whole process (M.ORCH-T711): the Vault's in-process lock is per instance, so a store built per
+    /// access never serialized two saves.</summary>
+    private static readonly Lazy<TokenStore> Shared = new(() => TokenStore.ForBucket(Bucket));
+
+    private TokenStore Store => store ?? Shared.Value;
+
+    /// <summary>Holds a cross-process lock (a named mutex on the store's folder) while <paramref name="work"/> runs, so two
+    /// processes' read-modify-write of tokens.json, or a read during the other's File.Replace, never interleave.</summary>
+    private T Locked<T>(Func<TokenStore, T> work)
+    {
+        var s = Store;
+        var key = Path.GetFullPath(s.Directory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).ToUpperInvariant();
+        var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(key)))[..24];
+        using var mutex = new Mutex(false, @"Global\MindAttic.Orchestrator.LoginTokens." + hash);
+        var held = false;
+        try
+        {
+            try { held = mutex.WaitOne(TimeSpan.FromSeconds(15)); }
+            catch (AbandonedMutexException) { held = true; }
+            if (!held) throw new IOException("Another process is holding the login-token store; try again.");
+            return work(s);
+        }
+        finally { if (held) mutex.ReleaseMutex(); }
+    }
+
+    /// <summary>Throws unless tokens.json is absent, empty or readable JSON: a failed read (sharing violation, damage) must
+    /// never be taken for "no tokens" and written back over every other login's token. Retries briefly past a File.Replace.</summary>
+    private static void EnsureReadable(TokenStore s)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                if (!File.Exists(s.TokensFilePath)) return;
+                var raw = File.ReadAllText(s.TokensFilePath);
+                if (string.IsNullOrWhiteSpace(raw)) return;
+                if (JsonNode.Parse(raw) is JsonObject) return;
+                throw new IOException($"{s.TokensFilePath} isn't a token map, so it wasn't overwritten.");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+            {
+                if (attempt >= 7)
+                    throw ex is IOException ? ex : new IOException($"Couldn't read {s.TokensFilePath} ({ex.Message}), so it wasn't overwritten.", ex);
+                Thread.Sleep(40);
+            }
+        }
+    }
 
     /// <summary>The token kept for <paramref name="email"/>; null when none is, or it can't be read.</summary>
     public LoginToken? For(string? email)
@@ -71,7 +125,7 @@ public sealed partial class LoginTokens(TokenStore? store = null)
         if (AccountDirs.Normalize(email) is not { } e) return null;
         try
         {
-            if (Store.Get(e) is not { } raw || JsonNode.Parse(raw) is not JsonObject o) return null;
+            if (Locked(st => st.Get(e)) is not { } raw || JsonNode.Parse(raw) is not JsonObject o) return null;
             if (o["sealed"]?.GetValue<string>() is not { Length: > 0 } sealedText) return null;
             var minted = o["minted"]?.GetValue<DateTime>() ?? DateTime.MinValue;
             var expires = o["expires"]?.GetValue<DateTime>() ?? minted + Lifetime;
@@ -85,17 +139,18 @@ public sealed partial class LoginTokens(TokenStore? store = null)
     {
         var e = AccountDirs.Normalize(email) ?? throw new ArgumentException($"\"{email}\" isn't an email address.", nameof(email));
         var kept = new LoginToken(e, mintedUtc, mintedUtc + Lifetime, Seal(token.Trim()));
-        Store.Set(e, new JsonObject
+        var json = new JsonObject
         {
             ["sealed"] = kept.Protected,
             ["minted"] = kept.MintedUtc.ToString("O"),
             ["expires"] = kept.ExpiresUtc.ToString("O"),
-        }.ToJsonString());
+        }.ToJsonString();
+        Locked(st => { EnsureReadable(st); st.Set(e, json); return true; });
         return kept;
     }
 
     /// <summary>Forgets <paramref name="email"/>'s token (its tabs then use the folder's own <c>/login</c>).</summary>
-    public bool Forget(string email) => AccountDirs.Normalize(email) is { } e && Store.Remove(e);
+    public bool Forget(string email) => AccountDirs.Normalize(email) is { } e && Locked(st => { EnsureReadable(st); return st.Remove(e); });
 
     /// <summary>The token itself; null when it can't be unsealed (another Windows user's, or damaged).</summary>
     public static string? Reveal(LoginToken token)
@@ -109,10 +164,17 @@ public sealed partial class LoginTokens(TokenStore? store = null)
 
     /// <summary>The token in <paramref name="output"/> (the last one, should it be printed twice); null when there's none.</summary>
     public static string? Find(string? output) =>
-        output is null ? null : TokenPattern.Matches(output) is { Count: > 0 } m ? m[^1].Value : null;
+        output is null ? null
+        : WrappedTokenPattern.Matches(output).Select(m => JoinLines(m.Value)).LastOrDefault(IsToken);
+
+    private static string JoinLines(string s) => s.Replace("\r", "").Replace("\n", "");
 
     /// <summary><paramref name="text"/> with any token in it masked, for saying what <c>setup-token</c> printed.</summary>
-    public static string Mask(string text) => TokenPattern.Replace(text, t => t.Value[..14] + "…" + t.Value[^4..]);
+    public static string Mask(string text) => WrappedTokenPattern.Replace(text, m =>
+    {
+        var joined = JoinLines(m.Value);
+        return joined.Length >= 24 ? joined[..14] + "…" + joined[^4..] : m.Value;
+    });
 
     /// <summary>
     /// The PowerShell statements a tab on <paramref name="configDir"/> runs before its Launcher host: with a token kept for the
@@ -166,7 +228,7 @@ public sealed partial class LoginTokens(TokenStore? store = null)
     {
         string output;
         try { output = Run(dir, opener); }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException or TimeoutException)
         {
             return new(MintOutcome.Failed, $"Couldn't run claude setup-token for {dir.Email}: {ex.Message}");
         }
@@ -194,6 +256,8 @@ public sealed partial class LoginTokens(TokenStore? store = null)
     /// opening through <paramref name="opener"/> (its private browser window, <see cref="LoginBrowser"/>) when there is one,
     /// with every variable that would pick another account removed. Returns what it printed. Tests replace it, so no test opens a
     /// browser or mints a token.</summary>
+    internal static TimeSpan MintTimeout { get; set; } = TimeSpan.FromMinutes(10);
+
     public static Func<AccountDir, string?, string> Run { get; set; } = (dir, opener) =>
     {
         var psi = Psi(dir, null, "setup-token");
@@ -201,8 +265,13 @@ public sealed partial class LoginTokens(TokenStore? store = null)
         if (opener is not null) psi.Environment["BROWSER"] = opener;
         else psi.Environment.Remove("BROWSER");
         using var p = Process.Start(psi) ?? throw new InvalidOperationException("claude didn't start");
-        var output = p.StandardOutput.ReadToEnd();
-        p.WaitForExit();
+        var outTask = p.StandardOutput.ReadToEndAsync();
+        if (!p.WaitForExit((int)MintTimeout.TotalMilliseconds))
+        {
+            try { p.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+            throw new TimeoutException($"claude setup-token didn't finish within {MintTimeout.TotalMinutes:0} minutes.");
+        }
+        var output = outTask.GetAwaiter().GetResult();
         // Whatever it said, masked, so the person sees how it went without the token ever reaching the screen or a log.
         foreach (var line in output.Split('\n').Select(l => Mask(l.TrimEnd('\r'))).Where(l => l.Trim().Length > 0))
             Console.Out.WriteLine(line);
@@ -213,15 +282,27 @@ public sealed partial class LoginTokens(TokenStore? store = null)
     /// it set under the account's folder): the email, or null when it can't say (the token's scope is inference only).</summary>
     public static Func<AccountDir, string, string?> StatusEmail { get; set; } = (dir, token) =>
     {
-        var psi = Psi(dir, token, "auth", "status", "--json");
-        psi.RedirectStandardOutput = true;
-        psi.RedirectStandardError = true;
-        psi.CreateNoWindow = true;
-        using var p = Process.Start(psi) ?? throw new InvalidOperationException("claude didn't start");
-        var output = p.StandardOutput.ReadToEnd();
-        p.StandardError.ReadToEnd();
-        if (!p.WaitForExit(30_000)) { try { p.Kill(); } catch (InvalidOperationException) { } return null; }
-        return ParseStatusEmail(output);
+        // An empty scratch config folder, not the account's own: its sign-in must not answer for the token being checked.
+        var scratch = Path.Combine(Path.GetTempPath(), "mindattic-token-check-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(scratch);
+        try
+        {
+            var psi = Psi(dir, token, "auth", "status", "--json");
+            psi.Environment[AccountDirs.EnvVar] = scratch;
+            psi.RedirectStandardOutput = true;
+            psi.RedirectStandardError = true;
+            psi.CreateNoWindow = true;
+            using var p = Process.Start(psi) ?? throw new InvalidOperationException("claude didn't start");
+            var outTask = p.StandardOutput.ReadToEndAsync();
+            _ = p.StandardError.ReadToEndAsync(); // drained so a full stderr pipe can't block the process
+            if (!p.WaitForExit(30_000))
+            {
+                try { p.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+                return null;
+            }
+            return ParseStatusEmail(outTask.GetAwaiter().GetResult());
+        }
+        finally { try { Directory.Delete(scratch, true); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { } }
     };
 
     /// <summary>The email in <c>claude auth status --json</c>'s output; null when it has none.</summary>

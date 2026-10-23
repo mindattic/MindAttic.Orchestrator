@@ -307,7 +307,17 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
         """.Replace("\r\n", "\n");
 
     /// <summary>A PowerShell single-quoted string of <paramref name="text"/>.</summary>
-    internal static string Ps(string text) => "'" + text.Replace("'", "''") + "'";
+    internal static string Ps(string text)
+    {
+        // PowerShell treats U+2018-U+201B as single-quote delimiters too; doubling any of them stays inside the string.
+        var sb = new StringBuilder("'");
+        foreach (var c in text)
+        {
+            sb.Append(c);
+            if (c == (char)0x27 || (c >= (char)0x2018 && c <= (char)0x201B)) sb.Append(c);
+        }
+        return sb.Append((char)0x27).ToString();
+    }
 
     private static void WriteIfChanged(string path, string text)
     {

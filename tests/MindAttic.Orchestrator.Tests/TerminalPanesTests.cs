@@ -51,13 +51,8 @@ public sealed class TerminalPanesTests
     {
         var dir = temp.New();
         var request = Control(@"C:\Apps\MindAttic.Launcher\MindAttic.Launcher.exe").PaneRequestFor("Repo", dir, "Claude", "do \"it\"\nnow");
-        var args = HostSessionScanner.SplitCommandLine(request.CommandLine);
-        Assert.That(args, Is.EqualTo(new[]
-        {
-            @"C:\Apps\MindAttic.Launcher\MindAttic.Launcher.exe", "host", "--path", dir, "--title", "JO: Repo [Claude]",
-            "--provider", "Claude", "--prompt", "do 'it' now",
-        }));
-        Assert.That(HostSessionScanner.TitleOf(request.CommandLine), Is.EqualTo("JO: Repo [Claude]"));
+        // M.ORCH-T712: even the global login clears the config dir and token the dashboard may carry.
+        Assert.That(Script(request.CommandLine), Is.EqualTo($@"Remove-Item Env:CLAUDE_CONFIG_DIR -ErrorAction SilentlyContinue; & 'C:\Apps\MindAttic.Launcher\MindAttic.Launcher.exe' 'host' '--path' '{dir}' '--title' 'JO: Repo [Claude]' '--provider' 'Claude' '--prompt' 'do ''it'' now'; exit $LASTEXITCODE"));
         Assert.That(request.Title, Is.EqualTo("JO: Repo [Claude]"));
         Assert.That(request.Initials, Is.EqualTo("JO"));
         Assert.That(request.TabColor, Does.Match("^#[0-9A-F]{6}$"));
@@ -103,6 +98,7 @@ public sealed class TerminalPanesTests
         {
             Look = d => LoginLook.For(d ?? @"C:\nowhere\global", d is null ? "jordan.reed@example.com" : "amy@example.com"),
             Dirs = new AccountDirs(accounts),
+            TokenEnv = d => d is null ? "CLEAR; " : "SET; ",
         };
 
         var amy = control.LauncherPaneRequest("Amy@Example.com", out var error);
@@ -113,12 +109,12 @@ public sealed class TerminalPanesTests
         Assert.That(TerminalPaneViewModel.LoginOf(amy.ConfigDir), Is.EqualTo("amy@example.com"), "it lands on Amy's Terminals tab");
         Assert.That(amy.Title, Is.EqualTo("AM: MindAttic.Launcher"));
         Assert.That(amy.Directory, Is.EqualTo(accounts), "at the workspace root, in no repo");
-        Assert.That(Script(amy.CommandLine), Is.EqualTo($"$env:CLAUDE_CONFIG_DIR = '{dir}'; & '{launcher}' '--account' 'amy@example.com'; exit $LASTEXITCODE"));
+        Assert.That(Script(amy.CommandLine), Is.EqualTo($"$env:CLAUDE_CONFIG_DIR = '{dir}'; SET; & '{launcher}' '--account' 'amy@example.com'; exit $LASTEXITCODE"));
 
         var global = control.LauncherPaneRequest(null, out error);
         Assert.That(error, Is.Null);
         Assert.That(global!.ConfigDir, Is.Null);
-        Assert.That(Script(global.CommandLine), Is.EqualTo($"Remove-Item Env:CLAUDE_CONFIG_DIR -ErrorAction SilentlyContinue; & '{launcher}'; exit $LASTEXITCODE"));
+        Assert.That(Script(global.CommandLine), Is.EqualTo($"Remove-Item Env:CLAUDE_CONFIG_DIR -ErrorAction SilentlyContinue; CLEAR; & '{launcher}'; exit $LASTEXITCODE"));
 
         Assert.That(control.LauncherPaneRequest("not an email", out error), Is.Null);
         Assert.That(error, Does.Contain("isn't an email"));
@@ -166,7 +162,7 @@ public sealed class TerminalPanesTests
         Assert.That(Control(launcher, embedded: true).Start("Repo", dir, "Claude", "go"), Is.Null);
         Assert.That(opened, Is.Not.Null);
         Assert.That(opened!.Directory, Is.EqualTo(dir));
-        Assert.That(HostSessionScanner.SplitCommandLine(opened.CommandLine), Does.Contain("--prompt"));
+        Assert.That(Script(opened.CommandLine), Does.Contain("'--prompt'"));
 
         PaneBroker.Local = _ => "no room";
         Assert.That(Control(launcher, embedded: true).Start("Repo", dir, "Claude"), Is.EqualTo("no room"), "the dashboard's error is the start's");
@@ -185,6 +181,22 @@ public sealed class TerminalPanesTests
         Assert.That(got.Single(), Is.EqualTo(request));
         Assert.That(await Task.Run(() => (PaneBroker.TrySend(request with { Repo = "bad" }, out var e, pipe), e)), Is.EqualTo((true, "Couldn't open it")));
 
+        cts.Cancel();
+        await serving.WaitAsync(TimeSpan.FromSeconds(10));
+    }
+
+    [Test]
+    public async Task A_dashboard_that_throws_opening_a_pane_still_answers_so_the_caller_doesn_t_wait()
+    {
+        var pipe = "orch-panes-test-" + Guid.NewGuid().ToString("N");
+        using var cts = new CancellationTokenSource();
+        var serving = PaneBroker.ServeAsync(_ => throw new InvalidOperationException("boom"), cts.Token, pipe);
+        var request = new PaneRequest("Repo", "R", @"D:\W\Repo", "Claude", "x.exe host");
+        var started = DateTime.UtcNow;
+        var (taken, error) = await Task.Run(() => (PaneBroker.TrySend(request, out var e, pipe), e));
+        Assert.That(taken, Is.True);
+        Assert.That(error, Does.Contain("boom"));
+        Assert.That(DateTime.UtcNow - started, Is.LessThan(TimeSpan.FromSeconds(20)));
         cts.Cancel();
         await serving.WaitAsync(TimeSpan.FromSeconds(10));
     }

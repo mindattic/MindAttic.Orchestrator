@@ -540,4 +540,11 @@ public sealed class AccountDirsTests
             AnsiConsole.Console = previous;
         }
     }
+
+    [Test]
+    public void Ps_doubles_every_single_quote_form_PowerShell_accepts()
+    {
+        Assert.That(AccountDirs.Ps("don't"), Is.EqualTo("'don''t'"));
+        Assert.That(AccountDirs.Ps("don’t ‘x‚‛"), Is.EqualTo("'don’’t ‘‘x‚‚‛‛'"));
+    }
 }
