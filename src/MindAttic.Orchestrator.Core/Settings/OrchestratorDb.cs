@@ -348,6 +348,21 @@ public sealed class OrchestratorDb(string path)
         ALTER TABLE assignments ADD COLUMN reviewed_utc TEXT;
         ALTER TABLE ticket_costs ADD COLUMN model TEXT;
         """,
+        // 11: the organization's members (M.ORCH-T670; see MemberRoster), the one record of who's in it: keyed by email
+        // (normalized as AccountDirs.Normalize does), with a name, a role, a seat tier and whether they've joined yet (active)
+        // or are still invited (pending). Edited with orchestrator members; joined to accounts (this machine's sign-ins) by
+        // email. Times are Unix seconds, as accounts keeps them. A column added later is one more step here (ALTER TABLE).
+        """
+        CREATE TABLE members (
+            email      TEXT PRIMARY KEY,
+            name       TEXT,
+            role       TEXT NOT NULL,
+            tier       TEXT NOT NULL,
+            status     TEXT NOT NULL,
+            joined_at  REAL NOT NULL,
+            updated_at REAL NOT NULL
+        );
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a
@@ -369,6 +384,7 @@ public sealed class OrchestratorDb(string path)
     private static readonly (string Table, string Order, string Where)[] Tables =
     [
         ("accounts", "id", ""),
+        ("members", "email", ""),
         ("usage_samples", "at", ""),
         ("pace_ledger", "end_utc, account", ""),
         ("usage_history", "day, repo, provider, account, before_utc", ""),
