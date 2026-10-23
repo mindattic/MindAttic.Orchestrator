@@ -261,6 +261,34 @@ public sealed class LibraryControlsTests
         Assert.That(window.Descendants().Where(e => e.Name.LocalName is "ScrollBar" or "ScrollViewer.Template"), Is.Empty);
     }
 
+    [Test]
+    public void The_tab_strips_and_sign_in_panel_stay_on_library_styles_with_no_colour_of_their_own()
+    {
+        var window = Window();
+
+        // The person tab strip and the Dashboard/Terminals sub-tabs are MaPillChoice list boxes (M.ORCH-T631); the library's own
+        // tab strip replaces them once it ships (the follow-up ticket), and until then no other hand-made strip is added.
+        foreach (var name in new[] { "LoginTabStrip", "PageTabStrip" })
+            Assert.That((string?)Named(window, name).Attribute("Style"), Is.EqualTo("{StaticResource MaPillChoice}"), name);
+
+        // The terminal pane tabs and their badge chips, the status light and the tab underline take their colours from
+        // view-model brushes (themed in Palette), never from a literal.
+        foreach (var name in new[] { "TabStatusLight", "TerminalTab", "LoginTabItem" })
+        {
+            var brushes = Named(window, name).DescendantsAndSelf().Attributes()
+                .Where(a => a.Name.LocalName is "Background" or "Foreground" or "Fill" or "Stroke" or "BorderBrush");
+            Assert.That(brushes.Where(a => !a.Value.StartsWith('{')).Select(a => a.ToString()), Is.Empty, name);
+        }
+
+        // The sign-in-only panel's button is the library's primary button.
+        var signIn = window.Descendants(P + "Button").Single(b => (string?)b.Attribute("Command") == "{Binding SignInTabCommand}");
+        Assert.That((string?)signIn.Attribute("Style"), Is.EqualTo("{StaticResource MaPrimaryButton}"));
+
+        // Every Ellipse (a status light or accent dot) is filled from a binding or the theme: no literal or Brushes.* colour.
+        foreach (var dot in window.Descendants(P + "Ellipse"))
+            Assert.That((string?)dot.Attribute("Fill"), Does.StartWith("{"), dot.ToString());
+    }
+
     [Test, Apartment(ApartmentState.STA)]
     public void Every_resource_the_window_names_is_in_the_theme_the_app_or_the_window()
     {
