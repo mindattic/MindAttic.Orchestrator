@@ -79,11 +79,13 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
     /// <summary>Seam: whether the owner has API billing on (M.ORCH-T706); null reads the billing mode in force.</summary>
     internal Func<bool>? ApiBilling { get; init; }
 
-    private bool ApiBillingOn()
+    private bool ApiBillingOn() => ApiBilling is { } seam ? seam() : ApiBillingInForce();
+
+    /// <summary>Whether the owner has API billing on (M.ORCH-T706): the mode in force is the API key; a mode that can't be read counts as off.</summary>
+    public static bool ApiBillingInForce()
     {
-        if (ApiBilling is { } seam) return seam();
         try { return new Billing.BillingSwitch().Mode(out _) == Billing.BillingModes.Api; }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { return false; }
     }
 
     /// <summary>Seam: the Auto login picker a Claude tab's login comes from (M.ORCH-T605); null uses the real per-CLI logins.</summary>

@@ -270,7 +270,7 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
             (configDir, email) = (auto.Directory, auto.Email);
         // No login of its own has room: never the global login, a member's own seat (M.ORCH-T747); the API key when billing is on (M.ORCH-T706), else it waits.
         if (settings.Account is null && configDir is null && provider == "Claude"
-            && !(BillingOverride?.Invoke() ?? new MindAttic.Orchestrator.Billing.BillingSwitch().Mode(out _) == MindAttic.Orchestrator.Billing.BillingModes.Api))
+            && !(BillingOverride?.Invoke() ?? MindAttic.Orchestrator.Scheduling.Dispatcher.ApiBillingInForce()))
         {
             AnsiConsole.MarkupLine("[red]No login of its own has room and API billing is off: not started on the global login (a member's own seat). Pass --account, or switch API billing on.[/]");
             return 1;

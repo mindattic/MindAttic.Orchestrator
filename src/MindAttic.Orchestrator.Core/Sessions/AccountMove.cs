@@ -27,7 +27,7 @@ public sealed record AccountMoveResult(bool Ok, string Message);
 /// </summary>
 public sealed class AccountMove(AccountDirs? dirs = null, BillingSwitch? billing = null)
 {
-    public const string GlobalLabel = "Fallback login";
+    public const string GlobalLabel = "Global login";
 
     public AccountDirs Dirs { get; } = dirs ?? new AccountDirs();
 

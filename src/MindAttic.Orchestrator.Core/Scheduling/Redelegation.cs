@@ -16,7 +16,7 @@ public sealed record LoginRoom(string? Email, string? ConfigDir, double? RoomTok
     public bool IsFallback => Email is null;
 
     /// <summary>The login in words: its email, or "the API key".</summary>
-    public string Label => Email ?? "the fallback login";
+    public string Label => Email ?? "the API key";
 
     /// <summary>Whether <paramref name="item"/>'s estimate fits here: anything while unpaced, a ticket with no estimate while
     /// there's any room, else its estimate within the room.</summary>

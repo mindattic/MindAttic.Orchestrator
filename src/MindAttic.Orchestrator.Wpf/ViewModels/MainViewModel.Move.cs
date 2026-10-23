@@ -73,7 +73,7 @@ public sealed partial class MainViewModel
         }
     }
 
-    /// <summary>The target's name (M.ORCH-T614), else its email or "Fallback login".</summary>
+    /// <summary>The target's name (M.ORCH-T614), else its email or "Global login".</summary>
     private static string NameOf(MoveTarget target)
     {
         try { return LoginLook.ForConfigDir(target.IsGlobal ? null : target.ConfigDir).Alias; }
