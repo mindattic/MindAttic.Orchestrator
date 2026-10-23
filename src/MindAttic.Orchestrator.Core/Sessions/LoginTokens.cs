@@ -166,7 +166,7 @@ public sealed partial class LoginTokens(TokenStore? store = null)
     {
         string output;
         try { output = Run(dir, opener); }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException or TimeoutException)
         {
             return new(MintOutcome.Failed, $"Couldn't run claude setup-token for {dir.Email}: {ex.Message}");
         }
@@ -194,6 +194,8 @@ public sealed partial class LoginTokens(TokenStore? store = null)
     /// opening through <paramref name="opener"/> (its private browser window, <see cref="LoginBrowser"/>) when there is one,
     /// with every variable that would pick another account removed. Returns what it printed. Tests replace it, so no test opens a
     /// browser or mints a token.</summary>
+    internal static TimeSpan MintTimeout { get; set; } = TimeSpan.FromMinutes(10);
+
     public static Func<AccountDir, string?, string> Run { get; set; } = (dir, opener) =>
     {
         var psi = Psi(dir, null, "setup-token");
@@ -201,8 +203,13 @@ public sealed partial class LoginTokens(TokenStore? store = null)
         if (opener is not null) psi.Environment["BROWSER"] = opener;
         else psi.Environment.Remove("BROWSER");
         using var p = Process.Start(psi) ?? throw new InvalidOperationException("claude didn't start");
-        var output = p.StandardOutput.ReadToEnd();
-        p.WaitForExit();
+        var outTask = p.StandardOutput.ReadToEndAsync();
+        if (!p.WaitForExit((int)MintTimeout.TotalMilliseconds))
+        {
+            try { p.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+            throw new TimeoutException($"claude setup-token didn't finish within {MintTimeout.TotalMinutes:0} minutes.");
+        }
+        var output = outTask.GetAwaiter().GetResult();
         // Whatever it said, masked, so the person sees how it went without the token ever reaching the screen or a log.
         foreach (var line in output.Split('\n').Select(l => Mask(l.TrimEnd('\r'))).Where(l => l.Trim().Length > 0))
             Console.Out.WriteLine(line);
@@ -218,10 +225,14 @@ public sealed partial class LoginTokens(TokenStore? store = null)
         psi.RedirectStandardError = true;
         psi.CreateNoWindow = true;
         using var p = Process.Start(psi) ?? throw new InvalidOperationException("claude didn't start");
-        var output = p.StandardOutput.ReadToEnd();
-        p.StandardError.ReadToEnd();
-        if (!p.WaitForExit(30_000)) { try { p.Kill(); } catch (InvalidOperationException) { } return null; }
-        return ParseStatusEmail(output);
+        var outTask = p.StandardOutput.ReadToEndAsync();
+        _ = p.StandardError.ReadToEndAsync(); // drained so a full stderr pipe can't block the process
+        if (!p.WaitForExit(30_000))
+        {
+            try { p.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+            return null;
+        }
+        return ParseStatusEmail(outTask.GetAwaiter().GetResult());
     };
 
     /// <summary>The email in <c>claude auth status --json</c>'s output; null when it has none.</summary>
