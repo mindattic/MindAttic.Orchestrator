@@ -49,6 +49,7 @@ public static class AgentGateRemoval
         {
             ("pacing.md", AgentGate.PacingCommand),
             ("allocate.md", AgentGate.AllocateCommand), ("crossrepo.md", AgentGate.CrossRepoCommand),
+            ("org.md", AgentGate.OrgCommand), ("organization.md", AgentGate.OrganizationCommand),
         })
         {
             var path = Path.Combine(claude, "commands", file);

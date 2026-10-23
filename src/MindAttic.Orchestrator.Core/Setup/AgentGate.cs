@@ -1795,6 +1795,23 @@ public static class AgentGate
         Otherwise reply with one short line confirming this window may now also edit and close tickets in the repos named ("all" means any repo), then carry on with whatever was asked.
         """;
 
+    /// <summary>/org and /organization (M.ORCH-T686): the organization's commands, each only running <c>orchestrator org</c>.</summary>
+    internal static readonly string OrgCommand = OrgCommandFor("org");
+    internal static readonly string OrganizationCommand = OrgCommandFor("organization");
+
+    private static string OrgCommandFor(string name) => """
+        ---
+        description: "The organization: /NAME usage prints every member's usage table; /NAME login <who> signs a member in; /NAME members lists them (add, set and remove change them); /NAME start <repo> <who> starts a CLI on a member's login. <who> is a member's email, the part before the @, name, first name, login alias or initials. /NAME help lists them."
+        argument-hint: "[usage [--detail] [--since <date>] [--csv|--json] [--md|--html <file>] | login <who> | members [add|set|remove ...] | start <repo> <who> | help]"
+        ---
+        /NAME $ARGUMENTS was asked for. All it does is run MindAttic.Orchestrator's CLI: do nothing else, and don't work out any answer yourself.
+
+        If the arguments start with "login": that opens a browser sign-in, which has to run in the user's own terminal, so don't run it. Reply with only this line, for the user to type at the prompt:
+        `! orchestrator org $ARGUMENTS`
+
+        Otherwise run `orchestrator org $ARGUMENTS` (from any folder) and show what it prints exactly as printed, in one code block so the table's columns line up: no summary, nothing reformatted, left out or added. Then end your turn.
+        """.Replace("/NAME", "/" + name);
+
     internal static string Script => $$"""
         #!/usr/bin/env python3
         # MindAttic.Orchestrator's pace gate (written by the orchestrator; edits are overwritten).
@@ -3025,6 +3042,8 @@ public static class AgentGate
             (Path.Combine(dir, "commands", "pacing.md"), PacingCommand),
             (Path.Combine(dir, "commands", "allocate.md"), AllocateCommand),
             (Path.Combine(dir, "commands", "crossrepo.md"), CrossRepoCommand),
+            (Path.Combine(dir, "commands", "org.md"), OrgCommand),
+            (Path.Combine(dir, "commands", "organization.md"), OrganizationCommand),
         })
         {
             if (File.Exists(path) && File.ReadAllText(path) == body) continue;

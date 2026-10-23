@@ -90,6 +90,24 @@ internal static class CliApp
                 m.AddCommand<MembersSetCommand>("set").WithDescription("Change a member: set <email> with any of --name, --role, --tier, --status (--name \"\" clears the name).");
                 m.AddCommand<MembersRemoveCommand>("remove").WithDescription("Remove a member: remove <email>.");
             });
+            // The global /org and /organization commands run these (M.ORCH-T686); each is a command above, a member named any way.
+            config.AddBranch("org", o =>
+            {
+                o.SetDescription("The organization: usage (the usage report), login <who>, members, start <repo> <who>; <who> is a member's email, the part before the @, name, first name, login alias or initials.");
+                o.SetDefaultCommand<OrgHelpCommand>();
+                o.AddCommand<OrgHelpCommand>("help").WithDescription("List the org subcommands.");
+                o.AddCommand<UsageReportCommand>("usage").WithDescription("The usage report, as orchestrator report prints it: --detail, --since <date>, --csv, --json, --md/--html <file>.");
+                o.AddCommand<OrgLoginCommand>("login").WithDescription("Sign a member's own login in (orchestrator login --account <their email>); opens the browser.");
+                o.AddBranch("members", m =>
+                {
+                    m.SetDescription("The members, as orchestrator members lists them; add, set and remove change them.");
+                    m.SetDefaultCommand<MembersCommand>();
+                    m.AddCommand<MembersAddCommand>("add").WithDescription("Add a member: add <email> --name \"<name>\" --role primary-owner|owner|admin|member --tier premium|standard [[--status active|pending]].");
+                    m.AddCommand<MembersSetCommand>("set").WithDescription("Change a member: set <email> with any of --name, --role, --tier, --status.");
+                    m.AddCommand<MembersRemoveCommand>("remove").WithDescription("Remove a member: remove <email>.");
+                });
+                o.AddCommand<OrgStartCommand>("start").WithDescription("Start a CLI in <repo> on a member's login (orchestrator start <repo> --account <their email>).");
+            });
             config.AddCommand<LoginCommand>("login").WithDescription("The account roster (as the dashboard's account menu shows it); with an email or short name, opens that account's login (claude auth login --email); --account <email> signs in a per-CLI login of its own instead; --api-key bills the Vault's API key.");
             config.AddCommand<MoveCommand>("move").WithDescription("Move a running Claude CLI (<repo|pid>) to another signed-in login (--account <email> or --global): its Launcher tab restarts it with claude --resume on that login at its next idle point, keeping its session.");
             config.AddCommand<ClisCommand>("clis").WithDescription("Every open Claude CLI and whether /allocate is on in it (the roster the daemon keeps in orchestrator.db).");
