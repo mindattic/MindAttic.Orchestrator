@@ -329,4 +329,39 @@ public sealed class PaceLedgerTests
         watch.Tick(End.AddMinutes(45));
         Assert.That(watch.Db.LoadLedger(), Has.Count.EqualTo(2), "each window is recorded once");
     }
+
+    /// <summary>M.ORCH-T725: a per-CLI folder signed in as the global account must not hide that account's global rows, or every
+    /// global window is re-reported each minute.</summary>
+    [Test]
+    public void A_per_cli_folder_sharing_the_global_account_doesnt_make_its_global_windows_due_again()
+    {
+        var dir = temp.New();
+        var h = new Harness(Path.Combine(dir, "store"));
+        var dirs = new MindAttic.Orchestrator.Sessions.AccountDirs(Path.Combine(dir, "accounts"), Path.Combine(dir, ".claude"), Path.Combine(dir, ".claude.json"));
+        const string config = """{"oauthAccount":{"accountUuid":"acct-a"}}""";
+        File.WriteAllText(Path.Combine(dir, ".claude.json"), config);
+        var a = dirs.For("a@example.com");
+        Directory.CreateDirectory(a.Directory);
+        File.WriteAllText(a.ConfigPath, config);
+        File.WriteAllText(a.SamplesPath, System.Text.Json.JsonSerializer.Serialize(Steady(70, End.AddMinutes(5))));
+        h.Watch.Db.AddUsageSamples(Steady(100), DateTime.MinValue);
+        var watch = new PaceLedgerWatch(h.Store, "unused", (l, s) => h.Said.Add((l, s)), (t, _, u) => h.Alerts.Add((t, u)))
+        {
+            EventsPath = h.Watch.EventsPath,
+            FileTicket = s => { h.Filed.Add(s); return "M.ORCH-T999"; },
+            AccountDirs = dirs,
+            Account = new ClaudeAccount { ConfigPath = Path.Combine(dir, ".claude.json"), StatePath = Path.Combine(dir, "account.json"), Db = watch0(h) },
+        };
+
+        watch.Account!.Read(End.AddDays(-1));
+        watch.Tick(End.AddMinutes(30));
+        var rows = watch.Db.LoadLedger().Count;
+        var alerts = h.Alerts.Count;
+        watch.Tick(End.AddMinutes(45));
+        watch.Tick(End.AddMinutes(60));
+        Assert.That(watch.Db.LoadLedger(), Has.Count.EqualTo(rows), "each window is recorded once");
+        Assert.That(h.Alerts, Has.Count.EqualTo(alerts), "an over window is raised once");
+    }
+
+    private static MindAttic.Orchestrator.Settings.OrchestratorDb watch0(Harness h) => h.Watch.Db;
 }

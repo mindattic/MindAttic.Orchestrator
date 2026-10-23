@@ -88,10 +88,12 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
         List<GateEvent> events;
         try { events = Db.LoadGateEvents(nowUtc - KeepEvents); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { return; }
-        // A per-CLI login's windows are its own (M.ORCH-T559): one of them ending near a global window isn't that window.
+        // A per-CLI login's windows are its own (M.ORCH-T559): one of them ending near a global window isn't that window. But when
+        // the per-CLI login is the account signed in globally, its rows include the global windows' own, which stay (M.ORCH-T725).
         var own = AccountDirs?.All().Select(d => d.Account).OfType<string>().ToHashSet(StringComparer.Ordinal) ?? [];
-        var due = PaceLedger.Due([.. recorded.Where(r => r.Account is null || !own.Contains(r.Account))], samples, hits, events, nowUtc,
-            Account is null ? null : PaceLedger.AccountAt(Account, nowUtc));
+        var accountAt = Account is null ? null : PaceLedger.AccountAt(Account, nowUtc);
+        var due = PaceLedger.Due([.. recorded.Where(r => r.Account is null || !own.Contains(r.Account) || accountAt?.Invoke(r.EndUtc.AddMinutes(-1)) == r.Account)],
+            samples, hits, events, nowUtc, accountAt);
         TickAccounts(recorded, nowUtc);
         if (due.Count == 0) return;
         try { Db.AppendLedger(due); }
