@@ -90,7 +90,7 @@ public sealed class LoginScopeTests
     }
 
     [Test]
-    public void The_tabs_are_the_global_login_then_every_login_signed_in_or_with_a_cli_on_it_by_name_and_color()
+    public void The_tabs_are_the_global_login_and_every_login_signed_in_or_with_a_cli_on_it_by_name_and_color()
     {
         var all = Workspace() with
         {
@@ -99,12 +99,12 @@ public sealed class LoginScopeTests
         var tabs = LoginScope.Tabs(all, email => new LoginLook("w", "XX", "#123456") { Alias = email[..email.IndexOf('@')].ToUpperInvariant() },
             new LoginLook("ryan", "RY", "#654321") { Alias = "Ryan" });
 
-        Assert.That(tabs.Select(t => t.Email), Is.EqualTo(new[] { null, "amy@example.com", "jordan@example.com" }));
-        Assert.That(tabs.Select(t => t.Title), Is.EqualTo(new[] { "Ryan", "AMY", "JORDAN" }));
-        Assert.That(tabs[0].ToolTip, Does.StartWith("ryan@example.com"));
-        Assert.That(tabs[2].ToolTip, Does.StartWith("jordan@example.com"));
-        Assert.That((tabs[0].Color, tabs[1].Color), Is.EqualTo(("#654321", "#123456")));
-        Assert.That(tabs.Select(t => t.Key), Is.EqualTo(new[] { "", "amy@example.com", "jordan@example.com" }));
+        Assert.That(tabs.Select(t => t.Email), Is.EqualTo(new[] { "amy@example.com", "jordan@example.com", null }));
+        Assert.That(tabs.Select(t => t.Title), Is.EqualTo(new[] { "AMY", "JORDAN", "Ryan" }));
+        Assert.That(tabs[2].ToolTip, Does.StartWith("ryan@example.com"));
+        Assert.That(tabs[1].ToolTip, Does.StartWith("jordan@example.com"));
+        Assert.That((tabs[2].Color, tabs[0].Color), Is.EqualTo(("#654321", "#123456")));
+        Assert.That(tabs.Select(t => t.Key), Is.EqualTo(new[] { "amy@example.com", "jordan@example.com", "" }));
 
         var unknown = LoginScope.Tabs(new Snapshot(Now, [], []), _ => throw new AssertionException("no per-CLI login"), new LoginLook("claude", "CL", "#000000"));
         Assert.That(unknown.Single().Title, Is.EqualTo("Global login"), "only the global login, and nobody's email known for it");
@@ -119,18 +119,18 @@ public sealed class LoginScopeTests
         Billing.BillingStatus Status(string mode) => new(mode, null, "", []);
 
         var team = Workspace() with { Billing = Status(Billing.BillingModes.Team) };
-        Assert.That(LoginScope.Tabs(team, Look, globalLook)[0].Title, Is.EqualTo("Ryan"));
+        Assert.That(LoginScope.Tabs(team, Look, globalLook).Single(t => t.IsGlobal).Title, Is.EqualTo("Ryan"));
         Assert.That(LoginTab.ApiKeyTab(false).Title, Is.EqualTo("API key"));
 
         var key = Workspace() with { Billing = Status(Billing.BillingModes.Api) };
         var tabs = LoginScope.Tabs(key, Look, globalLook);
-        Assert.That(tabs[0].Title, Is.EqualTo("Ryan"), "titled like any member's");
+        Assert.That(tabs.Single(t => t.IsGlobal).Title, Is.EqualTo("Ryan"), "titled like any member's");
         Assert.That(tabs.Any(t => t.Title.Contains("fallback")), Is.False);
         Assert.That(LoginTab.ApiKeyTab(true).Title, Is.EqualTo("API key (fallback)"));
         Assert.That(LoginTab.ApiKeyTab(true).IsApiKey, Is.True);
 
         var member = new Member { Email = "ryan@example.com", Name = "Ryan D", Role = "admin", Tier = "premium" };
-        Assert.That(LoginScope.Tabs(key, Look, globalLook, [member])[0].Title, Is.EqualTo("Ryan D"), "its member name");
+        Assert.That(LoginScope.Tabs(key, Look, globalLook, [member]).Single(t => t.IsGlobal).Title, Is.EqualTo("Ryan D"), "its member name");
     }
 
     [Test]
@@ -143,11 +143,11 @@ public sealed class LoginScopeTests
             new LoginLook("ryan", "RY", "#654321") { Alias = "ryan" },
             [M("Amy@Example.com", "Amy R"), M("jordan@example.com", "Jordan J"), M("ryan@example.com", "Ryan D"), M("casey@example.com", null), M("not an email", "X")]);
 
-        Assert.That(tabs.Select(t => t.Email), Is.EqualTo(new[] { null, "amy@example.com", "casey@example.com", "jordan@example.com" }),
+        Assert.That(tabs.Select(t => t.Email), Is.EqualTo(new[] { "amy@example.com", "casey@example.com", "jordan@example.com", null }),
             "every member gets a tab; the global login's own account gets no second one; a row with no valid email gets none");
-        Assert.That(tabs.Select(t => t.Title), Is.EqualTo(new[] { "Ryan D", "Amy R", "Case", "Jordan J" }), "by member name, else its login's alias");
-        Assert.That(tabs.Select(t => t.SignedIn), Is.EqualTo(new[] { true, false, false, true }));
-        Assert.That(tabs[1].ToolTip, Does.Contain("not signed in"));
+        Assert.That(tabs.Select(t => t.Title), Is.EqualTo(new[] { "Amy R", "Case", "Jordan J", "Ryan D" }), "by member name, else its login's alias");
+        Assert.That(tabs.Select(t => t.SignedIn), Is.EqualTo(new[] { false, false, true, true }));
+        Assert.That(tabs[0].ToolTip, Does.Contain("not signed in"));
 
         var amy = LoginScope.For(Workspace(), "amy@example.com", WorkingWindow, WaitingWindow);
         Assert.That(amy.Repos.SelectMany(r => r.Hosts), Is.Empty, "no CLI of anyone else's shows on Amy's tab");
@@ -156,7 +156,21 @@ public sealed class LoginScopeTests
         Assert.That(MemberRoster.TitleOf(M("lee@example.com", null), null), Is.EqualTo("lee"));
         // A signed-in login that isn't a member still has its tab, by its alias.
         var none = LoginScope.Tabs(Workspace(), email => new LoginLook("w", "XX", "#123456") { Alias = "JJ" }, new LoginLook("ryan", "RY", "#654321") { Alias = "ryan" }, []);
-        Assert.That(none.Select(t => t.Title), Is.EqualTo(new[] { "ryan", "JJ" }));
+        Assert.That(none.Select(t => t.Title), Is.EqualTo(new[] { "JJ", "ryan" }));
+    }
+
+    [Test]
+    public void The_login_tabs_are_sorted_by_their_shown_name_case_insensitively_the_global_one_among_them()
+    {
+        // M.ORCH-T752: "order the user tabs alphabetically, then always last API key" (the 'API key' tab is added after these).
+        Member M(string email, string name) => new() { Email = email, Name = name, Role = "admin", Tier = "premium" };
+        var tabs = LoginScope.Tabs(Workspace(), email => new LoginLook("w", "XX", "#123456") { Alias = email[..email.IndexOf('@')] },
+            new LoginLook("ryan", "RY", "#654321") { Alias = "ryan" },
+            [M("zed@example.com", "zed"), M("ryan@example.com", "Mike"), M("bea@example.com", "Bea"), M("jordan@example.com", "adam")]);
+
+        Assert.That(tabs.Select(t => t.Title), Is.EqualTo(new[] { "adam", "Bea", "Mike", "zed" }), "by name, ignoring case");
+        Assert.That(tabs[2].IsGlobal, Is.True, "the global login's tab sorts by its member's name like any other");
+        Assert.That(tabs.Any(t => t.IsApiKey), Is.False, "the 'API key' tab is no login's: it is put after all of them");
     }
 
     [Test]

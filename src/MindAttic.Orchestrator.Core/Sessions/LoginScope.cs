@@ -86,9 +86,9 @@ public static class LoginScope
     }
 
     /// <summary>
-    /// The dashboard's tabs: the global login first, then each per-CLI login signed in (the ones <see cref="Snapshot.Accounts"/>
+    /// The dashboard's tabs, sorted by title case-insensitively (M.ORCH-T752): the global login, and each per-CLI login signed in (the ones <see cref="Snapshot.Accounts"/>
     /// paces) or with a live CLI or Launcher tab on it, and every member of the organization (<paramref name="members"/>,
-    /// M.ORCH-T670) not signed in on this machine, which gets a tab that only signs it in (M.ORCH-T615); by email. A member's
+    /// M.ORCH-T670) not signed in on this machine, which gets a tab that only signs it in (M.ORCH-T615). A member's
     /// tab is titled by its member name, else its login's name (<see cref="LoginLook.Alias"/>), else its email's part before the
     /// @; any other login's by its login's name. The global one is its member's own seat, never marked a fallback (the API key tab is, while the key bills), each has its email in the tooltip and
     /// its terminal tabs' color as its accent. The global login's own account gets no second tab: the fallback one is its.
@@ -120,13 +120,18 @@ public static class LoginScope
         var waiting = byEmail.Keys
             .Where(e => !live.Contains(e) && e != globalEmail)
             .ToHashSet(StringComparer.Ordinal);
-        return [global, .. live.Concat(waiting).Order(StringComparer.Ordinal).Select(e =>
+        var own = live.Concat(waiting).Order(StringComparer.Ordinal).Select(e =>
         {
             var look = ownLook(e);
             var title = Title(e, look.Alias);
             return waiting.Contains(e)
                 ? new LoginTab(e, title, $"{e}: not signed in on this machine yet; sign in to see its dashboard", look.TabColor, SignedIn: false)
                 : new LoginTab(e, title, $"{e}: its own login (~/.claude-accounts)", look.TabColor);
-        })];
+        });
+        // By the name each shows, case-insensitive (M.ORCH-T752): the global login's tab is just its member's, so it sorts
+        // with the others; ties by email, the global one first. The 'API key' tab goes after all of them (ApplyTabs).
+        return [.. own.Prepend(global)
+            .OrderBy(t => t.Title, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(t => t.Email ?? "", StringComparer.Ordinal)];
     }
 }

@@ -95,7 +95,7 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>
-    /// Keeps a tab per login in <paramref name="tabs"/> (the global login's, this one, first), adding a tab for a login just
+    /// Keeps a tab per login in <paramref name="tabs"/> (in its order, by name, the 'API key' one last), adding a tab for a login just
     /// signed in and dropping one signed out (back to the global login's tab if it was showing), then hands each tab its own
     /// view of <paramref name="all"/>, this one first: the others reuse the roster it reads.
     /// </summary>
@@ -108,9 +108,8 @@ public sealed partial class MainViewModel
         loginTabs.SyncBy([.. tabs.Where(t => !t.IsApiKey), LoginTab.ApiKeyTab(all.Billing?.Mode == BillingModes.Api)], t => t.Key, v => v.tab.Key,
             t => t.IsGlobal ? this : new MainViewModel(this, t),
             (v, t) => v.Retitle(t));
-        // The global login's tab is always first and always here, whatever the list said.
+        // The global login's tab is always here, whatever the list said; it sits by its name among the others (M.ORCH-T752).
         if (!loginTabs.Contains(this)) loginTabs.Insert(0, this);
-        else if (loginTabs.IndexOf(this) != 0) loginTabs.Move(loginTabs.IndexOf(this), 0);
         if (selectedTab is not null && !loginTabs.Contains(selectedTab)) Select(this);
         // A tab signed out is gone for good: it stops listening to the static move and terminal events (M.ORCH-T734).
         foreach (var gone in previous.Where(t => !ReferenceEquals(t, this) && !loginTabs.Contains(t))) gone.Detach();
