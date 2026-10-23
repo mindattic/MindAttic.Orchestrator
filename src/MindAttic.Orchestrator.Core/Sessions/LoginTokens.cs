@@ -267,19 +267,27 @@ public sealed partial class LoginTokens(TokenStore? store = null)
     /// it set under the account's folder): the email, or null when it can't say (the token's scope is inference only).</summary>
     public static Func<AccountDir, string, string?> StatusEmail { get; set; } = (dir, token) =>
     {
-        var psi = Psi(dir, token, "auth", "status", "--json");
-        psi.RedirectStandardOutput = true;
-        psi.RedirectStandardError = true;
-        psi.CreateNoWindow = true;
-        using var p = Process.Start(psi) ?? throw new InvalidOperationException("claude didn't start");
-        var outTask = p.StandardOutput.ReadToEndAsync();
-        _ = p.StandardError.ReadToEndAsync(); // drained so a full stderr pipe can't block the process
-        if (!p.WaitForExit(30_000))
+        // An empty scratch config folder, not the account's own: its sign-in must not answer for the token being checked.
+        var scratch = Path.Combine(Path.GetTempPath(), "mindattic-token-check-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(scratch);
+        try
         {
-            try { p.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
-            return null;
+            var psi = Psi(dir, token, "auth", "status", "--json");
+            psi.Environment[AccountDirs.EnvVar] = scratch;
+            psi.RedirectStandardOutput = true;
+            psi.RedirectStandardError = true;
+            psi.CreateNoWindow = true;
+            using var p = Process.Start(psi) ?? throw new InvalidOperationException("claude didn't start");
+            var outTask = p.StandardOutput.ReadToEndAsync();
+            _ = p.StandardError.ReadToEndAsync(); // drained so a full stderr pipe can't block the process
+            if (!p.WaitForExit(30_000))
+            {
+                try { p.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+                return null;
+            }
+            return ParseStatusEmail(outTask.GetAwaiter().GetResult());
         }
-        return ParseStatusEmail(outTask.GetAwaiter().GetResult());
+        finally { try { Directory.Delete(scratch, true); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { } }
     };
 
     /// <summary>The email in <c>claude auth status --json</c>'s output; null when it has none.</summary>
