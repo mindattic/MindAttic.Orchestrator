@@ -16,7 +16,12 @@ public sealed class WorkspaceBootstrapTests
     {
         if (!Directory.Exists(dir)) return;
         foreach (var f in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)) File.SetAttributes(f, FileAttributes.Normal);
-        Directory.Delete(dir, recursive: true);
+        // A killed install's process can still hold its working folder for a moment after it is gone (M.ORCH-T738).
+        for (var attempt = 1; ; attempt++)
+        {
+            try { Directory.Delete(dir, recursive: true); return; }
+            catch (IOException) when (attempt < 50) { Thread.Sleep(200); }
+        }
     }
 
     // Local repos stand in for GitHub: a "remote" is just a path git can clone.

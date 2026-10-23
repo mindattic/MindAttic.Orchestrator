@@ -156,6 +156,8 @@ public static class WorkspaceBootstrap
                 catch (OperationCanceledException)
                 {
                     try { p.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or AggregateException) { } // exited, or part of the tree couldn't be ended
+                    // Kill returns before the process is gone, and it holds its working folder (the app's) until it is.
+                    try { await p.WaitForExitAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10)); } catch (Exception ex) when (ex is TimeoutException or InvalidOperationException) { }
                     if (cancel.IsCancellationRequested) throw; // you cancelled: stop, rather than "time out" every app left
                     failed.Add($"{app}: timed out");
                     continue;
