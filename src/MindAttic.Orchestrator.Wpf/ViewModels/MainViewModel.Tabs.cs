@@ -103,6 +103,7 @@ public sealed partial class MainViewModel
     {
         var before = loginTabs.Count;
         var keysBefore = loginTabs.Select(t => t.tab.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var previous = loginTabs.ToList();
         // The 'API key' tab after every person's (M.ORCH-T630).
         loginTabs.SyncBy([.. tabs.Where(t => !t.IsApiKey), LoginTab.ApiKeyTab(all.Billing?.Mode == BillingModes.Api)], t => t.Key, v => v.tab.Key,
             t => t.IsGlobal ? this : new MainViewModel(this, t),
@@ -111,6 +112,8 @@ public sealed partial class MainViewModel
         if (!loginTabs.Contains(this)) loginTabs.Insert(0, this);
         else if (loginTabs.IndexOf(this) != 0) loginTabs.Move(loginTabs.IndexOf(this), 0);
         if (selectedTab is not null && !loginTabs.Contains(selectedTab)) Select(this);
+        // A tab signed out is gone for good: it stops listening to the static move and terminal events (M.ORCH-T734).
+        foreach (var gone in previous.Where(t => !ReferenceEquals(t, this) && !loginTabs.Contains(t))) gone.Detach();
         if (before != loginTabs.Count) foreach (var t in loginTabs) t.Raise(nameof(HasLoginTabs));
 
         var loginsChanged = !keysBefore.SetEquals(loginTabs.Select(t => t.tab.Key));

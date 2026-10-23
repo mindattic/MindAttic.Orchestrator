@@ -350,11 +350,16 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     public PersonTerminalsViewModel(TerminalsViewModel all)
     {
         this.all = all;
-        all.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName is nameof(TerminalsViewModel.HasReopen) or nameof(TerminalsViewModel.ReopenText)) Raise(e.PropertyName);
-        };
+        all.PropertyChanged += OnAllChanged;
     }
+
+    private void OnAllChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(TerminalsViewModel.HasReopen) or nameof(TerminalsViewModel.ReopenText)) Raise(e.PropertyName);
+    }
+
+    /// <summary>Stops following the shared terminals, for a login tab removed on sign-out (M.ORCH-T734).</summary>
+    public void Detach() => all.PropertyChanged -= OnAllChanged;
 
     /// <summary>This person's panes, in the order they opened.</summary>
     public ObservableCollection<TerminalPaneViewModel> Panes { get; } = [];
