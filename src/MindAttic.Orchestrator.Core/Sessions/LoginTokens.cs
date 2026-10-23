@@ -63,7 +63,53 @@ public sealed partial class LoginTokens(TokenStore? store = null)
 
     public static LoginTokens Default { get; } = new();
 
-    private TokenStore Store => store ?? TokenStore.ForBucket(Bucket);
+    /// <summary>One store for the whole process (M.ORCH-T711): the Vault's in-process lock is per instance, so a store built per
+    /// access never serialized two saves.</summary>
+    private static readonly Lazy<TokenStore> Shared = new(() => TokenStore.ForBucket(Bucket));
+
+    private TokenStore Store => store ?? Shared.Value;
+
+    /// <summary>Holds a cross-process lock (a named mutex on the store's folder) while <paramref name="work"/> runs, so two
+    /// processes' read-modify-write of tokens.json, or a read during the other's File.Replace, never interleave.</summary>
+    private T Locked<T>(Func<TokenStore, T> work)
+    {
+        var s = Store;
+        var key = Path.GetFullPath(s.Directory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).ToUpperInvariant();
+        var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(key)))[..24];
+        using var mutex = new Mutex(false, @"Global\MindAttic.Orchestrator.LoginTokens." + hash);
+        var held = false;
+        try
+        {
+            try { held = mutex.WaitOne(TimeSpan.FromSeconds(15)); }
+            catch (AbandonedMutexException) { held = true; }
+            if (!held) throw new IOException("Another process is holding the login-token store; try again.");
+            return work(s);
+        }
+        finally { if (held) mutex.ReleaseMutex(); }
+    }
+
+    /// <summary>Throws unless tokens.json is absent, empty or readable JSON: a failed read (sharing violation, damage) must
+    /// never be taken for "no tokens" and written back over every other login's token. Retries briefly past a File.Replace.</summary>
+    private static void EnsureReadable(TokenStore s)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                if (!File.Exists(s.TokensFilePath)) return;
+                var raw = File.ReadAllText(s.TokensFilePath);
+                if (string.IsNullOrWhiteSpace(raw)) return;
+                if (JsonNode.Parse(raw) is JsonObject) return;
+                throw new IOException($"{s.TokensFilePath} isn't a token map, so it wasn't overwritten.");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+            {
+                if (attempt >= 7)
+                    throw ex is IOException ? ex : new IOException($"Couldn't read {s.TokensFilePath} ({ex.Message}), so it wasn't overwritten.", ex);
+                Thread.Sleep(40);
+            }
+        }
+    }
 
     /// <summary>The token kept for <paramref name="email"/>; null when none is, or it can't be read.</summary>
     public LoginToken? For(string? email)
@@ -71,7 +117,7 @@ public sealed partial class LoginTokens(TokenStore? store = null)
         if (AccountDirs.Normalize(email) is not { } e) return null;
         try
         {
-            if (Store.Get(e) is not { } raw || JsonNode.Parse(raw) is not JsonObject o) return null;
+            if (Locked(st => st.Get(e)) is not { } raw || JsonNode.Parse(raw) is not JsonObject o) return null;
             if (o["sealed"]?.GetValue<string>() is not { Length: > 0 } sealedText) return null;
             var minted = o["minted"]?.GetValue<DateTime>() ?? DateTime.MinValue;
             var expires = o["expires"]?.GetValue<DateTime>() ?? minted + Lifetime;
@@ -85,17 +131,18 @@ public sealed partial class LoginTokens(TokenStore? store = null)
     {
         var e = AccountDirs.Normalize(email) ?? throw new ArgumentException($"\"{email}\" isn't an email address.", nameof(email));
         var kept = new LoginToken(e, mintedUtc, mintedUtc + Lifetime, Seal(token.Trim()));
-        Store.Set(e, new JsonObject
+        var json = new JsonObject
         {
             ["sealed"] = kept.Protected,
             ["minted"] = kept.MintedUtc.ToString("O"),
             ["expires"] = kept.ExpiresUtc.ToString("O"),
-        }.ToJsonString());
+        }.ToJsonString();
+        Locked(st => { EnsureReadable(st); st.Set(e, json); return true; });
         return kept;
     }
 
     /// <summary>Forgets <paramref name="email"/>'s token (its tabs then use the folder's own <c>/login</c>).</summary>
-    public bool Forget(string email) => AccountDirs.Normalize(email) is { } e && Store.Remove(e);
+    public bool Forget(string email) => AccountDirs.Normalize(email) is { } e && Locked(st => { EnsureReadable(st); return st.Remove(e); });
 
     /// <summary>The token itself; null when it can't be unsealed (another Windows user's, or damaged).</summary>
     public static string? Reveal(LoginToken token)

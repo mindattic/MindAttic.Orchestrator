@@ -68,6 +68,27 @@ public sealed class LoginTokensTests
     }
 
     [Test]
+    public void Saves_from_many_threads_keep_every_login_s_token()
+    {
+        var emails = Enumerable.Range(0, 12).Select(i => $"u{i}@example.com").ToList();
+        Parallel.ForEach(emails, new ParallelOptions { MaxDegreeOfParallelism = 12 },
+            e => new LoginTokens(new TokenStore(vault)).Save(e, Token, Now));
+        foreach (var e in emails) Assert.That(tokens.For(e), Is.Not.Null, e);
+    }
+
+    [Test]
+    public void A_save_never_overwrites_a_tokens_file_it_could_not_read()
+    {
+        tokens.Save("a@example.com", Token, Now);
+        var path = Path.Combine(vault, TokenStore.TokensJsonFile);
+        using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+            Assert.Throws<IOException>(() => tokens.Save("b@example.com", Token, Now));
+        File.WriteAllText(path, "{not json");
+        Assert.Throws<IOException>(() => tokens.Save("b@example.com", Token, Now));
+        Assert.That(File.ReadAllText(path), Is.EqualTo("{not json"), "left alone");
+    }
+
+    [Test]
     public void The_token_is_found_in_what_setup_token_printed_and_masked_when_said()
     {
         var output = $"\u001b[32m✓ Long-lived authentication token created successfully!\u001b[0m\r\n\r\nYour OAuth token (valid for 1 year):\r\n\r\n{Token}\r\n\r\nStore this token securely.";
