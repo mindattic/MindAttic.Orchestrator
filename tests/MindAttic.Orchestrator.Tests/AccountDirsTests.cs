@@ -440,6 +440,24 @@ public sealed class AccountDirsTests
     }
 
     [Test]
+    public void Login_refuses_new_token_where_it_cannot_apply_and_a_failed_mint_is_a_failure()
+    {
+        var previous = AnsiConsole.Console;
+        AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings { Out = new AnsiConsoleOutput(new StringWriter()), Ansi = AnsiSupport.No, ColorSystem = ColorSystemSupport.NoColors, Interactive = InteractionSupport.No });
+        try
+        {
+            Assert.That(CliApp.Create().Run(["login", "--new-token"]), Is.EqualTo(1));
+            Assert.That(CliApp.Create().Run(["login", "b", "--new-token"]), Is.EqualTo(1));
+            var ok = new OwnLoginResult("b", "b@example.com", "d", OwnLoginOutcome.SignedIn, "m", []);
+            Assert.That(LoginCommand.MintFailed(ok), Is.False, "no mint tried");
+            Assert.That(LoginCommand.MintFailed(ok with { Token = new MintResult(MintOutcome.Minted, "m") }), Is.False);
+            foreach (var outcome in new[] { MintOutcome.Failed, MintOutcome.NoToken, MintOutcome.WrongAccount })
+                Assert.That(LoginCommand.MintFailed(ok with { Token = new MintResult(outcome, "m") }), Is.True, outcome.ToString());
+        }
+        finally { AnsiConsole.Console = previous; }
+    }
+
+    [Test]
     public void Sign_in_all_gives_every_roster_account_without_its_own_login_one_in_turn()
     {
         var calls = new List<(string Email, bool Sso, string Dir)>();

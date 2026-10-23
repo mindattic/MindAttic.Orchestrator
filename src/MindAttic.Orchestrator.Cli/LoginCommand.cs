@@ -65,8 +65,17 @@ internal sealed class LoginCommand : Command<LoginCommand.Settings>
             : null)
         : null;
 
+    /// <summary>A token mint that was tried and didn't land (Failed, NoToken, WrongAccount): the sign-in itself may be fine, but
+    /// the command still exits non-zero (M.ORCH-T718).</summary>
+    internal static bool MintFailed(OwnLoginResult result) => result.Token is { Ok: false };
+
     public override int Execute(CommandContext context, Settings settings)
     {
+        if (settings.NewToken && !settings.All && settings.OwnLogin is null)
+        {
+            AnsiConsole.MarkupLine("[red]--new-token mints a per-CLI login's token: use it with --account <email> or --all.[/]");
+            return 1;
+        }
         if (settings.All)
         {
             if (settings.ApiKey || settings.Account is not null || settings.OwnLogin is not null)
@@ -151,7 +160,7 @@ internal sealed class LoginCommand : Command<LoginCommand.Settings>
         Report(result);
         if (!result.Ok) return 1;
         AnsiConsole.MarkupLine($"Start a CLI on it with [bold]orchestrator start <repo> --account {Markup.Escape(result.Email!)}[/]; every other CLI stays on the global login.");
-        return 0;
+        return MintFailed(result) ? 1 : 0;
     }
 
     /// <summary><c>login --all</c> (M.ORCH-T604): every roster account with no per-CLI login yet gets its own folder and its
@@ -162,7 +171,7 @@ internal sealed class LoginCommand : Command<LoginCommand.Settings>
         AnsiConsole.MarkupLine(Markup.Escape(OwnLogins.Summary(results)));
         if (results.Any(r => r.Ok))
             AnsiConsole.MarkupLine("[grey]Start a CLI on any of them with orchestrator start <repo> --account <email>; the global login stays the default.[/]");
-        return results.Any(r => r.Outcome is OwnLoginOutcome.Failed or OwnLoginOutcome.SignedInAsOther) ? 1 : 0;
+        return results.Any(r => r.Outcome is OwnLoginOutcome.Failed or OwnLoginOutcome.SignedInAsOther || MintFailed(r)) ? 1 : 0;
     }
 
     /// <summary>Signs <paramref name="email"/>'s own folder in for <c>start --account</c>, said as <c>login --account</c> says it.</summary>
