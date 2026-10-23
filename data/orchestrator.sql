@@ -3169,7 +3169,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.Cursory', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 8498);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.Hare', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 519557);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.Incognito', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1890);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.Multiplayer', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1007476);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.Multiplayer', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1008437);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.QuickDuel', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 214511);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.Ricochet', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 794303);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.SpaceGod', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 2551397);
@@ -3474,7 +3474,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5300d88e-be3b-441a-976c-34fc3e25e676/agent-aefd185e8a3bb8c7e', 'M.COMP-T15', 'feature', 'MindAttic.Orchestrator', 134633, '2026-10-20T15:55:02.57Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('5300d88e-be3b-441a-976c-34fc3e25e676/agent-af40bf46a49b0dda9', 'M.ORCH-T530', 'fix', 'MindAttic.Orchestrator', 175125, '2026-10-20T16:32:11.755Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('55499699-7a90-4387-8d6f-b77d1952862b', 'RB-T45', 'fix', 'REA.Bloodlines', 6896, '2026-10-22T16:54:07.112Z', 1, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('555266d3-de95-4a86-beb2-152b31adedd1/agent-a95841e48c5a3d5ab', 'UM-T71', 'feature', 'Unity.Multiplayer', 664495, '2026-10-23T06:23:39.403Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('555266d3-de95-4a86-beb2-152b31adedd1/agent-a95841e48c5a3d5ab', 'UM-T71', 'feature', 'Unity.Multiplayer', 665456, '2026-10-23T06:23:54.388Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('555266d3-de95-4a86-beb2-152b31adedd1/agent-ae8a12e2645cf66b7', 'UM-T72', 'fix', 'Unity.Multiplayer', 323390, '2026-10-23T06:18:27.842Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('56bfedfc-f1f6-4eaf-92cf-a93bd8fa5a5c/agent-a0218471269176675', 'U.RON-T11', 'docs', 'Unity.Cursory', 42979, '2026-10-22T10:05:31.249Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('56bfedfc-f1f6-4eaf-92cf-a93bd8fa5a5c/agent-a092863282cba7e94', 'UC-T25', 'fix', 'Unity.Cursory', 32282, '2026-10-21T19:22:30.824Z', 0, 'sonnet');
@@ -7325,8 +7325,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "2290dd53ff990644d23321387810461cdcf39067"
   },
   "Unity.Ricochet": {
-    "Tested": "24d306fd45d95f9f04042cc41236c2f041e5f8be",
-    "Green": "24d306fd45d95f9f04042cc41236c2f041e5f8be"
+    "Tested": "98583adfd86b1e0b3a0bfbfe8b805840465bf6eb",
+    "Green": "98583adfd86b1e0b3a0bfbfe8b805840465bf6eb"
   },
   "Unity.SongOfDawn": {
     "Tested": "cf0ba56cfe8bbe4f709056e977efe83667c974c8"
