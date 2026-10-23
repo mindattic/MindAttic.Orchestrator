@@ -1027,6 +1027,10 @@
                             <Button x:Name="SignInAllButton" Style="{StaticResource MaButton}" Content="Sign in all" Padding="14,5" Margin="8,0,0,0"
                                     Command="{Binding SignInAllCommand}" VerticalAlignment="Center"
                                     ToolTip="Give every account in the roster with no per-CLI login yet its own (~/.claude-accounts), opening each one's login in the browser in turn, so every Claude Team seat stays signed in side by side. The global login stays the default." />
+                            <!-- The usage report (M.ORCH-T685), as orchestrator report prints it, written to share. -->
+                            <Button x:Name="UsageReportButton" Style="{StaticResource MaButton}" Content="Report" Padding="14,5" Margin="8,0,0,0"
+                                    Command="{Binding UsageReportCommand}" VerticalAlignment="Center"
+                                    ToolTip="Write the usage report (every member's 5-hour and weekly use, resets, points left to the weekly target, how fresh each reading is, the CLIs' spend and the API key's) as an HTML page and a Markdown file to share, and open the page (orchestrator report)." />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Accounts" Style="{StaticResource MaHeading}" />

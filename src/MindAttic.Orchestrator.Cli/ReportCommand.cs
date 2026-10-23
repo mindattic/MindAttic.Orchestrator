@@ -6,7 +6,8 @@ using MindAttic.Orchestrator.Budget;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
-/// <summary>Where the tokens went: by week and repo, by provider, and by ticket type.</summary>
+/// <summary><c>orchestrator tokens</c> (<c>report</c> before M.ORCH-T685, which made that the usage report): where the tokens went,
+/// by week and repo, by provider, and by ticket type.</summary>
 internal sealed class ReportCommand : Command<ReportCommand.Settings>
 {
     public sealed class Settings : CommandSettings

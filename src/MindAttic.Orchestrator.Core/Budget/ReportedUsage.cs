@@ -155,7 +155,11 @@ public sealed record ReportedUsage(ReportedWindow? FiveHour, ReportedWindow? Wee
         return row is not null && (file is null || row.AtUtc > file.AtUtc) ? row : file;
     }
 
-    private static ReportedUsage? LoadFile(DateTime nowUtc, string file)
+    /// <summary>The reading in the statusline's file at <paramref name="path"/> whatever its age (the usage report shows how old
+    /// it is, M.ORCH-T685); null when there's none or it can't be read.</summary>
+    public static ReportedUsage? LoadAnyAge(string path) => LoadFile(DateTime.UtcNow, path, anyAge: true);
+
+    private static ReportedUsage? LoadFile(DateTime nowUtc, string file, bool anyAge = false)
     {
         try
         {
@@ -164,7 +168,7 @@ public sealed record ReportedUsage(ReportedWindow? FiveHour, ReportedWindow? Wee
             // its .tmp behind and the reading was lost).
             using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             using var doc = JsonDocument.Parse(stream);
-            return Parse(doc.RootElement, nowUtc);
+            return Parse(doc.RootElement, nowUtc, anyAge);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or FormatException)
         {
@@ -172,11 +176,11 @@ public sealed record ReportedUsage(ReportedWindow? FiveHour, ReportedWindow? Wee
         }
     }
 
-    private static ReportedUsage? Parse(JsonElement root, DateTime nowUtc)
+    private static ReportedUsage? Parse(JsonElement root, DateTime nowUtc, bool anyAge = false)
     {
         if (!root.TryGetProperty("at", out var a) ||
             !DateTime.TryParse(a.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var at) ||
-            nowUtc - at > MaxAge || !root.TryGetProperty("rate_limits", out var limits))
+            (!anyAge && nowUtc - at > MaxAge) || !root.TryGetProperty("rate_limits", out var limits))
             return null;
         return new ReportedUsage(Window(limits, "five_hour"), Window(limits, "seven_day"), at)
         {

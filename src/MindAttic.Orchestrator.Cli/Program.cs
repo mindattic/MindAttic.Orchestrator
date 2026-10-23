@@ -72,7 +72,8 @@ internal static class CliApp
             config.AddCommand<ShowCommand>("show").WithDescription("A ticket end to end: its row, the sessions that worked on it, and its commits (--diff for the full diff).");
             config.AddCommand<HygieneCommand>("hygiene").WithDescription("Closed tickets that may not be done: no Ref cited, or a later ticket says it came back.");
             config.AddCommand<IntakeCommand>("intake").WithDescription("File GitHub issues labelled orchestrator and CI failures on main as tickets (--dry-run to preview).");
-            config.AddCommand<ReportCommand>("report").WithDescription("Uncached tokens by week, repo, provider and ticket type, and cost per completed ticket by model; --csv writes it out.");
+            config.AddCommand<UsageReportCommand>("report").WithDescription("The usage report: every member's 5-hour and weekly use and resets, points left to the weekly target, how old each reading is and whether it's accurate; --detail adds the CLIs' spend against outside use and the API key's; --since <date>, --csv, --json; --md/--html <file> write it to share.");
+            config.AddCommand<ReportCommand>("tokens").WithDescription("Uncached tokens by week, repo, provider and ticket type, and cost per completed ticket by model; --csv writes it out (was report before M.ORCH-T685).");
             config.AddCommand<BillingCommand>("billing").WithDescription("Who every CLI bills (Claude Team or the Vault's API key) and each open CLI's own billing; team or api switches every CLI.");
             config.AddBranch("accounts", a =>
             {
