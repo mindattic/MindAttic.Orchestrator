@@ -82,7 +82,7 @@ internal static class CliApp
                 a.AddCommand<AccountsAliasCommand>("alias").WithDescription("Name a Claude login (alias <email> \"<name>\"): the dashboard, the Accounts view, agent cards and its status line show the name, the email in the tooltip; without a name, says its name; --reset goes back to the email's part before the @.");
                 a.AddCommand<AccountsPickCommand>("pick").WithDescription("The Auto login a new Claude CLI should start on (one CLI per account): prints its CLAUDE_CONFIG_DIR, or an empty line for the global login.");
             });
-            config.AddBranch("members", m =>
+            config.AddBranch<MembersBranchSettings>("members", m =>
             {
                 m.SetDescription("The organization's members (orchestrator.db): name, email, role, tier, status, and whether each has signed in here; the dashboard has a tab for each.");
                 m.SetDefaultCommand<MembersCommand>();
@@ -98,7 +98,7 @@ internal static class CliApp
                 o.AddCommand<OrgHelpCommand>("help").WithDescription("List the org subcommands.");
                 o.AddCommand<UsageReportCommand>("usage").WithDescription("The usage report, as orchestrator report prints it: --detail, --since <date>, --csv, --json, --md/--html <file>.");
                 o.AddCommand<OrgLoginCommand>("login").WithDescription("Sign a member's own login in (orchestrator login --account <their email>); opens the browser.");
-                o.AddBranch("members", m =>
+                o.AddBranch<MembersBranchSettings>("members", m =>
                 {
                     m.SetDescription("The members, as orchestrator members lists them; add, set and remove change them.");
                     m.SetDefaultCommand<MembersCommand>();
