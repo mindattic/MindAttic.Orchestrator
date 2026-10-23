@@ -39,6 +39,8 @@ public sealed partial class MainlineTests(JsonStore store)
     internal static readonly TimeSpan CheckEvery = TimeSpan.FromMinutes(1);
     /// <summary>How long a repo waits before a run that didn't complete is tried again (M.ORCH-T731).</summary>
     internal static readonly TimeSpan RetryIncompleteAfter = TimeSpan.FromMinutes(10);
+    /// <summary>After this many runs in a row at one head that didn't complete, the head is given up on (recorded tested, said once).</summary>
+    internal const int MaxIncomplete = 3;
     internal static readonly TimeSpan SuiteTimeout = TimeSpan.FromMinutes(90);
 
     /// <summary>What a repo's main line was last tested at, and last passed at.</summary>
@@ -71,6 +73,7 @@ public sealed partial class MainlineTests(JsonStore store)
 
     private readonly Dictionary<string, Run> running = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, DateTime> retryAfter = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, (string Head, int Count)> incomplete = new(StringComparer.OrdinalIgnoreCase);
     private DateTime checkedUtc = DateTime.MinValue;
 
     /// <summary>The repos whose suite is running now.</summary>
@@ -95,7 +98,18 @@ public sealed partial class MainlineTests(JsonStore store)
             lines.AddRange(Report(done, result, openTickets));
             // A run that didn't complete (timeout, file lock, dotnet missing, Prepare error) tested nothing: the head stays
             // untested so it's tried again after a pause, not skipped for good (M.ORCH-T731).
-            if (!result.Completed) { retryAfter[done.Repo] = nowUtc + RetryIncompleteAfter; continue; }
+            if (!result.Completed)
+            {
+                var count = incomplete.TryGetValue(done.Repo, out var prior) && prior.Head == done.Head ? prior.Count + 1 : 1;
+                if (count < MaxIncomplete)
+                {
+                    incomplete[done.Repo] = (done.Head, count);
+                    retryAfter[done.Repo] = nowUtc + RetryIncompleteAfter;
+                    continue;
+                }
+                lines.Add(new Line(true, $"main tests: {done.Repo}'s full suite at {Short(done.Head)} didn't complete {count} times in a row; giving up on that commit"));
+            }
+            incomplete.Remove(done.Repo);
             retryAfter.Remove(done.Repo);
             st.Tested = done.Head;
             if (result.Failed.Count == 0) st.Green = done.Head;

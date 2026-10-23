@@ -234,6 +234,27 @@ public sealed class MainlineTestsTests
     }
 
     [Test]
+    public void A_head_that_never_completes_is_given_up_on_after_a_few_tries()
+    {
+        var tests = Make();
+        Tick(tests, Now);
+        head = "aaaaaaa2";
+        var at = Now.AddMinutes(1);
+        for (var i = 0; i < MainlineTests.MaxIncomplete; i++)
+        {
+            Tick(tests, at);
+            runs[i].SetResult(new MainlineTests.SuiteResult(false, [], new HashSet<string>(), "it ran past 90 minutes and was stopped"));
+            at = at.AddMinutes(1);
+            Tick(tests, at);
+            at = at.AddMinutes(11);
+        }
+        Tick(tests, at);
+        Assert.That(runs, Has.Count.EqualTo(MainlineTests.MaxIncomplete));
+        var state = store.Load<Dictionary<string, MainlineTests.RepoState>>(MainlineTests.StateName)["A"];
+        Assert.That(state.Tested, Is.EqualTo("aaaaaaa2"));
+    }
+
+    [Test]
     public void A_renamed_main_line_is_followed()
     {
         var name = "main";
