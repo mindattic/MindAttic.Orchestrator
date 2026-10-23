@@ -333,7 +333,7 @@ public sealed class BillingTests
     }
 
     [Test]
-    public void A_login_to_another_claude_ai_account_switches_back_to_claude_team()
+    public void A_login_on_the_global_login_leaves_api_key_billing_on_and_is_noted_once()
     {
         File.WriteAllText(ConfigPath, "{" + TeamLogin + ", \"customApiKeyResponses\": {\"approved\": [], \"rejected\": []}}");
         var billing = Switch();
@@ -342,27 +342,26 @@ public sealed class BillingTests
 
         File.WriteAllText(ConfigPath, File.ReadAllText(ConfigPath).Replace("org-1", "org-2"));
         var said = billing.Tick([], DateTime.UtcNow);
-        Assert.That(said[0], Is.EqualTo("a /login to Claude Team: pdftransferjr@mindattic.com (MindAttic) switches billing back to Claude Team"));
+        Assert.That(said, Has.Count.EqualTo(1));
+        Assert.That(said[0], Does.Contain("a /login to Claude Team: pdftransferjr@mindattic.com (MindAttic) was seen").And.Contain("API-key billing stays on"));
+        Assert.That(billing.Tick([], DateTime.UtcNow), Is.Empty, "noted once");
+        Assert.That(billing.ModeFile.Read()!.Mode, Is.EqualTo(BillingModes.Api));
+        Assert.That(ClaudeKeyChoice.Read(ConfigPath, KeyTail).Choice, Is.EqualTo(KeyChoice.Approved));
+
+        var back = billing.Switch("team", "cli", [], DateTime.UtcNow);
+        Assert.That(back.Error, Is.Null);
         var state = billing.ModeFile.Read()!;
-        Assert.That((state.Mode, state.By, state.Login), Is.EqualTo((BillingModes.Team, "login", "acct-1/org-2")));
+        Assert.That((state.Mode, state.Login), Is.EqualTo((BillingModes.Team, "acct-1/org-2")), "an explicit switch to Team still works");
         Assert.That(ClaudeKeyChoice.Read(ConfigPath, KeyTail).Choice, Is.EqualTo(KeyChoice.Rejected));
     }
 
     /// <summary>M.ORCH-T459: a switch back the daemon couldn't make leaves the API key billing, so it's said to you, not only logged.</summary>
     [Test]
-    public void A_switch_back_the_daemon_couldnt_make_needs_you()
+    public void A_switch_the_daemon_couldnt_make_needs_you()
     {
         File.WriteAllText(ConfigPath, "{" + TeamLogin + ", \"customApiKeyResponses\": {\"approved\": [], \"rejected\": []}}");
-        var billing = Switch();
-        billing.Switch("api", "cli", [], DateTime.UtcNow);
-        // A /login to another account, with Claude Code's key choices in a shape the switch won't touch.
-        File.WriteAllText(ConfigPath, "{" + TeamLogin.Replace("org-1", "org-2") + ", \"customApiKeyResponses\": 5}");
-        var said = billing.Tick([], DateTime.UtcNow);
-        Assert.That(said, Has.Count.EqualTo(2));
-        Assert.That(said[1], Does.StartWith("Couldn't set Claude Code's choice"));
-        Assert.That(BillingSwitch.NeedsYou(said[0]), Is.False, "the switch itself is news, not a problem");
-        Assert.That(BillingSwitch.NeedsYou(said[1]), Is.True);
-        Assert.That(billing.ModeFile.Read()!.Mode, Is.EqualTo(BillingModes.Api), "billing is left as it was");
+        Assert.That(BillingSwitch.NeedsYou("Couldn't set Claude Code's choice of the Vault key in x"), Is.True);
+        Assert.That(BillingSwitch.NeedsYou("a /login to Claude Team: a@b was seen on the global login; API-key billing stays on"), Is.False);
 
         Assert.That(BillingSwitch.NeedsYou("There's no Claude key in the MindAttic Vault keyring, so nothing can bill the API key; billing is left as it was."), Is.True);
         Assert.That(BillingSwitch.NeedsYou("Couldn't write billing.json: denied"), Is.True);

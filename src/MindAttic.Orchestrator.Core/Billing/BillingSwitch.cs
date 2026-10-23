@@ -219,21 +219,21 @@ public sealed class BillingSwitch
     }
 
     /// <summary>
-    /// The daemon's part, each refresh: a /login to another claude.ai account than the one signed in when the API key was
-    /// chosen switches back to Claude Team (the last sign-in decides); then each open hosted CLI billing the other mode is
+    /// The daemon's part, each refresh: a /login to another claude.ai account while the API key bills is noted, never switched back (M.ORCH-T676); each open hosted CLI billing the other mode is
     /// asked to restart (once, again after <see cref="RetryAfter"/> if its tab couldn't be asked), and each outside the
     /// Launcher is said once. Nothing happens until a mode has been written: no switch, nothing to enforce.
     /// </summary>
     public IReadOnlyList<string> Tick(IReadOnlyList<HostSession> hosts, DateTime nowUtc)
     {
         if (ModeFile.Read() is not { } state) return [];
-        if (state.Mode == BillingModes.Api && Config(null).Login is { } login && login.Identity != state.Login)
+        // A /login to another claude.ai account while the API key is billing is only noted: the key is the user's standing choice
+        // (the fallback for CLIs with no account), and only an explicit switch (orchestrator login <account>, the dashboard's
+        // toggle, orchestrator billing team) moves billing back to Claude Team (M.ORCH-T676).
+        List<string> seen = [];
+        if (state.Mode == BillingModes.Api && Config(null).Login is { } login && login.Identity != state.Login && noted != login.Identity)
         {
-            var result = Switch(BillingModes.Team, "login", hosts, nowUtc);
-            List<string> said = [$"a /login to {login.Describe()} switches billing back to Claude Team"];
-            if (result.Error is { } error) said.Add(error);
-            else said.AddRange(result.Lines);
-            return said;
+            noted = login.Identity;
+            seen.Add($"a /login to {login.Describe()} was seen on the global login; API-key billing stays on until you switch it back (orchestrator login <account>, or the dashboard's toggle)");
         }
         // Claude Code's choice of the Vault key follows the mode: a "yes" or "no" answered in a CLI's prompt since, or a mode
         // the context gate switched on its own (a /login it saw first), is put back in line.
@@ -244,12 +244,13 @@ public sealed class BillingSwitch
         {
             enforcedUtc = nowUtc;
             var result = Switch(state.Mode, state.By, hosts, nowUtc);
-            return result.Error is { } error ? [error] : [.. result.Lines.Skip(1)];
+            return [.. seen, .. (result.Error is { } error ? [error] : result.Lines.Skip(1))];
         }
-        return RequestRestarts(hosts, nowUtc);
+        return [.. seen, .. RequestRestarts(hosts, nowUtc)];
     }
 
     private DateTime? enforcedUtc;
+    private string? noted;
 
     /// <summary>Whether a line <see cref="Tick"/> said needs you: a CLI only you can restart, a tab that couldn't be asked, or a
     /// switch that couldn't be made ("Couldn't set...", "Couldn't write...", "There's no ... key"), which leaves billing as it was

@@ -684,15 +684,13 @@ public static class AgentGate
             # (auth, line, warn) for a CLI starting: one [Billing] line naming what it bills. A claude.ai login sets an approved
             # ANTHROPIC_API_KEY aside first; a CLI already running on it is warned to close and reopen. With the billing switch
             # on the API key (M.ORCH-T436) the key is what was chosen: it's left approved, and a CLI on the login is warned
-            # instead; until a /login to another claude.ai account than the one signed in then, which switches back to Claude Team.
+            # instead; it stays until an explicit switch back to Claude Team.
             config = claude_config()
             text = lambda o, k: o.get(k) if isinstance(o, dict) and isinstance(o.get(k), str) and o.get(k) else None
             oauth = config.get("oauthAccount") if isinstance(config.get("oauthAccount"), dict) else {}
             claude_ai = bool(text(oauth, "accountUuid")) and not text(config, "primaryApiKey")
             mode = billing_mode()
-            if mode.get("mode") == "api" and claude_ai and config_account(config) != mode.get("login"):
-                mode = dict(mode, mode="team", since=time.time(), login=config_account(config), by="login", requested=[], refused=[], approved_at=None)
-                write_exported_mark("billing", BILLING, mode)
+            # A /login to another account does not switch the API key back (M.ORCH-T676): only an explicit switch does.
             api_mode = mode.get("mode") == "api"
             auth, source = billing(cwd)
             env, _ = auth_sources(cwd)

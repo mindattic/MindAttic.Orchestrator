@@ -120,7 +120,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     // On course to end under target with room for more: a CLI holding claims no subagent is on is told to start
                     // them now (M.ORCH-T529: two sat unstarted at a projected 65% of 98% until the user asked).
                     ReportAutopilotWakes(pilotWaker.TickClaims(snapshot, plan, s, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
-                    // The billing switch (M.ORCH-T436): a /login to another claude.ai account switches back to Claude Team, and each
+                    // The billing switch (M.ORCH-T436): a /login to another claude.ai account is noted, not switched back (M.ORCH-T676), and each
                     // open CLI billing the other mode is asked to restart (one daemon asks, as one wakes); one only you can
                     // restart is said to you.
                     try
