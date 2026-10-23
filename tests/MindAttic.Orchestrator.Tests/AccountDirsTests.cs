@@ -547,4 +547,28 @@ public sealed class AccountDirsTests
         Assert.That(AccountDirs.Ps("don't"), Is.EqualTo("'don''t'"));
         Assert.That(AccountDirs.Ps("don’t ‘x‚‛"), Is.EqualTo("'don’’t ‘‘x‚‚‛‛'"));
     }
+
+    [Test]
+    public void MklinkArguments_QuoteBothPaths_AndRefuseCharactersCmdExpandsAnyway()
+    {
+        Assert.That(AccountDirs.TryMklinkArguments(@"C:\a&b\x", @"C:\t^|", out var line), Is.True);
+        Assert.That(line, Is.EqualTo("/d /c \"mklink /J \"C:\\a&b\\x\" \"C:\\t^|\"\""));
+        Assert.That(AccountDirs.TryMklinkArguments(@"C:\%PATH%", @"C:\t", out _), Is.False);
+        Assert.That(AccountDirs.TryMklinkArguments(@"C:\a", "C:\\q\"x", out _), Is.False);
+    }
+
+    [Test]
+    public void MklinkArguments_AJunctionWithAmpersandInItsNameIsMadeAndNothingElseRuns()
+    {
+        var root = temps.New();
+        var target = Path.Combine(root, "t");
+        Directory.CreateDirectory(target);
+        var marker = Path.Combine(root, "pwned");
+        var link = Path.Combine(root, "a&md pwned&b");
+        Assert.That(AccountDirs.TryMklinkArguments(link, target, out var line), Is.True);
+        using (var p = Process.Start(new ProcessStartInfo("cmd.exe", line) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = root })!)
+            p.WaitForExit();
+        Assert.That(Directory.Exists(link), Is.True);
+        Assert.That(File.Exists(marker), Is.False);
+    }
 }

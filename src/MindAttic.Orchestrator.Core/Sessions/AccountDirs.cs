@@ -348,7 +348,12 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
             info.Delete();
         }
         var psi = new ProcessStartInfo("cmd.exe") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
-        foreach (var a in new[] { "/d", "/c", "mklink", "/J", link, target }) psi.ArgumentList.Add(a);
+        if (!TryMklinkArguments(link, target, out var cmdLine))
+        {
+            lines.Add($"couldn't link {link} to {target}: the path has a character cmd.exe can't take safely.");
+            return;
+        }
+        psi.Arguments = cmdLine;
         try
         {
             using var p = Process.Start(psi)!;
@@ -358,5 +363,15 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
             if (p.ExitCode != 0) lines.Add($"couldn't link {link} to {target}: {error.Trim()}");
         }
         catch (System.ComponentModel.Win32Exception ex) { lines.Add($"couldn't link {link} to {target}: {ex.Message}"); }
+    }
+
+    /// <summary>The cmd.exe command line for <c>mklink /J</c>, with both paths quoted so &amp; ^ | ( ) in a folder name stay data. False
+    /// when a path holds a quote, % or ! (cmd expands those even inside quotes).</summary>
+    internal static bool TryMklinkArguments(string link, string target, out string arguments)
+    {
+        arguments = "";
+        foreach (var c in link + target) if (c is '"' or '%' or '!' or '\r' or '\n') return false;
+        arguments = $"/d /c \"mklink /J \"{link}\" \"{target}\"\"";
+        return true;
     }
 }
