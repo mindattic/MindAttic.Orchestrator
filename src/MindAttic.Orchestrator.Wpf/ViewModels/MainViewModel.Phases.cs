@@ -64,11 +64,11 @@ public sealed partial class MainViewModel
         });
 
         ToggleSettingsCommand = new RelayCommand(() => { Settings.Load(); IsSettingsOpen = !IsSettingsOpen; });
-        RunAuditCommand = new RelayCommand(async () => await RunAuditAsync(), () => !IsAuditing);
+        RunAuditCommand = new RelayCommand(async () => await Root.RunAuditAsync(), () => !IsAuditing);
         ShowViewCommand = new RelayCommand(p => { if (p is string s) ViewChoice = s; });
         ShowTicketCommand = new RelayCommand(p => { if (p is AgentRowViewModel a) ShowTicketDetails(a); });
 
-        if (auditRunner.Latest() is { } last) ShowAudit(last);
+        if (root is null && auditRunner.Latest() is { } last) ShowAudit(last);
     }
 
     // ── View switching ──────────────────────────────────────────────────────
@@ -100,7 +100,15 @@ public sealed partial class MainViewModel
         Raise(nameof(IsReposView)); Raise(nameof(IsQueueView)); Raise(nameof(IsAuditView)); Raise(nameof(IsAgentsView)); Raise(nameof(ShowDetail));
         Raise(nameof(IsAccountsView));
         Raise(nameof(IsViewBusy));
+        Raise(nameof(GroupsInView)); Raise(nameof(AgentsInView)); Raise(nameof(LoginCardsInView));
     }
+
+    // A person's own lists are bound only while their view shows (M.ORCH-T654): bound while hidden, a tab switch tore down
+    // and rebuilt the cards of every view opened since, not just the one on screen. The workspace's lists (the queue, the
+    // audit) are one set for every tab, so they stay bound.
+    public IReadOnlyList<TileGroupViewModel>? GroupsInView => IsReposView ? Groups : null;
+    public ObservableCollection<AgentRowViewModel>? AgentsInView => IsAgentsView ? Agents : null;
+    public ObservableCollection<LoginCardViewModel>? LoginCardsInView => IsAccountsView ? LoginCards : null;
 
     /// <summary>A refresh really running behind the shown view (M.ORCH-T634): the Accounts cards being read, or the audit running.
     /// Every view stays loaded in memory and switching never waits on this; it only drives the small spinner at the view's bottom.</summary>
@@ -121,7 +129,8 @@ public sealed partial class MainViewModel
     private string page = DashboardPage;
 
     /// <summary>The two tabs under the person's tab: their dashboard, and their terminals.</summary>
-    public IReadOnlyList<string> Pages { get; } = [DashboardPage, TerminalsPage];
+    public IReadOnlyList<string> Pages => PageNames;
+    private static readonly IReadOnlyList<string> PageNames = [DashboardPage, TerminalsPage];
 
     /// <summary>The person's tab showing: <see cref="DashboardPage"/> (tiles, chart, view pills and the chosen view) or
     /// <see cref="TerminalsPage"/> (only their terminals, filling the window below the person tabs).</summary>
@@ -307,8 +316,8 @@ public sealed partial class MainViewModel
 
     /// <summary>On course to end under target with nothing left for any /allocate CLI to start: said under the graph, with the
     /// proposals waiting for your approval (M.ORCH-T529), as the daemon's one alert a window says it.</summary>
-    private string NoWorkText => snapshot is null || plan is null ? ""
-        : UnderTarget.NoWorkLine(snapshot, plan, new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis()) is { } line ? " " + line : "";
+    private string NoWorkText => snapshot is null || Plan is not { } plan ? ""
+        : UnderTarget.NoWorkLine(snapshot, plan,new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis()) is { } line ? " " + line : "";
 
     /// <summary>The caption for <see cref="UtilizationText"/>. Empty only before the first snapshot, and the card is collapsed
     /// only on an empty caption, so it stays up between windows with the last one as it ended (M.ORCH-T502).</summary>
@@ -426,12 +435,17 @@ public sealed partial class MainViewModel
 
     // ── Queue ───────────────────────────────────────────────────────────────
 
-    public ObservableCollection<QueueRowViewModel> Queue { get; } = [];
-    public ObservableCollection<QueueRowViewModel> Proposals { get; } = [];
-    public ObservableCollection<FinishedViewModel> Finished { get; } = [];
-    public string Hold => plan?.Hold ?? "";
+    // The queue is the whole workspace's (M.ORCH-T613), so one plan and one set of rows, on the global login's tab, are what
+    // every tab shows (M.ORCH-T654): a tab switch hands the window the same collections, and WPF keeps their rows.
+    private readonly ObservableCollection<QueueRowViewModel> queue = [], proposals = [];
+    private readonly ObservableCollection<FinishedViewModel> finished = [];
+    public ObservableCollection<QueueRowViewModel> Queue => Root.queue;
+    public ObservableCollection<QueueRowViewModel> Proposals => Root.proposals;
+    public ObservableCollection<FinishedViewModel> Finished => Root.finished;
+    private SchedulePlan? Plan => Root.plan;
+    public string Hold => Plan?.Hold ?? "";
     public bool HasHold => !string.IsNullOrEmpty(Hold);
-    public string SlotsText => plan is null ? ""
+    public string SlotsText => Plan is not { } plan ? ""
         : plan.Cap < plan.Slots ? $"{plan.Occupied} sessions open · pacing allows {plan.Cap} of {plan.Slots}"
         : $"{plan.Occupied} sessions open · fills up to {plan.Slots}";
     // /allocate is on per CLI (its marks, M.ORCH-T164), as `orchestrator settings` reports it: the dashboard's own Autopilot
@@ -451,7 +465,7 @@ public sealed partial class MainViewModel
 
     /// <summary>What an empty queue says: tickets waiting for approval are left out of it, so they're named, not "no open
     /// tickets" (M.ORCH-T350).</summary>
-    public string EmptyQueueText => EmptyQueue(plan?.AwaitingApproval.Count ?? 0);
+    public string EmptyQueueText => EmptyQueue(Plan?.AwaitingApproval.Count ?? 0);
 
     internal static string EmptyQueue(int awaitingApproval) => awaitingApproval == 0
         ? "No open tickets anywhere. Add one with: tickets ticket new"
@@ -461,11 +475,12 @@ public sealed partial class MainViewModel
     /// click in that time would open a second agent on the same ticket.</summary>
     private readonly HashSet<string> starting = new(StringComparer.OrdinalIgnoreCase);
 
-    public bool IsStarting(string ticketId) => starting.Contains(ticketId);
+    public bool IsStarting(string ticketId) => Root.starting.Contains(ticketId);
 
     public async void Dispatch(QueueItem item, bool worktree)
     {
         if (Locked(item.Id)) return;
+        var starting = Root.starting;
         if (!starting.Add(item.Id)) return;
         try
         {
@@ -485,7 +500,7 @@ public sealed partial class MainViewModel
             await RefreshAsync();
             // A refresh already under way returns at once above: the queue is replanned from the assignments now, so the row
             // reads as assigned before the guard below lets go.
-            if (full is not null) ApplyPlan(full);
+            if (full is not null) Root.ApplyPlan(full);
         }
         // async void: an escaped exception (a corrupt assignments.json, a locked file) would close the dashboard.
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -517,13 +532,13 @@ public sealed partial class MainViewModel
         var next = MindAttic.Orchestrator.Tickets.TicketQueue.Bump(store, db, ticketId, by);
         NoteLocalChange();
         // Shown at once, not at the next refresh: the plan is made again over the snapshot with the new priority.
-        if (!inDb) { if (full is not null) ApplyPlan(full); }
+        if (!inDb) { if (full is not null) Root.ApplyPlan(full); }
         else if (full is not null)
         {
             var p = new Dictionary<string, long>(full.Priorities, StringComparer.OrdinalIgnoreCase);
             if (next == 0) p.Remove(ticketId); else p[ticketId] = next;
             full = full with { Priorities = p };
-            ApplyPlan(full);
+            Root.ApplyPlan(full);
         }
     });
 
@@ -533,7 +548,7 @@ public sealed partial class MainViewModel
         dispatcher.Release(ticketId);
         QueueMessage = $"{ticketId} is back in the queue.";
         queueLog.Information("Released {Ticket:l}", ticketId);
-        if (full is not null) ApplyPlan(full);
+        if (full is not null) Root.ApplyPlan(full);
     });
 
     /// <summary>Runs a click's change to the shared files: one that can't be saved (locked past the store's retries, or
@@ -606,7 +621,7 @@ public sealed partial class MainViewModel
             var r = await Task.Run(() => dispatcher.RemoveWorktree(a, repoPath));
             QueueMessage = r.Message;
             Record(r, "Remove worktree");
-            if (full is not null) ApplyPlan(full);
+            if (full is not null) Root.ApplyPlan(full);
         }
         // async void: an escaped exception (a corrupt assignments.json, a locked file) would close the dashboard.
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -618,11 +633,34 @@ public sealed partial class MainViewModel
 
     // ── Audit ───────────────────────────────────────────────────────────────
 
-    public ObservableCollection<DuplicateGroupViewModel> Duplicates { get; } = [];
-    public ObservableCollection<DriftViewModel> Drift { get; } = [];
-    public ObservableCollection<MissingViewModel> Missing { get; } = [];
-    public bool IsAuditing { get => isAuditing; private set { if (Set(ref isAuditing, value)) Raise(nameof(IsViewBusy)); } }
-    public string AuditInfo { get => auditInfo; private set => Set(ref auditInfo, value); }
+    // The audit is the workspace's too: one report and one set of rows, on the global login's tab, in every tab (M.ORCH-T654).
+    private readonly ObservableCollection<DuplicateGroupViewModel> duplicates = [];
+    private readonly ObservableCollection<DriftViewModel> drift = [];
+    private readonly ObservableCollection<MissingViewModel> missing = [];
+    public ObservableCollection<DuplicateGroupViewModel> Duplicates => Root.duplicates;
+    public ObservableCollection<DriftViewModel> Drift => Root.drift;
+    public ObservableCollection<MissingViewModel> Missing => Root.missing;
+
+    public bool IsAuditing
+    {
+        get => Root.isAuditing;
+        private set
+        {
+            if (Root.isAuditing == value) return;
+            Root.isAuditing = value;
+            foreach (var t in LoginTabs) { t.Raise(nameof(IsAuditing)); t.Raise(nameof(IsViewBusy)); }
+        }
+    }
+
+    public string AuditInfo
+    {
+        get => Root.auditInfo;
+        private set
+        {
+            Root.auditInfo = value;
+            foreach (var t in LoginTabs) t.Raise(nameof(AuditInfo));
+        }
+    }
     public string DuplicatesHeader => $"DUPLICATED ACROSS REPOS · {Duplicates.Count}";
     public string DriftHeader => $"SHARED AGENT FILES THAT DIFFER · {Drift.Count}";
     public string MissingHeader => $"SHARED AGENT FILES SOME REPOS LACK · {Missing.Count}";
@@ -655,7 +693,7 @@ public sealed partial class MainViewModel
         Drift.ReorderTo([.. report.Drift.Where(d => !d.IsCustom).Concat(report.Drift.Where(d => d.IsCustom)).Select(d => new DriftViewModel(d))]);
         Missing.ReorderTo([.. report.Missing.GroupBy(m => m.File).OrderByDescending(g => g.First().HaveIt).Select(g => new MissingViewModel(g.Key, [.. g]))]);
         AuditInfo = $"{report.ReposScanned} repos, {report.FilesScanned} source files, {report.Took.TotalSeconds:0.0}s · {report.RanUtc.ToLocalTime():g}";
-        Raise(nameof(DuplicatesHeader)); Raise(nameof(DriftHeader)); Raise(nameof(MissingHeader));
+        foreach (var t in LoginTabs) { t.Raise(nameof(DuplicatesHeader)); t.Raise(nameof(DriftHeader)); t.Raise(nameof(MissingHeader)); }
     }
 
     // ── Per-refresh ─────────────────────────────────────────────────────────
@@ -696,13 +734,13 @@ public sealed partial class MainViewModel
             Toasts.Insert(0, new ToastViewModel("Looks stuck", $"A session in {x.Repo} keeps repeating {x.Loop.Describe()}.", Palette.Over, null));
         knownStuck.IntersectWith(stuck.Select(x => x.SessionId + x.Loop.Tool + x.Loop.Input));
 
-        // The daemon audits on a schedule; pick up a newer report and say what it found.
-        if (!IsAuditing && NewerAudit(auditRunner, ref auditFileStamp, shownAudit) is { } latest)
+        // The daemon audits on a schedule; pick up a newer report and say what it found. Once, on the global login's tab: the
+        // audit is the workspace's, not a login's.
+        if (IsGlobalTab && !IsAuditing && NewerAudit(auditRunner, ref auditFileStamp, shownAudit) is { } latest)
         {
             var news = AuditNews.Between(shownAudit, latest);
             ShowAudit(latest);
-            // Said once, on the global login's tab: the audit is the workspace's, not a login's.
-            if (news.Any && IsGlobalTab) Toasts.Insert(0, new ToastViewModel("Audit found something new", news.ToString(), Palette.Waiting, null));
+            if (news.Any) Toasts.Insert(0, new ToastViewModel("Audit found something new", news.ToString(), Palette.Waiting, null));
         }
 
         // The daemon moved a CLI off a login that ran low (M.ORCH-T608): each move since the last one shown, from the window's
@@ -714,11 +752,12 @@ public sealed partial class MainViewModel
                 rebalanceSeenUtc = move.AtUtc;
             }
 
-        // The queue and the "while you were away" summary are the whole workspace's, the same in every tab (M.ORCH-T613).
-        if (full is { } all)
+        // The queue and the "while you were away" summary are the whole workspace's, the same in every tab (M.ORCH-T613): planned
+        // once, by the global login's tab (applied first), whose rows every tab shows (M.ORCH-T654).
+        if (IsGlobalTab && full is { } all)
         {
             ApplyPlan(all);
-            if (IsGlobalTab) Brief(all);
+            Brief(all);
         }
     }
 
@@ -778,6 +817,7 @@ public sealed partial class MainViewModel
 
     private void ApplyPlan(Snapshot next)
     {
+        if (!IsGlobalTab) { Root.ApplyPlan(next); return; }
         plan = Scheduler.Plan(next, store.LoadSettings(), store.LoadAssignments());
         var proposals = plan.Proposals.ToDictionary(p => p.Item.Id, StringComparer.Ordinal);
         var rank = 0;
@@ -787,8 +827,9 @@ public sealed partial class MainViewModel
         Proposals.ReorderTo([.. Queue.Where(q => q.IsNext)]);
         Finished.SyncBy(plan.Finished, a => a.TicketId, f => f.TicketId, a => new FinishedViewModel(a, this), (row, a) => row.Update(a));
 
-        foreach (var name in new[] { nameof(Hold), nameof(HasHold), nameof(SlotsText), nameof(AutopilotText), nameof(QueueCount), nameof(EmptyQueueText), nameof(UtilizationText) })
-            Raise(name);
+        foreach (var t in LoginTabs)
+            foreach (var name in new[] { nameof(Hold), nameof(HasHold), nameof(SlotsText), nameof(AutopilotText), nameof(QueueCount), nameof(EmptyQueueText), nameof(UtilizationText) })
+                t.Raise(name);
         // A row's Start and Release are enabled by whether it's assigned, which the refresh just changed: WPF rechecks a
         // command only on input, so the button shown would stay disabled until some unrelated click (M.ORCH-T351).
         CommandManager.InvalidateRequerySuggested();
