@@ -19,11 +19,12 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 public sealed class TerminalPaneViewModel : ObservableObject
 {
     private bool isSelected, ended;
+    private PaneRecord record;
 
     public TerminalPaneViewModel(PaneRequest request, PaneRecord record)
     {
         Request = request;
-        Record = record;
+        this.record = record;
         Control = new EasyTerminalControl
         {
             StartupCommandLine = request.CommandLine,
@@ -56,7 +57,16 @@ public sealed class TerminalPaneViewModel : ObservableObject
     public PaneRequest Request { get; }
 
     /// <summary>As kept in the store; its session is filled in once the dashboard sees its CLI's.</summary>
-    public PaneRecord Record { get; internal set; }
+    public PaneRecord Record
+    {
+        get => record;
+        internal set
+        {
+            if (!Set(ref record, value)) return;
+            Raise(nameof(Tooltip));
+            RaiseMoving();
+        }
+    }
 
     /// <summary>The terminal itself: kept for the pane's whole life, since a new control would start a new process.</summary>
     public EasyTerminalControl Control { get; }
@@ -200,7 +210,7 @@ public sealed class TerminalsViewModel : ObservableObject
     {
         previous = [];
         try { PaneRecords.Remove(store, [.. records.Select(r => r.Id)]); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { OrchestratorLog.For("Terminals").Warning(ex, "Couldn't forget the closed pane record(s); they may be offered for Reopen next start"); }
         Raise(nameof(HasReopen));
         Raise(nameof(ReopenText));
     }
@@ -323,7 +333,7 @@ public sealed class TerminalsViewModel : ObservableObject
     private void Drop(PaneRecord record)
     {
         try { PaneRecords.Remove(store, [record.Id]); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { OrchestratorLog.For("Terminals").Warning(ex, "Couldn't drop the closed pane record; it may be offered for Reopen next start"); }
     }
 }
 
