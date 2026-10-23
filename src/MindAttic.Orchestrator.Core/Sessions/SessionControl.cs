@@ -82,7 +82,7 @@ public sealed class SessionControl(OrchestratorOptions options)
     {
         var normalized = AccountDirs.Normalize(email);
         var look = Look(normalized is null ? null : Dirs.For(normalized).Directory);
-        var title = $"[{look.Initials}] MindAttic.Launcher";
+        var title = $"{look.Initials}: MindAttic.Launcher";
         var root = Directory.Exists(options.WorkspaceRoot) ? options.WorkspaceRoot : Path.GetDirectoryName(options.LauncherExe) ?? ".";
         string[] all =
         [
@@ -106,8 +106,22 @@ public sealed class SessionControl(OrchestratorOptions options)
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { return false; }
     }
 
+    /// <summary>A tab's title (M.ORCH-T632): "JR: Repo [Claude]", the login's initials (when it has one) then the repo's
+    /// <see cref="ShortName"/> and its provider.</summary>
     private static string TabTitle(string title, string provider, LoginLook? look) =>
-        look is null ? $"{title} [{provider}]" : $"[{look.Initials}] {title} [{provider}]";
+        look is null ? $"{ShortName(title)} [{provider}]" : $"{look.Initials}: {ShortName(title)} [{provider}]";
+
+    /// <summary>The leading prefixes a repo's name drops where a tab shows it (M.ORCH-T632), as the Launcher drops them.</summary>
+    public static readonly IReadOnlyList<string> NamePrefixes = ["GTFO.", "MindAttic.", "Unity."];
+
+    /// <summary>A repo's name as a tab shows it: without a leading <see cref="NamePrefixes"/> entry ("GTFO.EZ" → "EZ"); a
+    /// name that is only the prefix stays whole.</summary>
+    public static string ShortName(string repo)
+    {
+        foreach (var prefix in NamePrefixes)
+            if (repo.Length > prefix.Length && repo.StartsWith(prefix, StringComparison.Ordinal)) return repo[prefix.Length..];
+        return repo;
+    }
 
     /// <summary>A pane for <paramref name="directory"/> (M.ORCH-T618): the same Launcher host command, title, badge and color a
     /// Windows Terminal tab gets, with the login's <c>CLAUDE_CONFIG_DIR</c> set inside the pane's own command.</summary>

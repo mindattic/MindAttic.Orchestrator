@@ -11,7 +11,7 @@ namespace MindAttic.Orchestrator.Sessions;
 /// inside it), with the tab's title, initials badge and color (M.ORCH-T616).
 /// </summary>
 /// <param name="Repo">What the CLI was started for: the repo's name (the tab's title without its badge and provider).</param>
-/// <param name="Title">The tab's whole title, "[RD] Repo [Claude]".</param>
+/// <param name="Title">The tab's whole title, "RD: Repo [Claude]".</param>
 /// <param name="CommandLine">The pane's process, as one Windows command line.</param>
 public sealed record PaneRequest(string Repo, string Title, string Directory, string Provider, string CommandLine)
 {

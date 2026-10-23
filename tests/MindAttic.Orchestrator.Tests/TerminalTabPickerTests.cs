@@ -25,6 +25,7 @@ public sealed class TerminalTabPickerTests
 
     [TestCase("▶  REA.Bloodlines [Claude]", "REA.Bloodlines [Claude]")]
     [TestCase("⏸  General [Claude]", "General [Claude]")]
+    [TestCase("✳ JR: Repo [Claude]", "JR: Repo [Claude]")]
     [TestCase("✳ [JR] Repo [Claude]", "[JR] Repo [Claude]")]
     [TestCase("MindAttic.Launcher", "MindAttic.Launcher")]
     [TestCase("◐", "")]
@@ -40,6 +41,16 @@ public sealed class TerminalTabPickerTests
     public void A_title_found_inside_a_longer_tab_name_is_picked() =>
         Assert.That(TerminalTabPicker.PickTab([Launcher, new(W1, "▶ Admin: General [Claude]")], "General [Claude]", []),
             Is.EqualTo(new TerminalTab(W1, "▶ Admin: General [Claude]")));
+
+    [Test]
+    public void A_tab_opened_before_the_colon_badge_is_still_picked_by_its_old_title()
+    {
+        // M.ORCH-T632: a host started before it keeps its "[JR] ..." --title, and its tab still reads that way.
+        var old = new TerminalTab(W1, "▶ [JR] MindAttic.Launcher [Claude]");
+        var now = new TerminalTab(W1, "▶ JR: EZ [Claude]");
+        Assert.That(TerminalTabPicker.PickTab([old, now], "[JR] MindAttic.Launcher [Claude]", ["JR: EZ [Claude]"]), Is.SameAs(old));
+        Assert.That(TerminalTabPicker.PickTab([old, now], "JR: EZ [Claude]", ["[JR] MindAttic.Launcher [Claude]"]), Is.SameAs(now));
+    }
 
     [Test]
     public void Two_tabs_with_the_hosts_title_are_not_guessed_between() =>
@@ -76,6 +87,7 @@ public sealed class TerminalTabPickerTests
     {
         Assert.That(TerminalTabPicker.ExpectedTitle(Host(1, "General [Claude]", @"D:\Projects\MindAttic")), Is.EqualTo("General [Claude]"));
         Assert.That(TerminalTabPicker.ExpectedTitle(Host(1, null, @"D:\Projects\MindAttic\REA.Bloodlines\")), Is.EqualTo("REA.Bloodlines [Claude]"));
+        Assert.That(TerminalTabPicker.ExpectedTitle(Host(1, null, @"D:\Projects\MindAttic\GTFO.EZ")), Is.EqualTo("EZ [Claude]"));
         Assert.That(TerminalTabPicker.ExpectedTitle(Host(1, null)), Is.Null);
     }
 

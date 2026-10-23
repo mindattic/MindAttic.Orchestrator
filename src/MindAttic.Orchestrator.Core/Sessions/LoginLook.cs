@@ -7,7 +7,7 @@ namespace MindAttic.Orchestrator.Sessions;
 
 /// <summary>
 /// How a Claude login's terminal tabs look (M.ORCH-T616): the Windows Terminal window they gather in, the initials badge
-/// that starts their titles ("[RD] Repo [Claude]") and their tab color. Read from <see cref="FileName"/> in the login's
+/// that starts their titles ("RD: Repo [Claude]") and their tab color. Read from <see cref="FileName"/> in the login's
 /// folder (<c>alias</c>, <c>initials</c>, <c>tabColor</c>); without one, the email's part before the @ names the window and
 /// its first two letters are the initials.
 /// <para>The login's name (M.ORCH-T614): <see cref="Alias"/>, what the dashboard, the Accounts view, the agent cards and the

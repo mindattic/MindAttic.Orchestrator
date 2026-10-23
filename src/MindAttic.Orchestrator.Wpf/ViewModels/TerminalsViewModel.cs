@@ -62,8 +62,8 @@ public sealed class TerminalPaneViewModel : ObservableObject
     public EasyTerminalControl Control { get; }
 
     public string Title => Request.Title;
-    public string Badge => Request.Initials is { } i ? $"[{i}]" : "";
-    public string Name => $"{Request.Repo} [{Request.Provider}]";
+    public string Badge => Request.Initials is { } i ? $"{i}:" : "";
+    public string Name => $"{SessionControl.ShortName(Request.Repo)} [{Request.Provider}]";
     public Brush TabBrush { get; }
 
     /// <summary>The badge's text color (M.ORCH-T621): black or white, whichever reads on the chip of <see cref="TabBrush"/>.</summary>

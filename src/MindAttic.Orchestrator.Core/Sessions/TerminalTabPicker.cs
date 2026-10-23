@@ -11,19 +11,21 @@ public sealed record TerminalTab(long Window, string Name);
 /// </summary>
 public static class TerminalTabPicker
 {
-    /// <summary>The title a host's tab carries: its <c>--title</c>, else "folder [Provider]" as the Orchestrator's own tabs read.</summary>
+    /// <summary>The title a host's tab carries: its <c>--title</c>, else "folder [Provider]" as the Orchestrator's own tabs read, the
+    /// folder's leading prefix dropped (<see cref="SessionControl.ShortName"/>).</summary>
     public static string? ExpectedTitle(HostSession host)
     {
         if (!string.IsNullOrWhiteSpace(host.Title)) return host.Title.Trim();
         var folder = host.WorkingDirectory is { Length: > 0 } dir ? Path.GetFileName(dir.TrimEnd('\\', '/')) : null;
-        return string.IsNullOrEmpty(folder) ? null : $"{folder} [{host.Provider}]";
+        return string.IsNullOrEmpty(folder) ? null : $"{SessionControl.ShortName(folder)} [{host.Provider}]";
     }
 
     /// <summary>A tab's name without the leading status glyph and spaces ("▶  REA.Bloodlines [Claude]" → "REA.Bloodlines [Claude]").</summary>
     public static string Normalize(string name)
     {
         var i = 0;
-        // Letters, digits and the brackets an Orchestrator title opens with ("[JR] Repo [Claude]") start the real title.
+        // Letters and digits start the real title ("JR: Repo [Claude]"), and so does the bracket a tab opened before
+        // M.ORCH-T632 still opens with ("[JR] Repo [Claude]").
         while (i < name.Length && !char.IsLetterOrDigit(name[i]) && name[i] != '[') i++;
         return name[i..].Trim();
     }

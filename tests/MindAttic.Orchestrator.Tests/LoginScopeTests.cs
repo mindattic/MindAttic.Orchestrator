@@ -172,7 +172,7 @@ public sealed class LoginScopeTests
 
         var amy = control.LauncherArguments("Amy@Example.com").ToList();
         Assert.That(lookedUp, Is.EqualTo(dirs.For("amy@example.com").Directory), "colored as Amy's own login");
-        Assert.That(amy.Take(7), Is.EqualTo(new[] { "-w", "Amy", "new-tab", "--title", "[AR] MindAttic.Launcher", "--tabColor", "#123456" }));
+        Assert.That(amy.Take(7), Is.EqualTo(new[] { "-w", "Amy", "new-tab", "--title", "AR: MindAttic.Launcher", "--tabColor", "#123456" }));
         Assert.That(amy.SkipWhile(a => a != "--").Skip(1), Is.EqualTo(new[] { @"C:\L\MindAttic.Launcher.exe", "--account", "amy@example.com" }));
 
         var global = control.LauncherArguments(null).ToList();

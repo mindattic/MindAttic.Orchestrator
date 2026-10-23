@@ -53,11 +53,11 @@ public sealed class TerminalPanesTests
         var args = HostSessionScanner.SplitCommandLine(request.CommandLine);
         Assert.That(args, Is.EqualTo(new[]
         {
-            @"C:\Apps\MindAttic.Launcher\MindAttic.Launcher.exe", "host", "--path", dir, "--title", "[JO] Repo [Claude]",
+            @"C:\Apps\MindAttic.Launcher\MindAttic.Launcher.exe", "host", "--path", dir, "--title", "JO: Repo [Claude]",
             "--provider", "Claude", "--prompt", "do 'it' now",
         }));
-        Assert.That(HostSessionScanner.TitleOf(request.CommandLine), Is.EqualTo("[JO] Repo [Claude]"));
-        Assert.That(request.Title, Is.EqualTo("[JO] Repo [Claude]"));
+        Assert.That(HostSessionScanner.TitleOf(request.CommandLine), Is.EqualTo("JO: Repo [Claude]"));
+        Assert.That(request.Title, Is.EqualTo("JO: Repo [Claude]"));
         Assert.That(request.Initials, Is.EqualTo("JO"));
         Assert.That(request.TabColor, Does.Match("^#[0-9A-F]{6}$"));
         Assert.That(request.ConfigDir, Is.Null);
@@ -70,7 +70,7 @@ public sealed class TerminalPanesTests
         var request = Control(@"C:\Apps\L.exe").PaneRequestFor("Repo", dir, "Claude", null, @"C:\Users\x\.claude-accounts\amy@example.com");
         var script = Script(request.CommandLine);
         Assert.That(script, Does.StartWith("$env:CLAUDE_CONFIG_DIR = 'C:\\Users\\x\\.claude-accounts\\amy@example.com'; & 'C:\\Apps\\L.exe' 'host' '--path'"));
-        Assert.That(script, Does.Contain($"'{dir}'").And.Contain("'[AM] Repo [Claude]'").And.EndWith("; exit $LASTEXITCODE"));
+        Assert.That(script, Does.Contain($"'{dir}'").And.Contain("'AM: Repo [Claude]'").And.EndWith("; exit $LASTEXITCODE"));
         Assert.That(request.ConfigDir, Is.EqualTo(@"C:\Users\x\.claude-accounts\amy@example.com"));
     }
 
@@ -81,7 +81,7 @@ public sealed class TerminalPanesTests
         var record = new PaneRecord("id", "Repo", @"D:\W\Repo", "Claude", DateTime.UtcNow) { ConfigDir = @"C:\a\amy@example.com", SessionId = "abc-123" };
         var request = control.ResumeRequest(record);
         var script = Script(request.CommandLine);
-        Assert.That(script, Is.EqualTo("$env:CLAUDE_CONFIG_DIR = 'C:\\a\\amy@example.com'; & 'C:\\Apps\\L.exe' 'host' '--path' 'D:\\W\\Repo' '--title' '[AM] Repo [Claude]' '--provider' 'Claude' '--resume' 'abc-123' '--config-dir' 'C:\\a\\amy@example.com'; exit $LASTEXITCODE"));
+        Assert.That(script, Is.EqualTo("$env:CLAUDE_CONFIG_DIR = 'C:\\a\\amy@example.com'; & 'C:\\Apps\\L.exe' 'host' '--path' 'D:\\W\\Repo' '--title' 'AM: Repo [Claude]' '--provider' 'Claude' '--resume' 'abc-123' '--config-dir' 'C:\\a\\amy@example.com'; exit $LASTEXITCODE"));
         Assert.That(request.ResumeSession, Is.EqualTo("abc-123"));
 
         var global = Script(control.ResumeRequest(record with { ConfigDir = null }).CommandLine);
@@ -116,7 +116,7 @@ public sealed class TerminalPanesTests
         var got = new List<PaneRequest>();
         var serving = PaneBroker.ServeAsync(r => { got.Add(r); return Task.FromResult<string?>(r.Repo == "bad" ? "Couldn't open it" : null); }, cts.Token, pipe);
 
-        var request = new PaneRequest("Repo", "[JO] Repo [Claude]", @"D:\W\Repo", "Claude", "x.exe host") { ConfigDir = @"C:\a\b", Initials = "JO", TabColor = "#2E7D32" };
+        var request = new PaneRequest("Repo", "JO: Repo [Claude]", @"D:\W\Repo", "Claude", "x.exe host") { ConfigDir = @"C:\a\b", Initials = "JO", TabColor = "#2E7D32" };
         Assert.That(await Task.Run(() => (PaneBroker.TrySend(request, out var e, pipe), e)), Is.EqualTo((true, (string?)null)));
         Assert.That(got.Single(), Is.EqualTo(request));
         Assert.That(await Task.Run(() => (PaneBroker.TrySend(request with { Repo = "bad" }, out var e, pipe), e)), Is.EqualTo((true, "Couldn't open it")));
@@ -291,7 +291,7 @@ public sealed class TerminalPanesTests
         {
             var opened = 0;
             terminals.Opened += _ => opened++;
-            Assert.That(terminals.Open(new PaneRequest("Repo", "[JO] Repo [Claude]", temp.New(), "Claude", "cmd.exe /k echo pane")), Is.Null);
+            Assert.That(terminals.Open(new PaneRequest("Repo", "JO: Repo [Claude]", temp.New(), "Claude", "cmd.exe /k echo pane")), Is.Null);
             Assert.That(opened, Is.EqualTo(1));
             var pane = terminals.Panes.Single();
             Assert.That(pane.IsSelected, Is.True);
