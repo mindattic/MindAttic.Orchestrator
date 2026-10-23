@@ -363,6 +363,18 @@ public sealed class BillingTests
         Assert.That(BillingSwitch.NeedsYou("Couldn't set Claude Code's choice of the Vault key in x"), Is.True);
         Assert.That(BillingSwitch.NeedsYou("a /login to Claude Team: a@b was seen on the global login; API-key billing stays on"), Is.False);
 
+        var billing = Switch();
+        File.WriteAllText(ConfigPath, "{" + TeamLogin + ", \"customApiKeyResponses\": {\"approved\": [], \"rejected\": []}}");
+        billing.Switch("api", "cli", [], DateTime.UtcNow);
+        // A /login to another account, with Claude Code's key choices in a shape the switch won't touch: the enforcement re-switch fails.
+        File.WriteAllText(ConfigPath, "{" + TeamLogin.Replace("org-1", "org-2") + ", \"customApiKeyResponses\": 5}");
+        var said = billing.Tick([], DateTime.UtcNow);
+        Assert.That(said, Has.Count.EqualTo(2));
+        Assert.That(said[1], Does.StartWith("Couldn't set Claude Code's choice"));
+        Assert.That(BillingSwitch.NeedsYou(said[0]), Is.False);
+        Assert.That(BillingSwitch.NeedsYou(said[1]), Is.True);
+        Assert.That(billing.ModeFile.Read()!.Mode, Is.EqualTo(BillingModes.Api), "billing is left as it was");
+
         Assert.That(BillingSwitch.NeedsYou("There's no Claude key in the MindAttic Vault keyring, so nothing can bill the API key; billing is left as it was."), Is.True);
         Assert.That(BillingSwitch.NeedsYou("Couldn't write billing.json: denied"), Is.True);
         Assert.That(BillingSwitch.NeedsYou("couldn't ask the Launcher tab running the CLI in Prose (pid 1) to restart it"), Is.True);

@@ -179,6 +179,7 @@ public sealed class BillingSwitch
         var key = SafeKey();
         if (to == BillingModes.Api && key is null)
             return new(Status(hosts, nowUtc), [], $"There's no {VaultProvider} key in the MindAttic Vault keyring, so nothing can bill the API key; billing is left as it was.");
+        noted = null;
         var lines = new List<string>();
         var (login, _) = Config(null);
         var approvedNow = false;
@@ -230,6 +231,7 @@ public sealed class BillingSwitch
         // (the fallback for CLIs with no account), and only an explicit switch (orchestrator login <account>, the dashboard's
         // toggle, orchestrator billing team) moves billing back to Claude Team (M.ORCH-T676).
         List<string> seen = [];
+        if (Config(null).Login?.Identity == state.Login) noted = null;
         if (state.Mode == BillingModes.Api && Config(null).Login is { } login && login.Identity != state.Login && noted != login.Identity)
         {
             noted = login.Identity;
