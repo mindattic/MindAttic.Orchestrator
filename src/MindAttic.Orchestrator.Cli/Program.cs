@@ -56,10 +56,17 @@ internal static class CliApp
     /// <c>--five-hour</c> and the argument is renamed before parsing (M.ORCH-T707).</summary>
     public sealed class Runner(CommandApp app)
     {
-        public int Run(IEnumerable<string> args) => app.Run(args.Select(a =>
-            a.Equals("--5h", StringComparison.OrdinalIgnoreCase) ? "--five-hour"
-            : a.StartsWith("--5h=", StringComparison.OrdinalIgnoreCase) ? "--five-hour" + a[4..]
-            : a));
+        public int Run(IEnumerable<string> args)
+        {
+            var all = args.ToList();
+            // Only org limit has the option, so a --5h elsewhere (in a prompt, say) stays as typed.
+            if (all.Count >= 2 && all[0].Equals("org", StringComparison.OrdinalIgnoreCase) && all[1].Equals("limit", StringComparison.OrdinalIgnoreCase))
+                all = [.. all.Select(a =>
+                    a.Equals("--5h", StringComparison.OrdinalIgnoreCase) ? "--five-hour"
+                    : a.StartsWith("--5h=", StringComparison.OrdinalIgnoreCase) ? "--five-hour" + a[4..]
+                    : a)];
+            return app.Run(all);
+        }
     }
 
     public static Runner Create() => new(CreateApp());

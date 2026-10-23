@@ -553,24 +553,16 @@ public sealed class CliCommandTests
     }
 
     [Test]
-    public void Settings_sets_weekly_pacings_target_line_and_wind_down_and_refuses_bad_ones()
+    public void Settings_refuses_the_retired_weekly_options_and_pacing_ones_and_changes_nothing()
     {
-        // M.ORCH-T680: the weekly target is 100 minus the reserve; the line must sit below it; the margin is 0 to 20.
-        Assert.That(Run("settings", "--weekly-target", "90", "--weekly-line", "70", "--weekly-wind-down", "4"), Is.Zero);
-        var s = Store.LoadSettings();
-        Assert.That((s.WeeklyAwarePacing, s.WeeklyReservePercent, s.WeeklyAwareLinePercent, s.WeeklyWindDownMargin, s.WeeklyAwareWindDown),
-            Is.EqualTo((false, 10, 70, 4, 86)));
-        // M.ORCH-T706: the retired pacing, throttling, profile and failover options are refused, and nothing changes.
-        foreach (var locked in new[] { new[] { "--weekly-aware", "true" }, new[] { "--failover", "true" }, new[] { "--throttle-agents", "true" }, new[] { "--pace-profile", "front-loaded" }, new[] { "--pace-curve-k", "0.5" } })
+        // M.ORCH-T707: the weekly line is each member's own cutoff (org limit); M.ORCH-T706: the retired options are refused.
+        var before = Store.LoadSettings();
+        foreach (var locked in new[] { new[] { "--weekly-target", "90" }, new[] { "--weekly-reserve", "5" }, new[] { "--weekly-line", "70" }, new[] { "--weekly-wind-down", "4" },
+                     new[] { "--weekly-aware", "true" }, new[] { "--failover", "true" }, new[] { "--throttle-agents", "true" }, new[] { "--pace-profile", "front-loaded" }, new[] { "--pace-curve-k", "0.5" } })
             Assert.That(Run(["settings", .. locked]), Is.EqualTo(1), string.Join(" ", locked));
-        Assert.That((Store.LoadSettings().WeeklyAwarePacing, Store.LoadSettings().ThrottleAgents, Store.LoadSettings().FailoverToApiKey, Store.LoadSettings().PaceProfile),
-            Is.EqualTo((false, false, false, OrchestratorSettings.LinearProfile)));
-        Assert.That(Run("settings", "--weekly-line", "90"), Is.EqualTo(1), "the line isn't below the target");
-        Assert.That(Run("settings", "--weekly-reserve", "35"), Is.EqualTo(1), "a 65% target would sit under the 70% line");
-        Assert.That(Run("settings", "--weekly-wind-down", "21"), Is.EqualTo(1));
-        Assert.That(Run("settings", "--weekly-target", "45"), Is.EqualTo(1));
         var after = Store.LoadSettings();
-        Assert.That((after.WeeklyReservePercent, after.WeeklyAwareLinePercent, after.WeeklyWindDownMargin), Is.EqualTo((10, 70, 4)), "nothing refused was saved");
+        Assert.That((after.WeeklyReservePercent, after.WeeklyAwareLinePercent, after.WeeklyWindDownMargin, after.WeeklyAwarePacing, after.ThrottleAgents, after.FailoverToApiKey, after.PaceProfile),
+            Is.EqualTo((before.WeeklyReservePercent, before.WeeklyAwareLinePercent, before.WeeklyWindDownMargin, false, false, false, OrchestratorSettings.LinearProfile)));
     }
 
     [Test]

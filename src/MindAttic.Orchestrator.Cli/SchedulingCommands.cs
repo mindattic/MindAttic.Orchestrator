@@ -691,21 +691,9 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         }
         if (settings.WeeklyTarget is not null || settings.WeeklyReserve is not null || settings.WeeklyLine is not null || settings.WeeklyWindDown is not null)
         {
-            var weeklyTarget = settings.WeeklyTarget ?? s.WeeklyAwareTarget;
-            var weeklyLine = settings.WeeklyLine ?? s.WeeklyAwareLinePercent;
-            var weeklyMargin = settings.WeeklyWindDown ?? s.WeeklyWindDownMargin;
-            if (OrchestratorSettings.WeeklyPacingError(weeklyTarget, weeklyLine, weeklyMargin) is { } weeklyError)
-            {
-                AnsiConsole.MarkupLine($"[red]{Markup.Escape(weeklyError)}[/]");
-                return 1;
-            }
-            s = s with
-            {
-                WeeklyReservePercent = settings.WeeklyTarget is { } t ? 100 - t : s.WeeklyReservePercent,
-                WeeklyAwareLinePercent = weeklyLine,
-                WeeklyWindDownMargin = weeklyMargin,
-            };
-            changed = true;
+            // The weekly and 5-hour cutoffs are per user, and org limit is the only way to change one (M.ORCH-T707).
+            AnsiConsole.MarkupLine("[red]The weekly line is each member's own cutoff now (90% of the week, 98% of the 5-hour window by default): orchestrator org limit <who> --weekly <pct> --5h <pct>.[/]");
+            return 1;
         }
         if (settings.AutopilotSkip is { } skip)
         {
