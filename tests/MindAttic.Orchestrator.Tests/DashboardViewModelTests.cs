@@ -97,6 +97,24 @@ public sealed class DashboardViewModelTests
     }
 
     [Test]
+    public void A_per_cli_logins_idle_peak_block_draws_its_own_rough_percent_not_a_flat_zero()
+    {
+        // M.ORCH-T806: AccountRoster is only ever populated from the global ~/.claude sign-in, so a per-CLI login
+        // (its own AccountDir, e.g. Waffle) always has row == null here. Idle against only a busiest-block peak (no
+        // real limit known yet) must still draw the block's own rough BlockPercent, not flatline at 0%.
+        _ = System.IO.Packaging.PackUriHelper.UriSchemePack; // registers pack:// outside an Application
+        var day = new DateTime(2026, 10, 13, 0, 0, 0, DateTimeKind.Utc);
+        UsageEvent E(double hour, long output) => new(day.AddHours(hour), new TokenUsage(0, 0, 0, output));
+        var peak = BudgetCalculator.Compute([E(1, 1000), E(10, 1000)], new OrchestratorSettings(), day.AddHours(11), day);
+        Assert.That(peak.BlockLimitIsPeak, Is.True);
+        Assert.That(peak.BlockPercent, Is.GreaterThan(0), "the block's own rough percent against the peak");
+
+        var quiet = new Snapshot(day.AddHours(11), [], []) { Budget = peak };
+        var u = MainViewModel.IdleUtilization(quiet, null, 90, day.AddHours(11));
+        Assert.That(u.NowPercent, Is.EqualTo(peak.BlockPercent), "falls back to the block's rough percent, not 0, with no roster row");
+    }
+
+    [Test]
     public void A_momentary_idle_read_keeps_a_real_windows_climb_instead_of_flattening_it()
     {
         // M.ORCH-T787: seen once with a real window that climbed steadily to 96%, then a momentary idle read (nothing

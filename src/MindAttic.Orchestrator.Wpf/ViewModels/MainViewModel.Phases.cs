@@ -229,8 +229,11 @@ public sealed partial class MainViewModel
         // line at the current %, which would erase genuine history whenever "idle" is read for only a moment.
         if (s.Utilization is { Ended: false, Idle: false } u && u.EndUtc > nowUtc) return u with { Idle = true };
         if (s.Budget is { CurrentBlock: { } block } b && block.EndUtc > nowUtc)
+            // Peak/no-limit-yet prefers the roster's own reported % (more authoritative than our rough peak-relative
+            // guess) but the roster only ever holds the global ~/.claude sign-in, never a per-CLI AccountDir: without a
+            // row for this login (M.ORCH-T806), fall back to the block's own rough BlockPercent, not 0.
             return UtilizationSeries.IdleWindow(block.EndUtc,
-                b.BlockLimitIsPeak || b.BlockLimit <= 0 ? row?.FiveHourUsedAt(nowUtc) ?? 0 : b.BlockPercent, target, nowUtc);
+                b.BlockLimitIsPeak || b.BlockLimit <= 0 ? row?.FiveHourUsedAt(nowUtc) ?? b.BlockPercent : b.BlockPercent, target, nowUtc);
         return UtilizationSeries.IdleWindow(row?.FiveHourResetAt(nowUtc), row?.FiveHourUsedAt(nowUtc) ?? 0, target, nowUtc);
     }
 
