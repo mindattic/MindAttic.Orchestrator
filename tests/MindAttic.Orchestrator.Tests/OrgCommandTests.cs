@@ -122,6 +122,31 @@ public sealed class OrgCommandTests
         return output.ToString();
     }
 
+    [Test, NonParallelizable] // AnsiConsole.Console and Ctx.StoreDirectory are process-wide
+    public void Orgs_repo_sets_lists_and_resets_which_org_a_repos_tickets_belong_to()
+    {
+        // M.ORCH-T753: every repo the default org's until set.
+        var dir = temps.New();
+        var previous = Ctx.StoreDirectory;
+        try
+        {
+            Ctx.StoreDirectory = dir;
+            var store = new JsonStore(dir);
+            Assert.That(Cli(out var exit, "orgs", "repo"), Does.Contain("Every repo is MindAttic's"));
+            Assert.That(exit, Is.Zero);
+            Cli(out exit, "orgs", "repo", "CRM", "sales");
+            Assert.That(exit, Is.EqualTo(1), "no such org yet");
+            store.Db.SaveOrg(new Organization("sales", "Sales", 1));
+            Assert.That(Cli(out exit, "orgs", "repo", "CRM", "sales"), Does.Contain("CRM's tickets are Sales's"));
+            Assert.That(store.LoadSettings().RepoOrgs, Is.EqualTo(new Dictionary<string, string> { ["CRM"] = "sales" }));
+            Assert.That(Cli(out _, "orgs", "repo"), Does.Contain("CRM").And.Contain("Sales (sales)"));
+            Assert.That(Cli(out _, "orgs", "repo", "crm"), Does.Contain("crm is Sales's"));
+            Cli(out exit, "orgs", "repo", "crm", "--default");
+            Assert.That((exit, store.LoadSettings().RepoOrgs.Count), Is.EqualTo((0, 0)), "back in the default org, named in any case");
+        }
+        finally { Ctx.StoreDirectory = previous; }
+    }
+
     [Test, NonParallelizable] // AnsiConsole.Console and OrgHelpCommand.PeopleOverride are process-wide
     public void Org_bare_or_help_lists_the_subcommands()
     {

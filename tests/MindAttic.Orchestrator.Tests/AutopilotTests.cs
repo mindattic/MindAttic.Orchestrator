@@ -810,6 +810,31 @@ public sealed class AutopilotTests
     private SchedulePlan Paced(Snapshot snap, int spare) =>
         Plan(snap) with { Pace = new Pace(PaceMode.Open, 6, 10_000, 0, 1_000, "5-hour", Now.AddHours(3), "On pace.") { SpareSessions = spare } };
 
+    private static OrgRouting SalesOwnsS(OrchestratorSettings settings) => new(
+        new OrgDirectory([new Organization("sales", "Sales", 1)],
+            [new OrgMember("sales", "Jordan", "jordan@example.com"), new OrgMember("sales", "Jo", "jo2@example.com")]),
+        settings.RepoOrgs, "ryan@example.com");
+
+    [Test]
+    public void Next_hands_an_orgs_tickets_only_to_its_own_members_logins()
+    {
+        // M.ORCH-T753: S is Sales's; every other repo, and Ryan's unplaced login, the default org's.
+        var snap = Snap(("A", [T("A-T1")]), ("S", [T("S-T1")]));
+        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT", RepoOrgs = new() { ["s"] = "sales" } };
+        var orgs = SalesOwnsS(settings);
+        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
+        var plan = Paced(snap, 5);
+        IReadOnlyList<string> Ids(string login, IReadOnlyList<string> repos, OrgRouting routing) =>
+            [.. Autopilot.Next(plan, settings, store, repos, null, claim: false, Now, Make, _ => "main", login: login, orgs: routing).Handed.Select(h => h.Item.Id)];
+
+        Assert.That(Ids("ryan@example.com", ["*"], orgs), Is.EqualTo(new[] { "A-T1" }), "the default org's login gets the default org's repo only");
+        Assert.That(Ids("JORDAN@example.com", ["*"], orgs), Is.EqualTo(new[] { "S-T1" }), "a Sales member's login gets Sales's repo only");
+        var (none, why) = Autopilot.Next(plan, settings, store, ["S"], null, claim: false, Now, Make, _ => "main", login: "ryan@example.com", orgs: orgs);
+        Assert.That(none, Is.Empty);
+        Assert.That(why, Does.Contain("1 belong to Sales").And.Contain("only to their members' logins"));
+        Assert.That(Ids("ryan@example.com", ["*"], OrgRouting.Single), Is.EqualTo(new[] { "A-T1", "S-T1" }), "one org: exactly as before");
+    }
+
     [Test]
     public void Next_judges_a_ticket_too_big_against_what_isnt_reserved_as_the_queue_does()
     {

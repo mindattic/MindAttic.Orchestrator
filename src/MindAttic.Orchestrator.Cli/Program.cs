@@ -176,6 +176,7 @@ internal static class CliApp
                 o.AddCommand<OrgsRemoveCommand>("remove").WithDescription("Remove an org; its logins go back to the default org.");
                 o.AddCommand<OrgsMemberCommand>("member").WithDescription("Put a login in an org as a person's (member <org> \"<person>\" <email|global> [[--provider Codex]]), moving it from any other org.");
                 o.AddCommand<OrgsUnmemberCommand>("unmember").WithDescription("Take a login out of its org, back to the default one (unmember <email|global> [[--provider Codex]]).");
+                o.AddCommand<OrgsRepoCommand>("repo").WithDescription("Which org a repo's tickets belong to, dispatched only to its members' logins (repo <repo> <org>, repo <repo> --default; no repo lists them); a repo not set is the default org's.");
             });
             config.AddCommand<LedgerCommand>("ledger").WithDescription("Every 5-hour window graded against 99%-never-over (ok, under, blind, over) and the record so far; --csv writes it out. Exits 1 if one went over in --days.");
             config.AddCommand<RemindCommand>("remind").WithDescription("Save a reminder the daemon texts through Psst when it's due (\"<text>\" --at \"tomorrow 9am\" [[--to <contact>]]); --list, --cancel <id>.");

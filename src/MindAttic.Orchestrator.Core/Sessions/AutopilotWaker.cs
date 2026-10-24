@@ -47,6 +47,9 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
     /// <summary>The session's <c>CLAUDE_CONFIG_DIR</c> when it runs on a login of its own (seam; <see cref="ContextCycler.OnOwnLogin"/>).</summary>
     internal Func<IReadOnlyDictionary<string, string>>? OwnLogins { get; init; }
 
+    /// <summary>The orgs and the repos' orgs (seam; <see cref="OrgRouting.Load"/>).</summary>
+    internal Func<OrgRouting>? Orgs { get; init; }
+
     /// <param name="Typed">The prompt went into the CLI's tab; false: it's said to you to do.</param>
     public sealed record Wake(int Pid, string Where, IReadOnlyList<string> Tickets, bool Typed, string Line);
 
@@ -70,6 +73,8 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
         var moving = Moving();
         var own = snapshot is null ? null : (OwnLogins?.Invoke() ?? cycler.OnOwnLogin());
         var plans = new Dictionary<string, SchedulePlan>(StringComparer.OrdinalIgnoreCase);
+        // Woken only for its own org's tickets (M.ORCH-T753), as its next --claim would hand them out.
+        var orgs = Orgs?.Invoke() ?? OrgRouting.Load(store, settings, snapshot?.GlobalEmail);
         // Each CLI's login, from its newest session, so only CLIs on the same login share its allowance (M.ORCH-T674).
         var sessionOf = newest.ToDictionary(n => n.Key, n => n.Value.SessionId);
         string? loginOf(int pid) => own is not null && sessionOf.TryGetValue(pid, out var s) && own.TryGetValue(s, out var d)
@@ -101,7 +106,7 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
                 cliPlan = forLogin;
             }
             var (handed, _) = Autopilot.Next(cliPlan, settings, store, repos, null, claim: false, nowUtc,
-                unthrottled: cycler.IsUnthrottled(pid), self: c.SessionId, cli: pid, pilots: pilots, onSince: since, loginOf: loginOf, login: email);
+                unthrottled: cycler.IsUnthrottled(pid), self: c.SessionId, cli: pid, pilots: pilots, onSince: since, loginOf: loginOf, login: email, orgs: orgs);
             if (handed.Count > 0) due.Add((pid, c, repos, [.. handed.Select(h => h.Item.Id)]));
         }
         if (due.Count == 0) return [];

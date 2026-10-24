@@ -184,6 +184,7 @@ internal sealed class DryRunCommand : Command
         if (clis.Count == 0) { AnsiConsole.MarkupLine("[grey]/allocate is off in every CLI; type /allocate (optionally -repo=A,B) in the CLI that should work the tickets.[/]"); return 0; }
         var since = cycler.AutopilotSince();
         var own = cycler.OnOwnLogin();
+        var orgs = MindAttic.Orchestrator.Sessions.OrgRouting.Load(store, store.LoadSettings(), snapshot.GlobalEmail);
         var dirs = new MindAttic.Orchestrator.Sessions.AccountDirs();
         foreach (var (pid, repos) in clis)
         {
@@ -193,7 +194,7 @@ internal sealed class DryRunCommand : Command
             var login = (self is not null && own.TryGetValue(self, out var dir) ? dirs.Of(dir)?.Email : null) ?? snapshot.GlobalEmail;
             var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, null, claim: false, DateTime.UtcNow,
                 self: self,
-                cli: pid, pilots: clis, onSince: since, login: login);
+                cli: pid, pilots: clis, onSince: since, login: login, orgs: orgs);
             foreach (var h in handed) AnsiConsole.MarkupLine($"  next: {Markup.Escape(h.Item.Id)} in {Markup.Escape(h.Item.Repo)}" +
                 (h.Model is { } m ? $" on {m.Model}" : "") + $": {Markup.Escape(h.Item.Ticket.Summary)}");
             if (why is not null) AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(why)}[/]");
@@ -271,14 +272,15 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
                 MindAttic.Orchestrator.Sessions.LoginPicker.Claim(account, DateTime.UtcNow);
             }
             var r = Ctx.Dispatcher(store).Dispatch(item, MindAttic.Orchestrator.Providers.Claude, useWorktree: true, submit: true,
-                login: new Dispatcher.TabLogin(to.ConfigDir));
+                login: new Dispatcher.TabLogin(to.ConfigDir, to.Email));
             return r.Ok ? null : r.Message;
         }
         var (all, why) = Autopilot.Next(plan, orchestratorSettings, store, repos, settings.Count, settings.Claim, DateTime.UtcNow,
             unthrottled: unthrottled, self: self,
             cli: cli, pilots: cycler.AutopilotClis(), onSince: cycler.AutopilotSince(), loginOf: cycler.LoginOfCli(),
             login: login,
-            logins: logins, redelegate: Redelegate, canFallBack: own is not null && snapshot.Billing?.Mode == MindAttic.Orchestrator.Billing.BillingModes.Api);
+            logins: logins, redelegate: Redelegate, canFallBack: own is not null && snapshot.Billing?.Mode == MindAttic.Orchestrator.Billing.BillingModes.Api,
+            orgs: MindAttic.Orchestrator.Sessions.OrgRouting.Load(store, orchestratorSettings, snapshot.GlobalEmail));
         foreach (var d in all.Where(h => h.DelegatedTo is not null))
             Console.WriteLine($"=== {d.Item.Id} ({d.Item.Repo}) {d.Delegated}. A tab opened on {d.DelegatedTo!.Label} works it: it isn't this CLI's to start.");
         var handed = all.Where(h => h.DelegatedTo is null).ToList();

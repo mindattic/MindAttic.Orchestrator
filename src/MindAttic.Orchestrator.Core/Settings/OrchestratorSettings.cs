@@ -291,6 +291,10 @@ public sealed record OrchestratorSettings
     /// <summary>Repos <c>/allocate</c> never starts agents in, even when named or their CLI is open.</summary>
     public List<string> AutopilotSkip { get; init; } = [];
 
+    /// <summary>The org each repo's tickets belong to (M.ORCH-T753), repo name (any case) → org id: they're dispatched only to that
+    /// org's members' logins and paced on them. A repo not named here is the default org's (<c>orchestrator orgs repo</c> sets it).</summary>
+    public Dictionary<string, string> RepoOrgs { get; init; } = [];
+
     /// <summary>Approvals as settings.json kept them before the ticket database's queue held them (M.ORCH-T384): read only by
     /// <see cref="Tickets.QueueImport"/>, which moves them into <c>ticket_queue</c> once and drops them here. Approval is
     /// read from and written to the database alone, where <c>tickets ticket approve</c> and the Tickets Desktop write it.</summary>

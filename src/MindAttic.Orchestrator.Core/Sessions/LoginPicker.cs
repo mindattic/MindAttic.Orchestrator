@@ -79,13 +79,20 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
     /// <paramref name="weeklyStopPercent"/> is where every account's CLIs stop in its week (M.ORCH-T609: 100 minus the weekly
     /// reserve setting, 95% by default); an account at or past it has no headroom, so it's never picked.
     /// </summary>
-    public LoginPick Pick(DateTime nowUtc, bool claim = false, int? weeklyStopPercent = null)
+    /// <param name="eligible">Which logins (by email) it may pick from (M.ORCH-T753: the ticket's org's members'); null: every one.</param>
+    public LoginPick Pick(DateTime nowUtc, bool claim = false, int? weeklyStopPercent = null, Func<string, bool>? eligible = null)
     {
         var stop = weeklyStopPercent ?? DefaultWeeklyStop;
         IReadOnlyList<AccountDir> signedIn;
         try { signedIn = Dirs.SignedIn(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return new(null, $"couldn't read the per-CLI logins ({ex.Message}): {Fallback()}"); }
         if (signedIn.Count == 0) return new(null, $"no per-CLI login is signed in: {Fallback()}");
+        // Another org's logins are never a fallback for this one's work (M.ORCH-T753).
+        if (eligible is not null)
+        {
+            signedIn = [.. signedIn.Where(a => eligible(a.Email))];
+            if (signedIn.Count == 0) return new(null, $"no per-CLI login of its org is signed in: {Fallback()}");
+        }
         var busy = Busy(nowUtc);
         // A login the user let past its weekly target (M.ORCH-T694) has its week up to the wall to give.
         IReadOnlyList<WeeklyAllowance> allowed;
@@ -163,11 +170,11 @@ public sealed class LoginPicker(AccountDirs? dirs = null, Func<IEnumerable<strin
     /// <paramref name="autoLogin"/> is on, prepared as a Claude home; null (no login of its own) when it's off, the provider isn't
     /// Claude, or nothing is free. <paramref name="note"/> says what was picked, for the caller to show.
     /// </summary>
-    public AccountDir? ForNewTab(string provider, bool autoLogin, DateTime nowUtc, out string? note, int? weeklyStopPercent = null)
+    public AccountDir? ForNewTab(string provider, bool autoLogin, DateTime nowUtc, out string? note, int? weeklyStopPercent = null, Func<string, bool>? eligible = null)
     {
         note = null;
         if (!autoLogin || provider != "Claude") return null;
-        var pick = Pick(nowUtc, claim: true, weeklyStopPercent);
+        var pick = Pick(nowUtc, claim: true, weeklyStopPercent, eligible);
         note = pick.Reason;
         if (pick.Account is not { } account) return null;
         try { Dirs.Prepare(account); }

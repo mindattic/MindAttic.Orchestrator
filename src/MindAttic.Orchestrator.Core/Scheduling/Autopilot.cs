@@ -424,16 +424,18 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         int? cli = null, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots = null, Func<int, bool>? cliRunning = null,
         IReadOnlyDictionary<int, DateTime>? onSince = null, Func<int, string?>? loginOf = null,
         IReadOnlyList<LoginRoom>? logins = null, Func<QueueItem, LoginRoom, string?>? redelegate = null, string? login = null,
-        bool canFallBack = false)
+        bool canFallBack = false, OrgRouting? orgs = null)
     {
+        // Org dispatch (M.ORCH-T753): an org's tickets go only to its own members' logins; with one org, nothing changes.
+        orgs ??= OrgRouting.Load(store, settings);
         var (handed, why) = NextHere(plan, settings, store, repos, count, claim, nowUtc, makeWorktree, mainlineOf, unthrottled, self,
-            pilotRunning, stillOpen, cli, pilots, cliRunning, onSince, loginOf, login);
+            pilotRunning, stillOpen, cli, pilots, cliRunning, onSince, loginOf, login, orgs);
         // Weekly-aware pacing (M.ORCH-T666): what this CLI's login can't fit goes to a login that can, else the fallback login, so
         // no ticket waits on a full account. Only for a claim (a dry run hands nothing out), and never for a /pacing off CLI,
         // whose own room isn't held to.
         if (!claim || unthrottled || redelegate is null || !settings.WeeklyAwarePacing) return (handed, why);
         var delegated = Redelegate(plan, settings, store, repos, handed, nowUtc, logins ?? [], redelegate, login, canFallBack, self,
-            pilotRunning ?? (a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc)), stillOpen ?? StillOpen, cli);
+            pilotRunning ?? (a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc)), stillOpen ?? StillOpen, cli, orgs);
         return delegated.Count == 0 ? (handed, why) : ([.. handed, .. delegated], why);
     }
 
@@ -447,7 +449,8 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// </summary>
     private static List<Handout> Redelegate(SchedulePlan plan, OrchestratorSettings settings, JsonStore store, IReadOnlyList<string> repos,
         IReadOnlyList<Handout> handed, DateTime nowUtc, IReadOnlyList<LoginRoom> logins, Func<QueueItem, LoginRoom, string?> redelegate,
-        string? login, bool canFallBack, string? self, Func<Assignment, bool> pilotRunning, Func<string, string, bool> stillOpen, int? cli)
+        string? login, bool canFallBack, string? self, Func<Assignment, bool> pilotRunning, Func<string, string, bool> stillOpen, int? cli,
+        OrgRouting orgs)
     {
         var delegated = new List<Handout>();
         if (!settings.Autopilot || QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is not null) return delegated;
@@ -462,13 +465,16 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         var candidates = plan.Queue.Where(q => Named(repos, q.Repo) && !mine.Contains(q.Id) &&
             !settings.AutopilotSkip.Contains(q.Repo, StringComparer.OrdinalIgnoreCase) && q.RepoPath.Length > 0 &&
             !q.IsAssigned && !elsewhere.Contains(q.Id) && !(q.Assignment is { } a && pilotRunning(a)) &&
-            q.BlockedBy.Count == 0 && q.MayWork && TicketPins.Redelegable(q) && !plan.OverRepoCap.Contains(q.Repo) && !FitsHere(q)).ToList();
+            q.BlockedBy.Count == 0 && q.MayWork && TicketPins.Redelegable(q) && !plan.OverRepoCap.Contains(q.Repo) && !FitsHere(q) &&
+            orgs.MayTake(q, login)).ToList();
         var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         // One to the fallback login at a time: the next waits out its hold rather than piling tabs on it.
         var fallback = !canFallBack || Redelegation.FallbackHeld(store, nowUtc) ? null : LoginRoom.Fallback;
         foreach (var item in candidates)
         {
-            if (Redelegation.Choose(item, logins, fallback, taken) is not { } to) continue;
+            // Only to a login of the ticket's own org (M.ORCH-T753): never another org's member; the API key stays the one fallback.
+            var ofOrg = orgs.Active ? logins.Where(l => l.IsFallback || orgs.OrgOfLogin(l.Email) == orgs.OrgOf(item)) : logins;
+            if (Redelegation.Choose(item, ofOrg, fallback, taken) is not { } to) continue;
             if (!stillOpen(item.RepoPath, item.Id)) continue;
             var text = Redelegation.Text(item, login, pace, to);
             if (redelegate(item, to) is not null) { taken.Add(to.Email ?? Redelegation.FallbackKey); continue; }
@@ -499,7 +505,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         Func<string, string, string, (bool Ok, string Path, string Error)>? makeWorktree, Func<string, string>? mainlineOf, bool unthrottled,
         string? self, Func<Assignment, bool>? pilotRunning, Func<string, string, bool>? stillOpen,
         int? cli, IReadOnlyDictionary<int, IReadOnlyList<string>>? pilots, Func<int, bool>? cliRunning,
-        IReadOnlyDictionary<int, DateTime>? onSince, Func<int, string?>? loginOf, string? login)
+        IReadOnlyDictionary<int, DateTime>? onSince, Func<int, string?>? loginOf, string? login, OrgRouting orgs)
     {
         cliRunning ??= ContextCycler.IsClaude;
         stillOpen ??= StillOpen;
@@ -537,7 +543,8 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         var orphans = OrphanWatch.Load(store).ToDictionary(r => r.TicketId, StringComparer.OrdinalIgnoreCase);
         bool GivenUp(QueueItem q) => orphans.TryGetValue(q.Id, out var r) && r.State == OrphanRecord.NeedsYou;
         // A pinned ticket (M.ORCH-T668) is only its user's: on another login it waits for them, never handed on from here.
-        bool Workable(QueueItem q) => Free(q) && TicketPins.MayTake(q, login) && !GivenUp(q);
+        // Another org's ticket (M.ORCH-T753) is only its members' logins': it waits for them, never handed to this login.
+        bool Workable(QueueItem q) => Free(q) && TicketPins.MayTake(q, login) && orgs.MayTake(q, login) && !GivenUp(q);
         var open = plan.Queue.Where(q => Named(q.Repo) && Workable(q)).ToList();
         if (open.Count == 0)
         {
@@ -550,6 +557,11 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             var blocked = free.Count(q => q.BlockedBy.Count > 0);
             var tooBig = free.Count(q => q.BlockedBy.Count == 0 && TooBigNow(q));
             var pinned = free.Where(q => q.BlockedBy.Count == 0 && !TooBigNow(q) && !TicketPins.MayTake(q, login)).ToList();
+            var otherOrgs = free.Where(q => q.BlockedBy.Count == 0 && !TooBigNow(q) && TicketPins.MayTake(q, login) && !orgs.MayTake(q, login)).ToList();
+            if (otherOrgs.Count > 0 && pinned.Count == 0 && busy == 0 && blocked == 0 && tooBig == 0)
+                return ([], $"nothing else is ready for this login's org ({orgs.NameOf(orgs.OrgOfLogin(login))}): {otherOrgs.Count} belong to " +
+                    string.Join(", ", otherOrgs.Select(q => orgs.NameOf(orgs.OrgOf(q))).Distinct(StringComparer.OrdinalIgnoreCase)) +
+                    " and go only to their members' logins (orchestrator orgs repo sets a repo's org)");
             if (pinned.Count > 0 && busy == 0 && blocked == 0 && tooBig == 0)
                 return ([], $"nothing else is ready: {pinned.Count} assigned to other users wait for them on their own logins (" +
                     string.Join(", ", pinned.Select(q => q.Assignee).Distinct(StringComparer.OrdinalIgnoreCase)) + ")");

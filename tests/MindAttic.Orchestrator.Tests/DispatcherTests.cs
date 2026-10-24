@@ -412,6 +412,30 @@ public sealed class DispatcherTests
         Assert.That(codex.Message, Does.Not.Contain("API billing is off"), "Codex has no Claude login to wait for");
     }
 
+    [Test]
+    public void An_orgs_ticket_starts_only_on_its_own_members_logins()
+    {
+        // M.ORCH-T753: repo A is Sales's; Amy's login is the default org's.
+        var orgs = new OrgRouting(new OrgDirectory([new Organization("sales", "Sales", 1)], [new OrgMember("sales", "Jordan", "jordan@example.com")]),
+            new Dictionary<string, string> { ["A"] = "sales" });
+        var opened = 0;
+        Dispatcher Org(OrgRouting routing) => new(new SessionControl(new OrchestratorOptions { LauncherExe = Path.Combine(dir, "no-launcher.exe") }), store)
+        {
+            OpenTab = (_, _, _, _, _) => { opened++; return (null, Task.FromResult(true)); },
+            Orgs = () => routing,
+        };
+
+        var refused = Org(orgs).Dispatch(Item("A-T1"), "Claude", useWorktree: false, login: new Dispatcher.TabLogin(@"D:\acc\amy", "amy@example.com"));
+        Assert.That(refused.Ok, Is.False);
+        Assert.That(refused.Message, Does.Contain("Sales's").And.Contain("amy@example.com"));
+        Assert.That((opened, store.LoadAssignments().Count), Is.EqualTo((0, 0)), "nothing opened or claimed");
+
+        Assert.That(Org(orgs).Dispatch(Item("A-T1"), "Claude", useWorktree: false, login: new Dispatcher.TabLogin(@"D:\acc\jordan", "jordan@example.com")).Ok, Is.True);
+        store.UpdateAssignments(all => all.Clear());
+        Assert.That(Org(OrgRouting.Single).Dispatch(Item("A-T1"), "Claude", useWorktree: false, login: new Dispatcher.TabLogin(@"D:\acc\amy", "amy@example.com")).Ok,
+            Is.True, "one org: any login, as before");
+    }
+
     private Dispatcher Make(Func<string, string, string, string, bool, (string?, Task<bool>?)>? open = null) =>
         new(new SessionControl(new OrchestratorOptions { LauncherExe = Path.Combine(dir, "no-launcher.exe") }), store)
         {
