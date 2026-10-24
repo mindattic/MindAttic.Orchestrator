@@ -61,11 +61,12 @@ public sealed class SettingsModalTests
     [Test]
     public void A_single_cog_between_the_key_and_the_theme_toggle_is_the_only_way_into_settings()
     {
-        // M.ORCH-T804: the top-right strip reads key, cog, sun/moon. Each docks Right, so the XAML lists them right to left.
+        // M.ORCH-T804: the top-right strip reads key, pause/resume, cog, sun/moon (pause/resume added by M.ORCH-T808).
+        // Each docks Right, so the XAML lists them right to left.
         var doc = Window();
         var top = Named(doc, "TopRow");
         var right = top.Elements().Where(e => (string?)e.Attribute("DockPanel.Dock") == "Right").Select(e => (string?)e.Attribute(X + "Name")).ToList();
-        Assert.That(right, Is.EqualTo(new[] { "ThemeToggle", "SettingsButton", "EmergencyBillingButton" }));
+        Assert.That(right, Is.EqualTo(new[] { "ThemeToggle", "SettingsButton", "PauseButton", "EmergencyBillingButton" }));
 
         var cog = Named(doc, "SettingsButton");
         Assert.That((string?)cog.Attribute("Style"), Is.EqualTo("{StaticResource MaToolButton}"));
