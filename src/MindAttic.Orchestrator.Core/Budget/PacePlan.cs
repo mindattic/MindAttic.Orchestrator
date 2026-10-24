@@ -78,9 +78,13 @@ public static class PacePlan
         if (i < 0 && planned is null) return false;
         var was = i < 0 ? null : rows[i];
         if (was is { Closed: true }) return false;
-        var plan = Math.Round(planned ?? was!.PlannedPercent, 1);
-        var at = Math.Round(Math.Max(actual, was?.ActualPercent ?? 0), 1);
-        var reached = was?.ReachedUtc ?? (at >= plan - Reach ? nowUtc : null);
+        // "Reached" is decided on the full-precision figures, not the tenth they're rounded to for the row below: rounding
+        // first could call a window reached (or not) up to 0.05 points early or late (M.ORCH-T801).
+        var planFull = planned ?? was!.PlannedPercent;
+        var atFull = Math.Max(actual, was?.ActualPercent ?? 0);
+        var reached = was?.ReachedUtc ?? (atFull >= planFull - Reach ? nowUtc : null);
+        var plan = Math.Round(planFull, 1);
+        var at = Math.Round(atFull, 1);
         var row = new PlannedWindow(login, kind, was?.EndUtc ?? end, plan, at, reached);
         if (row == was) return false;
         if (i < 0) rows.Add(row); else rows[i] = row;

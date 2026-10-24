@@ -213,6 +213,10 @@ public static class BudgetCalculator
         {
             currentFresh = floor;
             current = current with { Usage = new TokenUsage(currentFresh, 0, 0, 0) };
+            // Claude's own percent again, not re-derived from the floor above: the same round-trip through a whole-token
+            // count that M.ORCH-T794 fixed for the Reported source would silently drift this shown percent under what
+            // Claude actually reported too (M.ORCH-T801).
+            reportedBlockPercent = Math.Min(100, reported5h.Percent);
         }
         var blockPercent = reportedBlockPercent ?? (limit > 0 ? 100.0 * currentFresh / limit : 0);
 
