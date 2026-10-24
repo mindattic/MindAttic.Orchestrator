@@ -168,14 +168,29 @@ public sealed class DashboardAlignmentTests
         var clock = controls.Elements(P + "TextBlock").Single(t => Binding(t, "Text") == "{Binding Clock.Text}");
         Assert.That((string?)clock.Attribute("AutomationProperties.Name"), Is.EqualTo("Current time"));
         Assert.That(controls.Elements(P + "TextBlock").Any(t => Binding(t, "Text") == "{Binding RefreshInfo}"), Is.True);
-        var refresh = controls.Elements(P + "Button").Single(b => (string?)b.Attribute("Content") == "Refresh");
-        Assert.That(Binding(refresh, "Command"), Is.EqualTo("{Binding RefreshCommand}"));
-        Assert.That((string?)refresh.Attribute("ToolTip"), Is.EqualTo("F5"));
+        // Refresh and Open Launcher are icon-only MaToolButtons (M.ORCH-T805): no text label, their word in the accessible
+        // name and the (library-themed) tooltip.
+        var refresh = controls.Elements(P + "Button").Single(b => Binding(b, "Command") == "{Binding RefreshCommand}");
+        Assert.That((string?)refresh.Attribute("Style"), Is.EqualTo("{StaticResource MaToolButton}"));
+        Assert.That((string?)refresh.Attribute("Content"), Is.EqualTo(""), "the icon font's Refresh glyph, no text label");
+        Assert.That((string?)refresh.Attribute("AutomationProperties.Name"), Is.EqualTo("Refresh"));
+        Assert.That((string?)refresh.Attribute("ToolTip"), Is.EqualTo("Refresh (F5)"));
+        var launcher = Named("OpenLauncherButton");
+        Assert.That(launcher.Parent, Is.EqualTo(controls));
+        Assert.That(Binding(launcher, "Command"), Is.EqualTo("{Binding OpenLauncherCommand}"));
+        Assert.That((string?)launcher.Attribute("Style"), Is.EqualTo("{StaticResource MaToolButton}"));
+        Assert.That((string?)launcher.Attribute("Content"), Is.Null, "a rocket icon, no text label");
+        Assert.That(launcher.Descendants(P + "Path").Count(), Is.EqualTo(1), "the rocket");
+        Assert.That(launcher.Descendants(P + "TextBlock").Single().Ancestors(P + "Button.ToolTip").Any(), Is.True, "its only text is its tooltip");
+        Assert.That((string?)launcher.Attribute("AutomationProperties.Name"), Does.Contain("Open the Launcher as"));
         var settings = controls.Elements(P + "Button").Single(b => (string?)b.Attribute("Content") == "Settings");
         Assert.That(Binding(settings, "Command"), Is.EqualTo("{Binding ToggleSettingsCommand}"));
         Assert.That(doc.Descendants(P + "KeyBinding").Any(k => (string?)k.Attribute("Key") == "F5" && Binding(k, "Command") == "{Binding RefreshCommand}"), Is.True, "F5 still refreshes");
 
         Assert.That(doc.Descendants().Count(e => Binding(e, "Text") is "{Binding Clock.Text}" or "{Binding RefreshInfo}"
-                                                 || (string?)e.Attribute("Content") is "Refresh" or "Settings"), Is.EqualTo(4), "one of each");
+                                                 || (string?)e.Attribute("Content") is "Settings"), Is.EqualTo(3), "one of each");
+        // The stat tile's own Refresh (its last reading) aside, one icon Refresh and one Open Launcher.
+        Assert.That(doc.Descendants(P + "Button").Count(b => Binding(b, "Command") == "{Binding RefreshCommand}" && (string?)b.Attribute("Style") == "{StaticResource MaToolButton}"), Is.EqualTo(1));
+        Assert.That(doc.Descendants(P + "Button").Count(b => Binding(b, "Command") == "{Binding OpenLauncherCommand}"), Is.EqualTo(1));
     }
 }

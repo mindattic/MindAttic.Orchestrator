@@ -235,6 +235,42 @@ public sealed class LibraryOnlyXamlTests
     }
 
     [Test]
+    public void Every_tooltip_is_the_librarys_never_windows_default()
+    {
+        // M.ORCH-T805: no native/Windows-default tooltip anywhere on the dashboard. Every ToolTip, whether a string, a bound
+        // value, a property element or one set in code, is drawn by the library theme's implicit ToolTip style (the chrome
+        // look, light or dark) and kept up by MaToolTips.KeepOpen. The theme is merged into the Application's resources, not
+        // a window's, so a tooltip's popup (outside the window's tree) and the context menus' still find it.
+        var (_, themeImplicit) = Theme();
+        Assert.That(themeImplicit, Does.Contain("ToolTip"), "the library theme styles every ToolTip itself");
+
+        var files = Load().ToList();
+        var app = files.Single(f => f.Item1 == "App.xaml").Item2;
+        Assert.That(app.Descendants().Where(e => e.Name.LocalName == "ResourceDictionary" && ((string?)e.Attribute("Source") ?? "").EndsWith("MindAttic.Components.Wpf;component/Theme.xaml"))
+            .Any(d => d.Ancestors().Any(a => a.Name.LocalName == "Application.Resources")), Is.True, "the theme is the Application's");
+
+        foreach (var (file, root) in files)
+        {
+            var mine = root.Descendants().Where(e =>
+                e.Name.LocalName is "ToolTip.Style" or "ToolTip.Template"
+                || (e.Name.LocalName == "ToolTip" && e.Attributes().Any(a => a.Name.LocalName is "Style" or "Template" or "Background" or "Foreground" or "BorderBrush" or "HasDropShadow"))
+                || (e.Name.LocalName == "Style" && ((string?)e.Attribute("TargetType") ?? "").Replace("{x:Type ", "").TrimEnd('}') == "ToolTip")
+                || e.Attributes().Any(a => a.Name.LocalName is "ToolTipService.ShowDuration" or "ToolTipService.HasDropShadow"));
+            Assert.That(mine.Select(e => ((System.Xml.IXmlLineInfo)e).LineNumber), Is.Empty, $"{file}: a tooltip look of its own instead of the library's");
+        }
+
+        var sources = Directory.EnumerateFiles(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf"), "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Split(Path.DirectorySeparatorChar).Any(d => d is "bin" or "obj"));
+        foreach (var file in sources)
+        {
+            var text = File.ReadAllText(file);
+            Assert.That(System.Text.RegularExpressions.Regex.IsMatch(text, @"new (System\.Windows\.Controls\.)?ToolTip\b|typeof\(ToolTip\)|ShowDurationProperty"), Is.False,
+                $"{Path.GetFileName(file)}: a tooltip built or restyled in code; set ToolTip to the text and let the library theme draw it");
+        }
+        Assert.That(File.ReadAllText(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "App.xaml.cs")), Does.Contain("MaToolTips.KeepOpen()"));
+    }
+
+    [Test]
     public void The_exceptions_stay_few()
     {
         Assert.That(Exceptions.Keys, Is.EquivalentTo(new[] { "Window", "TextBlock", "Path" }));
