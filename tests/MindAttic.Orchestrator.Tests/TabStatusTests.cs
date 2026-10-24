@@ -90,6 +90,25 @@ public sealed class TabStatusTests
     }
 
     [Test]
+    public void The_miscellaneous_tab_is_no_logins_shows_under_every_org_and_the_api_key_tab_shows_a_key()
+    {
+        // M.ORCH-T763: after the API key tab, for what fits on no person's page; the API key tab's icon is a key.
+        Assert.That(LoginTab.Misc.IsMisc, Is.True);
+        Assert.That(LoginTab.Misc.IsGlobal, Is.False);
+        Assert.That(LoginTab.Misc.Key, Is.EqualTo(LoginTab.MiscKey).And.Not.EqualTo(LoginTab.ApiKeyKey).And.Not.Contains("@"));
+        Assert.That(OrgDirectory.Single.InOrg("any-org", LoginTab.Misc), Is.True);
+        Assert.That(OrgDirectory.Single.InOrg("any-org", LoginTab.ApiKey), Is.False);
+
+        var root = TestContext.CurrentContext.TestDirectory;
+        while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
+        Assert.That(xaml, Does.Contain("x:Name=\"TabKeyIcon\" Text=\"&#xE192;\"").And.Contain("{Binding IsApiKeyTab, Converter")
+            .And.Contain("x:Name=\"TabMiscIcon\"").And.Contain("x:Name=\"MiscBody\""));
+        var tabs = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "ViewModels", "MainViewModel.Tabs.cs"));
+        Assert.That(tabs, Does.Contain("LoginTab.ApiKeyTab(all.Billing?.Mode == BillingModes.Api), LoginTab.Misc]"), "the API key tab, then Miscellaneous, last");
+    }
+
+    [Test]
     public void A_person_past_its_own_5_hour_cutoff_says_so()
     {
         Assert.That(MainViewModel.StatusOf(true, false, null, 50, 90, 98, 98), Is.EqualTo((TabLight.Other, "At its 5-hour cutoff (98%)")));

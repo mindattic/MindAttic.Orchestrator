@@ -39,7 +39,8 @@ public sealed partial class MainViewModel
 
     /// <summary>Its title, its status icon's word (M.ORCH-T757) and its light's word (M.ORCH-T630: colour is never the only cue), its week left, its email and which
     /// login it is, and how many of its CLIs wait on you.</summary>
-    public string TabTip => $"{tab.Title}: {TabActivityWord}, {TabStatusWord}" + (tab.IsApiKey ? $", {TabTrailing}" : $", week {TabTrailing}") + $". {tab.ToolTip}." +
+    public string TabTip => tab.IsMisc ? $"{tab.Title}: {tab.ToolTip}." :
+        $"{tab.Title}: {TabActivityWord}, {TabStatusWord}" + (tab.IsApiKey ? $", {TabTrailing}" : $", week {TabTrailing}") + $". {tab.ToolTip}." +
         (WaitingCount == 0 ? "" : $" {WaitingCount} need{(WaitingCount == 1 ? "s" : "")} you.");
 
     /// <summary>The login's terminal tab color (M.ORCH-T616), the tab's accent; the theme's muted brush when it has none.</summary>
@@ -82,8 +83,6 @@ public sealed partial class MainViewModel
         selectedTab = next;
         foreach (var t in loginTabs) t.Raise(nameof(SelectedTab));
         SelectedTabChanged?.Invoke(this, EventArgs.Empty);
-        // The Accounts view reads its cards only while open: one opened in the newly shown tab gets them now.
-        if (next.IsAccountsView) _ = next.RefreshLoginCardsAsync();
     }
 
     private void Step(int by)
@@ -108,8 +107,9 @@ public sealed partial class MainViewModel
         ApplyOrgs(nextOrgs);
         var before = loginTabs.Count;
         var previous = loginTabs.ToList();
-        // The 'API key' tab after every person's (M.ORCH-T630).
-        loginTabs.SyncBy([.. tabs.Where(t => !t.IsApiKey), LoginTab.ApiKeyTab(all.Billing?.Mode == BillingModes.Api)], t => t.Key, v => v.tab.Key,
+        // The 'API key' tab after every person's (M.ORCH-T630), and 'Miscellaneous' at the very end (M.ORCH-T763).
+        loginTabs.SyncBy([.. tabs.Where(t => !t.IsApiKey && !t.IsMisc), LoginTab.ApiKeyTab(all.Billing?.Mode == BillingModes.Api), LoginTab.Misc],
+            t => t.Key, v => v.tab.Key,
             t => t.IsGlobal ? this : new MainViewModel(this, t),
             (v, t) => v.Retitle(t));
         // The global login's tab is always here, whatever the list said; it sits by its name among the others (M.ORCH-T752).
@@ -127,8 +127,9 @@ public sealed partial class MainViewModel
         {
             var org = t.OrgId;
             if (!byOrg.TryGetValue(org, out var orgAll)) byOrg[org] = orgAll = OrgScope.For(all, orgs, org, options.WorkingWindow, options.WaitingWindow);
-            // The 'API key' tab is no login's: scoped to a key no session runs on, it has no repos' sessions or toasts of its own.
-            t.Apply(orgAll, LoginScope.For(orgAll, t.IsApiKeyTab ? LoginTab.ApiKeyKey : t.ScopeEmail, options.WorkingWindow, options.WaitingWindow));
+            // The 'API key' and 'Miscellaneous' tabs are no login's: scoped to a key no session runs on, they have no repos'
+            // sessions or toasts of their own.
+            t.Apply(orgAll, LoginScope.For(orgAll, t.IsApiKeyTab || t.IsMiscTab ? t.tab.Key : t.ScopeEmail, options.WorkingWindow, options.WaitingWindow));
             // Its blinks from the token count this refresh read (M.ORCH-T757): no read of its own.
             t.CountTabTokens(now);
             t.RaiseTabStatus();
@@ -165,7 +166,7 @@ public sealed partial class MainViewModel
         tab = next;
         Raise(nameof(Tab)); Raise(nameof(TabTitle)); Raise(nameof(TabTip)); Raise(nameof(TabBrush));
         Raise(nameof(IsTabSignedIn)); Raise(nameof(SignInPrompt));
-        Raise(nameof(IsApiKeyTab)); Raise(nameof(IsPersonTab)); Raise(nameof(ShowsSignIn)); RaiseTabStatus();
+        Raise(nameof(IsApiKeyTab)); Raise(nameof(IsMiscTab)); Raise(nameof(IsPersonTab)); Raise(nameof(ShowsSignIn)); RaiseTabStatus();
         CommandManager.InvalidateRequerySuggested();
     }
 
@@ -173,10 +174,11 @@ public sealed partial class MainViewModel
 
     /// <summary>Whether this tab's login is signed in (M.ORCH-T615). A roster account that isn't yet has a tab showing only its
     /// Sign in; once signed in, the next refresh gives it the whole dashboard and Open Launcher.</summary>
-    public bool IsTabSignedIn => tab.SignedIn && !tab.IsApiKey;
+    public bool IsTabSignedIn => tab.SignedIn && !tab.IsApiKey && !tab.IsMisc;
 
-    /// <summary>A person's tab (signed in or not), not the 'API key' tab (M.ORCH-T630), which shows only its billing panel.</summary>
-    public bool IsPersonTab => !tab.IsApiKey;
+    /// <summary>A person's tab (signed in or not), not the 'API key' tab (M.ORCH-T630), which shows only its billing panel, nor the
+    /// 'Miscellaneous' one (M.ORCH-T763).</summary>
+    public bool IsPersonTab => !tab.IsApiKey && !tab.IsMisc;
 
     /// <summary>The panel with only its Sign in: on a person's tab not signed in yet.</summary>
     public bool ShowsSignIn => !tab.SignedIn;
@@ -189,7 +191,7 @@ public sealed partial class MainViewModel
     /// so every repo CLI started from it runs on that login and shows in this tab; on the global login's tab, the Launcher
     /// unscoped. One login may own many CLIs. It opens in the login's own Windows Terminal window; a login whose Launcher is
     /// already running gets that one brought up rather than a second (M.ORCH-T699).</summary>
-    public ICommand OpenLauncherCommand => openLauncherCommand ??= new RelayCommand(async () => await OpenLauncherAsync(),() => tab.SignedIn && !tab.IsApiKey);
+    public ICommand OpenLauncherCommand => openLauncherCommand ??= new RelayCommand(async () => await OpenLauncherAsync(),() => IsTabSignedIn);
 
     /// <summary>Sign in, on a tab whose login isn't signed in yet: its own sign-in in a private browser window, then the tab
     /// becomes its dashboard.</summary>

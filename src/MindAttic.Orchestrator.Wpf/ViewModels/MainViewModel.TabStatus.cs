@@ -38,6 +38,9 @@ public sealed partial class MainViewModel
     /// <summary>Whether this is the 'API key' tab rather than a person's.</summary>
     public bool IsApiKeyTab => tab.IsApiKey;
 
+    /// <summary>Whether this is the 'Miscellaneous' tab (M.ORCH-T763): what fits on no person's page.</summary>
+    public bool IsMiscTab => tab.IsMisc;
+
     /// <summary>The tab's light: green, red, purple or (the 'API key' tab) orange.</summary>
     public TabLight TabLight => TabStatus.Light;
 
@@ -68,7 +71,7 @@ public sealed partial class MainViewModel
 
     /// <summary>The tab's far-right figure: a person's weekly % left, as the weekly card shows it ("23% left", "—" never read); on the
     /// 'API key' tab, the tokens the CLIs billing it spent today.</summary>
-    public string TabTrailing => tab.IsApiKey ? $"{Formatting.Tokens(ApiKeyUsageToday.Fresh)} today" : TabWeekLeftOf(WeekUsed);
+    public string TabTrailing => tab.IsMisc ? "" : tab.IsApiKey ?$"{Formatting.Tokens(ApiKeyUsageToday.Fresh)} today" : TabWeekLeftOf(WeekUsed);
 
     /// <summary>"23% left": 100 minus the week used, never below 0, the same figure as the weekly card (the M.ORCH-T609 reserve
     /// shows only in its "stops at 95%"); "—" when the week was never read.</summary>
@@ -119,8 +122,26 @@ public sealed partial class MainViewModel
     /// <summary>Where this login's 5-hour window is cut off: its own 5-hour cutoff.</summary>
     private int FiveHourCutoff => UsageCutoffs.FiveHourFor(Root.cutoffs, CutoffEmail);
 
+    // ── The person page's stats (M.ORCH-T763) ───────────────────────────────
+
+    /// <summary>The Cutoffs tile: "98% · 90%", the 5-hour then the weekly cutoff.</summary>
+    public string CutoffsHeadline => $"{FiveHourCutoff}% · {WeeklyCutoff}%";
+
+    /// <summary>Under it: which is which, and whether the login is allowed past its weekly one or keeps the defaults.</summary>
+    public string CutoffsCaption => "5-hour · weekly cutoff" +
+        (WeeklyAllowances.For(Root.allowances, CutoffEmail, DateTime.UtcNow) is not null ? " · allowed past the weekly one"
+            : UsageCutoffs.Custom(Root.cutoffs, CutoffEmail) is null ? " · the defaults" : " · its own");
+
+    /// <summary>The Last updated tile: how long ago Claude's meter for this login was read ("3m ago"), "—" never.</summary>
+    public string LastUpdatedHeadline => LastUpdatedOf(OwnRow, DateTime.UtcNow);
+
+    internal static string LastUpdatedOf(AccountRow? row, DateTime nowUtc) => row?.ReadUtc is { } r ? Formatting.Ago(r, nowUtc) : "—";
+
+    /// <summary>Under it: its plan, and plainly when the reading is stale (M.ORCH-T684).</summary>
+    public string LastUpdatedCaption => WeeklyAccountLine is { Length: > 0 } line ? line : "Claude's meter not read yet";
+
     /// <summary>The tab's icon: pause idle, a blinking green play arrow busy, gray disabled.</summary>
-    public TabActivity TabActivity => tab.IsApiKey
+    public TabActivity TabActivity => tab.IsMisc ? TabActivity.Idle : tab.IsApiKey
         ? ActivityOf(usable: IsOnApiKey, pastCutoff: false, working: false, Blinker.Grew || Blinker.Pending > 0)
         : ActivityOf(tab.SignedIn, PastCutoffOf(WeekUsed, WeeklyCutoff, FiveHourUsed, FiveHourCutoff), WorkingCount > 0,
             Blinker.Grew || Blinker.Pending > 0);
@@ -134,12 +155,14 @@ public sealed partial class MainViewModel
     internal static bool PastCutoffOf(double? weekUsed, int weeklyCutoff, double? fiveHourUsed, int fiveHourCutoff) =>
         weekUsed >= weeklyCutoff || fiveHourUsed >= fiveHourCutoff;
 
-    public bool IsTabIdle => TabActivity == TabActivity.Idle;
-    public bool IsTabBusy => TabActivity == TabActivity.Busy;
-    public bool IsTabDisabled => TabActivity == TabActivity.Disabled;
+    // A person's tab shows its activity icon; the 'API key' tab shows a key (the owner's ask, M.ORCH-T763) and 'Miscellaneous' a
+    // "more" glyph instead, each with its word in the tooltip and accessible name.
+    public bool IsTabIdle => IsPersonTab && TabActivity == TabActivity.Idle;
+    public bool IsTabBusy => IsPersonTab && TabActivity == TabActivity.Busy;
+    public bool IsTabDisabled => IsPersonTab && TabActivity == TabActivity.Disabled;
 
     /// <summary>The icon in words, so it's never only a picture: "Busy", "Idle", or why it's disabled.</summary>
-    public string TabActivityWord => TabActivity switch
+    public string TabActivityWord => tab.IsMisc ? "Miscellaneous" : TabActivity switch
     {
         TabActivity.Busy => "Busy",
         TabActivity.Idle => "Idle",

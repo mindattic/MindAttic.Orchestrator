@@ -82,6 +82,10 @@ public sealed class AgentRowViewModel(string sessionId) : ObservableObject
     /// <summary>The tickets its CLI claimed for its subagents (M.ORCH-T532): "Claimed: M.ORCH-T1, M.ORCH-T2"; empty when none.</summary>
     public string Claims => row.Claims.Count == 0 ? "" : "Claimed: " + string.Join(", ", row.Claims);
 
+    /// <summary>Whether it's on <paramref name="ticketId"/>: the ticket it was started on, or one it claimed (M.ORCH-T763's --show).</summary>
+    public bool Holds(string ticketId) => string.Equals(TicketId, ticketId, StringComparison.OrdinalIgnoreCase) ||
+        row.Claims.Any(c => string.Equals(c, ticketId, StringComparison.OrdinalIgnoreCase));
+
     /// <summary>Why it's held (the pace's note); empty otherwise.</summary>
     public string HoldNote => row.State == AgentState.HeldByPace ? row.StateDetail : "";
 

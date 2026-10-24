@@ -93,7 +93,7 @@ public sealed partial class MainViewModel
     {
         foreach (var o in orgItems)
         {
-            var tabs = loginTabs.Where(t => !t.IsApiKeyTab && orgs.InOrg(o.Id, t.tab)).ToList();
+            var tabs = loginTabs.Where(t => t.IsPersonTab && orgs.InOrg(o.Id, t.tab)).ToList();
             o.Update(orgs.Find(o.Id) ?? Organization.Default, OrgScope.Summary(orgs, o.Id, tabs.Count), tabs.Sum(t => t.WaitingCount));
         }
     }

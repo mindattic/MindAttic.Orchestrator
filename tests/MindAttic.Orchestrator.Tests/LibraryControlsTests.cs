@@ -56,7 +56,7 @@ public sealed class LibraryControlsTests
             var colours = root.Descendants().Attributes().Where(a => Regex.IsMatch(a.Value, "^#[0-9A-Fa-f]{6,8}$"));
             Assert.That(colours.Select(a => $"{a.Parent!.Name.LocalName}.{a.Name}={a.Value}"), Is.Empty);
         }
-        Assert.That((string?)Named(Window(), "DetailPane").Attribute("Style"), Is.EqualTo("{StaticResource MaSidePane}"), "MaChrome with its left rule");
+
     }
 
     [Test]
@@ -207,16 +207,16 @@ public sealed class LibraryControlsTests
     {
         var window = Window();
 
-        // The agent and login cards are the library's MaAccentCard (MaCard with no margin, the list owns the gaps, and no padding,
-        // the MaAccentBar runs to its edge), their sub-lists MaInsetCards (M.ORCH-T667).
-        foreach (var name in new[] { "AgentCard", "LoginCard" })
+        // The agent card is the library's MaAccentCard (MaCard with no margin, the list owns the gaps, and no padding,
+        // the MaAccentBar runs to its edge), its subagents an MaInsetCard (M.ORCH-T667; the login cards went with the Accounts view, M.ORCH-T763).
+        foreach (var name in new[] { "AgentCard" })
         {
             var card = Named(window, name);
             Assert.That((string?)card.Attribute("Style"), Is.EqualTo("{StaticResource MaAccentCard}"), name);
             Assert.That(card.Attribute("Background") ?? card.Attribute("BorderBrush") ?? card.Attribute("CornerRadius") ?? card.Attribute("Padding"), Is.Null, "the card's look is the library's");
             Assert.That(card.Descendants(P + "Border").Count(b => (string?)b.Attribute("Style") == "{StaticResource MaAccentBar}"), Is.EqualTo(1), name);
         }
-        foreach (var name in new[] { "SubagentPanel", "LoginCliPanel" })
+        foreach (var name in new[] { "SubagentPanel" })
             Assert.That((string?)Named(window, name).Attribute("Style"), Is.EqualTo("{StaticResource MaInsetCard}"), name);
 
         // A rounded surface drawn by hand is a card the library already has.
@@ -240,7 +240,7 @@ public sealed class LibraryControlsTests
         var boxes = window.Descendants(P + "TextBox").ToList();
         Assert.That(boxes.Select(b => (string?)b.Attribute("Style")), Has.All.Matches<string?>(s => s is "{StaticResource MaTextBox}" or "{StaticResource MaTextArea}"));
         var placeholders = boxes.Select(b => (string?)b.Attribute(Mc + "MaTextBox.Placeholder")).OfType<string>().ToList();
-        Assert.That(placeholders, Is.EquivalentTo(new[] { "Search repos and tickets   Ctrl+F", "Opening prompt (optional), or pick a ticket below", "Reply to this tab…", "name@company.com" }));
+        Assert.That(placeholders, Is.EquivalentTo(new[] { "name@company.com" }), "the Repos view's search and the repo pane's boxes went to Tickets Desktop (M.ORCH-T763)");
         Assert.That(boxes.Where(b => (string?)b.Attribute("AcceptsReturn") == "True"), Is.Empty, "a multi-line box is an MaTextArea");
 
         var build = File.ReadAllText(Wpf("BuildWorkspaceWindow.cs"));

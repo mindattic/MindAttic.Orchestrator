@@ -2,6 +2,7 @@ using System.Windows.Media;
 using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Settings;
+using MindAttic.Orchestrator.Setup;
 using MindAttic.Orchestrator.Wpf;
 using MindAttic.Orchestrator.Wpf.ViewModels;
 using MindAttic.Tickets.Log;
@@ -185,33 +186,37 @@ public sealed class DashboardViewModelTests
         Assert.That(toasts, Is.EqualTo(newest));
     }
 
-    // ── SelectRepo ──────────────────────────────────────────────────────────
+    // ── --show <email|session|ticket> (M.ORCH-T763) ─────────────────────────
 
     [Test]
-    public void Selecting_a_shown_repo_keeps_the_search()
+    public void Show_finds_the_person_by_email_the_session_by_id_or_start_and_the_ticket_a_cli_is_on()
     {
-        var a = Tile("A", RepoState.Waiting);
-        var known = new Dictionary<string, RepoTileViewModel>(StringComparer.OrdinalIgnoreCase) { ["A"] = a };
-
-        Assert.That(MainViewModel.FindRepo("A", [a], known), Is.EqualTo(((RepoTileViewModel?)a, false)));
+        (string, Func<string, bool>)[] agents = [("0a1b2c3d4e5f-6789", id => id == "M.ORCH-T5"), ("ffff0000aaaa", _ => false)];
+        Assert.That(MainViewModel.ShowMatches(ShowKind.Person, "Jo@X.com", "jo@x.com", agents), Is.True, "any case");
+        Assert.That(MainViewModel.ShowMatches(ShowKind.Person, "jo@x.com", null, agents), Is.False);
+        Assert.That(MainViewModel.ShowMatches(ShowKind.Session, "0a1b2c3d4e5f-6789", null, agents), Is.True);
+        Assert.That(MainViewModel.ShowMatches(ShowKind.Session, "0A1B2C3D", null, agents), Is.True, "its first 8, as the dashboard shows it");
+        Assert.That(MainViewModel.ShowMatches(ShowKind.Session, "0a1b", null, agents), Is.False, "too short to be sure");
+        Assert.That(MainViewModel.ShowMatches(ShowKind.Ticket, "M.ORCH-T5", null, agents), Is.True);
+        Assert.That(MainViewModel.ShowMatches(ShowKind.Ticket, "M.ORCH-T6", null, agents), Is.False);
     }
 
     [Test]
-    public void Selecting_a_repo_the_search_hides_clears_the_search()
+    public void Show_takes_only_a_well_formed_target_and_is_handed_over_beside_start()
     {
-        var a = Tile("A", RepoState.Waiting);
-        var b = Tile("Bravo", RepoState.Working);
-        var known = new Dictionary<string, RepoTileViewModel>(StringComparer.OrdinalIgnoreCase) { ["A"] = a, ["Bravo"] = b };
-        var shown = known.Values.Where(t => t.Matches("brav")).ToList();
-        Assert.That(shown, Is.EqualTo(new[] { b }), "the search hides A");
-
-        Assert.That(MainViewModel.FindRepo("A", shown, known), Is.EqualTo(((RepoTileViewModel?)a, true)));
+        Assert.That(DashboardRequest.ShowTarget(["--show", "jo@x.com"]), Is.EqualTo("jo@x.com"));
+        Assert.That(DashboardRequest.ShowTarget(["--SHOW", " M.ORCH-T5 "]), Is.EqualTo("M.ORCH-T5"));
+        Assert.That(DashboardRequest.ShowTarget(["--show"]), Is.Null);
+        Assert.That(DashboardRequest.ShowTarget(["--show", "--start"]), Is.Null, "never an option");
+        Assert.That(DashboardRequest.ShowTarget(["--show", "a b"]), Is.Null);
+        Assert.That(DashboardRequest.ShowTarget(["--show", "x\" & calc"]), Is.Null);
+        Assert.That(DashboardRequest.KindOf("jo@x.com"), Is.EqualTo(ShowKind.Person));
+        Assert.That(DashboardRequest.KindOf("m.orch-t5"), Is.EqualTo(ShowKind.Ticket));
+        Assert.That(DashboardRequest.KindOf("0a1b2c3d-4e5f"), Is.EqualTo(ShowKind.Session));
+        Assert.That(DashboardRequest.HandOff(["--start", "Repo", "--show", "jo@x.com"]), Is.EqualTo(new[] { "--start", "Repo", "--show", "jo@x.com" }));
+        Assert.That(DashboardRequest.HandOff(["--show", "jo@x.com"]), Is.EqualTo(new[] { "--show", "jo@x.com" }));
+        Assert.That(DashboardRequest.HandOff(["--show", "a b", "--start", "..\\x"]), Is.Empty, "nothing malformed is passed on");
     }
-
-    [Test]
-    public void Selecting_an_unknown_repo_finds_nothing_and_keeps_the_search() =>
-        Assert.That(MainViewModel.FindRepo("Nope", [Tile("A")], new Dictionary<string, RepoTileViewModel>()),
-            Is.EqualTo(((RepoTileViewModel?)null, false)));
 
     [Test]
     public void Start_from_the_command_line_takes_only_a_workspace_repo_by_its_own_name()
@@ -344,37 +349,5 @@ public sealed class DashboardViewModelTests
         builds = 0;
         Assert.That(await MainViewModel.BuiltAfterChanges(() => { changes++; return Task.FromResult(++builds); }, () => changes, tries: 3), Is.EqualTo(3),
             "changes that never stop still give a snapshot, after a few tries");
-    }
-
-    // ── A scheduled audit picked up ─────────────────────────────────────────
-
-    [Test]
-    public void A_new_audit_whose_read_failed_is_picked_up_at_the_next_refresh_not_the_next_audit()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), "orch-audit-" + Guid.NewGuid().ToString("N"));
-        try
-        {
-            var store = new JsonStore(dir);
-            var runner = new MindAttic.Orchestrator.Audit.AuditRunner(new OrchestratorOptions { WorkspaceRoot = dir }, store);
-            var seen = default(DateTime);
-            Assert.That(MainViewModel.NewerAudit(runner, ref seen, null), Is.Null, "no audit yet");
-
-            // The daemon's audit lands, but this refresh can't read it (half a report).
-            using (var connection = store.Db.Open())
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = "INSERT INTO state (name, value, written_at) VALUES ('audit', '{ \"RanUtc\": \"2026-10-15T', 1760533200);";
-                command.ExecuteNonQuery();
-            }
-            Assert.That(MainViewModel.NewerAudit(runner, ref seen, null), Is.Null);
-            Assert.That(seen, Is.EqualTo(default(DateTime)), "not taken as seen");
-
-            // Readable at the next refresh: it's shown then.
-            store.Save("audit", new MindAttic.Orchestrator.Audit.AuditReport(Now, TimeSpan.FromSeconds(2), 3, 40, [], [], []));
-            Assert.That(MainViewModel.NewerAudit(runner, ref seen, null)?.RanUtc, Is.EqualTo(Now));
-            Assert.That(seen, Is.EqualTo(store.WrittenUtc("audit")));
-            Assert.That(MainViewModel.NewerAudit(runner, ref seen, null), Is.Null, "once");
-        }
-        finally { if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true); }
     }
 }

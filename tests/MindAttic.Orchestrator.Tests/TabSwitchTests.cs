@@ -21,9 +21,6 @@ public sealed class TabSwitchTests
     [TestCase(nameof(MainViewModel.Queue))]
     [TestCase(nameof(MainViewModel.Proposals))]
     [TestCase(nameof(MainViewModel.Finished))]
-    [TestCase(nameof(MainViewModel.Duplicates))]
-    [TestCase(nameof(MainViewModel.Drift))]
-    [TestCase(nameof(MainViewModel.Missing))]
     public void The_workspaces_lists_are_not_a_tab_of_their_own(string property)
     {
         // An auto-property would give each tab its own collection: a 761-ticket queue took 2s to rebuild on every switch.
@@ -39,40 +36,17 @@ public sealed class TabSwitchTests
         Assert.That(source, Does.Contain("OpenInTicketsCommand = root?.OpenInTicketsCommand ??"));
     }
 
-    [TestCase("AgentCards", "{Binding AgentsInView}")]
-    [TestCase("LoginCardList", "{Binding LoginCardsInView}")]
-    public void A_persons_own_lists_are_bound_only_while_their_view_shows(string name, string binding)
-    {
-        var doc = XDocument.Load(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
-        var list = doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == name);
-        Assert.That((string?)list.Attribute("ItemsSource"), Is.EqualTo(binding));
-
-        var repos = doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == "ReposBody");
-        Assert.That(repos.Descendants().Select(e => (string?)e.Attribute("ItemsSource")), Has.Member("{Binding GroupsInView}").And.No.Member("{Binding Groups}"));
-    }
-
     [Test]
-    public void The_queue_is_a_virtualized_list_so_a_switch_builds_only_the_rows_on_screen()
+    public void A_persons_page_shows_their_running_agents_and_no_repos_queue_audit_or_accounts_view()
     {
-        // M.ORCH-T655: a 9-person and a 2-person org switch equally fast; the queue's rows are built only as they scroll in.
+        // M.ORCH-T763: the Orchestrator shows only what's running; Tickets Desktop owns the Repos, the Queue and the audit.
         var doc = XDocument.Load(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
-        var list = doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == "QueueList");
-        Assert.That(list.Name.LocalName, Is.EqualTo("ItemsControl"), "a library-styled list; LibraryOnlyXamlTests allows no control of the dashboard's own");
-        Assert.That((string?)list.Attribute("Style"), Is.EqualTo("{StaticResource MaList}"));
-        Assert.That((string?)list.Attribute("ItemsSource"), Is.EqualTo("{Binding Queue}"));
-        Assert.That(list.Ancestors().Any(e => e.Name.LocalName == "ScrollViewer"), Is.False, "inside another scroll view every row would be built");
-        Assert.That(File.ReadAllText(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml.cs")),
-            Does.Contain("VirtualizedList.Apply(QueueList"));
-
-        // The list scrolls itself, by its panel (logical scrolling), or it isn't virtualized.
-        var code = File.ReadAllText(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "VirtualizedList.cs"));
-        Assert.That(code, Does.Contain("ScrollViewer.CanContentScrollProperty, true").And.Contain("VirtualizationMode.Recycling")
-            .And.Contain("typeof(VirtualizingStackPanel)"));
-        // Its template is set on the list itself: as a style's setter, the theme's ItemsControl style replaced it with one that
-        // has no scroll view, and every one of 405 rows was built on each org switch (measured: 1.1s, then 4 rows and 100ms).
-        Assert.That(code, Does.Contain("list.Template ="));
-        Assert.That(MindAttic.Orchestrator.Wpf.MainWindow.QueueHeaderHeight(280), Is.EqualTo(126), "the queue keeps most of a short view");
-        Assert.That(MindAttic.Orchestrator.Wpf.MainWindow.QueueHeaderHeight(100), Is.EqualTo(120));
+        var list = doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == "AgentCards");
+        Assert.That((string?)list.Attribute("ItemsSource"), Is.EqualTo("{Binding Agents}"), "only the shown tab's DataContext is bound");
+        foreach (var gone in new[] { "ReposBody", "DetailPane", "QueueView", "QueueList", "AuditBody", "AccountsBody", "LoginCardList", "SearchBox" })
+            Assert.That(doc.Descendants().Any(e => (string?)e.Attribute(X + "Name") == gone), Is.False, gone);
+        Assert.That(doc.Descendants().Any(e => (string?)e.Attribute("ItemsSource") == "{Binding ViewChoices}"), Is.False, "no view pills");
+        Assert.That(typeof(MainViewModel).GetProperty("ViewChoice"), Is.Null);
     }
 
     [Test]
@@ -95,14 +69,12 @@ public sealed class TabSwitchTests
             Assert.That(typeof(MainViewModel).GetField($"<{property}>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic), Is.Null, property);
     }
 
-    [TestCase("ReposBody")]
     [TestCase("AgentsBody")]
-    [TestCase("AccountsBody")]
-    [TestCase("AuditBody")]
-    public void Every_other_view_is_one_virtualized_list_too(string body)
+    [TestCase("MiscBody")]
+    public void Every_body_is_one_virtualized_list(string body)
     {
-        // M.ORCH-T754: the Repos, Agents (with each person's Tickets), Accounts and Audit views build only what's on screen, so a
-        // 9-person and a 2-person org switch equally fast: each body's lists sit straight in it, the body made one list in code.
+        // M.ORCH-T754: a person's current work (with their Tickets) and the 'Miscellaneous' tab (M.ORCH-T763) build only what's on
+        // screen, so a 9-person and a 2-person org switch equally fast: each body's lists sit straight in it, made one list in code.
         var doc = XDocument.Load(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
         var view = doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == body);
         var content = view.Elements().Single();

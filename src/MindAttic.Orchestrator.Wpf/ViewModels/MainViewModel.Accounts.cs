@@ -66,13 +66,17 @@ public sealed partial class MainViewModel
 
     private ICommand? makeDefaultCommand, toggleBillingCommand;
 
-    /// <summary>"Make default" on a per-CLI login's card in the Accounts view (the parameter is its
-    /// <see cref="LoginCardViewModel"/>): signs the global login in to that account, so every CLI not started on a login of
-    /// its own runs on it, as picking it in the old account menu did.</summary>
-    public ICommand MakeDefaultCommand => makeDefaultCommand ??= new RelayCommand(async p =>
+    /// <summary>"Make default", a person's login action (M.ORCH-T763; the Accounts view's card had it before): signs the global
+    /// login in to this per-CLI login's account, so every CLI not started on a login of its own runs on it, as picking it in the
+    /// old account menu did.</summary>
+    public ICommand MakeDefaultCommand => makeDefaultCommand ??= new RelayCommand(async () =>
     {
-        if (p is LoginCardViewModel { CanMakeDefault: true, Email: { } email }) await MakeDefaultAsync(email);
-    }, _ => !switchingAccount && !switchingBilling);
+        if (CanMakeDefault && ScopeEmail is { } email) await MakeDefaultAsync(email);
+    }, () => CanMakeDefault && !switchingAccount && !switchingBilling);
+
+    /// <summary>A signed-in per-CLI login the global login isn't signed in to already can become the global default.</summary>
+    public bool CanMakeDefault => IsTabSignedIn && ScopeEmail is { } email &&
+        !string.Equals(email, Root.workspace?.GlobalEmail, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>The Accounts view's billing button: "Use API key (emergencies)" while Claude Team bills, "Back to Claude Team"
     /// while the Vault's key does (M.ORCH-T436). Switching every open CLI onto the organization's key is a break-glass action
