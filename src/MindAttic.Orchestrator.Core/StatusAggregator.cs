@@ -425,6 +425,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         var utilization = UtilizationSeries.Build(mine, budget, paceSettings.PaceTargetPercent, now, settings.PaceExponent);
         // On course to end under its target: the allowance shown to the CLIs (and held to by the pace gate) says to start more (M.ORCH-T529).
         pace = Pacer.UnderTarget(pace, utilization, settings.MaxSubagents);
+        // Split across many CLIs whose live trend together crossed the pace line: new subagents start slower until it bends back (M.ORCH-T785).
+        pace = Pacer.CoolOff(pace, utilization, Math.Max(active, pace.SubagentsByCli.Count));
         // An API key has no 5-hour or weekly window: nothing it spends is held against the subscription's learned limits.
         if (signIn is { IsApiKey: true })
         {
