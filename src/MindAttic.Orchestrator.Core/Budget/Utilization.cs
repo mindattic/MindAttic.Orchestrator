@@ -59,8 +59,15 @@ public static class UtilizationSeries
         var now = Math.Max(points[^1].Percent, b.BlockPercent);
         if (nowUtc > points[^1].AtUtc) points.Add(new(nowUtc, now));
 
+        // The rate the projection carries forward is never under what the last few minutes show (M.ORCH-T783): a fresh
+        // burst across a login's CLIs and subagents moves ControlFreshPerHour within minutes, while the 30-minute
+        // RecentFreshPerHour it's steadied against still carries the quieter stretch before it and can read "under target"
+        // for a long stretch of a burst already running hot. The pace hook's guidance, the subagent allowance raise and
+        // this same chart all read this one number, so understating it here let them all say "start more" while the
+        // window was already on course past its target.
+        var rate = Math.Max(b.RecentFreshPerHour, b.ControlFreshPerHour);
         var series = new Utilization(block.StartUtc, block.EndUtc, nowUtc, targetPercent, points, now,
-            b.RecentFreshPerHour / b.BlockLimit * 100, 0, TimeSpan.Zero, exponent);
+            rate / b.BlockLimit * 100, 0, TimeSpan.Zero, exponent);
         var over = OverPace(series, points);
         var hoursLeft = Math.Max(0, (block.EndUtc - nowUtc).TotalHours);
         return series with { ProjectedEndPercent = now + series.PercentPerHour * hoursLeft, OverPace = over };

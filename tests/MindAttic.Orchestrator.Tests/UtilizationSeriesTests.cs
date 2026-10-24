@@ -8,9 +8,9 @@ public sealed class UtilizationSeriesTests
     private static readonly DateTime Start = new(2026, 10, 16, 14, 10, 0, DateTimeKind.Utc);
     private static readonly DateTime End = Start.AddHours(5);
 
-    private static BudgetStatus Budget(double percent, double perHour = 0, bool peak = false) =>
+    private static BudgetStatus Budget(double percent, double perHour = 0, bool peak = false, double controlPerHour = 0) =>
         new(new UsageBlock(Start, End, default, Start), 1_000_000, peak, percent, default, default, null, null, 0, null, 90)
-        { RecentFreshPerHour = perHour };
+        { RecentFreshPerHour = perHour, ControlFreshPerHour = controlPerHour };
 
     private static UsageSample S(double hours, double percent, DateTime? reset = null) => new(Start.AddHours(hours), percent, reset ?? End, 0);
 
@@ -54,6 +54,23 @@ public sealed class UtilizationSeriesTests
         var fast = UtilizationSeries.Build([], Budget(40, 300_000), 99, Start.AddHours(2))!;
         Assert.That(fast.ProjectedEndPercent, Is.EqualTo(130).Within(1e-9));
         Assert.That(fast.HitsLimitUtc, Is.EqualTo(Start.AddHours(4)));
+    }
+
+    [Test]
+    public void Projection_never_understates_a_burst_the_30_minute_rate_hasnt_caught_up_to()
+    {
+        // M.ORCH-T783: a login split across many CLIs can start burning hard enough that ControlFreshPerHour (10 min)
+        // already shows it, while RecentFreshPerHour (30 min) is still carrying the quieter stretch before the burst and
+        // reads low. The projection every reader shares (the pace hook's guidance, the subagent-allowance raise, and this
+        // same chart) must follow whichever rate is worse, not the slower one, or it keeps saying "under target" while
+        // the window is already on course past it.
+        var laggy = UtilizationSeries.Build([], Budget(40, perHour: 100_000, controlPerHour: 300_000), 99, Start.AddHours(2))!;
+        Assert.That(laggy.ProjectedEndPercent, Is.EqualTo(130).Within(1e-9), "the faster, more current rate wins over the slower one");
+
+        // The other way round (a burst that's cooled off in the last 10 minutes but still shows in the 30-minute average)
+        // doesn't get read down either: still the worse (higher) of the two.
+        var cooling = UtilizationSeries.Build([], Budget(40, perHour: 300_000, controlPerHour: 100_000), 99, Start.AddHours(2))!;
+        Assert.That(cooling.ProjectedEndPercent, Is.EqualTo(130).Within(1e-9));
     }
 
     private static BudgetStatus Idle() => new(null, 0, true, 0, default, default, null, null, 0, null, 90);
