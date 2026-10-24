@@ -87,6 +87,13 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
     /// on the key and a daemon restart still moves them back; null keeps them in memory only.</summary>
     public JsonStore? Store { get; init; }
 
+    /// <summary>The orgs (seam; M.ORCH-T753): a CLI is only ever moved to a login of its own login's org. Null reads them from
+    /// <see cref="Store"/> (one org without a store).</summary>
+    internal Func<OrchestratorSettings, string?, OrgRouting>? Orgs { get; init; }
+
+    private OrgRouting OrgsFor(OrchestratorSettings settings, string? globalEmail) =>
+        Orgs?.Invoke(settings, globalEmail) ?? (Store is null ? OrgRouting.Single : OrgRouting.Load(Store, settings, globalEmail));
+
     /// <summary>Whether the Vault holds a key to fail over to (seam).</summary>
     internal Func<bool> HasApiKey { get; init; } = () => mover.Billing.HasKey;
 
@@ -355,7 +362,10 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
 
             // A pace at its limit (or a limit hit) has no room left, whatever the meter last said (it may not have been read lately).
             var fromRoom = hit is not null || fromPace is { } fp && (fp.Stop || fp.Mode == PaceMode.Over) ? 0 : LoginPicker.Headroom(fromUsage, nowUtc, stop);
-            var to = LoginPicker.Choose(signedIn, busy, UsageOf, nowUtc, settings.WeeklyStopPercent, StopOf);
+            // Only to a login of its own org (M.ORCH-T753): another org's member's login is never a fallback.
+            var orgs = OrgsFor(settings, globalEmail);
+            var ofOrg = orgs.Active ? signedIn.Where(a => orgs.OrgOfLogin(a.Email) == orgs.OrgOfLogin(from)) : signedIn;
+            var to = LoginPicker.Choose(ofOrg, busy, UsageOf, nowUtc, settings.WeeklyStopPercent, StopOf);
             var toRoom = to is null ? 0 : LoginPicker.Headroom(UsageOf(to), nowUtc, StopOf(to.Email));
             var fromLabel = from ?? AccountMove.GlobalLabel.ToLowerInvariant();
 

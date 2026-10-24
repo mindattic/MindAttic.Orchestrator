@@ -63,6 +63,31 @@ public sealed class OrganizationsTests
     }
 
     [Test]
+    public void A_repos_tickets_are_its_mapped_orgs_or_the_default_ones_and_a_pinned_ticket_its_assignees()
+    {
+        // M.ORCH-T753: dispatch scoped per org.
+        var orgs = new OrgDirectory([new Organization("sales", "Sales", 1)],
+            [new OrgMember("sales", "Jordan", "jordan@example.com"), new OrgMember("sales", "Ryan", "")]); // the global login, as the store keeps it
+        var routing = new OrgRouting(orgs, new Dictionary<string, string> { ["crm"] = "sales", ["Old"] = "gone" }, "ryan@example.com");
+        QueueItem Item(string repo, string? assignee = null) =>
+            new(repo, $@"D:\W\{repo}", new Ticket($"{repo}-T1", "2026-10-01", "fix", "open", "x", ""), 0, null, false) { Assignee = assignee };
+
+        Assert.That(routing.OrgOfRepo("CRM"), Is.EqualTo("sales"), "a repo named in any case");
+        Assert.That(routing.OrgOfRepo("Old"), Is.EqualTo(Organization.DefaultId), "mapped to an org since removed: the default's");
+        Assert.That(routing.OrgOfRepo("Other"), Is.EqualTo(Organization.DefaultId), "a repo not set is the default org's");
+        Assert.That(routing.OrgOfLogin(null), Is.EqualTo("sales"), "the global login, placed as global");
+        Assert.That(routing.OrgOfLogin("Ryan@example.com"), Is.EqualTo("sales"), "the global login by its own email");
+        Assert.That(routing.OrgOfLogin("amy@example.com"), Is.EqualTo(Organization.DefaultId));
+        Assert.That(routing.MayTake(Item("crm"), "jordan@example.com"), Is.True);
+        Assert.That(routing.MayTake(Item("crm"), "amy@example.com"), Is.False, "another org's login");
+        Assert.That(routing.MayTake(Item("Other"), "jordan@example.com"), Is.False);
+        Assert.That(routing.MayTake(Item("Other", assignee: "jordan@example.com"), "jordan@example.com"), Is.True, "a pin is its user's whatever the repo");
+        Assert.That(routing.OrgOf(Item("crm", assignee: "amy@example.com")), Is.EqualTo(Organization.DefaultId));
+        Assert.That(OrgRouting.Single.MayTake(Item("crm"), "amy@example.com"), Is.True, "one org: everything as before");
+        Assert.That(new OrgRouting(OrgDirectory.Single, routing.RepoOrgs).OrgOfRepo("crm"), Is.EqualTo(Organization.DefaultId));
+    }
+
+    [Test]
     public void The_orgs_and_their_members_round_trip_through_the_store()
     {
         var db = new OrchestratorDb(Path.Combine(temps.New(), "orchestrator.db"));

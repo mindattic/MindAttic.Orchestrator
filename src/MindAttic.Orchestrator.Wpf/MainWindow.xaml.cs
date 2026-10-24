@@ -39,6 +39,12 @@ public partial class MainWindow : Window
         OrgStrip.DataContext = model;
         OrgEmptyPanel.DataContext = model;
         VirtualizedList.Apply(QueueList, 1200);
+        // Every other view is one virtualized list too (M.ORCH-T754): its headings and notes, then its lists' items a row (or a line
+        // of tiles) each, so a switch of tab or org builds only what's on screen, however many people, CLIs, logins and tickets.
+        VirtualizedList.ApplyBody(ReposBody).Nest(RepoGroups, RepoTiles, group => group is TileGroupViewModel { IsVisible: true } g ? g.Tiles : null);
+        VirtualizedList.ApplyBody(AgentsBody);
+        VirtualizedList.ApplyBody(AccountsBody);
+        VirtualizedList.ApplyBody(AuditBody);
         // The Queue view's header scrolls in at most 45% of the view, so the virtualized queue below it always has room.
         QueueView.SizeChanged += (_, e) => QueueBody.MaxHeight = QueueHeaderHeight(e.NewSize.Height);
         model.SelectedTabChanged += (_, _) => DataContext = model.SelectedTab;

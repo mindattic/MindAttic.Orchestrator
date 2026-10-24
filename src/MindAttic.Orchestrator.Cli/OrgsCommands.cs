@@ -174,6 +174,70 @@ internal sealed class OrgsMemberCommand : Command<OrgsMemberCommand.Settings>
     }
 }
 
+/// <summary>
+/// <c>orchestrator orgs repo</c> (M.ORCH-T753): which org a repo's tickets belong to. They're dispatched only to that org's
+/// members' logins (and paced on them); a repo not set is the default org's.
+/// </summary>
+internal sealed class OrgsRepoCommand : Command<OrgsRepoCommand.Settings>
+{
+    public sealed class Settings : CommandSettings
+    {
+        [CommandArgument(0, "[REPO]")]
+        [Description("The repo, by name. Left out: lists every repo set to an org.")]
+        public string? Repo { get; init; }
+
+        [CommandArgument(1, "[ORG]")]
+        [Description("The org's id; default (or left out with --default) puts the repo back in the default org.")]
+        public string? Org { get; init; }
+
+        [CommandOption("--default")]
+        [Description("Put the repo back in the default org.")]
+        public bool Default { get; init; }
+    }
+
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        var store = Ctx.Store();
+        var orgs = store.Db.LoadOrgs();
+        var routing = new OrgRouting(orgs, store.LoadSettings().RepoOrgs);
+        if (string.IsNullOrWhiteSpace(settings.Repo))
+        {
+            var set = routing.RepoOrgs.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase).ToList();
+            if (set.Count == 0)
+            {
+                AnsiConsole.MarkupLine($"Every repo is {Markup.Escape(orgs.Orgs[0].Name)}'s (the default org). Set one with [blue]orchestrator orgs repo <repo> <org>[/].");
+                return 0;
+            }
+            var table = new Table().Border(TableBorder.Rounded).AddColumn("Repo").AddColumn("Org");
+            foreach (var (repo, id) in set)
+                table.AddRow(Markup.Escape(repo), Markup.Escape(orgs.Find(id) is { } o ? $"{o.Name} ({o.Id})" : $"{id} (no such org now: the default org's)"));
+            AnsiConsole.Write(table);
+            AnsiConsole.MarkupLine("[grey]Any other repo is the default org's. A repo's tickets go only to its org's members' logins.[/]");
+            return 0;
+        }
+        var name = settings.Repo.Trim();
+        var orgId = settings.Default || string.IsNullOrWhiteSpace(settings.Org) ? Organization.DefaultId : settings.Org.Trim();
+        if (!settings.Default && string.IsNullOrWhiteSpace(settings.Org))
+        {
+            AnsiConsole.MarkupLine($"{Markup.Escape(name)} is {Markup.Escape(routing.NameOf(routing.OrgOfRepo(name)))}'s.");
+            return 0;
+        }
+        if (orgs.Find(orgId) is not { } org)
+        {
+            AnsiConsole.MarkupLine($"[red]No org {Markup.Escape(orgId)} (orchestrator orgs lists them).[/]");
+            return 1;
+        }
+        store.Update<MindAttic.Orchestrator.Settings.OrchestratorSettings>(MindAttic.Orchestrator.Settings.JsonStore.SettingsName, s =>
+        {
+            foreach (var key in s.RepoOrgs.Keys.Where(k => k.Equals(name, StringComparison.OrdinalIgnoreCase)).ToList()) s.RepoOrgs.Remove(key);
+            if (!org.IsDefault) s.RepoOrgs[name] = org.Id;
+        });
+        AnsiConsole.MarkupLine($"{Markup.Escape(name)}'s tickets are {Markup.Escape(org.Name)}'s: they go only to its members' logins" +
+            (orgs.HasOrgs ? "." : " (with one org, that's every login)."));
+        return 0;
+    }
+}
+
 internal sealed class OrgsUnmemberCommand : Command<OrgsUnmemberCommand.Settings>
 {
     public sealed class Settings : CommandSettings

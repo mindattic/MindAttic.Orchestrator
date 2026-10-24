@@ -65,7 +65,8 @@ public sealed class UserTicketRowViewModel : ObservableObject
     /// <summary>Off while a CLI moving to another login holds it (M.ORCH-T637).</summary>
     public bool CanAssign => !IsMoving;
 
-    /// <summary>Everyone a ticket can be assigned to, "Unassigned" first: the same options on every row.</summary>
+    /// <summary>Everyone a ticket can be assigned to on its tab, "Unassigned" first: the tab's org's people, the same options on
+    /// every row of the tab.</summary>
     public ObservableCollection<PersonOptionViewModel> People => owner.People;
 
     /// <summary>Who it's assigned to. Choosing someone assigns it to them (or reassigns it); "Unassigned" takes it off them. A
@@ -117,10 +118,13 @@ public sealed class UserTicketRowViewModel : ObservableObject
 public sealed partial class MainViewModel
 {
     private readonly ObservableCollection<PersonOptionViewModel> people = [];
+    private readonly ObservableCollection<PersonOptionViewModel> orgPeople = [];
     private readonly PersonOptionViewModel nobody = new(null);
 
-    /// <summary>"Unassigned", then every person with a tab, by their tab's name; the same list in every tab.</summary>
-    public ObservableCollection<PersonOptionViewModel> People => Root.people;
+    /// <summary>"Unassigned", then every person of this tab's org (M.ORCH-T754) with a tab, by their tab's name, and anyone of the
+    /// org a ticket is pinned to with no tab here. With one org, everyone. Every option is also in the global login's tab's list of
+    /// all of them, which names an assignee wherever they are.</summary>
+    public ObservableCollection<PersonOptionViewModel> People => orgPeople;
 
     /// <summary>This tab's person's tickets: the ones assigned to them, in queue order.</summary>
     public ObservableCollection<UserTicketRowViewModel> AssignedTickets { get; } = [];
@@ -165,6 +169,7 @@ public sealed partial class MainViewModel
         var settings = (FiveHour: (double)paceTargetPercent, Week: (double)weeklyStopPercent);
         var tabs = loginTabs.Where(t => !t.tab.IsApiKey && t.PersonEmail is not null).ToList();
         var wanted = new List<PersonOptionViewModel> { nobody };
+        var orgOf = new Dictionary<PersonOptionViewModel, string>();
         foreach (var t in tabs)
         {
             var email = t.PersonEmail!;
@@ -174,6 +179,7 @@ public sealed partial class MainViewModel
             option.Update(t.LoginName, week is { } w ? $"week {Math.Max(0, 100 - w):0}% left" : "",
                 TicketPins.OutOfRoom(t.tab.SignedIn, row?.FiveHourUsedAt(now), week, settings.FiveHour, settings.Week), t.tab.SignedIn);
             wanted.Add(option);
+            orgOf[option] = t.OrgId;
         }
         // An assignee with no tab here keeps an option, so their tickets still show who has them.
         var pinned = plan?.Queue.Select(q => q.Assignee).OfType<string>().ToHashSet(StringComparer.Ordinal) ?? [];
@@ -184,10 +190,13 @@ public sealed partial class MainViewModel
         foreach (var t in loginTabs)
         {
             var email = t.PersonEmail;
+            var org = t.OrgId;
+            t.orgPeople.ReorderTo([nobody, .. people.Where(p => p.Email is { } e && (orgOf.TryGetValue(p, out var o) ? o : orgs.OrgOfClaude(e)) == org)]);
+            // Each tab's rows are its own, so their pickers offer the tab's org's people (M.ORCH-T754).
             t.AssignedTickets.SyncBy([.. queue.Where(q => email is not null && TicketPins.Same(q.Assignee, email))], q => q.Id, r => r.Id,
-                q => { var r = new UserTicketRowViewModel(q, this); r.Update(q); return r; }, (r, q) => r.Update(q));
+                q => { var r = new UserTicketRowViewModel(q, t); r.Update(q); return r; }, (r, q) => r.Update(q));
             t.UnassignedTickets.SyncBy([.. queue.Where(q => q.Assignee is null && !q.IsAssigned)], q => q.Id, r => r.Id,
-                q => { var r = new UserTicketRowViewModel(q, this); r.Update(q); return r; }, (r, q) => r.Update(q));
+                q => { var r = new UserTicketRowViewModel(q, t); r.Update(q); return r; }, (r, q) => r.Update(q));
             foreach (var name in new[] { nameof(AssignedHeader), nameof(UnassignedHeader), nameof(NoAssignedText), nameof(HasNoAssigned), nameof(PersonEmail), nameof(ShowsUserTickets) })
                 t.Raise(name);
         }

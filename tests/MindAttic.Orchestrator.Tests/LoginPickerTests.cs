@@ -77,6 +77,19 @@ public sealed class LoginPickerTests
     }
 
     [Test]
+    public void An_orgs_tab_is_picked_only_among_its_own_members_logins_else_it_waits()
+    {
+        // M.ORCH-T753: another org's login, however roomy, is never a fallback for this org's work (M.ORCH-T747/T749).
+        Account("a@example.com", fiveHour: 0, week: 0);
+        Account("s@example.com", fiveHour: 50, week: 10);
+        Assert.That(Picker.Pick(Now, eligible: e => e == "s@example.com").Account?.Email, Is.EqualTo("s@example.com"));
+        var none = Picker.Pick(Now, eligible: e => e == "x@example.com");
+        Assert.That(none.Account, Is.Null);
+        Assert.That(none.Reason, Does.Contain("no per-CLI login of its org").And.Contain("it waits"));
+        Assert.That(Picker.Pick(Now).Account?.Email, Is.EqualTo("a@example.com"), "no org filter: every login, as before");
+    }
+
+    [Test]
     public void An_account_never_read_counts_as_untouched()
     {
         Account("a@example.com", fiveHour: 5, week: 5);

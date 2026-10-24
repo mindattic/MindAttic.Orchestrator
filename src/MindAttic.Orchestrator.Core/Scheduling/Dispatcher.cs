@@ -45,6 +45,13 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
             if (login is null)
                 return new Result(false, $"{item.Id} is assigned to {who}, who isn't signed in on this machine: it waits for them (or Redelegate now).", null);
         }
+        // An org's ticket (M.ORCH-T753) starts only on its own members' logins: a login chosen in another org is refused, and the
+        // Auto pick below picks only among the org's. The global login (no email) and the API key aren't judged here.
+        var orgs = OrgsNow();
+        var orgId = orgs.OrgOf(item);
+        if (orgs.Active && !item.IsPinned && provider == Providers.Claude && login?.Email is { } chosen && orgs.OrgOfLogin(chosen) != orgId)
+            return new Result(false, $"{item.Id} is {orgs.NameOf(orgId)}'s: it starts only on its members' logins, not {chosen} ({orgs.NameOf(orgs.OrgOfLogin(chosen))}). " +
+                "orchestrator orgs repo moves a repo to another org.", null);
         var directory = item.RepoPath;
         if (useWorktree)
         {
@@ -54,8 +61,9 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         }
 
         var title = useWorktree ? $"{item.Repo} {item.Id}" : item.Repo;
+        Func<string, bool>? eligible = orgs.Active && !item.IsPinned ? email => orgs.OrgOfLogin(email) == orgId : null;
         var (startError, cameUp) = OpenTab is { } seam ? seam(title, directory, provider, prompt, submit)
-            : Open(title, directory, provider, prompt, submit, login);
+            : Open(title, directory, provider, prompt, submit, login, eligible);
         if (startError is not null) return new Result(false, startError, null);
 
         var assignment = new Assignment(item.Id, item.Repo, directory, provider, DateTime.UtcNow, useWorktree) { Account = AccountDirs.Normalize(login?.Email) };
@@ -114,7 +122,20 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
     }
 
-    private (string? Error, Task<bool>? CameUp) Open(string title, string directory, string provider, string prompt, bool submit, TabLogin? login)
+    /// <summary>Seam: the orgs and the repos' orgs (M.ORCH-T753); null reads them from the store.</summary>
+    internal Func<OrgRouting>? Orgs { get; init; }
+
+    private OrgRouting OrgsNow()
+    {
+        if (Orgs is { } seam) return seam();
+        var routing = OrgRouting.Load(store, store.LoadSettings());
+        if (!routing.Active) return routing;
+        // The global login's email only matters once there's more than one org.
+        try { return routing with { GlobalEmail = Budget.AccountProfile.Read(new AccountDirs().HomeConfigPath)?.Email }; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return routing; }
+    }
+
+    private (string? Error, Task<bool>? CameUp) Open(string title, string directory, string provider, string prompt, bool submit, TabLogin? login, Func<string, bool>? eligible)
     {
         var before = sessions.HostIds();
         var focus = Foreground.Current();
@@ -124,7 +145,7 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
             // One CLI per account (M.ORCH-T605): a Claude tab goes on a free per-CLI login. With none free it never lands on the
             // global login, a member's own seat (M.ORCH-T747): the API key when the owner has API billing on (M.ORCH-T706), else it waits.
             var loaded = store.LoadSettings();
-            var dir = (Logins ?? new LoginPicker { Allowances = () => Budget.WeeklyAllowances.Active(store, DateTime.UtcNow), Cutoffs = () => Budget.UsageCutoffs.Load(store) }).ForNewTab(provider, loaded.AutoLogin, DateTime.UtcNow, out _, loaded.WeeklyStopPercent)?.Directory;
+            var dir = (Logins ?? new LoginPicker { Allowances = () => Budget.WeeklyAllowances.Active(store, DateTime.UtcNow), Cutoffs = () => Budget.UsageCutoffs.Load(store) }).ForNewTab(provider, loaded.AutoLogin, DateTime.UtcNow, out _, loaded.WeeklyStopPercent, eligible)?.Directory;
             noLogin = dir is null && !ApiBillingOn();
             return dir;
         });
