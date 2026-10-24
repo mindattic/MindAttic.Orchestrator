@@ -224,6 +224,13 @@ public static class AgentGate
                 pass
             _account.append(result)
             return result
+        def account_tag():
+            # The current account, for a gate event (M.ORCH-T774); None rather than raising, so a call on the stop path (not
+            # every caller of log_gate_event wraps it) can never fail a refusal just for want of a tag.
+            try:
+                return account()[0] or None
+            except Exception:
+                return None
         def switched_at():
             # When the sign-in last moved to the current account (epoch; 0 when no account was ever seen).
             spans = account()[1]
@@ -1867,7 +1874,7 @@ public static class AgentGate
         # so a window that went over can be traced to the calls around it.
         def gate_log(decision, held):
             try:
-                log_gate_event(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), decision, round(held, 1), tool, status().get("percent_used"), account()[0] or None)
+                log_gate_event(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), decision, round(held, 1), tool, status().get("percent_used"), account_tag())
             except Exception:
                 pass
 
@@ -2776,7 +2783,7 @@ public static class AgentGate
                 limits = dict(limits, stop=True, percent_used=own[0], reset_time=reset_text(own[1]), stop_window=own[2])
             # So do the exempt commands (M.ORCH-T198): their turns skip every Orchestrator gate.
             if limits.get("stop") and not CONTROL.match((data.get("prompt") or "").strip()) and not exempt_prompt(data.get("prompt")):
-                log_gate_event(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "prompt-answered", 0, None, limits.get("percent_used"), account()[0] or None)
+                log_gate_event(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "prompt-answered", 0, None, limits.get("percent_used"), account_tag())
                 print(json.dumps({"decision": "block", "reason": "Not sent, so no tokens were spent: the " + str(limits.get("stop_window") or "5-hour") + " window is at its target "
                     "(MindAttic.Orchestrator never lets it pass the limit). Typing works again when it resets at " +
                     str(limits.get("reset_time") or "the end of the window") + ". /allocate, /pacing and /goal clear still go through."}))

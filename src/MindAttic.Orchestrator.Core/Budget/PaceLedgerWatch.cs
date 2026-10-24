@@ -109,8 +109,10 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
     /// <summary>
     /// Closes each per-CLI login's ended windows into the ledger under its own account (M.ORCH-T559), graded from its own week
     /// of Claude's readings (<see cref="Sessions.AccountDir.SamplesPath"/>) and its own tagged share of the pace gate's events
-    /// (M.ORCH-T774; <paramref name="events"/>, untagged ones included). The transcripts' limit hits still aren't kept per
-    /// account, so a real wall this login hit still shows as "Claude reported 100%", never "hit the 5-hour limit".
+    /// (M.ORCH-T774). Pre-filtered to an exact match on <paramref name="events"/>, never an untagged one: the gate log is
+    /// shared by every CLI, and an untagged event (from before this was kept) could be any of them, so a per-CLI row counts
+    /// none sooner than risk counting another account's. The transcripts' limit hits still aren't kept per account, so a real
+    /// wall this login hit still shows as "Claude reported 100%", never "hit the 5-hour limit".
     /// </summary>
     private void TickAccounts(List<LedgerWindow> recorded, List<GateEvent> events, DateTime nowUtc)
     {
@@ -120,7 +122,8 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
             if (dir.Account is not { } account || account == ClaudeAccount.ApiKey) continue;
             var samples = AccountPacer.LoadSamples(dir);
             if (samples.Count == 0) continue;
-            var due = PaceLedger.Due([.. recorded.Where(r => r.Account == account)], samples, [], events, nowUtc, _ => account);
+            var mine = events.Where(e => e.Account == account).ToList();
+            var due = PaceLedger.Due([.. recorded.Where(r => r.Account == account)], samples, [], mine, nowUtc, _ => account);
             if (due.Count == 0) continue;
             try { Db.AppendLedger(due); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { continue; }

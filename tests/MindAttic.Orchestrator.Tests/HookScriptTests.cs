@@ -2289,6 +2289,21 @@ public sealed class HookScriptTests
         Assert.That(GateLog().Single(), Does.Contain("\"account\": \"account-a/team\""));
     }
 
+    /// <summary>M.ORCH-T774 (review): the key the hook tags a per-CLI login's events with must be exactly the key
+    /// <see cref="MindAttic.Orchestrator.Sessions.AccountDirs"/> reads for the same folder, or a per-CLI window
+    /// (<see cref="MindAttic.Orchestrator.Budget.PaceLedgerWatch"/>) could never match its own events to it.</summary>
+    [Test]
+    public void A_per_cli_logins_gate_event_is_tagged_with_exactly_its_accountdirs_key()
+    {
+        OrchDb.Open().Dispose(); // the database exists before the hook runs, or it falls back to the old file (no table yet)
+        var (folder, env) = OwnLogin(email: "c@example.com", uuid: "acct-c");
+        OwnStatus(folder, new { pace_delay_seconds = 2 });
+        Assert.That(Gate(ReadCall, env).Took, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(1.9)));
+        var held = OrchDb.LoadGateEvents(DateTime.UtcNow.AddMinutes(-5)).Single();
+        var expected = new MindAttic.Orchestrator.Sessions.AccountDirs(Path.Combine(dir, ".claude-accounts")).For("c@example.com").Account;
+        Assert.That(held.Account, Is.EqualTo(expected).And.EqualTo("acct-c"));
+    }
+
     [Test]
     public void A_hook_reading_while_a_write_holds_the_database_falls_back_to_the_file_and_its_event_is_read_in_later()
     {

@@ -370,6 +370,7 @@ public sealed class PaceLedgerTests
             (new GateEvent(bEnd.AddMinutes(-10), GateEvent.Held, 12, "Bash", "acct-b"), 65.0),
             (new GateEvent(bEnd.AddMinutes(-8), GateEvent.Held, 3, "Bash", "acct-a"), 50.0),
             (new GateEvent(bEnd.AddMinutes(-6), GateEvent.Refused, 0, "Edit", "acct-b"), 70.0),
+            (new GateEvent(bEnd.AddMinutes(-4), GateEvent.Held, 7, "Bash", null), 71.0),
         ]);
         var watch = new PaceLedgerWatch(h.Store, "unused", (l, s) => h.Said.Add((l, s)), (t, _, u) => h.Alerts.Add((t, u)))
         {
@@ -380,7 +381,7 @@ public sealed class PaceLedgerTests
 
         watch.Tick(bEnd.AddMinutes(30));
         var row = watch.Db.LoadLedger().Single(w => w.Account == "acct-b");
-        Assert.That((row.Held, row.Refused), Is.EqualTo((1, 1)), "only acct-b's own held and refused events, not acct-a's");
+        Assert.That((row.Held, row.Refused), Is.EqualTo((1, 1)), "only acct-b's own tagged held and refused events: not acct-a's, and not the untagged one either");
     }
 
     /// <summary>M.ORCH-T725: a per-CLI folder signed in as the global account must not hide that account's global rows, or every
