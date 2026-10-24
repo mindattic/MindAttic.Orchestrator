@@ -3273,7 +3273,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.SpaceGod', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/0df2b9d7-2637-40ea-bac8-2354ec84d894', NULL, 9334947);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.SpaceGod', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 17621786);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.SpaceGod', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 25808765);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4665058);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4903968);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'MindAttic.Agency', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 90214);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'MindAttic.Orchestrator', 'Claude', 'billed:api-key', NULL, 4486360);
 
@@ -4112,11 +4112,18 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('9066c252-4e61-4adc-8e1b-61120f513162', 'SS-T56', 'chore', 'Prose', 309300, '2026-10-15T13:05:39.825Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('9173831a-1a8b-45e5-ab65-3105b64e8e81', 'GG-T28', 'chore', 'GridGameGaiden', 96220, '2026-10-15T11:11:55.835Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('920f73e2-defc-4a55-b788-dcf01eab5395/agent-a1dcdb938a4ee3a7e', 'UNI-T50', 'feature', '(workspace root)', 246921, '2026-10-24T03:59:53.952Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('920f73e2-defc-4a55-b788-dcf01eab5395/agent-a1ff714e93f35487a', 'U.INC-T21', 'chore', '(workspace root)', 88706, '2026-10-24T10:28:31.822Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('920f73e2-defc-4a55-b788-dcf01eab5395/agent-a22dc7b8cca4c5148', 'UNI-T38', 'chore', '(workspace root)', 396864, '2026-10-24T04:13:34.64Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('920f73e2-defc-4a55-b788-dcf01eab5395/agent-a43a6f6b8a3a3ffba', 'UH-T40', 'chore', '(workspace root)', 74192, '2026-10-24T10:28:44.574Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('920f73e2-defc-4a55-b788-dcf01eab5395/agent-a552278f9f9ec8379', 'UNI-T52', 'feature', '(workspace root)', 203688, '2026-10-24T10:28:44.827Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('920f73e2-defc-4a55-b788-dcf01eab5395/agent-a5769b3903ee76f14', 'UNI-T51', 'feature', '(workspace root)', 273675, '2026-10-24T04:44:15.133Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('920f73e2-defc-4a55-b788-dcf01eab5395/agent-a6c75354adb597032', 'UR-T68', 'chore', '(workspace root)', 31824, '2026-10-24T10:28:17.997Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('920f73e2-defc-4a55-b788-dcf01eab5395/agent-a8714bba7c371729b', 'UNI-T39', 'chore', '(workspace root)', 247866, '2026-10-24T04:33:41.078Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('920f73e2-defc-4a55-b788-dcf01eab5395/agent-a9b2393e0ef3ab9b9', 'UNI-T49', 'feature', '(workspace root)', 111040, '2026-10-24T03:48:42.322Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('920f73e2-defc-4a55-b788-dcf01eab5395/agent-a9b41ad36233c2280', 'UNI-T37', 'feature', '(workspace root)', 82412, '2026-10-24T03:44:25.473Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('920f73e2-defc-4a55-b788-dcf01eab5395/agent-a9db29988c955c838', 'U.VAN-T6', 'chore', '(workspace root)', 69600, '2026-10-24T10:28:42.178Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('920f73e2-defc-4a55-b788-dcf01eab5395/agent-ab43e84031f007a6e', 'U.OVW-T6', 'chore', '(workspace root)', 49984, '2026-10-24T10:28:41.829Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('920f73e2-defc-4a55-b788-dcf01eab5395/agent-acea623bacf84d77e', 'UQD-T57', 'fix', '(workspace root)', 111452, '2026-10-24T10:28:42.831Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('920f73e2-defc-4a55-b788-dcf01eab5395/agent-ad689c1126b135734', 'UNI-T48', 'feature', '(workspace root)', 55396, '2026-10-24T03:43:28.712Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('921f5247-7f20-4700-9252-adce6094b88e', 'RB-T100', 'fix', 'REA.Bloodlines', 69196, '2026-10-23T05:31:31.256Z', 1, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('933b404e-17e7-4c76-9234-ad8509611d86', 'GG-T29', 'chore', 'GridGameGaiden', 50328, '2026-10-15T11:18:54.85Z', 0, 'sonnet');
@@ -4639,6 +4646,13 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (55, 'GG-T53', 'Unity.GridGame', 'D:\Projects\MindAttic.worktrees\Unity.GridGame\GG-T53', 'Claude', '2026-10-24T04:13:53.251735Z', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (56, 'M.ORCH-T774', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic.worktrees\MindAttic.Orchestrator\M.ORCH-T774', 'Claude', '2026-10-24T05:24:24.9122382Z', 1, NULL, NULL, NULL, 22844, '9976eacd-149e-4ad5-a16b-b31ecc8eb4cc', 'sonnet', '2026-10-24T06:08:02.0603565Z', 'ryandebraal@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (57, 'MAT-T49', 'MindAttic.Agency', 'D:\Projects\MindAttic.worktrees\MindAttic.Agency\MAT-T49', 'Claude', '2026-10-24T06:38:31.351098Z', 1, NULL, NULL, NULL, 11408, '3355791e-fb1c-436b-9d8e-7fb6aeda09fd', 'sonnet', NULL, 'honey@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (58, 'UNI-T52', 'Unity.Chain', 'D:\Projects\MindAttic.worktrees\Unity.Chain\UNI-T52', 'Claude', '2026-10-24T10:23:51.927077Z', 1, NULL, NULL, NULL, 46704, '920f73e2-defc-4a55-b788-dcf01eab5395', 'opus', NULL, 'honey@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (59, 'UQD-T57', 'Unity.QuickDuel', 'D:\Projects\MindAttic.worktrees\Unity.QuickDuel\UQD-T57', 'Claude', '2026-10-24T10:26:37.5925257Z', 1, NULL, NULL, NULL, 46704, '920f73e2-defc-4a55-b788-dcf01eab5395', 'sonnet', NULL, 'honey@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (60, 'UH-T40', 'Unity.Hare', 'D:\Projects\MindAttic.worktrees\Unity.Hare\UH-T40', 'Claude', '2026-10-24T10:26:37.5925257Z', 1, NULL, NULL, NULL, 46704, '920f73e2-defc-4a55-b788-dcf01eab5395', 'sonnet', NULL, 'honey@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (61, 'U.OVW-T6', 'Unity.Overworld', 'D:\Projects\MindAttic.worktrees\Unity.Overworld\U.OVW-T6', 'Claude', '2026-10-24T10:26:37.5925257Z', 1, NULL, NULL, NULL, 46704, '920f73e2-defc-4a55-b788-dcf01eab5395', 'sonnet', NULL, 'honey@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (62, 'U.INC-T21', 'Unity.Incognito', 'D:\Projects\MindAttic.worktrees\Unity.Incognito\U.INC-T21', 'Claude', '2026-10-24T10:26:37.5925257Z', 1, NULL, NULL, NULL, 46704, '920f73e2-defc-4a55-b788-dcf01eab5395', 'sonnet', NULL, 'honey@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (63, 'U.VAN-T6', 'Unity.ProjectVania', 'D:\Projects\MindAttic.worktrees\Unity.ProjectVania\U.VAN-T6', 'Claude', '2026-10-24T10:26:37.5925257Z', 1, NULL, NULL, NULL, 46704, '920f73e2-defc-4a55-b788-dcf01eab5395', 'sonnet', NULL, 'honey@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (64, 'UR-T68', 'Unity.Ricochet', 'D:\Projects\MindAttic.worktrees\Unity.Ricochet\UR-T68', 'Claude', '2026-10-24T10:26:37.5925257Z', 1, NULL, NULL, NULL, 46704, '920f73e2-defc-4a55-b788-dcf01eab5395', 'opus', NULL, 'honey@mindattic.com');
 
 -- organizations
 
@@ -8285,91 +8299,91 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "8444db9ff9c940df9c04336c885eb283962d4b9e"
   },
   "JobHunt": {
-    "Tested": "41c75e5b17d97d7911f747c8277d4538874434d8",
-    "Green": "41c75e5b17d97d7911f747c8277d4538874434d8"
+    "Tested": "82ca51067bca7dbab5c78171de17607a4ad9245b",
+    "Green": "82ca51067bca7dbab5c78171de17607a4ad9245b"
   },
   "MediaButler": {
-    "Tested": "9e2a2500da48ce40b76c981a4c23424212d5c846"
+    "Tested": "518f409acec6f232e534db8589196d7ef42735dd"
   },
   "MindAttic.Authentication": {
-    "Tested": "3af7f32494db00f075018ba2e64b1e769271c4d6"
+    "Tested": "8f54822a67d6109568f734994a3c5992998a9882"
   },
   "MindAttic.Browser": {
-    "Tested": "35a01aa2f56fd0aa47b23ddb96c429f646ba735c",
-    "Green": "35a01aa2f56fd0aa47b23ddb96c429f646ba735c"
+    "Tested": "c004020eea0bc2f86b64f08dd09c7592ec5d311e",
+    "Green": "c004020eea0bc2f86b64f08dd09c7592ec5d311e"
   },
   "MindAttic.Capture": {
-    "Tested": "293e5f1706ce526cd6f72635fadbde9937e3d54a",
-    "Green": "293e5f1706ce526cd6f72635fadbde9937e3d54a"
+    "Tested": "fc72692ec6bd86d7d8c48b050dc160f9c0e3d3ba",
+    "Green": "fc72692ec6bd86d7d8c48b050dc160f9c0e3d3ba"
   },
   "MindAttic.Components": {
-    "Tested": "726491cd0530815a4cf5144d3b03e9930e520f79",
-    "Green": "726491cd0530815a4cf5144d3b03e9930e520f79"
+    "Tested": "3748019cf942e64bc23f14db1e2a0fdf9327f965",
+    "Green": "3748019cf942e64bc23f14db1e2a0fdf9327f965"
   },
   "MindAttic.Deploy": {
-    "Tested": "330f4dc1b6bd523a7d385555679ef67591b44b06"
+    "Tested": "69371ac626ebb16861055e557f410ffc15b92680"
   },
   "MindAttic.Export": {
-    "Tested": "0ea2353a8b06ab7d34999d1c369f8557295e5674"
+    "Tested": "061cd3c9188d8940cea2613187da951d5c08191c"
   },
   "MindAttic.Helpers": {
-    "Tested": "ef7ed56bcaef9554995812fa94627d11c16fe61d"
+    "Tested": "4bd229f854178b6ed1f0dd1951e6fb3225a4ba9a"
   },
   "MindAttic.Ideas": {
-    "Tested": "5fcbd0bdd76388c51f79d7efb0f9c1019095d436"
+    "Tested": "48247a0eb29f9608042de9268356673bde09ac3a"
   },
   "MindAttic.Launcher": {
-    "Tested": "3fbb869a7330cf80e1d456b4cf98999c2def0a23",
-    "Green": "3fbb869a7330cf80e1d456b4cf98999c2def0a23"
+    "Tested": "f74493668a3bd8a728455406d881d7408d6a24af",
+    "Green": "f74493668a3bd8a728455406d881d7408d6a24af"
   },
   "MindAttic.Legion": {
     "Tested": "0f63adaaae25e3a5fc8498c9973ab151ca31bd96"
   },
   "MindAttic.Log": {
-    "Tested": "c5b03687561a373d83a23ccb033728ecb6d7e421"
+    "Tested": "4358effc9d75fabf5c67ad4e742be0e490be265d"
   },
   "MindAttic.Media": {
-    "Tested": "353c5389ca0ff0ddd31229b4118288799603ae53"
+    "Tested": "a57a30142679f3ed216b7bb6a585534536b6391c"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "e1613947e977623cb6545d04e34fca15aa51edaf",
-    "Green": "e1613947e977623cb6545d04e34fca15aa51edaf"
+    "Tested": "e954d13821aa0c5414f29d8517adc0322238a788",
+    "Green": "e954d13821aa0c5414f29d8517adc0322238a788"
   },
   "MindAttic.Psst": {
-    "Tested": "11224b271ff95cb232162fc5b5d2e26ceebe801e"
+    "Tested": "4a8dd88cf5df31911bcff9ec0b040a5008399a02"
   },
   "MindAttic.Telemetry": {
-    "Tested": "abe81baeac104dc09daf44fa165ab3b35303203e"
+    "Tested": "7332476b16161496300b69d2c8838a9cb55f38e7"
   },
   "MindAttic.Tickets": {
-    "Tested": "297978db492765b0ccff7578d672a5a3985bb7f7",
-    "Green": "297978db492765b0ccff7578d672a5a3985bb7f7"
+    "Tested": "e123bc1207c8e004ea43cf7a5aa71979b7882369",
+    "Green": "e123bc1207c8e004ea43cf7a5aa71979b7882369"
   },
   "MindAttic.Vault": {
-    "Tested": "d1d380ee7f79fca1002dc912e38cd1fff5f25687",
-    "Green": "d1d380ee7f79fca1002dc912e38cd1fff5f25687"
+    "Tested": "ac2e2fd848071f2cd0db1f8a77f0bb3dad28d3d8",
+    "Green": "ac2e2fd848071f2cd0db1f8a77f0bb3dad28d3d8"
   },
   "OpenCredentials": {
-    "Tested": "5b8c373263a4e2717b621b6a827e1294f8d0c899"
+    "Tested": "8b046123b94fb1dfcd75dedeff9575e6b8081a70"
   },
   "ProcessLogger": {
-    "Tested": "e7ada632ec050e6bb65308db96c9027edcf41936"
+    "Tested": "bddb249caed282380de8d1cbee39d252455e7bca"
   },
   "TaxRateCollector": {
-    "Tested": "1cc2d94f633d3ad89d3799472730aaf5d7e3eb33"
+    "Tested": "8030495c6a9a623afb6e5517365d5931c21fe17f"
   },
   "ThinkTank": {
-    "Tested": "10b56386efc5a48a1001bbaf77b8c23d85d527bc"
+    "Tested": "2e159a9b7f7b56aa9741cc25bedd1c4dac95ebb4"
   },
   "Tutor": {
-    "Tested": "4c8527e11554f4ad6c45bd7bab78f506fb762b41"
+    "Tested": "d21e2389682a5f31fbaf4b89538e304cb49da3af"
   },
   "Unity.GridGame": {
     "Tested": "0223132d1fd651281201d57401151b833fd53fa8"
   },
   "Unity.Cursory": {
-    "Tested": "36064e40496f11567a31f5c20a5287b69361dfcd",
-    "Green": "36064e40496f11567a31f5c20a5287b69361dfcd"
+    "Tested": "acedc8cfce90dfa20e8bb0cd99b23ae36acd8c1c",
+    "Green": "acedc8cfce90dfa20e8bb0cd99b23ae36acd8c1c"
   },
   "REA.Bloodlines": {
     "Tested": "5e06d3393cfdaa772e653cd9e1e4740b3651fd7a",
@@ -8403,13 +8417,13 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "1ae4a067bfd885aac5206f041290b5272e55baf6"
   },
   "JellyFinPoster": {
-    "Tested": "65fa3edbea03bf61857dce2744fd4d73e3730d01"
+    "Tested": "0c9f87faa073daafd27522ee7693346fbe99245f"
   },
   "JoyceFit": {
-    "Tested": "38b9502f0cf7a71ac819b31649fa5a616ac7bbe2"
+    "Tested": "de64c3bca2f1e545dfaae8b72d3f974aa0fd4713"
   },
   "KdpPublish": {
-    "Tested": "7f835b2078fcbbee641d3e1bb33836f0704c8606"
+    "Tested": "75724978180959fdbc9f470422b61cf46dde4daa"
   },
   "MindAttic.Agency": {
     "Tested": "c829e9437d167c68441071f75d8067baa043a9c7"
@@ -8418,28 +8432,28 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "6436de35af93e61a48725be15dcf0e736a12b9c4"
   },
   "MindAttic.Scheduler": {
-    "Tested": "9226c8ba9e2347e50af57f513fe8b4b84690a73b"
+    "Tested": "caaf68692f8a1feeffd0dc18a63086aaee33a532"
   },
   "MindAttic.Web": {
-    "Tested": "c126a912bfc91c83a169204db4661030cbf09ef6"
+    "Tested": "db817ef9047d74799520f8b80d5bbf56841eb13c"
   },
   "Prose": {
     "Tested": "e5a4cf73a92608ce826b29365c196024b0cee86b"
   },
   "SyntheticExchangeTheory": {
-    "Tested": "e46040862f87554dba7e19c4629a2f4ce6aeae7f"
+    "Tested": "3d4595bdbe439878fdc544d9fca8d821b3b7740c"
   },
   "TownWalker": {
-    "Tested": "d2fef915ac39e421e6f7e2600bc053bc6c804cfa"
+    "Tested": "1cc20f94bf87b83ee5a4753c799aea4e0ec79083"
   },
   "Unity.Eve": {
-    "Tested": "b860866530df51318c45e145c45629a0f19c98a6"
+    "Tested": "74657741e5146ddfd3eed4727a091df8031b680e"
   },
   "Unity.Multiplayer": {
     "Tested": "52e2f057a3d847c250c5a320cb47842e621c5ce9"
   },
   "Unity.Shared": {
-    "Tested": "2e3ae9727f3ebb15fabe05d29ae48c72d651daae"
+    "Tested": "612f448ff95185047c9a6ca2ff9d5fb78abb0c98"
   },
   "Unity.SpaceGod": {
     "Tested": "54c2751bdd536d66bddc575dc09f69098a057e32"
@@ -8448,7 +8462,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "b5fc5f1566f00fa0d204a9252b7774e2873f9255"
   },
   "Unstuck": {
-    "Tested": "92875dee43953af0c7b50836663926d30ef83f20"
+    "Tested": "0afda1a8288caf6d651a7b6c28ad5c1b0422a3a7"
   },
   "Unity.Chain": {
     "Tested": "66a386b6abf20416ee7534e664a0f68b7ca82657"
@@ -9212,9 +9226,13 @@ INSERT INTO state (name, value) VALUES ('outside-use', '[
       0,
       0,
       0,
+      0,
+      0,
+      0,
+      0,
       0
     ],
-    "NoiseThroughUtc": "2026-10-24T08:18:49Z",
+    "NoiseThroughUtc": "2026-10-24T10:28:18Z",
     "Windows": [
       {
         "ResetUtc": "2026-10-23T21:10:00Z",
@@ -9226,6 +9244,10 @@ INSERT INTO state (name, value) VALUES ('outside-use', '[
       },
       {
         "ResetUtc": "2026-10-24T08:20:00Z",
+        "Points": 0
+      },
+      {
+        "ResetUtc": "2026-10-24T15:20:00Z",
         "Points": 0
       }
     ],
