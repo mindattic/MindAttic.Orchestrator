@@ -213,6 +213,21 @@ public sealed class DashboardViewModelTests
         Assert.That(MainViewModel.FindRepo("Nope", [Tile("A")], new Dictionary<string, RepoTileViewModel>()),
             Is.EqualTo(((RepoTileViewModel?)null, false)));
 
+    [Test]
+    public void Start_from_the_command_line_takes_only_a_workspace_repo_by_its_own_name()
+    {
+        // M.ORCH-T767: --start <repo> starts a CLI only in a repo the workspace has; the folder and title are the workspace's.
+        var a = Tile("MindAttic.Orchestrator");
+        var known = new Dictionary<string, RepoTileViewModel>(StringComparer.OrdinalIgnoreCase) { [a.Name] = a };
+
+        Assert.That(MainViewModel.StartTarget("mindattic.orchestrator", known), Is.SameAs(a));
+        Assert.That(MainViewModel.StartTarget("Nope", known), Is.Null, "not in the workspace");
+        Assert.That(MainViewModel.StartTarget(@"..\MindAttic.Orchestrator", known), Is.Null);
+        Assert.That(MainViewModel.StartTarget("MindAttic.Orchestrator\" & calc", known), Is.Null);
+        var noFolder = new RepoTileViewModel("Ghost");
+        Assert.That(MainViewModel.StartTarget("Ghost", new Dictionary<string, RepoTileViewModel> { ["Ghost"] = noFolder }), Is.Null, "no folder to start in");
+    }
+
     // ── QueueRowViewModel ───────────────────────────────────────────────────
 
     private static QueueItem Item(Assignment? assignment = null, bool repoBusy = false) =>

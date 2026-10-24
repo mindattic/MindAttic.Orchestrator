@@ -223,6 +223,8 @@ public sealed class OrphanWatch(JsonStore store)
             // worktree (nothing is typed into it; keep-going and AutopilotWaker send it on as they do any workable ticket).
             var dead = q.Assignment!;
             store.UpdateAssignments(all => all.RemoveAll(x => Same(x.TicketId, q.Id) && x.StartedUtc == dead.StartedUtc && x.Cli == dead.Cli));
+            // Nobody works it until that claim (M.ORCH-T766), which records its new owner; a tab opened below records its own.
+            Tickets.TicketWorking.Clear(Path.GetDirectoryName(q.RepoPath), q.Id);
             events.Add(new Event($"orphaned: handed {q.Id} back to the /allocate CLI {pilot} on {q.Repo}: its next orchestrator next --claim restarts it in {tree}, carrying its work forward", false));
             return rec with { State = OrphanRecord.HandedBack, Redispatches = rec.Redispatches + 1, RedispatchedUtc = nowUtc, Why = $"handed back to the /allocate CLI {pilot}" };
         }

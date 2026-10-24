@@ -247,7 +247,7 @@ internal sealed class ReleaseCommand : Command<ReleaseCommand.Settings>
         var dispatcher = Ctx.Dispatcher(store);
         if (!settings.RemoveWorktree)
         {
-            dispatcher.Release(a.TicketId);
+            dispatcher.Release(a.TicketId, OrchestratorOptions.Load().WorkspaceRoot);
             AnsiConsole.MarkupLine($"{a.TicketId} is back in the queue.");
             return 0;
         }

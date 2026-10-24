@@ -176,7 +176,9 @@ public sealed class MoveHandback(JsonStore store)
                     var a = all[i];
                     if (!a.IsClaim || !held.Contains(a.TicketId)) continue;
                     // Landed: the claim is the CLI's as it is now, so its next and its share count it there; otherwise the old owner keeps it.
-                    if (end.Landed && end.Cli is { } cli) all[i] = a = a with { Cli = cli.CliPid ?? a.Cli, CliSession = cli.SessionId };
+                    // On its new login too (M.ORCH-T766), which the daemon records in the ticket database as who works it.
+                    if (end.Landed && end.Cli is { } cli)
+                        all[i] = a = a with { Cli = cli.CliPid ?? a.Cli, CliSession = cli.SessionId, Account = AccountDirs.Normalize(cli.OwnLogin ?? m.ToEmail) };
                     claims.Add(a);
                 }
             });

@@ -271,6 +271,11 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
                 ReportAutopilot(autopilot.Tick(plan, snapshot, s, DateTime.UtcNow));
                 tick.Lap("autopilot");
+                // Who works each ticket, in the ticket database for Tickets Desktop's link back (M.ORCH-T766): kept in step with the
+                // assignments as they stand after this tick's moves, redispatches and reaping (a claim gone stale is cleared). One
+                // daemon writes it, the one that wakes the CLIs.
+                if (wakeLease.TryAcquire()) SyncWorking(options.WorkspaceRoot, plan);
+                tick.Lap("who works the tickets");
                 RunMainlineTests(mainTests, testsLease, snapshot, s, options.WorkspaceRoot);
                 tick.Lap("main-line tests");
                 // Keyed without its numbers: a hold whose percent ticks 93 → 94 is the same hold, not a new line (found live: 46 lines in 2h).
@@ -335,6 +340,22 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     }
 
     private AccountRebalancer? rebalancer;
+
+    private string? lastWorkingFailure;
+
+    /// <summary>Records who works each ticket in the ticket database (<see cref="Tickets.TicketWorking.Sync(string?, SchedulePlan, IReadOnlyList{Assignment}?)"/>,
+    /// M.ORCH-T766). A write that fails is logged (once while it keeps failing the same way) and the tick carries on.</summary>
+    private void SyncWorking(string workspaceRoot, SchedulePlan plan)
+    {
+        IReadOnlyList<Assignment> now;
+        try { now = store.LoadAssignments(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return; }
+        var (changed, failed) = Tickets.TicketWorking.Sync(workspaceRoot, plan, now);
+        if (changed > 0) Say(LogEventLevel.Debug, $"who works the tickets: {changed} recorded or cleared in the ticket database");
+        var failure = failed.Count == 0 ? null : string.Join("; ", failed);
+        if (failure is not null && failure != lastWorkingFailure) Say(LogEventLevel.Warning, $"who works the tickets: {failure}");
+        lastWorkingFailure = failure;
+    }
 
     private OrphanWatch? orphans;
 

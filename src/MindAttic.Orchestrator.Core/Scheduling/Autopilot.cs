@@ -263,6 +263,10 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         // A claim by a CLI's subagent (orchestrator next) is the same: its worktree is tidied by the sweep once landed.
         var finishedTabs = plan.Finished.Where(a => a.Log is null).Select(a => a.TicketId).ToHashSet(StringComparer.Ordinal);
         if (finishedTabs.Count > 0) store.UpdateAssignments(all => all.RemoveAll(a => a.Log is null && finishedTabs.Contains(a.TicketId)));
+        // Nobody works a finished ticket (M.ORCH-T766): cleared in the ticket database, as the daemon's sync would next tick.
+        foreach (var a in plan.Finished.Where(a => a.Log is null))
+            if (snapshot.Repos.FirstOrDefault(r => r.Path.Length > 0 && Same(r.Name, a.Repo))?.Path is { } finishedRepo)
+                Tickets.TicketWorking.Clear(Path.GetDirectoryName(finishedRepo), a.TicketId);
 
         var gone = store.LoadAssignments().Where(a => a.Log is not null && !(a.Pilot is not null && IsRunning(a))).ToList();
         if (gone.Count == 0) return;
@@ -275,6 +279,8 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             // Halted by the window's stop, it didn't fail: its work stays in its worktree and it carries on after the reset.
             var halted = !closed && plan.Stopped;
             if (!closed && !halted) parked.Add(a.TicketId);
+            // Landed, given back or halted, its agent is gone: nobody works it now (M.ORCH-T766).
+            Tickets.TicketWorking.Clear(Path.GetDirectoryName(repoPath), a.TicketId);
             said.Add(closed
                 ? $"autopilot: finished {a.TicketId} in {a.Repo}{note}"
                 : halted ? $"autopilot: {a.TicketId}'s agent in {a.Repo} stopped at the window's target; it starts again after the reset{note}"
@@ -672,6 +678,8 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 all.Add(new Assignment(item.Id, item.Repo, tree, Providers.Claude, nowUtc, true) { Cli = cli, CliSession = self, Model = model.Model, Account = AccountDirs.Normalize(login) });
             });
             if (taken) { claimedElsewhere++; continue; }
+            // Who works it, for Tickets Desktop's link back (M.ORCH-T766): best effort, never holds up the claim.
+            Tickets.TicketWorking.Set(Path.GetDirectoryName(item.RepoPath), item.Id, login, self);
             var carried = orphans.TryGetValue(item.Id, out var orphan) && orphan.State == OrphanRecord.HandedBack ? OrphanWatch.CarryForward(orphan) : "";
             handed.Add(new Handout(item, tree, carried + PromptFor(item, tree, branch, mainlineOf(item.RepoPath), model), model));
             inRepo[item.Repo] = inRepo.GetValueOrDefault(item.Repo) + 1;
