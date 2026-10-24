@@ -106,9 +106,17 @@ public sealed class AccountsViewTests
         var code = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml.cs"));
         Assert.That(xaml, Does.Not.Contain("x:Name=\"AccountsBody\"").And.Not.Contain("IsAccountsView"));
 
-        var org = xaml[xaml.IndexOf("x:Name=\"OrgToolbar\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)];
-        Assert.That(org, Does.Contain("{Binding AddAccountCommand}").And.Contain("x:Name=\"SignInAllButton\"").And.Contain("{Binding UsageReportCommand}"));
-        Assert.That(xaml.IndexOf("x:Name=\"OrgStrip\"", StringComparison.Ordinal), Is.LessThan(xaml.IndexOf("x:Name=\"OrgToolbar\"", StringComparison.Ordinal)), "under the org switcher");
+        // M.ORCH-T804: the org-wide toolbar (the email box, Add login, Sign in all, Report) moved off the dashboard into
+        // Settings' Logins tab, still on the global login's tab.
+        var org = xaml[xaml.IndexOf("x:Name=\"OrgToolbar\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"SettingsPersonTabsTab\"", StringComparison.Ordinal)];
+        Assert.That(org, Does.Contain("{Binding AddAccountCommand}").And.Contain("x:Name=\"SignInAllButton\"").And.Contain("{Binding UsageReportCommand}")
+            .And.Contain("x:Name=\"NewAccountBox\"").And.Contain("name@company.com"));
+        var settings = xaml.IndexOf("x:Name=\"SettingsModal\"", StringComparison.Ordinal);
+        Assert.That(xaml.IndexOf("x:Name=\"SettingsLoginsTab\"", StringComparison.Ordinal), Is.GreaterThan(settings), "in the Settings dialog");
+        Assert.That(xaml.IndexOf("x:Name=\"OrgToolbar\"", StringComparison.Ordinal), Is.GreaterThan(xaml.IndexOf("x:Name=\"SettingsLoginsTab\"", StringComparison.Ordinal)), "on its Logins tab");
+        var top = xaml[xaml.IndexOf("x:Name=\"TopRow\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"Header\"", StringComparison.Ordinal)];
+        Assert.That(top, Does.Not.Contain("{Binding AddAccountCommand}").And.Not.Contain("{Binding SignInAllCommand}").And.Not.Contain("{Binding UsageReportCommand}"),
+            "off the main dashboard");
         Assert.That(code, Does.Contain("OrgToolbar.DataContext = model;"));
 
         // M.ORCH-T797: no login-action buttons on a person's page: Rename, Org limit and Make default (this person's own: it

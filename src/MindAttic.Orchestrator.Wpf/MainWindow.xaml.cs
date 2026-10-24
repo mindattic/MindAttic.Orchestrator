@@ -41,8 +41,11 @@ public partial class MainWindow : Window
         // The org switcher above it, and what an org with no Claude login says, are the global login's tab's too (M.ORCH-T655).
         OrgStrip.DataContext = model;
         OrgEmptyPanel.DataContext = model;
-        // The org-wide login actions (Add login, Sign in all, Report) above the person tabs are the global login's tab's too (M.ORCH-T763).
+        // The org-wide login actions (Add login, Sign in all, Report), on Settings' Logins tab since M.ORCH-T804, are the global
+        // login's tab's too (M.ORCH-T763), not the shown tab's Settings the rest of the dialog binds to.
         OrgToolbar.DataContext = model;
+        // Settings fills 80% of the window both ways (M.ORCH-T804), following it as it resizes or zooms.
+        Root.SizeChanged += (_, _) => SizeSettings();
         // A person's current work and the 'Miscellaneous' tab are each one virtualized list (M.ORCH-T754): headings and notes, then
         // the lists' items a row (or a line of cards) each, so a switch of tab or org builds only what's on screen.
         VirtualizedList.ApplyBody(AgentsBody);
@@ -259,6 +262,28 @@ public partial class MainWindow : Window
         model.SetWatched(!Hidden);
         if (shown && IsLoaded) await model.RefreshAsync();
     }
+
+    /// <summary>The share of the window the Settings dialog fills, across and down (M.ORCH-T804).</summary>
+    internal const double SettingsShare = 0.8;
+
+    /// <summary>MaModal's own chrome around its content: the title row, the content padding, the footer and the card's border,
+    /// taken off the 80% so the whole card, not just its body, is 80% of the window tall.</summary>
+    private const double SettingsChrome = 132;
+
+    /// <summary>Settings at 80% of its container (M.ORCH-T804), not a tall fixed-width modal: MaModal has a width
+    /// (DialogWidth) but no height of its own, so the body's Height sets the card's. Root's size is before the zoom's scale,
+    /// the same space the modal lays out in.</summary>
+    private void SizeSettings()
+    {
+        var (width, height) = SettingsSize(Root.ActualWidth, Root.ActualHeight);
+        SettingsModal.DialogWidth = width;
+        SettingsBody.Height = height;
+    }
+
+    /// <summary>The Settings card's width and its body's height for a container of <paramref name="width"/> by
+    /// <paramref name="height"/>: 80% across, and 80% down less MaModal's chrome, never under a usable minimum.</summary>
+    internal static (double Width, double BodyHeight) SettingsSize(double width, double height) =>
+        (Math.Max(360, width * SettingsShare), Math.Max(220, height * SettingsShare - SettingsChrome));
 
     private void OnEscape()
     {

@@ -102,6 +102,13 @@
              whichever person's tab is selected. -->
         <DockPanel x:Name="TopRow" Grid.Row="0" Margin="24,14,24,0">
         <mc:MaThemeToggle x:Name="ThemeToggle" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0" />
+        <!-- Settings (M.ORCH-T804): a single cog between the emergency key and the sun/moon toggle, the only way to open
+             Settings (the toolbar's Settings button and the 5-hour and week cards no longer do). The library's MaToolButton
+             with Segoe's well-known 'Settings' glyph (E713, in both Segoe Fluent Icons and Segoe MDL2 Assets, the same font
+             stack the theme toggle draws from). Bound to the shown tab's ToggleSettingsCommand, like the modal it opens. -->
+        <Button x:Name="SettingsButton" Style="{StaticResource MaToolButton}" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
+                Content="&#xE713;" Command="{Binding ToggleSettingsCommand}" ToolTip="Settings"
+                AutomationProperties.Name="Settings" />
         <!-- The library's own MaToolButton (Theme.xaml), not a template of its own (M.ORCH-T775): a Storyboard.TargetName
              only resolves within a ControlTemplate or DataTemplate's NameScope, and MaToolButton's has no part this button
              could name, so the glow pulse is set up in code-behind instead (MainWindow.xaml.cs), on a DropShadowEffect
@@ -141,37 +148,7 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
-        <!-- The org-wide login actions (M.ORCH-T763, from the Accounts view's toolbar): Add login (a per-CLI login of its own for
-             an email), Sign in all (every roster account with no login of its own yet, M.ORCH-T604) and Report (the usage report,
-             M.ORCH-T685), in a small toolbar above the person tabs; what they did on the line beside them. Kept on the global
-             login's tab (MainWindow.xaml.cs), like the strips around it. -->
-        <DockPanel x:Name="OrgToolbar" Margin="0,0,0,10">
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBox x:Name="NewAccountBox" Style="{StaticResource MaTextBox}" Width="220" Height="28" VerticalAlignment="Center"
-                         Text="{Binding NewAccountEmail, UpdateSourceTrigger=PropertyChanged}"
-                         mc:MaTextBox.Placeholder="name@company.com"
-                         AutomationProperties.Name="Email of the login to add" />
-                <Button x:Name="AddLoginButton" Style="{StaticResource MaButton}" Content="Add login" Padding="10,3" Margin="6,0,0,0"
-                        Command="{Binding AddAccountCommand}" VerticalAlignment="Center"
-                        ToolTip="Sign in a per-CLI login of its own for this email (orchestrator login --account), opening its login in the browser. The global login is left as it is." />
-                <Button x:Name="SignInAllButton" Style="{StaticResource MaButton}" Content="Sign in all" Padding="10,3" Margin="6,0,0,0"
-                        Command="{Binding SignInAllCommand}" VerticalAlignment="Center"
-                        ToolTip="Give every account in the roster with no per-CLI login yet its own (~/.claude-accounts), opening each one's login in the browser in turn, so every Claude Team seat stays signed in side by side. The global login stays the default." />
-                <Button x:Name="UsageReportButton" Style="{StaticResource MaButton}" Content="Report" Padding="10,3" Margin="6,0,0,0"
-                        Command="{Binding UsageReportCommand}" VerticalAlignment="Center"
-                        ToolTip="Write the usage report (every member's 5-hour and weekly use, resets, points left to the weekly target, how fresh each reading is, the CLIs' spend and the API key's) as an HTML page and a Markdown file to share, and open the page (orchestrator report)." />
-            </StackPanel>
-            <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
-                <TextBlock x:Name="OrgActionsMessage" Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
-                           AutomationProperties.LiveSetting="Polite"
-                           Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                <!-- The billing detail line (M.ORCH-T628): what the last Sign in all or default switch did, a problem, and the open
-                     CLIs still billing the other thing. -->
-                <TextBlock x:Name="BillingDetailLine" Text="{Binding BillingDetail}" Style="{StaticResource MaTileSubtitle}" TextWrapping="Wrap"
-                           AutomationProperties.LiveSetting="Polite"
-                           Visibility="{Binding BillingDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-            </StackPanel>
-        </DockPanel>
+        <!-- The org-wide login actions (Add login, Sign in all, Report) moved from here into Settings' Logins tab (M.ORCH-T804). -->
         <mc:MaTabControl x:Name="LoginTabStrip" ShowContent="False" ItemsSource="{Binding OrgTabs}" SelectedItem="{Binding SelectedTab}"
                          AutomationProperties.Name="Claude logins, one dashboard tab each"
                          ContextMenuOpening="OnLoginTabContextMenu"
@@ -264,10 +241,11 @@
 
         <mc:MaTileGrid x:Name="StatTiles" MinItemWidth="200" Spacing="10" RowSpacing="10" Balanced="True" UniformRows="True"
                            AutomationProperties.Name="Summary">
-            <!-- Budget: the current 5-hour block. Click to set limits. -->
-            <Button Style="{StaticResource MaSmallStat}" HorizontalContentAlignment="Stretch" Command="{Binding ToggleSettingsCommand}"
+            <!-- Budget: the current 5-hour block. Click to change this login's cutoffs (Org limit): the top-right cog is the
+                 only way into Settings (M.ORCH-T804). -->
+            <Button Style="{StaticResource MaSmallStat}" HorizontalContentAlignment="Stretch" Command="{Binding OrgLimitCommand}"
                     ToolTip="{Binding BudgetTooltip}"
-                    AutomationProperties.Name="{Binding BudgetHeadline, StringFormat='5-hour window {0} used: open budget settings'}">
+                    AutomationProperties.Name="{Binding BudgetHeadline, StringFormat='5-hour window {0} used: change the cutoffs'}">
                 <StackPanel>
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Left" Text="{Binding BudgetHeadline}" Style="{StaticResource MaStatValue}"
@@ -287,9 +265,9 @@
             </Button>
             <!-- Weekly: the other half of /status's picture. The tab's login's own week (M.ORCH-T628): what's left, its reset's
                  day, date and time, and its weekly stop line (M.ORCH-T609). -->
-            <Button Style="{StaticResource MaSmallStat}" Command="{Binding ToggleSettingsCommand}"
-                    ToolTip="How much of this login's weekly limit is left (/status reports the used share), when it resets, and where its CLIs stop (the weekly reserve). Opens settings, where the weekly reset is set."
-                    AutomationProperties.Name="{Binding WeeklyHeadline, StringFormat='Week {0}: open settings'}">
+            <Button Style="{StaticResource MaSmallStat}" Command="{Binding OrgLimitCommand}"
+                    ToolTip="How much of this login's weekly limit is left (/status reports the used share), when it resets, and where its CLIs stop (the weekly reserve). Opens Org limit to change its cutoffs; the weekly reset is in Settings (the top-right cog)."
+                    AutomationProperties.Name="{Binding WeeklyHeadline, StringFormat='Week {0}: change the cutoffs'}">
                 <StackPanel>
                     <TextBlock Text="{Binding WeeklyHeadline}" Style="{StaticResource MaStatValue}" />
                     <TextBlock Text="{Binding WeeklyCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
@@ -337,7 +315,7 @@
         </StackPanel>
 
         <!-- Toolbar: the person's current work, by name and count, on the left; the clock, when the dashboard last refreshed,
-             Refresh (F5), Settings and Open Launcher, then the zoom, on the right (M.ORCH-T667, M.ORCH-T493). There are no view
+             Refresh (F5) and Open Launcher, then the zoom, on the right (M.ORCH-T667, M.ORCH-T493). There are no view
              pills any more (M.ORCH-T763): the Orchestrator shows only what's running, and Tickets Desktop the Repos, the Queue
              and the audit. -->
         <Grid x:Name="Toolbar" Grid.Row="2" Margin="24,8,24,10" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
@@ -358,13 +336,27 @@
                     <TextBlock Text="{Binding Clock.Text}" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" VerticalAlignment="Center" Margin="0,0,12,0"
                                AutomationProperties.Name="Current time" ToolTip="Current time" />
                     <TextBlock Text="{Binding RefreshInfo}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                    <Button Style="{StaticResource MaButton}" Command="{Binding RefreshCommand}" Content="Refresh" ToolTip="F5" />
-                    <Button Style="{StaticResource MaButton}" Command="{Binding ToggleSettingsCommand}" Content="Settings" Margin="8,0,0,0" />
+                    <!-- Refresh (M.ORCH-T805): icon only, the library's MaToolButton with the icon font's Refresh glyph (E72C), its
+                         word in its accessible name and its tooltip (the library theme's implicit ToolTip, never Windows' own). -->
+                    <Button Style="{StaticResource MaToolButton}" Command="{Binding RefreshCommand}" Content="&#xE72C;"
+                            AutomationProperties.Name="Refresh" ToolTip="Refresh (F5)" />
+                    <!-- No Settings button here any more (M.ORCH-T804): the top-right cog is the only way in. -->
                     <!-- Open Launcher (M.ORCH-T615): the Launcher's menu as this tab's login (MindAttic.Launcher with its account), so
-                         every repo CLI started from it runs on that login and shows in this tab; on the global login's tab, unscoped. -->
-                    <Button Style="{StaticResource MaButton}" Command="{Binding OpenLauncherCommand}" Content="Open Launcher" Margin="8,0,0,0"
-                            ToolTip="{Binding TabTitle}" ToolTipService.ShowOnDisabled="False"
-                            AutomationProperties.Name="{Binding TabTitle, StringFormat='Open the Launcher as {0}'}" />
+                         every repo CLI started from it runs on that login and shows in this tab; on the global login's tab, unscoped.
+                         Icon only (M.ORCH-T805): a rocket, drawn as a Path (Material Design's 'rocket_launch', 24x24 viewBox) like
+                         the emergency key above, since no rocket glyph is confirmed in the icon font and a wrong codepoint is a blank
+                         tofu box; it takes the button's own foreground, so the library's disabled dimming still shows. -->
+                    <Button x:Name="OpenLauncherButton" Style="{StaticResource MaToolButton}" Command="{Binding OpenLauncherCommand}" Margin="8,0,0,0"
+                            ToolTipService.ShowOnDisabled="False"
+                            AutomationProperties.Name="{Binding TabTitle, StringFormat='Open the Launcher as {0}'}">
+                        <Button.ToolTip>
+                            <TextBlock Text="{Binding TabTitle, StringFormat='Open the Launcher as {0}'}" />
+                        </Button.ToolTip>
+                        <Viewbox Width="16" Height="16">
+                            <Path Data="M9.19 6.35c-2.04 2.29-3.44 5.58-3.57 5.89L2 10.69l4.05-4.05c.47-.47 1.15-.68 1.81-.55l1.33.26zM11.17 17s3.74-1.55 5.89-3.7c5.4-5.4 4.5-9.62 4.21-10.57-.95-.3-5.17-1.19-10.57 4.21C8.55 9.09 7 12.83 7 12.83L11.17 17zm6.48-2.19c-2.29 2.04-5.58 3.44-5.89 3.57L13.31 22l4.05-4.05c.47-.47.68-1.15.55-1.81l-.26-1.33zM9 18c0 .83-.34 1.58-.88 2.12C6.94 21.3 2 22 2 22s.7-4.94 1.88-6.12C4.42 15.34 5.17 15 6 15c1.66 0 3 1.34 3 3zm4-9c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"
+                                  Stretch="Uniform" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                        </Viewbox>
+                    </Button>
                 </StackPanel>
                 <TextBlock Text="{Binding Zoom.Text}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="12,0,0,0"
                            ToolTip="Ctrl+0 resets the zoom" />
@@ -665,105 +657,184 @@
         <!-- Settings (M.ORCH-T498): the shared MaModal, centred over a dimmed window, instead of the old right-side flyout.
              Esc, its close button and the backdrop all close it through ToggleSettingsCommand (which reloads the saved
              settings, dropping unsaved edits, as the flyout's close did); focus is held inside while open and goes back to
-             the Settings button (or stat card) after. Last in the root grid, spanning every row, over the loader too. -->
+             the top-right cog after (M.ORCH-T804: the only way in). Last in the root grid, spanning every row, over the loader too.
+             Tabbed, not one long list (M.ORCH-T804): Budget, Pacing, Scheduler, Logins and Person tabs, each scrolling on its
+             own, in a dialog sized to 80% of the window both ways (MainWindow.xaml.cs's SizeSettings sets DialogWidth and
+             SettingsBody's Height as the window resizes). The error line stays under the tabs, whichever is showing. -->
         <mc:MaModal x:Name="SettingsModal" Grid.RowSpan="6" Title="Settings" AutomationProperties.Name="Settings"
                     IsOpen="{Binding IsSettingsOpen}" CloseCommand="{Binding ToggleSettingsCommand}">
-            <StackPanel DataContext="{Binding Settings}">
-                <TextBlock Text="TOKEN BUDGET" Style="{StaticResource MaSectionLabel}" Margin="0,4,0,8" />
-                <TextBlock Text="Uncached tokens (input + cache writes + output). Accepts 20M, 500k, 1.5B. Leave blank to use Claude's own reported limit, or else the limits learned from the times you actually hit the wall."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,0,0,8" />
-                <TextBlock Text="Per 5-hour block" Margin="0,4,0,4" />
-                <TextBox Style="{StaticResource MaTextBox}" Height="32" Text="{Binding BlockBudget, UpdateSourceTrigger=PropertyChanged}"
-                         AutomationProperties.Name="Budget per 5-hour block" />
-                <TextBlock Text="Per week" Margin="0,10,0,4" />
-                <TextBox Style="{StaticResource MaTextBox}" Height="32" Text="{Binding WeeklyBudget, UpdateSourceTrigger=PropertyChanged}"
-                         AutomationProperties.Name="Weekly budget" />
-                <TextBlock Text="Week resets (local time)" Margin="0,10,0,4" />
-                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="160" HorizontalAlignment="Left"
-                         Text="{Binding WeeklyReset, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Weekly reset day and time" />
-                <TextBlock Text="When Claude's weekly limit restarts, e.g. Mon 9:00 AM or Tue 5pm. Claude's own reported reset comes first; blank uses the reset your last weekly limit hit reported, or a rolling 7 days before you've had one."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                <TextBlock Text="Warn at (%)" Margin="0,10,0,4" />
-                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
-                         Text="{Binding WarnPercent, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Warn percent" />
-                <!-- Weekly pacing (M.ORCH-T680): the toggle and its numbers together, each saved in the database. -->
-                <TextBlock Text="WEEKLY LIMIT" Style="{StaticResource MaSectionLabel}" Margin="0,16,0,8" />
-                <TextBlock Text="Weekly target (% of each account's week)" Margin="0,10,0,4" />
-                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
-                         Text="{Binding WeeklyTarget, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Weekly target percent" />
-                <TextBlock Text="50 to 100 (95 by default). Every CLI on an account stops here. The rest is the weekly reserve, kept for your own questions in the Claude app and claude.ai: 95 keeps 5% of each week back."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                <TextBlock Text="5-HOUR PACING" Style="{StaticResource MaSectionLabel}" Margin="0,16,0,8" />
-                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding Pacing}" HorizontalAlignment="Left"
-                              Content="Pace to the reset" />
-                <TextBlock Text="Caps new sessions so spend lands on the target as the 5-hour window resets, instead of hitting the wall and waiting. The week is shown, not paced. Off: new work holds at the warn line."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                <!-- Cutoff alerts (M.ORCH-T742): who gets texted when a login reaches its own cutoff. -->
-                <TextBlock Text="Text through Psst when a login reaches its own cutoff" Margin="0,10,0,4" />
-                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="200" HorizontalAlignment="Left"
-                         Text="{Binding AlertTo, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Cutoff alert text recipient" />
-                <TextBlock Text="A Psst contact (ryan) or a US number; blank texts nobody."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                <TextBlock Text="Pace target (% of the 5-hour limit by its reset)" Margin="0,10,0,4" />
-                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
-                         Text="{Binding PaceTarget, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Pace target percent" />
-                <TextBlock Text="Exempt from pacing" Margin="0,10,0,4" />
-                <TextBox Style="{StaticResource MaTextBox}" Height="32" Text="{Binding ExemptCommands, UpdateSourceTrigger=PropertyChanged}"
-                         AutomationProperties.Name="Commands exempt from pacing" />
-                <TextBlock Text="Slash commands, comma-separated. A turn typed as one of them (and a Skill call naming one) skips every pace gate: no hold, no subagent wait, no stop. Its spend still counts. Blank exempts none."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                <!-- Last-resort cool-off (M.ORCH-T786, exposed as a setting by M.ORCH-T795): aborts a login's own ticket
-                     subagents once its trend stays past the pace line with new starts already slowed. -->
-                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding AgentAbort}" Margin="0,10,0,0" HorizontalAlignment="Left"
-                              Content="Cool off by aborting subagents" />
-                <TextBlock Text="Last resort (on by default): when a login's live 5-hour trend stays past its pace line with new subagents already slowed for the minutes below, the orchestrator aborts just enough of that login's ticket subagents to bend it back under, releasing their claims and putting their tickets first in the queue. Off leaves the cool-off to slow new starts only."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,10" />
-                <TextBlock Text="Abort after (minutes past the line)" Margin="0,0,0,4" />
-                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
-                         Text="{Binding AgentAbortAfter, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Cool-off abort after minutes" />
-                <TextBlock Text="0 to 60 (3 by default). How long the new-start cool-off gets to bend the trend back under before the abort above steps in. Also orchestrator settings --agent-abort / --agent-abort-after."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+            <Grid x:Name="SettingsBody" DataContext="{Binding Settings}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <mc:MaTabControl x:Name="SettingsTabs" AutomationProperties.Name="Settings sections">
+                    <mc:MaTabItem x:Name="SettingsBudgetTab" Header="Budget">
+                        <ScrollViewer Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,4,16,12">
+                            <StackPanel MaxWidth="760" HorizontalAlignment="Left">
+                                <TextBlock Text="TOKEN BUDGET" Style="{StaticResource MaSectionLabel}" />
+                                <TextBlock Text="Uncached tokens (input + cache writes + output). Accepts 20M, 500k, 1.5B. Leave blank to use Claude's own reported limit, or else the limits learned from the times you actually hit the wall."
+                                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                <TextBlock Text="Per 5-hour block" Margin="0,4,0,4" />
+                                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="240" HorizontalAlignment="Left"
+                                         Text="{Binding BlockBudget, UpdateSourceTrigger=PropertyChanged}"
+                                         AutomationProperties.Name="Budget per 5-hour block" />
+                                <TextBlock Text="Per week" Margin="0,10,0,4" />
+                                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="240" HorizontalAlignment="Left"
+                                         Text="{Binding WeeklyBudget, UpdateSourceTrigger=PropertyChanged}"
+                                         AutomationProperties.Name="Weekly budget" />
+                                <TextBlock Text="Week resets (local time)" Margin="0,10,0,4" />
+                                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="160" HorizontalAlignment="Left"
+                                         Text="{Binding WeeklyReset, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Weekly reset day and time" />
+                                <TextBlock Text="When Claude's weekly limit restarts, e.g. Mon 9:00 AM or Tue 5pm. Claude's own reported reset comes first; blank uses the reset your last weekly limit hit reported, or a rolling 7 days before you've had one."
+                                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                <TextBlock Text="Warn at (%)" Margin="0,10,0,4" />
+                                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
+                                         Text="{Binding WarnPercent, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Warn percent" />
+                                <!-- Weekly pacing (M.ORCH-T680): the toggle and its numbers together, each saved in the database. -->
+                                <TextBlock Text="WEEKLY LIMIT" Style="{StaticResource MaSectionLabel}" />
+                                <TextBlock Text="Weekly target (% of each account's week)" Margin="0,0,0,4" />
+                                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
+                                         Text="{Binding WeeklyTarget, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Weekly target percent" />
+                                <TextBlock Text="50 to 100 (95 by default). Every CLI on an account stops here. The rest is the weekly reserve, kept for your own questions in the Claude app and claude.ai: 95 keeps 5% of each week back."
+                                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </mc:MaTabItem>
 
-                <TextBlock Text="SCHEDULER" Style="{StaticResource MaSectionLabel}" />
-                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding AutoLogin}" Margin="0,0,0,0" HorizontalAlignment="Left"
-                              Content="One CLI per account (Auto login)" />
-                <TextBlock Text="A new Claude tab (Start on Auto in the global login's tab, orchestrator start without --account, allocate's starts, the Launcher's accounts pick) goes on a signed-in per-CLI login no CLI runs on yet, most headroom first, else the global login. Off: the global login unless one is chosen."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,10" />
-                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding RebalanceLogins}" Margin="0,0,0,0" HorizontalAlignment="Left"
-                              Content="Rebalance when an account runs low" />
-                <TextBlock Text="A CLI whose login crosses its 5-hour pace target or its weekly stop line is moved by the daemon to a signed-in per-CLI login with no CLI and more headroom: it restarts with claude --resume at its next idle point, keeping its session, and you're toasted. Off: every CLI stays on its login."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,10" />
-                <TextBlock Text="Orphaned tickets: redispatches" Margin="0,0,0,4" />
-                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
-                         Text="{Binding OrphanRedispatches, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Orphan redispatches" />
-                <TextBlock Text="0 to 20 (3 by default). How many times a ticket whose CLI or tab exited mid-task is started again in its worktree before it's left for you. 0 only shows it as orphaned."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,10" />
-                <TextBlock Text="Orphaned tickets: quiet minutes" Margin="0,0,0,4" />
-                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
-                         Text="{Binding OrphanQuiet, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Orphan quiet minutes" />
-                <TextBlock Text="1 to 1440 (10 by default). How long a dispatch's CLI or tab must be gone, with nothing written in its worktree, before the ticket counts as orphaned."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,10" />
-                <TextBlock Text="Max concurrent sessions (working + waiting)" Margin="0,0,0,4" />
-                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
-                         Text="{Binding MaxSessions, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Max concurrent sessions" />
-                <TextBlock Text="Provider for dispatched tickets" Margin="0,10,0,4" />
-                <ListBox Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Providers}" SelectedItem="{Binding Provider}"
-                         AutomationProperties.Name="Dispatch provider" />
-                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding Allocate}" Margin="0,8,0,0" HorizontalAlignment="Left"
-                              Content="Allocate" />
-                <TextBlock Text="Type /allocate in a CLI and that CLI works its repo's tickets (or -repo=a,b, or all) through its own subagents, each in its own worktree, as many at once as the pace allows; no other CLI is affected. Off here pauses it in every CLI; /allocate off ends it in that one."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    <mc:MaTabItem x:Name="SettingsPacingTab" Header="Pacing">
+                        <ScrollViewer Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,4,16,12">
+                            <StackPanel MaxWidth="760" HorizontalAlignment="Left">
+                                <TextBlock Text="5-HOUR PACING" Style="{StaticResource MaSectionLabel}" />
+                                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding Pacing}" HorizontalAlignment="Left"
+                                              Content="Pace to the reset" />
+                                <TextBlock Text="Caps new sessions so spend lands on the target as the 5-hour window resets, instead of hitting the wall and waiting. The week is shown, not paced. Off: new work holds at the warn line."
+                                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                <TextBlock Text="Pace target (% of the 5-hour limit by its reset)" Margin="0,10,0,4" />
+                                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
+                                         Text="{Binding PaceTarget, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Pace target percent" />
+                                <TextBlock Text="Exempt from pacing" Margin="0,10,0,4" />
+                                <TextBox Style="{StaticResource MaTextBox}" Height="32" Text="{Binding ExemptCommands, UpdateSourceTrigger=PropertyChanged}"
+                                         AutomationProperties.Name="Commands exempt from pacing" />
+                                <TextBlock Text="Slash commands, comma-separated. A turn typed as one of them (and a Skill call naming one) skips every pace gate: no hold, no subagent wait, no stop. Its spend still counts. Blank exempts none."
+                                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                <!-- Last-resort cool-off (M.ORCH-T786, exposed as a setting by M.ORCH-T795): aborts a login's own ticket
+                                     subagents once its trend stays past the pace line with new starts already slowed. -->
+                                <TextBlock Text="COOL-OFF" Style="{StaticResource MaSectionLabel}" />
+                                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding AgentAbort}" HorizontalAlignment="Left"
+                                              Content="Cool off by aborting subagents" />
+                                <TextBlock Text="Last resort (on by default): when a login's live 5-hour trend stays past its pace line with new subagents already slowed for the minutes below, the orchestrator aborts just enough of that login's ticket subagents to bend it back under, releasing their claims and putting their tickets first in the queue. Off leaves the cool-off to slow new starts only."
+                                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,10" />
+                                <TextBlock Text="Abort after (minutes past the line)" Margin="0,0,0,4" />
+                                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
+                                         Text="{Binding AgentAbortAfter, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Cool-off abort after minutes" />
+                                <TextBlock Text="0 to 60 (3 by default). How long the new-start cool-off gets to bend the trend back under before the abort above steps in. Also orchestrator settings --agent-abort / --agent-abort-after."
+                                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                <!-- Cutoff alerts (M.ORCH-T742): who gets texted when a login reaches its own cutoff. -->
+                                <TextBlock Text="CUTOFF ALERTS" Style="{StaticResource MaSectionLabel}" />
+                                <TextBlock Text="Text through Psst when a login reaches its own cutoff" Margin="0,0,0,4" />
+                                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="200" HorizontalAlignment="Left"
+                                         Text="{Binding AlertTo, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Cutoff alert text recipient" />
+                                <TextBlock Text="A Psst contact (ryan) or a US number; blank texts nobody."
+                                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </mc:MaTabItem>
 
-                <TextBlock Text="PERSON TABS" Style="{StaticResource MaSectionLabel}" />
-                <TextBlock Text="Blink once per (tokens)" Margin="0,0,0,4" />
-                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="120" HorizontalAlignment="Left"
-                         Text="{Binding TabBlinkTokens, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Blink once per this many tokens" />
-                <TextBlock Text="1 to 10,000,000 (1000 by default). A busy login's green play arrow blinks once for every this many tokens it spends (uncached), so busy tabs blink at their own rate and the busiest blink fastest. Also orchestrator settings --tab-blink-tokens."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                    <mc:MaTabItem x:Name="SettingsSchedulerTab" Header="Scheduler">
+                        <ScrollViewer Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,4,16,12">
+                            <StackPanel MaxWidth="760" HorizontalAlignment="Left">
+                                <TextBlock Text="LOGIN PLACEMENT" Style="{StaticResource MaSectionLabel}" />
+                                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding AutoLogin}" HorizontalAlignment="Left"
+                                              Content="One CLI per account (Auto login)" />
+                                <TextBlock Text="A new Claude tab (Start on Auto in the global login's tab, orchestrator start without --account, allocate's starts, the Launcher's accounts pick) goes on a signed-in per-CLI login no CLI runs on yet, most headroom first, else the global login. Off: the global login unless one is chosen."
+                                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,10" />
+                                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding RebalanceLogins}" HorizontalAlignment="Left"
+                                              Content="Rebalance when an account runs low" />
+                                <TextBlock Text="A CLI whose login crosses its 5-hour pace target or its weekly stop line is moved by the daemon to a signed-in per-CLI login with no CLI and more headroom: it restarts with claude --resume at its next idle point, keeping its session, and you're toasted. Off: every CLI stays on its login."
+                                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                <TextBlock Text="ORPHANED TICKETS" Style="{StaticResource MaSectionLabel}" />
+                                <TextBlock Text="Redispatches" Margin="0,0,0,4" />
+                                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
+                                         Text="{Binding OrphanRedispatches, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Orphan redispatches" />
+                                <TextBlock Text="0 to 20 (3 by default). How many times a ticket whose CLI or tab exited mid-task is started again in its worktree before it's left for you. 0 only shows it as orphaned."
+                                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,10" />
+                                <TextBlock Text="Quiet minutes" Margin="0,0,0,4" />
+                                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
+                                         Text="{Binding OrphanQuiet, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Orphan quiet minutes" />
+                                <TextBlock Text="1 to 1440 (10 by default). How long a dispatch's CLI or tab must be gone, with nothing written in its worktree, before the ticket counts as orphaned."
+                                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                <TextBlock Text="DISPATCH" Style="{StaticResource MaSectionLabel}" />
+                                <TextBlock Text="Max concurrent sessions (working + waiting)" Margin="0,0,0,4" />
+                                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="80" HorizontalAlignment="Left"
+                                         Text="{Binding MaxSessions, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Max concurrent sessions" />
+                                <TextBlock Text="Provider for dispatched tickets" Margin="0,10,0,4" />
+                                <ListBox Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Providers}" SelectedItem="{Binding Provider}"
+                                         AutomationProperties.Name="Dispatch provider" />
+                                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding Allocate}" Margin="0,8,0,0" HorizontalAlignment="Left"
+                                              Content="Allocate" />
+                                <TextBlock Text="Type /allocate in a CLI and that CLI works its repo's tickets (or -repo=a,b, or all) through its own subagents, each in its own worktree, as many at once as the pace allows; no other CLI is affected. Off here pauses it in every CLI; /allocate off ends it in that one."
+                                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </mc:MaTabItem>
 
-                <TextBlock Text="{Binding Error}" Foreground="{DynamicResource MaBad}" TextWrapping="Wrap" Margin="0,14,0,0" AutomationProperties.LiveSetting="Assertive"
+                    <!-- The org-wide login actions (M.ORCH-T763, moved here from above the person tabs by M.ORCH-T804): Add login (a
+                         per-CLI login of its own for an email), Sign in all (every roster account with no login of its own yet,
+                         M.ORCH-T604) and Report (the usage report, M.ORCH-T685); what they did on the lines under them. The global
+                         login's tab's (MainWindow.xaml.cs sets OrgToolbar's DataContext), not the Settings above. -->
+                    <mc:MaTabItem x:Name="SettingsLoginsTab" Header="Logins">
+                        <ScrollViewer Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,4,16,12">
+                            <StackPanel x:Name="OrgToolbar" MaxWidth="760" HorizontalAlignment="Left">
+                                <TextBlock Text="ORGANIZATION LOGINS" Style="{StaticResource MaSectionLabel}" />
+                                <TextBlock Text="Sign in a per-CLI login for an email, sign in every roster account that has none yet, or write the usage report."
+                                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBox x:Name="NewAccountBox" Style="{StaticResource MaTextBox}" Width="260" Height="32" VerticalAlignment="Center"
+                                             Text="{Binding NewAccountEmail, UpdateSourceTrigger=PropertyChanged}"
+                                             mc:MaTextBox.Placeholder="name@company.com"
+                                             AutomationProperties.Name="Email of the login to add" />
+                                    <Button x:Name="AddLoginButton" Style="{StaticResource MaButton}" Content="Add login" Padding="12,5" Margin="8,0,0,0"
+                                            Command="{Binding AddAccountCommand}" VerticalAlignment="Center"
+                                            ToolTip="Sign in a per-CLI login of its own for this email (orchestrator login --account), opening its login in the browser. The global login is left as it is." />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                    <Button x:Name="SignInAllButton" Style="{StaticResource MaButton}" Content="Sign in all" Padding="12,5"
+                                            Command="{Binding SignInAllCommand}" VerticalAlignment="Center"
+                                            ToolTip="Give every account in the roster with no per-CLI login yet its own (~/.claude-accounts), opening each one's login in the browser in turn, so every Claude Team seat stays signed in side by side. The global login stays the default." />
+                                    <Button x:Name="UsageReportButton" Style="{StaticResource MaButton}" Content="Report" Padding="12,5" Margin="8,0,0,0"
+                                            Command="{Binding UsageReportCommand}" VerticalAlignment="Center"
+                                            ToolTip="Write the usage report (every member's 5-hour and weekly use, resets, points left to the weekly target, how fresh each reading is, the CLIs' spend and the API key's) as an HTML page and a Markdown file to share, and open the page (orchestrator report)." />
+                                </StackPanel>
+                                <TextBlock x:Name="OrgActionsMessage" Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,12,0,0"
+                                           AutomationProperties.LiveSetting="Polite"
+                                           Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                                <!-- The billing detail line (M.ORCH-T628): what the last Sign in all or default switch did, a problem, and the open
+                                     CLIs still billing the other thing. -->
+                                <TextBlock x:Name="BillingDetailLine" Text="{Binding BillingDetail}" Style="{StaticResource MaTileSubtitle}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                           AutomationProperties.LiveSetting="Polite"
+                                           Visibility="{Binding BillingDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </mc:MaTabItem>
+
+                    <mc:MaTabItem x:Name="SettingsPersonTabsTab" Header="Person tabs">
+                        <ScrollViewer Style="{StaticResource MaPaneScroll}" mc:MaScrollArea.Gutter="0,4,16,12">
+                            <StackPanel MaxWidth="760" HorizontalAlignment="Left">
+                                <TextBlock Text="PERSON TABS" Style="{StaticResource MaSectionLabel}" />
+                                <TextBlock Text="Blink once per (tokens)" Margin="0,0,0,4" />
+                                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="120" HorizontalAlignment="Left"
+                                         Text="{Binding TabBlinkTokens, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Blink once per this many tokens" />
+                                <TextBlock Text="1 to 10,000,000 (1000 by default). A busy login's green play arrow blinks once for every this many tokens it spends (uncached), so busy tabs blink at their own rate and the busiest blink fastest. Also orchestrator settings --tab-blink-tokens."
+                                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </mc:MaTabItem>
+                </mc:MaTabControl>
+
+                <TextBlock Grid.Row="1" Text="{Binding Error}" Foreground="{DynamicResource MaBad}" TextWrapping="Wrap" Margin="0,10,0,0" AutomationProperties.LiveSetting="Assertive"
                            Visibility="{Binding Error, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-            </StackPanel>
+            </Grid>
             <mc:MaModal.Footer>
                 <DockPanel DataContext="{Binding Settings}" LastChildFill="True">
                     <Button DockPanel.Dock="Right" Style="{StaticResource MaPrimaryButton}" Content="Save" Padding="20,6"
