@@ -168,16 +168,21 @@ internal sealed class BumpCommand : Command<BumpCommand.Settings>
     {
         var store = Ctx.Store();
         var id = Ctx.Id(settings.Ticket);
-        // Priority lives in the ticket database's queue, with approval, where every tool reads and writes it (M.ORCH-T384); a
-        // ticket it doesn't hold (a repo still on its own USER_STORIES.md) keeps it in settings.json (M.ORCH-T441).
+        // Priority lives in the ticket database's queue alone, with approval, written through the MindAttic.Tickets engine
+        // where every tool reads and writes it (M.ORCH-T761).
         var root = OrchestratorOptions.Load(store).WorkspaceRoot;
         using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(root);
-        if (MindAttic.Orchestrator.Tickets.TicketQueue.Find(db, root, id) is null)
+        if (MindAttic.Orchestrator.Tickets.TicketQueue.Find(db, root, id) is not { } found)
         {
             AnsiConsole.MarkupLine($"[red]No ticket {Markup.Escape(id)}; nothing was changed.[/]");
             return 1;
         }
-        var next = MindAttic.Orchestrator.Tickets.TicketQueue.Bump(store, db, id, settings.By);
+        if (!found.InDatabase)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(MindAttic.Orchestrator.Tickets.TicketQueue.NotInDatabase(id))}; nothing was changed.[/]");
+            return 1;
+        }
+        var next = MindAttic.Orchestrator.Tickets.TicketQueue.Bump(db, id, settings.By);
         AnsiConsole.MarkupLine($"{Markup.Escape(id)} priority is now {next:+#;-#;0}.");
         return 0;
     }

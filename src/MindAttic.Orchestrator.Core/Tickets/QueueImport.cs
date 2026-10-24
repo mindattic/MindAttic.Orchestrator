@@ -8,19 +8,29 @@ namespace MindAttic.Orchestrator.Tickets;
 /// Moves the approvals and priorities settings.json kept into the ticket database's queue (<c>ticket_queue</c>), once, and
 /// drops them from settings.json (M.ORCH-T384). Approval used to live in two stores that never agreed: the scheduler read
 /// settings.json while <c>tickets ticket approve</c> and the Tickets Desktop wrote the database, so a ticket approved there
-/// waited for approval forever. The database is the one store now, and records that the move was made (<see cref="DoneKey"/>).
+/// waited for approval forever. The database is the one store now, written through the MindAttic.Tickets engine (which keeps it
+/// on SQL Server when configured, <c>data/Tickets.db</c> its copy), and the orchestrator's own state records that the move was
+/// made (<see cref="DoneState"/>; M.ORCH-T761: the marker used to be written into <c>data/Tickets.db</c>'s <c>meta</c> table
+/// directly, around the engine, and is now only read from there).
 /// </summary>
 public static class QueueImport
 {
     /// <summary>What one import did: approvals and priorities written to the database.</summary>
     public sealed record Result(int Approved, int Prioritized);
 
-    /// <summary>The <c>meta</c> key recording, in the database itself, that the move was made (M.ORCH-T389).</summary>
+    /// <summary>The <c>meta</c> key that recorded, in the ticket database, that the move was made (M.ORCH-T389): only read now,
+    /// so a move recorded there before M.ORCH-T761 still counts.</summary>
     public const string DoneKey = "orchestrator.settings_queue_imported";
 
+    /// <summary>The orchestrator state value recording that the move was made (M.ORCH-T761).</summary>
+    public const string DoneState = "settings_queue_imported";
+
+    /// <summary>What <see cref="DoneState"/> keeps: when the move was made.</summary>
+    public sealed record Done(DateTime AtUtc);
+
     /// <summary>Imports <paramref name="store"/>'s legacy approvals and priorities into the database under
-    /// <paramref name="workspaceRoot"/>, records in the database that it did, and clears them from settings.json; null when
-    /// there was nothing to import, no migrated database to take it (the settings are left as they are then), or the move
+    /// <paramref name="workspaceRoot"/>, records in the orchestrator's state that it did, and clears them from settings.json;
+    /// null when there was nothing to import, no migrated database to take it (the settings are left as they are then), or the move
     /// was already made. Once it was, the fields are only dropped, never imported again: a process still running an older
     /// build saves them back into settings.json, and importing them again would re-approve a ticket un-approved in the
     /// database since (M.ORCH-T389).</summary>
@@ -31,46 +41,40 @@ public static class QueueImport
         using var db = TicketsDb.OpenIfMigrated(workspaceRoot);
         if (db is null) return null;
         Result? result = null;
-        if (!IsDone(db.Path))
+        if (!IsDone(store, db.Path))
         {
             result = Import(db, settings.Approved ?? [], settings.Priorities ?? []);
-            MarkDone(db.Path);
+            store.Save(DoneState, new Done(DateTime.UtcNow));
         }
         // Only once the database holds them; a save that fails leaves them to be dropped next time.
         store.Update<OrchestratorSettings>(JsonStore.SettingsName, s => { s.Approved = null; s.Priorities = null; });
         return result;
     }
 
-    /// <summary>Whether the database at <paramref name="dbPath"/> records the move as made.</summary>
-    public static bool IsDone(string dbPath)
-    {
-        using var c = Connect(dbPath);
-        using var cmd = c.CreateCommand();
-        cmd.CommandText = "SELECT COUNT(*) FROM meta WHERE key = $k";
-        cmd.Parameters.AddWithValue("$k", DoneKey);
-        return cmd.ExecuteScalar() is long n && n > 0;
-    }
+    /// <summary>Whether the move was made: recorded in the orchestrator's state, or, before M.ORCH-T761, in the <c>meta</c> table of
+    /// the ticket database's file at <paramref name="dbPath"/>.</summary>
+    public static bool IsDone(JsonStore store, string dbPath) => store.Has(DoneState) || LegacyDone(dbPath);
 
-    private static void MarkDone(string dbPath)
+    // The MindAttic.Tickets library has no API for its meta table, so the old marker is read from the file, read-only: nothing is
+    // ever written to it here (the engine owns that file, and on SQL Server it's only a copy).
+    private static bool LegacyDone(string dbPath)
     {
-        using var c = Connect(dbPath);
-        using var cmd = c.CreateCommand();
-        cmd.CommandText = "INSERT OR IGNORE INTO meta (key, value) VALUES ($k, $v)";
-        cmd.Parameters.AddWithValue("$k", DoneKey);
-        cmd.Parameters.AddWithValue("$v", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture));
-        cmd.ExecuteNonQuery();
-    }
-
-    // The MindAttic.Tickets library has no API for its meta table; a connection of our own, set up as it sets up its own (no pooling,
-    // so the file is closed on Dispose, and the same busy timeout).
-    private static Microsoft.Data.Sqlite.SqliteConnection Connect(string dbPath)
-    {
-        var c = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath};Pooling=False");
-        c.Open();
-        using var cmd = c.CreateCommand();
-        cmd.CommandText = "PRAGMA busy_timeout = 15000;";
-        cmd.ExecuteNonQuery();
-        return c;
+        if (!File.Exists(dbPath)) return false;
+        try
+        {
+            using var c = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath};Mode=ReadOnly;Pooling=False");
+            c.Open();
+            using (var wait = c.CreateCommand())
+            {
+                wait.CommandText = "PRAGMA busy_timeout = 15000;";
+                wait.ExecuteNonQuery();
+            }
+            using var cmd = c.CreateCommand();
+            cmd.CommandText = "SELECT COUNT(*) FROM meta WHERE key = $k";
+            cmd.Parameters.AddWithValue("$k", DoneKey);
+            return cmd.ExecuteScalar() is long n && n > 0;
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException) { return false; }
     }
 
     /// <summary>

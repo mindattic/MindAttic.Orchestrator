@@ -331,14 +331,13 @@ public sealed record OrchestratorSettings
     /// <c>ticket_queue</c> once by <see cref="Tickets.QueueImport"/> and dropped here, like <see cref="Approved"/>.</summary>
     public Dictionary<string, int>? Priorities { get; set; }
 
-    /// <summary>Approved tickets the ticket database doesn't hold: those of a repo still on its own <c>docs/USER_STORIES.md</c>
-    /// (or every ticket, before the workspace is migrated). <c>ticket_queue</c> only takes tickets in the database, so without
-    /// this such a repo's features, chores and docs could never be approved (M.ORCH-T441). Written by
-    /// <see cref="Tickets.TicketQueue"/>, read by the scheduler next to the database's queue, and moved into that queue by
-    /// <see cref="Tickets.TicketQueue.MoveIntoDatabase"/> once the database holds the ticket.</summary>
+    /// <summary>Approvals the orchestrator kept for tickets the ticket database didn't hold (M.ORCH-T441). Approval lives in the
+    /// database's queue alone now, through the MindAttic.Tickets engine (M.ORCH-T761): nothing writes or reads this any more;
+    /// <see cref="Tickets.TicketQueue.MoveIntoDatabase"/> moves what's left into that queue once the database holds the
+    /// ticket, and drops each entry only once the database is verified to carry it.</summary>
     public List<string> StoryApproved { get; init; } = [];
 
-    /// <summary>Manual priorities of tickets the ticket database doesn't hold, like <see cref="StoryApproved"/>.</summary>
+    /// <summary>Manual priorities kept for tickets the ticket database didn't hold, moved into it like <see cref="StoryApproved"/>.</summary>
     public Dictionary<string, long> StoryPriorities { get; init; } = [];
 
     /// <summary>The model a ticket's subagent runs on, by ticket id or repo (a name or a wildcard like <c>GTFO.*</c>) → "sonnet"

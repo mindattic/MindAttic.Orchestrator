@@ -113,19 +113,22 @@ internal sealed class ApproveCommand : Command<ApproveCommand.Settings>
         var store = Ctx.Store();
         // Once each: the same ticket named twice (in any case) was a repeated key that crashed approve (M.ORCH-T456).
         var ids = settings.Tickets.Select(Ctx.Id).Distinct(StringComparer.Ordinal).ToList();
-        // Approval lives in the ticket database's queue, where tickets ticket approve and the Tickets Desktop write it too and
-        // the scheduler reads it (M.ORCH-T384); a ticket it doesn't hold (a repo still on its own USER_STORIES.md, or no database
-        // yet) is approved in settings.json, which the scheduler reads beside it (M.ORCH-T441).
+        // Approval lives in the ticket database's queue alone, written through the MindAttic.Tickets engine, where tickets ticket
+        // approve and the Tickets Desktop write it too and the scheduler reads it (M.ORCH-T761).
         var root = OrchestratorOptions.Load(store).WorkspaceRoot;
         using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(root);
         var found = ids.ToDictionary(id => id, id => MindAttic.Orchestrator.Tickets.TicketQueue.Find(db, root, id));
-        // A typo would be "approved" while the ticket you meant goes on waiting, so only ids of real tickets count. Taking back
-        // one that settings.json holds for a ticket gone since still works.
-        var held = store.LoadSettings().StoryApproved;
-        if (found.Where(f => f.Value is null && !(settings.Undo && held.Contains(f.Key, StringComparer.OrdinalIgnoreCase))).Select(f => f.Key).ToList()
-            is { Count: > 0 } unknown)
+        // A typo would be "approved" while the ticket you meant goes on waiting, so only ids of real tickets count.
+        if (found.Where(f => f.Value is null).Select(f => f.Key).ToList() is { Count: > 0 } unknown)
         {
             AnsiConsole.MarkupLine($"[red]No ticket {Markup.Escape(string.Join(", ", unknown))}; nothing was changed.[/]");
+            return 1;
+        }
+        // A ticket of a repo still on its own USER_STORIES.md has no row in the database's queue to approve.
+        if (found.Where(f => !f.Value!.InDatabase).Select(f => f.Key).ToList() is { Count: > 0 } outside)
+        {
+            foreach (var id in outside)
+                AnsiConsole.MarkupLine($"[red]{Markup.Escape(MindAttic.Orchestrator.Tickets.TicketQueue.NotInDatabase(id))}; nothing was changed.[/]");
             return 1;
         }
         // Checked before anything changes: only an open ticket can be approved.
@@ -135,7 +138,7 @@ internal sealed class ApproveCommand : Command<ApproveCommand.Settings>
             return 1;
         }
         foreach (var id in ids)
-            MindAttic.Orchestrator.Tickets.TicketQueue.SetApproval(store, db, id, !settings.Undo);
+            MindAttic.Orchestrator.Tickets.TicketQueue.SetApproval(db, id, !settings.Undo);
         AnsiConsole.MarkupLine(Markup.Escape(settings.Undo
             ? $"{string.Join(", ", ids)} wait for approval again."
             : $"{string.Join(", ", ids)} approved: they join the queue in their order."));
