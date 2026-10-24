@@ -145,6 +145,15 @@ public sealed record OrchestratorSettings
     /// the allowance is worked out live from the pace (<see cref="Budget.Pace.SubagentAllowance"/>).</summary>
     public int MaxSubagents { get; init; } = 16;
 
+    /// <summary>The last-resort cool-off (M.ORCH-T786, <see cref="Scheduling.AgentAbort"/>): when a login's live 5-hour trend stays
+    /// on course past its pace line with new subagents already slowed (<see cref="Budget.Pacer.CoolOff"/>) for
+    /// <see cref="AgentAbortAfterMinutes"/>, the orchestrator aborts just enough of that login's ticket subagents to bend it back
+    /// under, their claims released and their tickets put first in the queue. Off leaves the cool-off to slow new starts only.</summary>
+    public bool AgentAbort { get; init; } = true;
+
+    /// <summary>How long the new-start cool-off gets to bend a login's trend back under before <see cref="AgentAbort"/> steps in (0-60).</summary>
+    public int AgentAbortAfterMinutes { get; init; } = 3;
+
     /// <summary>Context fill at which a session is wrapped up and cycled; high enough to use most of the
     /// window, low enough that the wrap-up turn fits before Claude Code compacts on its own.</summary>
     public int ContextCyclePercent { get; init; } = 80;

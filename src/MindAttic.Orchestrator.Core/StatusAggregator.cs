@@ -454,7 +454,8 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
         var runningSubagents = subagents.Poll(contextCycler, now);
         var agentBoard = AgentBoard.Build(result, pace, Store.LoadAssignments(), runningSubagents, options.WorkingWindow, now, contextCycler.LiveSessions(now),
-            contextCycler.Load().Where(c => c.Pid is not null).ToDictionary(c => c.SessionId, c => c.Pid!.Value, StringComparer.Ordinal));
+            contextCycler.Load().Where(c => c.Pid is not null).ToDictionary(c => c.SessionId, c => c.Pid!.Value, StringComparer.Ordinal),
+            contextCycler.AskingSessions(now));
         // The Claude login each CLI bills, on its card (M.ORCH-T606): its own login's name, else the global login's, by the
         // name each login's folder gives it (M.ORCH-T614) with the email for the tooltip.
         var globalLogin = SignIn?.Profile?.Email;
@@ -540,7 +541,9 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
                 .ToDictionary(o => o.Session, o => o.Email!, StringComparer.Ordinal),
             GlobalEmail = globalLogin,
             // The moves in flight (M.ORCH-T637): what locks a moving CLI's controls and tickets everywhere.
-            Moves = new MoveLocks(Store).All() };
+            Moves = new MoveLocks(Store).All(),
+            // The tickets the last-resort cool-off aborted (M.ORCH-T786): first in the queue for the next round.
+            Requeued = AgentAbort.Requeued(Store, now) };
 
         RepoStatus Repo(string name, string path, IReadOnlyList<MindAttic.Tickets.Log.Ticket> open)
         {

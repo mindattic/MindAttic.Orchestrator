@@ -330,6 +330,60 @@ public sealed class ContextCycler(string? directory = null)
         return newest.Where(kv => IsClaude(kv.Key)).ToDictionary(kv => kv.Value.Session, kv => kv.Value.Busy, StringComparer.Ordinal);
     }
 
+    /// <summary>How long after the context gate's <c>asking</c> mark its transcript may still be written before the CLI counts as
+    /// going again: the mark lands as the prompt shows, and the lines written just before it can share its second.</summary>
+    internal static readonly TimeSpan AskingSlack = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// The live CLIs' sessions genuinely blocked waiting on you (M.ORCH-T790), not merely idle at the end of a turn: holding on a
+    /// permission prompt or an AskUserQuestion, or stopped because a /crossrepo or /allocate it needed is yours to type. The
+    /// context gate marks each (<c>asking</c>) and clears the mark when the CLI goes on (its next tool result, prompt or stop);
+    /// a mark whose transcript has been written since (an Esc that fires no hook) is gone too, so the flag drops as soon as
+    /// the CLI is running again. Only each live CLI process's newest session counts, as in <see cref="LiveSessions"/>.
+    /// </summary>
+    public IReadOnlySet<string> AskingSessions(DateTime nowUtc, Func<int, bool>? alive = null)
+    {
+        var found = new HashSet<string>(StringComparer.Ordinal);
+        if (!System.IO.Directory.Exists(Directory)) return found;
+        var newest = new Dictionary<int, (string Session, DateTime At, bool Asking)>();
+        foreach (var file in System.IO.Directory.EnumerateFiles(Directory, "*.state.json"))
+        {
+            try
+            {
+                var written = File.GetLastWriteTimeUtc(file);
+                if (nowUtc - written > TimeSpan.FromDays(1)) continue;
+                using var doc = JsonDocument.Parse(ReadShared(file));
+                var root = doc.RootElement;
+                if (!root.TryGetProperty("pid", out var p) || p.ValueKind != JsonValueKind.Number || !p.TryGetInt32(out var pid)) continue;
+                var session = Path.GetFileName(file)[..^".state.json".Length];
+                if (!newest.TryGetValue(pid, out var seen) || written > seen.At) newest[pid] = (session, written, IsAsking(root));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException) { }
+        }
+        alive ??= IsClaude;
+        foreach (var (pid, (session, _, asking)) in newest)
+            if (asking && alive(pid)) found.Add(session);
+        return found;
+    }
+
+    /// <summary>Whether a session's state still says it's blocked on you: its <c>asking</c> mark, with no transcript line
+    /// written since (past <see cref="AskingSlack"/>).</summary>
+    internal static bool IsAsking(JsonElement state)
+    {
+        if (!state.TryGetProperty("asking", out var a) || a.ValueKind != JsonValueKind.String ||
+            !DateTime.TryParse(a.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var since))
+            return false;
+        if (state.TryGetProperty("transcript", out var t) && t.ValueKind == JsonValueKind.String && t.GetString() is { Length: > 0 } transcript)
+        {
+            try
+            {
+                if (File.Exists(transcript) && File.GetLastWriteTimeUtc(transcript) > since + AskingSlack) return false;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException) { }
+        }
+        return true;
+    }
+
     /// <summary>Whether <paramref name="sessionId"/>'s Claude CLI is still running, by the process id the context gate
     /// recorded for it (any session of a CLI that /clear-ed counts while the CLI does); null when none was recorded.</summary>
     public bool? SessionRunning(string sessionId)

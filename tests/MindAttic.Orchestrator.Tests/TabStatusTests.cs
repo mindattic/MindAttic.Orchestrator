@@ -1,3 +1,4 @@
+using MindAttic.Orchestrator.Activity;
 using MindAttic.Orchestrator.Billing;
 using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Sessions;
@@ -14,13 +15,23 @@ public sealed class TabStatusTests
     private static readonly DateTime Now = new(2026, 10, 22, 12, 0, 0, DateTimeKind.Utc);
 
     [Test]
-    public void The_week_left_is_what_remains_before_the_stop_line_and_a_dash_when_never_read()
+    public void The_tab_shows_live_5_hour_and_weekly_use_against_the_persons_own_cutoffs()
     {
-        Assert.That(MainViewModel.TabWeekLeftOf(72), Is.EqualTo("28% left"));
-        Assert.That(MainViewModel.TabWeekLeftOf(4), Is.EqualTo("96% left"), "the card's 100 - used, no reserve taken off");
-        Assert.That(MainViewModel.TabWeekLeftOf(94), Is.EqualTo("6% left"));
-        Assert.That(MainViewModel.TabWeekLeftOf(104), Is.EqualTo("0% left"), "never below 0");
-        Assert.That(MainViewModel.TabWeekLeftOf(null), Is.EqualTo("—"));
+        // M.ORCH-T793: current/target pairs, the target the person's own cutoff as passed in, never a fixed number.
+        Assert.That(MainViewModel.TabUsagePairsOf(10, 98, 55, 95), Is.EqualTo("5hr: 10/98% | wk: 55/95%"));
+        Assert.That(MainViewModel.TabUsagePairsOf(42.6, 80, 3.2, 90), Is.EqualTo("5hr: 43/80% | wk: 3/90%"));
+        Assert.That(MainViewModel.TabUsagePairsOf(null, 98, null, 90), Is.EqualTo("5hr: —/98% | wk: —/90%"), "never read");
+    }
+
+    [Test]
+    public void The_tab_line_has_no_need_you_count_and_no_percent_left()
+    {
+        var root = TestContext.CurrentContext.TestDirectory;
+        while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
+        var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"Header\"", StringComparison.Ordinal)];
+        Assert.That(strip, Does.Not.Contain("need you\" />"));
+        Assert.That(strip, Does.Not.Contain("TabBadge"));
     }
 
     [Test]
@@ -194,5 +205,20 @@ public sealed class TabStatusTests
         Assert.That(api, Does.Contain("{Binding IsApiKeyTab").And.Contain("x:Name=\"BillingToggleButton\"").And.Contain("{Binding ToggleBillingCommand}")
             .And.Contain("{Binding ApiKeyCostText}").And.Contain("{Binding ApiKeyClis}"));
         Assert.That(System.Text.RegularExpressions.Regex.Matches(xaml, "x:Name=\"BillingToggleButton\"").Count, Is.EqualTo(1), "one switch, on the 'API key' tab");
+    }
+
+    /// <summary>M.ORCH-T790: the tab's red flag counts only CLIs blocked on you, and says so in words.</summary>
+    [Test]
+    public void The_needs_you_flag_counts_only_clis_blocked_on_you()
+    {
+        AgentBoardRow Row(string id, bool asking) => new(id, "A", null, null, DateTime.UtcNow, DateTime.UtcNow, AgentState.Waiting, "Waiting for you",
+            false, default, []) { Asking = asking };
+
+        Assert.That(MainViewModel.AskingOf([Row("a", false), Row("b", false)]), Is.Zero, "idle isn't blocked");
+        Assert.That(MainViewModel.AskingOf([Row("a", true), Row("b", false)]), Is.EqualTo(1));
+        Assert.That(MainViewModel.AskingOf(null), Is.Zero);
+        Assert.That(MainViewModel.NeedsYouLine(0), Is.Empty);
+        Assert.That(MainViewModel.NeedsYouLine(1), Is.EqualTo(" A CLI here is blocked waiting on your answer."));
+        Assert.That(MainViewModel.NeedsYouLine(2), Is.EqualTo(" 2 CLIs here are blocked waiting on your answer."));
     }
 }

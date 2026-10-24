@@ -181,6 +181,10 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// <summary>Ticket → the uncached tokens reserved for it in the ticket database (<c>tickets ticket reserve</c>, M.ORCH-T762).</summary>
     public IReadOnlyDictionary<string, long> Reservations { get; init; } = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Tickets the orchestrator's last-resort cool-off aborted and put back (M.ORCH-T786, <see cref="Scheduling.AgentAbort"/>):
+    /// first in the queue for the next round.</summary>
+    public IReadOnlySet<string> Requeued { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Whether <paramref name="ticket"/> may be worked: a fix, or one approved in the database's queue.</summary>
     public bool MayWork(Ticket ticket) =>
         ticket.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) || Approved.Contains(ticket.Id);

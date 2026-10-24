@@ -1903,6 +1903,29 @@ public static class AgentGate
             print(json.dumps(dict(hookSpecificOutput=dict(hookEventName="PreToolUse", permissionDecision="deny", permissionDecisionReason=why))))
             raise SystemExit(0)
 
+        # The orchestrator's last-resort cool-off (M.ORCH-T786): a subagent it aborted to pull its login's 5-hour trend back under
+        # the pace line has every tool call refused from here on, so it stops between calls (never mid-write or mid-commit, as a
+        # call already running finishes) and its worktree and uncommitted work stay as they are. Its claim is already released
+        # and its ticket put first in the queue by the orchestrator.
+        if data.get("agent_id"):
+            aborted = abort = None
+            try:
+                aborted = SUBAGENT_MARKS / "{{Scheduling.AgentAbort.DirName}}" / re.sub(r"[^A-Za-z0-9_.-]", "_", str(data["agent_id"]))
+                abort = json.loads(aborted.read_text(encoding="utf-8")) if aborted.exists() else None
+            except Exception:
+                try:
+                    abort = {} if aborted is not None and aborted.exists() else None  # a mark caught mid-write still aborts
+                except Exception:
+                    abort = None
+            if abort is not None:
+                ticket = (abort.get("ticket") if isinstance(abort, dict) else None) or "your ticket"
+                why = (abort.get("why") if isinstance(abort, dict) else None) or "this login's 5-hour window is on course past its pace line"
+                refuse(f"ABORTED by the orchestrator to cool off this login: {why}. Stop now: make no more tool calls (each one is refused) "
+                       f"and end your turn with a short report saying you were aborted, what you finished, and what's left uncommitted. "
+                       f"Don't commit, push, close or release anything: your worktree and uncommitted work are kept as they are, and "
+                       f"the orchestrator already released {ticket}'s claim and put it first in the queue for the next round, so the "
+                       f"CLI that started you shouldn't restart it now.")
+
         # /crossrepo and /allocate called through the Skill tool (M.ORCH-T435): the model starts them when the user asks in words
         # ("use crossrepo for X"), and the guard below refused every edit for want of the mark a typed command writes. They're
         # the user's choice, never the model's: recorded exactly as typed only when the user's latest prompt asked for it (the
@@ -1914,6 +1937,14 @@ public static class AgentGate
                 given = str((data.get("tool_input") or {}).get("args") or "").strip()
                 off = bool(re.match(r"off\b", given, re.I)) or (called == "crossrepo" and not given)
                 if not off and called not in (session_state(data.get("session_id")).get("asked") or []):
+                    # The turn now ends asking you to type it: the context gate's Stop marks the CLI blocked on you (M.ORCH-T790).
+                    try:
+                        sid = re.sub(r"[^A-Za-z0-9_.-]", "_", str(data.get("session_id") or ""))
+                        if sid:
+                            marked = dict(session_state(sid), needs_typed="/" + called)
+                            write_exported_mark(sid, SESSION_MARKS / (sid + ".state.json"), marked, table="session_states", key="session_id")
+                    except Exception:
+                        pass
                     refuse(f"/{called} is the user's to switch on, never yours: their latest prompt didn't ask for it, so nothing was "
                            f"recorded. Ask the user to type " + ("/crossrepo <repos>" if called == "crossrepo" else "/allocate") + " themselves.")
                 pid = os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
@@ -2756,6 +2787,32 @@ public static class AgentGate
             sys.exit(0)
         if event == "Stop":
             poke()
+        # Blocked on you (M.ORCH-T790): a permission prompt (a subagent's holds its parent's turn too) or an AskUserQuestion is
+        # the CLI genuinely waiting on your answer, not just idle; the dashboard flags its person's tab until the mark goes
+        # (its next tool result, prompt or stop, or a transcript line written since).
+        if sid and (event == "Notification" or (event == "PreToolUse" and data.get("tool_name") == "AskUserQuestion")):
+            kind = str(data.get("notification_type") or "")
+            if event == "PreToolUse" or kind in ("permission_prompt", "elicitation_dialog") or (not kind and "permission" in str(data.get("message") or "").lower()):
+                try:
+                    DIR.mkdir(parents=True, exist_ok=True)
+                    state_file = DIR / (sid + ".state.json")
+                    state = load(state_file)
+                    state["asking"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                    if data.get("transcript_path") and not state.get("transcript") and not data.get("agent_id"):
+                        state["transcript"] = data["transcript_path"]
+                    save(state_file, state)
+                except Exception:
+                    pass
+            sys.exit(0)
+        # A tool that ran (a subagent's too) is the prompt answered: the CLI is going again.
+        if sid and event == "PostToolUse" and data.get("agent_id"):
+            try:
+                state_file = DIR / (sid + ".state.json")
+                state = load(state_file)
+                if state.pop("asking", None) is not None:
+                    save(state_file, state)
+            except Exception:
+                pass
         if not sid or data.get("agent_id"):
             sys.exit(0)  # subagents finish inside their parent's turn
         if event == "SessionStart":
@@ -2809,6 +2866,10 @@ public static class AgentGate
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         if event == "Stop":
             state.pop("exempt", None)  # an exempt command's turn ends here, and with it the exemption (M.ORCH-T198)
+            # A turn that ends isn't holding on a prompt any more; one that ends because a /crossrepo or /allocate it needed was
+            # refused as the model's to start (the pace gate's needs_typed) is waiting on you to type it (M.ORCH-T790).
+            state.pop("asking", None)
+            needs_typed = state.pop("needs_typed", None)
             # The orchestrator keeps development going without you: a turn that ends asking whether to go on, or that
             # closed a ticket and stopped, while its repo still has open tickets is told to carry on. One that stops
             # again straight after without doing anything is let go (something there really needs you). Each is logged
@@ -2848,6 +2909,8 @@ public static class AgentGate
             for k in ("nudged", "worked", "closed"):
                 state.pop(k, None)
             state.update(state="idle", at=now, pid=cli_pid(), cwd=data.get("cwd"), auth=auth, config_dir=str(PROFILE_DIR or ""))
+            if needs_typed:
+                state["asking"] = now
             # Held by a window (its stop): the daemon wakes it once that window
             # resets. Any other end of a turn isn't waiting on anything.
             held = limit_held(limits, data, now) if paced and stopped else None
@@ -2867,7 +2930,8 @@ public static class AgentGate
                 sys.exit(0)
         elif event == "UserPromptSubmit":
             # A new prompt (yours, or the daemon's resume after the reset) is the CLI going on: it's no longer waiting on a window.
-            for k in ("nudged", "worked", "closed", "limit_stop", "quicksave_told"):
+            # And whatever it was holding on for you is answered (M.ORCH-T790).
+            for k in ("nudged", "worked", "closed", "limit_stop", "quicksave_told", "asking", "needs_typed"):
                 state.pop(k, None)
             if state.get("goal") and goal_finished(state.get("transcript"), state["goal"]):
                 state.pop("goal", None)
@@ -2986,7 +3050,8 @@ public static class AgentGate
             if out:
                 print(json.dumps(out))
         elif event == "PostToolUse":
-            touched = False
+            # Its tool ran, so whatever it asked you was answered (M.ORCH-T790).
+            touched = state.pop("asking", None) is not None
             # The quicksave /allocate off winds down to: this CLI is wound down (M.ORCH-T572).
             try:
                 if QUICKSAVE.search(str((data.get("tool_input") or {}).get("command") or "")):
@@ -3054,8 +3119,11 @@ public static class AgentGate
             throw new IOException($"{settingsPath} isn't a JSON object it can read, so the pace and context gate hooks aren't registered; it's left as it is"
                 + (did.Count > 0 ? $" ({string.Join(", ", did)})" : ""));
         var changed = AddHook(root, "PreToolUse", ScriptName, Command(script), HookTimeoutSeconds);
-        foreach (var hookEvent in new[] { "PostToolUse", "Stop", "UserPromptSubmit", "SubagentStart", "SubagentStop", "SessionStart" })
+        foreach (var hookEvent in new[] { "PostToolUse", "Stop", "UserPromptSubmit", "SubagentStart", "SubagentStop", "SessionStart", "Notification" })
             changed |= AddHook(root, hookEvent, ContextScriptName, Command(contextScript), ContextHookTimeoutSeconds);
+        // A CLI blocked on you (M.ORCH-T790): its permission prompts (Notification, above) and its AskUserQuestion, matched to
+        // that one tool so no other tool call starts a second hook process.
+        changed |= AddHook(root, "PreToolUse", ContextScriptName, Command(contextScript), ContextHookTimeoutSeconds, AskUserQuestionTool);
         // Claude's own usage reaches the orchestrator only through a statusline redraw; an idle tab redraws on this
         // timer too, so the real percent stays fresh while any tab is open (M.ORCH-T125).
         if (root["statusLine"] is JsonObject statusLine && statusLine["refreshInterval"] is null)
@@ -3185,7 +3253,10 @@ public static class AgentGate
     internal static string Command(string script) => $"python \"{script.Replace('\\', '/')}\"";
 
     /// <summary>Adds a <paramref name="hookEvent"/> entry unless one already runs <paramref name="scriptName"/>; true when it changed <paramref name="root"/>.</summary>
-    internal static bool AddHook(JsonObject root, string hookEvent, string scriptName, string command, int timeout)
+    /// <summary>The tool a CLI asks you a question with: while it waits on your answer it's blocked on you (M.ORCH-T790).</summary>
+    public const string AskUserQuestionTool = "AskUserQuestion";
+
+    internal static bool AddHook(JsonObject root, string hookEvent, string scriptName, string command, int timeout, string matcher = "")
     {
         var hooks = root["hooks"] as JsonObject ?? (JsonObject)(root["hooks"] = new JsonObject());
         var entries = hooks[hookEvent] as JsonArray ?? (JsonArray)(hooks[hookEvent] = new JsonArray());
@@ -3201,7 +3272,7 @@ public static class AgentGate
         }
         entries.Add(new JsonObject
         {
-            ["matcher"] = "",
+            ["matcher"] = matcher,
             ["hooks"] = new JsonArray(new JsonObject { ["type"] = "command", ["command"] = command, ["timeout"] = timeout }),
         });
         return true;

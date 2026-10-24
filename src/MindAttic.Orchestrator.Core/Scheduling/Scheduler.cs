@@ -184,6 +184,8 @@ public static partial class Scheduler
                     Assignee = assignees.GetValueOrDefault(t.Id),
                 }))
             .OrderBy(q => q.IsAssigned)
+            // A ticket the last-resort cool-off aborted mid-run goes back at the front for the next round (M.ORCH-T786).
+            .ThenByDescending(q => snapshot.Requeued.Contains(q.Id))
             .ThenByDescending(q => q.Reserved > 0)
             .ThenByDescending(q => q.Priority)
             // Smallest effort first: a known estimate before an unknown one, cheapest first.

@@ -38,16 +38,31 @@ public sealed partial class MainViewModel
     public string TabTitle => tab.Title;
 
     /// <summary>Its title, its status icon's word (M.ORCH-T757) and its light's word (M.ORCH-T630: colour is never the only cue), its week left, its email and which
-    /// login it is, and how many of its CLIs wait on you.</summary>
+    /// login it is, and, with its red flag (M.ORCH-T790), how many of its CLIs are blocked waiting on your answer.</summary>
     public string TabTip => tab.IsMisc ? $"{tab.Title}: {tab.ToolTip}." :
-        $"{tab.Title}: {TabActivityWord}, {TabStatusWord}" + (tab.IsApiKey ? $", {TabTrailing}" : $", week {TabTrailing}") + $". {tab.ToolTip}." +
-        (WaitingCount == 0 ? "" : $" {WaitingCount} need{(WaitingCount == 1 ? "s" : "")} you.");
+        $"{tab.Title}: {TabActivityWord}, {TabStatusWord}" + $", {TabTrailing}" + $". {tab.ToolTip}." +
+        NeedsYouLine(TabAskingCount);
+
+    /// <summary>How many of this tab's CLIs are genuinely blocked on you (M.ORCH-T790): holding on a permission prompt or a question,
+    /// or stopped for a /crossrepo or /allocate only you may type. Not the old idle count: a turn that simply ended isn't this.</summary>
+    public int TabAskingCount => IsPersonTab ? AskingOf(snapshot?.Agents) : 0;
+
+    /// <summary>The red flag at the end of a person's tab line (M.ORCH-T790): shown only while one of its CLIs is blocked on you,
+    /// gone as soon as they're all running again. A flag, not a count; the count is in the tooltip.</summary>
+    public bool TabNeedsYou => TabAskingCount > 0;
+
+    internal static int AskingOf(IEnumerable<MindAttic.Orchestrator.Activity.AgentBoardRow>? agents) => agents?.Count(a => a.Asking) ?? 0;
+
+    /// <summary>The flag in words for the tooltip and the accessible name, so it's never only a picture; empty with none blocked.</summary>
+    internal static string NeedsYouLine(int asking) => asking switch
+    {
+        0 => "",
+        1 => " A CLI here is blocked waiting on your answer.",
+        _ => $" {asking} CLIs here are blocked waiting on your answer.",
+    };
 
     /// <summary>The login's terminal tab color (M.ORCH-T616), the tab's accent; the theme's muted brush when it has none.</summary>
     public Brush TabBrush => BrushOf(tab.Color);
-
-    /// <summary>How many of its repos need you, on the tab itself so one waiting on another tab is seen; empty when none.</summary>
-    public string TabBadge => WaitingCount > 0 ? WaitingCount.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
 
     /// <summary>Every login's tab, the global login's first; the same list in every tab.</summary>
     public ObservableCollection<MainViewModel> LoginTabs => Root.loginTabs;

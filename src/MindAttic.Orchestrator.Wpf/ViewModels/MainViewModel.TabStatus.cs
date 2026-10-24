@@ -69,14 +69,18 @@ public sealed partial class MainViewModel
         _ => Palette.Other,
     };
 
-    /// <summary>The tab's far-right figure: a person's weekly % left, as the weekly card shows it ("23% left", "—" never read); on the
-    /// 'API key' tab, the tokens the CLIs billing it spent today.</summary>
-    public string TabTrailing => tab.IsMisc ? "" : tab.IsApiKey ?$"{Formatting.Tokens(ApiKeyUsageToday.Fresh)} today" : TabWeekLeftOf(WeekUsed);
+    /// <summary>The text beside a person's name (M.ORCH-T793): their live 5-hour and weekly use, each against that person's own
+    /// live cutoff ("5hr: 10/98% | wk: 55/90%"), the cutoffs read from /org limit (or the wall while allowed past the weekly one),
+    /// never a fixed number. On the 'API key' tab, the tokens the CLIs billing it spent today.</summary>
+    public string TabTrailing => tab.IsMisc ? "" : tab.IsApiKey ? $"{Formatting.Tokens(ApiKeyUsageToday.Fresh)} today"
+        : TabUsagePairsOf(FiveHourUsed, FiveHourCutoff, WeekUsed, WeeklyCutoff);
 
-    /// <summary>"23% left": 100 minus the week used, never below 0, the same figure as the weekly card (the M.ORCH-T609 reserve
-    /// shows only in its "stops at 95%"); "—" when the week was never read.</summary>
-    internal static string TabWeekLeftOf(double? usedPercent) =>
-        usedPercent is { } used ? $"{Math.Max(0, 100 - used):0}% left" : "—";
+    /// <summary>"5hr: 10/98% | wk: 55/90%": each window's % used (rounded, "—" never read) over its cutoff.</summary>
+    internal static string TabUsagePairsOf(double? fiveHourUsed, int fiveHourCutoff, double? weekUsed, int weeklyCutoff) =>
+        $"5hr: {UsedOf(fiveHourUsed)}/{fiveHourCutoff}% | wk: {UsedOf(weekUsed)}/{weeklyCutoff}%";
+
+    private static string UsedOf(double? used) =>
+        used is { } u ? Math.Max(0, u).ToString("0", System.Globalization.CultureInfo.InvariantCulture) : "—";
 
     private (TabLight Light, string Word) TabStatus => tab.IsApiKey
         ? (TabLight.Warning, IsOnApiKey ? "API key billing every CLI" : "API key on standby (Claude Team bills)")
@@ -260,7 +264,7 @@ public sealed partial class MainViewModel
     {
         foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(TabTip),
                                      nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(TabActivityWord),
-                                     nameof(ApiKeyClis), nameof(ApiKeyCostText) })
+                                     nameof(ApiKeyClis), nameof(ApiKeyCostText), nameof(TabAskingCount), nameof(TabNeedsYou) })
             Raise(name);
     }
 

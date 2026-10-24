@@ -143,4 +143,16 @@ public sealed class AgentBoardTests
 
         Assert.That(rows.Select(r => r.SessionId), Is.EqualTo(new[] { "fresh", "old" }));
     }
+
+    /// <summary>M.ORCH-T790: blocked on you comes from the context gate's asking mark, never from being idle.</summary>
+    [Test]
+    public void A_session_the_context_gate_marks_asking_is_blocked_on_you_and_an_idle_one_is_not()
+    {
+        var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-1)), Session("s2", Now.AddMinutes(-30))) };
+
+        var rows = AgentBoard.Build(repos, null, [], [], WorkingWindow, Now, asking: new HashSet<string> { "s1" });
+
+        Assert.That(rows.Single(r => r.SessionId == "s1").Asking, Is.True);
+        Assert.That(rows.Single(r => r.SessionId == "s2").Asking, Is.False, "idle past the window is waiting, not blocked on you");
+    }
 }
