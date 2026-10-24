@@ -268,6 +268,30 @@ public sealed class AllocateTests
             "-repo=GTFO.* names every repo starting GTFO. (M.ORCH-T165)");
     }
 
+    /// <summary>M.ORCH-T808: while the global pause is on, nothing is claimed or dispatched anywhere; resumed, it is again.</summary>
+    [Test]
+    public void While_the_global_pause_is_on_nothing_is_claimed_or_dispatched()
+    {
+        var snap = Snap(("A", [T("A-T1"), T("A-T2")]));
+        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
+        (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
+        SchedulePlan Planned() => Paced(snap, 5) with { Pace = Paced(snap, 5).Pace! with { SubagentAllowance = 4, Subagents = 0 } };
+        store.Save(GlobalPause.StateName, new PauseState { Paused = true, SinceUtc = Now });
+
+        var (handed, why) = Allocate.Next(Planned(), settings, store, ["A"], null, claim: true, Now, Make, _ => "main");
+        Assert.That(handed, Is.Empty);
+        Assert.That(why, Is.EqualTo(GlobalPause.Why));
+        Assert.That(store.LoadAssignments(), Is.Empty, "nothing claimed");
+        var dispatched = new Dispatcher(new SessionControl(new OrchestratorOptions()), store).Dispatch(Planned().Queue[0], Providers.Claude, useWorktree: true);
+        Assert.That(dispatched.Ok, Is.False);
+        Assert.That(dispatched.Message, Does.Contain("paused"));
+        Assert.That(store.LoadAssignments(), Is.Empty, "nothing dispatched");
+
+        GlobalPause.Resume(store);
+        Assert.That(Allocate.Next(Planned(), settings, store, ["A"], null, claim: true, Now, Make, _ => "main").Handed.Select(h => h.Item.Id),
+            Is.EqualTo(new[] { "A-T1", "A-T2" }), "resumed: claimed again");
+    }
+
     /// <summary>M.ORCH-T495: one repo's /allocate claimed all 8 places at once (8 subagents on one repo) while other CLIs got none.</summary>
     [Test]
     public void A_cli_running_allocate_claims_its_fair_share_of_the_allowance_not_every_place()

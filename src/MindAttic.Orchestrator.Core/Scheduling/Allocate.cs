@@ -113,6 +113,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             Tell("unknown", $"allocate: no repo named {string.Join(", ", unknown)} in the workspace");
 
         Paused = !settings.Allocate ? "allocate is switched off"
+            : GlobalPause.Active(store) ? GlobalPause.Why
             : HealthHold is { } sick ? $"machine health: {sick}"
             : QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is { } quiet ? $"quiet hours ({quiet})"
             : PaceHold(plan, snapshot);
@@ -459,7 +460,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         OrgRouting orgs)
     {
         var delegated = new List<Handout>();
-        if (!settings.Allocate || QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is not null) return delegated;
+        if (!settings.Allocate || QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is not null || GlobalPause.Active(store)) return delegated;
         if (cli is { } moving && new Sessions.MoveLocks(store).All().Any(m => m.Pid == moving || (self is not null && m.SessionId == self))) return delegated;
         var pace = plan.Pace;
         var closedHere = plan.Stopped;
@@ -528,6 +529,8 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         // The switches the settings and the Settings panel offer apply to the CLIs that run /allocate: Tick, which
         // read them, starts nothing since M.ORCH-T164.
         if (!settings.Allocate) return ([], "allocate is paused (orchestrator settings --allocate true, or the dashboard's Settings, resumes it)");
+        // The global pause (M.ORCH-T808): nothing is claimed anywhere until it's lifted.
+        if (GlobalPause.Active(store)) return ([], GlobalPause.Why);
         if (QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is { } quiet) return ([], $"quiet hours ({quiet}): nothing starts until they end");
         bool Named(string repo) => Allocate.Named(repos, repo);
         // Weekly-aware (M.ORCH-T666): a ticket must fit the week's room as well as the 5-hour window's; off, there's none.

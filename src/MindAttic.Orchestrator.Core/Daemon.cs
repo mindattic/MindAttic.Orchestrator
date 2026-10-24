@@ -123,7 +123,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     // A moved CLI that landed on its new login gets its tickets back to start again in their worktrees; one that
                     // didn't land in time is unlocked with its old owner keeping them (M.ORCH-T637).
                     ReportMoves(snapshot.Agents, DateTime.UtcNow);
-                    ReportWakes(waker.Tick(snapshot.Pace, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
+                    // Not while the global pause is on (M.ORCH-T808): nothing is told to carry on until it's lifted.
+                    if (!Scheduling.GlobalPause.Active(store))
+                        ReportWakes(waker.Tick(snapshot.Pace, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
                     // An idle /allocate CLI let stop when its next handed out nothing is sent back once next has work for it
                     // (M.ORCH-T523): keep-going acts only as a turn ends, so nothing asked it again when room opened.
                     ReportAllocateWakes(pilotWaker.Tick(plan, s, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow, snapshot));

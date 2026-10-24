@@ -109,6 +109,13 @@
         <Button x:Name="SettingsButton" Style="{StaticResource MaToolButton}" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
                 Content="&#xE713;" Command="{Binding ToggleSettingsCommand}" ToolTip="Settings"
                 AutomationProperties.Name="Settings" />
+        <!-- The global Pause/Resume toggle (M.ORCH-T808): Segoe's Pause glyph (E769) while work runs; clicked and confirmed, it
+             ends every Claude CLI on every login outright and holds every claim and dispatch org-wide. Paused, it shows Play
+             (E768) in MaWarn, and a click resumes at once (no confirm). Bound to the shown tab's TogglePauseCommand; every tab
+             shows the one pause. -->
+        <Button x:Name="PauseButton" Style="{StaticResource MaToolButton}" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
+                Content="{Binding PauseGlyph}" Foreground="{Binding PauseBrush}" Command="{Binding TogglePauseCommand}"
+                ToolTip="{Binding PauseToggleText}" AutomationProperties.Name="{Binding PauseToggleText}" />
         <!-- The library's own MaToolButton (Theme.xaml), not a template of its own (M.ORCH-T775): a Storyboard.TargetName
              only resolves within a ControlTemplate or DataTemplate's NameScope, and MaToolButton's has no part this button
              could name, so the glow pulse is set up in code-behind instead (MainWindow.xaml.cs), on a DropShadowEffect

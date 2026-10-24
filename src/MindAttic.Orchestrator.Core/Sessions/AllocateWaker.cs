@@ -59,7 +59,7 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
     /// <summary>What to wake now, woken (or said, when <paramref name="type"/> is false or it can't be typed into).</summary>
     public IReadOnlyList<Wake> Tick(SchedulePlan plan, OrchestratorSettings settings, IReadOnlyList<HostSession> hosts, bool type, DateTime nowUtc, Snapshot? snapshot = null)
     {
-        if (!settings.KeepGoing || !settings.Allocate) return [];
+        if (!settings.KeepGoing || !settings.Allocate || GlobalPause.Active(store)) return [];
         var pilots = Pilots?.Invoke() ?? cycler.AllocateClis();
         foreach (var gone in wokenUtc.Keys.Concat(saidFor.Keys).Where(p => !pilots.ContainsKey(p)).ToList())
         {
@@ -157,7 +157,7 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
     /// </summary>
     public IReadOnlyList<Wake> TickClaims(Snapshot snapshot, SchedulePlan plan, OrchestratorSettings settings, IReadOnlyList<HostSession> hosts, bool type, DateTime nowUtc)
     {
-        if (!settings.KeepGoing || !settings.Allocate) return [];
+        if (!settings.KeepGoing || !settings.Allocate || GlobalPause.Active(store)) return [];
         if (UnderTarget.Projected(snapshot, plan) is not { } projected || !UnderTarget.HasRoom(plan)) return [];
         var pilots = Pilots?.Invoke() ?? cycler.AllocateClis();
         if (pilots.Count == 0) return [];
