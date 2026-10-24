@@ -48,8 +48,17 @@ public sealed partial class MainViewModel
         {
             try { accountRows = AccountRoster.Load(aggregator.Db, next.Account); }
             catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Data.Common.DbException) { return; }
-            try { var settings = store.LoadSettings(); weeklyStopPercent = settings.WeeklyStopPercent; paceTargetPercent = settings.PaceTargetPercent; }
+            try
+            {
+                var settings = store.LoadSettings();
+                weeklyStopPercent = settings.WeeklyStopPercent; paceTargetPercent = settings.PaceTargetPercent;
+                tabBlinkTokens = settings.TabBlinkTokens;
+            }
             catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException) { }
+            // Each login's own cutoffs and who's allowed past the weekly one, for the tabs' disabled icon (M.ORCH-T757); kept as
+            // they were when the store can't be read now.
+            try { cutoffs = UsageCutoffs.Load(store); allowances = WeeklyAllowances.Active(store, nowUtc); }
+            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
             currentAccount = next.Account == ClaudeAccount.ApiKey ? null : next.Account;
         }
         RaiseOwnNumbers();

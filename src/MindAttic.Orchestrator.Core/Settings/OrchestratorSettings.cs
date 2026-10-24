@@ -205,6 +205,12 @@ public sealed record OrchestratorSettings
     /// <summary>Minutes a dispatch's owner must be gone with nothing written in its worktree before it counts as orphaned.</summary>
     public int OrphanQuietMinutes { get; init; } = 10;
 
+    /// <summary>The dashboard's person tabs (M.ORCH-T757): a busy login's green play arrow blinks once for every this many tokens
+    /// it spends (uncached), so busy tabs blink at their own rate. <see cref="MinTabBlinkTokens"/> to <see cref="MaxTabBlinkTokens"/>.</summary>
+    public int TabBlinkTokens { get; init; } = DefaultTabBlinkTokens;
+
+    public const int DefaultTabBlinkTokens = 1000, MinTabBlinkTokens = 1, MaxTabBlinkTokens = 10_000_000;
+
     /// <summary>One CLI per account (M.ORCH-T605): a Claude tab started without a login chosen for it (dashboard Start on
     /// Auto, <c>orchestrator start</c> without <c>--account</c>, Queue and autopilot starts, <c>orchestrator accounts pick</c>)
     /// goes on a signed-in per-CLI login no live CLI runs on, the one with the most headroom first

@@ -11,7 +11,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly JsonStore store;
     private readonly Action saved;
     private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "",
-        contextPercent = "", orphanRedispatches = "", orphanQuiet = "", exemptCommands = "", weeklyTarget = "";
+        contextPercent = "", orphanRedispatches = "", orphanQuiet = "", exemptCommands = "", weeklyTarget = "", tabBlinkTokens = "";
     private bool autopilot, pacing, autoLogin, rebalanceLogins = true;
 
     public SettingsViewModel(JsonStore store, Action saved)
@@ -43,6 +43,8 @@ public sealed class SettingsViewModel : ObservableObject
     public string OrphanRedispatches { get => orphanRedispatches; set => Set(ref orphanRedispatches, value); }
     /// <summary>Minutes a dispatch's owner must be gone, nothing written in its worktree, before it's orphaned, 1 to 1440.</summary>
     public string OrphanQuiet { get => orphanQuiet; set => Set(ref orphanQuiet, value); }
+    /// <summary>A busy person tab's play arrow blinks once per this many tokens (M.ORCH-T757), 1 to 10,000,000.</summary>
+    public string TabBlinkTokens { get => tabBlinkTokens; set => Set(ref tabBlinkTokens, value); }
     public string ContextPercent { get => contextPercent; set => Set(ref contextPercent, value); }
     /// <summary>The commands exempt from pacing (M.ORCH-T198), comma-separated; blank exempts none.</summary>
     public string ExemptCommands { get => exemptCommands; set => Set(ref exemptCommands, value); }
@@ -165,13 +167,13 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>Every field as the panel read it. The CLI and agents change settings too while it's open (budget, pace,
     /// settings --max-sessions, --exempt): a Save writes only the fields edited here, not what it read back then (M.ORCH-T338).</summary>
-    private Fields loaded = new("", "", "", "", "", "", false, "", "", "", true, "", true, "", "");
+    private Fields loaded = new("", "", "", "", "", "", false, "", "", "", true, "", true, "", "", "");
 
     private sealed record Fields(string Block, string Weekly, string Reset, string Warn, string Max, string Provider, bool Pacing, string Target,
-        string Context, string Exempt, bool AutoLogin, string WeekTarget, bool Rebalance, string Orphans, string OrphanQuiet);
+        string Context, string Exempt, bool AutoLogin, string WeekTarget, bool Rebalance, string Orphans, string OrphanQuiet, string Blink);
 
     private Fields Current() => new(BlockBudget, WeeklyBudget, WeeklyReset, WarnPercent, MaxSessions, Provider, Pacing, PaceTarget,
-        ContextPercent, ExemptCommands, AutoLogin, WeeklyTarget, RebalanceLogins, OrphanRedispatches, OrphanQuiet);
+        ContextPercent, ExemptCommands, AutoLogin, WeeklyTarget, RebalanceLogins, OrphanRedispatches, OrphanQuiet, TabBlinkTokens);
 
     public void Load()
     {
@@ -193,6 +195,7 @@ public sealed class SettingsViewModel : ObservableObject
         ExemptCommands = string.Join(", ", s.ExemptCommands);
         OrphanRedispatches = s.OrphanRedispatches.ToString(CultureInfo.InvariantCulture);
         OrphanQuiet = s.OrphanQuietMinutes.ToString(CultureInfo.InvariantCulture);
+        TabBlinkTokens = s.TabBlinkTokens.ToString(CultureInfo.InvariantCulture);
         loaded = Current();
         LoadOutside(s);
         Error = "";
@@ -224,6 +227,9 @@ public sealed class SettingsViewModel : ObservableObject
         if (!(int.TryParse(OrphanRedispatches, out var orphans) && orphans is >= 0 and <= 20) && OrphanRedispatches != was.Orphans) { Error = "Orphan redispatches: 0 to 20."; return; }
         if (!(int.TryParse(OrphanQuiet, out var orphanQuiet) && orphanQuiet is >= 1 and <= 1440) && OrphanQuiet != was.OrphanQuiet) { Error = "Orphan quiet minutes: 1 to 1440."; return; }
 
+        if (!(int.TryParse(TabBlinkTokens, out var blink) && blink is >= OrchestratorSettings.MinTabBlinkTokens and <= OrchestratorSettings.MaxTabBlinkTokens) && TabBlinkTokens != was.Blink)
+        { Error = $"Blink once per: {OrchestratorSettings.MinTabBlinkTokens} to {OrchestratorSettings.MaxTabBlinkTokens:N0} tokens."; return; }
+
         if (SaveOutside(store.LoadSettings()) is null) return;
         try
         {
@@ -245,6 +251,7 @@ public sealed class SettingsViewModel : ObservableObject
                 ContextCyclePercent = ContextPercent == was.Context ? s.ContextCyclePercent : cycleAt,
                 OrphanRedispatches = OrphanRedispatches == was.Orphans ? s.OrphanRedispatches : orphans,
                 OrphanQuietMinutes = OrphanQuiet == was.OrphanQuiet ? s.OrphanQuietMinutes : orphanQuiet,
+                TabBlinkTokens = TabBlinkTokens == was.Blink ? s.TabBlinkTokens : blink,
                 ExemptCommands = ExemptCommands == was.Exempt ? s.ExemptCommands : OrchestratorSettings.ParseCommands(ExemptCommands),
             });
         }
