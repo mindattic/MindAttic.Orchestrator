@@ -59,8 +59,15 @@ public sealed record Pace(
     /// being under <see cref="TargetPercent"/> (M.ORCH-T529); null when it didn't.</summary>
     public double? UnderTargetPercent { get; init; }
 
-    /// <summary>The pace target <see cref="UnderTargetPercent"/> is short of.</summary>
+    /// <summary>The pace target <see cref="UnderTargetPercent"/> is short of, or <see cref="CoolOffPercent"/> is past.</summary>
     public double TargetPercent { get; init; }
+
+    /// <summary>Where the 5-hour window is on course to end, when <see cref="Pacer.CoolOff"/> slowed new subagent starts for a
+    /// login split across many CLIs whose live trend crossed <see cref="TargetPercent"/> (M.ORCH-T785); null when it didn't.</summary>
+    public double? CoolOffPercent { get; init; }
+
+    /// <summary>The CLIs spending on the login when <see cref="Pacer.CoolOff"/> slowed it; 0 when it didn't.</summary>
+    public int CoolOffClis { get; init; }
 
     /// <summary>The window is at its target or a limit: nothing more may be spent before the reset. The pace gate then
     /// refuses tool calls (every CLI, /pacing off included) rather than letting a held call through, so usage never
@@ -89,6 +96,10 @@ public sealed record Pace(
     {
         null => "",
         0 => $"Subagents: none new right now ({Note}). Finish with the {Subagents} running; a new one waits until there's room.",
+        var a when CoolOffPercent is { } hot => $"Subagents: {a} at once across all agents ({Subagents} running now). Cooling off: this login's " +
+            $"{CoolOffClis} CLIs together are on course to end the 5-hour window near {hot:0}%, past its {TargetPercent:0}% pace line, so new " +
+            "subagents start slower (a new one waits for a free slot) until the trend bends back under it. Nothing running is stopped or held; " +
+            "keep working normally.",
         var a when a > Subagents && UnderTargetPercent is { } projected => $"Subagents: up to {a} may run at once across all agents ({Subagents} running now). " +
             $"The 5-hour window is on course to end near {projected:0}%, under its {TargetPercent:0}% target, so start more now: a subagent on every ticket " +
             "you've claimed or been handed, all at once, and parallel subagents for independent pieces. Don't hold one back because its files overlap " +
@@ -299,6 +310,29 @@ public static class Pacer
         var shortBy = u.TargetPercent - Math.Max(0, u.ProjectedEndPercent);
         var raised = (int)Math.Min(max, Math.Max(allowed, (long)pace.Subagents + Math.Max(1, (int)Math.Ceiling(shortBy / 10))));
         return pace with { SubagentAllowance = raised, UnderTargetPercent = Math.Max(0, u.ProjectedEndPercent), TargetPercent = u.TargetPercent };
+    }
+
+    /// <summary>The fewest CLIs spending on one login for <see cref="CoolOff"/> to apply: it's for a login split across many CLIs.</summary>
+    public const int CoolOffMinClis = 2;
+
+    /// <summary>
+    /// The cool-off for one login split across many CLIs (M.ORCH-T785, a user-approved narrow exception, 2026-10-24, to
+    /// M.ORCH-T706/T707's hard-cutoffs-only rule): with <paramref name="clis"/> (at least <see cref="CoolOffMinClis"/>) spending on
+    /// the login and its live aggregated 5-hour trend (<paramref name="window"/>, all their spend together) on course past its pace
+    /// target, new subagent starts are slowed: the allowance drops to the ones running less one for every 10 points over (at least
+    /// one), so the excess drains as they finish. It never stops: never below one, nothing running is held, and the window's hard
+    /// cutoff (<see cref="Pace.Stop"/>) is left to do that. Off (the pace as it is) under the line, with one CLI, at the stop, when
+    /// the pace says none new or is unpaced, and when no window is running.
+    /// </summary>
+    public static Pace CoolOff(Pace pace, Utilization? window, int clis)
+    {
+        if (clis < CoolOffMinClis || pace is not { IsPaced: true, Stop: false, SubagentAllowance: { } allowed and > 0 }) return pace;
+        if (window is not { Ended: false, Idle: false } u || u.EndUtc <= u.NowUtc || u.ProjectedEndPercent <= u.TargetPercent) return pace;
+        var overBy = u.ProjectedEndPercent - u.TargetPercent;
+        var slowed = (int)Math.Clamp((long)pace.Subagents - Math.Max(1, (long)Math.Ceiling(Math.Min(overBy, 1000) / 10)), 1, allowed);
+        var note = $"{pace.Note} Cooling off: {clis} CLIs on this login are on course for {u.ProjectedEndPercent:0}% of the 5-hour window, " +
+                   $"past its {u.TargetPercent:0}% pace line, so new subagents start slower ({slowed} at once) until it bends back under.";
+        return pace with { SubagentAllowance = slowed, CoolOffPercent = u.ProjectedEndPercent, CoolOffClis = clis, TargetPercent = u.TargetPercent, Note = note };
     }
 
     /// <summary>
