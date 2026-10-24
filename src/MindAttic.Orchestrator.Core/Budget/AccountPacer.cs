@@ -44,9 +44,6 @@ public sealed class AccountPacer
             ? meter ??= new ClaudeMeterProbe { UsagePath = dir.UsagePath, CredentialsPath = dir.CredentialsPath, AccountKey = () => Account, Label = dir.Email }
             : null;
         public List<UsageSample>? Samples;
-        /// <summary>This account's own limit hits (M.ORCH-T774), read from its sessions' transcripts and kept across ticks so
-        /// one a transcript reported stays known once its line scrolls out of the reader's window.</summary>
-        public List<LimitObservation>? Limits;
         /// <summary>Who's signed in to the folder, as of this tick.</summary>
         public string? Account;
     }
@@ -104,12 +101,15 @@ public sealed class AccountPacer
         // This account's own limit hits (M.ORCH-T774), read from its own sessions' transcripts: before this, a wall Claude
         // actually reported to one of this account's CLIs never reached BudgetCalculator (no LimitCalibration was ever
         // passed here), so the only thing stopping it was the percent-based target, and the pace ledger could only ever
-        // say "Claude reported 100%", never "hit the 5-hour limit", for a per-CLI login. Kept across ticks (and restarts)
-        // so a hit stays known once the transcript line that reported it scrolls out of the reader's window.
+        // say "Claude reported 100%", never "hit the 5-hour limit", for a per-CLI login. The file is small (pruned to
+        // LimitCalibration.Keep), so it's read fresh every tick rather than cached on State, which would otherwise hold a
+        // stale, wrongly-tagged merge across a live /login switch within this process's life. Tagged with the account, so a
+        // folder re-signed to a different one (its own .claude.json changed under the same folder) starts fresh rather than
+        // being held to the old account's wall, which for a weekly one could otherwise block it for days.
+        var before = LoadLimits(dir, state.Account);
         var observed = LimitCalibration.Observe(sessions.SelectMany(s => s.Hits), events, now - LimitCalibration.Keep);
-        var limits = LimitCalibration.Merge(state.Limits ??= LoadLimits(dir), observed, now);
-        if (write && !limits.SequenceEqual(state.Limits)) SaveLimits(dir, limits);
-        state.Limits = limits;
+        var limits = LimitCalibration.Merge(before, observed, now);
+        if (write && !limits.SequenceEqual(before)) SaveLimits(dir, state.Account, limits);
         var calibration = new LimitCalibration(limits);
         var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration, reported: reported, reportedLimit: limit);
 
@@ -241,22 +241,34 @@ public sealed class AccountPacer
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
-    /// <summary>This account's own limit hits (<see cref="AccountDir.LimitsPath"/>, M.ORCH-T774); empty when there are none
-    /// yet.</summary>
-    public static List<LimitObservation> LoadLimits(AccountDir dir)
+    /// <summary>This account's own limit hits (<see cref="AccountDir.LimitsPath"/>, M.ORCH-T774), tagged with the account
+    /// they were kept for; empty when there are none yet, or (<paramref name="account"/> given) when the folder's signed-in
+    /// account has changed since they were saved, so a previous account's wall (a weekly one could otherwise block a new
+    /// sign-in for days) is never read as this one's.</summary>
+    public static List<LimitObservation> LoadLimits(AccountDir dir, string? account = null)
     {
-        try { return File.Exists(dir.LimitsPath) ? JsonSerializer.Deserialize<List<LimitObservation>>(File.ReadAllText(dir.LimitsPath), Json) ?? [] : []; }
+        try
+        {
+            if (!File.Exists(dir.LimitsPath)) return [];
+            var stored = JsonSerializer.Deserialize<StoredLimits>(File.ReadAllText(dir.LimitsPath), Json);
+            return stored is null || (account is not null && stored.Account != account) ? [] : stored.Observations;
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return []; }
     }
 
-    private static void SaveLimits(AccountDir dir, List<LimitObservation> limits)
+    private static void SaveLimits(AccountDir dir, string? account, List<LimitObservation> limits)
     {
         try
         {
             var temp = dir.LimitsPath + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(limits, Json));
+            File.WriteAllText(temp, JsonSerializer.Serialize(new StoredLimits(account ?? "", limits), Json));
             File.Move(temp, dir.LimitsPath, overwrite: true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
+
+    /// <summary>What <see cref="AccountDir.LimitsPath"/> holds: the account it was kept for, and that account's own observed
+    /// hits (M.ORCH-T774 review: a bare array couldn't say whose hits they were, so a re-signed folder would keep reading the
+    /// previous account's).</summary>
+    private sealed record StoredLimits(string Account, List<LimitObservation> Observations);
 }

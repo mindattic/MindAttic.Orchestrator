@@ -123,13 +123,16 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
             if (dir.Account is not { } account || account == ClaudeAccount.ApiKey) continue;
             var samples = AccountPacer.LoadSamples(dir);
             if (samples.Count == 0) continue;
-            var hits = AccountPacer.LoadLimits(dir);
+            var hits = AccountPacer.LoadLimits(dir, account);
             var mine = events.Where(e => e.Account == account).ToList();
             var due = PaceLedger.Due([.. recorded.Where(r => r.Account == account)], samples, hits, mine, nowUtc, _ => account);
             if (due.Count == 0) continue;
             try { Db.AppendLedger(due); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { continue; }
-            foreach (var w in due) Report(w with { Why = $"{dir.Email}: {w.Why}" }, nowUtc);
+            // A per-CLI login's own hit is never raised anywhere else (RaiseNewHits only ever reads the global login's
+            // limits.json): unlike the global ledger's rows, a hit here must still alert and file, or a window that blew
+            // past the 99% stop into a real wall would go unreported now that it grades as one (M.ORCH-T774 review).
+            foreach (var w in due) Report(w with { Why = $"{dir.Email}: {w.Why}" }, nowUtc, hitAlreadyRaised: false);
         }
     }
 
@@ -170,7 +173,13 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
         }
     }
 
-    private void Report(LedgerWindow w, DateTime nowUtc)
+    /// <param name="hitAlreadyRaised">Whether a <see cref="LedgerWindow.LimitHitUtc"/> hit on this window was already
+    /// alerted and ticketed elsewhere the moment it was read (true for the global ledger's own windows: <see cref="RaiseNewHits"/>
+    /// does that from the same <c>limits.json</c> this window's hit came from). False for a per-CLI login's own window
+    /// (M.ORCH-T774 review): its hits come from its own <see cref="Sessions.AccountDir.LimitsPath"/>, which nothing else
+    /// raises, so a hit there must still alert and file here, or a window that blew past the 99% stop into a real wall
+    /// would go unreported now that it grades as one instead of "Claude reported 100%".</param>
+    private void Report(LedgerWindow w, DateTime nowUtc, bool hitAlreadyRaised = true)
     {
         var live = nowUtc - w.EndUtc <= Live;
         // Written the same on any Windows language: a 12-hour clock with no AM/PM can't be read (M.ORCH-T405).
@@ -185,11 +194,14 @@ public sealed class PaceLedgerWatch(JsonStore store, string workspaceRoot, Actio
         if (!live || !bad) return;
 
         // A limit hit was raised (and ticketed) when it was read; the window closing over is the same news.
-        if (w.Grade == WindowGrade.Over && w.LimitHitUtc is not null) return;
+        if (w.Grade == WindowGrade.Over && w.LimitHitUtc is not null && hitAlreadyRaised) return;
         if (w.Grade == WindowGrade.Over)
         {
             alert("Window went over", line, true);
-            Filed(FileTicket(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"[pace-ledger over {w.EndUtc:yyyy-MM-ddTHH:mmZ}] Claude reported 100% in the 5-hour window ending {w.EndUtc.ToLocalTime():MMM d h:mm tt} without a limit hit being read: {line}. Find what got past the 99% stop.")));
+            var summary = w.LimitHitUtc is not null
+                ? FormattableString.Invariant($"[pace-ledger over {w.EndUtc:yyyy-MM-ddTHH:mmZ}] Agents ran out of tokens in the 5-hour window ending {w.EndUtc.ToLocalTime():MMM d h:mm tt}: {line}. Find what got past the 99% stop.")
+                : FormattableString.Invariant($"[pace-ledger over {w.EndUtc:yyyy-MM-ddTHH:mmZ}] Claude reported 100% in the 5-hour window ending {w.EndUtc.ToLocalTime():MMM d h:mm tt} without a limit hit being read: {line}. Find what got past the 99% stop.");
+            Filed(FileTicket(summary));
             return;
         }
         // Blind windows recur until the cause is fixed, so one open ticket (and one alert) stands for all of them.
