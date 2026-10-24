@@ -122,6 +122,9 @@ public sealed partial class MainViewModel
         ApplyOrgs(nextOrgs);
         var before = loginTabs.Count;
         var previous = loginTabs.ToList();
+        // Who was signed in at the last refresh, so a login disconnected since opens its sign-in by itself (M.ORCH-T796).
+        var wasSignedIn = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        foreach (var t in previous) wasSignedIn.TryAdd(t.tab.Key, t.tab.SignedIn);
         // The 'API key' tab after every person's (M.ORCH-T630), and 'Miscellaneous' at the very end (M.ORCH-T763).
         loginTabs.SyncBy([.. tabs.Where(t => !t.IsApiKey && !t.IsMisc), LoginTab.ApiKeyTab(all.Billing?.Mode == BillingModes.Api), LoginTab.Misc],
             t => t.Key, v => v.tab.Key,
@@ -151,6 +154,7 @@ public sealed partial class MainViewModel
         }
         UpdateOrgPills();
         OpenLaunchers();
+        if (NewlyDisconnected(wasSignedIn, loginTabs.Select(t => t.tab)) is { Count: > 0 } disconnected) AutoSignIn(disconnected);
     }
 
     /// <summary>The logins whose Launcher tab this dashboard has opened (or tried to): each once per run, so one you close

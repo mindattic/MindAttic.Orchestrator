@@ -8,11 +8,12 @@ using MindAttic.Orchestrator.Settings;
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
 /// <summary>
-/// A person's login actions (M.ORCH-T763), on their own page now that the Accounts view is gone: Sign in (its own login, as
-/// <c>orchestrator login --account</c> does, <see cref="OwnLogins.SignIn"/>), Rename (its name and terminal-title prefix,
+/// A person's login actions (M.ORCH-T763), on their own page now that the Accounts view is gone: Rename (its name and terminal-title prefix,
 /// M.ORCH-T633), Org limit (its own 5-hour and weekly cutoffs, as <c>orchestrator org limit</c> sets them, M.ORCH-T707) and
-/// Make default; Move CLIs is the window's menu (<see cref="MoveTargetsAsync"/>). The org-wide ones, Add login, Sign in all
-/// and Report, sit in the small toolbar above the person tabs, on the global login's tab.
+/// Make default, all three the person's tab's right-click menu (M.ORCH-T797); each CLI moves by its own agent card's Move to
+/// (<see cref="MoveTargetsAsync"/>). The org-wide ones, Add login, Sign in all and Report, sit in the small toolbar above the
+/// person tabs, on the global login's tab. There's no Sign in among them (M.ORCH-T796): a login that gets disconnected opens
+/// its own sign-in (<see cref="OwnLogins.SignIn"/>) by itself.
 /// </summary>
 public sealed partial class MainViewModel
 {
@@ -28,7 +29,7 @@ public sealed partial class MainViewModel
 
     public bool IsSigningIn { get => signingIn; private set => Set(ref signingIn, value); }
 
-    private ICommand? signInPersonCommand, addAccountCommand, renamePersonCommand, saveLoginAliasCommand, cancelRenameCommand;
+    private ICommand? addAccountCommand, renamePersonCommand, saveLoginAliasCommand, cancelRenameCommand;
 
     // ── Rename ──────────────────────────────────────────────────────────────
 
@@ -212,13 +213,44 @@ public sealed partial class MainViewModel
 
     // ── Sign in ─────────────────────────────────────────────────────────────
 
-    /// <summary>Sign in: this person's own login, in a private window of its own browser profile (again, to fix a mismatch or
-    /// an expired one). The global login signs in with /login in any CLI, so its tab has none.</summary>
-    public ICommand SignInPersonCommand => signInPersonCommand ??= new RelayCommand(async () =>
+    // No per-person Sign in button any more (M.ORCH-T796): a login that gets disconnected opens its own sign-in by itself.
+
+    /// <summary>The logins waiting for their automatic sign-in, on the global login's tab, one at a time.</summary>
+    private readonly Queue<string> autoSignIns = new();
+    private bool autoSigningIn;
+
+    /// <summary>The person tabs (by email) that just got disconnected (M.ORCH-T796): signed in at the last refresh
+    /// (<paramref name="wasSignedIn"/>, by tab key) and signed out now. A tab seen for the first time, or signed out all along,
+    /// isn't one, so opening the dashboard never pops a browser per member not signed in yet.</summary>
+    internal static IReadOnlyList<string> NewlyDisconnected(IReadOnlyDictionary<string, bool> wasSignedIn, IEnumerable<LoginTab> now) =>
+        [.. now.Where(t => t.Email is not null && !t.IsApiKey && !t.IsMisc && !t.SignedIn
+                           && wasSignedIn.TryGetValue(t.Key, out var was) && was)
+               .Select(t => t.Email!)];
+
+    /// <summary>Opens each just-disconnected login's own sign-in (M.ORCH-T796), as its tab's Sign in would, one after another:
+    /// no waiting for you to click it. A sign-in you close or that fails leaves the tab on its Sign in panel.</summary>
+    private async void AutoSignIn(IReadOnlyList<string> emails)
     {
-        if (ScopeEmail is not { } email) return;
-        if (await SignInOwnAsync(email)) await RefreshAsync();
-    }, () => IsPersonTab && ScopeEmail is not null && !IsSigningIn);
+        foreach (var e in emails)
+            if (!autoSignIns.Contains(e, StringComparer.OrdinalIgnoreCase)) autoSignIns.Enqueue(e);
+        if (autoSigningIn || autoSignIns.Count == 0) return;
+        autoSigningIn = true;
+        try
+        {
+            while (autoSignIns.TryDequeue(out var email))
+            {
+                var on = loginTabs.FirstOrDefault(t => string.Equals(t.ScopeEmail, email, StringComparison.OrdinalIgnoreCase));
+                if (on is null || on.tab.SignedIn) continue;
+                Toasts.Insert(0, new ToastViewModel($"{on.TabTitle} was signed out", $"Opening {email}'s own sign-in in a private browser window.", Palette.Other, null));
+                if (await on.SignInOwnAsync(email)) await RefreshAsync();
+            }
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            OrchestratorLog.For("Dashboard").Error(ex, "automatic sign-in failed");
+        }
+        finally { autoSigningIn = false; }
+    }
 
     /// <summary>Signs a new per-CLI login in for <see cref="NewAccountEmail"/>.</summary>
     public ICommand AddAccountCommand => addAccountCommand ??= new RelayCommand(async () => await AddAccountAsync());

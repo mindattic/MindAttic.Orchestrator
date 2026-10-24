@@ -11,8 +11,8 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly JsonStore store;
     private readonly Action saved;
     private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "",
-        contextPercent = "", orphanRedispatches = "", orphanQuiet = "", exemptCommands = "", weeklyTarget = "", tabBlinkTokens = "";
-    private bool allocate, pacing, autoLogin, rebalanceLogins = true;
+        contextPercent = "", orphanRedispatches = "", orphanQuiet = "", exemptCommands = "", weeklyTarget = "", tabBlinkTokens = "", agentAbortAfter = "";
+    private bool allocate, pacing, autoLogin, rebalanceLogins = true, agentAbort = true;
 
     public SettingsViewModel(JsonStore store, Action saved)
     {
@@ -39,6 +39,11 @@ public sealed class SettingsViewModel : ObservableObject
     public bool AutoLogin { get => autoLogin; set => Set(ref autoLogin, value); }
     /// <summary>Rebalance when an account runs low (M.ORCH-T608).</summary>
     public bool RebalanceLogins { get => rebalanceLogins; set => Set(ref rebalanceLogins, value); }
+    /// <summary>The last-resort cool-off (M.ORCH-T786): aborts a login's own ticket subagents once its trend stays past the
+    /// pace line past <see cref="AgentAbortAfter"/> minutes with new starts already slowed. On by default.</summary>
+    public bool AgentAbort { get => agentAbort; set => Set(ref agentAbort, value); }
+    /// <summary>Minutes the new-start cool-off gets to bend the trend back under before <see cref="AgentAbort"/> steps in, 0 to 60.</summary>
+    public string AgentAbortAfter { get => agentAbortAfter; set => Set(ref agentAbortAfter, value); }
     /// <summary>How many times an orphaned ticket is redispatched (M.ORCH-T748), 0 to 20; 0 only shows it as orphaned.</summary>
     public string OrphanRedispatches { get => orphanRedispatches; set => Set(ref orphanRedispatches, value); }
     /// <summary>Minutes a dispatch's owner must be gone, nothing written in its worktree, before it's orphaned, 1 to 1440.</summary>
@@ -86,13 +91,15 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>Every field as the panel read it. The CLI and agents change settings too while it's open (budget, pace,
     /// settings --max-sessions, --exempt): a Save writes only the fields edited here, not what it read back then (M.ORCH-T338).</summary>
-    private Fields loaded = new("", "", "", "", "", "", false, "", "", "", true, "", true, "", "", "");
+    private Fields loaded = new("", "", "", "", "", "", false, "", "", "", true, "", true, "", "", "", true, "");
 
     private sealed record Fields(string Block, string Weekly, string Reset, string Warn, string Max, string Provider, bool Pacing, string Target,
-        string Context, string Exempt, bool AutoLogin, string WeekTarget, bool Rebalance, string Orphans, string OrphanQuiet, string Blink);
+        string Context, string Exempt, bool AutoLogin, string WeekTarget, bool Rebalance, string Orphans, string OrphanQuiet, string Blink,
+        bool AgentAbort, string AgentAbortAfter);
 
     private Fields Current() => new(BlockBudget, WeeklyBudget, WeeklyReset, WarnPercent, MaxSessions, Provider, Pacing, PaceTarget,
-        ContextPercent, ExemptCommands, AutoLogin, WeeklyTarget, RebalanceLogins, OrphanRedispatches, OrphanQuiet, TabBlinkTokens);
+        ContextPercent, ExemptCommands, AutoLogin, WeeklyTarget, RebalanceLogins, OrphanRedispatches, OrphanQuiet, TabBlinkTokens,
+        AgentAbort, AgentAbortAfter);
 
     public void Load()
     {
@@ -115,6 +122,8 @@ public sealed class SettingsViewModel : ObservableObject
         OrphanRedispatches = s.OrphanRedispatches.ToString(CultureInfo.InvariantCulture);
         OrphanQuiet = s.OrphanQuietMinutes.ToString(CultureInfo.InvariantCulture);
         TabBlinkTokens = s.TabBlinkTokens.ToString(CultureInfo.InvariantCulture);
+        AgentAbort = s.AgentAbort;
+        AgentAbortAfter = s.AgentAbortAfterMinutes.ToString(CultureInfo.InvariantCulture);
         loaded = Current();
         LoadAlert(s);
         Error = "";
@@ -149,6 +158,9 @@ public sealed class SettingsViewModel : ObservableObject
         if (!(int.TryParse(TabBlinkTokens, out var blink) && blink is >= OrchestratorSettings.MinTabBlinkTokens and <= OrchestratorSettings.MaxTabBlinkTokens) && TabBlinkTokens != was.Blink)
         { Error = $"Blink once per: {OrchestratorSettings.MinTabBlinkTokens} to {OrchestratorSettings.MaxTabBlinkTokens:N0} tokens."; return; }
 
+        if (!(int.TryParse(AgentAbortAfter, out var agentAbortAfter) && agentAbortAfter is >= 0 and <= 60) && AgentAbortAfter != was.AgentAbortAfter)
+        { Error = "Cool-off abort after: 0 to 60 minutes."; return; }
+
         if (SaveAlert(store.LoadSettings()) is null) return;
         try
         {
@@ -171,6 +183,8 @@ public sealed class SettingsViewModel : ObservableObject
                 OrphanRedispatches = OrphanRedispatches == was.Orphans ? s.OrphanRedispatches : orphans,
                 OrphanQuietMinutes = OrphanQuiet == was.OrphanQuiet ? s.OrphanQuietMinutes : orphanQuiet,
                 TabBlinkTokens = TabBlinkTokens == was.Blink ? s.TabBlinkTokens : blink,
+                AgentAbort = AgentAbort == was.AgentAbort ? s.AgentAbort : AgentAbort,
+                AgentAbortAfterMinutes = AgentAbortAfter == was.AgentAbortAfter ? s.AgentAbortAfterMinutes : agentAbortAfter,
                 ExemptCommands = ExemptCommands == was.Exempt ? s.ExemptCommands : OrchestratorSettings.ParseCommands(ExemptCommands),
             });
         }
