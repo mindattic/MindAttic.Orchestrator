@@ -10,8 +10,9 @@ public sealed record UtilizationPoint(DateTime AtUtc, double Percent);
 /// (over) and one below it slower (under). <see cref="ProjectedEndPercent"/> is where the recent rate lands by the reset.
 /// <see cref="Ended"/> while no window is running (M.ORCH-T502): then it's the last window as it ended (its line, pace and
 /// last reading, <see cref="NowPercent"/> at <see cref="NowUtc"/>), or with no <see cref="Actual"/> points an empty axis
-/// when there's no window on record. <see cref="Idle"/> while nothing runs on the login (M.ORCH-T629): a flat line at its
-/// current percent across the window, against the target only (<see cref="UtilizationSeries.IdleWindow"/>).
+/// when there's no window on record. <see cref="Idle"/> while nothing runs on the login (M.ORCH-T629): a real running
+/// window keeps its own climbing <see cref="Actual"/>, against the target only; without one, a flat line at the roster's
+/// last reading across the window (<see cref="UtilizationSeries.IdleWindow"/>, M.ORCH-T787).
 /// </summary>
 public sealed record Utilization(DateTime StartUtc, DateTime EndUtc, DateTime NowUtc, double TargetPercent,
     IReadOnlyList<UtilizationPoint> Actual, double NowPercent, double PercentPerHour, double ProjectedEndPercent, TimeSpan OverPace,
