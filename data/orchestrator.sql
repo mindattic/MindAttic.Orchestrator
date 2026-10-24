@@ -8329,8 +8329,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "353c5389ca0ff0ddd31229b4118288799603ae53"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "92c18124ece79591dbdf11188c5a9e1029b566cc",
-    "Green": "92c18124ece79591dbdf11188c5a9e1029b566cc"
+    "Tested": "604f5063ba2e250d9cd289358d4b90a291975a6e",
+    "Green": "604f5063ba2e250d9cd289358d4b90a291975a6e"
   },
   "MindAttic.Psst": {
     "Tested": "11224b271ff95cb232162fc5b5d2e26ceebe801e"
@@ -9183,9 +9183,11 @@ INSERT INTO state (name, value) VALUES ('outside-use', '[
       0.1734972538785664,
       0.13886541535316033,
       0,
-      0.003326138859276573
+      0.003326138859276573,
+      0.003326138859276573,
+      0
     ],
-    "NoiseThroughUtc": "2026-10-24T07:23:33Z",
+    "NoiseThroughUtc": "2026-10-24T07:31:57Z",
     "Windows": [
       {
         "ResetUtc": "2026-10-23T21:10:00Z",
@@ -9280,9 +9282,11 @@ INSERT INTO state (name, value) VALUES ('outside-use', '[
       0,
       0,
       0,
+      0,
+      0,
       0
     ],
-    "NoiseThroughUtc": "2026-10-24T07:23:51Z",
+    "NoiseThroughUtc": "2026-10-24T07:34:06Z",
     "Windows": [
       {
         "ResetUtc": "2026-10-23T19:40:00Z",
@@ -9642,9 +9646,11 @@ INSERT INTO state (name, value) VALUES ('outside-use', '[
       0,
       0,
       0,
+      0,
+      0,
       0
     ],
-    "NoiseThroughUtc": "2026-10-24T07:22:52Z",
+    "NoiseThroughUtc": "2026-10-24T07:33:14Z",
     "Windows": [
       {
         "ResetUtc": "2026-10-23T21:10:00Z",
