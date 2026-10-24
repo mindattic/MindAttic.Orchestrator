@@ -10,6 +10,7 @@ TestResults/
 .claude/quicksave.md*
 .claude/settings.local.json
 .prose/
+.agent/
 
 # The orchestrator database (data/orchestrator.db) and its dump are committed; only SQLite's scratch files aren't.
 data/*.db-journal
