@@ -2000,16 +2000,23 @@ public sealed class HookScriptTests
 
     private static readonly object Starting = new { hook_event_name = "SessionStart", session_id = "s1", source = "startup", cwd = "." };
 
-    /// <summary>The SessionStart line, from this CLI's environment (the test host as the CLI, so it started before any set-aside).</summary>
+    /// <summary>The SessionStart message's billing line (its first line: the "[Billing]" line billing_check returns), from
+    /// this CLI's environment (the test host as the CLI, so it started before any set-aside). Asserts the two
+    /// "[Orchestrator]" lines that follow it read pacing and allocation on by default (no mark of either on this pid),
+    /// so callers that only care about billing don't have to restate them.</summary>
     private string StartLine(IDictionary<string, string>? env = null)
     {
         var all = new Dictionary<string, string> { ["MINDATTIC_CLI_PID"] = Environment.ProcessId.ToString() };
         foreach (var (k, v) in env ?? new Dictionary<string, string>()) all[k] = v;
         var output = Gate(Starting, all, AgentGate.ContextScriptName).Output;
         using var doc = JsonDocument.Parse(output);
-        var line = doc.RootElement.GetProperty("systemMessage").GetString()!;
-        Assert.That(doc.RootElement.GetProperty("hookSpecificOutput").GetProperty("additionalContext").GetString(), Is.EqualTo(line));
-        return line;
+        var full = doc.RootElement.GetProperty("systemMessage").GetString()!;
+        Assert.That(doc.RootElement.GetProperty("hookSpecificOutput").GetProperty("additionalContext").GetString(), Is.EqualTo(full));
+        var lines = full.Split('\n');
+        Assert.That(lines, Has.Length.EqualTo(3), full);
+        Assert.That(lines[1], Is.EqualTo("[Orchestrator] Pacing is on."));
+        Assert.That(lines[2], Is.EqualTo("[Orchestrator] Allocation is off."));
+        return lines[0];
     }
 
     private static Dictionary<string, string> WithKey => new() { ["ANTHROPIC_API_KEY"] = EnvKey };
@@ -2018,6 +2025,24 @@ public sealed class HookScriptTests
     {
         using var doc = JsonDocument.Parse(File.ReadAllText(ConfigPath));
         return doc.RootElement.GetProperty("customApiKeyResponses").Clone();
+    }
+
+    // ---- SessionStart also reports this CLI's pacing (/pacing) and allocation (/allocate), after the billing line ----
+
+    [Test]
+    public void SessionStart_reports_this_clis_pacing_and_allocation_after_the_billing_line()
+    {
+        SignedIn("{" + TeamLogin + "}");
+        string FullMessage() => JsonDocument.Parse(Gate(Starting, AgentGate.ContextScriptName).Output).RootElement.GetProperty("systemMessage").GetString()!;
+        Assert.That(FullMessage(), Does.EndWith("\n[Orchestrator] Pacing is on.\n[Orchestrator] Allocation is off."), "a fresh CLI is paced, not allocating");
+
+        Gate(Said("/pacing off"), AgentGate.ContextScriptName);
+        Gate(Said("/allocate"), AgentGate.ContextScriptName);
+        Assert.That(FullMessage(), Does.EndWith("\n[Orchestrator] Pacing is off.\n[Orchestrator] Allocation is on."));
+
+        Gate(Said("/pacing on"), AgentGate.ContextScriptName);
+        Gate(Said("/allocate off"), AgentGate.ContextScriptName);
+        Assert.That(FullMessage(), Does.EndWith("\n[Orchestrator] Pacing is on.\n[Orchestrator] Allocation is off."), "back off/off once each is turned back");
     }
 
     [Test]

@@ -2449,6 +2449,18 @@ public static class AgentGate
         {{{WorkspacePython}}}
         {{{MarksPython}}}
 
+        def pacing_off(pid):
+            # /pacing off's mark on this CLI (see the /pacing command below): no pace holds until it closes or /pacing on.
+            return bool(pid) and (DIR / ("unthrottled-" + str(pid))).exists()
+
+        def orchestrator_start_lines(pid):
+            # What SessionStart tells this CLI about itself, after the "[Billing]" line: add more here as the
+            # orchestrator gains more to report at a CLI's start.
+            return [
+                "[Orchestrator] Pacing is " + ("off" if pacing_off(pid) else "on") + ".",
+                "[Orchestrator] Allocation is " + ("on" if allocate_repos(pid) else "off") + ".",
+            ]
+
         # A turn ending on one of these is asking for a go-ahead the orchestrator gives itself.
         ASKS = re.compile(r"\b(shall i|should i|do you want|want me to|would you like|ready for me to|ok(?:ay)? to (?:start|continue|proceed|go)|"
                           r"let me know (?:if|when|whether)|(?:go ahead|proceed|continue|carry on|keep going)\?)", re.I)
@@ -2762,7 +2774,11 @@ public static class AgentGate
                 save(state_file, state)
             except Exception:
                 pass
-            print(json.dumps({"systemMessage": line, "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": line}}))
+            try:
+                full = "\n".join([line] + orchestrator_start_lines(my_pid()))
+            except Exception:
+                full = line
+            print(json.dumps({"systemMessage": full, "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": full}}))
             sys.exit(0)
         # Recorded in the session's state, so the daemon leaves a CLI billed elsewhere out of the subscription's budget; and
         # nothing the subscription's windows decide holds it here.
