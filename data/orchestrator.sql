@@ -11,7 +11,7 @@ INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VAL
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'admin', 'premium', 'active', 1792771886.302, 1792810218.2474127);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'owner', 'premium', 'active', 1792771887.249, 1792795973.9296827);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'admin', 'premium', 'active', 1792771885.463, 1792807454.3533528);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'admin', 'premium', 'active', 1792771885.882, 1792810218.2474127);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'owner', 'premium', 'active', 1792771885.882, 1792810655.099108);
 
 -- usage_samples
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-18T02:13:34Z', 0, '2026-10-18T06:10:00Z', 162425);
@@ -2930,6 +2930,8 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24T02:38:41Z', 3, '2026-10-24T05:00:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24T02:43:54Z', 3, '2026-10-24T05:00:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24T02:49:08Z', 3, '2026-10-24T05:00:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24T02:54:16Z', 3, '2026-10-24T05:00:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24T02:59:18Z', 3, '2026-10-24T05:00:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -3212,7 +3214,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'Unity.SpaceGod', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 30707);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'Unity.SpaceGod', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 9681293);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/0df2b9d7-2637-40ea-bac8-2354ec84d894', NULL, 538389);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', '(workspace root)', 'Claude', 'billed:api-key', NULL, 491310);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', '(workspace root)', 'Claude', 'billed:api-key', NULL, 561234);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'MindAttic.Launcher', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/0df2b9d7-2637-40ea-bac8-2354ec84d894', NULL, 94860);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/0df2b9d7-2637-40ea-bac8-2354ec84d894', NULL, 20624973);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3477982);
@@ -8189,12 +8191,12 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "35a01aa2f56fd0aa47b23ddb96c429f646ba735c"
   },
   "MindAttic.Capture": {
-    "Tested": "2fab2ab04ac5687a68ac87decd3dbfb94e6fde40",
-    "Green": "2fab2ab04ac5687a68ac87decd3dbfb94e6fde40"
+    "Tested": "d1d06bf65625349a34f9fd327d0261896d3ecfb6",
+    "Green": "d1d06bf65625349a34f9fd327d0261896d3ecfb6"
   },
   "MindAttic.Components": {
-    "Tested": "124bc6d21c3cf10dfd42e638f4a25056b1eaadeb",
-    "Green": "124bc6d21c3cf10dfd42e638f4a25056b1eaadeb"
+    "Tested": "726491cd0530815a4cf5144d3b03e9930e520f79",
+    "Green": "726491cd0530815a4cf5144d3b03e9930e520f79"
   },
   "MindAttic.Deploy": {
     "Tested": "330f4dc1b6bd523a7d385555679ef67591b44b06"
@@ -8216,7 +8218,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "0f63adaaae25e3a5fc8498c9973ab151ca31bd96"
   },
   "MindAttic.Log": {
-    "Tested": "64f2cd30e26ae245d0d3e4af93839bea762cd2ca"
+    "Tested": "c5b03687561a373d83a23ccb033728ecb6d7e421"
   },
   "MindAttic.Media": {
     "Tested": "353c5389ca0ff0ddd31229b4118288799603ae53"
@@ -8243,10 +8245,10 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "5b8c373263a4e2717b621b6a827e1294f8d0c899"
   },
   "ProcessLogger": {
-    "Tested": "d86e23cc71dc4a03c31c15072dc545f1a1da0c80"
+    "Tested": "e7ada632ec050e6bb65308db96c9027edcf41936"
   },
   "TaxRateCollector": {
-    "Tested": "a2e49ec895518479415af286e05feabdb8ddbf14"
+    "Tested": "1cc2d94f633d3ad89d3799472730aaf5d7e3eb33"
   },
   "ThinkTank": {
     "Tested": "10b56386efc5a48a1001bbaf77b8c23d85d527bc"
@@ -8258,12 +8260,12 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "0223132d1fd651281201d57401151b833fd53fa8"
   },
   "Unity.Cursory": {
-    "Tested": "3bb8457f5b8e8283cbf0765b3894a98562659d0e",
-    "Green": "3bb8457f5b8e8283cbf0765b3894a98562659d0e"
+    "Tested": "36064e40496f11567a31f5c20a5287b69361dfcd",
+    "Green": "36064e40496f11567a31f5c20a5287b69361dfcd"
   },
   "REA.Bloodlines": {
-    "Tested": "8f04dff02e2f095ebf3c291b3162707e96e83546",
-    "Green": "8f04dff02e2f095ebf3c291b3162707e96e83546"
+    "Tested": "5e06d3393cfdaa772e653cd9e1e4740b3651fd7a",
+    "Green": "5e06d3393cfdaa772e653cd9e1e4740b3651fd7a"
   },
   "ChiMesh": {
     "Tested": "a8e0c7d78000859f22abbc117615e923574acedf"
@@ -8302,7 +8304,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "7f835b2078fcbbee641d3e1bb33836f0704c8606"
   },
   "MindAttic.Agency": {
-    "Tested": "8e3bec8fa0ad9071814a27860ba8dede66a3c629"
+    "Tested": "c829e9437d167c68441071f75d8067baa043a9c7"
   },
   "MindAttic.Cryptography": {
     "Tested": "6436de35af93e61a48725be15dcf0e736a12b9c4"
@@ -8350,8 +8352,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "2dd2189551fd40df11064e5480c10acb81eac279"
   },
   "Unity.QuickDuel": {
-    "Tested": "56af600aeff013ffbdb0ec313940c218d2d8fce3",
-    "Green": "56af600aeff013ffbdb0ec313940c218d2d8fce3"
+    "Tested": "c0941748c725d13e6124a26590d32ee33b3efdd2",
+    "Green": "c0941748c725d13e6124a26590d32ee33b3efdd2"
   },
   "Unity.Ricochet": {
     "Tested": "433bba0dd5f2f0cbc5aa5f5247a3f5e7bc515ad2",
@@ -9003,9 +9005,10 @@ INSERT INTO state (name, value) VALUES ('outside-use', '[
       0,
       0,
       0,
+      0,
       0
     ],
-    "NoiseThroughUtc": "2026-10-24T02:49:08Z",
+    "NoiseThroughUtc": "2026-10-24T02:54:16Z",
     "Windows": [
       {
         "ResetUtc": "2026-10-24T05:00:00Z",
@@ -9177,9 +9180,11 @@ INSERT INTO state (name, value) VALUES ('outside-use', '[
       0,
       0,
       0,
+      0,
+      0,
       0
     ],
-    "NoiseThroughUtc": "2026-10-24T02:48:35Z",
+    "NoiseThroughUtc": "2026-10-24T02:58:46Z",
     "Windows": [
       {
         "ResetUtc": "2026-10-23T21:10:00Z",
@@ -9446,7 +9451,7 @@ INSERT INTO state (name, value) VALUES ('outside-use', '[
     "HeldSinceUtc": "2026-10-24T02:35:06.9236971Z",
     "LastSeenUtc": "2026-10-24T02:42:43Z",
     "EpisodeFromUtc": "2026-10-24T02:05:45Z",
-    "CountedThroughUtc": "2026-10-24T02:46:48Z",
+    "CountedThroughUtc": "2026-10-24T02:55:12Z",
     "EpisodePoints": 3,
     "EpisodeWeekPoints": 0,
     "EpisodeSeen": 2,
