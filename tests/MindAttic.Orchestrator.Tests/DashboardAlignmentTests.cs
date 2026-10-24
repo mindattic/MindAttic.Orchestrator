@@ -147,7 +147,7 @@ public sealed class DashboardAlignmentTests
     }
 
     [Test]
-    public void The_clock_refresh_settings_and_launcher_sit_right_of_the_current_work_heading_under_the_chart()
+    public void The_clock_refresh_and_launcher_sit_right_of_the_current_work_heading_under_the_chart()
     {
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
@@ -183,12 +183,12 @@ public sealed class DashboardAlignmentTests
         Assert.That(launcher.Descendants(P + "Path").Count(), Is.EqualTo(1), "the rocket");
         Assert.That(launcher.Descendants(P + "TextBlock").Single().Ancestors(P + "Button.ToolTip").Any(), Is.True, "its only text is its tooltip");
         Assert.That((string?)launcher.Attribute("AutomationProperties.Name"), Does.Contain("Open the Launcher as"));
-        var settings = controls.Elements(P + "Button").Single(b => (string?)b.Attribute("Content") == "Settings");
-        Assert.That(Binding(settings, "Command"), Is.EqualTo("{Binding ToggleSettingsCommand}"));
+        // No Settings button under the chart (M.ORCH-T804): the top-right cog is the only way into Settings.
+        Assert.That(controls.Elements(P + "Button").Any(b => (string?)b.Attribute("Content") == "Settings" || Binding(b, "Command") == "{Binding ToggleSettingsCommand}"), Is.False);
         Assert.That(doc.Descendants(P + "KeyBinding").Any(k => (string?)k.Attribute("Key") == "F5" && Binding(k, "Command") == "{Binding RefreshCommand}"), Is.True, "F5 still refreshes");
 
         Assert.That(doc.Descendants().Count(e => Binding(e, "Text") is "{Binding Clock.Text}" or "{Binding RefreshInfo}"
-                                                 || (string?)e.Attribute("Content") is "Settings"), Is.EqualTo(3), "one of each");
+                                                 ), Is.EqualTo(2), "one of each");
         // The stat tile's own Refresh (its last reading) aside, one icon Refresh and one Open Launcher.
         Assert.That(doc.Descendants(P + "Button").Count(b => Binding(b, "Command") == "{Binding RefreshCommand}" && (string?)b.Attribute("Style") == "{StaticResource MaToolButton}"), Is.EqualTo(1));
         Assert.That(doc.Descendants(P + "Button").Count(b => Binding(b, "Command") == "{Binding OpenLauncherCommand}"), Is.EqualTo(1));

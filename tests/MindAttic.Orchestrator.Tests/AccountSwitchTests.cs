@@ -255,7 +255,7 @@ public sealed class AccountSwitchTests
         // The menu's global default is a person's login action (M.ORCH-T763), on their tab's right-click menu (M.ORCH-T797), its
         // detail line beside the org-wide actions.
         Assert.That(code, Does.Contain("tab.MakeDefaultCommand"));
-        Assert.That(xaml[xaml.IndexOf("x:Name=\"OrgToolbar\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)],
+        Assert.That(xaml[xaml.IndexOf("x:Name=\"OrgToolbar\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"SettingsPersonTabsTab\"", StringComparison.Ordinal)],
             Does.Contain("x:Name=\"BillingDetailLine\""));
         // M.ORCH-T630: the API-key switch, with its tooltip of who every CLI bills, moved on again to the 'API key' tab.
         var apiKey = xaml[xaml.IndexOf("x:Name=\"ApiKeyBody\"", StringComparison.Ordinal)..];
