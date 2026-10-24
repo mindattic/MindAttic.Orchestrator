@@ -205,7 +205,13 @@
             </mc:MaTabControl.ItemContainerStyle>
             <mc:MaTabControl.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:MainViewModel}">
-                    <StackPanel x:Name="LoginTabItem" Orientation="Horizontal">
+                    <!-- Every person's tab the same width (M.ORCH-T803): WPF sizes a TabItem to its header's content by default,
+                         so Amy/Erin/Honey/Jordan/Ryan's differing name lengths made the strip uneven. Width is plain
+                         FrameworkElement's, not the library's MaTabItem's own (M.ORCH-T667's ItemContainerStyle may only set
+                         MaTabItem's own properties), so it's set directly on the generated container once this header loads
+                         (MainWindow.xaml.cs's LoginTabItem_Loaded), the same code-behind workaround as the busy icon's glow
+                         below. The 'API key' and 'Miscellaneous' tabs are left to their own content. -->
+                    <StackPanel x:Name="LoginTabItem" Orientation="Horizontal" Loaded="LoginTabItem_Loaded">
                         <Grid x:Name="TabStatusIcon" VerticalAlignment="Center" Margin="0,0,8,0">
                             <TextBlock x:Name="TabIdleIcon" Text="&#xE769;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
                                        Foreground="{DynamicResource MaText}" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"

@@ -123,6 +123,20 @@ public partial class MainWindow : Window
             ? new DoubleAnimation(0.25, 0.95, TimeSpan.FromSeconds(1.3)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever }
             : new DoubleAnimation(exitOpacity, TimeSpan.FromSeconds(exitSeconds)));
 
+    /// <summary>Every person's tab is the same width (M.ORCH-T803): the library's MaTabItem has no Width of its own (it's plain
+    /// FrameworkElement's), so the ItemContainerStyle (M.ORCH-T667) can't set it without "adding looks of its own" to a
+    /// library style; set directly on the generated container instead, once its header content loads.</summary>
+    private const double PersonTabWidth = 230;
+
+    /// <summary>A person tab's header content (M.ORCH-T803): sets its generated MaTabItem to <see cref="PersonTabWidth"/> so
+    /// every name's tab (Amy, Erin, Honey, Jordan, Ryan, ...) is the same width; the 'API key' and 'Miscellaneous' tabs, whose
+    /// header is the same <c>DataTemplate</c>, are left to their own content.</summary>
+    private void LoginTabItem_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: MainViewModel { IsPersonTab: true } } content) return;
+        if (ItemsControl.ContainerFromElement(LoginTabStrip, content) is TabItem tab) tab.Width = PersonTabWidth;
+    }
+
     /// <summary>A busy login tab's play icon (M.ORCH-T770): its own DropShadowEffect, created once this instance of the
     /// repeated <c>DataTemplate</c> loads (each tab item gets its own, so one login's pulse never drives another's).</summary>
     private void TabBusyIcon_Loaded(object sender, RoutedEventArgs e)

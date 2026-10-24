@@ -207,6 +207,27 @@ public sealed class TabStatusTests
         Assert.That(System.Text.RegularExpressions.Regex.Matches(xaml, "x:Name=\"BillingToggleButton\"").Count, Is.EqualTo(1), "one switch, on the 'API key' tab");
     }
 
+    /// <summary>M.ORCH-T803: every person's tab is the same width, since WPF sizes a TabItem to its header's content by
+    /// default and Amy/Erin/Honey/Jordan/Ryan's differing name lengths made the strip uneven. The library's MaTabItem has no
+    /// Width of its own (M.ORCH-T667's ItemContainerStyle may only set MaTabItem's own properties, not plain
+    /// FrameworkElement's), so it's set directly on the generated container from code-behind once the header loads, the way
+    /// the busy icon's glow (M.ORCH-T775) sidesteps the same library-only XAML rule.</summary>
+    [Test]
+    public void Every_person_tab_is_230_wide()
+    {
+        var root = TestContext.CurrentContext.TestDirectory;
+        while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
+        var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
+        var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"Header\"", StringComparison.Ordinal)];
+        Assert.That(strip, Does.Contain("x:Name=\"LoginTabItem\"").And.Contain("Loaded=\"LoginTabItem_Loaded\""));
+
+        var code = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml.cs"));
+        Assert.That(code, Does.Contain("private const double PersonTabWidth = 230;")
+            .And.Contain("private void LoginTabItem_Loaded(")
+            .And.Contain("DataContext: MainViewModel { IsPersonTab: true } }")
+            .And.Contain("ItemsControl.ContainerFromElement(LoginTabStrip, content) is TabItem tab) tab.Width = PersonTabWidth;"));
+    }
+
     /// <summary>M.ORCH-T790: the tab's red flag counts only CLIs blocked on you, and says so in words.</summary>
     [Test]
     public void The_needs_you_flag_counts_only_clis_blocked_on_you()
