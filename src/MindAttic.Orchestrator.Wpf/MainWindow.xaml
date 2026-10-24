@@ -182,7 +182,8 @@
                  same way everywhere); a gray 'disabled' icon past its 5-hour or weekly cutoff or signed out. The icons are the
                  library's icon font (Segoe Fluent Icons / MDL2, as MaIconButton draws) in theme tokens. The icon's word and the
                  status word are in the tooltip and the accessible name, so neither colour nor the picture is the only cue; the
-                 person's terminal colour is the tab's accent, and the week left after the reserve its trailing text. -->
+                 person's terminal colour is the tab's accent, and its trailing text their live 5-hour and weekly use against
+                 their own cutoffs, "5hr: 10/98% | wk: 55/90%" (M.ORCH-T793; no 'N need you' count, no '% left'). -->
             <!-- The 'API key' entry is never shown here (M.ORCH-T770): it isn't a person, so it doesn't get a tab beside
                  Amy/Erin/Honey/Jordan/Ryan any more - its billing state and toggle moved to the emergency button in the
                  window's own corner (TopRow, above this strip). Collapsed rather than removed from loginTabs/OrgTabs: Ctrl+Tab,
@@ -233,10 +234,6 @@
                                        Visibility="{Binding IsMiscTab, Converter={StaticResource Visible}}" />
                         </Grid>
                         <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock VerticalAlignment="Center" Margin="8,0,0,0"
-                                   Visibility="{Binding TabBadge, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
-                            <Run Text="&#x2022; " /><Run Text="{Binding TabBadge, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=" need you" />
-                        </TextBlock>
                         <!-- The needs-you flag (M.ORCH-T790): a small red flag at the end of the tab line, only while one of the
                              person's CLIs is genuinely blocked on you (a permission prompt, a question, or a /crossrepo or /allocate
                              only you may type), gone once they're running again. Not a count: how many is in the tab's tooltip and

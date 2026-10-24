@@ -417,7 +417,7 @@ public sealed partial class MainViewModel : ObservableObject
         Raise(nameof(WorkingCount)); Raise(nameof(WaitingCount)); Raise(nameof(HostCount));
         Raise(nameof(TicketCount)); Raise(nameof(RepoCount)); Raise(nameof(TokensToday));
         Raise(nameof(TokensDetail)); Raise(nameof(Warnings)); Raise(nameof(HasWarnings)); Raise(nameof(WarningsText));
-        Raise(nameof(TabBadge)); Raise(nameof(TabTip));
+        Raise(nameof(TabTrailing)); Raise(nameof(TabTip));
     }
 
     /// <summary>The most toasts shown at once; the oldest (last) go first.</summary>

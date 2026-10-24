@@ -40,7 +40,7 @@ public sealed partial class MainViewModel
     /// <summary>Its title, its status icon's word (M.ORCH-T757) and its light's word (M.ORCH-T630: colour is never the only cue), its week left, its email and which
     /// login it is, and, with its red flag (M.ORCH-T790), how many of its CLIs are blocked waiting on your answer.</summary>
     public string TabTip => tab.IsMisc ? $"{tab.Title}: {tab.ToolTip}." :
-        $"{tab.Title}: {TabActivityWord}, {TabStatusWord}" + (tab.IsApiKey ? $", {TabTrailing}" : $", week {TabTrailing}") + $". {tab.ToolTip}." +
+        $"{tab.Title}: {TabActivityWord}, {TabStatusWord}" + $", {TabTrailing}" + $". {tab.ToolTip}." +
         NeedsYouLine(TabAskingCount);
 
     /// <summary>How many of this tab's CLIs are genuinely blocked on you (M.ORCH-T790): holding on a permission prompt or a question,
@@ -63,9 +63,6 @@ public sealed partial class MainViewModel
 
     /// <summary>The login's terminal tab color (M.ORCH-T616), the tab's accent; the theme's muted brush when it has none.</summary>
     public Brush TabBrush => BrushOf(tab.Color);
-
-    /// <summary>How many of its repos need you, on the tab itself so one waiting on another tab is seen; empty when none.</summary>
-    public string TabBadge => WaitingCount > 0 ? WaitingCount.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
 
     /// <summary>Every login's tab, the global login's first; the same list in every tab.</summary>
     public ObservableCollection<MainViewModel> LoginTabs => Root.loginTabs;
