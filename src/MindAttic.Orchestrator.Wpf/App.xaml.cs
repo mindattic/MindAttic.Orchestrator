@@ -99,17 +99,21 @@ public partial class App : Application
             if (installer.WhyNotReplace(self) is { } why)
             {
                 log.Information("Not installing {Self:l}: {Why:l}; starting the installed copy instead", self, why);
-                if (TryHandOver(installer, log)) { Shutdown(); return; }
+                if (TryHandOver(installer, log, StartRequest.HandOff(e.Args))) { Shutdown(); return; }
                 dev = true; // couldn't start it: run from here, without repointing the daemon and shortcuts at this older copy
             }
-            else if (TryInstallAndHandOver(installer, self, log)) { Shutdown(); return; }
+            else if (TryInstallAndHandOver(installer, self, log, StartRequest.HandOff(e.Args))) { Shutdown(); return; }
         }
 
-        // One dashboard (M.ORCH-T497): a later launch brings this one forward and exits.
-        instance = SingleInstance.Claim(SingleInstance.DashboardName, TimeSpan.FromSeconds(5));
+        // One dashboard (M.ORCH-T497): a later launch brings this one forward and exits, handing it --start <repo> (M.ORCH-T767).
+        var startRepo = StartRequest.Repo(e.Args, out var refused);
+        if (refused is not null) log.Warning("--start {Repo}: not a repo name; nothing started", refused);
+        instance = SingleInstance.Claim(SingleInstance.DashboardName, TimeSpan.FromSeconds(5), StartRequest.HandOff(e.Args));
         if (instance is null)
         {
-            log.Information("A dashboard is already running; asked it to show itself, and this one exits");
+            log.Information(startRepo is null
+                ? "A dashboard is already running; asked it to show itself, and this one exits"
+                : "A dashboard is already running; asked it to show itself and start a CLI in {Repo:l}, and this one exits", startRepo);
             Shutdown();
             return;
         }
@@ -126,7 +130,13 @@ public partial class App : Application
         MainWindow = new MainWindow();
         MainWindow.Show();
         DashboardWindow.Track(MainWindow);
-        instance.OnShowRequested(() => Dispatcher.BeginInvoke(() => { if (MainWindow is { } window) DashboardWindow.Restore(window); }));
+        instance.OnShowRequested(args => Dispatcher.BeginInvoke(() =>
+        {
+            if (MainWindow is not { } window) return;
+            DashboardWindow.Restore(window);
+            if (window is MainWindow main && StartRequest.Repo(args) is { } repo) _ = main.StartRepoAsync(repo);
+        }));
+        if (startRepo is not null) _ = ((MainWindow)MainWindow).StartRepoAsync(startRepo);
         // An upgrade asks this dashboard to exit here (it may be minimized, or behind other windows).
         exitSignal = new EventWaitHandle(false, EventResetMode.ManualReset, Installer.DashboardExitEvent(Environment.ProcessId));
         ThreadPool.RegisterWaitForSingleObject(exitSignal, (_, _) => Dispatcher.BeginInvoke(() => Shutdown()), null, Timeout.Infinite, executeOnlyOnce: true);
@@ -167,13 +177,13 @@ public partial class App : Application
     }
 
     /// <summary>Running from a download folder over an older install (or none): install there and start the installed copy instead.</summary>
-    private static bool TryInstallAndHandOver(Installer installer, string self, Serilog.ILogger log)
+    private static bool TryInstallAndHandOver(Installer installer, string self, Serilog.ILogger log, IReadOnlyList<string> args)
     {
         try
         {
             installer.Install(self);
             log.Information("Installed {From:l} to {To:l}", self, installer.InstalledExe);
-            Process.Start(new ProcessStartInfo(installer.InstalledExe) { UseShellExecute = true, WorkingDirectory = installer.InstallDir });
+            Process.Start(InstalledCopy(installer, args));
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
@@ -185,12 +195,21 @@ public partial class App : Application
         }
     }
 
+    /// <summary>The installed copy, passed on what this launch hands over (<c>--start &lt;repo&gt;</c>, already checked to be a plain
+    /// repo name), each argument quoted on its own.</summary>
+    private static ProcessStartInfo InstalledCopy(Installer installer, IReadOnlyList<string> args)
+    {
+        var psi = new ProcessStartInfo(installer.InstalledExe) { UseShellExecute = true, WorkingDirectory = installer.InstallDir };
+        foreach (var a in args) psi.ArgumentList.Add(a);
+        return psi;
+    }
+
     /// <summary>An older copy run from elsewhere: start the newer installed copy instead of replacing it.</summary>
-    private static bool TryHandOver(Installer installer, Serilog.ILogger log)
+    private static bool TryHandOver(Installer installer, Serilog.ILogger log, IReadOnlyList<string> args)
     {
         try
         {
-            Process.Start(new ProcessStartInfo(installer.InstalledExe) { UseShellExecute = true, WorkingDirectory = installer.InstallDir });
+            Process.Start(InstalledCopy(installer, args));
             return true;
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)

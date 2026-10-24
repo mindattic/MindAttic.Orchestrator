@@ -96,6 +96,9 @@ public partial class MainWindow : Window
         StateChanged += async (_, _) => await OnShownOrHidden();
     }
 
+    /// <summary><c>--start &lt;repo&gt;</c> (M.ORCH-T767): a CLI in that workspace repo, as Start opens one; anything else is refused.</summary>
+    public Task StartRepoAsync(string repo) => model.StartRepoAsync(repo);
+
     /// <summary>Reads out the shown tab's status and queue lines.</summary>
     private void OnShownChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {

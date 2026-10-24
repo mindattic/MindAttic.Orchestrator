@@ -8,6 +8,7 @@ using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
+using MindAttic.Orchestrator.Setup;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
@@ -479,10 +480,39 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (Selected is null) return;
         // What Start was pressed with: a sign-in first can take minutes, and the selection may change meanwhile.
-        var tile = Selected;
-        var kind = Provider;
-        var login = Login;
-        var text = string.IsNullOrWhiteSpace(Prompt) ? null : Prompt;
+        await StartSessionAsync(Selected, Provider, Login, string.IsNullOrWhiteSpace(Prompt) ? null : Prompt);
+    }
+
+    /// <summary>
+    /// <c>MindAttic.Orchestrator.exe --start &lt;repo&gt;</c> (M.ORCH-T767, the Tickets desktop's Repos tab Start link): on the global
+    /// login's tab, once the first snapshot is in, a Claude CLI in that repo the way Start opens one on Auto (the login picker
+    /// and its cutoffs, never a member's own seat, the API key only while API billing is on). Only a repo the workspace has
+    /// starts; anything else is refused and said in the status line.
+    /// </summary>
+    public async Task StartRepoAsync(string name)
+    {
+        if (root is not null) { await root.StartRepoAsync(name); return; }
+        SelectedTab = this;
+        for (var waited = 0; IsLoading && waited < 600; waited++) await Task.Delay(100);
+        var log = OrchestratorLog.For("Dashboard");
+        if (StartTarget(name, tiles) is not { } tile)
+        {
+            log.Warning("--start {Repo}: not a repo in the workspace; nothing started", name);
+            StatusMessage = $"Not started: {name} isn't a repo in the workspace.";
+            return;
+        }
+        SelectRepo(tile.Name);
+        log.Information("--start {Repo:l}: starting a CLI", tile.Name);
+        await StartSessionAsync(tile, "Claude", AutoLogin, null);
+    }
+
+    /// <summary>The workspace repo <paramref name="name"/> names, by its own name: a plain repo name (<see cref="StartRequest.IsRepoName"/>)
+    /// with a folder; null for anything else.</summary>
+    internal static RepoTileViewModel? StartTarget(string name, IReadOnlyDictionary<string, RepoTileViewModel> known) =>
+        StartRequest.IsRepoName(name) && known.GetValueOrDefault(name) is { HasFolder: true } tile ? tile : null;
+
+    private async Task StartSessionAsync(RepoTileViewModel tile, string kind, string login, string? text)
+    {
         string? configDir = null;
         var on = login;
         if (kind == "Claude" && ScopeEmail is { } own)

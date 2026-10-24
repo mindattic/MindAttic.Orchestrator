@@ -8,10 +8,10 @@ public sealed class SingleInstanceTests
     private static string UniqueName() => $@"Local\MindAttic.Orchestrator.Tests.SingleInstance.{Guid.NewGuid():N}";
 
     /// <summary>A launch, as a separate process would: on its own thread, since a mutex is re-entrant on the thread that owns it.</summary>
-    private static SingleInstance? LaunchElsewhere(string name, TimeSpan wait)
+    private static SingleInstance? LaunchElsewhere(string name, TimeSpan wait, IReadOnlyList<string>? args = null)
     {
         SingleInstance? result = null;
-        var t = new Thread(() => result = SingleInstance.Claim(name, wait));
+        var t = new Thread(() => result = SingleInstance.Claim(name, wait, args));
         t.Start();
         t.Join();
         return result;
@@ -29,6 +29,47 @@ public sealed class SingleInstanceTests
 
         Assert.That(LaunchElsewhere(name, TimeSpan.FromSeconds(5)), Is.Null, "a second dashboard started");
         Assert.That(shown.Wait(TimeSpan.FromSeconds(5)), Is.True, "the running dashboard wasn't asked to show itself");
+    }
+
+    [Test]
+    public void A_launch_with_start_hands_its_repo_to_the_running_one()
+    {
+        // M.ORCH-T767: the Tickets desktop's Start link runs MindAttic.Orchestrator.exe --start <repo>; the running dashboard gets it.
+        var name = UniqueName();
+        using var first = SingleInstance.Claim(name, TimeSpan.Zero);
+        IReadOnlyList<string>? got = null;
+        using var handed = new ManualResetEventSlim();
+        first!.OnShowRequested(args => { got = args; handed.Set(); });
+
+        Assert.That(LaunchElsewhere(name, TimeSpan.FromSeconds(5), ["--start", "MindAttic.Tickets"]), Is.Null, "a second dashboard started");
+        Assert.That(handed.Wait(TimeSpan.FromSeconds(10)), Is.True, "the running dashboard wasn't handed the arguments");
+        Assert.That(got, Is.EqualTo(new[] { "--start", "MindAttic.Tickets" }));
+    }
+
+    [Test]
+    public void A_hand_off_before_the_window_listens_waits_for_it()
+    {
+        var name = UniqueName();
+        using var first = SingleInstance.Claim(name, TimeSpan.Zero);
+        Assert.That(LaunchElsewhere(name, TimeSpan.FromSeconds(5), ["--start", "A"]), Is.Null);
+        Thread.Sleep(300); // delivered to nobody yet
+
+        IReadOnlyList<string>? got = null;
+        using var handed = new ManualResetEventSlim();
+        first!.OnShowRequested(args => { if (args.Count > 0) { got = args; handed.Set(); } });
+        Assert.That(handed.Wait(TimeSpan.FromSeconds(10)), Is.True);
+        Assert.That(got, Is.EqualTo(new[] { "--start", "A" }));
+    }
+
+    [Test]
+    public void A_hand_off_that_is_not_a_list_of_strings_is_dropped()
+    {
+        Assert.That(SingleInstance.ParseHandOff("[\"--start\",\"A\"]"u8.ToArray()), Is.EqualTo(new[] { "--start", "A" }));
+        Assert.That(SingleInstance.ParseHandOff("{\"x\":1}"u8.ToArray()), Is.Null);
+        Assert.That(SingleInstance.ParseHandOff("[null]"u8.ToArray()), Is.Null);
+        Assert.That(SingleInstance.ParseHandOff("not json"u8.ToArray()), Is.Null);
+        var huge = new MemoryStream(new byte[SingleInstance.MaxHandOffBytes + 1]);
+        Assert.That(SingleInstance.ReadHandOffAsync(huge, CancellationToken.None).Result, Is.Null);
     }
 
     [Test]
