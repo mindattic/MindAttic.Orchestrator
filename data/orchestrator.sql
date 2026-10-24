@@ -8,7 +8,7 @@ INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, 
 
 -- members
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('honey@mindattic.com', 'Honey', 'admin', 'premium', 'active', 1792771886.8054008, 1792771886.8054008);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'admin', 'premium', 'active', 1792771886.302, 1792804727.2714326);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'owner', 'premium', 'active', 1792771886.302, 1792807113.743677);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'owner', 'premium', 'active', 1792771887.249, 1792795973.9296827);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'primary-owner', 'premium', 'active', 1792771885.463, 1792781244.8570905);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'admin', 'premium', 'active', 1792771885.882, 1792804727.2714326);
@@ -2920,6 +2920,7 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24T01:37:48Z', 3, '2026-10-24T05:00:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24T01:43:03Z', 3, '2026-10-24T05:00:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24T01:48:06Z', 3, '2026-10-24T05:00:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24T02:03:10Z', 3, '2026-10-24T05:00:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -3198,9 +3199,9 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'Unity.SpaceGod', 'Claude', '1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 7317248);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'Unity.SpaceGod', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 30707);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'Unity.SpaceGod', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 9681293);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 491318);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 536065);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'MindAttic.Launcher', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 94860);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 20406165);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 20624973);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3477982);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'MindAttic.Tickets', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 19492);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Prose', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1534514);
@@ -3221,9 +3222,9 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.QuickDuel', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 53121);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.Ricochet', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3357755);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.Ricochet', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 354263);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.SpaceGod', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 8916890);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.SpaceGod', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 9334947);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.SpaceGod', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 17621786);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.SpaceGod', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 25236636);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.SpaceGod', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 25808765);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('004c0693-b78e-4101-8c5a-4d4bb6911a1b', 'M.LNCH-T15', 'chore', 'MindAttic.Launcher', 27359, '2026-10-23T19:17:50.046Z', 1, 'opus');
@@ -3331,7 +3332,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1aa75f1d-1e8e-444b-80ef-d5ada14a1c2e', 'M.LNCH-T36', 'docs', 'MindAttic.Launcher', 18910, '2026-10-21T18:11:51.513Z', 1, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1aef465b-8a47-4a66-99e7-ad07c29a8e1a', 'UH-T40', 'chore', 'Unity.Hare', 188521, '2026-10-24T01:20:06.736Z', 1, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1c7e3212-f7ba-4793-b876-327d14fd62a0', 'GG-T26', 'chore', 'GridGameGaiden', 84129, '2026-10-15T11:16:42.051Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1ca9bd00-13a3-4fd3-b0f4-44f58e675c76/agent-a0062451dc22102f5', 'UQD-T57', 'fix', 'Unity.SpaceGod', 265261, '2026-10-24T01:52:26.109Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1ca9bd00-13a3-4fd3-b0f4-44f58e675c76/agent-a0062451dc22102f5', 'UQD-T57', 'fix', 'Unity.SpaceGod', 265769, '2026-10-24T01:57:29.266Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1ca9bd00-13a3-4fd3-b0f4-44f58e675c76/agent-a015c5177a09aaf0e', 'UNI-T22', 'fix', 'Unity.SpaceGod', 90930, '2026-10-23T22:17:37.996Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1ca9bd00-13a3-4fd3-b0f4-44f58e675c76/agent-a034987a04b91f036', 'U.SPC-T481', 'feature', 'Unity.SpaceGod', 606194, '2026-10-23T18:31:12.186Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1ca9bd00-13a3-4fd3-b0f4-44f58e675c76/agent-a03dd68c8d4d746e5', 'U.VAN-T5', 'chore', 'Unity.SpaceGod', 187347, '2026-10-24T01:19:51.598Z', 0, 'sonnet');
@@ -3405,7 +3406,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1ca9bd00-13a3-4fd3-b0f4-44f58e675c76/agent-aad06e0437b19c3fd', 'UR-T35', 'chore', 'Unity.SpaceGod', 245789, '2026-10-24T01:13:22.271Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1ca9bd00-13a3-4fd3-b0f4-44f58e675c76/agent-ab0712cd875a267fd', 'UR-T30', 'chore', 'Unity.SpaceGod', 174985, '2026-10-23T22:19:11.807Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1ca9bd00-13a3-4fd3-b0f4-44f58e675c76/agent-aba37fbf6b27317b5', 'U.OVW-T6', 'chore', 'Unity.SpaceGod', 589853, '2026-10-24T01:40:49.308Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1ca9bd00-13a3-4fd3-b0f4-44f58e675c76/agent-abb82b10dc274c443', 'UH-T40', 'chore', 'Unity.SpaceGod', 1597425, '2026-10-24T01:52:32.671Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1ca9bd00-13a3-4fd3-b0f4-44f58e675c76/agent-abb82b10dc274c443', 'UH-T40', 'chore', 'Unity.SpaceGod', 1597978, '2026-10-24T01:57:35.931Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1ca9bd00-13a3-4fd3-b0f4-44f58e675c76/agent-abca465599ab88475', 'U.SPC-T479', 'feature', 'Unity.SpaceGod', 1145606, '2026-10-23T18:50:16.283Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1ca9bd00-13a3-4fd3-b0f4-44f58e675c76/agent-abcbebcc494886fe3', 'U.SPC-T488', 'feature', 'Unity.SpaceGod', 517128, '2026-10-23T18:29:51.6Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1ca9bd00-13a3-4fd3-b0f4-44f58e675c76/agent-abec163aa58aea231', 'U.SPC-T454', 'feature', 'Unity.SpaceGod', 215231, '2026-10-23T16:56:08.929Z', 0, 'opus');
@@ -4082,7 +4083,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('98a40e2a-cc75-4838-86e0-d73a698227b1/agent-a21ac5c007830c3af', 'M.ORCH-T717', 'fix', 'MindAttic.Orchestrator', 40376, '2026-10-23T20:17:59.078Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('98a40e2a-cc75-4838-86e0-d73a698227b1/agent-a2480600c4e186abe', 'M.ORCH-T753', 'feature', 'MindAttic.Orchestrator', 251129, '2026-10-24T00:25:37.691Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('98a40e2a-cc75-4838-86e0-d73a698227b1/agent-a28a8ad20bba01a7a', 'M.TIX-T119', 'docs', 'MindAttic.Orchestrator', 31496, '2026-10-24T01:09:50.017Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('98a40e2a-cc75-4838-86e0-d73a698227b1/agent-a28ff7094e5d91c98', 'M.ORCH-T763', 'feature', 'MindAttic.Orchestrator', 427259, '2026-10-24T01:52:56.221Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('98a40e2a-cc75-4838-86e0-d73a698227b1/agent-a28ff7094e5d91c98', 'M.ORCH-T763', 'feature', 'MindAttic.Orchestrator', 491691, '2026-10-24T01:57:50.76Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('98a40e2a-cc75-4838-86e0-d73a698227b1/agent-a2fe9de21c38635f9', 'M.ORCH-T761', 'fix', 'MindAttic.Orchestrator', 294181, '2026-10-24T01:21:01.443Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('98a40e2a-cc75-4838-86e0-d73a698227b1/agent-a328aa09ebb965c9a', 'M.ORCH-T713', 'fix', 'MindAttic.Orchestrator', 28256, '2026-10-23T20:10:18.739Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('98a40e2a-cc75-4838-86e0-d73a698227b1/agent-a367ec2aef8d33434', 'M.ORCH-T727', 'fix', 'MindAttic.Orchestrator', 52537, '2026-10-23T20:21:17.963Z', 0, 'sonnet');
@@ -4098,7 +4099,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('98a40e2a-cc75-4838-86e0-d73a698227b1/agent-a5b42ce23592932eb', 'M.TIX-T134', 'feature', 'MindAttic.Orchestrator', 304960, '2026-10-24T01:20:32.84Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('98a40e2a-cc75-4838-86e0-d73a698227b1/agent-a5de523e2b7f69e8d', 'M.ORCH-T754', 'feature', 'MindAttic.Orchestrator', 246279, '2026-10-24T00:22:07.813Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('98a40e2a-cc75-4838-86e0-d73a698227b1/agent-a6115c03b29863901', 'M.ORCH-T740', 'fix', 'MindAttic.Orchestrator', 46536, '2026-10-23T20:29:16.739Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('98a40e2a-cc75-4838-86e0-d73a698227b1/agent-a635ba9fa886252fe', 'M.ORCH-T762', 'feature', 'MindAttic.Orchestrator', 173686, '2026-10-24T01:53:15.595Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('98a40e2a-cc75-4838-86e0-d73a698227b1/agent-a635ba9fa886252fe', 'M.ORCH-T762', 'feature', 'MindAttic.Orchestrator', 284844, '2026-10-24T01:57:59.288Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('98a40e2a-cc75-4838-86e0-d73a698227b1/agent-a67727f954b21a5ba', 'M.ORCH-T710', 'fix', 'MindAttic.Orchestrator', 51088, '2026-10-23T20:16:19.216Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('98a40e2a-cc75-4838-86e0-d73a698227b1/agent-a67937ef8dc743109', 'M.ORCH-T705', 'fix', 'MindAttic.Orchestrator', 49180, '2026-10-23T20:02:48.383Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('98a40e2a-cc75-4838-86e0-d73a698227b1/agent-a68451d167b97a24e', 'M.ORCH-T765', 'fix', 'MindAttic.Orchestrator', 63962, '2026-10-24T01:40:20.956Z', 0, 'sonnet');
@@ -4363,21 +4364,22 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e836982c-1c81-453c-9f34-a86bd75201ab', 'SS-T43', 'chore', 'Prose', 159035, '2026-10-15T12:47:30.612Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e97a0688-750c-4157-9ff6-802b3460b327', 'GG-T33', 'chore', 'GridGameGaiden', 155465, '2026-10-15T13:27:22.046Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ea19ab98-b204-4b60-882a-3ba6753d94d1', 'GG-T17', 'chore', 'GridGameGaiden', 33842, '2026-10-15T11:19:50.931Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-a01a22015f084f728', 'U.SPC-T491', 'feature', 'Unity.SpaceGod', 1004839, '2026-10-24T01:52:53.958Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-a099755eb88f083aa', 'U.SPC-T498', 'feature', 'Unity.SpaceGod', 463408, '2026-10-24T01:53:17.679Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-a01a22015f084f728', 'U.SPC-T491', 'feature', 'Unity.SpaceGod', 1007688, '2026-10-24T01:58:07.118Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-a099755eb88f083aa', 'U.SPC-T498', 'feature', 'Unity.SpaceGod', 481513, '2026-10-24T01:59:10.027Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-a1778c0b77a3dc07f', 'U.SPC-T516', 'fix', 'Unity.SpaceGod', 351417, '2026-10-24T01:13:35.24Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-a187e4cbe9089e070', 'U.SPC-T490', 'feature', 'Unity.SpaceGod', 1246329, '2026-10-24T01:52:57.526Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-a1a85270a1c2b87fd', 'U.SPC-T515', 'fix', 'Unity.SpaceGod', 201700, '2026-10-24T00:46:46.558Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-a1fa20dc6768b7bed', 'U.SPC-T513', 'fix', 'Unity.SpaceGod', 32390, '2026-10-24T00:13:53.343Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-a2952836a79c522eb', 'U.SPC-T514', 'fix', 'Unity.SpaceGod', 187166, '2026-10-24T01:02:29.244Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-a2992705a3c1ecb46', 'U.SPC-T486', 'feature', 'Unity.SpaceGod', 440675, '2026-10-24T01:52:24.57Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-a2992705a3c1ecb46', 'U.SPC-T486', 'feature', 'Unity.SpaceGod', 478882, '2026-10-24T01:58:45.48Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-a39b470cf9b699729', 'U.SPC-T468', 'feature', 'Unity.SpaceGod', 342864, '2026-10-24T01:35:07.603Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-a4154db48ac99c341', 'U.SPC-T496', 'feature', 'Unity.SpaceGod', 111564, '2026-10-24T01:22:09.305Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-a7561022fac8705c1', 'U.SPC-T485', 'feature', 'Unity.SpaceGod', 441358, '2026-10-24T01:48:18.187Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-a960ee211cc2bb5a0', 'U.SPC-T508', 'feature', 'Unity.SpaceGod', 252830, '2026-10-24T01:50:50.062Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-a960ee211cc2bb5a0', 'U.SPC-T508', 'feature', 'Unity.SpaceGod', 307672, '2026-10-24T01:57:41.327Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-a9ce5482f4e0d7a32', 'U.SPC-T476', 'feature', 'Unity.SpaceGod', 659078, '2026-10-24T01:44:34.188Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-ab0fdde4cbc5a79b4', 'U.SPC-T473', 'feature', 'Unity.SpaceGod', 486863, '2026-10-24T00:44:22.346Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-ab785bea2116ecf8b', 'U.SPC-T499', 'feature', 'Unity.SpaceGod', 284162, '2026-10-24T01:51:48.71Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-ac024e6173758e11f', 'U.SPC-T527', 'fix', 'Unity.SpaceGod', 30726, '2026-10-24T01:54:26.406Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-ac58a9b0697b5e51b', 'U.SPC-T474', 'feature', 'Unity.SpaceGod', 705047, '2026-10-24T01:52:00.103Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-ae8ff5bd8970e3324', 'U.SPC-T475', 'feature', 'Unity.SpaceGod', 324957, '2026-10-24T00:36:48.489Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ebfa0b7b-24aa-466f-a83a-3b4d3a262661/agent-aec3a34d5ba538819', 'U.SPC-T512', 'fix', 'Unity.SpaceGod', 28987, '2026-10-24T00:13:26.862Z', 0, 'sonnet');
@@ -4556,7 +4558,6 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (61, 'U.VAN-T6', 'Unity.ProjectVania', 'D:\Projects\MindAttic.worktrees\Unity.ProjectVania\U.VAN-T6', 'Claude', '2026-10-24T01:20:09.8497909Z', 1, NULL, NULL, NULL, 72544, '1ca9bd00-13a3-4fd3-b0f4-44f58e675c76', 'sonnet', NULL, 'honey@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (62, 'M.ORCH-T763', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic.worktrees\MindAttic.Orchestrator\M.ORCH-T763', 'Claude', '2026-10-24T01:35:56.5877082Z', 1, NULL, NULL, NULL, 39852, '98a40e2a-cc75-4838-86e0-d73a698227b1', 'opus', NULL, 'ryandebraal@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (63, 'M.ORCH-T762', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic.worktrees\MindAttic.Orchestrator\M.ORCH-T762', 'Claude', '2026-10-24T01:49:36.5284884Z', 1, NULL, NULL, NULL, 39852, '98a40e2a-cc75-4838-86e0-d73a698227b1', 'opus', NULL, 'ryandebraal@mindattic.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (64, 'U.SPC-T527', 'Unity.SpaceGod', 'D:\Projects\MindAttic.worktrees\Unity.SpaceGod\U.SPC-T527', 'Claude', '2026-10-24T01:53:19.8959058Z', 1, NULL, NULL, NULL, 73436, 'ebfa0b7b-24aa-466f-a83a-3b4d3a262661', 'sonnet', NULL, 'ryandebraal@mindattic.com');
 
 -- organizations
 
@@ -7871,6 +7872,13 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
     "UntilUtc": "2026-10-27T22:00:00Z",
     "StoppedUtc": "2026-10-24T01:43:18.3081145Z",
     "DueUtc": "2026-10-27T22:02:00Z"
+  },
+  "58728": {
+    "SessionId": "04f0f32f-0901-4b8d-82ea-62f2325b88b7",
+    "Window": "weekly",
+    "UntilUtc": "2026-10-27T22:00:00Z",
+    "StoppedUtc": "2026-10-24T01:54:37.4978798Z",
+    "DueUtc": "2026-10-27T22:02:00Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('limit-wakes', '{
@@ -8187,8 +8195,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "353c5389ca0ff0ddd31229b4118288799603ae53"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "4f1b8cf30e5402df76298c0672cea6dfe2072f5b",
-    "Green": "4f1b8cf30e5402df76298c0672cea6dfe2072f5b"
+    "Tested": "3332eba02b24264f0a52b6d78972aebcca95c9c7",
+    "Green": "3332eba02b24264f0a52b6d78972aebcca95c9c7"
   },
   "MindAttic.Psst": {
     "Tested": "11224b271ff95cb232162fc5b5d2e26ceebe801e"
@@ -8602,6 +8610,330 @@ INSERT INTO state (name, value) VALUES ('orphaned-tickets', '[
     "Ahead": 0,
     "Uncommitted": [],
     "Open": true
+  },
+  {
+    "TicketId": "U.SPC-T486",
+    "Repo": "Unity.SpaceGod",
+    "Directory": "D:\\Projects\\MindAttic.worktrees\\Unity.SpaceGod\\U.SPC-T486",
+    "FirstSeenUtc": "2026-10-24T02:02:17.821576Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-24T01:06:04.8822663Z",
+    "Why": "the weekly window is at its target; it\u0027s redispatched after the reset",
+    "Cli": 73436,
+    "Ahead": 2,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "U.SPC-T491",
+    "Repo": "Unity.SpaceGod",
+    "Directory": "D:\\Projects\\MindAttic.worktrees\\Unity.SpaceGod\\U.SPC-T491",
+    "FirstSeenUtc": "2026-10-24T02:02:17.821576Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-24T01:13:42.7077773Z",
+    "Why": "the weekly window is at its target; it\u0027s redispatched after the reset",
+    "Cli": 73436,
+    "Ahead": 0,
+    "Uncommitted": [
+      "Assets/UnitySpace/Core/Combat/Battle.cs",
+      "Assets/UnitySpace/Core/Combat/Broadsides.cs",
+      "Assets/UnitySpace/Core/Combat/CombatSpecs.cs",
+      "Assets/UnitySpace/Core/Combat/Radiators.cs",
+      "Assets/UnitySpace/Core/Combat/Radiators.cs.meta",
+      "Assets/UnitySpace/Core/ControlsHelp.cs",
+      "Assets/UnitySpace/Runtime/Input/InputState.cs",
+      "Assets/UnitySpace/Runtime/Rendering/ShipMeshFactory.cs",
+      "Assets/UnitySpace/Runtime/UI/Hud.cs",
+      "Assets/UnitySpace/Runtime/UnitySpaceApp.cs",
+      "README.md",
+      "Tests/Core.Tests/RadiatorTests.cs"
+    ],
+    "Open": true
+  },
+  {
+    "TicketId": "U.SPC-T498",
+    "Repo": "Unity.SpaceGod",
+    "Directory": "D:\\Projects\\MindAttic.worktrees\\Unity.SpaceGod\\U.SPC-T498",
+    "FirstSeenUtc": "2026-10-24T02:02:17.821576Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-24T01:15:39.3857618Z",
+    "Why": "the weekly window is at its target; it\u0027s redispatched after the reset",
+    "Cli": 73436,
+    "Ahead": 0,
+    "Uncommitted": [
+      "ssets/UnitySpace/Core/Economy/BeltMining.cs",
+      "ssets/UnitySpace/Core/Fleet.cs",
+      "ssets/UnitySpace/Core/Hyperlanes.cs",
+      "ssets/UnitySpace/Core/ShipLod.cs",
+      "ssets/UnitySpace/Core/Ships.cs",
+      "ssets/UnitySpace/Core/World.Mining.cs",
+      "ssets/UnitySpace/Core/World.cs",
+      "ssets/UnitySpace/Runtime/Rendering/ShipMeshFactory.cs",
+      "ssets/UnitySpace/Runtime/UnitySpaceApp.Streaming.cs",
+      "ssets/UnitySpace/Runtime/UnitySpaceApp.cs",
+      "ssets/UnitySpace/Runtime/Views/ShipView.cs",
+      "EADME.md"
+    ],
+    "Open": true
+  },
+  {
+    "TicketId": "UQD-T57",
+    "Repo": "Unity.QuickDuel",
+    "Directory": "D:\\Projects\\MindAttic.worktrees\\Unity.QuickDuel\\UQD-T57",
+    "FirstSeenUtc": "2026-10-24T02:02:35.752508Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-24T01:18:25.5965358Z",
+    "Why": "the weekly window is at its target; it\u0027s redispatched after the reset",
+    "Cli": 72544,
+    "Ahead": 0,
+    "Uncommitted": [
+      "ssets/StreamingAssets/Settings/tuning.json",
+      "ssets/Unity.QuickDuel/Core/Duel.cs",
+      "ssets/Unity.QuickDuel/Runtime/DuelAudio.cs",
+      "ssets/Unity.QuickDuel/Runtime/DuelController.cs",
+      "ssets/Unity.QuickDuel/Runtime/DuelView.cs",
+      "ssets/Unity.QuickDuel/Tests/Online/OnlineDuelTests.cs",
+      "ssets/Unity.QuickDuel/Tests/PlayMode/DuelViewTests.cs",
+      "EADME.md",
+      "ests/Core.Tests/DuelTests.cs",
+      "ests/Core.Tests/TuningRegistryTests.cs",
+      "ocs/BIBLE.md",
+      "ocs/RECONSTRUCTION.md"
+    ],
+    "Open": true
+  },
+  {
+    "TicketId": "UH-T40",
+    "Repo": "Unity.Hare",
+    "Directory": "D:\\Projects\\MindAttic.worktrees\\Unity.Hare\\UH-T40",
+    "FirstSeenUtc": "2026-10-24T02:02:35.752508Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-24T00:50:56.8029152Z",
+    "Why": "the weekly window is at its target; it\u0027s redispatched after the reset",
+    "Cli": 72544,
+    "Ahead": 1,
+    "Uncommitted": [
+      "ssets/Unity.Hare/Core/Enemies/EnemyCommands.cs",
+      "ssets/Unity.Hare/Core/Enemies/EnemyWorld.cs",
+      "ssets/Unity.Hare/Core/Enemies/Vortexes.cs",
+      "ssets/Unity.Hare/Scripts/Enemies/EnemyDirector.cs",
+      "ssets/Unity.Hare/Scripts/Enemies/EnemyEmitter.cs",
+      "ssets/Unity.Hare/Scripts/Enemies/EnemyMine.cs",
+      "ssets/Unity.Hare/Scripts/Enemies/Insect.cs",
+      "ssets/Unity.Hare/Scripts/Enemies/Phalanx.cs",
+      "ssets/Unity.Hare/Scripts/Enemies/SetPieceEnemy.cs",
+      "ssets/Unity.Hare/Scripts/Enemies/Vortex.cs",
+      "ssets/Unity.Hare/Scripts/Enemies/WormholeEmitter.cs",
+      "ssets/Unity.Hare/Tests/PlayMode/Unity.Hare.Tests.PlayMode.asmdef"
+    ],
+    "Open": true
+  },
+  {
+    "TicketId": "UNI-T37",
+    "Repo": "Unity.Chain",
+    "Directory": "D:\\Projects\\MindAttic.worktrees\\Unity.Chain\\UNI-T37",
+    "FirstSeenUtc": "2026-10-24T02:02:35.752508Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-24T01:20:09.8497909Z",
+    "Why": "the weekly window is at its target; it\u0027s redispatched after the reset",
+    "Cli": 72544,
+    "Ahead": 0,
+    "Uncommitted": [
+      "ssets/Unity.Chain/Runtime/UI/GameHud.cs",
+      "ssets/Unity.Chain/Tests/EditMode/LevelAndHudTests.cs",
+      "ssets/Unity.Chain/Tests/PlayMode/MainSceneSmokeTests.cs",
+      "Assets/Unity.Chain/Resources/"
+    ],
+    "Open": true
+  },
+  {
+    "TicketId": "UNI-T48",
+    "Repo": "Unity.Chain",
+    "Directory": "D:\\Projects\\MindAttic.worktrees\\Unity.Chain\\UNI-T48",
+    "FirstSeenUtc": "2026-10-24T02:02:35.752508Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-24T01:04:20.0004258Z",
+    "Why": "the weekly window is at its target; it\u0027s redispatched after the reset",
+    "Cli": 72544,
+    "Ahead": 0,
+    "Uncommitted": [
+      "Assets/StreamingAssets/Settings/game.json",
+      "Assets/Unity.Chain/Core/Settings/GameSettings.cs",
+      "Assets/Unity.Chain/Core/World/GameWorld.cs",
+      "Assets/Unity.Chain/Editor/SceneBuilder.cs",
+      "Assets/Unity.Chain/Runtime/Audio/MusicPlayer.cs",
+      "Assets/Unity.Chain/Runtime/Items/HeartPickup.cs",
+      "Assets/Unity.Chain/Runtime/Level/CameraRig.cs",
+      "Assets/Unity.Chain/Runtime/UI/GameSession.cs",
+      "Assets/Unity.Chain/Tests/EditMode/AudioTests.cs",
+      "Assets/Unity.Chain/Tests/EditMode/HeartPickupTests.cs",
+      "Assets/Unity.Chain/Tests/EditMode/LevelAndHudTests.cs",
+      "Tests/Core.Tests/GameSettingsTests.cs"
+    ],
+    "Open": true
+  },
+  {
+    "TicketId": "M.LNCH-T23",
+    "Repo": "MindAttic.Launcher",
+    "Directory": "D:\\Projects\\MindAttic.worktrees\\MindAttic.Launcher\\M.LNCH-T23",
+    "FirstSeenUtc": "2026-10-24T02:02:35.752508Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-23T19:15:40.7703758Z",
+    "Why": "the weekly window is at its target; it\u0027s redispatched after the reset",
+    "Cli": 39852,
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "U.OVW-T6",
+    "Repo": "Unity.Overworld",
+    "Directory": "D:\\Projects\\MindAttic.worktrees\\Unity.Overworld\\U.OVW-T6",
+    "FirstSeenUtc": "2026-10-24T02:02:35.752508Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-24T01:08:52.0004159Z",
+    "Why": "the weekly window is at its target; it\u0027s redispatched after the reset",
+    "Cli": 72544,
+    "Ahead": 1,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "U.INC-T21",
+    "Repo": "Unity.Incognito",
+    "Directory": "D:\\Projects\\MindAttic.worktrees\\Unity.Incognito\\U.INC-T21",
+    "FirstSeenUtc": "2026-10-24T02:02:35.752508Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-24T01:15:38.7783415Z",
+    "Why": "the weekly window is at its target; it\u0027s redispatched after the reset",
+    "Cli": 72544,
+    "Ahead": 0,
+    "Uncommitted": [
+      "ssets/Incognito/Editor/SandboxSceneBuilder.cs",
+      "ssets/Incognito/Scenes/PlayerSandbox.unity",
+      "ssets/Incognito/Scripts/Audio/PlayerAudio.cs",
+      "ssets/Incognito/Scripts/Eye/EyeCursor.cs",
+      "ssets/Incognito/Scripts/Eye/PlayerEyeball.cs",
+      "ssets/Incognito/Scripts/Npc/NpcController.cs",
+      "ssets/Incognito/Scripts/Player/PlayerLocomotion.cs",
+      "ssets/Incognito/Scripts/Terminal/CommandPrompt.cs",
+      "ssets/Incognito/Scripts/Terminal/ConsoleTarget.cs",
+      "Assets/Incognito/Scripts/Terminal/Vicinity.cs",
+      "Assets/Incognito/Scripts/Terminal/Vicinity.cs.meta",
+      "ssets/Incognito/Scripts/Weapon/Bullet.cs"
+    ],
+    "Open": true
+  },
+  {
+    "TicketId": "M.ORCH-T762",
+    "Repo": "MindAttic.Orchestrator",
+    "Directory": "D:\\Projects\\MindAttic.worktrees\\MindAttic.Orchestrator\\M.ORCH-T762",
+    "FirstSeenUtc": "2026-10-24T02:02:35.752508Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-24T01:49:36.5284884Z",
+    "Why": "the weekly window is at its target; it\u0027s redispatched after the reset",
+    "Cli": 39852,
+    "Ahead": 0,
+    "Uncommitted": [
+      "src/MindAttic.Orchestrator.Cli/HygieneCommand.cs",
+      "rc/MindAttic.Orchestrator.Cli/PlanningCommands.cs",
+      "rc/MindAttic.Orchestrator.Cli/Program.cs",
+      "rc/MindAttic.Orchestrator.Cli/SchedulingCommands.cs",
+      "rc/MindAttic.Orchestrator.Cli/ShowCommand.cs",
+      "rc/MindAttic.Orchestrator.Core/Daemon.cs",
+      "rc/MindAttic.Orchestrator.Core/Model.cs",
+      "rc/MindAttic.Orchestrator.Core/Scheduling/Autopilot.cs",
+      "rc/MindAttic.Orchestrator.Core/Scheduling/Scheduler.cs",
+      "rc/MindAttic.Orchestrator.Core/Scheduling/TicketPins.cs",
+      "rc/MindAttic.Orchestrator.Core/Scheduling/UnderTarget.cs",
+      "rc/MindAttic.Orchestrator.Core/Setup/AgentGate.cs"
+    ],
+    "Open": true
+  },
+  {
+    "TicketId": "M.ORCH-T763",
+    "Repo": "MindAttic.Orchestrator",
+    "Directory": "D:\\Projects\\MindAttic.worktrees\\MindAttic.Orchestrator\\M.ORCH-T763",
+    "FirstSeenUtc": "2026-10-24T02:02:35.752508Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-24T01:35:56.5877082Z",
+    "Why": "the weekly window is at its target; it\u0027s redispatched after the reset",
+    "Cli": 39852,
+    "Ahead": 1,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "U.VAN-T6",
+    "Repo": "Unity.ProjectVania",
+    "Directory": "D:\\Projects\\MindAttic.worktrees\\Unity.ProjectVania\\U.VAN-T6",
+    "FirstSeenUtc": "2026-10-24T02:02:35.752508Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-24T01:20:09.8497909Z",
+    "Why": "the weekly window is at its target; it\u0027s redispatched after the reset",
+    "Cli": 72544,
+    "Ahead": 0,
+    "Uncommitted": [
+      "ssets/Unity.ProjectVania/Editor/Unity.ProjectVania.Editor.asmdef",
+      "ssets/Unity.ProjectVania/Runtime/Unity.ProjectVania.Runtime.asmdef",
+      "ssets/Unity.ProjectVania/Tests/Unity.ProjectVania.Tests.asmdef",
+      "ackages/manifest.json",
+      "ackages/packages-lock.json",
+      "rojectSettings/EditorBuildSettings.asset",
+      "rojectSettings/GraphicsSettings.asset",
+      "rojectSettings/ProjectSettings.asset",
+      "rojectSettings/QualitySettings.asset",
+      "Assets/DefaultVolumeProfile.asset",
+      "Assets/DefaultVolumeProfile.asset.meta",
+      "Assets/Scenes.meta"
+    ],
+    "Open": true
+  },
+  {
+    "TicketId": "UR-T68",
+    "Repo": "Unity.Ricochet",
+    "Directory": "D:\\Projects\\MindAttic.worktrees\\Unity.Ricochet\\UR-T68",
+    "FirstSeenUtc": "2026-10-24T02:02:35.752508Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-24T01:13:56.8458263Z",
+    "Why": "the weekly window is at its target; it\u0027s redispatched after the reset",
+    "Cli": 72544,
+    "Ahead": 0,
+    "Uncommitted": [
+      "ssets/Ricochet/Runtime/GameDataBoot.cs",
+      "ssets/Ricochet/Tests/PlayMode/TurnTests.cs",
+      "Assets/Ricochet/Tests/PlayMode/GameDataBootTests.cs",
+      "Assets/Ricochet/Tests/PlayMode/GameDataBootTests.cs.meta"
+    ],
+    "Open": true
   }
 ]');
 INSERT INTO state (name, value) VALUES ('outside-use', '[
@@ -8796,9 +9128,11 @@ INSERT INTO state (name, value) VALUES ('outside-use', '[
       0,
       0,
       0,
+      0,
+      0,
       0
     ],
-    "NoiseThroughUtc": "2026-10-24T01:52:24Z",
+    "NoiseThroughUtc": "2026-10-24T02:00:34Z",
     "Windows": [
       {
         "ResetUtc": "2026-10-23T21:10:00Z",
@@ -9030,9 +9364,14 @@ INSERT INTO state (name, value) VALUES ('outside-use', '[
       0.7698976128004773,
       0,
       0,
-      0
+      0,
+      0,
+      0,
+      0,
+      0,
+      0.46509632571996207
     ],
-    "NoiseThroughUtc": "2026-10-24T01:53:09Z",
+    "NoiseThroughUtc": "2026-10-24T02:01:49Z",
     "Windows": [
       {
         "ResetUtc": "2026-10-23T19:20:00Z",
@@ -9152,9 +9491,11 @@ INSERT INTO state (name, value) VALUES ('outside-use', '[
       9.167769963921266,
       8.782284468777227,
       0,
+      0,
+      0,
       0
     ],
-    "NoiseThroughUtc": "2026-10-24T01:50:34Z",
+    "NoiseThroughUtc": "2026-10-24T02:00:44Z",
     "Windows": [
       {
         "ResetUtc": "2026-10-23T21:10:00Z",
@@ -9286,6 +9627,7 @@ INSERT INTO state (name, value) VALUES ('usage-cutoff-alerts', '{
   "Alerted": {
     "pdftransferjr@mindattic.com|week": "2026-10-25T12:00:00Z",
     "ohleo199@mindattic.com|week": "2026-10-27T22:00:00Z",
-    "honey@mindattic.com|5h": "2026-10-24T03:00:00Z"
+    "honey@mindattic.com|5h": "2026-10-24T03:00:00Z",
+    "ryandebraal@mindattic.com|5h": "2026-10-24T05:20:00Z"
   }
 }');
