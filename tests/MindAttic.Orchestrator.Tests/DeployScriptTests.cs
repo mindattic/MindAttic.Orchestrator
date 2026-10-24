@@ -111,6 +111,47 @@ public sealed class DeployScriptTests
         Assert.That(script, Does.Contain("@('--install', '--force')"), "-Force installs over a newer build");
     }
 
+    [Test]
+    public void Publishing_the_CLI_swaps_files_in_even_when_a_running_process_holds_the_old_exe()
+    {
+        // M.ORCH-T765: dotnet publish straight into Cli\ failed (MSB3027) whenever an orchestrator.exe was running from it.
+        // A running exe can't be overwritten but can be renamed, so the locked file is renamed aside and the new one copied in.
+        var from = Path.Combine(dir, "stage");
+        var to = Path.Combine(dir, "Cli");
+        Directory.CreateDirectory(Path.Combine(from, "sub"));
+        Directory.CreateDirectory(to);
+        File.WriteAllText(Path.Combine(from, "new.txt"), "new");
+        File.WriteAllText(Path.Combine(from, "sub", "lib.txt"), "lib");
+        var running = Path.Combine(to, "orchestrator.exe");
+        File.Copy(Path.Combine(Environment.SystemDirectory, "ping.exe"), running);
+        File.WriteAllText(Path.Combine(from, "orchestrator.exe"), "replacement");
+        File.WriteAllText(Path.Combine(to, "stale.dll.old-0123abcd"), "left by an earlier deploy");
+        string Q(string s) => "'" + s.Replace("'", "''") + "'";
+
+        using var held = Process.Start(new ProcessStartInfo(running, "-n 60 127.0.0.1") { UseShellExecute = false, CreateNoWindow = true })!;
+        try
+        {
+            Thread.Sleep(500);
+            Assert.That(() => File.WriteAllText(running, "x"), Throws.InstanceOf<IOException>().Or.InstanceOf<UnauthorizedAccessException>(), "the exe really is locked");
+            RunFunction("Remove-AsideFiles;Copy-Published", $"Copy-Published {Q(from)} {Q(to)}");
+
+            Assert.That(File.ReadAllText(running), Is.EqualTo("replacement"));
+            Assert.That(File.ReadAllText(Path.Combine(to, "new.txt")), Is.EqualTo("new"));
+            Assert.That(File.ReadAllText(Path.Combine(to, "sub", "lib.txt")), Is.EqualTo("lib"));
+            Assert.That(File.Exists(Path.Combine(to, "stale.dll.old-0123abcd")), Is.False, "an earlier deploy's aside copy is cleaned up");
+            Assert.That(Directory.GetFiles(to, "orchestrator.exe.old-*"), Has.Length.EqualTo(1), "the running exe was moved aside");
+        }
+        finally { try { held.Kill(); held.WaitForExit(5000); } catch (Exception) { } }
+
+        RunFunction("Remove-AsideFiles;Copy-Published", $"Remove-AsideFiles {Q(to)}");
+        Assert.That(Directory.GetFiles(to, "*.old-*"), Is.Empty, "once the process has exited the aside copy goes");
+
+        var script = File.ReadAllText(DeployScript());
+        Assert.That(script, Does.Contain("--output $cliStage"), "the CLI is published to a staging folder, not into the installed one");
+        Assert.That(script, Does.Not.Contain("--output $cliOut"));
+        Assert.That(script.Contains((char)13), Is.False, "deploy.ps1 keeps its LF line endings");
+    }
+
     /// <summary>Takes <paramref name="function"/> out of deploy.ps1 by the PowerShell parser, runs each call with it, and
     /// returns what they printed, line by line. Nothing else in the script runs.</summary>
     private static string[] RunFunction(string function, params string[] calls)
@@ -118,9 +159,10 @@ public sealed class DeployScriptTests
         var script =
             "$ErrorActionPreference = 'Stop'\n" +
             $"$ast = [System.Management.Automation.Language.Parser]::ParseFile('{DeployScript().Replace("'", "''")}', [ref]$null, [ref]$null)\n" +
-            $"$f = $ast.FindAll({{ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq '{function}' }}, $true) | Select-Object -First 1\n" +
-            $"if (-not $f) {{ throw 'deploy.ps1 has no {function}' }}\n" +
-            ". ([scriptblock]::Create($f.Extent.Text))\n" +
+            $"foreach ($name in '{function.Replace(";", "','")}') {{ " +
+            "$f = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name }, $true) | Select-Object -First 1; " +
+            "if (-not $f) { throw \"deploy.ps1 has no $name\" }; " +
+            ". ([scriptblock]::Create($f.Extent.Text)) }\n" +
             string.Join("\n", calls) + "\n";
         var psi = new ProcessStartInfo("powershell.exe",
             "-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand " + Convert.ToBase64String(Encoding.Unicode.GetBytes(script)))
