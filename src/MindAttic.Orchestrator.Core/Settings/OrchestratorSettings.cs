@@ -14,6 +14,12 @@ public sealed record OrchestratorSettings
     /// Null measures blocks against your own peak block in the last 7 days instead.</summary>
     public long? BlockBudget { get; init; }
 
+    /// <summary>How fresh Claude's own 5-hour report must be to pace straight off its percent exactly, with nothing added
+    /// (M.ORCH-T788): past this many minutes old (nothing redraws <c>claude-usage.json</c> while no interactive session
+    /// is open), the local tokens spent since that report are added back in so the hard cutoff isn't blind to real spend
+    /// during a quiet statusline (M.ORCH-T783).</summary>
+    public int ReportFreshMinutes { get; init; } = 2;
+
     /// <summary>Uncached tokens allowed per week. Null means no weekly line.</summary>
     public long? WeeklyBudget { get; init; }
 

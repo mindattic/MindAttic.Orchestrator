@@ -18,9 +18,11 @@ The daemon starts at logon and refreshes every 15 seconds, sooner when a turn en
 
 1. **Measure.** It reads Claude Code's own 5-hour percent and reset time (the shared statusline saves them each
    minute to `~/.claude/claude-usage.json`, keeping only the highest reading in a window, since an idle session
-   carries an older, lower one), and paces straight off that live number -- not a padded or forward-filled estimate,
-   which used to drift ahead of Claude's own indicator (M.ORCH-T788). The window's size in tokens is learned from how
-   far Claude's percent moved while a known number of tokens was spent.
+   carries an older, lower one), and paces straight off that live number while it's fresh, not a point of safety
+   margin added on top, which used to drift ahead of Claude's own indicator (M.ORCH-T788). Past `ReportFreshMinutes`
+   old -- nothing redraws the file while no interactive session is open -- the tokens the local transcripts record
+   since that report are added back, so the hard cutoff still sees real spend during a quiet statusline (M.ORCH-T783).
+   The window's size in tokens is learned from how far Claude's percent moved while a known number of tokens was spent.
 2. **Pace.** What's left of the target, divided by the hours until the reset, is the sustainable rate. The draw over
    the last few minutes, every session and subagent together, is compared with it. That is the `linear` pace profile,
    the default. The `front-loaded` profile (`orchestrator settings --pace-profile front-loaded`, or the dashboard's

@@ -186,14 +186,18 @@ public static class BudgetCalculator
         var isPeak = blockSource == LimitSource.Peak;
         var limit = blockLimit;
 
-        // Pacing reads straight off Claude's own live rate_limits percent (M.ORCH-T788): with the block sized from its
-        // reports, the percent used is exactly what it reported, whoever spent it (another account, claude.ai, another
-        // machine) -- never padded by a point of margin, nor forward-filled with local tokens spent since the report,
-        // either of which drifted the dashboard's own number past Claude's (M.ORCH-T783), the same number the weekly
-        // percent below already takes unpadded.
-        if (blockSource == LimitSource.Reported && reported5h is not null && current is not null)
+        // Pacing reads straight off Claude's own live rate_limits percent while its report is fresh (M.ORCH-T788): with
+        // the block sized from its reports, the percent used is exactly what it reported, whoever spent it (another
+        // account, claude.ai, another machine) -- not padded by a point of margin, which drifted the dashboard's own
+        // number past Claude's, the same number the weekly percent below already takes unpadded. Past
+        // ReportFreshMinutes old (nothing redraws claude-usage.json while no interactive session is open), the hard
+        // cutoff would otherwise be blind to real spend until the next report, so the local tokens spent since it are
+        // added back, as before (M.ORCH-T783, M.ORCH-T179).
+        if (blockSource == LimitSource.Reported && reported5h is not null && reported is not null && current is not null)
         {
-            currentFresh = (long)(Math.Min(100, reported5h.Percent) / 100 * limit);
+            var since = nowUtc - reported.AtUtc <= TimeSpan.FromMinutes(settings.ReportFreshMinutes) ? 0
+                : events.Where(e => e.AtUtc > reported.AtUtc && e.AtUtc <= nowUtc).Sum(e => e.Usage.Fresh);
+            currentFresh = (long)(Math.Min(100, reported5h.Percent) / 100 * limit) + since;
             current = current with { Usage = new TokenUsage(currentFresh, 0, 0, 0) };
         }
         // Whatever sized the limit (your budget, a learned one), Claude's own percent is what's already used in its
