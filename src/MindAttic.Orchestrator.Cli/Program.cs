@@ -65,7 +65,24 @@ internal static class CliApp
                     a.Equals("--5h", StringComparison.OrdinalIgnoreCase) ? "--five-hour"
                     : a.StartsWith("--5h=", StringComparison.OrdinalIgnoreCase) ? "--five-hour" + a[4..]
                     : a)];
-            return app.Run(all);
+            return app.Run(MembersOrgFirst(all));
+        }
+
+        /// <summary>The members branch's <c>--org</c> (M.ORCH-T755) is the branch's option, which Spectre takes only before its
+        /// subcommand, so <c>org members add &lt;email&gt; ... --org sales</c> has it moved to just after <c>members</c>.</summary>
+        internal static List<string> MembersOrgFirst(List<string> all)
+        {
+            var members = all.Count > 0 && all[0].Equals("members", StringComparison.OrdinalIgnoreCase) ? 0
+                : all.Count > 1 && all[0].Equals("org", StringComparison.OrdinalIgnoreCase) && all[1].Equals("members", StringComparison.OrdinalIgnoreCase) ? 1
+                : -1;
+            if (members < 0) return all;
+            var at = all.FindIndex(members + 1, a => a.Equals("--org", StringComparison.OrdinalIgnoreCase) || a.StartsWith("--org=", StringComparison.OrdinalIgnoreCase));
+            if (at <= members + 1) return all;
+            var take = all[at].Contains('=') || at + 1 >= all.Count ? 1 : 2;
+            var option = all.GetRange(at, take);
+            all.RemoveRange(at, take);
+            all.InsertRange(members + 1, option);
+            return all;
         }
     }
 
@@ -121,7 +138,7 @@ internal static class CliApp
             // The global /org and /organization commands run these (M.ORCH-T686); each is a command above, a member named any way.
             config.AddBranch("org", o =>
             {
-                o.SetDescription("The organization: usage (the usage report), login <who>, members, start <repo> <who>, allow <who> [[--until reset|<time>]], disallow <who>, limit [[<who> --weekly <pct> --5h <pct> | --reset]]; <who> is a member's email, the part before the @, name, first name, login alias or initials.");
+                o.SetDescription("The organization: usage (the usage report), login <who>, members, start <repo> <who>, allow <who> [[--until reset|<time>]], disallow <who>, limit [[<who> --weekly <pct> --5h <pct> | --reset]]; <who> is a member's email, the part before the @, name, first name, login alias or initials. Each works on the org chosen in the dashboard's switcher, or --org <id|name>'s (M.ORCH-T755).");
                 o.SetDefaultCommand<OrgHelpCommand>();
                 o.AddCommand<OrgHelpCommand>("help").WithDescription("List the org subcommands.");
                 o.AddCommand<UsageReportCommand>("usage").WithDescription("The usage report, as orchestrator report prints it: --detail, --since <date>, --csv, --json, --md/--html <file>.");

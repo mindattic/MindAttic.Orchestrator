@@ -39,9 +39,6 @@ public sealed class OrgViewModel(Organization org) : ObservableObject
 /// </summary>
 public sealed partial class MainViewModel
 {
-    private const string OrgViewName = "dashboard-org";
-    private sealed class OrgView { public string? Org { get; init; } }
-
     private OrgDirectory orgs = OrgDirectory.Single;
     private readonly ObservableCollection<OrgViewModel> orgItems = [];
     private readonly ObservableCollection<MainViewModel> orgTabs = [];
@@ -84,8 +81,7 @@ public sealed partial class MainViewModel
         if (!orgRestored)
         {
             orgRestored = true;
-            try { if (store.Load<OrgView>(OrgViewName).Org is { } saved) selectedOrgId = saved; }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
+            if (OrgSelection.Remembered(store) is { } saved) selectedOrgId = saved;
         }
         if (next.Find(selectedOrgId) is null) selectedOrgId = Organization.DefaultId;
         orgItems.SyncBy(next.Orgs, o => o.Id, v => v.Id, o => new OrgViewModel(o), (_, _) => { });
@@ -106,7 +102,7 @@ public sealed partial class MainViewModel
     {
         if (id == selectedOrgId || orgs.Find(id) is null) return;
         selectedOrgId = id;
-        try { store.Save(OrgViewName, new OrgView { Org = id }); }
+        try { OrgSelection.Remember(store, id); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         SyncOrgTabs();
         // The org's own queue rows, kept current by every plan: handed to the window as they are, nothing planned again.
