@@ -164,7 +164,7 @@ public static class OrchestratorHistory
     {
         using var connection = db.Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT at, decision, held, tool FROM gate_events WHERE at >= $since ORDER BY at, id;";
+        command.CommandText = "SELECT at, decision, held, tool, account FROM gate_events WHERE at >= $since ORDER BY at, id;";
         command.Parameters.AddWithValue("$since", Second(sinceUtc));
         using var r = command.ExecuteReader();
         var events = new List<GateEvent>();
@@ -172,7 +172,7 @@ public static class OrchestratorHistory
         {
             if (!DateTime.TryParse(r.GetString(0), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var at) ||
                 at < sinceUtc) continue;
-            events.Add(new GateEvent(at, r.GetString(1), r.GetDouble(2), r.IsDBNull(3) ? null : r.GetString(3)));
+            events.Add(new GateEvent(at, r.GetString(1), r.GetDouble(2), r.IsDBNull(3) ? null : r.GetString(3), r.IsDBNull(4) ? null : r.GetString(4)));
         }
         return events;
     }
@@ -186,8 +186,8 @@ public static class OrchestratorHistory
         db.Write((connection, tx) => Run(connection, tx, "DELETE FROM gate_events WHERE at < $from;", ("$from", Second(keepFromUtc))), dump: false);
 
     private static void InsertEvent(SqliteConnection connection, SqliteTransaction tx, GateEvent e, double? percent) =>
-        Run(connection, tx, "INSERT INTO gate_events (at, decision, held, tool, percent) VALUES ($at, $decision, $held, $tool, $percent);",
-            ("$at", Second(e.AtUtc)), ("$decision", e.Decision), ("$held", e.HeldSeconds), ("$tool", e.Tool), ("$percent", percent));
+        Run(connection, tx, "INSERT INTO gate_events (at, decision, held, tool, percent, account) VALUES ($at, $decision, $held, $tool, $percent, $account);",
+            ("$at", Second(e.AtUtc)), ("$decision", e.Decision), ("$held", e.HeldSeconds), ("$tool", e.Tool), ("$percent", percent), ("$account", e.Account));
 
     /// <summary>A time as the hooks write it ("2026-10-15T20:00:00Z"), so the rows sort and compare as text.</summary>
     private static string Second(DateTime utc) =>
@@ -255,7 +255,8 @@ public static class OrchestratorHistory
             return (new GateEvent(at,
                 r.TryGetProperty("decision", out var d) && d.ValueKind == JsonValueKind.String ? d.GetString()! : "",
                 r.TryGetProperty("held", out var h) && h.ValueKind == JsonValueKind.Number ? h.GetDouble() : 0,
-                r.TryGetProperty("tool", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null),
+                r.TryGetProperty("tool", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null,
+                r.TryGetProperty("account", out var ac) && ac.ValueKind == JsonValueKind.String ? ac.GetString() : null),
                 r.TryGetProperty("percent", out var p) && p.ValueKind == JsonValueKind.Number ? p.GetDouble() : null);
         }
         catch (JsonException) { return null; }

@@ -78,6 +78,27 @@ public sealed class PaceLedgerTests
     }
 
     [Test]
+    public void A_window_only_counts_its_own_accounts_gate_events()
+    {
+        // M.ORCH-T774: the gate log is one shared table for every CLI on the machine. B's window must count only its own
+        // held and refused calls (and ones logged before events were tagged at all), never A's.
+        var login = End.AddHours(-1);
+        List<UsageSample> samples = [new(Start.AddHours(1), 20, End, 2_000_000), new(End.AddMinutes(-5), 60, End, 6_000_000)];
+        string? AccountAt(DateTime t) => t < login ? "a" : "b";
+        List<GateEvent> events =
+        [
+            new(Start.AddMinutes(5), GateEvent.Held, 10, "Bash", "a"),
+            new(End.AddMinutes(-10), GateEvent.Held, 20, "Bash", "b"),
+            new(End.AddMinutes(-8), GateEvent.Refused, 0, "Edit", "a"),
+            new(End.AddMinutes(-6), GateEvent.Held, 5, "Bash", null),
+        ];
+
+        var w = PaceLedger.Build(End, samples, [], events, accountAt: AccountAt);
+
+        Assert.That((w.Held, w.Refused, w.Account), Is.EqualTo((2, 0, "b")), "b's held event and the untagged one, not a's");
+    }
+
+    [Test]
     public void After_a_login_mid_window_the_new_accounts_window_gets_its_own_row()
     {
         // M.ORCH-T345: A's window resets at End; B, signed in to three hours before, resets two hours later. Overlapping
@@ -328,6 +349,39 @@ public sealed class PaceLedgerTests
 
         watch.Tick(End.AddMinutes(45));
         Assert.That(watch.Db.LoadLedger(), Has.Count.EqualTo(2), "each window is recorded once");
+    }
+
+    /// <summary>M.ORCH-T774: before the gate tagged its events by account, a per-CLI login's row was built with no events at
+    /// all (the comment said they "aren't kept per account"), so its "closed over" tickets never said what the gate did
+    /// around the window. Tagged, its row counts its own held and refused calls, not another account's sharing the log.</summary>
+    [Test]
+    public void A_per_cli_logins_window_counts_only_its_own_accounts_gate_events()
+    {
+        var dir = temp.New();
+        var h = new Harness(Path.Combine(dir, "store"));
+        var dirs = new MindAttic.Orchestrator.Sessions.AccountDirs(Path.Combine(dir, "accounts"), Path.Combine(dir, ".claude"), Path.Combine(dir, ".claude.json"));
+        var b = dirs.For("b@example.com");
+        Directory.CreateDirectory(b.Directory);
+        File.WriteAllText(b.ConfigPath, """{"oauthAccount":{"accountUuid":"acct-b"}}""");
+        var bEnd = End.AddMinutes(5);
+        File.WriteAllText(b.SamplesPath, System.Text.Json.JsonSerializer.Serialize(Steady(70, bEnd)));
+        h.Watch.Db.AddGateEvents(
+        [
+            (new GateEvent(bEnd.AddMinutes(-10), GateEvent.Held, 12, "Bash", "acct-b"), 65.0),
+            (new GateEvent(bEnd.AddMinutes(-8), GateEvent.Held, 3, "Bash", "acct-a"), 50.0),
+            (new GateEvent(bEnd.AddMinutes(-6), GateEvent.Refused, 0, "Edit", "acct-b"), 70.0),
+            (new GateEvent(bEnd.AddMinutes(-4), GateEvent.Held, 7, "Bash", null), 71.0),
+        ]);
+        var watch = new PaceLedgerWatch(h.Store, "unused", (l, s) => h.Said.Add((l, s)), (t, _, u) => h.Alerts.Add((t, u)))
+        {
+            EventsPath = h.Watch.EventsPath,
+            FileTicket = s => { h.Filed.Add(s); return "M.ORCH-T999"; },
+            AccountDirs = dirs,
+        };
+
+        watch.Tick(bEnd.AddMinutes(30));
+        var row = watch.Db.LoadLedger().Single(w => w.Account == "acct-b");
+        Assert.That((row.Held, row.Refused), Is.EqualTo((1, 1)), "only acct-b's own tagged held and refused events: not acct-a's, and not the untagged one either");
     }
 
     /// <summary>M.ORCH-T725: a per-CLI folder signed in as the global account must not hide that account's global rows, or every
