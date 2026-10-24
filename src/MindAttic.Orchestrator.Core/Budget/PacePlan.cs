@@ -78,15 +78,19 @@ public static class PacePlan
         if (i < 0 && planned is null) return false;
         var was = i < 0 ? null : rows[i];
         if (was is { Closed: true }) return false;
-        // "Reached" is decided on the full-precision figures, not the tenth they're rounded to for the row below: rounding
-        // first could call a window reached (or not) up to 0.05 points early or late (M.ORCH-T801).
-        var planFull = planned ?? was!.PlannedPercent;
-        var atFull = Math.Max(actual, was?.ActualPercent ?? 0);
-        var reached = was?.ReachedUtc ?? (atFull >= planFull - Reach ? nowUtc : null);
-        var plan = Math.Round(planFull, 1);
-        var at = Math.Round(atFull, 1);
+        // Full precision throughout, including what's stored for the next tick's "was": rounding to a tenth before
+        // deciding "reached" (or before storing the figure a later tick reads back as was.PlannedPercent/ActualPercent)
+        // could call a window reached up to half a point early, and once the rounded figure became the next tick's own
+        // baseline the error would stick, not just show up once (M.ORCH-T801). The row prints a whole or tenth percent
+        // (PlannedWindow.Text) -- rounding happens there, not here.
+        var plan = planned ?? was!.PlannedPercent;
+        var at = Math.Max(actual, was?.ActualPercent ?? 0);
+        var reached = was?.ReachedUtc ?? (at >= plan - Reach ? nowUtc : null);
         var row = new PlannedWindow(login, kind, was?.EndUtc ?? end, plan, at, reached);
-        if (row == was) return false;
+        // Nothing worth recording changed when the row would still print the same thing: compared at the tenth it's
+        // shown at, not at full precision, so a reading's last digits wobbling tick to tick isn't "changed" every time.
+        if (was is not null && reached == was.ReachedUtc && Math.Round(plan, 1) == Math.Round(was.PlannedPercent, 1) && Math.Round(at, 1) == Math.Round(was.ActualPercent, 1))
+            return false;
         if (i < 0) rows.Add(row); else rows[i] = row;
         return true;
     }
