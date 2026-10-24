@@ -166,6 +166,20 @@ public sealed class BudgetReportedPathTests
     }
 
     [Test]
+    public void A_manual_limit_shows_claudes_exact_percent_even_when_the_implied_token_floor_isnt_round()
+    {
+        // M.ORCH-T801: 60% of a 2,731 budget is 1,638.6 tokens, which can only floor to 1,638; re-deriving the percent
+        // from that floor (as M.ORCH-T794 found for the Reported source) would drift it to ~59.978%, not Claude's 60%.
+        var events = new[] { E(10.2, 1_000) };
+        var s = BudgetCalculator.Compute(events, new OrchestratorSettings { BlockBudget = 2_731 }, Day.AddHours(12), Day, TimeZoneInfo.Utc,
+            reported: Report(60, 15, 11));
+
+        Assert.That(s.BlockLimitSource, Is.EqualTo(LimitSource.Manual));
+        Assert.That(s.CurrentBlock!.Usage.Fresh, Is.EqualTo(1_638), "the floor still bumps the shown token count up to match the reported percent");
+        Assert.That(s.BlockPercent, Is.EqualTo(60), "taken straight from Claude's percent, not re-derived from the floored token count");
+    }
+
+    [Test]
     public void A_ledger_restarted_part_way_through_the_week_sizes_no_weekly_limit_and_the_percent_stands_alone()
     {
         // The week began 3 days ago; a /login 2 hours ago restarted the ledger, so its 43.5k is only what the new account spent
