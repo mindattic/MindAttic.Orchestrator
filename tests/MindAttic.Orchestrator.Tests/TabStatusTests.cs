@@ -152,9 +152,14 @@ public sealed class TabStatusTests
         Assert.That(strip, Does.Contain("<mc:MaTabControl").And.Contain("TargetType=\"mc:MaTabItem\""));
         Assert.That(strip, Does.Not.Contain("Property=\"Status\" Value="), "the icon, not the status light");
         Assert.That(strip, Does.Contain("x:Name=\"TabIdleIcon\" Text=\"&#xE769;\"").And.Contain("{Binding IsTabIdle")
-            .And.Contain("x:Name=\"TabBusyIcon\" Text=\"&#xE768;\"").And.Contain("Foreground=\"{DynamicResource MaGood}\" Opacity=\"{Binding TabIconOpacity}\"")
+            .And.Contain("x:Name=\"TabBusyIcon\" Text=\"&#xE768;\"").And.Contain("Foreground=\"{DynamicResource MaGood}\"")
             .And.Contain("{Binding IsTabBusy").And.Contain("x:Name=\"TabDisabledIcon\" Text=\"&#xE733;\"").And.Contain("Foreground=\"{DynamicResource MaMuted}\"")
             .And.Contain("{Binding IsTabDisabled").And.Contain("FontFamily=\"Segoe Fluent Icons, Segoe MDL2 Assets\""));
+        // M.ORCH-T770: the busy icon glows and pulses (a slow DropShadowEffect.Opacity animation) instead of the old
+        // per-token TabIconOpacity blink, so it reads as "action is taking place" the same way the emergency billing
+        // toggle does.
+        Assert.That(strip, Does.Contain("(UIElement.Effect).(DropShadowEffect.Opacity)"));
+        Assert.That(strip, Does.Not.Contain("Opacity=\"{Binding TabIconOpacity}\""), "replaced by the soothing pulse (M.ORCH-T770)");
         Assert.That(strip, Does.Contain("Property=\"Trailing\" Value=\"{Binding TabTrailing}\"")
             .And.Contain("Property=\"Accent\" Value=\"{Binding TabBrush}\"")
             .And.Contain("Property=\"AutomationProperties.Name\" Value=\"{Binding TabTip}\"")
