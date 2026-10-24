@@ -192,7 +192,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
                 Tell(repo.Name, plan.Queue.Any(q => Same(q.Repo, repo.Name) && !q.IsAssigned && q.MayWork) // a stale unapproved one waits for approval (M.ORCH-T401)
                     ? $"allocate: {repo.Name}'s open stories are blocked, parked or too big for what's left before the reset"
                     : plan.AwaitingApproval.Count(q => Same(q.Repo, repo.Name)) is > 0 and var waiting
-                        ? $"allocate: {repo.Name}'s {waiting} open stor{(waiting == 1 ? "y waits" : "ies wait")} for your approval (orchestrator approve)"
+                        ? $"allocate: {repo.Name}'s {waiting} open stor{(waiting == 1 ? "y waits" : "ies wait")} for your approval (tickets ticket approve)"
                         : $"allocate: {repo.Name} has no open stories left");
         return Done(paceBound);
 
@@ -572,7 +572,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
                 return ([], $"nothing else is ready: {pinned.Count} assigned to other users wait for them on their own logins (" +
                     string.Join(", ", pinned.Select(q => q.Assignee).Distinct(StringComparer.OrdinalIgnoreCase)) + ")");
             return ([], waiting == 0 && busy == 0 && blocked == 0 && tooBig == 0 && skipped.Count > 0 ? $"{string.Join(", ", skipped)} set to be skipped (settings --allocate-skip); nothing else is ready"
-                : waiting > 0 && busy == 0 && blocked == 0 && tooBig == 0 ? $"none left that may be worked: {waiting} wait for your approval (orchestrator approve)"
+                : waiting > 0 && busy == 0 && blocked == 0 && tooBig == 0 ? $"none left that may be worked: {waiting} wait for your approval (tickets ticket approve)"
                 : busy > 0 && blocked == 0 && tooBig == 0 ? $"{busy} already being worked; nothing else is ready"
                 : blocked > 0 || tooBig > 0 ? "nothing ready: " + string.Join(", ", new[]
                     {
@@ -641,7 +641,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         var inRepo = plan.Queue.Where(Busy).GroupBy(q => q.Repo, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
         var capped = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         // When room is scarce (M.ORCH-T669: the 5-hour window's or the week's), it goes to the higher-priority tickets first: each
-        // one handed out takes its estimate out of what's left, in queue order (priority, orchestrator bump, first; a user's own
+        // one handed out takes its estimate out of what's left, in queue order (priority, tickets ticket bump, first; a user's own
         // assigned tickets in the same order), so a lower-priority ticket waits behind them rather than taking the room they need.
         double committed = 0;
         foreach (var item in open)

@@ -25,9 +25,11 @@ public sealed class PlanningTests
     {
         var snap = Snap(Repo("A", RepoState.Dormant, T("A-T1"), T("A-T2", "needs the API, blocked by A-T1")),
                         Repo("B", RepoState.Dormant, T("B-T1")));
-        var settings = new OrchestratorSettings { BlockedBy = new() { ["B-T1"] = ["A-T1"] } };
+        var settings = new OrchestratorSettings();
+        // Set by hand in Tickets: a 'requires' link in the ticket database (tickets ticket block, M.ORCH-T762).
+        var requires = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase) { ["B-T1"] = ["A-T1"] };
 
-        var plan = Scheduler.Plan(snap with { Priorities = new Dictionary<string, long> { ["A-T2"] = 9, ["B-T1"] = 9 } }, settings, []);
+        var plan = Scheduler.Plan(snap with { Priorities = new Dictionary<string, long> { ["A-T2"] = 9, ["B-T1"] = 9 }, Requires = requires }, settings, []);
 
         Assert.That(Proposed(plan), Is.EqualTo(new[] { "A-T1" }));
         Assert.That(plan.Queue.Single(q => q.Id == "A-T2").BlockedBy, Is.EqualTo(new[] { "A-T1" }), "from the summary");
@@ -41,8 +43,10 @@ public sealed class PlanningTests
     public void A_reserved_ticket_starts_while_coasting_and_the_rest_pace_against_what_is_left()
     {
         var snap = Snap(Repo("A", RepoState.Dormant, T("A-T1")), Repo("B", RepoState.Dormant, T("B-T1")));
-        var coasting = new Snapshot(Now, snap.Repos, []) { Pace =new Pace(PaceMode.Coast, 0, 0, 5000, 5000, "5-hour", Now.AddHours(1), "Coasting.") { RoomTokens = 3_000 } };
-        var settings = new OrchestratorSettings { Reservations = new() { ["B-T1"] = 2_000 } };
+        // Reserved in the ticket database (tickets ticket reserve, M.ORCH-T762).
+        static Dictionary<string, long> Reserved(long tokens) => new(StringComparer.OrdinalIgnoreCase) { ["B-T1"] = tokens };
+        var coasting = new Snapshot(Now, snap.Repos, []) { Pace = new Pace(PaceMode.Coast, 0, 0, 5000, 5000, "5-hour", Now.AddHours(1), "Coasting.") { RoomTokens = 3_000 }, Reservations = Reserved(2_000) };
+        var settings = new OrchestratorSettings();
 
         var plan = Scheduler.Plan(coasting, settings, []);
 
@@ -50,11 +54,11 @@ public sealed class PlanningTests
         Assert.That(plan.Proposals.Single().Reason, Does.StartWith("reserved 2"));
         Assert.That(plan.RoomForRest, Is.EqualTo(1_000), "what too big is measured against, and says is left");
 
-        var over = new Snapshot(Now, snap.Repos, []) { Pace = new Pace(PaceMode.Over, 0, 0, 0, null, "5-hour", Now.AddHours(1), "Over.") { RoomTokens = 0 } };
+        var over = new Snapshot(Now, snap.Repos, []) { Pace = new Pace(PaceMode.Over, 0, 0, 0, null, "5-hour", Now.AddHours(1), "Over.") { RoomTokens = 0 }, Reservations = Reserved(2_000) };
         Assert.That(Scheduler.Plan(over, settings, []).Proposals, Is.Empty, "never past a limit");
 
-        var open = new Snapshot(Now, snap.Repos, []) { Pace = new Pace(PaceMode.Open, 4, 9000, 100, 100, "5-hour", Now.AddHours(1), "On pace.") { RoomTokens = 1_500 } };
-        var tight = Scheduler.Plan(open, settings with { Reservations = new() { ["B-T1"] = 1_500 } }, []);
+        var open = new Snapshot(Now, snap.Repos, []) { Pace = new Pace(PaceMode.Open, 4, 9000, 100, 100, "5-hour", Now.AddHours(1), "On pace.") { RoomTokens = 1_500 }, Reservations = Reserved(1_500) };
+        var tight = Scheduler.Plan(open, settings, []);
         Assert.That(Proposed(tight), Is.EqualTo(new[] { "B-T1" }));
         Assert.That(tight.Hold, Does.Contain("reserved"), "everything left is spoken for");
     }

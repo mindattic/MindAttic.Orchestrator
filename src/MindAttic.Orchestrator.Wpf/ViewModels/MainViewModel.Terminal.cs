@@ -40,7 +40,12 @@ public sealed partial class MainViewModel
 
     private async Task OpenToastAsync(ToastViewModel t)
     {
-        if (t.Target is null) return;
+        if (t.Target is null)
+        {
+            // An alert about one ticket opens it in Tickets Desktop, like every ticket id the dashboard shows (M.ORCH-T762).
+            if (t.TicketId is { } id) OpenInTickets(id);
+            return;
+        }
         await GoToOrShowRepoAsync(HostForToast(t.Target.Status, snapshot?.Agents ?? []), t.Target.Name);
     }
 

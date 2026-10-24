@@ -101,22 +101,15 @@ internal static class CliApp
             config.AddCommand<SendCommand>("send").WithDescription("Type text into a live Launcher-hosted session.");
             config.AddCommand<BudgetCommand>("budget").WithDescription("Token budget for the current 5-hour block and the week, and the pace; --block/--weekly/--warn/--pace/--target set them, --hits lists learned limits.");
             config.AddCommand<QueueCommand>("queue").WithDescription("Every open ticket across the workspace, in the order the scheduler would start them.");
-            config.AddCommand<BumpCommand>("bump").WithDescription("Raise (or with a negative --by, lower) a ticket's priority.");
             config.AddCommand<DispatchCommand>("dispatch").WithDescription("Start a session on a ticket (a worktree when its repo is busy).");
             config.AddCommand<ReleaseCommand>("release").WithDescription("Return a ticket to the queue; --remove-worktree also deletes its clean worktree.");
-            config.AddCommand<AssignCommand>("assign").WithDescription("Assign a ticket to a user (assign <TICKET> <email or member name>), or reassign it: it is dispatched only on that login and waits for them while they are out of room; --unassign takes it off them, --redelegate hands it on like an unassigned ticket.");
             config.AddCommand<DaemonCommand>("daemon").WithDescription("Keep the budget file, pace and hooks fresh without the dashboard open.");
             config.AddCommand<SettingsCommand>("settings").WithDescription("Show or change scheduler settings.");
             config.AddCommand<AuditCommand>("audit").WithDescription("Find drift in shared agent files and code duplicated across repos.");
-            config.AddCommand<BlockCommand>("block").WithDescription("Make a ticket wait for others (--by X-T1), or --clear it.");
             config.AddCommand<NextCommand>("next").WithDescription("The next tickets a CLI running /allocate hands its subagents, each with its model (--claim: worktree, assignment and prompt).");
             config.AddCommand<ReviewCommand>("review").WithDescription("From a Sonnet ticket's worktree: its one Opus review of the diff before it lands, when the diff is big or touches risky files (--dry-run only says).");
-            config.AddCommand<ApproveCommand>("approve").WithDescription("Approve tickets for work (fixes need none); with no ids, list what's waiting for your yes. --undo takes it back.");
-            config.AddCommand<ReserveCommand>("reserve").WithDescription("Set aside tokens for a ticket so background work can't spend them first (0 releases).");
             config.AddCommand<DryRunCommand>("dryrun").WithDescription("Show what /allocate would start right now, without starting anything.");
-            config.AddCommand<ShowCommand>("show").WithDescription("A ticket end to end: its row, the sessions that worked on it, and its commits (--diff for the full diff).");
-            config.AddCommand<HygieneCommand>("hygiene").WithDescription("Closed tickets that may not be done: no Ref cited, or a later ticket says it came back.");
-            config.AddCommand<IntakeCommand>("intake").WithDescription("File GitHub issues labelled orchestrator and CI failures on main as tickets (--dry-run to preview).");
+            config.AddCommand<ShowCommand>("show").WithDescription("The sessions the orchestrator ran on a ticket (the ticket itself, its history and commits: tickets ticket show).");
             config.AddCommand<UsageReportCommand>("report").WithDescription("The usage report: every member's 5-hour and weekly use and resets, points left to the weekly target, how old each reading is and whether it's accurate; --detail adds the CLIs' spend against outside use and the API key's; --since <date>, --csv, --json; --md/--html <file> write it to share.");
             config.AddCommand<ReportCommand>("tokens").WithDescription("Uncached tokens by week, repo, provider and ticket type, and cost per completed ticket by model; --csv writes it out (was report before M.ORCH-T685).");
             config.AddCommand<BillingCommand>("billing").WithDescription("Who every CLI bills (Claude Team or the Vault's API key) and each open CLI's own billing; team or api switches every CLI.");
@@ -424,7 +417,7 @@ internal sealed class BudgetCommand : Command<BudgetCommand.Settings>
         }
         if (settings.Target is < 1 or > 100) { AnsiConsole.MarkupLine("[red]--target is a percent from 1 to 100.[/]"); return 1; }
         if (settings.Warn is < 1 or > 100) { AnsiConsole.MarkupLine("[red]--warn is a percent from 1 to 100.[/]"); return 1; }
-        // Token counts read as the README, the Settings panel and `reserve` take them: 20M, 500k, 1.5B, or a plain number.
+        // Token counts read as the README and the Settings panel take them: 20M, 500k, 1.5B, or a plain number.
         long? blockTokens = null, weeklyTokens = null;
         if (settings.Block is { } bt) { if (!TokenText.TryParse(bt, out var v)) { AnsiConsole.MarkupLine("[red]--block: a number like 20M, 500k or 0.[/]"); return 1; } blockTokens = v; }
         if (settings.Weekly is { } wt) { if (!TokenText.TryParse(wt, out var v)) { AnsiConsole.MarkupLine("[red]--weekly: a number like 150M, 500k or 0.[/]"); return 1; } weeklyTokens = v; }

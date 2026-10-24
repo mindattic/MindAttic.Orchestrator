@@ -48,10 +48,10 @@ public sealed class TicketsDesktopTests
             Does.Contain("OpenInTicketsCommand"));
 
         var links = doc.Descendants(p + "Hyperlink").Where(h => (string?)h.Attribute("Style") == "{StaticResource TicketLink}").ToList();
-        // The per-user Tickets view's ticket (M.ORCH-T668), a finished ticket and an agent's ticket snippet (M.ORCH-T763); the
-        // Repos and Queue views' links went with them to Tickets Desktop.
+        // The per-user Tickets view's ticket (M.ORCH-T668), its title and its Assign in Tickets (M.ORCH-T762), a finished ticket and
+        // an agent's ticket snippet (M.ORCH-T763); the Repos and Queue views' links went with them to Tickets Desktop.
         Assert.That(links.Select(h => (string)h.Attribute("CommandParameter")!),
-            Is.EquivalentTo(new[] { "{Binding Id}", "{Binding TicketId}", "{Binding TicketId}" }));
+            Is.EquivalentTo(new[] { "{Binding Id}", "{Binding Id}", "{Binding Id}", "{Binding TicketId}", "{Binding TicketId}" }));
         var snippet = doc.Descendants().Single(e => (string?)e.Attribute(x + "Name") == "AgentTicketSnippet");
         Assert.That(snippet.Element(p + "Hyperlink")!.Element(p + "Run")!.Attribute("Text")!.Value, Is.EqualTo("{Binding Headline, Mode=OneWay}"),
             "the snippet (id and title) is the link itself");
@@ -61,8 +61,27 @@ public sealed class TicketsDesktopTests
 
         // No ticket id left as plain text: a Run or TextBlock bound to an id outside a link.
         var plain = doc.Descendants().Where(e => e.Name == p + "Run" || e.Name == p + "TextBlock")
-            .Where(e => (string?)e.Attribute("Text") is { } t && (t.StartsWith("{Binding Id") || t.StartsWith("{Binding TicketId")))
-            .Where(e => e.Parent?.Name != p + "Hyperlink");
-        Assert.That(plain, Is.Empty);
+            .Where(e => (string?)e.Attribute("Text") is { } t && (t.StartsWith("{Binding Id") || t.StartsWith("{Binding TicketId") || t.StartsWith("{Binding Summary")))
+            .Where(e => e.Parent?.Name != p + "Hyperlink")
+            // An organization's summary isn't a ticket's.
+            .Where(e => e.Ancestors(p + "DataTemplate").FirstOrDefault()?.Attribute("DataType")?.Value.Contains("OrgViewModel") != true);
+        Assert.That(plain, Is.Empty, "no ticket id or title left as plain text");
+        // Free text that names tickets (the dashboard's message, a status, a held note, a CLI's claims) links each id it names.
+        Assert.That(doc.Descendants(p + "TextBlock").Count(e => e.Attribute(XName.Get("{clr-namespace:MindAttic.Orchestrator.Wpf}TicketText.Text")) is not null),
+            Is.GreaterThanOrEqualTo(4));
+    }
+
+    [Test]
+    public void Every_ticket_id_in_a_line_of_text_is_found_for_its_link()
+    {
+        var parts = TicketsDesktop.Split("M.ORCH-T5 waits for AUT-T12, (U.SPC-T3). Not MAO-12, x-t1 or ABC-T4x.");
+        Assert.That(parts.Where(s => s.TicketId is not null).Select(s => s.TicketId), Is.EqualTo(new[] { "M.ORCH-T5", "AUT-T12", "U.SPC-T3" }));
+        Assert.That(string.Concat(parts.Select(s => s.Text)), Is.EqualTo("M.ORCH-T5 waits for AUT-T12, (U.SPC-T3). Not MAO-12, x-t1 or ABC-T4x."), "nothing lost");
+        Assert.That(TicketsDesktop.Split(null), Is.Empty);
+        Assert.That(TicketsDesktop.Split("no tickets").Single(), Is.EqualTo(new TicketsDesktop.Segment("no tickets", null)));
+
+        Assert.That(TicketsDesktop.OnlyTicketIn("Needs you: M.ORCH-T5 waits for your approval (tickets ticket approve M.ORCH-T5)"), Is.EqualTo("M.ORCH-T5"));
+        Assert.That(TicketsDesktop.OnlyTicketIn("A-T1 and A-T2"), Is.Null, "two tickets: no one to open");
+        Assert.That(TicketsDesktop.OnlyTicketIn("pacing"), Is.Null);
     }
 }

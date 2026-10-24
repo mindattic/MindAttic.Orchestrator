@@ -43,7 +43,7 @@ public sealed class UnderTargetTests
         Assert.That(Check(u, Snap(End.AddMinutes(-61), 60, repos), clis: clis).Line, Is.Null, "not before the hour");
         var hour = Check(u, Snap(End.AddMinutes(-59), 60, repos), clis: clis).Line;
         Assert.That(hour, Does.Contain("on course to end at 60%, below 90%: 30% of the window (about 3M tokens) would go unused"));
-        Assert.That(hour, Does.Contain("2 wait for your approval (A-T1, A-T2: orchestrator approve <ID>)"));
+        Assert.That(hour, Does.Contain("2 wait for your approval (A-T1, A-T2: tickets ticket approve <ID>)"));
         Assert.That(hour, Does.Contain("/allocate is on in CLI 42 for B"));
         Assert.That(Check(u, Snap(End.AddMinutes(-45), 60, repos), clis: clis).Line, Is.Null, "the hour's mark is said once");
         Assert.That(Check(u, Snap(End.AddMinutes(-30), 62, repos), clis: clis).Line, Does.Contain("on course to end at 62%"));
@@ -70,11 +70,12 @@ public sealed class UnderTargetTests
         Assert.That(Check(new UnderTarget(), Snap(at, 50, Repo("A", RepoState.Dormant, T("A-T1")))).Line,
             Does.Contain("No ticket waits for your approval, and no CLI has one it could work"));
         // An approved ticket is work; one blocked by another open ticket isn't.
-        var s = new OrchestratorSettings { BlockedBy = new() { ["A-T2"] = ["C-T1"] } };
-        var blocked = Snap(at, 50, Repo("A", RepoState.Waiting, T("A-T2", "feature")), Repo("C", RepoState.Dormant, T("C-T1", "feature")))
+        // Blocked in the ticket database: a 'requires' link (tickets ticket block, M.ORCH-T762).
+        var free = Snap(at, 50, Repo("A", RepoState.Waiting, T("A-T2", "feature")), Repo("C", RepoState.Dormant, T("C-T1", "feature")))
             with { Approved = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "A-T2" } };
-        Assert.That(Check(new UnderTarget(), blocked, s).Line, Does.Contain("1 waits for your approval (C-T1"));
-        Assert.That(Check(new UnderTarget(), blocked).Line, Is.Null);
+        var blocked = free with { Requires = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase) { ["A-T2"] = ["C-T1"] } };
+        Assert.That(Check(new UnderTarget(), blocked).Line, Does.Contain("1 waits for your approval (C-T1"));
+        Assert.That(Check(new UnderTarget(), free).Line, Is.Null);
     }
 
     [Test]
@@ -157,7 +158,7 @@ public sealed class UnderTargetTests
         var early = Snap(End.AddHours(-4), 65, repos);
         var line = u.CheckNoWork(early, Plan(early), clis);
         Assert.That(line, Does.StartWith("On course for 65%: no workable tickets left; approve some?"));
-        Assert.That(line, Does.Contain("1 waits for your approval there (A-T1: orchestrator approve <ID>)").And.Contain("1 more in repos no /allocate works"));
+        Assert.That(line, Does.Contain("1 waits for your approval there (A-T1: tickets ticket approve <ID>)").And.Contain("1 more in repos no /allocate works"));
         Assert.That(line, Does.Not.Contain("B-T1"), "B's fix isn't /allocate's: its repos aren't widened");
         Assert.That(UnderTarget.NoWorkLine(early, Plan(early), clis), Is.EqualTo(line), "the dashboard says the same");
 

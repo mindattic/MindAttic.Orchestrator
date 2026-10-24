@@ -259,7 +259,7 @@ public sealed class AllocateTests
 
         var (waiting, whyWaiting) = Allocate.Next(Scheduler.Plan(Snap(("C", [new Ticket("C-T1", "2026-10-01", "chore", "open", "x", "")])), new(), []),
             settings, store, ["C"], null, claim: false, Now, Make, _ => "main");
-        Assert.That((waiting.Count, whyWaiting), Is.EqualTo((0, "none left that may be worked: 1 wait for your approval (orchestrator approve)")));
+        Assert.That((waiting.Count, whyWaiting), Is.EqualTo((0, "none left that may be worked: 1 wait for your approval (tickets ticket approve)")));
 
         var stopped = Planned() with { Pace = Planned().Pace! with { Stop = true } };
         Assert.That(Allocate.Next(stopped, settings, store, ["*"], null, claim: false, Now, Make, _ => "main").Why, Does.Contain("at its target"));
@@ -841,8 +841,10 @@ public sealed class AllocateTests
         var snap = Snap(("A", [T("A-T1")]), ("B", [T("B-T1")])) with
         {
             Pace = new Pace(PaceMode.Open, 6, 10_000, 0, 1_000, "5-hour", Now.AddHours(3), "On pace.") { SpareSessions = 5, RoomTokens = 3_000 },
+            // Reserved in the ticket database (tickets ticket reserve, M.ORCH-T762).
+            Reservations = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase) { ["B-T1"] = 2_000 },
         };
-        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT", Reservations = new() { ["B-T1"] = 2_000 } };
+        var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
         var plan = Scheduler.Plan(snap, settings, []);
         plan = plan with { Queue = [.. plan.Queue.Select(q => q.Id == "A-T1" ? q with { Estimate = new CostEstimate(1_500, 3, "fixes") } : q)] };
         (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");

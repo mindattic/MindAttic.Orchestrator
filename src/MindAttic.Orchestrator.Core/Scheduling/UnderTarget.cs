@@ -72,7 +72,7 @@ public sealed class UnderTarget
         var approval = waiting == 0
             ? $"No ticket waits for your approval, and no CLI has one {none}"
             : $"No CLI has a ticket {none}; {waiting} wait{(waiting == 1 ? "s" : "")} for your approval " +
-              $"({Ids(plan.AwaitingApproval)}: orchestrator approve <ID>)";
+              $"({Ids(plan.AwaitingApproval)}: tickets ticket approve <ID>)";
         if (big.Count > 0)
             approval += $". {big.Count} ({Ids(big)}) {(big.Count == 1 ? "is" : "are")} estimated past what's left before the reset, " +
                         $"so allocate won't start {(big.Count == 1 ? "it" : "them")}: a person in an open CLI still can, or split {(big.Count == 1 ? "it" : "them")}";
@@ -126,7 +126,7 @@ public sealed class UnderTarget
         var elsewhere = plan.AwaitingApproval.Count - theirs.Count;
         var repos = string.Join(", ", allocateed.Select(r => r == Allocate.AllRepos ? "every repo" : r));
         return $"On course for {projected:0}%: no workable tickets left; approve some? /allocate ({repos}) has nothing left to start" +
-               (theirs.Count > 0 ? $"; {theirs.Count} wait{(theirs.Count == 1 ? "s" : "")} for your approval there ({Ids(theirs)}: orchestrator approve <ID>)"
+               (theirs.Count > 0 ? $"; {theirs.Count} wait{(theirs.Count == 1 ? "s" : "")} for your approval there ({Ids(theirs)}: tickets ticket approve <ID>)"
                    : "; none waits for your approval there") +
                (elsewhere > 0 ? $"; {elsewhere} more in repos no /allocate works" : "") +
                ". Nothing is approved and no CLI's repos are widened for you.";

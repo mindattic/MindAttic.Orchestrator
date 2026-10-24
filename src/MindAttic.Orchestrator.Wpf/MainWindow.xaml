@@ -26,24 +26,25 @@
              so it reads as a link without colour), plus the command and tooltip. -->
         <Style x:Key="TicketLink" TargetType="Hyperlink" BasedOn="{StaticResource MaHyperlink}">
             <Setter Property="Command" Value="{Binding DataContext.OpenInTicketsCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
-            <Setter Property="ToolTip" Value="Open it in Tickets Desktop to view, approve, prioritize or close it" />
+            <Setter Property="ToolTip" Value="Open it in Tickets Desktop to view, approve, prioritize, assign, block or close it" />
         </Style>
 
-        <!-- A ticket on a person's Tickets view (M.ORCH-T668): who it's assigned to is the library's MaPicker (M.COMP-T52), which
-             assigns or reassigns it; while its user is out of room it says why it waits, with its Redelegate now. -->
+        <!-- A ticket on a person's Tickets view (M.ORCH-T668): who it's assigned to, with their status light; while its user is out
+             of room it says why it waits. Assigning, reassigning and "Redelegate now" are Tickets Desktop's (M.ORCH-T762): the
+             Assign in Tickets link, like the id and title, opens the ticket there. -->
         <DataTemplate x:Key="UserTicketTemplate" DataType="{x:Type vm:UserTicketRowViewModel}">
             <Border x:Name="UserTicketCard" Style="{StaticResource MaRowCard}">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-                        <Button x:Name="RedelegateButton" Style="{StaticResource MaButton}" Content="Redelegate now" Padding="12,4" Margin="0,0,8,0"
-                                Command="{Binding RedelegateCommand}" Visibility="{Binding IsWaiting, Converter={StaticResource Visible}}"
-                                ToolTip="Stop waiting for its user: hand it on like an unassigned ticket, to another user with room, else the API key"
-                                AutomationProperties.Name="{Binding Id, StringFormat='Redelegate {0} now'}" />
-                        <mc:MaPicker x:Name="AssigneePicker" Width="230" ItemsSource="{Binding People}" SelectedItem="{Binding Assignee, Mode=TwoWay}"
-                                     DisplayMemberPath="Name" StatusMemberPath="Status" StatusLabelMemberPath="StatusLabel" TrailingMemberPath="Trailing"
-                                     Placeholder="Unassigned" IsEnabled="{Binding CanAssign}"
-                                     ToolTip="Who it's assigned to: it's dispatched only on their login, and waits for them while they're out of room"
-                                     AutomationProperties.Name="{Binding Id, StringFormat='Who {0} is assigned to'}" />
+                        <mc:MaStatusLight x:Name="AssigneeLight" Status="{Binding Assignee.Status, TargetNullValue={x:Static mc:MaStatus.Other}}" Label="{Binding Assignee.StatusLabel}" Margin="0,0,6,0"
+                                          VerticalAlignment="Center" Visibility="{Binding IsPinned, Converter={StaticResource Visible}}" />
+                        <TextBlock x:Name="AssigneeText" Text="{Binding AssigneeText}" VerticalAlignment="Center" Margin="0,0,12,0"
+                                   ToolTip="Who it's assigned to: it's dispatched only on their login, and waits for them while they're out of room" />
+                        <TextBlock VerticalAlignment="Center">
+                            <Hyperlink x:Name="AssignInTickets" Style="{StaticResource TicketLink}" CommandParameter="{Binding Id}"
+                                       ToolTip="Assign, reassign or redelegate it in Tickets Desktop"
+                                       AutomationProperties.Name="{Binding Id, StringFormat='Assign {0} in Tickets Desktop'}"><Run Text="Assign in Tickets" /></Hyperlink>
+                        </TextBlock>
                     </StackPanel>
                     <StackPanel>
                         <TextBlock>
@@ -53,11 +54,15 @@
                             <Run Text="  " /><Run Text="{Binding Type, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
                             <Run Text="{Binding Priority, Mode=OneWay}" Foreground="{DynamicResource MaWarn}" FontWeight="SemiBold" />
                         </TextBlock>
-                        <TextBlock Text="{Binding Summary}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Summary}" Margin="0,4,0,0" />
+                        <TextBlock TextTrimming="CharacterEllipsis" ToolTip="{Binding Summary}" Margin="0,4,0,0">
+                            <!-- The title opens it too (M.ORCH-T762: every ticket id or title the dashboard shows links there). -->
+                            <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding Id}"
+                                       AutomationProperties.Name="{Binding Summary, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding Summary, Mode=OneWay}" /></Hyperlink>
+                        </TextBlock>
                         <!-- Its status, muted; while it waits for its user, in MaWarn and SemiBold (M.ORCH-T667: one line each,
-                             the other collapsed, so no style of the dashboard's own). -->
+                             the other collapsed, so no style of the dashboard's own). The ids it names link into Tickets Desktop. -->
                         <Grid x:Name="UserTicketStatus" Margin="0,4,0,0" Visibility="{Binding Status, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
-                            <TextBlock Text="{Binding Status}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
+                            <TextBlock local:TicketText.Text="{Binding Status}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
                                        Visibility="{Binding IsWaiting, Converter={x:Static vm:Converters.FalseToVisible}}" />
                             <TextBlock Text="{Binding Status}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}" TextWrapping="Wrap"
                                        Visibility="{Binding IsWaiting, Converter={StaticResource Visible}}" />
@@ -439,7 +444,8 @@
                         Visibility="{Binding HasHold, Converter={StaticResource Visible}}">
                     <TextBlock Text="{Binding Hold}" Foreground="{DynamicResource MaWarn}" TextWrapping="Wrap" />
                 </Border>
-                <TextBlock Text="{Binding QueueMessage}" Foreground="{DynamicResource MaFocus}" TextWrapping="Wrap" Margin="0,10,0,0"
+                <!-- Its ticket ids link into Tickets Desktop (M.ORCH-T762), as everywhere else. -->
+                <TextBlock local:TicketText.Text="{Binding QueueMessage}" Foreground="{DynamicResource MaFocus}" TextWrapping="Wrap" Margin="0,10,0,0"
                            Visibility="{Binding QueueMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
 
                 <TextBlock Text="{Binding RemindersTitle}" Style="{StaticResource MaSectionLabel}"
@@ -466,7 +472,7 @@
                                             ToolTip="git keeps the worktree if it has uncommitted changes; the branch is never deleted" />
                                     <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Padding="12,5" Margin="0,0,8,0"
                                             Content="Details" Command="{Binding DetailsCommand}"
-                                            ToolTip="The sessions that worked on it and the commits that mention it" />
+                                            ToolTip="The sessions that worked on it (its commits and history: open it in Tickets Desktop)" />
                                     <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0">
                                         <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding TicketId}"
                                                    AutomationProperties.Name="{Binding TicketId, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding TicketId, Mode=OneWay}" /></Hyperlink><Run Text="{Binding TextAfterId, Mode=OneWay}" />
@@ -549,10 +555,10 @@
                                                     ToolTip="Move this CLI to another signed-in login: its Launcher tab restarts it with claude --resume on that login at its next idle point, keeping its session"
                                                     AutomationProperties.Name="{Binding Repo, StringFormat='Move the {0} CLI to another login'}" />
                                         </StackPanel>
-                                        <TextBlock Text="{Binding HoldNote}" Foreground="{DynamicResource MaWarn}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
+                                        <TextBlock local:TicketText.Text="{Binding HoldNote}" Foreground="{DynamicResource MaWarn}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
                                                    Visibility="{Binding HoldNote, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                                        <!-- The tickets this CLI claimed, only its own (M.ORCH-T532). -->
-                                        <TextBlock Text="{Binding Claims}" Style="{StaticResource MaMutedText}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                        <!-- The tickets this CLI claimed, only its own (M.ORCH-T532), each a link into Tickets Desktop (M.ORCH-T762). -->
+                                        <TextBlock local:TicketText.Text="{Binding Claims}" Style="{StaticResource MaMutedText}" Margin="0,4,0,0" TextWrapping="Wrap"
                                                    Visibility="{Binding Claims, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
 
                                         <!-- Its subagents, inside it. -->
@@ -606,7 +612,7 @@
                      (M.ORCH-T754): the unassigned queue is the same hundreds of tickets on every tab. -->
                 <StackPanel x:Name="UserTickets" Margin="0,24,0,0" Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}">
                     <TextBlock Text="Tickets" Style="{StaticResource MaHeading}" />
-                    <TextBlock Text="Assign a ticket to a person and it's dispatched only on their login (next --claim, allocate and Start); while they're out of room it waits for them, and Redelegate now hands it on."
+                    <TextBlock Text="A ticket assigned to a person is dispatched only on their login (next --claim, allocate and Start); while they're out of room it waits for them. Assign, reassign or redelegate it in Tickets Desktop: every ticket here opens there."
                                Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
                     <TextBlock Text="{Binding AssignedHeader}" Style="{StaticResource MaSectionLabel}" />
                     <TextBlock Text="{Binding NoAssignedText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"

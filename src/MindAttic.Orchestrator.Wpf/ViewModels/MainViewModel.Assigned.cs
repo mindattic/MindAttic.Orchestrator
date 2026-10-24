@@ -38,8 +38,8 @@ public sealed class PersonOptionViewModel(string? email) : ObservableObject
 }
 
 /// <summary>A ticket on a user's Tickets view (M.ORCH-T668): one assigned to them, or one of the unassigned queue, with who
-/// it's assigned to (a picker that assigns or reassigns it) and, while its user is out of room, why it waits and its
-/// "Redelegate now".</summary>
+/// it's assigned to and, while its user is out of room, why it waits. The assignment is the ticket database's, read through the
+/// engine: assigning, reassigning and "Redelegate now" are done in Tickets Desktop, which the row's links open (M.ORCH-T762).</summary>
 public sealed class UserTicketRowViewModel : ObservableObject
 {
     private readonly MainViewModel owner;
@@ -52,7 +52,6 @@ public sealed class UserTicketRowViewModel : ObservableObject
         this.item = item;
         this.owner = owner;
         assignee = owner.OptionFor(item.Assignee);
-        RedelegateCommand = new RelayCommand(() => owner.Shown.RedelegateTicket(this.item.Id), () => IsWaiting && !IsMoving);
     }
 
     public string Id => item.Id;
@@ -60,28 +59,15 @@ public sealed class UserTicketRowViewModel : ObservableObject
     public string Type => item.Ticket.Type;
     public string Summary => item.Ticket.Summary;
     public string Priority => item.Priority == 0 ? "" : item.Priority.ToString("+#;-#");
-    public bool IsMoving => item.Moving is not null || PendingMoves.ForTicket(item.Id) is not null;
 
-    /// <summary>Off while a CLI moving to another login holds it (M.ORCH-T637).</summary>
-    public bool CanAssign => !IsMoving;
+    /// <summary>Who it's assigned to ("Unassigned" for nobody), with their room as a status light.</summary>
+    public PersonOptionViewModel Assignee => assignee;
 
-    /// <summary>Everyone a ticket can be assigned to on its tab, "Unassigned" first: the tab's org's people, the same options on
-    /// every row of the tab.</summary>
-    public ObservableCollection<PersonOptionViewModel> People => owner.People;
+    /// <summary>Assigned to someone: their status light shows.</summary>
+    public bool IsPinned => assignee.Email is not null;
 
-    /// <summary>Who it's assigned to. Choosing someone assigns it to them (or reassigns it); "Unassigned" takes it off them. A
-    /// choice cleared by the list changing under it (null) changes nothing.</summary>
-    public PersonOptionViewModel Assignee
-    {
-        get => assignee;
-        set
-        {
-            if (value is null || ReferenceEquals(value, assignee) || IsMoving) return;
-            assignee = value;
-            Raise();
-            owner.Shown.AssignTicket(item.Id, value.Email);
-        }
-    }
+    /// <summary>"Assigned to Ryan", or "Unassigned".</summary>
+    public string AssigneeText => assignee.Email is null ? "Unassigned" : $"Assigned to {assignee.Name}";
 
     /// <summary>"Waiting for Ryan: week at 97%" while its user is out of room and it isn't being worked; null otherwise.</summary>
     public string? Waiting => waiting;
@@ -97,8 +83,6 @@ public sealed class UserTicketRowViewModel : ObservableObject
         _ => item.Estimate is { } e ? $"~{Formatting.Tokens(e.Fresh)}" : "",
     };
 
-    public ICommand RedelegateCommand { get; }
-
     public void Update(QueueItem next)
     {
         item = next;
@@ -111,9 +95,9 @@ public sealed class UserTicketRowViewModel : ObservableObject
 
 /// <summary>
 /// Tickets per user (M.ORCH-T668): under each person's open CLIs, their Tickets view lists the tickets assigned to them and the
-/// unassigned queue, each with a picker (the library's MaPicker, M.COMP-T52) to assign it or reassign it to another user. An
-/// assignment is a pin (<see cref="TicketPins"/>): it's dispatched only on its user's login, and while they're out of room it
-/// waits for them, its card saying why, until its "Redelegate now" hands it on like an unassigned ticket.
+/// unassigned queue, each saying who has it. An assignment is a pin (<see cref="TicketPins"/>): it's dispatched only on its user's
+/// login, and while they're out of room it waits for them, its card saying why. The assignment itself is made, changed or dropped
+/// in Tickets Desktop (M.ORCH-T762), which every ticket here links to.
 /// </summary>
 public sealed partial class MainViewModel
 {
@@ -143,7 +127,7 @@ public sealed partial class MainViewModel
 
     public string AssignedHeader => $"ASSIGNED TO {LoginName.ToUpperInvariant()} · {AssignedTickets.Count}";
     public string UnassignedHeader => $"UNASSIGNED · {UnassignedTickets.Count}";
-    public string NoAssignedText => $"Nothing is assigned to {LoginName}. Pick them in a ticket's Assigned to below: it's then dispatched only on their login.";
+    public string NoAssignedText => $"Nothing is assigned to {LoginName}. Assign a ticket to them in Tickets Desktop (Assign in Tickets below): it's then dispatched only on their login.";
 
     /// <summary>The option for <paramref name="email"/>: its person's, or one made for an assignee with no tab here (named by their
     /// email); "Unassigned" for null.</summary>
@@ -201,30 +185,4 @@ public sealed partial class MainViewModel
                 t.Raise(name);
         }
     }
-
-    /// <summary>Assigns ticket <paramref name="ticketId"/> to the user signed in as <paramref name="email"/>, or reassigns it;
-    /// null takes it off them. Its login is recorded, and it's dispatched only there from now on.</summary>
-    public void AssignTicket(string ticketId, string? email) => Guarded("Assign", () =>
-    {
-        if (Locked(ticketId)) return;
-        var change = email is null ? TicketPins.Unassign(store, ticketId) : TicketPins.Assign(store, ticketId, email);
-        QueueMessage = change.Text;
-        queueLog.Information("{Line:l}", change.Text);
-        NoteLocalChange();
-        if (full is not null) Root.ApplyPlan(full);
-    });
-
-    /// <summary>"Redelegate now" on a pinned ticket waiting for its user: the pin goes, and it's handed on like an unassigned ticket
-    /// (another user with room, else the API key).</summary>
-    public void RedelegateTicket(string ticketId) => Guarded("Redelegate", () =>
-    {
-        if (Locked(ticketId)) return;
-        var change = TicketPins.Redelegate(store, ticketId);
-        QueueMessage = change.From is { } from
-            ? $"{change.TicketId} no longer waits for {NameOf(from)}: it's handed on like an unassigned ticket, to another user with room, else the API key."
-            : change.Text;
-        queueLog.Information("Redelegated {Ticket:l} from {From:l}", change.TicketId, change.From ?? "nobody");
-        NoteLocalChange();
-        if (full is not null) Root.ApplyPlan(full);
-    });
 }

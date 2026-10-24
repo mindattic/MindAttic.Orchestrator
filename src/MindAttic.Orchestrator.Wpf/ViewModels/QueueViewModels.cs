@@ -5,7 +5,8 @@ using MindAttic.Orchestrator.Settings;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
-/// <summary>One ticket in the cross-repo queue.</summary>
+/// <summary>One ticket in the cross-repo queue. Its id and title open it in Tickets Desktop, where it's approved, prioritized,
+/// assigned or blocked (M.ORCH-T762): the row only runs work (Start, Release).</summary>
 public sealed class QueueRowViewModel : ObservableObject
 {
     private QueueItem item;
@@ -19,8 +20,6 @@ public sealed class QueueRowViewModel : ObservableObject
     {
         this.item = item;
         StartCommand = new RelayCommand(() => owner.Shown.Dispatch(this.item, this.proposal?.UseWorktree ?? this.item.NeedsWorktree), () => !this.item.IsAssigned && this.item.MayWork && !owner.IsStarting(this.item.Id) && !IsMoving);
-        UpCommand = new RelayCommand(() => owner.Shown.Bump(this.item.Id, +1), () => !IsMoving);
-        DownCommand = new RelayCommand(() => owner.Shown.Bump(this.item.Id, -1), () => !IsMoving);
         ReleaseCommand = new RelayCommand(() => owner.Shown.Release(this.item.Id), () => this.item.IsAssigned && !IsMoving);
     }
 
@@ -61,8 +60,6 @@ public sealed class QueueRowViewModel : ObservableObject
     };
 
     public ICommand StartCommand { get; }
-    public ICommand UpCommand { get; }
-    public ICommand DownCommand { get; }
     public ICommand ReleaseCommand { get; }
 
     public void Update(QueueItem next, int nextRank, Proposal? nextProposal, string? nextDelegation = null)

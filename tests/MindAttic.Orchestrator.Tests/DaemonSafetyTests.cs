@@ -392,7 +392,7 @@ public sealed class DaemonSafetyTests
         Assert.That(output, Is.EqualTo("gh took over 60s; stopped it"));
         Assert.That(runner.Calls.Single().File, Is.EqualTo("gh"));
         Assert.That(runner.Calls.Single().Args, Is.EqualTo(new[] { "issue", "list" }));
-        Assert.That(GitHubIntake.Find("o/r", a => GitHubIntake.Gh(runner, TimeSpan.FromSeconds(60), a), DateTime.UtcNow), Is.Empty,
+        Assert.That(MindAttic.Tickets.Repos.GitHubIntake.Find("o/r", a => GitHubIntake.Gh(runner, TimeSpan.FromSeconds(60), a), DateTime.UtcNow), Is.Empty,
             "a killed call files nothing");
     }
 

@@ -5,73 +5,25 @@ using MindAttic.Orchestrator.Settings;
 namespace MindAttic.Orchestrator.Scheduling;
 
 /// <summary>
-/// Tickets assigned to a user (M.ORCH-T668). Assigning a ticket (or reassigning it to another user) records that user's login,
-/// by its account email, in <see cref="OrchestratorSettings.Assignees"/>; from then on it's a pin: <c>orchestrator next --claim</c>
+/// Tickets assigned to a user (M.ORCH-T668). The assignment lives in the ticket database (<c>ticket_work</c>), where
+/// <c>tickets ticket assign</c> and Tickets Desktop set, change or drop it ("Redelegate now" is <c>--redelegate</c> there), read here
+/// through the engine into <see cref="Snapshot.Assignees"/> (M.ORCH-T762). An assigned ticket is a pin: <c>orchestrator next --claim</c>
 /// hands it only to a CLI on that login (<see cref="MayTake"/>), Start opens its CLI only on that login, and its claim or tab's
 /// <see cref="Assignment.Account"/> says so. While its user is out of room (<see cref="OutOfRoom"/>) it waits for them, its
 /// card saying why ("Waiting for Ryan: week at 97%"), and the weekly-aware pacing's redelegation (M.ORCH-T666) leaves it alone
-/// (<see cref="Redelegable"/>), unless "Redelegate now" (<see cref="Redelegate"/>) drops the pin, so it's handed on like any
-/// unassigned ticket: to another user with room, else the API key. An unassigned ticket keeps that redelegation.
+/// (<see cref="Redelegable"/>) until the pin is dropped in Tickets, so it's handed on like any unassigned ticket: to another user
+/// with room, else the API key. An unassigned ticket keeps that redelegation.
 /// </summary>
 public static class TicketPins
 {
-    /// <summary>A change to a ticket's assignment: who it was assigned to before and who it is now (null: nobody).</summary>
-    public sealed record Change(string TicketId, string? From, string? To)
-    {
-        /// <summary>What it did, in words, by the users' emails.</summary>
-        public string Text => (From, To) switch
-        {
-            (null, null) => $"{TicketId} wasn't assigned to anyone.",
-            (null, { } to) => $"{TicketId} is assigned to {to}: it's dispatched only on that login.",
-            ({ } from, null) => $"{TicketId} is no longer assigned to {from}: it's handed out like any unassigned ticket.",
-            ({ } from, { } to) when from == to => $"{TicketId} was already assigned to {to}.",
-            ({ } from, { } to) => $"{TicketId} is reassigned from {from} to {to}: it's dispatched only on {to}'s login.",
-        };
-    }
-
-    /// <summary>The assignments in <paramref name="settings"/>, ticket id (any case) → the user's normalized email; an entry
-    /// whose email isn't one is left out.</summary>
-    public static IReadOnlyDictionary<string, string> Assignees(OrchestratorSettings settings)
+    /// <summary>The assignments in <paramref name="snapshot"/> (the ticket database's), ticket id (any case) → the user's
+    /// normalized email; an entry whose email isn't one is left out.</summary>
+    public static IReadOnlyDictionary<string, string> Assignees(Snapshot snapshot)
     {
         var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (id, email) in settings.Assignees)
+        foreach (var (id, email) in snapshot.Assignees)
             if (AccountDirs.Normalize(email) is { } e) map[id.Trim()] = e;
         return map;
-    }
-
-    /// <summary>Who ticket <paramref name="ticketId"/> is assigned to, or null.</summary>
-    public static string? AssigneeOf(OrchestratorSettings settings, string ticketId) => Assignees(settings).GetValueOrDefault(ticketId.Trim());
-
-    /// <summary>Assigns ticket <paramref name="ticketId"/> to the user signed in as <paramref name="email"/>, or reassigns it from
-    /// whoever had it: records their login, in one write so another process's change isn't lost. Throws
-    /// <see cref="ArgumentException"/> when <paramref name="email"/> isn't an email address.</summary>
-    public static Change Assign(JsonStore store, string ticketId, string email)
-    {
-        var to = AccountDirs.Normalize(email) ?? throw new ArgumentException($"\"{email}\" isn't an email address.", nameof(email));
-        return Set(store, ticketId, to);
-    }
-
-    /// <summary>Takes ticket <paramref name="ticketId"/> off whoever it was assigned to.</summary>
-    public static Change Unassign(JsonStore store, string ticketId) => Set(store, ticketId, null);
-
-    /// <summary>"Redelegate now" on a pinned ticket waiting for its user: the pin is dropped, so it's handed on like an unassigned
-    /// ticket (another user with room, else the API key), and the pacing's redelegation may move it again.</summary>
-    public static Change Redelegate(JsonStore store, string ticketId) => Set(store, ticketId, null);
-
-    private static Change Set(JsonStore store, string ticketId, string? to)
-    {
-        var id = ticketId.Trim().ToUpperInvariant();
-        string? from = null;
-        store.Update<OrchestratorSettings>(JsonStore.SettingsName, s =>
-        {
-            foreach (var key in s.Assignees.Keys.Where(k => k.Trim().Equals(id, StringComparison.OrdinalIgnoreCase)).ToList())
-            {
-                from ??= AccountDirs.Normalize(s.Assignees[key]);
-                s.Assignees.Remove(key);
-            }
-            if (to is not null) s.Assignees[id] = to;
-        });
-        return new Change(id, from, to);
     }
 
     /// <summary>Whether two logins are the same account, by email whatever its case; false when either isn't known.</summary>
