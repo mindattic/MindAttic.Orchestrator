@@ -58,9 +58,10 @@ public sealed class LeaseTests
         var path = Path.Combine(dir, "v3.db");
         var store = new JsonStore(dir, new OrchestratorDb(path));
         store.SaveSettings(new OrchestratorSettings { BlockBudget = 1234 });
-        // Back to how a version-3 database was: no step-4 tables.
+        // Back to how a version-3 database was: no step-4 tables. DropStep7's chain (which undoes gate_events.account, step
+        // 14) runs before the tables it touches are dropped outright, or its ALTER would find no table left to alter.
         using (var connection = store.Db.Open())
-            OrchestratorDb.Execute(connection, "DROP TABLE leases; DROP TABLE gate_events; DROP TABLE subagent_slots; DROP TABLE subagent_wants; DROP TABLE cli_marks; DROP TABLE session_states; " + DropStep7 + " PRAGMA user_version = 3;");
+            OrchestratorDb.Execute(connection, DropStep7 + "DROP TABLE leases; DROP TABLE gate_events; DROP TABLE subagent_slots; DROP TABLE subagent_wants; DROP TABLE cli_marks; DROP TABLE session_states; PRAGMA user_version = 3;");
 
         using (var connection = new OrchestratorDb(path).Open())
         {
@@ -77,8 +78,13 @@ public sealed class LeaseTests
     /// <summary>Undoes step 7 (M.ORCH-T532's claimer columns), so an older version's steps run again from there.</summary>
     private const string DropStep7 = DropStep10 + "ALTER TABLE assignments DROP COLUMN cli; ALTER TABLE assignments DROP COLUMN cli_session;";
 
+    /// <summary>Undoes step 15 (M.ORCH-T774's gate_events.account). Step 14 (M.ORCH-T779's Autopilot-to-Allocate rename) has no
+    /// column or table of its own to drop, so it isn't part of this chain: replaying it against an older schema it was never
+    /// meant for (cli_marks dropped and recreated, settings never touched) is harmless.</summary>
+    internal const string DropStep15 = "ALTER TABLE gate_events DROP COLUMN account; ";
+
     /// <summary>Undoes step 13 (M.ORCH-T655's organizations and org_members).</summary>
-    internal const string DropStep13 = "DROP TABLE org_members; DROP TABLE organizations; ";
+    internal const string DropStep13 = DropStep15 + "DROP TABLE org_members; DROP TABLE organizations; ";
 
     /// <summary>Undoes steps 12 (M.ORCH-T668's assignments.account) and later.</summary>
     internal const string DropStep12 = DropStep13 + "ALTER TABLE assignments DROP COLUMN account; ";
@@ -131,7 +137,7 @@ public sealed class LeaseTests
             command.CommandText = "SELECT count(*) FROM pragma_table_info('cli_marks') WHERE name = 'since';";
             Assert.That(command.ExecuteScalar(), Is.EqualTo(1L), "step 9 (M.ORCH-T558): when each CLI's mark was first written");
         }
-        Assert.That(OrchestratorDb.Version, Is.EqualTo(14), "step 8 (M.ORCH-T528) adds session_states, step 9 (M.ORCH-T558) cli_marks.since, step 10 (M.ORCH-T563) the models, step 11 (M.ORCH-T670) the members, step 12 (M.ORCH-T668) assignments.account, step 13 (M.ORCH-T655) the organizations, step 14 (M.ORCH-T779) renames the Autopilot cli_marks kinds and settings to Allocate");
+        Assert.That(OrchestratorDb.Version, Is.EqualTo(15), "step 8 (M.ORCH-T528) adds session_states, step 9 (M.ORCH-T558) cli_marks.since, step 10 (M.ORCH-T563) the models, step 11 (M.ORCH-T670) the members, step 12 (M.ORCH-T668) assignments.account, step 13 (M.ORCH-T655) the organizations, step 14 (M.ORCH-T779) renames the Autopilot cli_marks kinds and settings to Allocate, step 15 (M.ORCH-T774) gate_events.account");
         Assert.That(new JsonStore(dir, new OrchestratorDb(path)).LoadSettings().BlockBudget, Is.EqualTo(5555), "what it held is kept");
     }
 

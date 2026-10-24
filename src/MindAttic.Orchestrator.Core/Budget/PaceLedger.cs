@@ -23,7 +23,11 @@ public sealed record MeterGap(DateTime FromUtc, DateTime ToUtc, long Fresh)
 }
 
 /// <summary>One line of the pace gate's event log (<c>pace-gate.jsonl</c>): a held tool call, a refusal at the stop, or a typed prompt answered at the stop.</summary>
-public sealed record GateEvent(DateTime AtUtc, string Decision, double HeldSeconds, string? Tool)
+/// <param name="Account">The Claude login the gate ran for (M.ORCH-T774), as the hooks' own <c>account()</c> names it; null
+/// for an event logged before this was kept, or whose account couldn't be told. A per-CLI login's own window
+/// (<see cref="PaceLedgerWatch"/>) only counts events tagged with its account, or untagged ones (a window graded without an
+/// account keeps every event, as before).</param>
+public sealed record GateEvent(DateTime AtUtc, string Decision, double HeldSeconds, string? Tool, string? Account = null)
 {
     /// <summary><see cref="Exempt"/>: a call let straight through because its turn (or Skill) is an exempt command (M.ORCH-T198).</summary>
     public const string Held = "held", Refused = "refused", PromptAnswered = "prompt-answered", Exempt = "exempt";
@@ -99,7 +103,10 @@ public static class PaceLedger
         }
         var hit = hits.Where(h => h.Kind == LimitKind.Session && (Near(h.ResetUtc, endUtc) || h.HitUtc >= start && h.HitUtc < endUtc)).MinBy(h => h.HitUtc);
         var weekly = hits.Where(h => h.Kind == LimitKind.Weekly && h.HitUtc >= start && h.HitUtc < endUtc).MinBy(h => h.HitUtc);
-        var gate = events.Where(e => e.AtUtc >= start && e.AtUtc < endUtc).ToList();
+        // A per-CLI login's window only counts the gate's own events for its account (M.ORCH-T774): the gate log is one shared
+        // table for every CLI on the machine, so another account's holds and refusals mustn't be counted as this one's. An
+        // event logged before the gate tagged them (or that couldn't be tagged) still counts everywhere, as before.
+        var gate = events.Where(e => e.AtUtc >= start && e.AtUtc < endUtc && (owner is null || e.Account is null || e.Account == owner)).ToList();
 
         double? peak = mine.Count == 0 ? null : mine.Max(s => s.Percent);
         double? final = mine.Count == 0 ? null : mine[^1].Percent;
@@ -215,7 +222,8 @@ public static class PaceLedger
                 events.Add(new GateEvent(at,
                     r.TryGetProperty("decision", out var d) ? d.GetString() ?? "" : "",
                     r.TryGetProperty("held", out var h) && h.ValueKind == JsonValueKind.Number ? h.GetDouble() : 0,
-                    r.TryGetProperty("tool", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null));
+                    r.TryGetProperty("tool", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null,
+                    r.TryGetProperty("account", out var ac) && ac.ValueKind == JsonValueKind.String ? ac.GetString() : null));
             }
             catch (JsonException) { }
         }

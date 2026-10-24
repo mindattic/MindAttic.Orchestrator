@@ -406,6 +406,13 @@ public sealed class OrchestratorDb(string path)
         DELETE FROM settings WHERE name = 'AllocateHandMinutes' AND EXISTS (SELECT 1 FROM settings WHERE name = 'AutopilotHandMinutes');
         UPDATE settings SET name = 'AllocateHandMinutes' WHERE name = 'AutopilotHandMinutes';
         """,
+        // 15: which Claude login each gate event was for (M.ORCH-T774): the gate log is one shared table for every CLI on the
+        // machine, so a per-CLI login's own window (PaceLedgerWatch.TickAccounts) couldn't tell its own held and refused calls
+        // from another account's and counted none at all, leaving its "closed over" tickets with no idea what the gate did
+        // around the window. Rows already there keep NULL (from before this was kept), which still counts everywhere, as before.
+        """
+        ALTER TABLE gate_events ADD COLUMN account TEXT;
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a

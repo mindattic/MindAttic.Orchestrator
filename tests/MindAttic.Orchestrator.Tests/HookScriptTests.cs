@@ -141,11 +141,11 @@ public sealed class HookScriptTests
         if (!File.Exists(db)) return [.. lines];
         using var connection = new MindAttic.Orchestrator.Settings.OrchestratorDb(db).Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT at, decision, held, tool, percent FROM gate_events ORDER BY id;";
+        command.CommandText = "SELECT at, decision, held, tool, percent, account FROM gate_events ORDER BY id;";
         using var r = command.ExecuteReader();
         string Json(int i) => r.IsDBNull(i) ? "null" : JsonSerializer.Serialize(r.GetValue(i));
         while (r.Read())
-            lines.Add($"{{\"at\": {Json(0)}, \"decision\": {Json(1)}, \"held\": {Json(2)}, \"tool\": {Json(3)}, \"percent\": {Json(4)}}}");
+            lines.Add($"{{\"at\": {Json(0)}, \"decision\": {Json(1)}, \"held\": {Json(2)}, \"tool\": {Json(3)}, \"percent\": {Json(4)}, \"account\": {Json(5)}}}");
         return [.. lines];
     }
 
@@ -2277,6 +2277,19 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void A_held_calls_gate_event_is_tagged_with_the_signed_in_account()
+    {
+        // M.ORCH-T774: a per-CLI login's own window can only tell its held and refused calls from another account's sharing
+        // the same machine-wide gate log once each event names the account it ran for.
+        SignedIn("""{"oauthAccount":{"accountUuid":"account-a","organizationUuid":"team"}}""");
+        StatusRow(new { pace_delay_seconds = 2 });
+        Assert.That(Gate(ReadCall).Took, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(1.9)));
+        var held = OrchDb.LoadGateEvents(DateTime.UtcNow.AddMinutes(-5)).Single();
+        Assert.That(held.Account, Is.EqualTo("account-a/team"));
+        Assert.That(GateLog().Single(), Does.Contain("\"account\": \"account-a/team\""));
+    }
+
+    [Test]
     public void A_hook_reading_while_a_write_holds_the_database_falls_back_to_the_file_and_its_event_is_read_in_later()
     {
         StatusRow(new { pace_delay_seconds = 0 }, DateTime.UtcNow.AddSeconds(-30));
@@ -2384,9 +2397,12 @@ public sealed class HookScriptTests
         {
             old.Open();
             // A version-4 database has step 3's assignments table, which step 6 adds the claiming CLI to (M.ORCH-T532), and step
-            // 2's ticket_costs, which step 10 adds the model to (M.ORCH-T563).
+            // 2's ticket_costs, which step 10 adds the model to (M.ORCH-T563); and step 4's gate_events, which step 14 adds the
+            // account to (M.ORCH-T774).
             MindAttic.Orchestrator.Settings.OrchestratorDb.Execute(old, "CREATE TABLE settings (name TEXT PRIMARY KEY, value TEXT NOT NULL); " +
-                "CREATE TABLE assignments (position INTEGER PRIMARY KEY, ticket_id TEXT); CREATE TABLE ticket_costs (session_id TEXT PRIMARY KEY); PRAGMA user_version = 4;");
+                "CREATE TABLE assignments (position INTEGER PRIMARY KEY, ticket_id TEXT); CREATE TABLE ticket_costs (session_id TEXT PRIMARY KEY); " +
+                "CREATE TABLE gate_events (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, decision TEXT NOT NULL, held REAL NOT NULL, tool TEXT, percent REAL); " +
+                "PRAGMA user_version = 4;");
         }
         Status(new { subagent_allowance = 2, subagents_running = 0 });
         Assert.That(Gate(new { tool_name = "Agent", tool_input = new { prompt = "x" } }).Took, Is.LessThan(TimeSpan.FromSeconds(10)));

@@ -854,10 +854,12 @@ public static class AgentGate
             except Exception:
                 return None
         GATE_LOG = Path.home() / ".claude" / "session-context" / "{{GateLogName}}"
-        def log_gate_event(at, decision, held, tool, percent):
+        def log_gate_event(at, decision, held, tool, percent, account=None):
             # One of the pace gate's events (a hold, a refusal, an exempt call, a prompt answered at the stop) for the pace
             # ledger (M.ORCH-T526): a row of the database's gate_events; appended to the old pace-gate.jsonl instead when the
             # database can't take it right now (held past a short wait, or from before the table), which the daemon reads in.
+            # Tagged with the Claude login it ran for (M.ORCH-T774), so a per-CLI login's own window counts only its own gate
+            # events, not another account's sharing the same machine-wide log.
             try:
                 import sqlite3
                 if os.path.isfile(ORCH_DB):
@@ -865,8 +867,8 @@ public static class AgentGate
                     try:
                         db = db_connect(2)
                         try:
-                            db.execute("INSERT INTO gate_events (at, decision, held, tool, percent) VALUES (?, ?, ?, ?, ?)",
-                                       (at, decision, float(held), tool, percent if isinstance(percent, (int, float)) else None))
+                            db.execute("INSERT INTO gate_events (at, decision, held, tool, percent, account) VALUES (?, ?, ?, ?, ?, ?)",
+                                       (at, decision, float(held), tool, percent if isinstance(percent, (int, float)) else None, account or None))
                             db.commit()
                             return
                         finally:
@@ -878,7 +880,7 @@ public static class AgentGate
             try:
                 GATE_LOG.parent.mkdir(parents=True, exist_ok=True)
                 with open(GATE_LOG, "a", encoding="utf-8") as log:
-                    log.write(json.dumps({"at": at, "decision": decision, "held": held, "tool": tool, "percent": percent}) + "\n")
+                    log.write(json.dumps({"at": at, "decision": decision, "held": held, "tool": tool, "percent": percent, "account": account}) + "\n")
             except Exception:
                 pass
         def state_tx(timeout=2, table="state"):
@@ -1865,7 +1867,7 @@ public static class AgentGate
         # so a window that went over can be traced to the calls around it.
         def gate_log(decision, held):
             try:
-                log_gate_event(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), decision, round(held, 1), tool, status().get("percent_used"))
+                log_gate_event(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), decision, round(held, 1), tool, status().get("percent_used"), account()[0] or None)
             except Exception:
                 pass
 
@@ -2774,7 +2776,7 @@ public static class AgentGate
                 limits = dict(limits, stop=True, percent_used=own[0], reset_time=reset_text(own[1]), stop_window=own[2])
             # So do the exempt commands (M.ORCH-T198): their turns skip every Orchestrator gate.
             if limits.get("stop") and not CONTROL.match((data.get("prompt") or "").strip()) and not exempt_prompt(data.get("prompt")):
-                log_gate_event(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "prompt-answered", 0, None, limits.get("percent_used"))
+                log_gate_event(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "prompt-answered", 0, None, limits.get("percent_used"), account()[0] or None)
                 print(json.dumps({"decision": "block", "reason": "Not sent, so no tokens were spent: the " + str(limits.get("stop_window") or "5-hour") + " window is at its target "
                     "(MindAttic.Orchestrator never lets it pass the limit). Typing works again when it resets at " +
                     str(limits.get("reset_time") or "the end of the window") + ". /allocate, /pacing and /goal clear still go through."}))
