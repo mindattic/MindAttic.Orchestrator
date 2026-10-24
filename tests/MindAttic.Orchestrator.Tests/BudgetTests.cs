@@ -36,7 +36,7 @@ public sealed class BudgetTests
         var s = BudgetCalculator.Compute(events, new OrchestratorSettings(), Day.AddHours(12), Day, TimeZoneInfo.Utc, reported: reported);
 
         Assert.That((s.BlockLimitSource, s.BlockLimit), Is.EqualTo((LimitSource.Reported, 9_600L)), "2,400 over 25%: a whole-percent report could be up to a point low, so the limit errs small");
-        Assert.That(s.BlockPercent, Is.EqualTo(31.25).Within(0.01), "Claude's 24% (taken as 25) plus what's been spent since it said so");
+        Assert.That(s.BlockPercent, Is.EqualTo(30.25).Within(0.01), "Claude's own 24% (not padded, M.ORCH-T788), plus the 600 since the hour-old report (M.ORCH-T783)");
         Assert.That(s.CurrentBlock!.EndUtc, Is.EqualTo(Day.AddHours(15 + 1.0 / 3)), "the reset Claude gave, not the estimate");
         Assert.That((s.WeeklyLimitSource, s.WeeklyLimit), Is.EqualTo((LimitSource.Reported, 22_352L)), "11,400 this week over 51%");
         Assert.That(s.WeekResetUtc, Is.EqualTo(Day.AddDays(2)));
@@ -55,7 +55,7 @@ public sealed class BudgetTests
         var s = BudgetCalculator.Compute(events, new OrchestratorSettings(), Day.AddHours(12), Day, TimeZoneInfo.Utc, reported: reported, reportedLimit: 10_000);
 
         Assert.That(s.BlockLimitSource, Is.EqualTo(LimitSource.Reported));
-        Assert.That(s.BlockPercent, Is.EqualTo(6).Within(0.01), "3% taken as 4%, plus 200 of 10,000 since: not the 92% the local tokens say");
+        Assert.That(s.BlockPercent, Is.EqualTo(5).Within(0.01), "Claude's own 3% (not padded, M.ORCH-T788), plus the 200 since the hour-old report: not the 92% the local tokens alone say");
     }
 
     [Test]

@@ -41,34 +41,52 @@ public sealed class BudgetReportedPathTests
     }
 
     [Test]
-    public void With_a_reported_limit_the_block_total_is_claudes_percent_plus_one_and_local_spend_since_the_report()
+    public void A_fresh_reported_limit_gives_exactly_claudes_percent_not_local_spend()
     {
-        // 9,000 local tokens before the report belong to what Claude's 30% already counts; 500 came after it.
+        // Reported at 11:00, now 11:01, well inside ReportFreshMinutes: 9,000 local tokens before the report, 500
+        // at 11:00:30 (after the report but still before now), neither moves it off Claude's own 30% (M.ORCH-T788).
+        var events = new[] { E(10.9, 9000), new UsageEvent(Day.AddHours(11).AddSeconds(30), new TokenUsage(0, 0, 1_000_000, 500)) };
+
+        var s = BudgetCalculator.Compute(events, new OrchestratorSettings(), Day.AddHours(11).AddMinutes(1), Day, TimeZoneInfo.Utc,
+            reported: Report(30, 15, 11), reportedLimit: 10_000);
+
+        Assert.That((s.BlockLimitSource, s.BlockLimit), Is.EqualTo((LimitSource.Reported, 10_000L)));
+        Assert.That(s.CurrentBlock!.Usage.Fresh, Is.EqualTo(3_000), "Claude's own 30% of 10,000, nothing added");
+        Assert.That(s.BlockPercent, Is.EqualTo(30).Within(0.001));
+        Assert.That(s.CurrentBlock.EndUtc, Is.EqualTo(Day.AddHours(15)), "the reset Claude gave");
+    }
+
+    [Test]
+    public void A_stale_reported_limit_adds_back_local_spend_since_the_report()
+    {
+        // Reported an hour ago, well past ReportFreshMinutes (nothing's redrawn claude-usage.json since): the hard
+        // cutoff can't stay blind to the 500 spent since, so it's added to Claude's own 30% (M.ORCH-T783, M.ORCH-T788).
         var events = new[] { E(10.2, 9000), E(11.5, 500) };
 
         var s = BudgetCalculator.Compute(events, new OrchestratorSettings(), Day.AddHours(12), Day, TimeZoneInfo.Utc,
             reported: Report(30, 15, 11), reportedLimit: 10_000);
 
         Assert.That((s.BlockLimitSource, s.BlockLimit), Is.EqualTo((LimitSource.Reported, 10_000L)));
-        Assert.That(s.CurrentBlock!.Usage.Fresh, Is.EqualTo(3_600), "31% of 10,000 plus the 500 since");
-        Assert.That(s.BlockPercent, Is.EqualTo(36).Within(0.001));
+        Assert.That(s.CurrentBlock!.Usage.Fresh, Is.EqualTo(3_500), "30% of 10,000 plus the 500 since, not padded by a point");
+        Assert.That(s.BlockPercent, Is.EqualTo(35).Within(0.001));
         Assert.That(s.CurrentBlock.EndUtc, Is.EqualTo(Day.AddHours(15)), "the reset Claude gave");
     }
 
     [Test]
-    public void The_widened_percent_never_passes_100()
+    public void The_percent_used_never_passes_100()
     {
         var s = BudgetCalculator.Compute([E(10.2, 100)], new OrchestratorSettings(), Day.AddHours(12), Day, TimeZoneInfo.Utc,
-            reported: Report(99.5, 15, 11), reportedLimit: 10_000);
+            reported: Report(101, 15, 11), reportedLimit: 10_000);
 
-        Assert.That(s.CurrentBlock!.Usage.Fresh, Is.EqualTo(10_000), "99.5% taken a point high caps at 100%");
+        Assert.That(s.CurrentBlock!.Usage.Fresh, Is.EqualTo(10_000), "101% (Claude's own, however it got above 100) still caps at 100%");
         Assert.That(s.BlockPercent, Is.EqualTo(100).Within(0.001));
     }
 
     [Test]
     public void A_report_older_than_an_hour_but_inside_its_window_still_drives_the_block()
     {
-        // Reported at 9:00, now 11:30: two and a half hours old, its window runs to 13:00.
+        // Reported at 9:00, now 11:30: two and a half hours old, its window runs to 13:00. Stale, so the 300 spent
+        // since the report is added to Claude's own 20%.
         var events = new[] { E(8.5, 2000), E(10, 300) };
 
         var s = BudgetCalculator.Compute(events, new OrchestratorSettings(), Day.AddHours(11.5), Day, TimeZoneInfo.Utc,
@@ -76,7 +94,7 @@ public sealed class BudgetReportedPathTests
 
         Assert.That((s.BlockLimitSource, s.BlockLimit), Is.EqualTo((LimitSource.Reported, 9_523L)), "2,000 over 21%");
         Assert.That(s.CurrentBlock!.EndUtc, Is.EqualTo(Day.AddHours(13)));
-        Assert.That(s.CurrentBlock.Usage.Fresh, Is.EqualTo((long)(0.21 * 9_523) + 300), "21% of the limit plus the 300 since the report");
+        Assert.That(s.CurrentBlock.Usage.Fresh, Is.EqualTo((long)(0.20 * 9_523) + 300), "Claude's own 20%, not padded, plus the 300 since");
     }
 
     [Test]
@@ -128,7 +146,7 @@ public sealed class BudgetReportedPathTests
         var sized = BudgetCalculator.Compute(events, new OrchestratorSettings(), Day.AddHours(12), Day, TimeZoneInfo.Utc,
             reported: under, reportedLimit: 10_000);
         Assert.That(sized.BlockLimitSource, Is.EqualTo(LimitSource.Reported), "a low percent is still the truth about what's used");
-        Assert.That(sized.CurrentBlock!.Usage.Fresh, Is.EqualTo(500), "4% taken as 5% of a limit sized elsewhere");
+        Assert.That(sized.CurrentBlock!.Usage.Fresh, Is.EqualTo(400), "Claude's own 4% of a limit sized elsewhere");
     }
 
     [Test]
