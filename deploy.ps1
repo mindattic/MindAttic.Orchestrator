@@ -96,6 +96,37 @@ function Get-InstallStep([string]$artifactPath, [string]$installedPath, [bool]$b
     return 'current'
 }
 
+# Copies a published folder over an installed one without failing on files a running process holds (M.ORCH-T765: publishing
+# straight into Cli\ failed with MSB3027 whenever a hook, /allocate or `orchestrator review` call had orchestrator.exe loaded).
+# A loaded exe or DLL can't be overwritten but can be renamed, so a locked file is renamed aside (<name>.old-<id>) and the new
+# one copied in; the aside copies are deleted here on a later deploy, once the processes holding them have exited.
+function Remove-AsideFiles([string]$dir) {
+    if (-not (Test-Path -LiteralPath $dir)) { return }
+    foreach ($f in @(Get-ChildItem -LiteralPath $dir -Recurse -File -Filter '*.old-*' -ErrorAction SilentlyContinue)) {
+        if ($f.Name -match '\.old-[0-9a-f]{8}$') { try { Remove-Item -LiteralPath $f.FullName -Force -ErrorAction Stop } catch { } }
+    }
+}
+
+function Copy-Published([string]$from, [string]$to) {
+    Remove-AsideFiles $to
+    New-Item -ItemType Directory -Force $to | Out-Null
+    $root = (Get-Item -LiteralPath $from).FullName.TrimEnd('')
+    foreach ($f in @(Get-ChildItem -LiteralPath $root -Recurse -File)) {
+        $target = Join-Path $to $f.FullName.Substring($root.Length + 1)
+        New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
+        $copied = $false
+        for ($try = 0; $try -lt 3 -and -not $copied; $try++) {
+            try { Copy-Item -LiteralPath $f.FullName -Destination $target -Force -ErrorAction Stop; $copied = $true } catch { Start-Sleep -Milliseconds 100 }
+        }
+        if ($copied) { continue }
+        # Locked by a running process: move the old file out of the way and put the new one in its place.
+        if (Test-Path -LiteralPath $target) {
+            Rename-Item -LiteralPath $target -NewName ($f.Name + '.old-' + [guid]::NewGuid().ToString('N').Substring(0, 8)) -ErrorAction Stop
+        }
+        Copy-Item -LiteralPath $f.FullName -Destination $target -Force -ErrorAction Stop
+    }
+}
+
 function Find-Installed {
     @((Join-Path $appDir 'MindAttic.Orchestrator.exe'),
       (Join-Path $env:LOCALAPPDATA 'Programs\MindAttic.Orchestrator\MindAttic.Orchestrator.exe')) |
@@ -161,9 +192,16 @@ if (Test-Stale $artifact @($wpfDir, $coreDir)) {
 
 # ── The CLI ─────────────────────────────────────────────────────────────────
 if (Test-Stale $cliExe @($cliDir, $coreDir)) {
-    Stop-From 'orchestrator' $cliOut
+    # Published to a staging folder, then swapped in file by file: a running CLI call (hooks, /allocate, review) holds its
+    # DLLs and must neither fail the deploy nor leave Cli\ half-installed (M.ORCH-T765).
+    $cliStage = Join-Path $appDir 'Cli.staging'
+    if (Test-Path $cliStage) { Remove-Item -Recurse -Force $cliStage }
     Write-Host "Publishing the CLI -> $cliOut" -ForegroundColor Cyan
-    dotnet publish (Join-Path $cliDir 'MindAttic.Orchestrator.Cli.csproj') --configuration Release --output $cliOut | Out-Host
+    dotnet publish (Join-Path $cliDir 'MindAttic.Orchestrator.Cli.csproj') --configuration Release --output $cliStage | Out-Host
+    if ($LASTEXITCODE -eq 0) {
+        try { Copy-Published $cliStage $cliOut } catch { Write-Host "Swapping in the CLI failed: $($_.Exception.Message)" -ForegroundColor Red; $LASTEXITCODE = 1 }
+    }
+    Remove-Item -Recurse -Force $cliStage -ErrorAction SilentlyContinue
     if ($LASTEXITCODE -ne 0) { Write-Host 'Publishing the CLI FAILED.' -ForegroundColor Red; $failed = $true }
     else {
         # The apphost keeps its old time when only Core's method bodies changed (the CLI isn't recompiled), so Core would
