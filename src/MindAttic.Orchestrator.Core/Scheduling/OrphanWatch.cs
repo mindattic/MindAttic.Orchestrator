@@ -212,6 +212,7 @@ public sealed class OrphanWatch(JsonStore store)
         if (!SamePath(rec.Directory, tree) && (rec.Ahead > 0 || rec.Uncommitted.Count > 0))
             return GiveUp($"its work is in {rec.Directory}, not {tree} where a redispatch would start, so it isn't redispatched (that would leave the work behind)");
         if (!settings.Allocate) return Wait("allocate is paused");
+        if (GlobalPause.Active(store)) return Wait(GlobalPause.Why);
         if (QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is { } quietHours) return Wait($"quiet hours ({quietHours})");
         if (plan.Stopped) return Wait($"the {plan.Pace?.Governing ?? "5-hour"} window is at its target; it's redispatched after the reset");
         if (!StillOpen(q.RepoPath, q.Id)) return rec;
