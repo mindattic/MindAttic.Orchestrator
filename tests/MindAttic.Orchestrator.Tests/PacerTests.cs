@@ -407,8 +407,10 @@ public sealed class PacerTests
             var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(settings))!;
             var pre = root["hooks"]!["PreToolUse"]!.AsArray();
             Assert.That(root["model"]!.GetValue<string>(), Is.EqualTo("opus"));
-            Assert.That(pre, Has.Count.EqualTo(2), "the user's hook kept, the gate added once");
+            Assert.That(pre, Has.Count.EqualTo(3), "the user's hook kept, the pace gate and the context gate's AskUserQuestion (M.ORCH-T790), once");
             Assert.That(pre[1]!["hooks"]![0]!["command"]!.GetValue<string>(), Does.Contain("pace-gate.py"));
+            Assert.That(pre[2]!["matcher"]!.GetValue<string>(), Is.EqualTo("AskUserQuestion"));
+            Assert.That(pre[2]!["hooks"]![0]!["command"]!.GetValue<string>(), Does.Contain("context-gate.py"));
             Assert.That(File.ReadAllText(Path.Combine(dir, "pace-gate.py")), Does.Contain("pace_delay_seconds"));
         }
         finally { Directory.Delete(dir, recursive: true); }
