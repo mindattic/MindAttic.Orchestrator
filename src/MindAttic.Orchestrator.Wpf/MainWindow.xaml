@@ -348,48 +348,11 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
+            <!-- The groups and their tiles are one virtualized list (M.ORCH-T754, MainWindow.xaml.cs): each group's heading, then its
+                 tiles a line at a time, laid out as RepoTiles is, so only the lines on screen are built. -->
             <ScrollViewer x:Name="ReposBody" Style="{StaticResource MaBodyScroll}"
                           Visibility="{Binding IsReposView, Converter={StaticResource Visible}}">
-                <Grid>
-                    <ItemsControl ItemsSource="{Binding GroupsInView}" Style="{StaticResource MaList}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:TileGroupViewModel}">
-                                <StackPanel Visibility="{Binding IsVisible, Converter={StaticResource Visible}}" Margin="0,4,0,10">
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                        <mc:MaStatusLight Foreground="{Binding Accent}" Label="{Binding Title}" Margin="0,0,8,0" />
-                                        <TextBlock Text="{Binding Title}" Style="{StaticResource MaHeading}" FontSize="14" />
-                                        <TextBlock Text="{Binding Count}" Style="{StaticResource MaMutedText}" Margin="8,0,0,0" VerticalAlignment="Bottom" />
-                                        <TextBlock Text="{Binding Hint}" Style="{StaticResource MaMutedText}" Margin="14,0,0,0" VerticalAlignment="Bottom" />
-                                    </StackPanel>
-                                    <!-- The repo tiles: the library's MaAccentTile in an MaTileList, equal columns that fill the width. -->
-                                    <ItemsControl ItemsSource="{Binding Tiles}" Style="{StaticResource MaTileList}"
-                                                  mc:MaList.MinItemWidth="240" mc:MaList.UniformRows="True">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="{x:Type vm:RepoTileViewModel}">
-                                                <mc:MaAccentTile Accent="{Binding Accent}" mc:MaTile.IsSelected="{Binding IsSelected}"
-                                                                 Command="{Binding DataContext.SelectCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                 CommandParameter="{Binding}" ToolTip="{Binding Headline}"
-                                                                 AutomationProperties.Name="{Binding Name}">
-                                                    <StackPanel>
-                                                        <DockPanel LastChildFill="True">
-                                                            <TextBlock DockPanel.Dock="Right" Text="{Binding TokensText}" Style="{StaticResource MaTileSubtitle}"
-                                                                       VerticalAlignment="Center" Margin="8,0,0,0" ToolTip="Tokens today" />
-                                                            <mc:MaStatusLight DockPanel.Dock="Left" Foreground="{Binding Accent}" Label="{Binding StateLabel}"
-                                                                              Margin="0,1,8,0" />
-                                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" />
-                                                        </DockPanel>
-                                                        <TextBlock Text="{Binding Subtitle}" Style="{StaticResource MaTileSubtitle}"
-                                                                   Margin="16,4,0,0" TextTrimming="CharacterEllipsis" />
-                                                    </StackPanel>
-                                                </mc:MaAccentTile>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
+                <StackPanel>
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,80,0,0"
                                 Visibility="{Binding IsEmpty, Converter={StaticResource Visible}}">
                         <TextBlock Text="Nothing needs you right now." FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"
@@ -397,7 +360,46 @@
                         <TextBlock Text="No agent is working or waiting and no tickets match. Clear the search or show quiet repos."
                                    Style="{StaticResource MaMutedText}" HorizontalAlignment="Center" Margin="0,6,0,0" />
                     </StackPanel>
-                </Grid>
+
+                    <ItemsControl x:Name="RepoGroups" ItemsSource="{Binding GroupsInView}" Style="{StaticResource MaList}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:TileGroupViewModel}">
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,10" Visibility="{Binding IsVisible, Converter={StaticResource Visible}}">
+                                    <mc:MaStatusLight Foreground="{Binding Accent}" Label="{Binding Title}" Margin="0,0,8,0" />
+                                    <TextBlock Text="{Binding Title}" Style="{StaticResource MaHeading}" FontSize="14" />
+                                    <TextBlock Text="{Binding Count}" Style="{StaticResource MaMutedText}" Margin="8,0,0,0" VerticalAlignment="Bottom" />
+                                    <TextBlock Text="{Binding Hint}" Style="{StaticResource MaMutedText}" Margin="14,0,0,0" VerticalAlignment="Bottom" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- The repo tiles under each shown group's heading: the library's MaAccentTile in an MaTileList, equal columns that
+                         fill the width. It lists nothing itself: it's the pattern each group's lines of tiles are laid out by. -->
+                    <ItemsControl x:Name="RepoTiles" Style="{StaticResource MaTileList}" Margin="0,0,0,10"
+                                  mc:MaList.MinItemWidth="240" mc:MaList.UniformRows="True">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:RepoTileViewModel}">
+                                <mc:MaAccentTile Accent="{Binding Accent}" mc:MaTile.IsSelected="{Binding IsSelected}"
+                                                 Command="{Binding DataContext.SelectCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                 CommandParameter="{Binding}" ToolTip="{Binding Headline}"
+                                                 AutomationProperties.Name="{Binding Name}">
+                                    <StackPanel>
+                                        <DockPanel LastChildFill="True">
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding TokensText}" Style="{StaticResource MaTileSubtitle}"
+                                                       VerticalAlignment="Center" Margin="8,0,0,0" ToolTip="Tokens today" />
+                                            <mc:MaStatusLight DockPanel.Dock="Left" Foreground="{Binding Accent}" Label="{Binding StateLabel}"
+                                                              Margin="0,1,8,0" />
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" />
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding Subtitle}" Style="{StaticResource MaTileSubtitle}"
+                                                   Margin="16,4,0,0" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </mc:MaAccentTile>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
             </ScrollViewer>
 
             <!-- Detail pane: the window's own MaChrome, set off by its left border, so its MaCards stand out from it. -->
@@ -782,10 +784,12 @@
                     <TextBlock Text="{Binding DuplicatesHeader}" Style="{StaticResource MaSectionLabel}" />
                     <TextBlock Text="Code that lives in more than one repo. Identical copies are the easiest wins: move one into the suggested home and reference it."
                                Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,0,0,8" />
-                    <ItemsControl ItemsSource="{Binding Duplicates}" Style="{StaticResource MaTileList}">
+                    <!-- Equal columns at least 380 wide (M.ORCH-T754: so the view's one virtualized list can lay them out a line at a
+                         time; at their own fixed width they couldn't be split into lines). -->
+                    <ItemsControl ItemsSource="{Binding Duplicates}" Style="{StaticResource MaTileList}" mc:MaList.MinItemWidth="380">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:DuplicateGroupViewModel}">
-                                <Border Style="{StaticResource MaListCard}" Width="380">
+                                <Border Style="{StaticResource MaListCard}">
                                     <StackPanel>
                                         <DockPanel>
                                             <Button DockPanel.Dock="Right" Style="{StaticResource MaTextButton}" Padding="10,3" Content="Compare"
@@ -992,22 +996,6 @@
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>
-
-                    <!-- Tickets per user (M.ORCH-T668), below the person's open CLIs: the tickets assigned to them, then the unassigned
-                         queue, each with who it's assigned to. An assigned ticket is dispatched only on its user's login. -->
-                    <StackPanel x:Name="UserTickets" Margin="0,24,0,0" Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}">
-                        <TextBlock Text="Tickets" Style="{StaticResource MaHeading}" />
-                        <TextBlock Text="Assign a ticket to a person and it's dispatched only on their login (next --claim, autopilot and Start); while they're out of room it waits for them, and Redelegate now hands it on."
-                                   Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                        <TextBlock Text="{Binding AssignedHeader}" Style="{StaticResource MaSectionLabel}" />
-                        <TextBlock Text="{Binding NoAssignedText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
-                                   Visibility="{Binding HasNoAssigned, Converter={StaticResource Visible}}" />
-                        <ItemsControl x:Name="AssignedTicketList" Style="{StaticResource MaRowList}" ItemsSource="{Binding AssignedTickets}"
-                                      ItemTemplate="{StaticResource UserTicketTemplate}" AutomationProperties.Name="{Binding AssignedHeader}" />
-                        <TextBlock Text="{Binding UnassignedHeader}" Style="{StaticResource MaSectionLabel}" />
-                        <ItemsControl x:Name="UnassignedTicketList" Style="{StaticResource MaRowList}" ItemsSource="{Binding UnassignedTickets}"
-                                      ItemTemplate="{StaticResource UserTicketTemplate}" AutomationProperties.Name="{Binding UnassignedHeader}" />
-                    </StackPanel>
                                                 </StackPanel>
                                             </Border>
                                         </StackPanel>
@@ -1025,6 +1013,27 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <!-- Tickets per user (M.ORCH-T668), below the person's open CLIs: the tickets assigned to them, then the unassigned
+                         queue, each with who it's assigned to. An assigned ticket is dispatched only on its user's login. Each part sits
+                         straight in the view, the lists too, so the view's one virtualized list builds only the tickets on screen
+                         (M.ORCH-T754): the unassigned queue is the same hundreds of tickets on every tab. -->
+                    <StackPanel x:Name="UserTickets" Margin="0,24,0,0" Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}">
+                        <TextBlock Text="Tickets" Style="{StaticResource MaHeading}" />
+                        <TextBlock Text="Assign a ticket to a person and it's dispatched only on their login (next --claim, autopilot and Start); while they're out of room it waits for them, and Redelegate now hands it on."
+                                   Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                        <TextBlock Text="{Binding AssignedHeader}" Style="{StaticResource MaSectionLabel}" />
+                        <TextBlock Text="{Binding NoAssignedText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
+                                   Visibility="{Binding HasNoAssigned, Converter={StaticResource Visible}}" />
+                    </StackPanel>
+                    <ItemsControl x:Name="AssignedTicketList" Style="{StaticResource MaRowList}" ItemsSource="{Binding AssignedTickets}"
+                                  ItemTemplate="{StaticResource UserTicketTemplate}" AutomationProperties.Name="{Binding AssignedHeader}"
+                                  Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}" />
+                    <TextBlock Text="{Binding UnassignedHeader}" Style="{StaticResource MaSectionLabel}"
+                               Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}" />
+                    <ItemsControl x:Name="UnassignedTicketList" Style="{StaticResource MaRowList}" ItemsSource="{Binding UnassignedTickets}"
+                                  ItemTemplate="{StaticResource UserTicketTemplate}" AutomationProperties.Name="{Binding UnassignedHeader}"
+                                  Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}" />
                 </StackPanel>
             </ScrollViewer>
 
