@@ -98,7 +98,7 @@ public sealed class AccountsViewTests
     [Test]
     public void The_login_actions_live_on_each_persons_page_and_the_org_wide_ones_above_the_person_tabs()
     {
-        // M.ORCH-T763: no Accounts view. A person's page leads with Sign in, Rename, Org limit and Move CLIs; Add login, Sign in
+        // M.ORCH-T763: no Accounts view. A person's page leads with Rename, Org limit and Move CLIs; Add login, Sign in
         // all and Report sit in a small toolbar above the person tabs, on the global login's tab.
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
@@ -112,10 +112,34 @@ public sealed class AccountsViewTests
         Assert.That(code, Does.Contain("OrgToolbar.DataContext = model;"));
 
         var person = xaml[xaml.IndexOf("x:Name=\"PersonActions\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"UtilizationCard\"", StringComparison.Ordinal)];
-        Assert.That(person, Does.Contain("{Binding SignInPersonCommand}").And.Contain("{Binding RenamePersonCommand}")
+        // M.ORCH-T796: no per-person Sign in; a disconnected login opens its sign-in by itself.
+        Assert.That(person, Does.Not.Contain("SignInPerson"));
+        Assert.That(person, Does.Contain("{Binding RenamePersonCommand}")
             .And.Contain("{Binding OrgLimitCommand}").And.Contain("Click=\"OnMoveAllClick\""));
         Assert.That(xaml.IndexOf("x:Name=\"StatTiles\"", StringComparison.Ordinal), Is.LessThan(xaml.IndexOf("x:Name=\"PersonActions\"", StringComparison.Ordinal)),
             "the stats, then the actions, then the chart");
         Assert.That(xaml, Does.Contain("x:Name=\"LimitModal\"").And.Contain("{Binding SaveLimitCommand}"));
+    }
+
+    [Test]
+    public void A_login_signed_out_since_the_last_refresh_is_the_one_that_opens_its_sign_in()
+    {
+        // M.ORCH-T796: only a login that was signed in and now isn't; never one seen for the first time, signed out all along,
+        // still signed in, or the global, 'API key' and 'Miscellaneous' tabs.
+        var was = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["a@example.com"] = true, ["b@example.com"] = false, ["c@example.com"] = true, [""] = true, [LoginTab.ApiKeyKey] = true,
+        };
+        LoginTab[] now =
+        [
+            new(null, "Global", "", "", SignedIn: false),
+            new("a@example.com", "A", "", "", SignedIn: false),
+            new("b@example.com", "B", "", "", SignedIn: false),
+            new("c@example.com", "C", "", ""),
+            new("d@example.com", "D", "", "", SignedIn: false),
+            LoginTab.ApiKey with { SignedIn = false },
+            LoginTab.Misc with { SignedIn = false },
+        ];
+        Assert.That(MainViewModel.NewlyDisconnected(was, now), Is.EqualTo(new[] { "a@example.com" }));
     }
 }

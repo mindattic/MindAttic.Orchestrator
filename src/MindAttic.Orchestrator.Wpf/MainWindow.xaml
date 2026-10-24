@@ -307,13 +307,10 @@
                 </StackPanel>
             </Button>
         </mc:MaTileGrid>
-        <!-- The person's login actions (M.ORCH-T763, from the Accounts view's card): sign this login in again, rename it, set its
-             own cutoffs, move every one of its CLIs to another login, or make it the global default. -->
+        <!-- The person's login actions (M.ORCH-T763, from the Accounts view's card): rename it, set its own cutoffs, move every
+             one of its CLIs to another login, or make it the global default. No Sign in (M.ORCH-T796): a login that gets
+             disconnected opens its own sign-in by itself. -->
         <WrapPanel x:Name="PersonActions" Margin="0,12,0,0">
-            <Button x:Name="SignInPersonButton" Style="{StaticResource MaButton}" Content="Sign in" Padding="12,4" Margin="0,0,8,0"
-                    Command="{Binding SignInPersonCommand}" ToolTipService.ShowOnDisabled="True"
-                    ToolTip="Sign this login in again, in a private window of its own browser profile (orchestrator login --account). The global login signs in with /login in any CLI."
-                    AutomationProperties.Name="{Binding TabTitle, StringFormat='Sign {0} in again'}" />
             <Button x:Name="RenamePersonButton" Style="{StaticResource MaButton}" Content="Rename…" Padding="12,4" Margin="0,0,8,0"
                     Command="{Binding RenamePersonCommand}"
                     ToolTip="Give this login a name and a terminal-title prefix (orchestrator accounts alias &lt;email&gt; &lt;name&gt;)"
