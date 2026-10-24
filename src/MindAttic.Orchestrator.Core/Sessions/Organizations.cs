@@ -79,6 +79,15 @@ public sealed class OrgDirectory
 
     public Organization? Find(string? id) => Orgs.FirstOrDefault(o => o.Id == id);
 
+    /// <summary>The org <paramref name="idOrName"/> names (M.ORCH-T755): its id, else its name, either in any case.</summary>
+    public Organization? Named(string? idOrName)
+    {
+        var t = idOrName?.Trim() ?? "";
+        if (t.Length == 0) return null;
+        return Orgs.FirstOrDefault(o => o.Id.Equals(t, StringComparison.OrdinalIgnoreCase))
+            ?? Orgs.FirstOrDefault(o => o.Name.Equals(t, StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>The org <paramref name="login"/> on <paramref name="provider"/> is in: the one naming it, else the default org.</summary>
     public string OrgOf(string provider, string? login) =>
         byLogin.TryGetValue((provider, OrgMember.NormalizeLogin(provider, login)), out var m) ? m.OrgId : Organization.DefaultId;
@@ -101,6 +110,42 @@ public sealed class OrgDirectory
 
     /// <summary>Every Claude login a member row names (not the global one): each has a person tab, signed in or not yet.</summary>
     public IEnumerable<string> ClaudeEmails => Members.Where(m => m.IsClaude && m.Login.Length > 0).Select(m => m.Login);
+}
+
+/// <summary>
+/// The org chosen in the dashboard's switcher (M.ORCH-T655), kept in the store across restarts, and what
+/// <c>orchestrator org</c> works on (M.ORCH-T755) unless its <c>--org</c> names another.
+/// </summary>
+public static class OrgSelection
+{
+    /// <summary>The store state the dashboard keeps its chosen org in.</summary>
+    public const string ViewName = "dashboard-org";
+
+    public sealed class View { public string? Org { get; init; } }
+
+    /// <summary>The org last chosen in the dashboard, or null when none was (or it can't be read now).</summary>
+    public static string? Remembered(JsonStore store)
+    {
+        try { return store.Load<View>(ViewName).Org; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { return null; }
+    }
+
+    public static void Remember(JsonStore store, string orgId) => store.Save(ViewName, new View { Org = orgId });
+
+    /// <summary>The org a command works on: the one <paramref name="requested"/> names (id or name, any case), else the
+    /// dashboard's chosen one while it's still there, else the default org. Null with <paramref name="error"/> when
+    /// <paramref name="requested"/> names no org.</summary>
+    public static Organization? Choose(OrgDirectory orgs, string? requested, string? remembered, out string? error)
+    {
+        error = null;
+        if (!string.IsNullOrWhiteSpace(requested))
+        {
+            if (orgs.Named(requested) is { } named) return named;
+            error = $"No org is \"{requested.Trim()}\": name one by its id or name ({string.Join(", ", orgs.Orgs.Select(o => o.Id == o.Name ? o.Id : $"{o.Name} ({o.Id})"))}); orchestrator orgs lists them.";
+            return null;
+        }
+        return orgs.Find(remembered) ?? orgs.Orgs[0];
+    }
 }
 
 /// <summary>

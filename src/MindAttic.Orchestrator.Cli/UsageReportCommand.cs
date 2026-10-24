@@ -12,10 +12,11 @@ using Spectre.Console.Cli;
 /// weekly use with their resets, points left to the weekly target, how old each reading is and whether it's accurate, and
 /// the lines under it. <c>--detail</c> adds the CLIs' spend on each login against the member's outside use, and the API key's;
 /// <c>--since</c> adds the spend since a day; <c>--csv</c> and <c>--json</c> print it raw; <c>--md</c> or <c>--html</c> write it to share.
+/// With more than one org, only the members of the one worked on (M.ORCH-T755: the dashboard's chosen org, or <c>--org</c>'s).
 /// </summary>
 internal sealed class UsageReportCommand : Command<UsageReportCommand.Settings>
 {
-    public sealed class Settings : CommandSettings
+    public sealed class Settings : OrgSettings
     {
         [CommandOption("--since <DATE>")]
         [Description("Also count each login's CLI spend (and the API key's) since this day: 2026-10-01.")]
@@ -55,8 +56,14 @@ internal sealed class UsageReportCommand : Command<UsageReportCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
+        if (OrgChoice.Resolve(settings.Org) is not { } scope) return 1;
         var since = settings.Since is { } s ? ParseDay(s) : null;
         var report = Override?.Invoke(since) ?? Load(since);
+        if (scope.Scoped)
+        {
+            report = report with { Rows = scope.Keep(report.Rows, r => r.Email) };
+            if (!settings.Csv && !settings.Json) AnsiConsole.MarkupLine($"[bold]{Markup.Escape(scope.Org.Name)}[/]");
+        }
         // Plain Console for the raw formats: piped to a file or another tool as is, no markup or wrapping.
         if (settings.Csv) Console.Write(report.Csv());
         else if (settings.Json) Console.WriteLine(report.Json());

@@ -8,8 +8,9 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 
 /// <summary>The settings of the members branch: Spectre only parses a branch's default command's options when the branch
-/// has them too, so <c>members --json</c> printed the table until every members command shared this (M.ORCH-T697).</summary>
-public class MembersBranchSettings : CommandSettings
+/// has them too, so <c>members --json</c> printed the table until every members command shared this (M.ORCH-T697). Its
+/// <c>--org</c> picks the org they work on (M.ORCH-T755, <see cref="OrgChoice"/>).</summary>
+public class MembersBranchSettings : OrgSettings
 {
     [CommandOption("--json")]
     [Description("Write the members as a JSON array.")]
@@ -17,7 +18,8 @@ public class MembersBranchSettings : CommandSettings
 }
 
 /// <summary><c>orchestrator members</c> (M.ORCH-T670): the organization's members, from the members table in the repo's
-/// <c>data/orchestrator.db</c>, each with whether it has signed in on this machine (the accounts table, joined by email).</summary>
+/// <c>data/orchestrator.db</c>, each with whether it has signed in on this machine (the accounts table, joined by email); with
+/// more than one org, only the chosen org's (M.ORCH-T755).</summary>
 internal sealed class MembersCommand : Command<MembersCommand.Settings>
 {
     public sealed class Settings : MembersBranchSettings
@@ -28,8 +30,9 @@ internal sealed class MembersCommand : Command<MembersCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
+        if (OrgChoice.Resolve(settings.Org) is not { } scope) return 1;
         var db = Db();
-        var members = MemberRoster.Load(db);
+        var members = scope.Keep(MemberRoster.Load(db), m => m.Email);
         var accounts = AccountRoster.Load(db).Where(a => a.Email is not null)
             .GroupBy(a => AccountDirs.Normalize(a.Email) ?? a.Email!, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.Max(a => a.SignedInUtc), StringComparer.Ordinal);
@@ -46,12 +49,18 @@ internal sealed class MembersCommand : Command<MembersCommand.Settings>
             }), new JsonSerializerOptions { WriteIndented = true }));
             return 0;
         }
+        if (members.Count == 0 && scope.Scoped)
+        {
+            AnsiConsole.MarkupLine($"[grey]{Markup.Escape(scope.Org.Name)} has no members yet: orchestrator org members add <email> --name \"<name>\" --role <role> --tier <tier> --org {Markup.Escape(scope.Org.Id)} adds one.[/]");
+            return 0;
+        }
         if (members.Count == 0)
         {
             AnsiConsole.MarkupLine("[grey]No members yet: orchestrator members add <email> --name \"<name>\" --role <role> --tier <tier> adds one.[/]");
             return 0;
         }
         var now = DateTime.UtcNow;
+        if (scope.Scoped) AnsiConsole.MarkupLine($"[bold]{Markup.Escape(scope.Org.Name)}[/]");
         var table = new Table().Border(TableBorder.Rounded).AddColumns("Name", "Email", "Role", "Tier", "Status", "Signed in here");
         foreach (var m in members)
             table.AddRow(
@@ -98,6 +107,14 @@ internal sealed class MembersCommand : Command<MembersCommand.Settings>
     internal static string Describe(Member m) =>
         $"[bold]{Markup.Escape(m.Name ?? m.Email)}[/] [grey]{Markup.Escape(m.Email)}[/]: {Markup.Escape(m.Role)}, {Markup.Escape(m.Tier)}, {Markup.Escape(m.Status)}";
 
+    /// <summary>Refuses (in red) a change to a member whose login is another org's than the one worked on.</summary>
+    internal static bool InScope(OrgChoice.Scope scope, string email)
+    {
+        if (scope.OrgOf(AccountDirs.Normalize(email) ?? email) is not { } other) return true;
+        AnsiConsole.MarkupLine($"[red]{Markup.Escape(email.Trim())} is in {Markup.Escape(other.Name)}, not {Markup.Escape(scope.Org.Name)}: add --org {Markup.Escape(other.Id)}.[/]");
+        return false;
+    }
+
     internal static string Allowed => $"roles: {string.Join(", ", MemberRoster.Roles)}; tiers: {string.Join(", ", MemberRoster.Tiers)}; statuses: {string.Join(", ", MemberRoster.Statuses)}";
 }
 
@@ -134,8 +151,19 @@ internal sealed class MembersAddCommand : Command<MembersAddCommand.Settings>
             AnsiConsole.MarkupLine($"[red]Give the new member's --role and --tier ({Markup.Escape(MembersCommand.Allowed)}).[/]");
             return 1;
         }
-        return MembersCommand.Change(() => "Added " + MembersCommand.Describe(
-            MemberRoster.Add(MembersCommand.Db(), settings.Email, settings.Name, settings.Role, settings.Tier, settings.Status, DateTime.UtcNow)) + ".");
+        if (OrgChoice.Resolve(settings.Org) is not { } scope) return 1;
+        return MembersCommand.Change(() =>
+        {
+            var m = MemberRoster.Add(MembersCommand.Db(), settings.Email, settings.Name, settings.Role, settings.Tier, settings.Status, DateTime.UtcNow);
+            var line = "Added " + MembersCommand.Describe(m) + ".";
+            // M.ORCH-T755: their login goes in the org worked on (with one org it's already there: nothing written).
+            if (!scope.Has(m.Email))
+            {
+                Ctx.Store().Db.SetMember(new OrgMember(scope.Org.Id, m.Name ?? LoginLook.DefaultAlias(m.Email) ?? m.Email, m.Email));
+                line += $" Their login is in {Markup.Escape(scope.Org.Name)}.";
+            }
+            return line;
+        });
     }
 }
 
@@ -172,6 +200,7 @@ internal sealed class MembersSetCommand : Command<MembersSetCommand.Settings>
             AnsiConsole.MarkupLine("[red]Nothing to change: give --name, --role, --tier or --status.[/]");
             return 1;
         }
+        if (OrgChoice.Resolve(settings.Org) is not { } scope || !MembersCommand.InScope(scope, settings.Email)) return 1;
         return MembersCommand.Change(() => MembersCommand.Describe(
             MemberRoster.Set(MembersCommand.Db(), settings.Email, settings.Name, settings.Role, settings.Tier, settings.Status, DateTime.UtcNow)) + ".");
     }
@@ -188,7 +217,8 @@ internal sealed class MembersRemoveCommand : Command<MembersRemoveCommand.Settin
     }
 
     public override int Execute(CommandContext context, Settings settings) =>
-        MembersCommand.Change(() => MemberRoster.Remove(MembersCommand.Db(), settings.Email)
+        OrgChoice.Resolve(settings.Org) is not { } scope || !MembersCommand.InScope(scope, settings.Email) ? 1
+        : MembersCommand.Change(() => MemberRoster.Remove(MembersCommand.Db(), settings.Email)
             ? $"Removed {Markup.Escape(AccountDirs.Normalize(settings.Email)!)}."
             : throw new InvalidOperationException($"{AccountDirs.Normalize(settings.Email)} isn't a member."));
 }

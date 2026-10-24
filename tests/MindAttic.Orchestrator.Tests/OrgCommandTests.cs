@@ -151,4 +151,94 @@ public sealed class OrgCommandTests
         }
         finally { OrgHelpCommand.PeopleOverride = null; }
     }
+
+    [Test]
+    public void An_org_is_chosen_by_its_id_or_name_in_any_case_else_the_dashboards_else_the_default()
+    {
+        // M.ORCH-T755
+        var orgs = new OrgDirectory([new Organization("sales", "Sales East", 1)], []);
+        Assert.That(OrgSelection.Choose(orgs, "SALES", null, out var error)!.Id, Is.EqualTo("sales"));
+        Assert.That(OrgSelection.Choose(orgs, " sales east ", null, out error)!.Id, Is.EqualTo("sales"), "by name");
+        Assert.That(OrgSelection.Choose(orgs, "mindattic", "sales", out error)!.Id, Is.EqualTo(Organization.DefaultId), "--org over the dashboard's");
+        Assert.That(OrgSelection.Choose(orgs, null, "sales", out error)!.Id, Is.EqualTo("sales"), "the dashboard's");
+        Assert.That(OrgSelection.Choose(orgs, null, "removed", out error)!.Id, Is.EqualTo(Organization.DefaultId), "one since removed: the default");
+        Assert.That(OrgSelection.Choose(orgs, null, null, out error)!.Id, Is.EqualTo(Organization.DefaultId));
+        Assert.That(OrgSelection.Choose(orgs, "nope", "sales", out error), Is.Null);
+        Assert.That(error, Does.Contain("No org is \"nope\"").And.Contain("Sales East (sales)"));
+        Assert.That(OrgSelection.Choose(OrgDirectory.Single, "MindAttic", null, out error)!.Id, Is.EqualTo(Organization.DefaultId), "one org: --org still names it");
+    }
+
+    [Test, NonParallelizable]
+    public void Org_commands_work_on_the_chosen_org_and_adding_a_member_places_their_login_in_it()
+    {
+        // M.ORCH-T755: two orgs, Erin's login in Sales and everyone else's in the default one (MindAttic).
+        var previousStore = Ctx.StoreDirectory;
+        Ctx.StoreDirectory = temps.New();
+        OrgHelpCommand.PeopleOverride = () => Org;
+        LoginCommand.DirsOverride = () => new AccountDirs(Path.Combine(temps.New(), "none"), Path.Combine(temps.New(), ".claude"), Path.Combine(temps.New(), ".claude.json"));
+        try
+        {
+            var store = Ctx.Store();
+            store.Db.SaveOrg(new Organization("sales", "Sales", 1));
+            store.Db.SetMember(new OrgMember("sales", "Erin", "ohleo199@mindattic.com"));
+            var db = MembersCommand.Db();
+            MemberRoster.Add(db, "ohleo199@mindattic.com", "Erin", "member", "premium", null, Now);
+            MemberRoster.Add(db, "shampoo1232@mindattic.com", "Amy", "member", "premium", null, Now);
+
+            // Nothing chosen in the dashboard: the default org, so Erin is another org's.
+            var said = Cli(out var exit, "org", "login", "Erin");
+            Assert.That(exit, Is.EqualTo(1));
+            Assert.That(said, Does.Contain("is in Sales, not MindAttic: add --org sales"));
+            said = Cli(out exit, "org", "start", "MindAttic.Orchestrator", "Erin", "--org", "nope");
+            Assert.That(exit, Is.EqualTo(1));
+            Assert.That(said, Does.Contain("No org is \"nope\""));
+
+            said = Cli(out exit, "org", "limit");
+            Assert.That(exit, Is.Zero, said);
+            Assert.That(said, Does.Contain("Amy").And.Not.Contain("ohleo199"));
+            said = Cli(out exit, "org", "limit", "--org", "SALES");
+            Assert.That(exit, Is.Zero, said);
+            Assert.That(said, Does.Contain("ohleo199").And.Not.Contain("Amy"));
+
+            said = Cli(out exit, "org", "members", "--org", "Sales");
+            Assert.That(exit, Is.Zero, said);
+            Assert.That(said, Does.Contain("ohleo199@mindattic.com").And.Not.Contain("shampoo1232"));
+
+            // The org chosen in the dashboard is the one worked on.
+            OrgSelection.Remember(store, "sales");
+            said = Cli(out exit, "org", "members");
+            Assert.That(said, Does.Contain("ohleo199@mindattic.com").And.Not.Contain("shampoo1232"));
+            said = Cli(out exit, "org", "members", "add", "new@example.com", "--name", "Newt", "--role", "member", "--tier", "standard");
+            Assert.That(exit, Is.Zero, said);
+            Assert.That(said, Does.Contain("Their login is in Sales"));
+            var orgs = store.Db.LoadOrgs();
+            Assert.That(orgs.OrgOfClaude("new@example.com"), Is.EqualTo("sales"));
+            Assert.That(orgs.MembersOf("sales").Single(m => m.Login == "new@example.com").Person, Is.EqualTo("Newt"));
+            said = Cli(out exit, "org", "members", "remove", "ohleo199@mindattic.com", "--org", "default");
+            Assert.That(exit, Is.EqualTo(1), said);
+            Assert.That(said, Does.Contain("is in Sales, not MindAttic"));
+            Assert.That(MemberRoster.Load(db).Select(m => m.Email), Does.Contain("ohleo199@mindattic.com"), "refused: still a member");
+
+            // usage: only the org's rows.
+            UsageReportCommand.Override = _ => new UsageReport
+            {
+                GeneratedUtc = Now,
+                Rows = [new UsageReportRow { Name = "Erin", Email = "ohleo199@mindattic.com" }, new UsageReportRow { Name = "Amy", Email = "shampoo1232@mindattic.com" }],
+            };
+            var stdout = new StringWriter();
+            var realOut = Console.Out;
+            Console.SetOut(stdout);
+            try { Cli(out exit, "org", "usage"); }
+            finally { Console.SetOut(realOut); }
+            Assert.That(exit, Is.Zero);
+            Assert.That(stdout.ToString(), Does.Contain("Erin").And.Not.Contain("Amy"));
+        }
+        finally
+        {
+            Ctx.StoreDirectory = previousStore;
+            OrgHelpCommand.PeopleOverride = null;
+            LoginCommand.DirsOverride = null;
+            UsageReportCommand.Override = null;
+        }
+    }
 }

@@ -10,6 +10,7 @@ using Spectre.Console.Cli;
 /// <c>orchestrator report</c> (<see cref="UsageReportCommand"/>), <c>members</c> is <c>orchestrator members</c>, <c>login &lt;who&gt;</c>
 /// is <c>orchestrator login --account &lt;email&gt;</c> and <c>start &lt;repo&gt; &lt;who&gt;</c> is <c>orchestrator start &lt;repo&gt;
 /// --account &lt;email&gt;</c>, with &lt;who&gt; any way of naming a member (<see cref="MemberLookup"/>). Bare, or <c>help</c>, lists them.
+/// Each works on one org (M.ORCH-T755, <see cref="OrgChoice"/>): the one chosen in the dashboard's switcher, or <c>--org</c>'s.
 /// </summary>
 internal sealed class OrgHelpCommand : Command
 {
@@ -31,31 +32,87 @@ internal sealed class OrgHelpCommand : Command
         foreach (var (use, what) in Subcommands)
             AnsiConsole.MarkupLine($"  [bold]{Markup.Escape(use)}[/]  {Markup.Escape(what)}");
         AnsiConsole.MarkupLine("[grey]<who> is a member's email, the part before the @, name, first name, login alias or initials (RD, E), any case.[/]");
+        AnsiConsole.MarkupLine("[grey]Each works on the org chosen in the dashboard's switcher; --org <id|name> picks another (orchestrator orgs lists them).[/]");
         return 0;
     }
 
     /// <summary>The people <c>&lt;who&gt;</c> is matched against; tests give their own (never this machine's).</summary>
     internal static Func<IReadOnlyList<OrgPerson>>? PeopleOverride { get; set; }
 
-    /// <summary>The one member <paramref name="who"/> names, or null with why said in red: nobody, or several (each listed).</summary>
-    internal static OrgPerson? Resolve(string who)
+    /// <summary>Everyone <c>&lt;who&gt;</c> can name, in every org.</summary>
+    internal static IReadOnlyList<OrgPerson> People() =>
+        PeopleOverride?.Invoke() ?? MemberLookup.People(MembersCommand.Db(), LoginCommand.DirsOverride?.Invoke() ?? new AccountDirs());
+
+    /// <summary>The one member of <paramref name="scope"/>'s org <paramref name="who"/> names, or null with why said in red:
+    /// nobody (or only someone in another org, named), or several (each listed).</summary>
+    internal static OrgPerson? Resolve(string who, OrgChoice.Scope scope)
     {
-        var people = PeopleOverride?.Invoke() ?? MemberLookup.People(MembersCommand.Db(), LoginCommand.DirsOverride?.Invoke() ?? new AccountDirs());
+        var everyone = People();
+        var people = scope.Keep(everyone, p => p.Email);
         var found = MemberLookup.Match(people, who);
         if (found.Count == 1) return found[0];
+        if (found.Count == 0 && MemberLookup.Match(everyone, who) is [var elsewhere] && scope.OrgOf(elsewhere.Email) is { } other)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(elsewhere.Label)} is in {Markup.Escape(other.Name)}, not {Markup.Escape(scope.Org.Name)}: add --org {Markup.Escape(other.Id)}.[/]");
+            return null;
+        }
         AnsiConsole.MarkupLine(found.Count > 1
             ? $"[red]\"{Markup.Escape(who.Trim())}\" could be more than one member: name one of them.[/]"
-            : $"[red]No member is \"{Markup.Escape(who.Trim())}\": name one by email, the part before the @, name, first name, login alias or initials.[/]");
+            : $"[red]No member {(scope.Scoped ? $"of {Markup.Escape(scope.Org.Name)} " : "")}is \"{Markup.Escape(who.Trim())}\": name one by email, the part before the @, name, first name, login alias or initials.[/]");
         foreach (var p in found.Count > 1 ? found : people)
             AnsiConsole.MarkupLine($"  {Markup.Escape(p.Label)}");
         return null;
     }
 }
 
+/// <summary>The <c>--org</c> every <c>orchestrator org</c> command takes (M.ORCH-T755).</summary>
+public class OrgSettings : CommandSettings
+{
+    [CommandOption("--org <ORG>")]
+    [Description("The org to work on, by its id or name (any case); left out, the one chosen in the dashboard's switcher (orchestrator orgs lists them).")]
+    public string? Org { get; init; }
+}
+
+/// <summary>
+/// The org an <c>orchestrator org</c> command works on (M.ORCH-T755): <c>--org</c>'s (an id or name, any case), else the one
+/// chosen in the dashboard's switcher (<see cref="OrgSelection"/>), else the default org. Members, usage, limits, allow, login and
+/// start see only its logins; an unknown <c>--org</c> is refused. With one org nothing is scoped: every command is as it was.
+/// </summary>
+internal static class OrgChoice
+{
+    internal sealed record Scope(OrgDirectory Orgs, Organization Org)
+    {
+        /// <summary>Whether there's more than one org, so anything is left out.</summary>
+        public bool Scoped => Orgs.HasOrgs;
+
+        /// <summary>Whether <paramref name="email"/>'s Claude login is the org's (every login while there's one org).</summary>
+        public bool Has(string? email) => !Scoped || Orgs.OrgOfClaude(email) == Org.Id;
+
+        public IReadOnlyList<T> Keep<T>(IEnumerable<T> items, Func<T, string?> email) => [.. items.Where(i => Has(email(i)))];
+
+        /// <summary>The other org <paramref name="email"/>'s login is in; null when it's this one's.</summary>
+        public Organization? OrgOf(string? email) => Has(email) ? null : Orgs.Find(Orgs.OrgOfClaude(email));
+    }
+
+    /// <summary>The org <paramref name="requested"/> names, or the dashboard's; null, said in red, when no org has that id or name.</summary>
+    internal static Scope? Resolve(string? requested)
+    {
+        var store = Ctx.Store();
+        var orgs = store.Db.TryLoadOrgs();
+        var org = OrgSelection.Choose(orgs, requested, string.IsNullOrWhiteSpace(requested) ? OrgSelection.Remembered(store) : null, out var error);
+        if (org is null)
+        {
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(error!)}[/]");
+            return null;
+        }
+        return new Scope(orgs, org);
+    }
+}
+
 /// <summary><c>orchestrator org login &lt;who&gt; [--sso]</c>: <c>orchestrator login --account &lt;their email&gt;</c>.</summary>
 internal sealed class OrgLoginCommand : Command<OrgLoginCommand.Settings>
 {
-    public sealed class Settings : CommandSettings
+    public sealed class Settings : OrgSettings
     {
         [CommandArgument(0, "<WHO>")]
         [Description("The member: email, the part before the @, name (Ryan DeBraal, quoted or not), first name, login alias or initials.")]
@@ -67,7 +124,7 @@ internal sealed class OrgLoginCommand : Command<OrgLoginCommand.Settings>
     }
 
     public override int Execute(CommandContext context, Settings settings) =>
-        OrgHelpCommand.Resolve(string.Join(' ', settings.Who)) is { } who
+        OrgChoice.Resolve(settings.Org) is { } scope && OrgHelpCommand.Resolve(string.Join(' ', settings.Who), scope) is { } who
             ? new LoginCommand().Execute(context, new LoginCommand.Settings { OwnLogin = who.Email, Sso = settings.Sso })
             : 1;
 }
@@ -80,7 +137,7 @@ internal sealed class OrgLoginCommand : Command<OrgLoginCommand.Settings>
 /// </summary>
 internal sealed class OrgAllowCommand : Command<OrgAllowCommand.Settings>
 {
-    public sealed class Settings : CommandSettings
+    public sealed class Settings : OrgSettings
     {
         [CommandArgument(0, "<WHO>")]
         [Description("The member: email, the part before the @, name (quoted or not), first name, login alias or initials.")]
@@ -101,7 +158,7 @@ internal sealed class OrgAllowCommand : Command<OrgAllowCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        if (OrgHelpCommand.Resolve(string.Join(' ', settings.Who)) is not { } who) return 1;
+        if (OrgChoice.Resolve(settings.Org) is not { } scope || OrgHelpCommand.Resolve(string.Join(' ', settings.Who), scope) is not { } who) return 1;
         var now = Now;
         var target = Ctx.Settings.WeeklyStopPercent;
         var name = OrgDisallowCommand.NameOf(who);
@@ -198,7 +255,7 @@ internal sealed class OrgAllowCommand : Command<OrgAllowCommand.Settings>
 /// at its weekly target again; logged.</summary>
 internal sealed class OrgDisallowCommand : Command<OrgDisallowCommand.Settings>
 {
-    public sealed class Settings : CommandSettings
+    public sealed class Settings : OrgSettings
     {
         [CommandArgument(0, "<WHO>")]
         [Description("The member: email, the part before the @, name (quoted or not), first name, login alias or initials.")]
@@ -209,7 +266,7 @@ internal sealed class OrgDisallowCommand : Command<OrgDisallowCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        if (OrgHelpCommand.Resolve(string.Join(' ', settings.Who)) is not { } who) return 1;
+        if (OrgChoice.Resolve(settings.Org) is not { } scope || OrgHelpCommand.Resolve(string.Join(' ', settings.Who), scope) is not { } who) return 1;
         var name = NameOf(who);
         var line = WeeklyAllowances.Disallow(Ctx.Store(), who.Email, name, Ctx.Settings.WeeklyStopPercent, OrgAllowCommand.Now);
         AnsiConsole.MarkupLine(line is null
@@ -226,7 +283,7 @@ internal sealed class OrgDisallowCommand : Command<OrgDisallowCommand.Settings>
 /// </summary>
 internal sealed class OrgLimitCommand : Command<OrgLimitCommand.Settings>
 {
-    public sealed class Settings : CommandSettings
+    public sealed class Settings : OrgSettings
     {
         [CommandArgument(0, "[WHO]")]
         [Description("The member: email, the part before the @, name (quoted or not), first name, login alias or initials. Left out: list every member's cutoffs.")]
@@ -248,6 +305,7 @@ internal sealed class OrgLimitCommand : Command<OrgLimitCommand.Settings>
     public override int Execute(CommandContext context, Settings settings)
     {
         var store = Ctx.Store();
+        if (OrgChoice.Resolve(settings.Org) is not { } scope) return 1;
         if (settings.Who.Length == 0)
         {
             if (settings.Weekly is not null || settings.FiveHour is not null || settings.Reset)
@@ -256,7 +314,8 @@ internal sealed class OrgLimitCommand : Command<OrgLimitCommand.Settings>
                 return 1;
             }
             var cutoffs = UsageCutoffs.Load(store);
-            var people = OrgHelpCommand.PeopleOverride?.Invoke() ?? MemberLookup.People(MembersCommand.Db(), LoginCommand.DirsOverride?.Invoke() ?? new AccountDirs());
+            var people = scope.Keep(OrgHelpCommand.People(), p => p.Email);
+            if (scope.Scoped) AnsiConsole.MarkupLine($"[bold]{Markup.Escape(scope.Org.Name)}[/]");
             foreach (var p in people)
             {
                 var custom = UsageCutoffs.Custom(cutoffs, p.Email) is not null;
@@ -286,7 +345,7 @@ internal sealed class OrgLimitCommand : Command<OrgLimitCommand.Settings>
             AnsiConsole.MarkupLine($"[red]--5h is {UsageCutoffs.MinFiveHourPercent} to 100.[/]");
             return 1;
         }
-        if (OrgHelpCommand.Resolve(string.Join(' ', settings.Who)) is not { } who) return 1;
+        if (OrgHelpCommand.Resolve(string.Join(' ', settings.Who), scope) is not { } who) return 1;
         var name = OrgDisallowCommand.NameOf(who);
         var result = settings.Reset ? UsageCutoffs.Reset(store, who.Email, name) : UsageCutoffs.Set(store, who.Email, name, settings.Weekly, settings.FiveHour);
         var line = $"{name} ({who.Email}) cutoffs{(settings.Reset ? " back to the defaults" : "")}: {UsageCutoffs.Text(result.WeeklyPercent, result.FiveHourPercent)}.";
@@ -300,7 +359,7 @@ internal sealed class OrgLimitCommand : Command<OrgLimitCommand.Settings>
 /// <summary><c>orchestrator org start &lt;repo&gt; &lt;who&gt; [--prompt]</c>: <c>orchestrator start &lt;repo&gt; --account &lt;their email&gt;</c>.</summary>
 internal sealed class OrgStartCommand : Command<OrgStartCommand.Settings>
 {
-    public sealed class Settings : CommandSettings
+    public sealed class Settings : OrgSettings
     {
         [CommandArgument(0, "<REPO>")]
         public string Repo { get; init; } = "";
@@ -314,7 +373,7 @@ internal sealed class OrgStartCommand : Command<OrgStartCommand.Settings>
     }
 
     public override int Execute(CommandContext context, Settings settings) =>
-        OrgHelpCommand.Resolve(string.Join(' ', settings.Who)) is { } who
+        OrgChoice.Resolve(settings.Org) is { } scope && OrgHelpCommand.Resolve(string.Join(' ', settings.Who), scope) is { } who
             ? new StartCommand().Execute(context, new StartCommand.Settings { Repo = settings.Repo, Account = who.Email, Prompt = settings.Prompt })
             : 1;
 }
