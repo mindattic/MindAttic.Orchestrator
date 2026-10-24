@@ -61,6 +61,8 @@ public sealed class ViewModelTests
             (v => v.ContextPercent = "96", "Cycle context at: 10 to 95"),
             (v => v.OrphanRedispatches = "21", "Orphan redispatches: 0 to 20"),
             (v => v.OrphanQuiet = "0", "Orphan quiet minutes: 1 to 1440"),
+            (v => v.TabBlinkTokens = "0", "Blink once per: 1 to 10,000,000 tokens"),
+            (v => v.TabBlinkTokens = "lots", "Blink once per"),
         };
         foreach (var (set, error) in cases)
         {
@@ -92,6 +94,17 @@ public sealed class ViewModelTests
         vm.SaveCommand.Execute(null);
         var s = store.LoadSettings();
         Assert.That((vm.Error, s.OrphanRedispatches, s.OrphanQuietMinutes), Is.EqualTo(("", 0, 30)));
+    }
+
+    [Test]
+    public void The_tab_blink_setting_round_trips_through_the_panel()
+    {
+        var store = new JsonStore(dir);
+        var vm = new SettingsViewModel(store, () => { });
+        Assert.That(vm.TabBlinkTokens, Is.EqualTo("1000"), "M.ORCH-T757's default");
+        vm.TabBlinkTokens = "100";
+        vm.SaveCommand.Execute(null);
+        Assert.That((vm.Error, store.LoadSettings().TabBlinkTokens), Is.EqualTo(("", 100)));
     }
 
     [Test]

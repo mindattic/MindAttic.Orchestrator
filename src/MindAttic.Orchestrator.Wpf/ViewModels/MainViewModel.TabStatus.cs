@@ -1,4 +1,5 @@
 using System.Windows.Media;
+using System.Windows.Threading;
 using MindAttic.Components.Wpf.Controls;
 using MindAttic.Orchestrator.Billing;
 using MindAttic.Orchestrator.Budget;
@@ -77,19 +78,112 @@ public sealed partial class MainViewModel
     private (TabLight Light, string Word) TabStatus => tab.IsApiKey
         ? (TabLight.Warning, IsOnApiKey ? "API key billing every CLI" : "API key on standby (Claude Team bills)")
         : StatusOf(tab.SignedIn, string.Equals(Root.signingInEmail, tab.Email, StringComparison.OrdinalIgnoreCase) && tab.Email is not null,
-            SignedInAsOther, WeekUsed, weeklyStopPercent, FiveHourUsed);
+            SignedInAsOther, WeekUsed, WeeklyCutoff, FiveHourUsed, FiveHourCutoff);
 
     /// <summary>A person's light and its word: red signed out, purple while signing in, signed in as someone else, at its weekly
-    /// stop line or with its 5-hour limit hit, else green.</summary>
+    /// stop line (its own weekly cutoff, M.ORCH-T707) or at its 5-hour cutoff, else green.</summary>
     internal static (TabLight Light, string Word) StatusOf(bool signedIn, bool signingIn, string? signedInAs, double? weekUsed,
-        int stopPercent, double? fiveHourUsed)
+        int stopPercent, double? fiveHourUsed, int fiveHourStopPercent = 100)
     {
         if (signingIn) return (TabLight.Other, "Signing in");
         if (!signedIn) return (TabLight.Bad, "Signed out");
         if (signedInAs is not null) return (TabLight.Other, $"Login mismatch: signed in as {signedInAs}");
         if (weekUsed >= stopPercent) return (TabLight.Other, $"At its weekly stop line ({stopPercent}%)");
-        if (fiveHourUsed >= 100) return (TabLight.Other, "5-hour limit hit");
+        if (fiveHourUsed >= fiveHourStopPercent)
+            return (TabLight.Other, fiveHourStopPercent >= 100 ? "5-hour limit hit" : $"At its 5-hour cutoff ({fiveHourStopPercent}%)");
         return (TabLight.Good, "Signed in and usable");
+    }
+
+    // ── The status icon (M.ORCH-T757) ───────────────────────────────────────
+
+    /// <summary>Every member's own cutoffs and the weekly allowances in force, read once a refresh by the global login's tab.</summary>
+    private IReadOnlyList<UsageCutoff> cutoffs = [];
+    private IReadOnlyList<WeeklyAllowance> allowances = [];
+
+    /// <summary>A busy tab blinks once per this many tokens (the TabBlinkTokens setting), read with the settings each refresh.</summary>
+    private int tabBlinkTokens = MindAttic.Orchestrator.Settings.OrchestratorSettings.DefaultTabBlinkTokens;
+
+    private TabBlinker? blinker;
+    private TabBlinker Blinker => blinker ??= new TabBlinker(tab.Key.Length == 0 ? "~global" : tab.Key);
+
+    /// <summary>The one timer every tab's blinks run on, on the global login's tab; running only while a blink is queued.</summary>
+    private DispatcherTimer? blinkTimer;
+
+    /// <summary>This login's email for its cutoffs: its roster row's, else the tab's own.</summary>
+    private string? CutoffEmail => OwnRow?.Email ?? ScopeEmail;
+
+    /// <summary>Where this login's week is cut off: its own weekly cutoff, or the wall (100) while it's allowed past it.</summary>
+    private int WeeklyCutoff => WeeklyAllowances.For(Root.allowances, CutoffEmail, DateTime.UtcNow) is not null
+        ? 100 : UsageCutoffs.WeeklyFor(Root.cutoffs, CutoffEmail);
+
+    /// <summary>Where this login's 5-hour window is cut off: its own 5-hour cutoff.</summary>
+    private int FiveHourCutoff => UsageCutoffs.FiveHourFor(Root.cutoffs, CutoffEmail);
+
+    /// <summary>The tab's icon: pause idle, a blinking green play arrow busy, gray disabled.</summary>
+    public TabActivity TabActivity => tab.IsApiKey
+        ? ActivityOf(usable: IsOnApiKey, pastCutoff: false, working: false, Blinker.Grew || Blinker.Pending > 0)
+        : ActivityOf(tab.SignedIn, PastCutoffOf(WeekUsed, WeeklyCutoff, FiveHourUsed, FiveHourCutoff), WorkingCount > 0,
+            Blinker.Grew || Blinker.Pending > 0);
+
+    /// <summary>Disabled when the login can't take work (signed out, or the 'API key' tab with API billing off) or is past its
+    /// cutoff; busy while one of its CLIs is mid-turn or it spent tokens since the last refresh; else idle.</summary>
+    internal static TabActivity ActivityOf(bool usable, bool pastCutoff, bool working, bool spending) =>
+        !usable || pastCutoff ? TabActivity.Disabled : working || spending ? TabActivity.Busy : TabActivity.Idle;
+
+    /// <summary>Whether a login is at or past its weekly or its 5-hour cutoff (M.ORCH-T707/T742); never read is not past.</summary>
+    internal static bool PastCutoffOf(double? weekUsed, int weeklyCutoff, double? fiveHourUsed, int fiveHourCutoff) =>
+        weekUsed >= weeklyCutoff || fiveHourUsed >= fiveHourCutoff;
+
+    public bool IsTabIdle => TabActivity == TabActivity.Idle;
+    public bool IsTabBusy => TabActivity == TabActivity.Busy;
+    public bool IsTabDisabled => TabActivity == TabActivity.Disabled;
+
+    /// <summary>The icon in words, so it's never only a picture: "Busy", "Idle", or why it's disabled.</summary>
+    public string TabActivityWord => TabActivity switch
+    {
+        TabActivity.Busy => "Busy",
+        TabActivity.Idle => "Idle",
+        _ => tab.IsApiKey ? "Disabled: API billing off" : tab.SignedIn ? "Disabled: past its cutoff" : "Disabled: signed out",
+    };
+
+    /// <summary>The play arrow's opacity: dimmed for the moment of a blink.</summary>
+    public double TabIconOpacity => Blinker.IsDim ? 0.25 : 1.0;
+
+    /// <summary>The tokens this tab counts for its blinks: its login's uncached tokens today, as the dashboard already read them
+    /// (on the 'API key' tab, the CLIs billing the key's).</summary>
+    private long TabTokens => tab.IsApiKey ? ApiKeyUsageToday.Fresh : snapshot?.UsageToday.Fresh ?? 0;
+
+    /// <summary>Hands this tab's token count from the refresh just applied to its blinker; a busy tab's new blinks start the
+    /// shared blink timer, and one that isn't busy drops any it had queued.</summary>
+    private void CountTabTokens(DateTime nowUtc)
+    {
+        var queued = Blinker.Count(TabTokens, Root.tabBlinkTokens, nowUtc);
+        if (TabActivity != TabActivity.Busy) Blinker.Clear();
+        else if (queued > 0) Root.StartBlinking();
+        Raise(nameof(TabIconOpacity));
+    }
+
+    private void StartBlinking()
+    {
+        if (blinkTimer is null)
+        {
+            blinkTimer = new DispatcherTimer(DispatcherPriority.Normal) { Interval = TimeSpan.FromMilliseconds(40) };
+            blinkTimer.Tick += (_, _) => TickBlinks(DateTime.UtcNow);
+        }
+        blinkTimer.Start();
+    }
+
+    /// <summary>Moves every tab's blink on; the timer stops once no tab has one queued or on screen.</summary>
+    private void TickBlinks(DateTime nowUtc)
+    {
+        var active = false;
+        foreach (var t in loginTabs)
+        {
+            if (t.blinker is not { } b) continue;
+            if (b.Tick(nowUtc)) t.Raise(nameof(TabIconOpacity));
+            active |= b.IsActive;
+        }
+        if (!active) blinkTimer?.Stop();
     }
 
     /// <summary>The 5-hour window's % used: its own pace's against a real limit, else the roster's last reading.</summary>
@@ -142,6 +236,7 @@ public sealed partial class MainViewModel
     private void RaiseTabStatus()
     {
         foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(TabTip),
+                                     nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(TabActivityWord),
                                      nameof(ApiKeyClis), nameof(ApiKeyCostText) })
             Raise(name);
     }

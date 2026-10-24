@@ -90,6 +90,56 @@ public sealed class TabStatusTests
     }
 
     [Test]
+    public void A_person_past_its_own_5_hour_cutoff_says_so()
+    {
+        Assert.That(MainViewModel.StatusOf(true, false, null, 50, 90, 98, 98), Is.EqualTo((TabLight.Other, "At its 5-hour cutoff (98%)")));
+        Assert.That(MainViewModel.StatusOf(true, false, null, 50, 90, 97, 98).Light, Is.EqualTo(TabLight.Good));
+    }
+
+    [Test]
+    public void The_icon_is_disabled_past_a_cutoff_or_unusable_busy_while_working_or_spending_else_idle()
+    {
+        Assert.That(MainViewModel.ActivityOf(usable: true, pastCutoff: false, working: false, spending: false), Is.EqualTo(TabActivity.Idle));
+        Assert.That(MainViewModel.ActivityOf(true, false, working: true, spending: false), Is.EqualTo(TabActivity.Busy));
+        Assert.That(MainViewModel.ActivityOf(true, false, false, spending: true), Is.EqualTo(TabActivity.Busy));
+        Assert.That(MainViewModel.ActivityOf(true, pastCutoff: true, true, true), Is.EqualTo(TabActivity.Disabled));
+        Assert.That(MainViewModel.ActivityOf(usable: false, false, true, true), Is.EqualTo(TabActivity.Disabled), "signed out, or API billing off");
+
+        Assert.That(MainViewModel.PastCutoffOf(90, 90, 10, 98), Is.True, "at its weekly cutoff");
+        Assert.That(MainViewModel.PastCutoffOf(50, 90, 98, 98), Is.True, "at its 5-hour cutoff");
+        Assert.That(MainViewModel.PastCutoffOf(89, 90, 97, 98), Is.False);
+        Assert.That(MainViewModel.PastCutoffOf(null, 90, null, 98), Is.False, "never read is not past");
+    }
+
+    [Test]
+    public void A_tab_blinks_once_per_N_tokens_spread_over_the_refresh_at_its_own_phase()
+    {
+        var b = new TabBlinker("a@x.com");
+        Assert.That(b.Count(5_000, 1000, Now), Is.Zero, "the first count only sets where counting starts");
+        Assert.That(b.Grew, Is.False);
+        Assert.That(b.Count(5_999, 1000, Now), Is.Zero, "no multiple of N crossed");
+        Assert.That(b.Grew, Is.True, "but it spent");
+        Assert.That(b.Count(8_100, 1000, Now), Is.EqualTo(3), "6000, 7000 and 8000 crossed");
+        Assert.That(b.Pending, Is.EqualTo(3));
+
+        // Three blinks over the next refresh: each dims the icon for a moment, then the next one a third of the spread later.
+        var blinks = 0;
+        for (var t = Now; t < Now + TabBlinker.Spread + TabBlinker.Spread; t += TimeSpan.FromMilliseconds(10))
+            if (b.Tick(t) && b.IsDim) blinks++;
+        Assert.That(blinks, Is.EqualTo(3));
+        Assert.That(b.IsActive, Is.False);
+
+        Assert.That(b.Count(100, 1000, Now), Is.Zero, "a new day starts the count again");
+        Assert.That(b.Count(1_000_000, 1000, Now), Is.EqualTo(1000), "every multiple counted");
+        Assert.That(b.Pending, Is.EqualTo(TabBlinker.MaxQueued), "but no more queued than fit in a refresh");
+
+        Assert.That(TabBlinker.PhaseOf("a@x.com"), Is.Not.EqualTo(TabBlinker.PhaseOf("b@x.com")), "tabs at one rate don't blink in unison");
+        Assert.That(TabBlinker.PhaseOf("a@x.com"), Is.EqualTo(TabBlinker.PhaseOf("a@x.com")).And.InRange(0, 1));
+        b.Clear();
+        Assert.That(b.IsActive, Is.False);
+    }
+
+    [Test]
     public void The_strip_shows_the_light_and_week_left_and_the_API_key_switch_lives_on_its_tab()
     {
         var root = TestContext.CurrentContext.TestDirectory;
@@ -97,11 +147,15 @@ public sealed class TabStatusTests
         var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
 
         var strip = xaml[xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"Header\"", StringComparison.Ordinal)];
-        // The library's MaTabItem draws the light before the name and the trailing text after it (M.ORCH-T667).
+        // The library's MaTabItem draws the trailing text after the name (M.ORCH-T667); the status icon (M.ORCH-T757) replaced its
+        // status light: pause idle, a blinking green play arrow busy, gray disabled, each in the library's icon font and a theme token.
         Assert.That(strip, Does.Contain("<mc:MaTabControl").And.Contain("TargetType=\"mc:MaTabItem\""));
-        Assert.That(strip, Does.Contain("Property=\"Status\" Value=\"{Binding TabLightStatus}\"")
-            .And.Contain("Property=\"StatusLabel\" Value=\"{Binding TabStatusWord}\"")
-            .And.Contain("Property=\"Trailing\" Value=\"{Binding TabTrailing}\"")
+        Assert.That(strip, Does.Not.Contain("Property=\"Status\" Value="), "the icon, not the status light");
+        Assert.That(strip, Does.Contain("x:Name=\"TabIdleIcon\" Text=\"&#xE769;\"").And.Contain("{Binding IsTabIdle")
+            .And.Contain("x:Name=\"TabBusyIcon\" Text=\"&#xE768;\"").And.Contain("Foreground=\"{DynamicResource MaGood}\" Opacity=\"{Binding TabIconOpacity}\"")
+            .And.Contain("{Binding IsTabBusy").And.Contain("x:Name=\"TabDisabledIcon\" Text=\"&#xE733;\"").And.Contain("Foreground=\"{DynamicResource MaMuted}\"")
+            .And.Contain("{Binding IsTabDisabled").And.Contain("FontFamily=\"Segoe Fluent Icons, Segoe MDL2 Assets\""));
+        Assert.That(strip, Does.Contain("Property=\"Trailing\" Value=\"{Binding TabTrailing}\"")
             .And.Contain("Property=\"Accent\" Value=\"{Binding TabBrush}\"")
             .And.Contain("Property=\"AutomationProperties.Name\" Value=\"{Binding TabTip}\"")
             .And.Contain("{Binding TabTitle}"));

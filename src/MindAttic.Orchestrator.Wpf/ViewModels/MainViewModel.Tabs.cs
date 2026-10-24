@@ -37,9 +37,9 @@ public sealed partial class MainViewModel
     /// <summary>The login's name ("Jordan", "Ryan (fallback)").</summary>
     public string TabTitle => tab.Title;
 
-    /// <summary>Its title and its light's word (M.ORCH-T630: colour is never the only cue), its week left, its email and which
+    /// <summary>Its title, its status icon's word (M.ORCH-T757) and its light's word (M.ORCH-T630: colour is never the only cue), its week left, its email and which
     /// login it is, and how many of its CLIs wait on you.</summary>
-    public string TabTip => $"{tab.Title}: {TabStatusWord}" + (tab.IsApiKey ? $", {TabTrailing}" : $", week {TabTrailing}") + $". {tab.ToolTip}." +
+    public string TabTip => $"{tab.Title}: {TabActivityWord}, {TabStatusWord}" + (tab.IsApiKey ? $", {TabTrailing}" : $", week {TabTrailing}") + $". {tab.ToolTip}." +
         (WaitingCount == 0 ? "" : $" {WaitingCount} need{(WaitingCount == 1 ? "s" : "")} you.");
 
     /// <summary>The login's terminal tab color (M.ORCH-T616), the tab's accent; the theme's muted brush when it has none.</summary>
@@ -119,12 +119,15 @@ public sealed partial class MainViewModel
         var options = aggregator.Options;
         // One view per org, cut once and shared by its tabs.
         var byOrg = new Dictionary<string, Snapshot>(StringComparer.Ordinal);
+        var now = DateTime.UtcNow;
         foreach (var t in loginTabs.ToList())
         {
             var org = t.OrgId;
             if (!byOrg.TryGetValue(org, out var orgAll)) byOrg[org] = orgAll = OrgScope.For(all, orgs, org, options.WorkingWindow, options.WaitingWindow);
             // The 'API key' tab is no login's: scoped to a key no session runs on, it has no repos' sessions or toasts of its own.
             t.Apply(orgAll, LoginScope.For(orgAll, t.IsApiKeyTab ? LoginTab.ApiKeyKey : t.ScopeEmail, options.WorkingWindow, options.WaitingWindow));
+            // Its blinks from the token count this refresh read (M.ORCH-T757): no read of its own.
+            t.CountTabTokens(now);
             t.RaiseTabStatus();
         }
         UpdateOrgPills();

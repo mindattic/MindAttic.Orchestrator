@@ -114,16 +114,17 @@
         <mc:MaTabControl x:Name="LoginTabStrip" ShowContent="False" ItemsSource="{Binding OrgTabs}" SelectedItem="{Binding SelectedTab}"
                          AutomationProperties.Name="Claude logins, one dashboard tab each"
                          Visibility="{Binding HasLoginTabs, Converter={StaticResource Visible}}">
-            <!-- Status at a glance (M.ORCH-T630), all the library's MaTabItem (M.ORCH-T667): a status light before the name
-                 (green signed in and usable, red signed out, purple any other state; the 'API key' tab's orange), its word in
-                 the tooltip, the accessible name and the tab's item status so colour is never the only cue, the person's
-                 terminal colour as the tab's accent, and the week left after the reserve as its trailing text ('API key': what
-                 the CLIs billing it spent today). -->
+            <!-- Status at a glance (M.ORCH-T630), all the library's MaTabItem (M.ORCH-T667): a status icon before the name
+                 (M.ORCH-T757, in place of the status light): a pause icon while the login is idle; a green play arrow while it's
+                 busy, blinking once for every N tokens it spends (the TabBlinkTokens setting), so busy tabs blink at their own
+                 rate; a gray 'disabled' icon past its 5-hour or weekly cutoff or signed out (the 'API key' tab: API billing
+                 off). The icons are the library's icon font (Segoe Fluent Icons / MDL2, as MaIconButton draws) in theme
+                 tokens. The icon's word and the status word are in the tooltip and the accessible name, so neither colour nor
+                 the picture is the only cue; the person's terminal colour is the tab's accent, and the week left after the
+                 reserve its trailing text ('API key': what the CLIs billing it spent today). -->
             <mc:MaTabControl.ItemContainerStyle>
                 <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
                     <Setter Property="Accent" Value="{Binding TabBrush}" />
-                    <Setter Property="Status" Value="{Binding TabLightStatus}" />
-                    <Setter Property="StatusLabel" Value="{Binding TabStatusWord}" />
                     <Setter Property="Trailing" Value="{Binding TabTrailing}" />
                     <Setter Property="ToolTip" Value="{Binding TabTip}" />
                     <Setter Property="AutomationProperties.Name" Value="{Binding TabTip}" />
@@ -132,6 +133,18 @@
             <mc:MaTabControl.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:MainViewModel}">
                     <StackPanel x:Name="LoginTabItem" Orientation="Horizontal">
+                        <Grid x:Name="TabStatusIcon" VerticalAlignment="Center" Margin="0,0,8,0">
+                            <TextBlock x:Name="TabIdleIcon" Text="&#xE769;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
+                                       Foreground="{DynamicResource MaText}" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
+                                       Visibility="{Binding IsTabIdle, Converter={StaticResource Visible}}" />
+                            <TextBlock x:Name="TabBusyIcon" Text="&#xE768;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
+                                       Foreground="{DynamicResource MaGood}" Opacity="{Binding TabIconOpacity}" VerticalAlignment="Center"
+                                       AutomationProperties.Name="{Binding TabActivityWord}"
+                                       Visibility="{Binding IsTabBusy, Converter={StaticResource Visible}}" />
+                            <TextBlock x:Name="TabDisabledIcon" Text="&#xE733;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
+                                       Foreground="{DynamicResource MaMuted}" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
+                                       Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />
+                        </Grid>
                         <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <TextBlock VerticalAlignment="Center" Margin="8,0,0,0"
                                    Visibility="{Binding TabBadge, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
@@ -1372,6 +1385,13 @@
                               Content="Autopilot" />
                 <TextBlock Text="Type /allocate in a CLI and that CLI works its repo's tickets (or -repo=a,b, or all) through its own subagents, each in its own worktree, as many at once as the pace allows; no other CLI is affected. Off here pauses it in every CLI; /allocate off ends it in that one."
                            Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,0" />
+
+                <TextBlock Text="PERSON TABS" Style="{StaticResource MaSectionLabel}" />
+                <TextBlock Text="Blink once per (tokens)" Margin="0,0,0,4" />
+                <TextBox Style="{StaticResource MaTextBox}" Height="32" Width="120" HorizontalAlignment="Left"
+                         Text="{Binding TabBlinkTokens, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Blink once per this many tokens" />
+                <TextBlock Text="1 to 10,000,000 (1000 by default). A busy login's green play arrow blinks once for every this many tokens it spends (uncached), so busy tabs blink at their own rate and the busiest blink fastest. Also orchestrator settings --tab-blink-tokens."
+                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
 
                 <TextBlock Text="{Binding Error}" Foreground="{DynamicResource MaBad}" TextWrapping="Wrap" Margin="0,14,0,0" AutomationProperties.LiveSetting="Assertive"
                            Visibility="{Binding Error, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
