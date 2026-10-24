@@ -3,6 +3,8 @@ using MindAttic.Orchestrator.Tickets;
 using MindAttic.Tickets.Log;
 using Spectre.Console;
 using Spectre.Console.Cli;
+// MindAttic.Tickets 4.0.0 has a TicketHygiene of its own (M.TIX-T134); this command keeps the Orchestrator's until M.ORCH-T762.
+using TicketHygiene = MindAttic.Orchestrator.Tickets.TicketHygiene;
 
 /// <summary>Closed tickets that may not really be done, across the workspace.</summary>
 internal sealed class HygieneCommand : Command

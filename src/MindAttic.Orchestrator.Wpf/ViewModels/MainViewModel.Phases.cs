@@ -560,7 +560,7 @@ public sealed partial class MainViewModel
     public void Release(string ticketId) => Guarded("Release", () =>
     {
         if (Locked(ticketId)) return;
-        dispatcher.Release(ticketId);
+        dispatcher.Release(ticketId, aggregator.Options.WorkspaceRoot);
         QueueMessage = $"{ticketId} is back in the queue.";
         queueLog.Information("Released {Ticket:l}", ticketId);
         if (full is not null) Root.ApplyPlan(full);

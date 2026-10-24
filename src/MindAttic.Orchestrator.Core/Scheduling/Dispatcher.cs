@@ -75,6 +75,8 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
             all.Add(assignment);
         });
         if (raced) return new Result(false, $"{item.Id} was claimed elsewhere while its tab opened; close the tab just opened, the other claim stands.", null);
+        // Who works it, for Tickets Desktop's link back (M.ORCH-T766): its login now, its session once the daemon sees the tab's.
+        Tickets.TicketWorking.Set(Path.GetDirectoryName(item.RepoPath), item.Id, assignment.Account, null);
 
         var where = useWorktree ? $"worktree {directory} (branch {BranchFor(item.Id)})" : item.Repo;
         return new Result(true, $"Opened {provider} on {item.Id} in {where}. " + (!submit
@@ -164,10 +166,13 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
     internal static string? ConfigDirFor(string provider, TabLogin? login, Func<string?> picked) =>
         provider != "Claude" ? null : login is not null ? login.ConfigDir : picked();
 
-    /// <summary>Drops an assignment (the ticket returns to the queue). Never touches the worktree.</summary>
-    public void Release(string ticketId)
+    /// <summary>Drops an assignment (the ticket returns to the queue). Never touches the worktree. With
+    /// <paramref name="workspaceRoot"/>, nobody is recorded working it in the ticket database any more (M.ORCH-T766); without, the
+    /// daemon's sync clears it next tick.</summary>
+    public void Release(string ticketId, string? workspaceRoot = null)
     {
         store.UpdateAssignments(all => all.RemoveAll(a => a.TicketId == ticketId));
+        if (workspaceRoot is not null) Tickets.TicketWorking.Clear(workspaceRoot, ticketId);
     }
 
     /// <summary>Removes a finished assignment's worktree. git refuses if it has uncommitted changes,

@@ -1,6 +1,7 @@
 using MindAttic.Orchestrator.Tickets;
 using MindAttic.Tickets.Log;
 using NUnit.Framework;
+using TicketHygiene = MindAttic.Orchestrator.Tickets.TicketHygiene; // not MindAttic.Tickets 4.0.0's own (M.TIX-T134)
 
 namespace MindAttic.Orchestrator.Tests;
 
