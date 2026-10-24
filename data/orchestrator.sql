@@ -2937,6 +2937,7 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24T03:14:46Z', 3, '2026-10-24T05:00:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24T03:19:53Z', 3, '2026-10-24T05:00:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24T03:25:02Z', 3, '2026-10-24T05:00:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24T03:30:09Z', 3, '2026-10-24T05:00:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -3222,6 +3223,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'Unity.SpaceGod', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 9681293);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/0df2b9d7-2637-40ea-bac8-2354ec84d894', NULL, 538389);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', '(workspace root)', 'Claude', 'billed:api-key', NULL, 690741);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 64004);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'MindAttic.Launcher', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/0df2b9d7-2637-40ea-bac8-2354ec84d894', NULL, 94860);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/0df2b9d7-2637-40ea-bac8-2354ec84d894', NULL, 20624973);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3477982);
@@ -7915,6 +7917,13 @@ INSERT INTO state (name, value) VALUES ('limit-resumes', '{
     "UntilUtc": "2026-10-27T22:00:00Z",
     "StoppedUtc": "2026-10-24T02:06:53.8936099Z",
     "DueUtc": "2026-10-27T22:02:00Z"
+  },
+  "46704": {
+    "SessionId": "920f73e2-defc-4a55-b788-dcf01eab5395",
+    "Window": "weekly",
+    "UntilUtc": "2026-10-27T22:00:00Z",
+    "StoppedUtc": "2026-10-24T03:27:46.7086203Z",
+    "DueUtc": "2026-10-27T22:02:00Z"
   }
 }');
 INSERT INTO state (name, value) VALUES ('limit-wakes', '{
@@ -8198,8 +8207,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "35a01aa2f56fd0aa47b23ddb96c429f646ba735c"
   },
   "MindAttic.Capture": {
-    "Tested": "d1d06bf65625349a34f9fd327d0261896d3ecfb6",
-    "Green": "d1d06bf65625349a34f9fd327d0261896d3ecfb6"
+    "Tested": "293e5f1706ce526cd6f72635fadbde9937e3d54a",
+    "Green": "293e5f1706ce526cd6f72635fadbde9937e3d54a"
   },
   "MindAttic.Components": {
     "Tested": "726491cd0530815a4cf5144d3b03e9930e520f79",
@@ -8218,8 +8227,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "5fcbd0bdd76388c51f79d7efb0f9c1019095d436"
   },
   "MindAttic.Launcher": {
-    "Tested": "dd85d0469cce53ebce2b80e7aae9505b57425e98",
-    "Green": "dd85d0469cce53ebce2b80e7aae9505b57425e98"
+    "Tested": "3fbb869a7330cf80e1d456b4cf98999c2def0a23",
+    "Green": "3fbb869a7330cf80e1d456b4cf98999c2def0a23"
   },
   "MindAttic.Legion": {
     "Tested": "0f63adaaae25e3a5fc8498c9973ab151ca31bd96"
@@ -8231,7 +8240,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "353c5389ca0ff0ddd31229b4118288799603ae53"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "0781a17f4dbbe5fa88d5cdbccb7a3c23a9fc701b",
+    "Tested": "98cd3f2b4d9cf9ffb5316034e0c7841c2653157c",
     "Green": "6396ae6d689cd522e27dd708407a3808dd0a18a5"
   },
   "MindAttic.Psst": {
@@ -8241,8 +8250,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "abe81baeac104dc09daf44fa165ab3b35303203e"
   },
   "MindAttic.Tickets": {
-    "Tested": "7a1a959b31cebbec4dbc1afb6a64128c3a2870d4",
-    "Green": "7a1a959b31cebbec4dbc1afb6a64128c3a2870d4"
+    "Tested": "cb7dd508184b3d14f232a1016f5af01a7d87e508",
+    "Green": "cb7dd508184b3d14f232a1016f5af01a7d87e508"
   },
   "MindAttic.Vault": {
     "Tested": "d1d380ee7f79fca1002dc912e38cd1fff5f25687",
@@ -9019,9 +9028,10 @@ INSERT INTO state (name, value) VALUES ('outside-use', '[
       0,
       0,
       0,
+      0,
       0
     ],
-    "NoiseThroughUtc": "2026-10-24T03:25:02Z",
+    "NoiseThroughUtc": "2026-10-24T03:30:09Z",
     "Windows": [
       {
         "ResetUtc": "2026-10-24T05:00:00Z",
@@ -9205,6 +9215,10 @@ INSERT INTO state (name, value) VALUES ('outside-use', '[
       },
       {
         "ResetUtc": "2026-10-24T03:00:00Z",
+        "Points": 0
+      },
+      {
+        "ResetUtc": "2026-10-24T08:20:00Z",
         "Points": 0
       }
     ],
@@ -9464,11 +9478,11 @@ INSERT INTO state (name, value) VALUES ('outside-use', '[
     "HeldSinceUtc": "2026-10-24T02:35:06.9236971Z",
     "LastSeenUtc": "2026-10-24T03:14:46Z",
     "EpisodeFromUtc": "2026-10-24T02:05:45Z",
-    "CountedThroughUtc": "2026-10-24T03:23:15Z",
+    "CountedThroughUtc": "2026-10-24T03:27:29Z",
     "EpisodePoints": 6,
     "EpisodeWeekPoints": 1,
     "EpisodeSeen": 4,
-    "CeilingPercent": 76,
+    "CeilingPercent": 78,
     "WeeklyStopPercent": 87,
     "CeilingAtStart": 95,
     "RateAtStart": 0.06810737615795247,
