@@ -98,68 +98,25 @@
              whichever person's tab is selected. -->
         <DockPanel x:Name="TopRow" Grid.Row="0" Margin="24,14,24,0">
         <mc:MaThemeToggle x:Name="ThemeToggle" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0" />
-        <!-- The button itself is the library's own MaToolButton, unmodified (M.ORCH-T777: a Button.Template, or any
-             ControlTemplate, is a hand-built control the dashboard isn't allowed - LibraryControlsTests caught the one
-             M.ORCH-T770/T771 added). EmergencyGlow's pulse can't live on the Button's own Style.Triggers (MC4011:
-             Style.Triggers can never set TargetName) or on a self-targeted Effect property (throws at runtime,
-             "'Effect' property does not point to a DependencyObject") - so it's a themed Ellipse behind the button,
-             in a DataTemplate of its own NameScope a Storyboard.TargetName can resolve against (the same trick as
-             TabBusyGlow below). Content="{Binding}" just passes the tab's own view model through to the template. -->
-        <ContentControl x:Name="EmergencyBillingHost" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
-                         Focusable="False" Content="{Binding}">
-            <ContentControl.ContentTemplate>
-                <DataTemplate>
-                    <DataTemplate.Triggers>
-                        <DataTrigger Binding="{Binding IsOnApiKey}" Value="True">
-                            <DataTrigger.EnterActions>
-                                <BeginStoryboard>
-                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
-                                        <DoubleAnimation Storyboard.TargetName="EmergencyGlow" Storyboard.TargetProperty="Opacity"
-                                                         From="0.25" To="0.95" Duration="0:0:1.3" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </DataTrigger.EnterActions>
-                            <DataTrigger.ExitActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="EmergencyGlow" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </DataTrigger.ExitActions>
-                        </DataTrigger>
-                    </DataTemplate.Triggers>
-                    <Grid>
-                        <Ellipse x:Name="EmergencyGlow" Width="30" Height="26" Fill="{DynamicResource MaGood}" Opacity="0">
-                            <Ellipse.Effect>
-                                <BlurEffect Radius="14" />
-                            </Ellipse.Effect>
-                        </Ellipse>
-                        <Button x:Name="EmergencyBillingButton" Style="{StaticResource MaToolButton}"
-                                Command="{Binding ToggleBillingCommand}" ToolTip="{Binding BillingToggleText}"
-                                AutomationProperties.Name="{Binding BillingToggleText}" AutomationProperties.HelpText="{Binding BillingClis}">
-                            <!-- Material Design's well-known 'vpn_key' glyph (24x24 viewBox), drawn as a Path rather than an icon-font
-                                 codepoint: no MDL2/Fluent glyph for a key is confirmed to exist in this font stack, and a wrong one renders
-                                 as a blank tofu box, which a break-glass control can never afford. -->
-                            <Viewbox Width="16" Height="16">
-                                <Path Data="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"
-                                      Stretch="Uniform">
-                                    <Path.Style>
-                                        <Style TargetType="Path">
-                                            <Setter Property="Fill" Value="{DynamicResource MaText}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsOnApiKey}" Value="True">
-                                                    <Setter Property="Fill" Value="{DynamicResource MaGood}" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Path.Style>
-                                </Path>
-                            </Viewbox>
-                        </Button>
-                    </Grid>
-                </DataTemplate>
-            </ContentControl.ContentTemplate>
-        </ContentControl>
+        <!-- The library's own MaToolButton (Theme.xaml), not a template of its own (M.ORCH-T775): a Storyboard.TargetName
+             only resolves within a ControlTemplate or DataTemplate's NameScope, and MaToolButton's has no part this button
+             could name, so the glow pulse is set up in code-behind instead (MainWindow.xaml.cs), on a DropShadowEffect
+             assigned straight to the Button, animated by BeginAnimation rather than a Storyboard. That sidesteps the
+             NameScope rule entirely, and the MC4011 compile error and the runtime 'Effect property does not point to a
+             DependencyObject' crash it previously ran into (M.ORCH-T770, M.ORCH-T771). -->
+        <Button x:Name="EmergencyBillingButton" Style="{StaticResource MaToolButton}" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
+                Command="{Binding ToggleBillingCommand}" ToolTip="{Binding BillingToggleText}"
+                AutomationProperties.Name="{Binding BillingToggleText}" AutomationProperties.HelpText="{Binding BillingClis}">
+            <!-- Material Design's well-known 'vpn_key' glyph (24x24 viewBox), drawn as a Path rather than an icon-font
+                 codepoint: no MDL2/Fluent glyph for a key is confirmed to exist in this font stack, and a wrong one renders
+                 as a blank tofu box, which a break-glass control can never afford. Its colour is the view model's own live
+                 brush (EmergencyKeyBrush, Palette's MaText/MaGood, M.ORCH-T775) rather than a DataTrigger, so no Style of
+                 its own is needed here either. -->
+            <Viewbox Width="16" Height="16">
+                <Path Data="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"
+                      Stretch="Uniform" Fill="{Binding EmergencyKeyBrush}" />
+            </Viewbox>
+        </Button>
         <!-- Organizations above people (M.ORCH-T655): one pill per org (orchestrator orgs add), shown once there's a second,
              with how many of its people's repos need you; the person tabs below are the chosen org's. Kept on the global login's
              tab (MainWindow.xaml.cs), which holds every org, like the person strip under it. -->
@@ -211,32 +168,6 @@
             </mc:MaTabControl.ItemContainerStyle>
             <mc:MaTabControl.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:MainViewModel}">
-                    <!-- M.ORCH-T770: a Storyboard.TargetName is only resolvable from a template's own Triggers (its NameScope) -
-                         not from an element's own Style.Triggers, which cannot set TargetName at all (MC4011), and a bare
-                         compound property path through a self-targeted Effect throws at runtime ('Effect' property does not
-                         point to a DependencyObject). So TabBusyGlow's pulse is wired here, not on TabBusyIcon itself.
-                         M.ORCH-T777: TabBusyGlow is the themed Ellipse below, not a DropShadowEffect - its Color property
-                         can't take a DynamicResource brush, only a literal, and LibraryControlsTests forbids a hard-coded
-                         colour in the dashboard. -->
-                    <DataTemplate.Triggers>
-                        <DataTrigger Binding="{Binding IsTabBusy}" Value="True">
-                            <DataTrigger.EnterActions>
-                                <BeginStoryboard>
-                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
-                                        <DoubleAnimation Storyboard.TargetName="TabBusyGlow" Storyboard.TargetProperty="Opacity"
-                                                         From="0.25" To="0.95" Duration="0:0:1.3" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </DataTrigger.EnterActions>
-                            <DataTrigger.ExitActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="TabBusyGlow" Storyboard.TargetProperty="Opacity" To="0.3" Duration="0:0:0.2" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </DataTrigger.ExitActions>
-                        </DataTrigger>
-                    </DataTemplate.Triggers>
                     <StackPanel x:Name="LoginTabItem" Orientation="Horizontal">
                         <Grid x:Name="TabStatusIcon" VerticalAlignment="Center" Margin="0,0,8,0">
                             <TextBlock x:Name="TabIdleIcon" Text="&#xE769;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
@@ -244,17 +175,15 @@
                                        Visibility="{Binding IsTabIdle, Converter={StaticResource Visible}}" />
                             <!-- Solid green, slow glowing pulse while busy (M.ORCH-T770: the same soothing-pulse treatment as the
                                  corner's emergency billing toggle), not the old per-token blink (TabIconOpacity/Blinker, now
-                                 unbound here but left in the view model: TabBlinkTokens still configures other consumers). -->
-                            <Ellipse x:Name="TabBusyGlow" Width="16" Height="16" Fill="{DynamicResource MaGood}" Opacity="0.3"
-                                     Visibility="{Binding IsTabBusy, Converter={StaticResource Visible}}">
-                                <Ellipse.Effect>
-                                    <BlurEffect Radius="8" />
-                                </Ellipse.Effect>
-                            </Ellipse>
+                                 unbound here but left in the view model: TabBlinkTokens still configures other consumers). The
+                                 glow is a DropShadowEffect built and animated from code (MainWindow.xaml.cs's TabBusyIcon_Loaded,
+                                 M.ORCH-T775), not a Storyboard here: Storyboard.TargetName needs a NameScope, and the library-only
+                                 XAML rule (M.ORCH-T667) leaves no library-styled place in this DataTemplate to put one. -->
                             <TextBlock x:Name="TabBusyIcon" Text="&#xE768;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
                                        Foreground="{DynamicResource MaGood}" VerticalAlignment="Center"
                                        AutomationProperties.Name="{Binding TabActivityWord}"
-                                       Visibility="{Binding IsTabBusy, Converter={StaticResource Visible}}" />
+                                       Visibility="{Binding IsTabBusy, Converter={StaticResource Visible}}"
+                                       IsVisibleChanged="TabBusyIcon_IsVisibleChanged" Loaded="TabBusyIcon_Loaded" />
                             <TextBlock x:Name="TabDisabledIcon" Text="&#xE733;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
                                        Foreground="{DynamicResource MaMuted}" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                        Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />

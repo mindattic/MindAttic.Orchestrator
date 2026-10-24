@@ -6,6 +6,9 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using System.Windows.Threading;
 using MindAttic.Orchestrator.Wpf.ViewModels;
 
@@ -58,6 +61,15 @@ public partial class MainWindow : Window
         model.Zoom.Attach(Root, this);
         // The upper-right sun/moon switch (M.ORCH-T678) changes the theme live; each switch is saved, so it holds at the next start.
         ThemeChoice.SaveSwitches(this, model.Store);
+        // The emergency billing button's glow pulse (M.ORCH-T770), set up here rather than a Storyboard in its Style
+        // (M.ORCH-T775): Storyboard.TargetName only resolves within a ControlTemplate or DataTemplate's own NameScope, and
+        // this button wears the library's own MaToolButton style with no named part of its own to target. A DropShadowEffect
+        // assigned straight to the button and animated with BeginAnimation needs no NameScope at all.
+        var emergencyGlow = new DropShadowEffect { Color = GlowColor, ShadowDepth = 0, BlurRadius = 14, Opacity = 0 };
+        EmergencyBillingButton.Effect = emergencyGlow;
+        void UpdateEmergencyGlow() => Pulse(emergencyGlow, model.IsOnApiKey, exitOpacity: 0, exitSeconds: 0.3);
+        model.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(MainViewModel.IsOnApiKey)) UpdateEmergencyGlow(); };
+        UpdateEmergencyGlow();
 
         CommandBindings.Add(new CommandBinding(WindowCommands.FocusSearch, (_, _) =>
         {
@@ -105,6 +117,38 @@ public partial class MainWindow : Window
         if (sender != Shown) return;
         if (e.PropertyName == nameof(MainViewModel.StatusMessage)) Announce(Shown.StatusMessage);
         else if (e.PropertyName == nameof(MainViewModel.QueueMessage)) Announce(Shown.QueueMessage);
+    }
+
+    /// <summary>The slow glowing pulse's colour (M.ORCH-T770): the emergency billing button and a busy login tab's icon both
+    /// use it, built and animated in code rather than a Storyboard (M.ORCH-T775 below).</summary>
+    private static readonly Color GlowColor = Color.FromRgb(0x2F, 0xBF, 0x71);
+
+    /// <summary>Starts <paramref name="glow"/>'s slow forever pulse while <paramref name="on"/>, or settles it at
+    /// <paramref name="exitOpacity"/> over <paramref name="exitSeconds"/> once it isn't: the code-behind equivalent of the
+    /// Storyboard.TargetName animation M.ORCH-T770 used, which needs a NameScope neither the emergency button's library style
+    /// nor a plain TextBlock inside a DataTemplate's repeated items can give it cleanly (M.ORCH-T775). A DropShadowEffect's own
+    /// dependency property animates with BeginAnimation, no NameScope required.</summary>
+    private static void Pulse(DropShadowEffect glow, bool on, double exitOpacity, double exitSeconds) =>
+        glow.BeginAnimation(DropShadowEffect.OpacityProperty, on
+            ? new DoubleAnimation(0.25, 0.95, TimeSpan.FromSeconds(1.3)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever }
+            : new DoubleAnimation(exitOpacity, TimeSpan.FromSeconds(exitSeconds)));
+
+    /// <summary>A busy login tab's play icon (M.ORCH-T770): its own DropShadowEffect, created once this instance of the
+    /// repeated <c>DataTemplate</c> loads (each tab item gets its own, so one login's pulse never drives another's).</summary>
+    private void TabBusyIcon_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not TextBlock icon || icon.Effect is DropShadowEffect) return;
+        var glow = new DropShadowEffect { Color = GlowColor, ShadowDepth = 0, BlurRadius = 8, Opacity = 0.3 };
+        icon.Effect = glow;
+        Pulse(glow, icon.IsVisible, exitOpacity: 0.3, exitSeconds: 0.2);
+    }
+
+    /// <summary>The icon is only visible while its login's tab <c>IsTabBusy</c> (bound through a Visibility converter): showing
+    /// or hiding it is exactly when the pulse should start or settle.</summary>
+    private void TabBusyIcon_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (sender is not TextBlock { Effect: DropShadowEffect glow } icon) return;
+        Pulse(glow, icon.IsVisible, exitOpacity: 0.3, exitSeconds: 0.2);
     }
 
     /// <summary>"Move to" on an agent card or an Accounts-view CLI row (M.ORCH-T607): a menu of the other signed-in logins,

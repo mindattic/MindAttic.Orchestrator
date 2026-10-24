@@ -34,8 +34,9 @@ public sealed class LibraryOnlyXamlTests
         "MultiTrigger", "MultiDataTrigger", "Condition", "Binding", "MultiBinding", "KeyBinding", "BooleanToVisibilityConverter",
     ];
 
-    /// <summary>Layout panels: they place their children and draw nothing of their own.</summary>
-    private static readonly HashSet<string> Layout = ["Grid", "StackPanel", "DockPanel", "WrapPanel", "UniformGrid", "Canvas", "ColumnDefinition", "RowDefinition"];
+    /// <summary>Layout panels: they place their children and draw nothing of their own. Viewbox is here too (M.ORCH-T775): it
+    /// only scales its one child, with no fill, border or template of its own to approve.</summary>
+    private static readonly HashSet<string> Layout = ["Grid", "StackPanel", "DockPanel", "WrapPanel", "UniformGrid", "Canvas", "ColumnDefinition", "RowDefinition", "Viewbox"];
 
     /// <summary>Text content inside a TextBlock or a Hyperlink.</summary>
     private static readonly HashSet<string> Text = ["Run", "LineBreak"];
@@ -51,6 +52,10 @@ public sealed class LibraryOnlyXamlTests
         ["TextBlock"] = "unstyled body text: the library has no body-text key or implicit TextBlock style (an implicit TextBlock " +
                         "style would leak into every control template), so plain text inherits the window's library font and " +
                         "MaText; it may set no colour but a library token or a binding",
+        ["Path"] = "an unstyled vector icon (M.ORCH-T775): the library has no Path style to base one on and none should exist " +
+                   "(a style would leak into every library control that draws with Path internally), so a one-off icon the " +
+                   "library's own glyph set can't safely render (a wrong icon-font codepoint is a blank tofu box) draws its own " +
+                   "geometry instead; like TextBlock, its Fill may set no colour but a library token or a binding",
     };
 
     /// <summary>Setters an app style may add on top of a library style: behaviour, never looks.</summary>
@@ -128,6 +133,7 @@ public sealed class LibraryOnlyXamlTests
                 if (themeImplicit.Contains(name) && !ImplicitButKeyed.Contains(name)) continue;
                 if (name == "Window" && element == root) continue;
                 if (name == "TextBlock") continue; // Exceptions["TextBlock"]: its colours are checked above
+                if (name == "Path") continue; // Exceptions["Path"]: its Fill is checked above too
                 problems.Add($"{Where(element)}: neither a library control nor library-styled");
             }
         }
@@ -231,7 +237,7 @@ public sealed class LibraryOnlyXamlTests
     [Test]
     public void The_exceptions_stay_few()
     {
-        Assert.That(Exceptions.Keys, Is.EquivalentTo(new[] { "Window", "TextBlock" }));
+        Assert.That(Exceptions.Keys, Is.EquivalentTo(new[] { "Window", "TextBlock", "Path" }));
         Assert.That(Exceptions.Values, Has.All.Length.GreaterThan(40), "every exception says why");
     }
 
@@ -247,6 +253,7 @@ public sealed class LibraryOnlyXamlTests
     [TestCase("<Ellipse Fill=\"{Binding Accent}\" />")]
     [TestCase("<Border Style=\"{StaticResource MaCard}\" Background=\"Red\" />")]
     [TestCase("<TextBlock Foreground=\"#FF0000\" />")]
+    [TestCase("<Path Data=\"M0,0 L1,1\" Fill=\"Red\" />")]
     [TestCase("<Button Style=\"{StaticResource Mine}\" />")]
     [TestCase("<Border><Border.Style><Style TargetType=\"Border\" BasedOn=\"{StaticResource MaCard}\"><Setter Property=\"Margin\" Value=\"0\" /></Style></Border.Style></Border>")]
     [TestCase("<TextBlock><TextBlock.Style><Style TargetType=\"TextBlock\"><Setter Property=\"FontSize\" Value=\"9\" /></Style></TextBlock.Style></TextBlock>")]
@@ -265,6 +272,7 @@ public sealed class LibraryOnlyXamlTests
     [TestCase("<ItemsControl Style=\"{StaticResource MaTileList}\" mc:MaList.MinItemWidth=\"240\" />")]
     [TestCase("<mc:MaAccentTile Accent=\"{Binding Accent}\" />")]
     [TestCase("<TextBlock Text=\"x\" FontWeight=\"SemiBold\" Foreground=\"{DynamicResource MaWarn}\" />")]
+    [TestCase("<Path Data=\"M0,0 L1,1\" Fill=\"{DynamicResource MaText}\" />")]
     [TestCase("<mc:MaTabControl><mc:MaTabControl.ItemContainerStyle><Style TargetType=\"mc:MaTabItem\" BasedOn=\"{StaticResource {x:Type mc:MaTabItem}}\"><Setter Property=\"Accent\" Value=\"{Binding TabBrush}\" /><Setter Property=\"ToolTip\" Value=\"{Binding Tip}\" /></Style></mc:MaTabControl.ItemContainerStyle></mc:MaTabControl>")]
     [TestCase("<Hyperlink Style=\"{StaticResource Link}\" />")]
     public void The_rule_passes_the_librarys_own_pieces(string snippet)
