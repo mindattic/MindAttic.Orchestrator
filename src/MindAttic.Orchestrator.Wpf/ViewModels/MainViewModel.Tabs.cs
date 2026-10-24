@@ -88,9 +88,12 @@ public sealed partial class MainViewModel
 
     private void Step(int by)
     {
-        if (orgTabs.Count < 2) return;
-        var at = orgTabs.IndexOf(SelectedTab);
-        Select(orgTabs[((at + by) % orgTabs.Count + orgTabs.Count) % orgTabs.Count]);
+        // The 'API key' tab is never cycled to (M.ORCH-T770): it isn't a person, and it's hidden from the strip, so landing on
+        // it here would select a tab with no visible header to show it was selected.
+        var steppable = orgTabs.Where(t => !t.IsApiKeyTab).ToList();
+        if (steppable.Count < 2) return;
+        var at = steppable.IndexOf(SelectedTab);
+        Select(steppable[((at + by) % steppable.Count + steppable.Count) % steppable.Count]);
     }
 
     /// <summary>

@@ -89,8 +89,26 @@
              between dark (the default) and light at once, every view following, and the choice is saved in the orchestrator's
              settings (ThemeChoice, wired in MainWindow.xaml.cs) so it holds across restarts. It shares the login strip's row and
              stays when the strip is hidden. -->
+        <!-- The emergency billing button (M.ORCH-T770): the Vault's API key bills the organization, nobody's seat, so it isn't a
+             person tab beside Amy/Erin/Honey/Jordan/Ryan (the old 'API key' tab, M.ORCH-T630, is hidden from that strip below) -
+             it's a break-glass control in the window's own corner, bound to the same ToggleBillingCommand/BillingToggleText that
+             tab used, so one click still moves every open CLI, wherever it's signed in. Always on the global login's tab (the
+             strip's own row), so it's there whichever person's tab is selected. -->
         <DockPanel x:Name="TopRow" Grid.Row="0" Margin="24,14,24,0">
         <mc:MaThemeToggle x:Name="ThemeToggle" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="12,0,0,0" />
+        <StackPanel x:Name="EmergencyBilling" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,12,0" HorizontalAlignment="Right">
+            <Button x:Name="EmergencyBillingButton" Style="{StaticResource MaButton}" Command="{Binding ToggleBillingCommand}"
+                    Padding="14,6" BorderBrush="{DynamicResource MaBad}" BorderThickness="2" Foreground="{Binding BillingBrush}" FontWeight="Bold"
+                    ToolTip="Bill every open CLI to the MindAttic Vault's organization API key instead of anyone's personal Claude Team seat - break glass when pacing or a seat's limit goes wrong and you need the orchestrator to keep answering. Click again to put every CLI back on its own Claude Team login."
+                    AutomationProperties.Name="{Binding BillingToggleText}" AutomationProperties.HelpText="{Binding BillingClis}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#x26A0;" FontSize="14" Margin="0,0,6,0" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding BillingToggleText}" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+            <TextBlock Text="{Binding ApiKeyCostText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" HorizontalAlignment="Right"
+                       MaxWidth="260" Margin="0,4,0,0" Visibility="{Binding IsOnApiKey, Converter={StaticResource Visible}}" />
+        </StackPanel>
         <!-- Organizations above people (M.ORCH-T655): one pill per org (orchestrator orgs add), shown once there's a second,
              with how many of its people's repos need you; the person tabs below are the chosen org's. Kept on the global login's
              tab (MainWindow.xaml.cs), which holds every org, like the person strip under it. -->
@@ -117,17 +135,26 @@
             <!-- Status at a glance (M.ORCH-T630), all the library's MaTabItem (M.ORCH-T667): a status icon before the name
                  (M.ORCH-T757, in place of the status light): a pause icon while the login is idle; a green play arrow while it's
                  busy, blinking once for every N tokens it spends (the TabBlinkTokens setting), so busy tabs blink at their own
-                 rate; a gray 'disabled' icon past its 5-hour or weekly cutoff or signed out (the 'API key' tab: API billing
-                 off). The icons are the library's icon font (Segoe Fluent Icons / MDL2, as MaIconButton draws) in theme
-                 tokens. The icon's word and the status word are in the tooltip and the accessible name, so neither colour nor
-                 the picture is the only cue; the person's terminal colour is the tab's accent, and the week left after the
-                 reserve its trailing text ('API key': what the CLIs billing it spent today). -->
+                 rate; a gray 'disabled' icon past its 5-hour or weekly cutoff or signed out. The icons are the library's icon
+                 font (Segoe Fluent Icons / MDL2, as MaIconButton draws) in theme tokens. The icon's word and the status word
+                 are in the tooltip and the accessible name, so neither colour nor the picture is the only cue; the person's
+                 terminal colour is the tab's accent, and the week left after the reserve its trailing text. -->
+            <!-- The 'API key' entry is never shown here (M.ORCH-T770): it isn't a person, so it doesn't get a tab beside
+                 Amy/Erin/Honey/Jordan/Ryan any more - its billing state and toggle moved to the emergency button in the
+                 window's own corner (TopRow, above this strip). Collapsed rather than removed from loginTabs/OrgTabs: Ctrl+Tab,
+                 org scoping and the ApiKeyBody content pane (reachable only were it ever selected, which it now can't be from
+                 here) are untouched. -->
             <mc:MaTabControl.ItemContainerStyle>
                 <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
                     <Setter Property="Accent" Value="{Binding TabBrush}" />
                     <Setter Property="Trailing" Value="{Binding TabTrailing}" />
                     <Setter Property="ToolTip" Value="{Binding TabTip}" />
                     <Setter Property="AutomationProperties.Name" Value="{Binding TabTip}" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsApiKeyTab}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
                 </Style>
             </mc:MaTabControl.ItemContainerStyle>
             <mc:MaTabControl.ItemTemplate>
