@@ -110,20 +110,35 @@ function Remove-AsideFiles([string]$dir) {
 function Copy-Published([string]$from, [string]$to) {
     Remove-AsideFiles $to
     New-Item -ItemType Directory -Force $to | Out-Null
-    $root = (Get-Item -LiteralPath $from).FullName.TrimEnd('')
-    foreach ($f in @(Get-ChildItem -LiteralPath $root -Recurse -File)) {
-        $target = Join-Path $to $f.FullName.Substring($root.Length + 1)
-        New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
-        $copied = $false
-        for ($try = 0; $try -lt 3 -and -not $copied; $try++) {
-            try { Copy-Item -LiteralPath $f.FullName -Destination $target -Force -ErrorAction Stop; $copied = $true } catch { Start-Sleep -Milliseconds 100 }
+    $root = (Get-Item -LiteralPath $from).FullName.TrimEnd([char]92, [char]47)
+    $pairs = @(Get-ChildItem -LiteralPath $root -Recurse -File | ForEach-Object {
+        [pscustomobject]@{ Source = $_.FullName; Target = (Join-Path $to $_.FullName.Substring($root.Length + 1)) }
+    })
+    # Pass 1: move every installed file a running process holds out of the way, before anything new lands. If one can't be
+    # moved the moves are undone and this throws, so Cli\ stays the old, whole install.
+    $moved = New-Object System.Collections.ArrayList
+    try {
+        foreach ($p in $pairs) {
+            if (-not (Test-Path -LiteralPath $p.Target)) { continue }
+            $locked = $false
+            try { $fs = [System.IO.File]::Open($p.Target, 'Open', 'Write', 'None'); $fs.Dispose() } catch { $locked = $true }
+            if (-not $locked) { continue }
+            $aside = $p.Target + '.old-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+            Rename-Item -LiteralPath $p.Target -NewName (Split-Path $aside -Leaf) -ErrorAction Stop
+            [void]$moved.Add(@($p.Target, $aside))
         }
-        if ($copied) { continue }
-        # Locked by a running process: move the old file out of the way and put the new one in its place.
-        if (Test-Path -LiteralPath $target) {
-            Rename-Item -LiteralPath $target -NewName ($f.Name + '.old-' + [guid]::NewGuid().ToString('N').Substring(0, 8)) -ErrorAction Stop
+    } catch {
+        foreach ($m in $moved) { try { Move-Item -LiteralPath $m[1] -Destination $m[0] -ErrorAction Stop } catch { } }
+        throw
+    }
+    # Pass 2: copy everything in. A file that fails to copy after being moved aside is put back; its name is never left empty.
+    foreach ($p in $pairs) {
+        New-Item -ItemType Directory -Force (Split-Path $p.Target) | Out-Null
+        try { Copy-Item -LiteralPath $p.Source -Destination $p.Target -Force -ErrorAction Stop }
+        catch {
+            foreach ($m in $moved) { if ($m[0] -eq $p.Target -and -not (Test-Path -LiteralPath $m[0])) { try { Move-Item -LiteralPath $m[1] -Destination $m[0] -ErrorAction Stop } catch { } } }
+            throw
         }
-        Copy-Item -LiteralPath $f.FullName -Destination $target -Force -ErrorAction Stop
     }
 }
 
@@ -198,11 +213,12 @@ if (Test-Stale $cliExe @($cliDir, $coreDir)) {
     if (Test-Path $cliStage) { Remove-Item -Recurse -Force $cliStage }
     Write-Host "Publishing the CLI -> $cliOut" -ForegroundColor Cyan
     dotnet publish (Join-Path $cliDir 'MindAttic.Orchestrator.Cli.csproj') --configuration Release --output $cliStage | Out-Host
+    $swapFailed = $false
     if ($LASTEXITCODE -eq 0) {
-        try { Copy-Published $cliStage $cliOut } catch { Write-Host "Swapping in the CLI failed: $($_.Exception.Message)" -ForegroundColor Red; $LASTEXITCODE = 1 }
+        try { Copy-Published $cliStage $cliOut } catch { Write-Host "Swapping in the CLI failed: $($_.Exception.Message)" -ForegroundColor Red; $swapFailed = $true }
     }
     Remove-Item -Recurse -Force $cliStage -ErrorAction SilentlyContinue
-    if ($LASTEXITCODE -ne 0) { Write-Host 'Publishing the CLI FAILED.' -ForegroundColor Red; $failed = $true }
+    if ($LASTEXITCODE -ne 0 -or $swapFailed) { Write-Host 'Publishing the CLI FAILED.' -ForegroundColor Red; $failed = $true }
     else {
         # The apphost keeps its old time when only Core's method bodies changed (the CLI isn't recompiled), so Core would
         # read newer than it on every later deploy, which would republish it and stop running CLIs each time.
