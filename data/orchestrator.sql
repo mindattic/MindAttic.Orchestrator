@@ -8,10 +8,10 @@ INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, 
 
 -- members
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('honey@mindattic.com', 'Honey', 'admin', 'premium', 'active', 1792771886.8054008, 1792771886.8054008);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'owner', 'premium', 'active', 1792771886.302, 1792810867.953159);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'admin', 'premium', 'active', 1792771886.302, 1792810916.8091486);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'owner', 'premium', 'active', 1792771887.249, 1792795973.9296827);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'admin', 'premium', 'active', 1792771885.463, 1792807454.3533528);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'owner', 'premium', 'active', 1792771885.882, 1792810655.099108);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'admin', 'premium', 'active', 1792771885.882, 1792810916.8091486);
 
 -- usage_samples
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-18T02:13:34Z', 0, '2026-10-18T06:10:00Z', 162425);
@@ -2932,6 +2932,8 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24T02:49:08Z', 3, '2026-10-24T05:00:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24T02:54:16Z', 3, '2026-10-24T05:00:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24T02:59:18Z', 3, '2026-10-24T05:00:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24T03:04:21Z', 3, '2026-10-24T05:00:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-24T03:09:35Z', 3, '2026-10-24T05:00:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -3010,6 +3012,8 @@ INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, 
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-23T21:10:00Z', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-23T16:10:00Z', 'Ok', 'ended at 98%', 98, 98, 12517773, 105, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-24T00:20:00Z', '1a45d147-abaf-4098-9f29-54375717dfd7/0df2b9d7-2637-40ea-bac8-2354ec84d894', '2026-10-23T19:20:00Z', 'Under', 'ended at 61%', 61, 61, 9290638, 98, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-24T00:20:00Z', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-23T19:20:00Z', 'Under', 'ended at 61%', 61, 61, 9290638, 98, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
+INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-24T03:00:00Z', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-23T22:00:00Z', 'Under', 'ended at 71%', 71, 71, 8243820, 101, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
+INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-24T03:00:00Z', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-23T22:00:00Z', 'Over', 'Claude reported 100%', 100, 100, 14747323, 111, 79.9, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 
 -- usage_history
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-07', 'GTFO.EZ', 'Claude', NULL, NULL, 3524458);
@@ -3214,7 +3218,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'Unity.SpaceGod', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 30707);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-22', 'Unity.SpaceGod', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 9681293);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/0df2b9d7-2637-40ea-bac8-2354ec84d894', NULL, 538389);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', '(workspace root)', 'Claude', 'billed:api-key', NULL, 575016);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', '(workspace root)', 'Claude', 'billed:api-key', NULL, 664595);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'MindAttic.Launcher', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/0df2b9d7-2637-40ea-bac8-2354ec84d894', NULL, 94860);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/0df2b9d7-2637-40ea-bac8-2354ec84d894', NULL, 20624973);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3477982);
@@ -8211,8 +8215,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "5fcbd0bdd76388c51f79d7efb0f9c1019095d436"
   },
   "MindAttic.Launcher": {
-    "Tested": "cd1a2d6d3e55df7196313bf440176c8cae491980",
-    "Green": "cd1a2d6d3e55df7196313bf440176c8cae491980"
+    "Tested": "dd85d0469cce53ebce2b80e7aae9505b57425e98",
+    "Green": "dd85d0469cce53ebce2b80e7aae9505b57425e98"
   },
   "MindAttic.Legion": {
     "Tested": "0f63adaaae25e3a5fc8498c9973ab151ca31bd96"
@@ -8356,8 +8360,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "c0941748c725d13e6124a26590d32ee33b3efdd2"
   },
   "Unity.Ricochet": {
-    "Tested": "433bba0dd5f2f0cbc5aa5f5247a3f5e7bc515ad2",
-    "Green": "433bba0dd5f2f0cbc5aa5f5247a3f5e7bc515ad2"
+    "Tested": "385abd03c1a4e339a701f1392b38232850d92b08",
+    "Green": "385abd03c1a4e339a701f1392b38232850d92b08"
   },
   "Unity.SongOfDawn": {
     "Tested": "cf0ba56cfe8bbe4f709056e977efe83667c974c8"
@@ -9007,9 +9011,11 @@ INSERT INTO state (name, value) VALUES ('outside-use', '[
       0,
       0,
       0,
+      0,
+      0,
       0
     ],
-    "NoiseThroughUtc": "2026-10-24T02:59:18Z",
+    "NoiseThroughUtc": "2026-10-24T03:09:35Z",
     "Windows": [
       {
         "ResetUtc": "2026-10-24T05:00:00Z",
@@ -9452,11 +9458,11 @@ INSERT INTO state (name, value) VALUES ('outside-use', '[
     "HeldSinceUtc": "2026-10-24T02:35:06.9236971Z",
     "LastSeenUtc": "2026-10-24T02:42:43Z",
     "EpisodeFromUtc": "2026-10-24T02:05:45Z",
-    "CountedThroughUtc": "2026-10-24T02:55:12Z",
-    "EpisodePoints": 3,
+    "CountedThroughUtc": "2026-10-24T03:06:42Z",
+    "EpisodePoints": 4,
     "EpisodeWeekPoints": 0,
     "EpisodeSeen": 2,
-    "CeilingPercent": 80,
+    "CeilingPercent": 79,
     "WeeklyStopPercent": 87,
     "CeilingAtStart": 95,
     "RateAtStart": 0.06810737615795247,
@@ -9573,7 +9579,7 @@ INSERT INTO state (name, value) VALUES ('outside-use', '[
       },
       {
         "ResetUtc": "2026-10-24T08:00:00Z",
-        "Points": 0
+        "Points": 1
       }
     ],
     "Weeks": [
@@ -9612,10 +9618,6 @@ INSERT INTO state (name, value) VALUES ('pace-alarm-walls', '[
   "2026-10-17T05:10:00Z"
 ]');
 INSERT INTO state (name, value) VALUES ('rebalance-moves', '[
-  {
-    "AtUtc": "2026-10-23T19:21:24.8998401Z",
-    "Text": "Amy stopped using Claude (20 minutes with nothing new): Amy\u0027s CLIs are back to 98% of this window."
-  },
   {
     "AtUtc": "2026-10-23T19:26:33.6855287Z",
     "Text": "Amy is using Claude (the meter rose 6 points in 29 min; the CLIs here spent 3 of them): Amy\u0027s CLIs are held to 87% of this window and 85% of the week, and back to 98% about 20 minutes after Amy stops."
@@ -9691,6 +9693,10 @@ INSERT INTO state (name, value) VALUES ('rebalance-moves', '[
   {
     "AtUtc": "2026-10-24T03:00:04.6298082Z",
     "Text": "at Amy\u0027s rate of use the window would run out above the last ceiling: Amy\u0027s CLIs are held to 80% of this window and 87% of the week now, leaving room for Amy\u0027s projected use plus its headroom."
+  },
+  {
+    "AtUtc": "2026-10-24T03:06:58.95881Z",
+    "Text": "at Amy\u0027s rate of use the window would run out above the last ceiling: Amy\u0027s CLIs are held to 77% of this window and 87% of the week now, leaving room for Amy\u0027s projected use plus its headroom."
   }
 ]');
 INSERT INTO state (name, value) VALUES ('usage-cutoff-alerts', '{
