@@ -3284,20 +3284,21 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', '(workspace root)', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 367362);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', '(workspace root)', 'Claude', 'billed:api-key', NULL, 72900);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 7515129);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'GTFO.EZ.AbsurdMoves', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 60706);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'GTFO.EZ.AbsurdWeapons', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1418636);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'MindAttic.Agency', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 898849);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'MindAttic.Agency', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 90214);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'MindAttic.Launcher', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 300402);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 6572091);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 6614348);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'MindAttic.Orchestrator', 'Claude', '2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 27651);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'MindAttic.Orchestrator', 'Claude', 'billed:api-key', NULL, 4616053);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'MindAttic.Orchestrator', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 574609);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'MindAttic.Tickets', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 93780);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'REA.Bloodlines', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4890808);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'REA.Bloodlines', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5083156);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'REA.Bloodlines', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 10524965);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'Unity.Chain', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 84481);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'Unity.Chain', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 7979303);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'Unity.Hare', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3545911);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'Unity.Chain', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 8461399);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'Unity.Hare', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3654637);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'Unity.Hare', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 197112);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'Unity.Incognito', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3458469);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'Unity.Incognito', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 241143);
@@ -3307,8 +3308,8 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'Unity.ProjectVania', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 63779);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'Unity.QuickDuel', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3028883);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'Unity.Ricochet', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 51148);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'Unity.Ricochet', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1011540);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'Unity.SpaceGod', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 3849707);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'Unity.Ricochet', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1115929);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'Unity.SpaceGod', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4195437);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -3378,7 +3379,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('0fd44d81-7b7d-434c-b3ad-95a54c42f8c5/agent-a116d5d2e90e82881', 'U.RICO-T36', 'chore', 'Unity.Ricochet', 328141, '2026-10-24T19:15:48.356Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('0fd44d81-7b7d-434c-b3ad-95a54c42f8c5/agent-a6920354a3be680f0', 'U.RICO-T36', 'chore', 'Unity.Ricochet', 378298, '2026-10-24T20:15:36.845Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('0fd44d81-7b7d-434c-b3ad-95a54c42f8c5/agent-a769f93d83d996454', 'U.RICO-T36', 'chore', 'Unity.Ricochet', 13977, '2026-10-24T21:30:14.357Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('0fd44d81-7b7d-434c-b3ad-95a54c42f8c5/agent-a92cd81ebe56d122d', 'U.RICO-T36', 'chore', 'Unity.Ricochet', 22180, '2026-10-24T22:04:54.531Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('0fd44d81-7b7d-434c-b3ad-95a54c42f8c5/agent-a92cd81ebe56d122d', 'U.RICO-T36', 'chore', 'Unity.Ricochet', 142682, '2026-10-24T22:14:20.848Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('0ff1d016-3c88-48f4-ac85-a3673d5c6dec', 'M.AUTH-T3', 'chore', 'MindAttic.Authentication', 121409, '2026-10-16T01:52:29.507Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('105d8ebd-4b74-44e9-82b6-85b7812d35fc', 'U.OVW-T2', 'chore', 'Unity.Overworld', 100252, '2026-10-23T22:29:26.119Z', 1, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('107e3d68-dd6f-440e-a0ef-8ea144cf8f22', 'GGC-T3', 'chore', 'GridGameCaravan', 63008, '2026-10-16T01:40:45.331Z', 0, 'sonnet');
@@ -3416,7 +3417,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('12bdc36c-d887-4849-870e-5e969c25fa82/agent-a714258624084c700', 'U.HARE-T45', 'chore', 'Unity.Hare', 147862, '2026-10-24T21:26:03.539Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('12bdc36c-d887-4849-870e-5e969c25fa82/agent-a9353598de3e9110e', 'U.HARE-T43', 'chore', 'Unity.Hare', 237538, '2026-10-24T20:40:10.786Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('12bdc36c-d887-4849-870e-5e969c25fa82/agent-aa4bab0efe2e9baed', 'U.HARE-T41', 'chore', 'Unity.Hare', 642582, '2026-10-24T19:39:40.988Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('12bdc36c-d887-4849-870e-5e969c25fa82/agent-ab4ae644bfe9a4fa4', 'U.HARE-T45', 'chore', 'Unity.Hare', 177424, '2026-10-24T22:05:08.379Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('12bdc36c-d887-4849-870e-5e969c25fa82/agent-ab4ae644bfe9a4fa4', 'U.HARE-T45', 'chore', 'Unity.Hare', 302661, '2026-10-24T22:16:09.511Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('12bdc36c-d887-4849-870e-5e969c25fa82/agent-aee9bb1157472556c', 'U.HARE-T42', 'chore', 'Unity.Hare', 855882, '2026-10-24T20:44:14.343Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('13cb820a-3dc3-4951-a193-e21d77771fe8', 'SS-T14', 'chore', 'Prose', 32733, '2026-10-15T11:58:04.131Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1404abba-0362-4878-8b72-c568ac5ce656', 'CUR-T15', 'docs', 'Cursory', 19526, '2026-10-21T18:11:13.839Z', 1, 'sonnet');
@@ -3433,7 +3434,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1987ec86-9f1f-42b9-b2e9-9f56bbbce08d/agent-a048d8d59ddcd40c5', 'U.SPC-T478', 'feature', 'Unity.SpaceGod', 195679, '2026-10-24T19:27:21.552Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1987ec86-9f1f-42b9-b2e9-9f56bbbce08d/agent-a061cb0f462ab7ed9', 'U.SPC-T486', 'feature', 'Unity.SpaceGod', 45673, '2026-10-24T19:16:11.441Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1987ec86-9f1f-42b9-b2e9-9f56bbbce08d/agent-a1b5c21f9532e84a1', 'U.SPC-T505', 'feature', 'Unity.SpaceGod', 208304, '2026-10-24T19:53:21.517Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1987ec86-9f1f-42b9-b2e9-9f56bbbce08d/agent-a3984895ff14b1b1a', 'U.SPC-T478', 'feature', 'Unity.SpaceGod', 11608, '2026-10-24T22:05:10.24Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1987ec86-9f1f-42b9-b2e9-9f56bbbce08d/agent-a3984895ff14b1b1a', 'U.SPC-T478', 'feature', 'Unity.SpaceGod', 131064, '2026-10-24T22:16:16.035Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1987ec86-9f1f-42b9-b2e9-9f56bbbce08d/agent-a57cb08bfe88d59a8', 'U.SPC-T478', 'feature', 'Unity.SpaceGod', 40502, '2026-10-24T21:30:31.679Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1987ec86-9f1f-42b9-b2e9-9f56bbbce08d/agent-a6ddc9be686e5fa01', 'U.SPC-T478', 'feature', 'Unity.SpaceGod', 204817, '2026-10-24T20:03:08.887Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1987ec86-9f1f-42b9-b2e9-9f56bbbce08d/agent-a73163c60a8c4fdd3', 'U.SPC-T502', 'feature', 'Unity.SpaceGod', 836112, '2026-10-24T21:18:58.663Z', 0, 'opus');
@@ -3441,7 +3442,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1987ec86-9f1f-42b9-b2e9-9f56bbbce08d/agent-a7ecfdc75ad14ea10', 'U.SPC-T530', 'fix', 'Unity.SpaceGod', 17399, '2026-10-24T19:10:55.008Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1987ec86-9f1f-42b9-b2e9-9f56bbbce08d/agent-a9126820e4d2ec026', 'U.SPC-T502', 'feature', 'Unity.SpaceGod', 135688, '2026-10-24T21:59:57.064Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1987ec86-9f1f-42b9-b2e9-9f56bbbce08d/agent-aa7ffd4e9a51f80a7', 'U.SPC-T491', 'feature', 'Unity.SpaceGod', 41538, '2026-10-24T19:22:24.43Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1987ec86-9f1f-42b9-b2e9-9f56bbbce08d/agent-aad8f9d9796357be3', 'U.SPC-T533', 'feature', 'Unity.SpaceGod', 367711, '2026-10-24T22:00:24.09Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1987ec86-9f1f-42b9-b2e9-9f56bbbce08d/agent-aad8f9d9796357be3', 'U.SPC-T533', 'feature', 'Unity.SpaceGod', 641015, '2026-10-24T22:12:10.551Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1987ec86-9f1f-42b9-b2e9-9f56bbbce08d/agent-aaf1dcded209532fe', 'U.SPC-T507', 'feature', 'Unity.SpaceGod', 271826, '2026-10-24T20:03:04.349Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1987ec86-9f1f-42b9-b2e9-9f56bbbce08d/agent-ad57bb31c5fed270e', 'U.SPC-T498', 'feature', 'Unity.SpaceGod', 90545, '2026-10-24T19:27:32.323Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('1987ec86-9f1f-42b9-b2e9-9f56bbbce08d/agent-ad63a9a23c4dd2cb1', 'U.SPC-T533', 'feature', 'Unity.SpaceGod', 38445, '2026-10-24T21:40:37.886Z', 0, 'opus');
@@ -3634,12 +3635,12 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('320acbe9-0043-4941-be4d-2741433f8e7d', 'GG-T41', 'feature', 'GridGameGaiden', 326932, '2026-10-15T15:05:18.842Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('3218d735-2bae-4de1-89d9-348ec56c423b/agent-a023186c3865e1453', 'RB-T118', 'feature', 'REA.Bloodlines', 186923, '2026-10-24T19:28:36.335Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('3218d735-2bae-4de1-89d9-348ec56c423b/agent-a08b1b3f175c16db5', 'RB-T136', 'feature', 'REA.Bloodlines', 507534, '2026-10-24T21:29:31.486Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('3218d735-2bae-4de1-89d9-348ec56c423b/agent-a165a8a6c5e9adbd6', 'RB-T142', 'feature', 'REA.Bloodlines', 201944, '2026-10-24T22:04:46.956Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('3218d735-2bae-4de1-89d9-348ec56c423b/agent-a165a8a6c5e9adbd6', 'RB-T142', 'feature', 'REA.Bloodlines', 303207, '2026-10-24T22:16:06.666Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('3218d735-2bae-4de1-89d9-348ec56c423b/agent-a1e4fa31c3001603b', 'RB-T152', 'chore', 'REA.Bloodlines', 140030, '2026-10-24T19:57:24.722Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('3218d735-2bae-4de1-89d9-348ec56c423b/agent-a20534b0283984b4d', 'RB-T128', 'feature', 'REA.Bloodlines', 173096, '2026-10-24T20:03:37.023Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('3218d735-2bae-4de1-89d9-348ec56c423b/agent-a21f037d31b7957e0', 'RB-T138', 'feature', 'REA.Bloodlines', 14348, '2026-10-24T21:33:49.6Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('3218d735-2bae-4de1-89d9-348ec56c423b/agent-a369b3f6680f3ca0f', 'RB-T182', 'fix', 'REA.Bloodlines', 320796, '2026-10-24T19:32:00.855Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('3218d735-2bae-4de1-89d9-348ec56c423b/agent-a5200cdfe70340ec2', 'RB-T141', 'feature', 'REA.Bloodlines', 416570, '2026-10-24T22:05:01.829Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('3218d735-2bae-4de1-89d9-348ec56c423b/agent-a5200cdfe70340ec2', 'RB-T141', 'feature', 'REA.Bloodlines', 528280, '2026-10-24T22:14:35.126Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('3218d735-2bae-4de1-89d9-348ec56c423b/agent-a63550e8e5df1ac82', 'RB-T140', 'feature', 'REA.Bloodlines', 22056, '2026-10-24T21:34:33.769Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('3218d735-2bae-4de1-89d9-348ec56c423b/agent-a637c427a20800a77', 'RB-T121', 'feature', 'REA.Bloodlines', 218662, '2026-10-24T20:03:03.068Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('3218d735-2bae-4de1-89d9-348ec56c423b/agent-a663b33f9be60cbc3', 'RB-T181', 'fix', 'REA.Bloodlines', 377231, '2026-10-24T19:30:08.367Z', 0, 'sonnet');
@@ -3680,10 +3681,10 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('33e02961-5b42-446b-a988-ee46b3b0ee9d/agent-a30ef21b7f4b5e2e8', 'U.CHN-T26', 'feature', 'Unity.Chain', 706507, '2026-10-24T21:25:21.744Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('33e02961-5b42-446b-a988-ee46b3b0ee9d/agent-a4ed6a09255a98f45', 'UNI-T20', 'fix', 'Unity.Chain', 342908, '2026-10-24T17:49:42.75Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('33e02961-5b42-446b-a988-ee46b3b0ee9d/agent-a54eacac7f460966f', 'U.CHN-T59', 'feature', 'Unity.Chain', 21323, '2026-10-24T18:58:41.688Z', 0, 'opus');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('33e02961-5b42-446b-a988-ee46b3b0ee9d/agent-a5b0cbbc7c0ef6431', 'U.CHN-T62', 'chore', 'Unity.Chain', 444971, '2026-10-24T22:05:10.638Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('33e02961-5b42-446b-a988-ee46b3b0ee9d/agent-a5b0cbbc7c0ef6431', 'U.CHN-T62', 'chore', 'Unity.Chain', 462427, '2026-10-24T22:09:18.069Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('33e02961-5b42-446b-a988-ee46b3b0ee9d/agent-a5cc96ca4644c9acd', 'U.CHN-T61', 'feature', 'Unity.Chain', 298278, '2026-10-24T20:43:06.213Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('33e02961-5b42-446b-a988-ee46b3b0ee9d/agent-a77189ec47b7e2658', 'UNI-T72', 'fix', 'Unity.Chain', 52123, '2026-10-24T18:43:48.01Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('33e02961-5b42-446b-a988-ee46b3b0ee9d/agent-a8962482f63495ed8', 'U.CHN-T45', 'chore', 'Unity.Chain', 612754, '2026-10-24T21:55:07.464Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('33e02961-5b42-446b-a988-ee46b3b0ee9d/agent-a8962482f63495ed8', 'U.CHN-T45', 'chore', 'Unity.Chain', 1071161, '2026-10-24T22:08:40.192Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('33e02961-5b42-446b-a988-ee46b3b0ee9d/agent-a968de8e620e8f46e', 'U.CHN-T60', 'feature', 'Unity.Chain', 160134, '2026-10-24T20:27:29.975Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('33e02961-5b42-446b-a988-ee46b3b0ee9d/agent-aa12b0796ea9fed9f', 'U.CHN-T45', 'chore', 'Unity.Chain', 332775, '2026-10-24T19:43:11.262Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('33e02961-5b42-446b-a988-ee46b3b0ee9d/agent-aa8637a8445a34daf', 'UNI-T58', 'feature', 'Unity.Chain', 150370, '2026-10-24T17:44:04.114Z', 0, 'opus');
@@ -4627,7 +4628,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ddefd224-ff9a-422d-b6e9-218728189540/agent-a01f6be6495627bae', 'M.ORCH-T793', 'feature', 'MindAttic.Orchestrator', 65211, '2026-10-24T17:28:07.817Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ddefd224-ff9a-422d-b6e9-218728189540/agent-a04025466559bf0e3', 'M.COMP-T59', 'feature', 'MindAttic.Orchestrator', 21015, '2026-10-24T21:29:13.607Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ddefd224-ff9a-422d-b6e9-218728189540/agent-a258d993c85fe92ab', 'M.COMP-T57', 'fix', 'MindAttic.Orchestrator', 30824, '2026-10-24T17:47:40.28Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ddefd224-ff9a-422d-b6e9-218728189540/agent-a399ef588246d2a1d', 'M.ORCH-T806', 'fix', 'MindAttic.Orchestrator', 20221, '2026-10-24T22:05:01.453Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ddefd224-ff9a-422d-b6e9-218728189540/agent-a399ef588246d2a1d', 'M.ORCH-T806', 'fix', 'MindAttic.Orchestrator', 71421, '2026-10-24T22:09:25.635Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ddefd224-ff9a-422d-b6e9-218728189540/agent-a3eef508d237eba8c', 'M.ORCH-T786', 'feature', 'MindAttic.Orchestrator', 408808, '2026-10-24T17:29:37.989Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ddefd224-ff9a-422d-b6e9-218728189540/agent-a4d3ee4e67aee79c5', 'M.ORCH-T795', 'fix', 'MindAttic.Orchestrator', 140558, '2026-10-24T17:36:11.415Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('ddefd224-ff9a-422d-b6e9-218728189540/agent-a515d7466ebeca05c', 'M.ORCH-T763', 'feature', 'MindAttic.Orchestrator', 106716, '2026-10-24T13:43:18.756Z', 0, 'opus');
@@ -4844,12 +4845,8 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (46, 'U.CHN-T62', 'Unity.Chain', 'D:\Projects\MindAttic.worktrees\Unity.Chain\U.CHN-T62', 'Claude', '2026-10-24T21:31:32.4673271Z', 1, NULL, NULL, NULL, 52100, '33e02961-5b42-446b-a988-ee46b3b0ee9d', 'sonnet', NULL, 'honey@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (47, 'M.ORCH-T802', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic.worktrees\MindAttic.Orchestrator\M.ORCH-T802', 'Claude', '2026-10-24T21:32:17.4780584Z', 1, NULL, NULL, NULL, 30244, 'ddefd224-ff9a-422d-b6e9-218728189540', 'sonnet', NULL, 'ryandebraal@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (48, 'RB-T138', 'REA.Bloodlines', 'D:\Projects\MindAttic.worktrees\REA.Bloodlines\RB-T138', 'Claude', '2026-10-24T21:33:44.9493848Z', 1, NULL, NULL, NULL, 72700, '3218d735-2bae-4de1-89d9-348ec56c423b', 'opus', NULL, 'waffle@mindattic.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (49, 'RB-T141', 'REA.Bloodlines', 'D:\Projects\MindAttic.worktrees\REA.Bloodlines\RB-T141', 'Claude', '2026-10-24T21:42:05.4897491Z', 1, NULL, NULL, NULL, 72700, '3218d735-2bae-4de1-89d9-348ec56c423b', 'opus', NULL, 'waffle@mindattic.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (50, 'RB-T142', 'REA.Bloodlines', 'D:\Projects\MindAttic.worktrees\REA.Bloodlines\RB-T142', 'Claude', '2026-10-24T21:52:20.3363665Z', 1, NULL, NULL, NULL, 72700, '3218d735-2bae-4de1-89d9-348ec56c423b', 'opus', NULL, 'waffle@mindattic.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (51, 'U.HARE-T45', 'Unity.Hare', 'D:\Projects\MindAttic.worktrees\Unity.Hare\U.HARE-T45', 'Claude', '2026-10-24T21:56:37.4220402Z', 1, NULL, NULL, NULL, 21708, '12bdc36c-d887-4849-870e-5e969c25fa82', 'sonnet', NULL, 'ryandebraal@mindattic.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (52, 'U.RICO-T36', 'Unity.Ricochet', 'D:\Projects\MindAttic.worktrees\Unity.Ricochet\U.RICO-T36', 'Claude', '2026-10-24T22:04:17.4488815Z', 1, NULL, NULL, NULL, 39516, '0fd44d81-7b7d-434c-b3ad-95a54c42f8c5', 'sonnet', NULL, 'waffle@mindattic.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (53, 'U.SPC-T478', 'Unity.SpaceGod', 'D:\Projects\MindAttic.worktrees\Unity.SpaceGod\U.SPC-T478', 'Claude', '2026-10-24T22:04:16.7322087Z', 1, NULL, NULL, NULL, 18416, '1987ec86-9f1f-42b9-b2e9-9f56bbbce08d', 'opus', NULL, 'waffle@mindattic.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (54, 'M.ORCH-T806', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic.worktrees\MindAttic.Orchestrator\M.ORCH-T806', 'Claude', '2026-10-24T22:04:20.5895041Z', 1, NULL, NULL, NULL, 30244, 'ddefd224-ff9a-422d-b6e9-218728189540', 'sonnet', NULL, 'ryandebraal@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (49, 'U.HARE-T45', 'Unity.Hare', 'D:\Projects\MindAttic.worktrees\Unity.Hare\U.HARE-T45', 'Claude', '2026-10-24T21:56:37.4220402Z', 1, NULL, NULL, NULL, 21708, '12bdc36c-d887-4849-870e-5e969c25fa82', 'sonnet', NULL, 'ryandebraal@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (50, 'U.SPC-T478', 'Unity.SpaceGod', 'D:\Projects\MindAttic.worktrees\Unity.SpaceGod\U.SPC-T478', 'Claude', '2026-10-24T22:04:16.7322087Z', 1, NULL, NULL, NULL, 18416, '1987ec86-9f1f-42b9-b2e9-9f56bbbce08d', 'opus', NULL, 'waffle@mindattic.com');
 
 -- organizations
 
@@ -4858,42 +4855,20 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 -- state
 INSERT INTO state (name, value) VALUES ('api-failovers', '[]');
 INSERT INTO state (name, value) VALUES ('audit', '{
-  "RanUtc": "2026-10-23T22:16:21.0642099Z",
-  "Took": "00:00:32.2200684",
+  "RanUtc": "2026-10-24T22:17:33.8746392Z",
+  "Took": "00:00:48.4475776",
   "ReposScanned": 65,
-  "FilesScanned": 6353,
+  "FilesScanned": 6806,
   "Drift": [
-    {
-      "File": ".prose/commands/show.md",
-      "Repo": "Prose",
-      "Path": "D:\\Projects\\MindAttic\\Prose\\.prose/commands\\show.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\show.md",
-      "CanonicalCount": 51,
-      "Total": 52,
-      "Variants": 2,
-      "Similarity": 0.022222222222222223,
-      "IsCustom": true
-    },
     {
       "File": "AGENTS.md",
       "Repo": "MindAttic.Agency",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Agency\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
-      "Similarity": 0.02564102564102564,
-      "IsCustom": true
-    },
-    {
-      "File": "AGENTS.md",
-      "Repo": "SyntheticExchangeTheory",
-      "Path": "D:\\Projects\\MindAttic\\SyntheticExchangeTheory\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
-      "Similarity": 0.031746031746031744,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
+      "Similarity": 0.014925373134328358,
       "IsCustom": true
     },
     {
@@ -4901,32 +4876,21 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Incognito",
       "Path": "D:\\Projects\\MindAttic\\Unity.Incognito\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
-      "Similarity": 0.041666666666666664,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "Prose",
-      "Path": "D:\\Projects\\MindAttic\\Prose\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.044444444444444446,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
+      "Similarity": 0.024691358024691357,
       "IsCustom": true
     },
     {
       "File": "AGENTS.md",
-      "Repo": "TownWalker",
-      "Path": "D:\\Projects\\MindAttic\\TownWalker\\AGENTS.md",
+      "Repo": "SyntheticExchangeTheory",
+      "Path": "D:\\Projects\\MindAttic\\SyntheticExchangeTheory\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
-      "Similarity": 0.044444444444444446,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
+      "Similarity": 0.031746031746031744,
       "IsCustom": true
     },
     {
@@ -4934,10 +4898,10 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Overworld",
       "Path": "D:\\Projects\\MindAttic\\Unity.Overworld\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
-      "Similarity": 0.05128205128205128,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
+      "Similarity": 0.043478260869565216,
       "IsCustom": true
     },
     {
@@ -4945,9 +4909,31 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.ProjectVania",
       "Path": "D:\\Projects\\MindAttic\\Unity.ProjectVania\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
+      "Similarity": 0.043478260869565216,
+      "IsCustom": true
+    },
+    {
+      "File": "AGENTS.md",
+      "Repo": "TownWalker",
+      "Path": "D:\\Projects\\MindAttic\\TownWalker\\AGENTS.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
+      "Similarity": 0.044444444444444446,
+      "IsCustom": true
+    },
+    {
+      "File": "AGENTS.md",
+      "Repo": "Unity.Hare",
+      "Path": "D:\\Projects\\MindAttic\\Unity.Hare\\AGENTS.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
       "Similarity": 0.05128205128205128,
       "IsCustom": true
     },
@@ -4956,43 +4942,10 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.GridGame",
       "Path": "D:\\Projects\\MindAttic\\Unity.GridGame\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
       "Similarity": 0.05405405405405406,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/deploy.md",
-      "Repo": "Prose",
-      "Path": "D:\\Projects\\MindAttic\\Prose\\.prose/commands\\deploy.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\deploy.md",
-      "CanonicalCount": 37,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.058823529411764705,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/progress.md",
-      "Repo": "Prose",
-      "Path": "D:\\Projects\\MindAttic\\Prose\\.prose/commands\\progress.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\progress.md",
-      "CanonicalCount": 51,
-      "Total": 52,
-      "Variants": 2,
-      "Similarity": 0.06451612903225806,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/queue.md",
-      "Repo": "Prose",
-      "Path": "D:\\Projects\\MindAttic\\Prose\\.prose/commands\\queue.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\queue.md",
-      "CanonicalCount": 51,
-      "Total": 52,
-      "Variants": 2,
-      "Similarity": 0.07142857142857142,
       "IsCustom": true
     },
     {
@@ -5000,9 +4953,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Eve",
       "Path": "D:\\Projects\\MindAttic\\Unity.Eve\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
       "Similarity": 0.07547169811320754,
       "IsCustom": true
     },
@@ -5011,32 +4964,10 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "UnityRonin",
       "Path": "D:\\Projects\\MindAttic\\UnityRonin\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
       "Similarity": 0.07547169811320754,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "Prose",
-      "Path": "D:\\Projects\\MindAttic\\Prose\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.08695652173913043,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/commit.md",
-      "Repo": "Prose",
-      "Path": "D:\\Projects\\MindAttic\\Prose\\.prose/commands\\commit.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\commit.md",
-      "CanonicalCount": 51,
-      "Total": 52,
-      "Variants": 2,
-      "Similarity": 0.09523809523809523,
       "IsCustom": true
     },
     {
@@ -5044,9 +4975,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "MindAttic.Export",
       "Path": "D:\\Projects\\MindAttic\\MindAttic.Export\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
       "Similarity": 0.10526315789473684,
       "IsCustom": true
     },
@@ -5055,21 +4986,10 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Prose",
       "Path": "D:\\Projects\\MindAttic\\Prose\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
       "Similarity": 0.11764705882352941,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "Prose",
-      "Path": "D:\\Projects\\MindAttic\\Prose\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.16666666666666666,
       "IsCustom": true
     },
     {
@@ -5077,9 +4997,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "AutoWebNav",
       "Path": "D:\\Projects\\MindAttic\\AutoWebNav\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
       "Similarity": 0.18181818181818182,
       "IsCustom": true
     },
@@ -5088,956 +5008,10 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "KdpPublish",
       "Path": "D:\\Projects\\MindAttic\\KdpPublish\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
       "Similarity": 0.18181818181818182,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/deploy.md",
-      "Repo": "ChiMesh",
-      "Path": "D:\\Projects\\MindAttic\\ChiMesh\\.prose/commands\\deploy.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\deploy.md",
-      "CanonicalCount": 37,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/deploy.md",
-      "Repo": "Claudia",
-      "Path": "D:\\Projects\\MindAttic\\Claudia\\.prose/commands\\deploy.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\deploy.md",
-      "CanonicalCount": 37,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/deploy.md",
-      "Repo": "Cursory",
-      "Path": "D:\\Projects\\MindAttic\\Cursory\\.prose/commands\\deploy.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\deploy.md",
-      "CanonicalCount": 37,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/deploy.md",
-      "Repo": "IdiotProof",
-      "Path": "D:\\Projects\\MindAttic\\IdiotProof\\.prose/commands\\deploy.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\deploy.md",
-      "CanonicalCount": 37,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/deploy.md",
-      "Repo": "MediaButler",
-      "Path": "D:\\Projects\\MindAttic\\MediaButler\\.prose/commands\\deploy.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\deploy.md",
-      "CanonicalCount": 37,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/deploy.md",
-      "Repo": "MindAttic.Helpers",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Helpers\\.prose/commands\\deploy.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\deploy.md",
-      "CanonicalCount": 37,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/deploy.md",
-      "Repo": "MindAttic.Ideas",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Ideas\\.prose/commands\\deploy.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\deploy.md",
-      "CanonicalCount": 37,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/deploy.md",
-      "Repo": "MindAttic.Launcher",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Launcher\\.prose/commands\\deploy.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\deploy.md",
-      "CanonicalCount": 37,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/deploy.md",
-      "Repo": "MindAttic.Legion",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Legion\\.prose/commands\\deploy.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\deploy.md",
-      "CanonicalCount": 37,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/deploy.md",
-      "Repo": "MindAttic.Psst",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Psst\\.prose/commands\\deploy.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\deploy.md",
-      "CanonicalCount": 37,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/deploy.md",
-      "Repo": "MindAttic.Vault",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Vault\\.prose/commands\\deploy.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\deploy.md",
-      "CanonicalCount": 37,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/deploy.md",
-      "Repo": "TaxRateCollector",
-      "Path": "D:\\Projects\\MindAttic\\TaxRateCollector\\.prose/commands\\deploy.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\deploy.md",
-      "CanonicalCount": 37,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/deploy.md",
-      "Repo": "ThinkTank",
-      "Path": "D:\\Projects\\MindAttic\\ThinkTank\\.prose/commands\\deploy.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\deploy.md",
-      "CanonicalCount": 37,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/deploy.md",
-      "Repo": "Tutor",
-      "Path": "D:\\Projects\\MindAttic\\Tutor\\.prose/commands\\deploy.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\deploy.md",
-      "CanonicalCount": 37,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2,
-      "IsCustom": true
-    },
-    {
-      "File": "AGENTS.md",
-      "Repo": "MindAttic.Web",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Web\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
-      "Similarity": 0.21052631578947367,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "Automata",
-      "Path": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "ChiMesh",
-      "Path": "D:\\Projects\\MindAttic\\ChiMesh\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "Claudia",
-      "Path": "D:\\Projects\\MindAttic\\Claudia\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "Cursory",
-      "Path": "D:\\Projects\\MindAttic\\Cursory\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "Formicarium",
-      "Path": "D:\\Projects\\MindAttic\\Formicarium\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "IdiotProof",
-      "Path": "D:\\Projects\\MindAttic\\IdiotProof\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "JellyFinPoster",
-      "Path": "D:\\Projects\\MindAttic\\JellyFinPoster\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "JoyceFit",
-      "Path": "D:\\Projects\\MindAttic\\JoyceFit\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "MediaButler",
-      "Path": "D:\\Projects\\MindAttic\\MediaButler\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "MindAttic.Authentication",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Authentication\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "MindAttic.Cryptography",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Cryptography\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "MindAttic.Deploy",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Deploy\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "MindAttic.Helpers",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Helpers\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "MindAttic.Ideas",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Ideas\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "MindAttic.Launcher",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Launcher\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "MindAttic.Legion",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Legion\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "MindAttic.Media",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Media\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "MindAttic.Psst",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Psst\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "MindAttic.Vault",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Vault\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "OpenCredentials",
-      "Path": "D:\\Projects\\MindAttic\\OpenCredentials\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "TaxRateCollector",
-      "Path": "D:\\Projects\\MindAttic\\TaxRateCollector\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "ThinkTank",
-      "Path": "D:\\Projects\\MindAttic\\ThinkTank\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "Tutor",
-      "Path": "D:\\Projects\\MindAttic\\Tutor\\.prose/commands\\do.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md",
-      "CanonicalCount": 28,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "Automata",
-      "Path": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "ChiMesh",
-      "Path": "D:\\Projects\\MindAttic\\ChiMesh\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "Claudia",
-      "Path": "D:\\Projects\\MindAttic\\Claudia\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "Cursory",
-      "Path": "D:\\Projects\\MindAttic\\Cursory\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "Formicarium",
-      "Path": "D:\\Projects\\MindAttic\\Formicarium\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "IdiotProof",
-      "Path": "D:\\Projects\\MindAttic\\IdiotProof\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "JellyFinPoster",
-      "Path": "D:\\Projects\\MindAttic\\JellyFinPoster\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "JobHunt",
-      "Path": "D:\\Projects\\MindAttic\\JobHunt\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "JoyceFit",
-      "Path": "D:\\Projects\\MindAttic\\JoyceFit\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "MediaButler",
-      "Path": "D:\\Projects\\MindAttic\\MediaButler\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "MindAttic.Authentication",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Authentication\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "MindAttic.Cryptography",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Cryptography\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "MindAttic.Deploy",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Deploy\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "MindAttic.Helpers",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Helpers\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "MindAttic.Ideas",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Ideas\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "MindAttic.Launcher",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Launcher\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "MindAttic.Legion",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Legion\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "MindAttic.Media",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Media\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "MindAttic.Psst",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Psst\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "MindAttic.Vault",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Vault\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "OpenCredentials",
-      "Path": "D:\\Projects\\MindAttic\\OpenCredentials\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "TaxRateCollector",
-      "Path": "D:\\Projects\\MindAttic\\TaxRateCollector\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "ThinkTank",
-      "Path": "D:\\Projects\\MindAttic\\ThinkTank\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "Tutor",
-      "Path": "D:\\Projects\\MindAttic\\Tutor\\.prose/commands\\quickload.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "Automata",
-      "Path": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "ChiMesh",
-      "Path": "D:\\Projects\\MindAttic\\ChiMesh\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "Claudia",
-      "Path": "D:\\Projects\\MindAttic\\Claudia\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "Cursory",
-      "Path": "D:\\Projects\\MindAttic\\Cursory\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "Formicarium",
-      "Path": "D:\\Projects\\MindAttic\\Formicarium\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "IdiotProof",
-      "Path": "D:\\Projects\\MindAttic\\IdiotProof\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "JellyFinPoster",
-      "Path": "D:\\Projects\\MindAttic\\JellyFinPoster\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "JobHunt",
-      "Path": "D:\\Projects\\MindAttic\\JobHunt\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "JoyceFit",
-      "Path": "D:\\Projects\\MindAttic\\JoyceFit\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "MediaButler",
-      "Path": "D:\\Projects\\MindAttic\\MediaButler\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "MindAttic.Authentication",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Authentication\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "MindAttic.Cryptography",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Cryptography\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "MindAttic.Deploy",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Deploy\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "MindAttic.Helpers",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Helpers\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "MindAttic.Ideas",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Ideas\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "MindAttic.Launcher",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Launcher\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "MindAttic.Legion",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Legion\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "MindAttic.Media",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Media\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "MindAttic.Psst",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Psst\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "MindAttic.Vault",
-      "Path": "D:\\Projects\\MindAttic\\MindAttic.Vault\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "OpenCredentials",
-      "Path": "D:\\Projects\\MindAttic\\OpenCredentials\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "TaxRateCollector",
-      "Path": "D:\\Projects\\MindAttic\\TaxRateCollector\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "ThinkTank",
-      "Path": "D:\\Projects\\MindAttic\\ThinkTank\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
-      "IsCustom": true
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "Tutor",
-      "Path": "D:\\Projects\\MindAttic\\Tutor\\.prose/commands\\quicksave.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md",
-      "CanonicalCount": 27,
-      "Total": 52,
-      "Variants": 3,
-      "Similarity": 0.2222222222222222,
       "IsCustom": true
     },
     {
@@ -6045,10 +5019,43 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.Chain",
       "Path": "D:\\Projects\\MindAttic\\Unity.Chain\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
-      "Similarity": 0.2631578947368421,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
+      "Similarity": 0.18181818181818182,
+      "IsCustom": true
+    },
+    {
+      "File": "AGENTS.md",
+      "Repo": "Unity.QuickDuel",
+      "Path": "D:\\Projects\\MindAttic\\Unity.QuickDuel\\AGENTS.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
+      "Similarity": 0.18867924528301888,
+      "IsCustom": true
+    },
+    {
+      "File": "AGENTS.md",
+      "Repo": "MindAttic.Web",
+      "Path": "D:\\Projects\\MindAttic\\MindAttic.Web\\AGENTS.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
+      "Similarity": 0.21052631578947367,
+      "IsCustom": true
+    },
+    {
+      "File": "AGENTS.md",
+      "Repo": "Unity.Ricochet",
+      "Path": "D:\\Projects\\MindAttic\\Unity.Ricochet\\AGENTS.md",
+      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
+      "Similarity": 0.2222222222222222,
       "IsCustom": true
     },
     {
@@ -6056,9 +5063,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "JobHunt",
       "Path": "D:\\Projects\\MindAttic\\JobHunt\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
       "Similarity": 0.2857142857142857,
       "IsCustom": true
     },
@@ -6078,9 +5085,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "REA.Bloodlines",
       "Path": "D:\\Projects\\MindAttic\\REA.Bloodlines\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
       "Similarity": 0.4,
       "IsCustom": false
     },
@@ -6144,20 +5151,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Automata",
       "Path": "D:\\Projects\\MindAttic\\Automata\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
-      "Similarity": 0.5555555555555556,
-      "IsCustom": false
-    },
-    {
-      "File": "AGENTS.md",
-      "Repo": "Unity.QuickDuel",
-      "Path": "D:\\Projects\\MindAttic\\Unity.QuickDuel\\AGENTS.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
       "Similarity": 0.5555555555555556,
       "IsCustom": false
     },
@@ -6166,9 +5162,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "GTFO.EZ.AbsurdItems",
       "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdItems\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
     },
@@ -6177,9 +5173,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "GTFO.EZ.AbsurdMoves",
       "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdMoves\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
     },
@@ -6188,9 +5184,9 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "GTFO.EZ.AbsurdWeapons",
       "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdWeapons\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
       "Similarity": 0.5882352941176471,
       "IsCustom": false
     },
@@ -6236,17 +5232,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Total": 43,
       "Variants": 6,
       "Similarity": 0.6,
-      "IsCustom": false
-    },
-    {
-      "File": ".prose/commands/unstuck.md",
-      "Repo": "Unstuck",
-      "Path": "D:\\Projects\\MindAttic\\Unstuck\\.prose/commands\\unstuck.md",
-      "CanonicalPath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\unstuck.md",
-      "CanonicalCount": 51,
-      "Total": 52,
-      "Variants": 2,
-      "Similarity": 0.8,
       "IsCustom": false
     },
     {
@@ -6309,119 +5294,14 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Repo": "Unity.SpaceGod",
       "Path": "D:\\Projects\\MindAttic\\Unity.SpaceGod\\AGENTS.md",
       "CanonicalPath": "D:\\Projects\\MindAttic\\ChiMesh\\AGENTS.md",
-      "CanonicalCount": 41,
-      "Total": 64,
-      "Variants": 24,
+      "CanonicalCount": 40,
+      "Total": 65,
+      "Variants": 26,
       "Similarity": 0.8333333333333334,
       "IsCustom": false
     }
   ],
   "Missing": [
-    {
-      "File": ".prose/commands/autopilot.md",
-      "Repo": "Unity.QuickDuel",
-      "HaveIt": 39,
-      "Eligible": 40,
-      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\autopilot.md"
-    },
-    {
-      "File": ".prose/commands/bootstrap.md",
-      "Repo": "Unity.QuickDuel",
-      "HaveIt": 39,
-      "Eligible": 40,
-      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\bootstrap.md"
-    },
-    {
-      "File": ".prose/commands/bughunt.md",
-      "Repo": "Unity.QuickDuel",
-      "HaveIt": 39,
-      "Eligible": 40,
-      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\bughunt.md"
-    },
-    {
-      "File": ".prose/commands/commit.md",
-      "Repo": "Unity.QuickDuel",
-      "HaveIt": 39,
-      "Eligible": 40,
-      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\commit.md"
-    },
-    {
-      "File": ".prose/commands/crossrepo.md",
-      "Repo": "Unity.QuickDuel",
-      "HaveIt": 39,
-      "Eligible": 40,
-      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\crossrepo.md"
-    },
-    {
-      "File": ".prose/commands/deploy.md",
-      "Repo": "Unity.QuickDuel",
-      "HaveIt": 39,
-      "Eligible": 40,
-      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\deploy.md"
-    },
-    {
-      "File": ".prose/commands/do.md",
-      "Repo": "Unity.QuickDuel",
-      "HaveIt": 39,
-      "Eligible": 40,
-      "ExamplePath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\do.md"
-    },
-    {
-      "File": ".prose/commands/progress.md",
-      "Repo": "Unity.QuickDuel",
-      "HaveIt": 39,
-      "Eligible": 40,
-      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\progress.md"
-    },
-    {
-      "File": ".prose/commands/queue.md",
-      "Repo": "Unity.QuickDuel",
-      "HaveIt": 39,
-      "Eligible": 40,
-      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\queue.md"
-    },
-    {
-      "File": ".prose/commands/quickload.md",
-      "Repo": "Unity.QuickDuel",
-      "HaveIt": 39,
-      "Eligible": 40,
-      "ExamplePath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quickload.md"
-    },
-    {
-      "File": ".prose/commands/quicksave.md",
-      "Repo": "Unity.QuickDuel",
-      "HaveIt": 39,
-      "Eligible": 40,
-      "ExamplePath": "D:\\Projects\\MindAttic\\AutoWebNav\\.prose/commands\\quicksave.md"
-    },
-    {
-      "File": ".prose/commands/show.md",
-      "Repo": "Unity.QuickDuel",
-      "HaveIt": 39,
-      "Eligible": 40,
-      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\show.md"
-    },
-    {
-      "File": ".prose/commands/throttle.md",
-      "Repo": "Unity.QuickDuel",
-      "HaveIt": 39,
-      "Eligible": 40,
-      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\throttle.md"
-    },
-    {
-      "File": ".prose/commands/unstuck.md",
-      "Repo": "Unity.QuickDuel",
-      "HaveIt": 39,
-      "Eligible": 40,
-      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\unstuck.md"
-    },
-    {
-      "File": ".prose/commands/unthrottle.md",
-      "Repo": "Unity.QuickDuel",
-      "HaveIt": 39,
-      "Eligible": 40,
-      "ExamplePath": "D:\\Projects\\MindAttic\\Automata\\.prose/commands\\unthrottle.md"
-    },
     {
       "File": "CLAUDE.md",
       "Repo": "Automata",
@@ -6490,10 +5370,29 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
-          "Repo": "GTFO.CrashTestDummies",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.CrashTestDummies\\external\\GTFO.EZ.Shared\\KitLoot.cs",
-          "Lines": 121
+          "Repo": "Unity.Overworld",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Overworld\\Assets\\Unity.Overworld\\Core\\Content\\Json.cs",
+          "Lines": 206
         },
+        {
+          "Repo": "Unity.ProjectVania",
+          "Path": "D:\\Projects\\MindAttic\\Unity.ProjectVania\\Assets\\Unity.ProjectVania\\Core\\Settings\\Json.cs",
+          "Lines": 206
+        },
+        {
+          "Repo": "Unity.Ricochet",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Ricochet\\Assets\\Ricochet\\Core\\Data\\Json.cs",
+          "Lines": 206
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 206,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
         {
           "Repo": "GTFO.EZ",
           "Path": "D:\\Projects\\MindAttic\\GTFO.EZ\\external\\GTFO.EZ.Shared\\KitLoot.cs",
@@ -6524,54 +5423,44 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 1,
       "SharedLines": 121,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 6
+      "RepoCount": 5
     },
     {
       "Files": [
         {
-          "Repo": "GTFO.CrashTestDummies",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.CrashTestDummies\\external\\GTFO.EZ.Shared\\InfiniteToggles.cs",
-          "Lines": 73
-        },
-        {
           "Repo": "GTFO.EZ",
           "Path": "D:\\Projects\\MindAttic\\GTFO.EZ\\external\\GTFO.EZ.Shared\\InfiniteToggles.cs",
-          "Lines": 73
+          "Lines": 75
         },
         {
           "Repo": "GTFO.EZ.AbsurdItems",
           "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdItems\\external\\GTFO.EZ.Shared\\InfiniteToggles.cs",
-          "Lines": 73
+          "Lines": 75
         },
         {
           "Repo": "GTFO.EZ.AbsurdMoves",
           "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdMoves\\external\\GTFO.EZ.Shared\\InfiniteToggles.cs",
-          "Lines": 73
+          "Lines": 75
         },
         {
           "Repo": "GTFO.EZ.AbsurdWeapons",
           "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdWeapons\\external\\GTFO.EZ.Shared\\InfiniteToggles.cs",
-          "Lines": 73
+          "Lines": 75
         },
         {
           "Repo": "GTFO.EZ.Shared",
           "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.Shared\\InfiniteToggles.cs",
-          "Lines": 73
+          "Lines": 75
         }
       ],
       "Identical": true,
       "Similarity": 1,
-      "SharedLines": 73,
+      "SharedLines": 75,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 6
+      "RepoCount": 5
     },
     {
       "Files": [
-        {
-          "Repo": "GTFO.CrashTestDummies",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.CrashTestDummies\\external\\GTFO.EZ.Shared\\MessageHelper.cs",
-          "Lines": 68
-        },
         {
           "Repo": "GTFO.EZ",
           "Path": "D:\\Projects\\MindAttic\\GTFO.EZ\\external\\GTFO.EZ.Shared\\MessageHelper.cs",
@@ -6602,7 +5491,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 1,
       "SharedLines": 68,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 6
+      "RepoCount": 5
     },
     {
       "Files": [
@@ -6627,45 +5516,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 90,
       "SuggestedHome": "MindAttic.Components (web/Blazor)",
       "RepoCount": 3
-    },
-    {
-      "Files": [
-        {
-          "Repo": "GTFO.CrashTestDummies",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.CrashTestDummies\\external\\GTFO.EZ.Shared\\SharedOwner.cs",
-          "Lines": 45
-        },
-        {
-          "Repo": "GTFO.EZ",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ\\external\\GTFO.EZ.Shared\\SharedOwner.cs",
-          "Lines": 45
-        },
-        {
-          "Repo": "GTFO.EZ.AbsurdItems",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdItems\\external\\GTFO.EZ.Shared\\SharedOwner.cs",
-          "Lines": 45
-        },
-        {
-          "Repo": "GTFO.EZ.AbsurdMoves",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdMoves\\external\\GTFO.EZ.Shared\\SharedOwner.cs",
-          "Lines": 45
-        },
-        {
-          "Repo": "GTFO.EZ.AbsurdWeapons",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdWeapons\\external\\GTFO.EZ.Shared\\SharedOwner.cs",
-          "Lines": 45
-        },
-        {
-          "Repo": "GTFO.EZ.Shared",
-          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.Shared\\SharedOwner.cs",
-          "Lines": 45
-        }
-      ],
-      "Identical": true,
-      "Similarity": 1,
-      "SharedLines": 45,
-      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
-      "RepoCount": 6
     },
     {
       "Files": [
@@ -6728,6 +5578,64 @@ INSERT INTO state (name, value) VALUES ('audit', '{
     {
       "Files": [
         {
+          "Repo": "GTFO.EZ",
+          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ\\external\\GTFO.EZ.Shared\\SharedOwner.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "GTFO.EZ.AbsurdItems",
+          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdItems\\external\\GTFO.EZ.Shared\\SharedOwner.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "GTFO.EZ.AbsurdMoves",
+          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdMoves\\external\\GTFO.EZ.Shared\\SharedOwner.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "GTFO.EZ.AbsurdWeapons",
+          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.AbsurdWeapons\\external\\GTFO.EZ.Shared\\SharedOwner.cs",
+          "Lines": 44
+        },
+        {
+          "Repo": "GTFO.EZ.Shared",
+          "Path": "D:\\Projects\\MindAttic\\GTFO.EZ.Shared\\SharedOwner.cs",
+          "Lines": 44
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 44,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 5
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.Chain",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Chain\\Assets\\Unity.Chain\\Core\\Settings\\Json.cs",
+          "Lines": 269
+        },
+        {
+          "Repo": "Unity.Overworld",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Overworld\\Assets\\Unity.Overworld\\Core\\Content\\Json.cs",
+          "Lines": 206
+        },
+        {
+          "Repo": "Unity.QuickDuel",
+          "Path": "D:\\Projects\\MindAttic\\Unity.QuickDuel\\Assets\\Unity.QuickDuel\\Core\\Settings\\Json.cs",
+          "Lines": 206
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.945273631840796,
+      "SharedLines": 201,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 3
+    },
+    {
+      "Files": [
+        {
           "Repo": "ChiMesh",
           "Path": "D:\\Projects\\MindAttic\\ChiMesh\\tools\\build-readme.ps1",
           "Lines": 13
@@ -6778,11 +5686,6 @@ INSERT INTO state (name, value) VALUES ('audit', '{
           "Lines": 13
         },
         {
-          "Repo": "MindAttic.Tickets",
-          "Path": "D:\\Projects\\MindAttic\\MindAttic.Tickets\\tools\\build-readme.ps1",
-          "Lines": 13
-        },
-        {
           "Repo": "MindAttic.Vault",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Vault\\tools\\build-readme.ps1",
           "Lines": 13
@@ -6812,7 +5715,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "Similarity": 1,
       "SharedLines": 13,
       "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
-      "RepoCount": 16
+      "RepoCount": 15
     },
     {
       "Files": [
@@ -6851,6 +5754,35 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       "SharedLines": 146,
       "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
       "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.Chain",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Chain\\Assets\\Unity.Chain\\Core\\Settings\\ISettingsSource.cs",
+          "Lines": 34
+        },
+        {
+          "Repo": "Unity.ProjectVania",
+          "Path": "D:\\Projects\\MindAttic\\Unity.ProjectVania\\Assets\\Unity.ProjectVania\\Core\\Settings\\ISettingsSource.cs",
+          "Lines": 34
+        },
+        {
+          "Repo": "Unity.QuickDuel",
+          "Path": "D:\\Projects\\MindAttic\\Unity.QuickDuel\\Assets\\Unity.QuickDuel\\Core\\Settings\\ISettingsSource.cs",
+          "Lines": 34
+        },
+        {
+          "Repo": "Unity.Ricochet",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Ricochet\\Assets\\Ricochet\\Core\\Data\\ISettingsSource.cs",
+          "Lines": 34
+        }
+      ],
+      "Identical": true,
+      "Similarity": 1,
+      "SharedLines": 34,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 4
     },
     {
       "Files": [
@@ -7365,7 +6297,7 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         {
           "Repo": "MindAttic.Agency",
           "Path": "D:\\Projects\\MindAttic\\MindAttic.Agency\\shared\\statusline.ps1",
-          "Lines": 89
+          "Lines": 131
         },
         {
           "Repo": "MindAttic.Web",
@@ -7374,8 +6306,8 @@ INSERT INTO state (name, value) VALUES ('audit', '{
         }
       ],
       "Identical": false,
-      "Similarity": 0.7021276595744681,
-      "SharedLines": 38,
+      "Similarity": 0.6595744680851063,
+      "SharedLines": 36,
       "SuggestedHome": "MindAttic.Deploy or mindattic-agent-standard",
       "RepoCount": 2
     },
@@ -7508,6 +6440,25 @@ INSERT INTO state (name, value) VALUES ('audit', '{
       ],
       "Identical": false,
       "Similarity": 1,
+      "SharedLines": 26,
+      "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
+      "RepoCount": 2
+    },
+    {
+      "Files": [
+        {
+          "Repo": "Unity.Chain",
+          "Path": "D:\\Projects\\MindAttic\\Unity.Chain\\Assets\\Unity.Chain\\Editor\\RenderPipelineBuilder.cs",
+          "Lines": 65
+        },
+        {
+          "Repo": "Unity.ProjectVania",
+          "Path": "D:\\Projects\\MindAttic\\Unity.ProjectVania\\Assets\\Unity.ProjectVania\\Editor\\RenderPipelineBuilder.cs",
+          "Lines": 40
+        }
+      ],
+      "Identical": false,
+      "Similarity": 0.6,
       "SharedLines": 26,
       "SuggestedHome": "MindAttic.Helpers (or a new shared package)",
       "RepoCount": 2
@@ -8543,8 +7494,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "a57a30142679f3ed216b7bb6a585534536b6391c"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "3f196250a61c1334488dfa9a26294e75d2ccde99",
-    "Green": "3f196250a61c1334488dfa9a26294e75d2ccde99"
+    "Tested": "d71748a8ca3bc1344672946e590b393d67ea5885",
+    "Green": "d71748a8ca3bc1344672946e590b393d67ea5885"
   },
   "MindAttic.Psst": {
     "Tested": "4a8dd88cf5df31911bcff9ec0b040a5008399a02"
@@ -9004,7 +7955,7 @@ INSERT INTO state (name, value) VALUES ('requeued', '{
   "U.CHN-T59": "2026-10-24T19:42:42.8675287Z",
   "U.CHN-T72": "2026-10-24T19:02:55.1897437Z",
   "U.CHN-T71": "2026-10-24T19:06:10.7283757Z",
-  "U.RICO-T36": "2026-10-24T21:30:08.6286449Z",
+  "U.RICO-T36": "2026-10-24T22:14:03.9259250Z",
   "RB-T152": "2026-10-24T19:16:56.3369414Z",
   "U.SPC-T478": "2026-10-24T21:30:23.7111671Z",
   "RB-T118": "2026-10-24T19:28:25.5725794Z",
@@ -9021,7 +7972,9 @@ INSERT INTO state (name, value) VALUES ('requeued', '{
   "RB-T187": "2026-10-24T21:33:13.4354019Z",
   "RB-T138": "2026-10-24T21:33:43.3021631Z",
   "RB-T140": "2026-10-24T21:34:27.8426612Z",
-  "U.SPC-T533": "2026-10-24T21:59:41.3792957Z"
+  "U.SPC-T533": "2026-10-24T21:59:41.3792957Z",
+  "RB-T141": "2026-10-24T22:14:03.9259250Z",
+  "RB-T142": "2026-10-24T22:16:45.2465084Z"
 }');
 INSERT INTO state (name, value) VALUES ('usage-cutoff-alerts', '{
   "Alerted": {
