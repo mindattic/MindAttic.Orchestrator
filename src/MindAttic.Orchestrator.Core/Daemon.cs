@@ -259,7 +259,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     // and sweep below still run.
                     try
                     {
-                        foreach (var (repo, ticket) in Intake(options.WorkspaceRoot, gh: args => Tickets.GitHubIntake.Gh(Runner, Tickets.GitHubIntake.GhTimeout, args)))
+                        // The engine's intake (M.TIX-T134); the daemon is its one scheduled runner (M.ORCH-T762).
+                        foreach (var (repo, ticket) in Tickets.GitHubIntake.Run(options.WorkspaceRoot, gh: args => Tickets.GitHubIntake.Gh(Runner, Tickets.GitHubIntake.GhTimeout, args)))
                             Say(LogEventLevel.Information, $"filed {ticket.Id} in {repo} from GitHub: {ticket.Summary}");
                     }
                     catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException or System.Data.Common.DbException)
@@ -896,32 +897,6 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         if (!Directory.Exists(gitDir)) return false;
         return new[] { "MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD" }.Any(f => File.Exists(Path.Combine(gitDir, f)))
             || new[] { "rebase-merge", "rebase-apply" }.Any(d => Directory.Exists(Path.Combine(gitDir, d)));
-    }
-
-    /// <summary>Files new GitHub issues and CI failures as tickets in every repo that has a GitHub origin.</summary>
-    public static IEnumerable<(string Repo, MindAttic.Tickets.Log.Ticket Ticket)> Intake(string workspaceRoot, bool dryRun = false,
-        Func<string[], (int Code, string Output)>? gh = null)
-    {
-        gh ??= Tickets.GitHubIntake.Gh;
-        var remotes = Setup.WorkspaceBootstrap.Export(workspaceRoot).Repos.ToDictionary(m => m.Name, m => m.Remote, StringComparer.OrdinalIgnoreCase);
-        foreach (var repo in new MindAttic.Tickets.Workspace(workspaceRoot).Repos().Where(r => File.Exists(r.StoriesPath)))
-        {
-            var remote = remotes.GetValueOrDefault(repo.Name);
-            if (remote is null || Tickets.GitHubIntake.Slug(remote) is not { } slug) continue;
-            var items = Tickets.GitHubIntake.Find(slug, gh, DateTime.UtcNow);
-            if (items.Count == 0) continue;
-            using (var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(workspaceRoot))
-                if (db is not null && db.Repos().Any(x => x.Name.Equals(repo.Name, StringComparison.OrdinalIgnoreCase)))
-                {
-                    // A dry run files nothing, but still says what it would file.
-                    foreach (var t in Tickets.GitHubIntake.FileNew(db, repo.Name, items, dryRun)) yield return (repo.Name, t);
-                    continue;
-                }
-            var stories = MindAttic.Tickets.Log.StoryFile.Load(repo.StoriesPath);
-            var filed = Tickets.GitHubIntake.FileNew(stories, items);
-            if (filed.Count > 0 && !dryRun) stories.Save();
-            foreach (var t in filed) yield return (repo.Name, t);
-        }
     }
 
     private void Alert(string title, string message, bool urgent = false)

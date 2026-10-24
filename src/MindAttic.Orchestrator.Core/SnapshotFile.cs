@@ -101,6 +101,8 @@ public sealed class SnapshotFile(string path)
             Requires = s.Requires.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
             Approved = new HashSet<string>(s.Approved, StringComparer.OrdinalIgnoreCase),
             Priorities = s.Priorities.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
+            Assignees = s.Assignees.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
+            Reservations = s.Reservations.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
         };
     }
 

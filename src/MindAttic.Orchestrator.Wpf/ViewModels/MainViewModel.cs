@@ -43,6 +43,10 @@ public sealed class ToastViewModel(string title, string body, Brush accent, Repo
     public string Body { get; } = body;
     public Brush Accent { get; } = accent;
     public RepoTileViewModel? Target { get; } = target;
+
+    /// <summary>The one ticket an alert with no repo to open is about (M.ORCH-T762): clicking it opens that ticket in Tickets Desktop.
+    /// Null when it names none, or more than one.</summary>
+    public string? TicketId { get; } = target is null ? MindAttic.Orchestrator.Tickets.TicketsDesktop.OnlyTicketIn(title + " " + body) : null;
 }
 
 public sealed partial class MainViewModel : ObservableObject

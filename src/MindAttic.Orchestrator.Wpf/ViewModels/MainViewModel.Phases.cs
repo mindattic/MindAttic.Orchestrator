@@ -383,7 +383,7 @@ public sealed partial class MainViewModel
 
     internal static string EmptyQueue(int awaitingApproval) => awaitingApproval == 0
         ? "No open tickets anywhere. Add one with: tickets ticket new"
-        : $"Nothing workable: {awaitingApproval} open ticket{(awaitingApproval == 1 ? "" : "s")} wait{(awaitingApproval == 1 ? "s" : "")} for your approval (orchestrator approve <ID>); fixes need none.";
+        : $"Nothing workable: {awaitingApproval} open ticket{(awaitingApproval == 1 ? "" : "s")} wait{(awaitingApproval == 1 ? "s" : "")} for your approval (tickets ticket approve <ID>); fixes need none.";
 
     /// <summary>Tickets being started now: the row shows them unassigned until the refresh after the start, and a second
     /// click in that time would open a second agent on the same ticket.</summary>
@@ -410,7 +410,7 @@ public sealed partial class MainViewModel
                 if (TicketPins.Same(who, full?.GlobalEmail)) login = new(null, who);
                 else if (!await Task.Run(() => accountDirs.For(who).SignedIn))
                 {
-                    QueueMessage = TicketPins.WaitingText(NameOf(who), "not signed in on this machine") + ". Reassign it, or Redelegate now, to start it elsewhere.";
+                    QueueMessage = TicketPins.WaitingText(NameOf(who), "not signed in on this machine") + ". Reassign or redelegate it in Tickets Desktop to start it elsewhere.";
                     return;
                 }
                 else if (await OwnLoginDirAsync(who, m => QueueMessage = m) is not { } pinned) return;
@@ -450,28 +450,6 @@ public sealed partial class MainViewModel
         else queueLog.Error("{Action:l} failed: {Message:l}", action, r.Message);
     }
 
-    public void Bump(string ticketId, int by) => Guarded("Bump", () =>
-    {
-        // Priority lives in the ticket database's queue alone, written through the MindAttic.Tickets engine, where every tool
-        // reads and writes it (M.ORCH-T761); a ticket it doesn't hold has none to move, and says so.
-        using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(aggregator.Options.WorkspaceRoot);
-        if (db?.Ticket(ticketId) is null)
-        {
-            QueueMessage = $"Bump failed: {MindAttic.Orchestrator.Tickets.TicketQueue.NotInDatabase(ticketId)}.";
-            return;
-        }
-        var next = MindAttic.Orchestrator.Tickets.TicketQueue.Bump(db, ticketId, by);
-        NoteLocalChange();
-        // Shown at once, not at the next refresh: the plan is made again over the snapshot with the new priority.
-        if (full is not null)
-        {
-            var p = new Dictionary<string, long>(full.Priorities, StringComparer.OrdinalIgnoreCase);
-            if (next == 0) p.Remove(ticketId); else p[ticketId] = next;
-            full = full with { Priorities = p };
-            Root.ApplyPlan(full);
-        }
-    });
-
     public void Release(string ticketId) => Guarded("Release", () =>
     {
         if (Locked(ticketId)) return;
@@ -494,14 +472,14 @@ public sealed partial class MainViewModel
         }
     }
 
-    /// <summary>The ticket's sessions and commits in a window: what happened, without digging through Launcher history.</summary>
+    /// <summary>The ticket's sessions in a window: the work that ran, without digging through Launcher history. Its commits and
+    /// history are shown with the ticket in Tickets Desktop (M.ORCH-T762).</summary>
     public async void ShowDetails(Assignment a)
     {
         try
         {
-            var repoPath = snapshot?.Repos.FirstOrDefault(r => r.Name == a.Repo)?.Path ?? a.Directory;
-            ShowText($"{a.TicketId} in {a.Repo}", await Task.Run(() => MindAttic.Orchestrator.Tickets.TicketReplay.PlainReport(a.TicketId, repoPath, aggregator.Options.ClaudeProjectsDir,
-                worktreeRoot: store.LoadSettings().WorktreeRoot)));
+            ShowText($"{a.TicketId} in {a.Repo}: sessions run", await Task.Run(() => MindAttic.Orchestrator.Tickets.TicketReplay.PlainReport(a.TicketId, aggregator.Options.ClaudeProjectsDir,
+                store.LoadSettings().WorktreeRoot)));
         }
         // async void: an escaped exception (a corrupt assignments.json, a locked file) would close the dashboard.
         catch (Exception ex) when (ex is not OutOfMemoryException)

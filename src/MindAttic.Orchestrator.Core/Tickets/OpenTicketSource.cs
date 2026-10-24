@@ -15,17 +15,40 @@ public sealed class OpenTicketSource
         new(StringComparer.OrdinalIgnoreCase);
 
     private (string Path, DateTime WriteUtc, ILookup<string, Ticket> Open, HashSet<string> Repos, IReadOnlyDictionary<string, IReadOnlyList<string>> Requires,
-        IReadOnlySet<string> Approved, IReadOnlyDictionary<string, long> Priorities)? fromDb;
+        IReadOnlySet<string> Approved, IReadOnlyDictionary<string, long> Priorities, WorkState Work)? fromDb;
 
-    /// <summary>Ticket → the tickets it requires (prerequisite links in the database).</summary>
+    /// <summary>Ticket → the tickets it requires (prerequisite links in the database: <c>tickets ticket block</c> writes them).</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>> Requires => fromDb?.Requires ?? new Dictionary<string, IReadOnlyList<string>>();
 
-    /// <summary>Tickets approved for work in the database's queue (<c>tickets ticket approve</c>, <c>orchestrator approve</c>,
-    /// the Tickets Desktop): the one store approval lives in (M.ORCH-T384).</summary>
+    /// <summary>Tickets approved for work in the database's queue (<c>tickets ticket approve</c>, the Tickets Desktop): the one
+    /// store approval lives in (M.ORCH-T384).</summary>
     public IReadOnlySet<string> Approved => fromDb?.Approved ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Ticket → its manual priority in the database's queue (higher runs sooner); missing means 0.</summary>
     public IReadOnlyDictionary<string, long> Priorities => fromDb?.Priorities ?? new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Ticket → the member it's assigned to, by login email (the database's <c>ticket_work</c>, M.ORCH-T762).</summary>
+    public IReadOnlyDictionary<string, string> Assignees => fromDb?.Work.Assignees ?? WorkState.Empty.Assignees;
+
+    /// <summary>Ticket → the tokens reserved for it in the database (M.ORCH-T762).</summary>
+    public IReadOnlyDictionary<string, long> Reservations => fromDb?.Work.Reservations ?? WorkState.Empty.Reservations;
+
+    /// <summary>Who each ticket is assigned to and what's reserved for it, as the ticket database's <c>ticket_work</c> holds them.</summary>
+    public sealed record WorkState(IReadOnlyDictionary<string, string> Assignees, IReadOnlyDictionary<string, long> Reservations)
+    {
+        public static readonly WorkState Empty = new(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+            new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase));
+
+        /// <summary>Read from <paramref name="db"/> through the engine; an assignee that isn't an email is left out.</summary>
+        public static WorkState Of(TicketsDb db)
+        {
+            var work = db.WorkStates();
+            return new(
+                work.Where(w => TicketsDb.NormalizeEmail(w.Value.Assignee) is not null)
+                    .ToDictionary(w => w.Key, w => TicketsDb.NormalizeEmail(w.Value.Assignee)!, StringComparer.OrdinalIgnoreCase),
+                work.Where(w => w.Value.Reserved > 0).ToDictionary(w => w.Key, w => w.Value.Reserved, StringComparer.OrdinalIgnoreCase));
+        }
+    }
 
     private readonly HashSet<string> unknown = new(StringComparer.OrdinalIgnoreCase);
 
@@ -80,7 +103,8 @@ public sealed class OpenTicketSource
                     db.Tickets().Where(t => t.Ticket.Status == TicketRules.Open).ToLookup(t => t.Repo, t => t.Ticket, StringComparer.OrdinalIgnoreCase),
                     db.Repos().Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase), requires,
                     queue.Where(q => q.Value.Approval == TicketsDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
-                    queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase));
+                    queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase),
+                    WorkState.Of(db));
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Data.Common.DbException)
             {

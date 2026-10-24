@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -10,9 +9,9 @@ namespace MindAttic.Orchestrator.Tickets;
 public sealed record ReplaySession(string File, DateTime StartUtc, DateTime EndUtc, long Fresh, IReadOnlyList<string> Prompts, string LastReply);
 
 /// <summary>
-/// Everything about a ticket without digging through Launcher history: the sessions dispatched on it
-/// (found by the dispatch prompt near the top of a transcript, or by the ticket's worktree folder) and
-/// the commits that mention its ID.
+/// The work run on a ticket without digging through Launcher history: the sessions dispatched on it (found by the dispatch
+/// prompt near the top of a transcript, or by the ticket's worktree folder). The commits that mention it are MindAttic.Tickets'
+/// (its engine's TicketCommits, M.TIX-T134), shown with the ticket in Tickets Desktop (M.ORCH-T762).
 /// </summary>
 public static partial class TicketReplay
 {
@@ -198,39 +197,14 @@ public static partial class TicketReplay
         return last;
     }
 
-    /// <summary>Commits in the repo whose message mentions the ticket, newest first, with what they touched (or the full diff).</summary>
-    public static string Commits(string ticketId, string repoPath, bool diff)
-    {
-        if (!Directory.Exists(repoPath)) return "";
-        var wholeWord = $"(^|[^A-Za-z0-9]){Regex.Escape(ticketId)}([^A-Za-z0-9]|$)";
-        var psi = new ProcessStartInfo("git") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
-        foreach (var a in new[] { "-C", repoPath, "log", "--all", "--extended-regexp", $"--grep={wholeWord}", "--date=format-local:%Y-%m-%d %H:%M",
-                     "--format=%n%h %ad %an%n    %s", diff ? "--patch" : "--stat" })
-            psi.ArgumentList.Add(a);
-        try
-        {
-            using var p = Process.Start(psi)!;
-            var output = p.StandardOutput.ReadToEndAsync();
-            p.StandardError.ReadToEnd();
-            p.WaitForExit();
-            return output.Result.Trim();
-        }
-        catch (System.ComponentModel.Win32Exception) { return ""; }
-    }
-
-    /// <summary>The whole replay as plain text, for a window that just shows it. With <paramref name="ticket"/>,
-    /// leads with its row (type, status, summary, ref) before the sessions and commits.</summary>
-    public static string PlainReport(string ticketId, string repoPath, string projectsDir, MindAttic.Tickets.Log.Ticket? ticket = null,
-        string? worktreeRoot = null)
+    /// <summary>The sessions run on a ticket as plain text, for a window that just shows them. The ticket itself (its row, links,
+    /// history and the commits that mention it) is MindAttic.Tickets' to show (Tickets Desktop, <c>tickets ticket show</c>), so the
+    /// report only points there (M.ORCH-T762).</summary>
+    public static string PlainReport(string ticketId, string projectsDir, string? worktreeRoot = null)
     {
         var sb = new StringBuilder();
-        if (ticket is { } t)
-        {
-            sb.AppendLine($"{t.Id} · {t.Type} · {t.Status} · opened {t.Date}");
-            sb.AppendLine(t.Summary);
-            if (t.Ref.Trim() is { Length: > 0 } r && r != "—") sb.AppendLine($"Ref: {r}");
-            sb.AppendLine();
-        }
+        sb.AppendLine($"The ticket itself (its row, links, history and commits): open {ticketId} in Tickets Desktop, or tickets ticket show {ticketId}.");
+        sb.AppendLine();
         var sessions = Sessions(ticketId, projectsDir, worktreeRoot);
         sb.AppendLine(sessions.Count == 0 ? "No dispatched sessions found (only sessions the orchestrator started are tied to a ticket)."
             : $"{sessions.Count} session(s), {Formatting.Tokens(sessions.Sum(s => s.Fresh))} uncached");
@@ -240,8 +214,6 @@ public static partial class TicketReplay
             foreach (var p in s.Prompts) sb.AppendLine($"  > {p}");
             if (s.LastReply.Length > 0) sb.AppendLine($"  last reply: {s.LastReply}");
         }
-        var commits = Commits(ticketId, repoPath, diff: true);
-        sb.AppendLine().AppendLine(commits.Length == 0 ? "No commits mention it." : "Commits").AppendLine(commits);
         return sb.ToString();
     }
 

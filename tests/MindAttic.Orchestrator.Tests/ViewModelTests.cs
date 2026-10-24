@@ -297,7 +297,7 @@ public sealed class ViewModelTests
     {
         // M.ORCH-T350: it said "No open tickets anywhere" while unapproved features were open.
         Assert.That(MainViewModel.EmptyQueue(0), Does.StartWith("No open tickets anywhere"));
-        Assert.That(MainViewModel.EmptyQueue(2), Is.EqualTo("Nothing workable: 2 open tickets wait for your approval (orchestrator approve <ID>); fixes need none."));
+        Assert.That(MainViewModel.EmptyQueue(2), Is.EqualTo("Nothing workable: 2 open tickets wait for your approval (tickets ticket approve <ID>); fixes need none."));
         Assert.That(MainViewModel.EmptyQueue(1), Does.Contain("1 open ticket waits"));
     }
 

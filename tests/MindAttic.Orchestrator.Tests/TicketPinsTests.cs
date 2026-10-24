@@ -8,9 +8,9 @@ using NUnit.Framework;
 namespace MindAttic.Orchestrator.Tests;
 
 /// <summary>
-/// Tickets per user (M.ORCH-T668): assigning and reassigning a ticket records the user's login, next --claim and Start dispatch
-/// it only on that login (and the claim or tab records it), a pinned ticket waits for its user instead of being handed on, and
-/// Redelegate now drops the pin so it's handed on like an unassigned ticket.
+/// Tickets per user (M.ORCH-T668): a ticket assigned to a user (in the ticket database, where Tickets assigns it, M.ORCH-T762) is
+/// pinned to their login: next --claim and Start dispatch it only there (and the claim or tab records it), it waits for its user
+/// instead of being handed on, and once the pin is dropped (Tickets' redelegate) it's handed on like an unassigned ticket.
 /// </summary>
 public sealed class TicketPinsTests
 {
@@ -19,9 +19,13 @@ public sealed class TicketPinsTests
     private string dir = "";
     private JsonStore store = null!;
 
+    /// <summary>The ticket database's assignments as the snapshot carries them (ticket id → login email).</summary>
+    private Dictionary<string, string> assignees = new(StringComparer.OrdinalIgnoreCase);
+
     [SetUp]
     public void SetUp()
     {
+        assignees = new(StringComparer.OrdinalIgnoreCase);
         dir = Path.Combine(Path.GetTempPath(), "orch-pins-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         store = new JsonStore(Path.Combine(dir, "store"));
@@ -36,29 +40,27 @@ public sealed class TicketPinsTests
     }
 
     [Test]
-    public void Assigning_and_reassigning_a_ticket_records_the_users_login()
+    public void The_ticket_databases_assignment_pins_a_ticket_to_its_users_login()
     {
-        var first = TicketPins.Assign(store, "a-t1", "  Ryan@Example.com ");
-        Assert.That((first.TicketId, first.From, first.To), Is.EqualTo(("A-T1", (string?)null, Ryan)), "the login as its folder names it");
-        Assert.That(store.LoadSettings().Assignees, Is.EqualTo(new Dictionary<string, string> { ["A-T1"] = Ryan }));
-        Assert.That(Plan().Queue.Single(q => q.Id == "A-T1").Assignee, Is.EqualTo(Ryan), "the queue says who has it");
+        assignees[" a-t1 "] = "  Ryan@Example.com ";
+        Assert.That(TicketPins.Assignees(Snap()), Is.EqualTo(new Dictionary<string, string> { ["a-t1"] = Ryan }), "the login as its folder names it");
+        Assert.That(Plan().Queue.Single(q => q.Id == "A-T1").Assignee, Is.EqualTo(Ryan), "the queue says who has it, whatever case its id is in");
 
-        var moved = TicketPins.Assign(store, "A-T1", Jordan);
-        Assert.That((moved.From, moved.To), Is.EqualTo(((string?)Ryan, (string?)Jordan)));
-        Assert.That(moved.Text, Does.Contain("reassigned from ryan@example.com to jordan@example.com"));
-        Assert.That(TicketPins.AssigneeOf(store.LoadSettings(), "a-t1"), Is.EqualTo(Jordan), "one entry per ticket, whatever case it was typed in");
-        Assert.That(store.LoadSettings().Assignees, Has.Count.EqualTo(1));
+        assignees.Clear();
+        assignees["A-T1"] = Jordan;
+        Assert.That(Plan().Queue.Single(q => q.Id == "A-T1").Assignee, Is.EqualTo(Jordan), "reassigned in Tickets: the next plan follows");
 
-        Assert.That(() => TicketPins.Assign(store, "A-T1", "not an email"), Throws.ArgumentException);
-        var off = TicketPins.Unassign(store, "A-T1");
-        Assert.That((off.From, off.To), Is.EqualTo(((string?)Jordan, (string?)null)));
+        assignees["A-T1"] = "not an email";
+        Assert.That(Plan().Queue.Single(q => q.Id == "A-T1").IsPinned, Is.False, "an assignee that isn't a login pins nothing");
+        assignees.Clear();
         Assert.That(Plan().Queue.Single(q => q.Id == "A-T1").IsPinned, Is.False);
+        Assert.That(store.LoadSettings().Assignees, Is.Empty, "the orchestrator's settings hold no assignment");
     }
 
     [Test]
     public void Next_claim_hands_a_pinned_ticket_only_to_a_cli_on_its_users_login_and_records_it()
     {
-        TicketPins.Assign(store, "A-T1", Ryan);
+        assignees["A-T1"] = Ryan;
         var settings = store.LoadSettings();
 
         var (jordans, why) = Allocate.Next(Plan(), settings, store, ["A"], null, claim: true, Now, Make, _ => "main", login: Jordan);
@@ -79,7 +81,7 @@ public sealed class TicketPinsTests
     [Test]
     public void Start_opens_a_pinned_ticket_only_on_its_users_login()
     {
-        TicketPins.Assign(store, "A-T1", Ryan);
+        assignees["A-T1"] = Ryan;
         var item = Plan().Queue.Single(q => q.Id == "A-T1");
         var opened = 0;
         var dispatcher = Dispatcher(() => opened++, who => who == Ryan ? new Dispatcher.TabLogin(@"C:\accounts\ryan", Ryan) : null);
@@ -103,7 +105,7 @@ public sealed class TicketPinsTests
     [Test]
     public void A_pinned_ticket_whose_user_is_out_of_room_waits_for_them_instead_of_being_redelegated()
     {
-        TicketPins.Assign(store, "A-T1", Ryan);
+        assignees["A-T1"] = Ryan;
         var item = Plan().Queue.Single(q => q.Id == "A-T1");
 
         // Ryan's week is past its stop line (95%): the card says it waits, and why.
@@ -125,11 +127,10 @@ public sealed class TicketPinsTests
     }
 
     [Test]
-    public void Redelegate_now_hands_a_pinned_ticket_on_like_an_unassigned_one()
+    public void Once_the_pin_is_dropped_in_Tickets_a_ticket_is_handed_on_like_an_unassigned_one()
     {
-        TicketPins.Assign(store, "A-T1", Ryan);
-        var change = TicketPins.Redelegate(store, "A-T1");
-        Assert.That((change.From, change.To), Is.EqualTo(((string?)Ryan, (string?)null)));
+        assignees["A-T1"] = Ryan;
+        assignees.Remove("A-T1"); // tickets ticket assign A-T1 --redelegate, or Tickets Desktop's Redelegate now
 
         var item = Plan(only: "A-T1").Queue.Single();
         Assert.That((item.IsPinned, TicketPins.Redelegable(item)), Is.EqualTo((false, true)), "the pacing may move it again");
@@ -139,22 +140,31 @@ public sealed class TicketPinsTests
     }
 
     [Test]
-    public void Each_persons_tickets_view_sits_below_their_open_clis_and_picks_the_assignee_with_the_librarys_picker()
+    public void Each_persons_tickets_view_sits_below_their_open_clis_and_assigns_in_Tickets_Desktop()
     {
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         var window = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
         Assert.That(window.IndexOf("x:Name=\"UserTickets\"", StringComparison.Ordinal),
             Is.GreaterThan(window.IndexOf("x:Name=\"AgentCards\"", StringComparison.Ordinal)), "below the person's CLIs");
-        Assert.That(window, Does.Contain("<mc:MaPicker x:Name=\"AssigneePicker\"").And.Contain("Style=\"{StaticResource MaRowList}\" ItemsSource=\"{Binding AssignedTickets}\"")
-            .And.Contain("ItemsSource=\"{Binding UnassignedTickets}\"").And.Contain("Command=\"{Binding RedelegateCommand}\""));
+        Assert.That(window, Does.Contain("Style=\"{StaticResource MaRowList}\" ItemsSource=\"{Binding AssignedTickets}\"")
+            .And.Contain("ItemsSource=\"{Binding UnassignedTickets}\"").And.Contain("x:Name=\"AssignInTickets\""));
+        // M.ORCH-T762: assigning, reassigning and redelegating are Tickets Desktop's; the dashboard only links there.
+        Assert.That(window, Does.Not.Contain("AssigneePicker").And.Not.Contain("RedelegateCommand").And.Not.Contain("UpCommand"));
+    }
+
+    private Snapshot Snap(string? only = null)
+    {
+        Ticket[] open = [T("A-T1"), T("A-T2")];
+        return new Snapshot(Now, [new RepoStatus("A", dir, RepoState.Dormant, [], [], [.. open.Where(t => only is null || t.Id == only)], null, default)], [])
+        {
+            Assignees = new Dictionary<string, string>(assignees, StringComparer.OrdinalIgnoreCase),
+        };
     }
 
     private SchedulePlan Plan(string? only = null)
     {
-        Ticket[] open = [T("A-T1"), T("A-T2")];
-        var snap = new Snapshot(Now, [new RepoStatus("A", dir, RepoState.Dormant, [], [], [.. open.Where(t => only is null || t.Id == only)], null, default)], []);
-        var plan = Scheduler.Plan(snap, store.LoadSettings(), store.LoadAssignments());
+        var plan = Scheduler.Plan(Snap(only), store.LoadSettings(), store.LoadAssignments());
         return plan with { Pace = new Pace(PaceMode.Open, 6, 10_000, 0, 1_000, "5-hour", Now.AddHours(3), "On pace.") { SpareSessions = 5, SubagentAllowance = 8 } };
     }
 

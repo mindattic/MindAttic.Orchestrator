@@ -62,18 +62,6 @@ internal static class Ctx
     /// <summary>A ticket id as stored and compared everywhere (upper case), so "m.orch-t5" isn't silently a different ticket.</summary>
     public static string Id(string typed) => typed.Trim().ToUpperInvariant();
 
-    /// <summary>True (said in red) when the workspace's database has no ticket for some of <paramref name="ids"/>: a typo would
-    /// be approved, bumped or reserved while the ticket you meant gets nothing. Unchecked before the workspace is migrated.</summary>
-    public static bool RefuseUnknown(JsonStore store, IEnumerable<string> ids)
-    {
-        var root = OrchestratorOptions.Load(store).WorkspaceRoot;
-        using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(root);
-        // A ticket of a repo still on its own USER_STORIES.md isn't in the database, but it's no typo (M.ORCH-T441).
-        if (db is null || ids.Where(id => MindAttic.Orchestrator.Tickets.TicketQueue.Find(db, root, id) is null).ToList() is not { Count: > 0 } unknown) return false;
-        AnsiConsole.MarkupLine($"[red]No ticket {Markup.Escape(string.Join(", ", unknown))}; nothing was changed.[/]");
-        return true;
-    }
-
     public static OrchestratorSettings Settings => Ctx.Store().LoadSettings();
 
     public static Dispatcher Dispatcher(JsonStore store) =>
@@ -152,42 +140,6 @@ internal sealed class QueueCommand : Command<QueueCommand.Settings>
     }
 }
 
-internal sealed class BumpCommand : Command<BumpCommand.Settings>
-{
-    public sealed class Settings : CommandSettings
-    {
-        [CommandArgument(0, "<TICKET>")]
-        public string Ticket { get; init; } = "";
-
-        [CommandOption("--by <N>")]
-        [DefaultValue(1)]
-        public int By { get; init; } = 1;
-    }
-
-    public override int Execute(CommandContext context, Settings settings)
-    {
-        var store = Ctx.Store();
-        var id = Ctx.Id(settings.Ticket);
-        // Priority lives in the ticket database's queue alone, with approval, written through the MindAttic.Tickets engine
-        // where every tool reads and writes it (M.ORCH-T761).
-        var root = OrchestratorOptions.Load(store).WorkspaceRoot;
-        using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(root);
-        if (MindAttic.Orchestrator.Tickets.TicketQueue.Find(db, root, id) is not { } found)
-        {
-            AnsiConsole.MarkupLine($"[red]No ticket {Markup.Escape(id)}; nothing was changed.[/]");
-            return 1;
-        }
-        if (!found.InDatabase)
-        {
-            AnsiConsole.MarkupLine($"[red]{Markup.Escape(MindAttic.Orchestrator.Tickets.TicketQueue.NotInDatabase(id))}; nothing was changed.[/]");
-            return 1;
-        }
-        var next = MindAttic.Orchestrator.Tickets.TicketQueue.Bump(db, id, settings.By);
-        AnsiConsole.MarkupLine($"{Markup.Escape(id)} priority is now {next:+#;-#;0}.");
-        return 0;
-    }
-}
-
 internal sealed class DispatchCommand : Command<DispatchCommand.Settings>
 {
     public sealed class Settings : CommandSettings
@@ -211,7 +163,7 @@ internal sealed class DispatchCommand : Command<DispatchCommand.Settings>
         if (item is null or { IsAssigned: false, MayWork: false } && plan.AwaitingApproval.FirstOrDefault(q => q.Id.Equals(settings.Ticket, StringComparison.OrdinalIgnoreCase)) is { } waiting)
         {
             // Open, but only fixes are worked without your yes: say that, not that the ticket doesn't exist.
-            AnsiConsole.MarkupLine($"[yellow]{waiting.Id} waits for your approval: orchestrator approve {waiting.Id}[/]");
+            AnsiConsole.MarkupLine($"[yellow]{waiting.Id} waits for your approval: tickets ticket approve {waiting.Id} (or approve it in Tickets Desktop)[/]");
             return 1;
         }
         if (item is null) { AnsiConsole.MarkupLine($"[red]{Markup.Escape(settings.Ticket)} isn't an open ticket.[/]"); return 1; }
@@ -256,65 +208,6 @@ internal sealed class ReleaseCommand : Command<ReleaseCommand.Settings>
         var r = dispatcher.RemoveWorktree(a, repo.Path);
         AnsiConsole.MarkupLine(r.Ok ? Markup.Escape(r.Message) : $"[red]{Markup.Escape(r.Message)}[/]");
         return r.Ok ? 0 : 1;
-    }
-}
-
-/// <summary><c>orchestrator assign &lt;TICKET&gt; [&lt;USER&gt;]</c> (M.ORCH-T668): assign a ticket to a user, or reassign it, by their
-/// login's email or member name; it's then dispatched only on that login. <c>--unassign</c> takes it off them; <c>--redelegate</c>
-/// is the card's "Redelegate now": the pin goes, and it's handed on like an unassigned ticket.</summary>
-internal sealed class AssignCommand : Command<AssignCommand.Settings>
-{
-    public sealed class Settings : CommandSettings
-    {
-        [CommandArgument(0, "<TICKET>")]
-        public string Ticket { get; init; } = "";
-
-        [CommandArgument(1, "[USER]")]
-        [Description("The user's login email, or their member name (orchestrator members). Without it, says who has the ticket.")]
-        public string? User { get; init; }
-
-        [CommandOption("--unassign")]
-        [Description("Take the ticket off whoever it's assigned to.")]
-        public bool Unassign { get; init; }
-
-        [CommandOption("--redelegate")]
-        [Description("Redelegate now: drop the pin so it's handed on like an unassigned ticket (another user with room, else the API key).")]
-        public bool Redelegate { get; init; }
-    }
-
-    public override int Execute(CommandContext context, Settings settings)
-    {
-        var store = Ctx.Store();
-        var id = Ctx.Id(settings.Ticket);
-        if (settings.Unassign || settings.Redelegate)
-        {
-            var change = settings.Redelegate ? TicketPins.Redelegate(store, id) : TicketPins.Unassign(store, id);
-            AnsiConsole.MarkupLine(Markup.Escape(change.Text));
-            return 0;
-        }
-        if (settings.User is not { Length: > 0 } user)
-        {
-            AnsiConsole.MarkupLine(Markup.Escape(TicketPins.AssigneeOf(store.LoadSettings(), id) is { } who
-                ? $"{id} is assigned to {who}: it's dispatched only on that login." : $"{id} isn't assigned to anyone."));
-            return 0;
-        }
-        if (Ctx.RefuseUnknown(store, [id])) return 1;
-        var email = AccountDirs.Normalize(user);
-        if (email is null)
-        {
-            IReadOnlyList<Member> members = [];
-            try { members = MemberRoster.Load(store.Db); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
-            var named = members.Where(m => string.Equals(m.Name, user.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
-            if (named.Count != 1)
-            {
-                AnsiConsole.MarkupLine($"[red]{Markup.Escape(named.Count == 0 ? $"\"{user}\" is neither an email nor a member's name (orchestrator members)." : $"More than one member is named \"{user}\": give their email.")}[/]");
-                return 1;
-            }
-            email = named[0].Email;
-        }
-        AnsiConsole.MarkupLine(Markup.Escape(TicketPins.Assign(store, id, email).Text));
-        return 0;
     }
 }
 
@@ -852,7 +745,6 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         AnsiConsole.MarkupLine($"  quiet hours {(s.QuietHours.Count > 0 ? string.Join(", ", s.QuietHours) : "none")} · {s.MaxSessionsPerRepo} sessions per repo" +
             Markup.Escape(string.Concat(s.RepoMaxSessions.Select(kv => $", {kv.Key} {kv.Value}"))) +
             (s.RepoBudgetPercent.Count > 0 ? " · repo caps " + Markup.Escape(string.Join(", ", s.RepoBudgetPercent.Select(kv => $"{kv.Key} {kv.Value}%"))) : "") +
-            (s.Reservations.Count > 0 ? " · reserved " + Markup.Escape(string.Join(", ", s.Reservations.Select(kv => $"{kv.Key} {Formatting.Tokens(kv.Value)}"))) : "") +
             $" · groom after {s.GroomAfterDays} days");
         AnsiConsole.MarkupLine("  models: Sonnet for fixes, failed tests and tightly specified changes, Opus for features, design and wide changes" +
             (s.ModelOverrides.Count > 0 ? " · overrides " + Markup.Escape(string.Join(", ", s.ModelOverrides.Select(kv => $"{kv.Key} {kv.Value}"))) : "") +

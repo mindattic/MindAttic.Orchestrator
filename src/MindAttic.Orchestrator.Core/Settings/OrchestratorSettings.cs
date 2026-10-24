@@ -167,14 +167,17 @@ public sealed record OrchestratorSettings
     /// <summary>For a provider other than Claude: its own reported 5-hour used percent at which dispatching to it holds. 0 means never.</summary>
     public int ProviderCapPercent { get; init; } = 90;
 
-    /// <summary>Uncached tokens set aside for a ticket (ticket → tokens): it's proposed first and may start
-    /// while pacing coasts, and everything else paces against what's left after it.</summary>
+    /// <summary>Legacy (M.ORCH-T762): reservations the orchestrator kept before MindAttic.Tickets owned them (ticket → tokens). Never
+    /// written or read for scheduling any more; <see cref="Tickets.TicketQueue.MoveWorkIntoDatabase"/> moves them into the ticket
+    /// database (<c>tickets ticket reserve</c>), which the scheduler reads.</summary>
     public Dictionary<string, long> Reservations { get; init; } = [];
 
     /// <summary>Local-time windows when allocate pauses, like "22:00-07:00". Manual starts still work.</summary>
     public List<string> QuietHours { get; init; } = [];
 
-    /// <summary>Ticket → the tickets it waits for. A summary saying "blocked by X-T1" counts too.</summary>
+    /// <summary>Legacy (M.ORCH-T762): blocks set by hand before MindAttic.Tickets owned them (ticket → the tickets it waits for).
+    /// Never written or read for scheduling any more; <see cref="Tickets.TicketQueue.MoveWorkIntoDatabase"/> moves them into the
+    /// ticket database as 'requires' links (<c>tickets ticket block</c>).</summary>
     public Dictionary<string, List<string>> BlockedBy { get; init; } = [];
 
     /// <summary>Sessions one repo may run at once (the repo itself plus worktrees), unless <see cref="RepoMaxSessions"/> says otherwise.</summary>
@@ -344,10 +347,10 @@ public sealed record OrchestratorSettings
     /// or "opus" (M.ORCH-T563). A ticket's entry wins over its repo's; with neither, <see cref="Scheduling.ModelChoice"/> picks.</summary>
     public Dictionary<string, string> ModelOverrides { get; init; } = [];
 
-    /// <summary>Tickets assigned to a user (M.ORCH-T668), ticket id → that user's login (its email, as
-    /// <see cref="Sessions.AccountDirs.Normalize"/> keeps it). An assigned ticket is a pin: <c>next --claim</c>, allocate and
-    /// Start dispatch it only on that login, and while its user is out of room it waits for them instead of being redelegated,
-    /// until "Redelegate now" drops the pin (<see cref="Scheduling.TicketPins"/>).</summary>
+    /// <summary>Legacy (M.ORCH-T762): assignments the orchestrator kept before MindAttic.Tickets owned them (M.ORCH-T668), ticket id →
+    /// that user's login. Never written or read for scheduling any more; <see cref="Tickets.TicketQueue.MoveWorkIntoDatabase"/> moves
+    /// them into the ticket database (<c>tickets ticket assign</c>), which <see cref="Scheduling.TicketPins"/> reads through the
+    /// snapshot.</summary>
     public Dictionary<string, string> Assignees { get; init; } = [];
 
     /// <summary>Lines changed (added + removed) past which a Sonnet ticket's diff gets one Opus review before it lands. 0 reviews

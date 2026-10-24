@@ -22,7 +22,7 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
     /// <summary>Estimated to cost more than is left before the reset; see <see cref="SchedulePlan.TooBig"/>.</summary>
     public bool TooBig { get; init; }
 
-    /// <summary>Tokens reserved for it (<see cref="OrchestratorSettings.Reservations"/>); 0 when none.</summary>
+    /// <summary>Tokens reserved for it in the ticket database (<see cref="Snapshot.Reservations"/>); 0 when none.</summary>
     public long Reserved { get; init; }
 
     /// <summary>Open tickets it waits for; it isn't proposed until they close.</summary>
@@ -43,7 +43,7 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
 
     public bool IsAssigned => (Assignment is not null && !IsStale) || Moving is not null;
 
-    /// <summary>The user it's assigned to (M.ORCH-T668), by their login's email (<see cref="OrchestratorSettings.Assignees"/>);
+    /// <summary>The user it's assigned to (M.ORCH-T668), by their login's email (<see cref="Snapshot.Assignees"/>, the ticket database's);
     /// null for an unassigned ticket. A pin: it's dispatched only on that login, and waits for them while they're out of room.</summary>
     public string? Assignee { get; init; }
 
@@ -141,9 +141,9 @@ public static partial class Scheduler
             return snapshot.TakenUtc - last > TimeSpan.FromHours(Math.Min(settings.StaleAfterHours, Century * 24)) ? last : null;
         }
 
+        // A block set by hand is a 'requires' link in the ticket database (tickets ticket block, M.ORCH-T762).
         IReadOnlyList<string> Blockers(Ticket t) =>
             [.. BlockedByPhrase().Matches(t.Summary).Select(m => m.Groups["id"].Value.ToUpperInvariant())
-                .Concat(settings.BlockedBy.GetValueOrDefault(t.Id) ?? [])
                 .Concat(snapshot.Requires.GetValueOrDefault(t.Id) ?? [])
                 .Where(id => id != t.Id && openIds.Contains(id))
                 .Distinct(StringComparer.Ordinal)];
@@ -157,8 +157,8 @@ public static partial class Scheduler
         bool MayWork(Ticket t) => t.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) || IsApproved(t.Id);
         // Clamped to what a queue item holds.
         int Priority(string id) => (int)Math.Clamp(snapshot.Priorities.GetValueOrDefault(id), int.MinValue, int.MaxValue);
-        // Who each ticket is assigned to (M.ORCH-T668), whatever case its id was saved in.
-        var assignees = TicketPins.Assignees(settings);
+        // Who each ticket is assigned to (M.ORCH-T668), from the ticket database (M.ORCH-T762), whatever case its id was saved in.
+        var assignees = TicketPins.Assignees(snapshot);
         bool IsOld(Ticket t) => DateOnly.TryParse(t.Date, System.Globalization.CultureInfo.InvariantCulture, out var opened) && opened < groomBefore;
         // Only fixes and tickets you approved are work; the rest wait for your yes outside the queue (one already
         // being worked stays, so its agent is still tracked). One whose assignment went stale waits for it too (M.ORCH-T394).
@@ -176,7 +176,7 @@ public static partial class Scheduler
                 {
                     StaleSinceUtc = StaleSince(assigned.GetValueOrDefault(t.Id)),
                     Estimate = snapshot.Costs.Estimate(r.Name, t.Type, t.Id),
-                    Reserved = settings.Reservations.GetValueOrDefault(t.Id),
+                    Reserved = snapshot.Reservations.GetValueOrDefault(t.Id),
                     BlockedBy = Blockers(t),
                     Old = IsOld(t),
                     Approved = IsApproved(t.Id),

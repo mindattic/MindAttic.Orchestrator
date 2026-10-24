@@ -2463,7 +2463,8 @@ public static class AgentGate
                 except sqlite3.OperationalError:  # a database from before tickets had summaries
                     rows = [r + (None,) for r in db.execute("SELECT id, type, repo FROM tickets WHERE status = 'open' ORDER BY ordinal").fetchall()]
                 # A ticket waiting on another open one isn't handed out by `orchestrator next`, so it isn't work to push on
-                # to either: a 'requires' link, "blocked by X" in its summary, or settings' BlockedBy (as the scheduler reads them).
+                # to either: a 'requires' link (tickets ticket block writes them) or "blocked by X" in its summary, as the
+                # scheduler reads them (M.ORCH-T762).
                 open_ids = {r[0].upper() for r in rows}
                 waits = {}
                 try:
@@ -2472,15 +2473,13 @@ public static class AgentGate
                 except Exception:
                     pass
                 # Only fixes and tickets the user approved are work; the rest wait for their yes. Approval lives in the database's
-                # queue (orchestrator approve, tickets ticket approve, the Tickets Desktop), as the scheduler reads it (M.ORCH-T384).
+                # queue (tickets ticket approve, the Tickets Desktop), as the scheduler reads it (M.ORCH-T384).
                 try:
                     approved = {a.upper() for (a,) in db.execute("SELECT ticket_id FROM ticket_queue WHERE approval = 'approved'").fetchall()}
                 except Exception:
                     approved = set()
                 db.close()
                 settings = orch_settings()
-                for f, ts in (settings.get("BlockedBy") or {}).items():
-                    waits.setdefault(f.upper(), set()).update(t.upper() for t in ts or [])
                 def blocked(r):
                     on = waits.get(r[0].upper(), set()) | {m.upper() for m in re.findall(r"blocked by ((?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)", r[3] or "", re.I)}
                     return any(b != r[0].upper() and b in open_ids for b in on)

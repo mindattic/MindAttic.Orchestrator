@@ -188,12 +188,12 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     }
 
     // The ticket database's queue as last read, by its write time (M.ORCH-T396).
-    private (string Path, DateTime WriteUtc, IReadOnlySet<string> Approved, IReadOnlyDictionary<string, long> Priorities)? liveQueue;
+    private (string Path, DateTime WriteUtc, IReadOnlySet<string> Approved, IReadOnlyDictionary<string, long> Priorities, OpenTicketSource.WorkState Work)? liveQueue;
 
     /// <summary>
-    /// <paramref name="shared"/> with approvals and priorities as the ticket database's queue holds them now (M.ORCH-T396): the
-    /// holder's snapshot can be up to <see cref="SnapshotFile.MaxAge"/> old, and a ticket just approved (orchestrator approve, then
-    /// dispatch) or bumped would read as it was, where settings.json was read live before. Reread only when the database changes.
+    /// <paramref name="shared"/> with approvals, priorities, assignees and reservations as the ticket database holds them now
+    /// (M.ORCH-T396, M.ORCH-T762): the holder's snapshot can be up to <see cref="SnapshotFile.MaxAge"/> old, and a ticket just
+    /// approved in Tickets (then dispatched) or bumped would read as it was. Reread only when the database changes.
     /// </summary>
     internal Snapshot WithLiveQueue(Snapshot shared)
     {
@@ -209,9 +209,14 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
                 var queue = db.QueueStates();
                 liveQueue = (path, written,
                     queue.Where(q => q.Value.Approval == MindAttic.Tickets.Data.TicketsDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
-                    queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase));
+                    queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase),
+                    OpenTicketSource.WorkState.Of(db));
             }
-            return shared with { Approved = liveQueue.Value.Approved, Priorities = liveQueue.Value.Priorities };
+            return shared with
+            {
+                Approved = liveQueue.Value.Approved, Priorities = liveQueue.Value.Priorities,
+                Assignees = liveQueue.Value.Work.Assignees, Reservations = liveQueue.Value.Work.Reservations,
+            };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.Data.Common.DbException)
         {
@@ -271,6 +276,13 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
                                        or KeyNotFoundException or System.Data.Common.DbException)
         {
             warnings.Add($"moving settings.json's story-file approvals into the ticket database: {ex.Message} (tried again next refresh)");
+        }
+        // And the assignments, reservations and blocks the orchestrator kept before MindAttic.Tickets owned them (M.ORCH-T762).
+        try { TicketQueue.MoveWorkIntoDatabase(Store, workspace.Root); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException
+                                       or KeyNotFoundException or System.Data.Common.DbException)
+        {
+            warnings.Add($"moving settings.json's assignments, reservations and blocks into the ticket database: {ex.Message} (tried again next refresh)");
         }
         // Settings that can't be read now keep the last ones read, rather than pace and the subagent cap on defaults (M.ORCH-T720).
         if (Store.TryLoadSettings(out var read)) lastSettings = read;
@@ -524,7 +536,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
         }
 
-        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = utilization, ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, UnknownRepos = new HashSet<string>(tickets.Unknown, StringComparer.OrdinalIgnoreCase), Approved = tickets.Approved, Priorities = tickets.Priorities, Agents = agentBoard, Billing = billing, Accounts = accountPaces,
+        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = utilization, ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, UnknownRepos = new HashSet<string>(tickets.Unknown, StringComparer.OrdinalIgnoreCase), Approved = tickets.Approved, Priorities = tickets.Priorities, Assignees = tickets.Assignees, Reservations = tickets.Reservations, Agents = agentBoard, Billing = billing, Accounts = accountPaces,
             // Each session's per-CLI login, and the global login's email: what the dashboard's tabs split it by (M.ORCH-T613).
             OwnLogins = ownLogin.Select(o => (Session: o.Key, Email: Accounts.Dirs.Of(o.Value)?.Email)).Where(o => o.Email is not null)
                 .ToDictionary(o => o.Session, o => o.Email!, StringComparer.Ordinal),

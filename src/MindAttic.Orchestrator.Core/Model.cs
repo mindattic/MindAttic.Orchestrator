@@ -174,6 +174,13 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// <summary>Ticket → its manual priority in the ticket database's queue; higher runs sooner, missing means 0.</summary>
     public IReadOnlyDictionary<string, long> Priorities { get; init; } = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Ticket → the member it's assigned to, by login email (the ticket database's <c>ticket_work</c>, written by
+    /// <c>tickets ticket assign</c> and Tickets Desktop, read through the engine, M.ORCH-T762); missing means unassigned.</summary>
+    public IReadOnlyDictionary<string, string> Assignees { get; init; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Ticket → the uncached tokens reserved for it in the ticket database (<c>tickets ticket reserve</c>, M.ORCH-T762).</summary>
+    public IReadOnlyDictionary<string, long> Reservations { get; init; } = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Whether <paramref name="ticket"/> may be worked: a fix, or one approved in the database's queue.</summary>
     public bool MayWork(Ticket ticket) =>
         ticket.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) || Approved.Contains(ticket.Id);

@@ -1,6 +1,9 @@
-using MindAttic.Orchestrator.Tickets;
 using MindAttic.Tickets.Log;
+using MindAttic.Tickets.Repos;
 using NUnit.Framework;
+// What GitHub's signals become and how they're filed is the MindAttic.Tickets engine's (M.TIX-T134, M.ORCH-T762); the daemon runs it
+// on its schedule. These keep the Orchestrator's expectations of it (M.ORCH-T443, M.ORCH-T548) pinned to the engine it ships with.
+using GitHubIntake = MindAttic.Tickets.Repos.GitHubIntake;
 
 namespace MindAttic.Orchestrator.Tests;
 

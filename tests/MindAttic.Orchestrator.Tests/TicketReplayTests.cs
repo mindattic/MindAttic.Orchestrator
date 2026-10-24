@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text.Json;
 using MindAttic.Orchestrator.Tickets;
 using NUnit.Framework;
@@ -8,33 +7,17 @@ namespace MindAttic.Orchestrator.Tests;
 public sealed class TicketReplayTests
 {
     [Test]
-    public void Commits_shows_a_stat_or_a_patch_and_the_report_says_when_there_is_nothing()
+    public void The_report_shows_the_work_run_and_points_to_Tickets_for_the_ticket_itself()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "orch-replay-stat-" + Guid.NewGuid().ToString("N"));
-        var projects = Path.Combine(dir, "projects");
+        // M.ORCH-T762: the ticket's row and commits are MindAttic.Tickets' to show; the report keeps the sessions only.
+        var projects = Path.Combine(Path.GetTempPath(), "orch-replay-report-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(projects);
         try
         {
-            Git(dir, "init", "-q", "-b", "main");
-            Git(dir, "config", "user.email", "test@example.com");
-            Git(dir, "config", "user.name", "Test");
-            File.WriteAllText(Path.Combine(dir, "a.txt"), "one\n");
-            Git(dir, "add", "a.txt");
-            Git(dir, "commit", "-q", "-m", "Fix X-T7: the thing");
-
-            Assert.That(TicketReplay.Commits("X-T7", dir, diff: false), Does.Contain("a.txt").And.Contain("1 file changed").And.Not.Contain("+one"));
-            Assert.That(TicketReplay.Commits("X-T7", dir, diff: true), Does.Contain("+one"), "the patch itself");
-            Assert.That(TicketReplay.Commits("X-T7", Path.Combine(dir, "missing"), diff: false), Is.Empty, "no repo there: empty, not an error");
-
-            var report = TicketReplay.PlainReport("X-T8", dir, projects);
-            Assert.That(report, Does.Contain("No dispatched sessions found").And.Contain("No commits mention it."));
-            Assert.That(TicketReplay.PlainReport("X-T7", dir, projects), Does.Contain("Fix X-T7: the thing").And.Not.Contain("No commits mention it."));
+            var report = TicketReplay.PlainReport("X-T8", projects);
+            Assert.That(report, Does.Contain("No dispatched sessions found").And.Contain("open X-T8 in Tickets Desktop").And.Not.Contain("Commits"));
         }
-        finally
-        {
-            foreach (var f in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)) File.SetAttributes(f, FileAttributes.Normal);
-            Directory.Delete(dir, recursive: true);
-        }
+        finally { Directory.Delete(projects, recursive: true); }
     }
 
     [Test]
@@ -96,50 +79,6 @@ public sealed class TicketReplayTests
             Assert.That(TicketReplay.Sessions("RP-T9", projects).Single().File, Does.EndWith("agent-b.jsonl"), "its own ticket's");
         }
         finally { Directory.Delete(projects, recursive: true); }
-    }
-
-    [Test]
-    public void Commits_matches_the_ticket_id_as_a_whole_word_not_a_substring()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), "orch-replay-git-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        try
-        {
-            Git(dir, "init", "-q", "-b", "main");
-            Git(dir, "config", "user.email", "test@example.com");
-            Git(dir, "config", "user.name", "Test");
-            File.WriteAllText(Path.Combine(dir, "a.txt"), "1");
-            Git(dir, "add", "-A");
-            Git(dir, "commit", "-q", "-m", "Work on M.ORCH-T1: first one");
-            File.WriteAllText(Path.Combine(dir, "a.txt"), "2");
-            Git(dir, "add", "-A");
-            Git(dir, "commit", "-q", "-m", "Work on M.ORCH-T10: an unrelated ticket");
-            File.WriteAllText(Path.Combine(dir, "a.txt"), "3");
-            Git(dir, "add", "-A");
-            Git(dir, "commit", "-q", "-m", "Work on M.ORCH-T19: another unrelated ticket");
-
-            var commits = TicketReplay.Commits("M.ORCH-T1", dir, diff: false);
-
-            Assert.That(commits, Does.Contain("M.ORCH-T1:"));
-            Assert.That(commits, Does.Not.Contain("M.ORCH-T10"));
-            Assert.That(commits, Does.Not.Contain("M.ORCH-T19"));
-        }
-        finally
-        {
-            foreach (var f in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)) File.SetAttributes(f, FileAttributes.Normal);
-            Directory.Delete(dir, recursive: true);
-        }
-    }
-
-    private static void Git(string dir, params string[] args)
-    {
-        var psi = new ProcessStartInfo("git") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
-        psi.ArgumentList.Add("-C"); psi.ArgumentList.Add(dir);
-        foreach (var a in args) psi.ArgumentList.Add(a);
-        using var p = Process.Start(psi)!;
-        p.StandardOutput.ReadToEnd();
-        p.StandardError.ReadToEnd();
-        p.WaitForExit();
     }
 
     [Test]
