@@ -1,5 +1,7 @@
 using MindAttic.Orchestrator.Budget;
 using NUnit.Framework;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MindAttic.Orchestrator.Tests;
 
@@ -213,5 +215,30 @@ public sealed class ClaudeAccountTests
         Assert.That(((string)json["account"]!, json["spans"]!.AsArray().Count), Is.EqualTo(("b/max", 2)), "the current account stays readable by the hooks before");
         Config("""{"oauthAccount":{"accountUuid":"a","organizationUuid":"max"}}""", Now.AddHours(2));
         Assert.That(Account().Read(Now.AddHours(2))!.Contains(Now.AddHours(-12)), Is.True, "A's first span kept its date");
+    }
+
+    [Test]
+    public void A_read_landing_on_a_torn_write_is_retried_not_taken_for_signed_out()
+    {
+        // M.ORCH-T784: ~/.claude.json is rewritten often and can be large; a read that lands mid-write threw a JsonException
+        // that every caller (including the meter probe's own account check) took for "signed out", discarding a good
+        // reading right when heavy concurrent load made one matter most. The write is brief: a short retry should win.
+        var path = Path.Combine(dir, ".claude.json");
+        File.WriteAllText(path, """{"oauthAccount":{"accountUuid":"a","organizationUuid":"max""");
+        var writer = Task.Run(() =>
+        {
+            Thread.Sleep(20);
+            File.WriteAllText(path, """{"oauthAccount":{"accountUuid":"a","organizationUuid":"max"}}""");
+        });
+        try { Assert.That(ClaudeAccount.Current(path), Is.EqualTo("a/max")); }
+        finally { writer.Wait(); }
+    }
+
+    [Test]
+    public void A_read_that_stays_torn_past_the_retries_still_throws()
+    {
+        var path = Path.Combine(dir, ".claude.json");
+        File.WriteAllText(path, """{"oauthAccount":{"accountUuid":"a""");
+        Assert.That(() => ClaudeAccount.Current(path), Throws.InstanceOf<System.Text.Json.JsonException>());
     }
 }

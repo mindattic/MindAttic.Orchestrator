@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Threading;
 
 namespace MindAttic.Orchestrator.Budget;
 
@@ -177,20 +178,36 @@ public sealed class ClaudeAccount
     /// to an API key wasn't a switch and the Claude account's stop stayed latched. The pace hooks key the same way. A key in
     /// <c>customApiKeyResponses.rejected</c> (where the context gate sets an env key aside for a claude.ai login, M.ORCH-T434)
     /// is no sign-in at all.
+    /// <para>Retries briefly on a read that lands mid-write (M.ORCH-T784): <c>~/.claude.json</c> is rewritten often and can be
+    /// large, and under heavy concurrent load (several sessions spending at once) a read can land on a torn write. Every
+    /// caller, including the meter probe's own account check, took that for "signed out" (or, worse, "switched accounts
+    /// mid-ask") and threw away a reading worth asking for, right when the heavy load made a fresh one matter most. The
+    /// write is brief, so a short retry almost always lands on a whole one instead.</para>
     /// </summary>
     internal static string? Current(string configPath)
     {
-        if (!File.Exists(configPath)) return null;
-        using var stream = new FileStream(configPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        if (root.ValueKind != JsonValueKind.Object) return null;
-        if (root.TryGetProperty("oauthAccount", out var o) && o.ValueKind == JsonValueKind.Object && Text(o, "accountUuid") is { } id)
-            return Text(o, "organizationUuid") is { } org ? $"{id}/{org}" : id;
-        if (Text(root, "primaryApiKey") is not null) return ApiKey;
-        return root.TryGetProperty("customApiKeyResponses", out var r) && r.ValueKind == JsonValueKind.Object &&
-               r.TryGetProperty("approved", out var approved) && approved.ValueKind == JsonValueKind.Array && approved.GetArrayLength() > 0
-            ? ApiKey : null;
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                if (!File.Exists(configPath)) return null;
+                using var stream = new FileStream(configPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                using var doc = JsonDocument.Parse(stream);
+                var root = doc.RootElement;
+                if (root.ValueKind != JsonValueKind.Object) return null;
+                if (root.TryGetProperty("oauthAccount", out var o) && o.ValueKind == JsonValueKind.Object && Text(o, "accountUuid") is { } id)
+                    return Text(o, "organizationUuid") is { } org ? $"{id}/{org}" : id;
+                if (Text(root, "primaryApiKey") is not null) return ApiKey;
+                return root.TryGetProperty("customApiKeyResponses", out var r) && r.ValueKind == JsonValueKind.Object &&
+                       r.TryGetProperty("approved", out var approved) && approved.ValueKind == JsonValueKind.Array && approved.GetArrayLength() > 0
+                    ? ApiKey : null;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+            {
+                if (attempt >= 7) throw;
+                Thread.Sleep(40);
+            }
+        }
     }
 
     private static string? Text(JsonElement e, string name) =>
