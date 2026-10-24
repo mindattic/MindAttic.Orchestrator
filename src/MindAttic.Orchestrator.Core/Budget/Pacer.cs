@@ -95,14 +95,14 @@ public sealed record Pace(
             "another's: each rebases onto main as it lands.",
         var a when a > Subagents => $"Subagents: up to {a} may run at once across all agents ({Subagents} running now). There's room under the 5-hour pace, " +
             "so hand independent pieces (searches, separate files, test runs, reviews) to parallel subagents rather than doing them one after another.",
-        var a => $"Subagents: {a} at once across all agents ({Subagents} running now). Usage is ahead of the 5-hour pace, so don't start extra subagents; a new one waits for a free slot.",
+        var a => $"Subagents: {a} at once across all agents ({Subagents} running now), every slot in use; a new one waits for a free slot.",
     };
 
     public string Key => Mode.ToString().ToLowerInvariant();
 
-    /// <summary>Running agents should conserve: past a limit, out of room, or burning faster than fits.
-    /// Coasting only means no room for another session; the ones running are told nothing.</summary>
-    public bool Advise => Mode is PaceMode.Over || (IsPaced && (SustainablePerHour <= 0 || RecentPerHour > SustainablePerHour));
+    /// <summary>Running agents should conserve: past a limit or out of room. Burning fast below the cutoff says nothing
+    /// (M.ORCH-T764: hard cutoffs only). Coasting only means no room for another session; the ones running are told nothing.</summary>
+    public bool Advise => Mode is PaceMode.Over || (IsPaced && SustainablePerHour <= 0);
 }
 
 /// <summary>
@@ -215,11 +215,11 @@ public static class Pacer
         double? perSession = activeSessions > 0 && recent > 0
             ? Math.Max(Unheld(recent, recentDelaySeconds) / activeSessions, typicalPerSession ?? 0)
             : typicalPerSession;
-        var cap = sustainable <= 0 ? 0
-            : perSession is > 0 and var p ? (int)Math.Clamp(Math.Floor(sustainable / p), 0, max)
-            : Math.Min(1, max); // no history at all: start one and measure it
+        // Hard cutoffs only (M.ORCH-T764): below the target nothing is paced by rate; every session and subagent slot is open
+        // until the window reaches its cutoff, and then none.
+        var cap = atTarget ? 0 : max;
 
-        var mode = cap == 0 ? PaceMode.Coast : cap < max ? PaceMode.Throttled : PaceMode.Open;
+        var mode = cap == 0 ? PaceMode.Coast : PaceMode.Open;
         var rates = $"{Formatting.Tokens((long)recent)}/h now, {Formatting.Tokens((long)sustainable)}/h fits the {gov.Name} window until {Clock(gov.ResetUtc, nowUtc)}";
         var note = mode switch
         {
@@ -231,7 +231,7 @@ public static class Pacer
                 ? $"Coasting: the {gov.Name} window is ahead of its front-loaded curve; held until the curve catches up (resets {Clock(gov.ResetUtc, nowUtc)})."
                 : $"Coasting: {rates}; not even one more session fits.",
         };
-        var delay = AgentDelay(b.ControlFreshPerHour, sustainable, recentDelaySeconds, s);
+        var delay = 0.0;
         var agentNote = $"Usage is running ahead of the {gov.Name} limit (resets {Clock(gov.ResetUtc, nowUtc)}); the orchestrator is stretching it" +
                         (delay > 0 ? $" by holding each tool call about {delay:0}s" : "") +
                         ". Keep working normally; the subagent allowance says how many subagents may run at once.";
@@ -243,11 +243,11 @@ public static class Pacer
         var room = windows.Min(w => Math.Max(0, w.Limit * target - w.Used));
         double? weekRoom = week?.WeekRoom5HourPoints is { } points && b.BlockLimit > 0 ? points / 100 * b.BlockLimit : null;
         var demand = Unheld(b.ControlFreshPerHour, recentDelaySeconds);
-        var allowance = SubagentAllowance(sustainable, demand, perSession, subagents, s.MaxSubagents);
+        var allowance = atTarget ? 0 : Math.Max(0, s.MaxSubagents);
         return new Pace(mode, cap, sustainable, recent, perSession, gov.Name, gov.ResetUtc, note, agentNote)
         {
             RoomTokens = room, AgentDelaySeconds = delay, SubagentAllowance = allowance, Subagents = subagents,
-            SpareSessions = SpareSessions(sustainable, demand, perSession),
+            SpareSessions = atTarget ? 0 : Math.Max(0, max - activeSessions),
             Stop = atTarget,
             Weekly = week, WeeklyRoomTokens = weekRoom,
             Profile = s.FrontLoaded ? OrchestratorSettings.FrontLoadedProfile : OrchestratorSettings.LinearProfile,
