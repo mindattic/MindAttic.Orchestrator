@@ -537,15 +537,18 @@ public sealed partial class MainViewModel
 
     public void Bump(string ticketId, int by) => Guarded("Bump", () =>
     {
-        // Priority lives in the ticket database's queue, where every tool reads and writes it (M.ORCH-T384); a ticket it doesn't
-        // hold (a repo still on its own USER_STORIES.md) keeps it in settings.json, which the plan reads too (M.ORCH-T441).
+        // Priority lives in the ticket database's queue alone, written through the MindAttic.Tickets engine, where every tool
+        // reads and writes it (M.ORCH-T761); a ticket it doesn't hold has none to move, and says so.
         using var db = MindAttic.Tickets.Data.TicketsDb.OpenIfMigrated(aggregator.Options.WorkspaceRoot);
-        var inDb = db?.Ticket(ticketId) is not null;
-        var next = MindAttic.Orchestrator.Tickets.TicketQueue.Bump(store, db, ticketId, by);
+        if (db?.Ticket(ticketId) is null)
+        {
+            QueueMessage = $"Bump failed: {MindAttic.Orchestrator.Tickets.TicketQueue.NotInDatabase(ticketId)}.";
+            return;
+        }
+        var next = MindAttic.Orchestrator.Tickets.TicketQueue.Bump(db, ticketId, by);
         NoteLocalChange();
         // Shown at once, not at the next refresh: the plan is made again over the snapshot with the new priority.
-        if (!inDb) { if (full is not null) Root.ApplyPlan(full); }
-        else if (full is not null)
+        if (full is not null)
         {
             var p = new Dictionary<string, long>(full.Priorities, StringComparer.OrdinalIgnoreCase);
             if (next == 0) p.Remove(ticketId); else p[ticketId] = next;

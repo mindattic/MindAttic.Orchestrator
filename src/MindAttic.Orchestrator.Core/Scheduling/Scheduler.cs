@@ -31,8 +31,7 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
     /// <summary>Opened more than <see cref="OrchestratorSettings.GroomAfterDays"/> ago.</summary>
     public bool Old { get; init; }
 
-    /// <summary>Approved for work: in the ticket database's queue (<see cref="Snapshot.Approved"/>), or, for a ticket it doesn't
-    /// hold, in <see cref="OrchestratorSettings.StoryApproved"/>.</summary>
+    /// <summary>Approved for work in the ticket database's queue (<see cref="Snapshot.Approved"/>, M.ORCH-T761).</summary>
     public bool Approved { get; init; }
 
     /// <summary>Whether it may be worked: a fix, or approved.</summary>
@@ -152,16 +151,12 @@ public static partial class Scheduler
         var groomBefore = settings.GroomAfterDays > 0
             ? DateOnly.FromDateTime(snapshot.TakenUtc.ToLocalTime().AddDays(-Math.Min(settings.GroomAfterDays, Century)))
             : DateOnly.MinValue;
-        // Approval and priority from the database's queue, or, for a ticket it doesn't hold (a repo still on its own
-        // USER_STORIES.md), from settings.json, where TicketQueue writes them then (M.ORCH-T441).
-        var storyApproved = settings.StoryApproved.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var storyPriorities = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (id, priority) in settings.StoryPriorities) storyPriorities[id] = priority;
-        bool IsApproved(string id) => snapshot.Approved.Contains(id) || storyApproved.Contains(id);
+        // Approval and priority from the ticket database's queue alone, read through the MindAttic.Tickets engine, where
+        // tickets ticket approve/priority and the Tickets Desktop write them too (M.ORCH-T761).
+        bool IsApproved(string id) => snapshot.Approved.Contains(id);
         bool MayWork(Ticket t) => t.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) || IsApproved(t.Id);
         // Clamped to what a queue item holds.
-        int Priority(string id) => (int)Math.Clamp(snapshot.Priorities.TryGetValue(id, out var held) ? held : storyPriorities.GetValueOrDefault(id),
-            int.MinValue, int.MaxValue);
+        int Priority(string id) => (int)Math.Clamp(snapshot.Priorities.GetValueOrDefault(id), int.MinValue, int.MaxValue);
         // Who each ticket is assigned to (M.ORCH-T668), whatever case its id was saved in.
         var assignees = TicketPins.Assignees(settings);
         bool IsOld(Ticket t) => DateOnly.TryParse(t.Date, System.Globalization.CultureInfo.InvariantCulture, out var opened) && opened < groomBefore;

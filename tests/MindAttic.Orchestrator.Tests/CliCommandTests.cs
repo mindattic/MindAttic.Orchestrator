@@ -257,51 +257,47 @@ public sealed class CliCommandTests
         return repoDir;
     }
 
-    /// <summary>M.ORCH-T441: ticket_queue only takes tickets in the ticket database, so a repo still on its own USER_STORIES.md
-    /// had approve and bump refuse every ticket ("No ticket"), and its features, chores and docs waited for approval forever.
-    /// They're kept in settings.json for such a ticket now, where the scheduler reads them beside the database's queue.</summary>
+    /// <summary>M.ORCH-T761: approval and priority live in the ticket database alone, written through the MindAttic.Tickets
+    /// engine, so the orchestrator and MindAttic.Tickets always agree. A ticket of a repo still on its own USER_STORIES.md has no
+    /// row there: approve and bump refuse it and say why, rather than keeping a second set in the orchestrator's settings, and
+    /// the scheduler doesn't read what the settings still hold.</summary>
     [Test]
-    public void Approve_and_bump_work_for_a_repo_still_on_its_own_story_file()
+    public void Approve_and_bump_refuse_a_ticket_outside_the_ticket_database()
     {
         var path = WorkspaceWithDb();
         var repoDir = StoryRepo();
         try
         {
-            Assert.That(Run("approve", "b-t1"), Is.Zero, output.ToString());
-            Assert.That(Run("bump", "B-T1", "--by", "3"), Is.Zero, output.ToString());
-            Assert.That(output.ToString(), Does.Contain("B-T1 priority is now +3"));
-            Assert.That(Run("reserve", "B-T2", "1M"), Is.Zero, "reserve takes it too");
+            Assert.That(Run("approve", "b-t1"), Is.EqualTo(1), output.ToString());
+            Assert.That(output.ToString(), Does.Contain("B-T1 isn't in the ticket database").And.Contain("tickets db migrate"));
+            Assert.That(Run("bump", "B-T1", "--by", "3"), Is.EqualTo(1), output.ToString());
+            Assert.That(output.ToString(), Does.Not.Contain("priority is now"));
             var s = Store.LoadSettings();
-            Assert.That((s.StoryApproved, s.StoryPriorities), Is.EqualTo((new List<string> { "B-T1" }, new Dictionary<string, long> { ["B-T1"] = 3 })));
+            Assert.That((s.StoryApproved, s.StoryPriorities), Is.EqualTo((new List<string>(), new Dictionary<string, long>())), "nothing kept in settings");
             using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path))
                 Assert.That(db.QueueStates().Keys, Has.None.StartsWith("B-"), "nothing of B's in the database's queue");
-
-            // What the scheduler makes of it: B-T1 is work, B-T2 still waits.
-            var snap = new Snapshot(DateTime.UtcNow,
-                [new RepoStatus("B", repoDir, RepoState.Dormant, [], [], [.. MindAttic.Tickets.Log.StoryFile.Load(Path.Combine(repoDir, "docs", "USER_STORIES.md")).Tickets.Where(t => t.Status == "open")], null, default)], []);
-            var plan = MindAttic.Orchestrator.Scheduling.Scheduler.Plan(snap, Store.LoadSettings(), []);
-            Assert.That((plan.Queue.Select(q => (q.Id, q.Priority)), plan.AwaitingApproval.Select(q => q.Id)),
-                Is.EqualTo((new[] { ("B-T1", 3) }, new[] { "B-T2" })));
-
-            Assert.That(Run("approve", "B-T3"), Is.EqualTo(1), "a closed ticket isn't approved");
-            Assert.That(output.ToString(), Does.Contain("B-T3 isn't open"));
             Assert.That(Run("approve", "B-T9"), Is.EqualTo(1), "a typo isn't approved");
             Assert.That(output.ToString(), Does.Contain("No ticket B-T9"));
 
-            Assert.That(Run("approve", "B-T1", "--undo"), Is.Zero);
-            Assert.That(Run("bump", "B-T1", "--by", "-3"), Is.Zero);
-            Assert.That((Store.LoadSettings().StoryApproved, Store.LoadSettings().StoryPriorities), Is.EqualTo((new List<string>(), new Dictionary<string, long>())));
+            // What settings still hold from before isn't read: B-T1 waits for approval in the database.
+            Store.SaveSettings(Store.LoadSettings() with { StoryApproved = ["B-T1"], StoryPriorities = new() { ["B-T1"] = 3 } });
+            var snap = new Snapshot(DateTime.UtcNow,
+                [new RepoStatus("B", repoDir, RepoState.Dormant, [], [], [.. MindAttic.Tickets.Log.StoryFile.Load(Path.Combine(repoDir, "docs", "USER_STORIES.md")).Tickets.Where(t => t.Status == "open")], null, default)], []);
+            var plan = MindAttic.Orchestrator.Scheduling.Scheduler.Plan(snap, Store.LoadSettings(), []);
+            Assert.That((plan.Queue.Select(q => q.Id), plan.AwaitingApproval.Select(q => (q.Id, q.Priority))),
+                Is.EqualTo((Array.Empty<string>(), new[] { ("B-T1", 0), ("B-T2", 0) })));
         }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
     }
 
     [Test]
-    public void Approve_works_before_the_workspace_has_a_ticket_database()
+    public void Approve_without_a_ticket_database_refuses_and_keeps_nothing_in_settings()
     {
         Store.SaveSettings(new OrchestratorSettings { WorkspaceRoot = Path.Combine(dir, "workspace") });
         StoryRepo();
-        Assert.That(Run("approve", "B-T2"), Is.Zero, output.ToString());
-        Assert.That(Store.LoadSettings().StoryApproved, Is.EqualTo(new List<string> { "B-T2" }));
+        Assert.That(Run("approve", "B-T2"), Is.EqualTo(1), output.ToString());
+        Assert.That(output.ToString(), Does.Contain("B-T2 isn't in the ticket database"));
+        Assert.That(Store.LoadSettings().StoryApproved, Is.Empty);
     }
 
     /// <summary>M.ORCH-T441: once the repo is brought into the database, its settings.json approvals and priorities move into the
@@ -374,7 +370,7 @@ public sealed class CliCommandTests
             Assert.That(MindAttic.Orchestrator.Tickets.QueueImport.Run(Store, workspace), Is.EqualTo(new MindAttic.Orchestrator.Tickets.QueueImport.Result(1, 1)));
             using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path))
             {
-                Assert.That(MindAttic.Orchestrator.Tickets.QueueImport.IsDone(db.Path), Is.True, "the move is recorded in the database");
+                Assert.That(MindAttic.Orchestrator.Tickets.QueueImport.IsDone(Store, db.Path), Is.True, "the move is recorded");
                 db.Unapprove("A-T2");
                 db.SetPriority("A-T2", 0);
             }
@@ -385,6 +381,43 @@ public sealed class CliCommandTests
             using (var db = MindAttic.Tickets.Data.TicketsDb.Open(path))
                 Assert.That(db.QueueState("A-T2"), Is.EqualTo(("proposed", 0L)));
             Assert.That(StoreFaults.SettingsText(Store), Does.Not.Contain("\"Approved\"").And.Not.Contain("\"Priorities\""), "dropped again");
+        }
+        finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
+    }
+
+    /// <summary>M.ORCH-T761: the move's marker is kept in the orchestrator's own state, never written into the ticket database's
+    /// file around the MindAttic.Tickets engine; one recorded there before still counts.</summary>
+    [Test]
+    public void The_settings_move_is_recorded_in_the_orchestrators_state_and_an_old_marker_in_the_ticket_database_still_counts()
+    {
+        var path = WorkspaceWithDb();
+        try
+        {
+            var workspace = Path.Combine(dir, "workspace");
+            Store.SaveSettings(Store.LoadSettings() with { Approved = ["A-T2"] });
+            Assert.That(MindAttic.Orchestrator.Tickets.QueueImport.Run(Store, workspace), Is.EqualTo(new MindAttic.Orchestrator.Tickets.QueueImport.Result(1, 0)));
+            Assert.That(Store.Has(MindAttic.Orchestrator.Tickets.QueueImport.DoneState), Is.True);
+            using (var c = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={path};Pooling=False"))
+            {
+                c.Open();
+                using var cmd = c.CreateCommand();
+                cmd.CommandText = "SELECT COUNT(*) FROM meta WHERE key = $k";
+                cmd.Parameters.AddWithValue("$k", MindAttic.Orchestrator.Tickets.QueueImport.DoneKey);
+                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(0L), "nothing written into the ticket database's file");
+            }
+
+            // A fresh orchestrator store, and the ticket database that recorded the move before M.ORCH-T761.
+            var other = new JsonStore(Path.Combine(dir, "other"), new OrchestratorDb(Path.Combine(dir, "other", "orchestrator.db")));
+            Assert.That(MindAttic.Orchestrator.Tickets.QueueImport.IsDone(other, path), Is.False);
+            using (var c = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={path};Pooling=False"))
+            {
+                c.Open();
+                using var cmd = c.CreateCommand();
+                cmd.CommandText = "INSERT INTO meta (key, value) VALUES ($k, '2026-01-01T00:00:00Z')";
+                cmd.Parameters.AddWithValue("$k", MindAttic.Orchestrator.Tickets.QueueImport.DoneKey);
+                cmd.ExecuteNonQuery();
+            }
+            Assert.That(MindAttic.Orchestrator.Tickets.QueueImport.IsDone(other, path), Is.True);
         }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
     }

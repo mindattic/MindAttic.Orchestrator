@@ -2510,8 +2510,8 @@ public static class AgentGate
 
         def story_file_repos(repos):
             # Whether a repo named (or matched by a wildcard) keeps its tickets in its own docs/USER_STORIES.md, not the
-            # ticket database: workable() can't see those (their approvals live in settings' StoryApproved since
-            # M.ORCH-T441), so `orchestrator next`, which reads them, is asked instead (M.ORCH-T445).
+            # ticket database: workable() can't see those (only their fixes can be worked: approval lives in the database
+            # alone, M.ORCH-T761), so `orchestrator next`, which reads them, is asked instead (M.ORCH-T445).
             try:
                 import fnmatch, sqlite3
                 try:

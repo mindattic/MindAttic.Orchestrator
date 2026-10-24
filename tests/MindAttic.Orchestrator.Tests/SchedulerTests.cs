@@ -49,13 +49,17 @@ public sealed class SchedulerTests
         Assert.That(running.Queue.Select(q => q.Id), Does.Contain("A-T1"), "one already being worked stays tracked");
     }
 
-    /// <summary>M.ORCH-T441: a ticket the ticket database doesn't hold (its repo still on its own USER_STORIES.md) is approved
-    /// and prioritized in settings.json, and the plan reads that beside the database's queue, whose word wins for its own.</summary>
+    /// <summary>M.ORCH-T761: approval and priority come from the ticket database's queue alone; what the orchestrator's settings
+    /// kept for tickets outside it (M.ORCH-T441) isn't read.</summary>
     [Test]
-    public void Approval_and_priority_of_tickets_outside_the_database_come_from_settings()
+    public void Approval_and_priority_come_from_the_ticket_database_alone()
     {
         var snap = Snap(null, Repo("B", RepoState.Dormant, T("B-T1", "feature"), T("B-T2", "docs"), T("B-T3", "chore")))
-            with { Priorities = new Dictionary<string, long> { ["B-T3"] = 1 } };
+            with
+            {
+                Approved = new HashSet<string>(["B-T3"], StringComparer.OrdinalIgnoreCase),
+                Priorities = new Dictionary<string, long> { ["B-T3"] = 1 },
+            };
         var settings = new OrchestratorSettings
         {
             StoryApproved = ["b-t1", "B-T3"],
@@ -64,9 +68,8 @@ public sealed class SchedulerTests
 
         var plan = Scheduler.Plan(snap, settings, []);
 
-        Assert.That(plan.Queue.Select(q => (q.Id, q.Priority, q.Approved)), Is.EqualTo(new[] { ("B-T1", 5, true), ("B-T3", 1, true) }),
-            "approved in any case; the database's priority wins for a ticket it holds");
-        Assert.That(plan.AwaitingApproval.Select(q => q.Id), Is.EqualTo(new[] { "B-T2" }));
+        Assert.That(plan.Queue.Select(q => (q.Id, q.Priority, q.Approved)), Is.EqualTo(new[] { ("B-T3", 1, true) }));
+        Assert.That(plan.AwaitingApproval.Select(q => (q.Id, q.Priority)), Is.EqualTo(new[] { ("B-T1", 0), ("B-T2", 0) }));
     }
 
     [Test]

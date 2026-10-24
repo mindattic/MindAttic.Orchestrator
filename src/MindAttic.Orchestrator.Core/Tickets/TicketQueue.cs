@@ -6,11 +6,14 @@ using MindAttic.Tickets.Log;
 namespace MindAttic.Orchestrator.Tickets;
 
 /// <summary>
-/// Where a ticket's approval and priority are written (M.ORCH-T441): the ticket database's queue (<c>ticket_queue</c>) when
-/// the database holds the ticket, as <c>tickets ticket approve</c> and the Tickets Desktop write it (M.ORCH-T384); otherwise
-/// settings.json's <see cref="OrchestratorSettings.StoryApproved"/> and <see cref="OrchestratorSettings.StoryPriorities"/>, since
-/// <c>ticket_queue</c> only takes tickets in the database and a repo still on its own <c>docs/USER_STORIES.md</c> would have
-/// none of its features, chores or docs approved, ever. The scheduler reads both.
+/// A ticket's approval and priority, kept in one place: the ticket database's queue (<c>ticket_queue</c>), written and read
+/// through the MindAttic.Tickets engine (<see cref="TicketsDb"/>, which keeps them on SQL Server when this machine has it
+/// configured, <c>data/Tickets.db</c> its copy), exactly where <c>tickets ticket approve</c>, <c>tickets ticket priority</c> and the
+/// Tickets Desktop write them (M.ORCH-T761). The orchestrator used to keep a second set in its settings for tickets the database
+/// didn't hold (<see cref="OrchestratorSettings.StoryApproved"/>, <see cref="OrchestratorSettings.StoryPriorities"/>, M.ORCH-T441),
+/// so approving in one app didn't show in the other; those are only moved into the database now (<see cref="MoveIntoDatabase"/>),
+/// never written or read. A ticket the database doesn't hold can't be approved or prioritized until its repo is brought into it
+/// (<c>tickets db migrate</c>).
 /// </summary>
 public static class TicketQueue
 {
@@ -37,47 +40,34 @@ public static class TicketQueue
         return null;
     }
 
-    /// <summary>Approves <paramref name="id"/> (or takes the approval back): in the database's queue when it holds the ticket,
-    /// else in settings.json.</summary>
-    public static void SetApproval(JsonStore store, TicketsDb? db, string id, bool approved)
+    /// <summary>The message for a ticket whose repo isn't in the ticket database, so it has no approval or priority to set.</summary>
+    public static string NotInDatabase(string id) =>
+        $"{id} isn't in the ticket database: approval and priority live there (MindAttic.Tickets), so bring its repo in first (tickets db migrate)";
+
+    /// <summary>Approves <paramref name="id"/> (or takes the approval back) in the ticket database's queue, through the engine.
+    /// Throws <see cref="InvalidOperationException"/> when there is no database or it doesn't hold the ticket.</summary>
+    public static void SetApproval(TicketsDb? db, string id, bool approved)
     {
-        if (db?.Ticket(id) is not null)
-        {
-            if (approved) db.Approve(id); else db.Unapprove(id);
-            return;
-        }
-        store.Update<OrchestratorSettings>(JsonStore.SettingsName, s =>
-        {
-            s.StoryApproved.RemoveAll(x => x.Equals(id, StringComparison.OrdinalIgnoreCase));
-            if (approved) s.StoryApproved.Add(id);
-        });
+        if (db?.Ticket(id) is null) throw new InvalidOperationException(NotInDatabase(id));
+        if (approved) db.Approve(id); else db.Unapprove(id);
     }
 
-    /// <summary><paramref name="id"/>'s priority moved by <paramref name="by"/>, where its approval lives; the new priority.</summary>
-    public static long Bump(JsonStore store, TicketsDb? db, string id, long by)
+    /// <summary><paramref name="id"/>'s priority in the ticket database's queue moved by <paramref name="by"/>, through the engine;
+    /// the new priority. Throws <see cref="InvalidOperationException"/> when there is no database or it doesn't hold the ticket.</summary>
+    public static long Bump(TicketsDb? db, string id, long by)
     {
-        if (db?.Ticket(id) is not null)
-        {
-            var next = db.QueueState(id).Priority + by;
-            db.SetPriority(id, next);
-            return next;
-        }
-        long moved = 0;
-        store.Update<OrchestratorSettings>(JsonStore.SettingsName, s =>
-        {
-            var same = s.StoryPriorities.Where(kv => kv.Key.Equals(id, StringComparison.OrdinalIgnoreCase)).ToList();
-            moved = same.Sum(kv => kv.Value) + by;
-            foreach (var kv in same) s.StoryPriorities.Remove(kv.Key);
-            if (moved != 0) s.StoryPriorities[id] = moved;
-        });
-        return moved;
+        if (db?.Ticket(id) is null) throw new InvalidOperationException(NotInDatabase(id));
+        var next = db.QueueState(id).Priority + by;
+        db.SetPriority(id, next);
+        return next;
     }
 
     /// <summary>
-    /// Moves settings.json's approvals and priorities of tickets the database now holds (their repo was brought into it) into
-    /// its queue, without overriding what the database already says, and drops them from settings.json, so that
-    /// <c>tickets ticket approve --undo</c> or the Tickets Desktop can take them back. Ids it still doesn't hold stay. The
-    /// number of entries moved; 0 when there was nothing to move or no migrated database.
+    /// The one-time move of the approvals and priorities the orchestrator's settings kept for tickets the database didn't hold
+    /// (M.ORCH-T441) into the database's queue, through the engine (M.ORCH-T761), without overriding what the database already
+    /// says. An entry leaves the settings only once the database is read back and verified to carry it (approved, or a decision
+    /// of its own: rejected or closed; the priority set, or one of its own), so none is lost; ids it doesn't hold yet stay until
+    /// their repo is brought into it. The number of entries moved; 0 when there was nothing to move or no migrated database.
     /// </summary>
     public static int MoveIntoDatabase(JsonStore store, string? workspaceRoot)
     {
@@ -93,14 +83,18 @@ public static class TicketQueue
             if (db.Ticket(id)?.Ticket is { Status: TicketRules.Open } t && db.QueueState(t.Id).Approval == TicketsDb.Proposed) db.Approve(t.Id);
         foreach (var (id, priority) in prioritized)
             if (priority != 0 && db.Ticket(id)?.Ticket is { } t && db.QueueState(t.Id).Priority == 0) db.SetPriority(t.Id, priority);
+        // Verified: read back from the database before anything leaves the settings.
+        var approvedHeld = approved.Where(id => db.Ticket(id)?.Ticket is { } t &&
+            (t.Status != TicketRules.Open || db.QueueState(t.Id).Approval != TicketsDb.Proposed)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var prioritizedHeld = prioritized.Where(kv => kv.Value == 0 || db.Ticket(kv.Key)?.Ticket is { } t && db.QueueState(t.Id).Priority != 0)
+            .Select(kv => kv.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
         // Which ids the database holds is asked first: each is a query that can wait on its lock, and a settings change saved
         // (the Settings panel, orchestrator reserve) between this load and its save would be lost.
-        var moved = approved.Concat(prioritized.Select(kv => kv.Key)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         store.Update<OrchestratorSettings>(JsonStore.SettingsName, s =>
         {
-            s.StoryApproved.RemoveAll(moved.Contains);
-            foreach (var k in s.StoryPriorities.Keys.Where(moved.Contains).ToList()) s.StoryPriorities.Remove(k);
+            s.StoryApproved.RemoveAll(approvedHeld.Contains);
+            foreach (var k in s.StoryPriorities.Keys.Where(prioritizedHeld.Contains).ToList()) s.StoryPriorities.Remove(k);
         });
-        return approved.Count + prioritized.Count;
+        return approvedHeld.Count + prioritizedHeld.Count;
     }
 }
