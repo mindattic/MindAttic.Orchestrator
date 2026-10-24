@@ -3273,7 +3273,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.SpaceGod', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/0df2b9d7-2637-40ea-bac8-2354ec84d894', NULL, 9334947);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.SpaceGod', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 17621786);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-23', 'Unity.SpaceGod', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 25808765);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4588196);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4665058);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'MindAttic.Agency', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 90214);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-24', 'MindAttic.Orchestrator', 'Claude', 'billed:api-key', NULL, 4486360);
 
@@ -8266,23 +8266,23 @@ INSERT INTO state (name, value) VALUES ('limits', '[
 ]');
 INSERT INTO state (name, value) VALUES ('mainline-tests', '{
   "Automata": {
-    "Tested": "b6b7ac8a097015cf7410199a4721cb65e61c1d70",
-    "Green": "b6b7ac8a097015cf7410199a4721cb65e61c1d70"
+    "Tested": "c1b3be6d1ef3e82d0a4123ec23b0688c73cd95ec",
+    "Green": "c1b3be6d1ef3e82d0a4123ec23b0688c73cd95ec"
   },
   "AutoWebNav": {
-    "Tested": "647b6fa255194c752883d1631b16c1e0f9e0a786"
+    "Tested": "ff3f33c92ea4a51b509e9cdfdef3915cee91ff6c"
   },
   "Cursory": {
     "Tested": "534d7658ff1d9d719ce00099c6af3c335da0a8f9"
   },
   "Formicarium": {
-    "Tested": "c95a5ba40e80c71f8c866a7fe4ff3150f12440ab"
+    "Tested": "1c0cea2b656dd86b99baa2722c369a7945ce8c11"
   },
   "Gadfly": {
-    "Tested": "71fd02076145e2405fdc3f0915cf4c36325b8d86"
+    "Tested": "44f0949c5fe8b3e15ca1eaf2b0163c98d7ee93f4"
   },
   "IdiotProof": {
-    "Tested": "bb19457e1691a59622f4f514bfd9e0903b2fc728"
+    "Tested": "8444db9ff9c940df9c04336c885eb283962d4b9e"
   },
   "JobHunt": {
     "Tested": "41c75e5b17d97d7911f747c8277d4538874434d8",
@@ -8332,8 +8332,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "353c5389ca0ff0ddd31229b4118288799603ae53"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "9dc060737a4409e3616e622e54961fbb857d5bfb",
-    "Green": "9dc060737a4409e3616e622e54961fbb857d5bfb"
+    "Tested": "e1613947e977623cb6545d04e34fca15aa51edaf",
+    "Green": "e1613947e977623cb6545d04e34fca15aa51edaf"
   },
   "MindAttic.Psst": {
     "Tested": "11224b271ff95cb232162fc5b5d2e26ceebe801e"
@@ -8376,31 +8376,31 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Green": "5e06d3393cfdaa772e653cd9e1e4740b3651fd7a"
   },
   "ChiMesh": {
-    "Tested": "a8e0c7d78000859f22abbc117615e923574acedf"
+    "Tested": "e255217c5f32a7c2bef79ef86c14a2fb9a0de05f"
   },
   "Claudia": {
     "Tested": "34d00bfb963e29dc9af2177625726035bf9aae2b"
   },
   "GTFO.CrashTestDummies": {
-    "Tested": "d03c024c0fd44698a0178f57de19f8e2181847ea"
+    "Tested": "61ab9195203c7cdcebc2791c3d4fa7d31cbc8717"
   },
   "GTFO.EZ": {
     "Tested": "88ab9ea5994811c262ec495a576f05c02c057da6"
   },
   "GTFO.EZ.AbsurdItems": {
-    "Tested": "933918cbed3f564545bf0008b9f5b9b2e8f79761"
+    "Tested": "47268f99927740a5781d8299c21fcded059b916d"
   },
   "GTFO.EZ.AbsurdMoves": {
-    "Tested": "2346579e503fd2c973292a5352c01c6be9f0e4f6"
+    "Tested": "1403b6b9f5a97fbae19d944c6cb7b8879c050865"
   },
   "GTFO.EZ.AbsurdWeapons": {
-    "Tested": "2b37f2731f62404017bb370f5a2087c34d5b0441"
+    "Tested": "edd5504a135aadaf8214d263db0932f7e203c114"
   },
   "GTFO.EZ.Shared": {
-    "Tested": "880f1b0041a84577ceacb6a697f35779141484c0"
+    "Tested": "7db86f4fab47bdd578204676dd945ede77c6c19e"
   },
   "GTFO.SkipDrop": {
-    "Tested": "fbf8bf9337e8e2e401d6d8c1af377d808d31adb1"
+    "Tested": "1ae4a067bfd885aac5206f041290b5272e55baf6"
   },
   "JellyFinPoster": {
     "Tested": "65fa3edbea03bf61857dce2744fd4d73e3730d01"
@@ -8874,6 +8874,21 @@ INSERT INTO state (name, value) VALUES ('orphaned-tickets', '[
     "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
     "Cli": 39852,
     "Ahead": 1,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "M.ORCH-T774",
+    "Repo": "MindAttic.Orchestrator",
+    "Directory": "D:\\Projects\\MindAttic.worktrees\\MindAttic.Orchestrator\\M.ORCH-T774",
+    "FirstSeenUtc": "2026-10-24T10:20:31.5872083Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-24T05:24:24.9122382Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Cli": 22844,
+    "Ahead": 0,
     "Uncommitted": [],
     "Open": true
   }
