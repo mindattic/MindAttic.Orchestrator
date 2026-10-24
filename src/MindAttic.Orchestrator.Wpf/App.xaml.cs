@@ -99,16 +99,18 @@ public partial class App : Application
             if (installer.WhyNotReplace(self) is { } why)
             {
                 log.Information("Not installing {Self:l}: {Why:l}; starting the installed copy instead", self, why);
-                if (TryHandOver(installer, log, StartRequest.HandOff(e.Args))) { Shutdown(); return; }
+                if (TryHandOver(installer, log, DashboardRequest.HandOff(e.Args))) { Shutdown(); return; }
                 dev = true; // couldn't start it: run from here, without repointing the daemon and shortcuts at this older copy
             }
-            else if (TryInstallAndHandOver(installer, self, log, StartRequest.HandOff(e.Args))) { Shutdown(); return; }
+            else if (TryInstallAndHandOver(installer, self, log, DashboardRequest.HandOff(e.Args))) { Shutdown(); return; }
         }
 
-        // One dashboard (M.ORCH-T497): a later launch brings this one forward and exits, handing it --start <repo> (M.ORCH-T767).
+        // One dashboard (M.ORCH-T497): a later launch brings this one forward and exits, handing it --start <repo> (M.ORCH-T767)
+        // and --show <email|session|ticket> (M.ORCH-T763) down the same pipe (DashboardRequest.HandOff keeps StartRequest.HandOff's).
         var startRepo = StartRequest.Repo(e.Args, out var refused);
         if (refused is not null) log.Warning("--start {Repo}: not a repo name; nothing started", refused);
-        instance = SingleInstance.Claim(SingleInstance.DashboardName, TimeSpan.FromSeconds(5), StartRequest.HandOff(e.Args));
+        var showTarget = DashboardRequest.ShowTarget(e.Args);
+        instance = SingleInstance.Claim(SingleInstance.DashboardName, TimeSpan.FromSeconds(5), DashboardRequest.HandOff(e.Args));
         if (instance is null)
         {
             log.Information(startRepo is null
@@ -135,8 +137,10 @@ public partial class App : Application
             if (MainWindow is not { } window) return;
             DashboardWindow.Restore(window);
             if (window is MainWindow main && StartRequest.Repo(args) is { } repo) _ = main.StartRepoAsync(repo);
+            if (window is MainWindow shown && DashboardRequest.ShowTarget(args) is { } target) _ = shown.ShowAsync(target);
         }));
         if (startRepo is not null) _ = ((MainWindow)MainWindow).StartRepoAsync(startRepo);
+        if (showTarget is not null) _ = ((MainWindow)MainWindow).ShowAsync(showTarget);
         // An upgrade asks this dashboard to exit here (it may be minimized, or behind other windows).
         exitSignal = new EventWaitHandle(false, EventResetMode.ManualReset, Installer.DashboardExitEvent(Environment.ProcessId));
         ThreadPool.RegisterWaitForSingleObject(exitSignal, (_, _) => Dispatcher.BeginInvoke(() => Shutdown()), null, Timeout.Infinite, executeOnlyOnce: true);

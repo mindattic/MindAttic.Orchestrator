@@ -252,14 +252,16 @@ public sealed class AccountSwitchTests
             .And.Not.Contain("AccountMenuButton").And.Not.Contain("AccountPopup").And.Not.Contain("AccountMenuItems"));
         Assert.That(code, Does.Not.Contain("AccountPopup"));
 
-        var accounts = xaml[xaml.IndexOf("x:Name=\"AccountsBody\"", StringComparison.Ordinal)..];
-        Assert.That(accounts, Does.Contain("x:Name=\"BillingDetailLine\"")
-            .And.Contain("DataContext.MakeDefaultCommand"), "the menu's global default and detail line moved to the Accounts view");
+        // The menu's global default is a person's login action (M.ORCH-T763), its detail line beside the org-wide actions.
+        Assert.That(xaml[xaml.IndexOf("x:Name=\"PersonActions\"", StringComparison.Ordinal)..], Does.Contain("{Binding MakeDefaultCommand}"));
+        Assert.That(xaml[xaml.IndexOf("x:Name=\"OrgToolbar\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"LoginTabStrip\"", StringComparison.Ordinal)],
+            Does.Contain("x:Name=\"BillingDetailLine\""));
         // M.ORCH-T630: the API-key switch, with its tooltip of who every CLI bills, moved on again to the 'API key' tab.
         var apiKey = xaml[xaml.IndexOf("x:Name=\"ApiKeyBody\"", StringComparison.Ordinal)..];
         Assert.That(apiKey, Does.Contain("x:Name=\"BillingToggleButton\"").And.Contain("{Binding ToggleBillingCommand}")
             .And.Contain("{Binding BillingHeadline, Mode=OneWay}"));
-        var header = xaml[..xaml.IndexOf("x:Name=\"Toolbar\"", StringComparison.Ordinal)];
-        Assert.That(header, Does.Contain("{Binding WeeklyAccountLine}").And.Not.Contain("{Binding BillingDetail}"));
+        // The plan and how fresh the reading is: the Last updated tile (M.ORCH-T763); billing's detail stays off the person's stats.
+        var header = xaml[xaml.IndexOf("x:Name=\"Header\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"Toolbar\"", StringComparison.Ordinal)];
+        Assert.That(header, Does.Contain("{Binding LastUpdatedCaption}").And.Not.Contain("{Binding BillingDetail}"));
     }
 }

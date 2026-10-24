@@ -108,7 +108,6 @@ public sealed partial class MainViewModel : ObservableObject
         Groups = [Waiting, Working, Tickets, Quiet];
 
         SelectCommand = new RelayCommand(p => Select(p as RepoTileViewModel));
-        FocusCommand = new RelayCommand(p => FocusOn(p is Focus f ? f : Enum.TryParse<Focus>(p as string, out var g) ? g : Focus.All));
         RefreshCommand = new RelayCommand(async () => await RefreshAsync());
         StartCommand = new RelayCommand(async () => await StartSessionAsync(), () => Selected is { HasFolder: true } && !IsSigningIn);
         OpenFolderCommand = new RelayCommand(() => SessionControl.OpenFolder(Selected!.Path), () => Selected is { HasFolder: true });
@@ -153,7 +152,6 @@ public sealed partial class MainViewModel : ObservableObject
     public IReadOnlyList<string> Providers => SessionControl.Providers;
 
     public ICommand SelectCommand { get; }
-    public ICommand FocusCommand { get; }
     public ICommand RefreshCommand { get; }
     public ICommand StartCommand { get; }
     public ICommand OpenFolderCommand { get; }
@@ -224,7 +222,6 @@ public sealed partial class MainViewModel : ObservableObject
             if (selected is not null) RefreshLogins();
             Raise();
             Raise(nameof(HasSelection));
-            Raise(nameof(ShowDetail));
         }
     }
 
@@ -411,8 +408,6 @@ public sealed partial class MainViewModel : ObservableObject
         ApplyAccounts(all, DateTime.UtcNow);
         // Who's out of room is read with the roster, just above (M.ORCH-T668).
         if (IsGlobalTab) ApplyUserTickets();
-        // The Accounts view's cards, read off the UI thread, only while it's open (M.ORCH-T603).
-        _ = RefreshLoginCardsAsync();
         // After the phases' own toasts (pace, budget, stuck, audit, Needs you), or they'd go past the cap (M.ORCH-T340).
         PruneToasts(Toasts, DateTime.UtcNow);
         Raise(nameof(WorkingCount)); Raise(nameof(WaitingCount)); Raise(nameof(HostCount));
@@ -466,14 +461,6 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool IsEmpty => Groups.All(g => !g.IsVisible);
 
-    private void FocusOn(Focus next)
-    {
-        // A second click clears the filter only where it shows: from another view it opens Repos filtered again.
-        Focus = Focus == next && IsReposView ? Focus.All : next;
-        if (Focus != Focus.All) ViewChoice = "Repos"; // the cards filter the repo tiles, so show them
-        Regroup();
-    }
-
     private void Select(RepoTileViewModel? tile) => Selected = Selected == tile ? null : tile;
 
     private async Task StartSessionAsync()
@@ -501,7 +488,6 @@ public sealed partial class MainViewModel : ObservableObject
             StatusMessage = $"Not started: {name} isn't a repo in the workspace.";
             return;
         }
-        SelectRepo(tile.Name);
         log.Information("--start {Repo:l}: starting a CLI", tile.Name);
         await StartSessionAsync(tile, "Claude", AutoLogin, null);
     }

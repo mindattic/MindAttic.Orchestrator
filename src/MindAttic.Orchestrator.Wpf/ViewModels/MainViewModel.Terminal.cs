@@ -44,12 +44,12 @@ public sealed partial class MainViewModel
         await GoToOrShowRepoAsync(HostForToast(t.Target.Status, snapshot?.Agents ?? []), t.Target.Name);
     }
 
-    /// <summary>To the CLI's tab, or its window; when neither can be found, to the repo's detail pane with a note why.</summary>
+    /// <summary>To the CLI's tab, or its window; when neither can be found, says why (the repo pane is Tickets Desktop's now,
+    /// M.ORCH-T763).</summary>
     private async Task GoToOrShowRepoAsync(HostSession? host, string repo)
     {
         var result = host is null ? new GoToResult(GoToOutcome.NotFound, $"{repo} has no Launcher tab to go to.") : await GoToAsync(host);
         if (result.Outcome != GoToOutcome.NotFound) return;
-        SelectRepo(repo);
         StatusMessage = result.Note;
     }
 

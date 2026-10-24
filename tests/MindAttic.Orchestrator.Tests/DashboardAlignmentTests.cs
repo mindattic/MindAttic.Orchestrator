@@ -133,7 +133,7 @@ public sealed class DashboardAlignmentTests
         var theme = (ResourceDictionary)Application.LoadComponent(new Uri("/MindAttic.Components.Wpf;component/Theme.xaml", UriKind.Relative));
         var gutter = (Thickness)((Style)theme["MaBodyScroll"]).Setters.OfType<Setter>().Single(x => x.Property == MaScrollArea.GutterProperty).Value;
         Assert.That(new[] { gutter.Left, gutter.Right }, Is.EqualTo(new[] { Side, Side }));
-        foreach (var body in new[] { "ReposBody", "QueueBody", "AuditBody", "AgentsBody", "AccountsBody", "ApiKeyBody" })
+        foreach (var body in new[] { "AgentsBody", "MiscBody", "ApiKeyBody" })
             Assert.That((string?)Named(body).Attribute("Style"), Is.EqualTo("{StaticResource MaBodyScroll}"), body);
         var beside = MaScrollArea.PaddingFor(gutter, Visibility.Visible);
         Assert.That(beside.Left, Is.EqualTo(Side));
@@ -147,7 +147,7 @@ public sealed class DashboardAlignmentTests
     }
 
     [Test]
-    public void The_clock_refresh_settings_and_launcher_sit_right_of_the_view_tabs_under_the_chart()
+    public void The_clock_refresh_settings_and_launcher_sit_right_of_the_current_work_heading_under_the_chart()
     {
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
@@ -159,10 +159,11 @@ public sealed class DashboardAlignmentTests
         var toolbar = Named("Toolbar");
         var controls = Named("HeaderControls");
         Assert.That(controls.Ancestors().Contains(toolbar), Is.True, "on the toolbar's row, under the chart");
-        Assert.That((string?)controls.Parent!.Attribute("Grid.Column"), Is.EqualTo("1"), "right of the view tabs");
+        Assert.That((string?)controls.Parent!.Attribute("Grid.Column"), Is.EqualTo("1"), "right of the current work's heading");
         Assert.That(Named("Header").Descendants().Contains(controls), Is.False, "no longer above the tiles");
-        var pills = toolbar.Descendants(P + "ListBox").First(l => (string?)l.Attribute("ItemsSource") == "{Binding ViewChoices}");
-        Assert.That((string?)pills.Ancestors().First(e => e.Parent == toolbar).Attribute("Grid.Column"), Is.Null, "the view tabs on the left");
+        // No view pills (M.ORCH-T763): the person's current work is named on the left.
+        Assert.That(toolbar.Descendants(P + "ListBox").Any(l => (string?)l.Attribute("ItemsSource") == "{Binding ViewChoices}"), Is.False);
+        Assert.That((string?)Named("WorkHeading").Attribute("Grid.Column"), Is.Null, "the heading on the left");
 
         var clock = controls.Elements(P + "TextBlock").Single(t => Binding(t, "Text") == "{Binding Clock.Text}");
         Assert.That((string?)clock.Attribute("AutomationProperties.Name"), Is.EqualTo("Current time"));

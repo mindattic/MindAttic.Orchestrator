@@ -41,15 +41,12 @@ public partial class MainWindow : Window
         // The org switcher above it, and what an org with no Claude login says, are the global login's tab's too (M.ORCH-T655).
         OrgStrip.DataContext = model;
         OrgEmptyPanel.DataContext = model;
-        VirtualizedList.Apply(QueueList, 1200);
-        // Every other view is one virtualized list too (M.ORCH-T754): its headings and notes, then its lists' items a row (or a line
-        // of tiles) each, so a switch of tab or org builds only what's on screen, however many people, CLIs, logins and tickets.
-        VirtualizedList.ApplyBody(ReposBody).Nest(RepoGroups, RepoTiles, group => group is TileGroupViewModel { IsVisible: true } g ? g.Tiles : null);
+        // The org-wide login actions (Add login, Sign in all, Report) above the person tabs are the global login's tab's too (M.ORCH-T763).
+        OrgToolbar.DataContext = model;
+        // A person's current work and the 'Miscellaneous' tab are each one virtualized list (M.ORCH-T754): headings and notes, then
+        // the lists' items a row (or a line of cards) each, so a switch of tab or org builds only what's on screen.
         VirtualizedList.ApplyBody(AgentsBody);
-        VirtualizedList.ApplyBody(AccountsBody);
-        VirtualizedList.ApplyBody(AuditBody);
-        // The Queue view's header scrolls in at most 45% of the view, so the virtualized queue below it always has room.
-        QueueView.SizeChanged += (_, e) => QueueBody.MaxHeight = QueueHeaderHeight(e.NewSize.Height);
+        VirtualizedList.ApplyBody(MiscBody);
         model.SelectedTabChanged += (_, _) => DataContext = model.SelectedTab;
         DataContextChanged += (_, e) =>
         {
@@ -71,16 +68,6 @@ public partial class MainWindow : Window
         model.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(MainViewModel.IsOnApiKey)) UpdateEmergencyGlow(); };
         UpdateEmergencyGlow();
 
-        CommandBindings.Add(new CommandBinding(WindowCommands.FocusSearch, (_, _) =>
-        {
-            // The search box is only shown in the Repos view, and a collapsed box can't take focus: show it first.
-            Shown.ShowViewCommand.Execute("Repos");
-            Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
-            {
-                SearchBox.Focus();
-                SearchBox.SelectAll();
-            });
-        }));
         CommandBindings.Add(new CommandBinding(WindowCommands.Escape, (_, _) => OnEscape()));
 
         // A toast on any login's tab flashes the window.
@@ -110,6 +97,9 @@ public partial class MainWindow : Window
 
     /// <summary><c>--start &lt;repo&gt;</c> (M.ORCH-T767): a CLI in that workspace repo, as Start opens one; anything else is refused.</summary>
     public Task StartRepoAsync(string repo) => model.StartRepoAsync(repo);
+
+    /// <summary><c>--show &lt;email|session|ticket&gt;</c> (M.ORCH-T763): the person it names, or whose CLI runs that session or ticket.</summary>
+    public Task<bool> ShowAsync(string target) => model.ShowAsync(target);
 
     /// <summary>Reads out the shown tab's status and queue lines.</summary>
     private void OnShownChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -151,25 +141,33 @@ public partial class MainWindow : Window
         Pulse(glow, icon.IsVisible, exitOpacity: 0.3, exitSeconds: 0.2);
     }
 
-    /// <summary>"Move to" on an agent card or an Accounts-view CLI row (M.ORCH-T607): a menu of the other signed-in logins,
-    /// read when it's opened, each moving that CLI to its login.</summary>
+    /// <summary>"Move to" on an agent card (M.ORCH-T607): a menu of the other signed-in logins, read when it's opened, each moving
+    /// that CLI to its login.</summary>
     private async void OnMoveToClick(object sender, RoutedEventArgs e)
     {
-        if (sender is not Button button) return;
-        (string Repo, string Session, int? Pid, string? Own)? cli = button.DataContext switch
-        {
-            AgentRowViewModel a => (a.Repo, a.SessionId, a.CliPid, a.OwnLogin),
-            LoginCliViewModel c => (c.Repo, c.SessionId, c.CliPid, c.OwnLogin),
-            _ => null,
-        };
-        if (cli is not { } it) return;
+        if (sender is not Button { DataContext: AgentRowViewModel a } button) return;
         var tab = Shown;
-        var targets = await tab.MoveTargetsAsync(it.Own);
+        ShowMoveMenu(button, $"Move the {a.Repo} CLI to", await tab.MoveTargetsAsync(a.OwnLogin),
+            async target => await tab.MoveToAccountAsync(a.Repo, a.SessionId, a.CliPid, target));
+    }
+
+    /// <summary>"Move CLIs", a person's login action (M.ORCH-T763): the same menu, moving every one of the person's CLIs.</summary>
+    private async void OnMoveAllClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button) return;
+        var tab = Shown;
+        ShowMoveMenu(button, $"Move every CLI of {tab.TabTitle}'s to", await tab.MoveTargetsAsync(tab.ScopeEmail),
+            async target => await tab.MoveAllToAsync(target));
+    }
+
+    private void ShowMoveMenu(Button button, string name, IReadOnlyList<MindAttic.Orchestrator.Sessions.MoveTarget> targets,
+        Func<MindAttic.Orchestrator.Sessions.MoveTarget, Task> move)
+    {
         var menu = new ContextMenu { PlacementTarget = button, Placement = PlacementMode.Bottom };
         // The library's dark dropdown (M.ORCH-T667): a bare ContextMenu and MenuItem draw WPF's light system menu.
         menu.SetResourceReference(StyleProperty, "MaDropdownMenu");
         MenuItem Item(object header) { var i = new MenuItem { Header = header }; i.SetResourceReference(StyleProperty, "MaDropdownMenuItem"); return i; }
-        AutomationProperties.SetName(menu, $"Move the {it.Repo} CLI to");
+        AutomationProperties.SetName(menu, name);
         if (targets.Count == 0)
         {
             var none = Item("No other signed-in login");
@@ -180,15 +178,11 @@ public partial class MainWindow : Window
         {
             var item = Item(target.Label);
             item.ToolTip = target.IsGlobal ? "The global login (~/.claude)" : $"{target.Email}'s own login (~/.claude-accounts)";
-            item.Click += async (_, _) => await tab.MoveToAccountAsync(it.Repo, it.Session, it.Pid, target);
+            item.Click += async (_, _) => await move(target);
             menu.Items.Add(item);
         }
         menu.IsOpen = true;
     }
-
-    /// <summary>The most the Queue view's header (allocate line, holds, reminders, finished work, Next up) takes of a view
-    /// <paramref name="viewHeight"/> tall: 45%, never under 120px.</summary>
-    internal static double QueueHeaderHeight(double viewHeight) => Math.Max(120, viewHeight * 0.45);
 
     private bool Hidden => !IsVisible || WindowState == WindowState.Minimized;
 
@@ -218,9 +212,8 @@ public partial class MainWindow : Window
     {
         var shown = Shown;
         if (shown.IsSettingsOpen) shown.IsSettingsOpen = false;
-        else if (SearchBox.IsKeyboardFocusWithin && shown.Search.Length > 0) shown.Search = "";
-        else if (shown.Selected is not null) shown.SelectCommand.Execute(shown.Selected);
-        else shown.Search = "";
+        else if (shown.IsRenameOpen) shown.IsRenameOpen = false;
+        else if (shown.IsLimitOpen) shown.IsLimitOpen = false;
     }
 
     /// <summary>Says <paramref name="text"/> through a screen reader without moving focus (WCAG 4.1.3, status messages):

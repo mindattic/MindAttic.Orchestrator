@@ -13,7 +13,6 @@
 
     <Window.InputBindings>
         <KeyBinding Key="F5" Command="{Binding RefreshCommand}" />
-        <KeyBinding Key="F" Modifiers="Control" Command="{x:Static vm:WindowCommands.FocusSearch}" />
         <KeyBinding Key="Escape" Command="{x:Static vm:WindowCommands.Escape}" />
         <!-- The next and the previous login's tab (M.ORCH-T613). -->
         <KeyBinding Key="Tab" Modifiers="Control" Command="{Binding NextTabCommand}" />
@@ -137,6 +136,37 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
+        <!-- The org-wide login actions (M.ORCH-T763, from the Accounts view's toolbar): Add login (a per-CLI login of its own for
+             an email), Sign in all (every roster account with no login of its own yet, M.ORCH-T604) and Report (the usage report,
+             M.ORCH-T685), in a small toolbar above the person tabs; what they did on the line beside them. Kept on the global
+             login's tab (MainWindow.xaml.cs), like the strips around it. -->
+        <DockPanel x:Name="OrgToolbar" Margin="0,0,0,10">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBox x:Name="NewAccountBox" Style="{StaticResource MaTextBox}" Width="220" Height="28" VerticalAlignment="Center"
+                         Text="{Binding NewAccountEmail, UpdateSourceTrigger=PropertyChanged}"
+                         mc:MaTextBox.Placeholder="name@company.com"
+                         AutomationProperties.Name="Email of the login to add" />
+                <Button x:Name="AddLoginButton" Style="{StaticResource MaButton}" Content="Add login" Padding="10,3" Margin="6,0,0,0"
+                        Command="{Binding AddAccountCommand}" VerticalAlignment="Center"
+                        ToolTip="Sign in a per-CLI login of its own for this email (orchestrator login --account), opening its login in the browser. The global login is left as it is." />
+                <Button x:Name="SignInAllButton" Style="{StaticResource MaButton}" Content="Sign in all" Padding="10,3" Margin="6,0,0,0"
+                        Command="{Binding SignInAllCommand}" VerticalAlignment="Center"
+                        ToolTip="Give every account in the roster with no per-CLI login yet its own (~/.claude-accounts), opening each one's login in the browser in turn, so every Claude Team seat stays signed in side by side. The global login stays the default." />
+                <Button x:Name="UsageReportButton" Style="{StaticResource MaButton}" Content="Report" Padding="10,3" Margin="6,0,0,0"
+                        Command="{Binding UsageReportCommand}" VerticalAlignment="Center"
+                        ToolTip="Write the usage report (every member's 5-hour and weekly use, resets, points left to the weekly target, how fresh each reading is, the CLIs' spend and the API key's) as an HTML page and a Markdown file to share, and open the page (orchestrator report)." />
+            </StackPanel>
+            <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                <TextBlock x:Name="OrgActionsMessage" Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
+                           AutomationProperties.LiveSetting="Polite"
+                           Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                <!-- The billing detail line (M.ORCH-T628): what the last Sign in all or default switch did, a problem, and the open
+                     CLIs still billing the other thing. -->
+                <TextBlock x:Name="BillingDetailLine" Text="{Binding BillingDetail}" Style="{StaticResource MaTileSubtitle}" TextWrapping="Wrap"
+                           AutomationProperties.LiveSetting="Polite"
+                           Visibility="{Binding BillingDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+            </StackPanel>
+        </DockPanel>
         <mc:MaTabControl x:Name="LoginTabStrip" ShowContent="False" ItemsSource="{Binding OrgTabs}" SelectedItem="{Binding SelectedTab}"
                          AutomationProperties.Name="Claude logins, one dashboard tab each"
                          Visibility="{Binding HasLoginTabs, Converter={StaticResource Visible}}">
@@ -187,6 +217,15 @@
                             <TextBlock x:Name="TabDisabledIcon" Text="&#xE733;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
                                        Foreground="{DynamicResource MaMuted}" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                        Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />
+                            <!-- The 'API key' tab shows a key (M.ORCH-T763; the tab itself is collapsed from this strip since M.ORCH-T770,
+                                 its toggle the corner's key button), and 'Miscellaneous', the strip's last tab, a "more" glyph, in place
+                                 of a person's activity icon. -->
+                            <TextBlock x:Name="TabKeyIcon" Text="&#xE192;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
+                                       Foreground="{DynamicResource MaText}" VerticalAlignment="Center" AutomationProperties.Name="API key"
+                                       Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}" />
+                            <TextBlock x:Name="TabMiscIcon" Text="&#xE712;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
+                                       Foreground="{DynamicResource MaText}" VerticalAlignment="Center" AutomationProperties.Name="Miscellaneous"
+                                       Visibility="{Binding IsMiscTab, Converter={StaticResource Visible}}" />
                         </Grid>
                         <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <TextBlock VerticalAlignment="Center" Margin="8,0,0,0"
@@ -200,47 +239,14 @@
         </StackPanel>
         </DockPanel>
 
-        <!-- Header, read left to right: the work (who needs you, who's working, their subagents, what's queued), then the
-             tokens (this 5-hour window, the week, the pace ledger, today). Every card is a button that goes somewhere. -->
-        <!-- The header owns the window's left/right gutter; nothing inside it adds its own, so the tiles and the chart
-             share both edges (M.ORCH-T192). The tiles are equal cells that together span the row at any width. -->
+        <!-- A person's page (M.ORCH-T763), read top to bottom: their stats (the 5-hour window, the week, their cutoffs and when
+             Claude's meter was last read), their login actions, their 5-hour chart, then their current work below the toolbar.
+             The header owns the window's left/right gutter; nothing inside it adds its own, so the tiles and the chart share
+             both edges (M.ORCH-T192). The tiles are equal cells that together span the row at any width. -->
         <StackPanel x:Name="Header" Grid.Row="1" Margin="24,18,24,0" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
 
-        <mc:MaTileGrid x:Name="StatTiles" MinItemWidth="160" Spacing="10" RowSpacing="10" Balanced="True" UniformRows="True"
+        <mc:MaTileGrid x:Name="StatTiles" MinItemWidth="200" Spacing="10" RowSpacing="10" Balanced="True" UniformRows="True"
                            AutomationProperties.Name="Summary">
-            <Button Style="{StaticResource MaSmallStat}" Command="{Binding FocusCommand}" CommandParameter="Waiting"
-                    mc:MaTile.IsSelected="{Binding IsWaitingFocus}" mc:MaTile.SelectedBrush="{DynamicResource MaWarn}" ToolTip="Repos whose agent stopped and is waiting for you. Shows only those."
-                    AutomationProperties.Name="{Binding WaitingCount, StringFormat='{}{0} need you: show only those repos'}">
-                <StackPanel>
-                    <TextBlock Text="{Binding WaitingCount}" Style="{StaticResource MaStatValue}" Foreground="{DynamicResource MaWarn}" />
-                    <TextBlock Text="Need you" Style="{StaticResource MaTileSubtitle}" />
-                </StackPanel>
-            </Button>
-            <Button Style="{StaticResource MaSmallStat}" Command="{Binding FocusCommand}" CommandParameter="Working"
-                    mc:MaTile.IsSelected="{Binding IsWorkingFocus}" mc:MaTile.SelectedBrush="{DynamicResource MaGood}" ToolTip="Repos with an agent mid-turn right now. Shows only those."
-                    AutomationProperties.Name="{Binding WorkingCount, StringFormat='{}{0} working: show only those repos'}">
-                <StackPanel>
-                    <TextBlock Text="{Binding WorkingCount}" Style="{StaticResource MaStatValue}" Foreground="{DynamicResource MaGood}" />
-                    <TextBlock Text="Working" Style="{StaticResource MaTileSubtitle}" />
-                </StackPanel>
-            </Button>
-            <Button Style="{StaticResource MaSmallStat}" Command="{Binding ShowViewCommand}" CommandParameter="Agents"
-                    ToolTip="Subagents running inside every CLI and allocate agent. Opens the agent board."
-                    AutomationProperties.Name="{Binding SubagentCount, StringFormat='{}{0} subagents running: open the agent board'}">
-                <StackPanel>
-                    <TextBlock Text="{Binding SubagentCount}" Style="{StaticResource MaStatValue}" />
-                    <TextBlock Text="Subagents" Style="{StaticResource MaTileSubtitle}" />
-                </StackPanel>
-            </Button>
-            <Button Style="{StaticResource MaSmallStat}" Command="{Binding FocusCommand}" CommandParameter="Tickets"
-                    mc:MaTile.IsSelected="{Binding IsTicketsFocus}" mc:MaTile.SelectedBrush="{DynamicResource MaLink}" ToolTip="Repos with open tickets and no session. Shows only those."
-                    AutomationProperties.Name="{Binding TicketCount, StringFormat='{}{0} open tickets: show repos with tickets and no session'}">
-                <StackPanel>
-                    <TextBlock Text="{Binding TicketCount}" Style="{StaticResource MaStatValue}" Foreground="{DynamicResource MaLink}" />
-                    <TextBlock Text="Open tickets" Style="{StaticResource MaTileSubtitle}" />
-                </StackPanel>
-            </Button>
-
             <!-- Budget: the current 5-hour block. Click to set limits. -->
             <Button Style="{StaticResource MaSmallStat}" HorizontalContentAlignment="Stretch" Command="{Binding ToggleSettingsCommand}"
                     ToolTip="{Binding BudgetTooltip}"
@@ -262,29 +268,63 @@
                                Visibility="{Binding PaceText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 </StackPanel>
             </Button>
-            <!-- Weekly: the other half of /status's picture; the 5-hour card never shows it on its own. The tab's login's own
-                 week (M.ORCH-T628): what's left, its reset's day, date and time, its weekly stop line (M.ORCH-T609), and the
-                 plan and last-checked time the account menu used to show. -->
+            <!-- Weekly: the other half of /status's picture. The tab's login's own week (M.ORCH-T628): what's left, its reset's
+                 day, date and time, and its weekly stop line (M.ORCH-T609). -->
             <Button Style="{StaticResource MaSmallStat}" Command="{Binding ToggleSettingsCommand}"
                     ToolTip="How much of this login's weekly limit is left (/status reports the used share), when it resets, and where its CLIs stop (the weekly reserve). Opens settings, where the weekly reset is set."
                     AutomationProperties.Name="{Binding WeeklyHeadline, StringFormat='Week {0}: open settings'}">
                 <StackPanel>
                     <TextBlock Text="{Binding WeeklyHeadline}" Style="{StaticResource MaStatValue}" />
                     <TextBlock Text="{Binding WeeklyCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding WeeklyAccountLine}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis"
-                               Visibility="{Binding WeeklyAccountLine, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 </StackPanel>
             </Button>
-            <Button Style="{StaticResource MaSmallStat}" Command="{Binding ShowViewCommand}" CommandParameter="Repos"
-                    ToolTip="Claude Code tokens since midnight, every session (cache reads included). Opens the repos, busiest first."
-                    AutomationProperties.Name="{Binding TokensToday, StringFormat='{}{0} tokens today: open the repos'}">
+            <!-- Cutoffs (M.ORCH-T707): where this login's 5-hour window and week are cut off; opens Org limit to change them. -->
+            <Button Style="{StaticResource MaSmallStat}" Command="{Binding OrgLimitCommand}"
+                    ToolTip="Where this login's access is cut off: its 5-hour cutoff, then its weekly cutoff (orchestrator org limit). Opens Org limit to change them."
+                    AutomationProperties.Name="{Binding CutoffsHeadline, StringFormat='Cutoffs {0}: change them'}">
                 <StackPanel>
-                    <TextBlock Text="{Binding TokensToday}" Style="{StaticResource MaStatValue}" />
-                    <TextBlock Text="{Binding TokensDetail}" Style="{StaticResource MaTileSubtitle}" />
+                    <TextBlock Text="{Binding CutoffsHeadline}" Style="{StaticResource MaStatValue}" />
+                    <TextBlock Text="{Binding CutoffsCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Button>
+            <!-- Last updated: when Claude's meter for this login was read, its plan, and STALE once it's old (M.ORCH-T684). -->
+            <Button Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}"
+                    ToolTip="When Claude's own meter for this login was last read, and its plan. Refreshes the dashboard (F5)."
+                    AutomationProperties.Name="{Binding LastUpdatedHeadline, StringFormat='Last updated {0}: refresh'}">
+                <StackPanel>
+                    <TextBlock Text="{Binding LastUpdatedHeadline}" Style="{StaticResource MaStatValue}" />
+                    <TextBlock Text="{Binding LastUpdatedCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </Button>
         </mc:MaTileGrid>
-        <!-- This 5-hour window's utilization (M.ORCH-T191): its own full-width row under the tiles, tall enough that the
+        <!-- The person's login actions (M.ORCH-T763, from the Accounts view's card): sign this login in again, rename it, set its
+             own cutoffs, move every one of its CLIs to another login, or make it the global default. -->
+        <WrapPanel x:Name="PersonActions" Margin="0,12,0,0">
+            <Button x:Name="SignInPersonButton" Style="{StaticResource MaButton}" Content="Sign in" Padding="12,4" Margin="0,0,8,0"
+                    Command="{Binding SignInPersonCommand}" ToolTipService.ShowOnDisabled="True"
+                    ToolTip="Sign this login in again, in a private window of its own browser profile (orchestrator login --account). The global login signs in with /login in any CLI."
+                    AutomationProperties.Name="{Binding TabTitle, StringFormat='Sign {0} in again'}" />
+            <Button x:Name="RenamePersonButton" Style="{StaticResource MaButton}" Content="Rename…" Padding="12,4" Margin="0,0,8,0"
+                    Command="{Binding RenamePersonCommand}"
+                    ToolTip="Give this login a name and a terminal-title prefix (orchestrator accounts alias &lt;email&gt; &lt;name&gt;)"
+                    AutomationProperties.Name="{Binding TabTitle, StringFormat='Rename {0}'}" />
+            <Button x:Name="OrgLimitButton" Style="{StaticResource MaButton}" Content="Org limit…" Padding="12,4" Margin="0,0,8,0"
+                    Command="{Binding OrgLimitCommand}"
+                    ToolTip="Set this login's own 5-hour and weekly cutoffs (orchestrator org limit &lt;who&gt; --weekly --5h)"
+                    AutomationProperties.Name="{Binding TabTitle, StringFormat='Set the cutoffs of {0}'}" />
+            <Button x:Name="MoveClisButton" Style="{StaticResource MaButton}" Content="Move CLIs ▾" Padding="12,4" Margin="0,0,8,0"
+                    Click="OnMoveAllClick"
+                    ToolTip="Move every one of this login's CLIs to another signed-in login: each Launcher tab restarts its CLI with claude --resume on that login at its next idle point, keeping its session"
+                    AutomationProperties.Name="{Binding TabTitle, StringFormat='Move every CLI of {0} to another login'}" />
+            <Button x:Name="MakeDefaultButton" Style="{StaticResource MaButton}" Content="Make default" Padding="12,4" Margin="0,0,8,0"
+                    Command="{Binding MakeDefaultCommand}" Visibility="{Binding CanMakeDefault, Converter={StaticResource Visible}}"
+                    ToolTip="Sign the global login (~/.claude) in to this account, opening its login in the browser: every CLI not started on a login of its own follows at its next turn. Billing goes back to Claude Team first if the API key bills."
+                    AutomationProperties.Name="{Binding TabTitle, StringFormat='Make {0} the fallback'}" />
+        </WrapPanel>
+        <TextBlock x:Name="PersonMessage" Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,8,0,0"
+                   AutomationProperties.LiveSetting="Polite"
+                   Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+        <!-- This 5-hour window's utilization (M.ORCH-T191): its own full-width row under the stats, tall enough that the
              pace line straight to the target at the reset, the window's own line (red while over that pace, green under)
              and where the recent rate ends up are easy to read. The caption says it in words. -->
         <Border x:Name="UtilizationCard" Style="{StaticResource MaCard}" Margin="0,12,0,12" HorizontalAlignment="Stretch"
@@ -299,37 +339,23 @@
         </Border>
         </StackPanel>
 
-        <!-- Toolbar -->
+        <!-- Toolbar: the person's current work, by name and count, on the left; the clock, when the dashboard last refreshed,
+             Refresh (F5), Settings and Open Launcher, then the zoom, on the right (M.ORCH-T667, M.ORCH-T493). There are no view
+             pills any more (M.ORCH-T763): the Orchestrator shows only what's running, and Tickets Desktop the Repos, the Queue
+             and the audit. -->
         <Grid x:Name="Toolbar" Grid.Row="2" Margin="24,8,24,10" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <WrapPanel VerticalAlignment="Center">
-                <ListBox Style="{StaticResource MaPillChoice}" ItemsSource="{Binding ViewChoices}" Padding="0"
-                         SelectedItem="{Binding ViewChoice}" VerticalAlignment="Center" Margin="0,6,14,0"
-                         AutomationProperties.Name="View" />
-                <TextBox x:Name="SearchBox" Style="{StaticResource MaTextBox}" Width="300" Height="32" Margin="0,0,10,0" VerticalAlignment="Center"
-                         Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}"
-                         mc:MaTextBox.Placeholder="Search repos and tickets   Ctrl+F"
-                         AutomationProperties.Name="Search repos and tickets"
-                         Visibility="{Binding IsReposView, Converter={StaticResource Visible}}" />
-                <ToggleButton Style="{StaticResource MaPillToggle}" VerticalAlignment="Center"
-                              IsChecked="{Binding ShowQuiet}" Content="Show quiet repos"
-                              Visibility="{Binding IsReposView, Converter={StaticResource Visible}}" />
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0"
-                            Visibility="{Binding IsReposView, Converter={StaticResource Visible}}">
-                    <TextBlock Text="Sort by" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                    <ListBox Style="{StaticResource MaPillChoice}" ItemsSource="{Binding RepoSorts}" Padding="0"
-                             SelectedItem="{Binding RepoSort}" VerticalAlignment="Center" Margin="0,6,0,0"
-                             AutomationProperties.Name="Sort repos by" />
+            <StackPanel x:Name="WorkHeading" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Current work" Style="{StaticResource MaHeading}" AutomationProperties.HeadingLevel="Level2" />
+                    <TextBlock Text="{Binding AgentsSummary}" Style="{StaticResource MaMutedText}" Margin="12,0,0,0" VerticalAlignment="Bottom" />
                 </StackPanel>
-            </WrapPanel>
-            <!-- Right of the view tabs (M.ORCH-T667, from above the tiles; M.ORCH-T493): the clock, when the dashboard last
-                 refreshed, Refresh (F5), Settings and Open Launcher, then the zoom. The account menu that sat upper right is gone
-                 (M.ORCH-T628): every person is signed in at once, each on a tab of their own whose tiles carry their numbers;
-                 billing and the global default moved to the Accounts view. Top-aligned with the view tabs' first line, so it stays
-                 on their line when the Repos view's search and sort wrap under them. -->
+                <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="0,4,0,0" Foreground="{DynamicResource MaFocus}"
+                           Visibility="{Binding StatusMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+            </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="0,6,0,0">
                 <StackPanel x:Name="HeaderControls" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Clock.Text}" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" VerticalAlignment="Center" Margin="0,0,12,0"
@@ -357,7 +383,7 @@
                         AutomationProperties.Name="Notifications" />
 
         <!-- A roster account not signed in on this machine yet (M.ORCH-T615): its tab shows only its Sign in, then, once signed
-             in, the whole dashboard and Open Launcher at the next refresh. -->
+             in, the whole page and Open Launcher at the next refresh. -->
         <StackPanel Grid.Row="4" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520" Margin="24"
                     Visibility="{Binding ShowsSignIn, Converter={StaticResource Visible}}">
             <TextBlock Text="{Binding SignInPrompt}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,14" />
@@ -397,868 +423,205 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Body: grouped tiles, and the selected repo's detail pane. -->
-        <Grid Grid.Row="4" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
+        <!-- The 'Miscellaneous' tab (M.ORCH-T763): what fits on no person's page. Allocate and the pace's slots, a pacing hold,
+             the reminders the daemon texts through Psst (orchestrator remind, M.ORCH-T477), the last queue line, finished work
+             (closed tickets whose assignment or worktree is still around) and the workspace's problems. One virtualized list
+             (MainWindow.xaml.cs): each list sits straight in it. -->
+        <ScrollViewer x:Name="MiscBody" Grid.Row="4" Style="{StaticResource MaBodyScroll}"
+                      Visibility="{Binding IsMiscTab, Converter={StaticResource Visible}}">
+            <StackPanel>
+                <TextBlock Text="Miscellaneous" Style="{StaticResource MaHeading}" Margin="0,18,0,0" AutomationProperties.HeadingLevel="Level2" />
+                <DockPanel Margin="0,8,0,0">
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding SlotsText}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                    <TextBlock Text="{Binding AllocateText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" />
+                </DockPanel>
+                <Border Style="{StaticResource MaCard}" Margin="0,12,0,0" BorderBrush="{DynamicResource MaWarn}"
+                        Visibility="{Binding HasHold, Converter={StaticResource Visible}}">
+                    <TextBlock Text="{Binding Hold}" Foreground="{DynamicResource MaWarn}" TextWrapping="Wrap" />
+                </Border>
+                <TextBlock Text="{Binding QueueMessage}" Foreground="{DynamicResource MaFocus}" TextWrapping="Wrap" Margin="0,10,0,0"
+                           Visibility="{Binding QueueMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
 
-            <!-- The groups and their tiles are one virtualized list (M.ORCH-T754, MainWindow.xaml.cs): each group's heading, then its
-                 tiles a line at a time, laid out as RepoTiles is, so only the lines on screen are built. -->
-            <ScrollViewer x:Name="ReposBody" Style="{StaticResource MaBodyScroll}"
-                          Visibility="{Binding IsReposView, Converter={StaticResource Visible}}">
-                <StackPanel>
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,80,0,0"
-                                Visibility="{Binding IsEmpty, Converter={StaticResource Visible}}">
-                        <TextBlock Text="Nothing needs you right now." FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"
-                                   AutomationProperties.LiveSetting="Polite" />
-                        <TextBlock Text="No agent is working or waiting and no tickets match. Clear the search or show quiet repos."
-                                   Style="{StaticResource MaMutedText}" HorizontalAlignment="Center" Margin="0,6,0,0" />
-                    </StackPanel>
+                <TextBlock Text="{Binding RemindersTitle}" Style="{StaticResource MaSectionLabel}"
+                           Visibility="{Binding HasReminders, Converter={StaticResource Visible}}" />
+                <ItemsControl x:Name="ReminderList" ItemsSource="{Binding Reminders}" Style="{StaticResource MaList}" AutomationProperties.Name="Reminders">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="orchestrator remind --cancel &lt;id&gt; drops one." Style="{StaticResource MaMutedText}" FontSize="11" Margin="0,4,0,0"
+                           Visibility="{Binding HasReminders, Converter={StaticResource Visible}}" />
 
-                    <ItemsControl x:Name="RepoGroups" ItemsSource="{Binding GroupsInView}" Style="{StaticResource MaList}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:TileGroupViewModel}">
-                                <StackPanel Orientation="Horizontal" Margin="0,4,0,10" Visibility="{Binding IsVisible, Converter={StaticResource Visible}}">
-                                    <mc:MaStatusLight Foreground="{Binding Accent}" Label="{Binding Title}" Margin="0,0,8,0" />
-                                    <TextBlock Text="{Binding Title}" Style="{StaticResource MaHeading}" FontSize="14" />
-                                    <TextBlock Text="{Binding Count}" Style="{StaticResource MaMutedText}" Margin="8,0,0,0" VerticalAlignment="Bottom" />
-                                    <TextBlock Text="{Binding Hint}" Style="{StaticResource MaMutedText}" Margin="14,0,0,0" VerticalAlignment="Bottom" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <!-- The repo tiles under each shown group's heading: the library's MaAccentTile in an MaTileList, equal columns that
-                         fill the width. It lists nothing itself: it's the pattern each group's lines of tiles are laid out by. -->
-                    <ItemsControl x:Name="RepoTiles" Style="{StaticResource MaTileList}" Margin="0,0,0,10"
-                                  mc:MaList.MinItemWidth="240" mc:MaList.UniformRows="True">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:RepoTileViewModel}">
-                                <mc:MaAccentTile Accent="{Binding Accent}" mc:MaTile.IsSelected="{Binding IsSelected}"
-                                                 Command="{Binding DataContext.SelectCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                 CommandParameter="{Binding}" ToolTip="{Binding Headline}"
-                                                 AutomationProperties.Name="{Binding Name}">
-                                    <StackPanel>
-                                        <DockPanel LastChildFill="True">
-                                            <TextBlock DockPanel.Dock="Right" Text="{Binding TokensText}" Style="{StaticResource MaTileSubtitle}"
-                                                       VerticalAlignment="Center" Margin="8,0,0,0" ToolTip="Tokens today" />
-                                            <mc:MaStatusLight DockPanel.Dock="Left" Foreground="{Binding Accent}" Label="{Binding StateLabel}"
-                                                              Margin="0,1,8,0" />
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" />
-                                        </DockPanel>
-                                        <TextBlock Text="{Binding Subtitle}" Style="{StaticResource MaTileSubtitle}"
-                                                   Margin="16,4,0,0" TextTrimming="CharacterEllipsis" />
-                                    </StackPanel>
-                                </mc:MaAccentTile>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-            </ScrollViewer>
-
-            <!-- Detail pane: the window's own MaChrome, set off by its left border, so its MaCards stand out from it. -->
-            <Border x:Name="DetailPane" Grid.Column="1" Width="420" Style="{StaticResource MaSidePane}"
-                    Visibility="{Binding ShowDetail, Converter={StaticResource Visible}}">
-                <ScrollViewer x:Name="DetailBody" Style="{StaticResource MaPaneScroll}">
-                    <StackPanel>
-                        <DockPanel>
-                            <Button DockPanel.Dock="Right" Style="{StaticResource MaToolButton}" Content="&#xE711;"
-                                    Command="{Binding SelectCommand}" CommandParameter="{Binding Selected}"
-                                    ToolTip="Close (Esc)" AutomationProperties.Name="Close details" />
-                            <TextBlock Text="{Binding Selected.Name}" FontSize="20" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
-                                       VerticalAlignment="Center" AutomationProperties.HeadingLevel="Level2" />
-                        </DockPanel>
-                        <Button Style="{StaticResource MaTextButton}" Margin="0,6,0,0" HorizontalAlignment="Left" Padding="8,3" MinHeight="24"
-                                Command="{Binding OpenFolderCommand}" ToolTip="Open in Explorer"
-                                AutomationProperties.Name="{Binding Selected.Path, StringFormat='Open {0} in Explorer'}"
-                                Visibility="{Binding Selected.HasFolder, Converter={StaticResource Visible}}">
-                            <TextBlock Text="{Binding Selected.Path}" FontSize="11" Foreground="{DynamicResource MaMuted}" TextTrimming="CharacterEllipsis" />
-                        </Button>
-
-                        <Border Style="{StaticResource MaCard}" Margin="0,14,0,0" BorderBrush="{Binding Selected.Accent}">
-                            <StackPanel>
-                                <TextBlock Text="{Binding Selected.StateLabel}" Foreground="{Binding Selected.Accent}" FontWeight="SemiBold" />
-                                <TextBlock Text="{Binding Selected.Headline}" TextWrapping="Wrap" Margin="0,2,0,0" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Start a session -->
-                        <TextBlock Text="START A SESSION" Style="{StaticResource MaSectionLabel}" />
-                        <ListBox Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Providers}" SelectedItem="{Binding Provider}"
-                                 AutomationProperties.Name="Agent provider" />
-                        <!-- The Claude login it opens on (M.ORCH-T613): a login's own dashboard tab starts on that login and
-                             shows no choice; the global login's tab starts on the global login, or on Auto (M.ORCH-T605). -->
-                        <ListBox Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Logins}" SelectedItem="{Binding Login}" Margin="0,4,0,0"
-                                 Visibility="{Binding ShowLogins, Converter={StaticResource Visible}}"
-                                 AutomationProperties.Name="Claude login" />
-                        <TextBox Style="{StaticResource MaTextArea}" Text="{Binding Prompt, UpdateSourceTrigger=PropertyChanged}"
-                                 Height="64" Margin="0,4,0,0" mc:MaTextBox.Placeholder="Opening prompt (optional), or pick a ticket below"
-                                 AutomationProperties.Name="Opening prompt (optional)" />
-                        <DockPanel Margin="0,8,0,0">
-                            <Button DockPanel.Dock="Right" Style="{StaticResource MaPrimaryButton}" Command="{Binding StartCommand}">
-                                <TextBlock>
-                                    <Run Text="Start " /><Run Text="{Binding Provider, Mode=OneWay}" />
-                                </TextBlock>
-                            </Button>
-                            <TextBlock Text="Opens a Launcher tab rooted here. The prompt is pre-filled, not sent."
-                                       Style="{StaticResource MaMutedText}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,10,0" />
-                        </DockPanel>
-                        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="0,8,0,0" Foreground="{DynamicResource MaFocus}" />
-
-                        <!-- Live tabs -->
-                        <StackPanel>
-                            <StackPanel.Style>
-                                <Style TargetType="StackPanel">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Selected.Hosts.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </StackPanel.Style>
-                            <TextBlock Text="LAUNCHER TABS" Style="{StaticResource MaSectionLabel}" />
-                            <ItemsControl ItemsSource="{Binding Selected.Hosts}" Style="{StaticResource MaRowList}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type vm:HostRowViewModel}">
-                                        <Border Style="{StaticResource MaListCard}">
-                                            <StackPanel>
-                                                <DockPanel>
-                                                    <!-- Brings this tab's own Windows Terminal window up, on this tab (M.ORCH-T619). -->
-                                                    <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Content="Go to tab" Margin="10,0,0,0" Padding="12,5"
-                                                            Command="{Binding DataContext.GoToTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            CommandParameter="{Binding}" ToolTip="Bring this tab's terminal to the front, on this tab"
-                                                            AutomationProperties.Name="{Binding Detail, StringFormat='Go to the tab, {0}'}" />
-                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Detail}" ToolTip="{Binding DetailTip}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" />
-                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                                </DockPanel>
-                                                <DockPanel Margin="0,8,0,0">
-                                                    <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Content="Send" Margin="6,0,0,0"
-                                                            Padding="12,5" Command="{Binding SendCommand}" IsDefault="False" />
-                                                    <TextBox Style="{StaticResource MaTextBox}" Height="30"
-                                                             Text="{Binding Draft, UpdateSourceTrigger=PropertyChanged}"
-                                                             mc:MaTextBox.Placeholder="Reply to this tab…"
-                                                             AutomationProperties.Name="Text to type into this tab" />
-                                                </DockPanel>
-                                                <TextBlock Text="{Binding Feedback}" Style="{StaticResource MaMutedText}" Margin="0,4,0,0">
-                                                    <TextBlock.Visibility>
-                                                        <Binding Path="Feedback" Converter="{x:Static vm:Converters.EmptyToCollapsed}" />
-                                                    </TextBlock.Visibility>
-                                                </TextBlock>
-                                                <!-- Its CLI moving to another login (M.ORCH-T637): Send and Go to tab are off until it lands. -->
-                                                <StackPanel x:Name="HostMovingNote" Orientation="Horizontal" Margin="0,6,0,0" Visibility="{Binding IsMoving, Converter={StaticResource Visible}}">
-                                                    <mc:MaSpinner Width="14" Height="14" StrokeThickness="2" Margin="0,0,6,0" />
-                                                    <TextBlock Text="{Binding MovingText}" FontWeight="SemiBold" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-
-                        <!-- Open tickets -->
-                        <StackPanel>
-                            <StackPanel.Style>
-                                <Style TargetType="StackPanel">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Selected.Tickets.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </StackPanel.Style>
-                            <TextBlock Style="{StaticResource MaSectionLabel}">
-                                <Run Text="OPEN TICKETS · " /><Run Text="{Binding Selected.Tickets.Count, Mode=OneWay}" />
-                            </TextBlock>
-                            <ItemsControl ItemsSource="{Binding Selected.Tickets}" Style="{StaticResource MaRowList}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type vm:TicketRowViewModel}">
-                                        <Border Style="{StaticResource MaListCard}">
-                                            <StackPanel>
-                                                <DockPanel>
-                                                    <Button DockPanel.Dock="Right" Style="{StaticResource MaTextButton}" Padding="10,3" MinHeight="24"
-                                                            Content="Use as prompt" AutomationProperties.Name="{Binding Id, StringFormat='Use {0} as the prompt'}"
-                                                            Command="{Binding DataContext.UseTicketCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            CommandParameter="{Binding}" />
-                                                    <TextBlock VerticalAlignment="Center">
-                                                        <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding Id}"
-                                                                   AutomationProperties.Name="{Binding Id, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding Id, Mode=OneWay}" /></Hyperlink>
-                                                        <Run Text="  " /><Run Text="{Binding Type, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
-                                                        <Run Text="  " /><Run Text="{Binding Date, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
-                                                    </TextBlock>
-                                                </DockPanel>
-                                                <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                                                <!-- Held by a CLI moving to another login (M.ORCH-T637): locked until the move lands. -->
-                                                <StackPanel x:Name="TicketMovingNote" Orientation="Horizontal" Margin="0,6,0,0" Visibility="{Binding IsMoving, Converter={StaticResource Visible}}">
-                                                    <mc:MaSpinner Width="14" Height="14" StrokeThickness="2" Margin="0,0,6,0" />
-                                                    <TextBlock Text="{Binding MovingText}" FontWeight="SemiBold" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-
-                        <!-- Tokens -->
-                        <StackPanel Visibility="{Binding Selected.HasUsage, Converter={StaticResource Visible}}">
-                            <TextBlock Text="TOKENS TODAY" Style="{StaticResource MaSectionLabel}" />
-                            <Border Style="{StaticResource MaCard}">
-                                <UniformGrid Columns="4">
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding Selected.UsageOutput}" FontWeight="SemiBold" FontSize="15" />
-                                        <TextBlock Text="output" Style="{StaticResource MaMutedText}" />
-                                    </StackPanel>
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding Selected.UsageInput}" FontWeight="SemiBold" FontSize="15" />
-                                        <TextBlock Text="input" Style="{StaticResource MaMutedText}" />
-                                    </StackPanel>
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding Selected.UsageCacheWrite}" FontWeight="SemiBold" FontSize="15" />
-                                        <TextBlock Text="cache write" Style="{StaticResource MaMutedText}" />
-                                    </StackPanel>
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding Selected.UsageCacheRead}" FontWeight="SemiBold" FontSize="15" />
-                                        <TextBlock Text="cache read" Style="{StaticResource MaMutedText}" />
-                                    </StackPanel>
-                                </UniformGrid>
+                <TextBlock Text="FINISHED WORK" Style="{StaticResource MaSectionLabel}" />
+                <TextBlock Text="Closed tickets whose assignment or worktree is still around." Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                <ItemsControl x:Name="FinishedList" ItemsSource="{Binding Finished}" Style="{StaticResource MaRowList}" AutomationProperties.Name="Finished work">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:FinishedViewModel}">
+                            <Border Style="{StaticResource MaListCard}" BorderBrush="{DynamicResource MaGood}">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Padding="12,5"
+                                            Content="{Binding ActionLabel}" Command="{Binding ActionCommand}"
+                                            ToolTip="git keeps the worktree if it has uncommitted changes; the branch is never deleted" />
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Padding="12,5" Margin="0,0,8,0"
+                                            Content="Details" Command="{Binding DetailsCommand}"
+                                            ToolTip="The sessions that worked on it and the commits that mention it" />
+                                    <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0">
+                                        <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding TicketId}"
+                                                   AutomationProperties.Name="{Binding TicketId, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding TicketId, Mode=OneWay}" /></Hyperlink><Run Text="{Binding TextAfterId, Mode=OneWay}" />
+                                    </TextBlock>
+                                </DockPanel>
                             </Border>
-                        </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
-                        <!-- Recent sessions -->
-                        <StackPanel>
-                            <StackPanel.Style>
-                                <Style TargetType="StackPanel">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Selected.Sessions.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </StackPanel.Style>
-                            <TextBlock Text="RECENT CLAUDE SESSIONS" Style="{StaticResource MaSectionLabel}" />
-                            <ItemsControl ItemsSource="{Binding Selected.Sessions}" Style="{StaticResource MaRowList}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type vm:SessionRowViewModel}">
-                                        <Grid ToolTip="{Binding SessionId}">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="80" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="70" />
-                                                <ColumnDefinition Width="60" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{Binding ShortId}" FontFamily="Cascadia Mono, Consolas" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Model}" Style="{StaticResource MaMutedText}" />
-                                            <TextBlock Grid.Column="2" Text="{Binding LastWrite}" Style="{StaticResource MaMutedText}" TextAlignment="Right" />
-                                            <TextBlock Grid.Column="3" Text="{Binding Tokens}" TextAlignment="Right" />
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </StackPanel>
-                </ScrollViewer>
-            </Border>
+                <TextBlock Text="{Binding WarningsText}" Style="{StaticResource MaSectionLabel}"
+                           Visibility="{Binding HasWarnings, Converter={StaticResource Visible}}" />
+                <ItemsControl x:Name="WarningList" ItemsSource="{Binding Warnings}" Style="{StaticResource MaList}" AutomationProperties.Name="Problems reading the workspace">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" Foreground="{DynamicResource MaBad}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
 
-            <!-- Queue view: every open ticket across the workspace, and what the scheduler proposes. The full queue is its own
-                 virtualized list below the rest (M.ORCH-T655): only the rows on screen are built, so a queue of hundreds costs a
-                 screenful on every tab or org switch; the allocate line, holds, reminders, finished work and Next up scroll above
-                 it, in at most a little under half the view (MainWindow.xaml.cs), so the queue always has the rest. -->
-            <Grid x:Name="QueueView" Grid.ColumnSpan="2" Visibility="{Binding IsQueueView, Converter={StaticResource Visible}}">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-            <ScrollViewer x:Name="QueueBody" Style="{StaticResource MaBodyScroll}">
-                <StackPanel MaxWidth="1200" HorizontalAlignment="Left">
-                    <DockPanel>
-                        <TextBlock DockPanel.Dock="Right" Text="{Binding SlotsText}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding AllocateText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" />
-                    </DockPanel>
-
-                    <Border Style="{StaticResource MaCard}" Margin="0,12,0,0" BorderBrush="{DynamicResource MaWarn}"
-                            Visibility="{Binding HasHold, Converter={StaticResource Visible}}">
-                        <TextBlock Text="{Binding Hold}" Foreground="{DynamicResource MaWarn}" TextWrapping="Wrap" />
-                    </Border>
-                    <!-- Reminders the daemon texts through Psst when they're due (orchestrator remind, M.ORCH-T477). -->
-                    <Border Style="{StaticResource MaCard}" Margin="0,12,0,0"
-                            Visibility="{Binding HasReminders, Converter={StaticResource Visible}}">
-                        <StackPanel>
-                            <TextBlock Text="{Binding RemindersTitle}" FontWeight="SemiBold" />
-                            <ItemsControl ItemsSource="{Binding Reminders}" Style="{StaticResource MaList}" Margin="0,4,0,0">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,2,0,0" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <TextBlock Text="orchestrator remind --cancel &lt;id&gt; drops one." Style="{StaticResource MaMutedText}" FontSize="11" Margin="0,4,0,0" />
-                        </StackPanel>
-                    </Border>
-                    <TextBlock Text="{Binding QueueMessage}" Foreground="{DynamicResource MaFocus}" TextWrapping="Wrap" Margin="0,10,0,0"
-                               Visibility="{Binding QueueMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-
-                    <!-- Finished work: closed tickets whose assignment or worktree is still around. -->
-                    <ItemsControl ItemsSource="{Binding Finished}" Style="{StaticResource MaRowList}" Margin="0,10,0,0">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:FinishedViewModel}">
-                                <Border Style="{StaticResource MaListCard}" BorderBrush="{DynamicResource MaGood}">
-                                    <DockPanel>
-                                        <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Padding="12,5"
-                                                Content="{Binding ActionLabel}" Command="{Binding ActionCommand}"
-                                                ToolTip="git keeps the worktree if it has uncommitted changes; the branch is never deleted" />
-                                        <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Padding="12,5" Margin="0,0,8,0"
-                                                Content="Details" Command="{Binding DetailsCommand}"
-                                                ToolTip="The sessions that worked on it and the commits that mention it" />
-                                        <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0">
-                                            <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding TicketId}"
-                                                       AutomationProperties.Name="{Binding TicketId, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding TicketId, Mode=OneWay}" /></Hyperlink><Run Text="{Binding TextAfterId, Mode=OneWay}" />
-                                        </TextBlock>
-                                    </DockPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <!-- Proposals -->
-                    <StackPanel>
-                        <StackPanel.Style>
-                            <Style TargetType="StackPanel">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Proposals.Count}" Value="0">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </StackPanel.Style>
-                        <TextBlock Text="NEXT UP" Style="{StaticResource MaSectionLabel}" />
-                        <ItemsControl ItemsSource="{Binding Proposals}" Style="{StaticResource MaTileList}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type vm:QueueRowViewModel}">
-                                    <Border Style="{StaticResource MaListCard}" Width="370" BorderBrush="{DynamicResource MaGood}">
-                                        <StackPanel>
-                                            <TextBlock>
-                                                <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding Id}" Foreground="{DynamicResource MaGood}"
-                                                           AutomationProperties.Name="{Binding Id, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding Id, Mode=OneWay}" /></Hyperlink>
-                                                <Run Text="  " /><Run Text="{Binding Repo, Mode=OneWay}" FontWeight="SemiBold" />
-                                                <Run Text="  " /><Run Text="{Binding Type, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
-                                            </TextBlock>
-                                            <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="0,6,0,0" MaxHeight="54" TextTrimming="CharacterEllipsis" />
-                                            <DockPanel Margin="0,10,0,0">
-                                                <Button DockPanel.Dock="Right" Style="{StaticResource MaPrimaryButton}" Content="Start" Padding="16,5"
-                                                        Command="{Binding StartCommand}" ToolTip="Opens a tab with the ticket pre-filled as its prompt; you press Enter" />
-                                                <TextBlock Style="{StaticResource MaMutedText}" VerticalAlignment="Center" TextWrapping="Wrap">
-                                                    <Run Text="{Binding Reason, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding Where, Mode=OneWay}" />
-                                                </TextBlock>
-                                            </DockPanel>
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-
-                    <!-- Full queue -->
-                    <TextBlock Style="{StaticResource MaSectionLabel}">
-                        <Run Text="QUEUE · " /><Run Text="{Binding QueueCount, Mode=OneWay}" /><Run Text=" waiting · reserved first, then priority, smallest estimate, fixes before features, oldest" />
-                    </TextBlock>
-                    <TextBlock Text="{Binding EmptyQueueText, Mode=OneWay}">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource MaMutedText}">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Queue.Count}" Value="0">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+        <!-- The person's current work: every Claude CLI and allocate agent on their login as a card, its running subagents
+             inside it, waiting-on-you first; each card's ticket a snippet that links into Tickets Desktop (its ticket option). State is
+             a word and a glyph as well as a colour (WCAG 1.4.1). Then the tickets assigned to them. One virtualized list
+             (M.ORCH-T754, MainWindow.xaml.cs): only what's on screen is built. -->
+        <ScrollViewer x:Name="AgentsBody" Grid.Row="4" Style="{StaticResource MaBodyScroll}"
+                      Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
+            <StackPanel>
+                <StackPanel HorizontalAlignment="Left" Margin="0,12,0,12"
+                            Visibility="{Binding HasAgents, Converter={x:Static vm:Converters.FalseToVisible}}">
+                    <TextBlock Text="Nothing running on this login right now." FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock Text="Open a Claude CLI from the Launcher, or start one from Tickets Desktop's Repos, and it shows up here with its subagents inside it."
+                               Style="{StaticResource MaMutedText}" Margin="0,4,0,0" TextWrapping="Wrap" />
                 </StackPanel>
-            </ScrollViewer>
-                    <ItemsControl x:Name="QueueList" Grid.Row="1" ItemsSource="{Binding Queue}" Style="{StaticResource MaList}"
-                                       AutomationProperties.Name="Queue">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:QueueRowViewModel}">
-                                <Border Style="{StaticResource MaRowCard}" Opacity="{Binding RowOpacity}" Margin="0,0,0,8">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="36" />
-                                            <ColumnDefinition Width="58" />
-                                            <ColumnDefinition Width="90" />
-                                            <ColumnDefinition Width="180" />
-                                            <ColumnDefinition Width="70" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{Binding Rank}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" />
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Button Style="{StaticResource MaToolButton}" Width="24" Height="24" FontSize="10" Content="&#xE70E;"
-                                                    Command="{Binding UpCommand}" ToolTip="Raise priority" AutomationProperties.Name="Raise priority" />
-                                            <Button Style="{StaticResource MaToolButton}" Width="24" Height="24" FontSize="10" Content="&#xE70D;"
-                                                    Command="{Binding DownCommand}" ToolTip="Lower priority" AutomationProperties.Name="Lower priority" />
-                                        </StackPanel>
-                                        <TextBlock Grid.Column="2" VerticalAlignment="Center">
-                                            <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding Id}"
-                                                       AutomationProperties.Name="{Binding Id, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding Id, Mode=OneWay}" /></Hyperlink>
-                                        </TextBlock>
-                                        <TextBlock Grid.Column="3" Text="{Binding Repo}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Grid.Column="4" VerticalAlignment="Center">
-                                            <Run Text="{Binding Type, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
-                                            <Run Text="{Binding Priority, Mode=OneWay}" Foreground="{DynamicResource MaWarn}" FontWeight="SemiBold" />
-                                        </TextBlock>
-                                        <TextBlock Grid.Column="5" Text="{Binding Summary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
-                                                   ToolTip="{Binding Summary}" Margin="0,0,12,0" />
-                                        <TextBlock Grid.Column="6" Text="{Binding Status}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                                        <StackPanel Grid.Column="7" Orientation="Horizontal">
-                                            <Button Style="{StaticResource MaButton}" Padding="12,4" Content="Start" Command="{Binding StartCommand}"
-                                                    Visibility="{Binding IsAssigned, Converter={x:Static vm:Converters.FalseToVisible}}" />
-                                            <Button Style="{StaticResource MaButton}" Padding="12,4" Content="Release" Command="{Binding ReleaseCommand}"
-                                                    ToolTip="Put it back in the queue (the session and any worktree are left alone)"
-                                                    Visibility="{Binding IsAssigned, Converter={StaticResource Visible}}" />
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-            </Grid>
 
-            <!-- Audit view: what's duplicated across repos and which shared agent files drifted. -->
-            <ScrollViewer x:Name="AuditBody" Grid.ColumnSpan="2" Style="{StaticResource MaBodyScroll}"
-                          Visibility="{Binding IsAuditView, Converter={StaticResource Visible}}">
-                <StackPanel MaxWidth="1200" HorizontalAlignment="Left">
-                    <DockPanel>
-                        <Button DockPanel.Dock="Right" Style="{StaticResource MaPrimaryButton}" Content="Run audit" Padding="16,6"
-                                Command="{Binding RunAuditCommand}" />
-                        <TextBlock Text="{Binding AuditInfo}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" />
-                    </DockPanel>
-
-                    <TextBlock Text="{Binding DuplicatesHeader}" Style="{StaticResource MaSectionLabel}" />
-                    <TextBlock Text="Code that lives in more than one repo. Identical copies are the easiest wins: move one into the suggested home and reference it."
-                               Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,0,0,8" />
-                    <!-- Equal columns at least 380 wide (M.ORCH-T754: so the view's one virtualized list can lay them out a line at a
-                         time; at their own fixed width they couldn't be split into lines). -->
-                    <ItemsControl ItemsSource="{Binding Duplicates}" Style="{StaticResource MaTileList}" mc:MaList.MinItemWidth="380">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:DuplicateGroupViewModel}">
-                                <Border Style="{StaticResource MaListCard}">
-                                    <StackPanel>
+                <!-- Equal columns and gaps that fill the width, flush with the tiles' edges (M.ORCH-T192): the library's MaTileList. -->
+                <ItemsControl x:Name="AgentCards" ItemsSource="{Binding Agents}" Style="{StaticResource MaTileList}" AutomationProperties.Name="Agents"
+                              mc:MaList.MinItemWidth="420" mc:MaList.Spacing="12" mc:MaList.RowSpacing="12">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:AgentRowViewModel}">
+                            <!-- The library's MaAccentCard: no margin (the list owns the gaps, M.ORCH-T192) and no padding (the state
+                                 stripe, an MaAccentBar, runs to the card's edge) (M.ORCH-T182). -->
+                            <Border x:Name="AgentCard" Style="{StaticResource MaAccentCard}">
+                                <Grid>
+                                <DockPanel IsEnabled="{Binding IsUnlocked}">
+                                    <!-- The state's colour down the left edge: a cue, never the only one. -->
+                                    <Border Style="{StaticResource MaAccentBar}" Background="{Binding StateBrush}" />
+                                    <StackPanel Margin="14,12,14,12">
                                         <DockPanel>
-                                            <Button DockPanel.Dock="Right" Style="{StaticResource MaTextButton}" Padding="10,3" Content="Compare"
-                                                    Command="{Binding CompareCommand}" ToolTip="Diff the first two copies (VS Code if installed)" />
-                                            <!-- Identical copies in MaGood, near ones in MaWarn: one title each, the other collapsed. -->
-                                            <Grid VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{DynamicResource MaGood}"
-                                                           Visibility="{Binding Identical, Converter={StaticResource Visible}}" />
-                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}"
-                                                           Visibility="{Binding Identical, Converter={x:Static vm:Converters.FalseToVisible}}" />
-                                            </Grid>
+                                            <mc:MaBadge x:Name="StatePill" DockPanel.Dock="Left" Glyph="{Binding StateGlyph}" Content="{Binding StateLabel}"
+                                                        Foreground="{Binding StateBrush}" Margin="0,0,10,0" />
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Elapsed}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center"
+                                                       ToolTip="How long it's been on this" Margin="8,0,0,0" />
+                                            <TextBlock Text="{Binding Repo}" Style="{StaticResource MaHeading}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                         </DockPanel>
-                                        <TextBlock Text="{Binding Detail}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,2,0,6" />
-                                        <ItemsControl ItemsSource="{Binding Files}" Style="{StaticResource MaList}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate DataType="{x:Type vm:AuditFileViewModel}">
-                                                    <!-- MaTextButton with no fill (M.ORCH-T499), its content left-aligned (M.COMP-T36). -->
-                                                    <Button Command="{Binding OpenCommand}" Style="{StaticResource MaTextButton}" Background="Transparent"
-                                                            Padding="0,1" Margin="0" HorizontalAlignment="Left" HorizontalContentAlignment="Left"
-                                                            ToolTip="Open" MinHeight="24">
-                                                        <AutomationProperties.Name>
-                                                            <MultiBinding StringFormat="Open {0} {1}">
-                                                                <Binding Path="Repo" />
-                                                                <Binding Path="RelativePath" />
-                                                            </MultiBinding>
-                                                        </AutomationProperties.Name>
-                                                        <TextBlock TextTrimming="CharacterEllipsis">
-                                                            <Run Text="{Binding Repo, Mode=OneWay}" Foreground="{DynamicResource MaText}" />
-                                                            <Run Text="{Binding RelativePath, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
-                                                        </TextBlock>
-                                                    </Button>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <TextBlock Text="{Binding More}" Style="{StaticResource MaMutedText}" Margin="0,2,0,0" ToolTip="{Binding AllFiles}"
-                                                   Visibility="{Binding More, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <TextBlock Text="{Binding DriftHeader}" Style="{StaticResource MaSectionLabel}" />
-                    <TextBlock Text="For each agent file most repos share, the version most repos have is canonical. Drifted copies are stale edits of it; custom ones are different files under the same name."
-                               Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,0,0,8" />
-                    <ItemsControl ItemsSource="{Binding Drift}" Style="{StaticResource MaRowList}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:DriftViewModel}">
-                                <Border Style="{StaticResource MaRowCard}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="72" />
-                                            <ColumnDefinition Width="190" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="90" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <!-- A drifted copy in MaWarn, a custom one in MaMuted: one word each, the other collapsed. -->
-                                        <Grid VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Kind}" FontWeight="SemiBold" Foreground="{DynamicResource MaWarn}"
-                                                       Visibility="{Binding IsCustom, Converter={x:Static vm:Converters.FalseToVisible}}" />
-                                            <TextBlock Text="{Binding Kind}" FontWeight="SemiBold" Foreground="{DynamicResource MaMuted}"
-                                                       Visibility="{Binding IsCustom, Converter={StaticResource Visible}}" />
-                                        </Grid>
-                                        <TextBlock Grid.Column="1" Text="{Binding Repo}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding File}" FontFamily="Cascadia Mono, Consolas" FontSize="12" />
-                                            <TextBlock Text="{Binding Detail}" Style="{StaticResource MaMutedText}" FontSize="11" />
+                                        <!-- The Claude login this CLI bills (M.ORCH-T606), so one on the wrong account shows. -->
+                                        <TextBlock Text="{Binding Login}" Style="{StaticResource MaMutedText}" FontSize="11" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding LoginTip}" Visibility="{Binding Login, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                                        <!-- A snippet of the ticket it's on (M.ORCH-T763): a link that opens it in Tickets Desktop (its ticket option);
+                                             with no ticket, the line is plain text, not a dead link. -->
+                                        <TextBlock x:Name="AgentTicketSnippet" Margin="0,6,0,0" TextWrapping="Wrap" MaxHeight="38" TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding Headline}" Visibility="{Binding HasTicket, Converter={StaticResource Visible}}">
+                                            <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding TicketId}"
+                                                       AutomationProperties.Name="{Binding Headline, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding Headline, Mode=OneWay}" /></Hyperlink>
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding Headline}" Margin="0,6,0,0" TextWrapping="Wrap"
+                                                   Visibility="{Binding HasTicket, Converter={x:Static vm:Converters.FalseToVisible}}" />
+                                        <TextBlock Text="{Binding Meta}" Style="{StaticResource MaMutedText}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Doing}" Margin="0,6,0,0" TextWrapping="Wrap" MaxHeight="38" TextTrimming="CharacterEllipsis"
+                                                   Visibility="{Binding Doing, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                                        <!-- To this CLI's own terminal tab (M.ORCH-T619), and Move to another signed-in login (M.ORCH-T607);
+                                             only a CLI in a Launcher tab has either. -->
+                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0" Visibility="{Binding HasHost, Converter={StaticResource Visible}}">
+                                            <Button Command="{Binding DataContext.GoToTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}" Style="{StaticResource MaButton}" Content="Go to tab" Padding="12,5"
+                                                    ToolTip="Bring this CLI's terminal to the front, on its tab"
+                                                    AutomationProperties.Name="{Binding Repo, StringFormat='Go to the {0} tab'}" />
+                                            <Button x:Name="AgentMoveToButton" Click="OnMoveToClick" Style="{StaticResource MaButton}" Content="Move to ▾" Padding="12,5" Margin="8,0,0,0"
+                                                    ToolTip="Move this CLI to another signed-in login: its Launcher tab restarts it with claude --resume on that login at its next idle point, keeping its session"
+                                                    AutomationProperties.Name="{Binding Repo, StringFormat='Move the {0} CLI to another login'}" />
                                         </StackPanel>
-                                        <TextBlock Grid.Column="3" Text="{Binding Similarity}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" />
-                                        <Button Grid.Column="4" Style="{StaticResource MaButton}" Padding="12,4" Content="Compare"
-                                                Command="{Binding CompareCommand}" ToolTip="Diff against the canonical version" />
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                                        <TextBlock Text="{Binding HoldNote}" Foreground="{DynamicResource MaWarn}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
+                                                   Visibility="{Binding HoldNote, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                                        <!-- The tickets this CLI claimed, only its own (M.ORCH-T532). -->
+                                        <TextBlock Text="{Binding Claims}" Style="{StaticResource MaMutedText}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                                   Visibility="{Binding Claims, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
 
-                    <TextBlock Text="{Binding MissingHeader}" Style="{StaticResource MaSectionLabel}" />
-                    <ItemsControl ItemsSource="{Binding Missing}" Style="{StaticResource MaRowList}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:MissingViewModel}">
-                                <Border Style="{StaticResource MaRowCard}">
-                                    <DockPanel>
-                                        <Button DockPanel.Dock="Right" Style="{StaticResource MaTextButton}" Padding="10,3" Content="See a copy"
-                                                Command="{Binding ExampleCommand}" VerticalAlignment="Top" />
-                                        <StackPanel>
-                                            <TextBlock>
-                                                <Run Text="{Binding File, Mode=OneWay}" FontFamily="Cascadia Mono, Consolas" />
-                                                <Run Text="  " /><Run Text="{Binding Detail, Mode=OneWay}" Foreground="{DynamicResource MaMuted}" />
-                                            </TextBlock>
-                                            <TextBlock Text="{Binding Repos}" TextWrapping="Wrap" Margin="0,4,0,0" Style="{StaticResource MaMutedText}" />
-                                        </StackPanel>
-                                    </DockPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-            </ScrollViewer>
-
-            <!-- Agent board: every Claude CLI and allocate agent as a card, its running subagents inside it. Waiting-on-you
-                 first. State is a word and a glyph as well as a colour (WCAG 1.4.1). -->
-            <ScrollViewer x:Name="AgentsBody" Grid.ColumnSpan="2" Style="{StaticResource MaBodyScroll}"
-                          Visibility="{Binding IsAgentsView, Converter={StaticResource Visible}}">
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,4,0,12">
-                        <TextBlock Text="Agents" Style="{StaticResource MaHeading}" />
-                        <TextBlock Text="{Binding AgentsSummary}" Style="{StaticResource MaMutedText}" Margin="12,0,0,0" VerticalAlignment="Bottom" />
-                    </StackPanel>
-
-                    <StackPanel HorizontalAlignment="Left" Margin="0,30,0,0"
-                                Visibility="{Binding HasAgents, Converter={x:Static vm:Converters.FalseToVisible}}">
-                        <TextBlock Text="No agent is running right now." FontSize="16" FontWeight="SemiBold" />
-                        <TextBlock Text="Open a Claude CLI in a repo, or type /allocate in one, and it shows up here with its subagents inside it."
-                                   Style="{StaticResource MaMutedText}" Margin="0,4,0,0" />
-                    </StackPanel>
-
-                    <!-- Equal columns and gaps that fill the width, flush with the tiles' edges (M.ORCH-T192): the library's MaTileList. -->
-                    <ItemsControl x:Name="AgentCards" ItemsSource="{Binding AgentsInView}" Style="{StaticResource MaTileList}" AutomationProperties.Name="Agents"
-                                  mc:MaList.MinItemWidth="420" mc:MaList.Spacing="12" mc:MaList.RowSpacing="12">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:AgentRowViewModel}">
-                                <!-- The library's MaAccentCard: no margin (the list owns the gaps, M.ORCH-T192) and no padding (the state
-                                     stripe, an MaAccentBar, runs to the card's edge) (M.ORCH-T182). -->
-                                <Border x:Name="AgentCard" Style="{StaticResource MaAccentCard}">
-                                    <Grid>
-                                    <DockPanel IsEnabled="{Binding IsUnlocked}">
-                                        <!-- The state's colour down the left edge: a cue, never the only one. -->
-                                        <Border Style="{StaticResource MaAccentBar}" Background="{Binding StateBrush}" />
-                                        <StackPanel Margin="14,12,14,12">
-                                            <DockPanel>
-                                                <mc:MaBadge x:Name="StatePill" DockPanel.Dock="Left" Glyph="{Binding StateGlyph}" Content="{Binding StateLabel}"
-                                                            Foreground="{Binding StateBrush}" Margin="0,0,10,0" />
-                                                <TextBlock DockPanel.Dock="Right" Text="{Binding Elapsed}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center"
-                                                           ToolTip="How long it's been on this" Margin="8,0,0,0" />
-                                                <TextBlock Text="{Binding Repo}" Style="{StaticResource MaHeading}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                            </DockPanel>
-                                            <!-- The Claude login this CLI bills (M.ORCH-T606), so one on the wrong account shows. -->
-                                            <TextBlock Text="{Binding Login}" Style="{StaticResource MaMutedText}" FontSize="11" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
-                                                       ToolTip="{Binding LoginTip}" Visibility="{Binding Login, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                                            <!-- The ticket opens its history; with no ticket, the line is plain text, not a dead button. -->
-                                            <Button Command="{Binding DataContext.ShowTicketCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                    CommandParameter="{Binding}" Style="{StaticResource MaTextButton}" Padding="4,2" MinHeight="24" Margin="-4,6,0,0"
-                                                    HorizontalAlignment="Left" HorizontalContentAlignment="Left"
-                                                    Visibility="{Binding HasTicket, Converter={StaticResource Visible}}"
-                                                    ToolTip="Open its full row and history" AutomationProperties.Name="{Binding Headline, StringFormat='Ticket {0}: open its history'}">
-                                                <TextBlock Text="{Binding Headline}" TextWrapping="Wrap" MaxHeight="38" TextTrimming="CharacterEllipsis" />
-                                            </Button>
-                                            <TextBlock Text="{Binding Headline}" Margin="0,6,0,0" TextWrapping="Wrap"
-                                                       Visibility="{Binding HasTicket, Converter={x:Static vm:Converters.FalseToVisible}}" />
-                                            <DockPanel Margin="0,4,0,0">
-                                                <!-- The headline opens its history here; this opens the ticket itself in Tickets Desktop (M.ORCH-T500). -->
-                                                <TextBlock DockPanel.Dock="Right" Margin="8,0,0,0" FontSize="12"
-                                                           Visibility="{Binding HasTicket, Converter={StaticResource Visible}}">
-                                                    <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding TicketId}"
-                                                               AutomationProperties.Name="{Binding TicketId, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="Open in Tickets" /></Hyperlink>
-                                                </TextBlock>
-                                                <TextBlock Text="{Binding Meta}" Style="{StaticResource MaMutedText}" TextTrimming="CharacterEllipsis" />
-                                            </DockPanel>
-                                            <TextBlock Text="{Binding Doing}" Margin="0,6,0,0" TextWrapping="Wrap" MaxHeight="38" TextTrimming="CharacterEllipsis"
-                                                       Visibility="{Binding Doing, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                                            <!-- To this CLI's own terminal tab (M.ORCH-T619), and Move to another signed-in login (M.ORCH-T607);
-                                                 only a CLI in a Launcher tab has either. -->
-                                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0" Visibility="{Binding HasHost, Converter={StaticResource Visible}}">
-                                                <Button Command="{Binding DataContext.GoToTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding}" Style="{StaticResource MaButton}" Content="Go to tab" Padding="12,5"
-                                                        ToolTip="Bring this CLI's terminal to the front, on its tab"
-                                                        AutomationProperties.Name="{Binding Repo, StringFormat='Go to the {0} tab'}" />
-                                                <Button x:Name="AgentMoveToButton" Click="OnMoveToClick" Style="{StaticResource MaButton}" Content="Move to ▾" Padding="12,5" Margin="8,0,0,0"
-                                                        ToolTip="Move this CLI to another signed-in login: its Launcher tab restarts it with claude --resume on that login at its next idle point, keeping its session"
-                                                        AutomationProperties.Name="{Binding Repo, StringFormat='Move the {0} CLI to another login'}" />
+                                        <!-- Its subagents, inside it. -->
+                                        <Border x:Name="SubagentPanel" Style="{StaticResource MaInsetCard}"
+                                                Visibility="{Binding HasSubagents, Converter={StaticResource Visible}}">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding SubagentsHeader}" Style="{StaticResource MaSectionLabel}" Margin="0,0,0,6" />
+                                                <ItemsControl ItemsSource="{Binding Subagents}" Style="{StaticResource MaRowList}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="{x:Type vm:SubagentRowViewModel}">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <Grid.RowDefinitions>
+                                                                    <RowDefinition Height="Auto" />
+                                                                    <RowDefinition Height="Auto" />
+                                                                </Grid.RowDefinitions>
+                                                                <mc:MaBadge x:Name="SubagentTag" Style="{StaticResource MaTag}" Content="{Binding Type}" Margin="0,1,8,0" />
+                                                                <TextBlock Grid.Column="1" Text="{Binding Task}" TextWrapping="Wrap" MaxHeight="36"
+                                                                           TextTrimming="CharacterEllipsis" FontSize="12" ToolTip="{Binding Task}" />
+                                                                <TextBlock Grid.Column="2" Text="{Binding Meta}" Style="{StaticResource MaMutedText}" Margin="8,0,0,0" VerticalAlignment="Top" />
+                                                                <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Doing}" Style="{StaticResource MaMutedText}" Margin="0,2,0,0" />
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
                                             </StackPanel>
-                                            <TextBlock Text="{Binding HoldNote}" Foreground="{DynamicResource MaWarn}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
-                                                       Visibility="{Binding HoldNote, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                                            <!-- The tickets this CLI claimed, only its own (M.ORCH-T532). -->
-                                            <TextBlock Text="{Binding Claims}" Style="{StaticResource MaMutedText}" Margin="0,4,0,0" TextWrapping="Wrap"
-                                                       Visibility="{Binding Claims, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                                        </Border>
+                                    </StackPanel>
+                                </DockPanel>
+                                <!-- A move in flight (M.ORCH-T638): the card is locked under a translucent veil until its CLI lands on the new login. -->
+                                <Grid x:Name="AgentMovingOverlay" Visibility="{Binding IsMoving, Converter={StaticResource Visible}}">
+                                    <Border Style="{StaticResource MaVeil}" />
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <mc:MaSpinner Width="20" Height="20" StrokeThickness="2" Margin="0,0,10,0" />
+                                        <TextBlock Text="{Binding MovingText}" FontWeight="SemiBold" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+                                    </StackPanel>
+                                </Grid>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
-                                            <!-- Its subagents, inside it. -->
-                                            <Border x:Name="SubagentPanel" Style="{StaticResource MaInsetCard}"
-                                                    Visibility="{Binding HasSubagents, Converter={StaticResource Visible}}">
-                                                <StackPanel>
-                                                    <TextBlock Text="{Binding SubagentsHeader}" Style="{StaticResource MaSectionLabel}" Margin="0,0,0,6" />
-                                                    <ItemsControl ItemsSource="{Binding Subagents}" Style="{StaticResource MaRowList}">
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate DataType="{x:Type vm:SubagentRowViewModel}">
-                                                                <Grid>
-                                                                    <Grid.ColumnDefinitions>
-                                                                        <ColumnDefinition Width="Auto" />
-                                                                        <ColumnDefinition Width="*" />
-                                                                        <ColumnDefinition Width="Auto" />
-                                                                    </Grid.ColumnDefinitions>
-                                                                    <Grid.RowDefinitions>
-                                                                        <RowDefinition Height="Auto" />
-                                                                        <RowDefinition Height="Auto" />
-                                                                    </Grid.RowDefinitions>
-                                                                    <mc:MaBadge x:Name="SubagentTag" Style="{StaticResource MaTag}" Content="{Binding Type}" Margin="0,1,8,0" />
-                                                                    <TextBlock Grid.Column="1" Text="{Binding Task}" TextWrapping="Wrap" MaxHeight="36"
-                                                                               TextTrimming="CharacterEllipsis" FontSize="12" ToolTip="{Binding Task}" />
-                                                                    <TextBlock Grid.Column="2" Text="{Binding Meta}" Style="{StaticResource MaMutedText}" Margin="8,0,0,0" VerticalAlignment="Top" />
-                                                                    <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Doing}" Style="{StaticResource MaMutedText}" Margin="0,2,0,0" />
-                                                                </Grid>
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-                                                </StackPanel>
-                                            </Border>
-                                        </StackPanel>
-                                    </DockPanel>
-                                    <!-- A move in flight (M.ORCH-T638): the card is locked under a translucent veil until its CLI lands on the new login. -->
-                                    <Grid x:Name="AgentMovingOverlay" Visibility="{Binding IsMoving, Converter={StaticResource Visible}}">
-                                        <Border Style="{StaticResource MaVeil}" />
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <mc:MaSpinner Width="20" Height="20" StrokeThickness="2" Margin="0,0,10,0" />
-                                            <TextBlock Text="{Binding MovingText}" FontWeight="SemiBold" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
-                                        </StackPanel>
-                                    </Grid>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <!-- Tickets per user (M.ORCH-T668), below the person's open CLIs: the tickets assigned to them, then the unassigned
-                         queue, each with who it's assigned to. An assigned ticket is dispatched only on its user's login. Each part sits
-                         straight in the view, the lists too, so the view's one virtualized list builds only the tickets on screen
-                         (M.ORCH-T754): the unassigned queue is the same hundreds of tickets on every tab. -->
-                    <StackPanel x:Name="UserTickets" Margin="0,24,0,0" Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}">
-                        <TextBlock Text="Tickets" Style="{StaticResource MaHeading}" />
-                        <TextBlock Text="Assign a ticket to a person and it's dispatched only on their login (next --claim, allocate and Start); while they're out of room it waits for them, and Redelegate now hands it on."
-                                   Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                        <TextBlock Text="{Binding AssignedHeader}" Style="{StaticResource MaSectionLabel}" />
-                        <TextBlock Text="{Binding NoAssignedText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
-                                   Visibility="{Binding HasNoAssigned, Converter={StaticResource Visible}}" />
-                    </StackPanel>
-                    <ItemsControl x:Name="AssignedTicketList" Style="{StaticResource MaRowList}" ItemsSource="{Binding AssignedTickets}"
-                                  ItemTemplate="{StaticResource UserTicketTemplate}" AutomationProperties.Name="{Binding AssignedHeader}"
-                                  Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}" />
-                    <TextBlock Text="{Binding UnassignedHeader}" Style="{StaticResource MaSectionLabel}"
-                               Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}" />
-                    <ItemsControl x:Name="UnassignedTicketList" Style="{StaticResource MaRowList}" ItemsSource="{Binding UnassignedTickets}"
-                                  ItemTemplate="{StaticResource UserTicketTemplate}" AutomationProperties.Name="{Binding UnassignedHeader}"
-                                  Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}" />
+                <!-- Tickets per user (M.ORCH-T668), below the person's open CLIs: the tickets assigned to them, then the unassigned
+                     queue, each with who it's assigned to. An assigned ticket is dispatched only on its user's login. Each part sits
+                     straight in the view, the lists too, so the view's one virtualized list builds only the tickets on screen
+                     (M.ORCH-T754): the unassigned queue is the same hundreds of tickets on every tab. -->
+                <StackPanel x:Name="UserTickets" Margin="0,24,0,0" Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}">
+                    <TextBlock Text="Tickets" Style="{StaticResource MaHeading}" />
+                    <TextBlock Text="Assign a ticket to a person and it's dispatched only on their login (next --claim, allocate and Start); while they're out of room it waits for them, and Redelegate now hands it on."
+                               Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                    <TextBlock Text="{Binding AssignedHeader}" Style="{StaticResource MaSectionLabel}" />
+                    <TextBlock Text="{Binding NoAssignedText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
+                               Visibility="{Binding HasNoAssigned, Converter={StaticResource Visible}}" />
                 </StackPanel>
-            </ScrollViewer>
-
-            <!-- Accounts view (M.ORCH-T603): one card per Claude login (the global ~/.claude one, then each per-CLI login under
-                 ~/.claude-accounts), with who's signed in, its plan, its 5-hour and weekly use, the daemon's pace for it and every
-                 live CLI on it. Signed in or not is a word and a glyph as well as a colour (WCAG 1.4.1). -->
-            <ScrollViewer x:Name="AccountsBody" Grid.ColumnSpan="2" Style="{StaticResource MaBodyScroll}"
-                          Visibility="{Binding IsAccountsView, Converter={StaticResource Visible}}">
-                <StackPanel>
-                    <!-- The view's toolbar: Add account and Sign in all (M.ORCH-T604). Billing the Vault's API key moved on to the
-                         'API key' tab (M.ORCH-T630). -->
-                    <DockPanel x:Name="AccountsToolbar" Margin="0,4,0,8">
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom">
-                            <TextBox x:Name="NewAccountBox" Style="{StaticResource MaTextBox}" Width="260" Height="32" VerticalAlignment="Center"
-                                     Text="{Binding NewAccountEmail, UpdateSourceTrigger=PropertyChanged}"
-                                     mc:MaTextBox.Placeholder="name@company.com"
-                                     AutomationProperties.Name="Email of the account to add" />
-                            <Button Style="{StaticResource MaPrimaryButton}" Content="Add account" Padding="14,5" Margin="8,0,0,0"
-                                    Command="{Binding AddAccountCommand}" VerticalAlignment="Center"
-                                    ToolTip="Sign in a per-CLI login of its own for this email (orchestrator login --account), opening its login in the browser. The global login is left as it is." />
-                            <Button x:Name="SignInAllButton" Style="{StaticResource MaButton}" Content="Sign in all" Padding="14,5" Margin="8,0,0,0"
-                                    Command="{Binding SignInAllCommand}" VerticalAlignment="Center"
-                                    ToolTip="Give every account in the roster with no per-CLI login yet its own (~/.claude-accounts), opening each one's login in the browser in turn, so every Claude Team seat stays signed in side by side. The global login stays the default." />
-                            <!-- The usage report (M.ORCH-T685), as orchestrator report prints it, written to share. -->
-                            <Button x:Name="UsageReportButton" Style="{StaticResource MaButton}" Content="Report" Padding="14,5" Margin="8,0,0,0"
-                                    Command="{Binding UsageReportCommand}" VerticalAlignment="Center"
-                                    ToolTip="Write the usage report (every member's 5-hour and weekly use, resets, points left to the weekly target, how fresh each reading is, the CLIs' spend and the API key's) as an HTML page and a Markdown file to share, and open the page (orchestrator report)." />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Accounts" Style="{StaticResource MaHeading}" />
-                            <TextBlock Text="{Binding LoginCardsSummary}" Style="{StaticResource MaMutedText}" Margin="12,0,0,0" VerticalAlignment="Bottom" />
-                        </StackPanel>
-                    </DockPanel>
-                    <TextBlock Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,0,0,10"
-                               AutomationProperties.LiveSetting="Polite"
-                               Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                    <!-- The billing detail line (M.ORCH-T628, from beside the old account menu): what the last switch did, a
-                         problem, and the open CLIs still billing the other thing. -->
-                    <TextBlock x:Name="BillingDetailLine" Text="{Binding BillingDetail}" Style="{StaticResource MaTileSubtitle}" TextWrapping="Wrap" Margin="0,0,0,10"
-                               AutomationProperties.LiveSetting="Polite"
-                               Visibility="{Binding BillingDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-
-                    <ItemsControl x:Name="LoginCardList" ItemsSource="{Binding LoginCardsInView}" Style="{StaticResource MaTileList}" AutomationProperties.Name="Claude logins"
-                                  mc:MaList.MinItemWidth="420" mc:MaList.Spacing="12" mc:MaList.RowSpacing="12">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:LoginCardViewModel}">
-                                <!-- Right-click a card for Rename (M.ORCH-T633): the Rename dialog, not a box inline. Tag carries
-                                     the window's model, since a ContextMenu sits outside the window's tree. -->
-                                <Border x:Name="LoginCard" Style="{StaticResource MaAccentCard}"
-                                        Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}">
-                                    <Border.ContextMenu>
-                                        <ContextMenu Style="{StaticResource MaDropdownMenu}" AutomationProperties.Name="{Binding Title, StringFormat='{}{0} login'}">
-                                            <MenuItem Style="{StaticResource MaDropdownMenuItem}" Header="Rename…"
-                                                      IsEnabled="{Binding CanRename}"
-                                                      Command="{Binding PlacementTarget.Tag.RenameLoginCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                      CommandParameter="{Binding}"
-                                                      AutomationProperties.Name="{Binding Title, StringFormat='Rename {0}'}"
-                                                      ToolTip="Give this login a name and a terminal-title prefix (orchestrator accounts alias &lt;email&gt; &lt;name&gt;)" />
-                                        </ContextMenu>
-                                    </Border.ContextMenu>
-                                    <DockPanel>
-                                        <Border Style="{StaticResource MaAccentBar}" Background="{Binding StateBrush}" />
-                                        <StackPanel Margin="14,12,14,12">
-                                            <DockPanel>
-                                                <mc:MaBadge DockPanel.Dock="Right" Glyph="{Binding StateGlyph}" Content="{Binding SignedInText}"
-                                                            Foreground="{Binding StateBrush}" Margin="10,0,0,0" VerticalAlignment="Center" />
-                                                <!-- The login's name (M.ORCH-T614), its email in the tooltip; right-click Rename sets it. -->
-                                                <TextBlock Text="{Binding Title}" ToolTip="{Binding TitleTip}" Style="{StaticResource MaHeading}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                            </DockPanel>
-                                            <TextBlock Style="{StaticResource MaMutedText}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis">
-                                                <Run Text="{Binding Kind, Mode=OneWay}" /><Run Text="   " /><Run Text="{Binding Plan, Mode=OneWay}" Foreground="{DynamicResource MaText}" />
-                                            </TextBlock>
-                                            <TextBlock Text="{Binding Mismatch}" Foreground="{DynamicResource MaWarn}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
-                                                       Visibility="{Binding Mismatch, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                                            <Grid Margin="0,10,0,0">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="80" />
-                                                    <ColumnDefinition Width="60" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                </Grid.RowDefinitions>
-                                                <TextBlock Text="5 hours" Style="{StaticResource MaMutedText}" />
-                                                <TextBlock Grid.Column="1" Text="{Binding FiveHourUsed}" FontWeight="SemiBold" />
-                                                <TextBlock Grid.Column="2" Text="{Binding FiveHourResets}" Style="{StaticResource MaMutedText}" />
-                                                <TextBlock Grid.Row="1" Text="Week" Style="{StaticResource MaMutedText}" Margin="0,2,0,0" />
-                                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding WeekUsed}" FontWeight="SemiBold" Margin="0,2,0,0" />
-                                                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding WeekResets}" Style="{StaticResource MaMutedText}" Margin="0,2,0,0" />
-                                            </Grid>
-                                            <TextBlock Text="{Binding PaceText}" Style="{StaticResource MaMutedText}" Margin="0,8,0,0" TextWrapping="Wrap" />
-                                            <!-- The member's own use outside the orchestrator (M.ORCH-T682): averages and suggested reserves. -->
-                                            <TextBlock Text="{Binding OutsideUseText}" Style="{StaticResource MaMutedText}" Margin="0,4,0,0" TextWrapping="Wrap"
-                                                       Visibility="{Binding HasOutsideUse, Converter={StaticResource Visible}}"
-                                                       ToolTip="Measured by subtraction: the rise in Claude's meter beyond what this login's CLIs here spent. The 5-hour reserve is 100 minus the pace target." />
-                                            <DockPanel Margin="0,8,0,0" Visibility="{Binding CanSignIn, Converter={StaticResource Visible}}">
-                                                <Button DockPanel.Dock="Right" Style="{StaticResource MaPrimaryButton}" Content="Sign in" Padding="14,4"
-                                                        Command="{Binding DataContext.SignInLoginCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding}"
-                                                        AutomationProperties.Name="{Binding Title, StringFormat='Sign in {0}'}"
-                                                        ToolTip="Open this account's login in the browser (orchestrator login --account)" />
-                                                <TextBlock Text="Nobody is signed in to this login, so no CLI can run on it." Style="{StaticResource MaMutedText}"
-                                                           TextWrapping="Wrap" VerticalAlignment="Center" />
-                                            </DockPanel>
-                                            <!-- Make default (M.ORCH-T628, from the old account menu): sign the global login in to this
-                                                 account, so every CLI not started on a login of its own runs on it. -->
-                                            <DockPanel Margin="0,8,0,0" Visibility="{Binding CanMakeDefault, Converter={StaticResource Visible}}">
-                                                <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Content="Make default" Padding="14,4"
-                                                        Command="{Binding DataContext.MakeDefaultCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding}"
-                                                        AutomationProperties.Name="{Binding Title, StringFormat='Make {0} the fallback'}"
-                                                        ToolTip="Sign the global login (~/.claude) in to this account, opening its login in the browser: every CLI not started on a login of its own follows at its next turn. Billing goes back to Claude Team first if the API key bills." />
-                                                <TextBlock Text="Not the fallback." Style="{StaticResource MaMutedText}" TextWrapping="Wrap" VerticalAlignment="Center" />
-                                            </DockPanel>
-                                            <TextBlock Text="The fallback: every CLI not started on a login of its own runs on this account." Style="{StaticResource MaMutedText}"
-                                                       TextWrapping="Wrap" Margin="0,8,0,0" Visibility="{Binding IsDefault, Converter={StaticResource Visible}}" />
-                                            <TextBlock Text="{Binding SignInHint}" Foreground="{DynamicResource MaWarn}" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0"
-                                                       Visibility="{Binding SignInHint, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-
-                                            <!-- The live CLIs on this login, one row each. -->
-                                            <Border x:Name="LoginCliPanel" Style="{StaticResource MaInsetCard}">
-                                                <StackPanel>
-                                                    <TextBlock Text="{Binding ClisHeader}" Style="{StaticResource MaSectionLabel}" Margin="0,0,0,4" />
-                                                    <ItemsControl ItemsSource="{Binding Clis}" Style="{StaticResource MaList}">
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate DataType="{x:Type vm:LoginCliViewModel}">
-                                                                <Grid>
-                                                                <DockPanel x:Name="LoginCliRow" Margin="0,2,0,2" ToolTip="{Binding SessionId}" IsEnabled="{Binding IsUnlocked}">
-                                                                    <!-- Move to another signed-in login (M.ORCH-T607). -->
-                                                                    <Button x:Name="LoginCliMoveToButton" DockPanel.Dock="Right" Click="OnMoveToClick" Style="{StaticResource MaTextButton}"
-                                                                            Content="Move to ▾" FontSize="12" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center"
-                                                                            ToolTip="Move this CLI to another signed-in login at its next idle point, keeping its session"
-                                                                            AutomationProperties.Name="{Binding Repo, StringFormat='Move the {0} CLI to another login'}" />
-                                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding ShortId}" Style="{StaticResource MaMutedText}"
-                                                                               FontFamily="Cascadia Mono, Consolas" FontSize="11" Margin="8,0,0,0" VerticalAlignment="Center" />
-                                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding StateLabel}" Foreground="{Binding StateBrush}"
-                                                                               FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center" />
-                                                                    <TextBlock Text="{Binding Repo}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                                                </DockPanel>
-                                                                <Grid x:Name="LoginCliMovingOverlay" Visibility="{Binding IsMoving, Converter={StaticResource Visible}}">
-                                                                    <Border Style="{StaticResource MaVeil}" CornerRadius="0" />
-                                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                                                        <mc:MaSpinner Width="14" Height="14" StrokeThickness="2" Margin="0,0,6,0" />
-                                                                        <TextBlock Text="{Binding MovingText}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                                                    </StackPanel>
-                                                                </Grid>
-                                                                </Grid>
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-                                                </StackPanel>
-                                            </Border>
-                                        </StackPanel>
-                                    </DockPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-            </ScrollViewer>
-
-            <!-- A refresh really running behind the shown view (M.ORCH-T634): a small spinner at its bottom; switching never waits. -->
-            <mc:MaSpinner x:Name="ViewSpinner" Grid.ColumnSpan="2" Width="20" Height="20" StrokeThickness="2"
-                          HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,8" Panel.ZIndex="5" IsHitTestVisible="False"
-                          Visibility="{Binding IsViewBusy, Converter={StaticResource Visible}}"
-                          AutomationProperties.Name="Refreshing this view" />
-
-        </Grid>
+                <ItemsControl x:Name="AssignedTicketList" Style="{StaticResource MaRowList}" ItemsSource="{Binding AssignedTickets}"
+                              ItemTemplate="{StaticResource UserTicketTemplate}" AutomationProperties.Name="{Binding AssignedHeader}"
+                              Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}" />
+                <TextBlock Text="{Binding UnassignedHeader}" Style="{StaticResource MaSectionLabel}"
+                           Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}" />
+                <ItemsControl x:Name="UnassignedTicketList" Style="{StaticResource MaRowList}" ItemsSource="{Binding UnassignedTickets}"
+                              ItemTemplate="{StaticResource UserTicketTemplate}" AutomationProperties.Name="{Binding UnassignedHeader}"
+                              Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}" />
+            </StackPanel>
+        </ScrollViewer>
 
         <!-- An org with no Claude login yet (M.ORCH-T655): said over the body rather than showing another org's person. On the
              global login's tab (MainWindow.xaml.cs), which knows the orgs. -->
@@ -1272,7 +635,7 @@
         <Border x:Name="StatusBar" Grid.Row="5" Style="{StaticResource MaStatusBar}">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Right" Style="{StaticResource MaMutedText}"
-                           Text="F5 refresh · Ctrl+Tab next login · Ctrl+F search · Ctrl +/− zoom · Esc close" />
+                           Text="F5 refresh · Ctrl+Tab next login · Ctrl +/− zoom · Esc close" />
                 <TextBlock DockPanel.Dock="Left" Style="{StaticResource MaMutedText}" Margin="0,0,16,0">
                     <Run Text="{Binding RepoCount, Mode=OneWay}" /><Run Text=" repos under " /><Run Text="{Binding WorkspaceRoot, Mode=OneWay}" />
                 </TextBlock>
@@ -1449,7 +812,7 @@
             </mc:MaModal.Footer>
         </mc:MaModal>
 
-        <!-- Rename (M.ORCH-T633), from a login card's right-click menu: the account's email (its ID, never edited), its Name
+        <!-- Rename (M.ORCH-T633), a person's login action (M.ORCH-T763): the account's email (its ID, never edited), its Name
              (the card's title; the member's name too) and its Prefix (the badge its terminal titles start with). -->
         <mc:MaModal x:Name="RenameModal" Grid.RowSpan="6" Title="Rename login" AutomationProperties.Name="Rename login" DialogWidth="460"
                     IsOpen="{Binding IsRenameOpen}" CloseCommand="{Binding CancelRenameCommand}">
@@ -1472,6 +835,34 @@
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Style="{StaticResource MaButton}" Content="Cancel" Padding="16,6" Margin="0,0,8,0" Command="{Binding CancelRenameCommand}" />
                     <Button Style="{StaticResource MaPrimaryButton}" Content="Save" Padding="20,6" Command="{Binding SaveLoginAliasCommand}" />
+                </StackPanel>
+            </mc:MaModal.Footer>
+        </mc:MaModal>
+
+        <!-- Org limit (M.ORCH-T763), a person's login action: their own 5-hour and weekly cutoffs (M.ORCH-T707), as
+             orchestrator org limit sets them; Defaults puts both back. -->
+        <mc:MaModal x:Name="LimitModal" Grid.RowSpan="6" Title="Org limit" AutomationProperties.Name="Org limit" DialogWidth="460"
+                    IsOpen="{Binding IsLimitOpen}" CloseCommand="{Binding CancelLimitCommand}">
+            <StackPanel>
+                <TextBlock Text="Login" Margin="0,0,0,4" />
+                <TextBox x:Name="LimitEmailBox" Style="{StaticResource MaTextBox}" Height="32" IsReadOnly="True" Text="{Binding LimitEmail, Mode=OneWay}"
+                         AutomationProperties.Name="Login" />
+                <TextBlock Text="5-hour cutoff (% of the 5-hour window)" Margin="0,10,0,4" />
+                <TextBox x:Name="LimitFiveHourBox" Style="{StaticResource MaTextBox}" Height="32" Width="100" HorizontalAlignment="Left"
+                         Text="{Binding LimitFiveHour, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="5-hour cutoff percent" />
+                <TextBlock Text="Weekly cutoff (% of the week)" Margin="0,10,0,4" />
+                <TextBox x:Name="LimitWeeklyBox" Style="{StaticResource MaTextBox}" Height="32" Width="100" HorizontalAlignment="Left"
+                         Text="{Binding LimitWeekly, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Weekly cutoff percent" />
+                <TextBlock Text="{Binding LimitHint}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                <TextBlock Text="{Binding LimitError}" Foreground="{DynamicResource MaBad}" TextWrapping="Wrap" Margin="0,8,0,0" AutomationProperties.LiveSetting="Assertive"
+                           Visibility="{Binding LimitError, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+            </StackPanel>
+            <mc:MaModal.Footer>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource MaButton}" Content="Defaults" Padding="16,6" Margin="0,0,8,0" Command="{Binding ResetLimitCommand}"
+                            ToolTip="Back to the defaults: 98% of the 5-hour window, 90% of the week" />
+                    <Button Style="{StaticResource MaButton}" Content="Cancel" Padding="16,6" Margin="0,0,8,0" Command="{Binding CancelLimitCommand}" />
+                    <Button Style="{StaticResource MaPrimaryButton}" Content="Save" Padding="20,6" Command="{Binding SaveLimitCommand}" />
                 </StackPanel>
             </mc:MaModal.Footer>
         </mc:MaModal>

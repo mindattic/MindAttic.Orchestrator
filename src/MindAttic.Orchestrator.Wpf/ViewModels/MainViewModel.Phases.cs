@@ -4,7 +4,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Activity;
-using MindAttic.Orchestrator.Audit;
 using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Sessions;
@@ -12,20 +11,17 @@ using MindAttic.Orchestrator.Settings;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
-public enum View { Agents, Repos, Queue, Audit, Accounts }
-
-/// <summary>Budget (phase 2), the cross-repo queue (phase 3) and the audit (phase 4).</summary>
+/// <summary>Budget (phase 2) and the cross-repo queue (phase 3). The dashboard shows only what's running (M.ORCH-T763): the
+/// queue is planned here for allocate, each person's tickets and the 'Miscellaneous' tab, but Tickets Desktop shows the Repos,
+/// the Queue and the audit's findings (the daemon still runs the audit).</summary>
 public sealed partial class MainViewModel
 {
     private Dispatcher dispatcher = null!;
     private Allocate allocate = null!;
-    private AuditRunner auditRunner = null!;
     private SchedulePlan? plan;
     private BudgetLevel? lastBudgetLevel;
     private PaceMode? lastPaceMode;
     private readonly HashSet<string> knownStuck = new(StringComparer.Ordinal);
-    private AuditReport? shownAudit;
-    private DateTime auditFileStamp;
     private bool briefed;
     private DateTime seenSavedUtc;
     private bool watched = true;
@@ -41,11 +37,7 @@ public sealed partial class MainViewModel
     private sealed class Seen { public DateTime LastSeenUtc { get; init; } }
     /// <summary>The newest rebalance move toasted; moves made before the window opened aren't.</summary>
     private DateTime rebalanceSeenUtc = DateTime.UtcNow;
-    private View view;
-    private string viewChoice = "Agents";
     private bool isSettingsOpen;
-    private bool isAuditing;
-    private string auditInfo = "Not run yet.";
     private string queueMessage = "";
 
     private void InitPhases()
@@ -57,7 +49,6 @@ public sealed partial class MainViewModel
         // the logon daemon holds it, the daemon feeds the /allocate CLIs and keeps rl-status.json fresh, and
         // this window only shows.
         allocate = root?.allocate ?? new Allocate(store, new MindAttic.Orchestrator.Sessions.ContextCycler(), lease) { WaitingPath = Allocate.DefaultWaitingPath };
-        auditRunner = root?.auditRunner ?? new AuditRunner(aggregator.Options, store);
         Settings = root?.Settings ?? new SettingsViewModel(store, () =>
         {
             foreach (var t in LoginTabs) t.IsSettingsOpen = false;
@@ -65,64 +56,7 @@ public sealed partial class MainViewModel
         });
 
         ToggleSettingsCommand = new RelayCommand(() => { Settings.Load(); IsSettingsOpen = !IsSettingsOpen; });
-        RunAuditCommand = new RelayCommand(async () => await Root.RunAuditAsync(), () => !IsAuditing);
-        ShowViewCommand = new RelayCommand(p => { if (p is string s) ViewChoice = s; });
-        ShowTicketCommand = new RelayCommand(p => { if (p is AgentRowViewModel a) ShowTicketDetails(a); });
-
-        if (root is null && auditRunner.Latest() is { } last) ShowAudit(last);
     }
-
-    // ── View switching ──────────────────────────────────────────────────────
-
-    /// <summary>Agents first: the live picture (each CLI with its subagents inside) is what the window opens on.</summary>
-    /// <summary>Accounts (M.ORCH-T603): which Claude login each live CLI runs on.</summary>
-    public IReadOnlyList<string> ViewChoices { get; } = ViewNames;
-
-    internal static readonly IReadOnlyList<string> ViewNames = ["Agents", "Repos", "Queue", "Audit", "Accounts"];
-
-    /// <summary>A view of the dashboard, chosen by a pill, a tile or a toast that opens a repo.</summary>
-    public string ViewChoice
-    {
-        get => viewChoice;
-        set
-        {
-            // Ctrl+click on the selected pill deselects it: the window jumped to Agents with no pill lit (M.ORCH-T432).
-            if (value is null) return;
-            if (!Set(ref viewChoice, value)) return;
-            view = Enum.TryParse<View>(value, out var v) ? v : View.Agents;
-            RaiseViews();
-            if (IsAccountsView) _ = RefreshLoginCardsAsync();
-        }
-    }
-
-    private void RaiseViews()
-    {
-        Raise(nameof(IsReposView)); Raise(nameof(IsQueueView)); Raise(nameof(IsAuditView)); Raise(nameof(IsAgentsView)); Raise(nameof(ShowDetail));
-        Raise(nameof(IsAccountsView));
-        Raise(nameof(IsViewBusy));
-        Raise(nameof(GroupsInView)); Raise(nameof(AgentsInView)); Raise(nameof(LoginCardsInView));
-    }
-
-    // A person's own lists are bound only while their view shows (M.ORCH-T654): bound while hidden, a tab switch tore down
-    // and rebuilt the cards of every view opened since, not just the one on screen. The workspace's lists (the queue, the
-    // audit) are one set for every tab, so they stay bound.
-    public IReadOnlyList<TileGroupViewModel>? GroupsInView => IsReposView ? Groups : null;
-    public ObservableCollection<AgentRowViewModel>? AgentsInView => IsAgentsView ? Agents : null;
-    public ObservableCollection<LoginCardViewModel>? LoginCardsInView => IsAccountsView ? LoginCards : null;
-
-    /// <summary>A refresh really running behind the shown view (M.ORCH-T634): the Accounts cards being read, or the audit running.
-    /// Every view stays loaded in memory and switching never waits on this; it only drives the small spinner at the view's bottom.</summary>
-    public bool IsViewBusy => view == View.Accounts ? loadingLoginCards : view == View.Audit && IsAuditing;
-
-    public bool ShowDetail => IsReposView && HasSelection;
-
-    public bool IsReposView => view == View.Repos;
-    public bool IsQueueView => view == View.Queue;
-    public bool IsAuditView => view == View.Audit;
-    public bool IsAgentsView => view == View.Agents;
-    public bool IsAccountsView => view == View.Accounts;
-
-    public ICommand ShowViewCommand { get; private set; } = null!;
 
     // ── Settings ────────────────────────────────────────────────────────────
 
@@ -373,7 +307,9 @@ public sealed partial class MainViewModel
     {
         foreach (var name in new[] { nameof(BudgetHeadline), nameof(BudgetCaption), nameof(BudgetDetail),
                                      nameof(WeeklyHeadline), nameof(WeeklyCaption), nameof(WeeklyAccountLine),
-                                     nameof(Utilization), nameof(UtilizationText) })
+                                     nameof(Utilization), nameof(UtilizationText),
+                                     nameof(CutoffsHeadline), nameof(CutoffsCaption), nameof(LastUpdatedHeadline), nameof(LastUpdatedCaption),
+                                     nameof(CanMakeDefault) })
             Raise(name);
     }
 
@@ -388,27 +324,6 @@ public sealed partial class MainViewModel
     public string AgentsSummary => Agents.Count == 0 ? "" :
         $"{Agents.Count} agent{(Agents.Count == 1 ? "" : "s")} · {Agents.Count(a => a.State == MindAttic.Orchestrator.Activity.AgentState.Waiting)} need you · " +
         $"{SubagentCount} subagent{(SubagentCount == 1 ? "" : "s")} running";
-    public ICommand ShowTicketCommand { get; private set; } = null!;
-
-    /// <summary>The ticket's row (when it's open) and history: its sessions and the commits that mention it.</summary>
-    public async void ShowTicketDetails(AgentRowViewModel a)
-    {
-        try
-        {
-            if (a.TicketId is not { Length: > 0 } ticketId) return;
-            var repo = snapshot?.Repos.FirstOrDefault(r => r.Name == a.Repo);
-            var repoPath = repo?.Path ?? "";
-            var ticket = repo?.OpenTickets.FirstOrDefault(t => t.Id == ticketId);
-            ShowText($"{ticketId} in {a.Repo}", await Task.Run(() => MindAttic.Orchestrator.Tickets.TicketReplay.PlainReport(ticketId, repoPath, aggregator.Options.ClaudeProjectsDir, ticket,
-                store.LoadSettings().WorktreeRoot)));
-        }
-        // async void: an escaped exception (a corrupt assignments.json, a locked file) would close the dashboard.
-        catch (Exception ex) when (ex is not OutOfMemoryException)
-        {
-            QueueMessage = $"Failed: {ex.Message}";
-            OrchestratorLog.For("Dashboard").Error(ex, "ShowTicketDetails failed");
-        }
-    }
 
     private void ApplyAgents(Snapshot next)
     {
@@ -579,24 +494,6 @@ public sealed partial class MainViewModel
         }
     }
 
-    // ── Selecting a repo ────────────────────────────────────────────────────
-
-    public void SelectRepo(string name)
-    {
-        ViewChoice = "Repos";
-        var (tile, clearSearch) = FindRepo(name, Waiting.Tiles.Concat(Working.Tiles).Concat(Tickets.Tiles), tiles);
-        if (clearSearch) Search = ""; // a toast asked for a repo the search box was hiding
-        if (tile is not null) Selected = tile;
-    }
-
-    /// <summary>The tile to select for <paramref name="name"/>: one already shown as is, else a known one the search
-    /// (or Quiet being hidden) keeps out of view, which needs the search cleared; null for a repo nobody knows.</summary>
-    internal static (RepoTileViewModel? Tile, bool ClearSearch) FindRepo(
-        string name, IEnumerable<RepoTileViewModel> shown, IReadOnlyDictionary<string, RepoTileViewModel> known) =>
-        shown.FirstOrDefault(t => t.Name == name) is { } tile ? (tile, false)
-        : known.GetValueOrDefault(name) is { } hidden ? (hidden, true)
-        : (null, false);
-
     /// <summary>The ticket's sessions and commits in a window: what happened, without digging through Launcher history.</summary>
     public async void ShowDetails(Assignment a)
     {
@@ -646,71 +543,6 @@ public sealed partial class MainViewModel
         }
     }
 
-    // ── Audit ───────────────────────────────────────────────────────────────
-
-    // The audit is the workspace's too: one report and one set of rows, on the global login's tab, in every tab (M.ORCH-T654).
-    private readonly ObservableCollection<DuplicateGroupViewModel> duplicates = [];
-    private readonly ObservableCollection<DriftViewModel> drift = [];
-    private readonly ObservableCollection<MissingViewModel> missing = [];
-    public ObservableCollection<DuplicateGroupViewModel> Duplicates => Root.duplicates;
-    public ObservableCollection<DriftViewModel> Drift => Root.drift;
-    public ObservableCollection<MissingViewModel> Missing => Root.missing;
-
-    public bool IsAuditing
-    {
-        get => Root.isAuditing;
-        private set
-        {
-            if (Root.isAuditing == value) return;
-            Root.isAuditing = value;
-            foreach (var t in LoginTabs) { t.Raise(nameof(IsAuditing)); t.Raise(nameof(IsViewBusy)); }
-        }
-    }
-
-    public string AuditInfo
-    {
-        get => Root.auditInfo;
-        private set
-        {
-            Root.auditInfo = value;
-            foreach (var t in LoginTabs) t.Raise(nameof(AuditInfo));
-        }
-    }
-    public string DuplicatesHeader => $"DUPLICATED ACROSS REPOS · {Duplicates.Count}";
-    public string DriftHeader => $"SHARED AGENT FILES THAT DIFFER · {Drift.Count}";
-    public string MissingHeader => $"SHARED AGENT FILES SOME REPOS LACK · {Missing.Count}";
-    public ICommand RunAuditCommand { get; private set; } = null!;
-
-    private async Task RunAuditAsync()
-    {
-        IsAuditing = true;
-        AuditInfo = "Scanning every repo…";
-        try
-        {
-            // A report that can't be saved (audit.json held, disk full) is still shown, with why, as the CLI does (M.ORCH-T467).
-            var report = await Task.Run(() => auditRunner.Scan());
-            ShowAudit(report);
-            if (!auditRunner.TrySave(report, out var saveError)) AuditInfo += $" · not saved: {saveError}";
-        }
-        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException) { AuditInfo = $"Audit failed: {ex.Message}"; }
-        finally
-        {
-            IsAuditing = false;
-            CommandManager.InvalidateRequerySuggested(); // the button's enabled state follows IsAuditing only when asked
-        }
-    }
-
-    private void ShowAudit(AuditReport report)
-    {
-        shownAudit = report;
-        var root = aggregator.Options.WorkspaceRoot;
-        Duplicates.ReorderTo([.. report.Duplicates.Select(g => new DuplicateGroupViewModel(g, root))]);
-        Drift.ReorderTo([.. report.Drift.Where(d => !d.IsCustom).Concat(report.Drift.Where(d => d.IsCustom)).Select(d => new DriftViewModel(d))]);
-        Missing.ReorderTo([.. report.Missing.GroupBy(m => m.File).OrderByDescending(g => g.First().HaveIt).Select(g => new MissingViewModel(g.Key, [.. g]))]);
-        AuditInfo = $"{report.ReposScanned} repos, {report.FilesScanned} source files, {report.Took.TotalSeconds:0.0}s · {report.RanUtc.ToLocalTime():g}";
-        foreach (var t in LoginTabs) { t.Raise(nameof(DuplicatesHeader)); t.Raise(nameof(DriftHeader)); t.Raise(nameof(MissingHeader)); }
-    }
-
     // ── Per-refresh ─────────────────────────────────────────────────────────
 
     private void ApplyPhases(Snapshot next)
@@ -749,15 +581,6 @@ public sealed partial class MainViewModel
             Toasts.Insert(0, new ToastViewModel("Looks stuck", $"A session in {x.Repo} keeps repeating {x.Loop.Describe()}.", Palette.Over, null));
         knownStuck.IntersectWith(stuck.Select(x => x.SessionId + x.Loop.Tool + x.Loop.Input));
 
-        // The daemon audits on a schedule; pick up a newer report and say what it found. Once, on the global login's tab: the
-        // audit is the workspace's, not a login's.
-        if (IsGlobalTab && !IsAuditing && NewerAudit(auditRunner, ref auditFileStamp, shownAudit) is { } latest)
-        {
-            var news = AuditNews.Between(shownAudit, latest);
-            ShowAudit(latest);
-            if (news.Any) Toasts.Insert(0, new ToastViewModel("Audit found something new", news.ToString(), Palette.Waiting, null));
-        }
-
         // The daemon moved a CLI off a login that ran low (M.ORCH-T608): each move since the last one shown, from the window's
         // open; said once, on the global login's tab, as moves go between logins.
         if (IsGlobalTab)
@@ -774,21 +597,6 @@ public sealed partial class MainViewModel
             ApplyPlan(all);
             Brief(all);
         }
-    }
-
-    /// <summary>
-    /// The saved report when it changed since <paramref name="seenStamp"/> and ran after <paramref name="shown"/>; null
-    /// otherwise. Its save time is taken only once it's read: a read that failed (the daemon replacing it) left the new audit
-    /// unshown, and its toast unraised, until the next audit a day later (M.ORCH-T460).
-    /// </summary>
-    internal static AuditReport? NewerAudit(AuditRunner runner, ref DateTime seenStamp, AuditReport? shown)
-    {
-        var stamp = runner.SavedUtc ?? default;
-        if (stamp == seenStamp) return null;
-        if (stamp == default) { seenStamp = default; return null; }
-        if (!runner.TryLatest(out var latest)) return null; // tried again next refresh
-        seenStamp = stamp;
-        return latest is not null && latest.RanUtc > (shown?.RanUtc ?? DateTime.MinValue) ? latest : null;
     }
 
     /// <summary>
