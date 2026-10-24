@@ -147,13 +147,14 @@ public sealed class LeaseTests
         var path = Path.Combine(dir, "v13.db");
         var store = new JsonStore(dir, new OrchestratorDb(path));
         store.SaveSettings(new OrchestratorSettings { BlockBudget = 7777, Allocate = false });
-        // Back to how a version-13 database held these: the internal names before M.ORCH-T779 renamed Autopilot to Allocate.
+        // Back to how a version-13 database held these: the internal names before M.ORCH-T779 renamed Autopilot to Allocate,
+        // and no gate_events.account (step 15, M.ORCH-T774) yet.
         using (var connection = store.Db.Open())
         {
             Sql.Run(connection, null, "UPDATE settings SET name = 'Autopilot' WHERE name = 'Allocate';");
             Sql.Run(connection, null, "INSERT INTO cli_marks (kind, pid, value, written_at) VALUES ('autopilot', 111, 'GTFO.Api', 0);");
             Sql.Run(connection, null, "INSERT INTO cli_marks (kind, pid, value, written_at) VALUES ('noautopilot', 222, 'wind', 0);");
-            OrchestratorDb.Execute(connection, "PRAGMA user_version = 13;");
+            OrchestratorDb.Execute(connection, DropStep15 + "PRAGMA user_version = 13;");
         }
 
         using (var connection = new OrchestratorDb(path).Open())
