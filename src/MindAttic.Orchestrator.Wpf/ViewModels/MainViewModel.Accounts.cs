@@ -75,11 +75,23 @@ public sealed partial class MainViewModel
     }, _ => !switchingAccount && !switchingBilling);
 
     /// <summary>The Accounts view's billing button: "Use API key (emergencies)" while Claude Team bills, "Back to Claude Team"
-    /// while the Vault's key does (M.ORCH-T436).</summary>
+    /// while the Vault's key does (M.ORCH-T436). Switching every open CLI onto the organization's key is a break-glass action
+    /// (M.ORCH-T773), so it asks first - one stray click on the corner icon must never flip billing by accident. Switching
+    /// back to Claude Team doesn't ask: that direction is always the safe one, and it's often clicked in a hurry once the
+    /// emergency that justified the key is over.</summary>
     public ICommand ToggleBillingCommand => toggleBillingCommand ??= new RelayCommand(async () =>
     {
         if (switchingBilling || switchingAccount) return;
-        await SwitchBillingAsync(IsOnApiKey ? BillingModes.Team : BillingModes.Api);
+        if (IsOnApiKey) { await SwitchBillingAsync(BillingModes.Team); return; }
+        var confirmed = MindAttic.Components.Wpf.Controls.MaMessageBox.Show(
+            System.Windows.Application.Current?.MainWindow,
+            "This bills every open CLI to the MindAttic Vault's organization API key instead of anyone's personal Claude Team seat, "
+            + "until you switch it back. Use it only for an emergency (a seat out of room, pacing gone wrong).",
+            "Bill every CLI to the API key?",
+            System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning, System.Windows.MessageBoxResult.No)
+            == System.Windows.MessageBoxResult.Yes;
+        if (!confirmed) return;
+        await SwitchBillingAsync(BillingModes.Api);
     }, () => !switchingBilling && !switchingAccount);
 
     /// <summary>Whether the Vault's API key bills every CLI right now.</summary>

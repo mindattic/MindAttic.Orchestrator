@@ -97,13 +97,13 @@
              API key does, so it's never left on unnoticed. Always on the global login's tab (the strip's own row), so it's there
              whichever person's tab is selected. -->
         <DockPanel x:Name="TopRow" Grid.Row="0" Margin="24,14,24,0">
-        <mc:MaThemeToggle x:Name="ThemeToggle" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="12,0,0,0" />
+        <mc:MaThemeToggle x:Name="ThemeToggle" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0" />
         <!-- A custom Template, not just a Style, because Storyboard.TargetName only resolves within a template's own
              NameScope (M.ORCH-T770): Style.Triggers can't set TargetName at all (MC4011 at compile time), and a bare
              compound path through a self-targeted Effect throws at runtime ('Effect' property does not point to a
              DependencyObject) - both crashed the dashboard on open. Mirrors MaToolButton's own template (Theme.xaml) -
              same size, hover and focus behaviour - plus EmergencyGlow's pulse, named and targeted from here instead. -->
-        <Button x:Name="EmergencyBillingButton" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,4,0"
+        <Button x:Name="EmergencyBillingButton" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
                 Command="{Binding ToggleBillingCommand}" ToolTip="{Binding BillingToggleText}"
                 AutomationProperties.Name="{Binding BillingToggleText}" AutomationProperties.HelpText="{Binding BillingClis}"
                 FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14" Background="Transparent" BorderThickness="0"
