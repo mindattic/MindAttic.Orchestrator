@@ -34,16 +34,15 @@ public sealed class PacerTests
     }
 
     [Test]
-    public void Burning_twice_the_sustainable_rate_still_leaves_every_slot_open()
+    public void Burning_twice_the_sustainable_rate_halves_the_sessions()
     {
-        // M.ORCH-T764: hard cutoffs only. 2,000 used in the first 30 minutes (4,000/h) when 2,000/h would fit: nothing is capped.
+        // 2,000 used in the first 30 minutes (4,000/h); 9,000 left over 4.5h fits 2,000/h. Four sessions at 1,000/h each: two fit.
         var p = Pace(10.5, 4, new OrchestratorSettings { BlockBudget = 11_000, PaceTargetPercent = 100 }, E(10, 1000), E(10.4, 1000));
 
         Assert.That(p.SustainablePerHour, Is.EqualTo(2000).Within(1));
         Assert.That(p.RecentPerHour, Is.EqualTo(4000).Within(1));
-        Assert.That((p.Mode, p.SessionCap), Is.EqualTo((PaceMode.Open, 4)));
-        Assert.That(p.SubagentAllowance, Is.EqualTo(new OrchestratorSettings().MaxSubagents), "every subagent slot open below the cutoff");
-        Assert.That(p.Advise, Is.False, "running agents aren't asked to conserve below the cutoff");
+        Assert.That((p.Mode, p.SessionCap), Is.EqualTo((PaceMode.Throttled, 2)));
+        Assert.That(p.Advise, Is.True, "running agents are asked to conserve while they outrun the window");
         Assert.That(p.Governing, Is.EqualTo("5-hour"));
     }
 
@@ -98,8 +97,8 @@ public sealed class PacerTests
     {
         var (b, s) = Budget(10.5, new OrchestratorSettings { BlockBudget = 10_000, PaceTargetPercent = 100 }, E(9, 500));
 
-        Assert.That(Pacer.Compute(b, 0, 2_000, s, Day.AddHours(10.5)).SessionCap, Is.EqualTo(4), "below the cutoff every slot is open, whatever a session costs");
-        Assert.That(Pacer.Compute(b, 0, null, s, Day.AddHours(10.5)).SessionCap, Is.EqualTo(4), "no history: still every slot");
+        Assert.That(Pacer.Compute(b, 0, 2_000, s, Day.AddHours(10.5)).SessionCap, Is.EqualTo(1), "9,500 over the 3.5h left fits one 2,000/h session");
+        Assert.That(Pacer.Compute(b, 0, null, s, Day.AddHours(10.5)).SessionCap, Is.EqualTo(1), "no history: start one and measure");
     }
 
     [Test]
@@ -121,7 +120,7 @@ public sealed class PacerTests
         Assert.That(Pacer.Compute(b, 4, null, s, Day.AddHours(10.5)).PerSessionPerHour, Is.EqualTo(1000).Within(1));
         var held = Pacer.Compute(b, 4, null, s, Day.AddHours(10.5), recentDelaySeconds: 20);
         Assert.That(held.PerSessionPerHour, Is.EqualTo(2000).Within(1), "held 20s per 20s step: it burned half what it will");
-        Assert.That(held.SessionCap, Is.EqualTo(4), "the cost is shown, but below the cutoff it caps nothing (M.ORCH-T764)");
+        Assert.That(held.SessionCap, Is.EqualTo(1), "so one session fits 2,000/h, not two");
     }
 
     [Test]
@@ -135,10 +134,11 @@ public sealed class PacerTests
 
         var noFloor = Pacer.Compute(b, 4, null, s, Day.AddHours(10.5));
         Assert.That(noFloor.PerSessionPerHour, Is.EqualTo(20).Within(1), "the live rate right now reads tiny");
+        Assert.That(noFloor.SpareSessions, Is.EqualTo(100), "spare / a near-zero cost explodes to the clamp");
 
         var floored = Pacer.Compute(b, 4, 2000, s, Day.AddHours(10.5));
         Assert.That(floored.PerSessionPerHour, Is.EqualTo(2000), "never below what a session has typically cost");
-        Assert.That(floored.SpareSessions, Is.EqualTo(0), "spare sessions are the free slots (M.ORCH-T764): all 4 are running, never a clamp-sized burst");
+        Assert.That(floored.SpareSessions, Is.EqualTo(1), "a sane number of more sessions, not the clamp");
 
         // A live rate already above the historical typical isn't pulled down by it.
         var aboveTypical = Pacer.Compute(b, 4, 5, s, Day.AddHours(10.5));
@@ -204,6 +204,7 @@ public sealed class PacerTests
         var start = midnight - 3; // 9:00 PM local: the window resets at 2:00 AM tomorrow
         var pace = Pace(start + 2.5, 2, new OrchestratorSettings { BlockBudget = 1_000 }, E(start, 700));
 
+        Assert.That(pace.Mode, Is.Not.EqualTo(PaceMode.Open), pace.Note);
         Assert.That(pace.Note, Does.Contain(Day.AddHours(start + 5).ToLocalTime().ToString("ddd h:mm tt", System.Globalization.CultureInfo.InvariantCulture)));
     }
 
@@ -504,9 +505,8 @@ public sealed class PacerTests
     }
 
     [Test]
-    public void The_status_file_never_slows_running_agents_below_the_cutoff()
+    public void The_status_file_tells_running_agents_to_conserve()
     {
-        // M.ORCH-T764: burning twice what fits is still open, every subagent slot free, nobody told to conserve.
         var path = Path.Combine(Path.GetTempPath(), "rl-" + Guid.NewGuid().ToString("N") + ".json");
         try
         {
@@ -515,9 +515,9 @@ public sealed class PacerTests
             new RateLimitStatusWriter(path).Write(b, pace);
 
             using var doc = JsonDocument.Parse(File.ReadAllText(path));
-            Assert.That(doc.RootElement.GetProperty("pace").GetString(), Is.EqualTo("open"));
-            Assert.That(doc.RootElement.GetProperty("subagent_allowance").GetInt32(), Is.EqualTo(s.MaxSubagents));
-            Assert.That(doc.RootElement.GetProperty("subagent_note").GetString(), Does.Not.Contain("ahead of"));
+            Assert.That(doc.RootElement.GetProperty("pace").GetString(), Is.EqualTo("throttled"));
+            Assert.That(doc.RootElement.GetProperty("pace_note").GetString(), Does.Contain("Keep working normally").And.Contains("subagent allowance"),
+                "never told to skip subagents; the allowance decides how many");
         }
         finally { File.Delete(path); }
     }
