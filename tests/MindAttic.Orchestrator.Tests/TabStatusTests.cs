@@ -155,11 +155,13 @@ public sealed class TabStatusTests
             .And.Contain("x:Name=\"TabBusyIcon\" Text=\"&#xE768;\"").And.Contain("Foreground=\"{DynamicResource MaGood}\"")
             .And.Contain("{Binding IsTabBusy").And.Contain("x:Name=\"TabDisabledIcon\" Text=\"&#xE733;\"").And.Contain("Foreground=\"{DynamicResource MaMuted}\"")
             .And.Contain("{Binding IsTabDisabled").And.Contain("FontFamily=\"Segoe Fluent Icons, Segoe MDL2 Assets\""));
-        // M.ORCH-T770: the busy icon glows and pulses (a slow DropShadowEffect.Opacity animation) instead of the old
-        // per-token TabIconOpacity blink, so it reads as "action is taking place" the same way the emergency billing
-        // toggle does.
-        Assert.That(strip, Does.Contain("(UIElement.Effect).(DropShadowEffect.Opacity)"));
+        // M.ORCH-T770: the busy icon glows and pulses (a named DropShadowEffect.Opacity animation - self-targeting via
+        // (UIElement.Effect).(DropShadowEffect.Opacity) throws XamlParseException, "'Effect' property does not point to
+        // a DependencyObject", so the effect must be named and targeted directly) instead of the old per-token
+        // TabIconOpacity blink, so it reads as "action is taking place" the same way the emergency billing toggle does.
+        Assert.That(strip, Does.Contain("x:Name=\"TabBusyGlow\"").And.Contain("Storyboard.TargetName=\"TabBusyGlow\"").And.Contain("Storyboard.TargetProperty=\"Opacity\""));
         Assert.That(strip, Does.Not.Contain("Opacity=\"{Binding TabIconOpacity}\""), "replaced by the soothing pulse (M.ORCH-T770)");
+        Assert.That(strip, Does.Not.Contain("(UIElement.Effect)"), "self-targeting an Effect's sub-property throws at runtime; name it and target it directly");
         Assert.That(strip, Does.Contain("Property=\"Trailing\" Value=\"{Binding TabTrailing}\"")
             .And.Contain("Property=\"Accent\" Value=\"{Binding TabBrush}\"")
             .And.Contain("Property=\"AutomationProperties.Name\" Value=\"{Binding TabTip}\"")
