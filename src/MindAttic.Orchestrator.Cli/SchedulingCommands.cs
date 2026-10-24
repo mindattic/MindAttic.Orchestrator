@@ -261,6 +261,14 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("The most subagents running at once across every CLI; under it the pace decides, live (0 holds every new one).")]
         public int? MaxSubagents { get; init; }
 
+        [CommandOption("--agent-abort <ON>")]
+        [Description("true (default): when a login's live 5-hour trend stays past its pace line with new subagents already slowed for --agent-abort-after minutes, the orchestrator aborts just enough of that login's ticket subagents to bend it back under, releasing their claims and putting their tickets first in the queue; false leaves the cool-off to slow new starts only.")]
+        public bool? AgentAbort { get; init; }
+
+        [CommandOption("--agent-abort-after <MINUTES>")]
+        [Description("How long the new-start cool-off gets to bend a login's trend back under before --agent-abort steps in, 0 to 60 (default 3).")]
+        public int? AgentAbortAfterMinutes { get; init; }
+
         [CommandOption("--provider <PROVIDER>")]
         public string? Provider { get; init; }
 
@@ -493,6 +501,17 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { RebalanceLogins = rebalance };
             changed = true;
         }
+        if (settings.AgentAbort is { } agentAbort)
+        {
+            s = s with { AgentAbort = agentAbort };
+            changed = true;
+        }
+        if (settings.AgentAbortAfterMinutes is { } agentAbortAfter)
+        {
+            if (agentAbortAfter is < 0 or > 60) { AnsiConsole.MarkupLine("[red]--agent-abort-after is 0 to 60.[/]"); return 1; }
+            s = s with { AgentAbortAfterMinutes = agentAbortAfter };
+            changed = true;
+        }
         if (settings.WeeklyReserve is { } weeklyReserve)
         {
             if (weeklyReserve is < 0 or > OrchestratorSettings.MaxWeeklyReservePercent) { AnsiConsole.MarkupLine($"[red]--weekly-reserve is 0 to {OrchestratorSettings.MaxWeeklyReservePercent}.[/]"); return 1; }
@@ -623,7 +642,9 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             $" · weekly reserve {s.WeeklyReservePercent}% (each account's CLIs stop at {s.WeeklyStopPercent}% of its week) · no weekly-aware pacing, ever");
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +
             " · running agents never held" +
-            $" · subagents: as many as the pace allows, at most {s.MaxSubagents}");
+            $" · subagents: as many as the pace allows, at most {s.MaxSubagents}" +
+            (s.AgentAbort ? $" · cool-off abort [green]on[/]: {s.AgentAbortAfterMinutes} min past the line before aborting subagents to bend it back under"
+                : " · cool-off abort off: the new-start cool-off only slows new subagents"));
         AnsiConsole.MarkupLine("  cutoff alerts " +
             (!string.IsNullOrWhiteSpace(s.PsstAlertTo) ? $"text {Markup.Escape(s.PsstAlertTo!)} through Psst (--alert-to)" : "text nobody (--alert-to)"));
         AnsiConsole.MarkupLine("  exempt from pacing (their turns skip every gate, spend still counted): " +

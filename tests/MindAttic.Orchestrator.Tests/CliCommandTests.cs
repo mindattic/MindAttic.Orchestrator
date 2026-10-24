@@ -482,6 +482,8 @@ public sealed class CliCommandTests
     [TestCase("--stale-hours", "-1")]
     [TestCase("--max-subagents", "-1")]
     [TestCase("--hand-minutes", "-1")]
+    [TestCase("--agent-abort-after", "-1")]
+    [TestCase("--agent-abort-after", "61")]
     public void Settings_rejects_out_of_range_numbers_and_saves_nothing(string option, string value)
     {
         Assert.That(Run("settings", option, value), Is.EqualTo(1));
@@ -515,6 +517,24 @@ public sealed class CliCommandTests
         s = Store.LoadSettings();
         Assert.That((s.RepoMaxSessions.Count, s.RepoBudgetPercent.Single()), Is.EqualTo((0, new KeyValuePair<string, int>("Prose", 30))),
             "PROSE=0 cleared Prose; Prose=30 replaced prose");
+    }
+
+    [Test]
+    public void Settings_sets_the_agent_abort_cool_off_and_prints_it()
+    {
+        // M.ORCH-T795: M.ORCH-T786's two settings, exposed through the CLI like every other threshold.
+        var defaults = Store.LoadSettings();
+        Assert.That((defaults.AgentAbort, defaults.AgentAbortAfterMinutes), Is.EqualTo((true, 3)));
+
+        Assert.That(Run("settings", "--agent-abort", "false", "--agent-abort-after", "10"), Is.Zero);
+        var s = Store.LoadSettings();
+        Assert.That((s.AgentAbort, s.AgentAbortAfterMinutes), Is.EqualTo((false, 10)));
+        Assert.That(output.ToString(), Does.Contain("cool-off abort off"));
+
+        Assert.That(Run("settings", "--agent-abort", "true"), Is.Zero);
+        // The line can wrap mid-number at the test console's width, so the two halves are checked apart (M.ORCH-T795).
+        Assert.That(output.ToString().Replace("\n", " "), Does.Contain("cool-off abort on").And.Contain("min past the line before aborting"));
+        Assert.That(Store.LoadSettings().AgentAbortAfterMinutes, Is.EqualTo(10));
     }
 
     [Test]

@@ -63,6 +63,9 @@ public sealed class ViewModelTests
             (v => v.OrphanQuiet = "0", "Orphan quiet minutes: 1 to 1440"),
             (v => v.TabBlinkTokens = "0", "Blink once per: 1 to 10,000,000 tokens"),
             (v => v.TabBlinkTokens = "lots", "Blink once per"),
+            (v => v.AgentAbortAfter = "61", "Cool-off abort after: 0 to 60 minutes"),
+            (v => v.AgentAbortAfter = "-1", "Cool-off abort after: 0 to 60 minutes"),
+            (v => v.AgentAbortAfter = "x", "Cool-off abort after: 0 to 60 minutes"),
         };
         foreach (var (set, error) in cases)
         {
@@ -105,6 +108,23 @@ public sealed class ViewModelTests
         vm.TabBlinkTokens = "100";
         vm.SaveCommand.Execute(null);
         Assert.That((vm.Error, store.LoadSettings().TabBlinkTokens), Is.EqualTo(("", 100)));
+    }
+
+    [Test]
+    public void The_agent_abort_cool_off_setting_round_trips_through_the_panel()
+    {
+        // M.ORCH-T795: M.ORCH-T786's two settings, exposed in the panel like every other threshold.
+        var store = new JsonStore(dir);
+        var vm = new SettingsViewModel(store, () => { });
+        Assert.That((vm.AgentAbort, vm.AgentAbortAfter), Is.EqualTo((true, "3")), "M.ORCH-T786's defaults");
+        vm.AgentAbort = false;
+        vm.AgentAbortAfter = "10";
+        vm.SaveCommand.Execute(null);
+        var s = store.LoadSettings();
+        Assert.That((vm.Error, s.AgentAbort, s.AgentAbortAfterMinutes), Is.EqualTo(("", false, 10)));
+
+        vm.Load();
+        Assert.That((vm.AgentAbort, vm.AgentAbortAfter), Is.EqualTo((false, "10")), "reloaded from what was saved");
     }
 
     [Test]
