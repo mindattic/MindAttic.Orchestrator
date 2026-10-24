@@ -73,22 +73,6 @@ public sealed partial class MainViewModel
         }
     }
 
-    /// <summary>The CLIs "Move CLIs" moves (M.ORCH-T763): this person's, each in a Launcher tab and not already moving.</summary>
-    internal IReadOnlyList<AgentRowViewModel> MovableClis => [.. Agents.Where(a => a.HasHost && !a.IsMoving)];
-
-    /// <summary>"Move CLIs", a person's login action (M.ORCH-T763): every one of this person's CLIs to <paramref name="target"/>,
-    /// one after another, each as its own Move to does.</summary>
-    public async Task MoveAllToAsync(MoveTarget target)
-    {
-        var clis = MovableClis;
-        if (clis.Count == 0)
-        {
-            StatusMessage = AccountsMessage = $"{TabTitle} has no CLI in a Launcher tab to move.";
-            return;
-        }
-        foreach (var a in clis) await MoveToAccountAsync(a.Repo, a.SessionId, a.CliPid, target);
-    }
-
     /// <summary>The target's name (M.ORCH-T614), else its email or "Global login".</summary>
     private static string NameOf(MoveTarget target)
     {

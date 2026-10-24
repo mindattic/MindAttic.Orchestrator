@@ -98,7 +98,7 @@ public sealed class AccountsViewTests
     [Test]
     public void The_login_actions_live_on_each_persons_page_and_the_org_wide_ones_above_the_person_tabs()
     {
-        // M.ORCH-T763: no Accounts view. A person's page leads with Rename, Org limit and Move CLIs; Add login, Sign in
+        // M.ORCH-T763: no Accounts view. Add login, Sign in
         // all and Report sit in a small toolbar above the person tabs, on the global login's tab.
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
@@ -111,13 +111,19 @@ public sealed class AccountsViewTests
         Assert.That(xaml.IndexOf("x:Name=\"OrgStrip\"", StringComparison.Ordinal), Is.LessThan(xaml.IndexOf("x:Name=\"OrgToolbar\"", StringComparison.Ordinal)), "under the org switcher");
         Assert.That(code, Does.Contain("OrgToolbar.DataContext = model;"));
 
-        var person = xaml[xaml.IndexOf("x:Name=\"PersonActions\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"UtilizationCard\"", StringComparison.Ordinal)];
-        // M.ORCH-T796: no per-person Sign in; a disconnected login opens its sign-in by itself.
-        Assert.That(person, Does.Not.Contain("SignInPerson"));
-        Assert.That(person, Does.Contain("{Binding RenamePersonCommand}")
-            .And.Contain("{Binding OrgLimitCommand}").And.Contain("Click=\"OnMoveAllClick\""));
-        Assert.That(xaml.IndexOf("x:Name=\"StatTiles\"", StringComparison.Ordinal), Is.LessThan(xaml.IndexOf("x:Name=\"PersonActions\"", StringComparison.Ordinal)),
-            "the stats, then the actions, then the chart");
+        // M.ORCH-T797: no login-action buttons on a person's page: Rename, Org limit and Make default (this person's own: it
+        // makes their login the fallback) are the person's tab's right-click menu, the library's dark dropdown; Move CLIs is
+        // gone (each agent card's Move to). M.ORCH-T796: no per-person Sign in; a disconnected login opens its sign-in by itself.
+        var page = xaml[xaml.IndexOf("x:Name=\"StatTiles\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"UtilizationCard\"", StringComparison.Ordinal)];
+        Assert.That(page, Does.Not.Contain("SignInPerson").And.Not.Contain("{Binding RenamePersonCommand}")
+            .And.Not.Contain("{Binding MakeDefaultCommand}").And.Not.Contain("x:Name=\"PersonActions\""));
+        Assert.That(page, Does.Contain("x:Name=\"PersonMessage\""), "what the last action did still shows on the page");
+        Assert.That(xaml + code, Does.Not.Contain("OnMoveAllClick").And.Not.Contain("MoveClisButton").And.Not.Contain("MoveAllToAsync"));
+        Assert.That(xaml, Does.Contain("ContextMenuOpening=\"OnLoginTabContextMenu\""));
+        var menu = code[code.IndexOf("void OnLoginTabContextMenu", StringComparison.Ordinal)..];
+        menu = menu[..menu.IndexOf("menu.IsOpen = true;", StringComparison.Ordinal)];
+        Assert.That(menu, Does.Contain("tab.RenamePersonCommand").And.Contain("tab.OrgLimitCommand").And.Contain("tab.MakeDefaultCommand")
+            .And.Contain("DropdownMenu(").And.Contain("IsPersonTab"));
         Assert.That(xaml, Does.Contain("x:Name=\"LimitModal\"").And.Contain("{Binding SaveLimitCommand}"));
     }
 

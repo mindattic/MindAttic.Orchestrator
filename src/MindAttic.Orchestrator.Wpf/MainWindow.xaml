@@ -174,6 +174,7 @@
         </DockPanel>
         <mc:MaTabControl x:Name="LoginTabStrip" ShowContent="False" ItemsSource="{Binding OrgTabs}" SelectedItem="{Binding SelectedTab}"
                          AutomationProperties.Name="Claude logins, one dashboard tab each"
+                         ContextMenuOpening="OnLoginTabContextMenu"
                          Visibility="{Binding HasLoginTabs, Converter={StaticResource Visible}}">
             <!-- Status at a glance (M.ORCH-T630), all the library's MaTabItem (M.ORCH-T667): a status icon before the name
                  (M.ORCH-T757, in place of the status light): a pause icon while the login is idle; a solid green play arrow with
@@ -307,28 +308,11 @@
                 </StackPanel>
             </Button>
         </mc:MaTileGrid>
-        <!-- The person's login actions (M.ORCH-T763, from the Accounts view's card): rename it, set its own cutoffs, move every
-             one of its CLIs to another login, or make it the global default. No Sign in (M.ORCH-T796): a login that gets
-             disconnected opens its own sign-in by itself. -->
-        <WrapPanel x:Name="PersonActions" Margin="0,12,0,0">
-            <Button x:Name="RenamePersonButton" Style="{StaticResource MaButton}" Content="Rename…" Padding="12,4" Margin="0,0,8,0"
-                    Command="{Binding RenamePersonCommand}"
-                    ToolTip="Give this login a name and a terminal-title prefix (orchestrator accounts alias &lt;email&gt; &lt;name&gt;)"
-                    AutomationProperties.Name="{Binding TabTitle, StringFormat='Rename {0}'}" />
-            <Button x:Name="OrgLimitButton" Style="{StaticResource MaButton}" Content="Org limit…" Padding="12,4" Margin="0,0,8,0"
-                    Command="{Binding OrgLimitCommand}"
-                    ToolTip="Set this login's own 5-hour and weekly cutoffs (orchestrator org limit &lt;who&gt; --weekly --5h)"
-                    AutomationProperties.Name="{Binding TabTitle, StringFormat='Set the cutoffs of {0}'}" />
-            <Button x:Name="MoveClisButton" Style="{StaticResource MaButton}" Content="Move CLIs ▾" Padding="12,4" Margin="0,0,8,0"
-                    Click="OnMoveAllClick"
-                    ToolTip="Move every one of this login's CLIs to another signed-in login: each Launcher tab restarts its CLI with claude --resume on that login at its next idle point, keeping its session"
-                    AutomationProperties.Name="{Binding TabTitle, StringFormat='Move every CLI of {0} to another login'}" />
-            <Button x:Name="MakeDefaultButton" Style="{StaticResource MaButton}" Content="Make default" Padding="12,4" Margin="0,0,8,0"
-                    Command="{Binding MakeDefaultCommand}" Visibility="{Binding CanMakeDefault, Converter={StaticResource Visible}}"
-                    ToolTip="Sign the global login (~/.claude) in to this account, opening its login in the browser: every CLI not started on a login of its own follows at its next turn. Billing goes back to Claude Team first if the API key bills."
-                    AutomationProperties.Name="{Binding TabTitle, StringFormat='Make {0} the fallback'}" />
-        </WrapPanel>
-        <TextBlock x:Name="PersonMessage" Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,8,0,0"
+        <!-- No login-action buttons on a person's page any more: Rename, Org limit and Make default are the person's tab's
+             right-click menu (M.ORCH-T797, MainWindow.xaml.cs's OnLoginTabContextMenu); the login-wide Move CLIs is gone, each
+             CLI moving by its own agent card's Move to; and there's no Sign in (M.ORCH-T796): a login that gets disconnected
+             opens its own sign-in by itself. What the last of those did still shows here. -->
+        <TextBlock x:Name="PersonMessage" Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,12,0,0"
                    AutomationProperties.LiveSetting="Polite"
                    Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
         <!-- This 5-hour window's utilization (M.ORCH-T191): its own full-width row under the stats, tall enough that the

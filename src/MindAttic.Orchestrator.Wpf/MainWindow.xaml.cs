@@ -151,23 +151,61 @@ public partial class MainWindow : Window
             async target => await tab.MoveToAccountAsync(a.Repo, a.SessionId, a.CliPid, target));
     }
 
-    /// <summary>"Move CLIs", a person's login action (M.ORCH-T763): the same menu, moving every one of the person's CLIs.</summary>
-    private async void OnMoveAllClick(object sender, RoutedEventArgs e)
+    /// <summary>A person's tab's right-click menu (M.ORCH-T797; Shift+F10 or the menu key on a focused tab too): Rename, Org
+    /// limit and Make default, the login actions that were standalone buttons on the person's page. Make default is this
+    /// person's own (it signs the global fallback login in to their account), so it's here, shown only while it applies. The
+    /// tab is selected first, since the Rename and Org limit dialogs are the shown tab's.</summary>
+    private void OnLoginTabContextMenu(object sender, ContextMenuEventArgs e)
     {
-        if (sender is not Button button) return;
-        var tab = Shown;
-        ShowMoveMenu(button, $"Move every CLI of {tab.TabTitle}'s to", await tab.MoveTargetsAsync(tab.ScopeEmail),
-            async target => await tab.MoveAllToAsync(target));
+        if (e.OriginalSource is not DependencyObject source
+            || ItemsControl.ContainerFromElement(LoginTabStrip, source) is not FrameworkElement { DataContext: MainViewModel tab } container
+            || !tab.IsPersonTab) return;
+        e.Handled = true;
+        var menu = DropdownMenu(container, $"{tab.TabTitle}'s login",
+            e.CursorLeft < 0 ? PlacementMode.Bottom : PlacementMode.MousePoint); // from the keyboard: under the tab
+        void Add(string header, string tip, ICommand command)
+        {
+            var item = DropdownItem(header);
+            item.ToolTip = tip;
+            ToolTipService.SetShowOnDisabled(item, true);
+            item.IsEnabled = command.CanExecute(null);
+            item.Click += (_, _) =>
+            {
+                model.SelectedTab = tab;
+                if (command.CanExecute(null)) command.Execute(null);
+            };
+            menu.Items.Add(item);
+        }
+        Add("Rename…", "Give this login a name and a terminal-title prefix (orchestrator accounts alias <email> <name>)", tab.RenamePersonCommand);
+        Add("Org limit…", "Set this login's own 5-hour and weekly cutoffs (orchestrator org limit <who> --weekly --5h)", tab.OrgLimitCommand);
+        if (tab.CanMakeDefault)
+            Add("Make default", "Make this login the fallback: sign the global login (~/.claude) in to this account, opening its login in the browser. "
+                + "Every CLI not started on a login of its own follows at its next turn. Billing goes back to Claude Team first if the API key bills.",
+                tab.MakeDefaultCommand);
+        menu.IsOpen = true;
+    }
+
+    /// <summary>The library's dark dropdown (M.ORCH-T667): a bare ContextMenu and MenuItem draw WPF's light system menu.</summary>
+    private static ContextMenu DropdownMenu(UIElement target, string name, PlacementMode placement)
+    {
+        var menu = new ContextMenu { PlacementTarget = target, Placement = placement };
+        menu.SetResourceReference(StyleProperty, "MaDropdownMenu");
+        AutomationProperties.SetName(menu, name);
+        return menu;
+    }
+
+    private static MenuItem DropdownItem(object header)
+    {
+        var item = new MenuItem { Header = header };
+        item.SetResourceReference(StyleProperty, "MaDropdownMenuItem");
+        return item;
     }
 
     private void ShowMoveMenu(Button button, string name, IReadOnlyList<MindAttic.Orchestrator.Sessions.MoveTarget> targets,
         Func<MindAttic.Orchestrator.Sessions.MoveTarget, Task> move)
     {
-        var menu = new ContextMenu { PlacementTarget = button, Placement = PlacementMode.Bottom };
-        // The library's dark dropdown (M.ORCH-T667): a bare ContextMenu and MenuItem draw WPF's light system menu.
-        menu.SetResourceReference(StyleProperty, "MaDropdownMenu");
-        MenuItem Item(object header) { var i = new MenuItem { Header = header }; i.SetResourceReference(StyleProperty, "MaDropdownMenuItem"); return i; }
-        AutomationProperties.SetName(menu, name);
+        var menu = DropdownMenu(button, name, PlacementMode.Bottom);
+        MenuItem Item(object header) => DropdownItem(header);
         if (targets.Count == 0)
         {
             var none = Item("No other signed-in login");
