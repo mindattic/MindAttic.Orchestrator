@@ -113,19 +113,7 @@ public sealed class UsageReportTests
         var amy = report.Rows.Single();
         Assert.That((amy.CliToday, amy.CliWeek, amy.CliSince), Is.EqualTo((100L, 150L, (long?)157)));
         Assert.That((report.ApiKeyToday, report.ApiKeyWeek, report.ApiKeySince), Is.EqualTo((30L, 50L, (long?)50)));
-        Assert.That(amy.OutsideUse, Is.Null);
-        Assert.That(report.DetailCells()[0][^1], Is.EqualTo(UsageReport.NotMeasured), "no outside use measured for this login");
         Assert.That(report.DetailHeaders, Does.Contain($"CLIs since {Today.AddDays(-6):yyyy-MM-dd}"));
-    }
-
-    [Test]
-    public void Outside_use_is_what_the_daemon_measured_for_the_login()
-    {
-        Assert.That(UsageReport.OutsideText(new OutsideUseStats("a@x.com", "Amy", false, 0, 0, 0, null, 5, null)), Is.Null, "nothing measured yet");
-        Assert.That(UsageReport.OutsideText(new OutsideUseStats("a@x.com", "Amy", false, 12, 3, 2, 6.5, 5, 8)),
-            Is.EqualTo("3% a window, 6.5% a week on average (12 windows)"));
-        Assert.That(UsageReport.OutsideText(new OutsideUseStats("", "Erin", true, 1, 12, 0, null, 5, null, HeldTo: 80)),
-            Is.EqualTo("using Claude now; 12% a window on average (1 window)"));
     }
 
     [Test]
@@ -181,7 +169,7 @@ public sealed class UsageReportTests
 
         var text = report.PlainText();
         Assert.That(text, Does.StartWith("Member").And.Contain("Amy <A|B>").And.Contain("20 pts"));
-        Assert.That(report.PlainText(detail: true), Does.Contain("Outside use").And.Contain("API key"));
+        Assert.That(report.PlainText(detail: true), Does.Contain("CLIs today").And.Contain("API key"));
         Assert.That(report.Markdown(), Does.Contain("| **Amy <A\\|B>** |").And.Contain("## Spend"));
         Assert.That(report.Html(), Does.Contain("Amy &lt;A|B&gt;").And.Not.Contain("<script"));
         var csv = report.Csv().Split('\n');
@@ -191,7 +179,6 @@ public sealed class UsageReportTests
         using var json = System.Text.Json.JsonDocument.Parse(report.Json());
         var row = json.RootElement.GetProperty("members")[0];
         Assert.That(row.GetProperty("weekLeft").GetDouble(), Is.EqualTo(30));
-        Assert.That(row.GetProperty("outsideUse").ValueKind, Is.EqualTo(System.Text.Json.JsonValueKind.Null));
         Assert.That(json.RootElement.GetProperty("notes").GetArrayLength(), Is.GreaterThan(0));
     }
 
@@ -229,8 +216,8 @@ public sealed class UsageReportTests
                 Assert.That(CliApp.Create().Run(args), Is.Zero, output.ToString());
                 return output.ToString();
             }
-            Assert.That(Run("report"), Does.StartWith("Member").And.Contain("Amy").And.Not.Contain("Outside use"));
-            Assert.That(Run("report", "--detail", "--since", "2026-10-01"), Does.Contain("Outside use").And.Contain("CLIs since 2026-10-01"));
+            Assert.That(Run("report"), Does.StartWith("Member").And.Contain("Amy").And.Not.Contain("CLIs today"));
+            Assert.That(Run("report", "--detail", "--since", "2026-10-01"), Does.Contain("CLIs today").And.Contain("CLIs since 2026-10-01"));
             Assert.That(asked, Is.EqualTo(new DateOnly(2026, 10, 1)));
             Assert.That(Run("report", "--csv"), Does.StartWith("member,email,"));
             Assert.That(Run("report", "--json"), Does.StartWith("{"));

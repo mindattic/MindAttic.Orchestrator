@@ -15,22 +15,13 @@ public sealed record Rebalanced(bool Moved, string Line)
     /// <summary>Only you can fix it (a tab that dropped the request, a fallback that isn't the API key): toasted as Needs you.</summary>
     public bool NeedsYou { get; init; }
 
-    /// <summary>Toasted under this title and kept for the dashboard, though no CLI moved by it: someone started or stopped using
-    /// Claude outside the orchestrator (M.ORCH-T682).</summary>
+    /// <summary>Toasted under this title and kept for the dashboard, though no CLI moved by it.</summary>
     public string? Title { get; init; }
-
-    /// <summary>Set when someone started using Claude outside the orchestrator on a login (M.ORCH-T682), once per stretch: what
-    /// the daemon texts through Psst when that login is watched (M.ORCH-T702).</summary>
-    public OutsideStart? Started { get; init; }
 
     /// <summary>Set when a login reached its own weekly or 5-hour cutoff (M.ORCH-T742), once per crossing: the owner is alerted
     /// urgently and texted through Psst.</summary>
     public CutoffCrossing? Cutoff { get; init; }
 }
-
-/// <summary>A stretch of outside use that just started: the login's email (null when unknown), its name, and what the meter
-/// showed ("the meter rose 6 points in 25 min; the CLIs here spent 0 of them"), if anything.</summary>
-public sealed record OutsideStart(string? Email, string Name, string? Seen);
 
 /// <summary>A move the daemon made, as the store keeps it for the dashboard's toast.</summary>
 public sealed class RebalanceMove
@@ -59,13 +50,6 @@ public sealed class RebalanceMove
 /// mode); otherwise it's said plainly and nothing moves. A failover (and a move back) counts only once the CLI shows it billing
 /// what was asked: a Launcher tab from before M.LNCH-T67 takes the request and drops it, which is toasted ("close and reopen
 /// this tab") and asked again after <see cref="BackRetry"/>.</para>
-/// <para>A member's own use comes first (M.ORCH-T682): when a login's meter rises by more than its CLIs here spent
-/// (<see cref="OutsideUse"/>: the desktop app, claude.ai, a phone), its CLIs stay on it, but its 5-hour pace ceiling drops to the
-/// outside-use ceiling (lower still when the member's rate needs it) and its weekly stop keeps extra headroom
-/// (<see cref="OutsideUseWatch"/>, applied by the pacer), so the pace slows and holds them instead of moving them; the full
-/// target comes back once the quiet period passes with no new activity. Only a login that still reaches its own line (the pace
-/// target by the meter, the weekly stop, a limit hit) moves its CLIs to the key, as above: a last resort. The pace's own stop
-/// at the lowered ceiling isn't that line.</para>
 /// </summary>
 public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = null)
 {
@@ -127,16 +111,6 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { return null; }
     }
 
-    /// <summary>How often the logins are judged for outside use (their readings come every few minutes at most).</summary>
-    internal TimeSpan WatchEvery { get; init; } = TimeSpan.FromMinutes(1);
-
-    private OutsideUseWatch? outside;
-
-    /// <summary>Each login's outside use (M.ORCH-T682), kept in <see cref="Store"/>.</summary>
-    public OutsideUseWatch Outside => outside ??= new OutsideUseWatch(Store);
-
-    private DateTime lastWatchUtc = DateTime.MinValue;
-
     /// <summary>The logins the user let past their weekly target (M.ORCH-T694), in place of <see cref="Store"/>'s (seam).</summary>
     internal Func<IReadOnlyList<WeeklyAllowance>>? AllowancesOverride { get; init; }
 
@@ -150,10 +124,6 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
         try { return GlobalEmail(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { return null; }
     }
-
-    /// <summary>A login's pace as its line is judged: while its member uses Claude elsewhere the pace is held to a lowered
-    /// ceiling, and its stop there is the pace slowing the CLIs, not the login's line (M.ORCH-T682), so only the meter counts.</summary>
-    private Pace? LinePace(string? email, Pace? pace) => Outside.InUse(email) ? null : pace;
 
     /// <summary>
     /// Why a login is low, or null when it isn't: its pace stopped or at/past a limit, its 5-hour window at or past the pace
@@ -303,8 +273,6 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
         AccountDir? DirOf(string? email) => email is null ? null : signedIn.FirstOrDefault(a => string.Equals(a.Email, email, StringComparison.OrdinalIgnoreCase));
 
         var results = new List<Rebalanced>();
-        // Someone using Claude outside the orchestrator (M.ORCH-T682): judged first, so their login's line is judged by the meter.
-        WatchOutside(signedIn, live, LoginOf, settings, nowUtc, results);
         CheckCutoffs(signedIn, DirOf, UsageOf, globalUsage, globalEmail, cutoffs, allowed, nowUtc, results);
         var onKey = MoveBack(live, DirOf, UsageOf, globalUsage, globalPace, paces, TargetOf, StopOf, AllowedFor, nowUtc, results, locked: !settings.FailoverToApiKey);
         // Rebalancing is off, and failover to the API key is hard-coded off: nothing more to move.
@@ -317,7 +285,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
         foreach (var f in Book()) if (f.FromEmail is { } e) busy.Add(e);
         // Never a target while low itself: its CLIs would only be moved off again.
         foreach (var a in signedIn)
-            if (Low(LinePace(a.Email, paces.GetValueOrDefault(a.Email)), UsageOf(a), nowUtc, TargetOf(a.Email), StopOf(a.Email)) is not null) busy.Add(a.Email);
+            if (Low(paces.GetValueOrDefault(a.Email), UsageOf(a), nowUtc, TargetOf(a.Email), StopOf(a.Email)) is not null) busy.Add(a.Email);
 
         var hits = InForce(sessions, nowUtc);
         foreach (var cli in live.OrderBy(c => c.Pid))
@@ -330,7 +298,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             var fromDir = DirOf(from);
             if (from is not null && fromDir is null) continue; // a folder nobody's signed in to: nothing to measure
             var fromUsage = fromDir is null ? globalUsage.Value : UsageOf(fromDir);
-            var fromPace = LinePace(from, fromDir is null ? globalPace : paces.GetValueOrDefault(fromDir.Email));
+            var fromPace = fromDir is null ? globalPace : paces.GetValueOrDefault(fromDir.Email);
             var stop = StopOf(from);
             var target = TargetOf(from);
             var why = hit is { } lh ? $"its {LimitWords(lh)} limit was hit" : Low(fromPace, fromUsage, nowUtc, target, stop);
@@ -396,79 +364,6 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             results.Add(Failover(cli, from, fromDir, why, Until(hit, fromPace, fromUsage, nowUtc, target, stop), now: hit is not null, nowUtc));
         }
         return results;
-    }
-
-    /// <summary>Judges each signed-in login (and the global one) for use outside the orchestrator (M.ORCH-T682): its meter's rise
-    /// over the last stretch of readings against what its CLIs here spent then (<see cref="OutsideUse.Judge"/>), recording it and
-    /// setting the ceilings its pace is held to (<see cref="OutsideUseWatch"/>), saying when someone starts, pushes the ceiling
-    /// lower, or stops, and logging every learned change with its reason. At most every <see cref="WatchEvery"/>.</summary>
-    private void WatchOutside(IReadOnlyList<AccountDir> signedIn, IReadOnlyList<CliBilling> live, Func<CliBilling, string?> loginOf,
-        OrchestratorSettings settings, DateTime nowUtc, List<Rebalanced> results)
-    {
-        if (nowUtc - lastWatchUtc < WatchEvery) return;
-        lastWatchUtc = nowUtc;
-        // Two logins signed in to one account share one meter, each seeing the other's CLIs' spend as nobody's: neither is judged.
-        string? global;
-        try { global = GlobalAccount(); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { global = null; }
-        var accounts = signedIn.Select(a => (Dir: (AccountDir?)a, Account: AccountOf(a))).ToList();
-        if (global is not null && global != ClaudeAccount.ApiKey) accounts.Insert(0, (null, global));
-        var shared = accounts.Where(a => a.Account is not null).GroupBy(a => a.Account).Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet();
-        var judged = new List<string>();
-        var learned = new List<string>();
-        foreach (var (dir, account) in accounts)
-        {
-            if (account is not null && shared.Contains(account)) continue;
-            var key = dir?.Email ?? "";
-            judged.Add(key);
-            IReadOnlyList<UsageSample> samples;
-            try { samples = Samples(dir); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Text.Json.JsonException) { continue; }
-            var mine = live.Where(c => string.Equals(loginOf(c) ?? "", key, StringComparison.OrdinalIgnoreCase)).ToList();
-            // Every CLI on it bills the key: their spend no longer reaches its meter, so its whole rise is someone else's.
-            DateTime? onKeySince = mine.Count > 0 && mine.All(c => c.Bills == BillingModes.Api)
-                ? Book().Where(f => !f.Pending && string.Equals(f.FromEmail ?? "", key, StringComparison.OrdinalIgnoreCase))
-                      .Select(f => (DateTime?)f.SinceUtc).Max() ?? DateTime.MinValue
-                : null;
-            var tuning = OutsideTuning.For(settings, Outside.Find(key));
-            var tpp = OutsideUse.TokensPerPercent(samples);
-            var ratio = WeeklyRatio.Learn(samples);
-            var stretch = OutsideUse.Judge(samples, tpp, ratio, nowUtc, onKeySince, tuning.Margin, tuning.Share);
-            var name = mover.NameFor(dir?.Directory ?? "", dir?.Email ?? AccountMove.GlobalLabel);
-            var change = Outside.Observe(key, name, samples, stretch,
-                (from, to) => OutsideUse.Between(samples, from, to, tpp, ratio, onKeySince is { } k && from >= k + OutsideUse.Settle, tuning.Margin, tuning.Share),
-                settings, nowUtc, learned);
-            var login = Outside.Find(key);
-            var held = login?.CeilingPercent is { } c ? $"{c}% of this window" : "a lower share of this window";
-            var week = login?.WeeklyStopPercent is { } ws && ws < settings.WeeklyStopPercent ? $" and {ws}% of the week" : "";
-            var nobody = mine.Count == 0;
-            switch (change)
-            {
-                case OutsideChange.Started:
-                    var meter = stretch is null ? null :
-                        $"the meter rose {Pct(stretch.Rise)} points in {Math.Max(1, (int)(stretch.ToUtc - stretch.FromUtc).TotalMinutes)} min; the CLIs here spent " +
-                        $"{Pct(stretch.Explained)} of them";
-                    var seen = meter is null ? "" : $" ({meter})";
-                    results.Add(new(false, $"rebalance: {name} is using Claude{seen}: {(nobody ? "no CLI here is on that login, but " : "")}{name}'s CLIs are held to " +
-                                           $"{held}{week}, and back to {settings.PaceTargetPercent}% about {Pct(tuning.QuietMinutes)} minutes after {name} stops.")
-                        { Title = nobody ? null : $"{name} is using Claude", Asked = nobody, Started = new(dir?.Email ?? SafeGlobalEmail(), name, meter) });
-                    break;
-                case OutsideChange.Lowered:
-                    results.Add(new(false, $"rebalance: at {name}'s rate of use the window would run out above the last ceiling: " +
-                                           $"{name}'s CLIs are held to {held}{week} now, leaving room for {name}'s projected use plus its headroom.")
-                        { Title = nobody ? null : $"{name} is using Claude", Asked = nobody });
-                    break;
-                case OutsideChange.Ended:
-                    results.Add(new(false, $"rebalance: {name} stopped using Claude ({Pct(tuning.QuietMinutes)} minutes with nothing new): " +
-                                           $"{name}'s CLIs are back to {settings.PaceTargetPercent}% of this window.")
-                        { Title = nobody ? null : $"{name} stopped using Claude", Asked = nobody });
-                    break;
-            }
-        }
-        foreach (var l in Outside.Expire(judged, settings, nowUtc))
-            results.Add(new(false, $"rebalance: {l.Name}'s login can't be judged for outside use any more and none has been seen for its quiet period: " +
-                                   $"its CLIs are back to {settings.PaceTargetPercent}% of the window.") { Asked = true });
-        foreach (var line in learned) results.Add(new(false, $"rebalance: {line}") { Asked = true });
     }
 
     private CutoffAlerts? cutoffAlerts;
@@ -640,7 +535,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
             // It waits for its reset, unless the user lets its login past the weekly target meanwhile (M.ORCH-T694).
             if (!locked && seen.UntilUtc is { } until && nowUtc < until && !allowedFor(seen.FromEmail)) continue;
             var homeUsage = home is null ? globalUsage.Value : usageOf(home);
-            var homePace = LinePace(seen.FromEmail, home is null ? globalPace : paces.GetValueOrDefault(home.Email));
+            var homePace = home is null ? globalPace : paces.GetValueOrDefault(home.Email);
             if (!locked && Low(homePace, homeUsage, nowUtc, targetOf(seen.FromEmail), stopOf(seen.FromEmail)) is not null) continue;
             if (backTried.TryGetValue(seen.SessionId, out var at) && nowUtc - at < BackRetry) continue;
 

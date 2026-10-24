@@ -431,30 +431,27 @@ public sealed class CliCommandTests
     }
 
     [Test]
-    public void Settings_sets_who_is_watched_for_outside_use_and_who_is_texted_and_refuses_an_unknown_recipient()
+    public void Settings_sets_who_cutoff_alerts_are_texted_to_and_refuses_an_unknown_recipient()
     {
-        // M.ORCH-T702: Jordan's login watched and Ryan texted to start with.
+        // M.ORCH-T742: Ryan texted to start with.
         var defaults = Store.LoadSettings();
-        Assert.That((defaults.OutsideUsePsstLogins, defaults.OutsideUsePsstTo), Is.EqualTo((new List<string> { "pdftransferjr@mindattic.com" }, "ryan")));
+        Assert.That(defaults.PsstAlertTo, Is.EqualTo("ryan"));
         var was = RemindCommand.ContactsPath;
         RemindCommand.ContactsPath = Path.Combine(Path.GetTempPath(), "no-psst-" + Guid.NewGuid().ToString("N"), "contacts.json");
         try
         {
-            Assert.That(Run("settings", "--psst-outside", "Jordan, amy@x.com", "--psst-outside-to", "920-555-0101"), Is.Zero);
+            Assert.That(Run("settings", "--alert-to", "920-555-0101"), Is.Zero);
             var s = Store.LoadSettings();
-            Assert.That((s.OutsideUsePsstLogins, s.OutsideUsePsstTo), Is.EqualTo((new List<string> { "Jordan", "amy@x.com" }, "920-555-0101")));
-            // The console wraps the line, so its words are checked apart.
-            Assert.That(output.ToString(), Does.Contain("920-555-0101 through Psst").And.Contain("Jordan, amy@x.com starts using it"));
+            Assert.That(s.PsstAlertTo, Is.EqualTo("920-555-0101"));
+            Assert.That(output.ToString(), Does.Contain("920-555-0101 through Psst"));
 
-            Assert.That(Run("settings", "--psst-outside-to", "nobody"), Is.EqualTo(1));
+            Assert.That(Run("settings", "--alert-to", "nobody"), Is.EqualTo(1));
             Assert.That(output.ToString(), Does.Contain("\"nobody\" isn't a Psst contact or a US number"));
-            Assert.That(Store.LoadSettings().OutsideUsePsstTo, Is.EqualTo("920-555-0101"), "a typo saves nothing");
+            Assert.That(Store.LoadSettings().PsstAlertTo, Is.EqualTo("920-555-0101"), "a typo saves nothing");
 
-            Assert.That(Run("settings", "--psst-outside", "none", "--psst-outside-to", "none"), Is.Zero);
+            Assert.That(Run("settings", "--alert-to", "none"), Is.Zero);
             s = Store.LoadSettings();
-            Assert.That((s.OutsideUsePsstLogins.Count, s.OutsideUsePsstTo), Is.EqualTo((0, "")));
-            Assert.That(Run("settings", "--psst-outside", "default"), Is.Zero);
-            Assert.That(Store.LoadSettings().OutsideUsePsstLogins, Is.EqualTo(new[] { "pdftransferjr@mindattic.com" }));
+            Assert.That(s.PsstAlertTo, Is.EqualTo(""));
         }
         finally { RemindCommand.ContactsPath = was; }
     }

@@ -89,13 +89,13 @@ public static class WeeklyAllowances
 
     /// <summary>
     /// <paramref name="settings"/> for <paramref name="email"/>'s login: while it's allowed past the target, its week stops at its
-    /// wall (no weekly reserve kept, and no lower weekly stop for outside use), with why for its pace note; else as they are.
+    /// wall (no weekly reserve kept), with why for its pace note; else as they are.
     /// </summary>
     public static (OrchestratorSettings Settings, string? Why) Apply(IEnumerable<WeeklyAllowance>? allowances, string? email,
         OrchestratorSettings settings, DateTime nowUtc)
     {
         if (For(allowances, email, nowUtc) is not { } a) return (settings, null);
-        return (settings with { WeeklyReservePercent = 0, WeeklyStopCapPercent = null },
+        return (settings with { WeeklyReservePercent = 0 },
             $"Allowed past the {settings.WeeklyStopPercent}% weekly target by {a.By} until {When(a.EndsUtc)}.");
     }
 

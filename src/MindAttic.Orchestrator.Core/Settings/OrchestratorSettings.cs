@@ -43,7 +43,7 @@ public sealed record OrchestratorSettings
     /// (kept to 0–<see cref="MaxWeeklyReservePercent"/>, so a hand-edited value can't stop it at nothing). Weekly-aware pacing
     /// lands the week on this same line (<see cref="WeeklyAwareTarget"/>, M.ORCH-T680), so on or off it's one line.</summary>
     [JsonIgnore]
-    public int WeeklyStopPercent => Math.Min(WeeklyStopCapPercent ?? 100, WeeklyStopFor(WeeklyReservePercent));
+    public int WeeklyStopPercent => WeeklyStopFor(WeeklyReservePercent);
 
     public static int WeeklyStopFor(int reservePercent) => 100 - Math.Clamp(reservePercent, 0, MaxWeeklyReservePercent);
 
@@ -235,59 +235,12 @@ public sealed record OrchestratorSettings
     [JsonIgnore]
     public bool FailoverToApiKey => false;
 
-    // ---- A member's own use outside the orchestrator (M.ORCH-T682) ----
-    // When a login's meter rises by more than its CLIs here spent (the desktop app, claude.ai, a phone), that login's 5-hour pace
-    // ceiling drops from the pace target to OutsideUseCeilingPercent (lower still when their measured rate needs it) and its
-    // weekly stop keeps extra headroom, until OutsideUseQuietMinutes pass with no new outside activity. Each value is the
-    // starting point; each login learns its own within the Min/Max bounds (Sessions.OutsideUseWatch), never past them.
+    /// <summary>Who an urgent owner alert (a login reaching its own cutoff, M.ORCH-T742) is texted to through Psst: a Psst
+    /// contact ("ryan") or a US number; blank texts nobody (blank, not null: a null isn't written, so it would read back as
+    /// the default).</summary>
+    public string? PsstAlertTo { get; init; } = DefaultPsstAlertTo;
 
-    /// <summary>The 5-hour ceiling a login's CLIs are held to while its member uses Claude elsewhere.</summary>
-    public int OutsideUseCeilingPercent { get; init; } = 90;
-    public int OutsideUseCeilingMinPercent { get; init; } = 70;
-    public int OutsideUseCeilingMaxPercent { get; init; } = 95;
-
-    /// <summary>How long with no new outside activity before the full target comes back.</summary>
-    public int OutsideUseQuietMinutes { get; init; } = 20;
-    public int OutsideUseQuietMinMinutes { get; init; } = 10;
-    public int OutsideUseQuietMaxMinutes { get; init; } = 60;
-
-    /// <summary>The noise margin: meter points a stretch's rise must exceed what the CLIs explain by (plus
-    /// <see cref="OutsideUseMarginSharePercent"/> of what they explain) to count as someone's.</summary>
-    public int OutsideUseMarginPoints { get; init; } = 2;
-    public int OutsideUseMarginMinPoints { get; init; } = 1;
-    public int OutsideUseMarginMaxPoints { get; init; } = 5;
-
-    /// <summary>The share of what the CLIs explain allowed as the error of the learned tokens per percent.</summary>
-    public int OutsideUseMarginSharePercent { get; init; } = 25;
-
-    /// <summary>Extra headroom, in points, kept above the member's projected use (5-hour and weekly) while it lasts.</summary>
-    public int OutsideUseHeadroomPoints { get; init; } = 2;
-    public int OutsideUseHeadroomMinPoints { get; init; } = 1;
-    public int OutsideUseHeadroomMaxPoints { get; init; } = 10;
-
-    /// <summary>Psst on outside use (M.ORCH-T702): the logins whose outside use is texted to <see cref="OutsideUsePsstTo"/>,
-    /// once at the start of each stretch (<see cref="Reminders.OutsideUsePsst"/>). Each is a login's email, the part before the
-    /// @, or its name, any case; empty texts nobody.</summary>
-    public List<string> OutsideUsePsstLogins { get; init; } = [.. DefaultOutsideUsePsstLogins];
-
-    /// <summary>Jordan's login, as the user first asked for it.</summary>
-    public static IReadOnlyList<string> DefaultOutsideUsePsstLogins { get; } = ["pdftransferjr@mindattic.com"];
-
-    /// <summary>Who the outside-use text goes to: a Psst contact ("ryan") or a US number; blank texts nobody (blank, not null:
-    /// a null isn't written, so it would read back as the default).</summary>
-    public string? OutsideUsePsstTo { get; init; } = DefaultOutsideUsePsstTo;
-
-    public const string DefaultOutsideUsePsstTo = "ryan";
-
-    /// <summary>A typed list of watched logins ("Jordan, amy@x.com") as saved; "none" or blank is none.</summary>
-    public static List<string> ParseLogins(string? text) =>
-        text is null || text.Trim().Equals("none", StringComparison.OrdinalIgnoreCase) ? []
-            : [.. text.Split([',', ';'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Distinct(StringComparer.OrdinalIgnoreCase)];
-
-    /// <summary>A lower weekly stop for one login while its member uses Claude elsewhere (M.ORCH-T682): set per login by the
-    /// pacer, never saved.</summary>
-    [JsonIgnore]
-    public int? WeeklyStopCapPercent { get; init; }
+    public const string DefaultPsstAlertTo = "ryan";
 
     /// <summary>The dashboard's theme (M.ORCH-T678): "Light" or "Dark", as its sun/moon switch saved it. Null (never switched),
     /// or anything else, is dark, the default; the dashboard reads it at start and writes it at each switch.</summary>

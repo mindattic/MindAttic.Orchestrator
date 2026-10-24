@@ -401,14 +401,11 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             Say(m.Moved || m.Asked ? LogEventLevel.Information : LogEventLevel.Warning, m.Line);
             var text = m.Line.StartsWith("rebalance: ", StringComparison.Ordinal) ? m.Line["rebalance: ".Length..] : m.Line;
             if (m.NeedsYou) Alert("Needs you", text);
-            // Someone started or stopped using Claude outside the orchestrator (M.ORCH-T682): "Honey is using Claude".
             if (m.Title is { } title)
             {
                 Alert(title, text);
                 AccountRebalancer.Record(store, text, DateTime.UtcNow);
             }
-            // And texted through Psst when that login is watched, once per stretch (M.ORCH-T702): "Jordan is using Claude".
-            if (m.Started is { } started) TextOutsideUse(started);
             // A login at its own weekly or 5-hour cutoff: cut off, and the owner asked what to do (M.ORCH-T742).
             if (m.Cutoff is { } cutoff) ReportCutoff(cutoff);
             if (!m.Moved) continue;
@@ -417,7 +414,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         }
     }
 
-    private Reminders.OutsideUsePsst? outsidePsst;
+    private Reminders.PsstAlerts? psstAlerts;
 
     // Whether the last tick skipped its settings-driven work because the settings couldn't be read (M.ORCH-T720).
     private bool settingsUnreadable;
@@ -426,23 +423,13 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     private sealed class SettingsUnreadableException(string where)
         : Exception($"settings in {where} couldn't be read; skipping this tick's settings-driven work (allocate, keep-going, hooks) rather than running it on defaults");
 
-    /// <summary>Texts the outside-use recipient that someone started using Claude elsewhere on a watched login (M.ORCH-T702);
-    /// the send runs on its own thread (<see cref="Reminders.OutsideUsePsst"/>).</summary>
-    internal Task? TextOutsideUse(OutsideStart started)
-    {
-        // Unreadable settings send nothing, rather than text on defaults (M.ORCH-T720).
-        if (!store.TryLoadSettings(out var s)) return null;
-        outsidePsst ??= new Reminders.OutsideUsePsst(new Reminders.PsstClient(Runner), (level, line) => Say(level, line));
-        return outsidePsst.Started(started.Email, started.Name, started.Seen, s);
-    }
-
     /// <summary>A login reached its cutoff (M.ORCH-T742): an urgent alert, and a Psst text to the owner on its own thread.</summary>
     internal Task? ReportCutoff(CutoffCrossing c)
     {
         Alert("Cutoff reached", c.Text, urgent: true);
-        if (!store.TryLoadSettings(out var s) || s.OutsideUsePsstTo is not { Length: > 0 } to || string.IsNullOrWhiteSpace(to)) return null;
-        outsidePsst ??= new Reminders.OutsideUsePsst(new Reminders.PsstClient(Runner), (level, line) => Say(level, line));
-        return outsidePsst.Send($"cutoff|{c.Email}|{c.Weekly}", to, $"Orchestrator: {c.Text}", $"{c.Name} reached its {(c.Weekly ? "weekly" : "5-hour")} cutoff");
+        if (!store.TryLoadSettings(out var s) || s.PsstAlertTo is not { Length: > 0 } to || string.IsNullOrWhiteSpace(to)) return null;
+        psstAlerts ??= new Reminders.PsstAlerts(new Reminders.PsstClient(Runner), (level, line) => Say(level, line));
+        return psstAlerts.Send($"cutoff|{c.Email}|{c.Weekly}", to, $"Orchestrator: {c.Text}", $"{c.Name} reached its {(c.Weekly ? "weekly" : "5-hour")} cutoff");
     }
 
     private readonly UnderTarget underTarget = new();

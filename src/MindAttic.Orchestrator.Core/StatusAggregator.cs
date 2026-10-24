@@ -69,7 +69,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// process writing the real rl-status.json writes theirs, and only for the real account folders.</summary>
     public AccountPacer Accounts
     {
-        get => accountPacer ??= new AccountPacer { ProjectsDir = options.ClaudeProjectsDir, Probe = ReportedUsagePath is null, OutsideHolds = OutsideHolds, Allowances = Allowances, Cutoffs = Cutoffs };
+        get => accountPacer ??= new AccountPacer { ProjectsDir = options.ClaudeProjectsDir, Probe = ReportedUsagePath is null, Allowances = Allowances, Cutoffs = Cutoffs };
         init => accountPacer = value;
     }
 
@@ -129,10 +129,6 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
 
     public OrchestratorOptions Options => options;
     public JsonStore Store { get; } = store ?? new JsonStore();
-
-    /// <summary>Each login's outside use as the daemon keeps it (M.ORCH-T682): a login whose member is using Claude elsewhere is
-    /// paced to its lowered ceiling.</summary>
-    private IReadOnlyList<OutsideUseLogin> OutsideHolds() => OutsideUseWatch.Load(Store);
 
     /// <summary>The logins the user let past their weekly target (M.ORCH-T694), those whose time or weekly reset has come ended
     /// (and logged) first.</summary>
@@ -399,16 +395,16 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         List<UsageSample> mine = signIn is null ? samples ?? [] : [.. (samples ?? []).Where(s => signIn.Contains(s.AtUtc))];
         reported = ReportedLimit.Highest(mine, reported, now);
         reported = KeepWindow(reported, now);
-        // A member using Claude outside the orchestrator on the global login (M.ORCH-T682): its pace held to the lowered ceiling.
         // The login's email falls back to the one its profile file names, so its member's own cutoffs apply before the sign-in read lands (M.ORCH-T742).
         var cutoffEmail = SignIn?.Profile?.Email is { Length: > 0 } profileEmail ? profileEmail : LoginLook.GlobalEmail(Accounts.Dirs);
-        var (paceSettings, outsideWhy) = OutsideUseWatch.Apply(OutsideHolds(), "", UsageCutoffs.Apply(Cutoffs(), cutoffEmail, settings));
+        var paceSettings = UsageCutoffs.Apply(Cutoffs(), cutoffEmail, settings);
+        string? allowedWhy = null;
         // The global login's member let past the weekly target by the user (M.ORCH-T694): its week stops at the wall meanwhile.
         if (cutoffEmail is { Length: > 0 } allowedEmail)
         {
-            var (allowedSettings, allowedWhy) = WeeklyAllowances.Apply(Allowances(), allowedEmail, paceSettings, now);
-            paceSettings = allowedSettings;
-            if (allowedWhy is not null) outsideWhy = outsideWhy is null ? allowedWhy : $"{outsideWhy} {allowedWhy}";
+            var allowedResult = WeeklyAllowances.Apply(Allowances(), allowedEmail, paceSettings, now);
+            paceSettings = allowedResult.Settings;
+            allowedWhy = allowedResult.Why;
         }
         var budget = BudgetCalculator.Compute(events, paceSettings, now, startOfTodayUtc, learned: calibration,
             reported: reported, reportedLimit: reportedLimit, ledgerFromUtc: signIn?.LedgerFrom);
@@ -425,7 +421,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             SubagentsByCli = rateLimitFile is null ? new Dictionary<int, int>() : contextCycler.AliveSubagents(now)
                 .Where(x => x.Cli is not null).GroupBy(x => x.Cli!.Value).ToDictionary(g => g.Key, g => g.Count()),
         };
-        if (outsideWhy is not null) pace = pace with { Note = $"{pace.Note} {outsideWhy}" };
+        if (allowedWhy is not null) pace = pace with { Note = $"{pace.Note} {allowedWhy}" };
         var utilization = UtilizationSeries.Build(mine, budget, paceSettings.PaceTargetPercent, now, settings.PaceExponent);
         // On course to end under its target: the allowance shown to the CLIs (and held to by the pace gate) says to start more (M.ORCH-T529).
         pace = Pacer.UnderTarget(pace, utilization, settings.MaxSubagents);

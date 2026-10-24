@@ -110,7 +110,7 @@ internal static class CliApp
             config.AddCommand<ReviewCommand>("review").WithDescription("From a Sonnet ticket's worktree: its one Opus review of the diff before it lands, when the diff is big or touches risky files (--dry-run only says).");
             config.AddCommand<DryRunCommand>("dryrun").WithDescription("Show what /allocate would start right now, without starting anything.");
             config.AddCommand<ShowCommand>("show").WithDescription("The sessions the orchestrator ran on a ticket (the ticket itself, its history and commits: tickets ticket show).");
-            config.AddCommand<UsageReportCommand>("report").WithDescription("The usage report: every member's 5-hour and weekly use and resets, points left to the weekly target, how old each reading is and whether it's accurate; --detail adds the CLIs' spend against outside use and the API key's; --since <date>, --csv, --json; --md/--html <file> write it to share.");
+            config.AddCommand<UsageReportCommand>("report").WithDescription("The usage report: every member's 5-hour and weekly use and resets, points left to the weekly target, how old each reading is and whether it's accurate; --detail adds the CLIs' spend and the API key's; --since <date>, --csv, --json; --md/--html <file> write it to share.");
             config.AddCommand<ReportCommand>("tokens").WithDescription("Uncached tokens by week, repo, provider and ticket type, and cost per completed ticket by model; --csv writes it out (was report before M.ORCH-T685).");
             config.AddCommand<BillingCommand>("billing").WithDescription("Who every CLI bills (Claude Team or the Vault's API key) and each open CLI's own billing; team or api switches every CLI.");
             config.AddBranch("accounts", a =>

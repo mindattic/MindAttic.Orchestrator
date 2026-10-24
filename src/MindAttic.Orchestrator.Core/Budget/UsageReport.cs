@@ -54,8 +54,6 @@ public sealed record UsageReportRow
     public long CliWeek { get; init; }
     /// <summary>Since <see cref="UsageReport.Since"/>; null when no --since was given.</summary>
     public long? CliSince { get; init; }
-    /// <summary>The member's own use of Claude outside the orchestrator (M.ORCH-T682, <see cref="UsageReport.OutsideText"/>); null until it's measured.</summary>
-    public string? OutsideUse { get; init; }
     /// <summary>The user let this login past the weekly target (M.ORCH-T694, <see cref="WeeklyAllowance.Text"/>); null when not.</summary>
     public string? Allowed { get; init; }
 }
@@ -64,7 +62,7 @@ public sealed record UsageReportRow
 /// The usage report (M.ORCH-T685): one row per member with the 5-hour and weekly use of Claude and their resets, the points
 /// left to the weekly target, how old each reading is and whether it's still accurate, then a line each for who's at the
 /// target, each member's cutoffs, who has room, and why any reading is stale. A second table has what the
-/// orchestrator's CLIs spent on each login against the member's own outside use, and the API key's spend. Printed by
+/// orchestrator's CLIs spent on each login, and the API key's spend. Printed by
 /// <c>orchestrator report</c> (as plain text, CSV or JSON) and written as Markdown or HTML to share, from the CLI or the
 /// dashboard's Accounts view; anything else that shows the table (<c>orchestrator org usage</c>) renders it from here.
 /// </summary>
@@ -75,9 +73,6 @@ public sealed record UsageReport
 
     public const string Meter = "Claude's meter";
     public const string Estimated = "estimated";
-
-    /// <summary>What an unmeasured outside use reads as.</summary>
-    public const string NotMeasured = "not measured yet";
 
     public DateTime GeneratedUtc { get; init; }
     public DateOnly? Since { get; init; }
@@ -97,11 +92,10 @@ public sealed record UsageReport
     /// </summary>
     /// <param name="estimates">Account key → its budget as the status refresh computed it.</param>
     /// <param name="globalAccount">The account the global login is signed in as; its member is marked.</param>
-    /// <param name="outsideUse">Email → the member's measured outside use (M.ORCH-T682); null, or null for an email, is not measured yet.</param>
     /// <param name="staleReason">Email → why its reading may be old, when known.</param>
     public static UsageReport Build(IReadOnlyList<Member> members, IReadOnlyList<AccountRow> roster, IReadOnlyList<LoginReading> logins,
         IReadOnlyList<DayUsage> history, IReadOnlyDictionary<string, BudgetStatus> estimates, int weeklyTargetPercent, DateTime nowUtc,
-        DateOnly? since = null, string? globalAccount = null, Func<string, string?>? outsideUse = null, Func<string, string?>? staleReason = null,
+        DateOnly? since = null, string? globalAccount = null, Func<string, string?>? staleReason = null,
         IReadOnlyList<WeeklyAllowance>? allowances = null, IReadOnlyList<UsageCutoff>? cutoffs = null)
     {
         var people = members.Select(m => (m.Email, m.Name, IsMember: true)).ToList();
@@ -181,7 +175,6 @@ public sealed record UsageReport
                 CliToday = spent.Where(d => d.Day == today).Sum(d => d.Fresh),
                 CliWeek = spent.Where(d => InWeek(d, weekStart)).Sum(d => d.Fresh),
                 CliSince = since is { } s ? spent.Where(d => d.Day >= s).Sum(d => d.Fresh) : null,
-                OutsideUse = outsideUse?.Invoke(email),
                 Allowed = WeeklyAllowances.For(allowances, email, nowUtc) is { } allowed
                     ? new WeeklyAllowance { Name = name ?? alias ?? LoginLook.DefaultAlias(email) ?? email, UntilUtc = allowed.EndsUtc, By = allowed.By }.Text
                     : null,
@@ -213,11 +206,10 @@ public sealed record UsageReport
     /// login's reading in <paramref name="dirs"/>, the global login's <paramref name="globalReading"/> (put on the account the
     /// snapshot says is signed in to it), <paramref name="snapshot"/>'s usage history and budgets (the global login's and each
     /// per-CLI login's) for the spend and the estimates, the weekly target and pacing line from <paramref name="settings"/>, and
-    /// the meter probe's last word for each login in <paramref name="stateDb"/> for why a reading is stale, and each login's
-    /// <paramref name="outside"/> use as the daemon measures it (M.ORCH-T682; keyed by email, "" for the global login).
+    /// the meter probe's last word for each login in <paramref name="stateDb"/> for why a reading is stale.
     /// </summary>
     public static UsageReport Gather(OrchestratorDb db, Snapshot snapshot, AccountDirs dirs, OrchestratorSettings settings, DateTime nowUtc,
-        DateOnly? since = null, ReportedUsage? globalReading = null, OrchestratorDb? stateDb = null, IReadOnlyList<OutsideUseStats>? outside = null,
+        DateOnly? since = null, ReportedUsage? globalReading = null, OrchestratorDb? stateDb = null,
         IReadOnlyList<WeeklyAllowance>? allowances = null, IReadOnlyList<UsageCutoff>? cutoffs = null)
     {
         var members = MemberRoster.Load(db);
@@ -248,22 +240,8 @@ public sealed record UsageReport
         if (current is not null && snapshot.Budget is { } global) estimates[current] = global;
         foreach (var a in snapshot.Accounts)
             if (a.Account is { } k) estimates[k] = a.Budget;
-        string? OutsideOf(string email) => outside?.FirstOrDefault(o => string.Equals(o.Key, email, StringComparison.OrdinalIgnoreCase)
-            || (o.Key.Length == 0 && string.Equals(globalEmail, email, StringComparison.OrdinalIgnoreCase))) is { } o ? OutsideText(o) : null;
-        return Build(members, roster, logins, snapshot.History, estimates, settings.WeeklyStopPercent, nowUtc, since, current, OutsideOf,
+        return Build(members, roster, logins, snapshot.History, estimates, settings.WeeklyStopPercent, nowUtc, since, current,
                 email => reasons.GetValueOrDefault(email), allowances, cutoffs);
-    }
-
-    /// <summary>A member's outside use for the spend table: "using Claude now; 3% a window, 6% a week on average (12 windows)";
-    /// null (not measured yet) before any window was measured.</summary>
-    public static string? OutsideText(OutsideUseStats o)
-    {
-        var now = o.InUse ? "using Claude now" : null;
-        if (o.WindowCount == 0) return now;
-        static string P(double v) => v.ToString(v < 10 ? "0.#" : "0", CultureInfo.InvariantCulture) + "%";
-        var average = $"{P(o.PerWindow)} a window" + (o.PerWeek is { } w ? $", {P(w)} a week" : "") +
-            $" on average ({o.WindowCount} window{(o.WindowCount == 1 ? "" : "s")})";
-        return now is null ? average : $"{now}; {average}";
     }
 
     /// <summary>Each login's meter probe trouble from its <see cref="AccountPacer.ProbeStateName"/> row: why it isn't asking, or
@@ -384,15 +362,14 @@ public sealed record UsageReport
 
     // ---- The detail table --------------------------------------------------------------------------------------------------
 
-    /// <summary>The second table's columns: where each reading came from, what the orchestrator's CLIs spent on each login, and the member's own use.</summary>
+    /// <summary>The second table's columns: where each reading came from, and what the orchestrator's CLIs spent on each login.</summary>
     public IReadOnlyList<string> DetailHeaders =>
-        ["Member", "Email", "Source", "CLIs today", "CLIs this week", .. Since is { } s ? [$"CLIs since {s:yyyy-MM-dd}"] : Array.Empty<string>(), "Outside use"];
+        ["Member", "Email", "Source", "CLIs today", "CLIs this week", .. Since is { } s ? [$"CLIs since {s:yyyy-MM-dd}"] : Array.Empty<string>()];
 
     public IReadOnlyList<IReadOnlyList<string>> DetailCells() => [.. Rows.Select(r => (IReadOnlyList<string>)
     [
         MemberText(r), r.Email, r.Source ?? "no reading",
         Formatting.Tokens(r.CliToday), Formatting.Tokens(r.CliWeek), .. r.CliSince is { } s ? [Formatting.Tokens(s)] : Array.Empty<string>(),
-        r.OutsideUse ?? NotMeasured,
     ])];
 
     /// <summary>The API key's line under the detail table.</summary>
@@ -436,13 +413,13 @@ public sealed record UsageReport
     /// <summary>One row per member, raw values (percents as numbers, times ISO 8601 UTC, tokens as counts), then the API key's.</summary>
     public string Csv()
     {
-        var sb = new StringBuilder("member,email,is_member,global_login,five_hour_used,five_hour_unknown,five_hour_resets_utc,week_used,week_left,left_to_target,week_resets_utc,read_utc,accurate,stale_reason,source,cli_today,cli_week,cli_since,outside_use\n");
+        var sb = new StringBuilder("member,email,is_member,global_login,five_hour_used,five_hour_unknown,five_hour_resets_utc,week_used,week_left,left_to_target,week_resets_utc,read_utc,accurate,stale_reason,source,cli_today,cli_week,cli_since\n");
         foreach (var r in Rows)
             sb.AppendJoin(',', Q(r.Name), Q(r.Email), B(r.IsMember), B(r.IsGlobalLogin), N(r.FiveHourUsed), B(r.FiveHourUnknown), T(r.FiveHourResetUtc),
                 N(r.WeekUsed), N(r.WeekLeft), N(r.LeftToTarget), T(r.WeekResetUtc), T(r.ReadUtc), r.ReadUtc is null ? "no reading" : r.Stale ? "stale" : "yes",
-                Q(r.StaleReason), Q(r.Source), I(r.CliToday), I(r.CliWeek), r.CliSince is { } s ? I(s) : "", Q(r.OutsideUse ?? NotMeasured)).Append('\n');
+                Q(r.StaleReason), Q(r.Source), I(r.CliToday), I(r.CliWeek), r.CliSince is { } s ? I(s) : "").Append('\n');
         sb.AppendJoin(',', "API key", "", "false", "false", "", "false", "", "", "", "", "", "", "", "", "", I(ApiKeyToday), I(ApiKeyWeek),
-            ApiKeySince is { } since ? I(since) : "", "").Append('\n');
+            ApiKeySince is { } since ? I(since) : "").Append('\n');
         return sb.ToString();
 
         static string Q(string? s) => s is null ? "" : s.IndexOfAny([',', '"', '\n', '\r']) >= 0 ? "\"" + s.Replace("\"", "\"\"") + "\"" : s;
@@ -454,7 +431,7 @@ public sealed record UsageReport
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
-    /// <summary>The report as JSON: the rows' raw values (an unmeasured outside use is null), the notes and the API key's spend.</summary>
+    /// <summary>The report as JSON: the rows' raw values, the notes and the API key's spend.</summary>
     public string Json() => JsonSerializer.Serialize(new
     {
         generatedUtc = GeneratedUtc,

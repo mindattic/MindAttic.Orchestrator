@@ -28,10 +28,6 @@ public sealed class AccountPacer
     /// <summary>Asks Claude's meter for an account none of whose CLIs has drawn a statusline lately; off in tests.</summary>
     public bool Probe { get; init; } = true;
 
-    /// <summary>Each login's outside use (M.ORCH-T682): a login whose member is using Claude elsewhere is paced to the lowered
-    /// ceiling and weekly stop kept there (<see cref="OutsideUseWatch.Apply"/>). Null paces every login to the settings.</summary>
-    public Func<IReadOnlyList<OutsideUseLogin>>? OutsideHolds { get; init; }
-
     /// <summary>The logins the user let past their weekly target (M.ORCH-T694, <see cref="WeeklyAllowances"/>): each is paced to
     /// its week's wall, not the weekly target, until its allowance ends. Null holds every login to the target.</summary>
     public Func<IReadOnlyList<WeeklyAllowance>>? Allowances { get; init; }
@@ -72,9 +68,6 @@ public sealed class AccountPacer
             .Where(o => o.Dir is not null)
             .ToLookup(o => o.Dir!.Email, o => o.Session, StringComparer.OrdinalIgnoreCase);
         var result = new List<AccountPace>(accounts.Count);
-        IReadOnlyList<OutsideUseLogin>? holds = null;
-        try { holds = OutsideHolds?.Invoke(); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
         IReadOnlyList<WeeklyAllowance>? allowed = null;
         try { allowed = Allowances?.Invoke(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
@@ -87,17 +80,15 @@ public sealed class AccountPacer
             state.Account = account;
             var ids = byEmail[dir.Email].ToHashSet(StringComparer.Ordinal);
             var mine = sessions.Where(s => ids.Contains(s.SessionId)).ToList();
-            var (held, outsideWhy) = OutsideUseWatch.Apply(holds, dir.Email, UsageCutoffs.Apply(cutoffs, dir.Email, settings));
             // Let past its weekly target by the user (M.ORCH-T694): its week stops at the wall until the allowance ends.
-            var (own, allowedWhy) = WeeklyAllowances.Apply(allowed, dir.Email, held, nowUtc);
-            var why = allowedWhy is null ? outsideWhy : outsideWhy is null ? allowedWhy : $"{outsideWhy} {allowedWhy}";
-            result.Add(Pace(dir, state, mine, own, nowUtc, startOfTodayUtc, typicalPerSession, write, why));
+            var (own, allowedWhy) = WeeklyAllowances.Apply(allowed, dir.Email, UsageCutoffs.Apply(cutoffs, dir.Email, settings), nowUtc);
+            result.Add(Pace(dir, state, mine, own, nowUtc, startOfTodayUtc, typicalPerSession, write, allowedWhy));
         }
         return result;
     }
 
     private AccountPace Pace(AccountDir dir, State state, List<TranscriptSession> sessions, OrchestratorSettings settings,
-        DateTime now, DateTime startOfTodayUtc, double? typicalPerSession, bool write, string? outsideWhy = null)
+        DateTime now, DateTime startOfTodayUtc, double? typicalPerSession, bool write, string? why = null)
     {
         var events = sessions.SelectMany(s => s.Events).OrderBy(e => e.AtUtc).ToList();
         var reported = ReportedUsage.Load(now, dir.UsagePath);
@@ -130,8 +121,8 @@ public sealed class AccountPacer
         // own (M.ORCH-T660). Its room is its own: the session setting, bounded by MaxSubagents, counted against its own marks.
         if (pace is { IsPaced: false, SubagentAllowance: null, Stop: false })
             pace = pace with { SubagentAllowance = Math.Max(1, Math.Min(settings.MaxConcurrentSessions, settings.MaxSubagents)), Subagents = subagents };
-        // Held to a lowered ceiling while its member uses Claude elsewhere (M.ORCH-T682): said in its pace note, which its tab shows.
-        if (outsideWhy is not null) pace = pace with { Note = $"{pace.Note} {outsideWhy}" };
+        // Let past its weekly target by the user (M.ORCH-T694): said in its pace note, which its tab shows.
+        if (why is not null) pace = pace with { Note = $"{pace.Note} {why}" };
         if (write)
         {
             state.Writer.Write(budget, pace);

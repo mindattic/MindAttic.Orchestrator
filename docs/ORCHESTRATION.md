@@ -222,29 +222,10 @@ The request goes to the host, never into the CLI, on a pipe of its own beside th
   toasted as Needs you ("close and reopen this tab": one opened before M.LNCH-T67 drops it) and asked again 5 minutes later.
   Toasted when seen: "Unity.SpaceGod moved to the API key: Honey's week at 90%".
 
-  **A member's own use comes first (M.ORCH-T682):** the meter has no per-device data, so outside use (the desktop app,
-  claude.ai, a phone) is found by subtraction. Every minute the daemon sets each login's meter rise over the last 30 minutes
-  of readings against what that login's CLIs here spent by their transcripts (each reading carries it), converted at the
-  login's tokens per percent (the median of its windows'). A rise past the CLIs' share by more than the noise margin
-  (`OutsideUseMarginPoints`, 2, plus `OutsideUseMarginSharePercent`, 25%, of what the CLIs explain: two readings' rounding,
-  and the tokens-per-percent estimate's error) is someone's. Two logins on one account share a meter and aren't judged.
-  Its CLIs are not moved: that login's 5-hour pace ceiling drops from the pace target to `OutsideUseCeilingPercent` (90),
-  lower still when the member's measured rate carried to the reset plus `OutsideUseHeadroomPoints` (2) wouldn't fit above it
-  (never below what's spent), and its weekly stop keeps the same headroom over their projected weekly use. Every process's
-  pacer applies it (`OutsideUseWatch.Apply`), so the pace slows and holds its CLIs, and its tab's pace note says why; the
-  pace stopping them there isn't the login's line, so only reaching the real line moves them to the key (above), a last
-  resort. After `OutsideUseQuietMinutes` (20) with no new outside activity the full target is back. Toasted: "Honey is using
-  Claude: Honey's CLIs are held to 90% of this window", and "Honey stopped using Claude". Each window's and week's outside
-  points are kept (state `outside-use`) and the Accounts view shows the averages and suggested 5-hour and weekly reserves and
-  ceiling. Each login learns its own ceiling (lower after using 80% of the room it left, higher after under 40%), quiet
-  period (the gaps between bursts), noise margin (up after a lone blip, down when idle stretches sit well under it) and
-  headroom (from how far use outran the projection), each within its `...Min`/`...Max` bounds; every change is logged with
-  its reason, and the Settings modal shows the learned values beside the settings (`orchestrator settings --outside-*`).
-  Psst on outside use (M.ORCH-T702): when a stretch starts on a login in `OutsideUsePsstLogins` (an email, the part before
-  the @, or the login's name; Jordan's, pdftransferjr@mindattic.com, by default), `psst sms` texts `OutsideUsePsstTo` (the
-  Psst contact `ryan` by default) once, "Orchestrator: Jordan is using Claude outside the Orchestrator (the meter rose ...)",
-  not again while the stretch lasts; sent on its own thread so a slow Psst never holds the tick. Both are in the Settings
-  modal and `orchestrator settings --psst-outside <logins|none|default> --psst-outside-to <contact|number|none>`.
+  **No outside-use detection (retired):** an earlier version lowered a login's 5-hour pace ceiling by guessing at the
+  member's own use of Claude elsewhere, from the meter's rise the CLIs here couldn't explain. Removed (owner's rule): it
+  moved the pace target off `PaceTargetPercent` on a noisy guess, which a member could watch drift down and back up for no
+  reason they could see. The hard cutoffs (`PaceTargetPercent`, `org limit`) are the only thing that moves a login's target.
 - **What the Launcher does:**
   1. Act only if `cliPid` is still the CLI this tab runs; otherwise drop the request.
   2. Wait for the CLI's next idle point: its turn has ended and it's waiting for input (the context gate's

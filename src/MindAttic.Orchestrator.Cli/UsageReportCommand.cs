@@ -10,7 +10,7 @@ using Spectre.Console.Cli;
 /// <summary>
 /// <c>orchestrator report</c> (M.ORCH-T685): the usage report, one row per member (<see cref="UsageReport"/>): 5-hour and
 /// weekly use with their resets, points left to the weekly target, how old each reading is and whether it's accurate, and
-/// the lines under it. <c>--detail</c> adds the CLIs' spend on each login against the member's outside use, and the API key's;
+/// the lines under it. <c>--detail</c> adds the CLIs' spend on each login, and the API key's;
 /// <c>--since</c> adds the spend since a day; <c>--csv</c> and <c>--json</c> print it raw; <c>--md</c> or <c>--html</c> write it to share.
 /// With more than one org, only the members of the one worked on (M.ORCH-T755: the dashboard's chosen org, or <c>--org</c>'s).
 /// </summary>
@@ -23,7 +23,7 @@ internal sealed class UsageReportCommand : Command<UsageReportCommand.Settings>
         public string? Since { get; init; }
 
         [CommandOption("--detail")]
-        [Description("Also print the second table: where each reading came from, the CLIs' spend today and this week, outside use, and the API key's spend.")]
+        [Description("Also print the second table: where each reading came from, the CLIs' spend today and this week, and the API key's spend.")]
         public bool Detail { get; init; }
 
         [CommandOption("--csv")]
@@ -102,7 +102,7 @@ internal sealed class UsageReportCommand : Command<UsageReportCommand.Settings>
         try { settings = store.LoadSettings(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { settings = new OrchestratorSettings(); }
         return UsageReport.Gather(new OrchestratorDb(OrchestratorDb.LivePath), snapshot, new AccountDirs(), settings, now, since,
-            ReportedUsage.Load(now), ReportedUsage.DefaultDb, OutsideUseWatch.Stats(OutsideUseWatch.Load(store), settings),
+            ReportedUsage.Load(now), ReportedUsage.DefaultDb,
             WeeklyAllowances.Active(store, now), UsageCutoffs.Load(store));
     }
 }

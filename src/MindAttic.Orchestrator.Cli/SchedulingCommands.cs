@@ -335,49 +335,9 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [CommandOption("--weekly-wind-down <POINTS>")]
         [Description("Weekly-aware pacing's wind-down margin, 0 to 20 (default 3): this many points under the weekly target, while there's no plan for the week, only what can finish starts.")]
         public int? WeeklyWindDown { get; init; }
-        [CommandOption("--outside-ceiling <PERCENT>")]
-        [Description("While a member uses Claude outside the orchestrator (the desktop app, claude.ai, a phone), their login's 5-hour pace ceiling drops from the pace target to this (default 90), lower still when their measured rate needs it; each login learns its own within --outside-ceiling-bounds.")]
-        public int? OutsideCeiling { get; init; }
-
-        [CommandOption("--outside-ceiling-bounds <MIN-MAX>")]
-        [Description("Where each login's learned outside-use ceiling stays, like 70-95 (the default).")]
-        public string? OutsideCeilingBounds { get; init; }
-
-        [CommandOption("--outside-quiet <MINUTES>")]
-        [Description("Minutes with no new outside activity before the full pace target comes back (default 20); learned per login from the gaps between their bursts, within --outside-quiet-bounds.")]
-        public int? OutsideQuiet { get; init; }
-
-        [CommandOption("--outside-quiet-bounds <MIN-MAX>")]
-        [Description("Where each login's learned quiet period stays, like 10-60 (the default).")]
-        public string? OutsideQuietBounds { get; init; }
-
-        [CommandOption("--outside-margin <POINTS>")]
-        [Description("The noise margin: meter points a rise must exceed what the CLIs explain by to count as outside use (default 2, plus --outside-margin-share of what they explain); learned per login from the unexplained rise seen while nobody's using it, within --outside-margin-bounds.")]
-        public int? OutsideMargin { get; init; }
-
-        [CommandOption("--outside-margin-bounds <MIN-MAX>")]
-        [Description("Where each login's learned noise margin stays, like 1-5 (the default).")]
-        public string? OutsideMarginBounds { get; init; }
-
-        [CommandOption("--outside-margin-share <PERCENT>")]
-        [Description("The share of what the CLIs explain allowed as measurement error, 0 to 100 (default 25).")]
-        public int? OutsideMarginShare { get; init; }
-
-        [CommandOption("--outside-headroom <POINTS>")]
-        [Description("Extra headroom in points kept above a member's projected outside use, 5-hour and weekly (default 2); learned per login from how far their use ran past the projection, within --outside-headroom-bounds.")]
-        public int? OutsideHeadroom { get; init; }
-
-        [CommandOption("--outside-headroom-bounds <MIN-MAX>")]
-        [Description("Where each login's learned headroom stays, like 1-10 (the default).")]
-        public string? OutsideHeadroomBounds { get; init; }
-
-        [CommandOption("--psst-outside <LOGINS>")]
-        [Description("Logins whose use of Claude outside the orchestrator is texted through Psst (once at the start of each stretch), comma-separated: each a login's email, the part before the @, or its name, like \"Jordan\"; \"none\" stops it, \"default\" restores Jordan's (pdftransferjr@mindattic.com).")]
-        public string? PsstOutside { get; init; }
-
-        [CommandOption("--psst-outside-to <CONTACT>")]
-        [Description("Who that text goes to: a Psst contact or a US number (default ryan); \"none\" stops it.")]
-        public string? PsstOutsideTo { get; init; }
+        [CommandOption("--alert-to <CONTACT>")]
+        [Description("Who an urgent owner alert (a login reaching its own cutoff) is texted to through Psst: a Psst contact or a US number (default ryan); \"none\" stops it.")]
+        public string? AlertTo { get; init; }
 
         [CommandOption("--hand-minutes <N>")]
         [Description("Kept for older setups; it has no effect now: /allocate hands tickets to the typing CLI's own subagents, each in its own worktree.")]
@@ -427,10 +387,6 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         public string? RiskyFiles { get; init; }
     }
 
-    /// <summary>"70-95" as (70, 95), each within <paramref name="lo"/>..<paramref name="hi"/> and the first no more than the
-    /// second; null otherwise.</summary>
-    internal static (int Min, int Max)? ParseBounds(string text, int lo, int hi) => OutsideTuning.ParseBounds(text, lo, hi);
-
     /// <summary>Why a retired option is refused (M.ORCH-T706): the owner's usage rules are hard-coded, so these can't be set.</summary>
     internal static string? LockedRule(Settings settings) =>
         settings.WeeklyAware is not null ? "--weekly-aware is locked off: no weekly-aware pacing, ever (the owner's rule, M.ORCH-T706)."
@@ -476,10 +432,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             s = s with { DiskWarnGb = settings.DiskWarnGb ?? s.DiskWarnGb, DiskCriticalGb = settings.DiskCriticalGb ?? s.DiskCriticalGb };
             if (s.DiskWarnGb > 0 && s.DiskCriticalGb > s.DiskWarnGb) { AnsiConsole.MarkupLine("[red]--disk-critical-gb is at most --disk-warn-gb.[/]"); return 1; }
         }
-        var changed = settings.OutsideCeiling is not null || settings.OutsideQuiet is not null || settings.OutsideMargin is not null ||
-            settings.OutsideMarginShare is not null || settings.OutsideHeadroom is not null || settings.OutsideCeilingBounds is not null ||
-            settings.OutsideQuietBounds is not null || settings.OutsideMarginBounds is not null || settings.OutsideHeadroomBounds is not null ||
-            settings.GroomDays is not null || settings.GitHubIntake is not null || settings.MaxDelay is not null || settings.MaxSubagents is not null
+        var changed = settings.GroomDays is not null || settings.GitHubIntake is not null || settings.MaxDelay is not null || settings.MaxSubagents is not null
             || settings.DiskWarnGb is not null || settings.DiskCriticalGb is not null;
         if (settings.GitHubIntake is { } intake) s = s with { GitHubIntake = intake };
         if (settings.Notify is { } notify)
@@ -551,74 +504,15 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             AnsiConsole.MarkupLine("[red]--weekly-target is 100 minus --weekly-reserve; give one of them.[/]");
             return 1;
         }
-        // A member's own use outside the orchestrator (M.ORCH-T682): each number and the bounds its learned value stays in.
-        if (settings.OutsideCeiling is { } oc)
+        if (settings.AlertTo is { } alertTo)
         {
-            if (oc is < 1 or > 100) { AnsiConsole.MarkupLine("[red]--outside-ceiling is 1 to 100.[/]"); return 1; }
-            s = s with { OutsideUseCeilingPercent = oc };
-            changed = true;
-        }
-        if (settings.OutsideQuiet is { } oq)
-        {
-            if (oq is < 1 or > 240) { AnsiConsole.MarkupLine("[red]--outside-quiet is 1 to 240 minutes.[/]"); return 1; }
-            s = s with { OutsideUseQuietMinutes = oq };
-            changed = true;
-        }
-        if (settings.OutsideMargin is { } om)
-        {
-            if (om is < 0 or > 20) { AnsiConsole.MarkupLine("[red]--outside-margin is 0 to 20 points.[/]"); return 1; }
-            s = s with { OutsideUseMarginPoints = om };
-            changed = true;
-        }
-        if (settings.OutsideMarginShare is { } oms)
-        {
-            if (oms is < 0 or > 100) { AnsiConsole.MarkupLine("[red]--outside-margin-share is 0 to 100.[/]"); return 1; }
-            s = s with { OutsideUseMarginSharePercent = oms };
-            changed = true;
-        }
-        if (settings.OutsideHeadroom is { } oh)
-        {
-            if (oh is < 0 or > 50) { AnsiConsole.MarkupLine("[red]--outside-headroom is 0 to 50 points.[/]"); return 1; }
-            s = s with { OutsideUseHeadroomPoints = oh };
-            changed = true;
-        }
-        foreach (var (flag, text, lo, hi) in new[]
-                 {
-                     ("--outside-ceiling-bounds", settings.OutsideCeilingBounds, 1, 100), ("--outside-quiet-bounds", settings.OutsideQuietBounds, 1, 240),
-                     ("--outside-margin-bounds", settings.OutsideMarginBounds, 0, 20), ("--outside-headroom-bounds", settings.OutsideHeadroomBounds, 0, 50),
-                 })
-        {
-            if (text is null) continue;
-            if (ParseBounds(text, lo, hi) is not { } range) { AnsiConsole.MarkupLine($"[red]{flag} is MIN-MAX, each {lo} to {hi}, MIN no more than MAX.[/]"); return 1; }
-            s = flag switch
+            var off = alertTo.Trim().Length == 0 || alertTo.Trim().Equals("none", StringComparison.OrdinalIgnoreCase);
+            if (!off && !MindAttic.Orchestrator.Reminders.PsstClient.Addressable(alertTo, RemindCommand.ContactsPath))
             {
-                "--outside-ceiling-bounds" => s with { OutsideUseCeilingMinPercent = range.Min, OutsideUseCeilingMaxPercent = range.Max },
-                "--outside-quiet-bounds" => s with { OutsideUseQuietMinMinutes = range.Min, OutsideUseQuietMaxMinutes = range.Max },
-                "--outside-margin-bounds" => s with { OutsideUseMarginMinPoints = range.Min, OutsideUseMarginMaxPoints = range.Max },
-                _ => s with { OutsideUseHeadroomMinPoints = range.Min, OutsideUseHeadroomMaxPoints = range.Max },
-            };
-            changed = true;
-        }
-        // Psst on outside use (M.ORCH-T702): which logins are watched and who's texted.
-        if (settings.PsstOutside is { } watched)
-        {
-            s = s with
-            {
-                OutsideUsePsstLogins = watched.Trim().Equals("default", StringComparison.OrdinalIgnoreCase)
-                    ? [.. OrchestratorSettings.DefaultOutsideUsePsstLogins]
-                    : OrchestratorSettings.ParseLogins(watched),
-            };
-            changed = true;
-        }
-        if (settings.PsstOutsideTo is { } psstTo)
-        {
-            var off = psstTo.Trim().Length == 0 || psstTo.Trim().Equals("none", StringComparison.OrdinalIgnoreCase);
-            if (!off && !MindAttic.Orchestrator.Reminders.PsstClient.Addressable(psstTo, RemindCommand.ContactsPath))
-            {
-                AnsiConsole.MarkupLine($"[red]\"{Markup.Escape(psstTo)}\" isn't a Psst contact or a US number, so Psst would refuse it. Add it with: psst contacts add <name> <phone>[/]");
+                AnsiConsole.MarkupLine($"[red]\"{Markup.Escape(alertTo)}\" isn't a Psst contact or a US number, so Psst would refuse it. Add it with: psst contacts add <name> <phone>[/]");
                 return 1;
             }
-            s = s with { OutsideUsePsstTo = off ? "" : psstTo.Trim() };
+            s = s with { PsstAlertTo = off ? "" : alertTo.Trim() };
             changed = true;
         }
         if (settings.WeeklyTarget is not null || settings.WeeklyReserve is not null || settings.WeeklyLine is not null || settings.WeeklyWindDown is not null)
@@ -730,13 +624,8 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         AnsiConsole.MarkupLine($"  pacing {(s.Pacing ? $"[green]on[/], aiming for {s.PaceTargetPercent}% of each limit by its reset" : "off: the warn line holds new work")}" +
             " · running agents never held" +
             $" · subagents: as many as the pace allows, at most {s.MaxSubagents}");
-        AnsiConsole.MarkupLine($"  outside use (someone using Claude elsewhere on a login): its 5-hour ceiling drops to {s.OutsideUseCeilingPercent}% " +
-            $"(learned {s.OutsideUseCeilingMinPercent}-{s.OutsideUseCeilingMaxPercent}%) · back after {s.OutsideUseQuietMinutes} quiet min ({s.OutsideUseQuietMinMinutes}-{s.OutsideUseQuietMaxMinutes}) · " +
-            $"noise margin {s.OutsideUseMarginPoints} points ({s.OutsideUseMarginMinPoints}-{s.OutsideUseMarginMaxPoints}) + {s.OutsideUseMarginSharePercent}% of what the CLIs explain · " +
-            $"headroom {s.OutsideUseHeadroomPoints} points ({s.OutsideUseHeadroomMinPoints}-{s.OutsideUseHeadroomMaxPoints}) · " +
-            (s.OutsideUsePsstLogins.Count > 0 && !string.IsNullOrWhiteSpace(s.OutsideUsePsstTo)
-                ? $"texts {Markup.Escape(s.OutsideUsePsstTo!)} through Psst when {Markup.Escape(string.Join(", ", s.OutsideUsePsstLogins))} starts using it (--psst-outside, --psst-outside-to)"
-                : "texts nobody when someone starts using it (--psst-outside, --psst-outside-to)"));
+        AnsiConsole.MarkupLine("  cutoff alerts " +
+            (!string.IsNullOrWhiteSpace(s.PsstAlertTo) ? $"text {Markup.Escape(s.PsstAlertTo!)} through Psst (--alert-to)" : "text nobody (--alert-to)"));
         AnsiConsole.MarkupLine("  exempt from pacing (their turns skip every gate, spend still counted): " +
             (s.ExemptCommands.Count > 0 ? Markup.Escape(string.Join(", ", s.ExemptCommands)) : "none"));
         AnsiConsole.MarkupLine($"  worktrees under {Markup.Escape(s.WorktreeRoot)} · " +
