@@ -173,6 +173,21 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     {
                         Say(LogEventLevel.Warning, $"rebalance: {ex.Message}");
                     }
+                    // The last-resort cool-off (M.ORCH-T786): a login whose trend stays past its pace line with new subagents already
+                    // slowed has just enough of its ticket subagents aborted to bend it back under, their tickets first in the queue.
+                    try
+                    {
+                        aborter ??= new AgentAborter(store, cycler.Directory, options.ClaudeProjectsDir);
+                        foreach (var a in aborter.Tick(snapshot, s, DateTime.UtcNow))
+                            Say(LogEventLevel.Warning, $"agent-abort [{a.Login ?? "global login"}]: aborted subagent {a.AgentId} on {a.TicketId} " +
+                                $"(burning ~{a.PercentPerHour:0.#}% of the 5-hour window an hour): the window is on course for {a.ProjectedPercent:0}%, past its " +
+                                $"{a.TargetPercent:0}% pace line even with new subagents slowed. It stops at its next tool call, its worktree kept as it is; " +
+                                $"{a.TicketId}'s claim is released and it's first in the queue for the next round.");
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidDataException)
+                    {
+                        Say(LogEventLevel.Warning, $"agent-abort: {ex.Message}");
+                    }
                 }
 
                 // An agent finished its turn and is waiting on you: the alert worth leaving the desk for.
@@ -341,6 +356,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     }
 
     private AccountRebalancer? rebalancer;
+
+    /// <summary>The last-resort cool-off's state (M.ORCH-T786): when each login's cool-off came on.</summary>
+    private AgentAborter? aborter;
 
     private string? lastWorkingFailure;
 

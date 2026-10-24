@@ -1903,6 +1903,29 @@ public static class AgentGate
             print(json.dumps(dict(hookSpecificOutput=dict(hookEventName="PreToolUse", permissionDecision="deny", permissionDecisionReason=why))))
             raise SystemExit(0)
 
+        # The orchestrator's last-resort cool-off (M.ORCH-T786): a subagent it aborted to pull its login's 5-hour trend back under
+        # the pace line has every tool call refused from here on, so it stops between calls (never mid-write or mid-commit, as a
+        # call already running finishes) and its worktree and uncommitted work stay as they are. Its claim is already released
+        # and its ticket put first in the queue by the orchestrator.
+        if data.get("agent_id"):
+            aborted = abort = None
+            try:
+                aborted = SUBAGENT_MARKS / "{{Scheduling.AgentAbort.DirName}}" / re.sub(r"[^A-Za-z0-9_.-]", "_", str(data["agent_id"]))
+                abort = json.loads(aborted.read_text(encoding="utf-8")) if aborted.exists() else None
+            except Exception:
+                try:
+                    abort = {} if aborted is not None and aborted.exists() else None  # a mark caught mid-write still aborts
+                except Exception:
+                    abort = None
+            if abort is not None:
+                ticket = (abort.get("ticket") if isinstance(abort, dict) else None) or "your ticket"
+                why = (abort.get("why") if isinstance(abort, dict) else None) or "this login's 5-hour window is on course past its pace line"
+                refuse(f"ABORTED by the orchestrator to cool off this login: {why}. Stop now: make no more tool calls (each one is refused) "
+                       f"and end your turn with a short report saying you were aborted, what you finished, and what's left uncommitted. "
+                       f"Don't commit, push, close or release anything: your worktree and uncommitted work are kept as they are, and "
+                       f"the orchestrator already released {ticket}'s claim and put it first in the queue for the next round, so the "
+                       f"CLI that started you shouldn't restart it now.")
+
         # /crossrepo and /allocate called through the Skill tool (M.ORCH-T435): the model starts them when the user asks in words
         # ("use crossrepo for X"), and the guard below refused every edit for want of the mark a typed command writes. They're
         # the user's choice, never the model's: recorded exactly as typed only when the user's latest prompt asked for it (the

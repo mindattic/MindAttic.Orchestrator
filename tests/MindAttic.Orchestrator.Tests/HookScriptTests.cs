@@ -2583,6 +2583,30 @@ public sealed class HookScriptTests
         Assert.That(File.ReadAllText(record), Is.EqualTo(before), "the other account isn't a /login switch of the global one");
     }
 
+    /// <summary>M.ORCH-T786: a subagent the orchestrator aborted has every tool call refused with "stop now", so it stops between
+    /// calls with its worktree left as it is; every other subagent and the CLI itself go on as before.</summary>
+    [Test]
+    public void A_subagent_the_orchestrator_aborted_has_every_call_refused_and_no_other()
+    {
+        var aborts = Path.Combine(Marks, MindAttic.Orchestrator.Scheduling.AgentAbort.DirName);
+        Directory.CreateDirectory(aborts);
+        File.WriteAllText(Path.Combine(aborts, "agent_1"), "{\"ticket\": \"A-T7\", \"why\": \"b@example.com's 5-hour window is on course to end near 118%\"}");
+
+        foreach (var call in new object[]
+                 {
+                     new { tool_name = "Read", tool_input = new { file_path = "x" }, agent_id = "agent/1", cwd = ws },
+                     new { tool_name = "Bash", tool_input = new { command = "git commit -m x" }, agent_id = "agent/1", cwd = ws },
+                 })
+        {
+            var refused = JsonDocument.Parse(Gate(call).Output).RootElement.GetProperty("hookSpecificOutput");
+            Assert.That(refused.GetProperty("permissionDecision").GetString(), Is.EqualTo("deny"));
+            Assert.That(refused.GetProperty("permissionDecisionReason").GetString(), Does.StartWith("ABORTED by the orchestrator")
+                .And.Contain("near 118%").And.Contain("A-T7's claim").And.Contain("Stop now"));
+        }
+        Assert.That(Gate(new { tool_name = "Read", tool_input = new { file_path = "x" }, agent_id = "agent_2", cwd = ws }).Output, Does.Not.Contain("ABORTED"), "another subagent");
+        Assert.That(Gate(new { tool_name = "Read", tool_input = new { file_path = "x" }, cwd = ws }).Output, Does.Not.Contain("ABORTED"), "the CLI itself");
+    }
+
     /// <summary>M.ORCH-T559: each login's subagents count against its own allowance only, marked, slotted and waited in its folder.</summary>
     [Test]
     public void A_cli_on_its_own_login_counts_only_its_accounts_subagents()
