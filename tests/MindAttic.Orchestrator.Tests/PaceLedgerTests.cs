@@ -384,6 +384,69 @@ public sealed class PaceLedgerTests
         Assert.That((row.Held, row.Refused), Is.EqualTo((1, 1)), "only acct-b's own tagged held and refused events: not acct-a's, and not the untagged one either");
     }
 
+    /// <summary>M.ORCH-T774: a per-CLI login's own limit hits are now kept (<see cref="Sessions.AccountDir.LimitsPath"/>,
+    /// written by <see cref="AccountPacer"/> from its own sessions' transcripts), so a real wall it hit grades its window
+    /// "hit the 5-hour limit", not "Claude reported 100%" (the only thing a per-CLI window could ever say before).</summary>
+    [Test]
+    public void A_per_cli_logins_window_grades_a_real_wall_it_hit_not_just_claudes_reported_percent()
+    {
+        var dir = temp.New();
+        var h = new Harness(Path.Combine(dir, "store"));
+        var dirs = new MindAttic.Orchestrator.Sessions.AccountDirs(Path.Combine(dir, "accounts"), Path.Combine(dir, ".claude"), Path.Combine(dir, ".claude.json"));
+        var b = dirs.For("b@example.com");
+        Directory.CreateDirectory(b.Directory);
+        File.WriteAllText(b.ConfigPath, """{"oauthAccount":{"accountUuid":"acct-b"}}""");
+        var bEnd = End.AddMinutes(5);
+        File.WriteAllText(b.SamplesPath, System.Text.Json.JsonSerializer.Serialize(Steady(100, bEnd)));
+        // Tagged with the account it's for (M.ORCH-T774 review): a bare array of hits couldn't say whose they were, so a
+        // re-signed folder would keep reading the previous account's.
+        File.WriteAllText(b.LimitsPath, System.Text.Json.JsonSerializer.Serialize(new { Account = "acct-b", Observations = new[] { Hit(bEnd.AddMinutes(-20), bEnd) } }));
+        var watch = new PaceLedgerWatch(h.Store, "unused", (l, s) => h.Said.Add((l, s)), (t, _, u) => h.Alerts.Add((t, u)))
+        {
+            EventsPath = h.Watch.EventsPath,
+            FileTicket = s => { h.Filed.Add(s); return "M.ORCH-T999"; },
+            AccountDirs = dirs,
+        };
+
+        watch.Tick(bEnd.AddMinutes(30));
+        var row = watch.Db.LoadLedger().Single(w => w.Account == "acct-b");
+        Assert.That(row.Why, Does.Contain("hit the 5-hour limit"));
+        Assert.That(row.LimitHitUtc, Is.Not.Null);
+        // A per-CLI login's own hit is never raised anywhere else (unlike the global ledger's, RaiseNewHits never sees its
+        // limits.json), so it must still alert and file here, or a window that blew past the 99% stop into a real wall
+        // would go unreported now that it grades as one (M.ORCH-T774 review).
+        Assert.That(h.Alerts, Is.Not.Empty, "a per-CLI login's own wall still raises an alert");
+        Assert.That(h.Filed, Has.Some.Contains("Agents ran out of tokens").And.Contains("b@example.com"), "and still files a ticket, naming what actually happened");
+    }
+
+    /// <summary>M.ORCH-T774 (review): a folder re-signed to a different Claude account must never keep reading the previous
+    /// account's limit hits -- a weekly one in particular could otherwise block a brand new sign-in for days.</summary>
+    [Test]
+    public void A_re_signed_folders_window_isnt_held_to_the_previous_accounts_limit_hit()
+    {
+        var dir = temp.New();
+        var h = new Harness(Path.Combine(dir, "store"));
+        var dirs = new MindAttic.Orchestrator.Sessions.AccountDirs(Path.Combine(dir, "accounts"), Path.Combine(dir, ".claude"), Path.Combine(dir, ".claude.json"));
+        var b = dirs.For("b@example.com");
+        Directory.CreateDirectory(b.Directory);
+        // The folder is signed in as a new account now, "acct-c", but its limits.json is still tagged "acct-b" from before.
+        File.WriteAllText(b.ConfigPath, """{"oauthAccount":{"accountUuid":"acct-c"}}""");
+        var bEnd = End.AddMinutes(5);
+        File.WriteAllText(b.SamplesPath, System.Text.Json.JsonSerializer.Serialize(Steady(100, bEnd)));
+        File.WriteAllText(b.LimitsPath, System.Text.Json.JsonSerializer.Serialize(new { Account = "acct-b", Observations = new[] { Hit(bEnd.AddMinutes(-20), bEnd) } }));
+        var watch = new PaceLedgerWatch(h.Store, "unused", (l, s) => h.Said.Add((l, s)), (t, _, u) => h.Alerts.Add((t, u)))
+        {
+            EventsPath = h.Watch.EventsPath,
+            FileTicket = s => { h.Filed.Add(s); return "M.ORCH-T999"; },
+            AccountDirs = dirs,
+        };
+
+        watch.Tick(bEnd.AddMinutes(30));
+        var row = watch.Db.LoadLedger().Single(w => w.Account == "acct-c");
+        Assert.That(row.LimitHitUtc, Is.Null, "acct-b's old hit is never acct-c's");
+        Assert.That(row.Why, Does.Not.Contain("hit the 5-hour limit"));
+    }
+
     /// <summary>M.ORCH-T725: a per-CLI folder signed in as the global account must not hide that account's global rows, or every
     /// global window is re-reported each minute.</summary>
     [Test]

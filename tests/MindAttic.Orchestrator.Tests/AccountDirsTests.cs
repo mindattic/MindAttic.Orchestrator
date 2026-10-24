@@ -386,6 +386,33 @@ public sealed class AccountDirsTests
             "an account signed out of its folder isn't paced");
     }
 
+    /// <summary>M.ORCH-T774: before this, a wall Claude actually reported to one of a per-CLI login's own sessions never
+    /// reached its BudgetCalculator (no LimitCalibration was ever built for it), so only the percent-based target stopped
+    /// it, and the pace ledger could only ever say "Claude reported 100%", never "hit the 5-hour limit". Now the account's
+    /// own sessions' hits stop its own pace, same as a hit does for the global login, and are kept across ticks.</summary>
+    [Test]
+    public void An_accounts_own_limit_hit_stops_its_own_pace_and_is_kept_for_its_ledger()
+    {
+        var b = dirs.For("b@example.com");
+        dirs.Prepare(b);
+        SignIn(b);
+        var now = DateTime.UtcNow;
+        var resetAt = now.AddHours(1);
+
+        static TranscriptSession Session(string id, long fresh, DateTime at, params LimitHit[] hits) =>
+            new(id, @"D:\W\A", at, default, null) { Events = [new UsageEvent(at, new TokenUsage(fresh, 0, 0, 0))], Hits = hits };
+        var sessions = new[] { Session("own", 1_000, now.AddMinutes(-2), new LimitHit(now.AddMinutes(-1), LimitKind.Session, resetAt)) };
+        var pacer = new AccountPacer { Dirs = dirs, Probe = false, ProjectsDir = Path.Combine(dir, "no-projects") };
+        var paces = pacer.Tick(sessions, new Dictionary<string, string> { ["own"] = b.Directory }, new OrchestratorSettings(), now, now.Date, null, write: true);
+
+        var pace = paces.Single();
+        Assert.That(pace.Budget.AtLimitUntilUtc, Is.EqualTo(resetAt), "its own session's hit stops its own budget, not just Claude's raw percent");
+        Assert.That(pace.Pace.Stop, Is.True);
+        var limits = AccountPacer.LoadLimits(b);
+        Assert.That(limits, Has.Count.EqualTo(1));
+        Assert.That((limits[0].Kind, limits[0].ResetUtc), Is.EqualTo((LimitKind.Session, resetAt)), "kept so the ledger can grade its window from it later, even once the transcript line scrolls out of the reader's window");
+    }
+
     [Test]
     public void Planning_from_a_cli_on_its_own_login_uses_its_accounts_pace()
     {

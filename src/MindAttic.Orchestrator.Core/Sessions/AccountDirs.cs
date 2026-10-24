@@ -30,6 +30,11 @@ public sealed record AccountDir(string Email, string Directory)
     /// <summary>A week of Claude's readings for this account, which size its 5-hour limit and grade its ledger windows.</summary>
     public string SamplesPath => Path.Combine(Directory, "usage-samples.json");
 
+    /// <summary>This account's own limit hits, read from its sessions' transcripts (M.ORCH-T774): kept across ticks and
+    /// restarts so a wall its sessions reported keeps grading its ledger windows "hit the 5-hour limit", not "Claude reported
+    /// 100%", even once the transcript line that reported it has scrolled out of the reader's window.</summary>
+    public string LimitsPath => Path.Combine(Directory, "limits.json");
+
     public string StatuslinePath => Path.Combine(Directory, AccountDirs.StatuslineName);
 
     /// <summary>The script <c>claude auth login</c> opens this account's sign-in through (<c>BROWSER</c>, M.ORCH-T610).</summary>
