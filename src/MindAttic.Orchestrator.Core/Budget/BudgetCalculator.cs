@@ -193,12 +193,18 @@ public static class BudgetCalculator
         // ReportFreshMinutes old (nothing redraws claude-usage.json while no interactive session is open), the hard
         // cutoff would otherwise be blind to real spend until the next report, so the local tokens spent since it are
         // added back, as before (M.ORCH-T783, M.ORCH-T179).
+        double? reportedBlockPercent = null;
         if (blockSource == LimitSource.Reported && reported5h is not null && reported is not null && current is not null)
         {
             var since = nowUtc - reported.AtUtc <= TimeSpan.FromMinutes(settings.ReportFreshMinutes) ? 0
                 : events.Where(e => e.AtUtc > reported.AtUtc && e.AtUtc <= nowUtc).Sum(e => e.Usage.Fresh);
             currentFresh = (long)(Math.Min(100, reported5h.Percent) / 100 * limit) + since;
             current = current with { Usage = new TokenUsage(currentFresh, 0, 0, 0) };
+            // Taken straight from Claude's own percent (plus the since fraction), not re-derived from currentFresh:
+            // that round-trips the percent through a whole-token count, and flooring it there (1,639 tokens of 60% can only
+            // floor to 983, not land back on 983.4) silently drifted the shown percent under what was actually reported
+            // (M.ORCH-T794).
+            reportedBlockPercent = Math.Min(100, reported5h.Percent) + (limit > 0 ? 100.0 * since / limit : 0);
         }
         // Whatever sized the limit (your budget, a learned one), Claude's own percent is what's already used in its
         // window: the local count never shows less (it read 26% while Claude said 36%, M.ORCH-T179).
@@ -208,7 +214,7 @@ public static class BudgetCalculator
             currentFresh = floor;
             current = current with { Usage = new TokenUsage(currentFresh, 0, 0, 0) };
         }
-        var blockPercent = limit > 0 ? 100.0 * currentFresh / limit : 0;
+        var blockPercent = reportedBlockPercent ?? (limit > 0 ? 100.0 * currentFresh / limit : 0);
 
         // The week Claude itself reports (its seven_day reset) comes first; failing that, the configured reset
         // day/time, then the one your weekly hits taught; otherwise it rolls. An unparseable setting is skipped
