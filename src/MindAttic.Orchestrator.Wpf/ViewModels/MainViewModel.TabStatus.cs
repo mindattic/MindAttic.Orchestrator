@@ -260,7 +260,7 @@ public sealed partial class MainViewModel
     {
         foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(TabTip),
                                      nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(TabActivityWord),
-                                     nameof(ApiKeyClis), nameof(ApiKeyCostText) })
+                                     nameof(ApiKeyClis), nameof(ApiKeyCostText), nameof(TabAskingCount), nameof(TabNeedsYou) })
             Raise(name);
     }
 

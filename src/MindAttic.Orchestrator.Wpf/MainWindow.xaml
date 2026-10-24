@@ -237,6 +237,14 @@
                                    Visibility="{Binding TabBadge, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
                             <Run Text="&#x2022; " /><Run Text="{Binding TabBadge, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=" need you" />
                         </TextBlock>
+                        <!-- The needs-you flag (M.ORCH-T790): a small red flag at the end of the tab line, only while one of the
+                             person's CLIs is genuinely blocked on you (a permission prompt, a question, or a /crossrepo or /allocate
+                             only you may type), gone once they're running again. Not a count: how many is in the tab's tooltip and
+                             accessible name, so the picture is never the only cue. -->
+                        <TextBlock x:Name="TabNeedsYouFlag" Text="&#xE7C1;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
+                                   Foreground="{DynamicResource MaBad}" VerticalAlignment="Center" Margin="8,0,0,0"
+                                   AutomationProperties.Name="Blocked waiting on you"
+                                   Visibility="{Binding TabNeedsYou, Converter={StaticResource Visible}}" />
                     </StackPanel>
                 </DataTemplate>
             </mc:MaTabControl.ItemTemplate>

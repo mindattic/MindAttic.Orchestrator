@@ -1139,6 +1139,71 @@ public sealed class HookScriptTests
         Assert.That(File.Exists(Path.Combine(Marks, $"crossrepo-{Cli}")), Is.False);
     }
 
+    // ---- Blocked on you (M.ORCH-T790): the tab's red flag reads the context gate's asking mark ----
+
+    private string? Asking(string sid)
+    {
+        var file = Path.Combine(Marks, sid + ".state.json");
+        if (!File.Exists(file)) return null;
+        using var doc = JsonDocument.Parse(File.ReadAllText(file));
+        return doc.RootElement.TryGetProperty("asking", out var a) ? a.GetString() : null;
+    }
+
+    [Test]
+    public void A_permission_prompt_marks_the_cli_blocked_on_you_until_its_tool_runs()
+    {
+        Turn("bk", "go");
+        Gate(new { hook_event_name = "Notification", session_id = "bk", cwd = Uss, notification_type = "idle_prompt", message = "Claude is waiting for your input" },
+            AgentGate.ContextScriptName);
+        Assert.That(Asking("bk"), Is.Null, "a turn that simply ended isn't blocked on you");
+
+        Gate(new { hook_event_name = "Notification", session_id = "bk", cwd = Uss, notification_type = "permission_prompt", message = "Claude needs your permission to use Bash" },
+            AgentGate.ContextScriptName);
+        Assert.That(Asking("bk"), Is.Not.Null, "holding on a permission prompt");
+        Ran("bk", "dotnet build");
+        Assert.That(Asking("bk"), Is.Null, "answered: its tool ran, so it's going again");
+
+        Gate(new { hook_event_name = "Notification", session_id = "bk", cwd = Uss, message = "Claude needs your permission to use Edit" }, AgentGate.ContextScriptName);
+        Assert.That(Asking("bk"), Is.Not.Null, "an older Claude Code sends no notification_type: the message says it");
+        Turn("bk", "no, do it differently");
+        Assert.That(Asking("bk"), Is.Null, "your next prompt answers it");
+    }
+
+    [Test]
+    public void An_ask_user_question_marks_the_cli_blocked_and_its_stop_clears_it()
+    {
+        Turn("bq", "go");
+        Gate(new { hook_event_name = "PreToolUse", session_id = "bq", cwd = Uss, tool_name = AgentGate.AskUserQuestionTool, tool_input = new { } },
+            AgentGate.ContextScriptName);
+        Assert.That(Asking("bq"), Is.Not.Null, "waiting on your answer to its question");
+        Stopped("bq", "Stopped.");
+        Assert.That(Asking("bq"), Is.Null, "a turn that ends isn't holding on a prompt");
+    }
+
+    [Test]
+    public void A_crossrepo_the_model_was_refused_leaves_the_cli_blocked_on_you_at_its_stop_until_you_type()
+    {
+        Gate(Said("fix the parser in MindAttic.Tickets"), AgentGate.ContextScriptName);
+        Assert.That(Gate(SkillCall("crossrepo", "MindAttic.Tickets")).Output, Does.Contain("\"deny\""));
+        Assert.That(Asking("sk"), Is.Null, "still mid-turn");
+        Stopped("sk", "Please type /crossrepo MindAttic.Tickets so I can work there.");
+        Assert.That(Asking("sk"), Is.Not.Null, "stopped waiting on you to type /crossrepo");
+        Gate(Said("/crossrepo MindAttic.Tickets"), AgentGate.ContextScriptName);
+        Assert.That(Asking("sk"), Is.Null, "typed: it's running again");
+        Stopped("sk", "Done.");
+        Assert.That(Asking("sk"), Is.Null, "the refusal is only flagged once");
+    }
+
+    [Test]
+    public void The_context_gate_hears_permission_prompts_and_only_the_ask_user_question_tool()
+    {
+        var hooks = JsonDocument.Parse(File.ReadAllText(Path.Combine(Claude, "settings.json"))).RootElement.GetProperty("hooks");
+        Assert.That(hooks.GetProperty("Notification").GetRawText(), Does.Contain(AgentGate.ContextScriptName));
+        var pre = hooks.GetProperty("PreToolUse").EnumerateArray()
+            .Single(e => e.GetProperty("hooks").GetRawText().Contains(AgentGate.ContextScriptName));
+        Assert.That(pre.GetProperty("matcher").GetString(), Is.EqualTo(AgentGate.AskUserQuestionTool), "no other tool call starts it");
+    }
+
     [Test]
     public void An_allocate_skill_call_is_recorded_only_when_the_user_asked_for_allocate()
     {

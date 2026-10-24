@@ -1,3 +1,4 @@
+using MindAttic.Orchestrator.Activity;
 using MindAttic.Orchestrator.Billing;
 using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Sessions;
@@ -194,5 +195,20 @@ public sealed class TabStatusTests
         Assert.That(api, Does.Contain("{Binding IsApiKeyTab").And.Contain("x:Name=\"BillingToggleButton\"").And.Contain("{Binding ToggleBillingCommand}")
             .And.Contain("{Binding ApiKeyCostText}").And.Contain("{Binding ApiKeyClis}"));
         Assert.That(System.Text.RegularExpressions.Regex.Matches(xaml, "x:Name=\"BillingToggleButton\"").Count, Is.EqualTo(1), "one switch, on the 'API key' tab");
+    }
+
+    /// <summary>M.ORCH-T790: the tab's red flag counts only CLIs blocked on you, and says so in words.</summary>
+    [Test]
+    public void The_needs_you_flag_counts_only_clis_blocked_on_you()
+    {
+        AgentBoardRow Row(string id, bool asking) => new(id, "A", null, null, DateTime.UtcNow, DateTime.UtcNow, AgentState.Waiting, "Waiting for you",
+            false, default, []) { Asking = asking };
+
+        Assert.That(MainViewModel.AskingOf([Row("a", false), Row("b", false)]), Is.Zero, "idle isn't blocked");
+        Assert.That(MainViewModel.AskingOf([Row("a", true), Row("b", false)]), Is.EqualTo(1));
+        Assert.That(MainViewModel.AskingOf(null), Is.Zero);
+        Assert.That(MainViewModel.NeedsYouLine(0), Is.Empty);
+        Assert.That(MainViewModel.NeedsYouLine(1), Is.EqualTo(" A CLI here is blocked waiting on your answer."));
+        Assert.That(MainViewModel.NeedsYouLine(2), Is.EqualTo(" 2 CLIs here are blocked waiting on your answer."));
     }
 }

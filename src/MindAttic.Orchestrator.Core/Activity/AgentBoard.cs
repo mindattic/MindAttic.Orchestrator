@@ -54,6 +54,11 @@ public sealed record AgentBoardRow(
 
     /// <summary>The Launcher tab its CLI runs in, for the card's "Go to tab" (M.ORCH-T619); null for a headless agent or when not known.</summary>
     public HostSession? Host { get; init; }
+
+    /// <summary>Genuinely blocked on you (M.ORCH-T790): holding on a permission prompt or a question, or stopped for a /crossrepo
+    /// or /allocate only you may type (<see cref="Sessions.ContextCycler.AskingSessions"/>). Not merely idle: a turn that
+    /// simply ended isn't this.</summary>
+    public bool Asking { get; init; }
 }
 
 /// <summary>
@@ -72,7 +77,8 @@ public static class AgentBoard
         TimeSpan workingWindow,
         DateTime nowUtc,
         IReadOnlyDictionary<string, bool>? live = null,
-        IReadOnlyDictionary<string, int>? clis = null)
+        IReadOnlyDictionary<string, int>? clis = null,
+        IReadOnlySet<string>? asking = null)
     {
         var byParent = subagents.ToLookup(s => s.ParentSessionId, StringComparer.Ordinal);
         var byTicket = assignments.DistinctBy(a => a.TicketId, StringComparer.OrdinalIgnoreCase).ToDictionary(a => a.TicketId, StringComparer.OrdinalIgnoreCase);
@@ -114,7 +120,8 @@ public static class AgentBoard
                     session.SessionId, repo.Name, session.TicketId, session.TicketType,
                     started, session.LastWriteUtc, state, detail,
                     assignment?.Pilot is not null, session.UsageToday,
-                    [.. byParent[session.SessionId]]) { Doing = session.Doing, DoingAtUtc = session.DoingAtUtc, Claims = claims, CliPid = cli });
+                    [.. byParent[session.SessionId]]) { Doing = session.Doing, DoingAtUtc = session.DoingAtUtc, Claims = claims, CliPid = cli,
+                      Asking = asking?.Contains(session.SessionId) == true });
             }
         }
         return [.. rows.OrderByDescending(r => r.LastActivityUtc)];

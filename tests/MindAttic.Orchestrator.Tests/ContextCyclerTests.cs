@@ -559,4 +559,39 @@ public sealed class ContextCyclerTests
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
+
+    /// <summary>M.ORCH-T790: the tab's red flag is only for a CLI genuinely blocked on you, gone once it's running again.</summary>
+    [Test]
+    public void Only_a_live_cli_still_holding_on_its_asking_mark_is_blocked_on_you()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "ctx-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var now = DateTime.UtcNow;
+            string Stamp(DateTime t) => t.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture);
+            string Transcript(string name, DateTime written)
+            {
+                var path = Path.Combine(dir, name + ".jsonl");
+                File.WriteAllText(path, "{}");
+                File.SetLastWriteTimeUtc(path, written);
+                return path.Replace("\\", "\\\\");
+            }
+            // Holding on a prompt, nothing written since: blocked.
+            File.WriteAllText(Path.Combine(dir, "held.state.json"),
+                $$"""{"pid":1,"state":"busy","asking":"{{Stamp(now.AddMinutes(-3))}}","transcript":"{{Transcript("held", now.AddMinutes(-3))}}"}""");
+            // Answered with an Esc that fired no hook: its transcript was written since, so it's going again.
+            File.WriteAllText(Path.Combine(dir, "went.state.json"),
+                $$"""{"pid":2,"state":"busy","asking":"{{Stamp(now.AddMinutes(-3))}}","transcript":"{{Transcript("went", now.AddMinutes(-1))}}"}""");
+            // Merely idle at the end of a turn: not blocked.
+            File.WriteAllText(Path.Combine(dir, "idle.state.json"), """{"pid":3,"state":"idle"}""");
+            // Its CLI closed: not blocked.
+            File.WriteAllText(Path.Combine(dir, "gone.state.json"), $$"""{"pid":4,"state":"busy","asking":"{{Stamp(now)}}"}""");
+
+            var asking = new ContextCycler(dir).AskingSessions(now, pid => pid != 4);
+
+            Assert.That(asking, Is.EquivalentTo(new[] { "held" }));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
 }

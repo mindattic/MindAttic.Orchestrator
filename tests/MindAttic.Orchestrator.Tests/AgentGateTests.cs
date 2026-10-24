@@ -110,7 +110,7 @@ public sealed class AgentGateTests
         AgentGate.Ensure(Claude);
         AgentGate.Ensure(Claude);
         var pre = Json(Settings)["hooks"]!["PreToolUse"]!.AsArray();
-        Assert.That(pre.Count, Is.EqualTo(2), "yours and the pace gate, once");
+        Assert.That(pre.Count, Is.EqualTo(3), "yours, the pace gate and the context gate's AskUserQuestion (M.ORCH-T790), once");
         Assert.That(pre.ToJsonString(), Does.Contain("mine.sh").And.Contain(AgentGate.ScriptName));
         Assert.That(pre.ToJsonString(), Does.Contain($"\"timeout\":{AgentGate.HookTimeoutSeconds}"));
     }
@@ -135,7 +135,7 @@ public sealed class AgentGateTests
         AgentGate.Ensure(Claude);
 
         var hooks = Json(Settings)["hooks"]!.AsObject();
-        foreach (var hookEvent in new[] { "UserPromptSubmit", "Stop", "PostToolUse", "SubagentStart", "SubagentStop", "SessionStart" })
+        foreach (var hookEvent in new[] { "UserPromptSubmit", "Stop", "PostToolUse", "SubagentStart", "SubagentStop", "SessionStart", "Notification", "PreToolUse" })
         {
             var entries = hooks[hookEvent]!.AsArray().SelectMany(e => e!["hooks"]!.AsArray()).Where(h => h!["command"]!.GetValue<string>() == command).ToList();
             Assert.That(entries.Select(h => h!["timeout"]!.GetValue<int>()), Is.EqualTo(new[] { AgentGate.ContextHookTimeoutSeconds }), hookEvent);
