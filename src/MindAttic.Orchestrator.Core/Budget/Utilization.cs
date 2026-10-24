@@ -10,8 +10,9 @@ public sealed record UtilizationPoint(DateTime AtUtc, double Percent);
 /// (over) and one below it slower (under). <see cref="ProjectedEndPercent"/> is where the recent rate lands by the reset.
 /// <see cref="Ended"/> while no window is running (M.ORCH-T502): then it's the last window as it ended (its line, pace and
 /// last reading, <see cref="NowPercent"/> at <see cref="NowUtc"/>), or with no <see cref="Actual"/> points an empty axis
-/// when there's no window on record. <see cref="Idle"/> while nothing runs on the login (M.ORCH-T629): a flat line at its
-/// current percent across the window, against the target only (<see cref="UtilizationSeries.IdleWindow"/>).
+/// when there's no window on record. <see cref="Idle"/> while nothing runs on the login (M.ORCH-T629): a real running
+/// window keeps its own climbing <see cref="Actual"/>, against the target only; without one, a flat line at the roster's
+/// last reading across the window (<see cref="UtilizationSeries.IdleWindow"/>, M.ORCH-T787).
 /// </summary>
 public sealed record Utilization(DateTime StartUtc, DateTime EndUtc, DateTime NowUtc, double TargetPercent,
     IReadOnlyList<UtilizationPoint> Actual, double NowPercent, double PercentPerHour, double ProjectedEndPercent, TimeSpan OverPace,
@@ -58,8 +59,15 @@ public static class UtilizationSeries
         var now = Math.Max(points[^1].Percent, b.BlockPercent);
         if (nowUtc > points[^1].AtUtc) points.Add(new(nowUtc, now));
 
+        // The rate the projection carries forward is never under what the last few minutes show (M.ORCH-T783): a fresh
+        // burst across a login's CLIs and subagents moves ControlFreshPerHour within minutes, while the 30-minute
+        // RecentFreshPerHour it's steadied against still carries the quieter stretch before it and can read "under target"
+        // for a long stretch of a burst already running hot. The pace hook's guidance, the subagent allowance raise and
+        // this same chart all read this one number, so understating it here let them all say "start more" while the
+        // window was already on course past its target.
+        var rate = Math.Max(b.RecentFreshPerHour, b.ControlFreshPerHour);
         var series = new Utilization(block.StartUtc, block.EndUtc, nowUtc, targetPercent, points, now,
-            b.RecentFreshPerHour / b.BlockLimit * 100, 0, TimeSpan.Zero, exponent);
+            rate / b.BlockLimit * 100, 0, TimeSpan.Zero, exponent);
         var over = OverPace(series, points);
         var hoursLeft = Math.Max(0, (block.EndUtc - nowUtc).TotalHours);
         return series with { ProjectedEndPercent = now + series.PercentPerHour * hoursLeft, OverPace = over };

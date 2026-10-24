@@ -96,6 +96,27 @@ public sealed class DashboardViewModelTests
         }
     }
 
+    [Test]
+    public void A_momentary_idle_read_keeps_a_real_windows_climb_instead_of_flattening_it()
+    {
+        // M.ORCH-T787: seen once with a real window that climbed steadily to 96%, then a momentary idle read (nothing
+        // working right that instant) flattened the whole window at 96% instead of keeping its actual climb.
+        var start = Now.AddHours(-3);
+        var end = Now.AddHours(2);
+        var climb = new[] { new UtilizationPoint(start, 0), new UtilizationPoint(Now.AddMinutes(-10), 50), new UtilizationPoint(Now, 96) };
+        var real = new Utilization(start, end, Now, 90, climb, 96, 10, 96, TimeSpan.Zero);
+        var quiet = new Snapshot(Now, [], []) { Utilization = real };
+        Assert.That(MainViewModel.IsLoginIdle(quiet), Is.True, "nothing is working this instant");
+
+        var u = MainViewModel.IdleUtilization(quiet, null, 90, Now);
+        Assert.That(u.Idle, Is.True);
+        Assert.That(u.Actual, Is.EqualTo(climb), "the real climb, not a flat line at the current %");
+        Assert.That((u.StartUtc, u.EndUtc, u.NowPercent), Is.EqualTo((start, end, 96d)));
+
+        var chart = UtilizationChartData.From(u, new UtilizationChartData.ChartBrushes(Brushes.Blue, Brushes.Green, Brushes.Orange, Brushes.Red));
+        Assert.That(chart.Points, Has.Count.EqualTo(3), "all three real readings kept, not collapsed to a two-point flat line");
+    }
+
     // ── Repo sort (M.ORCH-T593) ─────────────────────────────────────────────
 
     [Test]

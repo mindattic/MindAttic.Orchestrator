@@ -15,8 +15,10 @@ namespace MindAttic.Orchestrator.Wpf;
 /// own line is MaBad on each stretch that ended above the pace and MaGood below; and, dotted, where the recent rate ends up
 /// by the reset, in MaBad past 100%, MaWarn past the target, else MaGood. Between windows it's the last one as it ended,
 /// labelled 'ended NN%' with no projection, or with none on record just the empty axis (M.ORCH-T502). The caption under
-/// the chart says the same in words, so nothing is told by colour alone. With nothing running on the login it's a flat line
-/// at its current % across the window against the target, labelled 'idle NN%' (M.ORCH-T629).
+/// the chart says the same in words, so nothing is told by colour alone. With nothing running on the login it's labelled
+/// 'idle NN%' against the target only: a real running window keeps its own climb rather than flattening to a line at its
+/// current %, so a momentary idle read never erases genuine history (M.ORCH-T629, M.ORCH-T787); without a real window,
+/// it is that flat line.
 /// </summary>
 public static class UtilizationChartData
 {

@@ -219,13 +219,15 @@ public sealed partial class MainViewModel
     internal static bool IsLoginIdle(Snapshot s) =>
         s.Working == 0 && !s.Agents.Any(a => a.State == MindAttic.Orchestrator.Activity.AgentState.Working || a.Subagents.Count > 0);
 
-    /// <summary>The login's window while it's idle (M.ORCH-T629): the running window's % and reset (its own pace's, else the
-    /// roster's last reading of it), or the next 5 hours from now at 0% once it has reset or was never read.</summary>
+    /// <summary>The login's window while it's idle (M.ORCH-T629): a real running window keeps its actual climb, just marked
+    /// idle (M.ORCH-T787: a momentary idle read mustn't flatten a window that genuinely climbed); without one, the roster's
+    /// last reading of it, or the next 5 hours from now at 0% once it has reset or was never read.</summary>
     internal static Utilization IdleUtilization(Snapshot s, AccountRow? row, double targetPercent, DateTime nowUtc)
     {
         var target = s.Utilization?.TargetPercent ?? targetPercent;
-        if (s.Utilization is { Ended: false, Idle: false } u && u.EndUtc > nowUtc)
-            return UtilizationSeries.IdleWindow(u.EndUtc, u.NowPercent, target, nowUtc);
+        // A real window is already drawn (its own Actual readings): keep that climb rather than replacing it with a flat
+        // line at the current %, which would erase genuine history whenever "idle" is read for only a moment.
+        if (s.Utilization is { Ended: false, Idle: false } u && u.EndUtc > nowUtc) return u with { Idle = true };
         if (s.Budget is { CurrentBlock: { } block } b && block.EndUtc > nowUtc)
             return UtilizationSeries.IdleWindow(block.EndUtc,
                 b.BlockLimitIsPeak || b.BlockLimit <= 0 ? row?.FiveHourUsedAt(nowUtc) ?? 0 : b.BlockPercent, target, nowUtc);
