@@ -52,7 +52,7 @@ public sealed class OpenTicketSource
         {
             warnings.Add($"{repo.Name}: {ex.Message}");
             // Caught mid-write (or held by an editor or git): its last good read stands, not "no open tickets", which
-            // would read every claimed ticket as finished and let autopilot reap live assignments. Read again next time.
+            // would read every claimed ticket as finished and let allocate reap live assignments. Read again next time.
             // With no good read yet, nothing is cached either: cached under this write time it would stand until the file changed.
             return hit.Open ?? [];
         }
@@ -86,7 +86,7 @@ public sealed class OpenTicketSource
             {
                 warnings.Add($"ticket database: {ex.Message}");
                 // A read that fails mid-write (the database locked) keeps the last good read rather than fall back to
-                // USER_STORIES.md, which can lag it: a ticket missing there reads as finished, and autopilot would reap
+                // USER_STORIES.md, which can lag it: a ticket missing there reads as finished, and allocate would reap
                 // its live assignment. The read is tried again next time, since the cached time still differs.
                 // With no good read at all (a daemon just restarted), the open tickets are unknown, not none: say so, so
                 // nothing reads the claims in this repo as finished.

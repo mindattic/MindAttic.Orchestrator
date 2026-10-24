@@ -2,7 +2,7 @@ namespace MindAttic.Orchestrator.Setup;
 
 /// <summary>
 /// The single-file exe unpacks its native libraries into &lt;base&gt;\&lt;app&gt;\&lt;build hash&gt; on its first run, and .NET never
-/// removes an old build's folder: about 10.5 MB per deploy, a gigabyte in ten days of autopilot (M.ORCH-T469).
+/// removes an old build's folder: about 10.5 MB per deploy, a gigabyte in ten days of allocate (M.ORCH-T469).
 /// </summary>
 public static class ExtractionPruner
 {

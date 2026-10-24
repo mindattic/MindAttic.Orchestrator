@@ -101,10 +101,10 @@ public sealed class OrchestratorServerTests
             Assert.That(Sql.Scalar(c, null, "SELECT COUNT(*) FROM pace_ledger;"), Is.EqualTo(0L), "the server alone keeps the rest");
 
         // A volatile row stays this machine's: in the file only.
-        store.Save(Daemon.AutopilotHoldsName, new List<string> { "held" });
+        store.Save(Daemon.AllocateHoldsName, new List<string> { "held" });
         using (var s = db.OpenData())
-            Assert.That(Sql.Scalar(s, null, "SELECT COUNT(*) FROM state WHERE name = @n;", ("@n", Daemon.AutopilotHoldsName)), Is.EqualTo(0));
-        Assert.That(new JsonStore(store.Directory, local).Load<List<string>>(Daemon.AutopilotHoldsName), Is.EqualTo(new[] { "held" }));
+            Assert.That(Sql.Scalar(s, null, "SELECT COUNT(*) FROM state WHERE name = @n;", ("@n", Daemon.AllocateHoldsName)), Is.EqualTo(0));
+        Assert.That(new JsonStore(store.Directory, local).Load<List<string>>(Daemon.AllocateHoldsName), Is.EqualTo(new[] { "held" }));
     }
 
     [Test]

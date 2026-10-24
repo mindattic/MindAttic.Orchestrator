@@ -12,10 +12,10 @@ namespace MindAttic.Orchestrator.Sessions;
 /// </summary>
 public static class CliMarks
 {
-    public const string Autopilot = "autopilot";
-    public const string NoAutopilot = "noautopilot";
+    public const string Allocate = "allocate";
+    public const string NoAllocate = "noallocate";
     public const string Crossrepo = "crossrepo";
-    public static readonly string[] Kinds = [Autopilot, NoAutopilot, Crossrepo];
+    public static readonly string[] Kinds = [Allocate, NoAllocate, Crossrepo];
 
     public const string ClearedSuffix = ".cleared";
 

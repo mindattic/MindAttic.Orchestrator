@@ -214,7 +214,7 @@ public sealed class HookScriptTests
             "insert into links values('U.SPC-T1','U.SPC-T2','requires');");
         var uss = Path.Combine(ws, "UnitySolarSystem");
         Directory.CreateDirectory(Marks);
-        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem");
+        File.WriteAllText(Path.Combine(Marks, $"allocate-{Cli}"), "UnitySolarSystem");
         object Asking(string sid) => new { hook_event_name = "Stop", session_id = sid, cwd = uss, last_assistant_message = "Shall I start the next one?" };
         Status(new { });
 
@@ -273,10 +273,10 @@ public sealed class HookScriptTests
             mk.WaitForExit(20_000);
         var uss = Path.Combine(ws, "UnitySolarSystem");
         Directory.CreateDirectory(Marks);
-        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem");
+        File.WriteAllText(Path.Combine(Marks, $"allocate-{Cli}"), "UnitySolarSystem");
         var store = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator");
         Directory.CreateDirectory(store);
-        var holds = Path.Combine(store, Daemon.AutopilotHoldsName + ".json");
+        var holds = Path.Combine(store, Daemon.AllocateHoldsName + ".json");
         var settings = Path.Combine(store, "settings.json");
         object Asking(string sid) => new { hook_event_name = "Stop", session_id = sid, cwd = uss, last_assistant_message = "Shall I start the next one?" };
         Status(new { });
@@ -284,19 +284,19 @@ public sealed class HookScriptTests
 
         Assert.That(Asked("h1"), Does.Contain("\"block\""), "nothing held: it's work");
         // Written as the daemon writes it, so the names the hook reads are the ones it gets.
-        new MindAttic.Orchestrator.Settings.JsonStore(store).Save(Daemon.AutopilotHoldsName,
-            new Daemon.AutopilotHolds(false, [new MindAttic.Orchestrator.Scheduling.WorkedTicket("U.SPC-T1", "other", null, "filed", Filed: true)], []));
+        new MindAttic.Orchestrator.Settings.JsonStore(store).Save(Daemon.AllocateHoldsName,
+            new Daemon.AllocateHolds(false, [new MindAttic.Orchestrator.Scheduling.WorkedTicket("U.SPC-T1", "other", null, "filed", Filed: true)], []));
         Assert.That(Asked("h2"), Is.Empty, "another live session filed it and is fixing it: next won't hand it out");
         Assert.That(Asked("other"), Does.Contain("\"block\""), "the session that filed it isn't held from it");
-        new MindAttic.Orchestrator.Settings.JsonStore(store).Save(Daemon.AutopilotHoldsName,
-            new Daemon.AutopilotHolds(false, [new MindAttic.Orchestrator.Scheduling.WorkedTicket("U.SPC-T1", "started", null, "started on it")], []));
+        new MindAttic.Orchestrator.Settings.JsonStore(store).Save(Daemon.AllocateHoldsName,
+            new Daemon.AllocateHolds(false, [new MindAttic.Orchestrator.Scheduling.WorkedTicket("U.SPC-T1", "started", null, "started on it")], []));
         Assert.That(Asked("started"), Is.Empty, "but the one it was started on is its own work, not one for its subagents (M.ORCH-T328)");
         File.WriteAllText(holds, """{"Quiet":true,"Worked":[],"LivePilot":[]}""");
         Assert.That(Asked("h3"), Is.Empty, "quiet hours");
         File.WriteAllText(holds, """{"Quiet":false,"Worked":[],"LivePilot":[]}""");
-        File.WriteAllText(settings, """{ "Autopilot": false }""");
-        Assert.That(Asked("h4"), Is.Empty, "autopilot paused");
-        File.WriteAllText(settings, """{ "AutopilotSkip": ["unitysolarsystem"] }""");
+        File.WriteAllText(settings, """{ "Allocate": false }""");
+        Assert.That(Asked("h4"), Is.Empty, "allocate paused");
+        File.WriteAllText(settings, """{ "AllocateSkip": ["unitysolarsystem"] }""");
         Assert.That(Asked("h5"), Is.Empty, "a skipped repo");
     }
 
@@ -313,7 +313,7 @@ public sealed class HookScriptTests
             mk.WaitForExit(20_000);
         var uss = Path.Combine(ws, "UnitySolarSystem");
         Directory.CreateDirectory(Marks);
-        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem");
+        File.WriteAllText(Path.Combine(Marks, $"allocate-{Cli}"), "UnitySolarSystem");
         Status(new { });
         // A stand-in for orchestrator.exe: records how it was asked and prints what `next` would.
         var output = Path.Combine(dir, "next-out.txt");
@@ -350,7 +350,7 @@ public sealed class HookScriptTests
         Directory.CreateDirectory(Path.Combine(uss, "docs"));
         File.WriteAllText(Path.Combine(uss, "docs", "USER_STORIES.md"), "| U.SPC-T9 | 2026-10-18 | feature | open | A feature | — |\n");
         Directory.CreateDirectory(Marks);
-        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem");
+        File.WriteAllText(Path.Combine(Marks, $"allocate-{Cli}"), "UnitySolarSystem");
         Status(new { });
         var output = Path.Combine(dir, "next-out.txt");
         var fake = Path.Combine(dir, "orchestrator.cmd");
@@ -387,7 +387,7 @@ public sealed class HookScriptTests
             mk.WaitForExit(20_000);
         var uss = Path.Combine(ws, "UnitySolarSystem");
         Directory.CreateDirectory(Marks);
-        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem");
+        File.WriteAllText(Path.Combine(Marks, $"allocate-{Cli}"), "UnitySolarSystem");
         var store = Path.Combine(dir, "MindAttic", "MindAttic.Orchestrator");
         Directory.CreateDirectory(store);
         File.WriteAllText(Path.Combine(store, "assignments.json"), """[{"TicketId":"U.SPC-T1","Repo":"UnitySolarSystem"}]""");
@@ -414,7 +414,7 @@ public sealed class HookScriptTests
             mk.WaitForExit(20_000);
         var uss = Path.Combine(ws, "UnitySolarSystem");
         Directory.CreateDirectory(Marks);
-        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem");
+        File.WriteAllText(Path.Combine(Marks, $"allocate-{Cli}"), "UnitySolarSystem");
         object Asking(string sid) => new { hook_event_name = "Stop", session_id = sid, cwd = uss, last_assistant_message = "Shall I start the next one?" };
         Status(new { }, at: DateTime.UtcNow.AddMinutes(-10)); // the daemon died
         Assert.That(Gate(Asking("k1"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\""), "under the line: told to carry on");
@@ -698,7 +698,7 @@ public sealed class HookScriptTests
             mk.WaitForExit(20_000);
         var uss = Path.Combine(ws, "UnitySolarSystem");
         Directory.CreateDirectory(Marks);
-        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem"); // keep-going acts only in the CLI /allocate is on in
+        File.WriteAllText(Path.Combine(Marks, $"allocate-{Cli}"), "UnitySolarSystem"); // keep-going acts only in the CLI /allocate is on in
         object Asking(string sid) => new { hook_event_name = "Stop", session_id = sid, cwd = uss, last_assistant_message = "Shall I start the next one?" };
         Status(new { });
         Assert.That(Gate(Asking("w3"), AgentGate.ContextScriptName).Output, Does.Contain("\"block\""), "open tickets: told to carry on");
@@ -911,7 +911,7 @@ public sealed class HookScriptTests
 
     /// <summary>M.ORCH-T558: the first CLI to turn /allocate on filled every place before the CLIs opened just after it could.</summary>
     [Test]
-    public void Autopilot_warms_up_one_more_subagent_each_minute_since_it_turned_on_and_keeps_that_time_when_its_repos_change()
+    public void Allocate_warms_up_one_more_subagent_each_minute_since_it_turned_on_and_keeps_that_time_when_its_repos_change()
     {
         var path = MindAttic.Orchestrator.Settings.OrchestratorDb.DefaultPath();
         new MindAttic.Orchestrator.Settings.OrchestratorDb(path).Open().Dispose();
@@ -919,7 +919,7 @@ public sealed class HookScriptTests
         {
             using var connection = new MindAttic.Orchestrator.Settings.OrchestratorDb(path).Open();
             using var command = connection.CreateCommand();
-            command.CommandText = $"SELECT since FROM cli_marks WHERE kind = 'autopilot' AND pid = {Cli};";
+            command.CommandText = $"SELECT since FROM cli_marks WHERE kind = 'allocate' AND pid = {Cli};";
             return command.ExecuteScalar() is double d ? d : null;
         }
         void Shift(int seconds)
@@ -1084,9 +1084,9 @@ public sealed class HookScriptTests
     }
 
     [Test]
-    public void Autopilot_takes_repo_names_or_wildcards_and_its_repos_are_this_clis_cross_repo_exception()
+    public void Allocate_takes_repo_names_or_wildcards_and_its_repos_are_this_clis_cross_repo_exception()
     {
-        var mark = Path.Combine(Marks, $"autopilot-{Cli}");
+        var mark = Path.Combine(Marks, $"allocate-{Cli}");
         object Prompt(string prompt) => new { hook_event_name = "UserPromptSubmit", session_id = "s1", prompt, cwd = ws };
         Gate(Prompt("/allocate -repo=a,b on"), AgentGate.ContextScriptName);
         Assert.That(File.ReadAllText(mark), Is.EqualTo("a,b"));
@@ -1140,34 +1140,34 @@ public sealed class HookScriptTests
     }
 
     [Test]
-    public void An_autopilot_skill_call_is_recorded_only_when_the_user_asked_for_autopilot()
+    public void An_allocate_skill_call_is_recorded_only_when_the_user_asked_for_allocate()
     {
-        var mark = Path.Combine(Marks, $"autopilot-{Cli}");
+        var mark = Path.Combine(Marks, $"allocate-{Cli}");
         Gate(Said("work the Tickets tickets"), AgentGate.ContextScriptName);
-        // The refusal always names the public command (/allocate), never the internal "autopilot" one it's stored as.
-        Assert.That(Gate(SkillCall("autopilot", "-repo=MindAttic.Tickets")).Output, Does.Contain("\"deny\"").And.Contain("/allocate").And.Not.Contain("/autopilot"));
+        // The refusal names the command the user would type, /allocate.
+        Assert.That(Gate(SkillCall("allocate", "-repo=MindAttic.Tickets")).Output, Does.Contain("\"deny\"").And.Contain("/allocate"));
         Assert.That(File.Exists(mark), Is.False);
         Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Does.Contain("\"deny\""));
 
         Gate(Said("turn auto pilot on for MindAttic.Tickets"), AgentGate.ContextScriptName);
-        Assert.That(Gate(SkillCall("autopilot", "-repo=MindAttic.Tickets")).Output, Does.Not.Contain("\"deny\""));
+        Assert.That(Gate(SkillCall("allocate", "-repo=MindAttic.Tickets")).Output, Does.Not.Contain("\"deny\""));
         Assert.That(File.ReadAllText(mark), Is.EqualTo("MindAttic.Tickets"));
         Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Is.Empty, "its repos are this CLI's exception, as typed /allocate's are");
-        Assert.That(Gate(SkillCall("autopilot", "-repos=X")).Output, Does.Contain("\"deny\"").And.Contain("-repos is gone"), "the same rules as typed");
+        Assert.That(Gate(SkillCall("allocate", "-repos=X")).Output, Does.Contain("\"deny\"").And.Contain("-repos is gone"), "the same rules as typed");
         Assert.That(File.ReadAllText(mark), Is.EqualTo("MindAttic.Tickets"));
     }
 
     [Test]
-    public void Switching_crossrepo_or_autopilot_off_through_the_skill_tool_always_goes_through()
+    public void Switching_crossrepo_or_allocate_off_through_the_skill_tool_always_goes_through()
     {
         Directory.CreateDirectory(Marks);
         File.WriteAllText(Path.Combine(Marks, $"crossrepo-{Cli}"), "all");
-        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem");
+        File.WriteAllText(Path.Combine(Marks, $"allocate-{Cli}"), "UnitySolarSystem");
         Gate(Said("that's enough for today"), AgentGate.ContextScriptName);
         Assert.That(Gate(SkillCall("crossrepo", "off")).Output, Does.Not.Contain("\"deny\""));
-        Assert.That(Gate(SkillCall("autopilot", "off")).Output, Does.Not.Contain("\"deny\""));
+        Assert.That(Gate(SkillCall("allocate", "off")).Output, Does.Not.Contain("\"deny\""));
         Assert.That(File.Exists(Path.Combine(Marks, $"crossrepo-{Cli}")), Is.False);
-        Assert.That(File.Exists(Path.Combine(Marks, $"autopilot-{Cli}")), Is.False);
+        Assert.That(File.Exists(Path.Combine(Marks, $"allocate-{Cli}")), Is.False);
         Assert.That(Gate(EditIn("MindAttic.Tickets")).Output, Does.Contain("\"deny\""));
     }
 
@@ -1316,7 +1316,7 @@ public sealed class HookScriptTests
     private string KeepGoingLog => Path.Combine(Marks, "keep-going.jsonl");
 
     /// <summary>Two open fixes for UnitySolarSystem in the ticket database, and /allocate on for it in this CLI.</summary>
-    private void AutopilotWithOpenFixes()
+    private void AllocateWithOpenFixes()
     {
         var db = Path.Combine(ws, "MindAttic.Tickets", "data", "Tickets.db");
         Directory.CreateDirectory(Path.GetDirectoryName(db)!);
@@ -1326,7 +1326,7 @@ public sealed class HookScriptTests
             "d.execute(\"insert into tickets values('U.SPC-T2','UnitySolarSystem','open',2,'fix')\"); d.commit()", db }, UseShellExecute = false })!)
             Assert.That(mk.WaitForExit(20_000), Is.True);
         Directory.CreateDirectory(Marks);
-        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem");
+        File.WriteAllText(Path.Combine(Marks, $"allocate-{Cli}"), "UnitySolarSystem");
     }
 
     private string Turn(string sid, string prompt, string? transcript = null) =>
@@ -1346,7 +1346,7 @@ public sealed class HookScriptTests
     [Test]
     public void A_turn_that_closed_a_ticket_and_stopped_is_nudged_and_a_second_stop_with_no_work_between_is_let_go()
     {
-        AutopilotWithOpenFixes();
+        AllocateWithOpenFixes();
         Status(new { });
         Turn("k1", "go");
         Ran("k1", "tickets ticket close U.SPC-T1 --ref abc123");
@@ -1365,7 +1365,7 @@ public sealed class HookScriptTests
         var lines = KeepGoingLines();
         Assert.That(lines.Select(l => l.GetProperty("action").GetString()), Is.EqualTo(new[] { "kept going", "let stop" }));
         Assert.That(lines.Select(l => (l.GetProperty("repo").GetString(), l.GetProperty("session").GetString(), l.GetProperty("provider").GetString(),
-            l.GetProperty("why").GetString(), l.GetProperty("open").GetInt32())), Is.All.EqualTo(("UnitySolarSystem", "k1", "Claude", "autopilot", 2)));
+            l.GetProperty("why").GetString(), l.GetProperty("open").GetInt32())), Is.All.EqualTo(("UnitySolarSystem", "k1", "Claude", "allocate", 2)));
 
         // Nudged, then carried on (any tool call counts as work): its next stop is nudged again rather than let go.
         Assert.That(Stopped("k1"), Does.Contain("\"block\""));
@@ -1378,7 +1378,7 @@ public sealed class HookScriptTests
     public void A_stop_is_not_pushed_back_when_the_subagent_allowance_is_full_or_every_ticket_is_claimed()
     {
         // M.ORCH-T188: `orchestrator next --claim` hands out nothing then, so pushing back only looped.
-        AutopilotWithOpenFixes();
+        AllocateWithOpenFixes();
         Status(new { subagent_allowance = 2, subagents_running = 2 });
         Assert.That(Stopped("c1"), Is.Empty, "the allowance is full: next would hand out nothing");
         Status(new { subagent_allowance = 3, subagents_running = 2 });
@@ -1402,7 +1402,7 @@ public sealed class HookScriptTests
     [Test]
     public void A_goal_turn_is_not_nudged_until_goal_clear_or_its_stop_summary_ends_the_goal()
     {
-        AutopilotWithOpenFixes();
+        AllocateWithOpenFixes();
         Status(new { });
         Turn("g1", "/goal all the tests pass");
         Assert.That(Stopped("g1"), Is.Empty, "a /goal runs turn after turn on its own: keep-going leaves it alone");
@@ -1432,13 +1432,13 @@ public sealed class HookScriptTests
     }
 
     [Test]
-    public void An_autopilot_list_outside_the_ansi_code_page_is_read_as_the_utf8_it_is_written_in()
+    public void An_allocate_list_outside_the_ansi_code_page_is_read_as_the_utf8_it_is_written_in()
     {
         // M.ORCH-T400: the marks are written as UTF-8 now; read in the ANSI code page, "Łódź" (0x81 in its bytes) failed the read,
         // and /allocate read as off in that CLI. (The write takes a claude.exe ancestor, which a test doesn't have.)
-        AutopilotWithOpenFixes();
+        AllocateWithOpenFixes();
         Status(new { });
-        File.WriteAllText(Path.Combine(Marks, $"autopilot-{Cli}"), "UnitySolarSystem,Łódź", new System.Text.UTF8Encoding(false));
+        File.WriteAllText(Path.Combine(Marks, $"allocate-{Cli}"), "UnitySolarSystem,Łódź", new System.Text.UTF8Encoding(false));
 
         Assert.That(Stopped("x1"), Does.Contain("\"block\""), "still on /allocate for UnitySolarSystem");
     }
@@ -1449,7 +1449,7 @@ public sealed class HookScriptTests
     public void Keep_going_reads_the_ticket_database_the_env_var_names(string variable)
     {
         // M.ORCH-T398: as the orchestrator and the tickets CLI do; the workspace's own (two open fixes) is not the one in use.
-        AutopilotWithOpenFixes();
+        AllocateWithOpenFixes();
         Status(new { });
         var elsewhere = Path.Combine(dir, "elsewhere.db");
         using (var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
@@ -1469,7 +1469,7 @@ public sealed class HookScriptTests
     public void A_goal_with_a_non_ascii_character_is_kept_as_typed_so_its_stop_summary_ends_it()
     {
         // Read in the ANSI code page, "café" was kept garbled and never matched the summary, so the goal never ended (M.ORCH-T392).
-        AutopilotWithOpenFixes();
+        AllocateWithOpenFixes();
         Status(new { });
         var transcript = Path.Combine(dir, "g3.jsonl");
         File.WriteAllText(transcript, "");
@@ -1489,7 +1489,7 @@ public sealed class HookScriptTests
     {
         // The installer hooks both up to context-gate.py (codex / gemini on the command line), but /allocate runs in a
         // Claude CLI: theirs are let stop, with nothing logged and no session state written (84d9b91).
-        AutopilotWithOpenFixes();
+        AllocateWithOpenFixes();
         Status(new { });
         Assert.That(Gate(new { hook_event_name = "Stop", session_id = "c1", cwd = Uss, last_assistant_message = "Shall I go on?" },
             AgentGate.ContextScriptName, "codex").Output, Is.Empty);
@@ -2216,7 +2216,7 @@ public sealed class HookScriptTests
         File.WriteAllText(Path.Combine(sub, "b1"), "777");           // another CLI's
 
         Gate(Said("/allocate off"), AgentGate.ContextScriptName);
-        Assert.That((CliMark("autopilot", Cli), CliMark("noautopilot", Cli)), Is.EqualTo(((string?)null, "wind")), "off, and winding down");
+        Assert.That((CliMark("allocate", Cli), CliMark("noallocate", Cli)), Is.EqualTo(((string?)null, "wind")), "off, and winding down");
 
         object Stop(string sid) => new { hook_event_name = "Stop", session_id = sid, cwd = Uss, last_assistant_message = "Done." };
         Assert.That(Gate(Stop("sk"), AgentGate.ContextScriptName).Output, Is.Empty, "its subagent is still working; off sends it back for no ticket");
@@ -2232,7 +2232,7 @@ public sealed class HookScriptTests
         Assert.That(Gate(new { tool_name = "PowerShell", session_id = "sk", cwd = Uss, hook_event_name = "PreToolUse", tool_input = new { command } }).Output, Is.Empty);
         Status(new { });
         Gate(new { hook_event_name = "PostToolUse", session_id = "sk", cwd = Uss, tool_name = "PowerShell", tool_input = new { command } }, AgentGate.ContextScriptName);
-        Assert.That(CliMark("noautopilot", Cli), Is.EqualTo(""), "saved: still off, wound down");
+        Assert.That(CliMark("noallocate", Cli), Is.EqualTo(""), "saved: still off, wound down");
 
         Gate(Said("what's left?"), AgentGate.ContextScriptName);
         Assert.That(Gate(Stop("sk"), AgentGate.ContextScriptName).Output, Is.Empty, "nothing more to save, and nothing sends it back for work");
@@ -2245,7 +2245,7 @@ public sealed class HookScriptTests
         Gate(new { hook_event_name = "UserPromptSubmit", session_id = "o2", prompt = "/allocate", cwd = Uss },
             new Dictionary<string, string> { ["MINDATTIC_CLI_PID"] = "5301" }, AgentGate.ContextScriptName);
         Gate(Said("/allocate off all"), AgentGate.ContextScriptName);
-        Assert.That((CliMark("noautopilot", Cli), CliMark("noautopilot", 5301), CliMark("autopilot", 5301)), Is.EqualTo(("wind", "wind", (string?)null)));
+        Assert.That((CliMark("noallocate", Cli), CliMark("noallocate", 5301), CliMark("allocate", 5301)), Is.EqualTo(("wind", "wind", (string?)null)));
     }
 
     // ---- M.ORCH-T526: the status row and the event log in orchestrator.db ----

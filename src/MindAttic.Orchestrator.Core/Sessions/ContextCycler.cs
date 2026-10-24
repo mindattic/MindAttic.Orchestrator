@@ -218,7 +218,7 @@ public sealed class ContextCycler(string? directory = null)
         CliMarks.Prune(IsClaude);
         SessionStates.ReadIn(Directory);
         if (!System.IO.Directory.Exists(Directory)) return;
-        foreach (var prefix in new[] { "unthrottled-", "crossrepo-", "autopilot-", "noautopilot-" })
+        foreach (var prefix in new[] { "unthrottled-", "crossrepo-", "allocate-", "noallocate-" })
             foreach (var f in System.IO.Directory.EnumerateFiles(Directory, prefix + "*"))
             {
                 // A read-in mark's .bak and a removal's .cleared go when their CLI does.
@@ -231,13 +231,13 @@ public sealed class ContextCycler(string? directory = null)
     }
 
     /// <summary>The CLIs /allocate is on in (by process id), and the repos each works through its own subagents ("*": all):
-    /// their <c>cli_marks</c> rows, or <c>autopilot-&lt;pid&gt;</c> files not read in yet (<see cref="CliMarks"/>).</summary>
-    public IReadOnlyDictionary<int, IReadOnlyList<string>> AutopilotClis() => CliMarks.Read(Directory, CliMarks.Autopilot)
+    /// their <c>cli_marks</c> rows, or <c>allocate-&lt;pid&gt;</c> files not read in yet (<see cref="CliMarks"/>).</summary>
+    public IReadOnlyDictionary<int, IReadOnlyList<string>> AllocateClis() => CliMarks.Read(Directory, CliMarks.Allocate)
         .Where(x => IsClaude(x.Key))
         .ToDictionary(x => x.Key, x => (IReadOnlyList<string>)[.. x.Value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)]);
 
     /// <summary>When /allocate turned on in each CLI that has it on (M.ORCH-T558: it warms up from then), by process id.</summary>
-    public IReadOnlyDictionary<int, DateTime> AutopilotSince() => CliMarks.Since(Directory, CliMarks.Autopilot);
+    public IReadOnlyDictionary<int, DateTime> AllocateSince() => CliMarks.Since(Directory, CliMarks.Allocate);
 
     private static string ReadOrEmpty(string path)
     {
@@ -288,14 +288,14 @@ public sealed class ContextCycler(string? directory = null)
     }
 
     /// <summary>The standing <c>/allocate</c> order the context gate writes: the file is there while it's on.</summary>
-    public const string AutopilotFile = "autopilot.order";
+    public const string AllocateFile = "allocate.order";
 
     /// <summary>Null while <c>/allocate</c> is off; otherwise the repos whose CLIs it works (<c>-repo=a,b</c>), empty for every open one.</summary>
-    public IReadOnlyList<string>? AutopilotOrder()
+    public IReadOnlyList<string>? AllocateOrder()
     {
         try
         {
-            var path = Path.Combine(Directory, AutopilotFile);
+            var path = Path.Combine(Directory, AllocateFile);
             return File.Exists(path)
                 ? [.. File.ReadAllText(path).Split([',', '\n', '\r'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)]
                 : null;
@@ -422,14 +422,14 @@ public sealed class ContextCycler(string? directory = null)
         SessionStates.Prune(nowUtc - TimeSpan.FromDays(7)); // their rows go with their files (M.ORCH-T528)
         if (!System.IO.Directory.Exists(Directory)) return;
         // A CLI's own /allocate, /allocate off, /pacing off and /crossrepo marks are written once and live as long as it does,
-        // however long that is; PruneMarks drops them when the CLI closes. A week-old noautopilot mark dropped here let the default
+        // however long that is; PruneMarks drops them when the CLI closes. A week-old noallocate mark dropped here let the default
         // switch /allocate back on in a CLI where it was typed off (M.ORCH-T484). The billing mode holds until it's switched,
         // however long (M.ORCH-T436), and when a key was set aside is needed as long as a CLI started on it before then runs,
         // however long (M.ORCH-T457).
-        foreach (var f in System.IO.Directory.EnumerateFiles(Directory).Where(f => Path.GetFileName(f) is var n && n != AutopilotFile &&
+        foreach (var f in System.IO.Directory.EnumerateFiles(Directory).Where(f => Path.GetFileName(f) is var n && n != AllocateFile &&
                      n != Billing.BillingModeFile.FileName && n != Setup.AgentGate.ApiKeySetAsideName &&
                      !n.StartsWith("unthrottled-", StringComparison.Ordinal) && !n.StartsWith("crossrepo-", StringComparison.Ordinal) &&
-                     !n.StartsWith("autopilot-", StringComparison.Ordinal) && !n.StartsWith("noautopilot-", StringComparison.Ordinal)))
+                     !n.StartsWith("allocate-", StringComparison.Ordinal) && !n.StartsWith("noallocate-", StringComparison.Ordinal)))
             try { if (nowUtc - File.GetLastWriteTimeUtc(f) > TimeSpan.FromDays(7)) File.Delete(f); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }

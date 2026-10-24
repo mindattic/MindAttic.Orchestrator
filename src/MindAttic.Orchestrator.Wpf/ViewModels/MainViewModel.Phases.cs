@@ -18,7 +18,7 @@ public enum View { Agents, Repos, Queue, Audit, Accounts }
 public sealed partial class MainViewModel
 {
     private Dispatcher dispatcher = null!;
-    private Autopilot autopilot = null!;
+    private Allocate allocate = null!;
     private AuditRunner auditRunner = null!;
     private SchedulePlan? plan;
     private BudgetLevel? lastBudgetLevel;
@@ -56,7 +56,7 @@ public sealed partial class MainViewModel
         // one here would just fail to acquire what the first already holds. Held until the app exits; while
         // the logon daemon holds it, the daemon feeds the /allocate CLIs and keeps rl-status.json fresh, and
         // this window only shows.
-        autopilot = root?.autopilot ?? new Autopilot(store, new MindAttic.Orchestrator.Sessions.ContextCycler(), lease) { WaitingPath = Autopilot.DefaultWaitingPath };
+        allocate = root?.allocate ?? new Allocate(store, new MindAttic.Orchestrator.Sessions.ContextCycler(), lease) { WaitingPath = Allocate.DefaultWaitingPath };
         auditRunner = root?.auditRunner ?? new AuditRunner(aggregator.Options, store);
         Settings = root?.Settings ?? new SettingsViewModel(store, () =>
         {
@@ -301,7 +301,7 @@ public sealed partial class MainViewModel
     /// <summary>On course to end under target with nothing left for any /allocate CLI to start: said under the graph, with the
     /// proposals waiting for your approval (M.ORCH-T529), as the daemon's one alert a window says it.</summary>
     private string NoWorkText => snapshot is null || Plan is not { } plan ? ""
-        : UnderTarget.NoWorkLine(snapshot, plan,new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis()) is { } line ? " " + line : "";
+        : UnderTarget.NoWorkLine(snapshot, plan,new MindAttic.Orchestrator.Sessions.ContextCycler().AllocateClis()) is { } line ? " " + line : "";
 
     /// <summary>The caption for <see cref="UtilizationText"/>. Empty only before the first snapshot, and the card is collapsed
     /// only on an empty caption, so it stays up between windows with the last one as it ended (M.ORCH-T502).</summary>
@@ -447,17 +447,17 @@ public sealed partial class MainViewModel
     public string SlotsText => Plan is not { } plan ? ""
         : plan.Cap < plan.Slots ? $"{plan.Occupied} sessions open · pacing allows {plan.Cap} of {plan.Slots}"
         : $"{plan.Occupied} sessions open · fills up to {plan.Slots}";
-    // /allocate is on per CLI (its marks, M.ORCH-T164), as `orchestrator settings` reports it: the dashboard's own Autopilot
+    // /allocate is on per CLI (its marks, M.ORCH-T164), as `orchestrator settings` reports it: the dashboard's own Allocate
     // has no order to read, so it always read as off.
-    public string AutopilotText => AutopilotLine(new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis(), store.LoadSettings().Autopilot) +
-        (autopilot.Working.Count == 0 ? "" : $" Working in the background: {string.Join(", ", autopilot.Working.Select(a => $"{a.TicketId} in {a.Repo}"))}.");
+    public string AllocateText => AllocateLine(new MindAttic.Orchestrator.Sessions.ContextCycler().AllocateClis(), store.LoadSettings().Allocate) +
+        (allocate.Working.Count == 0 ? "" : $" Working in the background: {string.Join(", ", allocate.Working.Select(a => $"{a.TicketId} in {a.Repo}"))}.");
 
-    internal static string AutopilotLine(IReadOnlyDictionary<int, IReadOnlyList<string>> clis, bool on = true) => clis.Count == 0
+    internal static string AllocateLine(IReadOnlyDictionary<int, IReadOnlyList<string>> clis, bool on = true) => clis.Count == 0
         ? "Proposals wait for you. Type /allocate in a CLI to have its repos' tickets worked by its own subagents."
         // Paused from Settings or the CLI: the CLIs' marks stay, but orchestrator next hands them nothing.
-        : !on ? $"Autopilot is paused: the {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} that typed /allocate get no tickets until you resume it from Settings."
-        : $"Autopilot is on in {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} for " +
-          string.Join(", ", clis.Values.SelectMany(r => r).Select(r => r == Autopilot.AllRepos ? "every repo" : r).Distinct(StringComparer.OrdinalIgnoreCase)) +
+        : !on ? $"Allocate is paused: the {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} that typed /allocate get no tickets until you resume it from Settings."
+        : $"Allocate is on in {clis.Count} CLI{(clis.Count == 1 ? "" : "s")} for " +
+          string.Join(", ", clis.Values.SelectMany(r => r).Select(r => r == Allocate.AllRepos ? "every repo" : r).Distinct(StringComparer.OrdinalIgnoreCase)) +
           ", each through its own subagents, paced to the 5-hour window.";
     public string QueueMessage { get => queueMessage; private set => Set(ref queueMessage, value); }
     public int QueueCount => Queue.Count(q => !q.IsAssigned);
@@ -792,25 +792,25 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>
-    /// Autopilot's tick, off the UI thread: holding the lease (no daemon running), this window reaps and runs the hourly
+    /// Allocate's tick, off the UI thread: holding the lease (no daemon running), this window reaps and runs the hourly
     /// sweep, a git fetch and more per finished worktree that can take minutes, which froze the dashboard at its first
     /// refresh and every hour after (M.ORCH-T382). The refresh stays in progress until it's done, so ticks never overlap.
     /// </summary>
-    private async Task TickAutopilotAsync(Snapshot next)
+    private async Task TickAllocateAsync(Snapshot next)
     {
         if (plan is { } current)
         {
             var settings = store.LoadSettings();
-            foreach (var line in await Task.Run(() => autopilot.Tick(current, next, settings, DateTime.UtcNow)))
+            foreach (var line in await Task.Run(() => allocate.Tick(current, next, settings, DateTime.UtcNow)))
             {
                 QueueMessage = line;
                 queueLog.Information("{Line:l}", line);
-                if (Autopilot.NeedsYou(line) is { } needsYou)
+                if (Allocate.NeedsYou(line) is { } needsYou)
                     Toasts.Insert(0, new ToastViewModel("Needs you", needsYou, Palette.Waiting, null));
             }
             PruneToasts(Toasts, DateTime.UtcNow);
         }
-        foreach (var t in LoginTabs) t.Raise(nameof(AutopilotText));
+        foreach (var t in LoginTabs) t.Raise(nameof(AllocateText));
     }
 
     /// <summary>Once per open: if you've been away, say what happened. Then remember you're here.</summary>
@@ -854,7 +854,7 @@ public sealed partial class MainViewModel
         ApplyUserTickets();
 
         foreach (var t in LoginTabs)
-            foreach (var name in new[] { nameof(Hold), nameof(HasHold), nameof(SlotsText), nameof(AutopilotText), nameof(QueueCount), nameof(EmptyQueueText), nameof(UtilizationText) })
+            foreach (var name in new[] { nameof(Hold), nameof(HasHold), nameof(SlotsText), nameof(AllocateText), nameof(QueueCount), nameof(EmptyQueueText), nameof(UtilizationText) })
                 t.Raise(name);
         // A row's Start and Release are enabled by whether it's assigned, which the refresh just changed: WPF rechecks a
         // command only on input, so the button shown would stay disabled until some unrelated click (M.ORCH-T351).

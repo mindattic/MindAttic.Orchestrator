@@ -115,15 +115,15 @@ public sealed class MoveLocksTests
         Assert.That(plan.Queue.Where(q => q.Moving is not null).Select(q => q.Id), Is.EquivalentTo(new[] { "A-T1", "A-T2" }));
         Assert.That(plan.Queue.Where(q => q.Moving is not null).All(q => q.IsAssigned), Is.True);
 
-        var (handed, _) = Autopilot.Next(plan, Settings, store, ["A"], 5, claim: false, Now, cli: 1, cliRunning: _ => true);
+        var (handed, _) = Allocate.Next(plan, Settings, store, ["A"], 5, claim: false, Now, cli: 1, cliRunning: _ => true);
         Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T3" }), "another CLI's next gets only what's free");
 
-        var (mine, why) = Autopilot.Next(plan, Settings, store, ["A"], 5, claim: false, Now, cli: OldPid, cliRunning: _ => true);
+        var (mine, why) = Allocate.Next(plan, Settings, store, ["A"], 5, claim: false, Now, cli: OldPid, cliRunning: _ => true);
         Assert.That(mine, Is.Empty);
         Assert.That(why, Does.Contain("moving to Bea"), "the moving CLI claims nothing until it lands");
 
         var pilots = new Dictionary<int, IReadOnlyList<string>> { [7] = ["A"] };
-        Assert.That(AutopilotWaker.IdleClaims(snap, plan, pilots, Now), Is.Empty, "its idle claims aren't put to the repo's other /allocate CLI");
+        Assert.That(AllocateWaker.IdleClaims(snap, plan, pilots, Now), Is.Empty, "its idle claims aren't put to the repo's other /allocate CLI");
     }
 
     [Test]

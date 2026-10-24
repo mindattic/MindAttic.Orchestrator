@@ -55,11 +55,11 @@ public sealed class ClaimOwnerTests
         };
 
     [Test]
-    public void Two_autopilot_clis_on_one_repo_are_each_nudged_only_for_their_own_idle_claims()
+    public void Two_allocate_clis_on_one_repo_are_each_nudged_only_for_their_own_idle_claims()
     {
         var typed = new List<(string Pipe, string Text)>();
         var tabs = new[] { new HostSession("Claude", 900, "tab-41", @"D:\W\A"), new HostSession("Claude", 901, "tab-42", @"D:\W\A") };
-        var waker = new AutopilotWaker(cycler, store)
+        var waker = new AllocateWaker(cycler, store)
         {
             IsAlive = _ => true,
             // Both on A; the first names it outright, so before T532 it was told of every claim on A.
@@ -86,7 +86,7 @@ public sealed class ClaimOwnerTests
         var snap = Snap(T("A-T1"), T("A-T2"));
         var plan = Plan(snap, [Claim("A-T1", null, TimeSpan.FromMinutes(10)), Claim("A-T2", First, TimeSpan.FromMinutes(10))]);
 
-        var idle = AutopilotWaker.IdleClaims(snap, plan, pilots, Now);
+        var idle = AllocateWaker.IdleClaims(snap, plan, pilots, Now);
 
         Assert.That(idle.Select(i => (i.Cli, i.Item.Id)), Is.EqualTo(new[] { (Second, "A-T1"), (Second, "A-T2") }),
             "made before claims recorded it, or by a CLI no longer running /allocate: left to the one that works A");
@@ -96,7 +96,7 @@ public sealed class ClaimOwnerTests
     public void Next_claim_records_the_claiming_cli_and_its_session()
     {
         var snap = Snap(T("A-T1"));
-        var (handed, why) = Autopilot.Next(Plan(snap, []), Settings, store, ["A"], 1, claim: true, Now,
+        var (handed, why) = Allocate.Next(Plan(snap, []), Settings, store, ["A"], 1, claim: true, Now,
             (repo, path, branch) => (true, path, ""), _ => "main", stillOpen: (_, _) => true, self: "sess-41", cli: First);
 
         Assert.That(why, Is.Null);
@@ -115,15 +115,15 @@ public sealed class ClaimOwnerTests
             Claim("A-T3", Second, TimeSpan.FromMinutes(1)) };
         var plan = Plan(snap, claims);
 
-        Assert.That(Autopilot.PendingClaims(plan), Is.EqualTo(new Dictionary<int, int> { [Second] = 3 }));
-        var first = Autopilot.Next(plan, Settings, store, ["A"], null, claim: false, Now, cli: First, pilots: pilots).Handed;
+        Assert.That(Allocate.PendingClaims(plan), Is.EqualTo(new Dictionary<int, int> { [Second] = 3 }));
+        var first = Allocate.Next(plan, Settings, store, ["A"], null, claim: false, Now, cli: First, pilots: pilots).Handed;
         Assert.That(first, Has.Count.EqualTo(4), "the first CLI's share of 8 between two is untouched by the second's claims");
-        var second = Autopilot.Next(plan, Settings, store, ["A"], null, claim: false, Now, cli: Second, pilots: pilots).Handed;
+        var second = Allocate.Next(plan, Settings, store, ["A"], null, claim: false, Now, cli: Second, pilots: pilots).Handed;
         Assert.That(second, Has.Count.EqualTo(1), "the second has 3 of its 4 claimed already");
 
         // Claims of a CLI not known count for nobody.
         var legacy = Plan(snap, [.. claims.Select(c => c with { Cli = null })]);
-        Assert.That(Autopilot.PendingClaims(legacy), Is.Empty);
+        Assert.That(Allocate.PendingClaims(legacy), Is.Empty);
     }
 
     [Test]
@@ -137,11 +137,11 @@ public sealed class ClaimOwnerTests
         var plan = Plan(snap, claims);
         var pilots = new Dictionary<int, IReadOnlyList<string>> { [First] = ["A"] }; // the second CLI has closed
 
-        Assert.That(Autopilot.PendingClaims(plan, c => c == First), Is.Empty, "its claimer isn't running; an unknown claimer counts for nobody, as before");
-        Assert.That(Autopilot.PendingClaims(plan, _ => true), Is.EqualTo(new Dictionary<int, int> { [Second] = 3 }), "still running: pending");
-        var handed = Autopilot.Next(plan, Settings, store, ["A"], null, claim: false, Now, cli: First, pilots: pilots, cliRunning: c => c == First).Handed;
+        Assert.That(Allocate.PendingClaims(plan, c => c == First), Is.Empty, "its claimer isn't running; an unknown claimer counts for nobody, as before");
+        Assert.That(Allocate.PendingClaims(plan, _ => true), Is.EqualTo(new Dictionary<int, int> { [Second] = 3 }), "still running: pending");
+        var handed = Allocate.Next(plan, Settings, store, ["A"], null, claim: false, Now, cli: First, pilots: pilots, cliRunning: c => c == First).Handed;
         Assert.That(handed, Has.Count.EqualTo(6), "every free ticket: the dead claims don't take 3 of the 8 places");
-        Assert.That(AutopilotWaker.IdleClaims(snap, plan, pilots, Now).Select(i => (i.Cli, i.Item.Id)),
+        Assert.That(AllocateWaker.IdleClaims(snap, plan, pilots, Now).Select(i => (i.Cli, i.Item.Id)),
             Is.EqualTo(new[] { (First, "A-T1"), (First, "A-T2"), (First, "A-T3"), (First, "A-T4") }), "offered to the CLI that works A");
     }
 

@@ -257,12 +257,12 @@ public sealed class SchedulerTests
         Assert.That(plan.AwaitingApproval.Single().Id, Is.EqualTo("A-T1"), "and listed as waiting for your yes (M.ORCH-T394)");
         Assert.That(plan.Proposals, Is.Empty);
         var store = new MindAttic.Orchestrator.Settings.JsonStore(Path.Combine(Path.GetTempPath(), "orch-sched-" + Guid.NewGuid().ToString("N")));
-        var (handed, _) = Autopilot.Next(plan, new OrchestratorSettings(), store, ["A"], 5, claim: false, now, pilotRunning: _ => false);
+        var (handed, _) = Allocate.Next(plan, new OrchestratorSettings(), store, ["A"], 5, claim: false, now, pilotRunning: _ => false);
         Assert.That(handed, Is.Empty);
 
         // Blocked as well, it's counted once, as waiting for your yes (M.ORCH-T401).
         var blocked = snap with { Repos = [snap.Repos[0] with { OpenTickets = [T("A-T1", "feature"), T("A-T2", "feature")] }] };
-        var (none, why) = Autopilot.Next(Scheduler.Plan(blocked, new OrchestratorSettings { BlockedBy = new() { ["A-T1"] = ["A-T2"] } }, [Quiet]),
+        var (none, why) = Allocate.Next(Scheduler.Plan(blocked, new OrchestratorSettings { BlockedBy = new() { ["A-T1"] = ["A-T2"] } }, [Quiet]),
             new OrchestratorSettings(), store, ["A"], 5, claim: false, now, pilotRunning: _ => false);
         Assert.That((none, why), Is.EqualTo((Array.Empty<QueueItem>(), "none left that may be worked: 2 wait for your approval (orchestrator approve)")));
 

@@ -44,7 +44,7 @@ public sealed record LoginPace(string? Pace, string? SubagentsRunning, string? S
     }
 }
 
-/// <summary>A live Claude CLI (a repo's tab, or an autopilot agent) and the login it runs on.</summary>
+/// <summary>A live Claude CLI (a repo's tab, or an allocate agent) and the login it runs on.</summary>
 public sealed record LoginCli(string SessionId, string Repo, AgentState State)
 {
     /// <summary>The per-CLI login it runs on (its email), null on the global login: what its "Move to" menu leaves out (M.ORCH-T607).</summary>

@@ -353,9 +353,9 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [CommandOption("--max-sessions <N>")]
         public int? MaxSessions { get; init; }
 
-        [CommandOption("--autopilot <ON>")]
+        [CommandOption("--allocate <ON>")]
         [Description("false pauses every CLI where /allocate is on (their marks stay); true lets them go again.")]
-        public bool? Autopilot { get; init; }
+        public bool? Allocate { get; init; }
 
         [CommandOption("--throttle-agents <ON>")]
         [Description("true: while the burn won't last until the reset, running Claude agents wait before each tool call (up to --max-delay seconds).")]
@@ -380,7 +380,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         public double? PaceCurveK { get; init; }
 
         [CommandOption("--quiet <WINDOWS>")]
-        [Description("Local times autopilot pauses, comma-separated: \"22:00-07:00,12:00-13:00\"; \"none\" clears.")]
+        [Description("Local times /allocate pauses, comma-separated: \"22:00-07:00,12:00-13:00\"; \"none\" clears.")]
         public string? Quiet { get; init; }
 
         [CommandOption("--repo-cap <REPO=PERCENT>")]
@@ -490,9 +490,9 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         [Description("Kept for older setups; it has no effect now: /allocate hands tickets to the typing CLI's own subagents, each in its own worktree.")]
         public int? HandMinutes { get; init; }
 
-        [CommandOption("--autopilot-skip <REPOS>")]
+        [CommandOption("--allocate-skip <REPOS>")]
         [Description("Repos /allocate never starts agents in, comma-separated: \"GTFO.EZ,Prose\"; \"none\" clears.")]
-        public string? AutopilotSkip { get; init; }
+        public string? AllocateSkip { get; init; }
 
         [CommandOption("--exempt <COMMANDS>")]
         [Description("Slash commands whose turns skip every pace gate (no hold, no subagent wait, no stop), comma-separated: \"/deploy,/run\"; \"none\" clears, \"default\" restores /pacing,/deploy,/run.")]
@@ -565,7 +565,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         s = s with
         {
             MaxConcurrentSessions = settings.MaxSessions ?? s.MaxConcurrentSessions,
-            Autopilot = settings.Autopilot ?? s.Autopilot,
+            Allocate = settings.Allocate ?? s.Allocate,
             DefaultProvider = provider ?? s.DefaultProvider,
             StaleAfterHours = settings.StaleHours ?? s.StaleAfterHours,
             GroomAfterDays = settings.GroomDays ?? s.GroomAfterDays,
@@ -606,7 +606,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         if (settings.HandMinutes is { } hand)
         {
             if (hand < 0) { AnsiConsole.MarkupLine("[red]--hand-minutes can't be negative.[/]"); return 1; }
-            s = s with { AutopilotHandMinutes = hand };
+            s = s with { AllocateHandMinutes = hand };
             changed = true;
         }
         if (settings.KeepGoing is { } keep)
@@ -734,9 +734,9 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             AnsiConsole.MarkupLine("[red]The weekly line is each member's own cutoff now (90% of the week, 98% of the 5-hour window by default): orchestrator org limit <who> --weekly <pct> --5h <pct>.[/]");
             return 1;
         }
-        if (settings.AutopilotSkip is { } skip)
+        if (settings.AllocateSkip is { } skip)
         {
-            s = s with { AutopilotSkip = skip.Equals("none", StringComparison.OrdinalIgnoreCase) ? [] : [.. skip.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)] };
+            s = s with { AllocateSkip = skip.Equals("none", StringComparison.OrdinalIgnoreCase) ? [] : [.. skip.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)] };
             changed = true;
         }
         if (settings.Exempt is { } exempt)
@@ -804,7 +804,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             };
             changed = true;
         }
-        changed |= settings.MaxSessions is not null || settings.Autopilot is not null || settings.Provider is not null || settings.StaleHours is not null;
+        changed |= settings.MaxSessions is not null || settings.Allocate is not null || settings.Provider is not null || settings.StaleHours is not null;
         if (changed && !readable)
         {
             AnsiConsole.MarkupLine($"[red]The settings in {Markup.Escape(store.Describe(JsonStore.SettingsName))} couldn't be read, so nothing was saved over them. Fix or remove {Markup.Escape(Path.Combine(store.Directory, "settings.json"))} if it's still there, and try again.[/]");
@@ -816,11 +816,11 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
             new Notifier().SendAsync(url, "MindAttic Orchestrator", "Alerts will arrive here.").GetAwaiter().GetResult())
             AnsiConsole.MarkupLine("[green]Sent a test alert.[/]");
 
-        var clis = new MindAttic.Orchestrator.Sessions.ContextCycler().AutopilotClis();
+        var clis = new MindAttic.Orchestrator.Sessions.ContextCycler().AllocateClis();
         AnsiConsole.MarkupLine($"settings: {Markup.Escape(store.Describe(JsonStore.SettingsName))}");
-        AnsiConsole.MarkupLine($"  max sessions {s.MaxConcurrentSessions} · provider {Markup.Escape(s.DefaultProvider)} · autopilot " +
+        AnsiConsole.MarkupLine($"  max sessions {s.MaxConcurrentSessions} · provider {Markup.Escape(s.DefaultProvider)} · allocate " +
             (clis.Count == 0 ? "off in every CLI (type /allocate in the CLI that should work tickets)"
-                : (s.Autopilot ? "[green]on[/] in " : "[yellow]paused[/] (--autopilot true resumes it) in ") +
+                : (s.Allocate ? "[green]on[/] in " : "[yellow]paused[/] (--allocate true resumes it) in ") +
                   Markup.Escape(string.Join("; ", clis.Select(c => $"CLI {c.Key} for {string.Join(", ", c.Value)}")))) +
             " · a new CLI starts with it off until /allocate is typed there" +
             (s.KeepGoing ? " · /allocate CLIs keep going through their workable tickets without asking" : " · /allocate CLIs may stop between tickets") +

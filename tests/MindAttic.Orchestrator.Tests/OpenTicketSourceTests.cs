@@ -145,7 +145,7 @@ public sealed class OpenTicketSourceTests
     [Test]
     public void A_database_read_that_fails_keeps_the_last_good_read_not_the_markdown()
     {
-        // The markdown lags the database: it still lists A-T1 open, and lacks A-T3, which autopilot is working.
+        // The markdown lags the database: it still lists A-T1 open, and lacks A-T3, which allocate is working.
         var a = Repo("A", "A", "| A-T1 | 2026-10-01 | fix | open | one | — |\n");
         var path = TicketsDb.DefaultPath(root);
         using (var db = TicketsDb.Open(path))

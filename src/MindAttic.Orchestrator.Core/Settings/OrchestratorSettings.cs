@@ -148,7 +148,7 @@ public sealed record OrchestratorSettings
 
     /// <summary>The master switch for <c>/allocate</c>: on, every CLI where <c>/allocate</c> was typed is fed its
     /// repos' next story whenever it's idle and the pace allows; off pauses all of them (their marks stay).</summary>
-    public bool Autopilot { get; init; } = true;
+    public bool Allocate { get; init; } = true;
 
     /// <summary>Hours without a transcript write or open tab where a ticket was dispatched before it
     /// goes back in the queue as stale. 0 keeps assignments until the ticket closes or is released.</summary>
@@ -171,7 +171,7 @@ public sealed record OrchestratorSettings
     /// while pacing coasts, and everything else paces against what's left after it.</summary>
     public Dictionary<string, long> Reservations { get; init; } = [];
 
-    /// <summary>Local-time windows when autopilot pauses, like "22:00-07:00". Manual starts still work.</summary>
+    /// <summary>Local-time windows when allocate pauses, like "22:00-07:00". Manual starts still work.</summary>
     public List<string> QuietHours { get; init; } = [];
 
     /// <summary>Ticket → the tickets it waits for. A summary saying "blocked by X-T1" counts too.</summary>
@@ -212,7 +212,7 @@ public sealed record OrchestratorSettings
     public const int DefaultTabBlinkTokens = 1000, MinTabBlinkTokens = 1, MaxTabBlinkTokens = 10_000_000;
 
     /// <summary>One CLI per account (M.ORCH-T605): a Claude tab started without a login chosen for it (dashboard Start on
-    /// Auto, <c>orchestrator start</c> without <c>--account</c>, Queue and autopilot starts, <c>orchestrator accounts pick</c>)
+    /// Auto, <c>orchestrator start</c> without <c>--account</c>, Queue and allocate starts, <c>orchestrator accounts pick</c>)
     /// goes on a signed-in per-CLI login no live CLI runs on, the one with the most headroom first
     /// (<see cref="Sessions.LoginPicker"/>), else the global login. False starts every such tab on the global login.</summary>
     public bool AutoLogin { get; init; } = true;
@@ -290,12 +290,12 @@ public sealed record OrchestratorSettings
     /// or anything else, is dark, the default; the dashboard reads it at start and writes it at each switch.</summary>
     public string? Theme { get; init; }
 
-    /// <summary>Minutes since a repo's own CLI last ended a turn that it still counts as worked by hand, so autopilot
+    /// <summary>Minutes since a repo's own CLI last ended a turn that it still counts as worked by hand, so allocate
     /// leaves the repo alone through the pauses between your prompts. 0 counts only a CLI that's mid-turn.</summary>
-    public int AutopilotHandMinutes { get; init; } = 15;
+    public int AllocateHandMinutes { get; init; } = 15;
 
     /// <summary>Repos <c>/allocate</c> never starts agents in, even when named or their CLI is open.</summary>
-    public List<string> AutopilotSkip { get; init; } = [];
+    public List<string> AllocateSkip { get; init; } = [];
 
     /// <summary>The org each repo's tickets belong to (M.ORCH-T753), repo name (any case) → org id: they're dispatched only to that
     /// org's members' logins and paced on them. A repo not named here is the default org's (<c>orchestrator orgs repo</c> sets it).</summary>
@@ -345,7 +345,7 @@ public sealed record OrchestratorSettings
     public Dictionary<string, string> ModelOverrides { get; init; } = [];
 
     /// <summary>Tickets assigned to a user (M.ORCH-T668), ticket id → that user's login (its email, as
-    /// <see cref="Sessions.AccountDirs.Normalize"/> keeps it). An assigned ticket is a pin: <c>next --claim</c>, autopilot and
+    /// <see cref="Sessions.AccountDirs.Normalize"/> keeps it). An assigned ticket is a pin: <c>next --claim</c>, allocate and
     /// Start dispatch it only on that login, and while its user is out of room it waits for them instead of being redelegated,
     /// until "Redelegate now" drops the pin (<see cref="Scheduling.TicketPins"/>).</summary>
     public Dictionary<string, string> Assignees { get; init; } = [];
@@ -365,7 +365,7 @@ public sealed record OrchestratorSettings
         // Pacing.
         "*/Budget/Pacer.cs", "*/Budget/BudgetCalculator.cs", "*/Budget/PaceLedger*.cs", "*/Scheduling/SubagentShare.cs", "*RateLimitStatus*",
         // Git landing.
-        "*/Scheduling/Dispatcher.cs", "*/Scheduling/Autopilot.cs", "*land*.ps1", "*deploy.ps1",
+        "*/Scheduling/Dispatcher.cs", "*/Scheduling/Allocate.cs", "*land*.ps1", "*deploy.ps1",
     ];
 }
 

@@ -5,13 +5,13 @@ using MindAttic.Orchestrator.Settings;
 namespace MindAttic.Orchestrator.Scheduling;
 
 /// <summary>
-/// The daemon's side of autopilot. <c>/allocate</c> runs inside the CLI it's typed into, as that CLI's subagents
+/// The daemon's side of allocate. <c>/allocate</c> runs inside the CLI it's typed into, as that CLI's subagents
 /// (<c>orchestrator next --claim</c>); here the lease holder (<see cref="DispatchLease"/>) reaps headless background
 /// agents started before that (M.ORCH-T164), giving back a ticket one left unclosed, sweeps the worktrees of landed
-/// tickets, and works out why autopilot would wait (switched off, quiet hours, machine health, the pace). The
+/// tickets, and works out why allocate would wait (switched off, quiet hours, machine health, the pace). The
 /// starting half of <see cref="Tick"/> runs only when <see cref="Order"/> names repos, which nothing in production does.
 /// </summary>
-public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchLease? lease = null)
+public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLease? lease = null)
 {
     internal Func<string, string, string, int?> Start { get; init; } = BackgroundAgent.Start;
     internal Func<Assignment, bool> IsRunning { get; init; } = a => a.Pilot is { } p && BackgroundAgent.IsRunning(p, a.PilotStartedUtc);
@@ -28,10 +28,10 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// null writes nothing.</summary>
     public string? WaitingPath { get; init; }
 
-    /// <summary><c>~/.claude/allocate-waiting.json</c>: the repos autopilot is on for that have no agent working because
+    /// <summary><c>~/.claude/allocate-waiting.json</c>: the repos allocate is on for that have no agent working because
     /// the pace can't afford one yet, so each repo's CLI can say so in its statusline (no turn, no tokens).</summary>
     public static string DefaultWaitingPath { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "autopilot-waiting.json");
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "allocate-waiting.json");
 
     private readonly Dictionary<string, string> told = [];
 
@@ -75,7 +75,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         var order = Order();
         On = order is not null;
         // Reaping and the hourly sweep (git fetch, merge, worktree remove) are the lease holder's whatever /allocate's state:
-        // with the order unset (CLIs run autopilot now) the dashboard used to run them too, on its UI thread, beside the daemon.
+        // with the order unset (CLIs run allocate now) the dashboard used to run them too, on its UI thread, beside the daemon.
         HeldElsewhere = lease is not null && !lease.TryAcquire();
         if (!dryRun && !HeldElsewhere)
         {
@@ -96,23 +96,23 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             // Only the repos /allocate was turned on for (each CLI adds its own), never every repo that has a CLI open.
             : snapshot.Repos.Where(r => r.Path.Length > 0 && Named(order, r.Name)).ToList();
         // Repos you've told it to skip, and ones whose own CLI you're working in by hand, get no new agents.
-        var byHand = ByHand(nowUtc, snapshot, TimeSpan.FromMinutes(Math.Max(0, settings.AutopilotHandMinutes)));
+        var byHand = ByHand(nowUtc, snapshot, TimeSpan.FromMinutes(Math.Max(0, settings.AllocateHandMinutes)));
         var alone = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var r in repos.ToList())
         {
-            var why = settings.AutopilotSkip.Contains(r.Name, StringComparer.OrdinalIgnoreCase) ? "you set it to be skipped (settings --autopilot-skip)"
+            var why = settings.AllocateSkip.Contains(r.Name, StringComparer.OrdinalIgnoreCase) ? "you set it to be skipped (settings --allocate-skip)"
                 : byHand.Contains(r.Name) ? "its CLI is being worked by hand" : null;
             if (why is null) continue;
             repos.Remove(r);
             alone[r.Name] = why;
-            Tell(r.Name, $"autopilot: leaving {r.Name} alone: {why}");
+            Tell(r.Name, $"allocate: leaving {r.Name} alone: {why}");
         }
         LeftAlone = alone;
         Repos =[.. repos.Select(r => r.Name).Order(StringComparer.OrdinalIgnoreCase)];
         if (order is { Count: > 0 } && !everyRepo && order.Where(n => !snapshot.Repos.Any(r => Named([n], r.Name))).ToList() is { Count: > 0 } unknown)
-            Tell("unknown", $"autopilot: no repo named {string.Join(", ", unknown)} in the workspace");
+            Tell("unknown", $"allocate: no repo named {string.Join(", ", unknown)} in the workspace");
 
-        Paused = !settings.Autopilot ? "autopilot is switched off"
+        Paused = !settings.Allocate ? "allocate is switched off"
             : HealthHold is { } sick ? $"machine health: {sick}"
             : QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is { } quiet ? $"quiet hours ({quiet})"
             : PaceHold(plan, snapshot);
@@ -141,19 +141,19 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 (room is { } left && next.Estimate is { } e && e.Fresh > left)) continue;
             if (more <= 0)
             {
-                Tell("cap", $"autopilot: {running} agent{(running == 1 ? "" : "s")} working; the pace has no room for another right now");
+                Tell("cap", $"allocate: {running} agent{(running == 1 ? "" : "s")} working; the pace has no room for another right now");
                 paceBound = true;
                 break;
             }
             // Worktrees keep agents apart, so a repo is only capped if you've capped it yourself.
             if (inRepo[repo.Name] >= OrchestratorSettings.ForRepo(settings.RepoMaxSessions, repo.Name, int.MaxValue))
             {
-                Tell(repo.Name, $"autopilot: {repo.Name} has {inRepo[repo.Name]} agents working, the cap you set for it (settings --repo-sessions)");
+                Tell(repo.Name, $"allocate: {repo.Name} has {inRepo[repo.Name]} agents working, the cap you set for it (settings --repo-sessions)");
                 continue;
             }
             if (dryRun)
             {
-                said.Add($"autopilot would start a background agent on {next.Id} in {repo.Name}: {next.Ticket.Summary}");
+                said.Add($"allocate would start a background agent on {next.Id} in {repo.Name}: {next.Ticket.Summary}");
                 running++;
                 more--;
                 inRepo[repo.Name]++;
@@ -164,14 +164,14 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             var (ok, tree, error) = MakeWorktree(repo.Path, Path.Combine(settings.WorktreeRoot, repo.Name, next.Id), branch);
             if (!ok)
             {
-                Tell(repo.Name, $"autopilot: couldn't make a worktree for {next.Id}: {error}");
+                Tell(repo.Name, $"allocate: couldn't make a worktree for {next.Id}: {error}");
                 failed.Add(repo.Name);
                 continue;
             }
             var log = Path.Combine(LogDirectory, $"{next.Id}-{nowUtc.ToLocalTime():yyyyMMdd-HHmm}.log");
             if (Start(tree, PromptFor(next, tree, branch, MainlineOf(repo.Path)), log) is not { } pid)
             {
-                Tell(repo.Name, $"autopilot: couldn't start an agent in {repo.Name}");
+                Tell(repo.Name, $"allocate: couldn't start an agent in {repo.Name}");
                 failed.Add(repo.Name);
                 continue;
             }
@@ -185,15 +185,15 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 all.RemoveAll(a => a.TicketId == next.Id);
                 all.Add(started);
             });
-            said.Add($"autopilot: started {next.Id} in {repo.Name} in the background: {next.Ticket.Summary} (log {log})");
+            said.Add($"allocate: started {next.Id} in {repo.Name} in the background: {next.Ticket.Summary} (log {log})");
         }
         if (!paceBound)
             foreach (var repo in repos.Where(r => inRepo[r.Name] == 0 && !failed.Contains(r.Name)))
                 Tell(repo.Name, plan.Queue.Any(q => Same(q.Repo, repo.Name) && !q.IsAssigned && q.MayWork) // a stale unapproved one waits for approval (M.ORCH-T401)
-                    ? $"autopilot: {repo.Name}'s open stories are blocked, parked or too big for what's left before the reset"
+                    ? $"allocate: {repo.Name}'s open stories are blocked, parked or too big for what's left before the reset"
                     : plan.AwaitingApproval.Count(q => Same(q.Repo, repo.Name)) is > 0 and var waiting
-                        ? $"autopilot: {repo.Name}'s {waiting} open stor{(waiting == 1 ? "y waits" : "ies wait")} for your approval (orchestrator approve)"
-                        : $"autopilot: {repo.Name} has no open stories left");
+                        ? $"allocate: {repo.Name}'s {waiting} open stor{(waiting == 1 ? "y waits" : "ies wait")} for your approval (orchestrator approve)"
+                        : $"allocate: {repo.Name} has no open stories left");
         return Done(paceBound);
 
         IReadOnlyList<string> Done(bool paceBound)
@@ -282,9 +282,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             // Landed, given back or halted, its agent is gone: nobody works it now (M.ORCH-T766).
             Tickets.TicketWorking.Clear(Path.GetDirectoryName(repoPath), a.TicketId);
             said.Add(closed
-                ? $"autopilot: finished {a.TicketId} in {a.Repo}{note}"
-                : halted ? $"autopilot: {a.TicketId}'s agent in {a.Repo} stopped at the window's target; it starts again after the reset{note}"
-                : $"{NeedsYouPrefix}{a.TicketId}'s agent in {a.Repo} ended without finishing it (closed and landed), so autopilot leaves it for you (it's back in the queue); see {a.Log}{note}");
+                ? $"allocate: finished {a.TicketId} in {a.Repo}{note}"
+                : halted ? $"allocate: {a.TicketId}'s agent in {a.Repo} stopped at the window's target; it starts again after the reset{note}"
+                : $"{NeedsYouPrefix}{a.TicketId}'s agent in {a.Repo} ended without finishing it (closed and landed), so allocate leaves it for you (it's back in the queue); see {a.Log}{note}");
         }
         // Landing runs git for a while; only what was reaped is removed, under the lock, so a Dispatch meanwhile survives.
         store.UpdateAssignments(all => all.RemoveAll(gone.Contains));
@@ -328,10 +328,10 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 var here = new Assignment(id.ToUpperInvariant(), repo.Name, tree, Providers.Claude, DateTime.MinValue, true);
                 if (snapshot.TakenUtc - Scheduler.LastActivityUtc(here, snapshot) < Scheduler.WorkingWithin) continue;
                 var (landed, note) = Land(here with { StartedUtc = nowUtc }, repo.Path);
-                if (landed) said.Add($"autopilot: tidied the finished worktree of {id} in {repo.Name}{note}");
+                if (landed) said.Add($"allocate: tidied the finished worktree of {id} in {repo.Name}{note}");
                 else
                 {
-                    var why = $"autopilot: {id}'s worktree in {repo.Name} isn't open work any more but isn't landed{note}";
+                    var why = $"allocate: {id}'s worktree in {repo.Name} isn't open work any more but isn't landed{note}";
                     if (told.GetValueOrDefault("sweep:" + tree) != why) said.Add(why); // once, not every hour
                     told["sweep:" + tree] = why;
                 }
@@ -459,7 +459,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         OrgRouting orgs)
     {
         var delegated = new List<Handout>();
-        if (!settings.Autopilot || QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is not null) return delegated;
+        if (!settings.Allocate || QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is not null) return delegated;
         if (cli is { } moving && new Sessions.MoveLocks(store).All().Any(m => m.Pid == moving || (self is not null && m.SessionId == self))) return delegated;
         var pace = plan.Pace;
         var closedHere = plan.Stopped;
@@ -469,7 +469,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         var elsewhere = plan.Worked.Where(w => !(w.Filed && w.AgentId is null && self is not null && w.SessionId == self))
             .Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var candidates = plan.Queue.Where(q => Named(repos, q.Repo) && !mine.Contains(q.Id) &&
-            !settings.AutopilotSkip.Contains(q.Repo, StringComparer.OrdinalIgnoreCase) && q.RepoPath.Length > 0 &&
+            !settings.AllocateSkip.Contains(q.Repo, StringComparer.OrdinalIgnoreCase) && q.RepoPath.Length > 0 &&
             !q.IsAssigned && !elsewhere.Contains(q.Id) && !(q.Assignment is { } a && pilotRunning(a)) &&
             q.BlockedBy.Count == 0 && q.MayWork && TicketPins.Redelegable(q) && !plan.OverRepoCap.Contains(q.Repo) && !FitsHere(q) &&
             orgs.MayTake(q, login)).ToList();
@@ -527,9 +527,9 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
                 (plan.Pace?.ResetUtc is { } reset ? $" ({Formatting.ResetTime(reset, nowUtc)})" : ""));
         // The switches the settings and the Settings panel offer apply to the CLIs that run /allocate: Tick, which
         // read them, starts nothing since M.ORCH-T164.
-        if (!settings.Autopilot) return ([], "autopilot is paused (orchestrator settings --autopilot true, or the dashboard's Settings, resumes it)");
+        if (!settings.Allocate) return ([], "allocate is paused (orchestrator settings --allocate true, or the dashboard's Settings, resumes it)");
         if (QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is { } quiet) return ([], $"quiet hours ({quiet}): nothing starts until they end");
-        bool Named(string repo) => Autopilot.Named(repos, repo);
+        bool Named(string repo) => Allocate.Named(repos, repo);
         // Weekly-aware (M.ORCH-T666): a ticket must fit the week's room as well as the 5-hour window's; off, there's none.
         var weekRoom = unthrottled || !settings.WeeklyAwarePacing ? null : plan.Pace?.WeeklyRoomTokens;
         static double? Least(double? a, double? b) => a is { } x ? b is { } y ? Math.Min(x, y) : x : b;
@@ -541,7 +541,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         var elsewhere = plan.Worked.Where(w => !(w.Filed && w.AgentId is null && self is not null && w.SessionId == self))
             .Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
         bool Busy(QueueItem q) => q.IsAssigned || elsewhere.Contains(q.Id) || (q.Assignment is { } a && pilotRunning(a));
-        bool Free(QueueItem q) => !settings.AutopilotSkip.Contains(q.Repo, StringComparer.OrdinalIgnoreCase) &&
+        bool Free(QueueItem q) => !settings.AllocateSkip.Contains(q.Repo, StringComparer.OrdinalIgnoreCase) &&
             q.RepoPath.Length > 0 && !Busy(q) && q.BlockedBy.Count == 0 &&
             q.MayWork && !TooBigNow(q); // a stale unapproved one waits for your yes (M.ORCH-T383)
         // A ticket that went dark (M.ORCH-T748): one that kept dying, or whose work can't be carried forward, is yours, never
@@ -554,7 +554,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         var open = plan.Queue.Where(q => Named(q.Repo) && Workable(q)).ToList();
         if (open.Count == 0)
         {
-            bool Skipped(string repo) => settings.AutopilotSkip.Contains(repo, StringComparer.OrdinalIgnoreCase);
+            bool Skipped(string repo) => settings.AllocateSkip.Contains(repo, StringComparer.OrdinalIgnoreCase);
             var skipped = plan.Queue.Where(q => Named(q.Repo) && Skipped(q.Repo)).Select(q => q.Repo).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             var waiting = plan.AwaitingApproval.Count(q => Named(q.Repo) && !Skipped(q.Repo));
             var busy = plan.Queue.Count(q => Named(q.Repo) && !Skipped(q.Repo) && Busy(q));
@@ -571,7 +571,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             if (pinned.Count > 0 && busy == 0 && blocked == 0 && tooBig == 0)
                 return ([], $"nothing else is ready: {pinned.Count} assigned to other users wait for them on their own logins (" +
                     string.Join(", ", pinned.Select(q => q.Assignee).Distinct(StringComparer.OrdinalIgnoreCase)) + ")");
-            return ([], waiting == 0 && busy == 0 && blocked == 0 && tooBig == 0 && skipped.Count > 0 ? $"{string.Join(", ", skipped)} set to be skipped (settings --autopilot-skip); nothing else is ready"
+            return ([], waiting == 0 && busy == 0 && blocked == 0 && tooBig == 0 && skipped.Count > 0 ? $"{string.Join(", ", skipped)} set to be skipped (settings --allocate-skip); nothing else is ready"
                 : waiting > 0 && busy == 0 && blocked == 0 && tooBig == 0 ? $"none left that may be worked: {waiting} wait for your approval (orchestrator approve)"
                 : busy > 0 && blocked == 0 && tooBig == 0 ? $"{busy} already being worked; nothing else is ready"
                 : blocked > 0 || tooBig > 0 ? "nothing ready: " + string.Join(", ", new[]
@@ -604,7 +604,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
             var running = plan.Pace.SubagentsByCli.Keys.Union(pending.Keys)
                 .ToDictionary(c => c, c => plan.Pace.SubagentsByCli.GetValueOrDefault(c) + pending.GetValueOrDefault(c));
             var wanting = (pilots ?? new Dictionary<int, IReadOnlyList<string>>())
-                .Where(p => p.Key != me && SameLogin(p.Key) && plan.Queue.Any(q => Autopilot.Named(p.Value, q.Repo) && Free(q)))
+                .Where(p => p.Key != me && SameLogin(p.Key) && plan.Queue.Any(q => Allocate.Named(p.Value, q.Repo) && Free(q)))
                 .Select(p => p.Key).ToList();
             var total = plan.Pace.Subagents + pending.Values.Sum();
             var fair = SubagentShare.Room(cap, total, me, running, wanting);
@@ -705,7 +705,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
     /// <summary>Each CLI's claims (by the CLI that made them, M.ORCH-T532) that no subagent is seen working yet
     /// (<see cref="SchedulePlan.Worked"/>), not gone stale: the subagents it's about to start. A claim whose CLI is no longer
     /// running (<paramref name="cliRunning"/>) starts nothing: it isn't pending (M.ORCH-T550: a closed CLI's unstarted claims held
-    /// their places until StaleAfterHours), and <see cref="AutopilotWaker"/> offers it to the /allocate CLI on its repo.</summary>
+    /// their places until StaleAfterHours), and <see cref="AllocateWaker"/> offers it to the /allocate CLI on its repo.</summary>
     internal static IReadOnlyDictionary<int, int> PendingClaims(SchedulePlan plan, Func<int, bool>? cliRunning = null)
     {
         var worked = plan.Worked.Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -731,7 +731,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         }
     }
 
-    private const string NeedsYouPrefix = "autopilot: needs you: ";
+    private const string NeedsYouPrefix = "allocate: needs you: ";
 
     /// <summary>The order <c>/allocate all</c> writes: every repo with open stories.</summary>
     public const string AllRepos = "*";
@@ -762,7 +762,7 @@ public sealed class Autopilot(JsonStore store, ContextCycler sessions, DispatchL
         : null;
 
     /// <summary>The repos whose own CLI (not one of the agents) is mid-turn, or ended a turn within <paramref name="window"/>
-    /// (<see cref="OrchestratorSettings.AutopilotHandMinutes"/>), so a pause between your prompts doesn't hand the repo to autopilot.</summary>
+    /// (<see cref="OrchestratorSettings.AllocateHandMinutes"/>), so a pause between your prompts doesn't hand the repo to allocate.</summary>
     internal HashSet<string> ByHand(DateTime nowUtc, Snapshot snapshot, TimeSpan window) =>
         sessions.Load().Where(s => s.Pid is { } p && Alive(p) && !IsAgent(p) && (!s.Idle || nowUtc - s.TurnUtc < window))
             .Select(s => RepoFor(s.Cwd, snapshot)?.Name).OfType<string>()

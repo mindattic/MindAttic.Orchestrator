@@ -86,14 +86,14 @@ public sealed class AgentBoardTests
     }
 
     [Test]
-    public void An_autopilot_assignment_is_flagged_and_timed_from_when_it_started()
+    public void An_allocate_assignment_is_flagged_and_timed_from_when_it_started()
     {
         var repos = new[] { Repo("A", Session("s1", Now.AddMinutes(-1), "M.ORCH-T1")) };
         var assignment = new Assignment("M.ORCH-T1", "A", @"D:\A", Providers.Claude, Now.AddHours(-2), Worktree: true) { Pilot = 4242 };
 
         var rows = AgentBoard.Build(repos, null, [assignment], [], WorkingWindow, Now);
 
-        Assert.That(rows[0].IsAutopilot, Is.True);
+        Assert.That(rows[0].IsAllocate, Is.True);
         Assert.That(rows[0].StartedUtc, Is.EqualTo(Now.AddHours(-2)), "the assignment's own start beats guessing from the transcript");
     }
 
@@ -117,7 +117,7 @@ public sealed class AgentBoardTests
         var rows = AgentBoard.Build(repos, null, [], [], WorkingWindow, Now);
 
         Assert.That(rows[0].StartedUtc, Is.EqualTo(Now.AddMinutes(-20)));
-        Assert.That(rows[0].IsAutopilot, Is.False);
+        Assert.That(rows[0].IsAllocate, Is.False);
     }
 
     [Test]

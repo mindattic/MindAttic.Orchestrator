@@ -112,9 +112,9 @@ public sealed class ContextCyclerTests
     }
 
     [Test]
-    public void Only_the_cli_that_typed_autopilot_is_kept_going_on_its_own_repos_workable_tickets()
+    public void Only_the_cli_that_typed_allocate_is_kept_going_on_its_own_repos_workable_tickets()
     {
-        // Found live: a CLI the user was working in was told to start on its repo's 22 tickets because autopilot was
+        // Found live: a CLI the user was working in was told to start on its repo's 22 tickets because allocate was
         // on for that repo elsewhere. Now /allocate belongs to the CLI it's typed into, which works the tickets itself.
         var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
         var ws = Path.Combine(dir, "ws");
@@ -153,13 +153,13 @@ public sealed class ContextCyclerTests
             object Typed(string sid, string prompt) => new { session_id = sid, hook_event_name = "UserPromptSubmit", cwd = ws, prompt };
             const string ask = "That's done. Shall I start the next one?";
 
-            Assert.That(Gate(100, Stop("mine", ask)), Is.Empty, "no autopilot: a CLI you're using is never pushed on");
+            Assert.That(Gate(100, Stop("mine", ask)), Is.Empty, "no allocate: a CLI you're using is never pushed on");
             Gate(200, Typed("pilot", "/allocate -repo=a*"));
-            Assert.That(Gate(100, Stop("mine", ask)), Is.Empty, "autopilot in another CLI marks nothing here, though it's in A");
+            Assert.That(Gate(100, Stop("mine", ask)), Is.Empty, "allocate in another CLI marks nothing here, though it's in A");
 
             var told = Gate(200, Stop("pilot", "PRS-T16 landed."));
             Assert.That(told, Does.Contain("\"block\"").And.Contain("2 workable tickets remain (A-T2, A-T3)").And.Contain("orchestrator next --repos \\\"a*\\\" --claim"),
-                "the autopilot CLI goes on to its next tickets (the wildcard a* names A; fixes only: A-T4 awaits approval; B isn't its repo)");
+                "the allocate CLI goes on to its next tickets (the wildcard a* names A; fixes only: A-T4 awaits approval; B isn't its repo)");
             Assert.That(Gate(200, Stop("pilot", "Blocked on a decision.")), Is.Empty, "stopped again without doing anything: let go");
 
             Gate(200, Typed("pilot", "/allocate off"));
@@ -267,7 +267,7 @@ public sealed class ContextCyclerTests
     }
 
     [Test]
-    public void Autopilot_turns_on_for_just_the_cli_it_is_typed_into()
+    public void Allocate_turns_on_for_just_the_cli_it_is_typed_into()
     {
         var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
         var ws = Path.Combine(dir, "ws");
@@ -293,7 +293,7 @@ public sealed class ContextCyclerTests
                 return output;
             }
             var ctx = Path.Combine(dir, ".claude", "session-context");
-            string? Mark(int cli) => File.Exists(Path.Combine(ctx, $"autopilot-{cli}")) ? File.ReadAllText(Path.Combine(ctx, $"autopilot-{cli}")) : null;
+            string? Mark(int cli) => File.Exists(Path.Combine(ctx, $"allocate-{cli}")) ? File.ReadAllText(Path.Combine(ctx, $"allocate-{cli}")) : null;
 
             Typed(1, repo, "/allocate");
             Assert.That(Mark(1), Is.EqualTo("A"), "this CLI's own repo, for this CLI only");
@@ -322,7 +322,7 @@ public sealed class ContextCyclerTests
             Assert.That(Mark(4), Is.EqualTo("GTFO.*,GTFO.A"));
             Typed(3, ws, "/allocate off all");
             Assert.That((Mark(1), Mark(2)), Is.EqualTo(((string?)null, (string?)null)), "off all: in every CLI");
-            Assert.That(File.Exists(Path.Combine(ctx, "autopilot.order")), Is.False, "nothing workspace-wide any more");
+            Assert.That(File.Exists(Path.Combine(ctx, "allocate.order")), Is.False, "nothing workspace-wide any more");
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
@@ -363,7 +363,7 @@ public sealed class ContextCyclerTests
                 Assert.That(p.WaitForExit(20_000), Is.True);
                 return output;
             }
-            string? Mark(object cli) => File.Exists(Path.Combine(ctx, $"autopilot-{cli}")) ? File.ReadAllText(Path.Combine(ctx, $"autopilot-{cli}")) : null;
+            string? Mark(object cli) => File.Exists(Path.Combine(ctx, $"allocate-{cli}")) ? File.ReadAllText(Path.Combine(ctx, $"allocate-{cli}")) : null;
 
             var said = Typed("/allocate -target=others");
             Assert.That((Mark(live1), Mark(live2), Mark(1), Mark(999999)), Is.EqualTo(("A", "B", (string?)null, (string?)null)),
@@ -372,7 +372,7 @@ public sealed class ContextCyclerTests
 
             said = Typed($"/allocate off -target={live1},nobody");
             Assert.That((Mark(live1), Mark(live2)), Is.EqualTo(((string?)null, "B")), "off for the PID named alone");
-            Assert.That(File.Exists(Path.Combine(ctx, $"noautopilot-{live1}")), "recorded as typed off in its own record");
+            Assert.That(File.Exists(Path.Combine(ctx, $"noallocate-{live1}")), "recorded as typed off in its own record");
             Assert.That(said, Does.Contain($"CLI {live1} (A)").And.Contain("No running CLI matched nobody"));
 
             Assert.That(Typed("/allocate off -target=nobody"), Does.Contain("\"block\"").And.Contain("matched no running CLI"));
@@ -392,7 +392,7 @@ public sealed class ContextCyclerTests
     }
 
     [Test]
-    public void A_freshly_opened_cli_starts_with_autopilot_off_until_it_is_typed_there()
+    public void A_freshly_opened_cli_starts_with_allocate_off_until_it_is_typed_there()
     {
         // M.ORCH-T522 reverses M.ORCH-T476's on-by-default: no CLI works tickets until /allocate is typed in it.
         var dir = Path.Combine(Path.GetTempPath(), "claude-" + Guid.NewGuid().ToString("N"));
@@ -418,7 +418,7 @@ public sealed class ContextCyclerTests
                 Assert.That(p.WaitForExit(20_000), Is.True);
             }
             var ctx = Path.Combine(dir, ".claude", "session-context");
-            string? Mark(int cli) => File.Exists(Path.Combine(ctx, $"autopilot-{cli}")) ? File.ReadAllText(Path.Combine(ctx, $"autopilot-{cli}")) : null;
+            string? Mark(int cli) => File.Exists(Path.Combine(ctx, $"allocate-{cli}")) ? File.ReadAllText(Path.Combine(ctx, $"allocate-{cli}")) : null;
 
             Hook(1, a, "SessionStart");
             Hook(1, a, "UserPromptSubmit", "fix the build");
@@ -469,7 +469,7 @@ public sealed class ContextCyclerTests
                 p.StandardOutput.ReadToEnd();
                 Assert.That(p.WaitForExit(20_000), Is.True);
             }
-            var mark = Path.Combine(dir, ".claude", "session-context", "autopilot-7");
+            var mark = Path.Combine(dir, ".claude", "session-context", "allocate-7");
 
             // M.ORCH-T560: /allocate replaced /autopilot and its alias /work; the old command files go once they're still ours.
             File.WriteAllText(Path.Combine(dir, "commands", "autopilot.md"), Setup.AgentGate.RetiredCommands.Single(c => c.File == "autopilot.md").Body);

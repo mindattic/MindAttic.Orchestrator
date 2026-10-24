@@ -58,7 +58,7 @@ public sealed record OrphanRecord(string TicketId, string Repo, string Directory
 /// and dispatch machinery, never by typing into a session: the dead claim is handed back to the live /allocate CLI on its repo
 /// (its next <c>orchestrator next --claim</c> restarts it in the same worktree, the prompt carrying the work forward), else a
 /// new Launcher tab is opened on it in its worktree (<see cref="Dispatcher"/>: a login with room under its cutoffs, never the
-/// global login, the API key only when the owner has API billing on). It waits while the window is at its target, autopilot is
+/// global login, the API key only when the owner has API billing on). It waits while the window is at its target, allocate is
 /// paused, quiet hours run or no login has room; it never hands out a worktree whose work it can't carry forward, and after
 /// <see cref="OrchestratorSettings.OrphanRedispatches"/> redispatches it stops and says the ticket keeps dying.
 /// </summary>
@@ -78,8 +78,8 @@ public sealed class OrphanWatch(JsonStore store)
     /// <summary>Opens a new tab on a ticket in its worktree with the prompt given (seam); null opens none.</summary>
     internal Func<QueueItem, string, Dispatcher.Result>? OpenTab { get; init; }
 
-    /// <summary>Whether a ticket is still open right now (seam; <see cref="Autopilot.StillOpen"/>).</summary>
-    internal Func<string, string, bool> StillOpen { get; init; } = Autopilot.StillOpen;
+    /// <summary>Whether a ticket is still open right now (seam; <see cref="Allocate.StillOpen"/>).</summary>
+    internal Func<string, string, bool> StillOpen { get; init; } = Allocate.StillOpen;
 
     /// <summary>The main line a repo lands on (seam).</summary>
     internal Func<string, string> MainlineOf { get; init; } = Dispatcher.Mainline;
@@ -211,16 +211,16 @@ public sealed class OrphanWatch(JsonStore store)
         var tree = Path.Combine(settings.WorktreeRoot, q.Repo, q.Id);
         if (!SamePath(rec.Directory, tree) && (rec.Ahead > 0 || rec.Uncommitted.Count > 0))
             return GiveUp($"its work is in {rec.Directory}, not {tree} where a redispatch would start, so it isn't redispatched (that would leave the work behind)");
-        if (!settings.Autopilot) return Wait("autopilot is paused");
+        if (!settings.Allocate) return Wait("allocate is paused");
         if (QuietHours.Active(settings.QuietHours, nowUtc.ToLocalTime()) is { } quietHours) return Wait($"quiet hours ({quietHours})");
         if (plan.Stopped) return Wait($"the {plan.Pace?.Governing ?? "5-hour"} window is at its target; it's redispatched after the reset");
         if (!StillOpen(q.RepoPath, q.Id)) return rec;
 
-        var cli = pilots.Where(p => Autopilot.Named(p.Value, q.Repo)).Select(p => (int?)p.Key).Order().FirstOrDefault();
+        var cli = pilots.Where(p => Allocate.Named(p.Value, q.Repo)).Select(p => (int?)p.Key).Order().FirstOrDefault();
         if (cli is { } pilot)
         {
             // Handed back: the dead claim goes, so the /allocate CLI's next `orchestrator next --claim` claims it again in the same
-            // worktree (nothing is typed into it; keep-going and AutopilotWaker send it on as they do any workable ticket).
+            // worktree (nothing is typed into it; keep-going and AllocateWaker send it on as they do any workable ticket).
             var dead = q.Assignment!;
             store.UpdateAssignments(all => all.RemoveAll(x => Same(x.TicketId, q.Id) && x.StartedUtc == dead.StartedUtc && x.Cli == dead.Cli));
             // Nobody works it until that claim (M.ORCH-T766), which records its new owner; a tab opened below records its own.
@@ -229,7 +229,7 @@ public sealed class OrphanWatch(JsonStore store)
             return rec with { State = OrphanRecord.HandedBack, Redispatches = rec.Redispatches + 1, RedispatchedUtc = nowUtc, Why = $"handed back to the /allocate CLI {pilot}" };
         }
         if (OpenTab is not { } open) return Wait("no /allocate CLI works its repo, and this process can't open a tab");
-        var prompt = CarryForward(rec) + Autopilot.PromptFor(q, tree, Dispatcher.BranchFor(q.Id), MainlineOf(q.RepoPath));
+        var prompt = CarryForward(rec) + Allocate.PromptFor(q, tree, Dispatcher.BranchFor(q.Id), MainlineOf(q.RepoPath));
         var result = open(q, prompt);
         if (!result.Ok) return Wait(result.Message);
         events.Add(new Event($"orphaned: started {q.Id} again in a new tab: {result.Message}", false, ("Redispatched", $"{q.Id} in {q.Repo} went dark; started again in a new tab in its worktree.", false)));

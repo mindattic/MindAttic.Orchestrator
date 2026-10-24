@@ -205,7 +205,7 @@ public sealed class MoveHandback(JsonStore store)
             : $"{headline}. Tell it to start its subagents again on {tickets} in their worktrees ({(pipe is null ? "its CLI isn't running in a Launcher tab the orchestrator can type into" : "typing into its tab failed")}).");
     }
 
-    /// <summary>What the CLI is typed: one line, no double quote (see <see cref="AutopilotWaker.Prompt"/>).</summary>
+    /// <summary>What the CLI is typed: one line, no double quote (see <see cref="AllocateWaker.Prompt"/>).</summary>
     public static string Prompt(MoveEnd end, IReadOnlyList<Assignment> claims)
     {
         var m = end.Lock;

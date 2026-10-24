@@ -180,7 +180,7 @@ public sealed class JsonStoreTests
     [Test]
     public void Writers_at_once_never_drop_each_others_change_and_no_lock_file_is_left()
     {
-        // A dashboard's Dispatch and the daemon's autopilot each loaded, changed and saved: one dropped the other's (M.ORCH-T119).
+        // A dashboard's Dispatch and the daemon's allocate each loaded, changed and saved: one dropped the other's (M.ORCH-T119).
         // Each change is one write transaction now: the 24 writers queue on SQLite's lock, every one's row survives.
         Parallel.For(0, 24, i => new JsonStore(dir).UpdateAssignments(all =>
             all.Add(new Assignment($"X-T{i}", "X", @"D:\W\X", "Claude", DateTime.UtcNow, true))));
@@ -265,7 +265,7 @@ public sealed class JsonStoreTests
         Assert.That(dump, Does.Contain("INSERT INTO settings (name, value) VALUES ('MaxConcurrentSessions', '6');"));
         Assert.That(dump, Does.Contain("INSERT INTO state (name, value) VALUES ('limits', '[]');"), "no write time: it changes with every save");
 
-        store.Save(Daemon.AutopilotHoldsName, new Daemon.AutopilotHolds(false, [], ["X-T1"]));
+        store.Save(Daemon.AllocateHoldsName, new Daemon.AllocateHolds(false, [], ["X-T1"]));
         store.Save(Daemon.StaleTicketsName, new List<string> { "X-T2" });
         store.Save("dashboard-seen", new Dictionary<string, DateTime> { ["LastSeenUtc"] = DateTime.UtcNow });
         Assert.That(System.IO.File.ReadAllText(store.Db.DumpPath), Is.EqualTo(dump), "rewritten every tick: in the .db, not the dump");
@@ -312,11 +312,11 @@ public sealed class JsonStoreTests
     public void A_hook_reads_the_tables_and_mid_write_sees_the_last_committed_values_without_waiting()
     {
         var store = new JsonStore(dir);
-        store.SaveSettings(new OrchestratorSettings { ExemptCommands = ["/deploy"], AutopilotSkip = ["Prose"] });
+        store.SaveSettings(new OrchestratorSettings { ExemptCommands = ["/deploy"], AllocateSkip = ["Prose"] });
         store.SaveAssignments([new Assignment("X-T1", "X", "", "Claude", DateTime.UtcNow, false)]);
-        store.Save(Daemon.AutopilotHoldsName, new Daemon.AutopilotHolds(true, [], []));
+        store.Save(Daemon.AllocateHoldsName, new Daemon.AllocateHolds(true, [], []));
         var env = new Dictionary<string, string?> { ["APPDATA"] = dir };
-        const string Read = """print(json.dumps([orch_settings().get("ExemptCommands"), orch_settings().get("AutopilotSkip"), orch_assignments(), (orch_state("autopilot-holds", 600) or {}).get("Quiet")]))""";
+        const string Read = """print(json.dumps([orch_settings().get("ExemptCommands"), orch_settings().get("AllocateSkip"), orch_assignments(), (orch_state("allocate-holds", 600) or {}).get("Quiet")]))""";
         Assert.That(Hook(Read, env), Is.EqualTo("""[["/deploy"], ["Prose"], ["X-T1"], true]"""));
 
         // A writer mid-transaction (the daemon saving settings): the hook reads what was committed, at once.

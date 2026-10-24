@@ -54,7 +54,7 @@ public sealed class WeeklyAllowanceTests
         Assert.That(LoginRoom.Of(Account(b, Settings, Now), Settings).Open, Is.False, "nothing is redelegated to it");
 
         var plan = Scheduler.Plan(new Snapshot(Now, [], []) { Budget = b, Pace = p }, Settings, []);
-        var (handed, why) = Autopilot.Next(plan, Settings, new JsonStore(temps.New()), ["*"], null, claim: true, Now);
+        var (handed, why) = Allocate.Next(plan, Settings, new JsonStore(temps.New()), ["*"], null, claim: true, Now);
         Assert.That(handed, Is.Empty);
         Assert.That(why, Does.Contain("weekly"));
     }

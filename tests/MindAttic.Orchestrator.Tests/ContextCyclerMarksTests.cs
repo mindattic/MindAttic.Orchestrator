@@ -34,7 +34,7 @@ public sealed class ContextCyclerMarksTests
         // database another process saw neither and read an /allocate CLI as off.
         var db = new Settings.OrchestratorDb(Settings.OrchestratorDb.StatePath(dir));
         db.Open().Dispose();
-        File.WriteAllText(Path.Combine(dir, "autopilot-7"), "Prose");
+        File.WriteAllText(Path.Combine(dir, "allocate-7"), "Prose");
         var before = Settings.OrchestratorDb.BusyTimeoutMs;
         Settings.OrchestratorDb.BusyTimeoutMs = 3000;
         try
@@ -45,60 +45,60 @@ public sealed class ContextCyclerMarksTests
                 Settings.OrchestratorDb.Execute(held, "BEGIN IMMEDIATE;");
                 reading = Task.Run(() => CliMarks.ReadIn(dir));
                 Thread.Sleep(500); // ReadIn is waiting on the lock now
-                Assert.That(CliMarks.Read(dir, CliMarks.Autopilot).GetValueOrDefault(7), Is.EqualTo("Prose"), "the mark is still there mid-read-in");
+                Assert.That(CliMarks.Read(dir, CliMarks.Allocate).GetValueOrDefault(7), Is.EqualTo("Prose"), "the mark is still there mid-read-in");
                 Settings.OrchestratorDb.Execute(held, "ROLLBACK;");
             }
             Assert.That(reading.Wait(TimeSpan.FromSeconds(10)), Is.True);
         }
         finally { Settings.OrchestratorDb.BusyTimeoutMs = before; }
-        Assert.That(CliMarks.Read(dir, CliMarks.Autopilot)[7], Is.EqualTo("Prose"));
-        Assert.That(Directory.GetFiles(dir).Select(Path.GetFileName), Is.EquivalentTo(new[] { "autopilot-7.bak" }), "read in, kept as .bak");
+        Assert.That(CliMarks.Read(dir, CliMarks.Allocate)[7], Is.EqualTo("Prose"));
+        Assert.That(Directory.GetFiles(dir).Select(Path.GetFileName), Is.EquivalentTo(new[] { "allocate-7.bak" }), "read in, kept as .bak");
     }
 
     /// <summary>M.ORCH-T558: /allocate warms up from when it turned on, so that time survives a read-in, a rewrite and a restart.</summary>
     [Test]
-    public void When_autopilot_turned_on_is_kept_through_a_read_in_and_a_rewrite_of_its_mark()
+    public void When_allocate_turned_on_is_kept_through_a_read_in_and_a_rewrite_of_its_mark()
     {
         CliMarks.Db().Open().Dispose();
-        var file = Path.Combine(dir, "autopilot-7");
+        var file = Path.Combine(dir, "allocate-7");
         File.WriteAllText(file, "Prose");
         var on = DateTime.UtcNow.AddMinutes(-5);
         File.SetLastWriteTimeUtc(file, on);
-        Assert.That(CliMarks.Since(dir, CliMarks.Autopilot)[7], Is.EqualTo(on).Within(TimeSpan.FromSeconds(1)), "a file not read in yet: its time");
+        Assert.That(CliMarks.Since(dir, CliMarks.Allocate)[7], Is.EqualTo(on).Within(TimeSpan.FromSeconds(1)), "a file not read in yet: its time");
         CliMarks.ReadIn(dir);
         Assert.That(File.Exists(file), Is.False);
-        Assert.That(CliMarks.Since(dir, CliMarks.Autopilot)[7], Is.EqualTo(on).Within(TimeSpan.FromSeconds(1)), "read in: its row keeps it");
+        Assert.That(CliMarks.Since(dir, CliMarks.Allocate)[7], Is.EqualTo(on).Within(TimeSpan.FromSeconds(1)), "read in: its row keeps it");
         File.WriteAllText(file, "Prose,GTFO"); // repos added while the database was held
         CliMarks.ReadIn(dir);
-        Assert.That(CliMarks.Read(dir, CliMarks.Autopilot)[7], Is.EqualTo("Prose,GTFO"));
-        Assert.That(new ContextCycler(dir).AutopilotSince()[7], Is.EqualTo(on).Within(TimeSpan.FromSeconds(1)), "rewritten: still when it turned on");
+        Assert.That(CliMarks.Read(dir, CliMarks.Allocate)[7], Is.EqualTo("Prose,GTFO"));
+        Assert.That(new ContextCycler(dir).AllocateSince()[7], Is.EqualTo(on).Within(TimeSpan.FromSeconds(1)), "rewritten: still when it turned on");
     }
 
-    // ---- AutopilotOrder ----
+    // ---- AllocateOrder ----
 
     [Test]
-    public void Autopilot_order_is_null_while_the_file_is_missing()
+    public void Allocate_order_is_null_while_the_file_is_missing()
     {
-        Assert.That(new ContextCycler(dir).AutopilotOrder(), Is.Null, "no file: /allocate is off");
-        Assert.That(new ContextCycler(Path.Combine(dir, "nowhere")).AutopilotOrder(), Is.Null, "no folder at all: off too");
-    }
-
-    [Test]
-    public void An_empty_autopilot_order_means_every_cli()
-    {
-        File.WriteAllText(Path.Combine(dir, ContextCycler.AutopilotFile), "");
-        Assert.That(new ContextCycler(dir).AutopilotOrder(), Is.Not.Null.And.Empty);
-
-        File.WriteAllText(Path.Combine(dir, ContextCycler.AutopilotFile), " \r\n , \n");
-        Assert.That(new ContextCycler(dir).AutopilotOrder(), Is.Not.Null.And.Empty, "only separators and blanks: still every CLI");
+        Assert.That(new ContextCycler(dir).AllocateOrder(), Is.Null, "no file: /allocate is off");
+        Assert.That(new ContextCycler(Path.Combine(dir, "nowhere")).AllocateOrder(), Is.Null, "no folder at all: off too");
     }
 
     [Test]
-    public void The_autopilot_order_splits_on_commas_and_newlines_and_keeps_wildcards()
+    public void An_empty_allocate_order_means_every_cli()
     {
-        File.WriteAllText(Path.Combine(dir, ContextCycler.AutopilotFile), "GTFO.* , MindAttic.Orchestrator\r\nSoundBoard\n*\n,,Other ");
+        File.WriteAllText(Path.Combine(dir, ContextCycler.AllocateFile), "");
+        Assert.That(new ContextCycler(dir).AllocateOrder(), Is.Not.Null.And.Empty);
 
-        Assert.That(new ContextCycler(dir).AutopilotOrder(),
+        File.WriteAllText(Path.Combine(dir, ContextCycler.AllocateFile), " \r\n , \n");
+        Assert.That(new ContextCycler(dir).AllocateOrder(), Is.Not.Null.And.Empty, "only separators and blanks: still every CLI");
+    }
+
+    [Test]
+    public void The_allocate_order_splits_on_commas_and_newlines_and_keeps_wildcards()
+    {
+        File.WriteAllText(Path.Combine(dir, ContextCycler.AllocateFile), "GTFO.* , MindAttic.Orchestrator\r\nSoundBoard\n*\n,,Other ");
+
+        Assert.That(new ContextCycler(dir).AllocateOrder(),
             Is.EqualTo(new[] { "GTFO.*", "MindAttic.Orchestrator", "SoundBoard", "*", "Other" }));
     }
 
@@ -191,13 +191,13 @@ public sealed class ContextCyclerMarksTests
     // ---- PruneMarks ----
 
     [Test]
-    public void Prune_marks_drops_crossrepo_unthrottled_and_autopilot_marks_of_clis_that_have_closed()
+    public void Prune_marks_drops_crossrepo_unthrottled_and_allocate_marks_of_clis_that_have_closed()
     {
-        var keep = new[] { "abc.json", "abc.state.json", ContextCycler.AutopilotFile, "keep-going.jsonl" };
+        var keep = new[] { "abc.json", "abc.state.json", ContextCycler.AllocateFile, "keep-going.jsonl" };
         var drop = new[]
         {
-            $"crossrepo-{NotClaude}", $"unthrottled-{NotClaude}", $"autopilot-{NotClaude}", $"noautopilot-{NotClaude}",
-            "crossrepo-0", "unthrottled-notapid", "autopilot-",
+            $"crossrepo-{NotClaude}", $"unthrottled-{NotClaude}", $"allocate-{NotClaude}", $"noallocate-{NotClaude}",
+            "crossrepo-0", "unthrottled-notapid", "allocate-",
         };
         foreach (var f in keep.Concat(drop)) File.WriteAllText(Path.Combine(dir, f), "x");
 
@@ -232,8 +232,8 @@ public sealed class ContextCyclerMarksTests
     [Test]
     public void Week_old_prune_keeps_a_running_clis_own_marks_and_drops_stale_session_files()
     {
-        // noautopilot-: /allocate off typed in it a week ago stays off, not switched back on by the default (M.ORCH-T484).
-        var keep = new[] { "autopilot-123", "noautopilot-456", "unthrottled-123", "crossrepo-123", ContextCycler.AutopilotFile };
+        // noallocate-: /allocate off typed in it a week ago stays off, not switched back on by the default (M.ORCH-T484).
+        var keep = new[] { "allocate-123", "noallocate-456", "unthrottled-123", "crossrepo-123", ContextCycler.AllocateFile };
         var drop = new[] { "old.json", "old.state.json" };
         var now = DateTime.UtcNow;
         foreach (var f in keep.Concat(drop))

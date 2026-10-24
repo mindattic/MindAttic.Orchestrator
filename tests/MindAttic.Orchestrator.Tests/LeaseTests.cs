@@ -131,8 +131,41 @@ public sealed class LeaseTests
             command.CommandText = "SELECT count(*) FROM pragma_table_info('cli_marks') WHERE name = 'since';";
             Assert.That(command.ExecuteScalar(), Is.EqualTo(1L), "step 9 (M.ORCH-T558): when each CLI's mark was first written");
         }
-        Assert.That(OrchestratorDb.Version, Is.EqualTo(13), "step 8 (M.ORCH-T528) adds session_states, step 9 (M.ORCH-T558) cli_marks.since, step 10 (M.ORCH-T563) the models, step 11 (M.ORCH-T670) the members, step 12 (M.ORCH-T668) assignments.account, step 13 (M.ORCH-T655) the organizations");
+        Assert.That(OrchestratorDb.Version, Is.EqualTo(14), "step 8 (M.ORCH-T528) adds session_states, step 9 (M.ORCH-T558) cli_marks.since, step 10 (M.ORCH-T563) the models, step 11 (M.ORCH-T670) the members, step 12 (M.ORCH-T668) assignments.account, step 13 (M.ORCH-T655) the organizations, step 14 (M.ORCH-T779) renames the Autopilot cli_marks kinds and settings to Allocate");
         Assert.That(new JsonStore(dir, new OrchestratorDb(path)).LoadSettings().BlockBudget, Is.EqualTo(5555), "what it held is kept");
+    }
+
+    [Test]
+    public void Step_14_renames_the_old_autopilot_cli_marks_and_settings_to_allocate_and_keeps_what_it_held()
+    {
+        var path = Path.Combine(dir, "v13.db");
+        var store = new JsonStore(dir, new OrchestratorDb(path));
+        store.SaveSettings(new OrchestratorSettings { BlockBudget = 7777, Allocate = false });
+        // Back to how a version-13 database held these: the internal names before M.ORCH-T779 renamed Autopilot to Allocate.
+        using (var connection = store.Db.Open())
+        {
+            Sql.Run(connection, null, "UPDATE settings SET name = 'Autopilot' WHERE name = 'Allocate';");
+            Sql.Run(connection, null, "INSERT INTO cli_marks (kind, pid, value, written_at) VALUES ('autopilot', 111, 'GTFO.Api', 0);");
+            Sql.Run(connection, null, "INSERT INTO cli_marks (kind, pid, value, written_at) VALUES ('noautopilot', 222, 'wind', 0);");
+            OrchestratorDb.Execute(connection, "PRAGMA user_version = 13;");
+        }
+
+        using (var connection = new OrchestratorDb(path).Open())
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA user_version;";
+            Assert.That(command.ExecuteScalar(), Is.EqualTo((long)OrchestratorDb.Version));
+            Assert.That(Sql.Scalar(connection, null, "SELECT value FROM cli_marks WHERE kind = 'allocate' AND pid = 111;"), Is.EqualTo("GTFO.Api"),
+                "the old autopilot mark carries forward under its new kind, so a CLI with /allocate already on doesn't appear to flip");
+            Assert.That(Sql.Scalar(connection, null, "SELECT value FROM cli_marks WHERE kind = 'noallocate' AND pid = 222;"), Is.EqualTo("wind"),
+                "the old noautopilot mark carries forward too");
+            Assert.That(Sql.Scalar(connection, null, "SELECT count(*) FROM cli_marks WHERE kind IN ('autopilot', 'noautopilot');"), Is.EqualTo(0L),
+                "nothing is left under the old kind");
+        }
+        Assert.That(OrchestratorDb.Version, Is.GreaterThanOrEqualTo(14));
+        Assert.That(new JsonStore(dir, new OrchestratorDb(path)).LoadSettings().Allocate, Is.False,
+            "the old Autopilot setting carries forward as Allocate, not silently back to its default");
+        Assert.That(new JsonStore(dir, new OrchestratorDb(path)).LoadSettings().BlockBudget, Is.EqualTo(7777), "what it held is kept");
     }
 
     // ---- leases ----

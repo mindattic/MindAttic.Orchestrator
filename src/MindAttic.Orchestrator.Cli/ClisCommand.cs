@@ -34,18 +34,18 @@ internal sealed class ClisCommand : Command<ClisCommand.Settings>
             AnsiConsole.MarkupLine("[grey]No Claude CLI is open.[/]");
             return 0;
         }
-        var table = new Table().Border(TableBorder.Rounded).AddColumns("Repo", "Pid", "Autopilot", "Bills", "Where", "State", "Last turn");
-        foreach (var c in roster.Clis.OrderByDescending(c => c.Autopilot).ThenBy(c => c.Repo, StringComparer.OrdinalIgnoreCase))
+        var table = new Table().Border(TableBorder.Rounded).AddColumns("Repo", "Pid", "Allocate", "Bills", "Where", "State", "Last turn");
+        foreach (var c in roster.Clis.OrderByDescending(c => c.Allocate).ThenBy(c => c.Repo, StringComparer.OrdinalIgnoreCase))
             table.AddRow(
                 Markup.Escape(c.Repo),
                 c.Pid.ToString(),
-                c.Autopilot ? $"[green]on[/] {Markup.Escape(string.Join(", ", c.AutopilotRepos))}" : "[grey]off[/]",
+                c.Allocate ? $"[green]on[/] {Markup.Escape(string.Join(", ", c.AllocateRepos))}" : "[grey]off[/]",
                 c.Bills is null ? "" : Markup.Escape(BillingModes.Name(c.Bills)),
                 c.InLauncher ? "Launcher tab" : "terminal",
                 c.Idle ? "[yellow]waiting[/]" : "[green]working[/]",
                 Format.Ago(c.LastTurnUtc, roster.WrittenUtc));
         AnsiConsole.Write(table);
-        var on = roster.Clis.Count(c => c.Autopilot);
+        var on = roster.Clis.Count(c => c.Allocate);
         AnsiConsole.MarkupLine($"{roster.Clis.Count} open CLI(s), /allocate on in {on}.");
         return 0;
     }

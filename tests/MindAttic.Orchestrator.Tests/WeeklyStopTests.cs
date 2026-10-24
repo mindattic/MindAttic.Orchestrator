@@ -9,7 +9,7 @@ namespace MindAttic.Orchestrator.Tests;
 
 /// <summary>
 /// M.ORCH-T438: the hooks refuse every tool call once Claude reports the week at its stop line (<see cref="OrchestratorSettings.WeeklyStopPercent"/>, 100 minus the weekly reserve: M.ORCH-T609); the
-/// daemon has to stop at the same point (and lift it at the weekly reset), or autopilot hands out tickets and the dashboard
+/// daemon has to stop at the same point (and lift it at the weekly reset), or allocate hands out tickets and the dashboard
 /// says On pace while every call is refused. Below that line the week is still never paced.
 /// </summary>
 public sealed class WeeklyStopTests
@@ -100,7 +100,7 @@ public sealed class WeeklyStopTests
         {
             var b = Budget(Settings.WeeklyStopPercent);
             var plan = Scheduler.Plan(new Snapshot(Now, [], []) { Budget = b, Pace = Pacer.Compute(b, 1, null, Settings, Now) }, Settings, []);
-            var (handed, why) = Autopilot.Next(plan, Settings, new JsonStore(dir), ["*"], null, claim: true, Now);
+            var (handed, why) = Allocate.Next(plan, Settings, new JsonStore(dir), ["*"], null, claim: true, Now);
 
             Assert.That(plan.Stopped, Is.True);
             Assert.That(handed, Is.Empty);

@@ -12,7 +12,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly Action saved;
     private string blockBudget = "", weeklyBudget = "", weeklyReset = "", warnPercent = "", maxSessions = "", provider = "Claude", error = "", paceTarget = "",
         contextPercent = "", orphanRedispatches = "", orphanQuiet = "", exemptCommands = "", weeklyTarget = "", tabBlinkTokens = "";
-    private bool autopilot, pacing, autoLogin, rebalanceLogins = true;
+    private bool allocate, pacing, autoLogin, rebalanceLogins = true;
 
     public SettingsViewModel(JsonStore store, Action saved)
     {
@@ -29,7 +29,7 @@ public sealed class SettingsViewModel : ObservableObject
     public string MaxSessions { get => maxSessions; set => Set(ref maxSessions, value); }
     // Ctrl+click on the selected pill deselects it, writing null: Save would store no default provider.
     public string Provider { get => provider; set { if (value is not null) Set(ref provider, value); } }
-    public bool Autopilot { get => autopilot; set => Set(ref autopilot, value); }
+    public bool Allocate { get => allocate; set => Set(ref allocate, value); }
     public bool Pacing { get => pacing; set => Set(ref pacing, value); }
     public string PaceTarget { get => paceTarget; set => Set(ref paceTarget, value); }
     /// <summary>The weekly target (M.ORCH-T680): 100 minus the weekly reserve (M.ORCH-T609), so it's saved as the reserve;
@@ -161,9 +161,9 @@ public sealed class SettingsViewModel : ObservableObject
     public string FilePath => store.Describe(JsonStore.SettingsName);
     public ICommand SaveCommand { get; }
 
-    /// <summary>Autopilot as the panel read it: the CLI pauses and resumes it too while the panel is open, and a Save that
+    /// <summary>Allocate as the panel read it: the CLI pauses and resumes it too while the panel is open, and a Save that
     /// didn't touch the toggle mustn't put back what it read.</summary>
-    private bool loadedAutopilot;
+    private bool loadedAllocate;
 
     /// <summary>Every field as the panel read it. The CLI and agents change settings too while it's open (budget, pace,
     /// settings --max-sessions, --exempt): a Save writes only the fields edited here, not what it read back then (M.ORCH-T338).</summary>
@@ -184,7 +184,7 @@ public sealed class SettingsViewModel : ObservableObject
         WarnPercent = s.WarnPercent.ToString(CultureInfo.InvariantCulture);
         MaxSessions = s.MaxConcurrentSessions.ToString(CultureInfo.InvariantCulture);
         Provider = s.DefaultProvider;
-        Autopilot = loadedAutopilot = s.Autopilot;
+        Allocate = loadedAllocate = s.Allocate;
         Pacing = s.Pacing;
         PaceTarget = s.PaceTargetPercent.ToString(CultureInfo.InvariantCulture);
         WeeklyTarget = s.WeeklyAwareTarget.ToString(CultureInfo.InvariantCulture);
@@ -242,7 +242,7 @@ public sealed class SettingsViewModel : ObservableObject
                 WarnPercent = WarnPercent == was.Warn ? s.WarnPercent : warn,
                 MaxConcurrentSessions = MaxSessions == was.Max ? s.MaxConcurrentSessions : max,
                 DefaultProvider = Provider == was.Provider ? s.DefaultProvider : Provider,
-                Autopilot = Autopilot == loadedAutopilot ? s.Autopilot : Autopilot,
+                Allocate = Allocate == loadedAllocate ? s.Allocate : Allocate,
                 Pacing = Pacing == was.Pacing ? s.Pacing : Pacing,
                 PaceTargetPercent = PaceTarget == was.Target ? s.PaceTargetPercent : target,
                 WeeklyReservePercent = WeeklyTarget == was.WeekTarget ? s.WeeklyReservePercent : 100 - weekTarget,

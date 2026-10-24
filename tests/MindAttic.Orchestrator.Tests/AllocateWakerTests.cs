@@ -9,7 +9,7 @@ using NUnit.Framework;
 namespace MindAttic.Orchestrator.Tests;
 
 /// <summary>An idle /allocate CLI is sent back for work within a tick of next having a ticket and room for it (M.ORCH-T523).</summary>
-public sealed class AutopilotWakerTests
+public sealed class AllocateWakerTests
 {
     private string dir = "";
     private ContextCycler cycler = null!;
@@ -33,7 +33,7 @@ public sealed class AutopilotWakerTests
     [TearDown]
     public void TearDown() => Directory.Delete(dir, recursive: true);
 
-    private AutopilotWaker Waker(bool inTab = true) => new(cycler, store)
+    private AllocateWaker Waker(bool inTab = true) => new(cycler, store)
     {
         IsAlive = _ => true,
         Pilots = () => new Dictionary<int, IReadOnlyList<string>> { [Cli] = ["A"] },
@@ -59,7 +59,7 @@ public sealed class AutopilotWakerTests
         };
 
     [Test]
-    public void An_idle_autopilot_cli_let_stop_with_no_room_is_typed_back_to_work_once_room_opens()
+    public void An_idle_allocate_cli_let_stop_with_no_room_is_typed_back_to_work_once_room_opens()
     {
         // Found live 2026-10-20: every /allocate CLI stopped the night before on "the pace has no room", and none was sent back
         // when the window reset; MindAttic.Tickets' sat idle with M.TIX-T116 workable until the user typed to it.
@@ -79,7 +79,7 @@ public sealed class AutopilotWakerTests
 
         Assert.That(waker.Tick(Plan(4, 0, T("A-T1")), Settings, [Tab], true, Now.AddMinutes(2)), Is.Empty, "not again inside the cooldown");
         State("idle", Now.AddMinutes(5)); // it stopped again
-        Assert.That(waker.Tick(Plan(4, 0, T("A-T1")), Settings, [Tab], true, Now.AddMinutes(1) + AutopilotWaker.Cooldown), Has.Count.EqualTo(1),
+        Assert.That(waker.Tick(Plan(4, 0, T("A-T1")), Settings, [Tab], true, Now.AddMinutes(1) + AllocateWaker.Cooldown), Has.Count.EqualTo(1),
             "once the cooldown is past it's asked again");
     }
 
@@ -97,7 +97,7 @@ public sealed class AutopilotWakerTests
         {
             Accounts = [new AccountPace("me@example.com", login, null, default!, accountPace, null, 1)],
         };
-        var onOwn = new AutopilotWaker(cycler, store)
+        var onOwn = new AllocateWaker(cycler, store)
         {
             IsAlive = _ => true,
             Pilots = () => new Dictionary<int, IReadOnlyList<string>> { [Cli] = ["A"] },

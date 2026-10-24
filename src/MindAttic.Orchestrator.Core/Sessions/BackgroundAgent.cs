@@ -14,7 +14,7 @@ public static class BackgroundAgent
     public const string FallbackCommand = "claude --dangerously-skip-permissions --model claude-sonnet-5-5";
 
     public static string LogDirectory { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MindAttic", "MindAttic.Orchestrator", "autopilot");
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MindAttic", "MindAttic.Orchestrator", "allocate");
 
     /// <summary>Starts the agent; returns the id of its <c>cmd</c> process (which lives exactly as long as it does), or null.</summary>
     public static int? Start(string directory, string prompt, string logPath)

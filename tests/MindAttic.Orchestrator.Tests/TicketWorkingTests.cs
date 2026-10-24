@@ -50,7 +50,7 @@ public sealed class TicketWorkingTests
         var settings = new OrchestratorSettings { WorktreeRoot = Path.Combine(dir, "wt") };
         (bool, string, string) Make(string r, string path, string branch) => (true, path, "");
 
-        var (handed, _) = Autopilot.Next(plan, settings, store, ["A"], 1, claim: true, Now, Make, _ => "main", pilotRunning: _ => false,
+        var (handed, _) = Allocate.Next(plan, settings, store, ["A"], 1, claim: true, Now, Make, _ => "main", pilotRunning: _ => false,
             self: "sess-1", login: "Ryan@Example.com");
 
         Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T1" }));

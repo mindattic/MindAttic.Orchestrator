@@ -81,7 +81,7 @@ public sealed class OrphanWatchTests
 
         // Its next claim carries the work forward, in the same worktree.
         var (again, _) = Planned(Now.AddMinutes(1));
-        var (handed, _) = Autopilot.Next(again, Settings, store, ["A"], 1, claim: true, Now.AddMinutes(1),
+        var (handed, _) = Allocate.Next(again, Settings, store, ["A"], 1, claim: true, Now.AddMinutes(1),
             (_, path, _) => (true, path, ""), _ => "main", stillOpen: (_, _) => true);
         Assert.That(handed.Single().Worktree, Is.EqualTo(Tree));
         Assert.That(handed.Single().Prompt, Does.StartWith("A previous agent on A-T1 died mid-task").And.Contain("redispatch 1")
@@ -134,7 +134,7 @@ public sealed class OrphanWatchTests
     }
 
     [Test]
-    public void At_the_windows_target_or_with_autopilot_paused_it_waits_with_its_claim_kept()
+    public void At_the_windows_target_or_with_allocate_paused_it_waits_with_its_claim_kept()
     {
         store.SaveAssignments([Claim(Now.AddHours(-1))]);
         var (plan, snap) = Planned(Now);
@@ -142,9 +142,9 @@ public sealed class OrphanWatchTests
         Assert.That(events.Any(e => e.Line.Contains("window is at its target")), Is.True);
         Assert.That(store.LoadAssignments(), Has.Count.EqualTo(1));
 
-        var paused = Settings with { Autopilot = false };
+        var paused = Settings with { Allocate = false };
         Watch().Tick(plan, snap, paused, Pilots(true), Now.AddMinutes(1));
-        Assert.That(OrphanWatch.Load(store).Single().Why, Is.EqualTo("autopilot is paused"));
+        Assert.That(OrphanWatch.Load(store).Single().Why, Is.EqualTo("allocate is paused"));
         Assert.That(store.LoadAssignments(), Has.Count.EqualTo(1));
     }
 
@@ -172,7 +172,7 @@ public sealed class OrphanWatchTests
         // Even once its claim goes stale, next --claim doesn't hand it out again.
         var stale = Planned(Now.AddDays(1), Snap(Now.AddDays(1)), once).Plan;
         Assert.That(stale.Stale, Has.Count.EqualTo(1));
-        var (handed, _) = Autopilot.Next(stale, once, store, ["A"], 1, claim: false, Now.AddDays(1), stillOpen: (_, _) => true);
+        var (handed, _) = Allocate.Next(stale, once, store, ["A"], 1, claim: false, Now.AddDays(1), stillOpen: (_, _) => true);
         Assert.That(handed, Is.Empty);
     }
 

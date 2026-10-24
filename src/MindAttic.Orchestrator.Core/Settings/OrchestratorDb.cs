@@ -236,7 +236,7 @@ public sealed class OrchestratorDb(string path)
         """,
         // 3: the rest of the orchestrator's JSON state (M.ORCH-T524; see JsonStore). settings.json is one row per setting, its
         // value as JSON, so a change shows up as one line of the dump; assignments.json one row per assignment, in list order;
-        // every other JsonStore file (limits, reminders, audit, the pace alarms, autopilot holds, ...) one row of JSON under
+        // every other JsonStore file (limits, reminders, audit, the pace alarms, allocate holds, ...) one row of JSON under
         // its old file name, with when it was written (Unix seconds) so a reader can tell a running daemon's from a stale one.
         """
         CREATE TABLE settings (
@@ -303,9 +303,9 @@ public sealed class OrchestratorDb(string path)
             PRIMARY KEY (cli, gate_pid)
         );
         """,
-        // 6: each CLI's /allocate, /allocate off and /crossrepo marks (M.ORCH-T528), were autopilot-<pid>, noautopilot-<pid>
+        // 6: each CLI's /allocate, /allocate off and /crossrepo marks (M.ORCH-T528), were allocate-<pid>, noallocate-<pid>
         // and crossrepo-<pid> files in ~/.claude/session-context: one row per kind and CLI process, its text as the file held
-        // it (the repos, comma-separated; empty for noautopilot). The hooks write them through stdlib sqlite3; a file is
+        // it (the repos, comma-separated; empty for noallocate). The hooks write them through stdlib sqlite3; a file is
         // written again only while the database is held, and the daemon reads it in. Not in the dump: they last as long as
         // a CLI does.
         """
@@ -389,14 +389,31 @@ public sealed class OrchestratorDb(string path)
         );
         CREATE INDEX org_members_org ON org_members (org_id);
         """,
+        // 14: the Autopilot subsystem renamed to Allocate (M.ORCH-T779), internal naming only: the /allocate and /allocate off
+        // marks this database already held under the old internal kind ("autopilot", "noautopilot") carry forward under the
+        // new one, so a CLI with /allocate already on (or off) doesn't appear to flip the moment this ships; same for the
+        // settings a saved settings.json or this table already held by their old property names. A guard row (same kind or
+        // name already under the new one) is dropped first so the rename can't collide with its own primary key.
+        """
+        DELETE FROM cli_marks WHERE kind = 'allocate' AND pid IN (SELECT pid FROM cli_marks WHERE kind = 'autopilot');
+        UPDATE cli_marks SET kind = 'allocate' WHERE kind = 'autopilot';
+        DELETE FROM cli_marks WHERE kind = 'noallocate' AND pid IN (SELECT pid FROM cli_marks WHERE kind = 'noautopilot');
+        UPDATE cli_marks SET kind = 'noallocate' WHERE kind = 'noautopilot';
+        DELETE FROM settings WHERE name = 'Allocate' AND EXISTS (SELECT 1 FROM settings WHERE name = 'Autopilot');
+        UPDATE settings SET name = 'Allocate' WHERE name = 'Autopilot';
+        DELETE FROM settings WHERE name = 'AllocateSkip' AND EXISTS (SELECT 1 FROM settings WHERE name = 'AutopilotSkip');
+        UPDATE settings SET name = 'AllocateSkip' WHERE name = 'AutopilotSkip';
+        DELETE FROM settings WHERE name = 'AllocateHandMinutes' AND EXISTS (SELECT 1 FROM settings WHERE name = 'AutopilotHandMinutes');
+        UPDATE settings SET name = 'AllocateHandMinutes' WHERE name = 'AutopilotHandMinutes';
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a
-    /// commit every <see cref="Daemon.SyncOrchestratorDbIfDue"/>: what autopilot holds back right now, the stale claims, when
+    /// commit every <see cref="Daemon.SyncOrchestratorDbIfDue"/>: what allocate holds back right now, the stale claims, when
     /// the dashboard was last looked at, the pace status the hooks read (rl-status) and the roster of open CLIs. They're
     /// still in the .db, which is committed whenever the dump changes.</summary>
     internal static readonly string[] Volatile =
-        [Daemon.AutopilotHoldsName, Daemon.StaleTicketsName, "dashboard-seen", Budget.RateLimitStatusWriter.StateName, Sessions.CliRoster.StateName,
+        [Daemon.AllocateHoldsName, Daemon.StaleTicketsName, "dashboard-seen", Budget.RateLimitStatusWriter.StateName, Sessions.CliRoster.StateName,
          // The hooks' own marks (M.ORCH-T528): written by every CLI's hooks, never history worth a commit.
          Setup.AgentGate.StopLatchStateName, Setup.AgentGate.ApiKeySetAsideStateName,
          "handoff", // the retired /handoff's mark (M.ORCH-T572), should a row of it be left

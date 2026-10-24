@@ -33,9 +33,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         // Every meter ask and what came of it is on the record (M.ORCH-T659), to trace a window that went unseen.
         ClaudeMeterProbe.Say = (level, line) => Say(level, line);
         var cycler = new ContextCycler();
-        var autopilot = new Autopilot(store, cycler, lease) { WaitingPath = Autopilot.DefaultWaitingPath };
+        var allocate = new Allocate(store, cycler, lease) { WaitingPath = Allocate.DefaultWaitingPath };
         var waker = new LimitWaker(cycler, store);
-        var pilotWaker = new AutopilotWaker(cycler, store);
+        var pilotWaker = new AllocateWaker(cycler, store);
         // One daemon wakes the CLIs: an `orchestrator daemon` run beside the logon one would type every resume twice.
         using var wakeLease = new DispatchLease(store.Directory, LimitWaker.LeaseName, store.Db);
         using var ledgerLease = new DispatchLease(store.Directory, PaceLedgerWatch.LeaseName, store.Db);
@@ -66,7 +66,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             {
                 // The dashboard's first run may pick the workspace after Scheduler already started this.
                 // Only from a settings.json that could be read: an unreadable one's default root would switch the whole tick (and
-                // autopilot's reap) to another workspace and back, dropping the aggregator's latches each way (M.ORCH-T513).
+                // allocate's reap) to another workspace and back, dropping the aggregator's latches each way (M.ORCH-T513).
                 if (OrchestratorOptions.TryLoad(store, out var latest) && latest.WorkspaceRoot != options.WorkspaceRoot)
                 {
                     options = latest;
@@ -77,7 +77,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 var snapshot = aggregator.Refresh();
                 tick.Lap("refresh");
                 ReportStatusFile(statusFile);
-                // Only from settings that could be read: defaults would run autopilot, keep-going and the subagent cap on
+                // Only from settings that could be read: defaults would run allocate, keep-going and the subagent cap on
                 // nothing anyone set and rewrite the hooks with them, every tick a bad row stays (M.ORCH-T720).
                 if (!store.TryLoadSettings(out var s)) throw new SettingsUnreadableException(store.Describe(JsonStore.SettingsName));
                 if (settingsUnreadable)
@@ -89,7 +89,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 notifyUrl = s.NotifyUrl;
 
                 EnsureHooks(s);
-                WatchHealth(autopilot);
+                WatchHealth(allocate);
                 WatchDisk(s);
                 tick.Lap("hooks, machine health and disk space");
                 try { if (ledgerLease.TryAcquire()) ledger.Tick(DateTime.UtcNow); }
@@ -126,10 +126,10 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     ReportWakes(waker.Tick(snapshot.Pace, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
                     // An idle /allocate CLI let stop when its next handed out nothing is sent back once next has work for it
                     // (M.ORCH-T523): keep-going acts only as a turn ends, so nothing asked it again when room opened.
-                    ReportAutopilotWakes(pilotWaker.Tick(plan, s, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow, snapshot));
+                    ReportAllocateWakes(pilotWaker.Tick(plan, s, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow, snapshot));
                     // On course to end under target with room for more: a CLI holding claims no subagent is on is told to start
                     // them now (M.ORCH-T529: two sat unstarted at a projected 65% of 98% until the user asked).
-                    ReportAutopilotWakes(pilotWaker.TickClaims(snapshot, plan, s, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
+                    ReportAllocateWakes(pilotWaker.TickClaims(snapshot, plan, s, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
                     // A dispatch whose CLI or tab exited mid-task (closed, crashed, slept) is orphaned: said at once, and handed back to
                     // the repo's /allocate CLI or started again in a new tab in its worktree (M.ORCH-T748), as a window's stop is resumed.
                     try
@@ -138,7 +138,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                         {
                             OpenTab = (item, prompt) => new Dispatcher(new SessionControl(options), store).Dispatch(item, Providers.Claude, useWorktree: true, submit: true, prompt: prompt),
                         };
-                        ReportOrphans(orphans.Tick(plan, snapshot, s, cycler.AutopilotClis(), DateTime.UtcNow));
+                        ReportOrphans(orphans.Tick(plan, snapshot, s, cycler.AllocateClis(), DateTime.UtcNow));
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
                     {
@@ -214,7 +214,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                         // And what else `orchestrator next` holds back that keep-going can't see from the files it reads:
                         // quiet hours, tickets another live session or subagent is working (M.ORCH-T255), and stale claims
                         // whose background agent still runs.
-                        store.Save(AutopilotHoldsName, new AutopilotHolds(
+                        store.Save(AllocateHoldsName, new AllocateHolds(
                             QuietHours.Active(s.QuietHours, DateTime.Now) is not null,
                             [.. plan.Worked],
                             [.. plan.Stale.Where(q => q.Assignment is { Pilot: { } p } a && Sessions.BackgroundAgent.IsRunning(p, a.PilotStartedUtc)).Select(q => q.Id)]));
@@ -237,7 +237,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
                 // An hour and half an hour before the reset: a window on course to end under its target with nothing for any
                 // CLI to work is said, never acted on (M.ORCH-T176).
-                ReportUnderTarget(snapshot, plan, cycler.AutopilotClis());
+                ReportUnderTarget(snapshot, plan, cycler.AllocateClis());
                 tick.Lap("keep-going, alerts and reminders");
 
                 var gitChores = gitChoresLease.TryAcquire();
@@ -255,7 +255,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 if (gitChores && s.GitHubIntake && DateTime.UtcNow - intakeUtc >= TimeSpan.FromHours(1))
                 {
                     intakeUtc = DateTime.UtcNow;
-                    // One repo's malformed story file or a locked database ends the intake, not the tick: autopilot's reap
+                    // One repo's malformed story file or a locked database ends the intake, not the tick: allocate's reap
                     // and sweep below still run.
                     try
                     {
@@ -269,8 +269,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 }
                 tick.Lap("GitHub intake");
 
-                ReportAutopilot(autopilot.Tick(plan, snapshot, s, DateTime.UtcNow));
-                tick.Lap("autopilot");
+                ReportAllocate(allocate.Tick(plan, snapshot, s, DateTime.UtcNow));
+                tick.Lap("allocate");
                 // Who works each ticket, in the ticket database for Tickets Desktop's link back (M.ORCH-T766): kept in step with the
                 // assignments as they stand after this tick's moves, redispatches and reaping (a claim gone stale is cleared). One
                 // daemon writes it, the one that wakes the CLIs.
@@ -279,18 +279,18 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 RunMainlineTests(mainTests, testsLease, snapshot, s, options.WorkspaceRoot);
                 tick.Lap("main-line tests");
                 // Keyed without its numbers: a hold whose percent ticks 93 → 94 is the same hold, not a new line (found live: 46 lines in 2h).
-                var pausedKey = autopilot.Paused is null ? null : Digits().Replace(autopilot.Paused, "#");
-                if (autopilot.On && pausedKey != lastPaused)
+                var pausedKey = allocate.Paused is null ? null : Digits().Replace(allocate.Paused, "#");
+                if (allocate.On && pausedKey != lastPaused)
                 {
-                    Say(LogEventLevel.Information, autopilot.Paused is { } why ? $"autopilot is holding: {why}" : "autopilot is starting stories again");
+                    Say(LogEventLevel.Information, allocate.Paused is { } why ? $"allocate is holding: {why}" : "allocate is starting stories again");
                     lastPaused = pausedKey;
                 }
-                if (autopilot.On && autopilot.HeldElsewhere != lastHeldElsewhere)
+                if (allocate.On && allocate.HeldElsewhere != lastHeldElsewhere)
                 {
-                    Say(LogEventLevel.Information, autopilot.HeldElsewhere
-                        ? "another orchestrator (an open dashboard) is running autopilot and keeping the budget file fresh; this does neither until it's free"
-                        : "running autopilot from this process");
-                    lastHeldElsewhere = autopilot.HeldElsewhere;
+                    Say(LogEventLevel.Information, allocate.HeldElsewhere
+                        ? "another orchestrator (an open dashboard) is running allocate and keeping the budget file fresh; this does neither until it's free"
+                        : "running allocate from this process");
+                    lastHeldElsewhere = allocate.HeldElsewhere;
                 }
             }
             catch (SettingsUnreadableException ex)
@@ -423,7 +423,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
     /// <summary>The settings couldn't be read this tick: its settings-driven work is skipped rather than run on defaults.</summary>
     private sealed class SettingsUnreadableException(string where)
-        : Exception($"settings in {where} couldn't be read; skipping this tick's settings-driven work (autopilot, keep-going, hooks) rather than running it on defaults");
+        : Exception($"settings in {where} couldn't be read; skipping this tick's settings-driven work (allocate, keep-going, hooks) rather than running it on defaults");
 
     /// <summary>Texts the outside-use recipient that someone started using Claude elsewhere on a watched login (M.ORCH-T702);
     /// the send runs on its own thread (<see cref="Reminders.OutsideUsePsst"/>).</summary>
@@ -447,7 +447,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     private readonly UnderTarget underTarget = new();
 
     /// <summary>Logs each idle /allocate CLI sent back for work; one it couldn't type into raises the Needs-you alert instead.</summary>
-    internal void ReportAutopilotWakes(IEnumerable<AutopilotWaker.Wake> wakes)
+    internal void ReportAllocateWakes(IEnumerable<AllocateWaker.Wake> wakes)
     {
         foreach (var w in wakes)
         {
@@ -457,15 +457,15 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     }
 
     /// <summary>Logs and raises the Needs-you alert when <see cref="UnderTarget"/> says one is due.</summary>
-    internal void ReportUnderTarget(Snapshot snapshot, SchedulePlan plan, IReadOnlyDictionary<int, IReadOnlyList<string>> autopilotClis)
+    internal void ReportUnderTarget(Snapshot snapshot, SchedulePlan plan, IReadOnlyDictionary<int, IReadOnlyList<string>> allocateClis)
     {
         // Every tick, once a window: on course to end under target with nothing left for any /allocate CLI to start (M.ORCH-T529).
-        if (underTarget.CheckNoWork(snapshot, plan, autopilotClis) is { } none)
+        if (underTarget.CheckNoWork(snapshot, plan, allocateClis) is { } none)
         {
             Say(LogEventLevel.Warning, $"under target: {none}");
             Alert("Needs you", none);
         }
-        if (underTarget.Check(snapshot, plan, autopilotClis, snapshot.TakenUtc) is not { } line) return;
+        if (underTarget.Check(snapshot, plan, allocateClis, snapshot.TakenUtc) is not { } line) return;
         Say(LogEventLevel.Warning, $"under target: {line}");
         Alert("Needs you", line);
     }
@@ -559,13 +559,13 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Say(LogEventLevel.Warning, $"couldn't install the agent hooks (retrying next tick): {ex.Message}"); }
     }
 
-    /// <summary>Logs autopilot's lines; only its "needs you" lines (<see cref="Autopilot.NeedsYou"/>) are warnings and raise the
+    /// <summary>Logs allocate's lines; only its "needs you" lines (<see cref="Allocate.NeedsYou"/>) are warnings and raise the
     /// Needs you alert, not a started line whose ticket summary happens to say "needs you".</summary>
-    internal void ReportAutopilot(IEnumerable<string> lines)
+    internal void ReportAllocate(IEnumerable<string> lines)
     {
         foreach (var line in lines)
         {
-            var needsYou = Autopilot.NeedsYou(line);
+            var needsYou = Allocate.NeedsYou(line);
             Say(needsYou is null ? LogEventLevel.Information : LogEventLevel.Warning, line);
             if (needsYou is not null) Alert("Needs you", needsYou);
         }
@@ -596,9 +596,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     public const string StaleTicketsName = "stale-tickets";
 
     /// <summary>What else orchestrator next holds back, for the context gate's keep-going (rewritten with the stale list).</summary>
-    public const string AutopilotHoldsName = "autopilot-holds";
+    public const string AllocateHoldsName = "allocate-holds";
 
-    public sealed record AutopilotHolds(bool Quiet, IReadOnlyList<Scheduling.WorkedTicket> Worked, IReadOnlyList<string> LivePilot);
+    public sealed record AllocateHolds(bool Quiet, IReadOnlyList<Scheduling.WorkedTicket> Worked, IReadOnlyList<string> LivePilot);
     private IReadOnlyList<string>? publishedStale;
     private DateTime publishedStaleUtc;
 
@@ -608,14 +608,14 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     private void RunAuditIfDue(OrchestratorOptions options, OrchestratorSettings s)
     {
         if (s.AuditEveryHours <= 0) return;
-        // Capped at a century: a huge value typed to mean "never" overflowed and ended every tick here, before autopilot's turn.
+        // Capped at a century: a huge value typed to mean "never" overflowed and ended every tick here, before allocate's turn.
         var every = TimeSpan.FromHours(Math.Min(s.AuditEveryHours, 36_525 * 24));
         var runner = new Audit.AuditRunner(options, store);
         // A failed read isn't "no audit yet": running now would diff against nothing and hide what's new, so wait for a readable one.
         if (!runner.TryLatest(out var before)) return;
         if (before is not null && DateTime.UtcNow - before.RanUtc < every) return;
         // A run whose save failed isn't retried every tick (it scans the whole workspace), and the failure doesn't end
-        // the tick before autopilot's turn: it's said, and tried again when the next one is due.
+        // the tick before allocate's turn: it's said, and tried again when the next one is due.
         if (DateTime.UtcNow - auditTriedUtc < every) return;
         auditTriedUtc = DateTime.UtcNow;
         Audit.AuditReport after;
@@ -663,16 +663,16 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     /// <summary>
     /// Every 30 seconds, samples handles, commit charge and free RAM. A change of level is logged and alerted with the
     /// worst offenders. Nothing is held for it (see <see cref="Activity.MachineHealth"/>); it only names the hold in
-    /// <see cref="Autopilot.Paused"/>, for the daemon's own starting that nothing in production uses.
+    /// <see cref="Allocate.Paused"/>, for the daemon's own starting that nothing in production uses.
     /// </summary>
-    private void WatchHealth(Autopilot autopilot)
+    private void WatchHealth(Allocate allocate)
     {
         if (DateTime.UtcNow - healthSampledUtc < TimeSpan.FromSeconds(30)) return;
         healthSampledUtc = DateTime.UtcNow;
         var sample = Activity.MachineHealth.Sample();
         // Judged against the last level, so it only comes down once clearly clear of the line, a step at a time.
         var (level, why) = Activity.MachineHealth.Judge(sample, healthLevel);
-        autopilot.HealthHold = level == Activity.HealthLevel.Ok ? null : why;
+        allocate.HealthHold = level == Activity.HealthLevel.Ok ? null : why;
         if (level == healthLevel) return;
         var offenders = sample.Offenders(why);
         if (level == Activity.HealthLevel.Ok)
@@ -681,7 +681,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         {
             Say(level == Activity.HealthLevel.Danger ? LogEventLevel.Error : LogEventLevel.Warning,
                 // Said, not held: /allocate CLIs hand out tickets through orchestrator next, which a busy machine doesn't
-                // stop (heavy load is the point), so the alert mustn't claim autopilot is holding (M.ORCH-T357).
+                // stop (heavy load is the point), so the alert mustn't claim allocate is holding (M.ORCH-T357).
                 $"machine health {level.ToString().ToLowerInvariant()}: {why} ({offenders})");
             // One alert per episode and per escalation: warn, then danger; not again for every step back down and up.
             if (level > alertedHealth)

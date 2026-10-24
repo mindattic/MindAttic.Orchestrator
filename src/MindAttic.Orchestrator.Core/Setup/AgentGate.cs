@@ -835,7 +835,7 @@ public static class AgentGate
             except Exception:
                 return {}
         def orch_state(name, max_age=None):
-            # A state value the orchestrator keeps (autopilot holds, stale claims, ...); None when it isn't kept, can't be read,
+            # A state value the orchestrator keeps (allocate holds, stale claims, ...); None when it isn't kept, can't be read,
             # or was written more than max_age seconds ago (a daemon that stopped). Its old file until a daemon reads it in.
             rows = orch_rows("SELECT value, written_at FROM state WHERE name = ?", (name,))
             if rows:
@@ -1081,7 +1081,7 @@ public static class AgentGate
             write_json(path, value)
         CLI_MARKS_DIR = Path.home() / ".claude" / "session-context"
         def cli_marks(kind):
-            # {pid: value} of one kind of per-CLI mark ("autopilot", "noautopilot", "crossrepo": M.ORCH-T528): the database's
+            # {pid: value} of one kind of per-CLI mark ("allocate", "noallocate", "crossrepo": M.ORCH-T528): the database's
             # cli_marks rows, with any <kind>-<pid> file over them (one the daemon hasn't read in yet, or one kept while the
             # database was held: newer either way), less those a <kind>-<pid>.cleared file says were removed while it was held.
             # The files are listed first: the daemon reading one in commits its row before it moves the file aside.
@@ -1335,7 +1335,7 @@ public static class AgentGate
             return sqlite3.connect(Path(os.path.abspath(TICKETS_DB)).as_uri() + "?mode=ro", uri=True)
 
         def repo_of(path, worktrees=True):
-            # A repo checkout under the workspace, or (with worktrees) one of autopilot's worktrees of it; None elsewhere.
+            # A repo checkout under the workspace, or (with worktrees) one of /allocate's worktrees of it; None elsewhere.
             try:
                 # Git Bash's /d/Projects/... is D:/Projects/... (Windows Python would read it as a folder on this drive).
                 p = Path(re.sub(r"^/([a-zA-Z])(?=/|$)", r"\1:", str(path))).resolve()
@@ -1418,13 +1418,13 @@ public static class AgentGate
         """;
 
     /// <summary>Python shared by both hooks (needs <c>json</c>, <c>os</c>, <c>re</c>, <c>time</c>, <c>Path</c> and <c>repo_of</c>):
-    /// the per-CLI <c>crossrepo-&lt;pid&gt;</c> and <c>autopilot-&lt;pid&gt;</c> marks. The context gate writes them for a typed
+    /// the per-CLI <c>crossrepo-&lt;pid&gt;</c> and <c>allocate-&lt;pid&gt;</c> marks. The context gate writes them for a typed
     /// /crossrepo or /allocate, the pace gate for the same command called through the Skill tool, but only when the user's
     /// own latest prompt asked for it (M.ORCH-T435): both are the user's choice, never the model's.</summary>
     internal const string MarksPython = """
         SESSION_MARKS = Path.home() / ".claude" / "session-context"
         # What the user's typed prompt asks for by name ("use crossrepo for X", "turn auto-pilot on", or the command itself).
-        ASKS_FOR = {"crossrepo": re.compile(r"\bcross[\s_-]?repos?\b", re.I), "autopilot": re.compile(r"\bauto[\s_-]?pilot\b|\ballocate\b", re.I)}
+        ASKS_FOR = {"crossrepo": re.compile(r"\bcross[\s_-]?repos?\b", re.I), "allocate": re.compile(r"\bauto[\s_-]?pilot\b|\ballocate\b", re.I)}
         def asked_for(prompt):
             return sorted(k for k, r in ASKS_FOR.items() if r.search(prompt or ""))
         def session_state(sid):
@@ -1437,12 +1437,12 @@ public static class AgentGate
                 return value if isinstance(value, dict) else {}
             except Exception:
                 return {}
-        def autopilot_repos(pid):
+        def allocate_repos(pid):
             # What /allocate turned on in THIS CLI (its repos, or "*"): it works them through its own subagents.
             # Never another CLI's: one you're using is never pushed onto tickets because its repo was named elsewhere.
-            # Its cli_marks row (M.ORCH-T528), or its autopilot-<pid> file as cli_marks reads it.
+            # Its cli_marks row (M.ORCH-T528), or its allocate-<pid> file as cli_marks reads it.
             try:
-                return [n.strip() for n in (cli_mark("autopilot", pid) or "").split(",") if n.strip()] if pid else []
+                return [n.strip() for n in (cli_mark("allocate", pid) or "").split(",") if n.strip()] if pid else []
             except Exception:
                 return []
         ALLOCATE_NOTE = [None]
@@ -1474,7 +1474,7 @@ public static class AgentGate
                         pass
             except Exception:
                 pass
-            for kind in ("autopilot", "noautopilot"):
+            for kind in ("allocate", "noallocate"):
                 try:
                     for each in cli_marks(kind):
                         found.setdefault(str(each), {"sessions": [], "cwd": None, "at": -1.0})
@@ -1484,14 +1484,14 @@ public static class AgentGate
         def cli_label(pid, cwd):
             r = repo_of(cwd) if cwd else None
             return "CLI " + str(pid) + (" (" + r + ")" if r else "")
-        def set_autopilot(pid, args, cwd):
+        def set_allocate(pid, args, cwd):
             # /allocate [off|all] [-repo=A,B] [-target=X,Y|others|all] (M.ORCH-T599): -target names the CLIs whose own records
             # change (PIDs, session ids or a CLI's repo or folder name; "others" is every CLI but this one, "all" every one);
             # without it, this CLI's alone. ALLOCATE_NOTE says which it changed and any target that matched none.
             ALLOCATE_NOTE[0] = None
             m = re.search(r"(?:^|\s)-{1,2}targets?\b\s*[=:]?\s*(\[[^\]]*\]|\"[^\"]*\"|'[^']*'|\S+(?:\s*,\s*\S+)*)", args, re.I)
             if not m:
-                return set_autopilot_one(pid, args, cwd)
+                return set_allocate_one(pid, args, cwd)
             # "off all" with a -target is off for those targets: -target=all is how every CLI is named.
             rest = re.sub(r"^off\s+all\b", "off", (args[:m.start()] + " " + args[m.end():]).strip(), flags=re.I)
             wanted = [t.strip(" \t.;:'\"`()[]<>") for t in re.split(r"[\s,]+", m.group(1).strip("[]\"'"))]
@@ -1537,7 +1537,7 @@ public static class AgentGate
                 if not re.match(r"(off|all)\b", rest, re.I) and not re.search(r"-{1,2}repo\b", rest, re.I) and not repo_of(c or ""):
                     refused.append(cli_label(p, c) + ": its repo isn't known, so name the repos with -repo=")
                     continue
-                why = set_autopilot_one(p, rest, c)
+                why = set_allocate_one(p, rest, c)
                 if why:
                     refused.append(cli_label(p, c) + ": " + why)
                 else:
@@ -1554,7 +1554,7 @@ public static class AgentGate
                 note += " This CLI's own /allocate is unchanged, so don't work any tickets here for it: just say which CLIs changed."
             ALLOCATE_NOTE[0] = note
             return None
-        def set_autopilot_one(pid, args, cwd):
+        def set_allocate_one(pid, args, cwd):
             # /allocate [off|all] [-repo=A,B]: the CLI works those repos' tickets through its own subagents (its own
             # repo when none are named) until /allocate off there. Nothing is marked for any other CLI. A name may be a
             # wildcard (-repo=GTFO.*), kept as typed and matched wherever the repos are read (M.ORCH-T165).
@@ -1563,8 +1563,8 @@ public static class AgentGate
             if re.search(r"-{1,2}repos\b", args, re.I):
                 # The -repos alias is gone (it read as a different switch); say so rather than guess what was meant.
                 return "/allocate takes -repo=A,B (wildcards too: -repo=GTFO.*); -repos is gone. Nothing changed: type it again with -repo."
-            names = autopilot_repos(pid)
-            if "cli:autopilot" in _unknown:
+            names = allocate_repos(pid)
+            if "cli:allocate" in _unknown:
                 # Its row couldn't be read (M.ORCH-T542): a list made from nothing would drop the repos it already has.
                 return "The orchestrator's database is held by another write, so this CLI's /allocate couldn't be read. Nothing changed: type it again in a moment."
             mine = repo_of(cwd or "")
@@ -1590,23 +1590,23 @@ public static class AgentGate
             except Exception:
                 pass
             if re.match(r"off\s+all\b", args, re.I):
-                for each in cli_marks("autopilot"):  # off everywhere: every CLI's, recorded as typed off, each winding down
+                for each in cli_marks("allocate"):  # off everywhere: every CLI's, recorded as typed off, each winding down
                     try:
-                        set_cli_mark("noautopilot", each, WIND)
-                        set_cli_mark("autopilot", each, None)
+                        set_cli_mark("noallocate", each, WIND)
+                        set_cli_mark("allocate", each, None)
                     except Exception:
                         pass
             if pid and names:
-                if set_cli_mark("autopilot", pid, ",".join(names)) is False:
+                if set_cli_mark("allocate", pid, ",".join(names)) is False:
                     return ("The orchestrator's database is held by another write and this CLI's /allocate file is held open, so it "
                             "couldn't be recorded. Nothing changed: type it again in a moment.")
-                if may_have_cli_mark("noautopilot", pid):
-                    set_cli_mark("noautopilot", pid, None)
+                if may_have_cli_mark("noallocate", pid):
+                    set_cli_mark("noallocate", pid, None)
             else:
-                if may_have_cli_mark("autopilot", pid):
-                    set_cli_mark("autopilot", pid, None)
+                if may_have_cli_mark("allocate", pid):
+                    set_cli_mark("allocate", pid, None)
                 if pid and re.match(r"off\b", args, re.I):
-                    set_cli_mark("noautopilot", pid, WIND)
+                    set_cli_mark("noallocate", pid, WIND)
             return None
         # A freshly opened CLI starts with /allocate off (M.ORCH-T522, reversing M.ORCH-T476's on-by-default): only a typed
         # /allocate marks it.
@@ -1650,20 +1650,20 @@ public static class AgentGate
             return None
         # /allocate off winds this CLI down (M.ORCH-T572, which retired /handoff): no new ticket is claimed, the subagents working
         # finish, land and close, and once the last of them has, its turn quicksaves this repo's handoff as /quicksave does. Its
-        # noautopilot mark reads WIND until that quicksave, then "" (off, wound down).
+        # noallocate mark reads WIND until that quicksave, then "" (off, wound down).
         WIND = "wind"
         # The shared runner's save, as /quicksave runs it.
         QUICKSAVE = re.compile(r"prose-agent\.ps1['\"]?\s+(?:-Command\s+)?save\b", re.I)
         def winding_down(pid):
             # Whether /allocate off left this CLI to quicksave once its last subagent has landed.
             try:
-                return bool(pid) and cli_mark("noautopilot", pid) == WIND
+                return bool(pid) and cli_mark("noallocate", pid) == WIND
             except Exception:
                 return False
         def wound_down(pid):
             # Its quicksave is made: off stays off, nothing more to save.
             if winding_down(pid):
-                set_cli_mark("noautopilot", pid, "")
+                set_cli_mark("noallocate", pid, "")
         def wind_down_told(repo):
             # What a winding-down CLI is told when its turn ends with none of its subagents still working.
             return ("/allocate is off in this CLI and its last subagent has landed and closed. Quicksave this repo's handoff now, "
@@ -1877,7 +1877,7 @@ public static class AgentGate
         tool = data.get("tool_name")
 
         # A repo's window works only that repo (M.ORCH-T95): its own folder and worktrees, and its own tickets. Another
-        # repo's files and tickets belong to that repo's window, autopilot, or the General (workspace-root) session.
+        # repo's files and tickets belong to that repo's window, /allocate, or the General (workspace-root) session.
         import fnmatch, os, re, sqlite3
         {{WorkspacePython}}
 
@@ -1901,19 +1901,17 @@ public static class AgentGate
         {{MarksPython}}
         if tool == "Skill":
             called = str((data.get("tool_input") or {}).get("skill") or "").strip().lstrip("/").lower().split(":")[-1]
-            called = "autopilot" if called == "allocate" else called  # /allocate is autopilot's command (M.ORCH-T560)
-            if called in ("crossrepo", "autopilot"):
-                shown = "allocate" if called == "autopilot" else called  # the public name, never the internal "autopilot" one
+            if called in ("crossrepo", "allocate"):
                 given = str((data.get("tool_input") or {}).get("args") or "").strip()
                 off = bool(re.match(r"off\b", given, re.I)) or (called == "crossrepo" and not given)
                 if not off and called not in (session_state(data.get("session_id")).get("asked") or []):
-                    refuse(f"/{shown} is the user's to switch on, never yours: their latest prompt didn't ask for it, so nothing was "
+                    refuse(f"/{called} is the user's to switch on, never yours: their latest prompt didn't ask for it, so nothing was "
                            f"recorded. Ask the user to type " + ("/crossrepo <repos>" if called == "crossrepo" else "/allocate") + " themselves.")
                 pid = os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
-                why = set_autopilot(pid, given, data.get("cwd") or "") if called == "autopilot" else set_crossrepo(pid, given)
+                why = set_allocate(pid, given, data.get("cwd") or "") if called == "allocate" else set_crossrepo(pid, given)
                 if why:
                     refuse(why)
-                if called == "autopilot" and ALLOCATE_NOTE[0]:
+                if called == "allocate" and ALLOCATE_NOTE[0]:
                     # -target (M.ORCH-T599): the model's reply names the CLIs it changed.
                     told = dict(hookEventName="PreToolUse", additionalContext=ALLOCATE_NOTE[0])
                     print(json.dumps(dict(hookSpecificOutput=told)))
@@ -1924,7 +1922,7 @@ public static class AgentGate
             # /crossrepo's repos, and the repos /allocate is working in this CLI ("*" for all): its subagents edit and close there.
             pid = os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
             found = set()
-            for kind in ("crossrepo", "autopilot"):
+            for kind in ("crossrepo", "allocate"):
                 try:
                     found |= {r.strip().lower() for r in (cli_mark(kind, pid) or "").split(",") if r.strip()}
                 except Exception:
@@ -1951,7 +1949,7 @@ public static class AgentGate
                 target = args.get("file_path") or args.get("notebook_path") or ""
                 if other(repo_of(target)):
                     refuse(f"This window is for {here}; {target} belongs to {repo_of(target)}. Work {repo_of(target)} in its own window "
-                           f"(or autopilot, or the General session), or file a ticket for it: tickets ticket new --repo {repo_of(target)} ...")
+                           f"(or /allocate, or the General session), or file a ticket for it: tickets ticket new --repo {repo_of(target)} ...")
             if tool in ("Bash", "PowerShell"):
                 command = str(args.get("command") or "")
                 # Only a segment that IS a ticket command (tickets, or the legacy workflow shim) counts: the words inside a message or a string don't.
@@ -1969,7 +1967,7 @@ public static class AgentGate
                     for owner in owners:
                         if other(owner):
                             refuse(f"This window is for {here}; that ticket belongs to {owner}. Only {here}'s tickets are worked here: "
-                                   f"leave {owner}'s to its own window, autopilot or the General session.")
+                                   f"leave {owner}'s to its own window, /allocate or the General session.")
                 # Only a write that `git -C` itself runs in the other repo: reading it is fine, and a word in a message, a file
                 # name or this repo's own git on the same line isn't that repo's change.
                 for segment in re.split(r"[;\n|]|&&", command):
@@ -2266,7 +2264,7 @@ public static class AgentGate
                 # /allocate on (subagents started by hand) has no warm-up.
                 TX_SINCE[0] = TX
                 try:
-                    since = cli_mark_since("autopilot")
+                    since = cli_mark_since("allocate")
                 finally:
                     TX_SINCE[0] = None
                 def warm(p):
@@ -2482,12 +2480,12 @@ public static class AgentGate
                 # A claim gone stale is back in the queue, and `orchestrator next` hands it out again: it's work. Only the
                 # running daemon's list counts (it rewrites it each minute): one left by a daemon that stopped may name a
                 # ticket claimed afresh since.
-                # What `orchestrator next` itself holds back isn't work to push on to either: autopilot paused, quiet hours,
+                # What `orchestrator next` itself holds back isn't work to push on to either: /allocate paused, quiet hours,
                 # a skipped repo, a ticket another live session or subagent is working, a stale claim whose agent still runs.
-                if settings.get("Autopilot") is False:
+                if settings.get("Allocate") is False:
                     return []
-                skip = {(x or "").lower() for x in settings.get("AutopilotSkip") or []}
-                holds = orch_state("{{{Daemon.AutopilotHoldsName}}}", {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}})
+                skip = {(x or "").lower() for x in settings.get("AllocateSkip") or []}
+                holds = orch_state("{{{Daemon.AllocateHoldsName}}}", {{{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}})
                 if not isinstance(holds, dict):
                     holds = {}
                 if holds.get("Quiet"):
@@ -2805,9 +2803,9 @@ public static class AgentGate
                 print(json.dumps({"decision": "block", "reason": wind_down_told(repo_of(data.get("cwd") or "") or Path(str(data.get("cwd") or ".")).name)}))
                 sys.exit(0)
             # Only a CLI that typed /allocate is kept going, on its own repos, while they have workable tickets.
-            repos = autopilot_repos(my_pid())
+            repos = allocate_repos(my_pid())
             if repos and KEEP_GOING and not stopped and not state.get("goal"):
-                why = "autopilot"
+                why = "allocate"
             eligible = bool(why) and not no_subagent_room(limits, my_pid())
             ids = workable(repos, sid) if eligible else []
             if ids or (eligible and story_file_repos(repos)):
@@ -2862,18 +2860,18 @@ public static class AgentGate
                 state.pop("exempt", None)
             typed = (data.get("prompt") or "").strip()
             prompt = typed.lower()
-            # Whether this prompt asks for cross-repo work or autopilot: the pace gate lets the model start either through the
+            # Whether this prompt asks for cross-repo work or /allocate: the pace gate lets the model start either through the
             # Skill tool only then, never on its own (M.ORCH-T435). Each prompt replaces the last one's note.
             asked = asked_for(typed)
             if asked:
                 state["asked"] = asked
             else:
                 state.pop("asked", None)
-            # /allocate (set_autopilot): THIS CLI works those repos' tickets through its own subagents until /allocate off here.
+            # /allocate (set_allocate): THIS CLI works those repos' tickets through its own subagents until /allocate off here.
             # /allocate replaced /autopilot and its alias /work (M.ORCH-T560).
             command = "/allocate" if re.match(r"/allocate\b", prompt) else None
             if command:
-                why = set_autopilot(my_pid(), typed[len(command):].strip(), data.get("cwd") or "")
+                why = set_allocate(my_pid(), typed[len(command):].strip(), data.get("cwd") or "")
                 if why:
                     print(json.dumps({"decision": "block", "reason": why}))
                     sys.exit(0)

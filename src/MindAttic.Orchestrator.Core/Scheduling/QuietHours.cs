@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace MindAttic.Orchestrator.Scheduling;
 
-/// <summary>Local-time windows ("22:00-07:00", "12:00-13:00") when autopilot pauses; a window past midnight wraps.</summary>
+/// <summary>Local-time windows ("22:00-07:00", "12:00-13:00") when /allocate pauses; a window past midnight wraps.</summary>
 public static class QuietHours
 {
     public static bool TryParse(string text, out (TimeOnly From, TimeOnly To) window)

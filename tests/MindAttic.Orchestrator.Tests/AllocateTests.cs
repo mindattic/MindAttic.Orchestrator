@@ -8,7 +8,7 @@ using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
 
-public sealed class AutopilotTests
+public sealed class AllocateTests
 {
     private string dir = "";
     private JsonStore store = null!;
@@ -25,7 +25,7 @@ public sealed class AutopilotTests
     [SetUp]
     public void SetUp()
     {
-        dir = Path.Combine(Path.GetTempPath(), "orch-autopilot-" + Guid.NewGuid().ToString("N"));
+        dir = Path.Combine(Path.GetTempPath(), "orch-allocate-" + Guid.NewGuid().ToString("N"));
         store = new JsonStore(Path.Combine(dir, "store"));
         sessions = new ContextCycler(Path.Combine(dir, "ctx"));
         Directory.CreateDirectory(sessions.Directory);
@@ -53,9 +53,9 @@ public sealed class AutopilotTests
     }
 
     [Test]
-    public void Autopilot_all_works_every_repo_with_open_stories_whether_or_not_a_cli_is_open()
+    public void Allocate_all_works_every_repo_with_open_stories_whether_or_not_a_cli_is_open()
     {
-        order = [Autopilot.AllRepos];
+        order = [Allocate.AllRepos];
         Cli(100, @"D:\W\A", busy: true); // A's own CLI is being worked by hand
         var snap = Snap(("A", [T("A-T1")]), ("B", [T("B-T1")]), ("C", []));
         var pilot = Pilot();
@@ -71,7 +71,7 @@ public sealed class AutopilotTests
     public void Stories_start_in_queue_order_across_repos_not_one_repo_filled_first()
     {
         // Found live: /allocate all put all five spare sessions into Automata while a +70 story elsewhere waited.
-        order = [Autopilot.AllRepos];
+        order = [Allocate.AllRepos];
         var snap = Snap(("Automata", [T("AUT-T1"), T("AUT-T2"), T("AUT-T3")]), ("Launcher", [T("M.LNCH-T21")]));
         snap = snap with { Priorities = new Dictionary<string, long> { ["M.LNCH-T21"] = 70 } };
         var plan = Scheduler.Plan(snap, new(), store.LoadAssignments());
@@ -89,7 +89,7 @@ public sealed class AutopilotTests
         // Found live: Automata lands on master; told to push HEAD:main, an agent created a stray main branch on GitHub.
         Cli(100, @"D:\W\A");
         var snap = Snap(("A", [T("A-T1")]));
-        new Autopilot(store, sessions)
+        new Allocate(store, sessions)
         {
             Order = () => order, Alive = clis.Contains, IsRunning = _ => false, StartTimeOf = _ => null, LogDirectory = Path.Combine(dir, "logs"),
             MakeWorktree = (repo, path, branch) => (true, path, ""), MainlineOf = _ => "master",
@@ -132,9 +132,9 @@ public sealed class AutopilotTests
         Git(tree, "commit", "-q", "-am", "X-T1 done");
         var a = new Assignment("X-T1", "X", tree, "Claude", Now, true);
 
-        Assert.That(Autopilot.LandOnMain(a, repo).Closed, Is.False, "closed on its branch but not pushed: not done");
+        Assert.That(Allocate.LandOnMain(a, repo).Closed, Is.False, "closed on its branch but not pushed: not done");
         Git(tree, "push", "-q", "origin", "HEAD:master");
-        var (closed, note) = Autopilot.LandOnMain(a, repo);
+        var (closed, note) = Allocate.LandOnMain(a, repo);
         Assert.That(closed, Is.True, note);
         Assert.That(note, Does.Contain("up to date"), "your checkout on master is fast-forwarded");
         Assert.That(Directory.Exists(tree), Is.False, "the worktree is removed");
@@ -143,7 +143,7 @@ public sealed class AutopilotTests
         // (found live: 35 such worktrees were reported unlanded because orch/<id> didn't exist).
         var other = Path.Combine(dir, "wt", "X-T2");
         Git(repo, "worktree", "add", "-q", "-b", "a-name-the-agent-chose", other, "origin/master");
-        var (otherLanded, otherNote) = Autopilot.LandOnMain(new Assignment("X-T2", "X", other, "Claude", Now, true), repo);
+        var (otherLanded, otherNote) = Allocate.LandOnMain(new Assignment("X-T2", "X", other, "Claude", Now, true), repo);
         Assert.That(otherLanded, Is.True, otherNote);
         Assert.That(Directory.Exists(other), Is.False);
     }
@@ -229,7 +229,7 @@ public sealed class AutopilotTests
     }
 
     [Test]
-    public void A_cli_running_autopilot_is_handed_its_repos_workable_tickets_each_with_a_worktree_and_prompt_once()
+    public void A_cli_running_allocate_is_handed_its_repos_workable_tickets_each_with_a_worktree_and_prompt_once()
     {
         // M.ORCH-T164: /allocate works tickets through the CLI's own subagents; `orchestrator next --claim` hands them out.
         var snap = Snap(("A", [T("A-T1"), T("A-T2"), new Ticket("A-T3", "2026-10-01", "feature", "open", "not approved", "")]), ("B", [T("B-T1")]));
@@ -239,7 +239,7 @@ public sealed class AutopilotTests
         SchedulePlan Planned() => Paced(snap, 5) with { Pace = Paced(snap, 5).Pace! with { SubagentAllowance = 4, Subagents = 2 } };
 
         var before = Planned(); // what a second CLI read before this one's claim landed
-        var (handed, why) = Autopilot.Next(Planned(), settings, store, ["A"], null, claim: true, Now, Make, _ => "master");
+        var (handed, why) = Allocate.Next(Planned(), settings, store, ["A"], null, claim: true, Now, Make, _ => "master");
         Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T1", "A-T2" }), "A's fixes only (A-T3 awaits approval, B isn't named), up to the 2 the allowance has room for");
         Assert.That(why, Is.Null);
         Assert.That(made, Is.EqualTo(new[] { @"D:\WT\A\A-T1", @"D:\WT\A\A-T2" }));
@@ -247,30 +247,30 @@ public sealed class AutopilotTests
         Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EquivalentTo(new[] { "A-T1", "A-T2" }), "claimed, so not handed out twice");
 
         // A second CLI whose plan was read before the first one's claim landed hands nothing out twice.
-        var (raced, whyRaced) = Autopilot.Next(before, settings, store, ["A"], null, claim: true, Now.AddSeconds(1), Make, _ => "master");
+        var (raced, whyRaced) = Allocate.Next(before, settings, store, ["A"], null, claim: true, Now.AddSeconds(1), Make, _ => "master");
         Assert.That(raced, Is.Empty, "both were claimed by the first CLI between this plan and its claim");
         Assert.That(whyRaced, Is.EqualTo("another CLI claimed them first; nothing else is ready"));
         Assert.That(store.LoadAssignments().Select(a => (a.TicketId, a.StartedUtc)), Is.EquivalentTo(new[] { ("A-T1", Now), ("A-T2", Now) }),
             "the first CLI's claims stand");
 
-        var (again, whyAgain) = Autopilot.Next(Planned(), settings, store, ["A"], null, claim: true, Now, Make, _ => "main");
+        var (again, whyAgain) = Allocate.Next(Planned(), settings, store, ["A"], null, claim: true, Now, Make, _ => "main");
         Assert.That(again, Is.Empty);
         Assert.That(whyAgain, Does.Contain("2 already being worked"));
 
-        var (waiting, whyWaiting) = Autopilot.Next(Scheduler.Plan(Snap(("C", [new Ticket("C-T1", "2026-10-01", "chore", "open", "x", "")])), new(), []),
+        var (waiting, whyWaiting) = Allocate.Next(Scheduler.Plan(Snap(("C", [new Ticket("C-T1", "2026-10-01", "chore", "open", "x", "")])), new(), []),
             settings, store, ["C"], null, claim: false, Now, Make, _ => "main");
         Assert.That((waiting.Count, whyWaiting), Is.EqualTo((0, "none left that may be worked: 1 wait for your approval (orchestrator approve)")));
 
         var stopped = Planned() with { Pace = Planned().Pace! with { Stop = true } };
-        Assert.That(Autopilot.Next(stopped, settings, store, ["*"], null, claim: false, Now, Make, _ => "main").Why, Does.Contain("at its target"));
-        Assert.That((Autopilot.Named(["GTFO.*"], "gtfo.Api"), Autopilot.Named(["GTFO.*"], "GTFO"), Autopilot.Named(["GTFO.*"], "MindAttic.GTFO.x"),
-            Autopilot.Named(["*"], "anything"), Autopilot.Named(["A", "B"], "b")), Is.EqualTo((true, false, false, true, true)),
+        Assert.That(Allocate.Next(stopped, settings, store, ["*"], null, claim: false, Now, Make, _ => "main").Why, Does.Contain("at its target"));
+        Assert.That((Allocate.Named(["GTFO.*"], "gtfo.Api"), Allocate.Named(["GTFO.*"], "GTFO"), Allocate.Named(["GTFO.*"], "MindAttic.GTFO.x"),
+            Allocate.Named(["*"], "anything"), Allocate.Named(["A", "B"], "b")), Is.EqualTo((true, false, false, true, true)),
             "-repo=GTFO.* names every repo starting GTFO. (M.ORCH-T165)");
     }
 
     /// <summary>M.ORCH-T495: one repo's /allocate claimed all 8 places at once (8 subagents on one repo) while other CLIs got none.</summary>
     [Test]
-    public void A_cli_running_autopilot_claims_its_fair_share_of_the_allowance_not_every_place()
+    public void A_cli_running_allocate_claims_its_fair_share_of_the_allowance_not_every_place()
     {
         var snap = Snap(("A", [.. Enumerable.Range(1, 10).Select(i => T($"A-T{i}"))]), ("B", [T("B-T1"), T("B-T2"), T("B-T3"), T("B-T4"), T("B-T5")]), ("C", []));
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
@@ -281,21 +281,21 @@ public sealed class AutopilotTests
         };
         Dictionary<int, IReadOnlyList<string>> pilots = new() { [1] = ["A"], [2] = ["B"] };
 
-        var (handed, _) = Autopilot.Next(Planned(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots);
+        var (handed, _) = Allocate.Next(Planned(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots);
         Assert.That(handed, Has.Count.EqualTo(4), "CLI 2's /allocate has B's tickets to work: half the 8 is kept for it");
 
-        var (b, _) = Autopilot.Next(Planned(4, new() { [1] = 4 }), settings, store, ["B"], null, claim: false, Now, Make, _ => "main", cli: 2, pilots: pilots);
+        var (b, _) = Allocate.Next(Planned(4, new() { [1] = 4 }), settings, store, ["B"], null, claim: false, Now, Make, _ => "main", cli: 2, pilots: pilots);
         Assert.That(b, Has.Count.EqualTo(4), "and CLI 2 gets it");
 
-        var (full, why) = Autopilot.Next(Planned(4, new() { [1] = 4 }), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots);
+        var (full, why) = Allocate.Next(Planned(4, new() { [1] = 4 }), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots);
         Assert.That(full, Is.Empty);
         Assert.That(why, Does.Contain("fair share"));
 
         // A CLI whose repo has nothing workable lends its share: CLI 1 may have all 8.
         var idle = new Dictionary<int, IReadOnlyList<string>> { [1] = ["A"], [2] = ["C"] };
-        Assert.That(Autopilot.Next(Planned(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: idle).Handed, Has.Count.EqualTo(8));
+        Assert.That(Allocate.Next(Planned(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: idle).Handed, Has.Count.EqualTo(8));
         // An explicit --count isn't held to a share.
-        Assert.That(Autopilot.Next(Planned(), settings, store, ["A"], 6, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots).Handed, Has.Count.EqualTo(6));
+        Assert.That(Allocate.Next(Planned(), settings, store, ["A"], 6, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots).Handed, Has.Count.EqualTo(6));
     }
 
     /// <summary>M.ORCH-T732: with no CLI resolved the fair-share block is skipped, so unstarted claims weren't counted and each
@@ -311,14 +311,14 @@ public sealed class AutopilotTests
             new Assignment("A-T2", "A", @"D:\WT\A\A-T2", "Claude", Now, true)]);
         plan = Scheduler.Plan(snap, settings, store.LoadAssignments()) with { Pace = plan.Pace };
 
-        var next = Autopilot.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cliRunning: _ => true);
+        var next = Allocate.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cliRunning: _ => true);
         Assert.That(next.Handed, Has.Count.EqualTo(2), "4 places, 2 already claimed with no subagent on yet");
 
         // A claim of a CLI that has closed starts nothing: it isn't counted (M.ORCH-T550).
         store.SaveAssignments([new Assignment("A-T1", "A", @"D:\WT\A\A-T1", "Claude", Now, true),
             new Assignment("A-T2", "A", @"D:\WT\A\A-T2", "Claude", Now, true) { Cli = 99 }]);
         plan = Scheduler.Plan(snap, settings, store.LoadAssignments()) with { Pace = plan.Pace };
-        var gone = Autopilot.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cliRunning: c => c != 99);
+        var gone = Allocate.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cliRunning: c => c != 99);
         Assert.That(gone.Handed, Has.Count.EqualTo(3), "4 places, 1 live claim");
     }
 
@@ -336,11 +336,11 @@ public sealed class AutopilotTests
         store.SaveAssignments([new Assignment("B-T1", "B", @"D:\WT\B\B-T1", "Claude", Now, true) { Pilot = 2 }]);
         plan = Scheduler.Plan(snap, settings, store.LoadAssignments()) with { Pace = plan.Pace };
 
-        var apart = Autopilot.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots,
+        var apart = Allocate.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots,
             cliRunning: _ => true, loginOf: pid => pid == 2 ? @"C:\Users\x\.claude-accounts\honey@mindattic.com" : null);
         Assert.That(apart.Handed, Has.Count.EqualTo(8), "CLI 2 bills Honey's login: CLI 1's login keeps all 8 of its own places");
 
-        var together = Autopilot.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots,
+        var together = Allocate.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: pilots,
             cliRunning: _ => true, loginOf: _ => null);
         Assert.That(together.Handed, Has.Count.LessThan(8), "on the same login, CLI 2's share and claim are still kept for it");
     }
@@ -359,10 +359,10 @@ public sealed class AutopilotTests
         };
         Dictionary<int, IReadOnlyList<string>> pilots = new() { [1] = ["A"], [2] = ["B"], [3] = ["A"] };
         // CLI 2 claims one ticket and hasn't started its subagent yet: with 7 running that fills all 8 places.
-        Assert.That(Autopilot.Next(Planned(7, new() { [1] = 4, [2] = 3 }), settings, store, ["B"], 1, claim: true, Now, Make, _ => "main",
+        Assert.That(Allocate.Next(Planned(7, new() { [1] = 4, [2] = 3 }), settings, store, ["B"], 1, claim: true, Now, Make, _ => "main",
             cli: 2, pilots: pilots).Handed, Has.Count.EqualTo(1));
 
-        var (none, why) = Autopilot.Next(Planned(7, new() { [1] = 4, [2] = 3 }), settings, store, ["A"], null, claim: false, Now, Make, _ => "main",
+        var (none, why) = Allocate.Next(Planned(7, new() { [1] = 4, [2] = 3 }), settings, store, ["A"], null, claim: false, Now, Make, _ => "main",
             cli: 3, pilots: pilots);
         Assert.That(none, Is.Empty);
         Assert.That(why, Does.Contain("allowance is full (8 of 8: 7 running, 1 claimed by other CLIs with no subagent on yet)").And.Not.Contain("fair share"));
@@ -370,7 +370,7 @@ public sealed class AutopilotTests
 
     /// <summary>M.ORCH-T558: the first CLI to turn /allocate on claimed every place before the CLIs opened just after it could.</summary>
     [Test]
-    public void A_cli_whose_autopilot_just_turned_on_warms_up_one_more_subagent_each_minute()
+    public void A_cli_whose_allocate_just_turned_on_warms_up_one_more_subagent_each_minute()
     {
         var snap = Snap(("A", [.. Enumerable.Range(1, 12).Select(i => T($"A-T{i}"))]), ("B", [T("B-T1"), T("B-T2")]));
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
@@ -382,25 +382,25 @@ public sealed class AutopilotTests
         Dictionary<int, IReadOnlyList<string>> alone = new() { [1] = ["A"] };
         var since = new Dictionary<int, DateTime> { [1] = Now };
 
-        var (first, _) = Autopilot.Next(Planned(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: alone, onSince: since);
+        var (first, _) = Allocate.Next(Planned(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: alone, onSince: since);
         Assert.That(first, Has.Count.EqualTo(1), "minute 0: one, not all 12");
-        var (held, why) = Autopilot.Next(Planned(1, new() { [1] = 1 }), settings, store, ["A"], null, claim: false, Now.AddSeconds(30), Make, _ => "main",
+        var (held, why) = Allocate.Next(Planned(1, new() { [1] = 1 }), settings, store, ["A"], null, claim: false, Now.AddSeconds(30), Make, _ => "main",
             cli: 1, pilots: alone, onSince: since);
         Assert.That(held, Is.Empty);
         Assert.That(why, Does.Contain("warming up"));
-        Assert.That(Autopilot.Next(Planned(1, new() { [1] = 1 }), settings, store, ["A"], null, claim: false, Now.AddMinutes(2.5), Make, _ => "main",
+        Assert.That(Allocate.Next(Planned(1, new() { [1] = 1 }), settings, store, ["A"], null, claim: false, Now.AddMinutes(2.5), Make, _ => "main",
             cli: 1, pilots: alone, onSince: since).Handed, Has.Count.EqualTo(2), "minute 2: up to 3");
-        Assert.That(Autopilot.Next(Planned(), settings, store, ["A"], null, claim: false, Now.AddMinutes(30), Make, _ => "main",
+        Assert.That(Allocate.Next(Planned(), settings, store, ["A"], null, claim: false, Now.AddMinutes(30), Make, _ => "main",
             cli: 1, pilots: alone, onSince: since).Handed, Has.Count.EqualTo(12), "warmed up and alone: every place");
 
         // A CLI opened just after it turns /allocate on: it warms up from its own minute, and its share is kept for it.
         Dictionary<int, IReadOnlyList<string>> both = new() { [1] = ["A"], [2] = ["B"] };
         since[2] = Now.AddMinutes(3);
-        Assert.That(Autopilot.Next(Planned(3, new() { [1] = 3 }), settings, store, ["A"], null, claim: false, Now.AddMinutes(10), Make, _ => "main",
+        Assert.That(Allocate.Next(Planned(3, new() { [1] = 3 }), settings, store, ["A"], null, claim: false, Now.AddMinutes(10), Make, _ => "main",
             cli: 1, pilots: both, onSince: since).Handed, Has.Count.EqualTo(3), "CLI 1 gets up to its share of 6, the rest kept for CLI 2");
-        Assert.That(Autopilot.Next(Planned(6, new() { [1] = 6 }), settings, store, ["B"], null, claim: false, Now.AddMinutes(3), Make, _ => "main",
+        Assert.That(Allocate.Next(Planned(6, new() { [1] = 6 }), settings, store, ["B"], null, claim: false, Now.AddMinutes(3), Make, _ => "main",
             cli: 2, pilots: both, onSince: since).Handed, Has.Count.EqualTo(1), "CLI 2's own minute 0: one");
-        Assert.That(Autopilot.Next(Planned(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: alone).Handed,
+        Assert.That(Allocate.Next(Planned(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main", cli: 1, pilots: alone).Handed,
             Has.Count.EqualTo(12), "not known to be on: no warm-up");
     }
 
@@ -431,7 +431,7 @@ public sealed class AutopilotTests
         Assert.That(plan.Queue.Count(q => q.IsAssigned), Is.GreaterThanOrEqualTo(6));
         (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
 
-        var (handed, why) = Autopilot.Next(plan, settings, store, ["A"], null, claim: true, Now, Make, _ => "master", login: "fresh@example.com");
+        var (handed, why) = Allocate.Next(plan, settings, store, ["A"], null, claim: true, Now, Make, _ => "master", login: "fresh@example.com");
 
         Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T1" }), "the fresh login's own room, not the workspace's busy count");
         Assert.That(why, Is.Null);
@@ -455,19 +455,19 @@ public sealed class AutopilotTests
             var plan = Paced(snap, 5); // read while both were open
             using (var db = MindAttic.Tickets.Data.TicketsDb.Open(MindAttic.Tickets.Data.TicketsDb.DefaultPath(dir)))
                 db.Close("A-T1", reference: "done");
-            Assert.That((Autopilot.StillOpen(repo, "A-T1"), Autopilot.StillOpen(repo, "a-t2")), Is.EqualTo((false, true)));
+            Assert.That((Allocate.StillOpen(repo, "A-T1"), Allocate.StillOpen(repo, "a-t2")), Is.EqualTo((false, true)));
 
             var made = new List<string>();
             (bool, string, string) Make(string r, string path, string branch) { made.Add(path); return (true, path, ""); }
             var settings = new OrchestratorSettings { WorktreeRoot = Path.Combine(dir, "wt") };
-            var (handed, why) = Autopilot.Next(plan, settings, store, ["A"], 1, claim: true, Now, Make, _ => "main", pilotRunning: _ => false);
+            var (handed, why) = Allocate.Next(plan, settings, store, ["A"], 1, claim: true, Now, Make, _ => "main", pilotRunning: _ => false);
             Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T2" }), "the closed one is passed over for the next");
             Assert.That(made, Is.EqualTo(new[] { Path.Combine(dir, "wt", "A", "A-T2") }), "no worktree for the closed one");
             Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EqualTo(new[] { "A-T2" }));
 
             using (var db = MindAttic.Tickets.Data.TicketsDb.Open(MindAttic.Tickets.Data.TicketsDb.DefaultPath(dir)))
                 db.Close("A-T2", reference: "done");
-            var (none, whyNone) = Autopilot.Next(plan with { }, settings, new JsonStore(Path.Combine(dir, "store2")), ["A"], 1, claim: true, Now, Make, _ => "main",
+            var (none, whyNone) = Allocate.Next(plan with { }, settings, new JsonStore(Path.Combine(dir, "store2")), ["A"], 1, claim: true, Now, Make, _ => "main",
                 pilotRunning: _ => false);
             Assert.That((none.Count, whyNone), Is.EqualTo((0, "they were closed since the queue was read; nothing else is ready")));
         }
@@ -475,19 +475,19 @@ public sealed class AutopilotTests
     }
 
     [Test]
-    public void Pausing_autopilot_quiet_hours_and_a_skipped_repo_apply_to_the_clis_that_run_it()
+    public void Pausing_allocate_quiet_hours_and_a_skipped_repo_apply_to_the_clis_that_run_it()
     {
         var snap = Snap(("A", [T("A-T1")]), ("B", [T("B-T1")]));
         (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
-        (IReadOnlyList<Autopilot.Handout> Handed, string? Why) Next(OrchestratorSettings s) =>
-            Autopilot.Next(Paced(snap, 5), s with { WorktreeRoot = @"D:\WT" }, store, ["*"], null, claim: false, Now, Make, _ => "main");
+        (IReadOnlyList<Allocate.Handout> Handed, string? Why) Next(OrchestratorSettings s) =>
+            Allocate.Next(Paced(snap, 5), s with { WorktreeRoot = @"D:\WT" }, store, ["*"], null, claim: false, Now, Make, _ => "main");
 
-        Assert.That(Next(new() { Autopilot = false }).Why, Does.StartWith("autopilot is paused"), "Settings' Pause, settings --autopilot false");
+        Assert.That(Next(new() { Allocate = false }).Why, Does.StartWith("allocate is paused"), "Settings' Pause, settings --allocate false");
         var local = Now.ToLocalTime();
         var quiet = $"{local.AddHours(-1):HH:mm}-{local.AddHours(1):HH:mm}";
         Assert.That(Next(new() { QuietHours = [quiet] }).Why, Does.StartWith("quiet hours"));
-        Assert.That(Next(new() { AutopilotSkip = ["a"] }).Handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "B-T1" }), "a skipped repo isn't handed out under *");
-        Assert.That(Next(new() { AutopilotSkip = ["a", "B"] }).Why, Does.StartWith("A, B set to be skipped").Or.StartWith("B, A set to be skipped"),
+        Assert.That(Next(new() { AllocateSkip = ["a"] }).Handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "B-T1" }), "a skipped repo isn't handed out under *");
+        Assert.That(Next(new() { AllocateSkip = ["a", "B"] }).Why, Does.StartWith("A, B set to be skipped").Or.StartWith("B, A set to be skipped"),
             "says why, not 'no open fixes left'");
         Assert.That(store.LoadAssignments(), Is.Empty);
     }
@@ -497,7 +497,7 @@ public sealed class AutopilotTests
     {
         var snap = Snap(("A", [new Ticket("A-T1", "2026-10-01", "fix", "open", "crash, blocked by A-T2", ""),
                                new Ticket("A-T2", "2026-10-01", "feature", "open", "the API (not approved)", "")]));
-        var (handed, why) = Autopilot.Next(Paced(snap, 5), new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: false, Now,
+        var (handed, why) = Allocate.Next(Paced(snap, 5), new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: false, Now,
             (repo, path, branch) => (true, path, ""), _ => "main");
         Assert.That(handed, Is.Empty);
         Assert.That(why, Does.Contain("1 wait on other open tickets").And.Not.Contain("no open fixes"));
@@ -507,10 +507,10 @@ public sealed class AutopilotTests
     public void An_unreadable_Tickets_db_is_not_a_dry_queue()
     {
         // M.ORCH-T740
-        Assert.That(Autopilot.Dry(["A"], new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "a" }),
+        Assert.That(Allocate.Dry(["A"], new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "a" }),
             Does.Contain("couldn't read the tickets of a").And.Not.Contain("bughunt on").And.Not.Contain("ran dry"));
-        Assert.That(Autopilot.Dry(["A"], new HashSet<string> { "B" }), Does.Contain("ran dry"));
-        Assert.That(Autopilot.Dry(["all"], new HashSet<string> { "B" }), Does.Contain("couldn't read the tickets of B"));
+        Assert.That(Allocate.Dry(["A"], new HashSet<string> { "B" }), Does.Contain("ran dry"));
+        Assert.That(Allocate.Dry(["all"], new HashSet<string> { "B" }), Does.Contain("couldn't read the tickets of B"));
     }
 
     [Test]
@@ -518,16 +518,16 @@ public sealed class AutopilotTests
     {
         // M.ORCH-T700: "Ask but don't do unless explicitly given permission."
         var snap = Snap(("A", []));
-        var (handed, why) = Autopilot.Next(Paced(snap, 5), new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: true, Now,
+        var (handed, why) = Allocate.Next(Paced(snap, 5), new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: true, Now,
             (repo, path, branch) => (true, path, ""), _ => "main");
         Assert.That(handed, Is.Empty);
         Assert.That(why, Does.StartWith("no open fixes or approved tickets left there").And.Contain("Ask the user whether to run /bughunt on A")
             .And.Contain("explicit yes").And.Contain("fix ticket"));
-        Assert.That(Autopilot.Dry(["*"]), Does.Contain("/bughunt on these repos"));
+        Assert.That(Allocate.Dry(["*"]), Does.Contain("/bughunt on these repos"));
 
         var held = Snap(("A", [new Ticket("A-T1", "2026-10-01", "fix", "open", "crash, blocked by A-T2", ""),
                                new Ticket("A-T2", "2026-10-01", "feature", "open", "the API (not approved)", "")]));
-        var (_, notDry) = Autopilot.Next(Paced(held, 5), new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: false, Now,
+        var (_, notDry) = Allocate.Next(Paced(held, 5), new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: false, Now,
             (repo, path, branch) => (true, path, ""), _ => "main");
         Assert.That(notDry, Does.Not.Contain("/bughunt"), "open tickets held back aren't a dry queue");
 
@@ -540,11 +540,11 @@ public sealed class AutopilotTests
     {
         // M.ORCH-T728: `next --repos all` matched "all" literally, so open tickets were reported as a dry queue with a bug hunt offered.
         var snap = Snap(("A", [T("A-T1")]), ("B", [T("B-T1")]));
-        Assert.That((Autopilot.Named(["all"], "A"), Autopilot.Named(["ALL"], "B"), Autopilot.Named([" all "], "x")), Is.EqualTo((true, true, true)));
-        var (handed, why) = Autopilot.Next(Paced(snap, 5), new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["all"], null, claim: false, Now,
+        Assert.That((Allocate.Named(["all"], "A"), Allocate.Named(["ALL"], "B"), Allocate.Named([" all "], "x")), Is.EqualTo((true, true, true)));
+        var (handed, why) = Allocate.Next(Paced(snap, 5), new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["all"], null, claim: false, Now,
             (repo, path, branch) => (true, path, ""), _ => "main");
         Assert.That((handed.Select(h => h.Item.Id).Order().ToList(), why), Is.EqualTo((new List<string> { "A-T1", "B-T1" }, (string?)null)));
-        Assert.That(Autopilot.Unmatched(["all", "*", "A", "Nope", "B*"], snap), Is.EqualTo(new[] { "Nope" }));
+        Assert.That(Allocate.Unmatched(["all", "*", "A", "Nope", "B*"], snap), Is.EqualTo(new[] { "Nope" }));
     }
 
     [Test]
@@ -555,7 +555,7 @@ public sealed class AutopilotTests
         var plan = Scheduler.Plan(snap, new OrchestratorSettings { Pacing = false }, []);
         Assert.That((plan.Pace, plan.Stopped), Is.EqualTo(((Pace?)null, true)));
 
-        var (handed, why) = Autopilot.Next(plan, new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: true, Now,
+        var (handed, why) = Allocate.Next(plan, new OrchestratorSettings { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: true, Now,
             (repo, path, branch) => (true, path, ""), _ => "main");
         Assert.That((handed.Count, why), Is.EqualTo((0, "the 5-hour window is at its target: nothing starts before it resets")));
         Assert.That(store.LoadAssignments(), Is.Empty);
@@ -570,7 +570,7 @@ public sealed class AutopilotTests
         var before = Paced(snap, 5);
         store.UpdateAssignments(all => all.Add(new Assignment("A-T1", "A", @"D:\WT\A\A-T1", "Claude", Now, true))); // the other CLI
 
-        var (handed, why) = Autopilot.Next(before, settings, store, ["A"], 1, claim: true, Now.AddSeconds(1), Make, _ => "main");
+        var (handed, why) = Allocate.Next(before, settings, store, ["A"], 1, claim: true, Now.AddSeconds(1), Make, _ => "main");
 
         Assert.That((handed.Select(h => h.Item.Id).Single(), why), Is.EqualTo(("A-T2", (string?)null)), "its one place goes to the next free ticket");
     }
@@ -601,12 +601,12 @@ public sealed class AutopilotTests
         }), "A-T6's filer has been quiet an hour: it's the queue's again");
         Assert.That(plan.Proposals.Select(p => p.Item.Id), Has.None.AnyOf("A-T1", "A-T2", "A-T3", "A-T4"));
 
-        var (handed, _) = Autopilot.Next(plan, settings, store, ["A"], 10, claim: false, Now, Make, _ => "main", self: "cli");
+        var (handed, _) = Allocate.Next(plan, settings, store, ["A"], 10, claim: false, Now, Make, _ => "main", self: "cli");
         Assert.That(handed.Select(h => h.Item.Id), Is.EquivalentTo(new[] { "A-T2", "A-T5", "A-T6" }),
             "not what the calling CLI's subagent filed and is fixing, nor another session's; what the calling CLI filed itself is its to hand out");
 
         var onlyWorked = Paced(snap with { Repos = [snap.Repos[0] with { OpenTickets = [T("A-T1"), T("A-T3")] }] }, 5);
-        var (none, why) = Autopilot.Next(onlyWorked, settings, store, ["A"], 10, claim: true, Now, Make, _ => "main", self: "cli");
+        var (none, why) = Allocate.Next(onlyWorked, settings, store, ["A"], 10, claim: true, Now, Make, _ => "main", self: "cli");
         Assert.That((none.Count, why), Is.EqualTo((0, "2 already being worked; nothing else is ready")));
         Assert.That(store.LoadAssignments().Select(a => a.TicketId), Has.None.AnyOf("A-T1", "A-T3"), "never claimed");
     }
@@ -619,10 +619,10 @@ public sealed class AutopilotTests
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT", RepoMaxSessions = new() { ["A"] = 2 } };
         (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
 
-        var (handed, _) = Autopilot.Next(Paced(snap, 5), settings, store, ["*"], 10, claim: true, Now, Make, _ => "main");
+        var (handed, _) = Allocate.Next(Paced(snap, 5), settings, store, ["*"], 10, claim: true, Now, Make, _ => "main");
         Assert.That(handed.Select(h => h.Item.Id), Is.EquivalentTo(new[] { "A-T1", "A-T2", "B-T1" }));
 
-        var (more, why) = Autopilot.Next(Paced(snap, 5), settings, store, ["A"], 10, claim: true, Now, Make, _ => "main");
+        var (more, why) = Allocate.Next(Paced(snap, 5), settings, store, ["A"], 10, claim: true, Now, Make, _ => "main");
         Assert.That((more.Count, why), Is.EqualTo((0, "A is at the cap you set (settings --repo-sessions or --repo-cap); nothing else is ready")), "its two are being worked");
     }
 
@@ -647,7 +647,7 @@ public sealed class AutopilotTests
         var plan = Scheduler.Plan(snap, settings, store.LoadAssignments()) with { Pace = new Pace(PaceMode.Open, 6, 10_000, 0, 1_000, "5-hour", Now.AddHours(3), "On pace.") { SpareSessions = 5 } };
 
         Assert.That(plan.OverRepoCap, Is.EquivalentTo(new[] { "A" }), "3M of a 10M limit is past A's 20%");
-        var (handed, _) = Autopilot.Next(plan, settings, store, ["*"], 10, claim: false, Now, Make, _ => "main");
+        var (handed, _) = Allocate.Next(plan, settings, store, ["*"], 10, claim: false, Now, Make, _ => "main");
         Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "B-T1" }));
     }
 
@@ -663,7 +663,7 @@ public sealed class AutopilotTests
         var snap = Snap(("A", [T("A-T1"), T("A-T2")])) is var s0 ? s0 with { Repos = [s0.Repos[0] with { Sessions = [cli] }] } : null!;
         (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
 
-        var (handed, _) = Autopilot.Next(Paced(snap, 5), new() { WorktreeRoot = @"D:\WT" }, store, ["A"], 10, claim: false, Now, Make, _ => "main", self: "cli");
+        var (handed, _) = Allocate.Next(Paced(snap, 5), new() { WorktreeRoot = @"D:\WT" }, store, ["A"], 10, claim: false, Now, Make, _ => "main", self: "cli");
 
         Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T2" }));
     }
@@ -677,11 +677,11 @@ public sealed class AutopilotTests
         Assert.That(plan.Queue.Single().IsStale, Is.True);
         (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
 
-        var (held, why) = Autopilot.Next(plan, new() { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: true, Now, Make, _ => "main",
+        var (held, why) = Allocate.Next(plan, new() { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: true, Now, Make, _ => "main",
             pilotRunning: a => a.Pilot == 4242);
         Assert.That((held.Count, why), Is.EqualTo((0, "1 already being worked; nothing else is ready")));
 
-        var (handed, _) = Autopilot.Next(plan, new() { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: true, Now, Make, _ => "main",
+        var (handed, _) = Allocate.Next(plan, new() { WorktreeRoot = @"D:\WT" }, store, ["A"], null, claim: true, Now, Make, _ => "main",
             pilotRunning: _ => false);
         Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T1" }), "once its agent is gone, the stale ticket is back in the queue");
     }
@@ -701,13 +701,13 @@ public sealed class AutopilotTests
             Pace = plan.Pace! with { SubagentAllowance = 2, Subagents = 2, RoomTokens = 1_000 },
         };
 
-        var (handed, whyNot) = Autopilot.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", unthrottled: true);
+        var (handed, whyNot) = Allocate.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", unthrottled: true);
         Assert.That((handed.Count, whyNot), Is.EqualTo((2, (string?)null)), "MaxConcurrentSessions of them, whatever the allowance or room");
-        Assert.That(Autopilot.Next(plan, settings, store, ["A"], 3, claim: false, Now, Make, _ => "main", unthrottled: true).Handed, Has.Count.EqualTo(3),
+        Assert.That(Allocate.Next(plan, settings, store, ["A"], 3, claim: false, Now, Make, _ => "main", unthrottled: true).Handed, Has.Count.EqualTo(3),
             "--count is honoured as asked");
 
         var stopped = plan with { Pace = plan.Pace! with { Stop = true } };
-        Assert.That(Autopilot.Next(stopped, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", unthrottled: true).Why,
+        Assert.That(Allocate.Next(stopped, settings, store, ["A"], null, claim: false, Now, Make, _ => "main", unthrottled: true).Why,
             Does.Contain("at its target"), "the window's hard stop still applies");
     }
 
@@ -725,13 +725,13 @@ public sealed class AutopilotTests
         var plan = Scheduler.Plan(snap, settings, store.LoadAssignments());
         Assert.That(plan.Pace, Is.Null);
 
-        var (handed, _) = Autopilot.Next(plan, settings, store, ["A"], null, claim: true, Now, Make, _ => "main", stillOpen: (_, _) => true, pilotRunning: _ => false);
+        var (handed, _) = Allocate.Next(plan, settings, store, ["A"], null, claim: true, Now, Make, _ => "main", stillOpen: (_, _) => true, pilotRunning: _ => false);
         Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T4" }), "one place left of the four");
 
-        var (none, why) = Autopilot.Next(Scheduler.Plan(snap, settings, store.LoadAssignments()), settings, store, ["A"], null, claim: true, Now, Make, _ => "main",
+        var (none, why) = Allocate.Next(Scheduler.Plan(snap, settings, store.LoadAssignments()), settings, store, ["A"], null, claim: true, Now, Make, _ => "main",
             stillOpen: (_, _) => true, pilotRunning: _ => false);
         Assert.That((none.Count, why), Is.EqualTo((0, "the pace has no room for another subagent right now; run it again in a few minutes")), "the next call: all four are taken");
-        Assert.That(Autopilot.Next(plan, settings, store, ["A"], 2, claim: false, Now, Make, _ => "main", pilotRunning: _ => false).Handed, Has.Count.EqualTo(2),
+        Assert.That(Allocate.Next(plan, settings, store, ["A"], 2, claim: false, Now, Make, _ => "main", pilotRunning: _ => false).Handed, Has.Count.EqualTo(2),
             "an explicit --count is still honoured as asked");
     }
 
@@ -739,7 +739,7 @@ public sealed class AutopilotTests
     public void The_daemon_no_longer_starts_headless_agents_of_its_own()
     {
         var snap = Snap(("A", [T("A-T1")]));
-        var said = new Autopilot(store, sessions) { Start = (_, _, _) => throw new AssertionException("no headless agent may start") }
+        var said = new Allocate(store, sessions) { Start = (_, _, _) => throw new AssertionException("no headless agent may start") }
             .Tick(Paced(snap, 5), snap, new(), Now);
         Assert.That(said, Is.Empty);
     }
@@ -747,8 +747,8 @@ public sealed class AutopilotTests
     [Test]
     public void Only_a_line_that_is_a_needs_you_line_raises_the_alert()
     {
-        Assert.That(Autopilot.NeedsYou("autopilot: needs you: A-T1's agent in A ended"), Is.EqualTo("A-T1's agent in A ended"));
-        Assert.That(Autopilot.NeedsYou("autopilot: started A-T2 in A in the background: Toast when a session needs you: (log x)"), Is.Null,
+        Assert.That(Allocate.NeedsYou("allocate: needs you: A-T1's agent in A ended"), Is.EqualTo("A-T1's agent in A ended"));
+        Assert.That(Allocate.NeedsYou("allocate: started A-T2 in A in the background: Toast when a session needs you: (log x)"), Is.Null,
             "a ticket summary can say \"needs you\"");
     }
 
@@ -768,7 +768,7 @@ public sealed class AutopilotTests
         Directory.Delete(dir, recursive: true);
     }
 
-    private Autopilot Pilot(DispatchLease? lease = null, string? waiting = null) => new(store, sessions, lease)
+    private Allocate Pilot(DispatchLease? lease = null, string? waiting = null) => new(store, sessions, lease)
     {
         WaitingPath = waiting,
         Order = () => order,
@@ -825,11 +825,11 @@ public sealed class AutopilotTests
         (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
         var plan = Paced(snap, 5);
         IReadOnlyList<string> Ids(string login, IReadOnlyList<string> repos, OrgRouting routing) =>
-            [.. Autopilot.Next(plan, settings, store, repos, null, claim: false, Now, Make, _ => "main", login: login, orgs: routing).Handed.Select(h => h.Item.Id)];
+            [.. Allocate.Next(plan, settings, store, repos, null, claim: false, Now, Make, _ => "main", login: login, orgs: routing).Handed.Select(h => h.Item.Id)];
 
         Assert.That(Ids("ryan@example.com", ["*"], orgs), Is.EqualTo(new[] { "A-T1" }), "the default org's login gets the default org's repo only");
         Assert.That(Ids("JORDAN@example.com", ["*"], orgs), Is.EqualTo(new[] { "S-T1" }), "a Sales member's login gets Sales's repo only");
-        var (none, why) = Autopilot.Next(plan, settings, store, ["S"], null, claim: false, Now, Make, _ => "main", login: "ryan@example.com", orgs: orgs);
+        var (none, why) = Allocate.Next(plan, settings, store, ["S"], null, claim: false, Now, Make, _ => "main", login: "ryan@example.com", orgs: orgs);
         Assert.That(none, Is.Empty);
         Assert.That(why, Does.Contain("1 belong to Sales").And.Contain("only to their members' logins"));
         Assert.That(Ids("ryan@example.com", ["*"], OrgRouting.Single), Is.EqualTo(new[] { "A-T1", "S-T1" }), "one org: exactly as before");
@@ -847,7 +847,7 @@ public sealed class AutopilotTests
         plan = plan with { Queue = [.. plan.Queue.Select(q => q.Id == "A-T1" ? q with { Estimate = new CostEstimate(1_500, 3, "fixes") } : q)] };
         (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
 
-        var (handed, why) = Autopilot.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main");
+        var (handed, why) = Allocate.Next(plan, settings, store, ["A"], null, claim: false, Now, Make, _ => "main");
 
         Assert.That(handed, Is.Empty, "1.5k fits the 3k left but not the 1k that B-T1's reservation leaves");
         Assert.That(why, Does.Contain("estimated past what's left"));
@@ -858,7 +858,7 @@ public sealed class AutopilotTests
     {
         // M.ORCH-T178: push and close chained together let a rejected push still close the ticket on a pre-rebase hash.
         var item = new QueueItem("A", @"D:\W\A", T("A-T1"), 0, null, false);
-        var prompt = Autopilot.PromptFor(item, @"D:\WT\A\A-T1", "orch/a-t1", "master");
+        var prompt = Allocate.PromptFor(item, @"D:\WT\A\A-T1", "orch/a-t1", "master");
 
         var push = prompt.IndexOf("git push origin HEAD:master", StringComparison.Ordinal);
         var retry = prompt.IndexOf("If the push is rejected because master moved, fetch, rebase and push again", StringComparison.Ordinal);
@@ -915,9 +915,9 @@ public sealed class AutopilotTests
         Assert.That(started.Skip(2).Select(s => s.Prompt[..19]), Is.EqualTo(new[] { "Work on ticket A-T3" }),
             "A moves on to A-T3; A-T2 is back in the queue for you, not retried in a loop");
         Assert.That(store.LoadAssignments().Any(x => x.TicketId == "A-T2"), Is.False);
-        Assert.That(Autopilot.ClosedIn("| A-T1 | 2026-10-01 | fix | closed | x | t |\n| A-T2 | 2026-10-01 | fix | open | y | — |", "A-T1"), Is.True);
-        Assert.That(Autopilot.ClosedIn("| A-T1 | 2026-10-01 | fix | closed | x | t |\n| A-T2 | 2026-10-01 | fix | open | y | — |", "A-T2"), Is.False);
-        Assert.That(Autopilot.ClosedIn("| A-T10 | 2026-10-01 | fix | closed | x | t |", "A-T1"), Is.False, "the whole ID, not a prefix");
+        Assert.That(Allocate.ClosedIn("| A-T1 | 2026-10-01 | fix | closed | x | t |\n| A-T2 | 2026-10-01 | fix | open | y | — |", "A-T1"), Is.True);
+        Assert.That(Allocate.ClosedIn("| A-T1 | 2026-10-01 | fix | closed | x | t |\n| A-T2 | 2026-10-01 | fix | open | y | — |", "A-T2"), Is.False);
+        Assert.That(Allocate.ClosedIn("| A-T10 | 2026-10-01 | fix | closed | x | t |", "A-T1"), Is.False, "the whole ID, not a prefix");
     }
 
     [Test]
@@ -967,25 +967,25 @@ public sealed class AutopilotTests
         Cli(100, @"D:\W\A\src", busy: true);                    // mid-turn
         Cli(200, @"D:\W\B", turn: Now.AddMinutes(-5));          // between your prompts
         Cli(300, @"D:\W\C", busy: true);
-        agents.Add(300);                                        // one of autopilot's own agents, not you
+        agents.Add(300);                                        // one of allocate's own agents, not you
         store.SaveAssignments([new Assignment("X-T1", "C", @"D:\WT\C\X-T1", "Claude", Now, true) { Pilot = 300, Log = "x.log" }]);
         var waiting = Path.Combine(dir, "waiting.json");
         var pilot = Pilot(waiting: waiting);
 
-        var said = pilot.Tick(Paced(snap, 10), snap, new() { AutopilotSkip = ["d"] }, Now);
-        Assert.That(started.Select(s => s.Prompt[..19]), Is.EqualTo(new[] { "Work on ticket C-T1" }), "only C: its busy CLI is autopilot's own agent");
-        Assert.That(said, Has.Some.EqualTo("autopilot: leaving A alone: its CLI is being worked by hand"));
-        Assert.That(said, Has.Some.EqualTo("autopilot: leaving B alone: its CLI is being worked by hand"));
+        var said = pilot.Tick(Paced(snap, 10), snap, new() { AllocateSkip = ["d"] }, Now);
+        Assert.That(started.Select(s => s.Prompt[..19]), Is.EqualTo(new[] { "Work on ticket C-T1" }), "only C: its busy CLI is allocate's own agent");
+        Assert.That(said, Has.Some.EqualTo("allocate: leaving A alone: its CLI is being worked by hand"));
+        Assert.That(said, Has.Some.EqualTo("allocate: leaving B alone: its CLI is being worked by hand"));
         Assert.That(said, Has.Some.Contains("leaving D alone: you set it to be skipped"));
         Assert.That(pilot.Repos, Is.EqualTo(new[] { "C" }));
         Assert.That(pilot.LeftAlone.Keys, Is.EquivalentTo(new[] { "A", "B", "D" }), "the dashboard says which and why");
         Assert.That(File.ReadAllText(waiting), Does.Contain("\"left_alone\":{").And.Contain("\"D\":\"you set it to be skipped"), "and so can the statusline");
 
-        pilot.Tick(Paced(snap, 10), snap, new() { AutopilotSkip = ["d"], AutopilotHandMinutes = 10 }, Now.AddMinutes(1));
+        pilot.Tick(Paced(snap, 10), snap, new() { AllocateSkip = ["d"], AllocateHandMinutes = 10 }, Now.AddMinutes(1));
         Assert.That(started, Has.Count.EqualTo(1), "with a 10-minute window B's pause of 6 minutes is still yours");
-        pilot.Tick(Paced(snap, 10), snap, new() { AutopilotSkip = ["d"], AutopilotHandMinutes = 10 }, Now.AddMinutes(6));
+        pilot.Tick(Paced(snap, 10), snap, new() { AllocateSkip = ["d"], AllocateHandMinutes = 10 }, Now.AddMinutes(6));
         Assert.That(started.Select(s => s.Prompt[..19]), Is.EquivalentTo(new[] { "Work on ticket C-T1", "Work on ticket B-T1" }),
-            "B's CLI has been idle past the window, so autopilot takes it; A is still mid-turn");
+            "B's CLI has been idle past the window, so allocate takes it; A is still mid-turn");
         Assert.That(pilot.LeftAlone.Keys, Is.EquivalentTo(new[] { "A", "D" }));
     }
 
@@ -1005,7 +1005,7 @@ public sealed class AutopilotTests
         var pilot = Pilot();
         pilot.Tick(coast, snap, new(), Now);
         Assert.That(pilot.Paused, Does.Contain("burning faster"));
-        pilot.Tick(Plan(snap), snap, new() { Autopilot = false }, Now);
+        pilot.Tick(Plan(snap), snap, new() { Allocate = false }, Now);
         Assert.That(pilot.Paused, Does.Contain("switched off"));
         Assert.That(started, Is.Empty);
     }
@@ -1030,7 +1030,7 @@ public sealed class AutopilotTests
         var other = startedRepo == "A" ? "B" : "A";
         Assert.That(Saved(), Does.Contain($"\"{other}\"").And.Not.Contain($"\"{startedRepo}\""), "the repo with an agent working no longer waits");
 
-        withFile.Tick(Paced(snap, 10), snap, new() { Autopilot = false }, Now.AddMinutes(2));
+        withFile.Tick(Paced(snap, 10), snap, new() { Allocate = false }, Now.AddMinutes(2));
         Assert.That(Saved(), Does.Contain("\"repos\":[]"), "switched off isn't waiting on the pace");
     }
 
@@ -1096,14 +1096,14 @@ public sealed class AutopilotTests
         var tree = Path.Combine(dir, "wt", "A-T1");
         Assert.That(Dispatcher.EnsureWorktree(repo, tree, "orch/a-t1").Ok);
         var a = new Assignment("A-T1", "A", tree, "Claude", Now, true) { Pilot = 1, Log = "x.log" };
-        Assert.That(Autopilot.LandOnMain(a, repo).Closed, Is.False, "not pushed yet");
+        Assert.That(Allocate.LandOnMain(a, repo).Closed, Is.False, "not pushed yet");
 
         // What the agent does at the end: close its row in the worktree, commit, push to main.
         File.WriteAllText(Path.Combine(tree, "docs", "USER_STORIES.md"), "## Tickets\n\n| A-T1 | 2026-10-01 | fix | closed | x | the test |\n");
         Git(tree, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qam", "close A-T1");
         Git(tree, "push", "-q", "origin", "HEAD:main");
 
-        var (closed, note) = Autopilot.LandOnMain(a, repo);
+        var (closed, note) = Allocate.LandOnMain(a, repo);
         Assert.That(closed, Is.True, note);
         Assert.That(File.ReadAllText(Path.Combine(repo, "docs", "USER_STORIES.md")), Does.Contain("| closed |"), "your checkout fast-forwarded to it");
         Assert.That(Directory.Exists(tree), Is.False, "its worktree removed");
@@ -1130,13 +1130,13 @@ public sealed class AutopilotTests
             var tree = Path.Combine(dir, "wt", "OLD-T9");
             Assert.That(Dispatcher.EnsureWorktree(repo, tree, "orch/old-t9").Ok);
 
-            var (closed, note) = Autopilot.LandOnMain(new Assignment("OLD-T9", "A", tree, "Claude", Now, true), repo);
+            var (closed, note) = Allocate.LandOnMain(new Assignment("OLD-T9", "A", tree, "Claude", Now, true), repo);
 
             Assert.That(closed, Is.True, note);
             Assert.That(Directory.Exists(tree), Is.False, "tidied");
             var open = Path.Combine(dir, "wt", "A-T1");
             Assert.That(Dispatcher.EnsureWorktree(repo, open, "orch/a-t1").Ok);
-            Assert.That(Autopilot.LandOnMain(new Assignment("A-T1", "A", open, "Claude", Now, true), repo).Closed, Is.False, "a known open ticket isn't");
+            Assert.That(Allocate.LandOnMain(new Assignment("A-T1", "A", open, "Claude", Now, true), repo).Closed, Is.False, "a known open ticket isn't");
         }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
     }
@@ -1170,14 +1170,14 @@ public sealed class AutopilotTests
             Assert.That(Dispatcher.EnsureWorktree(a, tree, "orch/a-t1").Ok);
             var assignment = new Assignment("A-T1", "A", tree, "Claude", Now, true);
 
-            var (closed, note) = Autopilot.LandOnMain(assignment, a);
+            var (closed, note) = Allocate.LandOnMain(assignment, a);
             Assert.That(closed, Is.False, note);
             Assert.That(Directory.Exists(tree), Is.True, "an open ticket's worktree is kept");
 
             File.WriteAllText(Path.Combine(tree, "docs", "USER_STORIES.md"), string.Format(head, "A") + "| A-T1 | 2026-10-01 | fix | closed | x | the test |\n");
             Git(tree, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qam", "close A-T1");
             Git(tree, "push", "-q", "origin", "HEAD:main");
-            Assert.That(Autopilot.LandOnMain(assignment, a).Closed, Is.True, "closed in its USER_STORIES.md on main: finished");
+            Assert.That(Allocate.LandOnMain(assignment, a).Closed, Is.True, "closed in its USER_STORIES.md on main: finished");
         }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); }
     }
@@ -1198,10 +1198,10 @@ public sealed class AutopilotTests
     public void A_cli_in_a_subfolder_belongs_to_its_repo_and_one_elsewhere_to_none()
     {
         var snap = Snap(("A", []), ("AB", []));
-        Assert.That(Autopilot.RepoFor(@"D:\W\A\src", snap)?.Name, Is.EqualTo("A"));
-        Assert.That(Autopilot.RepoFor(@"d:\w\ab", snap)?.Name, Is.EqualTo("AB"));
-        Assert.That(Autopilot.RepoFor(@"D:\W", snap), Is.Null);
-        Assert.That(Autopilot.RepoFor(@"D:\Projects\MindAttic.worktrees\A\A-T1", snap), Is.Null);
+        Assert.That(Allocate.RepoFor(@"D:\W\A\src", snap)?.Name, Is.EqualTo("A"));
+        Assert.That(Allocate.RepoFor(@"d:\w\ab", snap)?.Name, Is.EqualTo("AB"));
+        Assert.That(Allocate.RepoFor(@"D:\W", snap), Is.Null);
+        Assert.That(Allocate.RepoFor(@"D:\Projects\MindAttic.worktrees\A\A-T1", snap), Is.Null);
     }
 
     [Test]

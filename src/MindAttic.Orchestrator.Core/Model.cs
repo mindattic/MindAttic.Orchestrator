@@ -178,7 +178,7 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     public bool MayWork(Ticket ticket) =>
         ticket.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) || Approved.Contains(ticket.Id);
 
-    /// <summary>Every live Claude session and autopilot background agent, with its running subagents nested under it.</summary>
+    /// <summary>Every live Claude session and allocate background agent, with its running subagents nested under it.</summary>
     public IReadOnlyList<Activity.AgentBoardRow> Agents { get; init; } = [];
 
     /// <summary>The moves in flight (M.ORCH-T637): each moving CLI and the tickets it holds, locked until it lands.</summary>

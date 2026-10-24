@@ -11,7 +11,7 @@ public sealed record DiskEvent(HealthLevel Level, DriveFree Drive, bool Alert, b
 
 /// <summary>
 /// Watches free space on the system drive and the worktree root's (M.ORCH-T471). Found live 2026-10-18: the drive filled to
-/// about 1 MB free overnight while autopilot ran, and whatever wrote it was deleted before anyone could see what it was. Below
+/// about 1 MB free overnight while allocate ran, and whatever wrote it was deleted before anyone could see what it was. Below
 /// <see cref="Settings.OrchestratorSettings.DiskWarnGb"/> you're alerted, urgently below
 /// <see cref="Settings.OrchestratorSettings.DiskCriticalGb"/>, with the biggest folders in %TEMP% and the biggest files under
 /// %TEMP%\claude (background commands' output, scratchpad builds), so a runaway writer is named while it's still growing. One

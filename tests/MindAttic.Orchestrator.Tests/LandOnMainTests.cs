@@ -5,7 +5,7 @@ using NUnit.Framework;
 namespace MindAttic.Orchestrator.Tests;
 
 /// <summary>
-/// Autopilot.LandOnMain against real temp git repos with a bare origin (M.ORCH-T134): whether a worktree agent's ticket
+/// Allocate.LandOnMain against real temp git repos with a bare origin (M.ORCH-T134): whether a worktree agent's ticket
 /// landed closed on origin/main, what happens to your checkout and the worktree, and what the note says; plus ClosedIn.
 /// </summary>
 public sealed class LandOnMainTests
@@ -57,7 +57,7 @@ public sealed class LandOnMainTests
         CloseInWorktreeAndCommit();
         Git(tree, "push", "-q", "origin", "HEAD:main");
 
-        var (closed, note) = Autopilot.LandOnMain(a, repo);
+        var (closed, note) = Allocate.LandOnMain(a, repo);
 
         Assert.That(closed, Is.True, note);
         Assert.That(note, Does.Contain("your checkout is up to date with it"));
@@ -79,7 +79,7 @@ public sealed class LandOnMainTests
         Git(tree, "add", "-A");
         Git(tree, "commit", "-qm", "the fix, never pushed");
 
-        var (closed, note) = Autopilot.LandOnMain(a, repo);
+        var (closed, note) = Allocate.LandOnMain(a, repo);
 
         Assert.That(closed, Is.False, note);
         Assert.That(note, Does.Contain("closed its ticket but its branch orch/a-t1 isn't on main"));
@@ -96,7 +96,7 @@ public sealed class LandOnMainTests
         Git(tree, "commit", "-qm", "progress");
         Git(tree, "push", "-q", "origin", "HEAD:main"); // even landed on main, an open ticket isn't finished
 
-        var (closed, note) = Autopilot.LandOnMain(a, repo);
+        var (closed, note) = Allocate.LandOnMain(a, repo);
 
         Assert.That(closed, Is.False, note);
         Assert.That(note, Is.EqualTo($"; its work is in {tree} (branch orch/a-t1)"));
@@ -111,7 +111,7 @@ public sealed class LandOnMainTests
         Git(tree, "push", "-q", "origin", "HEAD:main");
         File.WriteAllText(Path.Combine(tree, "docs", "USER_STORIES.md"), "uncommitted edit\n");
 
-        var (closed, note) = Autopilot.LandOnMain(a, repo);
+        var (closed, note) = Allocate.LandOnMain(a, repo);
 
         Assert.That(closed, Is.True, note);
         Assert.That(note, Does.Contain($"its worktree {tree} kept (something there is uncommitted)"));
@@ -131,7 +131,7 @@ public sealed class LandOnMainTests
         CloseInWorktreeAndCommit();
         Git(tree, "push", "-q", "origin", "HEAD:main");
 
-        var (closed, note) = Autopilot.LandOnMain(a, repo);
+        var (closed, note) = Allocate.LandOnMain(a, repo);
 
         Assert.That(closed, Is.True, note);
         Assert.That(note, Does.Not.Contain("up to date").And.Not.Contain("pull"), "your checkout isn't on main: nothing said about it");
@@ -148,17 +148,17 @@ public sealed class LandOnMainTests
             "| A-T1 | 2026-10-01 | fix | closed | x | the test |\n" +
             "| A-T2 | 2026-10-01 | fix | wont-do | y | — |\n" +
             "| A-T3 | 2026-10-01 | fix | open | z | — |\n";
-        Assert.That(Autopilot.ClosedIn(table, "A-T1"), Is.True, "closed");
-        Assert.That(Autopilot.ClosedIn(table, "A-T2"), Is.True, "wont-do");
-        Assert.That(Autopilot.ClosedIn(table, "A-T3"), Is.False, "open");
-        Assert.That(Autopilot.ClosedIn(table, "A-T4"), Is.False, "not in the table");
-        Assert.That(Autopilot.ClosedIn(table.Replace("\n", "\r\n"), "A-T1"), Is.True, "CRLF line endings");
+        Assert.That(Allocate.ClosedIn(table, "A-T1"), Is.True, "closed");
+        Assert.That(Allocate.ClosedIn(table, "A-T2"), Is.True, "wont-do");
+        Assert.That(Allocate.ClosedIn(table, "A-T3"), Is.False, "open");
+        Assert.That(Allocate.ClosedIn(table, "A-T4"), Is.False, "not in the table");
+        Assert.That(Allocate.ClosedIn(table.Replace("\n", "\r\n"), "A-T1"), Is.True, "CRLF line endings");
 
-        Assert.That(Autopilot.ClosedIn(Header + "| M.ORCH-T10 | 2026-10-01 | fix | closed | x | t |\n", "M.ORCH-T1"), Is.False,
+        Assert.That(Allocate.ClosedIn(Header + "| M.ORCH-T10 | 2026-10-01 | fix | closed | x | t |\n", "M.ORCH-T1"), Is.False,
             "M.ORCH-T10 closed doesn't close M.ORCH-T1");
         var both = Header + "| M.ORCH-T1 | 2026-10-01 | fix | closed | x | t |\n| M.ORCH-T10 | 2026-10-01 | fix | open | y | — |\n";
-        Assert.That(Autopilot.ClosedIn(both, "M.ORCH-T1"), Is.True);
-        Assert.That(Autopilot.ClosedIn(both, "M.ORCH-T10"), Is.False, "M.ORCH-T1 closed doesn't close M.ORCH-T10");
+        Assert.That(Allocate.ClosedIn(both, "M.ORCH-T1"), Is.True);
+        Assert.That(Allocate.ClosedIn(both, "M.ORCH-T10"), Is.False, "M.ORCH-T1 closed doesn't close M.ORCH-T10");
     }
 
     private void CloseInWorktreeAndCommit()

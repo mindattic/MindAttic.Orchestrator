@@ -55,7 +55,7 @@ public sealed class WeeklyAllowanceBook
 /// <see cref="OrchestratorSettings.WeeklyStopPercent"/>) takes no new work and its CLIs stop until its weekly reset; only the user
 /// lifts that, for one login at a time, with <c>orchestrator org allow &lt;who&gt; [--until reset|time]</c>, and takes it back
 /// with <c>org disallow &lt;who&gt;</c>. Kept in orchestrator.db, logged, shown in the usage report. Nothing else (rebalancing,
-/// redelegation, autopilot) writes here: they only read <see cref="Apply"/> and <see cref="StopFor"/>.
+/// redelegation, allocate) writes here: they only read <see cref="Apply"/> and <see cref="StopFor"/>.
 /// </summary>
 public static class WeeklyAllowances
 {

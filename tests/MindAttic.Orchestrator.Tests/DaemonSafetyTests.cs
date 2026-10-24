@@ -122,21 +122,21 @@ public sealed class DaemonSafetyTests
     // ---- Needs you ----
 
     [Test]
-    public void Only_autopilots_needs_you_lines_raise_the_Needs_you_alert()
+    public void Only_allocates_needs_you_lines_raise_the_Needs_you_alert()
     {
         var daemon = Make();
-        daemon.ReportAutopilot([
-            "autopilot: started X-T1 in X in the background: the dashboard needs you to confirm (log x.log)",
-            "autopilot: X-T2 landed and closed",
-            "needs you: not autopilot's prefix",
-            "autopilot: needs you: X-T3's agent in X ended without finishing it",
+        daemon.ReportAllocate([
+            "allocate: started X-T1 in X in the background: the dashboard needs you to confirm (log x.log)",
+            "allocate: X-T2 landed and closed",
+            "needs you: not allocate's prefix",
+            "allocate: needs you: X-T3's agent in X ended without finishing it",
         ]);
 
         Assert.That(alerts, Has.Count.EqualTo(1));
         Assert.That(alerts[0].Title, Is.EqualTo("Needs you"));
         Assert.That(alerts[0].Message, Is.EqualTo("X-T3's agent in X ended without finishing it"));
         Assert.That(said.Count(x => x.Level == LogEventLevel.Warning), Is.EqualTo(1));
-        Assert.That(said.Single(x => x.Level == LogEventLevel.Warning).Line, Does.StartWith("autopilot: needs you: X-T3"));
+        Assert.That(said.Single(x => x.Level == LogEventLevel.Warning).Line, Does.StartWith("allocate: needs you: X-T3"));
         Assert.That(said, Has.Count.EqualTo(4), "every line is still logged");
     }
 
@@ -455,9 +455,9 @@ public sealed class DaemonSafetyTests
 
         tick.Start();
         now = now.AddSeconds(5); tick.Lap("refresh");
-        now = now.AddSeconds(130); tick.Lap("autopilot");
+        now = now.AddSeconds(130); tick.Lap("allocate");
         now = now.AddMilliseconds(300); tick.Lap("audit");
-        Assert.That(tick.Slow(), Does.StartWith("a tick took 135s (autopilot 130s, refresh 5s)").And.Contain("rl-status.json"));
+        Assert.That(tick.Slow(), Does.StartWith("a tick took 135s (allocate 130s, refresh 5s)").And.Contain("rl-status.json"));
     }
 
     [Test]

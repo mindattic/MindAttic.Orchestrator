@@ -231,7 +231,7 @@ public partial class App : Application
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or COMException)
         {
             log.Error(ex, "Setup couldn't finish");
-            MaMessageBox.Show($"Setup couldn't finish: {ex.Message}\n\nThe dashboard works; the background daemon (budget file, pacing, autopilot) may not run until this is fixed.",
+            MaMessageBox.Show($"Setup couldn't finish: {ex.Message}\n\nThe dashboard works; the background daemon (budget file, pacing, allocate) may not run until this is fixed.",
                 "MindAttic Orchestrator", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }

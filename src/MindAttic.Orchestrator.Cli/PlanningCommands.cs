@@ -183,9 +183,9 @@ internal sealed class DryRunCommand : Command
     {
         var (_, store, snapshot, plan) = Ctx.Load();
         var cycler = new MindAttic.Orchestrator.Sessions.ContextCycler();
-        var clis = cycler.AutopilotClis();
+        var clis = cycler.AllocateClis();
         if (clis.Count == 0) { AnsiConsole.MarkupLine("[grey]/allocate is off in every CLI; type /allocate (optionally -repo=A,B) in the CLI that should work the tickets.[/]"); return 0; }
-        var since = cycler.AutopilotSince();
+        var since = cycler.AllocateSince();
         var own = cycler.OnOwnLogin();
         var orgs = MindAttic.Orchestrator.Sessions.OrgRouting.Load(store, store.LoadSettings(), snapshot.GlobalEmail);
         var dirs = new MindAttic.Orchestrator.Sessions.AccountDirs();
@@ -195,7 +195,7 @@ internal sealed class DryRunCommand : Command
             var self = cycler.LatestSessionOf(pid);
             // Its login (M.ORCH-T668): a ticket assigned to a user goes only to a CLI on theirs.
             var login = (self is not null && own.TryGetValue(self, out var dir) ? dirs.Of(dir)?.Email : null) ?? snapshot.GlobalEmail;
-            var (handed, why) = Autopilot.Next(plan, store.LoadSettings(), store, repos, null, claim: false, DateTime.UtcNow,
+            var (handed, why) = Allocate.Next(plan, store.LoadSettings(), store, repos, null, claim: false, DateTime.UtcNow,
                 self: self,
                 cli: pid, pilots: clis, onSince: since, login: login, orgs: orgs);
             foreach (var h in handed) AnsiConsole.MarkupLine($"  next: {Markup.Escape(h.Item.Id)} in {Markup.Escape(h.Item.Repo)}" +
@@ -237,10 +237,10 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
         var (_, store, snapshot, plan) = Ctx.Load(cli);
         IReadOnlyList<string> repos = (settings.Repos ?? settings.Repo) is { } list
             ? [.. list.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)]
-            : Autopilot.RepoFor(Environment.CurrentDirectory, snapshot) is { } here ? [here.Name] : [];
+            : Allocate.RepoFor(Environment.CurrentDirectory, snapshot) is { } here ? [here.Name] : [];
         if (repos.Count == 0) { Console.Error.WriteLine("No repo here; name them with --repos A,B (or \"*\")."); return 1; }
         // A name that matches no repo is said as one, not read as a repo that ran dry with a bug hunt offered (M.ORCH-T728).
-        if (Autopilot.Unmatched(repos, snapshot) is { Count: > 0 } unknown)
+        if (Allocate.Unmatched(repos, snapshot) is { Count: > 0 } unknown)
         {
             Console.Error.WriteLine($"No repo named {string.Join(", ", unknown)} in the workspace.");
             if (unknown.Count == repos.Count) return 1;
@@ -278,9 +278,9 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
                 login: new Dispatcher.TabLogin(to.ConfigDir, to.Email));
             return r.Ok ? null : r.Message;
         }
-        var (all, why) = Autopilot.Next(plan, orchestratorSettings, store, repos, settings.Count, settings.Claim, DateTime.UtcNow,
+        var (all, why) = Allocate.Next(plan, orchestratorSettings, store, repos, settings.Count, settings.Claim, DateTime.UtcNow,
             unthrottled: unthrottled, self: self,
-            cli: cli, pilots: cycler.AutopilotClis(), onSince: cycler.AutopilotSince(), loginOf: cycler.LoginOfCli(),
+            cli: cli, pilots: cycler.AllocateClis(), onSince: cycler.AllocateSince(), loginOf: cycler.LoginOfCli(),
             login: login,
             logins: logins, redelegate: Redelegate, canFallBack: own is not null && snapshot.Billing?.Mode == MindAttic.Orchestrator.Billing.BillingModes.Api,
             orgs: MindAttic.Orchestrator.Sessions.OrgRouting.Load(store, orchestratorSettings, snapshot.GlobalEmail));
@@ -297,7 +297,7 @@ internal sealed class NextCommand : Command<NextCommand.Settings>
         }
         if (why is not null) Console.WriteLine($"Nothing handed out: {why}.");
         // M.ORCH-T529: a CLI held two claims unstarted to avoid merge conflicts while the window went under its target.
-        else if (settings.Claim && handed.Count > 0) Console.WriteLine(Autopilot.StartAllLine(handed.Count));
+        else if (settings.Claim && handed.Count > 0) Console.WriteLine(Allocate.StartAllLine(handed.Count));
         return 0;
     }
 }

@@ -5,7 +5,7 @@ using MindAttic.Orchestrator.Activity;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
-/// <summary>One live Claude CLI or autopilot background agent, with its running subagents nested inside it.</summary>
+/// <summary>One live Claude CLI or allocate background agent, with its running subagents nested inside it.</summary>
 public sealed class AgentRowViewModel(string sessionId) : ObservableObject
 {
     private AgentBoardRow row = null!;
@@ -38,8 +38,8 @@ public sealed class AgentRowViewModel(string sessionId) : ObservableObject
 
     public string Elapsed => Formatting.Span(nowUtc - row.StartedUtc);
     public string Tokens => row.Tokens.Total == 0 ? "" : Formatting.Tokens(row.Tokens.Total) + " tokens today";
-    public bool IsAutopilot => row.IsAutopilot;
-    public string Kind => IsAutopilot ? "Autopilot agent" : "Claude CLI";
+    public bool IsAllocate => row.IsAllocate;
+    public string Kind => IsAllocate ? "Allocate agent" : "Claude CLI";
 
     /// <summary>The state in words; colour only repeats it (WCAG 1.4.1).</summary>
     public string StateLabel => row.State switch

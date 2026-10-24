@@ -85,7 +85,7 @@ public static partial class MachineHealth
     /// How the machine is doing, and in a sentence why. Coming down from <paramref name="previous"/> it steps one level
     /// at a time and only once clear of the line by a margin (commit 5 points under it, 1 GB more free, a fifth fewer
     /// handles): found live, judged fresh every sample it flipped between danger and normal every 30-90s as agents came
-    /// and went, and autopilot refilled the moment it read normal.
+    /// and went, and allocate refilled the moment it read normal.
     /// </summary>
     public static (HealthLevel Level, string? Why) Judge(HealthSample s, HealthLevel previous = HealthLevel.Ok)
     {

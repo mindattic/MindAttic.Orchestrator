@@ -41,7 +41,7 @@ public sealed class SettingsModalTests
         var content = modal.Elements(P + "StackPanel").Single();
         Assert.That((string?)content.Attribute("DataContext"), Is.EqualTo("{Binding Settings}"));
         Assert.That(content.Descendants(P + "TextBox").Any(t => (string?)t.Attribute("AutomationProperties.Name") == "Budget per 5-hour block"), Is.True);
-        Assert.That(content.Descendants(P + "ToggleButton").Any(t => (string?)t.Attribute("Content") == "Autopilot"), Is.True);
+        Assert.That(content.Descendants(P + "ToggleButton").Any(t => (string?)t.Attribute("Content") == "Allocate"), Is.True);
 
         var footer = modal.Element(Mc + "MaModal.Footer")!.Elements().Single();
         Assert.That((string?)footer.Attribute("DataContext"), Is.EqualTo("{Binding Settings}"));

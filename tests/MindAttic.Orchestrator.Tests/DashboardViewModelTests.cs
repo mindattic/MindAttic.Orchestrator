@@ -130,15 +130,15 @@ public sealed class DashboardViewModelTests
     public void A_focus_shows_only_its_own_group_and_never_quiet(Focus focus, bool waiting, bool working, bool tickets) =>
         Assert.That(MainViewModel.GroupVisibility(1, 1, 1, 1, focus, showQuiet: true, "x"), Is.EqualTo((waiting, working, tickets, false)));
 
-    // ── Autopilot line ──────────────────────────────────────────────────────
+    // ── Allocate line ──────────────────────────────────────────────────────
 
     [Test]
-    public void The_queue_says_autopilot_is_on_from_the_clis_that_typed_it()
+    public void The_queue_says_allocate_is_on_from_the_clis_that_typed_it()
     {
-        Assert.That(MainViewModel.AutopilotLine(new Dictionary<int, IReadOnlyList<string>>()), Does.StartWith("Proposals wait for you"));
-        var on = MainViewModel.AutopilotLine(new Dictionary<int, IReadOnlyList<string>> { [1] = ["Prose"], [2] = ["prose", "GTFO.*"], [3] = ["*"] });
-        Assert.That(on, Is.EqualTo("Autopilot is on in 3 CLIs for Prose, GTFO.*, every repo, each through its own subagents, paced to the 5-hour window."));
-        Assert.That(MainViewModel.AutopilotLine(new Dictionary<int, IReadOnlyList<string>> { [1] = ["Prose"] }, on: false), Does.StartWith("Autopilot is paused"),
+        Assert.That(MainViewModel.AllocateLine(new Dictionary<int, IReadOnlyList<string>>()), Does.StartWith("Proposals wait for you"));
+        var on = MainViewModel.AllocateLine(new Dictionary<int, IReadOnlyList<string>> { [1] = ["Prose"], [2] = ["prose", "GTFO.*"], [3] = ["*"] });
+        Assert.That(on, Is.EqualTo("Allocate is on in 3 CLIs for Prose, GTFO.*, every repo, each through its own subagents, paced to the 5-hour window."));
+        Assert.That(MainViewModel.AllocateLine(new Dictionary<int, IReadOnlyList<string>> { [1] = ["Prose"] }, on: false), Does.StartWith("Allocate is paused"),
             "paused from Settings or the CLI, the CLIs that typed it get nothing");
     }
 

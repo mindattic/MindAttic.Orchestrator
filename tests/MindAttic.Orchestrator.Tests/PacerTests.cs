@@ -127,7 +127,7 @@ public sealed class PacerTests
     public void A_lull_right_after_a_batch_of_sessions_ends_doesnt_make_the_next_one_look_free()
     {
         // Found live (M.ORCH-T111): right after a batch of sessions finished, the live per-session estimate
-        // read as near-zero, so spare/perSession exploded and autopilot started 24 sessions in one tick,
+        // read as near-zero, so spare/perSession exploded and allocate started 24 sessions in one tick,
         // well past the 5-hour target before its reset. The historical typical per-session cost is now a
         // floor, so a momentary lull can't make the next (likely similar) session look free.
         var (b, s) = Budget(10.5, new OrchestratorSettings { BlockBudget = 10_000, PaceTargetPercent = 100 }, E(9, 500), E(10.49, 40));
@@ -318,7 +318,7 @@ public sealed class PacerTests
                 return output;
             }
             var uss = Path.Combine(ws, "UnitySolarSystem");
-            var orch = Path.Combine(ws, "MindAttic.Orchestrator", "src", "Autopilot.cs");
+            var orch = Path.Combine(ws, "MindAttic.Orchestrator", "src", "Allocate.cs");
 
             Assert.That(Gate(uss, "Edit", new { file_path = orch }), Does.Contain("\"deny\"").And.Contain("This window is for UnitySolarSystem"));
             Assert.That(Gate(uss, "Write", new { file_path = Path.Combine(uss, "a.cs") }), Is.Empty, "its own repo");

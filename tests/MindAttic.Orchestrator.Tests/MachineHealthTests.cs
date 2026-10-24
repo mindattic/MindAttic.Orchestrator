@@ -40,7 +40,7 @@ public sealed class MachineHealthTests
     public void Coming_down_it_steps_one_level_at_a_time_and_only_once_clear_of_the_line()
     {
         // Found live: judged fresh every 30s it flipped danger → normal → warn → danger every 30-90s as agents came and
-        // went, and autopilot refilled the moment it read normal.
+        // went, and allocate refilled the moment it read normal.
         Assert.That(MachineHealth.Judge(S(commit: 87.9), HealthLevel.Danger).Level, Is.EqualTo(HealthLevel.Warn), "never straight from danger to ok");
         Assert.That(MachineHealth.Judge(S(commit: 85), HealthLevel.Warn).Level, Is.EqualTo(HealthLevel.Warn), "under the 88% line but not 5 points under");
         Assert.That(MachineHealth.Judge(S(commit: 82), HealthLevel.Warn).Level, Is.EqualTo(HealthLevel.Ok), "clear of it");

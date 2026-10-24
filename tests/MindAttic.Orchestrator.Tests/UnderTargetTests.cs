@@ -13,7 +13,7 @@ namespace MindAttic.Orchestrator.Tests;
 public sealed class UnderTargetTests
 {
     private static readonly DateTime End = new(2026, 10, 17, 18, 0, 0, DateTimeKind.Utc);
-    private static readonly IReadOnlyDictionary<int, IReadOnlyList<string>> NoAutopilot = new Dictionary<int, IReadOnlyList<string>>();
+    private static readonly IReadOnlyDictionary<int, IReadOnlyList<string>> NoAllocate = new Dictionary<int, IReadOnlyList<string>>();
 
     private static Ticket T(string id, string type = "fix") => new(id, "2026-10-10", type, "open", "work", "");
 
@@ -30,7 +30,7 @@ public sealed class UnderTargetTests
         IReadOnlyDictionary<int, IReadOnlyList<string>>? clis = null)
     {
         var plan = Scheduler.Plan(snap, s ?? new OrchestratorSettings(), []);
-        return (u.Check(snap, plan, clis ?? NoAutopilot, snap.TakenUtc), plan);
+        return (u.Check(snap, plan, clis ?? NoAllocate, snap.TakenUtc), plan);
     }
 
     [Test]
@@ -103,10 +103,10 @@ public sealed class UnderTargetTests
         var plan = Scheduler.Plan(snap, new OrchestratorSettings(), [quiet]);
 
         Assert.That(plan.Stale.Single().Id, Is.EqualTo("A-T1"), "still in the queue, stale");
-        Assert.That(new UnderTarget().Check(snap, plan, NoAutopilot, at), Does.Contain("would go unused"));
+        Assert.That(new UnderTarget().Check(snap, plan, NoAllocate, at), Does.Contain("would go unused"));
     }
 
-    /// <summary>M.ORCH-T373: a ticket estimated past what's left before the reset is one autopilot won't start, so it doesn't
+    /// <summary>M.ORCH-T373: a ticket estimated past what's left before the reset is one allocate won't start, so it doesn't
     /// keep the warning quiet; the warning names it as one a person in an open CLI can still pick up, or split.</summary>
     [Test]
     public void A_ticket_too_big_for_what_is_left_does_not_quiet_it_and_is_named()
@@ -122,8 +122,8 @@ public sealed class UnderTargetTests
         Assert.That(Check(new UnderTarget(), WithCost(500)).Line, Is.Null, "one that fits is work for the open CLI");
         var (line, plan) = Check(new UnderTarget(), WithCost(9_000));
         Assert.That(plan.TooBig.Single().Id, Is.EqualTo("A-T1"));
-        Assert.That(line, Does.Contain("No ticket waits for your approval, and no CLI has one autopilot would start"));
-        Assert.That(line, Does.Contain("1 (A-T1) is estimated past what's left before the reset, so autopilot won't start it: " +
+        Assert.That(line, Does.Contain("No ticket waits for your approval, and no CLI has one allocate would start"));
+        Assert.That(line, Does.Contain("1 (A-T1) is estimated past what's left before the reset, so allocate won't start it: " +
                                        "a person in an open CLI still can, or split it"));
     }
 
@@ -146,7 +146,7 @@ public sealed class UnderTargetTests
     }
 
     [Test]
-    public void No_workable_tickets_left_for_autopilot_under_target_is_alerted_once_per_window_with_what_waits_for_approval()
+    public void No_workable_tickets_left_for_allocate_under_target_is_alerted_once_per_window_with_what_waits_for_approval()
     {
         // M.ORCH-T529: every tick, not only at the hour marks, and never widening a CLI's repos.
         var u = new UnderTarget();
@@ -170,7 +170,7 @@ public sealed class UnderTargetTests
         Assert.That(new UnderTarget().CheckNoWork(Snap(End.AddHours(-4), 99.5, repos), Plan(early), clis), Is.Null, "on course for the target");
         var work = Snap(End.AddHours(-4), 65, Repo("A", RepoState.Waiting, T("A-T2")));
         Assert.That(new UnderTarget().CheckNoWork(work, Plan(work), clis), Is.Null, "a fix /allocate can start is work");
-        Assert.That(new UnderTarget().CheckNoWork(early, Plan(early), NoAutopilot), Is.Null, "no /allocate CLI to say it of");
+        Assert.That(new UnderTarget().CheckNoWork(early, Plan(early), NoAllocate), Is.Null, "no /allocate CLI to say it of");
     }
 
     [Test]
@@ -202,8 +202,8 @@ public sealed class UnderTargetTests
             };
             var snap = Snap(End.AddMinutes(-55), 40, Repo("A", RepoState.Dormant, T("A-T1", "feature")));
             var plan = Scheduler.Plan(snap, new OrchestratorSettings(), []);
-            daemon.ReportUnderTarget(snap, plan, NoAutopilot);
-            daemon.ReportUnderTarget(snap, plan, NoAutopilot);
+            daemon.ReportUnderTarget(snap, plan, NoAllocate);
+            daemon.ReportUnderTarget(snap, plan, NoAllocate);
 
             Assert.That(alerts, Has.Count.EqualTo(1));
             Assert.That(alerts[0].Title, Is.EqualTo("Needs you"));

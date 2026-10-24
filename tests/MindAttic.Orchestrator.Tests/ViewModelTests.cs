@@ -186,19 +186,19 @@ public sealed class ViewModelTests
     }
 
     [Test]
-    public void Saving_the_panel_keeps_an_autopilot_pause_made_elsewhere_meanwhile()
+    public void Saving_the_panel_keeps_an_allocate_pause_made_elsewhere_meanwhile()
     {
         var store = new JsonStore(dir);
-        store.SaveSettings(store.LoadSettings() with { Autopilot = true });
+        store.SaveSettings(store.LoadSettings() with { Allocate = true });
         var vm = new SettingsViewModel(store, () => { });
-        store.SaveSettings(store.LoadSettings() with { Autopilot = false }); // Settings' Pause autopilot
+        store.SaveSettings(store.LoadSettings() with { Allocate = false }); // Settings' Pause allocate
         vm.WarnPercent = "70";
         vm.SaveCommand.Execute(null);
-        Assert.That((vm.Error, store.LoadSettings().Autopilot), Is.EqualTo(("", false)), "the toggle wasn't touched in the panel");
+        Assert.That((vm.Error, store.LoadSettings().Allocate), Is.EqualTo(("", false)), "the toggle wasn't touched in the panel");
 
-        vm.Autopilot = true;
+        vm.Allocate = true;
         vm.SaveCommand.Execute(null);
-        Assert.That(store.LoadSettings().Autopilot, Is.True, "turned on in the panel");
+        Assert.That(store.LoadSettings().Allocate, Is.True, "turned on in the panel");
     }
 
     [Test]
@@ -333,7 +333,7 @@ public sealed class ViewModelTests
         var store = new JsonStore(dir);
         store.SaveSettings(store.LoadSettings() with { BlockBudget = 12_345_678, WeeklyBudget = 1_234_567_890 });
         var vm = new SettingsViewModel(store, () => { });
-        vm.Autopilot = !vm.Autopilot;
+        vm.Allocate = !vm.Allocate;
         vm.SaveCommand.Execute(null);
         var saved = store.LoadSettings();
         Assert.That((vm.Error, saved.BlockBudget, saved.WeeklyBudget), Is.EqualTo(("", (long?)12_345_678, (long?)1_234_567_890)));

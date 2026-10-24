@@ -9,11 +9,11 @@ using NUnit.Framework;
 namespace MindAttic.Orchestrator.Tests;
 
 /// <summary>
-/// Autopilot's holds and parking (M.ORCH-T135): an agent halted by the window's stop isn't parked, a parked story is
-/// never retried, a lease held elsewhere starts and reaps nothing, which hold <see cref="Autopilot.Paused"/> names first,
+/// Allocate's holds and parking (M.ORCH-T135): an agent halted by the window's stop isn't parked, a parked story is
+/// never retried, a lease held elsewhere starts and reaps nothing, which hold <see cref="Allocate.Paused"/> names first,
 /// what the statusline's waiting file holds, a repo's session cap is told once, and a worktree failure skips only that repo.
 /// </summary>
-public sealed class AutopilotHoldsTests
+public sealed class AllocateHoldsTests
 {
     private static readonly DateTime Now = new(2026, 10, 15, 6, 0, 0, DateTimeKind.Utc);
     private string dir = "";
@@ -68,7 +68,7 @@ public sealed class AutopilotHoldsTests
         var stopped = Plan(snap) with { Pace = new Pace(PaceMode.Over, 0, 0, 0, null, "5-hour", Now.AddHours(1), "at the 5-hour target") { Stop = true } };
         var said = pilot.Tick(stopped, snap, Settings(), Now.AddMinutes(30));
         Assert.That(said, Has.Some.Contains("A-T1's agent in A stopped at the window's target; it starts again after the reset"));
-        Assert.That(said.Select(Autopilot.NeedsYou), Has.All.Null, "a stop isn't a failure: nothing needs you");
+        Assert.That(said.Select(Allocate.NeedsYou), Has.All.Null, "a stop isn't a failure: nothing needs you");
         Assert.That(pilot.Paused, Does.StartWith("pace:"));
         Assert.That(store.LoadAssignments(), Is.Empty, "reaped, so it's back in the queue");
         Assert.That(started, Has.Count.EqualTo(1), "nothing starts while the window is stopped");
@@ -88,7 +88,7 @@ public sealed class AutopilotHoldsTests
         agents.Clear(); // A-T1's agent exits without closing it, with the window open
 
         var said = pilot.Tick(Paced(snap, 1), snap, Settings(), Now.AddMinutes(30));
-        Assert.That(said.Select(Autopilot.NeedsYou).OfType<string>().Single(), Does.StartWith("A-T1's agent in A ended without finishing it"));
+        Assert.That(said.Select(Allocate.NeedsYou).OfType<string>().Single(), Does.StartWith("A-T1's agent in A ended without finishing it"));
         Assert.That(started.Select(s => s.Prompt[..19]), Is.EqualTo(new[] { "Work on ticket A-T1", "Work on ticket A-T2" }), "A moves on to A-T2");
 
         agents.Clear(); // A-T2 finishes
@@ -135,7 +135,7 @@ public sealed class AutopilotHoldsTests
     }
 
     [Test]
-    public void With_autopilot_off_here_the_lease_still_decides_who_reaps_and_sweeps()
+    public void With_allocate_off_here_the_lease_still_decides_who_reaps_and_sweeps()
     {
         // CLIs run /allocate now, so the order is unset in the daemon and the dashboard alike: only the lease holder may
         // reap and run the hourly sweep's git (the dashboard ran it on its UI thread beside the daemon).
@@ -166,8 +166,8 @@ public sealed class AutopilotHoldsTests
         var pilot = Pilot();
         pilot.HealthHold = "handles low";
 
-        pilot.Tick(coast, snap, Settings() with { Autopilot = false, QuietHours = [quiet] }, Now);
-        Assert.That(pilot.Paused, Is.EqualTo("autopilot is switched off"));
+        pilot.Tick(coast, snap, Settings() with { Allocate = false, QuietHours = [quiet] }, Now);
+        Assert.That(pilot.Paused, Is.EqualTo("allocate is switched off"));
 
         pilot.Tick(coast, snap, Settings() with { QuietHours = [quiet] }, Now);
         Assert.That(pilot.Paused, Is.EqualTo("machine health: handles low"));
@@ -193,14 +193,14 @@ public sealed class AutopilotHoldsTests
         var pilot = Pilot(waiting: waiting);
         var coast = Plan(snap) with { Pace = new Pace(PaceMode.Coast, 1, 0, 0, null, null, null, "no room") };
 
-        pilot.Tick(coast, snap, Settings() with { AutopilotSkip = ["c"] }, Now);
+        pilot.Tick(coast, snap, Settings() with { AllocateSkip = ["c"] }, Now);
 
         using (var json = JsonDocument.Parse(File.ReadAllText(waiting)))
         {
             var root = json.RootElement;
             Assert.That(root.GetProperty("repos").EnumerateArray().Select(e => e.GetString()), Is.EqualTo(new[] { "A", "B" }));
             Assert.That(root.GetProperty("left_alone").EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString()),
-                Is.EqualTo(new Dictionary<string, string?> { ["C"] = "you set it to be skipped (settings --autopilot-skip)" }));
+                Is.EqualTo(new Dictionary<string, string?> { ["C"] = "you set it to be skipped (settings --allocate-skip)" }));
             Assert.That(root.GetProperty("at").GetString(), Is.EqualTo("2026-10-15T06:00:00Z"));
         }
         Assert.That(Directory.GetFiles(dir, "waiting.json.*.tmp"), Is.Empty, "written whole, then moved into place");
@@ -209,7 +209,7 @@ public sealed class AutopilotHoldsTests
         pilot.Tick(coast, snap, Settings(), Now.AddMinutes(1), dryRun: true);
         Assert.That(File.Exists(waiting), Is.False, "a dry run writes nothing");
 
-        pilot.Tick(Plan(snap), snap, Settings() with { Autopilot = false }, Now.AddMinutes(2));
+        pilot.Tick(Plan(snap), snap, Settings() with { Allocate = false }, Now.AddMinutes(2));
         using var off = JsonDocument.Parse(File.ReadAllText(waiting));
         Assert.That(off.RootElement.GetProperty("repos").GetArrayLength(), Is.Zero, "switched off isn't waiting on the pace");
     }
@@ -221,7 +221,7 @@ public sealed class AutopilotHoldsTests
         var snap = Snap(("A", [T("A-T1"), T("A-T2"), T("A-T3")]), ("B", [T("B-T1")]));
         var capped = Settings() with { RepoMaxSessions = new() { ["A"] = 1 } };
         var pilot = Pilot();
-        const string cap = "autopilot: A has 1 agents working, the cap you set for it (settings --repo-sessions)";
+        const string cap = "allocate: A has 1 agents working, the cap you set for it (settings --repo-sessions)";
 
         var first = pilot.Tick(Paced(snap, 10), snap, capped, Now);
         Assert.That(started.Select(s => s.Dir), Is.EquivalentTo(new[] { @"D:\WT\A\A-T1", @"D:\WT\B\B-T1" }));
@@ -243,7 +243,7 @@ public sealed class AutopilotHoldsTests
         var said = pilot.Tick(Paced(snap, 10), snap, Settings(), Now);
         Assert.That(started.Select(s => s.Dir), Is.EqualTo(new[] { @"D:\WT\B\B-T1" }), "B starts despite A's failure");
         Assert.That(worktreeCalls.Count(p => p.StartsWith(@"D:\WT\A\", StringComparison.Ordinal)), Is.EqualTo(1), "A-T2 isn't tried once A-T1 failed");
-        Assert.That(said, Has.Some.EqualTo("autopilot: couldn't make a worktree for A-T1: disk full"));
+        Assert.That(said, Has.Some.EqualTo("allocate: couldn't make a worktree for A-T1: disk full"));
         Assert.That(said, Has.None.Contains("A has no open stories").And.None.Contains("A's open stories"), "a failure isn't reported as nothing to do");
         Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EqualTo(new[] { "B-T1" }), "nothing is claimed for A");
 
@@ -253,7 +253,7 @@ public sealed class AutopilotHoldsTests
             "the next tick tries A again");
     }
 
-    private Autopilot Pilot(DispatchLease? lease = null, string? waiting = null) => new(store, sessions, lease)
+    private Allocate Pilot(DispatchLease? lease = null, string? waiting = null) => new(store, sessions, lease)
     {
         WaitingPath = waiting,
         Order = () => order,

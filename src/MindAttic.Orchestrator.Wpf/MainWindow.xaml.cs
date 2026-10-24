@@ -18,7 +18,7 @@ public partial class MainWindow : Window
     /// <summary>Minimized while the daemon builds the snapshots: nobody is looking, so just enough to stay roughly current.</summary>
     private static readonly TimeSpan HiddenInterval = TimeSpan.FromSeconds(60);
 
-    /// <summary>Hidden but holding the lease (no daemon running): the daemon's own pace, since rl-status.json and autopilot depend on it.</summary>
+    /// <summary>Hidden but holding the lease (no daemon running): the daemon's own pace, since rl-status.json and allocate depend on it.</summary>
     private static readonly TimeSpan HiddenHolderInterval = TimeSpan.FromSeconds(15);
 
     /// <summary>The global login's tab, which owns the refresh and every login's tab (M.ORCH-T613).</summary>
@@ -142,7 +142,7 @@ public partial class MainWindow : Window
         menu.IsOpen = true;
     }
 
-    /// <summary>The most the Queue view's header (autopilot line, holds, reminders, finished work, Next up) takes of a view
+    /// <summary>The most the Queue view's header (allocate line, holds, reminders, finished work, Next up) takes of a view
     /// <paramref name="viewHeight"/> tall: 45%, never under 120px.</summary>
     internal static double QueueHeaderHeight(double viewHeight) => Math.Max(120, viewHeight * 0.45);
 
@@ -155,7 +155,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>How often to refresh: every 5s while shown; hidden, every 15s if this window holds the lease (it feeds
-    /// rl-status.json and autopilot), else every 60s.</summary>
+    /// rl-status.json and allocate), else every 60s.</summary>
     internal static TimeSpan RefreshInterval(bool hidden, bool holdsLease) =>
         !hidden ? PollInterval : holdsLease ? HiddenHolderInterval : HiddenInterval;
 

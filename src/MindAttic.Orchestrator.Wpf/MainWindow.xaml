@@ -296,7 +296,7 @@
                 </StackPanel>
             </Button>
             <Button Style="{StaticResource MaSmallStat}" Command="{Binding ShowViewCommand}" CommandParameter="Agents"
-                    ToolTip="Subagents running inside every CLI and autopilot agent. Opens the agent board."
+                    ToolTip="Subagents running inside every CLI and allocate agent. Opens the agent board."
                     AutomationProperties.Name="{Binding SubagentCount, StringFormat='{}{0} subagents running: open the agent board'}">
                 <StackPanel>
                     <TextBlock Text="{Binding SubagentCount}" Style="{StaticResource MaStatValue}" />
@@ -735,7 +735,7 @@
 
             <!-- Queue view: every open ticket across the workspace, and what the scheduler proposes. The full queue is its own
                  virtualized list below the rest (M.ORCH-T655): only the rows on screen are built, so a queue of hundreds costs a
-                 screenful on every tab or org switch; the autopilot line, holds, reminders, finished work and Next up scroll above
+                 screenful on every tab or org switch; the allocate line, holds, reminders, finished work and Next up scroll above
                  it, in at most a little under half the view (MainWindow.xaml.cs), so the queue always has the rest. -->
             <Grid x:Name="QueueView" Grid.ColumnSpan="2" Visibility="{Binding IsQueueView, Converter={StaticResource Visible}}">
                 <Grid.RowDefinitions>
@@ -746,7 +746,7 @@
                 <StackPanel MaxWidth="1200" HorizontalAlignment="Left">
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Right" Text="{Binding SlotsText}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding AutopilotText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding AllocateText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" />
                     </DockPanel>
 
                     <Border Style="{StaticResource MaCard}" Margin="0,12,0,0" BorderBrush="{DynamicResource MaWarn}"
@@ -1018,7 +1018,7 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- Agent board: every Claude CLI and autopilot agent as a card, its running subagents inside it. Waiting-on-you
+            <!-- Agent board: every Claude CLI and allocate agent as a card, its running subagents inside it. Waiting-on-you
                  first. State is a word and a glyph as well as a colour (WCAG 1.4.1). -->
             <ScrollViewer x:Name="AgentsBody" Grid.ColumnSpan="2" Style="{StaticResource MaBodyScroll}"
                           Visibility="{Binding IsAgentsView, Converter={StaticResource Visible}}">
@@ -1147,7 +1147,7 @@
                          (M.ORCH-T754): the unassigned queue is the same hundreds of tickets on every tab. -->
                     <StackPanel x:Name="UserTickets" Margin="0,24,0,0" Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}">
                         <TextBlock Text="Tickets" Style="{StaticResource MaHeading}" />
-                        <TextBlock Text="Assign a ticket to a person and it's dispatched only on their login (next --claim, autopilot and Start); while they're out of room it waits for them, and Redelegate now hands it on."
+                        <TextBlock Text="Assign a ticket to a person and it's dispatched only on their login (next --claim, allocate and Start); while they're out of room it waits for them, and Redelegate now hands it on."
                                    Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
                         <TextBlock Text="{Binding AssignedHeader}" Style="{StaticResource MaSectionLabel}" />
                         <TextBlock Text="{Binding NoAssignedText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
@@ -1473,7 +1473,7 @@
                 <TextBlock Text="SCHEDULER" Style="{StaticResource MaSectionLabel}" />
                 <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding AutoLogin}" Margin="0,0,0,0" HorizontalAlignment="Left"
                               Content="One CLI per account (Auto login)" />
-                <TextBlock Text="A new Claude tab (Start on Auto in the global login's tab, orchestrator start without --account, autopilot's starts, the Launcher's accounts pick) goes on a signed-in per-CLI login no CLI runs on yet, most headroom first, else the global login. Off: the global login unless one is chosen."
+                <TextBlock Text="A new Claude tab (Start on Auto in the global login's tab, orchestrator start without --account, allocate's starts, the Launcher's accounts pick) goes on a signed-in per-CLI login no CLI runs on yet, most headroom first, else the global login. Off: the global login unless one is chosen."
                            Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,10" />
                 <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding RebalanceLogins}" Margin="0,0,0,0" HorizontalAlignment="Left"
                               Content="Rebalance when an account runs low" />
@@ -1495,8 +1495,8 @@
                 <TextBlock Text="Provider for dispatched tickets" Margin="0,10,0,4" />
                 <ListBox Style="{StaticResource MaPillChoice}" ItemsSource="{Binding Providers}" SelectedItem="{Binding Provider}"
                          AutomationProperties.Name="Dispatch provider" />
-                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding Autopilot}" Margin="0,8,0,0" HorizontalAlignment="Left"
-                              Content="Autopilot" />
+                <ToggleButton Style="{StaticResource MaPillToggle}" IsChecked="{Binding Allocate}" Margin="0,8,0,0" HorizontalAlignment="Left"
+                              Content="Allocate" />
                 <TextBlock Text="Type /allocate in a CLI and that CLI works its repo's tickets (or -repo=a,b, or all) through its own subagents, each in its own worktree, as many at once as the pace allows; no other CLI is affected. Off here pauses it in every CLI; /allocate off ends it in that one."
                            Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,6,0,0" />
 

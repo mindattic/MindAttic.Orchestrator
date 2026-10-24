@@ -125,7 +125,7 @@ public sealed class AccountPacer
         var utilization = UtilizationSeries.Build(samples, budget, week is { Capped: true, CeilingPercent: { } ceiling } ? ceiling : settings.PaceTargetPercent,
             now, settings.PaceExponent);
         pace = Pacer.UnderTarget(pace, utilization, settings.MaxSubagents);
-        // A login with no limit learned yet is Unpaced with SubagentAllowance null, which otherwise falls back (Autopilot.More)
+        // A login with no limit learned yet is Unpaced with SubagentAllowance null, which otherwise falls back (Allocate.More)
         // to MaxConcurrentSessions minus every busy ticket across the whole workspace, leaving a fresh account no room of its
         // own (M.ORCH-T660). Its room is its own: the session setting, bounded by MaxSubagents, counted against its own marks.
         if (pace is { IsPaced: false, SubagentAllowance: null, Stop: false })

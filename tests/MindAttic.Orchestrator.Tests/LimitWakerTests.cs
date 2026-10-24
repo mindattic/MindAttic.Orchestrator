@@ -162,13 +162,13 @@ public sealed class LimitWakerTests
     }
 
     [Test]
-    public void Only_one_daemon_holds_the_wake_lease_and_it_isnt_autopilots()
+    public void Only_one_daemon_holds_the_wake_lease_and_it_isnt_allocates()
     {
         using var first = new MindAttic.Orchestrator.Scheduling.DispatchLease(store.Directory, LimitWaker.LeaseName);
         using var second = new MindAttic.Orchestrator.Scheduling.DispatchLease(store.Directory, LimitWaker.LeaseName);
         using var dispatch = new MindAttic.Orchestrator.Scheduling.DispatchLease(store.Directory);
         Assert.That((first.TryAcquire(), second.TryAcquire(), dispatch.TryAcquire()), Is.EqualTo((true, false, true)),
-            "a second daemon doesn't type the resume again; an open dashboard holding autopilot's lease doesn't stop the wakes");
+            "a second daemon doesn't type the resume again; an open dashboard holding allocate's lease doesn't stop the wakes");
     }
 
     private static readonly DateTime Reset = Now.AddMinutes(30);

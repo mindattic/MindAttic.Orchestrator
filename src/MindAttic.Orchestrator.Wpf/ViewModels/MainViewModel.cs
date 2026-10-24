@@ -49,7 +49,7 @@ public sealed partial class MainViewModel : ObservableObject
 {
     private static readonly TimeSpan ToastLifetime = TimeSpan.FromMinutes(2);
 
-    /// <summary>The global login's tab, which owns the one shared refresh, the lease, autopilot and every login's tab; null on
+    /// <summary>The global login's tab, which owns the one shared refresh, the lease, allocate and every login's tab; null on
     /// the global login's tab itself (M.ORCH-T613).</summary>
     private readonly MainViewModel? root;
     private MainViewModel Root => root ?? this;
@@ -58,7 +58,7 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>The settings store every login's tab shares (the window saves the theme switch to it, M.ORCH-T678).</summary>
     internal JsonStore Store => store;
     // Shared with the headless daemon (same lock file): whichever process grabs it first is the one that
-    // dispatches autopilot and writes rl-status.json, so every open window doesn't race to overwrite it
+    // dispatches allocate and writes rl-status.json, so every open window doesn't race to overwrite it
     // (M.ORCH-T112); released when this process exits, same as the daemon's own.
     private readonly DispatchLease lease;
     private readonly StatusAggregator aggregator;
@@ -87,7 +87,7 @@ public sealed partial class MainViewModel : ObservableObject
     public MainViewModel() : this(null, null) { }
 
     /// <summary>A login's tab under <paramref name="root"/> (the global login's), sharing its store, lease, refresh and
-    /// autopilot; or, with no root, the global login's tab, which makes them.</summary>
+    /// allocate; or, with no root, the global login's tab, which makes them.</summary>
     private MainViewModel(MainViewModel? root, LoginTab? tab)
     {
         this.root = root;
@@ -278,7 +278,7 @@ public sealed partial class MainViewModel : ObservableObject
     public string RefreshInfo { get => refreshInfo; private set => Set(ref refreshInfo, value); }
 
     /// <summary>Whether this window is the one process building snapshots (no daemon got the lease first), so it has to
-    /// keep refreshing even while hidden: rl-status.json and autopilot depend on it.</summary>
+    /// keep refreshing even while hidden: rl-status.json and allocate depend on it.</summary>
     public bool HoldsLease => lease.IsHeld;
 
     public int WorkingCount => snapshot?.Working ?? 0;
@@ -340,14 +340,14 @@ public sealed partial class MainViewModel : ObservableObject
                 return (built, LoginScope.Tabs(built, dirs, members), orgDirectory);
             }), () => localChanges);
             ApplyTabs(next, tabs, nextOrgs);
-            await TickAutopilotAsync(next);
+            await TickAllocateAsync(next);
             var info = aggregator.LastWasShared
                 ? $"Updated {next.TakenUtc.ToLocalTime():T} · shared"
                 : $"Updated {DateTime.Now:T} · {clock.ElapsedMilliseconds} ms";
             foreach (var tab in LoginTabs) tab.RefreshInfo = info;
         }
         // Any failure is shown and retried next tick: this runs from an async void timer, so an escaped exception would
-        // close the dashboard, and with it autopilot and rl-status.json if this window holds the lease.
+        // close the dashboard, and with it allocate and rl-status.json if this window holds the lease.
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             foreach (var tab in LoginTabs) tab.RefreshInfo = $"Refresh failed: {ex.Message}";

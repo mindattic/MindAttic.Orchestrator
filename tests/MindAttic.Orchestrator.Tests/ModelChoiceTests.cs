@@ -32,7 +32,7 @@ public sealed class ModelChoiceTests
         Assert.That(M("chore", "rename Foo to Bar in Baz.cs"), Is.EqualTo(ModelChoice.Sonnet));
         Assert.That(M("docs", "README: document --review-lines"), Is.EqualTo(ModelChoice.Sonnet));
         Assert.That(M("feature", "show the model on the agent board"), Is.EqualTo(ModelChoice.Opus));
-        Assert.That(M("feature", "AutopilotTests.Foo is a failing test since T500"), Is.EqualTo(ModelChoice.Sonnet), "a failed test is Sonnet's whatever the type");
+        Assert.That(M("feature", "AllocateTests.Foo is a failing test since T500"), Is.EqualTo(ModelChoice.Sonnet), "a failed test is Sonnet's whatever the type");
         Assert.That(M("chore", "redesign how claims are stored"), Is.EqualTo(ModelChoice.Opus), "design work");
         Assert.That(M("fix", "rename the setting across many files"), Is.EqualTo(ModelChoice.Opus), "a change across many files");
         Assert.That(M("fix", "the db migration loses rows"), Is.EqualTo(ModelChoice.Opus), "must be right the first time");
@@ -68,7 +68,7 @@ public sealed class ModelChoiceTests
         };
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
 
-        var (handed, why) = Autopilot.Next(plan, settings, store, ["A"], null, claim: true, Now, (_, path, _) => (true, path, ""), _ => "main");
+        var (handed, why) = Allocate.Next(plan, settings, store, ["A"], null, claim: true, Now, (_, path, _) => (true, path, ""), _ => "main");
 
         Assert.That(why, Is.Null);
         var byId = handed.ToDictionary(h => h.Item.Id);
@@ -81,7 +81,7 @@ public sealed class ModelChoiceTests
         Assert.That(byId["A-T2"].Prompt, Does.Not.Contain("orchestrator review"), "an Opus ticket isn't reviewed");
         Assert.That(store.LoadAssignments().ToDictionary(a => a.TicketId, a => a.Model), Is.EqualTo(new Dictionary<string, string?> { ["A-T1"] = "sonnet", ["A-T2"] = "opus" }),
             "kept on the claim, through the database");
-        Assert.That(Autopilot.StartAllLine(2), Does.Contain("on the model it names"));
+        Assert.That(Allocate.StartAllLine(2), Does.Contain("on the model it names"));
         Assert.That(MindAttic.Orchestrator.Setup.AgentGate.AllocateCommand, Does.Contain("on the model its `model:` line names"),
             "/allocate starts each subagent on its ticket's model");
     }
@@ -102,7 +102,7 @@ public sealed class ModelChoiceTests
 
         foreach (var risky in new[] { "src/MindAttic.Orchestrator.Core/Setup/AgentGate.cs", "src/MindAttic.Orchestrator.Core/Budget/Pacer.cs",
                      "src/MindAttic.Orchestrator.Core/Scheduling/Dispatcher.cs", "shared/hooks/commit-msg", "deploy.ps1",
-                     "src/MindAttic.Orchestrator.Core/{Old.cs => Scheduling/Autopilot.cs}" })
+                     "src/MindAttic.Orchestrator.Core/{Old.cs => Scheduling/Allocate.cs}" })
             Assert.That(DiffReview.Judge([new(risky, 1, 0)], s, ModelChoice.Sonnet).Review, Is.True, risky);
         Assert.That(DiffReview.Judge([new("src/A/Formatting.cs", 1, 0)], s, ModelChoice.Sonnet).Review, Is.False);
         Assert.That(DiffReview.Judge([new("src/A/Pacer.cs", 1, 0)], s with { RiskyFiles = [] }, ModelChoice.Sonnet).Review, Is.False, "none set");

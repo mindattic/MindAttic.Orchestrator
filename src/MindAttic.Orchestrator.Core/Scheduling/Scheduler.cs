@@ -113,7 +113,7 @@ public sealed record SchedulePlan(
 
 /// <summary>
 /// Turns every repo's open tickets into one ordered queue and decides what should start now. It
-/// never starts anything itself: <see cref="Dispatcher"/> does on a click, and <see cref="Autopilot"/> feeds the CLIs that ask for it.
+/// never starts anything itself: <see cref="Dispatcher"/> does on a click, and <see cref="Allocate"/> feeds the CLIs that ask for it.
 /// </summary>
 public static partial class Scheduler
 {

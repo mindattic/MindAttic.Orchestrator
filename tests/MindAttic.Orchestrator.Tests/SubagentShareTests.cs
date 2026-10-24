@@ -46,7 +46,7 @@ public sealed class SubagentShareTests
 
     /// <summary>M.ORCH-T558: a CLI's /allocate warms up, one more subagent each minute since it turned on, up to its share.</summary>
     [Test]
-    public void A_cli_warms_up_one_more_subagent_each_minute_since_its_autopilot_turned_on()
+    public void A_cli_warms_up_one_more_subagent_each_minute_since_its_allocate_turned_on()
     {
         var on = new DateTime(2026, 10, 20, 9, 0, 0, DateTimeKind.Utc);
         Assert.That(new[] { 0, 59, 60, 150, 600 }.Select(s => SubagentShare.WarmUp(on, on.AddSeconds(s))), Is.EqualTo(new[] { 1, 1, 2, 3, 11 }));

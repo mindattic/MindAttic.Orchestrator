@@ -14,8 +14,8 @@ public sealed record CliRow(
     string? Cwd,
     string? Bills,
     bool InLauncher,
-    bool Autopilot,
-    IReadOnlyList<string> AutopilotRepos,
+    bool Allocate,
+    IReadOnlyList<string> AllocateRepos,
     bool Idle,
     DateTime? LastTurnUtc);
 
@@ -41,13 +41,13 @@ public static class CliRoster
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
 
-    public static IReadOnlyList<CliRow> Build(IReadOnlyList<CliBilling> clis, IReadOnlyDictionary<int, IReadOnlyList<string>> autopilot,
+    public static IReadOnlyList<CliRow> Build(IReadOnlyList<CliBilling> clis, IReadOnlyDictionary<int, IReadOnlyList<string>> allocate,
         IEnumerable<SessionContext> sessions)
     {
         var turns = sessions.ToDictionary(s => s.SessionId, StringComparer.Ordinal);
         return [.. clis.Select(c =>
         {
-            var on = autopilot.TryGetValue(c.Pid, out var repos);
+            var on = allocate.TryGetValue(c.Pid, out var repos);
             turns.TryGetValue(c.SessionId, out var turn);
             return new CliRow(c.Pid, c.SessionId, c.Where, c.Cwd, c.Bills, c.Host is not null, on, on ? repos! : [],
                 turn?.Idle ?? false, turn is null || turn.TurnUtc == DateTime.MinValue ? null : turn.TurnUtc);
@@ -56,7 +56,7 @@ public static class CliRoster
 
     /// <summary>Every open CLI as this process sees it now.</summary>
     public static IReadOnlyList<CliRow> Build(ContextCycler cycler, BillingSwitch billing, IReadOnlyList<HostSession> hosts, DateTime nowUtc) =>
-        Build(billing.LiveClis(hosts, nowUtc), cycler.AutopilotClis(), cycler.Load());
+        Build(billing.LiveClis(hosts, nowUtc), cycler.AllocateClis(), cycler.Load());
 
     /// <summary>Writes the roster as its <c>state</c> row; a <c>clis.json</c> left in <paramref name="oldDirectory"/> by a daemon
     /// from before the move is kept as <c>.bak</c> (what it held is a minute old by now, and this replaces it). A database that

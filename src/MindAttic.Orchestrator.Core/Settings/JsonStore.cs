@@ -10,7 +10,7 @@ namespace MindAttic.Orchestrator.Settings;
 /// files under <c>%APPDATA%\MindAttic\MindAttic.Orchestrator</c>. Each is still named as its file was and handled as a JSON
 /// value, so callers load and save the same types: <c>settings</c> goes into the <c>settings</c> table one row per setting,
 /// <c>assignments</c> into <c>assignments</c> one row per assignment, and every other name (limits, reminders, audit, the pace
-/// alarms, limit wakes, autopilot holds, stale claims, dashboard-seen) is one row of <c>state</c>. A change is one write
+/// alarms, limit wakes, allocate holds, stale claims, dashboard-seen) is one row of <c>state</c>. A change is one write
 /// transaction, so the daemon, a dashboard and the CLI changing the same thing at once queue on SQLite's lock instead of a
 /// <c>.lock</c> file, and none saves over what another added. A JSON file still in <see cref="Directory"/> is read in the first
 /// time its name is used (unless the database already holds it) and kept beside it as <c>.bak</c>.
@@ -120,7 +120,7 @@ public sealed class JsonStore
 
     /// <summary>
     /// Loads, changes and saves <paramref name="name"/> in one write transaction, so a change made at once by another process
-    /// (the daemon's autopilot, a dashboard's Dispatch, the CLI) waits for this one and is never dropped. A value that isn't
+    /// (the daemon's allocate, a dashboard's Dispatch, the CLI) waits for this one and is never dropped. A value that isn't
     /// readable JSON, or an old file that can't be read in, throws rather than having an empty one saved over it.
     /// </summary>
     public void Update<T>(string name, Action<T> change) where T : new() => Guard(() =>
@@ -153,7 +153,7 @@ public sealed class JsonStore
     public List<Assignment> LoadAssignments() => Load<List<Assignment>>(AssignmentsName);
     public void SaveAssignments(List<Assignment> a) => Save(AssignmentsName, a);
 
-    /// <summary>Loads, changes and saves the assignments in one transaction every process takes (the daemon's autopilot, a
+    /// <summary>Loads, changes and saves the assignments in one transaction every process takes (the daemon's allocate, a
     /// dashboard's Dispatch, the CLI), so one's save never drops what another added in between.</summary>
     public void UpdateAssignments(Action<List<Assignment>> change) => Update(AssignmentsName, change);
 

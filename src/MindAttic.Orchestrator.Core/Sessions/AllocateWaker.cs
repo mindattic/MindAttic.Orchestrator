@@ -10,13 +10,13 @@ namespace MindAttic.Orchestrator.Sessions;
 /// a ticket held while another session's turn that filed it ran) is let stop, and nothing asked it again when the window reset,
 /// a subagent finished, or a ticket was filed or approved: five CLIs sat "Needs you" all night and through the morning with
 /// workable tickets and room to spare. Each tick, every live /allocate CLI whose newest session is idle (and not waiting on a
-/// window, which <see cref="LimitWaker"/> wakes, nor running a /goal) is asked <see cref="Autopilot.Next"/>, as its own
+/// window, which <see cref="LimitWaker"/> wakes, nor running a /goal) is asked <see cref="Allocate.Next"/>, as its own
 /// <c>orchestrator next</c> would be (dry run: nothing is claimed); when it would hand out a ticket, the CLI's Launcher tab is
 /// typed a prompt to claim and work them. One in a plain terminal is said to you instead, once per idle stretch. A CLI is
 /// woken at most once per <see cref="Cooldown"/>, so one that stops again at once (a decision only you can make) isn't
 /// typed into every tick.
 /// </summary>
-public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
+public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
 {
     /// <summary>How long a CLI has been idle before it's woken: keep-going has already had its say at the stop, and a pause
     /// between your own prompts isn't typed over.</summary>
@@ -35,10 +35,10 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
     /// <summary>Types a prompt into a tab and presses Enter (seam).</summary>
     internal Func<string, string, Task<bool>> Submit { get; init; } = (pipe, text) => SessionControl.SubmitAsync(pipe, text);
 
-    /// <summary>The live CLIs /allocate is on in, and their repos (seam; <see cref="ContextCycler.AutopilotClis"/>).</summary>
+    /// <summary>The live CLIs /allocate is on in, and their repos (seam; <see cref="ContextCycler.AllocateClis"/>).</summary>
     internal Func<IReadOnlyDictionary<int, IReadOnlyList<string>>>? Pilots { get; init; }
 
-    /// <summary>When /allocate turned on in each of them (seam; <see cref="ContextCycler.AutopilotSince"/>).</summary>
+    /// <summary>When /allocate turned on in each of them (seam; <see cref="ContextCycler.AllocateSince"/>).</summary>
     internal Func<IReadOnlyDictionary<int, DateTime>>? PilotsSince { get; init; }
 
     /// <summary>The per-CLI logins, to find the account a CLI runs on (seam).</summary>
@@ -59,8 +59,8 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
     /// <summary>What to wake now, woken (or said, when <paramref name="type"/> is false or it can't be typed into).</summary>
     public IReadOnlyList<Wake> Tick(SchedulePlan plan, OrchestratorSettings settings, IReadOnlyList<HostSession> hosts, bool type, DateTime nowUtc, Snapshot? snapshot = null)
     {
-        if (!settings.KeepGoing || !settings.Autopilot) return [];
-        var pilots = Pilots?.Invoke() ?? cycler.AutopilotClis();
+        if (!settings.KeepGoing || !settings.Allocate) return [];
+        var pilots = Pilots?.Invoke() ?? cycler.AllocateClis();
         foreach (var gone in wokenUtc.Keys.Concat(saidFor.Keys).Where(p => !pilots.ContainsKey(p)).ToList())
         {
             wokenUtc.Remove(gone);
@@ -69,7 +69,7 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
         if (pilots.Count == 0) return [];
         var newest = cycler.Load().Where(c => c.Pid is not null).GroupBy(c => c.Pid!.Value)
             .ToDictionary(g => g.Key, g => g.MaxBy(c => (Written(c.SessionId), c.TurnUtc))!);
-        var since = PilotsSince?.Invoke() ?? (Pilots is null ? cycler.AutopilotSince() : new Dictionary<int, DateTime>()); // warming up (M.ORCH-T558): not woken for one it can't have yet
+        var since = PilotsSince?.Invoke() ?? (Pilots is null ? cycler.AllocateSince() : new Dictionary<int, DateTime>()); // warming up (M.ORCH-T558): not woken for one it can't have yet
         var moving = Moving();
         var own = snapshot is null ? null : (OwnLogins?.Invoke() ?? cycler.OnOwnLogin());
         var plans = new Dictionary<string, SchedulePlan>(StringComparer.OrdinalIgnoreCase);
@@ -105,7 +105,7 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
                 }
                 cliPlan = forLogin;
             }
-            var (handed, _) = Autopilot.Next(cliPlan, settings, store, repos, null, claim: false, nowUtc,
+            var (handed, _) = Allocate.Next(cliPlan, settings, store, repos, null, claim: false, nowUtc,
                 unthrottled: cycler.IsUnthrottled(pid), self: c.SessionId, cli: pid, pilots: pilots, onSince: since, loginOf: loginOf, login: email, orgs: orgs);
             if (handed.Count > 0) due.Add((pid, c, repos, [.. handed.Select(h => h.Item.Id)]));
         }
@@ -127,7 +127,7 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
             {
                 wokenUtc[d.Pid] = nowUtc;
                 saidFor.Remove(d.Pid);
-                wakes.Add(new Wake(d.Pid, where, d.Ids, true, $"autopilot: told the idle CLI in {where} to carry on: orchestrator next has {tickets} for it now"));
+                wakes.Add(new Wake(d.Pid, where, d.Ids, true, $"allocate: told the idle CLI in {where} to carry on: orchestrator next has {tickets} for it now"));
                 continue;
             }
             // Said once per idle stretch: the same stop isn't alerted every tick.
@@ -157,9 +157,9 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
     /// </summary>
     public IReadOnlyList<Wake> TickClaims(Snapshot snapshot, SchedulePlan plan, OrchestratorSettings settings, IReadOnlyList<HostSession> hosts, bool type, DateTime nowUtc)
     {
-        if (!settings.KeepGoing || !settings.Autopilot) return [];
+        if (!settings.KeepGoing || !settings.Allocate) return [];
         if (UnderTarget.Projected(snapshot, plan) is not { } projected || !UnderTarget.HasRoom(plan)) return [];
-        var pilots = Pilots?.Invoke() ?? cycler.AutopilotClis();
+        var pilots = Pilots?.Invoke() ?? cycler.AllocateClis();
         if (pilots.Count == 0) return [];
         var idle = IdleClaims(snapshot, plan, pilots, nowUtc);
         if (idle.Count == 0) return [];
@@ -204,7 +204,7 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
                 wokenUtc[d.Pid] = nowUtc;
                 saidClaims.Remove(d.Pid);
                 wakes.Add(new Wake(d.Pid, where, ids, true,
-                    $"autopilot: on course for {projected:0}% of the {settings.PaceTargetPercent}% target, so told the CLI in {where} to start its idle claims now: {tickets}"));
+                    $"allocate: on course for {projected:0}% of the {settings.PaceTargetPercent}% target, so told the CLI in {where} to start its idle claims now: {tickets}"));
                 continue;
             }
             if (saidClaims.TryGetValue(d.Pid, out var was) && was == tickets) continue;
@@ -263,7 +263,7 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
 
     private static int? OwnerOf(string repo, IReadOnlyDictionary<int, IReadOnlyList<string>> pilots)
     {
-        var named = pilots.Where(p => Autopilot.Named(p.Value, repo)).OrderBy(p => p.Key).ToList();
+        var named = pilots.Where(p => Allocate.Named(p.Value, repo)).OrderBy(p => p.Key).ToList();
         if (named.Count == 0) return null;
         var exact = named.Where(p => p.Value.Contains(repo, StringComparer.OrdinalIgnoreCase)).Select(p => (int?)p.Key).FirstOrDefault();
         return exact ?? named[0].Key;
@@ -290,7 +290,7 @@ public sealed class AutopilotWaker(ContextCycler cycler, JsonStore store)
     /// <summary>What the CLI is typed: one line (a line break would be a new line in the prompt box, not Enter), and no double
     /// quote (wt would split on it).</summary>
     public static string Prompt(IReadOnlyList<string> repos, IReadOnlyList<string> ids) =>
-        $"There's room to work again: orchestrator next has {ids.Count} workable ticket{(ids.Count == 1 ? "" : "s")} for this CLI's autopilot " +
+        $"There's room to work again: orchestrator next has {ids.Count} workable ticket{(ids.Count == 1 ? "" : "s")} for this CLI's allocate " +
         $"({string.Join(", ", ids.Take(6))}{(ids.Count > 6 ? "..." : "")}). Run `orchestrator next --repos '{string.Join(",", repos)}' --claim` and hand each ticket it prints " +
         "to a subagent with the prompt and on the model it prints (several at once, in one message), then repeat. End your turn when it hands out nothing.";
 

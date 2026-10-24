@@ -61,15 +61,15 @@ public sealed class TicketPinsTests
         TicketPins.Assign(store, "A-T1", Ryan);
         var settings = store.LoadSettings();
 
-        var (jordans, why) = Autopilot.Next(Plan(), settings, store, ["A"], null, claim: true, Now, Make, _ => "main", login: Jordan);
+        var (jordans, why) = Allocate.Next(Plan(), settings, store, ["A"], null, claim: true, Now, Make, _ => "main", login: Jordan);
         Assert.That(jordans.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T2" }), "Jordan's CLI gets the unassigned one, not Ryan's");
         Assert.That(why, Is.Null);
 
-        var (unknown, whyUnknown) = Autopilot.Next(Plan(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main");
+        var (unknown, whyUnknown) = Allocate.Next(Plan(), settings, store, ["A"], null, claim: false, Now, Make, _ => "main");
         Assert.That(unknown, Is.Empty, "a CLI whose login isn't known takes no pinned ticket (A-T2 is claimed)");
         Assert.That(whyUnknown, Does.Contain("already being worked"));
 
-        var (ryans, _) = Autopilot.Next(Plan(), settings, store, ["A"], null, claim: true, Now, Make, _ => "main", login: "RYAN@example.com");
+        var (ryans, _) = Allocate.Next(Plan(), settings, store, ["A"], null, claim: true, Now, Make, _ => "main", login: "RYAN@example.com");
         Assert.That(ryans.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T1" }));
         var claims = store.LoadAssignments().ToDictionary(a => a.TicketId);
         Assert.That((claims["A-T1"].Account, claims["A-T2"].Account), Is.EqualTo(((string?)Ryan, (string?)Jordan)),
@@ -118,7 +118,7 @@ public sealed class TicketPinsTests
         Assert.That(TicketPins.Redelegable(Plan().Queue.Single(q => q.Id == "A-T2")), Is.True);
 
         // Jordan, with room, isn't handed it: it waits for Ryan.
-        var (handed, whyNot) = Autopilot.Next(Plan(only: "A-T1"), store.LoadSettings(), store, ["A"], null, claim: true, Now, Make, _ => "main", login: Jordan);
+        var (handed, whyNot) = Allocate.Next(Plan(only: "A-T1"), store.LoadSettings(), store, ["A"], null, claim: true, Now, Make, _ => "main", login: Jordan);
         Assert.That(handed, Is.Empty);
         Assert.That(whyNot, Does.Contain("1 assigned to other users wait for them").And.Contain(Ryan));
         Assert.That(store.LoadAssignments(), Is.Empty, "nothing claimed");
@@ -133,7 +133,7 @@ public sealed class TicketPinsTests
 
         var item = Plan(only: "A-T1").Queue.Single();
         Assert.That((item.IsPinned, TicketPins.Redelegable(item)), Is.EqualTo((false, true)), "the pacing may move it again");
-        var (handed, _) = Autopilot.Next(Plan(only: "A-T1"), store.LoadSettings(), store, ["A"], null, claim: true, Now, Make, _ => "main", login: Jordan);
+        var (handed, _) = Allocate.Next(Plan(only: "A-T1"), store.LoadSettings(), store, ["A"], null, claim: true, Now, Make, _ => "main", login: Jordan);
         Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T1" }), "another user with room takes it");
         Assert.That(store.LoadAssignments().Single().Account, Is.EqualTo(Jordan));
     }

@@ -78,7 +78,7 @@ public static class ModelChoice
             if (Parse(value) is { } m and not Auto) return new(m, $"your override for {key}");
         // The exact repo first, then a wildcard naming it.
         foreach (var (key, value) in settings.ModelOverrides.OrderBy(kv => kv.Key.Contains('*') || kv.Key.Contains('?')))
-            if (Autopilot.Named([key], repo) && Parse(value) is { } m and not Auto) return new(m, $"your override for {key}");
+            if (Allocate.Named([key], repo) && Parse(value) is { } m and not Auto) return new(m, $"your override for {key}");
         return null;
     }
 

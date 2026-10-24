@@ -41,7 +41,7 @@ public sealed record Pace(
     public int? SubagentAllowance { get; init; }
 
     /// <summary>How many more sessions the spare rate pays for right now (what fits the target minus what's being drawn,
-    /// over what one session draws); negative when the draw is already over. Autopilot starts at most this many.</summary>
+    /// over what one session draws); negative when the draw is already over. Allocate starts at most this many.</summary>
     public int SpareSessions { get; init; }
 
     /// <summary>Subagents running when the allowance was worked out.</summary>
@@ -209,7 +209,7 @@ public static class Pacer
         // held session burns less than it will once let go, so judge it by what it would draw unheld.
         // Never below the historical typical: a lull right after a batch of sessions ends (recent draw
         // momentarily near zero) must not make the next session look free, or spare/perSession explodes
-        // into a burst of new sessions sized for a cost that isn't real (found live: autopilot read a
+        // into a burst of new sessions sized for a cost that isn't real (found live: allocate read a
         // post-batch lull as near-zero cost and started 24 sessions in one tick, well past the 5-hour
         // target before its reset, M.ORCH-T111).
         double? perSession = activeSessions > 0 && recent > 0

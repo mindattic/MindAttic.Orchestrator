@@ -13,7 +13,7 @@ public enum AgentState
     HeldByPace,
 }
 
-/// <summary>One Claude CLI or autopilot background agent at a glance: what it's on, how long, how it's
+/// <summary>One Claude CLI or allocate background agent at a glance: what it's on, how long, how it's
 /// doing, what it's spent, and the subagents it has running right now.</summary>
 public sealed record AgentBoardRow(
     string SessionId,
@@ -24,7 +24,7 @@ public sealed record AgentBoardRow(
     DateTime LastActivityUtc,
     AgentState State,
     string StateDetail,
-    bool IsAutopilot,
+    bool IsAllocate,
     TokenUsage Tokens,
     IReadOnlyList<SubagentActivity> Subagents)
 {
@@ -57,7 +57,7 @@ public sealed record AgentBoardRow(
 }
 
 /// <summary>
-/// Builds the agent board: every live Claude session (a Launcher tab or a headless autopilot agent),
+/// Builds the agent board: every live Claude session (a Launcher tab or a headless allocate agent),
 /// each with its running subagents nested under it. Pure projection over what <see cref="StatusAggregator"/>
 /// already gathers; nothing here reads a file itself. Each CLI's row lists the tickets that CLI claimed (by the CLI process
 /// <c>clis</c> maps its session to, or the session the claim recorded), so two CLIs on one repo each show only their own.
