@@ -100,6 +100,11 @@ public sealed partial class MainViewModel
     /// <summary>The billing button's label.</summary>
     public string BillingToggleText => IsOnApiKey ? "Back to Claude Team" : "Use API key (emergencies)";
 
+    /// <summary>The emergency billing toggle's key glyph (M.ORCH-T770): MaText while Claude Team bills, MaGood while the API
+    /// key does, as a view model's own live brush (<see cref="Palette"/>) rather than a Style's DataTrigger, so the icon needs
+    /// no style of its own (M.ORCH-T775).</summary>
+    public System.Windows.Media.Brush EmergencyKeyBrush => IsOnApiKey ? Palette.Working : Palette.Text;
+
     /// <summary>Signs the global login in to <paramref name="email"/>'s account (its roster row, or the email alone when the
     /// roster doesn't know it yet): billing goes back to Claude Team first if the key was billing. The dashboard follows the
     /// switch at the next refresh after it lands.</summary>

@@ -22,6 +22,9 @@ public static class Palette
     public static Brush Quiet => Theme("MaMuted");
     public static Brush Over => Theme("MaBad");
 
+    /// <summary>The theme's own body-text colour (the emergency billing toggle's key glyph while it's off, M.ORCH-T775).</summary>
+    public static Brush Text => Theme("MaText");
+
     /// <summary>The fourth status, neither good, warning nor bad (a tab's light in any other state, M.ORCH-T630): the theme's
     /// purple MaOther.</summary>
     public static Brush Other => Theme("MaOther");
@@ -36,7 +39,7 @@ public static class Palette
         _ => hasTickets ? Tickets : Quiet,
     };
 
-    private static readonly string[] Keys = ["MaGood", "MaWarn", "MaLink", "MaMuted", "MaBad", "MaAccent", "MaOther"];
+    private static readonly string[] Keys = ["MaGood", "MaWarn", "MaLink", "MaMuted", "MaBad", "MaAccent", "MaOther", "MaText"];
 
     /// <summary>The brush handed out for each key inside the app, owned by the UI thread and recoloured by <see cref="Follow"/>.</summary>
     private static readonly Dictionary<string, SolidColorBrush> Live = [];
