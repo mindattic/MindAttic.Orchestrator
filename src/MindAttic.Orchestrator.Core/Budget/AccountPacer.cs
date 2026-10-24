@@ -44,6 +44,9 @@ public sealed class AccountPacer
             ? meter ??= new ClaudeMeterProbe { UsagePath = dir.UsagePath, CredentialsPath = dir.CredentialsPath, AccountKey = () => Account, Label = dir.Email }
             : null;
         public List<UsageSample>? Samples;
+        /// <summary>This account's own limit hits (M.ORCH-T774), read from its sessions' transcripts and kept across ticks so
+        /// one a transcript reported stays known once its line scrolls out of the reader's window.</summary>
+        public List<LimitObservation>? Limits;
         /// <summary>Who's signed in to the folder, as of this tick.</summary>
         public string? Account;
     }
@@ -98,7 +101,17 @@ public sealed class AccountPacer
         if (ReportedLimit.Record(samples, reported, events, now, withWeek: true) && write) SaveSamples(dir, samples);
         var limit = ReportedLimit.Estimate(samples);
         reported = ReportedLimit.Highest(samples, reported, now);
-        var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, reported: reported, reportedLimit: limit);
+        // This account's own limit hits (M.ORCH-T774), read from its own sessions' transcripts: before this, a wall Claude
+        // actually reported to one of this account's CLIs never reached BudgetCalculator (no LimitCalibration was ever
+        // passed here), so the only thing stopping it was the percent-based target, and the pace ledger could only ever
+        // say "Claude reported 100%", never "hit the 5-hour limit", for a per-CLI login. Kept across ticks (and restarts)
+        // so a hit stays known once the transcript line that reported it scrolls out of the reader's window.
+        var observed = LimitCalibration.Observe(sessions.SelectMany(s => s.Hits), events, now - LimitCalibration.Keep);
+        var limits = LimitCalibration.Merge(state.Limits ??= LoadLimits(dir), observed, now);
+        if (write && !limits.SequenceEqual(state.Limits)) SaveLimits(dir, limits);
+        state.Limits = limits;
+        var calibration = new LimitCalibration(limits);
+        var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration, reported: reported, reportedLimit: limit);
 
         var recentFrom = now - BudgetCalculator.RecentWindow;
         var active = sessions.Count(s => s.Events.Count > 0 && s.Events[^1].AtUtc >= recentFrom);
@@ -224,6 +237,25 @@ public sealed class AccountPacer
             var temp = dir.SamplesPath + ".tmp";
             File.WriteAllText(temp, JsonSerializer.Serialize(samples, Json));
             File.Move(temp, dir.SamplesPath, overwrite: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+
+    /// <summary>This account's own limit hits (<see cref="AccountDir.LimitsPath"/>, M.ORCH-T774); empty when there are none
+    /// yet.</summary>
+    public static List<LimitObservation> LoadLimits(AccountDir dir)
+    {
+        try { return File.Exists(dir.LimitsPath) ? JsonSerializer.Deserialize<List<LimitObservation>>(File.ReadAllText(dir.LimitsPath), Json) ?? [] : []; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return []; }
+    }
+
+    private static void SaveLimits(AccountDir dir, List<LimitObservation> limits)
+    {
+        try
+        {
+            var temp = dir.LimitsPath + ".tmp";
+            File.WriteAllText(temp, JsonSerializer.Serialize(limits, Json));
+            File.Move(temp, dir.LimitsPath, overwrite: true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }

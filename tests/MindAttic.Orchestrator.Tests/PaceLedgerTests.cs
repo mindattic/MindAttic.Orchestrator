@@ -384,6 +384,34 @@ public sealed class PaceLedgerTests
         Assert.That((row.Held, row.Refused), Is.EqualTo((1, 1)), "only acct-b's own tagged held and refused events: not acct-a's, and not the untagged one either");
     }
 
+    /// <summary>M.ORCH-T774: a per-CLI login's own limit hits are now kept (<see cref="Sessions.AccountDir.LimitsPath"/>,
+    /// written by <see cref="AccountPacer"/> from its own sessions' transcripts), so a real wall it hit grades its window
+    /// "hit the 5-hour limit", not "Claude reported 100%" (the only thing a per-CLI window could ever say before).</summary>
+    [Test]
+    public void A_per_cli_logins_window_grades_a_real_wall_it_hit_not_just_claudes_reported_percent()
+    {
+        var dir = temp.New();
+        var h = new Harness(Path.Combine(dir, "store"));
+        var dirs = new MindAttic.Orchestrator.Sessions.AccountDirs(Path.Combine(dir, "accounts"), Path.Combine(dir, ".claude"), Path.Combine(dir, ".claude.json"));
+        var b = dirs.For("b@example.com");
+        Directory.CreateDirectory(b.Directory);
+        File.WriteAllText(b.ConfigPath, """{"oauthAccount":{"accountUuid":"acct-b"}}""");
+        var bEnd = End.AddMinutes(5);
+        File.WriteAllText(b.SamplesPath, System.Text.Json.JsonSerializer.Serialize(Steady(100, bEnd)));
+        File.WriteAllText(b.LimitsPath, System.Text.Json.JsonSerializer.Serialize(new[] { Hit(bEnd.AddMinutes(-20), bEnd) }));
+        var watch = new PaceLedgerWatch(h.Store, "unused", (l, s) => h.Said.Add((l, s)), (t, _, u) => h.Alerts.Add((t, u)))
+        {
+            EventsPath = h.Watch.EventsPath,
+            FileTicket = s => { h.Filed.Add(s); return "M.ORCH-T999"; },
+            AccountDirs = dirs,
+        };
+
+        watch.Tick(bEnd.AddMinutes(30));
+        var row = watch.Db.LoadLedger().Single(w => w.Account == "acct-b");
+        Assert.That(row.Why, Does.Contain("hit the 5-hour limit"));
+        Assert.That(row.LimitHitUtc, Is.Not.Null);
+    }
+
     /// <summary>M.ORCH-T725: a per-CLI folder signed in as the global account must not hide that account's global rows, or every
     /// global window is re-reported each minute.</summary>
     [Test]
