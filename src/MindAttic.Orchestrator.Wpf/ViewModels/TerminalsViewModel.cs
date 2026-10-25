@@ -277,6 +277,20 @@ public sealed class PersonTerminalsViewModel : ObservableObject
 
     public ICommand CloseCommand => all.CloseCommand;
 
+    private ICommand? nextCommand, previousCommand;
+
+    /// <summary>Ctrl+Left and Ctrl+Right (M.ORCH-T824): the next and the previous CLI tab of this person's, cycling, so
+    /// switching works even while a terminal holds keyboard focus (plain Left/Right there move the CLI's own cursor).</summary>
+    public ICommand NextCommand => nextCommand ??= new RelayCommand(() => Step(+1));
+    public ICommand PreviousCommand => previousCommand ??= new RelayCommand(() => Step(-1));
+
+    private void Step(int by)
+    {
+        if (Panes.Count < 2) return;
+        var at = selected is null ? -1 : Panes.IndexOf(selected);
+        SelectedPane = Panes[((at + by) % Panes.Count + Panes.Count) % Panes.Count];
+    }
+
     /// <summary>Makes <see cref="Panes"/> exactly <paramref name="mine"/>, in its order. The chosen one stays chosen while it's
     /// still here; gone, its neighbor is chosen; and one arriving on an empty panel is chosen.</summary>
     internal void SyncTo(IReadOnlyList<TerminalPaneViewModel> mine)

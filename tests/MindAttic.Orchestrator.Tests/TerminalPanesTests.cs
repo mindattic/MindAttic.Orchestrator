@@ -172,6 +172,31 @@ public sealed class TerminalPanesTests
     }
 
     [Test, Apartment(ApartmentState.STA)]
+    public void Next_and_previous_cycle_the_persons_own_terminal_tabs_and_do_nothing_with_fewer_than_two()
+    {
+        // M.ORCH-T824: Ctrl+Left/Ctrl+Right, so switching works even while a terminal holds keyboard focus.
+        var all = new TerminalsViewModel();
+        var person = new PersonTerminalsViewModel(all);
+        TerminalPaneViewModel Pane(string repo) =>
+            new(new PaneRequest(repo, temp.New()) { Repo = repo, CommandLine = "cmd.exe", ConfigDir = @"C:\a\.claude-accounts\amy@example.com" });
+        var (a, b, c) = (Pane("A"), Pane("B"), Pane("C"));
+
+        person.SyncTo([a]);
+        person.NextCommand.Execute(null);
+        Assert.That(person.SelectedPane, Is.SameAs(a), "nothing to cycle to with only one tab");
+
+        person.SyncTo([a, b, c]);
+        person.NextCommand.Execute(null);
+        Assert.That(person.SelectedPane, Is.SameAs(b));
+        person.NextCommand.Execute(null);
+        Assert.That(person.SelectedPane, Is.SameAs(c));
+        person.NextCommand.Execute(null);
+        Assert.That(person.SelectedPane, Is.SameAs(a), "wraps from the last tab back to the first");
+        person.PreviousCommand.Execute(null);
+        Assert.That(person.SelectedPane, Is.SameAs(c), "and back the other way from the first to the last");
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
     public void The_Launcher_s_own_menu_pane_shows_without_a_provider_bracket()
     {
         var menu = new TerminalPaneViewModel(new PaneRequest("RD: Launcher", temp.New()) { Repo = "Launcher", Provider = "Launcher", CommandLine = "cmd.exe", IsMenu = true });

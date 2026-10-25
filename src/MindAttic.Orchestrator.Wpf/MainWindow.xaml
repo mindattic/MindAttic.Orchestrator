@@ -17,6 +17,10 @@
         <!-- The next and the previous login's tab (M.ORCH-T613). -->
         <KeyBinding Key="Tab" Modifiers="Control" Command="{Binding NextTabCommand}" />
         <KeyBinding Key="Tab" Modifiers="Control+Shift" Command="{Binding PreviousTabCommand}" />
+        <!-- The next and the previous CLI (Terminal) tab of the shown login's (M.ORCH-T824): works even while a terminal
+             holds keyboard focus, since plain Left/Right there move the CLI's own cursor instead of the tab strip's selection. -->
+        <KeyBinding Key="Left" Modifiers="Control" Command="{Binding Terminals.PreviousCommand}" />
+        <KeyBinding Key="Right" Modifiers="Control" Command="{Binding Terminals.NextCommand}" />
         <!-- Ctrl+Plus / Ctrl+Minus / Ctrl+0 (main row and number pad) are the library's ZoomLevel's, added in MainWindow.xaml.cs. -->
     </Window.InputBindings>
 
