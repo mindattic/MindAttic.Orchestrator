@@ -107,6 +107,72 @@ public sealed class OrchestratorServerTests
         Assert.That(new JsonStore(store.Directory, local).Load<List<string>>(Daemon.AllocateHoldsName), Is.EqualTo(new[] { "held" }));
     }
 
+    /// <summary>M.ORCH-T811: under heavy concurrent load (many CLIs and subagents writing at once, orchestrator next --claim
+    /// among them) the server's write lock (<see cref="OrchestratorServer.Lock"/>) can stay busy past its timeout; a write
+    /// through the store retries rather than failing the command outright the moment that happens.</summary>
+    [Test]
+    public void A_write_retries_past_the_servers_write_lock_staying_busy_and_succeeds_once_it_frees_up()
+    {
+        var connection = Connection();
+        var (_, store) = Scratch(connection);
+
+        var busyBefore = OrchestratorDb.BusyTimeoutMs;
+        var retriesBefore = OrchestratorDb.BusyRetries;
+        var delayBefore = OrchestratorDb.BusyRetryDelay;
+        OrchestratorDb.BusyTimeoutMs = 150; // short enough that the write below times out its first try, well before the lock frees
+        OrchestratorDb.BusyRetries = 5;
+        OrchestratorDb.BusyRetryDelay = TimeSpan.FromMilliseconds(100);
+        try
+        {
+            using var holder = new OrchestratorServer(connection).Open();
+            using var holderTx = holder.BeginTransaction();
+            OrchestratorServer.Lock(holder, holderTx); // another writer has the lock first
+            var release = Task.Run(() => { Thread.Sleep(350); holderTx.Commit(); }); // frees it only after the first try has already timed out
+
+            store.SaveSettings(new OrchestratorSettings { MaxSessionsPerRepo = 11 }); // waits out the busy lock instead of throwing
+
+            release.Wait();
+        }
+        finally
+        {
+            OrchestratorDb.BusyTimeoutMs = busyBefore;
+            OrchestratorDb.BusyRetries = retriesBefore;
+            OrchestratorDb.BusyRetryDelay = delayBefore;
+        }
+        Assert.That(store.LoadSettings().MaxSessionsPerRepo, Is.EqualTo(11), "the write went through once the other writer let go");
+    }
+
+    [Test]
+    public void A_write_gives_up_once_the_servers_write_lock_outlasts_every_retry()
+    {
+        var connection = Connection();
+        var (_, store) = Scratch(connection);
+
+        var busyBefore = OrchestratorDb.BusyTimeoutMs;
+        var retriesBefore = OrchestratorDb.BusyRetries;
+        var delayBefore = OrchestratorDb.BusyRetryDelay;
+        OrchestratorDb.BusyTimeoutMs = 100;
+        OrchestratorDb.BusyRetries = 1;
+        OrchestratorDb.BusyRetryDelay = TimeSpan.FromMilliseconds(50);
+        try
+        {
+            using var holder = new OrchestratorServer(connection).Open();
+            using var holderTx = holder.BeginTransaction();
+            OrchestratorServer.Lock(holder, holderTx); // held for the whole test: every retry still finds it busy
+
+            var ex = Assert.Throws<IOException>(() => store.SaveSettings(new OrchestratorSettings { MaxSessionsPerRepo = 12 }));
+            Assert.That(ex!.Message, Does.Contain("stayed busy past its timeout"));
+
+            holderTx.Rollback();
+        }
+        finally
+        {
+            OrchestratorDb.BusyTimeoutMs = busyBefore;
+            OrchestratorDb.BusyRetries = retriesBefore;
+            OrchestratorDb.BusyRetryDelay = delayBefore;
+        }
+    }
+
     [Test]
     public void Moving_to_SQL_Server_and_back_loses_nothing_and_writes_the_same_dump()
     {
@@ -166,10 +232,12 @@ public sealed class OrchestratorServerTests
         }
     }
 
-    private (OrchestratorDb Db, JsonStore Store) Scratch()
+    private (OrchestratorDb Db, JsonStore Store) Scratch() => Scratch(Connection());
+
+    private (OrchestratorDb Db, JsonStore Store) Scratch(string connection)
     {
         var dir = temps.New();
-        var db = new OrchestratorDb(Path.Combine(dir, "orchestrator.db")) { TestServer = new OrchestratorServer(Connection()) };
+        var db = new OrchestratorDb(Path.Combine(dir, "orchestrator.db")) { TestServer = new OrchestratorServer(connection) };
         return (db, new JsonStore(Path.Combine(dir, "store"), db));
     }
 

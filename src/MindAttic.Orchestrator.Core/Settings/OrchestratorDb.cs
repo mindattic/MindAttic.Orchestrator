@@ -110,20 +110,45 @@ public sealed class OrchestratorDb(string path)
                 localTx.Commit();
             }
         }
-        if (server is not null) using (var connection = server.Open())
-        {
-            using var tx = connection.BeginTransaction();
-            OrchestratorServer.Lock(connection, tx);
-            text = change(connection, tx) ? Dump(connection, tx) : null;
-            tx.Commit();
-            // Committed: a copy that can't be made now (the file held past its timeout) is made by the daemon's SyncMirror.
-            if (mirror.Length > 0)
-                try { Mirror(connection, mirror); }
-                catch (Exception ex) when (ex is DbException or IOException or UnauthorizedAccessException) { }
-        }
+        if (server is not null)
+            text = WithBusyRetry(() =>
+            {
+                using var connection = server.Open();
+                using var tx = connection.BeginTransaction();
+                OrchestratorServer.Lock(connection, tx);
+                var written = change(connection, tx) ? Dump(connection, tx) : null;
+                tx.Commit();
+                // Committed: a copy that can't be made now (the file held past its timeout) is made by the daemon's SyncMirror.
+                if (mirror.Length > 0)
+                    try { Mirror(connection, mirror); }
+                    catch (Exception ex) when (ex is DbException or IOException or UnauthorizedAccessException) { }
+                return written;
+            });
         if (text is null) return;
         try { WriteDump(text); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+
+    /// <summary>How many extra times a write retries taking SQL Server's write lock (<see cref="OrchestratorServer.Lock"/>) after
+    /// it stayed busy past its timeout, and how long it waits before each retry (longer each time): many CLIs and subagents
+    /// writing at once under heavy load is the normal case here (M.ORCH-T811), not a reason to fail the command outright over a
+    /// lock another writer was about to release. Tests shorten both.</summary>
+    internal static int BusyRetries { get; set; } = 3;
+    internal static TimeSpan BusyRetryDelay { get; set; } = TimeSpan.FromMilliseconds(200);
+
+    /// <summary>Runs <paramref name="attempt"/>, retrying it (waiting <see cref="BusyRetryDelay"/> longer each time) whenever it
+    /// throws because SQL Server's write lock stayed busy past its timeout, up to <see cref="BusyRetries"/> extra times. The
+    /// exception from the last try is thrown as is once every retry still finds it busy.</summary>
+    internal static T WithBusyRetry<T>(Func<T> attempt)
+    {
+        for (var retry = 0; ; retry++)
+        {
+            try { return attempt(); }
+            catch (IOException) when (retry < BusyRetries)
+            {
+                Thread.Sleep(BusyRetryDelay * (retry + 1));
+            }
+        }
     }
 
     /// <summary>Copies what <paramref name="what"/> names from SQL Server (<paramref name="server"/>) into this file, replacing it.</summary>
