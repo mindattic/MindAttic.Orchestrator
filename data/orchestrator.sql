@@ -3326,7 +3326,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-25', '(workspace root)', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 35426);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-25', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4872099);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-25', 'REA.Bloodlines', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5415758);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-25', 'RogueTraderBrevity', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13384678);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-25', 'RogueTraderBrevity', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 13530607);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-25', 'RusNet', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 331017);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-25', 'Unity.Cursory', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 6192);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-25', 'Unity.Eve', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 4271);
@@ -4676,6 +4676,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-a16a7ee8036b997b0', 'RTB-T188', 'chore', 'RogueTraderBrevity', 81716, '2026-10-25T10:00:14.392Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-a173d6c0a39994383', 'RTB-T185', 'chore', 'RogueTraderBrevity', 63974, '2026-10-25T09:58:51.704Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-a1a41f37b46458586', 'RTB-T207', 'chore', 'RogueTraderBrevity', 103905, '2026-10-25T10:34:04.348Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-a1c33ff773e0f7605', 'RTB-T212', 'chore', 'RogueTraderBrevity', 18230, '2026-10-25T10:56:27.283Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-a1e5140619b53e2d4', 'RTB-T206', 'chore', 'RogueTraderBrevity', 105194, '2026-10-25T10:33:57.469Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-a2579f000c2f2dc23', 'RTB-T175', 'chore', 'RogueTraderBrevity', 90495, '2026-10-25T09:20:00.834Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-a25d88dd9af98aeb7', 'RTB-T114', 'chore', 'RogueTraderBrevity', 118005, '2026-10-25T07:41:08.126Z', 0, 'opus');
@@ -4711,6 +4712,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-a80112738c64abb5a', 'RTB-T199', 'chore', 'RogueTraderBrevity', 98300, '2026-10-25T10:26:20.337Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-a8014d5f9cba1b945', 'RTB-T197', 'chore', 'RogueTraderBrevity', 73512, '2026-10-25T10:14:05.064Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-a82b3523a7eeeb963', 'RTB-T194', 'chore', 'RogueTraderBrevity', 96348, '2026-10-25T10:01:37.96Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-a85222a26524d70f7', 'RTB-T210', 'chore', 'RogueTraderBrevity', 91298, '2026-10-25T10:52:23.327Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-a853d71e6d2c062ea', 'RTB-T124', 'chore', 'RogueTraderBrevity', 67031, '2026-10-25T07:45:02.116Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-a8545b7e0a3b79a0e', 'RTB-T153', 'chore', 'RogueTraderBrevity', 72268, '2026-10-25T08:40:31.194Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-a884475a90f55c7a2', 'RTB-T131', 'chore', 'RogueTraderBrevity', 72352, '2026-10-25T08:02:05.9Z', 0, 'opus');
@@ -4726,6 +4728,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-aa7f378df1fd2b6f6', 'RTB-T121', 'chore', 'RogueTraderBrevity', 130809, '2026-10-25T07:47:20.668Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-aa88f20e29718eb3b', 'RTB-T180', 'chore', 'RogueTraderBrevity', 82546, '2026-10-25T09:26:04.074Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-aa967b6601331804f', 'RTB-T127', 'chore', 'RogueTraderBrevity', 41514, '2026-10-25T07:50:00.535Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-aaaad9564c9f49a89', 'RTB-T211', 'chore', 'RogueTraderBrevity', 88740, '2026-10-25T10:56:07.079Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-aaca982bcad8d8496', 'RTB-T176', 'chore', 'RogueTraderBrevity', 96332, '2026-10-25T09:22:58.173Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-ab324540f11bfaa78', 'RTB-T160', 'chore', 'RogueTraderBrevity', 79570, '2026-10-25T08:49:18.937Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('b74d07e9-e3e7-44d0-83dd-71a7f557c566/agent-ab4ae387a8d6427e5', 'RTB-T209', 'chore', 'RogueTraderBrevity', 86236, '2026-10-25T10:43:26.973Z', 0, 'opus');
@@ -5161,6 +5164,7 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (52, 'RB-T191', 'REA.Bloodlines', 'D:\Projects\MindAttic.worktrees\REA.Bloodlines\RB-T191', 'Claude', '2026-10-25T06:27:17.9757804Z', 1, NULL, NULL, NULL, 60056, '12795dbb-cadb-4053-a46e-bb2241b3f3bc', 'opus', NULL, 'honey@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (53, 'RB-T192', 'REA.Bloodlines', 'D:\Projects\MindAttic.worktrees\REA.Bloodlines\RB-T192', 'Claude', '2026-10-25T06:29:14.0700386Z', 1, NULL, NULL, NULL, 60056, '12795dbb-cadb-4053-a46e-bb2241b3f3bc', 'opus', NULL, 'honey@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (54, 'MAU-T9', 'Unity.Shared', 'D:\Projects\MindAttic.worktrees\Unity.Shared\MAU-T9', 'Claude', '2026-10-25T06:57:30.9318374Z', 1, NULL, NULL, NULL, 30244, 'ddefd224-ff9a-422d-b6e9-218728189540', 'sonnet', NULL, 'ryandebraal@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (55, 'RTB-T212', 'RogueTraderBrevity', 'D:\Projects\MindAttic.worktrees\RogueTraderBrevity\RTB-T212', 'Claude', '2026-10-25T10:56:14.2535483Z', 1, NULL, NULL, NULL, NULL, NULL, 'opus', NULL, 'waffle@mindattic.com');
 
 -- organizations
 
@@ -7808,8 +7812,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "a57a30142679f3ed216b7bb6a585534536b6391c"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "70a8332d7fc2218fb9492a0306d076266c5d0be8",
-    "Green": "70a8332d7fc2218fb9492a0306d076266c5d0be8"
+    "Tested": "af09b10a10333a06fb6c3c9df068bee0c47ae6ec",
+    "Green": "af09b10a10333a06fb6c3c9df068bee0c47ae6ec"
   },
   "MindAttic.Psst": {
     "Tested": "4a8dd88cf5df31911bcff9ec0b040a5008399a02"
