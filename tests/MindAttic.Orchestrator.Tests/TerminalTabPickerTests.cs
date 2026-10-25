@@ -87,7 +87,17 @@ public sealed class TerminalTabPickerTests
     {
         Assert.That(TerminalTabPicker.ExpectedTitle(Host(1, "General [Claude]", @"D:\Projects\MindAttic")), Is.EqualTo("General [Claude]"));
         Assert.That(TerminalTabPicker.ExpectedTitle(Host(1, null, @"D:\Projects\MindAttic\REA.Bloodlines\")), Is.EqualTo("REA.Bloodlines [Claude]"));
-        Assert.That(TerminalTabPicker.ExpectedTitle(Host(1, null, @"D:\Projects\MindAttic\GTFO.EZ")), Is.EqualTo("EZ [Claude]"));
+        // ShortName only drops a dot-prefix once two or more known repos share it (M.ORCH-T632): with none known here,
+        // "GTFO.EZ" is the only "GTFO." repo in scope, so it stays whole, same as a repo whose prefix nothing else shares would.
+        Assert.That(TerminalTabPicker.ExpectedTitle(Host(1, null, @"D:\Projects\MindAttic\GTFO.EZ")), Is.EqualTo("GTFO.EZ [Claude]"));
+        var was = SessionControl.KnownRepoNames;
+        try
+        {
+            SessionControl.KnownRepoNames = ["GTFO.EZ", "GTFO.AbsurdWeapons"];
+            Assert.That(TerminalTabPicker.ExpectedTitle(Host(1, null, @"D:\Projects\MindAttic\GTFO.EZ")), Is.EqualTo("EZ [Claude]"),
+                "another known GTFO. repo: now it's worth dropping");
+        }
+        finally { SessionControl.KnownRepoNames = was; }
         Assert.That(TerminalTabPicker.ExpectedTitle(Host(1, null)), Is.Null);
     }
 

@@ -6,6 +6,19 @@ namespace MindAttic.Orchestrator.Tests;
 
 public sealed class SessionControlTests
 {
+    [Test, NonParallelizable] // SessionControl.KnownRepoNames is process-wide
+    public void ShortName_strips_a_prefix_two_or_more_known_repos_share_and_keeps_a_unique_one_whole()
+    {
+        var saved = SessionControl.KnownRepoNames;
+        try
+        {
+            SessionControl.KnownRepoNames = ["GTFO.EZ", "GTFO.Dust", "REA.Bloodlines"];
+            Assert.That(SessionControl.ShortName("GTFO.EZ"), Is.EqualTo("EZ"), "GTFO. is shared by two known repos");
+            Assert.That(SessionControl.ShortName("REA.Bloodlines"), Is.EqualTo("REA.Bloodlines"), "REA. is unique to one repo");
+        }
+        finally { SessionControl.KnownRepoNames = saved; }
+    }
+
     [Test]
     public void Start_says_what_is_missing_and_launches_nothing()
     {

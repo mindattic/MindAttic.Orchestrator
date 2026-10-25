@@ -223,13 +223,19 @@ public sealed class AccountDirsTests
     [Test]
     public void A_tabs_title_drops_the_repos_leading_prefix()
     {
-        // M.ORCH-T632: "JR: EZ [Claude]", not "[JR] GTFO.EZ [Claude]"; the provider tag stays.
-        var control = new SessionControl(new OrchestratorOptions { LauncherExe = "L.exe" }) { Look = _ => LoginLook.For(Path.Combine(dir, "global"), "jordan@example.com") };
+        // M.ORCH-T632: "JR: EZ [Claude]", not "[JR] GTFO.EZ [Claude]"; the provider tag stays. Generalized: no fixed
+        // "GTFO."/"MindAttic."/"Unity." list any more — a prefix drops once RepoNames says two or more repos share it,
+        // and REA. stays below on purpose to prove a prefix unique to one repo doesn't.
+        var control = new SessionControl(new OrchestratorOptions { LauncherExe = "L.exe" })
+        {
+            Look = _ => LoginLook.For(Path.Combine(dir, "global"), "jordan@example.com"),
+            RepoNames = () => ["GTFO.EZ", "GTFO.Dust", "MindAttic.Tickets", "MindAttic.Launcher", "Unity.Eve", "Unity.Other", "REA.Bloodlines"],
+        };
         Assert.That(control.StartArguments("GTFO.EZ", dir, "Claude", null).ToList()[4], Is.EqualTo("JO: EZ [Claude]"));
         Assert.That(control.StartArguments("MindAttic.Tickets", dir, "Claude", null).ToList()[4], Is.EqualTo("JO: Tickets [Claude]"));
         Assert.That(control.StartArguments("Unity.Eve", dir, "Codex", null).ToList()[4], Is.EqualTo("Eve [Codex]"));
         Assert.That(control.StartArguments("UnityEve", dir, "Codex", null).ToList()[4], Is.EqualTo("UnityEve [Codex]"), "only the exact prefix, dot and all");
-        Assert.That(control.StartArguments("REA.Bloodlines", dir, "Codex", null).ToList()[4], Is.EqualTo("REA.Bloodlines [Codex]"));
+        Assert.That(control.StartArguments("REA.Bloodlines", dir, "Codex", null).ToList()[4], Is.EqualTo("REA.Bloodlines [Codex]"), "a prefix unique to one repo stays whole");
         Assert.That(SessionControl.ShortName("GTFO."), Is.EqualTo("GTFO."), "a name that is only the prefix stays whole");
     }
 

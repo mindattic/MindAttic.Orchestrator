@@ -16,7 +16,11 @@ public sealed class SessionControl(OrchestratorOptions options)
     /// <summary>Opens a new tab for <paramref name="directory"/>; returns an error, or null on success.</summary>
     /// <param name="configDir">A Claude login of its own (M.ORCH-T559, <see cref="AccountDir.Directory"/>) the tab's CLI runs
     /// under; null runs it on the global login, as every tab did before.</param>
-    public string? Start(string title, string directory, string provider, string? prompt = null, string? configDir = null)
+    /// <param name="resumeSession">Undock's own reopen (M.ORCH-Tnnn): <c>claude --resume &lt;session&gt;</c> instead of a fresh
+    /// start, so the relocated CLI's conversation carries over. Claude only (as <see cref="Start"/>'s own provider check
+    /// already implies for <paramref name="configDir"/>); ignored alongside <paramref name="prompt"/>, which a relocation
+    /// never sets anyway.</param>
+    public string? Start(string title, string directory, string provider, string? prompt = null, string? configDir = null, string? resumeSession = null)
     {
         if (configDir is not null && provider != "Claude")
             return $"--account is a Claude login: {provider} has none.";
@@ -26,7 +30,7 @@ public sealed class SessionControl(OrchestratorOptions options)
             return $"Folder not found: {directory}";
 
         var psi = new ProcessStartInfo("wt.exe") { UseShellExecute = false };
-        foreach (var a in StartArguments(title, directory, provider, prompt, configDir)) psi.ArgumentList.Add(a);
+        foreach (var a in StartArguments(title, directory, provider, prompt, configDir, resumeSession)) psi.ArgumentList.Add(a);
         try
         {
             using var _ = Process.Start(psi);
@@ -89,15 +93,47 @@ public sealed class SessionControl(OrchestratorOptions options)
         return all.Select(a => a.Replace(";", @"\;"));
     }
 
-    /// <summary>The title of a login's Launcher tab: "RD: MindAttic.Launcher".</summary>
-    internal static string LauncherTitle(LoginLook look) => $"{look.Initials}: MindAttic.Launcher";
+    /// <summary>The title of a login's Launcher tab: "RD: Launcher" (M.LNCH-T77's title fix: no un-stripped "MindAttic." and
+    /// no trailing name suffix, the same format as every other CLI's tab).</summary>
+    internal static string LauncherTitle(LoginLook look) => $"{look.Initials}: Launcher";
 
     /// <summary>The title <see cref="OpenLauncher"/> gives <paramref name="email"/>'s Launcher tab (null: the global login's), to find it again.</summary>
     public string LauncherTitleOf(string? email) =>
         LauncherTitle(Look(AccountDirs.Normalize(email) is { } normalized ? Dirs.For(normalized).Directory : null));
 
+    /// <summary>The Launcher's own menu as a <see cref="PaneRequest"/>, to open embedded as a Terminals panel tab (M.LNCH-T77)
+    /// instead of its own Windows Terminal window: <see cref="PaneRequest.ProcessCommandLine"/> sets
+    /// <see cref="PaneBroker.InsideVariable"/> for it automatically, so every CLI it opens, seeing itself hosted, routes back
+    /// here too rather than opening a standalone window of its own. Unlike <see cref="LauncherArguments"/>'s Windows Terminal
+    /// tab, nothing here needs to set <c>CLAUDE_CONFIG_DIR</c>/the long-lived token up front: a scoped Launcher resolves its
+    /// own login from <c>--account</c>, and a CLI it opens from here arrives as a pane of its own, not a child process that
+    /// would inherit this one's environment.</summary>
+    public PaneRequest LauncherPaneRequest(string? email)
+    {
+        var normalized = AccountDirs.Normalize(email);
+        var configDir = normalized is null ? null : Dirs.For(normalized).Directory;
+        var look = Look(configDir);
+        var root = Directory.Exists(options.WorkspaceRoot) ? options.WorkspaceRoot : Path.GetDirectoryName(options.LauncherExe) ?? ".";
+        return new PaneRequest(LauncherTitle(look), root)
+        {
+            Command = normalized is null ? [options.LauncherExe] : [options.LauncherExe, "--account", normalized],
+            Repo = "Launcher",
+            Provider = "Launcher",
+            ConfigDir = configDir,
+            Email = normalized,
+            Initials = look.Initials,
+            TabColor = look.TabColor,
+            IsMenu = true,
+        };
+    }
+
     /// <summary>The command lines of the Launcher processes running now, by pid; tests set their own.</summary>
     internal Func<IReadOnlyDictionary<int, string>> LauncherMenus { get; init; } = HostSessionScanner.LauncherCommandLines;
+
+    /// <summary>The pid of a standalone Launcher menu already running for <paramref name="email"/>'s login outside the
+    /// dashboard (M.ORCH-T699), so opening it embedded (M.LNCH-T77) doesn't also open a second, standalone one; null when
+    /// none is. Asks WMI: off the UI thread.</summary>
+    public int? RunningLauncherOf(string? email) => LauncherMenuOf(LauncherMenus(), email);
 
     /// <summary>The Launcher menu (not a <c>host</c> tab) already running for <paramref name="email"/>'s login among
     /// <paramref name="launchers"/>: its <c>--account</c> is that email, or it has none for the global login. Null when none is.</summary>
@@ -123,30 +159,61 @@ public sealed class SessionControl(OrchestratorOptions options)
     internal Func<string?, string> TokenEnv { get; init; } = configDir => LoginTokens.Default.TabEnv(configDir, DateTime.UtcNow);
 
     /// <summary>A tab's title (M.ORCH-T632): "JR: Repo [Claude]", the login's initials (when it has one) then the repo's
-    /// <see cref="ShortName"/> and its provider.</summary>
-    private static string TabTitle(string title, string provider, LoginLook? look) =>
-        look is null ? $"{ShortName(title)} [{provider}]" : $"{look.Initials}: {ShortName(title)} [{provider}]";
+    /// <see cref="ShortName(string, Func{IReadOnlyCollection{string}})"/> and its provider. Internal rather than private so
+    /// <see cref="Relocate"/>'s reopened-tab titles (Dock/Undock) match every other tab's format exactly.</summary>
+    internal static string TabTitle(string title, string provider, LoginLook? look, Func<IReadOnlyCollection<string>> knownRepos) =>
+        look is null ? $"{ShortName(title, knownRepos)} [{provider}]" : $"{look.Initials}: {ShortName(title, knownRepos)} [{provider}]";
 
-    /// <summary>The leading prefixes a repo's name drops where a tab shows it (M.ORCH-T632), as the Launcher drops them.</summary>
-    public static readonly IReadOnlyList<string> NamePrefixes = ["GTFO.", "MindAttic.", "Unity."];
+    /// <summary>The repo names known right now, process-wide (M.ORCH-T632): every <see cref="StatusAggregator.Refresh"/>
+    /// replaces this with the snapshot's own repos, so the single-argument <see cref="ShortName(string)"/> — the only form a
+    /// call site with no workspace of its own (a tab-matching helper, a view model) can use — can tell a dot-prefix two or
+    /// more repos share (worth stripping) from one unique to a single repo (kept whole, since stripping it would hide which
+    /// org it's under). Tests set their own.</summary>
+    public static IReadOnlyCollection<string> KnownRepoNames { get; set; } = [];
 
-    /// <summary>A repo's name as a tab shows it: without a leading <see cref="NamePrefixes"/> entry ("GTFO.EZ" → "EZ"); a
-    /// name that is only the prefix stays whole.</summary>
-    public static string ShortName(string repo)
+    /// <summary>A repo's name as a tab shows it (M.ORCH-T632): without its dot-prefix (up to and including the first '.')
+    /// once two or more of <see cref="KnownRepoNames"/> share it ("GTFO.EZ" → "EZ" once another "GTFO." repo is known); a
+    /// name whose prefix is unique, or that is only the prefix, stays whole. Generalized from a fixed
+    /// "GTFO."/"MindAttic."/"Unity." list.</summary>
+    public static string ShortName(string repo) => ShortName(repo, () => KnownRepoNames);
+
+    /// <summary>Same as <see cref="ShortName(string)"/>, but checked against <paramref name="knownRepos"/> (not read until a
+    /// dot-prefix is actually found, so a title with none never pays for it) instead of the process-wide
+    /// <see cref="KnownRepoNames"/> — what a caller with its own live workspace (<see cref="StartArguments"/>) uses.</summary>
+    internal static string ShortName(string repo, Func<IReadOnlyCollection<string>> knownRepos)
     {
-        foreach (var prefix in NamePrefixes)
-            if (repo.Length > prefix.Length && repo.StartsWith(prefix, StringComparison.Ordinal)) return repo[prefix.Length..];
-        return repo;
+        var dot = repo.IndexOf('.');
+        if (dot <= 0 || dot >= repo.Length - 1) return repo;
+        var prefix = repo[..(dot + 1)];
+        return SharedPrefixes(knownRepos()).Contains(prefix) ? repo[(dot + 1)..] : repo;
     }
 
-    internal IEnumerable<string> StartArguments(string title, string directory, string provider, string? prompt, string? configDir = null)
+    private static HashSet<string> SharedPrefixes(IEnumerable<string> names) =>
+        [.. names.Select(DotPrefix).OfType<string>().GroupBy(p => p, StringComparer.Ordinal).Where(g => g.Count() > 1).Select(g => g.Key)];
+
+    private static string? DotPrefix(string name)
+    {
+        var dot = name.IndexOf('.');
+        return dot > 0 && dot < name.Length - 1 ? name[..(dot + 1)] : null;
+    }
+
+    /// <summary>The repo names known right now, from the live workspace at <see cref="OrchestratorOptions.WorkspaceRoot"/>
+    /// (M.ORCH-T632): what a newly opened tab's title checks its repo's dot-prefix against. Tests set their own rather than
+    /// read the real workspace.</summary>
+    internal Func<IReadOnlyCollection<string>> RepoNames { get; init; } =
+        () => [.. new MindAttic.Tickets.Workspace(options.WorkspaceRoot).Repos().Select(r => r.Name)];
+
+    internal IEnumerable<string> StartArguments(string title, string directory, string provider, string? prompt, string? configDir = null, string? resumeSession = null)
     {
         // A Claude tab gathers in its login's own window, badged and colored as that login; other providers have no login.
         var look = provider == "Claude" ? Look(configDir) : null;
-        var tabTitle = TabTitle(title, provider, look);
+        var tabTitle = TabTitle(title, provider, look, RepoNames);
         string[] tab = look is null
             ? ["-w", "0", "new-tab", "--title", tabTitle]
             : ["-w", look.Window, "new-tab", "--title", tabTitle, "--tabColor", look.TabColor];
+        // A relocation never sets a prompt (there's nothing to pre-fill into a resumed conversation), but if both were ever
+        // given, resuming wins: HostAgentCommand's own --resume handling ignores --prompt the same way.
+        var resumeArg = resumeSession is { Length: > 0 } s ? $" --resume {AccountDirs.Ps(s)}" : "";
         if (configDir is not null)
         {
             // Windows Terminal starts the tab itself, from its own environment, not this process's: the Launcher (and the
@@ -154,8 +221,8 @@ public sealed class SessionControl(OrchestratorOptions options)
             // the folder, title or prompt reaches wt's parse.
             // Its long-lived token (M.ORCH-T696), when the login has one, goes in beside the folder.
             var script = $"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(configDir)}; {TokenEnv(configDir)}& {AccountDirs.Ps(options.LauncherExe)} host --path {AccountDirs.Ps(directory)} " +
-                $"--title {AccountDirs.Ps(tabTitle)} --provider {AccountDirs.Ps(provider)}" +
-                (string.IsNullOrWhiteSpace(prompt) ? "" : $" --prompt {AccountDirs.Ps(SafePrompt(prompt))}") + "; exit $LASTEXITCODE";
+                $"--title {AccountDirs.Ps(tabTitle)} --provider {AccountDirs.Ps(provider)}" + resumeArg +
+                (resumeArg.Length > 0 || string.IsNullOrWhiteSpace(prompt) ? "" : $" --prompt {AccountDirs.Ps(SafePrompt(prompt))}") + "; exit $LASTEXITCODE";
             string[] wrapped = [.. tab, "-d", directory, "--",
                 "powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", Convert.ToBase64String(Encoding.Unicode.GetBytes(script))];
             return wrapped.Select(a => a.Replace(";", @"\;"));
@@ -165,9 +232,10 @@ public sealed class SessionControl(OrchestratorOptions options)
             .. tab, "-d", directory, "--",
             options.LauncherExe, "host", "--path", directory, "--title", tabTitle, "--provider", provider,
         ];
+        if (resumeSession is { Length: > 0 }) head = [.. head, "--resume", resumeSession];
         // A double quote (or a line break) in the prompt survives .NET's quoting but not wt's own re-parse,
         // which splits the prompt into stray arguments the Launcher rejects ("Unknown command"), so the tab dies.
-        string[] all = string.IsNullOrWhiteSpace(prompt) ? head : [.. head, "--prompt", SafePrompt(prompt)];
+        string[] all = resumeArg.Length > 0 || string.IsNullOrWhiteSpace(prompt) ? head : [.. head, "--prompt", SafePrompt(prompt)];
         // wt splits its whole command line into subcommands on ';' unless it's escaped.
         return all.Select(a => a.Replace(";", @"\;"));
     }

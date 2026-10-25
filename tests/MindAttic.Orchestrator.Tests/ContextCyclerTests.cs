@@ -73,6 +73,9 @@ public sealed class ContextCyclerTests
         var src = Path.GetFullPath(Path.Combine(TestContext.CurrentContext.TestDirectory, "..", "..", "..", "..", "..", "src"));
         var typing = Directory.EnumerateFiles(src, "*.cs", SearchOption.AllDirectories)
             .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
+            // OrchestratorSettings' exempt-commands list names these as commands pacing lets through, never as text typed
+            // into a session (nothing there reaches SendAsync/SubmitAsync): the one legitimate quoted occurrence.
+            .Where(f => !f.EndsWith($"{Path.DirectorySeparatorChar}OrchestratorSettings.cs", StringComparison.Ordinal))
             // The dashboard's reply box sends only what you type yourself; nothing may send these on its own.
             .Where(f => File.ReadAllText(f) is var t && (t.Contains("\"/quicksave\"") || t.Contains("\"/clear\"") || t.Contains("\"/quickload\"")))
             .ToList();

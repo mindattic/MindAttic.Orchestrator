@@ -176,10 +176,19 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             Published.Read(DateTime.UtcNow) is { } shared && !ResetSince(shared, DateTime.UtcNow))
         {
             LastWasShared = true;
-            return WithLiveBilling(WithLiveQueue(shared), DateTime.UtcNow);
+            return KnownRepos(WithLiveBilling(WithLiveQueue(shared), DateTime.UtcNow));
         }
         var snapshot = Build(nowUtc ?? DateTime.UtcNow);
         if (nowUtc is null && statusLease is { IsHeld: true }) Published.Write(snapshot);
+        return KnownRepos(snapshot);
+    }
+
+    /// <summary>Refreshes <see cref="Sessions.SessionControl.KnownRepoNames"/> from every snapshot this process shows,
+    /// built here or shown from another's: the one roster a repo-name display with no workspace of its own (a tab-matching
+    /// helper, a view model) reads to tell a dot-prefix two or more repos share from one unique to a single repo.</summary>
+    private static Snapshot KnownRepos(Snapshot snapshot)
+    {
+        Sessions.SessionControl.KnownRepoNames = [.. snapshot.Repos.Select(r => r.Name)];
         return snapshot;
     }
 
