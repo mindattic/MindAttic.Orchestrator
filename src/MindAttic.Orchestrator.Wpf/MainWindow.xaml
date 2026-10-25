@@ -160,10 +160,24 @@
             </ListBox.ItemTemplate>
         </ListBox>
         <!-- The org-wide login actions (Add login, Sign in all, Report) moved from here into Settings' Logins tab (M.ORCH-T804). -->
+        <!-- No wrap, ever (M.ORCH-T822): every tab is a fixed width (PersonTabWidth below), so once there are enough logins the
+             strip is wider than the window. A plain horizontal ScrollViewer around it, paged by the < and > buttons
+             (LoginTabScroller_ScrollChanged/LoginTabScrollLeft_Click/Right_Click in MainWindow.xaml.cs), hidden while
+             everything fits and disabled at each end rather than wrapping around. -->
+        <Grid x:Name="LoginTabStripRow" Visibility="{Binding HasLoginTabs, Converter={StaticResource Visible}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Button x:Name="LoginTabScrollLeft" Grid.Column="0" Style="{StaticResource MaToolButton}" Content="&#xE76B;"
+                    Click="LoginTabScrollLeft_Click" Margin="0,0,4,0" Visibility="Collapsed"
+                    ToolTip="Scroll the login tabs left" AutomationProperties.Name="Scroll the login tabs left" />
+            <ScrollViewer x:Name="LoginTabScroller" Grid.Column="1" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+                          ScrollChanged="LoginTabScroller_ScrollChanged">
         <mc:MaTabControl x:Name="LoginTabStrip" ShowContent="False" ItemsSource="{Binding OrgTabs}" SelectedItem="{Binding SelectedTab}"
                          AutomationProperties.Name="Claude logins, one dashboard tab each"
-                         ContextMenuOpening="OnLoginTabContextMenu"
-                         Visibility="{Binding HasLoginTabs, Converter={StaticResource Visible}}">
+                         ContextMenuOpening="OnLoginTabContextMenu">
             <!-- Status at a glance (M.ORCH-T630), all the library's MaTabItem (M.ORCH-T667): a status icon before the name
                  (M.ORCH-T757, in place of the status light): a pause icon while the login is idle; a green play arrow that
                  blinks rapidly while it's busy, i.e. while it has any live CLI, hosted inside the Orchestrator's Terminals panel
@@ -242,6 +256,11 @@
                 </DataTemplate>
             </mc:MaTabControl.ItemTemplate>
         </mc:MaTabControl>
+            </ScrollViewer>
+            <Button x:Name="LoginTabScrollRight" Grid.Column="2" Style="{StaticResource MaToolButton}" Content="&#xE76C;"
+                    Click="LoginTabScrollRight_Click" Margin="4,0,0,0" Visibility="Collapsed"
+                    ToolTip="Scroll the login tabs right" AutomationProperties.Name="Scroll the login tabs right" />
+        </Grid>
         </StackPanel>
         </DockPanel>
 

@@ -178,6 +178,23 @@ public partial class MainWindow : Window
         if (ItemsControl.ContainerFromElement(LoginTabStrip, content) is TabItem tab) tab.Width = PersonTabWidth;
     }
 
+    /// <summary>No wrap, ever (M.ORCH-T822): the < and > buttons page <see cref="LoginTabScroller"/> by one tab's width,
+    /// hidden while every login's tab already fits and disabled at whichever end is already reached, rather than wrapping
+    /// around. Fires on load, resize and scroll alike, since all three change <see cref="ScrollViewer.ScrollableWidth"/>.</summary>
+    private void LoginTabScroller_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        var can = LoginTabScroller.ScrollableWidth > 0.5;
+        LoginTabScrollLeft.Visibility = LoginTabScrollRight.Visibility = can ? Visibility.Visible : Visibility.Collapsed;
+        LoginTabScrollLeft.IsEnabled = LoginTabScroller.HorizontalOffset > 0.5;
+        LoginTabScrollRight.IsEnabled = LoginTabScroller.HorizontalOffset < LoginTabScroller.ScrollableWidth - 0.5;
+    }
+
+    private void LoginTabScrollLeft_Click(object sender, RoutedEventArgs e) =>
+        LoginTabScroller.ScrollToHorizontalOffset(LoginTabScroller.HorizontalOffset - PersonTabWidth);
+
+    private void LoginTabScrollRight_Click(object sender, RoutedEventArgs e) =>
+        LoginTabScroller.ScrollToHorizontalOffset(LoginTabScroller.HorizontalOffset + PersonTabWidth);
+
     /// <summary>Starts <paramref name="icon"/>'s rapid forever blink while <paramref name="on"/>, or settles it fully opaque
     /// once it isn't, so it's solid rather than left mid-fade the next time it's shown.</summary>
     private static void Blink(TextBlock icon, bool on) =>
