@@ -250,5 +250,31 @@ if ($step -eq 'newer') {
 
 if ($Launch -and $installed) { Start-Process -FilePath $installed }
 
+# ── The sibling repo's deploy ───────────────────────────────────────────────
+# Deploying Orchestrator also deploys Tickets (its deploy.ps1 does the same back here).
+# MINDATTIC_DEPLOY_CHAIN stops Orchestrator -> Tickets -> Orchestrator from looping.
+if (-not $env:MINDATTIC_DEPLOY_CHAIN) {
+    $ticketsDeploy = Join-Path $repo '..\MindAttic.Tickets\deploy.ps1'
+    if (Test-Path $ticketsDeploy) {
+        Write-Host "Deploying MindAttic.Tickets too ($ticketsDeploy)..." -ForegroundColor Cyan
+        $chainArgs = @{}
+        if ($Force) { $chainArgs['Force'] = $true }
+        $env:MINDATTIC_DEPLOY_CHAIN = '1'
+        try {
+            # Tickets' deploy.ps1 has no exit code convention of its own (unlike this script): it signals failure by
+            # throwing (it runs under $ErrorActionPreference = 'Stop' too), so that's the only thing to catch here.
+            & $ticketsDeploy @chainArgs
+            Write-Host 'MindAttic.Tickets deployed.' -ForegroundColor Green
+        } catch {
+            Write-Host "MindAttic.Tickets deploy FAILED: $($_.Exception.Message)" -ForegroundColor Red
+            $failed = $true
+        } finally {
+            Remove-Item Env:\MINDATTIC_DEPLOY_CHAIN -ErrorAction SilentlyContinue
+        }
+    } else {
+        Write-Host "MindAttic.Tickets checkout not found at $ticketsDeploy; skipping its deploy." -ForegroundColor DarkYellow
+    }
+}
+
 if ($failed) { Write-Host 'Deploy FAILED.' -ForegroundColor Red; exit 1 }
 exit 0
