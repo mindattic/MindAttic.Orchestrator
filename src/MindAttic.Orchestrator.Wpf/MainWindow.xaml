@@ -597,6 +597,54 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
+                <!-- Terminals (M.ORCH-T810), between the person's Current work and their Tickets: one tab per CLI of theirs running
+                     inside the dashboard (sent by the Launcher when it runs inside the Orchestrator, M.LNCH-T77), each a live
+                     ConPTY terminal with the Windows Terminal renderer, so Claude Code draws as it does in Windows Terminal. Each tab
+                     is underlined in its login's colour and led by its badge (an MaTag in that colour). The terminals are native
+                     windows: they all live in the one host grid below (MainWindow.xaml.cs adds and removes them, since a template
+                     would start a new CLI each time it was shown) and only the shown person's chosen one is visible; the window
+                     clips them to this scroll view (TerminalClip.cs) and hides them under a dialog or the loader. -->
+                <StackPanel x:Name="TerminalsPanel" Margin="0,24,0,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Terminals" Style="{StaticResource MaHeading}" AutomationProperties.HeadingLevel="Level2" />
+                        <TextBlock Text="{Binding Terminals.Summary}" Style="{StaticResource MaMutedText}" Margin="12,0,0,0" VerticalAlignment="Bottom" />
+                    </StackPanel>
+                    <TextBlock x:Name="TerminalsEmptyHint" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0"
+                               Text="No terminals open on this login. When the Launcher runs inside the Orchestrator, each CLI it opens arrives here as a tab of its own: a live terminal you can type in."
+                               Visibility="{Binding Terminals.HasPanes, Converter={x:Static vm:Converters.FalseToVisible}}" />
+                    <mc:MaTabControl x:Name="TerminalTabs" ShowContent="False" ItemsSource="{Binding Terminals.Panes}" SelectedItem="{Binding Terminals.SelectedPane}"
+                                     Margin="0,8,0,6" AutomationProperties.Name="Terminals"
+                                     Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
+                        <mc:MaTabControl.ItemContainerStyle>
+                            <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
+                                <Setter Property="Accent" Value="{Binding TabBrush}" />
+                                <Setter Property="ToolTip" Value="{Binding Tooltip}" />
+                                <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+                            </Style>
+                        </mc:MaTabControl.ItemContainerStyle>
+                        <mc:MaTabControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:TerminalPaneViewModel}">
+                                <StackPanel x:Name="TerminalTab" Orientation="Horizontal">
+                                    <mc:MaBadge x:Name="TerminalBadge" Style="{StaticResource MaTag}" Content="{Binding Badge}" Background="{Binding TabBrush}"
+                                                Foreground="{Binding BadgeForeground}" Margin="0,0,6,0" VerticalAlignment="Center"
+                                                Visibility="{Binding Badge, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding StateText}" Style="{StaticResource MaMutedText}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    <Button x:Name="TerminalCloseButton" Style="{StaticResource MaToolButton}" Content="&#xE711;" Margin="8,0,0,0"
+                                            Command="{Binding DataContext.Terminals.CloseCommand, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}"
+                                            CommandParameter="{Binding}"
+                                            AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
+                                            ToolTip="Close this terminal, ending its CLI" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </mc:MaTabControl.ItemTemplate>
+                    </mc:MaTabControl>
+                    <Border x:Name="TerminalFrame" Style="{StaticResource MaInsetCard}" Height="480"
+                            Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
+                        <Grid x:Name="TerminalPanesHost" />
+                    </Border>
+                </StackPanel>
+
                 <!-- Tickets per user (M.ORCH-T668), below the person's open CLIs: the tickets assigned to them, then the unassigned
                      queue, each with who it's assigned to. An assigned ticket is dispatched only on its user's login. Each part sits
                      straight in the view, the lists too, so the view's one virtualized list builds only the tickets on screen

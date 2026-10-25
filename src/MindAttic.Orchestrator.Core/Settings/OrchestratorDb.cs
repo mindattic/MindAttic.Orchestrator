@@ -13,6 +13,13 @@ namespace MindAttic.Orchestrator.Settings;
 /// readable dump (<see cref="Dump"/>) so its changes show up as text diffs. The schema is versioned by <c>PRAGMA user_version</c>:
 /// each step in <see cref="Migrations"/> runs once, in order, so later tables (the rest of the orchestrator's JSON state) are
 /// added as new steps.
+/// Once <see cref="OrchestratorServer"/> is configured (M.ORCH-T658), that's true only of <see cref="Mirrored"/> (what the
+/// hooks still read here): the rest of this file — <c>usage_samples</c>, <c>pace_ledger</c> among them — was cleared at the
+/// cutover (<see cref="OrchestratorMigration.ToServer"/>) and stays empty from then on, the server alone keeping it current.
+/// <c>data/orchestrator.sql</c> keeps dumping the live store either way, so it (or <c>orchestrator db status</c> /
+/// <c>orchestrator ledger</c>) is where to look for the current history — not a bare read of this file, which an empty
+/// pace_ledger here correctly says nothing about (M.ORCH-T812: a stale, un-cleared copy of it once did, and was mistaken for
+/// a daemon that had stopped closing windows).
 /// </summary>
 public sealed class OrchestratorDb(string path)
 {

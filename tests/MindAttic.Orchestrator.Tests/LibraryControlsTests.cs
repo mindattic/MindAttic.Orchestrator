@@ -269,13 +269,16 @@ public sealed class LibraryControlsTests
         var window = Window();
 
         // The person tab strip is the library's MaTabControl, a bare strip (ShowContent false) whose selection drives the window
-        // (M.ORCH-T667). It's the only one: there are no Dashboard/Terminals page tabs (M.ORCH-T751).
+        // (M.ORCH-T667). There are no Dashboard/Terminals page tabs (M.ORCH-T751).
         Assert.That(Named(window, "LoginTabStrip").Name, Is.EqualTo(Mc + "MaTabControl"));
         Assert.That((string?)Named(window, "LoginTabStrip").Attribute("ShowContent"), Is.EqualTo("False"));
-        // The only other is Settings' own sections (M.ORCH-T804), inside its modal, showing their content.
+        // The others are Settings' own sections (M.ORCH-T804), inside its modal, showing their content, and a person's Terminals
+        // panel's tabs (M.ORCH-T810), a bare strip too, inside their page's body.
         var tabControls = window.Descendants(Mc + "MaTabControl").ToList();
-        Assert.That(tabControls.Select(t => (string?)t.Attribute(X + "Name")), Is.EquivalentTo(new[] { "LoginTabStrip", "SettingsTabs" }), "no page tabs, no terminal pane tabs");
+        Assert.That(tabControls.Select(t => (string?)t.Attribute(X + "Name")), Is.EquivalentTo(new[] { "LoginTabStrip", "SettingsTabs", "TerminalTabs" }), "no page tabs");
         Assert.That(Named(window, "SettingsTabs").Ancestors().Contains(Named(window, "SettingsModal")), Is.True);
+        Assert.That((string?)Named(window, "TerminalTabs").Attribute("ShowContent"), Is.EqualTo("False"));
+        Assert.That(Named(window, "TerminalTabs").Ancestors().Contains(Named(window, "AgentsBody")), Is.True);
         // The dashboard is always on screen on a signed-in login's tab: no page decides whether its header and toolbar show.
         foreach (var name in new[] { "Header", "Toolbar" })
             Assert.That((string?)Named(window, name).Attribute("Visibility"), Is.EqualTo("{Binding IsTabSignedIn, Converter={StaticResource Visible}}"), name);

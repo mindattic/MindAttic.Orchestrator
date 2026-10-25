@@ -132,6 +132,7 @@ public sealed partial class MainViewModel : ObservableObject
         // each of them, the whole queue's, on every tab switch. It acts on the tab on screen.
         OpenInTicketsCommand = root?.OpenInTicketsCommand ?? new RelayCommand(p => Shown.OpenInTickets(p as string));
         InitPhases();
+        InitTerminals();
         PendingMoves.Changed += OnMovesChanged;
         if (store.Load<ReposView>(ReposViewName).Sort is { } sort && RepoSorts.Contains(sort)) repoSort = sort;
     }
@@ -413,6 +414,8 @@ public sealed partial class MainViewModel : ObservableObject
         ApplyAccounts(all, DateTime.UtcNow);
         // Who's out of room is read with the roster, just above (M.ORCH-T668).
         if (IsGlobalTab) ApplyUserTickets();
+        // Each terminal learns its CLI and follows it to the login it runs on (M.ORCH-T810).
+        if (IsGlobalTab) AllTerminals.Update(all);
         // After the phases' own toasts (pace, budget, stuck, audit, Needs you), or they'd go past the cap (M.ORCH-T340).
         PruneToasts(Toasts, DateTime.UtcNow);
         Raise(nameof(WorkingCount)); Raise(nameof(WaitingCount)); Raise(nameof(HostCount));

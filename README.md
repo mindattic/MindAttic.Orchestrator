@@ -154,6 +154,22 @@ Windows Terminal: a tab in its login's own window, titled and colored as that lo
 the dashboard: the terminal panes inside it (M.ORCH-T618) and each person's *Dashboard*/*Terminals* tabs (M.ORCH-T622) were
 removed by M.ORCH-T751, with Settings' *Where CLIs open* and `orchestrator settings --terminal-host`.
 
+**Terminals panel (M.ORCH-T810).** Each person's page has a *Terminals* section between *Current work* and *Tickets*: one
+tab per CLI of theirs running inside the dashboard, each a live interactive terminal (EasyWindowsTerminalControl: the
+Windows Terminal renderer over ConPTY, a true TTY, GPU drawn, full ANSI and 24-bit color in Windows Terminal's Campbell
+scheme, `COLORTERM=truecolor`), so Claude Code renders as it does in Windows Terminal. A tab carries its login's badge and
+color, follows its CLI to another person's page when it's moved, and stays up marked *ended* once its CLI exits; its close
+button ends the CLI. The terminals are clipped to the page's scroll area and hidden while a dialog or the loader covers the
+window.
+
+The hosting entry point: the dashboard listens on the named pipe `mindattic-orchestrator-terminals-<Windows user>` (current
+user only). A client writes one line of JSON (`title`, `directory`, and `command` as an argument array or `commandLine`;
+optionally `repo`, `provider`, `configDir`, `email`, `initials`, `tabColor`) and reads back one line: empty when the tab
+opened, else why not. No listener means no dashboard is open, and the caller opens its own window. Every terminal in the
+panel has `MINDATTIC_ORCHESTRATOR_TERMINALS` set to that pipe's name, so a MindAttic.Launcher running inside one sends its
+new CLIs here as tabs instead of opening a standalone window (M.LNCH-T77). `PaneBroker.TrySend` in
+`MindAttic.Orchestrator.Core` is the client side.
+
 Each signed-in login gets its own Launcher tab (M.ORCH-T699), opened idle when the dashboard first sees the login: the
 Launcher's menu signed in to it (`--account <email>`, with its `CLAUDE_CONFIG_DIR` and long-lived token set first), so
 every CLI started from it runs on that login. A login whose Launcher menu is already running keeps it: *Open Launcher*
