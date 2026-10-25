@@ -58,7 +58,10 @@ public sealed class TabSwitchTests
         Assert.That((string?)strip.Attribute("ItemsSource"), Is.EqualTo("{Binding OrgTabs}"));
         Assert.That((string?)orgs.Attribute("ItemsSource"), Is.EqualTo("{Binding Orgs}"));
         Assert.That((string?)orgs.Attribute("Style"), Is.EqualTo("{StaticResource MaPillChoice}"));
-        Assert.That(orgs.ElementsAfterSelf().Contains(strip), Is.True, "the orgs above the people");
+        // M.ORCH-T822: the strip now sits inside a ScrollViewer (paged by < and > buttons once it's wider than the window),
+        // so it's no longer OrgStrip's own sibling; compare document order instead.
+        var names = doc.Descendants().Select(e => (string?)e.Attribute(X + "Name")).ToList();
+        Assert.That(names.IndexOf("LoginTabStrip"), Is.GreaterThan(names.IndexOf("OrgStrip")), "the orgs above the people");
 
         // Both kept on the global login's tab, which holds every org and tab: the window's DataContext is the tab shown.
         var code = File.ReadAllText(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml.cs"));
