@@ -137,6 +137,7 @@ public static class LoginScope
             .Concat(snapshot.Agents.Select(a => a.OwnLogin))
             .Concat(snapshot.Repos.SelectMany(r => r.Hosts).Select(h => h.OwnLogin))
             .Select(AccountDirs.Normalize).OfType<string>()
+            .Where(e => e != globalEmail)
             .ToHashSet(StringComparer.Ordinal);
         var waiting = byEmail.Keys
             .Where(e => !live.Contains(e) && e != globalEmail)

@@ -111,6 +111,23 @@ public sealed class LoginScopeTests
     }
 
     [Test]
+    public void The_global_logins_own_account_never_gets_a_second_tab_even_with_live_sessions_under_its_own_email()
+    {
+        // M.ORCH-T823: a duplicate "Ryan" tab appeared because a live session/agent/host owned by the global login's own
+        // email (not just a signed-in member row) wasn't excluded the way the not-yet-signed-in case already was.
+        var all = Workspace() with
+        {
+            Agents = [Agent("r1", "A", AgentState.Working, "ryan@example.com")],
+        };
+        var tabs = LoginScope.Tabs(all, email => new LoginLook("w", "XX", "#123456") { Alias = email[..email.IndexOf('@')].ToUpperInvariant() },
+            new LoginLook("ryan", "RY", "#654321") { Alias = "Ryan" });
+
+        Assert.That(tabs.Count(t => t.Email is null || string.Equals(t.Email, "ryan@example.com", StringComparison.Ordinal)), Is.EqualTo(1),
+            "one tab for the global login's own account, not one global and one 'own'");
+        Assert.That(tabs.Select(t => t.Email), Is.EqualTo(new[] { "jordan@example.com", null }));
+    }
+
+    [Test]
     public void The_fallback_marker_follows_billing_the_global_tab_while_team_bills_the_api_key_tab_while_the_key_does()
     {
         // M.ORCH-T672
