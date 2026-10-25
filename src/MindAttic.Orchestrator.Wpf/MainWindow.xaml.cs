@@ -178,22 +178,26 @@ public partial class MainWindow : Window
         if (ItemsControl.ContainerFromElement(LoginTabStrip, content) is TabItem tab) tab.Width = PersonTabWidth;
     }
 
-    /// <summary>A busy login tab's play icon (M.ORCH-T770): its own DropShadowEffect, created once this instance of the
-    /// repeated <c>DataTemplate</c> loads (each tab item gets its own, so one login's pulse never drives another's).</summary>
+    /// <summary>Starts <paramref name="icon"/>'s rapid forever blink while <paramref name="on"/>, or settles it fully opaque
+    /// once it isn't, so it's solid rather than left mid-fade the next time it's shown.</summary>
+    private static void Blink(TextBlock icon, bool on) =>
+        icon.BeginAnimation(UIElement.OpacityProperty, on
+            ? new DoubleAnimation(1.0, 0.15, TimeSpan.FromSeconds(0.35)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever }
+            : new DoubleAnimation(1.0, TimeSpan.FromSeconds(0.15)));
+
+    /// <summary>A busy login tab's play icon blinks green rapidly (reversing M.ORCH-T770's calmer glow pulse, at the owner's
+    /// ask) whenever the login has a live CLI, inside the Orchestrator's Terminals panel or outside it: it fires once this
+    /// instance of the repeated <c>DataTemplate</c> loads, so one login's blink never drives another's.</summary>
     private void TabBusyIcon_Loaded(object sender, RoutedEventArgs e)
     {
-        if (sender is not TextBlock icon || icon.Effect is DropShadowEffect) return;
-        var glow = new DropShadowEffect { Color = GlowColor, ShadowDepth = 0, BlurRadius = 8, Opacity = 0.3 };
-        icon.Effect = glow;
-        Pulse(glow, icon.IsVisible, exitOpacity: 0.3, exitSeconds: 0.2);
+        if (sender is TextBlock icon) Blink(icon, icon.IsVisible);
     }
 
     /// <summary>The icon is only visible while its login's tab <c>IsTabBusy</c> (bound through a Visibility converter): showing
-    /// or hiding it is exactly when the pulse should start or settle.</summary>
+    /// or hiding it is exactly when the blink should start or stop.</summary>
     private void TabBusyIcon_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if (sender is not TextBlock { Effect: DropShadowEffect glow } icon) return;
-        Pulse(glow, icon.IsVisible, exitOpacity: 0.3, exitSeconds: 0.2);
+        if (sender is TextBlock icon) Blink(icon, icon.IsVisible);
     }
 
     /// <summary>"Move to" on an agent card (M.ORCH-T607): a menu of the other signed-in logins, read when it's opened, each moving
@@ -237,6 +241,50 @@ public partial class MainWindow : Window
             Add("Make default", "Make this login the fallback: sign the global login (~/.claude) in to this account, opening its login in the browser. "
                 + "Every CLI not started on a login of its own follows at its next turn. Billing goes back to Claude Team first if the API key bills.",
                 tab.MakeDefaultCommand);
+        menu.IsOpen = true;
+    }
+
+    /// <summary>Open Launcher's right-click menu (M.ORCH-Tnnn): "Open in Tab" (embeds, even over a standalone one already
+    /// running for this login elsewhere) and "Open in Terminal" (always a Windows Terminal window, no embed attempt), beside
+    /// the plain click's automatic embed-or-fallback.</summary>
+    private void OnOpenLauncherContextMenu(object sender, ContextMenuEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: MainViewModel tab } button || !tab.IsTabSignedIn) return;
+        e.Handled = true;
+        var menu = DropdownMenu(button, $"Open the Launcher as {tab.TabTitle}", PlacementMode.Bottom);
+        void Add(string header, string tip, Func<Task> action)
+        {
+            var item = DropdownItem(header);
+            item.ToolTip = tip;
+            item.Click += async (_, _) => await action();
+            menu.Items.Add(item);
+        }
+        Add("Open in Tab", "Embeds the Launcher's menu as a Terminals panel tab, even if a standalone window is already running for this login elsewhere.", tab.OpenLauncherInTabAsync);
+        Add("Open in Terminal", "Opens the Launcher's menu in its own Windows Terminal window, bypassing the embedded panel.", tab.OpenLauncherInTerminalAsync);
+        menu.IsOpen = true;
+    }
+
+    /// <summary>A Terminals panel tab's right-click menu (M.ORCH-Tnnn): "Undock", sending it out to its own Windows Terminal
+    /// window once it's idle, keeping its conversation. Disabled, with why, for the Launcher's own menu pane, a non-Claude
+    /// pane (resume has no equivalent for Codex/Gemini/Kimi, same restriction "Move to account" already has), an ended pane,
+    /// one whose session isn't known yet, and one already being relocated.</summary>
+    private void OnTerminalTabContextMenu(object sender, ContextMenuEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source
+            || ItemsControl.ContainerFromElement(TerminalTabs, source) is not FrameworkElement { DataContext: TerminalPaneViewModel pane } container) return;
+        e.Handled = true;
+        var menu = DropdownMenu(container, pane.Title, e.CursorLeft < 0 ? PlacementMode.Bottom : PlacementMode.MousePoint);
+        var undock = DropdownItem("Undock");
+        var reason = pane.Request.IsMenu ? "The Launcher's own menu can't be undocked."
+            : !string.Equals(pane.Request.Provider, "Claude", StringComparison.OrdinalIgnoreCase) ? $"Undock only supports Claude tabs, not {pane.Request.Provider}."
+            : pane.Ended ? "This CLI has already ended."
+            : pane.Relocating ? "Already undocking."
+            : pane.SessionId is null ? "This tab's session isn't known yet; try again once it's finished starting."
+            : null;
+        undock.IsEnabled = reason is null;
+        if (reason is not null) { undock.ToolTip = reason; ToolTipService.SetShowOnDisabled(undock, true); }
+        undock.Click += async (_, _) => await model.UndockAsync(pane);
+        menu.Items.Add(undock);
         menu.IsOpen = true;
     }
 

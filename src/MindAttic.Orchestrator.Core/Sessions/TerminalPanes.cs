@@ -40,6 +40,10 @@ public sealed record PaneRequest(string Title, string Directory)
     /// <summary>The tab's color, "#RRGGBB"; null for none.</summary>
     public string? TabColor { get; init; }
 
+    /// <summary>This is the Launcher's own menu, not a CLI it opened (M.LNCH-T77): its tab sorts first among a login's
+    /// Terminals panel tabs, and it's shown without a provider bracket.</summary>
+    public bool IsMenu { get; init; }
+
     /// <summary>The person whose page the tab goes on: the login's email, or null for the global login's.</summary>
     [JsonIgnore]
     public string? Login => AccountDirs.Normalize(Email) ?? LoginOf(ConfigDir);
@@ -149,6 +153,20 @@ public static class PaneBroker
         // Taken but not answered: the dashboard has it, and may still open it, so it isn't opened a second time elsewhere.
         catch (Exception ex) when (ex is TimeoutException or IOException) { error = $"The dashboard took the terminal but didn't answer: {ex.Message}"; }
         return true;
+    }
+
+    /// <summary>Whether the dashboard's Terminals pipe currently has a listener: a cheap connect-and-drop, no request sent.
+    /// <c>orchestrator dock</c>'s pre-flight check (M.ORCH-Tnnn), so a missing dashboard is caught before anything
+    /// destructive (ending the CLI it would have reopened) happens.</summary>
+    public static bool IsListening(string? pipeName = null, int connectMs = 500)
+    {
+        try
+        {
+            using var pipe = new NamedPipeClientStream(".", pipeName ?? PipeName, PipeDirection.InOut, PipeOptions.CurrentUserOnly);
+            pipe.Connect(connectMs);
+            return true;
+        }
+        catch (Exception ex) when (ex is TimeoutException or IOException or UnauthorizedAccessException) { return false; }
     }
 
     /// <summary>Takes requests on <paramref name="pipeName"/> until <paramref name="ct"/> ends, opening each with

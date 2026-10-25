@@ -44,13 +44,13 @@ public sealed partial class MainViewModel
         return loginTabs.FirstOrDefault(t => t.IsPersonTab && string.Equals(t.ScopeEmail ?? global, login, StringComparison.OrdinalIgnoreCase)) ?? this;
     }
 
-    /// <summary>Hands each person's tab its own terminals (on the global login's tab, which holds them all), then shows the
-    /// chosen one.</summary>
+    /// <summary>Hands each person's tab its own terminals (on the global login's tab, which holds them all), the Launcher's
+    /// own menu pane first (M.LNCH-T77) and every CLI tab after it in the order each opened, then shows the chosen one.</summary>
     private void SyncTerminals()
     {
         if (!IsGlobalTab) { Root.SyncTerminals(); return; }
         var owners = AllTerminals.Panes.ToLookup(OwnerOf);
-        foreach (var t in loginTabs) t.Terminals.SyncTo([.. owners[t]]);
+        foreach (var t in loginTabs) t.Terminals.SyncTo([.. owners[t].OrderByDescending(p => p.Request.IsMenu)]);
         ShowChosenPane();
     }
 

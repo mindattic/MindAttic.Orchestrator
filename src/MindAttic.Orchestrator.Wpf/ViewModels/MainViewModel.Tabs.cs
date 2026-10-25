@@ -166,21 +166,82 @@ public sealed partial class MainViewModel
     private readonly HashSet<string> launchersOpened = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// One terminal tab per account (M.ORCH-T699): every signed-in login gets a Windows Terminal tab, in its own window, running
-    /// the Launcher already signed in to it, left idle for you to drive. A login whose Launcher is already running keeps it
-    /// rather than getting a second. Off the UI thread: finding the running ones asks WMI.
+    /// One Launcher tab per account (M.ORCH-T699), embedded first in its Terminals panel (M.LNCH-T77): every signed-in login
+    /// gets its Launcher's menu already signed in to it, left idle for you to drive. A login whose Launcher tab is already
+    /// open (embedded, or a standalone one running outside the dashboard) keeps it rather than getting a second.
     /// </summary>
     private void OpenLaunchers()
     {
         if (!IsGlobalTab) return;
         var wanted = loginTabs.Where(t => t.IsTabSignedIn && launchersOpened.Add(t.tab.Key)).Select(t => (t.ScopeEmail, t.TabTitle)).ToList();
-        if (wanted.Count == 0) return;
-        _ = Task.Run(() =>
+        foreach (var (email, title) in wanted) _ = OpenLauncherQuietlyAsync(email, title);
+    }
+
+    private async Task OpenLauncherQuietlyAsync(string? email, string title)
+    {
+        var (error, _) = await OpenLauncherPaneAsync(email, title);
+        if (error is { } e) OrchestratorLog.For("Launcher").Warning("Couldn't open {Login:l}'s Launcher tab: {Error:l}", title, e);
+    }
+
+    /// <summary>Which hosting surface Open Launcher's right-click menu asks for explicitly, instead of the plain click's
+    /// automatic embed-with-fallback.</summary>
+    internal enum LauncherOpenMode { Auto, Tab, Terminal }
+
+    /// <summary>Opens <paramref name="email"/>'s Launcher menu (M.LNCH-T77): embedded as a Terminals panel tab, first among
+    /// that login's (so every CLI it opens, seeing itself hosted, routes back into the panel too); one already open there is
+    /// brought up rather than getting a second, and so is a standalone one already running outside the dashboard (from
+    /// before this, or started by hand) -- off the UI thread, since finding it asks WMI. Embedding failing (rare) falls back
+    /// to the login's own Windows Terminal window, as every Launcher tab opened before M.LNCH-T77. <paramref name="mode"/>
+    /// forces one surface explicitly (the rocket's right-click menu, M.ORCH-Tnnn): <see cref="LauncherOpenMode.Tab"/> skips
+    /// the standalone-already-running check and reports an embed failure directly rather than falling back; <see
+    /// cref="LauncherOpenMode.Terminal"/> skips the embedded-already-open check and never attempts to embed at all. Returns
+    /// an error for a toast (null on success, embedded or not) and a status line either way.</summary>
+    private async Task<(string? Error, string Status)> OpenLauncherPaneAsync(string? email, string tabTitle, LauncherOpenMode mode = LauncherOpenMode.Auto)
+    {
+        var normalized = AccountDirs.Normalize(email);
+        if (mode != LauncherOpenMode.Terminal &&
+            Root.AllTerminals.Panes.FirstOrDefault(p => p.Request.IsMenu && !p.Ended &&
+                string.Equals(p.Login, normalized, StringComparison.OrdinalIgnoreCase)) is { } open)
         {
-            foreach (var (email, title) in wanted)
-                if (control.OpenLauncher(email, out _) is { } error)
-                    OrchestratorLog.For("Launcher").Warning("Couldn't open {Login:l}'s Launcher tab: {Error:l}", title, error);
-        });
+            Root.ShowPane(open);
+            return (null, $"The Launcher as {tabTitle} was already open.");
+        }
+        if (mode != LauncherOpenMode.Tab)
+        {
+            var running = await Task.Run(() => control.RunningLauncherOf(email));
+            if (running is { } pid)
+            {
+                var title = control.LauncherTitleOf(email);
+                var result = await Task.Run(() => TerminalFocus.GoTo(new HostSession("Claude", pid, "", null) { Title = title }, []));
+                return (null, result.Outcome == GoToOutcome.NotFound
+                    ? $"The Launcher as {tabTitle} is already open (\"{title}\"): {result.Note}"
+                    : $"The Launcher as {tabTitle} was already open: {result.Note}");
+            }
+        }
+        if (mode == LauncherOpenMode.Terminal)
+        {
+            var forced = await Task.Run(() => control.OpenLauncher(email, out _));
+            return forced is not null ? (forced, forced) : (null, $"Opened the Launcher as {tabTitle} in its own window.");
+        }
+        if (Root.OpenTerminal(control.LauncherPaneRequest(email)) is not { } embedError)
+            return (null, email is null
+                ? "Opened the Launcher on the global login."
+                : $"Opened the Launcher as {tabTitle}: every repo CLI started from it runs on {email} and shows in this tab.");
+        if (mode == LauncherOpenMode.Tab) return (embedError, embedError);
+        var fallback = await Task.Run(() => control.OpenLauncher(email, out _));
+        return fallback is not null ? (fallback, fallback) : (null, $"Opened the Launcher as {tabTitle} in its own window.");
+    }
+
+    public Task OpenLauncherInTabAsync() => OpenLauncherExplicitAsync(LauncherOpenMode.Tab);
+    public Task OpenLauncherInTerminalAsync() => OpenLauncherExplicitAsync(LauncherOpenMode.Terminal);
+
+    private async Task OpenLauncherExplicitAsync(LauncherOpenMode mode)
+    {
+        var email = ScopeEmail;
+        Root.launchersOpened.Add(tab.Key);
+        var (error, status) = await OpenLauncherPaneAsync(email, TabTitle, mode);
+        StatusMessage = status;
+        if (error is not null) Toasts.Insert(0, new ToastViewModel("Launcher not opened", error, Palette.Over, null));
     }
 
     private void Retitle(LoginTab next)
@@ -212,8 +273,9 @@ public sealed partial class MainViewModel
 
     /// <summary>Open Launcher (M.ORCH-T615): the Launcher's menu as this tab's login (<c>MindAttic.Launcher --account &lt;email&gt;</c>),
     /// so every repo CLI started from it runs on that login and shows in this tab; on the global login's tab, the Launcher
-    /// unscoped. One login may own many CLIs. It opens in the login's own Windows Terminal window; a login whose Launcher is
-    /// already running gets that one brought up rather than a second (M.ORCH-T699).</summary>
+    /// unscoped. One login may own many CLIs. It opens embedded, first among this tab's Terminals panel tabs (M.LNCH-T77); a
+    /// login whose Launcher tab is already open (embedded, or standalone outside the dashboard) gets that one brought up
+    /// rather than a second (M.ORCH-T699).</summary>
     public ICommand OpenLauncherCommand => openLauncherCommand ??= new RelayCommand(async () => await OpenLauncherAsync(),() => IsTabSignedIn);
 
     /// <summary>Sign in, on a tab whose login isn't signed in yet: its own sign-in in a private browser window, then the tab
@@ -228,26 +290,9 @@ public sealed partial class MainViewModel
     {
         var email = ScopeEmail;
         Root.launchersOpened.Add(tab.Key);
-        // Finding a running Launcher asks WMI, and bringing its tab up uses UI Automation over Windows Terminal: off the UI thread.
-        var (error, running) = await Task.Run(() => (control.OpenLauncher(email, out var pid), pid));
-        if (error is not null)
-        {
-            StatusMessage = error;
-            Toasts.Insert(0, new ToastViewModel("Launcher not opened", error, Palette.Over, null));
-            return;
-        }
-        if (running is { } pid)
-        {
-            var title = control.LauncherTitleOf(email);
-            var result = await Task.Run(() => TerminalFocus.GoTo(new HostSession("Claude", pid, "", null) { Title = title }, []));
-            StatusMessage = result.Outcome == GoToOutcome.NotFound
-                ? $"The Launcher as {TabTitle} is already open (\"{title}\"): {result.Note}"
-                : $"The Launcher as {TabTitle} was already open: {result.Note}";
-            return;
-        }
-        StatusMessage = email is null
-            ? "Opened the Launcher on the global login."
-            : $"Opened the Launcher as {TabTitle}: every repo CLI started from it runs on {email} and shows in this tab.";
+        var (error, status) = await Root.OpenLauncherPaneAsync(email, TabTitle);
+        StatusMessage = status;
+        if (error is not null) Toasts.Insert(0, new ToastViewModel("Launcher not opened", error, Palette.Over, null));
     }
 
     /// <summary>Tags each new toast with this tab while there's more than one (toasts tagged by tab), and tells the window.</summary>

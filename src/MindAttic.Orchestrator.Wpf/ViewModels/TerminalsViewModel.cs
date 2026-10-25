@@ -72,7 +72,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
 
     public string Title => Request.Title;
     public string Badge => Request.Initials is { Length: > 0 } i ? $"{i}:" : "";
-    public string Name => $"{SessionControl.ShortName(Request.Name)} [{Request.Provider}]";
+    public string Name => Request.IsMenu ? SessionControl.ShortName(Request.Name) : $"{SessionControl.ShortName(Request.Name)} [{Request.Provider}]";
     public string Tooltip => $"{Request.Title}\n{Request.Directory}\n{Login ?? "global login"}";
     public Brush TabBrush { get; }
 
@@ -90,6 +90,16 @@ public sealed class TerminalPaneViewModel : ObservableObject
 
     /// <summary>The Launcher host process running in it, once found (for "Go to tab").</summary>
     public int? HostPid { get; internal set; }
+
+    /// <summary>Its Claude session and claude.exe pid, once the snapshot matches this pane to one (for Undock, M.ORCH-Tnnn):
+    /// <c>--resume</c> reopens exactly this conversation on the other hosting surface.</summary>
+    public string? SessionId { get; internal set; }
+    public int? CliPid { get; internal set; }
+
+    /// <summary>Set once Undock has been requested for this pane, so its context menu can say so instead of offering it
+    /// again (a second Undock before the first lands is refused by <see cref="RelocateLocks"/> anyway, but the menu
+    /// should not invite it).</summary>
+    internal bool Relocating { get; set; }
 
     public bool IsSelected
     {
@@ -214,7 +224,9 @@ public sealed class TerminalsViewModel : ObservableObject
             if (snapshot is null || pane.RootPid is not { } root) continue;
             pane.HostPid ??= hosts.FirstOrDefault(h => h.ProcessId == root || ProcessTree.IsAncestor(root, h.ProcessId))?.ProcessId;
             if (pane.HostPid is not { } host) continue;
-            if (snapshot.Agents.FirstOrDefault(a => a.Host?.ProcessId == host) is not { SessionId: { Length: > 0 } session }) continue;
+            if (snapshot.Agents.FirstOrDefault(a => a.Host?.ProcessId == host) is not { SessionId: { Length: > 0 } session } row) continue;
+            pane.SessionId ??= session;
+            pane.CliPid ??= row.CliPid;
             // Its person is the login its CLI is on now: moved to another, it moves to that one's page.
             var login = LoginScope.LoginOf(snapshot, session);
             if (!string.Equals(login, pane.Login, StringComparison.OrdinalIgnoreCase))

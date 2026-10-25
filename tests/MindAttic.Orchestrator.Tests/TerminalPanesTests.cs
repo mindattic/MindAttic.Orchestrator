@@ -171,6 +171,15 @@ public sealed class TerminalPanesTests
         Assert.That(changes, Is.EqualTo(4));
     }
 
+    [Test, Apartment(ApartmentState.STA)]
+    public void The_Launcher_s_own_menu_pane_shows_without_a_provider_bracket()
+    {
+        var menu = new TerminalPaneViewModel(new PaneRequest("RD: Launcher", temp.New()) { Repo = "Launcher", Provider = "Launcher", CommandLine = "cmd.exe", IsMenu = true });
+        Assert.That(menu.Name, Is.EqualTo("Launcher"));
+        var cli = new TerminalPaneViewModel(new PaneRequest("RD: Repo [Claude]", temp.New()) { Repo = "Repo", CommandLine = "cmd.exe" });
+        Assert.That(cli.Name, Is.EqualTo("Repo [Claude]"));
+    }
+
     [Test]
     public void The_terminal_draws_in_Windows_Terminal_s_own_colors()
     {

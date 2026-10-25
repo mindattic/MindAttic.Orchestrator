@@ -188,7 +188,7 @@ public sealed class LoginScopeTests
         var amy = control.LauncherArguments("Amy@Example.com").ToList();
         var amyDir = dirs.For("amy@example.com").Directory;
         Assert.That(lookedUp, Is.EqualTo(amyDir), "colored as Amy's own login");
-        Assert.That(amy.Take(7), Is.EqualTo(new[] { "-w", "Amy", "new-tab", "--title", "AR: MindAttic.Launcher", "--tabColor", "#123456" }));
+        Assert.That(amy.Take(7), Is.EqualTo(new[] { "-w", "Amy", "new-tab", "--title", "AR: Launcher", "--tabColor", "#123456" }));
         // M.ORCH-T751: in Windows Terminal, its login's folder and long-lived token are set before the Launcher starts (M.ORCH-T696).
         Assert.That(amy.SkipWhile(a => a != "--").Skip(1).Take(6), Is.EqualTo(new[] { "powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand" }));
         var script = System.Text.Encoding.Unicode.GetString(Convert.FromBase64String(amy[^1]));
@@ -197,10 +197,48 @@ public sealed class LoginScopeTests
         var global = control.LauncherArguments(null).ToList();
         Assert.That(lookedUp, Is.Null);
         Assert.That(global.SkipWhile(a => a != "--").Skip(1), Is.EqualTo(new[] { @"C:\L\MindAttic.Launcher.exe" }), "the global login's tab: unscoped");
-        Assert.That(control.LauncherTitleOf("Amy@Example.com"), Is.EqualTo("AR: MindAttic.Launcher"));
+        Assert.That(control.LauncherTitleOf("Amy@Example.com"), Is.EqualTo("AR: Launcher"));
 
         Assert.That(control.OpenLauncher("not an email", out _), Does.Contain("isn't an email address"));
         Assert.That(control.OpenLauncher("amy@example.com", out _), Does.StartWith("Launcher not found"));
+
+        // M.LNCH-T77: the Launcher's own menu, embedded in the Terminals panel first (its IsMenu), instead of a Windows
+        // Terminal tab of its own; no CLAUDE_CONFIG_DIR/token setup, unlike LauncherArguments' wt tab (see its own doc comment).
+        var amyPane = control.LauncherPaneRequest("Amy@Example.com");
+        Assert.That((amyPane.Title, amyPane.Directory, amyPane.Command, amyPane.Repo, amyPane.Provider, amyPane.IsMenu),
+            Is.EqualTo(("AR: Launcher", @"C:\L", new[] { @"C:\L\MindAttic.Launcher.exe", "--account", "amy@example.com" }, "Launcher", "Launcher", true)), "no workspace root: falls back to the exe's own folder, as LauncherArguments does");
+        Assert.That((amyPane.ConfigDir, amyPane.Email, amyPane.Initials, amyPane.TabColor), Is.EqualTo((amyDir, "amy@example.com", "AR", "#123456")));
+
+        var globalPane = control.LauncherPaneRequest(null);
+        Assert.That((globalPane.Title, globalPane.Command, globalPane.ConfigDir, globalPane.Email),
+            Is.EqualTo(("RD: Launcher", new[] { @"C:\L\MindAttic.Launcher.exe" }, (string?)null, (string?)null)));
+    }
+
+    [Test]
+    public void Undock_s_reopen_resumes_the_session_instead_of_a_fresh_start()
+    {
+        // M.ORCH-Tnnn: resumeSession adds --resume to the tab's command, mutually exclusive with a prompt (a relocation
+        // never sets one, but a hand-off from HostAgentCommand's own --resume handling treats them the same way).
+        var dirs = new AccountDirs(@"C:\accounts", @"C:\claude", @"C:\claude.json");
+        var control = new SessionControl(new OrchestratorOptions { LauncherExe = @"C:\L\MindAttic.Launcher.exe" })
+        {
+            Dirs = dirs,
+            Look = d => d is null ? new LoginLook("ryan", "RD", "#654321") : new LoginLook("Amy", "AR", "#123456"),
+            TokenEnv = d => d is null ? "CLEAR; " : "SET; ",
+        };
+        var amyDir = dirs.For("amy@example.com").Directory;
+
+        var resumed = control.StartArguments("Repo", @"D:\W\Repo", "Claude", prompt: null, amyDir, resumeSession: "sess-1").ToList();
+        var script = System.Text.Encoding.Unicode.GetString(Convert.FromBase64String(resumed[^1]));
+        Assert.That(script, Does.Contain("--resume 'sess-1'"));
+        Assert.That(script, Does.Not.Contain("--prompt"));
+
+        var global = control.StartArguments("Repo", @"D:\W\Repo", "Claude", prompt: null, configDir: null, resumeSession: "sess-1").ToList();
+        Assert.That(global.SkipWhile(a => a != "--").Skip(1), Is.EqualTo(new[] { @"C:\L\MindAttic.Launcher.exe", "host", "--path", @"D:\W\Repo",
+            "--title", "RD: Repo [Claude]", "--provider", "Claude", "--resume", "sess-1" }));
+
+        var ignored = control.StartArguments("Repo", @"D:\W\Repo", "Claude", prompt: "do it", configDir: null, resumeSession: "sess-1").ToList();
+        Assert.That(ignored.SkipWhile(a => a != "--").Skip(1), Does.Not.Contain("--prompt"), "resume wins over a prompt, as HostAgentCommand's own --resume already does");
     }
 
     [Test]

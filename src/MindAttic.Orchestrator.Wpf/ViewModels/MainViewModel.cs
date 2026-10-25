@@ -67,6 +67,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly DispatchLease lease;
     private readonly StatusAggregator aggregator;
     private readonly SessionControl control;
+    private readonly RelocateLocks relocateLocks;
     private readonly Dictionary<string, RepoTileViewModel> tiles = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>The snapshot as this tab sees it: only its login's CLIs, tabs and sessions, and its login's meter (M.ORCH-T613).</summary>
     private Snapshot? snapshot;
@@ -101,6 +102,7 @@ public sealed partial class MainViewModel : ObservableObject
         lease = root?.lease ?? new DispatchLease(store.Directory, db: store.Db);
         aggregator = root?.aggregator ?? new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter { Db = store.Db }, lease);
         control = root?.control ?? new SessionControl(aggregator.Options);
+        relocateLocks = root?.relocateLocks ?? new RelocateLocks(store);
         Clock = root?.Clock ?? new();
         Zoom = root?.Zoom ?? new();
         if (root is null) { loginTabs = [this]; orgTabs.Add(this); }
@@ -415,7 +417,7 @@ public sealed partial class MainViewModel : ObservableObject
         // Who's out of room is read with the roster, just above (M.ORCH-T668).
         if (IsGlobalTab) ApplyUserTickets();
         // Each terminal learns its CLI and follows it to the login it runs on (M.ORCH-T810).
-        if (IsGlobalTab) AllTerminals.Update(all);
+        if (IsGlobalTab) { AllTerminals.Update(all); ReconcileRelocates(all); }
         // After the phases' own toasts (pace, budget, stuck, audit, Needs you), or they'd go past the cap (M.ORCH-T340).
         PruneToasts(Toasts, DateTime.UtcNow);
         Raise(nameof(WorkingCount)); Raise(nameof(WaitingCount)); Raise(nameof(HostCount));

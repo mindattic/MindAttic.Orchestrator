@@ -147,11 +147,12 @@ public sealed partial class MainViewModel
     /// <summary>The tab's icon: pause idle, a blinking green play arrow busy, gray disabled.</summary>
     public TabActivity TabActivity => tab.IsMisc ? TabActivity.Idle : tab.IsApiKey
         ? ActivityOf(usable: IsOnApiKey, pastCutoff: false, working: false, Blinker.Grew || Blinker.Pending > 0)
-        : ActivityOf(tab.SignedIn, PastCutoffOf(WeekUsed, WeeklyCutoff, FiveHourUsed, FiveHourCutoff), WorkingCount > 0,
+        : ActivityOf(tab.SignedIn, PastCutoffOf(WeekUsed, WeeklyCutoff, FiveHourUsed, FiveHourCutoff), WorkingCount > 0 || HostCount > 0,
             Blinker.Grew || Blinker.Pending > 0);
 
     /// <summary>Disabled when the login can't take work (signed out, or the 'API key' tab with API billing off) or is past its
-    /// cutoff; busy while one of its CLIs is mid-turn or it spent tokens since the last refresh; else idle.</summary>
+    /// cutoff; busy while one of its CLIs is alive (mid-turn, idle at a prompt, or just spent tokens) -- a live CLI counts
+    /// whether it's hosted inside the Orchestrator's own Terminals panel or runs outside it (M.LNCH-T77); else idle.</summary>
     internal static TabActivity ActivityOf(bool usable, bool pastCutoff, bool working, bool spending) =>
         !usable || pastCutoff ? TabActivity.Disabled : working || spending ? TabActivity.Busy : TabActivity.Idle;
 
