@@ -151,6 +151,7 @@ internal static class CliApp
             });
             config.AddCommand<LoginCommand>("login").WithDescription("The account roster (as the dashboard's account menu shows it); with an email or short name, opens that account's login (claude auth login --email); --account <email> signs in a per-CLI login of its own instead; --api-key bills the Vault's API key.");
             config.AddCommand<MoveCommand>("move").WithDescription("Move a running Claude CLI (<repo|pid>) to another signed-in login (--account <email> or --global): its Launcher tab restarts it with claude --resume on that login at its next idle point, keeping its session.");
+            config.AddCommand<DockCommand>("dock").WithDescription("Pulls this standalone Claude tab into the dashboard's Terminals panel, resuming its session: ends it here once idle, reopens embedded under the login it's already on. Claude only; the dashboard must be running to receive it.");
             config.AddCommand<ClisCommand>("clis").WithDescription("Every open Claude CLI and whether /allocate is on in it (the roster the daemon keeps in orchestrator.db).");
             config.AddBranch("db", d =>
             {
