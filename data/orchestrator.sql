@@ -11,7 +11,7 @@ INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VAL
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ohleo199@mindattic.com', 'Erin', 'admin', 'premium', 'active', 1792771886.302, 1792962946.5567513);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('pdftransferjr@mindattic.com', 'Jordan', 'admin', 'premium', 'active', 1792771887.249, 1792962946.5567513);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('ryandebraal@mindattic.com', 'Ryan', 'primary-owner', 'premium', 'active', 1792771885.463, 1792840279.0027995);
-INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'owner', 'premium', 'active', 1792771885.882, 1792962795.221789);
+INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('shampoo1232@mindattic.com', 'Amy', 'admin', 'premium', 'active', 1792771885.882, 1792964017.1179085);
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'admin', 'premium', 'active', 1792866937.8856213, 1792866937.8856213);
 
 -- usage_samples
@@ -3061,6 +3061,7 @@ INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, 
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-25T14:50:00Z', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-25T09:50:00Z', 'Under', 'ended at 52%', 52, 52, 5934870, 89, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-25T19:20:00Z', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-25T14:20:00Z', 'Under', 'ended at 0%', 0, 0, 0, 60, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-25T20:10:00Z', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-25T15:10:00Z', 'Under', 'ended at 5%', 5, 5, 333456, 48, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
+INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-25T21:30:00Z', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-25T16:30:00Z', 'Under', 'ended at 33%', 33, 33, 5525012, 34, 0, NULL, NULL, 0, 0, 0, 0, 25, '[]');
 
 -- usage_history
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-07', 'GTFO.EZ', 'Claude', NULL, NULL, 3524458);
@@ -3330,7 +3331,7 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-25', '(workspace root)', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 17084495);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-25', 'MindAttic.Orchestrator', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 9890772);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-25', 'MindAttic.Orchestrator', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 304617);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-25', 'MindAttic.Tickets', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 428396);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-25', 'MindAttic.Tickets', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1704062);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-25', 'REA.Bloodlines', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5415758);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-25', 'RogueTrader.Brevity', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 275468);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-25', 'RusNet', 'Claude', '1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 520903);
@@ -5015,9 +5016,21 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('dfd6fc55-5321-493f-bbc2-601cca3fa859/agent-ad33e70b0f0ee69fd', 'UH-T11', 'feature', 'Unity.Hare', 167681, '2026-10-23T06:56:17.972Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('dfd6fc55-5321-493f-bbc2-601cca3fa859/agent-adf673285c60351fd', 'UH-T12', 'feature', 'Unity.Hare', 241208, '2026-10-23T07:26:43.195Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('dff9327a-0ca8-4ec0-882d-c5d913912a33', 'M.ORCH-T659', 'fix', 'MindAttic.Orchestrator', 31979, '2026-10-23T11:04:31.842Z', 1, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e08ca7df-269c-47b1-9b95-05607dcdfddc/agent-a2379f9b37f80cd5a', 'M.TIX-T78', 'feature', 'MindAttic.Tickets', 209386, '2026-10-25T21:33:14.654Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e08ca7df-269c-47b1-9b95-05607dcdfddc/agent-a2e8438f3ee547632', 'M.TIX-T75', 'feature', 'MindAttic.Tickets', 208510, '2026-10-25T21:33:32.361Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e08ca7df-269c-47b1-9b95-05607dcdfddc/agent-a4e51fe867e7e6e69', 'M.TIX-T68', 'feature', 'MindAttic.Tickets', 133334, '2026-10-25T21:32:51.92Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e08ca7df-269c-47b1-9b95-05607dcdfddc/agent-a501f6fd705edd146', 'M.TIX-T76', 'feature', 'MindAttic.Tickets', 90607, '2026-10-25T21:31:16.612Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e08ca7df-269c-47b1-9b95-05607dcdfddc/agent-a7565461ce7482762', 'M.TIX-T67', 'feature', 'MindAttic.Tickets', 67164, '2026-10-25T21:29:22.314Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e08ca7df-269c-47b1-9b95-05607dcdfddc/agent-a76055163473e346d', 'M.TIX-T91', 'chore', 'MindAttic.Tickets', 146591, '2026-10-25T21:13:21.49Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e08ca7df-269c-47b1-9b95-05607dcdfddc/agent-a77b52ecf8090a08a', 'M.TIX-T74', 'feature', 'MindAttic.Tickets', 237205, '2026-10-25T21:33:15.149Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e08ca7df-269c-47b1-9b95-05607dcdfddc/agent-aa1ec122646a756b0', 'M.TIX-T66', 'feature', 'MindAttic.Tickets', 99262, '2026-10-25T21:28:57.93Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e08ca7df-269c-47b1-9b95-05607dcdfddc/agent-aabf77a179f082d61', 'M.TIX-T70', 'feature', 'MindAttic.Tickets', 110517, '2026-10-25T21:32:12.942Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e08ca7df-269c-47b1-9b95-05607dcdfddc/agent-aacc326a31c01c451', 'M.TIX-T77', 'feature', 'MindAttic.Tickets', 194559, '2026-10-25T21:33:29.212Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e08ca7df-269c-47b1-9b95-05607dcdfddc/agent-ac2308390c1eb5323', 'M.TIX-T150', 'chore', 'MindAttic.Tickets', 51376, '2026-10-25T21:17:25.606Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e08ca7df-269c-47b1-9b95-05607dcdfddc/agent-ad97aa2df337756dc', 'M.TIX-T71', 'chore', 'MindAttic.Tickets', 91004, '2026-10-25T21:09:32.031Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e08ca7df-269c-47b1-9b95-05607dcdfddc/agent-adc0e11fb2af94c7f', 'M.TIX-T73', 'feature', 'MindAttic.Tickets', 208241, '2026-10-25T21:33:27.745Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e08ca7df-269c-47b1-9b95-05607dcdfddc/agent-ae59c50f72a476d00', 'M.TIX-T69', 'feature', 'MindAttic.Tickets', 57054, '2026-10-25T21:30:10.507Z', 0, 'opus');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e08ca7df-269c-47b1-9b95-05607dcdfddc/agent-af4b079445c1c8d52', 'M.TIX-T72', 'feature', 'MindAttic.Tickets', 192018, '2026-10-25T21:33:27.175Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e1115a1c-8787-44f6-9ae4-72c58c0d8c4a', 'M.ORCH-T743', 'fix', 'MindAttic.Orchestrator', 178710, '2026-10-23T20:43:01.789Z', 1, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e1b11a13-af07-4894-afd8-bb45ee1b31ab', 'WF-T30', 'chore', 'MindAttic.Workflow', 370546, '2026-10-16T00:45:01.757Z', 1, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('e268cede-7033-44a0-9cde-56644a25b8f3', 'M.IDEA-T20', 'docs', 'MindAttic.Ideas', 17791, '2026-10-21T18:11:39.062Z', 1, 'sonnet');
@@ -5209,6 +5222,12 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (52, 'RB-T192', 'REA.Bloodlines', 'D:\Projects\MindAttic.worktrees\REA.Bloodlines\RB-T192', 'Claude', '2026-10-25T06:29:14.0700386Z', 1, NULL, NULL, NULL, 60056, '12795dbb-cadb-4053-a46e-bb2241b3f3bc', 'opus', NULL, 'honey@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (53, 'MAU-T9', 'Unity.Shared', 'D:\Projects\MindAttic.worktrees\Unity.Shared\MAU-T9', 'Claude', '2026-10-25T06:57:30.9318374Z', 1, NULL, NULL, NULL, 30244, 'ddefd224-ff9a-422d-b6e9-218728189540', 'sonnet', NULL, 'ryandebraal@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (54, 'M.TIX-T150', 'MindAttic.Tickets', 'D:\Projects\MindAttic.worktrees\MindAttic.Tickets\M.TIX-T150', 'Claude', '2026-10-25T21:16:02.906568Z', 1, NULL, NULL, NULL, 77772, 'e08ca7df-269c-47b1-9b95-05607dcdfddc', 'opus', NULL, 'waffle@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (55, 'M.TIX-T72', 'MindAttic.Tickets', 'D:\Projects\MindAttic.worktrees\MindAttic.Tickets\M.TIX-T72', 'Claude', '2026-10-25T21:26:36.0015105Z', 1, NULL, NULL, NULL, 77772, 'e08ca7df-269c-47b1-9b95-05607dcdfddc', 'opus', NULL, 'waffle@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (56, 'M.TIX-T73', 'MindAttic.Tickets', 'D:\Projects\MindAttic.worktrees\MindAttic.Tickets\M.TIX-T73', 'Claude', '2026-10-25T21:26:36.0015105Z', 1, NULL, NULL, NULL, 77772, 'e08ca7df-269c-47b1-9b95-05607dcdfddc', 'opus', NULL, 'waffle@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (57, 'M.TIX-T74', 'MindAttic.Tickets', 'D:\Projects\MindAttic.worktrees\MindAttic.Tickets\M.TIX-T74', 'Claude', '2026-10-25T21:26:36.0015105Z', 1, NULL, NULL, NULL, 77772, 'e08ca7df-269c-47b1-9b95-05607dcdfddc', 'opus', NULL, 'waffle@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (58, 'M.TIX-T75', 'MindAttic.Tickets', 'D:\Projects\MindAttic.worktrees\MindAttic.Tickets\M.TIX-T75', 'Claude', '2026-10-25T21:26:36.0015105Z', 1, NULL, NULL, NULL, 77772, 'e08ca7df-269c-47b1-9b95-05607dcdfddc', 'opus', NULL, 'waffle@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (59, 'M.TIX-T77', 'MindAttic.Tickets', 'D:\Projects\MindAttic.worktrees\MindAttic.Tickets\M.TIX-T77', 'Claude', '2026-10-25T21:26:36.0015105Z', 1, NULL, NULL, NULL, 77772, 'e08ca7df-269c-47b1-9b95-05607dcdfddc', 'opus', NULL, 'waffle@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (60, 'M.TIX-T78', 'MindAttic.Tickets', 'D:\Projects\MindAttic.worktrees\MindAttic.Tickets\M.TIX-T78', 'Claude', '2026-10-25T21:27:18.6637985Z', 1, NULL, NULL, NULL, 77772, 'e08ca7df-269c-47b1-9b95-05607dcdfddc', 'opus', NULL, 'waffle@mindattic.com');
 
 -- organizations
 
@@ -7856,8 +7875,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "a57a30142679f3ed216b7bb6a585534536b6391c"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "abe108335413c8ec5617f5ee96d5a8a4638ca5f4",
-    "Green": "abe108335413c8ec5617f5ee96d5a8a4638ca5f4"
+    "Tested": "38b78b3620c853e339fcc36c0388a8e5c61aa2da",
+    "Green": "38b78b3620c853e339fcc36c0388a8e5c61aa2da"
   },
   "MindAttic.Psst": {
     "Tested": "4a8dd88cf5df31911bcff9ec0b040a5008399a02"
@@ -7866,8 +7885,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "7332476b16161496300b69d2c8838a9cb55f38e7"
   },
   "MindAttic.Tickets": {
-    "Tested": "7af1348307ce55327752c412ff03a7fb7d73d24d",
-    "Green": "7af1348307ce55327752c412ff03a7fb7d73d24d"
+    "Tested": "7bb5a2e2a5df9df3bdc8adb616b0c946e3267792",
+    "Green": "7bb5a2e2a5df9df3bdc8adb616b0c946e3267792"
   },
   "MindAttic.Vault": {
     "Tested": "ac2e2fd848071f2cd0db1f8a77f0bb3dad28d3d8",
