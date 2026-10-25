@@ -203,6 +203,31 @@ public sealed class OrchestratorServerTests
     }
 
     [Test]
+    public void Moving_to_SQL_Server_clears_the_files_own_copy_of_what_only_the_server_keeps_from_then_on()
+    {
+        // M.ORCH-T812: left as they stood at the cutover, usage_samples and pace_ledger looked like real (if stale) history
+        // rather than a stopped clock, and misled a plain read of the file into "the ledger stopped recording windows" when
+        // every window since had simply been landing on the server. Cleared, so the file says plainly it no longer tracks them.
+        var dir = temps.New();
+        var file = new OrchestratorDb(Path.Combine(dir, "orchestrator.db"));
+        var store = new JsonStore(Path.Combine(dir, "store"), file);
+        store.SaveSettings(new OrchestratorSettings { MaxSessionsPerRepo = 3 });
+        file.AddUsageSamples([new UsageSample(T(1), 40, T(5), 7)], T(0));
+        file.AppendLedger([Window(null)]);
+        file.SaveTicketCosts([new SessionCost("s3", "Z-T3", null, "Z", 3, T(3), false, null)]);
+
+        // Exercised directly (not through ToServer/OrchestratorServer.Configure), which would flip this machine's own
+        // database.json rather than a scratch one.
+        OrchestratorMigration.ClearServerOwned(file);
+
+        Assert.That(file.LoadUsageSamples(), Is.Empty);
+        Assert.That(file.LoadLedger(), Is.Empty);
+        Assert.That(file.LoadTicketCosts(), Is.Empty);
+        // What the hooks still read from this file is untouched.
+        Assert.That(new JsonStore(store.Directory, file).LoadSettings().MaxSessionsPerRepo, Is.EqualTo(3));
+    }
+
+    [Test]
     public void The_orgs_live_on_SQL_Server_and_a_schema_3_database_gains_their_tables_keeping_its_data()
     {
         // M.ORCH-T655: the organizations and who's in each are the server's, behind the same store as the rest.

@@ -16,6 +16,12 @@ public static class OrchestratorMigration
     /// Copies <paramref name="local"/>'s data into the SQL Server database <paramref name="connection"/> names (created when it
     /// isn't there), in one transaction holding the server's write lock, then configures this machine to use it. A server that
     /// already holds data is left alone unless <paramref name="replace"/>, so a second run can't copy an older file over it.
+    /// Once switched (<paramref name="configure"/>), the file's own copy of what the server now alone keeps (everything but
+    /// <see cref="OrchestratorDb.Mirrored"/>) is cleared (M.ORCH-T812): left as it stood at the cutover, pace_ledger and
+    /// usage_samples looked like real, if stale, data rather than a stopped clock, and a plain read of the file (not
+    /// <c>orchestrator db status</c>, the live <c>data/orchestrator.sql</c>, or <c>orchestrator ledger</c>) wrongly concluded
+    /// the ledger itself had stopped recording windows (M.ORCH-T802), when every window since had been landing on the server
+    /// the whole time. An empty table now says plainly "the server keeps this," not "nothing happened since."
     /// </summary>
     public static IReadOnlyList<Copied> ToServer(OrchestratorDb local, string connection, bool replace = false, bool configure = true)
     {
@@ -43,8 +49,22 @@ public static class OrchestratorMigration
             }
             tx.Commit();
         }
-        if (configure) OrchestratorServer.Configure(connection);
+        if (configure)
+        {
+            OrchestratorServer.Configure(connection);
+            ClearServerOwned(local);
+        }
         return copied;
+    }
+
+    /// <summary>Clears <paramref name="local"/>'s own copy of every table the server now alone keeps current (everything but
+    /// <see cref="OrchestratorDb.Mirrored"/>, which the hooks still read here), once this machine is actually switched to it.
+    /// Internal so a test can check it directly, without going through <see cref="OrchestratorServer.Configure"/> (which would
+    /// flip this real machine's database.json).</summary>
+    internal static void ClearServerOwned(OrchestratorDb local)
+    {
+        var serverOwned = OrchestratorServer.Tables.Select(t => t.Table).Except(OrchestratorDb.Mirrored, StringComparer.Ordinal);
+        local.Write((c, tx) => { foreach (var table in serverOwned) Sql.Run(c, tx, $"DELETE FROM {table};"); }, dump: false);
     }
 
     /// <summary>Copies the SQL Server database's data back into <paramref name="local"/> (its volatile state rows kept as they
