@@ -38,9 +38,6 @@ public sealed partial class MainViewModel
     /// <summary>Whether this is the 'API key' tab rather than a person's.</summary>
     public bool IsApiKeyTab => tab.IsApiKey;
 
-    /// <summary>Whether this is the 'Miscellaneous' tab (M.ORCH-T763): what fits on no person's page.</summary>
-    public bool IsMiscTab => tab.IsMisc;
-
     /// <summary>The tab's light: green, red, purple or (the 'API key' tab) orange.</summary>
     public TabLight TabLight => TabStatus.Light;
 
@@ -72,7 +69,7 @@ public sealed partial class MainViewModel
     /// <summary>The text beside a person's name (M.ORCH-T793): their live 5-hour and weekly use, each against that person's own
     /// live cutoff ("5hr: 10/98% | wk: 55/90%"), the cutoffs read from /org limit (or the wall while allowed past the weekly one),
     /// never a fixed number. On the 'API key' tab, the tokens the CLIs billing it spent today.</summary>
-    public string TabTrailing => tab.IsMisc ? "" : tab.IsApiKey ? $"{Formatting.Tokens(ApiKeyUsageToday.Fresh)} today"
+    public string TabTrailing => tab.IsApiKey ? $"{Formatting.Tokens(ApiKeyUsageToday.Fresh)} today"
         : TabUsagePairsOf(FiveHourUsed, FiveHourCutoff, WeekUsed, WeeklyCutoff);
 
     /// <summary>"5hr: 10/98% | wk: 55/90%": each window's % used (rounded, "—" never read) over its cutoff.</summary>
@@ -145,7 +142,7 @@ public sealed partial class MainViewModel
     public string LastUpdatedCaption => WeeklyAccountLine is { Length: > 0 } line ? line : "Claude's meter not read yet";
 
     /// <summary>The tab's icon: pause idle, a blinking green play arrow busy, gray disabled.</summary>
-    public TabActivity TabActivity => tab.IsMisc ? TabActivity.Idle : tab.IsApiKey
+    public TabActivity TabActivity => tab.IsApiKey
         ? ActivityOf(usable: IsOnApiKey, pastCutoff: false, working: false, Blinker.Grew || Blinker.Pending > 0)
         : ActivityOf(tab.SignedIn, PastCutoffOf(WeekUsed, WeeklyCutoff, FiveHourUsed, FiveHourCutoff), WorkingCount > 0 || HostCount > 0,
             Blinker.Grew || Blinker.Pending > 0);
@@ -160,14 +157,14 @@ public sealed partial class MainViewModel
     internal static bool PastCutoffOf(double? weekUsed, int weeklyCutoff, double? fiveHourUsed, int fiveHourCutoff) =>
         weekUsed >= weeklyCutoff || fiveHourUsed >= fiveHourCutoff;
 
-    // A person's tab shows its activity icon; the 'API key' tab shows a key (the owner's ask, M.ORCH-T763) and 'Miscellaneous' a
-    // "more" glyph instead, each with its word in the tooltip and accessible name.
+    // A person's tab shows its activity icon; the 'API key' tab shows a key instead (the owner's ask, M.ORCH-T763), each with
+    // its word in the tooltip and accessible name.
     public bool IsTabIdle => IsPersonTab && TabActivity == TabActivity.Idle;
     public bool IsTabBusy => IsPersonTab && TabActivity == TabActivity.Busy;
     public bool IsTabDisabled => IsPersonTab && TabActivity == TabActivity.Disabled;
 
     /// <summary>The icon in words, so it's never only a picture: "Busy", "Idle", or why it's disabled.</summary>
-    public string TabActivityWord => tab.IsMisc ? "Miscellaneous" : TabActivity switch
+    public string TabActivityWord => TabActivity switch
     {
         TabActivity.Busy => "Busy",
         TabActivity.Idle => "Idle",

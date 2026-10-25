@@ -46,10 +46,10 @@ public partial class MainWindow : Window
         OrgToolbar.DataContext = model;
         // Settings fills 80% of the window both ways (M.ORCH-T804), following it as it resizes or zooms.
         Root.SizeChanged += (_, _) => SizeSettings();
-        // A person's current work and the 'Miscellaneous' tab are each one virtualized list (M.ORCH-T754): headings and notes, then
-        // the lists' items a row (or a line of cards) each, so a switch of tab or org builds only what's on screen.
+        // A person's current work (including, on the global login's tab, what fits on no person's page, M.ORCH-T825) is one
+        // virtualized list (M.ORCH-T754): headings and notes, then the lists' items a row (or a line of cards) each, so a
+        // switch of tab or org builds only what's on screen.
         VirtualizedList.ApplyBody(AgentsBody);
-        VirtualizedList.ApplyBody(MiscBody);
         model.SelectedTabChanged += (_, _) => DataContext = model.SelectedTab;
         DataContextChanged += (_, e) =>
         {

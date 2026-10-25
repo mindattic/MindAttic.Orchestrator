@@ -133,7 +133,7 @@ public sealed class DashboardAlignmentTests
         var theme = (ResourceDictionary)Application.LoadComponent(new Uri("/MindAttic.Components.Wpf;component/Theme.xaml", UriKind.Relative));
         var gutter = (Thickness)((Style)theme["MaBodyScroll"]).Setters.OfType<Setter>().Single(x => x.Property == MaScrollArea.GutterProperty).Value;
         Assert.That(new[] { gutter.Left, gutter.Right }, Is.EqualTo(new[] { Side, Side }));
-        foreach (var body in new[] { "AgentsBody", "MiscBody", "ApiKeyBody" })
+        foreach (var body in new[] { "AgentsBody", "ApiKeyBody" })
             Assert.That((string?)Named(body).Attribute("Style"), Is.EqualTo("{StaticResource MaBodyScroll}"), body);
         var beside = MaScrollArea.PaddingFor(gutter, Visibility.Visible);
         Assert.That(beside.Left, Is.EqualTo(Side));

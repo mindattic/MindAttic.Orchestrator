@@ -96,11 +96,10 @@ public sealed class OrgDirectory
     public string OrgOfClaude(string? email) => OrgOf(Providers.Claude, email);
 
     /// <summary>The org a person tab is in: the 'API key' tab, the workspace's Vault key, is always the default org's.</summary>
-    public string OrgOfTab(LoginTab tab) => tab.IsApiKey || tab.IsMisc ? Organization.DefaultId : OrgOfClaude(tab.Email);
+    public string OrgOfTab(LoginTab tab) => tab.IsApiKey ? Organization.DefaultId : OrgOfClaude(tab.Email);
 
-    /// <summary>Whether <paramref name="tab"/> shows under <paramref name="orgId"/>: its person's org; the 'Miscellaneous' tab
-    /// (M.ORCH-T763), the workspace's, under every org.</summary>
-    public bool InOrg(string orgId, LoginTab tab) => tab.IsMisc || OrgOfTab(tab) == orgId;
+    /// <summary>Whether <paramref name="tab"/> shows under <paramref name="orgId"/>: its person's org.</summary>
+    public bool InOrg(string orgId, LoginTab tab) => OrgOfTab(tab) == orgId;
 
     public IReadOnlyList<OrgMember> MembersOf(string orgId) => [.. Members.Where(m => m.OrgId == orgId)];
 

@@ -223,7 +223,7 @@ public sealed partial class MainViewModel
     /// (<paramref name="wasSignedIn"/>, by tab key) and signed out now. A tab seen for the first time, or signed out all along,
     /// isn't one, so opening the dashboard never pops a browser per member not signed in yet.</summary>
     internal static IReadOnlyList<string> NewlyDisconnected(IReadOnlyDictionary<string, bool> wasSignedIn, IEnumerable<LoginTab> now) =>
-        [.. now.Where(t => t.Email is not null && !t.IsApiKey && !t.IsMisc && !t.SignedIn
+        [.. now.Where(t => t.Email is not null && !t.IsApiKey && !t.SignedIn
                            && wasSignedIn.TryGetValue(t.Key, out var was) && was)
                .Select(t => t.Email!)];
 

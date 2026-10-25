@@ -18,27 +18,16 @@ public sealed record LoginTab(string? Email, string Title, string ToolTip, strin
     /// <summary>Whether this is the 'API key' tab rather than a login's.</summary>
     public bool IsApiKey { get; init; }
 
-    /// <summary>The 'Miscellaneous' tab's key: never an email, so never a login's.</summary>
-    public const string MiscKey = "misc";
-
-    /// <summary>The 'Miscellaneous' tab (M.ORCH-T763): no login, but what fits on no person's page (allocate, a pacing hold,
-    /// reminders, finished work and the workspace's problems), after every other tab.</summary>
-    public static readonly LoginTab Misc = new(null, "Miscellaneous",
-        "What fits on no person's page: allocate, a pacing hold, reminders, finished work and the workspace's problems", "") { IsMisc = true };
-
-    /// <summary>Whether this is the 'Miscellaneous' tab rather than a login's.</summary>
-    public bool IsMisc { get; init; }
-
     /// <summary>The 'API key' tab as billing has it (M.ORCH-T672): marked "(fallback)" while the API key bills, since a CLI
     /// started with no account of its own then runs on the key, else as <see cref="ApiKey"/>.</summary>
     public static LoginTab ApiKeyTab(bool billingIsApiKey) =>
         billingIsApiKey ? ApiKey with { Title = "API key (fallback)", ToolTip = "The Vault's API key, billing now: the fallback for a CLI with no login of its own" } : ApiKey;
 
-    public bool IsGlobal => Email is null && !IsApiKey && !IsMisc;
+    public bool IsGlobal => Email is null && !IsApiKey;
 
     /// <summary>The key a tab is kept by across refreshes: "" for the global login, <see cref="ApiKeyKey"/> for the 'API key'
-    /// tab, <see cref="MiscKey"/> for the 'Miscellaneous' one, else its email.</summary>
-    public string Key => IsApiKey ? ApiKeyKey : IsMisc ? MiscKey : Email ?? "";
+    /// tab, else its email.</summary>
+    public string Key => IsApiKey ? ApiKeyKey : Email ?? "";
 }
 
 /// <summary>

@@ -73,11 +73,11 @@ public sealed class TabSwitchTests
     }
 
     [TestCase("AgentsBody")]
-    [TestCase("MiscBody")]
     public void Every_body_is_one_virtualized_list(string body)
     {
-        // M.ORCH-T754: a person's current work (with their Tickets) and the 'Miscellaneous' tab (M.ORCH-T763) build only what's on
-        // screen, so a 9-person and a 2-person org switch equally fast: each body's lists sit straight in it, made one list in code.
+        // M.ORCH-T754: a person's current work (with their Tickets, and on the global tab what fits on no person's page,
+        // M.ORCH-T825) builds only what's on screen, so a 9-person and a 2-person org switch equally fast: each body's lists
+        // sit straight in it, made one list in code.
         var doc = XDocument.Load(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
         var view = doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == body);
         var content = view.Elements().Single();

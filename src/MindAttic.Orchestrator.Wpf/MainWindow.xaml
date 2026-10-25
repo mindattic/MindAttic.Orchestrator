@@ -235,14 +235,10 @@
                                        Foreground="{DynamicResource MaMuted}" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                        Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />
                             <!-- The 'API key' tab shows a key (M.ORCH-T763; the tab itself is collapsed from this strip since M.ORCH-T770,
-                                 its toggle the corner's key button), and 'Miscellaneous', the strip's last tab, a "more" glyph, in place
-                                 of a person's activity icon. -->
+                                 its toggle the corner's key button), in place of a person's activity icon. -->
                             <TextBlock x:Name="TabKeyIcon" Text="&#xE192;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
                                        Foreground="{DynamicResource MaText}" VerticalAlignment="Center" AutomationProperties.Name="API key"
                                        Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}" />
-                            <TextBlock x:Name="TabMiscIcon" Text="&#xE712;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
-                                       Foreground="{DynamicResource MaText}" VerticalAlignment="Center" AutomationProperties.Name="Miscellaneous"
-                                       Visibility="{Binding IsMiscTab, Converter={StaticResource Visible}}" />
                         </Grid>
                         <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <!-- The needs-you flag (M.ORCH-T790): a small red flag at the end of the tab line, only while one of the
@@ -433,73 +429,6 @@
                 <TextBlock Text="WHO BILLS IT" Style="{StaticResource MaSectionLabel}" />
                 <TextBlock x:Name="ApiKeyCliList" Text="{Binding ApiKeyClis}" TextWrapping="Wrap" />
                 <TextBlock Text="{Binding BillingClis}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,8,0,0" />
-            </StackPanel>
-        </ScrollViewer>
-
-        <!-- The 'Miscellaneous' tab (M.ORCH-T763): what fits on no person's page. Allocate and the pace's slots, a pacing hold,
-             the reminders the daemon texts through Psst (orchestrator remind, M.ORCH-T477), the last queue line, finished work
-             (closed tickets whose assignment or worktree is still around) and the workspace's problems. One virtualized list
-             (MainWindow.xaml.cs): each list sits straight in it. -->
-        <ScrollViewer x:Name="MiscBody" Grid.Row="4" Style="{StaticResource MaBodyScroll}"
-                      Visibility="{Binding IsMiscTab, Converter={StaticResource Visible}}">
-            <StackPanel>
-                <TextBlock Text="Miscellaneous" Style="{StaticResource MaHeading}" Margin="0,18,0,0" AutomationProperties.HeadingLevel="Level2" />
-                <DockPanel Margin="0,8,0,0">
-                    <TextBlock DockPanel.Dock="Right" Text="{Binding SlotsText}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="12,0,0,0" />
-                    <TextBlock Text="{Binding AllocateText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" />
-                </DockPanel>
-                <Border Style="{StaticResource MaCard}" Margin="0,12,0,0" BorderBrush="{DynamicResource MaWarn}"
-                        Visibility="{Binding HasHold, Converter={StaticResource Visible}}">
-                    <TextBlock Text="{Binding Hold}" Foreground="{DynamicResource MaWarn}" TextWrapping="Wrap" />
-                </Border>
-                <!-- Its ticket ids link into Tickets Desktop (M.ORCH-T762), as everywhere else. -->
-                <TextBlock local:TicketText.Text="{Binding QueueMessage}" Foreground="{DynamicResource MaFocus}" TextWrapping="Wrap" Margin="0,10,0,0"
-                           Visibility="{Binding QueueMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-
-                <TextBlock Text="{Binding RemindersTitle}" Style="{StaticResource MaSectionLabel}"
-                           Visibility="{Binding HasReminders, Converter={StaticResource Visible}}" />
-                <ItemsControl x:Name="ReminderList" ItemsSource="{Binding Reminders}" Style="{StaticResource MaList}" AutomationProperties.Name="Reminders">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,2,0,0" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <TextBlock Text="orchestrator remind --cancel &lt;id&gt; drops one." Style="{StaticResource MaMutedText}" FontSize="11" Margin="0,4,0,0"
-                           Visibility="{Binding HasReminders, Converter={StaticResource Visible}}" />
-
-                <TextBlock Text="FINISHED WORK" Style="{StaticResource MaSectionLabel}" />
-                <TextBlock Text="Closed tickets whose assignment or worktree is still around." Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,0,0,8" />
-                <ItemsControl x:Name="FinishedList" ItemsSource="{Binding Finished}" Style="{StaticResource MaRowList}" AutomationProperties.Name="Finished work">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:FinishedViewModel}">
-                            <Border Style="{StaticResource MaListCard}" BorderBrush="{DynamicResource MaGood}">
-                                <DockPanel>
-                                    <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Padding="12,5"
-                                            Content="{Binding ActionLabel}" Command="{Binding ActionCommand}"
-                                            ToolTip="git keeps the worktree if it has uncommitted changes; the branch is never deleted" />
-                                    <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Padding="12,5" Margin="0,0,8,0"
-                                            Content="Details" Command="{Binding DetailsCommand}"
-                                            ToolTip="The sessions that worked on it (its commits and history: open it in Tickets Desktop)" />
-                                    <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0">
-                                        <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding TicketId}"
-                                                   AutomationProperties.Name="{Binding TicketId, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding TicketId, Mode=OneWay}" /></Hyperlink><Run Text="{Binding TextAfterId, Mode=OneWay}" />
-                                    </TextBlock>
-                                </DockPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <TextBlock Text="{Binding WarningsText}" Style="{StaticResource MaSectionLabel}"
-                           Visibility="{Binding HasWarnings, Converter={StaticResource Visible}}" />
-                <ItemsControl x:Name="WarningList" ItemsSource="{Binding Warnings}" Style="{StaticResource MaList}" AutomationProperties.Name="Problems reading the workspace">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding}" Foreground="{DynamicResource MaBad}" TextWrapping="Wrap" Margin="0,2,0,0" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
             </StackPanel>
         </ScrollViewer>
 
@@ -699,6 +628,73 @@
                 <ItemsControl x:Name="UnassignedTicketList" Style="{StaticResource MaRowList}" ItemsSource="{Binding UnassignedTickets}"
                               ItemTemplate="{StaticResource UserTicketTemplate}" AutomationProperties.Name="{Binding UnassignedHeader}"
                               Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}" />
+
+                <!-- What fits on no person's page (M.ORCH-T763), on the global login's tab instead of its own 'Miscellaneous'
+                     tab (M.ORCH-T825): allocate and the pace's slots, a pacing hold, the reminders the daemon texts through
+                     Psst (orchestrator remind, M.ORCH-T477), the last queue line, finished work (closed tickets whose
+                     assignment or worktree is still around) and the workspace's problems. Each part sits straight in the
+                     view, the lists too, so the one virtualized list (MainWindow.xaml.cs) builds only what's on screen. -->
+                <StackPanel x:Name="WorkspaceExtras" Margin="0,24,0,0" Visibility="{Binding ShowsWorkspaceExtras, Converter={StaticResource Visible}}">
+                    <TextBlock Text="Workspace" Style="{StaticResource MaHeading}" />
+                    <DockPanel Margin="0,8,0,0">
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding SlotsText}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                        <TextBlock Text="{Binding AllocateText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" />
+                    </DockPanel>
+                    <!-- Its ticket ids link into Tickets Desktop (M.ORCH-T762), as everywhere else. -->
+                    <TextBlock local:TicketText.Text="{Binding QueueMessage}" Foreground="{DynamicResource MaFocus}" TextWrapping="Wrap" Margin="0,10,0,0"
+                               Visibility="{Binding QueueMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                    <TextBlock Text="{Binding RemindersTitle}" Style="{StaticResource MaSectionLabel}"
+                               Visibility="{Binding ShowsReminders, Converter={StaticResource Visible}}" />
+                </StackPanel>
+                <Border x:Name="HoldCard" Style="{StaticResource MaCard}" Margin="0,12,0,0" BorderBrush="{DynamicResource MaWarn}"
+                        Visibility="{Binding ShowsHold, Converter={StaticResource Visible}}">
+                    <TextBlock Text="{Binding Hold}" Foreground="{DynamicResource MaWarn}" TextWrapping="Wrap" />
+                </Border>
+                <ItemsControl x:Name="ReminderList" ItemsSource="{Binding Reminders}" Style="{StaticResource MaList}" AutomationProperties.Name="Reminders"
+                              Visibility="{Binding ShowsReminders, Converter={StaticResource Visible}}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="orchestrator remind --cancel &lt;id&gt; drops one." Style="{StaticResource MaMutedText}" FontSize="11" Margin="0,4,0,0"
+                           Visibility="{Binding ShowsReminders, Converter={StaticResource Visible}}" />
+                <TextBlock Text="FINISHED WORK" Style="{StaticResource MaSectionLabel}"
+                           Visibility="{Binding ShowsWorkspaceExtras, Converter={StaticResource Visible}}" />
+                <TextBlock Text="Closed tickets whose assignment or worktree is still around." Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,0,0,8"
+                           Visibility="{Binding ShowsWorkspaceExtras, Converter={StaticResource Visible}}" />
+                <ItemsControl x:Name="FinishedList" ItemsSource="{Binding Finished}" Style="{StaticResource MaRowList}" AutomationProperties.Name="Finished work"
+                              Visibility="{Binding ShowsWorkspaceExtras, Converter={StaticResource Visible}}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:FinishedViewModel}">
+                            <Border Style="{StaticResource MaListCard}" BorderBrush="{DynamicResource MaGood}">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Padding="12,5"
+                                            Content="{Binding ActionLabel}" Command="{Binding ActionCommand}"
+                                            ToolTip="git keeps the worktree if it has uncommitted changes; the branch is never deleted" />
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource MaButton}" Padding="12,5" Margin="0,0,8,0"
+                                            Content="Details" Command="{Binding DetailsCommand}"
+                                            ToolTip="The sessions that worked on it (its commits and history: open it in Tickets Desktop)" />
+                                    <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0">
+                                        <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding TicketId}"
+                                                   AutomationProperties.Name="{Binding TicketId, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding TicketId, Mode=OneWay}" /></Hyperlink><Run Text="{Binding TextAfterId, Mode=OneWay}" />
+                                    </TextBlock>
+                                </DockPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="{Binding WarningsText}" Style="{StaticResource MaSectionLabel}"
+                           Visibility="{Binding ShowsWarningsSection, Converter={StaticResource Visible}}" />
+                <ItemsControl x:Name="WarningList" ItemsSource="{Binding Warnings}" Style="{StaticResource MaList}" AutomationProperties.Name="Problems reading the workspace"
+                              Visibility="{Binding ShowsWarningsSection, Converter={StaticResource Visible}}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" Foreground="{DynamicResource MaBad}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </StackPanel>
         </ScrollViewer>
 

@@ -139,7 +139,7 @@ public sealed class AccountsViewTests
     public void A_login_signed_out_since_the_last_refresh_is_the_one_that_opens_its_sign_in()
     {
         // M.ORCH-T796: only a login that was signed in and now isn't; never one seen for the first time, signed out all along,
-        // still signed in, or the global, 'API key' and 'Miscellaneous' tabs.
+        // still signed in, or the global and 'API key' tabs.
         var was = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase)
         {
             ["a@example.com"] = true, ["b@example.com"] = false, ["c@example.com"] = true, [""] = true, [LoginTab.ApiKeyKey] = true,
@@ -152,7 +152,6 @@ public sealed class AccountsViewTests
             new("c@example.com", "C", "", ""),
             new("d@example.com", "D", "", "", SignedIn: false),
             LoginTab.ApiKey with { SignedIn = false },
-            LoginTab.Misc with { SignedIn = false },
         ];
         Assert.That(MainViewModel.NewlyDisconnected(was, now), Is.EqualTo(new[] { "a@example.com" }));
     }

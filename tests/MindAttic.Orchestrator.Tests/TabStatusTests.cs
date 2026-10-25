@@ -101,22 +101,22 @@ public sealed class TabStatusTests
     }
 
     [Test]
-    public void The_miscellaneous_tab_is_no_logins_shows_under_every_org_and_the_api_key_tab_shows_a_key()
+    public void There_is_no_miscellaneous_tab_any_more_its_content_shows_on_the_global_tab_instead()
     {
-        // M.ORCH-T763: after the API key tab, for what fits on no person's page; the API key tab's icon is a key.
-        Assert.That(LoginTab.Misc.IsMisc, Is.True);
-        Assert.That(LoginTab.Misc.IsGlobal, Is.False);
-        Assert.That(LoginTab.Misc.Key, Is.EqualTo(LoginTab.MiscKey).And.Not.EqualTo(LoginTab.ApiKeyKey).And.Not.Contains("@"));
-        Assert.That(OrgDirectory.Single.InOrg("any-org", LoginTab.Misc), Is.True);
-        Assert.That(OrgDirectory.Single.InOrg("any-org", LoginTab.ApiKey), Is.False);
+        // M.ORCH-T825: the 'Miscellaneous' tab (M.ORCH-T763) is gone; what fit on no person's page now shows on the global
+        // login's tab (ShowsWorkspaceExtras, MainViewModel.Tabs.cs), and the API key tab's icon is still a key.
+        Assert.That(typeof(LoginTab).GetProperty("IsMisc"), Is.Null);
+        Assert.That(typeof(LoginTab).GetField("MiscKey"), Is.Null);
+        Assert.That(typeof(LoginTab).GetField("Misc"), Is.Null);
 
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
         Assert.That(xaml, Does.Contain("x:Name=\"TabKeyIcon\" Text=\"&#xE192;\"").And.Contain("{Binding IsApiKeyTab, Converter")
-            .And.Contain("x:Name=\"TabMiscIcon\"").And.Contain("x:Name=\"MiscBody\""));
+            .And.Not.Contain("x:Name=\"TabMiscIcon\"").And.Not.Contain("x:Name=\"MiscBody\""));
+        Assert.That(xaml, Does.Contain("x:Name=\"WorkspaceExtras\"").And.Contain("{Binding ShowsWorkspaceExtras,"));
         var tabs = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "ViewModels", "MainViewModel.Tabs.cs"));
-        Assert.That(tabs, Does.Contain("LoginTab.ApiKeyTab(all.Billing?.Mode == BillingModes.Api), LoginTab.Misc]"), "the API key tab, then Miscellaneous, last");
+        Assert.That(tabs, Does.Not.Contain("LoginTab.Misc"));
     }
 
     [Test]

@@ -19,6 +19,7 @@ public sealed partial class MainViewModel
         Reminders = lines;
         Raise(nameof(HasReminders));
         Raise(nameof(RemindersTitle));
+        Raise(nameof(ShowsReminders));
     }
 
     internal static IReadOnlyList<string> ReminderLines(IEnumerable<Reminder> pending, DateTime nowUtc) =>
