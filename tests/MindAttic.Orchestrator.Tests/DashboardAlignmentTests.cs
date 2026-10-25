@@ -147,7 +147,7 @@ public sealed class DashboardAlignmentTests
     }
 
     [Test]
-    public void The_clock_refresh_and_launcher_sit_right_of_the_current_work_heading_under_the_chart()
+    public void The_clock_refresh_and_launcher_sit_right_of_the_current_work_heading_under_the_stat_tiles()
     {
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
@@ -155,10 +155,11 @@ public sealed class DashboardAlignmentTests
         XElement Named(string name) => doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == name);
         static string? Binding(XElement e, string attribute) => (string?)e.Attribute(attribute);
 
-        // Below the chart, on the view tabs' row and right of them (M.ORCH-T667): the toolbar's right-hand column.
+        // Below the stat tiles (the chart moved further down, under Terminals, M.ORCH-T826), on the view tabs' row and right
+        // of them (M.ORCH-T667): the toolbar's right-hand column.
         var toolbar = Named("Toolbar");
         var controls = Named("HeaderControls");
-        Assert.That(controls.Ancestors().Contains(toolbar), Is.True, "on the toolbar's row, under the chart");
+        Assert.That(controls.Ancestors().Contains(toolbar), Is.True, "on the toolbar's row, under the stat tiles");
         Assert.That((string?)controls.Parent!.Attribute("Grid.Column"), Is.EqualTo("1"), "right of the current work's heading");
         Assert.That(Named("Header").Descendants().Contains(controls), Is.False, "no longer above the tiles");
         // No view pills (M.ORCH-T763): the person's current work is named on the left.
@@ -183,7 +184,7 @@ public sealed class DashboardAlignmentTests
         Assert.That(launcher.Descendants(P + "Path").Count(), Is.EqualTo(1), "the rocket");
         Assert.That(launcher.Descendants(P + "TextBlock").Single().Ancestors(P + "Button.ToolTip").Any(), Is.True, "its only text is its tooltip");
         Assert.That((string?)launcher.Attribute("AutomationProperties.Name"), Does.Contain("Open the Launcher as"));
-        // No Settings button under the chart (M.ORCH-T804): the top-right cog is the only way into Settings.
+        // No Settings button here (M.ORCH-T804): the top-right cog is the only way into Settings.
         Assert.That(controls.Elements(P + "Button").Any(b => (string?)b.Attribute("Content") == "Settings" || Binding(b, "Command") == "{Binding ToggleSettingsCommand}"), Is.False);
         Assert.That(doc.Descendants(P + "KeyBinding").Any(k => (string?)k.Attribute("Key") == "F5" && Binding(k, "Command") == "{Binding RefreshCommand}"), Is.True, "F5 still refreshes");
 

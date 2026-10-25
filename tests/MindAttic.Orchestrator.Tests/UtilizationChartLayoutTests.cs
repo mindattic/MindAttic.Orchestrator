@@ -130,8 +130,10 @@ public sealed class UtilizationChartLayoutTests
     }
 
     [Test]
-    public void The_utilization_chart_has_its_own_full_width_row_under_the_tiles_and_is_tall()
+    public void The_utilization_chart_has_its_own_full_width_row_under_terminals_and_is_tall()
     {
+        // M.ORCH-T826: moved out of the pinned header (no longer under the stat tiles) to the scrolling body, under Terminals
+        // and above Tickets, so Current work and Terminals are the first things on the page.
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         XNamespace p = "http://schemas.microsoft.com/winfx/2006/xaml/presentation", x = "http://schemas.microsoft.com/winfx/2006/xaml";
@@ -140,10 +142,11 @@ public sealed class UtilizationChartLayoutTests
         var chart = card.Descendants().Single(e => e.Name.LocalName == "MaLineChart");
 
         Assert.That(card.Ancestors(p + "WrapPanel"), Is.Empty, "the chart isn't one more tile beside the stats");
-        var header = card.Parent!;
-        Assert.That(header.Name, Is.EqualTo(p + "StackPanel"));
-        var siblings = header.Elements().ToList();
-        Assert.That(siblings.IndexOf(card), Is.GreaterThan(siblings.FindIndex(e => e.Name.LocalName == "MaTileGrid")), "it sits under the tiles");
+        Assert.That(card.Ancestors().Any(e => (string?)e.Attribute(x + "Name") == "Header"), Is.False, "no longer pinned above the toolbar");
+        Assert.That(card.Ancestors().Any(e => (string?)e.Attribute(x + "Name") == "AgentsBody"), Is.True, "in the scrolling body with current work and Terminals");
+        var names = doc.Descendants().Select(e => (string?)e.Attribute(x + "Name")).ToList();
+        Assert.That(names.IndexOf("UtilizationCard"), Is.GreaterThan(names.IndexOf("TerminalsPanel")), "under Terminals");
+        Assert.That(names.IndexOf("UtilizationCard"), Is.LessThan(names.IndexOf("UserTickets")), "above Tickets");
         Assert.That(card.Attribute("Width"), Is.Null, "no fixed width: it stretches across the window");
         Assert.That(chart.Attribute("Width"), Is.Null);
         Assert.That((string?)chart.Attribute("Data"), Is.EqualTo("{Binding Utilization, Converter={x:Static local:UtilizationChartData.Converter}}"));

@@ -264,10 +264,11 @@
         </StackPanel>
         </DockPanel>
 
-        <!-- A person's page (M.ORCH-T763), read top to bottom: their stats (the 5-hour window, the week, their cutoffs and when
-             Claude's meter was last read), their login actions, their 5-hour chart, then their current work below the toolbar.
-             The header owns the window's left/right gutter; nothing inside it adds its own, so the tiles and the chart share
-             both edges (M.ORCH-T192). The tiles are equal cells that together span the row at any width. -->
+        <!-- A person's page (M.ORCH-T763, reordered by M.ORCH-T826), read top to bottom: their stats (the 5-hour window, the
+             week, their cutoffs and when Claude's meter was last read) in this pinned header, then below the toolbar their
+             current work, Terminals, the 5-hour chart, and Tickets, all in the one scrolling body (AgentsBody). The header
+             owns the window's left/right gutter; nothing inside it adds its own, so the tiles share both edges (M.ORCH-T192).
+             The tiles are equal cells that together span the row at any width. -->
         <StackPanel x:Name="Header" Grid.Row="1" Margin="24,18,24,0" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
 
         <mc:MaTileGrid x:Name="StatTiles" MinItemWidth="200" Spacing="10" RowSpacing="10" Balanced="True" UniformRows="True"
@@ -334,19 +335,6 @@
         <TextBlock x:Name="PersonMessage" Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,12,0,0"
                    AutomationProperties.LiveSetting="Polite"
                    Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-        <!-- This 5-hour window's utilization (M.ORCH-T191): its own full-width row under the stats, tall enough that the
-             pace line straight to the target at the reset, the window's own line (red while over that pace, green under)
-             and where the recent rate ends up are easy to read. The caption says it in words. -->
-        <Border x:Name="UtilizationCard" Style="{StaticResource MaCard}" Margin="0,12,0,12" HorizontalAlignment="Stretch"
-                AutomationProperties.Name="{Binding UtilizationText, StringFormat='5-hour utilization: {0}'}"
-                Visibility="{Binding UtilizationText, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
-            <StackPanel>
-                <TextBlock Text="5-hour utilization" Style="{StaticResource MaSectionLabel}" />
-                <mc:MaLineChart x:Name="UtilizationChart" Data="{Binding Utilization, Converter={x:Static local:UtilizationChartData.Converter}}"
-                                Height="260" Margin="0,8,0,8" />
-                <TextBlock Text="{Binding UtilizationText}" Style="{StaticResource MaTileSubtitle}" FontSize="13" TextWrapping="Wrap" />
-            </StackPanel>
-        </Border>
         </StackPanel>
 
         <!-- Toolbar: the person's current work, by name and count, on the left; the clock, when the dashboard last refreshed,
@@ -670,6 +658,23 @@
                     <Border x:Name="TerminalFrame" Style="{StaticResource MaInsetCard}" Height="480"
                             Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
                         <Grid x:Name="TerminalPanesHost" />
+                    </Border>
+                </StackPanel>
+
+                <!-- This 5-hour window's utilization (M.ORCH-T191), moved below Terminals, under current work (M.ORCH-T826):
+                     its own full-width row, tall enough that the pace line straight to the target at the reset, the window's
+                     own line (red while over that pace, green under) and where the recent rate ends up are easy to read. The
+                     caption says it in words. -->
+                <StackPanel x:Name="UtilizationSection" Margin="0,24,0,0">
+                    <Border x:Name="UtilizationCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch"
+                            AutomationProperties.Name="{Binding UtilizationText, StringFormat='5-hour utilization: {0}'}"
+                            Visibility="{Binding UtilizationText, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
+                        <StackPanel>
+                            <TextBlock Text="5-hour utilization" Style="{StaticResource MaSectionLabel}" />
+                            <mc:MaLineChart x:Name="UtilizationChart" Data="{Binding Utilization, Converter={x:Static local:UtilizationChartData.Converter}}"
+                                            Height="260" Margin="0,8,0,8" />
+                            <TextBlock Text="{Binding UtilizationText}" Style="{StaticResource MaTileSubtitle}" FontSize="13" TextWrapping="Wrap" />
+                        </StackPanel>
                     </Border>
                 </StackPanel>
 
