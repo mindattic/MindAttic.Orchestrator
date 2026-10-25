@@ -98,6 +98,8 @@ public sealed partial class MainViewModel
         selectedTab = next;
         foreach (var t in loginTabs) t.Raise(nameof(SelectedTab));
         SelectedTabChanged?.Invoke(this, EventArgs.Empty);
+        // The person shown is the one whose chosen terminal shows (M.ORCH-T810).
+        ShowChosenPane();
     }
 
     private void Step(int by)
@@ -153,6 +155,8 @@ public sealed partial class MainViewModel
             t.RaiseTabStatus();
         }
         UpdateOrgPills();
+        // A login's tab come or gone takes its terminals with it (to the global login's when gone), M.ORCH-T810.
+        SyncTerminals();
         OpenLaunchers();
         if (NewlyDisconnected(wasSignedIn, loginTabs.Select(t => t.tab)) is { Count: > 0 } disconnected) AutoSignIn(disconnected);
     }

@@ -73,6 +73,18 @@ public partial class MainWindow : Window
 
         CommandBindings.Add(new CommandBinding(WindowCommands.Escape, (_, _) => OnEscape()));
 
+        // Each terminal lives in the Terminals panel's host grid from its opening to its closing (M.ORCH-T810): a template would
+        // build a new terminal (and a new CLI) every time its tab was shown. Native windows, they're clipped to the page's scroll
+        // view, and hidden while a dialog or the loader covers the window, which they'd otherwise draw over.
+        model.AllTerminals.Panes.CollectionChanged += (_, e) =>
+        {
+            foreach (var gone in e.OldItems?.OfType<TerminalPaneViewModel>() ?? []) TerminalPanesHost.Children.Remove(gone.Control);
+            foreach (var added in e.NewItems?.OfType<TerminalPaneViewModel>() ?? []) TerminalPanesHost.Children.Add(added.Control);
+        };
+        TerminalClip.Attach(TerminalPanesHost);
+        model.PropertyChanged += (_, _) => UpdateTerminalsCover();
+        DataContextChanged += (_, _) => UpdateTerminalsCover();
+
         // A toast on any login's tab flashes the window.
         model.ToastRaised += (_, _) => OnToastAdded();
 
@@ -104,10 +116,36 @@ public partial class MainWindow : Window
     /// <summary><c>--show &lt;email|session|ticket&gt;</c> (M.ORCH-T763): the person it names, or whose CLI runs that session or ticket.</summary>
     public Task<bool> ShowAsync(string target) => model.ShowAsync(target);
 
+    private CancellationTokenSource? terminalsPipe;
+
+    /// <summary>
+    /// Makes this window the one that holds the Terminals panels' terminals (M.ORCH-T810): the hosting entry point. A CLI sent
+    /// from another process (MindAttic.Launcher running inside the Orchestrator, M.LNCH-T77) arrives on the terminals pipe
+    /// (<see cref="Sessions.PaneBroker"/>) and opens as a new tab on its person's page. Called by the app for its one dashboard
+    /// only, never by a test's window.
+    /// </summary>
+    internal void HostTerminals()
+    {
+        terminalsPipe = new CancellationTokenSource();
+        _ = Sessions.PaneBroker.ServeAsync(request => Dispatcher.InvokeAsync(() => model.OpenTerminal(request)).Task, terminalsPipe.Token);
+        Closed += (_, _) => terminalsPipe.Cancel();
+    }
+
+    /// <summary>The terminals are native windows WPF can't draw over: hidden (never collapsed, so each keeps its size) while
+    /// Settings, Rename or Org limit is open, the loader covers the window or an org with no login covers the page.</summary>
+    private void UpdateTerminalsCover()
+    {
+        var shown = Shown;
+        var covered = shown.IsSettingsOpen || shown.IsRenameOpen || shown.IsLimitOpen || model.IsLoading || model.IsOrgEmpty;
+        TerminalPanesHost.Visibility = covered ? Visibility.Hidden : Visibility.Visible;
+    }
+
     /// <summary>Reads out the shown tab's status and queue lines.</summary>
     private void OnShownChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (sender != Shown) return;
+        if (e.PropertyName is nameof(MainViewModel.IsSettingsOpen) or nameof(MainViewModel.IsRenameOpen) or nameof(MainViewModel.IsLimitOpen))
+            UpdateTerminalsCover();
         if (e.PropertyName == nameof(MainViewModel.StatusMessage)) Announce(Shown.StatusMessage);
         else if (e.PropertyName == nameof(MainViewModel.QueueMessage)) Announce(Shown.QueueMessage);
     }

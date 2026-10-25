@@ -129,7 +129,10 @@ public partial class App : Application
 
         // Closing the window quits: there's no tray to hide in (M.ORCH-T501).
         ShutdownMode = ShutdownMode.OnMainWindowClose;
-        MainWindow = new MainWindow();
+        var main = new MainWindow();
+        MainWindow = main;
+        // This dashboard holds the Terminals panels' terminals, and takes the ones the Launcher sends it (M.ORCH-T810).
+        main.HostTerminals();
         MainWindow.Show();
         DashboardWindow.Track(MainWindow);
         instance.OnShowRequested(args => Dispatcher.BeginInvoke(() =>

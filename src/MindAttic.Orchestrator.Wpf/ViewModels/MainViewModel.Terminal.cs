@@ -60,6 +60,12 @@ public sealed partial class MainViewModel
 
     private async Task<GoToResult> GoToAsync(HostSession host)
     {
+        // A CLI in a Terminals panel here (M.ORCH-T810): its tab, on its person's page.
+        if (Root.AllTerminals.Find(host.ProcessId) is { } pane)
+        {
+            Root.ShowPane(pane);
+            return new GoToResult(GoToOutcome.Tab, "Brought up its terminal.");
+        }
         var all = full?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
         try
         {
