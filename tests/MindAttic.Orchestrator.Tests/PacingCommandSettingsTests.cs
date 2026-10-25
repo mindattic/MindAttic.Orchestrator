@@ -10,7 +10,7 @@ public sealed class PacingCommandSettingsTests
     [Test]
     public void The_default_exempt_commands_name_pacing_and_not_the_retired_ones()
     {
-        Assert.That(new OrchestratorSettings().ExemptCommands, Is.EqualTo(new[] { "/pacing", "/deploy", "/run" }));
+        Assert.That(new OrchestratorSettings().ExemptCommands, Is.EqualTo(new[] { "/pacing", "/deploy", "/run", "/allocate", "/commit", "/quicksave", "/quickload" }));
     }
 
     [Test]

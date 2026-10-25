@@ -128,7 +128,7 @@ public sealed record OrchestratorSettings
     public List<string> ExemptCommands { get => exemptCommands; init => exemptCommands = RenameRetired(value); }
     private readonly List<string> exemptCommands = [.. DefaultExemptCommands];
 
-    public static IReadOnlyList<string> DefaultExemptCommands { get; } = ["/pacing", "/deploy", "/run"];
+    public static IReadOnlyList<string> DefaultExemptCommands { get; } = ["/pacing", "/deploy", "/run", "/allocate", "/commit", "/quicksave", "/quickload"];
 
     private static List<string> RenameRetired(List<string>? commands) =>
         commands is null ? [] : [.. commands.Select(c => c?.Trim().TrimStart('/').ToLowerInvariant() is "throttle" or "unthrottle" ? "/pacing" : c!).Distinct()];
