@@ -173,7 +173,8 @@
             <Button x:Name="LoginTabScrollLeft" Grid.Column="0" Style="{StaticResource MaToolButton}" Content="&#xE76B;"
                     Click="LoginTabScrollLeft_Click" Margin="0,0,4,0" Visibility="Collapsed"
                     ToolTip="Scroll the login tabs left" AutomationProperties.Name="Scroll the login tabs left" />
-            <ScrollViewer x:Name="LoginTabScroller" Grid.Column="1" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+            <ScrollViewer x:Name="LoginTabScroller" Grid.Column="1" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
+                          HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
                           ScrollChanged="LoginTabScroller_ScrollChanged">
         <mc:MaTabControl x:Name="LoginTabStrip" ShowContent="False" ItemsSource="{Binding OrgTabs}" SelectedItem="{Binding SelectedTab}"
                          AutomationProperties.Name="Claude logins, one dashboard tab each"

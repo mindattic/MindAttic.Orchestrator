@@ -244,7 +244,9 @@ public sealed class TerminalPanesTests
         XElement Named(string name) => xaml.Descendants().Single(e => (string?)e.Attribute(x + "Name") == name);
         var body = Named("AgentsBody").Elements().Single().Elements().Select(e => (string?)e.Attribute(x + "Name")).ToList();
         Assert.That(body.IndexOf("TerminalsPanel"), Is.EqualTo(body.IndexOf("AgentCards") + 1));
-        Assert.That(body.IndexOf("UserTickets"), Is.EqualTo(body.IndexOf("TerminalsPanel") + 1));
+        // The 5-hour chart sits between Terminals and Tickets (M.ORCH-T826).
+        Assert.That(body.IndexOf("UtilizationSection"), Is.EqualTo(body.IndexOf("TerminalsPanel") + 1));
+        Assert.That(body.IndexOf("UserTickets"), Is.EqualTo(body.IndexOf("UtilizationSection") + 1));
         Assert.That((string?)Named("TerminalTabs").Attribute("ItemsSource"), Is.EqualTo("{Binding Terminals.Panes}"));
         Assert.That(Named("TerminalPanesHost").Parent, Is.SameAs(Named("TerminalFrame")));
     }
