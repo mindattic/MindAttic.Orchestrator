@@ -60,6 +60,11 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
 
     private readonly object gate = new();
     private readonly Decoder utf8 = Encoding.UTF8.GetDecoder();
+    // Frames to write, each with the link it was meant for (M.ORCH-T975): one writer task drains it, so no write ever blocks
+    // the UI thread or holds 'gate', and Close() breaks a stalled write by cancelling 'sending'.
+    private readonly System.Threading.Channels.Channel<(Stream Link, byte[] Frame)> outbox =
+        System.Threading.Channels.Channel.CreateUnbounded<(Stream, byte[])>(new() { SingleReader = true });
+    private readonly CancellationTokenSource sending = new();
     private Stream? link;
     private volatile bool closed, exited;
     private uint rows, cols;
@@ -108,7 +113,33 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
         ui = SynchronizationContext.Current;
         // Phase 0 lesson 4: win32-input-mode on the renderer, as EasyTerminalControl does, since the setter's reset cleared it.
         Raise(Win32InputMode);
+        _ = Task.Run(WriteLoopAsync);
         _ = Task.Run(RunAsync);
+    }
+
+    /// <summary>Writes the queued frames in order, each to the link it was queued for (a frame for a link that has since dropped
+    /// is skipped, so nothing reaches a new link ahead of its Hello). Ends on <see cref="Close"/>. Never throws.</summary>
+    private async Task WriteLoopAsync()
+    {
+        var token = sending.Token;
+        try
+        {
+            await foreach (var (target, frame) in outbox.Reader.ReadAllAsync(token).ConfigureAwait(false))
+            {
+                lock (gate)
+                {
+                    if (closed || !ReferenceEquals(link, target)) continue;
+                }
+                try { await target.WriteAsync(frame, token).ConfigureAwait(false); }
+                catch (OperationCanceledException) when (token.IsCancellationRequested) { return; }
+                // The link dropped under the write: the read loop sees it too and reattaches.
+                catch (Exception ex) when (ex is IOException or ObjectDisposedException or InvalidOperationException or NotSupportedException
+                                               or OperationCanceledException or System.Net.WebSockets.WebSocketException) { }
+                catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Writing to {Pipe:l} failed; contained", name); }
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "The writer to {Pipe:l} failed; contained", name); }
     }
 
     private void Post(Action action)
@@ -199,14 +230,14 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
         try
         {
             p = await connect(CancellationToken.None).ConfigureAwait(false);
-            uint r, c;
             lock (gate)
             {
                 if (closed) return new("closed", true, false);
                 link = p;
-                r = rows; c = cols;
+                // Queued under the gate that set the link, so the Hello is the first frame this link carries.
+                outbox.Writer.TryWrite((p, TermProtocol.Frame(TermFrameKind.Hello,
+                    TermProtocol.Hello(protocol, (ushort)(cols > 0 ? cols : 120), (ushort)(rows > 0 ? rows : 30), interactive, viewerId ?? ViewerId))));
             }
-            Send(TermFrameKind.Hello, TermProtocol.Hello(protocol, (ushort)(c > 0 ? c : 120), (ushort)(r > 0 ? r : 30), interactive, viewerId ?? ViewerId));
 
             while (!closed)
             {
@@ -317,14 +348,14 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
         if (text.Contains("\u001bc", StringComparison.Ordinal)) Raise(Win32InputMode);
     }
 
+    /// <summary>Queues a frame for the current link (M.ORCH-T975): the writer task writes it, never the caller (the UI thread).</summary>
     private void Send(TermFrameKind kind, ReadOnlySpan<byte> payload)
     {
         var frame = TermProtocol.Frame(kind, payload);
         lock (gate)
         {
             if (closed || link is not { } p || p is NamedPipeClientStream { IsConnected: false }) return;
-            try { p.Write(frame); }
-            catch (Exception ex) when (ex is IOException or ObjectDisposedException or InvalidOperationException) { }
+            outbox.Writer.TryWrite((p, frame));
         }
     }
 
@@ -366,6 +397,11 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
     /// <summary>Drops the link; the host keeps running.</summary>
     public void Close()
     {
+        // The writer never holds 'gate' while it writes, so this lock can't wait on a stalled write; the cancel breaks one.
+        closed = true;
+        try { sending.Cancel(); }
+        catch (ObjectDisposedException) { }
+        outbox.Writer.TryComplete();
         lock (gate)
         {
             closed = true;
