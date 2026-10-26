@@ -32,6 +32,11 @@ internal sealed class TermSession
 
     private IntPtr hPC, hProcess;
 
+    // M.ORCH-T991: the pseudoconsole's lifetime. Every ResizePseudoConsole and the close take ptyGate; the close sets ptyClosed
+    // and zeroes hPC first, so no resize ever reaches a closed (freed) pseudoconsole. Never taken while holding gate.
+    private readonly object ptyGate = new();
+    private volatile bool ptyClosed;
+
     // When the pump last handed on output (Environment.TickCount64): a resize waits for a quiet gap after it (M.ORCH-T930).
     private long lastOutputTicks;
     private Stream? ptyIn, ptyOut;
@@ -123,7 +128,7 @@ internal sealed class TermSession
             var code = ex is Win32Exception w ? w.NativeErrorCode : -1;
             var why = code == 2 || code == 3 ? $"command not found: {commandLine}" : ex.Message;
             log.Write($"the CLI couldn't start ({why}, error {code}): {ex}");
-            if (hPC != IntPtr.Zero) { try { ClosePseudoConsole(hPC); } catch (Exception) { } hPC = IntPtr.Zero; }
+            try { ClosePty(); } catch (Exception) { }
             lock (gate)
             {
                 exited = true;
@@ -226,10 +231,12 @@ internal sealed class TermSession
             if (GetExitCodeProcess(hProcess, out var raw)) code = (int)raw;
             log.Write($"cli exited code={code}");
             // Closing the pseudoconsole flushes its last output; the pump keeps reading meanwhile and ends at EOF.
-            ClosePseudoConsole(hPC);
+            ClosePty();
             for (var i = 0; i < 40 && pump is { IsAlive: true }; i++) Thread.Sleep(50);
         }
         catch (Exception ex) { log.Error(ex, "watching the CLI failed; contained"); }
+        // Closed even when watching failed, so a resize after the exit never reaches the pseudoconsole.
+        try { ClosePty(); } catch (Exception ex) { log.Error(ex, "closing the pseudoconsole failed; contained"); }
         lock (gate)
         {
             exited = true;
@@ -238,6 +245,21 @@ internal sealed class TermSession
             Broadcast(TermFrameKind.Exit, TermProtocol.Exit(code));
         }
         Linger(code);
+    }
+
+    /// <summary>Closes the pseudoconsole once (M.ORCH-T991): under <see cref="ptyGate"/> it is marked closed and its handle zeroed
+    /// before the close, so a resize racing the exit finds it closed instead of calling ResizePseudoConsole on freed memory. The
+    /// close itself runs outside the lock: it can wait for the output pump to drain.</summary>
+    private void ClosePty()
+    {
+        IntPtr closing;
+        lock (ptyGate)
+        {
+            ptyClosed = true;
+            closing = hPC;
+            hPC = IntPtr.Zero;
+        }
+        if (closing != IntPtr.Zero) ClosePseudoConsole(closing);
     }
 
     private void MarkExited(int code) =>
@@ -501,11 +523,11 @@ internal sealed class TermSession
         {
             Thread.Sleep(150);
             ushort c, r;
-            lock (gate) { if (!viewers.Contains(link) || exited) return; c = cols; r = rows; }
+            lock (gate) { if (!viewers.Contains(link) || exited || ptyClosed) return; c = cols; r = rows; }
             if (c > 1) { SetPtySize((ushort)(c - 1), r); Thread.Sleep(150); }
             lock (gate)
             {
-                if (exited) return;
+                if (exited || ptyClosed) return;
                 // A resize in the meantime already repainted at its own size.
                 if (c != cols || r != rows) return;
             }
@@ -532,11 +554,11 @@ internal sealed class TermSession
     private void ApplySize(ushort c, ushort r, bool ownerChanged)
     {
         bool resize;
-        lock (gate) resize = c > 0 && r > 0 && !exited && (c != cols || r != rows);
+        lock (gate) resize = c > 0 && r > 0 && !exited && !ptyClosed && (c != cols || r != rows);
         if (resize) DrainOutput();
         lock (gate)
         {
-            resize = c > 0 && r > 0 && !exited && (c != cols || r != rows);
+            resize = c > 0 && r > 0 && !exited && !ptyClosed && (c != cols || r != rows);
             if (resize)
             {
                 cols = c;
@@ -568,12 +590,18 @@ internal sealed class TermSession
         catch (Exception ex) { log.Error(ex, "flushing output before a resize failed; contained"); }
     }
 
+    /// <summary>Resizes the ConPTY, never once it is closed (M.ORCH-T991): the check and the call are under <see cref="ptyGate"/>,
+    /// which the close takes too.</summary>
     private void SetPtySize(ushort c, ushort r)
     {
         try
         {
-            var hr = ResizePseudoConsole(hPC, new COORD { X = (short)c, Y = (short)r });
-            log.Write($"resize {c}x{r}" + (hr == 0 ? "" : $" failed hr=0x{hr:x}"));
+            lock (ptyGate)
+            {
+                if (ptyClosed || hPC == IntPtr.Zero) return;
+                var hr = ResizePseudoConsole(hPC, new COORD { X = (short)c, Y = (short)r });
+                log.Write($"resize {c}x{r}" + (hr == 0 ? "" : $" failed hr=0x{hr:x}"));
+            }
         }
         catch (Exception ex) { log.Error(ex, "resize failed; contained"); }
     }
