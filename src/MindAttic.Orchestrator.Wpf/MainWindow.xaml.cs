@@ -166,7 +166,8 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Subscribes to the daemon's status stream (M.ORCH-T854): each reading of Claude's meter is applied to the tabs the moment
-    /// it lands, and each new snapshot the daemon publishes is read at once, so the poll drops to <see cref="StreamFallbackInterval"/>
+    /// it lands, and each new snapshot's figures the daemon pushes are laid over the tabs at once (M.ORCH-T872; the published
+    /// file read only when the rest of the snapshot moved), so the poll drops to <see cref="StreamFallbackInterval"/>
     /// while the stream is up. It connects again on its own whenever the daemon restarts. Called by the app for its one
     /// dashboard only, never by a test's window.
     /// </summary>
@@ -174,8 +175,13 @@ public partial class MainWindow : Window
     {
         statusStream = new CancellationTokenSource();
         var token = statusStream.Token;
+        // Each kind this window reads (M.ORCH-T872); any other on the bus (another app's) is skipped.
+        var bus = new Status.StatusBus()
+            .On<Status.SnapshotFigures>(Status.SnapshotFigures.Kind, OnFigures, Status.SnapshotFigures.Version);
+        foreach (var kind in new[] { Status.StatusMessage.State, Status.StatusMessage.Usage, Status.StatusMessage.Snapshot, Status.StatusMessage.Heartbeat })
+            bus.On<Status.StatusMessage>(kind, (e, m) => OnStatus(Status.StatusMessage.From(e, m)), Status.StatusMessage.Version);
         _ = Task.Run(() => Status.StatusStreamClient.RunAsync(
-            message => Dispatcher.InvokeAsync(() => OnStatus(message)),
+            (Status.StatusEnvelope envelope) => Dispatcher.InvokeAsync(() => bus.Dispatch(envelope)),
             live => Dispatcher.InvokeAsync(() =>
             {
                 model.SetStreamLive(live);
@@ -219,6 +225,25 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             OrchestratorLog.For("Dashboard").Error(ex, "Applying a status stream message failed");
+        }
+    }
+
+    /// <summary>A snapshot's figures pushed off the stream (M.ORCH-T872), on the UI thread: laid over the tabs at once, or, when
+    /// the rest of the snapshot moved, the published file read now.</summary>
+    private async void OnFigures(Status.StatusEnvelope envelope, Status.SnapshotFigures figures)
+    {
+        try
+        {
+            // The figures say their daemon builds the snapshots, as every other message does.
+            model.ApplyStatus(new Status.StatusMessage { Kind = envelope.Kind, AtUtc = envelope.AtUtc, Pid = envelope.Pid, SnapshotTakenUtc = figures.TakenUtc });
+            var read = await model.ApplyFiguresAsync(figures, Hidden || !IsLoaded);
+            Retime();
+            if (read && IsLoaded && !Hidden) await model.RefreshAsync();
+            PinTerminalFocus(onlyIfLost: true);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            OrchestratorLog.For("Dashboard").Error(ex, "Applying a snapshot's pushed figures failed");
         }
     }
 
@@ -448,12 +473,17 @@ public partial class MainWindow : Window
         if (timer.Interval != interval) timer.Interval = interval;
     }
 
-    /// <summary>The poll while the status stream is up (M.ORCH-T854): only a safety net, since every snapshot the daemon builds
-    /// is pushed and read at once.</summary>
-    private static readonly TimeSpan StreamFallbackInterval = TimeSpan.FromSeconds(60);
+    /// <summary>
+    /// The poll while the status stream is up: a heartbeat (M.ORCH-T872; was a 60s safety net, M.ORCH-T854). Every figure a
+    /// snapshot gives is pushed with it, and the figures say when the rest of the snapshot moved, so the published file is read
+    /// the moment it has something new. What the stream doesn't carry yet is read only by a full refresh: the member roster,
+    /// the orgs, settings, the pause and reminders, which change from this window (which refreshes after each change) or now
+    /// and then from a CLI; five minutes bounds how long one of those can lag. A stream that drops goes back to the 5s poll.
+    /// </summary>
+    private static readonly TimeSpan StreamFallbackInterval = TimeSpan.FromMinutes(5);
 
     /// <summary>How often to refresh: while this window holds the lease (no daemon builds the snapshots) every 5s shown and 15s
-    /// hidden, as it feeds rl-status.json and allocate; with the daemon's status stream up, every 60s, as a safety net; else
+    /// hidden, as it feeds rl-status.json and allocate; with the daemon's status stream up, every 5 minutes, as a heartbeat; else
     /// every 5s shown and 60s hidden.</summary>
     internal static TimeSpan RefreshInterval(bool hidden, bool holdsLease, bool streamLive = false) =>
         holdsLease ? (hidden ? HiddenHolderInterval : PollInterval)

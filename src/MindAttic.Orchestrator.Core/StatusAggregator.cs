@@ -234,7 +234,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     /// switch from this process (the dashboard's toggle, <c>orchestrator billing</c>) read back as the old mode for up to
     /// <see cref="SnapshotFile.MaxAge"/>, snapping the toggle back and naming the old billing in the header.
     /// </summary>
-    internal Snapshot WithLiveBilling(Snapshot shared, DateTime now)
+    public Snapshot WithLiveBilling(Snapshot shared, DateTime now)
     {
         try
         {

@@ -331,10 +331,13 @@ public sealed partial class MainViewModel : ObservableObject
         // rather than being dropped until the next push.
         if (refreshing) { refreshQueued = true; return; }
         refreshing = true;
+        // The digest of the rest of the snapshot the stream last said (M.ORCH-T872): the published file read now holds at least it.
+        var rest = restWanted;
         try
         {
             var clock = Stopwatch.StartNew();
             var dirs = OwnLoginDirs();
+            IReadOnlyList<Member> readMembers = [];
             var (next, tabs, nextOrgs) = await BuiltAfterChanges(() => Task.Run(() =>
             {
                 var built = aggregator.Refresh();
@@ -344,10 +347,13 @@ public sealed partial class MainViewModel : ObservableObject
                 IReadOnlyList<Member> members = [];
                 try { members = MemberRoster.Load(aggregator.Db); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
+                readMembers = members;
                 var orgDirectory = aggregator.Db.TryLoadOrgs();
                 return (built, LoginScope.Tabs(built, dirs, members), orgDirectory);
             }), () => localChanges);
             ApplyTabs(next, tabs, nextOrgs);
+            // What a pushed snapshot's figures are laid over until the next read (M.ORCH-T872).
+            (lastMembers, lastOrgs, restShown) = (readMembers, nextOrgs, rest);
             await TickAllocateAsync(next);
             foreach (var tab in LoginTabs)
                 if (tab.StatusMessage.StartsWith("Refresh failed:", StringComparison.Ordinal)) tab.StatusMessage = "";

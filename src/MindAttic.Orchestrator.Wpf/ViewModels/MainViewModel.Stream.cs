@@ -1,3 +1,5 @@
+using MindAttic.Orchestrator.Budget;
+using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Status;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
@@ -25,8 +27,52 @@ public sealed partial class MainViewModel
     {
         if (root is not null) { root.SetStreamLive(connected); return; }
         streamConnected = connected;
-        if (!connected) streamBuilds = false;
+        if (!connected) streamBuilds = figuresSeen = false;
         Raise(nameof(IsStreamLive));
+    }
+
+    /// <summary>Notes what a message says of its writer: every message says when its daemon last built a snapshot, and one that
+    /// hasn't lately (another process holds the lease) pushes none, so the poll mustn't slow down for it.</summary>
+    private void NoteWriter(DateTime atUtc, int pid, DateTime? snapshotTakenUtc)
+    {
+        var builds = snapshotTakenUtc is { } built && atUtc - built < 2 * SnapshotFile.MaxAge;
+        // This process's own probe readings (it holds the lease) say nothing about the stream.
+        if (pid == Environment.ProcessId || builds == streamBuilds) return;
+        streamBuilds = builds;
+        Raise(nameof(IsStreamLive));
+    }
+
+    // M.ORCH-T872: whether this connection has pushed a snapshot's figures; the digest of the rest of the snapshot the stream
+    // last said, and of the one shown; and what the last read gave besides the snapshot, which pushed figures are applied with.
+    private bool figuresSeen;
+    private string? restWanted, restShown;
+    private IReadOnlyList<Member> lastMembers = [];
+    private OrgDirectory? lastOrgs;
+
+    /// <summary>
+    /// Lays a snapshot's pushed figures (M.ORCH-T872) over the snapshot shown, on the UI thread: pace, budget, the graph, each
+    /// login's meter and pace, the agents and CLIs, billing, moves, counts and warnings go straight to every tab, with no read of
+    /// the published file. Returns whether the caller should read the file now instead: the rest of the snapshot (the repos'
+    /// sessions, tabs and tickets, the queue) moved, or there's nothing read yet to lay them over. Hidden, nothing is applied
+    /// (shown again, the window reads the file at once). Older figures than those shown change nothing.
+    /// </summary>
+    public async Task<bool> ApplyFiguresAsync(SnapshotFigures figures, bool hidden)
+    {
+        if (root is not null) return await root.ApplyFiguresAsync(figures, hidden);
+        figuresSeen = true;
+        if (workspace is not { } shown || figures.TakenUtc <= shown.TakenUtc) return false;
+        restWanted = figures.Rest;
+        if (hidden) return false;
+        if (refreshing || lastOrgs is null || restShown is null || restShown != figures.Rest) return true;
+        var patched = aggregator.WithLiveBilling(figures.Over(shown), DateTime.UtcNow);
+        var dirs = OwnLoginDirs();
+        var members = lastMembers;
+        // Each login's tab and its signed-in state, off the UI thread, as a read does it.
+        var tabs = await Task.Run(() => LoginScope.Tabs(patched, dirs, members));
+        // A read that landed meanwhile showed something as new or newer.
+        if (refreshing || workspace is not { } now || now.TakenUtc >= patched.TakenUtc) return false;
+        ApplyTabs(patched, tabs, lastOrgs);
+        return false;
     }
 
     /// <summary>
@@ -36,16 +82,11 @@ public sealed partial class MainViewModel
     public bool ApplyStatus(StatusMessage message)
     {
         if (root is not null) return root.ApplyStatus(message);
-        // Every message says when its daemon last built a snapshot: one that hasn't lately (another process holds the lease)
-        // pushes none, so the poll mustn't slow down for it.
-        var builds = message.SnapshotTakenUtc is { } built && message.AtUtc - built < 2 * SnapshotFile.MaxAge;
-        // This process's own probe readings (it holds the lease) say nothing about the stream.
-        if (message.Pid != Environment.ProcessId && builds != streamBuilds)
-        {
-            streamBuilds = builds;
-            Raise(nameof(IsStreamLive));
-        }
-        var refresh = message.SnapshotTakenUtc is { } taken && (workspace is null || taken > workspace.TakenUtc);
+        NoteWriter(message.AtUtc, message.Pid, message.SnapshotTakenUtc);
+        // Only a notice of a snapshot whose figures weren't pushed asks for a read of the file (M.ORCH-T872): the figures say
+        // themselves when the rest of it moved (ApplyFiguresAsync).
+        var refresh = message.SnapshotTakenUtc is { } taken && (workspace is null || taken > workspace.TakenUtc)
+            && (message.Kind == global::MindAttic.Orchestrator.Status.StatusMessage.Snapshot || !figuresSeen);
         foreach (var r in message.Readings)
         {
             var was = liveReadings.GetValueOrDefault(r.Key);
