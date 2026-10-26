@@ -196,4 +196,12 @@ public sealed class AllocateWakerTests
         Assert.That(waker.Tick(Plan(4, 0, T("A-T1")), Settings, Now.AddMinutes(1)), Is.Empty, "said once, not every tick");
         Assert.That(Nudges(), Has.Count.EqualTo(1));
     }
+
+    [Test]
+    public void With_resume_after_reset_off_an_idle_cli_is_said_to_you_but_no_nudge_is_left()
+    {
+        State("idle", Now.AddHours(-1));
+        Assert.That(Waker().Tick(Plan(4, 0, T("A-T1")), Settings with { ResumeAfterReset = false }, Now), Has.Count.EqualTo(1));
+        Assert.That(Nudges(), Is.Empty);
+    }
 }

@@ -49,6 +49,9 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
     private readonly Dictionary<int, DateTime> wokenUtc = [];
     private readonly Dictionary<int, DateTime> saidFor = [];
 
+    /// <summary>CLIs nudged within <see cref="Cooldown"/>: skipped this pass, but their nudge still stands until their hook takes it.</summary>
+    private IEnumerable<int> CoolingDown(DateTime nowUtc) => wokenUtc.Where(w => nowUtc - w.Value < Cooldown).Select(w => w.Key).ToList();
+
     /// <summary>Which idle CLIs have work now: the nudge is left for each one's hook, and said to you once per idle stretch.</summary>
     public IReadOnlyList<Wake> Tick(SchedulePlan plan, OrchestratorSettings settings, DateTime nowUtc, Snapshot? snapshot = null)
     {
@@ -102,7 +105,7 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
                 unthrottled: cycler.IsUnthrottled(pid), self: c.SessionId, cli: pid, pilots: pilots, onSince: since, loginOf: loginOf, login: email, orgs: orgs);
             if (handed.Count > 0) due.Add((pid, c, repos, [.. handed.Select(h => h.Item.Id)]));
         }
-        CliNudges.Retain(cycler.Directory, "work", due.Select(d => d.Pid));
+        CliNudges.Retain(cycler.Directory, "work", due.Select(d => d.Pid).Concat(CoolingDown(nowUtc))); // a CLI inside its cooldown keeps the nudge it was just left
         if (due.Count == 0) return [];
 
         var wakes = new List<Wake>();
@@ -166,7 +169,7 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
             room -= items.Count;
             due.Add((pid, c?.Cwd, items));
         }
-        CliNudges.Retain(cycler.Directory, "claims", due.Select(d => d.Pid));
+        CliNudges.Retain(cycler.Directory, "claims", due.Select(d => d.Pid).Concat(CoolingDown(nowUtc))); // a CLI inside its cooldown keeps the nudge it was just left
         if (due.Count == 0) return [];
 
         var wakes = new List<Wake>();
