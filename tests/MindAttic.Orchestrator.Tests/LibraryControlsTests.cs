@@ -77,6 +77,18 @@ public sealed class LibraryControlsTests
         }
     }
 
+    [Test]
+    public void The_spacing_dictionary_holds_only_thickness_and_double_tokens()
+    {
+        var spacing = XDocument.Load(Wpf(Path.Combine("Themes", "Spacing.xaml"))).Root!;
+        var tokens = spacing.Elements().Where(e => e.Attribute(X + "Key") is not null).ToList();
+
+        Assert.That(tokens, Is.Not.Empty);
+        Assert.That(tokens.Select(e => e.Name.LocalName).Distinct(), Is.EquivalentTo(new[] { "Thickness", "Double" }));
+        Assert.That(spacing.Descendants().Where(e => e.Name.LocalName is "Style" or "ControlTemplate" or "DataTemplate"), Is.Empty);
+        Assert.That(File.ReadAllText(Wpf("App.xaml")), Does.Contain("Themes/Spacing.xaml"));
+    }
+
     /// <summary>The theme's brushes (not its styles), which MaHighContrast re-keys.</summary>
     private static readonly string[] PaletteKeys =
     [
