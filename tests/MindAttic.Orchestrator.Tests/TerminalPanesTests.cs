@@ -269,7 +269,8 @@ public sealed class TerminalPanesTests
     [Test, Apartment(ApartmentState.STA)]
     public void A_terminal_runs_its_command_in_a_real_terminal_and_closing_it_ends_the_process()
     {
-        var terminals = new TerminalsViewModel();
+        // The in-process fallback (no TermHost, M.ORCH-T926): the CLI runs under the dashboard's own ConPTY.
+        var terminals = new TerminalsViewModel { UseTermHost = false };
         var host = new System.Windows.Controls.Grid();
         terminals.Panes.CollectionChanged += (_, e) =>
         {
@@ -293,6 +294,142 @@ public sealed class TerminalPanesTests
             Assert.That(Pump(() => !Alive(pid), TimeSpan.FromSeconds(10)), Is.True, "closing the tab ended its process");
         }
         finally { window.Close(); }
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_hosted_terminal_attaches_to_its_TermHost_and_closing_it_ends_the_host()
+    {
+        // M.ORCH-T926: the CLI lives in its own TermHost; the tab is a RelayTerminal on the host's pipe.
+        if (TermLauncher.FindHost() is null) Assert.Ignore("No TermHost built or installed here.");
+        var terminals = new TerminalsViewModel();
+        var host = new System.Windows.Controls.Grid();
+        terminals.Panes.CollectionChanged += (_, e) =>
+        {
+            foreach (var p in e.NewItems?.OfType<TerminalPaneViewModel>() ?? []) host.Children.Add(p.Control);
+            foreach (var p in e.OldItems?.OfType<TerminalPaneViewModel>() ?? []) host.Children.Remove(p.Control);
+        };
+        var window = OffScreenWindow.Show(600, 300, host);
+        try
+        {
+            Assert.That(terminals.Open(new PaneRequest("JO: Repo [Claude]", temp.New()) { Command = ["cmd.exe", "/k", "echo pane"] }), Is.Null);
+            var pane = terminals.Panes.Single();
+            Assert.That(pane.IsHosted, Is.True);
+            Assert.That(pane.Control, Is.InstanceOf<TerminalView>());
+            Assert.That(Pump(() => pane.Session is not null, TimeSpan.FromSeconds(20)), Is.True, "its TermHost registered");
+            var session = pane.Session!;
+            Assert.That(pane.RootPid, Is.EqualTo(session.HostPid), "the CLI runs under its host");
+            Assert.That(TermPaneFile.Read(session.Id)?.Title, Is.EqualTo("JO: Repo [Claude]"), "the tab's look is kept for a reattach");
+            Assert.That(Pump(() => pane.Relay?.Connection is not null, TimeSpan.FromSeconds(10)), Is.True, "the relay attached");
+
+            terminals.Close(pane);
+            Assert.That(terminals.Panes, Is.Empty);
+            Assert.That(Pump(() => !Alive(session.HostPid), TimeSpan.FromSeconds(10)), Is.True, "closing the tab ended its host");
+            Assert.That(TermPaneFile.Read(session.Id), Is.Null);
+        }
+        finally { window.Close(); }
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_host_that_can_t_start_leaves_the_tab_running_its_CLI_in_process()
+    {
+        var terminals = new TerminalsViewModel { HostAvailable = () => true, Launch = _ => throw new InvalidOperationException("no host") };
+        var window = OffScreenWindow.Show(600, 300, new System.Windows.Controls.Grid());
+        try
+        {
+            Assert.That(terminals.Open(new PaneRequest("JO: Repo [Claude]", temp.New()) { Command = ["cmd.exe", "/k", "echo pane"] }), Is.Null);
+            var pane = terminals.Panes.Single();
+            Assert.That(Pump(() => pane.Local is not null, TimeSpan.FromSeconds(10)), Is.True, "fell back to an in-process terminal");
+            Assert.That(pane.IsHosted, Is.False);
+            Assert.That(pane.TermId, Is.Null);
+            terminals.Close(pane);
+        }
+        finally { window.Close(); }
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void Without_a_TermHost_a_tab_runs_its_CLI_in_process()
+    {
+        var terminals = new TerminalsViewModel { HostAvailable = () => false };
+        Assert.That(terminals.Open(new PaneRequest("JO: Repo [Claude]", temp.New()) { Command = ["cmd.exe"] }), Is.Null);
+        var pane = terminals.Panes.Single();
+        Assert.That(pane.Local, Is.Not.Null);
+        Assert.That(pane.IsHosted, Is.False);
+        terminals.Close(pane);
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_live_session_is_reattached_once_on_its_login_s_page_and_a_bus_message_marks_it_ended()
+    {
+        var terminals = new TerminalsViewModel();
+        var session = new Term.TermSessionRecord
+        {
+            Id = "abc123", HostPid = 999999, Pipe = "mindattic-term-nobody-abc123", Title = "AM: Repo [Claude]", Cwd = temp.New(),
+            ConfigDir = @"C:\a\.claude-accounts\amy@example.com", CommandLine = "cmd.exe",
+        };
+        var request = new PaneRequest("AM: Repo [Claude]", session.Cwd!) { Repo = "Repo", Initials = "AM", TabColor = "#1565C0", ConfigDir = session.ConfigDir, CommandLine = "cmd.exe" };
+        var pane = terminals.Reattach(session, request);
+        Assert.That(pane, Is.Not.Null);
+        Assert.That(pane!.IsHosted, Is.True);
+        Assert.That(pane.TermId, Is.EqualTo("abc123"));
+        Assert.That(pane.Login, Is.EqualTo("amy@example.com"));
+        Assert.That(pane.Badge, Is.EqualTo("AM:"));
+        Assert.That(terminals.Reattach(session, request), Is.Null, "one tab per session");
+
+        terminals.OnTermSession(new Term.TermSessionEvent(session, Term.TermSessionEvents.Ended));
+        Assert.That(pane.Ended, Is.True);
+        pane.DisposeControl();
+    }
+
+    [Test]
+    public void A_session_without_a_tab_file_gets_its_badge_provider_and_login_from_its_record()
+    {
+        var record = new Term.TermSessionRecord
+        {
+            Id = "s1", Title = "RD: MindAttic.Ideas [Codex]", Cwd = @"C:\repo", CommandLine = "cmd.exe",
+            ConfigDir = @"C:\u\.claude-accounts\ryan@example.com",
+        };
+        var request = TermPaneFile.FromRecord(record, _ => new LoginLook("Ryan", "RY", "#AD1457"));
+        Assert.That(request.Initials, Is.EqualTo("RD"), "the title's badge");
+        Assert.That(request.Repo, Is.EqualTo("MindAttic.Ideas"));
+        Assert.That(request.Provider, Is.EqualTo("Codex"));
+        Assert.That(request.TabColor, Is.EqualTo("#AD1457"), "the login's colour");
+        Assert.That(request.Login, Is.EqualTo("ryan@example.com"));
+        Assert.That(request.Directory, Is.EqualTo(@"C:\repo"));
+
+        var plain = TermPaneFile.FromRecord(record with { Title = "pwsh" }, _ => new LoginLook("Ryan", "RY", "#AD1457"));
+        Assert.That(plain.Initials, Is.EqualTo("RY"), "no badge in the title: the login's");
+    }
+
+    [Test]
+    public void A_tab_file_round_trips_and_is_pruned_once_its_session_is_gone()
+    {
+        var dir = temp.New();
+        var request = new PaneRequest("RD: Repo [Claude]", @"C:\repo") { Repo = "Repo", Initials = "RD", TabColor = "#2E7D32", CommandLine = "cmd.exe" };
+        Assert.That(TermPaneFile.Write("live1", request, dir), Is.True);
+        Assert.That(TermPaneFile.Write("gone1", request, dir), Is.True);
+        Assert.That(TermPaneFile.Read("live1", dir), Is.EqualTo(request with { Command = null }));
+        File.SetLastWriteTimeUtc(TermPaneFile.PathOf("gone1", dir), DateTime.UtcNow.AddMinutes(-5));
+        File.SetLastWriteTimeUtc(TermPaneFile.PathOf("live1", dir), DateTime.UtcNow.AddMinutes(-5));
+        TermPaneFile.Prune(["live1"], dir);
+        Assert.That(TermPaneFile.Read("live1", dir), Is.Not.Null);
+        Assert.That(TermPaneFile.Read("gone1", dir), Is.Null);
+    }
+
+    [Test]
+    public void A_navigation_key_is_sent_as_win32_input_mode_key_down_then_up()
+    {
+        // Phase 0 lesson 3 (M.ORCH-T926): ESC[Vk;Sc;Uc;Kd;Cs;Rc_ with ENHANCED_KEY (256), plus SHIFT_PRESSED (16) when held.
+        Assert.That(TerminalKeyboard.Win32Key(0x25, 0x4B, shift: false), Is.EqualTo("\u001b[37;75;0;1;256;1_\u001b[37;75;0;0;256;1_"));
+        Assert.That(TerminalKeyboard.Win32Key(0x24, 0x47, shift: true), Is.EqualTo("\u001b[36;71;0;1;272;1_\u001b[36;71;0;0;272;1_"));
+    }
+
+    [Test]
+    public void Bracketed_paste_is_followed_from_the_last_mode_change_in_the_output()
+    {
+        Assert.That(TerminalPaste.Scan("x\u001b[?2004hy"), Is.True);
+        Assert.That(TerminalPaste.Scan("\u001b[?2004h..\u001b[?2004l"), Is.False);
+        Assert.That(TerminalPaste.Scan("plain"), Is.Null);
+        Assert.That(TerminalPaste.Payload("a\r\nb\nc", bracketed: true), Is.EqualTo("\u001b[200~a\rb\rc\u001b[201~"));
     }
 
     private static bool Alive(int pid)

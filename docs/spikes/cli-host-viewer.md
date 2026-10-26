@@ -552,6 +552,31 @@ line. The kind is documented in `docs/app-bus.md`.
 appeared, `Enumerate()` listed it, and after the host was killed `Enumerate()` dropped it and deleted the file. A second
 CLI ran `exit 5`. Its record went to `exited`/`5`, and after its 2 s linger the host exited and removed its own file.
 
+## Phase 1 viewer (M.ORCH-T926, 2026-10-26)
+
+The dashboard's Terminals tabs are now viewers of hosted CLIs.
+
+- **The tab.** `TerminalPaneViewModel.Control` is a `TerminalView` (a Border that keeps the tab's place in the host grid and
+  forwards focus). It holds a `RelayTerminal` (a bare `TerminalControl` plus `RelayConnection`, ported from the prototype
+  with the four Phase 0 lessons) or, as the fallback, the old in-process `EasyTerminalControl`.
+- **Opening.** `TerminalsViewModel.Open` makes the tab at once, then runs `TermLauncher.Start` off the UI thread and attaches
+  when the host registers. When no TermHost is found, or the launch throws, the tab runs the CLI in-process instead, and the
+  log says so.
+- **The tab file.** Before launching, the dashboard writes the tab's `PaneRequest` as `terms\<id>.pane` (`TermPaneFile`), so a
+  restarted dashboard reattaches it with the same title, badge, colour and login. Whoever starts a host for a tab should write
+  one (M.LNCH-T82 may). A session without one gets a request built from its record (`TermPaneFile.FromRecord`): the badge and
+  provider from a "RD: Repo [Claude]" title, the colour from the login's `LoginLook`. The extension isn't `.json`, so registry
+  pruning never takes it. The dashboard prunes `.pane` files whose session is gone.
+- **Start and bus.** Before the restore offer, the dashboard reattaches a tab for every `TermSessions.Enumerate()` record. It
+  follows `term-session` too: `started` from elsewhere adds a tab, while `changed` to exited and `ended` mark it ended.
+- **Close (X).** The dashboard kills the host's process tree by the record's pid, after checking its start time, and deletes
+  the tab file. A tab closed while its host is still starting has its host killed as soon as the host registers.
+- **Keys, paste, copy.** Navigation keys go through the connection as win32-input-mode (`TerminalKeyboard.Win32Key`). Paste
+  writes through the connection, bracketed by the host's Modes. Copy and cut read the renderer's selection. `HoldsFocus`
+  requires a tab's HwndHost.
+- **Restore.** `CaptureRestore` sets `RestoreTab.HostId` for a hosted tab, so T928's `Unhosted` skips it while its host
+  lives.
+
 ## Phase 2 decisions (M.ORCH-T929, 2026-10-26)
 
 **Engine: libghostty-vt**, through the [DeBlasis.GhosttyVt](https://github.com/deblasis/libghostty-vt-dotnet) bindings,
