@@ -324,9 +324,23 @@ internal sealed class ViewerWindow : Window
     {
         try
         {
-            if (e.Handled || watchOnly || relay is not { Connection: { } connection } r || Keyboard.FocusedElement is not HwndHost) return;
+            if (e.Handled || relay is not { Connection: { } connection } r || Keyboard.FocusedElement is not HwndHost) return;
             var key = e.Key == Key.System ? e.SystemKey : e.Key;
             var mods = Keyboard.Modifiers;
+            // Ctrl+C or Ctrl+X with a selection copies it (reading it clears it); with none, the key is the CLI's (^C interrupts).
+            // Handled before the watch-only return (M.ORCH-T978): copying is reading, which a watch-only window does too.
+            if (mods == ModifierKeys.Control && key is Key.C or Key.X)
+            {
+                string? selected;
+                try { selected = r.Terminal.GetSelectedText(); }
+                catch (Exception) { return; }
+                if (string.IsNullOrEmpty(selected)) return;
+                try { Clipboard.SetDataObject(selected, copy: true); }
+                catch (System.Runtime.InteropServices.ExternalException) { }
+                e.Handled = true;
+                return;
+            }
+            if (watchOnly) return;
             // Phase 0 lesson 3: WPF would take these for focus and scrolling; they go to the CLI as win32-input-mode events.
             if (RelayInput.IsForwarded(key, mods))
             {
@@ -337,18 +351,6 @@ internal sealed class ViewerWindow : Window
             if (RelayInput.IsPasteChord(key, mods))
             {
                 Paste();
-                e.Handled = true;
-                return;
-            }
-            // Ctrl+C or Ctrl+X with a selection copies it (reading it clears it); with none, the key is the CLI's (^C interrupts).
-            if (mods == ModifierKeys.Control && key is Key.C or Key.X)
-            {
-                string? selected;
-                try { selected = r.Terminal.GetSelectedText(); }
-                catch (Exception) { return; }
-                if (string.IsNullOrEmpty(selected)) return;
-                try { Clipboard.SetDataObject(selected, copy: true); }
-                catch (System.Runtime.InteropServices.ExternalException) { }
                 e.Handled = true;
             }
         }
