@@ -85,6 +85,9 @@ internal static class GatewayApp
 {
     public static string Version { get; } = typeof(GatewayApp).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
 
+    /// <summary>How many access checks in a row may fail before a stream is closed (M.ORCH-T984).</summary>
+    public const int MaxWatchFailures = 2;
+
     /// <summary>Builds the app on <paramref name="builder"/> (Kestrel and TLS are the caller's).</summary>
     public static WebApplication Build(WebApplicationBuilder builder, GatewayServices services)
     {
@@ -237,26 +240,35 @@ internal static class GatewayApp
         using var revoke = new CancellationTokenSource();
         using var stopWatch = new CancellationTokenSource();
         var revoked = false;
+        // A check that throws is contained inside the loop, so the checks go on (M.ORCH-T984); one that fails
+        // MaxWatchFailures times running closes the stream: access that can't be checked isn't assumed (fails closed).
         var watch = Task.Run(async () =>
         {
-            try
+            var failures = 0;
+            while (!stopWatch.IsCancellationRequested)
             {
-                while (!stopWatch.IsCancellationRequested)
+                try { await Task.Delay(g.AuditInterval, stopWatch.Token).ConfigureAwait(false); }
+                catch (OperationCanceledException) { return; }
+                string? why = null;
+                try
                 {
-                    await Task.Delay(g.AuditInterval, stopWatch.Token).ConfigureAwait(false);
                     WriteInput(g, input, who.Subject, session.Id, mode, from);
                     var now = OwnerOnlyGrants.Effective(g.Grants.AccessTo(who.Subject, session), who.Scope, requestedMode);
-                    if (now < access)
-                    {
-                        revoked = true;
-                        g.Log.Write($"access to {session.Id} by {who.Subject} dropped to {now}; closing the stream");
-                        await revoke.CancelAsync().ConfigureAwait(false);
-                        return;
-                    }
+                    if (now < access) why = $"dropped to {now}";
+                    failures = 0;
                 }
+                catch (Exception ex)
+                {
+                    g.Log.Error(ex, "checking a stream's access failed; contained");
+                    if (++failures >= MaxWatchFailures) why = $"couldn't be checked {failures} times running";
+                }
+                if (why is null) continue;
+                revoked = true;
+                g.Log.Write($"access to {session.Id} by {who.Subject} {why}; closing the stream");
+                try { await revoke.CancelAsync().ConfigureAwait(false); }
+                catch (Exception ex) { g.Log.Error(ex, "closing a revoked stream failed; contained"); }
+                return;
             }
-            catch (OperationCanceledException) { }
-            catch (Exception ex) { g.Log.Error(ex, "watching a stream's access failed; contained"); }
         });
 
         BridgeResult result;

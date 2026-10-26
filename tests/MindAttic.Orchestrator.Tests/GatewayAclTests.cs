@@ -297,6 +297,43 @@ public sealed partial class GatewayTests
         Assert.That(TermGatewayAudit.Drain(dir.Path).Records, Is.Empty);
     }
 
+    [Test]
+    public async Task A_stream_whose_access_check_keeps_failing_is_closed_not_left_open()
+    {
+        var audit = new MemoryAudit();
+        var grants = new FlakyGrants();
+        await using var gateway = await TestGateway.StartAsync(grants, audit, TimeSpan.FromMilliseconds(100));
+        using var socket = await gateway.Client(GatewayScopes.Watch, Pat).ConnectAsync(new Uri("ws://localhost/sessions/s1/stream"), Timeout());
+        await Send(socket, TermProtocol.Frame(TermFrameKind.Hello, TermProtocol.Hello(TermProtocol.Version, 100, 25)));
+        await TermProtocol.ReadFrameAsync(gateway.Pipes.Host, Timeout());
+
+        grants.Throw = true; // as a null entry in acl.json once did: the check throws from now on
+        var result = await socket.ReceiveAsync(new byte[256], Timeout());
+        Assert.That(result.MessageType, Is.EqualTo(WebSocketMessageType.Close));
+        Assert.That(socket.CloseStatus, Is.EqualTo((WebSocketCloseStatus?)WebSocketCloseStatus.PolicyViolation));
+        Assert.That(grants.Calls, Is.GreaterThanOrEqualTo(1 + GatewayApp.MaxWatchFailures), "checked again after the first throw");
+    }
+
+    [Test]
+    public void Null_entries_in_the_snapshot_are_skipped_not_thrown_on()
+    {
+        var acl = new TermGatewayAclSnapshot { Members = [null!, new(Erin, "Erin")], Logins = [null!, new(Erin, "sales", null!)], Grants = [null!] };
+        Assert.That(AclGrants.Evaluate(acl, Owner, Erin, SessionOn("s1", null), Now), Is.EqualTo(GatewayAccess.None));
+        Assert.That(AclGrants.Evaluate(acl, Owner, Erin, SessionOn("s1", Erin), Now), Is.EqualTo(GatewayAccess.Watch));
+    }
+
+    private sealed class FlakyGrants : IGatewayGrants
+    {
+        public volatile bool Throw;
+        public int Calls;
+
+        public GatewayAccess AccessTo(string viewer, TermSessionRecord session)
+        {
+            Interlocked.Increment(ref Calls);
+            return Throw ? throw new InvalidOperationException("a damaged grant (test)") : GatewayAccess.Watch;
+        }
+    }
+
     private sealed class FixedAcl(TermGatewayAclSnapshot acl) : IGatewayGrants
     {
         public volatile TermGatewayAclSnapshot Current = acl;

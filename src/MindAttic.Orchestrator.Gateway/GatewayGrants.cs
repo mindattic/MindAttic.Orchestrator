@@ -94,12 +94,14 @@ internal sealed class AclGrants(string owner, string directory, Func<DateTime>? 
         if (string.Equals(viewer.Trim(), owner.Trim(), StringComparison.OrdinalIgnoreCase)) return GatewayAccess.Interact;
         if (acl is null) return GatewayAccess.None;
         var v = Normalize(viewer);
-        var member = acl.Members.FirstOrDefault(m => Normalize(m.Email) == v);
+        // A null list or entry (a hand-edited or damaged acl.json) is skipped, never a throw (M.ORCH-T984).
+        var member = (acl.Members ?? []).FirstOrDefault(m => m is not null && Normalize(m.Email) == v);
         if (member is null) return GatewayAccess.None;
 
         var access = SharesOrg(acl, member, session) ? GatewayAccess.Watch : GatewayAccess.None;
-        foreach (var g in acl.Grants)
+        foreach (var g in acl.Grants ?? [])
         {
+            if (g is null) continue;
             if (!string.Equals(g.Owner?.Trim(), owner.Trim(), StringComparison.OrdinalIgnoreCase) || Normalize(g.Viewer) != v) continue;
             if (!string.IsNullOrEmpty(g.Session) && !string.Equals(g.Session, session.Id, StringComparison.OrdinalIgnoreCase)) continue;
             var level = string.Equals(g.Level, GatewayScopes.Interact, StringComparison.OrdinalIgnoreCase) ? GatewayAccess.Interact
@@ -115,12 +117,13 @@ internal sealed class AclGrants(string owner, string directory, Func<DateTime>? 
     internal static bool SharesOrg(TermGatewayAclSnapshot acl, TermAclMember member, TermSessionRecord session)
     {
         var login = Normalize(session.Login);
-        var sessionOrg = acl.Logins.FirstOrDefault(l => Normalize(l.Login) == login)?.Org ?? DefaultOrg;
+        var logins = (acl.Logins ?? []).Where(l => l is not null).ToList();
+        var sessionOrg = logins.FirstOrDefault(l => Normalize(l.Login) == login)?.Org ?? DefaultOrg;
         var email = Normalize(member.Email);
-        var orgs = acl.Logins
-            .Where(l => (l.Login.Length > 0 && Normalize(l.Login) == email)
-                        || (!string.IsNullOrWhiteSpace(member.Name) && string.Equals(l.Person.Trim(), member.Name.Trim(), StringComparison.OrdinalIgnoreCase)))
-            .Select(l => l.Org)
+        var orgs = logins
+            .Where(l => (!string.IsNullOrEmpty(l.Login) && Normalize(l.Login) == email)
+                        || (!string.IsNullOrWhiteSpace(member.Name) && string.Equals(l.Person?.Trim(), member.Name.Trim(), StringComparison.OrdinalIgnoreCase)))
+            .Select(l => l.Org ?? DefaultOrg)
             .ToHashSet(StringComparer.Ordinal);
         if (orgs.Count == 0) orgs.Add(DefaultOrg);
         return orgs.Contains(sessionOrg);
