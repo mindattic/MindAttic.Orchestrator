@@ -2638,8 +2638,8 @@ public static class AgentGate
             # only for tickets it will get. The files workable() reads trail it: a ticket another live session filed a moment
             # ago is held by next at once, but by the daemon's holds only after its next tick, and every stop until then was
             # sent back for a ticket next refused (M.ORCH-T385). None when next can't be asked (not installed, failed, too slow):
-            # then the stop is let through, not pushed back on workable()'s count (M.ORCH-T901: next took 17s on a busy machine (30s now, under the 60s hook timeout),
-            # past the old 6s timeout, so the cheap count always stood and nagged).
+            # then workable()'s own count stands. Its timeout is 30s, under the 60s hook timeout (M.ORCH-T901: next took 17s on a busy
+            # machine, past the old 6s, so the cheap count always stood and nagged).
             try:
                 import shutil, subprocess
                 exe = os.environ.get("MINDATTIC_ORCHESTRATOR") or shutil.which("orchestrator") or r"C:\Apps\MindAttic.Orchestrator\Cli\orchestrator.exe"
@@ -2958,10 +2958,11 @@ public static class AgentGate
             if ids or (eligible and story_file_repos(repos)):
                 # Only what next would hand out: the count above is the cheap first look, next has the last word. A repo on
                 # its own USER_STORIES.md has tickets the count can't see, so next is asked for it even when the count is empty.
-                # When next can't be read (failed, too slow, unparsed) the CLI is let stop: the cheap count includes tickets next
-                # refuses, and pushing back on it nagged a CLI with nothing to do after every turn (M.ORCH-T901).
+                # When next can't be read (not installed, failed, unparsed) the cheap count stands, as before; the nagging of
+                # M.ORCH-T901 was next timing out at 6s on a busy machine (17s there), fixed by its 30s timeout.
                 handed = next_hands_out(repos, my_pid())
-                ids = handed if handed is not None else []
+                if handed is not None:
+                    ids = handed
             reason = keep_going(repos, ids, sid, why, insisted) if ids else None
             # A turn ending with a nudge waiting is sent on with it, as a prompt queued in its box used to run (M.ORCH-T864).
             nudges = [] if stopped else take_nudges()
