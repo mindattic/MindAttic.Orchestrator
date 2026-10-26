@@ -147,19 +147,20 @@ public sealed class MoveLocks(JsonStore store)
 
 /// <summary>
 /// Hands a moved CLI's tickets back (M.ORCH-T637). Landed: its claims are put on the CLI as it is now (its process and session on
-/// the new login) and its tab is typed a prompt to start their subagents again in the same worktrees, under the new account.
+/// the new login) and its CLI is left a nudge to start their subagents again in the same worktrees, under the new account (added to its next
+/// turn's context by its UserPromptSubmit hook, <see cref="CliNudges"/>; never typed into its box, M.ORCH-T864).
 /// Failed or timed out: the claims stay with the old owner, as they were, and its CLI (if it's still running) is told the same.
 /// </summary>
 public sealed class MoveHandback(JsonStore store)
 {
-    /// <summary>Types a prompt into a tab and presses Enter (seam).</summary>
-    internal Func<string, string, Task<bool>> Submit { get; init; } = (pipe, text) => SessionControl.SubmitAsync(pipe, text);
+    /// <summary>Leaves a nudge for a CLI's hook (seam): the CLI's process id and the text; true when it was written.</summary>
+    internal Func<int, string, bool> Nudge { get; init; } = (pid, text) => CliNudges.Leave(new ContextCycler().Directory, pid, "handback", text);
 
     /// <summary>Whether a claude.exe is still running (seam).</summary>
     internal Func<int, bool> IsAlive { get; init; } = ContextCycler.IsClaude;
 
-    /// <param name="Typed">The prompt went into the CLI's tab; false with tickets: it's said to you to do.</param>
-    public sealed record Result(MoveEnd End, IReadOnlyList<string> Tickets, bool Typed, string Line);
+    /// <param name="Left">The nudge was left for the CLI's hook; false with tickets: it's said to you to do.</param>
+    public sealed record Result(MoveEnd End, IReadOnlyList<string> Tickets, bool Left, string Line);
 
     public Result Deliver(MoveEnd end)
     {
@@ -186,26 +187,27 @@ public sealed class MoveHandback(JsonStore store)
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { }
 
         var ids = claims.Select(c => c.TicketId).ToList();
-        var pipe = end.Landed ? end.Cli?.Host?.PipeName ?? m.HostPipe : IsAlive(m.Pid) ? m.HostPipe : null;
+        // The CLI as it runs now (its process on the new login when it landed), or the old one while it's still running.
+        int? pid = end.Landed ? end.Cli?.CliPid ?? m.Pid : IsAlive(m.Pid) ? m.Pid : null;
         var headline = end.Landed
             ? $"move: the CLI in {where} is on {m.ToName} now"
             : $"move: the CLI in {where} didn't move to {m.ToName} ({end.Why}); it stays with {m.FromEmail ?? AccountMove.GlobalLabel.ToLowerInvariant()}";
         if (ids.Count == 0) return new Result(end, ids, false, headline + ".");
 
         var prompt = Prompt(end, claims);
-        var typed = false;
-        if (pipe is not null)
+        var left = false;
+        if (pid is { } target)
         {
-            try { typed = Submit(pipe, prompt).GetAwaiter().GetResult(); }
-            catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException or OperationCanceledException) { }
+            try { left = Nudge(target, prompt); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
         var tickets = string.Join(", ", ids);
-        return new Result(end, ids, typed, typed
-            ? $"{headline}; told it to start its subagents again on {tickets} in their worktrees."
-            : $"{headline}. Tell it to start its subagents again on {tickets} in their worktrees ({(pipe is null ? "its CLI isn't running in a Launcher tab the orchestrator can type into" : "typing into its tab failed")}).");
+        return new Result(end, ids, left, left
+            ? $"{headline}; it's told at its next prompt to start its subagents again on {tickets} in their worktrees."
+            : $"{headline}. Tell it to start its subagents again on {tickets} in their worktrees ({(pid is null ? "its CLI isn't running" : "its nudge couldn't be written")}).");
     }
 
-    /// <summary>What the CLI is typed: one line, no double quote (see <see cref="AllocateWaker.Prompt"/>).</summary>
+    /// <summary>What the CLI is told, as hook context (see <see cref="AllocateWaker.Prompt"/>).</summary>
     public static string Prompt(MoveEnd end, IReadOnlyList<Assignment> claims)
     {
         var m = end.Lock;

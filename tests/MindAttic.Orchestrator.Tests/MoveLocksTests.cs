@@ -146,14 +146,14 @@ public sealed class MoveLocksTests
         Assert.That(locks.All(), Is.Empty);
         Assert.That(locks.Reconcile([Row("sess-2", NewPid, "b@x.com", Tab, Now)], Now.AddMinutes(3)), Is.Empty, "ended once");
 
-        var typed = new List<(string Pipe, string Text)>();
-        var result = new MoveHandback(store) { Submit = (p, t) => { typed.Add((p, t)); return Task.FromResult(true); } }.Deliver(ends[0]);
+        var nudged = new List<(int Pid, string Text)>();
+        var result = new MoveHandback(store) { Nudge = (p, t) => { nudged.Add((p, t)); return true; } }.Deliver(ends[0]);
 
-        Assert.That(result.Typed, Is.True, result.Line);
+        Assert.That(result.Left, Is.True, result.Line);
         Assert.That(store.LoadAssignments().Single(a => a.TicketId == "A-T1") is { Cli: NewPid, CliSession: "sess-2" }, "the claim is the CLI's as it is now");
         Assert.That(store.LoadAssignments().Single(a => a.TicketId == "A-T2").Cli, Is.EqualTo(999), "another CLI's claim is left alone");
-        Assert.That(typed.Single().Pipe, Is.EqualTo(Tab.PipeName));
-        Assert.That(typed.Single().Text, Does.Contain("moved to Bea").And.Contain(@"A-T1 (worktree D:\WT\A\A-T1, model sonnet)")
+        Assert.That(nudged.Single().Pid, Is.EqualTo(NewPid), "left for the CLI's hook as it runs now, never typed into its tab (M.ORCH-T864)");
+        Assert.That(nudged.Single().Text, Does.Contain("moved to Bea").And.Contain(@"A-T1 (worktree D:\WT\A\A-T1, model sonnet)")
             .And.Contain("same worktree").And.Not.Contain("A-T2").And.Not.Contain("\""));
     }
 
@@ -170,11 +170,11 @@ public sealed class MoveLocksTests
         var ends = locks.Reconcile([], Now + MoveLocks.Timeout + TimeSpan.FromSeconds(1));
         Assert.That(ends.Single() is { Landed: false } end && end.Why.Contains("30 minutes"));
 
-        var typed = new List<string>();
-        var result = new MoveHandback(store) { IsAlive = _ => true, Submit = (_, t) => { typed.Add(t); return Task.FromResult(true); } }.Deliver(ends[0]);
+        var nudged = new List<string>();
+        var result = new MoveHandback(store) { IsAlive = _ => true, Nudge = (_, t) => { nudged.Add(t); return true; } }.Deliver(ends[0]);
         Assert.That(store.LoadAssignments().Single().Cli, Is.EqualTo(OldPid), "the old owner keeps it");
         Assert.That(result.Line, Does.Contain("didn't move to Bea"));
-        Assert.That(typed.Single(), Does.Contain("didn't happen").And.Contain("A-T1"));
+        Assert.That(nudged.Single(), Does.Contain("didn't happen").And.Contain("A-T1"));
 
         // A CLI that ended and never came back fails sooner.
         alive = false;

@@ -51,10 +51,10 @@ public sealed class AccountMove(AccountDirs? dirs = null, BillingSwitch? billing
     /// without locking (tests that only check the request).</summary>
     public MoveLocks? Locks { get; init; }
 
-    /// <summary>Stops the CLI's running subagents at once (seam): its turn interrupted with Esc typed into its tab, so the
-    /// Launcher's restart, which waits for an idle CLI with no subagent running, comes now rather than when they finish.</summary>
-    internal Func<HostSession, Task<bool>> Interrupt { get; init; } =
-        host => SessionControl.SendAsync(host.PipeName, "\u001b", submit: false);
+    /// <summary>Stops the CLI's running subagents at once (seam). By default it can't: stopping a turn took an Esc keystroke typed
+    /// into the CLI's tab, and the Orchestrator never types into a CLI's input box (M.ORCH-T864), so the Launcher's restart waits
+    /// for the CLI to go idle with no subagent running.</summary>
+    internal Func<HostSession, Task<bool>> Interrupt { get; init; } = _ => Task.FromResult(false);
 
     /// <summary>A login's name as the dashboard shows it (seam), from its folder ("" the global login).</summary>
     internal Func<string, string> NameOf { get; init; } = configDir => LoginLook.ForConfigDir(configDir.Length == 0 ? null : configDir).Alias;
@@ -251,7 +251,7 @@ public sealed class AccountMove(AccountDirs? dirs = null, BillingSwitch? billing
                 catch (IOException) { }
             stopped = interrupted
                 ? $" Its subagents were stopped; {string.Join(", ", locked.Tickets)} stay claimed with their worktrees and are handed back to it to start again once it's there."
-                : $" Its subagents couldn't be stopped (typing into its tab failed), so it moves once they finish; {string.Join(", ", locked.Tickets)} stay locked until then.";
+                : $" Its subagents couldn't be stopped (the Orchestrator doesn't type into a CLI's tab), so it moves once they finish; {string.Join(", ", locked.Tickets)} stay locked until then.";
         }
         return new(true, $"Asked the Launcher to move the CLI in {cli.Where} (pid {cli.Pid}) from {current ?? GlobalLabel.ToLowerInvariant()} to {(normalized ?? GlobalLabel.ToLowerInvariant())}: " +
                          "it restarts with claude --resume at its next idle point, keeping its session." + stopped);

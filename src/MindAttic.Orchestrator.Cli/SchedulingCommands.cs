@@ -297,7 +297,7 @@ internal sealed class SettingsCommand : Command<SettingsCommand.Settings>
         public bool? KeepGoing { get; init; }
 
         [CommandOption("--resume-after-reset <ON>")]
-        [Description("true (default): once the window a CLI stopped for resets, a resume prompt is typed into its Launcher tab; false only alerts you that it's waiting.")]
+        [Description("true (default): once the window a CLI stopped for resets, a resume nudge is left for its hook to add at its next prompt (nothing is typed into its box); false only alerts you that it's waiting.")]
         public bool? ResumeAfterReset { get; init; }
 
         [CommandOption("--orphan-redispatches <N>")]

@@ -12,9 +12,7 @@ public sealed class LimitWakerTests
     private string dir = "";
     private ContextCycler cycler = null!;
     private JsonStore store = null!;
-    private readonly List<(string Pipe, string Text)> typed = [];
     private static readonly DateTime Now = new(2026, 10, 18, 11, 15, 0, DateTimeKind.Utc);
-    private static readonly HostSession Tab = new("Claude", 900, "mindattic-host-claude-900", @"D:\Projects\MindAttic\Prose");
 
     [SetUp]
     public void SetUp()
@@ -23,18 +21,18 @@ public sealed class LimitWakerTests
         cycler = new ContextCycler(Path.Combine(dir, "session-context"));
         store = new JsonStore(Path.Combine(dir, "store"));
         Directory.CreateDirectory(cycler.Directory);
-        typed.Clear();
     }
 
     [TearDown]
     public void TearDown() => Directory.Delete(dir, recursive: true);
 
-    private LimitWaker Waker(bool typingWorks = true, Func<int, bool>? alive = null) => new(cycler, store)
+    private LimitWaker Waker(Func<int, bool>? alive = null) => new(cycler, store)
     {
         IsAlive = alive ?? (_ => true),
-        HostOf = (pid, hosts) => pid == 42 ? hosts.FirstOrDefault() : null,
-        Submit = (pipe, text) => { lock (typed) typed.Add((pipe, text)); return Task.FromResult(typingWorks); },
     };
+
+    /// <summary>The nudges left for CLIs' hooks (M.ORCH-T864): the only way a CLI is told anything, never typed into its box.</summary>
+    private List<string> Nudges() => [.. Directory.EnumerateFiles(cycler.Directory, CliNudges.Prefix + "*.txt").Select(File.ReadAllText)];
 
     private void State(string sid, int pid, string state, DateTime at, DateTime? until, string window = "5-hour", string cwd = @"D:\Projects\MindAttic\Prose")
     {
@@ -51,7 +49,7 @@ public sealed class LimitWakerTests
     {
         // M.ORCH-T541: a busy load read as an empty list, so the stop was said again and the next save overwrote the memory.
         State("s1", 42, "idle", Now.AddHours(-1), until: Now.AddMinutes(-5));
-        Assert.That(Waker().Tick(Open, [Tab], type: true, Now), Has.Count.EqualTo(1));
+        Assert.That(Waker().Tick(Open, nudge: true, Now), Has.Count.EqualTo(1));
         State("s2", 43, "idle", Now.AddHours(-1), until: Now.AddMinutes(-5), cwd: @"D:\Projects\MindAttic\Other");
 
         var before = OrchestratorDb.BusyTimeoutMs;
@@ -61,29 +59,27 @@ public sealed class LimitWakerTests
         {
             using var held = store.Db.Open();
             OrchestratorDb.Execute(held, "BEGIN EXCLUSIVE;");
-            Assert.That(restarted.Tick(Open, [Tab], type: true, Now.AddMinutes(1)), Is.Empty, "nothing woken without the remembered wakes");
+            Assert.That(restarted.Tick(Open, nudge: true, Now.AddMinutes(1)), Is.Empty, "nothing woken without the remembered wakes");
             OrchestratorDb.Execute(held, "ROLLBACK;");
         }
         finally { OrchestratorDb.BusyTimeoutMs = before; }
 
-        Assert.That(restarted.Tick(Open, [Tab], type: true, Now.AddMinutes(2)).Select(w => w.SessionId), Is.EqualTo(new[] { "s2" }));
-        Assert.That(Waker().Tick(Open, [Tab], type: true, Now.AddMinutes(3)), Is.Empty, "both remembered across a restart");
-        Assert.That(typed, Has.Count.EqualTo(1), "s1 typed once; s2 isn't in a tab, only said");
+        Assert.That(restarted.Tick(Open, nudge: true, Now.AddMinutes(2)).Select(w => w.SessionId), Is.EqualTo(new[] { "s2" }));
+        Assert.That(Waker().Tick(Open, nudge: true, Now.AddMinutes(3)), Is.Empty, "both remembered across a restart");
+        Assert.That(Nudges(), Has.Count.EqualTo(2), "one nudge file each for s1 and s2, left once");
     }
 
     [Test]
-    public void Once_the_window_resets_a_cli_in_a_launcher_tab_is_typed_a_resume_once()
+    public void Once_the_window_resets_a_cli_is_left_a_resume_for_its_hook_once()
     {
         State("s1", 42, "idle", Now.AddHours(-1), until: Now.AddMinutes(-5));
-        var w = Waker().Tick(Open, [Tab], type: true, Now).Single();
-        Assert.That(w.Typed, Is.True);
-        Assert.That(w.Line, Does.Contain("told the CLI in Prose").And.Contain("5-hour window reset"));
-        Assert.That(typed.Single().Pipe, Is.EqualTo(Tab.PipeName));
-        Assert.That(typed.Single().Text, Does.Contain("The 5-hour window you stopped for reset").And.Not.Contain("\n").And.Not.Contain("\""),
-            "one line, nothing wt or the prompt box would split");
+        var w = Waker().Tick(Open, nudge: true, Now).Single();
+        Assert.That(w.Line, Does.Contain("the CLI in Prose").And.Contain("5-hour window reset").And.Contain("nothing is typed into its box"));
+        Assert.That(File.ReadAllText(Path.Combine(cycler.Directory, "nudge-42-resume.txt")), Does.Contain("The 5-hour window you stopped for reset"),
+            "left for the CLI's UserPromptSubmit hook, not typed (M.ORCH-T864)");
 
-        Assert.That(Waker().Tick(Open, [Tab], type: true, Now.AddMinutes(1)), Is.Empty, "once per stop, a restart included (the store remembers it)");
-        Assert.That(typed, Has.Count.EqualTo(1));
+        Assert.That(Waker().Tick(Open, nudge: true, Now.AddMinutes(1)), Is.Empty, "once per stop, a restart included (the store remembers it)");
+        Assert.That(Nudges(), Has.Count.EqualTo(1));
     }
 
     [Test]
@@ -94,9 +90,9 @@ public sealed class LimitWakerTests
         State("plain", 44, "idle", Now.AddHours(-1), until: null);
         State("gone", 45, "idle", Now.AddHours(-1), until: Now.AddMinutes(-5));
         var waker = Waker(alive: pid => pid != 45);
-        Assert.That(waker.Tick(Open, [Tab], true, Now), Is.Empty, "inside the grace, busy, never held, or its CLI closed");
-        Assert.That(waker.Tick(Open with { Stop = true }, [Tab], true, Now.AddMinutes(2)), Is.Empty, "the pace still stops: the reset isn't in yet");
-        Assert.That(typed, Is.Empty);
+        Assert.That(waker.Tick(Open, true, Now), Is.Empty, "inside the grace, busy, never held, or its CLI closed");
+        Assert.That(waker.Tick(Open with { Stop = true }, true, Now.AddMinutes(2)), Is.Empty, "the pace still stops: the reset isn't in yet");
+        Assert.That(Nudges(), Is.Empty);
     }
 
     [Test]
@@ -105,7 +101,7 @@ public sealed class LimitWakerTests
         State("old", 42, "idle", Now.AddHours(-3), until: Now.AddMinutes(-5));
         State("new", 42, "idle", Now.AddHours(-2), until: null); // /clear'd since: the session on screen isn't waiting
         State("stale", 50, "idle", Now.AddHours(-12), until: Now.AddHours(-7));
-        Assert.That(Waker().Tick(Open, [Tab], true, Now), Is.Empty);
+        Assert.That(Waker().Tick(Open, true, Now), Is.Empty);
     }
 
     [Test]
@@ -116,8 +112,8 @@ public sealed class LimitWakerTests
         File.SetLastWriteTimeUtc(Path.Combine(cycler.Directory, "old.state.json"), Now.AddHours(-3));
         File.WriteAllText(Path.Combine(cycler.Directory, "new.state.json"), JsonSerializer.Serialize(new { pid = 42, cwd = @"D:\Projects\MindAttic\Prose", auth = "subscription" }));
         File.SetLastWriteTimeUtc(Path.Combine(cycler.Directory, "new.state.json"), Now.AddHours(-1));
-        Assert.That(Waker().Tick(Open, [Tab], true, Now), Is.Empty);
-        Assert.That(typed, Is.Empty);
+        Assert.That(Waker().Tick(Open, true, Now), Is.Empty);
+        Assert.That(Nudges(), Is.Empty);
     }
 
     [Test]
@@ -125,29 +121,20 @@ public sealed class LimitWakerTests
     {
         State("s1", 42, "idle", Now.AddHours(-1), until: Now.AddMinutes(-5));
         var waker = Waker();
-        Assert.That(waker.Tick(Open with { Stop = true, Governing = "weekly" }, [Tab], true, Now.AddMinutes(-6)), Is.Empty, "the week holds it from before the reset");
-        Assert.That(waker.Tick(Open with { Stop = true, Governing = "weekly" }, [Tab], true, Now.AddHours(7)), Is.Empty, "the week holds it");
-        Assert.That(waker.Tick(Open, [Tab], true, Now.AddHours(7).AddMinutes(1)).Single().Typed, Is.True, "the week lifted: woken");
+        Assert.That(waker.Tick(Open with { Stop = true, Governing = "weekly" }, true, Now.AddMinutes(-6)), Is.Empty, "the week holds it from before the reset");
+        Assert.That(waker.Tick(Open with { Stop = true, Governing = "weekly" }, true, Now.AddHours(7)), Is.Empty, "the week holds it");
+        Assert.That(waker.Tick(Open, true, Now.AddHours(7).AddMinutes(1)).Single().Line, Does.Contain("told to carry on"), "the week lifted: woken");
 
         State("w1", 42, "idle", Now.AddMinutes(1), until: Now.AddHours(30), window: "weekly");
-        Assert.That(waker.Tick(Open, [Tab], true, Now.AddHours(30).AddMinutes(2)).Single().Line, Does.Contain("weekly window reset"));
+        Assert.That(waker.Tick(Open, true, Now.AddHours(30).AddMinutes(2)).Single().Line, Does.Contain("weekly window reset"));
     }
 
     [Test]
-    public void A_cli_in_a_plain_terminal_with_the_setting_off_or_whose_tab_wont_take_it_is_said_to_you()
+    public void With_the_setting_off_the_stopped_cli_is_only_said_to_you_and_left_no_nudge()
     {
-        State("plain", 77, "idle", Now.AddHours(-1), until: Now.AddMinutes(-5), cwd: @"D:\Projects\MindAttic\Prose");
-        var w = Waker().Tick(Open, [Tab], true, Now).Single();
-        Assert.That((w.Typed, w.Line), Is.EqualTo((false,
-            $"The 5-hour window reset at {Now.AddMinutes(-5).ToLocalTime():h:mm tt}: the CLI in Prose stopped for it at {Now.AddHours(-1).ToLocalTime():h:mm tt} and is still idle. " +
-            "Tell it to carry on (it isn't in a Launcher tab the orchestrator can type into).")));
-
         State("off", 42, "idle", Now.AddHours(-1), until: Now.AddMinutes(-4));
-        Assert.That(Waker().Tick(Open, [Tab], type: false, Now).Single().Line, Does.Contain("resume-after-reset is off"));
-        Assert.That(typed, Is.Empty, "off: nothing is typed");
-
-        State("fails", 42, "idle", Now.AddHours(-1), until: Now.AddMinutes(-3));
-        Assert.That(Waker(typingWorks: false).Tick(Open, [Tab], true, Now).Single().Line, Does.Contain("typing into its tab failed"));
+        Assert.That(Waker().Tick(Open, nudge: false, Now).Single().Line, Does.Contain("resume-after-reset is off"));
+        Assert.That(Nudges(), Is.Empty, "off: nothing is left for its hook");
     }
 
     [Test]
@@ -155,7 +142,7 @@ public sealed class LimitWakerTests
     {
         State("w1", 77, "idle", Now.AddDays(-3), until: Now.AddMinutes(-5), window: "weekly");
         var stopped = Now.AddDays(-3).ToLocalTime().ToString("ddd h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
-        Assert.That(Waker().Tick(Open, [Tab], true, Now).Single().Line, Does.Contain($"stopped for it at {stopped} "),
+        Assert.That(Waker().Tick(Open, true, Now).Single().Line, Does.Contain($"stopped for it at {stopped} "),
             "a weekly stop days back isn't read as today's");
         var reset = new LimitStop("5-hour", Now.AddHours(-26), Now.AddHours(-30));
         Assert.That(LimitWaker.ResumePrompt(reset, Now), Does.Contain(Now.AddHours(-26).ToLocalTime().ToString("ddd h:mm tt", System.Globalization.CultureInfo.InvariantCulture)));
@@ -182,27 +169,27 @@ public sealed class LimitWakerTests
         // stayed "busy" forever: nothing ever sent it back.
         State("frozen", 42, "busy", Now.AddMinutes(-10), until: null);
         var waker = Waker();
-        Assert.That(waker.Tick(Wall, [Tab], true, Now), Is.Empty, "held: nothing woken at the wall");
+        Assert.That(waker.Tick(Wall, true, Now), Is.Empty, "held: nothing woken at the wall");
         var resume = waker.Scheduled!["42"];
         Assert.That((resume.SessionId, resume.UntilUtc, resume.DueUtc), Is.EqualTo(("frozen", Reset, Reset.AddMinutes(2))));
 
-        Assert.That(waker.Tick(Open, [Tab], true, Reset.AddMinutes(1)), Is.Empty, "not due before reset + 2 minutes");
-        var w = waker.Tick(Open, [Tab], true, Reset.AddMinutes(2)).Single();
-        Assert.That((w.SessionId, w.Typed, w.Stop.UntilUtc), Is.EqualTo(("frozen", true, Reset)));
-        Assert.That(typed.Single().Text, Does.Contain("The 5-hour window you stopped for reset"));
+        Assert.That(waker.Tick(Open, true, Reset.AddMinutes(1)), Is.Empty, "not due before reset + 2 minutes");
+        var w = waker.Tick(Open, true, Reset.AddMinutes(2)).Single();
+        Assert.That((w.SessionId, w.Stop.UntilUtc), Is.EqualTo(("frozen", Reset)));
+        Assert.That(Nudges().Single(), Does.Contain("The 5-hour window you stopped for reset"));
 
-        Assert.That(waker.Tick(Open, [Tab], true, Reset.AddMinutes(3)), Is.Empty, "fires once");
-        Assert.That(Waker().Tick(Open, [Tab], true, Reset.AddMinutes(4)), Is.Empty, "and not again after a restart");
-        Assert.That(typed, Has.Count.EqualTo(1));
+        Assert.That(waker.Tick(Open, true, Reset.AddMinutes(3)), Is.Empty, "fires once");
+        Assert.That(Waker().Tick(Open, true, Reset.AddMinutes(4)), Is.Empty, "and not again after a restart");
+        Assert.That(Nudges(), Has.Count.EqualTo(1));
     }
 
     [Test]
     public void A_resume_recorded_at_the_wall_survives_a_daemon_restart()
     {
         State("frozen", 42, "busy", Now.AddMinutes(-10), until: null);
-        Waker().Tick(Wall, [Tab], true, Now);
+        Waker().Tick(Wall, true, Now);
         var restarted = Waker();
-        Assert.That(restarted.Tick(Open, [Tab], true, Reset.AddMinutes(2)).Single().SessionId, Is.EqualTo("frozen"));
+        Assert.That(restarted.Tick(Open, true, Reset.AddMinutes(2)).Single().SessionId, Is.EqualTo("frozen"));
         Assert.That(restarted.Scheduled, Is.Empty, "delivered, so dropped from the store");
     }
 
@@ -215,25 +202,25 @@ public sealed class LimitWakerTests
         State("waiting", 45, "idle", Now.AddHours(-2), until: null, cwd: @"D:\Projects\MindAttic\Fourth");
         var alive = new HashSet<int> { 42, 43, 44, 45 };
         var waker = Waker(alive: alive.Contains);
-        waker.Tick(Wall, [Tab], true, Now);
+        waker.Tick(Wall, true, Now);
         Assert.That(waker.Scheduled!.Keys, Is.EquivalentTo(new[] { "42", "43", "44" }), "an idle CLI not stopped by the wall isn't working");
 
         State("prompted", 42, "busy", Reset.AddSeconds(30), until: null); // typed into after the reset: going again
         alive.Remove(43);
         State("ownstop", 44, "idle", Now.AddMinutes(1), until: Reset, cwd: @"D:\Projects\MindAttic\Third"); // its Stop hook came
-        var wakes = waker.Tick(Open, [Tab], true, Reset.AddMinutes(2));
+        var wakes = waker.Tick(Open, true, Reset.AddMinutes(2));
         Assert.That(wakes.Select(w => w.SessionId), Is.EqualTo(new[] { "ownstop" }), "woken once, for its own stop");
         Assert.That(waker.Scheduled, Is.Empty);
-        Assert.That(waker.Tick(Open, [Tab], true, Reset.AddMinutes(5)), Is.Empty);
+        Assert.That(waker.Tick(Open, true, Reset.AddMinutes(5)), Is.Empty);
     }
 
     [Test]
-    public void The_daemon_alerts_only_for_a_cli_it_couldnt_type_into()
+    public void The_daemon_alerts_for_every_wake_since_nothing_is_typed_into_a_cli()
     {
         var alerts = new List<string>();
         var daemon = new Daemon(store) { AlertSink = (_, message, _) => alerts.Add(message) };
         var stop = new LimitStop("5-hour", Now, Now.AddHours(-1));
-        daemon.ReportWakes([new LimitWaker.Wake("a", "Prose", stop, true, "told"), new LimitWaker.Wake("b", "Prose", stop, false, "waiting")]);
-        Assert.That(alerts, Is.EqualTo(new[] { "waiting" }));
+        daemon.ReportWakes([new LimitWaker.Wake("a", "Prose", stop, "told"), new LimitWaker.Wake("b", "Prose", stop, "waiting")]);
+        Assert.That(alerts, Is.EqualTo(new[] { "told", "waiting" }));
     }
 }

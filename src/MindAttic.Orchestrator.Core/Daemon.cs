@@ -125,13 +125,13 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     ReportMoves(snapshot.Agents, DateTime.UtcNow);
                     // Not while the global pause is on (M.ORCH-T808): nothing is told to carry on until it's lifted.
                     if (!Scheduling.GlobalPause.Active(store))
-                        ReportWakes(waker.Tick(snapshot.Pace, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
+                        ReportWakes(waker.Tick(snapshot.Pace, s.ResumeAfterReset, DateTime.UtcNow));
                     // An idle /allocate CLI let stop when its next handed out nothing is sent back once next has work for it
                     // (M.ORCH-T523): keep-going acts only as a turn ends, so nothing asked it again when room opened.
-                    ReportAllocateWakes(pilotWaker.Tick(plan, s, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow, snapshot));
+                    ReportAllocateWakes(pilotWaker.Tick(plan, s, DateTime.UtcNow, snapshot));
                     // On course to end under target with room for more: a CLI holding claims no subagent is on is told to start
                     // them now (M.ORCH-T529: two sat unstarted at a projected 65% of 98% until the user asked).
-                    ReportAllocateWakes(pilotWaker.TickClaims(snapshot, plan, s, [.. snapshot.Repos.SelectMany(r => r.Hosts)], s.ResumeAfterReset, DateTime.UtcNow));
+                    ReportAllocateWakes(pilotWaker.TickClaims(snapshot, plan, s, DateTime.UtcNow));
                     // A dispatch whose CLI or tab exited mid-task (closed, crashed, slept) is orphaned: said at once, and handed back to
                     // the repo's /allocate CLI or started again in a new tab in its worktree (M.ORCH-T748), as a window's stop is resumed.
                     try
@@ -347,13 +347,14 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         }
     }
 
-    /// <summary>Logs each CLI woken after its window reset; one it couldn't type into raises the Needs-you alert instead.</summary>
+    /// <summary>Logs each CLI nudged after its window reset and raises the Needs-you alert: nothing is typed into a CLI's box, so an
+    /// idle one only takes its nudge at its next prompt (M.ORCH-T864).</summary>
     internal void ReportWakes(IEnumerable<LimitWaker.Wake> wakes)
     {
         foreach (var w in wakes)
         {
-            Say(w.Typed ? LogEventLevel.Information : LogEventLevel.Warning, w.Line);
-            if (!w.Typed) Alert("Needs you", w.Line);
+            Say(LogEventLevel.Warning, w.Line);
+            Alert("Needs you", w.Line);
         }
     }
 
@@ -391,7 +392,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     }
 
     /// <summary>Ends the moves in flight that landed, failed or timed out, and hands each one's tickets back (M.ORCH-T637):
-    /// logged, and toasted when it didn't land or its CLI couldn't be typed into.</summary>
+    /// logged, and toasted when it didn't land or its CLI has tickets to start again (told at its next prompt, never typed).</summary>
     internal void ReportMoves(IReadOnlyList<Activity.AgentBoardRow> agents, DateTime nowUtc)
     {
         try
@@ -400,7 +401,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             foreach (var end in new MoveLocks(store).Reconcile(agents, nowUtc))
             {
                 var result = handback.Deliver(end);
-                var warn = !end.Landed || (!result.Typed && result.Tickets.Count > 0);
+                var warn = !end.Landed || result.Tickets.Count > 0;
                 Say(warn ? LogEventLevel.Warning : LogEventLevel.Information, result.Line);
                 if (!end.Landed) Alert("Move didn't land", result.Line["move: ".Length..]);
                 else if (warn) Alert("Needs you", result.Line["move: ".Length..]);
@@ -454,13 +455,13 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
     private readonly UnderTarget underTarget = new();
 
-    /// <summary>Logs each idle /allocate CLI sent back for work; one it couldn't type into raises the Needs-you alert instead.</summary>
+    /// <summary>Logs each /allocate CLI nudged (through its hook, never typed into its box, M.ORCH-T864) and raises the Needs-you alert, since an idle one only takes it at its next prompt.</summary>
     internal void ReportAllocateWakes(IEnumerable<AllocateWaker.Wake> wakes)
     {
         foreach (var w in wakes)
         {
-            Say(w.Typed ? LogEventLevel.Information : LogEventLevel.Warning, w.Line);
-            if (!w.Typed) Alert("Needs you", w.Line);
+            Say(LogEventLevel.Warning, w.Line);
+            Alert("Needs you", w.Line);
         }
     }
 

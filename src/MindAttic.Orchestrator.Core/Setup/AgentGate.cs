@@ -3007,6 +3007,26 @@ public static class AgentGate
                 notes.append(CROSSREPO_NOTE[0])
             if ALLOCATE_NOTE[0]:
                 notes.append(ALLOCATE_NOTE[0])
+            # What the orchestrator wants this CLI to do next (idle claims to start, work to claim, a resume after a limit, tickets
+            # handed back after a move: M.ORCH-T864). It's left as a nudge-<pid>-<kind>.txt file and reaches the model here, as context
+            # with the prompt the user typed; the orchestrator never types it into the input box. Each is delivered once.
+            try:
+                nudge_pid = my_pid()
+                if nudge_pid and str(nudge_pid).isdigit():
+                    for nf in sorted(CLI_MARKS_DIR.glob("nudge-" + str(nudge_pid) + "-*.txt")):
+                        try:
+                            if time.time() - nf.stat().st_mtime < 6 * 3600:
+                                text = nf.read_text(encoding="utf-8", errors="replace").strip()
+                                if text:
+                                    notes.append(text)
+                        except Exception:
+                            pass
+                        try:
+                            nf.unlink()
+                        except Exception:
+                            pass
+            except Exception:
+                pass
             out = {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": " ".join(notes)}} if notes else {}
             # A CLI that started before its SessionStart hook was registered is checked on its first prompt instead, and told
             # only when it's billing the key rather than the claude.ai login (M.ORCH-T434).

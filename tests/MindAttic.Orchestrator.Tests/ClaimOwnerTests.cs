@@ -57,26 +57,23 @@ public sealed class ClaimOwnerTests
     [Test]
     public void Two_allocate_clis_on_one_repo_are_each_nudged_only_for_their_own_idle_claims()
     {
-        var typed = new List<(string Pipe, string Text)>();
-        var tabs = new[] { new HostSession("Claude", 900, "tab-41", @"D:\W\A"), new HostSession("Claude", 901, "tab-42", @"D:\W\A") };
         var waker = new AllocateWaker(cycler, store)
         {
             IsAlive = _ => true,
             // Both on A; the first names it outright, so before T532 it was told of every claim on A.
             Pilots = () => new Dictionary<int, IReadOnlyList<string>> { [First] = ["A"], [Second] = ["A"] },
-            HostOf = (pid, hosts) => hosts.Single(h => h.PipeName == $"tab-{pid}"),
-            Submit = (pipe, text) => { lock (typed) typed.Add((pipe, text)); return Task.FromResult(true); },
         };
         var snap = Snap(T("A-T1"), T("A-T2"), T("A-T3"));
         var plan = Plan(snap, [Claim("A-T1", First, TimeSpan.FromMinutes(10)), Claim("A-T2", Second, TimeSpan.FromMinutes(10)),
             Claim("A-T3", Second, TimeSpan.FromMinutes(10))], running: 2);
 
-        var wakes = waker.TickClaims(snap, plan, Settings, tabs, type: true, Now);
+        var wakes = waker.TickClaims(snap, plan, Settings, Now);
 
         Assert.That(wakes.Single(w => w.Pid == First).Tickets, Is.EqualTo(new[] { "A-T1" }));
         Assert.That(wakes.Single(w => w.Pid == Second).Tickets, Is.EqualTo(new[] { "A-T2", "A-T3" }));
-        Assert.That(typed.Single(t => t.Pipe == "tab-41").Text, Does.Contain("A-T1").And.Not.Contain("A-T2").And.Not.Contain("A-T3"));
-        Assert.That(typed.Single(t => t.Pipe == "tab-42").Text, Does.Contain("A-T2").And.Contain("A-T3").And.Not.Contain("A-T1"));
+        string Nudge(int pid) => File.ReadAllText(Path.Combine(cycler.Directory, $"nudge-{pid}-claims.txt"));
+        Assert.That(Nudge(First), Does.Contain("A-T1").And.Not.Contain("A-T2").And.Not.Contain("A-T3"));
+        Assert.That(Nudge(Second), Does.Contain("A-T2").And.Contain("A-T3").And.Not.Contain("A-T1"));
     }
 
     [Test]

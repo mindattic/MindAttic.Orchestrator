@@ -7,9 +7,10 @@ namespace MindAttic.Orchestrator.Sessions;
 /// <summary>
 /// Wakes the CLIs that stopped for a window once it has reset (M.ORCH-T256). A turn that ends at the window's stop is recorded by the context gate (<c>limit_stop</c> in its state);
 /// nothing used to wake it, so it sat idle with its handoff ("continue after 3:30 PM") until its author noticed. Once that
-/// window's reset is past and the pace no longer stops (the reset itself is the status' to decide), the CLI's
-/// Launcher tab is typed a resume prompt; a CLI in a plain terminal, or with <see cref="OrchestratorSettings.ResumeAfterReset"/>
-/// off, is said to you instead. Each stop is acted on once: its typed prompt clears the record, and the ones said or typed are
+/// window's reset is past and the pace no longer stops (the reset itself is the status' to decide), the CLI is left a
+/// resume nudge its UserPromptSubmit hook adds to its next turn's context (<see cref="CliNudges"/>), and it's said to you; nothing
+/// is ever typed into its input box (M.ORCH-T864). With <see cref="OrchestratorSettings.ResumeAfterReset"/> off it's only said to
+/// you. Each stop is acted on once: the ones nudged or said are
 /// remembered (<see cref="WokenName"/>) so a restart doesn't say them again. As a last resort, every CLI still working when the
 /// pace hits the wall also gets a resume recorded for <see cref="ResumeDelay"/> past the reset (<see cref="ScheduledName"/>), so
 /// one that froze over the limit, and never recorded a stop, still goes on in the next window (M.ORCH-T595).
@@ -36,15 +37,8 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
     /// <summary>Whether the CLI process is still running (seam).</summary>
     internal Func<int, bool> IsAlive { get; init; } = ContextCycler.IsClaude;
 
-    /// <summary>The Launcher tab the CLI runs in, if any (seam).</summary>
-    internal Func<int, IReadOnlyList<HostSession>, HostSession?> HostOf { get; init; } =
-        (pid, hosts) => hosts.FirstOrDefault(h => ProcessTree.IsAncestor(h.ProcessId, pid));
-
-    /// <summary>Types a prompt into a tab and presses Enter (seam).</summary>
-    internal Func<string, string, Task<bool>> Submit { get; init; } = (pipe, text) => SessionControl.SubmitAsync(pipe, text);
-
-    /// <param name="Typed">The resume prompt went into the CLI's tab; false: it's said to you to do.</param>
-    public sealed record Wake(string SessionId, string Where, LimitStop Stop, bool Typed, string Line);
+    /// <param name="Line">What's said to you (log and dashboard alert); the resume nudge itself is left for the CLI's hook.</param>
+    public sealed record Wake(string SessionId, string Where, LimitStop Stop, string Line);
 
     /// <summary>The resumes recorded at the wall (M.ORCH-T595), by CLI process id, in the orchestrator's store.</summary>
     public const string ScheduledName = "limit-resumes";
@@ -76,8 +70,8 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
 
     /// <summary>What to wake now, woken: the newest session of each live CLI, idle, recorded as stopped for a window whose
     /// reset is at least <see cref="Grace"/> and at most <see cref="Forget"/> past (or the pace held on past it until lately), while <paramref name="pace"/> doesn't stop
-    /// . <paramref name="type"/> false only says each.</summary>
-    public IReadOnlyList<Wake> Tick(Pace? pace, IReadOnlyList<HostSession> hosts, bool type, DateTime nowUtc)
+    /// . A resume nudge is left for each one's hook unless <paramref name="nudge"/> is false, which only says each.</summary>
+    public IReadOnlyList<Wake> Tick(Pace? pace, bool nudge, DateTime nowUtc)
     {
         if (pace is { Stop: true })
         {
@@ -136,23 +130,17 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
         var wakes = new List<Wake>();
         if (due.Count > 0)
         {
-            var sends = due.Select(d =>
-            {
-                var host = type ? HostOf(d.Context.Pid!.Value, hosts) : null;
-                return (d.Context, d.Stop, Host: host, Sent: host is null ? Task.FromResult(false) : SafeSubmit(host.PipeName, ResumePrompt(d.Stop, nowUtc)));
-            }).ToList();
-            Task.WaitAll([.. sends.Select(s => s.Sent)]);
-            foreach (var (c, stop, host, sent) in sends)
+            foreach (var (c, stop) in due)
             {
                 var where = Where(c.Cwd);
-                var typed = sent.Result;
+                var left = nudge && CliNudges.Leave(cycler.Directory, c.Pid!.Value, "resume", ResumePrompt(stop, nowUtc));
                 var reset = Clock(stop.UntilUtc, nowUtc);
-                var line = typed
-                    ? $"after the {stop.Window} window reset at {reset}, told the CLI in {where} (it stopped for the limit at {Clock(stop.StoppedUtc, nowUtc)}) to carry on"
+                var line = left
+                    ? $"after the {stop.Window} window reset at {reset}, the CLI in {where} (it stopped for the limit at {Clock(stop.StoppedUtc, nowUtc)}) is told to carry on at its next prompt; nothing is typed into its box"
                     : $"The {stop.Window} window reset at {reset}: the CLI in {where} stopped for it at {Clock(stop.StoppedUtc, nowUtc)} and " +
                       (c.Idle ? "is still idle" : "hasn't gone on since") + ". Tell it to carry on (" +
-                      (!type ? "resume-after-reset is off" : host is null ? "it isn't in a Launcher tab the orchestrator can type into" : "typing into its tab failed") + ").";
-                wakes.Add(new Wake(c.SessionId, where, stop, typed, line));
+                      (!nudge ? "resume-after-reset is off" : "its nudge couldn't be written") + ").";
+                wakes.Add(new Wake(c.SessionId, where, stop, line));
                 woken[Key(c.SessionId, stop)] = stop.UntilUtc;
             }
         }
@@ -209,17 +197,11 @@ public sealed class LimitWaker(ContextCycler cycler, JsonStore store)
     /// <summary>When the context gate last wrote the session's state, its start included (1601 when it's gone since).</summary>
     private DateTime Written(string sessionId) => File.GetLastWriteTimeUtc(Path.Combine(cycler.Directory, sessionId + ".state.json"));
 
-    private async Task<bool> SafeSubmit(string pipe, string text)
-    {
-        try { return await Submit(pipe, text).ConfigureAwait(false); }
-        catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException or OperationCanceledException) { return false; }
-    }
-
     private static string Key(string sessionId, LimitStop stop) =>
         sessionId + "@" + stop.UntilUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
 
-    /// <summary>What the CLI is typed once its window has reset: one line (a line break would be a new line in the prompt box,
-    /// not Enter) that says the window's back and to carry on with what it left for the reset, or say there's nothing.</summary>
+    /// <summary>What the CLI is told, as hook context (<see cref="CliNudges"/>), once its window has reset: the window's back, carry
+    /// on with what it left for the reset, or say there's nothing.</summary>
     public static string ResumePrompt(LimitStop stop, DateTime nowUtc) =>
         $"The {stop.Window} window you stopped for reset at {Clock(stop.UntilUtc, nowUtc)}, so there's room to work again. Carry on with what you " +
         "stopped for the limit: whatever your last message or handoff left for after the reset. If nothing was left, say so in one short line and end your turn.";
