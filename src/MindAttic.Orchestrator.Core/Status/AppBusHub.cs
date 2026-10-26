@@ -57,14 +57,20 @@ public static class AppBusClient
 
 /// <summary>
 /// The apps a subscriber has heard are listening (M.ORCH-T879, <see cref="AppBus.Presence"/>): whether a request sent now will be
-/// acted on, or the app has to be started instead. A presence counts only while its process is alive. Thread-safe.
+/// acted on, or the app has to be started instead. A presence counts only while the process that said it is alive: its pid is
+/// running and that process started no later than the presence was said (M.ORCH-T1010: judged by pid alone, a presence the hub
+/// kept from an app long gone counted once its pid was reused, and open-ticket went to nobody instead of starting
+/// Tickets.Desktop). Thread-safe.
 /// </summary>
 public sealed class AppPresences
 {
     private readonly Dictionary<string, AppPresence> byApp = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Whether a process is alive; tests swap it.</summary>
-    internal Func<int, bool> Alive { get; init; } = IsAlive;
+    /// <summary>When the process with a pid started (UTC), or null when none runs; tests swap it.</summary>
+    internal Func<int, DateTime?> StartOf { get; init; } = StartTimeOf;
+
+    /// <summary>How much later than its presence a process may seem to have started (clock reads differ a little).</summary>
+    internal static readonly TimeSpan StartSlack = TimeSpan.FromSeconds(2);
 
     public void Note(AppPresence presence)
     {
@@ -83,17 +89,25 @@ public sealed class AppPresences
     {
         AppPresence? p;
         lock (byApp) p = byApp.GetValueOrDefault(app);
-        return p is not null && p.Handles.Contains(kind, StringComparer.OrdinalIgnoreCase) && Alive(p.Pid) ? p : null;
+        return p is not null && p.Handles.Contains(kind, StringComparer.OrdinalIgnoreCase) && SaidByLiveProcess(p) ? p : null;
     }
 
-    private static bool IsAlive(int pid)
+    /// <summary>Whether the process that said <paramref name="presence"/> still runs: its pid does, and not as a process started after
+    /// it was said (a reused pid). One with no time of its own (an older writer) is judged by its pid alone.</summary>
+    private bool SaidByLiveProcess(AppPresence presence)
+    {
+        if (StartOf(presence.Pid) is not { } started) return false;
+        return presence.AtUtc == default || started.ToUniversalTime() <= presence.AtUtc.ToUniversalTime() + StartSlack;
+    }
+
+    private static DateTime? StartTimeOf(int pid)
     {
         try
         {
             using var p = System.Diagnostics.Process.GetProcessById(pid);
-            return !p.HasExited;
+            return p.HasExited ? null : p.StartTime.ToUniversalTime();
         }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception) { return false; }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { return null; }
     }
 }
 

@@ -78,7 +78,7 @@ public sealed class AppBusTests
     public void A_presence_counts_only_while_its_process_lives_and_for_what_it_handles()
     {
         var alive = true;
-        var book = new AppPresences { Alive = _ => alive };
+        var book = new AppPresences { StartOf = _ => alive ? DateTime.UtcNow.AddHours(-1) : null };
         book.Note(new AppPresence { App = AppBus.TicketsDesktop, Pid = 7, Handles = [AppBus.OpenTicket] });
         Assert.That(book.Listening(AppBus.TicketsDesktop, AppBus.OpenTicket), Is.Not.Null);
         Assert.That(book.Listening(AppBus.TicketsDesktop, AppBus.ShowWorker), Is.Null);
@@ -88,6 +88,19 @@ public sealed class AppBusTests
         alive = true;
         book.Clear();
         Assert.That(book.Listening(AppBus.TicketsDesktop, AppBus.OpenTicket), Is.Null);
+    }
+
+    [Test]
+    public void A_presence_whose_pid_a_later_process_took_counts_for_nothing()
+    {
+        // M.ORCH-T1010: Tickets.Desktop said it at 10:00 and exited; its pid now belongs to a process started at 11:00.
+        var said = new DateTime(2026, 10, 26, 10, 0, 0, DateTimeKind.Utc);
+        DateTime? started = said.AddHours(1);
+        var book = new AppPresences { StartOf = _ => started };
+        book.Note(new AppPresence { App = AppBus.TicketsDesktop, Pid = 7, Handles = [AppBus.OpenTicket], AtUtc = said });
+        Assert.That(book.Listening(AppBus.TicketsDesktop, AppBus.OpenTicket), Is.Null);
+        started = said.AddMinutes(-5);
+        Assert.That(book.Listening(AppBus.TicketsDesktop, AppBus.OpenTicket), Is.Not.Null, "the process that said it, still running");
     }
 
     [Test]
