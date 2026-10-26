@@ -19,6 +19,10 @@ public static class AgentGate
     /// <summary>The context gate's hooks' timeout: 10s timed out on a pegged machine and dropped the prompt's notes (M.ORCH-T683).</summary>
     public const int ContextHookTimeoutSeconds = 60;
 
+    /// <summary>How long the context gate's Stop hook lets its slow asks run in all (M.ORCH-T1005), well under
+    /// <see cref="ContextHookTimeoutSeconds"/>: Python's start, the save and the answer still fit after it.</summary>
+    public const int StopHookBudgetSeconds = 45;
+
     public const int MaxHoldSeconds = 300;
 
     public const int StatusLineRefreshSeconds = 60;
@@ -1338,10 +1342,11 @@ public static class AgentGate
             return "MindAttic.Workflow" if not (WS / "MindAttic.Tickets").is_dir() and (WS / "MindAttic.Workflow").is_dir() else "MindAttic.Tickets"
         TICKETS_DB = (os.environ.get("MINDATTIC_TICKETS_DB") or os.environ.get("MINDATTIC_WORKFLOW_DB")
                       or str(WS / tickets_home() / "data" / "Tickets.db"))
-        def tickets_db():
-            # The ticket database opened read-only: a missing one raises instead of being created empty (M.ORCH-T546).
+        def tickets_db(timeout=5.0):
+            # The ticket database opened read-only: a missing one raises instead of being created empty (M.ORCH-T546). A caller
+            # on a time budget passes how long a locked read may wait.
             import sqlite3
-            return sqlite3.connect(Path(os.path.abspath(TICKETS_DB)).as_uri() + "?mode=ro", uri=True)
+            return sqlite3.connect(Path(os.path.abspath(TICKETS_DB)).as_uri() + "?mode=ro", uri=True, timeout=timeout)
 
         def repo_of(path, worktrees=True):
             # A repo checkout under the workspace, or (with worktrees) one of /allocate's worktrees of it; None elsewhere.
@@ -2503,6 +2508,13 @@ public static class AgentGate
 
         DIR = Path.home() / ".claude" / "session-context"
         PERCENT = {{{percent}}}
+        # Claude Code kills this hook at {{{ContextHookTimeoutSeconds}}}s (M.ORCH-T1005): its slow asks (the ticket database, the workspace scan,
+        # `orchestrator next`) all fit inside this, counted from the script's start, with room left to save and answer.
+        STARTED = time.monotonic()
+        BUDGET = {{{StopHookBudgetSeconds}}}
+
+        def time_left():
+            return BUDGET - (time.monotonic() - STARTED)
         KEEP_GOING = {{{(keepGoing ? "True" : "False")}}}
         {{{WorkspacePython}}}
         {{{MarksPython}}}
@@ -2528,7 +2540,8 @@ public static class AgentGate
             # The open fixes and approved tickets of repos (names or wildcards such as GTFO.*; "*": every repo), in ticket order.
             try:
                 import fnmatch, sqlite3
-                db = tickets_db()
+                # Its four reads share what's left of the Stop hook's budget (M.ORCH-T1005), so a locked database can't outlast it.
+                db = tickets_db(timeout=max(0.5, min(5.0, (time_left() - 5) / 4)))
                 try:
                     rows = db.execute("SELECT id, type, repo, summary FROM tickets WHERE status = 'open' ORDER BY ordinal").fetchall()
                 except sqlite3.OperationalError:  # a database from before tickets had summaries
@@ -2592,7 +2605,7 @@ public static class AgentGate
             try:
                 import fnmatch, sqlite3
                 try:
-                    db = tickets_db()
+                    db = tickets_db(timeout=max(0.5, min(5.0, time_left() - 5)))
                     try:
                         held = {(r or "").lower() for (r,) in db.execute("SELECT DISTINCT repo FROM tickets").fetchall()}
                     finally:
@@ -2600,7 +2613,8 @@ public static class AgentGate
                 except Exception:
                     held = set()
                 named = {r.lower() for r in repos}
-                return any(d.name.lower() not in held and any(fnmatch.fnmatchcase(d.name.lower(), n) for n in named) and
+                # The scan stops once the hook's budget is nearly spent (M.ORCH-T1005): what it found by then stands.
+                return any(time_left() > 3 and d.name.lower() not in held and any(fnmatch.fnmatchcase(d.name.lower(), n) for n in named) and
                            (d / "docs" / "USER_STORIES.md").is_file() for d in WS.iterdir() if d.is_dir())
             except Exception:
                 return False
@@ -2648,8 +2662,12 @@ public static class AgentGate
                 env = dict(os.environ)
                 if pid:
                     env["MINDATTIC_CLI_PID"] = str(pid)  # this CLI, so what it filed itself stays its own (M.ORCH-T328)
+                # At most 30s, and never past the hook's budget (M.ORCH-T1005): too little left and the cheap count stands.
+                wait = min(30, time_left() - 2)
+                if wait < 3:
+                    return None
                 r = subprocess.run([exe, "next", "--repos", ",".join(repos)], capture_output=True, text=True, encoding="utf-8",
-                                   errors="ignore", timeout=30, env=env, stdin=subprocess.DEVNULL)
+                                   errors="ignore", timeout=wait, env=env, stdin=subprocess.DEVNULL)
                 ids = re.findall(r"^=== (\S+) \(", r.stdout or "", re.M)
                 return ids if r.returncode == 0 and (ids or "Nothing handed out" in (r.stdout or "")) else None
             except Exception:
@@ -2957,13 +2975,31 @@ public static class AgentGate
                 save(state_file, state)
                 print(json.dumps({"decision": "block", "reason": wind_down_told(repo_of(data.get("cwd") or "") or Path(str(data.get("cwd") or ".")).name)}))
                 sys.exit(0)
+            # Saved as the idle turn it is before anything slow is asked (M.ORCH-T1005): a hook killed at its timeout past here
+            # ends the turn all the same, and left busy, the busy gate and the dashboard kept this CLI working. A turn sent on
+            # below saves its own state over this one.
+            try:
+                ended = dict(state)
+                for k in ("nudged", "worked", "closed"):
+                    ended.pop(k, None)
+                ended.update(state="idle", at=now, pid=cli_pid(), cwd=data.get("cwd"), auth=auth, config_dir=str(PROFILE_DIR or ""))
+                if needs_typed:
+                    ended["asking"] = now
+                held = limit_held(limits, data, now) if paced and stopped else None
+                if held:
+                    ended["limit_stop"] = held
+                else:
+                    ended.pop("limit_stop", None)
+                save(state_file, ended)
+            except Exception:
+                pass
             # Only a CLI that typed /allocate is kept going, on its own repos, while they have workable tickets.
             repos = allocate_repos(my_pid())
             if repos and KEEP_GOING and not stopped and not state.get("goal"):
                 why = "allocate"
-            eligible = bool(why) and not no_subagent_room(limits, my_pid())
+            eligible = bool(why) and not no_subagent_room(limits, my_pid()) and time_left() > 10
             ids = workable(repos, sid) if eligible else []
-            if ids or (eligible and story_file_repos(repos)):
+            if ids or (eligible and time_left() > 8 and story_file_repos(repos)):
                 # Only what next would hand out: the count above is the cheap first look, next has the last word. A repo on
                 # its own USER_STORIES.md has tickets the count can't see, so next is asked for it even when the count is empty.
                 # When next can't be read (not installed, failed, unparsed) the cheap count stands, as before; the nagging of
@@ -2973,7 +3009,7 @@ public static class AgentGate
                     ids = handed
             reason = keep_going(repos, ids, sid, why, insisted) if ids else None
             # A turn ending with a nudge waiting is sent on with it, as a prompt queued in its box used to run (M.ORCH-T864).
-            nudges = [] if stopped else take_nudges()
+            nudges = [] if stopped or time_left() < 2 else take_nudges()
             if nudges:
                 reason = ((reason + " ") if reason else "") + " ".join(nudges)
             if reason:
