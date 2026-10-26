@@ -22,7 +22,8 @@ namespace MindAttic.Orchestrator.TermViewer;
 /// connection is replaced (a protocol 1 host serves one viewer, so the dashboard reattaching takes it from here). A protocol 2
 /// host (M.ORCH-T930) keeps this window attached beside the dashboard's tab, so there the fold rests on the presence signal
 /// and the two-second check, never on being replaced. This window doesn't reconnect a dropped link (no liveness probe given
-/// to RelayTerminal.Attach), so it can't take a protocol 1 session back from the dashboard.</para>
+/// to RelayTerminal.Attach), so it can't take a protocol 1 session back from the dashboard; only a --stay pop-out does
+/// (M.ORCH-T976).</para>
 /// </summary>
 internal sealed class ViewerWindow : Window
 {
@@ -188,7 +189,11 @@ internal sealed class ViewerWindow : Window
         r.InputDropped += ShowNotSent;
         host.Child = r;
         relay = r;
-        r.Attach(session.Pipe, session.Protocol, () => TermSessions.Get(session.Id) is { } live && live.HostPid == session.HostPid, interactive: !watchOnly);
+        // Only a --stay pop-out reconnects a dropped link (M.ORCH-T976). A fallback window gets no liveness probe: a replaced or
+        // dropped link ends it, and OnDetached folds it while the dashboard is present, so it never takes a protocol 1 session
+        // back from the dashboard's tab and ping-pongs with it.
+        Func<bool>? alive = stay ? () => TermSessions.Get(session.Id) is { } live && live.HostPid == session.HostPid : null;
+        r.Attach(session.Pipe, session.Protocol, alive, interactive: !watchOnly);
         r.Terminal.Focus();
     }
 
