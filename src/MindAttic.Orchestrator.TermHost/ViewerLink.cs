@@ -25,6 +25,18 @@ internal sealed class ViewerLink : IDisposable
         Writer = Task.Run(WriteLoopAsync);
     }
 
+    /// <summary>This connection's number in its session (M.ORCH-T930).</summary>
+    public long Id { get; init; }
+
+    /// <summary>The protocol agreed in Hello: what frames it is sent (Size's owner byte and Typing only from 2).</summary>
+    public ushort Protocol { get; init; } = TermProtocol.Version;
+
+    /// <summary>When it was last sent a Typing frame (they are sent at most once a second). Under the session's lock.</summary>
+    public DateTime LastTyping { get; set; } = DateTime.MinValue;
+
+    /// <summary>Whether dropping its input (it is read-only) has been logged. Under the session's lock.</summary>
+    public bool InputDropLogged { get; set; }
+
     /// <summary>Raised once the viewer has been sent an Exit frame: it has seen the CLI exit.</summary>
     public event Action? ExitDelivered;
 

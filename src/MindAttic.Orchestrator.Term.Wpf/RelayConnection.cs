@@ -14,15 +14,22 @@ namespace MindAttic.Orchestrator.Term.Wpf;
 /// <para>Everything it raises (output, modes, exit, detach) is posted, in order, to the SynchronizationContext captured in
 /// <see cref="Start"/>, the UI thread's: feeding the renderer from the pipe's thread while the UI thread resized it deadlocked
 /// the viewer (Phase 0 lesson 1). Nothing here throws to its caller.</para>
+/// <para>From protocol 2 (M.ORCH-T930) the host serves several viewers: this one says in its Hello whether it is interactive,
+/// learns from Size frames whether it owns the session's size (<see cref="SizeChanged"/>; one that doesn't letterboxes), and
+/// takes the size by typing or with <see cref="TakeSize"/>.</para>
 /// <para>A link that drops while the host lives is attached again with a backoff (M.ORCH-T966): see <see cref="RunAsync"/>.</para>
 /// </summary>
-public sealed class RelayConnection(string pipeName, ushort protocol = TermProtocol.Version, Func<bool>? hostAlive = null) : ITerminalConnection
+public sealed class RelayConnection(string pipeName, ushort protocol = TermProtocol.Version, Func<bool>? hostAlive = null, bool interactive = true)
+    : ITerminalConnection
 {
     /// <summary>Win32-input-mode: the renderer encodes every key as ESC[Vk;Sc;Uc;Kd;Cs;Rc_, which ConPTY decodes back to key events.</summary>
     public const string Win32InputMode = "\u001b[?9001h";
 
     /// <summary>The most text one Input frame carries (well under 64 KB of UTF-8); a larger paste goes as several, in order.</summary>
     public const int InputChunkChars = 16 * 1024;
+
+    /// <summary>How this dashboard names itself in a protocol 2 Hello (the host logs it).</summary>
+    internal static readonly string ViewerId = $"dashboard-{Environment.ProcessId}";
 
     private readonly object gate = new();
     private readonly Decoder utf8 = Encoding.UTF8.GetDecoder();
@@ -48,6 +55,20 @@ public sealed class RelayConnection(string pipeName, ushort protocol = TermProto
 
     /// <summary>An attach reached the live stream (the first one, or one after <see cref="Reconnecting"/>).</summary>
     public event Action? Attached;
+
+    /// <summary>The session's size (cols, rows) and whether this viewer owns it (M.ORCH-T930, protocol 2 hosts only). One that
+    /// doesn't own it should show the session at that size and letterbox.</summary>
+    public event Action<ushort, ushort, bool>? SizeChanged;
+
+    /// <summary>This viewer and another typed within two seconds of each other (M.ORCH-T930).</summary>
+    public event Action? OtherTyping;
+
+    /// <summary>Whether this viewer owns the session's size: true until a protocol 2 host says otherwise.</summary>
+    public bool OwnsSize { get; private set; } = true;
+
+    /// <summary>While set, the renderer's resizes aren't sent: they are this viewer following the session's size, not the size
+    /// it would show itself.</summary>
+    internal bool SuppressResize { get; set; }
 
     /// <summary>The host's tracked modes: <see cref="TermModes.BracketedPaste"/> decides how a paste is sent (T868).</summary>
     public TermModes Modes { get; private set; }
@@ -160,7 +181,7 @@ public sealed class RelayConnection(string pipeName, ushort protocol = TermProto
                 pipe = p;
                 r = rows; c = cols;
             }
-            Send(TermFrameKind.Hello, TermProtocol.Hello(protocol, (ushort)(c > 0 ? c : 120), (ushort)(r > 0 ? r : 30)));
+            Send(TermFrameKind.Hello, TermProtocol.Hello(protocol, (ushort)(c > 0 ? c : 120), (ushort)(r > 0 ? r : 30), interactive, ViewerId));
 
             while (!closed)
             {
@@ -192,6 +213,13 @@ public sealed class RelayConnection(string pipeName, ushort protocol = TermProto
                         break;
                     case TermFrameKind.Modes:
                         SetModes(TermProtocol.ReadModes(payload));
+                        break;
+                    case TermFrameKind.Size when TermProtocol.ReadSizeOwner(payload) is { Owned: { } owned } size:
+                        OwnsSize = owned;
+                        Post(() => SizeChanged?.Invoke(size.Cols, size.Rows, owned));
+                        break;
+                    case TermFrameKind.Typing:
+                        Post(() => OtherTyping?.Invoke());
                         break;
                     case TermFrameKind.Exit:
                         var code = TermProtocol.ReadExit(payload);
@@ -274,9 +302,17 @@ public sealed class RelayConnection(string pipeName, ushort protocol = TermProto
         }
     }
 
+    /// <summary>Takes the session's size for this viewer (M.ORCH-T930): a no-op when it owns it already, is read-only, or the
+    /// host is protocol 1 (one viewer, which always owns it).</summary>
+    public void TakeSize()
+    {
+        if (OwnsSize || !interactive || protocol < TermProtocol.MultiViewer) return;
+        Send(TermFrameKind.TakeSize, []);
+    }
+
     public void Resize(uint rows, uint columns)
     {
-        if (rows == 0 || columns == 0) return;
+        if (rows == 0 || columns == 0 || SuppressResize) return;
         lock (gate)
         {
             if (this.rows == rows && cols == columns && pipe is not null) return;

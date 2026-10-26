@@ -134,9 +134,10 @@ needed: the daemon reads the registry, and the windows fold back on the dashboar
 - **Folding back: the viewer folds itself.** The dashboard reattaches every session as it starts (M.ORCH-T926) and sends
   `app-present` (`orchestrator-desktop`) on its bus connection. Each TermViewer subscribes to the bus, and on that presence, once
   the dashboard's mutex and show event confirm it is up, it closes quietly. The dashboard sends nothing per session. Two backups
-  cover a bus that is down: the viewer checks the dashboard every 2 seconds (folding on two up checks in a row), and, while a
-  host serves one viewer at a time (until M.ORCH-T930), the dashboard's reattach replaces the viewer's connection, and a viewer
-  that loses its connection while the dashboard is up folds at once.
+  cover a bus that is down. First, the viewer checks the dashboard every 2 seconds and folds on two up checks in a row. Second,
+  a protocol 1 host serves one viewer at a time, so the dashboard's reattach replaces the viewer's connection, and a viewer
+  that loses its connection while the dashboard is up folds at once. A protocol 2 host (M.ORCH-T930) keeps both viewers
+  attached, so there the fold rests on the presence signal and the 2-second check alone.
 - **Closing** a TermViewer only detaches; the CLI keeps running. Its Session menu's "End CLI" kills the host's process tree.
 
 ## The Orchestrator's own state (M.ORCH-T891)

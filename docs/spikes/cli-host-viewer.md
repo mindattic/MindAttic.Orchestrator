@@ -489,7 +489,7 @@ Phase 4
 - **Replay garbling.** A replay at a different size than the session's history (attach at 118x32 after 120x30 output) duplicates or clips some earlier lines. The visible TUI region repaints correctly after the redraw nudge. This is expected for Option A; Phase 2's emulator (T929) removes it (done: see "Phase 2 decisions").
 - **Bad command crashes the host.** A command that isn't found (`pwsh` isn't installed on this machine, yet it's the host's default) crashed the host with an unlogged Win32Exception. T924: log and exit cleanly, and default to `powershell.exe` when `pwsh` is missing.
 - **PSReadLine prompt overwrite.** When a prompt wraps exactly at the edge, PSReadLine's redraw overwrote the trailing `>`. It's cosmetic and the same in a plain terminal.
-- **One viewer at a time.** A second connection replaces the first. Multi-viewer support is T930.
+- **One viewer at a time.** A second connection replaces the first. Multi-viewer support is T930 (done: see "Several viewers").
 
 ## Phase 1 interfaces
 
@@ -797,9 +797,9 @@ It is used when the viewer asks for it (`ClientWebSocketOptions.DangerousDeflate
 interactive viewer can choose text here, and for now that is only the owner. Revisit this together with T935's masker once
 other members get `interact`.
 
-**Not yet: several viewers per session.** TermHost serves one viewer at a time, and a new connection replaces the old one
-(multi-viewer is M.ORCH-T930). Until T930 lands, a remote attach displaces the local dashboard's viewer of that session,
-and a dashboard reattach displaces the remote one. Neither affects the CLI.
+**Several viewers per session** came with M.ORCH-T930 (see "Several viewers"). A protocol 1 host still serves one viewer at a
+time: there a remote attach displaces the local dashboard's viewer of that session, and a dashboard reattach displaces the
+remote one. Neither affects the CLI.
 
 ### Smoke test (2026-10-26)
 
@@ -815,6 +815,64 @@ a scratch data folder. A throwaway `ClientWebSocket` client pinned the certifica
 - **Wrong pin.** A client with a wrong pin failed the TLS handshake.
 - **CLI exit.** Typing `exit` from an interactive viewer delivered the Exit frame, then the close "the session's host
   closed the stream". The host ended and removed its record.
+## Several viewers (M.ORCH-T930, M.ORCH-T966, 2026-10-26)
+
+**Protocol 2.** `TermProtocol.Version` is 2 and `Supported` is `[1, 2]`. TermHost's own version went to 2.0.0.
+
+- A viewer's Hello adds a flags byte (`TermHelloFlags.Interactive`) and its id as UTF-8 (`TermProtocol.Hello(protocol, cols, rows, interactive, viewerId)`, read with `ReadViewerHello`). A protocol 1 Hello has neither and counts as interactive.
+- The host answers with the protocol the two will speak (`TermProtocol.Negotiate`): the viewer's own when it speaks it. So a dashboard built before T930 still attaches to a protocol 2 host, as an interactive viewer that never letterboxes. A protocol it doesn't speak gets the host's own version, and then the pipe closes, as before.
+- **Size** gains a third byte, 1 when the viewer it goes to owns the size (`Size(cols, rows, owned)`, `ReadSizeOwner`). A protocol 2 viewer gets one right after Hello and before the Replay, whenever the size changes, and whenever only the owner changes. A protocol 1 viewer gets the 4-byte form.
+- **TakeSize** (`0x13`, viewer to host, empty) takes the size explicitly.
+- **Typing** (`8`, host to viewer, empty) means this viewer and another sent input within `TermProtocol.TypingWindow` (2 s) of each other. Each viewer gets it at most once a second.
+
+**The host** (`TermSession`, with the policy in `ViewerPolicy`) serves any number of viewers at once.
+
+- Output, Modes, Title and Exit go to every viewer. One that falls 32 MB behind is dropped alone.
+- Input from interactive viewers is merged as it arrives, one frame at a time (tmux semantics). Input from read-only viewers is dropped, and logged once.
+- The size belongs to the interactive viewer that last sent Input or TakeSize. While nobody holds it, the first interactive viewer to attach takes it. When the owner leaves, the interactive viewer that was active most recently takes over. Read-only viewers never own it.
+- Every viewer's Resize is kept as the size it wants. Only the owner's applies at once; a viewer that takes the size gets the size it last asked for.
+- A resize first waits up to 100 ms for a 20 ms gap in output, so output already on its way goes out at the old size. Then every viewer is sent Size, and then the ConPTY is resized. A letterboxed viewer therefore draws the repaint at the new size. (Peeking at the ConPTY's pipe was tried and dropped: the pump's blocking read holds the handle, so the peek waited behind it.)
+- `--unlisted` starts a host with no registry file and no `term-session` announcement, for smoke tests beside a running dashboard.
+
+**The dashboard.** A Terminals tab opens with an interactive Hello, as `dashboard-<pid>`.
+
+- On a Size it doesn't own, the tab sets `TerminalControl.AutoResize = false` and calls `ResizeAsync(rows, cols)`, which letterboxes. While it follows the session's size it doesn't send the renderer's resize, so the host keeps the size the tab would show itself.
+- On a Size it owns, the tab takes that size and turns `AutoResize` back on.
+- Focus on the renderer sends TakeSize, as section 3 chose, and so does typing.
+- Typing shows "another viewer is typing" on the tab for 2 s.
+
+**Reconnect (T966).** A tab whose link drops while its host lives attaches again: the host's pipe broke, a protocol 1 host gave the session to another viewer, or a transient error.
+
+- The tab shows "reconnecting". The retries back off at 0.5 s, 1 s, 2 s, 4 s and then 5 s, and the backoff starts over after a link that stayed up 10 s, so two viewers of a protocol 1 host can't bounce the session between them quickly.
+- Each attempt first checks `TermSessions.Get(id)`: is it still the same host pid?
+- The renderer is reset before the new replay redraws the screen.
+- The tab is marked ended once the host is gone, the CLI has exited, or the host's protocol is refused.
+
+**Smoke test** (an unlisted host running `cmd`, with throwaway pipe clients):
+
+| Viewer | Hello |
+|---|---|
+| A | protocol 2, interactive, 100x30 |
+| B | protocol 2, read-only |
+| V1 | protocol 1 |
+| C | protocol 2, interactive, 90x20, attached later |
+
+- V1 was answered with protocol 1, and output fanned out to all four viewers.
+- B's input, TakeSize and Resize were dropped.
+- C attached letterboxed. Then A and C typed within 2 s of each other. C took the size (90x20), and A and C each got Typing.
+- A's TakeSize won the size back, and only A's Resize applied.
+- When A left, C took over at the 70x18 it had last asked for.
+- Exit reached every viewer, and the host exited after its linger.
+
+**Gateway (T933).** It had already landed, so its bridge now:
+
+- reads the viewer's Hello with `ReadViewerHello`;
+- rewrites a watcher's Hello to 0x0, and from protocol 2 to a read-only Hello that keeps the viewer's id. So the host itself drops its input, and it never owns the size. The host also never gives the size to a 0x0 Hello, which covers a protocol 1 watcher;
+- forwards TakeSize, like Input and Resize, only from an interactive viewer.
+
+Size frames with their owner byte, and Typing frames, go down to the viewer unchanged.
+
+**TermViewer (T960).** A fallback viewer stays attached beside the dashboard's tab on a protocol 2 host instead of being replaced. So it folds back on the dashboard's `app-present` and its 2-second check, not on losing its link. It is given no liveness probe, so it never reconnects, and can't take a protocol 1 session back from the dashboard.
 
 ## Sources
 

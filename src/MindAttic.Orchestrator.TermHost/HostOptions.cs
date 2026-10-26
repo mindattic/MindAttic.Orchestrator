@@ -5,7 +5,7 @@ namespace MindAttic.Orchestrator.TermHost;
 /// <summary>
 /// TermHost's command line (M.ORCH-T924):
 /// <code>MindAttic.Orchestrator.TermHost [--launch] [--id &lt;id&gt;] [--cwd &lt;dir&gt;] [--env KEY=VALUE]... [--title &lt;text&gt;]
-///     [--linger &lt;seconds&gt;] [-- &lt;command line&gt;]</code>
+///     [--linger &lt;seconds&gt;] [--unlisted] [-- &lt;command line&gt;]</code>
 /// <list type="bullet">
 /// <item><c>--launch</c> re-spawns the host detached and prints <c>{"id","pid","pipe"}</c> on one line.</item>
 /// <item><c>--id</c> is the session id, which names the pipe and the log; a new 12-hex-character id when not given.</item>
@@ -13,6 +13,8 @@ namespace MindAttic.Orchestrator.TermHost;
 /// <item><c>--login</c> and <c>--repo</c> (M.ORCH-T925) go in the session's registry file for the dashboard: the login (an
 /// email) it runs on and what it runs for.</item>
 /// <item><c>--linger</c> is how long the host stays after the CLI exits while no viewer has seen the exit (default 600).</item>
+/// <item><c>--unlisted</c> (M.ORCH-T930) writes no registry file and announces nothing on the status bus: only a viewer told the
+/// pipe can attach, and no dashboard opens a tab for it. For smoke tests beside a running dashboard.</item>
 /// <item>After <c>--</c>: the CLI, as arguments, or as one whole command line when it is a single argument with a space in it
 /// (a PaneRequest's ProcessCommandLine). With none, <c>pwsh</c>, else <c>powershell.exe</c> when pwsh isn't installed.</item>
 /// </list>
@@ -21,7 +23,7 @@ internal sealed record HostOptions
 {
     public const string Usage =
         "usage: MindAttic.Orchestrator.TermHost [--launch] [--id <id>] [--cwd <dir>] [--env KEY=VALUE]... [--title <text>] " +
-        "[--login <email>] [--repo <name>] [--linger <seconds>] [-- <command line>]";
+        "[--login <email>] [--repo <name>] [--linger <seconds>] [--unlisted] [-- <command line>]";
 
     /// <summary>How long a host stays after its CLI exits when no viewer has seen the exit (spike section 1).</summary>
     public static readonly TimeSpan DefaultLinger = TimeSpan.FromMinutes(10);
@@ -34,6 +36,9 @@ internal sealed record HostOptions
     public string? Repo { get; init; }
     public TimeSpan Linger { get; init; } = DefaultLinger;
     public bool Launch { get; init; }
+
+    /// <summary>No registry file and no term-session announcement (<c>--unlisted</c>).</summary>
+    public bool Unlisted { get; init; }
 
     /// <summary>Set on the host <c>--launch</c> starts: the launching process already applied <see cref="Env"/>, and the
     /// host inherits it, so no variable (a token) is ever on the long-lived host's command line.</summary>
@@ -50,7 +55,7 @@ internal sealed record HostOptions
         string? id = null, cwd = null, title = null, login = null, repo = null;
         var env = new List<KeyValuePair<string, string?>>();
         var linger = DefaultLinger;
-        bool launch = false, prepared = false;
+        bool launch = false, prepared = false, unlisted = false;
         var command = new List<string>();
         for (var i = 0; i < args.Count; i++)
         {
@@ -64,6 +69,7 @@ internal sealed record HostOptions
                     break;
                 case "--launch": launch = true; break;
                 case "--env-prepared": prepared = true; break;
+                case "--unlisted": unlisted = true; break;
                 case "--id" when hasValue: id = args[++i]; break;
                 case "--cwd" when hasValue: cwd = args[++i]; break;
                 case "--title" when hasValue: title = args[++i]; break;
@@ -88,7 +94,7 @@ internal sealed record HostOptions
         return new HostOptions
         {
             Id = id ?? TermProtocol.NewSessionId(), Cwd = cwd, Env = env, Title = title, Login = login, Repo = repo, Linger = linger, Launch = launch,
-            EnvPrepared = prepared, Command = command,
+            EnvPrepared = prepared, Unlisted = unlisted, Command = command,
         };
     }
 
@@ -101,6 +107,7 @@ internal sealed record HostOptions
         if (Title is not null) args.AddRange(["--title", Title]);
         if (Login is not null) args.AddRange(["--login", Login]);
         if (Repo is not null) args.AddRange(["--repo", Repo]);
+        if (Unlisted) args.Add("--unlisted");
         if (Command.Count > 0) { args.Add("--"); args.AddRange(Command); }
         return args;
     }

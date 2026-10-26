@@ -117,6 +117,8 @@ public sealed class GatewayTests
         Assert.That(TermBridge.Forwards(TermFrameKind.Resize, GatewayAccess.Interact), Is.True);
         Assert.That(TermBridge.Forwards(TermFrameKind.Input, GatewayAccess.Watch), Is.False);
         Assert.That(TermBridge.Forwards(TermFrameKind.Resize, GatewayAccess.Watch), Is.False);
+        Assert.That(TermBridge.Forwards(TermFrameKind.TakeSize, GatewayAccess.Interact), Is.True);
+        Assert.That(TermBridge.Forwards(TermFrameKind.TakeSize, GatewayAccess.Watch), Is.False);
         Assert.That(TermBridge.Forwards(TermFrameKind.Hello, GatewayAccess.Interact), Is.False, "a second Hello");
         Assert.That(TermBridge.Forwards(TermFrameKind.Output, GatewayAccess.Interact), Is.False, "a host's kind");
     }
@@ -174,6 +176,7 @@ public sealed class GatewayTests
         var hello = await TermProtocol.ReadFrameAsync(host, Timeout());
         Assert.That(hello.Kind, Is.EqualTo(TermFrameKind.Hello));
         Assert.That(TermProtocol.ReadHello(hello.Payload), Is.EqualTo(((ushort)TermProtocol.Version, (ushort)0, (ushort)0)));
+        Assert.That(TermProtocol.ReadViewerHello(hello.Payload)!.Interactive, Is.False, "and read-only from protocol 2 (M.ORCH-T930)");
 
         byte[][] sent =
         [

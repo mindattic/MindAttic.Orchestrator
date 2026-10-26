@@ -26,16 +26,24 @@ public enum TermFrameKind : byte
     /// <summary>i32 exit code: the CLI has exited (sent on attach too, once it has).</summary>
     Exit = 5,
 
-    /// <summary>u16 cols | u16 rows: the session's size, sent whenever it changes.</summary>
+    /// <summary>u16 cols | u16 rows: the session's size, sent whenever it changes. From protocol 2 a third byte follows, 1 when
+    /// the viewer it goes to owns the size (M.ORCH-T930), and it is also sent when only the owner changed, and on attach
+    /// before the Replay. A viewer that doesn't own the size shows the session at this size and letterboxes.</summary>
     Size = 6,
 
     /// <summary>UTF-8 text: the window title (the CLI's last OSC 0/2, else the host's <c>--title</c>).</summary>
     Title = 7,
 
+    /// <summary>Empty (protocol 2): this viewer and another sent input within <see cref="TermProtocol.TypingWindow"/> of each
+    /// other. A viewer may show "another viewer is typing" for that long (M.ORCH-T930).</summary>
+    Typing = 8,
+
     // Both ways.
 
-    /// <summary>u16 protocol | u16 cols | u16 rows. A viewer opens with it; the host answers with its own protocol and the
-    /// session's size, and closes the pipe after that when it doesn't speak the viewer's protocol.</summary>
+    /// <summary>u16 protocol | u16 cols | u16 rows, and from protocol 2 (viewer to host) u8 flags (<see cref="TermHelloFlags"/>)
+    /// and the viewer's id as UTF-8. A viewer opens with it; the host answers with the protocol the two will speak (the
+    /// viewer's, when the host speaks it) and the session's size, or with its own protocol when it doesn't speak the viewer's,
+    /// and then closes the pipe.</summary>
     Hello = 0x10,
 
     // Viewer -> host.
@@ -43,9 +51,25 @@ public enum TermFrameKind : byte
     /// <summary>Bytes for the ConPTY's input, as the renderer produced them (win32-input-mode VT, pastes).</summary>
     Input = 0x11,
 
-    /// <summary>u16 cols | u16 rows: resize the session.</summary>
+    /// <summary>u16 cols | u16 rows: the size this viewer would show. Applied only while the viewer owns the size (M.ORCH-T930);
+    /// otherwise kept, and applied once it takes the size.</summary>
     Resize = 0x12,
+
+    /// <summary>Empty (protocol 2): this interactive viewer takes the size explicitly (M.ORCH-T930).</summary>
+    TakeSize = 0x13,
 }
+
+/// <summary>The flags byte of a protocol 2 Hello from a viewer.</summary>
+[Flags]
+public enum TermHelloFlags : byte
+{
+    None = 0,
+    /// <summary>The viewer may type and own the size; without it the host drops its Input, Resize and TakeSize frames.</summary>
+    Interactive = 1,
+}
+
+/// <summary>A viewer's Hello. A protocol 1 Hello, which has no flags, is interactive with no id.</summary>
+public sealed record TermHello(ushort Protocol, ushort Cols, ushort Rows, bool Interactive, string ViewerId);
 
 /// <summary>The sticky terminal modes the host tracks from the CLI's output, as the bits of a Modes or Replay frame.</summary>
 [Flags]
@@ -85,14 +109,18 @@ public sealed record TermReplay(ushort Cols, ushort Rows, TermModes Modes, byte[
 /// <summary>
 /// The TermHost pipe protocol (M.ORCH-T924): one pipe per session, <see cref="PipeName"/>, current user only, carrying
 /// <c>u8 kind | u32 length (little-endian) | payload</c> frames. Versioned in <see cref="TermFrameKind.Hello"/>.
-/// <para>Attach: the viewer sends Hello; the host answers Hello, then Replay, Live, Title (when known) and Exit (when the CLI
-/// has exited), then the live Output, Modes, Size, Title and Exit frames as they happen. One viewer at a time: a new
-/// connection replaces the old one, whose pipe is closed.</para>
+/// <para>Attach: the viewer sends Hello; the host answers Hello, then (protocol 2) Size, then Replay, Live, Title (when known)
+/// and Exit (when the CLI has exited), then the live Output, Modes, Size, Title, Typing and Exit frames as they happen.</para>
+/// <para>Protocol 1 hosts serve one viewer at a time: a new connection replaces the old one, whose pipe is closed. From
+/// protocol 2 (M.ORCH-T930) a host serves any number at once: output goes to all of them, input from interactive viewers is
+/// merged (tmux semantics), input from read-only viewers is dropped, and the size belongs to the interactive viewer that last
+/// sent input or TakeSize; only its Resize frames apply. A protocol 2 host still accepts protocol 1 viewers, as interactive
+/// ones, answering their Hello with 1.</para>
 /// </summary>
 public static class TermProtocol
 {
     /// <summary>The protocol this build speaks.</summary>
-    public const ushort Version = 1;
+    public const ushort Version = 2;
 
     /// <summary>
     /// Every protocol this build's viewer can speak (M.ORCH-T932). TermHost installs side by side and a running host keeps its
@@ -101,7 +129,17 @@ public static class TermProtocol
     /// <see cref="TermHostInstalls"/>), and add the new one when <see cref="Version"/> is bumped. A bump that changes frames
     /// a viewer reads needs the viewer to branch on the host's Hello protocol.
     /// </summary>
-    public static readonly IReadOnlyList<ushort> Supported = [1];
+    public static readonly IReadOnlyList<ushort> Supported = [1, 2];
+
+    /// <summary>The lowest protocol that serves several viewers at once, with Size ownership, TakeSize and Typing (M.ORCH-T930).</summary>
+    public const ushort MultiViewer = 2;
+
+    /// <summary>Two viewers' input this close together makes the host send each a <see cref="TermFrameKind.Typing"/> frame.</summary>
+    public static readonly TimeSpan TypingWindow = TimeSpan.FromSeconds(2);
+
+    /// <summary>The protocol a host of <see cref="Version"/> speaks with a viewer that opened with <paramref name="viewerProtocol"/>:
+    /// that one when this build speaks it, else null (the host answers with its own and closes).</summary>
+    public static ushort? Negotiate(ushort viewerProtocol) => Supported.Contains(viewerProtocol) ? viewerProtocol : null;
 
     /// <summary>Whether a viewer that speaks <see cref="Supported"/> can talk to a host that answered Hello with
     /// <paramref name="hostProtocol"/>. Never throws: an unknown future version is <see cref="TermCompatStatus.HostTooNew"/>,
@@ -162,6 +200,29 @@ public static class TermProtocol
         return payload;
     }
 
+    /// <summary>A protocol 2 viewer's Hello: <see cref="Hello(ushort, ushort, ushort)"/>, then the flags and the viewer's id. For
+    /// a protocol 1 host it is the plain Hello.</summary>
+    public static byte[] Hello(ushort protocol, ushort cols, ushort rows, bool interactive, string viewerId)
+    {
+        if (protocol < MultiViewer) return Hello(protocol, cols, rows);
+        var id = Encoding.UTF8.GetBytes(viewerId);
+        var payload = new byte[7 + id.Length];
+        Hello(protocol, cols, rows).CopyTo(payload, 0);
+        payload[6] = (byte)(interactive ? TermHelloFlags.Interactive : TermHelloFlags.None);
+        id.CopyTo(payload, 7);
+        return payload;
+    }
+
+    /// <summary>A viewer's Hello, of any protocol; null when it is too short to be one. Without the flags byte (protocol 1, or a
+    /// protocol 2 viewer that left them out) it is interactive.</summary>
+    public static TermHello? ReadViewerHello(ReadOnlySpan<byte> payload)
+    {
+        if (ReadHello(payload) is not { } h) return null;
+        var interactive = payload.Length < 7 || ((TermHelloFlags)payload[6] & TermHelloFlags.Interactive) != 0;
+        var id = payload.Length > 7 ? Encoding.UTF8.GetString(payload[7..]) : "";
+        return new TermHello(h.Protocol, h.Cols, h.Rows, interactive, id);
+    }
+
     /// <summary>A Hello payload; null when it is too short to be one.</summary>
     public static (ushort Protocol, ushort Cols, ushort Rows)? ReadHello(ReadOnlySpan<byte> payload) =>
         payload.Length < 6 ? null
@@ -176,6 +237,21 @@ public static class TermProtocol
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(2), rows);
         return payload;
     }
+
+    /// <summary>A protocol 2 Size payload: the size, and whether the viewer it goes to owns it.</summary>
+    public static byte[] Size(ushort cols, ushort rows, bool owned)
+    {
+        var payload = new byte[5];
+        BinaryPrimitives.WriteUInt16LittleEndian(payload, cols);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(2), rows);
+        payload[4] = owned ? (byte)1 : (byte)0;
+        return payload;
+    }
+
+    /// <summary>A Size payload with its owner byte; <c>Owned</c> is null for a protocol 1 Size, which has none. Null when it is
+    /// too short to be one.</summary>
+    public static (ushort Cols, ushort Rows, bool? Owned)? ReadSizeOwner(ReadOnlySpan<byte> payload) =>
+        ReadSize(payload) is not { } size ? null : (size.Cols, size.Rows, payload.Length >= 5 ? payload[4] != 0 : (bool?)null);
 
     /// <summary>A Size or Resize payload; null when it is too short to be one.</summary>
     public static (ushort Cols, ushort Rows)? ReadSize(ReadOnlySpan<byte> payload) =>

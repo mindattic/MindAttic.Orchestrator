@@ -19,7 +19,10 @@ namespace MindAttic.Orchestrator.TermViewer;
 /// <para>Folding back (docs/app-bus.md, "Fallback viewers"): the window closes itself, quietly, once the dashboard is up again. The
 /// signal is the dashboard's <c>app-present</c> on the bus, confirmed by its single-instance mutex and show event
 /// (<see cref="DashboardPresence"/>); the same check runs every two seconds for when the bus is down, and when this window's
-/// connection is replaced (one viewer per host before M.ORCH-T930, so the dashboard reattaching takes it from here).</para>
+/// connection is replaced (a protocol 1 host serves one viewer, so the dashboard reattaching takes it from here). A protocol 2
+/// host (M.ORCH-T930) keeps this window attached beside the dashboard's tab, so there the fold rests on the presence signal
+/// and the two-second check, never on being replaced. This window doesn't reconnect a dropped link (no liveness probe given
+/// to RelayTerminal.Attach), so it can't take a protocol 1 session back from the dashboard.</para>
 /// </summary>
 internal sealed class ViewerWindow : Window
 {

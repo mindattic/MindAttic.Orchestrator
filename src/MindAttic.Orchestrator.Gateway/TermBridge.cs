@@ -12,8 +12,10 @@ internal sealed record BridgeResult(string EndedBy, long FramesUp, long FramesDo
 /// message carries exactly one TermHost frame (<c>u8 kind | u32 length | payload</c>, <see cref="TermProtocol"/>), in both
 /// directions, so a remote viewer runs the same RelayConnection logic over a WebSocket stream as a local one does over the pipe.
 /// <para>Viewer to host, only the viewer's kinds go through, and the first must be Hello. A read-only (<see cref="GatewayAccess.Watch"/>)
-/// viewer's Hello is rewritten to size 0x0, which the host ignores, so it never takes the session's size; its Input and Resize
-/// frames are dropped. Host to viewer, every frame goes through unchanged (Hello, Replay, Live, Output, Modes, Size, Title, Exit).</para>
+/// viewer's Hello is rewritten to size 0x0, which the host ignores, so it never takes the session's size, and from protocol 2
+/// (M.ORCH-T930) to a read-only Hello, so the host drops its input itself; its Input, Resize and TakeSize frames are dropped.
+/// Host to viewer, every frame goes through unchanged (Hello, Replay, Live, Output, Modes, Size with its owner byte, Title,
+/// Typing, Exit).</para>
 /// <para>Nothing here throws: either side ending, or a malformed frame, closes both.</para>
 /// </summary>
 internal static class TermBridge
@@ -99,11 +101,13 @@ internal static class TermBridge
                 var kind = (TermFrameKind)frame[0];
                 if (!helloSeen)
                 {
-                    if (kind != TermFrameKind.Hello || TermProtocol.ReadHello(frame.AsSpan(5)) is not { } hello)
+                    if (kind != TermFrameKind.Hello || TermProtocol.ReadViewerHello(frame.AsSpan(5)) is not { } hello)
                         return new(WebSocketCloseStatus.ProtocolError, "open with Hello");
                     helloSeen = true;
                     // Read-only: the host skips a 0x0 size, so a watcher's Hello never resizes the session.
-                    if (access < GatewayAccess.Interact) frame = TermProtocol.Frame(TermFrameKind.Hello, TermProtocol.Hello(hello.Protocol, 0, 0));
+                    // From protocol 2 it is also marked read-only (M.ORCH-T930), keeping the viewer's id.
+                    if (access < GatewayAccess.Interact)
+                        frame = TermProtocol.Frame(TermFrameKind.Hello, TermProtocol.Hello(hello.Protocol, 0, 0, interactive: false, hello.ViewerId));
                 }
                 else if (!Forwards(kind, access))
                 {
@@ -124,10 +128,10 @@ internal static class TermBridge
         }
     }
 
-    /// <summary>Whether a frame after Hello goes on to the host: input and resizing only from an interactive viewer, and
-    /// nothing that isn't a viewer's kind (a second Hello included).</summary>
+    /// <summary>Whether a frame after Hello goes on to the host: input, resizing and taking the size (M.ORCH-T930) only from an
+    /// interactive viewer, and nothing that isn't a viewer's kind (a second Hello included).</summary>
     internal static bool Forwards(TermFrameKind kind, GatewayAccess access) =>
-        kind is TermFrameKind.Input or TermFrameKind.Resize && access >= GatewayAccess.Interact;
+        kind is TermFrameKind.Input or TermFrameKind.Resize or TermFrameKind.TakeSize && access >= GatewayAccess.Interact;
 
     /// <summary>Host to viewer: each frame as one binary message, unchanged.</summary>
     private static async Task DownstreamAsync(WebSocket socket, Stream pipe, Counts counts, GatewayLog log, CancellationToken ct)

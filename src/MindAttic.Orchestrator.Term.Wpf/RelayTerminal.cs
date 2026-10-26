@@ -38,6 +38,12 @@ public sealed class RelayTerminal : UserControl, IDisposable
         KeyboardNavigation.SetDirectionalNavigation(this, KeyboardNavigationMode.Contained);
         // Only focus that lands on this control itself is handed on: the renderer's own GotFocus bubbles through here too.
         GotFocus += (_, e) => { if (ReferenceEquals(e.OriginalSource, this)) Terminal.Focus(); };
+        // Focus on the renderer is this viewer being used: it takes the session's size (M.ORCH-T930, spike section 3).
+        Terminal.GotFocus += (_, _) =>
+        {
+            try { Connection?.TakeSize(); }
+            catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Taking the size failed; contained"); }
+        };
         Terminal.Loaded += (_, _) =>
         {
             try
@@ -71,6 +77,9 @@ public sealed class RelayTerminal : UserControl, IDisposable
     /// live stream is back.</summary>
     public event Action<bool>? ReconnectingChanged;
 
+    /// <summary>Another viewer of the same CLI typed within two seconds of this one (M.ORCH-T930).</summary>
+    public event Action? OtherTyping;
+
     /// <summary>Attaches to the host serving <paramref name="pipe"/>: at once when the renderer's window exists, else once it
     /// loads (output written before it exists would be lost). While <paramref name="alive"/> says the host lives, a dropped
     /// link is attached again (M.ORCH-T966); it is called off the UI thread.</summary>
@@ -90,11 +99,42 @@ public sealed class RelayTerminal : UserControl, IDisposable
         connection.Detached += why => { ReconnectingChanged?.Invoke(false); Detached?.Invoke(why); };
         connection.Reconnecting += _ => ReconnectingChanged?.Invoke(true);
         connection.Attached += () => ReconnectingChanged?.Invoke(false);
+        connection.SizeChanged += (c, r, owned) => FollowSize(connection, c, r, owned);
+        connection.OtherTyping += () => OtherTyping?.Invoke();
         Connection = connection;
         // Resets the renderer (ESC c), then Start()s the connection; the host's replay follows.
         Terminal.Connection = connection;
         // Phase 0 lesson 2: the renderer reported its grid before this connection existed, so tell the host the real one now.
         if (Terminal.Rows > 0 && Terminal.Columns > 0) connection.Resize((uint)Terminal.Rows, (uint)Terminal.Columns);
+    }
+
+    /// <summary>
+    /// The host said the session's size and whether this viewer owns it (M.ORCH-T930). Not owning it, the renderer stops
+    /// sizing itself to the control (<see cref="TerminalControl.AutoResize"/> off) and shows the session's grid, letterboxed.
+    /// Owning it again, the renderer takes the size the host just applied for it (the last one it reported) and sizes itself to
+    /// the control from then on. On the UI thread; never throws.
+    /// </summary>
+    private void FollowSize(RelayConnection connection, ushort cols, ushort rows, bool owned)
+    {
+        try
+        {
+            if (disposed || !ReferenceEquals(connection, Connection) || cols == 0 || rows == 0) return;
+            if (owned && Terminal.AutoResize) return;
+            if (Terminal.Rows != rows || Terminal.Columns != cols || owned)
+            {
+                connection.SuppressResize = true;
+                try
+                {
+                    Terminal.AutoResize = false;
+                    _ = Terminal.ResizeAsync(rows, cols, CancellationToken.None).ContinueWith(
+                        t => OrchestratorLog.For("Terminals").Error(t.Exception!, "Following the session's size failed; contained"),
+                        CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+                }
+                finally { connection.SuppressResize = false; }
+            }
+            Terminal.AutoResize = owned;
+        }
+        catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Following the session's size failed; contained"); }
     }
 
     /// <summary>Sends <paramref name="data"/> to the CLI as typed input (keys or a paste payload).</summary>

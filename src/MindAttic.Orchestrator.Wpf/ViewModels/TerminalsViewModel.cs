@@ -23,7 +23,8 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 public sealed class TerminalPaneViewModel : ObservableObject
 {
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<FrameworkElement, TerminalPaneViewModel> ByControl = new();
-    private bool isSelected, ended, hostEnded, killRequested, reconnecting;
+    private bool isSelected, ended, hostEnded, killRequested, reconnecting, otherTyping;
+    private System.Windows.Threading.DispatcherTimer? typingTimer;
     private string? pipeName;
     private TermModes localModes;
 
@@ -137,7 +138,26 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>Its relay dropped while the host lives and is attaching again (M.ORCH-T966).</summary>
     public bool Reconnecting { get => reconnecting; internal set { if (Set(ref reconnecting, value)) Raise(nameof(StateText)); } }
 
-    public string StateText => Ended ? "ended" : Reconnecting ? "reconnecting" : "";
+    /// <summary>Another viewer of this CLI typed within two seconds of this one (M.ORCH-T930); clears two seconds after the last.</summary>
+    public bool OtherTyping { get => otherTyping; private set { if (Set(ref otherTyping, value)) Raise(nameof(StateText)); } }
+
+    public string StateText => Ended ? "ended" : Reconnecting ? "reconnecting" : OtherTyping ? "another viewer is typing" : "";
+
+    /// <summary>Shows the "another viewer is typing" hint for <see cref="TermProtocol.TypingWindow"/>. On the UI thread.</summary>
+    private void ShowOtherTyping()
+    {
+        OtherTyping = true;
+        typingTimer ??= NewTypingTimer();
+        typingTimer.Stop();
+        typingTimer.Start();
+    }
+
+    private System.Windows.Threading.DispatcherTimer NewTypingTimer()
+    {
+        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TermProtocol.TypingWindow };
+        timer.Tick += (_, _) => { timer.Stop(); OtherTyping = false; };
+        return timer;
+    }
 
     /// <summary>The process its CLI runs under: the TermHost for a hosted tab (the Launcher host and the CLI are its
     /// descendants), else the process ConPTY started (the PowerShell that runs the command); null before it starts.</summary>
@@ -188,6 +208,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
             if (on && !Reconnecting && !killRequested) OrchestratorLog.For("Terminals").Information("{Title:l}: lost its TermHost's pipe; reconnecting", Title);
             Reconnecting = on && !killRequested;
         };
+        relay.OtherTyping += ShowOtherTyping;
         relay.Detached += why =>
         {
             if (killRequested) return;
