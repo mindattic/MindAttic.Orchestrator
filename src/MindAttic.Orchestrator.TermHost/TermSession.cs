@@ -41,6 +41,9 @@ internal sealed class TermSession
     private readonly ModeTracker modes = new();
     private TermModes lastModes = TermModes.CursorVisible;
 
+    // M.ORCH-T925: the registry file and the term-session announcements.
+    private Registration? registration;
+
     public TermSession(HostOptions options, HostLog log)
     {
         this.options = options;
@@ -63,6 +66,10 @@ internal sealed class TermSession
             return 3;
         }
 
+        // Registered once the id is ours, before the CLI starts, so a launcher waiting for the file finds it at once.
+        try { registration = new Registration(options, commandLine, cols, rows, log); registration.Start(); }
+        catch (Exception ex) { log.Error(ex, "registering the session failed; running unregistered"); registration = null; }
+
         var started = TryStartCli(commandLine);
         _ = Task.Run(AcceptLoopAsync);
         if (started)
@@ -74,6 +81,7 @@ internal sealed class TermSession
 
         done.Wait();
         lock (gate) { viewer?.Dispose(); viewer = null; }
+        registration?.End();
         log.Write("host exit");
         return started ? 0 : 1;
     }
@@ -95,6 +103,7 @@ internal sealed class TermSession
             {
                 exited = true;
                 exitCode = code == 0 ? -1 : code;
+                MarkExited(exitCode);
                 // What a viewer that attaches is shown, so it can tell why nothing ran.
                 ring.Append(Encoding.UTF8.GetBytes($"\u001b[31mTermHost: the CLI couldn't start: {why} (error {code})\u001b[0m\r\n"));
             }
@@ -173,6 +182,7 @@ internal sealed class TermSession
             if (modes.Title is { } cliTitle && cliTitle != title)
             {
                 title = cliTitle;
+                registration?.Update(s => s with { Title = cliTitle });
                 if (viewer is { } v3 && !v3.Post(TermFrameKind.Title, TermProtocol.Title(cliTitle))) Drop(v3);
             }
         }
@@ -195,10 +205,14 @@ internal sealed class TermSession
         {
             exited = true;
             exitCode = code;
+            MarkExited(code);
             if (viewer is { } v && !v.Post(TermFrameKind.Exit, TermProtocol.Exit(code))) Drop(v);
         }
         Linger(code);
     }
+
+    private void MarkExited(int code) =>
+        registration?.Update(s => s with { State = TermSessionStates.Exited, ExitCode = code });
 
     private void Linger(int code)
     {
@@ -357,6 +371,7 @@ internal sealed class TermSession
             if (exited || (c == cols && r == rows)) return;
             cols = c;
             rows = r;
+            registration?.Update(s => s with { Cols = c, Rows = r });
         }
         // Outside the lock, as the prototype did: the output pump must stay free to drain the repaint the resize causes.
         SetPtySize(c, r);

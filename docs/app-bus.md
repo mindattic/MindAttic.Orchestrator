@@ -92,6 +92,32 @@ If no one is working the ticket, its status line says so. Send this only while `
 handles `show-worker`. Call `AllowSetForegroundWindow(<its pid>)` before sending. Fallback: start
 `MindAttic.Orchestrator.Desktop.exe`, which only brings the dashboard forward.
 
+### `term-session` (v1): a hosted CLI started, changed or ended (M.ORCH-T925)
+
+Each TermHost (one detached process per hosted CLI, M.ORCH-T924) writes these to the inbox, and the daemon relays them
+to every subscriber unchanged (it keeps none). The payload is the host's registry record plus `event`:
+
+```json
+{"event":"changed","id":"73ff73abb9c6","hostPid":68708,"hostStartUtc":"2026-10-26T16:43:17.4825894Z","pipe":"mindattic-term-ryand-73ff73abb9c6","title":"RD: Repo [Claude]","login":"someone@example.com","configDir":"C:\\Users\\x\\.claude-accounts\\someone@example.com","repo":"Repo","cwd":"D:\\Projects\\Repo","commandLine":"powershell.exe ...","cols":120,"rows":30,"state":"exited","exitCode":0,"startedUtc":"2026-10-26T16:43:17.5476658Z","protocol":1}
+```
+
+| Field | Meaning |
+|---|---|
+| `event` | `started` (the host registered, its CLI is starting), `changed` (title, size or state), or `ended` (the host is exiting and its registry file is gone) |
+| `id`, `pipe` | The session id and the pipe a viewer attaches to (`mindattic-term-<user>-<id>`) |
+| `hostPid`, `hostStartUtc` | The host process and when it started. A process with that pid that started at another time is a reused pid. |
+| `title` | The CLI's last OSC 0/2 title, else the host's `--title` |
+| `login`, `configDir`, `repo`, `cwd`, `commandLine` | Who it runs as, what for, where, and what it runs. Optional fields are left out when null. |
+| `cols`, `rows` | The session's size |
+| `state`, `exitCode` | `running`, or `exited` with the CLI's exit code while the host lingers for a viewer |
+| `startedUtc`, `protocol` | When the session started, and the pipe protocol version the host speaks |
+
+The host sends with a 50 ms connect timeout, off its CLI's path, and drops a message it can't send. The bus is only
+the fast path: the registry files under `%LOCALAPPDATA%\MindAttic\MindAttic.Orchestrator\terms\<id>.json` are the truth
+(`TermSessions.Enumerate()` in `src/MindAttic.Orchestrator.Term`), so a subscriber reads them on start and after a
+reconnect. The contract is `src/MindAttic.Orchestrator.Term/TermBus.cs` and `TermSessionRecord.cs`. In .NET, read it
+with `bus.On<TermSessionEvent>(TermBus.Kind, handler, TermBus.Version)`.
+
 ## The Orchestrator's own state (M.ORCH-T891)
 
 Five kinds carry what the dashboard used to learn only by rereading the store: `members`, `orgs`, `settings`, `pause`

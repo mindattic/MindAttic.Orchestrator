@@ -10,6 +10,8 @@ namespace MindAttic.Orchestrator.TermHost;
 /// <item><c>--launch</c> re-spawns the host detached and prints <c>{"id","pid","pipe"}</c> on one line.</item>
 /// <item><c>--id</c> is the session id, which names the pipe and the log; a new 12-hex-character id when not given.</item>
 /// <item><c>--env KEY=VALUE</c> sets a variable for the CLI (<c>KEY=</c> removes it); repeatable.</item>
+/// <item><c>--login</c> and <c>--repo</c> (M.ORCH-T925) go in the session's registry file for the dashboard: the login (an
+/// email) it runs on and what it runs for.</item>
 /// <item><c>--linger</c> is how long the host stays after the CLI exits while no viewer has seen the exit (default 600).</item>
 /// <item>After <c>--</c>: the CLI, as arguments, or as one whole command line when it is a single argument with a space in it
 /// (a PaneRequest's ProcessCommandLine). With none, <c>pwsh</c>, else <c>powershell.exe</c> when pwsh isn't installed.</item>
@@ -19,7 +21,7 @@ internal sealed record HostOptions
 {
     public const string Usage =
         "usage: MindAttic.Orchestrator.TermHost [--launch] [--id <id>] [--cwd <dir>] [--env KEY=VALUE]... [--title <text>] " +
-        "[--linger <seconds>] [-- <command line>]";
+        "[--login <email>] [--repo <name>] [--linger <seconds>] [-- <command line>]";
 
     /// <summary>How long a host stays after its CLI exits when no viewer has seen the exit (spike section 1).</summary>
     public static readonly TimeSpan DefaultLinger = TimeSpan.FromMinutes(10);
@@ -28,6 +30,8 @@ internal sealed record HostOptions
     public string? Cwd { get; init; }
     public IReadOnlyList<KeyValuePair<string, string?>> Env { get; init; } = [];
     public string? Title { get; init; }
+    public string? Login { get; init; }
+    public string? Repo { get; init; }
     public TimeSpan Linger { get; init; } = DefaultLinger;
     public bool Launch { get; init; }
 
@@ -43,7 +47,7 @@ internal sealed record HostOptions
     public static HostOptions? Parse(IReadOnlyList<string> args, out string? error)
     {
         error = null;
-        string? id = null, cwd = null, title = null;
+        string? id = null, cwd = null, title = null, login = null, repo = null;
         var env = new List<KeyValuePair<string, string?>>();
         var linger = DefaultLinger;
         bool launch = false, prepared = false;
@@ -63,6 +67,8 @@ internal sealed record HostOptions
                 case "--id" when hasValue: id = args[++i]; break;
                 case "--cwd" when hasValue: cwd = args[++i]; break;
                 case "--title" when hasValue: title = args[++i]; break;
+                case "--login" when hasValue: login = args[++i]; break;
+                case "--repo" when hasValue: repo = args[++i]; break;
                 case "--env" when hasValue:
                     var pair = args[++i];
                     var eq = pair.IndexOf('=');
@@ -81,7 +87,7 @@ internal sealed record HostOptions
         if (id is not null && TermProtocol.Sanitize(id).Trim('-').Length == 0) { error = $"--id '{id}' has no letter or digit."; return null; }
         return new HostOptions
         {
-            Id = id ?? TermProtocol.NewSessionId(), Cwd = cwd, Env = env, Title = title, Linger = linger, Launch = launch,
+            Id = id ?? TermProtocol.NewSessionId(), Cwd = cwd, Env = env, Title = title, Login = login, Repo = repo, Linger = linger, Launch = launch,
             EnvPrepared = prepared, Command = command,
         };
     }
@@ -93,6 +99,8 @@ internal sealed record HostOptions
         var args = new List<string> { "--id", Id, "--env-prepared", "--linger", ((int)Linger.TotalSeconds).ToString() };
         if (Cwd is not null) args.AddRange(["--cwd", Cwd]);
         if (Title is not null) args.AddRange(["--title", Title]);
+        if (Login is not null) args.AddRange(["--login", Login]);
+        if (Repo is not null) args.AddRange(["--repo", Repo]);
         if (Command.Count > 0) { args.Add("--"); args.AddRange(Command); }
         return args;
     }

@@ -491,6 +491,67 @@ Phase 4
 - **PSReadLine prompt overwrite.** When a prompt wraps exactly at the edge, PSReadLine's redraw overwrote the trailing `>`. It's cosmetic and the same in a plain terminal.
 - **One viewer at a time.** A second connection replaces the first. Multi-viewer support is T930.
 
+## Phase 1 interfaces
+
+What M.ORCH-T925 built for the dashboard viewer (M.ORCH-T926). `TermSessionRecord`, `TermSessions` and `TermBus` live in
+`src/MindAttic.Orchestrator.Term`, the dependency-free library the host, Core and the WPF app all reference.
+`TermLauncher` lives in Core (`Sessions/TermLauncher.cs`).
+
+**The record.** `TermSessionRecord` has `Id`, `HostPid`, `HostStartUtc`, `Pipe`, `Title`, `Login`, `ConfigDir`, `Repo`,
+`Cwd`, `CommandLine`, `Cols`, `Rows`, `State` (`TermSessionStates.Running` or `Exited`), `ExitCode`, `StartedUtc` and
+`Protocol`. `Exited` is a convenience property.
+
+**The registry: the files are the truth.**
+
+- Each host writes `%LOCALAPPDATA%\MindAttic\MindAttic.Orchestrator\terms\<id>.json` (`TermSessions.PathOf(id)`), beside
+  its `<id>.log`. The write is atomic: a temporary file is renamed over the record.
+- The host writes the file once it owns its pipe and before its CLI starts. It rewrites the file when the title, size or
+  state changes, and deletes it as it exits.
+- A host that is killed leaves its file behind. Readers prune it.
+- `TermSessions.Enumerate()` returns the live sessions, oldest first, including exited CLIs whose host still lingers. It
+  drops and deletes every record whose `HostPid` is gone or now belongs to a process with another start time (a reused
+  pid). It also deletes unreadable files and leftover temporary files once they are a minute old. It needs no daemon.
+- `TermSessions.Get(id)` returns one live session, or null after pruning it.
+- `TermSessions.HostStartOf(pid)` is the liveness probe that both use.
+
+**The bus (fast path).** Kind `term-session` (`TermBus.Kind`) is at v1 (`TermBus.Version`). Its payload is a
+`TermSessionEvent`: the record plus `Event`, which is `TermSessionEvents.Started`, `Changed` or `Ended`. The host sends it
+to the daemon's inbox with a 50 ms timeout, on a worker thread, and the daemon relays it. Subscribe with
+`statusBus.On<TermSessionEvent>(TermBus.Kind, (envelope, e) => ..., TermBus.Version)`. `TermBus.Parse(line)` reads a raw
+line. The kind is documented in `docs/app-bus.md`.
+
+**Starting a hosted CLI.**
+
+- `TermLauncher.Start(PaneRequest request, string? panePipe = null)` is the same as
+  `TermLauncher.Start(TermLaunchSpec.From(request, panePipe))`.
+- `TermLaunchSpec.From` builds the spec as `TerminalPaneViewModel` builds its tab:
+  - `CommandLine` is `request.ProcessCommandLine(panePipe)`. That command clears `NO_COLOR`, sets `COLORTERM` and the pane
+    pipe's `MINDATTIC_ORCHESTRATOR_TERMINALS`, and applies the M.ORCH-T906 API-key person's config dir and billing
+    variable.
+  - The other fields are the pane's `Directory`, `Title`, `Login` and `Name` (as `Repo`).
+  - The CLI inherits the caller's environment. `TermLaunchSpec.Environment` adds or removes variables. They are set on the
+    launching process's environment, never on a command line, so a token passed there never appears in a process list.
+- `Start` runs `TermHost --launch --id <new> --cwd --title --login --repo [--linger] -- "<command line>"`. That process
+  re-spawns the host detached (its own process group, `CREATE_BREAKAWAY_FROM_JOB` with a fallback) and exits, so the host
+  never dies with the caller's job.
+- `Start` then waits up to 5 s (`registerWait`) for the registry file and returns its record. It blocks, so call it off
+  the UI thread.
+- It throws `InvalidOperationException` when the host isn't found, fails to launch, or exits before it registers.
+- It finds the host from `TermLauncher.HostPath`, then `%MINDATTIC_TERMHOST%`, then
+  `MindAttic.Orchestrator.TermHost.exe` beside the app or in its `TermHost\` folder (`TermLauncher.FindHost()`). Shipping
+  the host next to the dashboard is T926/T928's job.
+
+**For T926 on dashboard start:**
+
+1. Call `TermSessions.Enumerate()`.
+2. For each record, open a tab on its `Login`'s page and attach to `Pipe` with a Hello at `Protocol`.
+3. Subscribe to `term-session`. On `started` from a host the dashboard didn't open, add a tab. On `changed`, update the
+   title, size or exit badge. On `ended`, mark the tab ended.
+
+**Smoke test (2026-10-26).** A scratch console started `cmd.exe /d /k` through `TermLauncher.Start`. The registry file
+appeared, `Enumerate()` listed it, and after the host was killed `Enumerate()` dropped it and deleted the file. A second
+CLI ran `exit 5`. Its record went to `exited`/`5`, and after its 2 s linger the host exited and removed its own file.
+
 ## Sources
 
 - Decompiled: `CI.Microsoft.Terminal.Wpf` 1.25.260303002 (`ITerminalConnection`, `TerminalControl`, `TerminalContainer`) and `EasyWindowsTerminalControl` 1.0.38 (`EasyTerminalControl`, `TermPTY`), from `%USERPROFILE%\.nuget\packages`.

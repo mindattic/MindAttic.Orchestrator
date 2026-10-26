@@ -28,6 +28,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- M.ORCH-T925: the TermHost session registry and term-session bus records, for TermLauncher and the dashboard. -->
+    <ProjectReference Include="..\MindAttic.Orchestrator.Term\MindAttic.Orchestrator.Term.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="MindAttic.Orchestrator.Tests" />
   </ItemGroup>
 
