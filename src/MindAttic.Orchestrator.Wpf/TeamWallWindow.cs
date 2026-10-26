@@ -285,6 +285,7 @@ internal sealed class TeamWallWindow : Window
 
             var pages = TeamWall.PageCount(all.Count, pageSize);
             pageText.Text = $"{page + 1} / {pages}";
+            System.Windows.Automation.AutomationProperties.SetName(pageText, $"Page {page + 1} of {pages}");
             previous.IsEnabled = page > 0;
             next.IsEnabled = page < pages - 1;
             empty.Visibility = all.Count == 0 ? Visibility.Visible : Visibility.Collapsed;

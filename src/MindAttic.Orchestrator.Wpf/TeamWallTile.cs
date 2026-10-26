@@ -30,7 +30,7 @@ internal sealed class TeamWallTile : Border, IDisposable
     private readonly TextBlock title = new() { Foreground = Brushes.Gainsboro, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, FontSize = 12 };
     private readonly Ellipse dot = new() { Width = 8, Height = 8, Margin = new Thickness(8, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock state = new() { Foreground = Brushes.Silver, VerticalAlignment = VerticalAlignment.Center, FontSize = 11 };
-    private readonly Button interact;
+    private readonly Button watch, interact;
     private readonly Border body = new() { Background = Brushes.Black, ClipToBounds = true };
     private readonly TextBlock placeholder = new() { Foreground = Brushes.Gray, TextWrapping = TextWrapping.Wrap, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(16), TextAlignment = TextAlignment.Center };
     private RelayTerminal? relay;
@@ -50,7 +50,7 @@ internal sealed class TeamWallTile : Border, IDisposable
         SnapsToDevicePixels = true;
 
         pill.Child = person;
-        var watch = SmallButton("Watch", "Open it larger, watch only");
+        watch = SmallButton("Watch", "Open it larger, watch only");
         watch.Click += (_, _) => PopOut(interactive: false);
         interact = SmallButton("Interact", "Open it larger to type into it (the grant allows it)");
         interact.Click += (_, _) => PopOut(interactive: true);
@@ -125,12 +125,17 @@ internal sealed class TeamWallTile : Border, IDisposable
             template.Seal();
             flatTemplate = template;
         }
-        return new Button
+        // Focusable, with a name and help text (M.ORCH-T1021): the wall's buttons are its only keyboard way to page, refresh
+        // and open a tile, and a glyph like the page arrows reads as nothing to a screen reader.
+        var button = new Button
         {
-            Content = text, ToolTip = tip, Margin = margin, Padding = padding, FontSize = fontSize, Focusable = false, Cursor = Cursors.Hand,
+            Content = text, ToolTip = tip, Margin = margin, Padding = padding, FontSize = fontSize, Cursor = Cursors.Hand,
             Template = flatTemplate, Background = Frozen(Color.FromRgb(0x30, 0x30, 0x30)), Foreground = Brushes.Gainsboro,
             BorderBrush = Frozen(Color.FromRgb(0x4A, 0x4A, 0x4A)),
         };
+        System.Windows.Automation.AutomationProperties.SetName(button, text.Any(char.IsLetter) ? text : tip);
+        System.Windows.Automation.AutomationProperties.SetHelpText(button, tip);
+        return button;
     }
 
     private static bool FindButton(DependencyObject d)
@@ -163,6 +168,10 @@ internal sealed class TeamWallTile : Border, IDisposable
         title.Text = text;
         ToolTip = $"{session.Person}: {text}" + (session.Login is { Length: > 0 } l ? $" ({l})" : "") + (session.IsLocal ? "" : $"\nGateway {session.Gateway}");
         interact.Visibility = session.CanInteract ? Visibility.Visible : Visibility.Collapsed;
+        // Named per tile (M.ORCH-T1021): a screen reader hears whose CLI each tile and its buttons are, not a dozen "Watch"es.
+        System.Windows.Automation.AutomationProperties.SetName(this, $"{session.Person}: {text}");
+        System.Windows.Automation.AutomationProperties.SetName(watch, $"Watch {session.Person}: {text}");
+        System.Windows.Automation.AutomationProperties.SetName(interact, $"Interact with {session.Person}: {text}");
         if (cols == 0 && session.Cols > 0) { cols = (ushort)session.Cols; rows = (ushort)Math.Max(1, session.Rows); Fit(); }
         ShowState();
     }
