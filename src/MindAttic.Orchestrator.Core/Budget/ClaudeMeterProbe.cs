@@ -218,6 +218,10 @@ public sealed class ClaudeMeterProbe
     /// fixes for a blind window were guesses). The daemon sets it.</summary>
     public static Action<LogEventLevel, string>? Say { get; set; }
 
+    /// <summary>Raised on the ask's thread as each reading is written (M.ORCH-T854), with the probe (its <see cref="Label"/> names
+    /// the login, null the global one) and the reading as written: the daemon publishes it on the status stream at once.</summary>
+    public static event Action<ClaudeMeterProbe, ReportedUsage>? ReadingLanded;
+
     /// <summary>Drops the wait after the last ask, so the next forced <see cref="Tick"/> asks at once: a switch to another
     /// account is read within seconds, not after the old one's backoff.</summary>
     public void Reset()
@@ -308,6 +312,9 @@ public sealed class ClaudeMeterProbe
             // An idle login has no running 5-hour window: the endpoint gives only the week (M.ORCH-T687).
             LastResult = reading.FiveHour is { } shown ? $"read Claude's meter: {shown.Percent:0}% of the 5-hour window"
                 : $"read Claude's meter: no 5-hour window running, week {reading.Week?.Percent:0}%";
+            // The moment it lands, not at the next refresh (M.ORCH-T854): the daemon puts it on the status stream.
+            try { if (LastReading is { } landed) ReadingLanded?.Invoke(this, landed); }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { LastResult += $" (telling the dashboards failed: {ex.Message})"; }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException)
         {

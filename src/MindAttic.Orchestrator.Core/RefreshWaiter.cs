@@ -23,6 +23,12 @@ internal sealed class RefreshWaiter
         lastSignal = Stamp();
     }
 
+    private int poked;
+
+    /// <summary>Counts as a signal, from any thread: a reading that landed somewhere no watched file shows (the meter probe's
+    /// database row, M.ORCH-T854) brings the next refresh forward like a file write does.</summary>
+    public void Poke() => Interlocked.Exchange(ref poked, 1);
+
     public RefreshWake Wait(TimeSpan interval, CancellationToken cancel)
     {
         var until = DateTime.UtcNow + interval;
@@ -32,6 +38,11 @@ internal sealed class RefreshWaiter
             var left = until - DateTime.UtcNow;
             if (cancel.WaitHandle.WaitOne(left < poll ? (left > TimeSpan.Zero ? left : TimeSpan.Zero) : poll)) return RefreshWake.Cancelled;
             if (DateTime.UtcNow < earliest) continue;
+            if (Interlocked.Exchange(ref poked, 0) == 1)
+            {
+                lastSignal = Stamp();
+                return RefreshWake.Signal;
+            }
             var stamp = Stamp();
             if (stamp == lastSignal) continue;
             lastSignal = stamp;

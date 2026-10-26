@@ -32,6 +32,12 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         Say(LogEventLevel.Information, $"daemon started (pid {Environment.ProcessId}, every {interval.TotalSeconds:0}s, workspace {options.WorkspaceRoot})");
         // Every meter ask and what came of it is on the record (M.ORCH-T659), to trace a window that went unseen.
         ClaudeMeterProbe.Say = (level, line) => Say(level, line);
+        // The status stream (M.ORCH-T854): every reading and snapshot pushed to the open dashboards the moment it lands.
+        using var status = ServeStatus ? new Status.StatusStreamServer { Files = WatchedUsage, ReadingsChanged = waiter.Poke } : null;
+        status?.Start();
+        void OnReading(ClaudeMeterProbe probe, ReportedUsage reading) =>
+            status?.PublishReadings([Status.MeterReading.Of(probe.Label, reading, signedIn: null, "probe")]);
+        ClaudeMeterProbe.ReadingLanded += OnReading;
         var cycler = new ContextCycler();
         var allocate = new Allocate(store, cycler, lease) { WaitingPath = Allocate.DefaultWaitingPath };
         var waker = new LimitWaker(cycler, store);
@@ -75,6 +81,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     Say(LogEventLevel.Information, $"workspace is now {options.WorkspaceRoot}");
                 }
                 var snapshot = aggregator.Refresh();
+                // Built here (this daemon holds the status lease): every dashboard reads it now, not at its next poll.
+                if (!aggregator.LastWasShared) status?.PublishSnapshot(snapshot.TakenUtc);
                 tick.Lap("refresh");
                 ReportStatusFile(statusFile);
                 // Only from settings that could be read: defaults would run allocate, keep-going and the subagent cap on
@@ -326,7 +334,22 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             if (tick.Slow() is { } slow) Say(LogEventLevel.Warning, slow);
             WaitForNextRefresh(interval, cancel);
         }
+        ClaudeMeterProbe.ReadingLanded -= OnReading;
         Say(LogEventLevel.Information, "daemon stopped");
+    }
+
+    /// <summary>Whether <see cref="Run"/> serves the status stream (M.ORCH-T854); a test's daemon doesn't.</summary>
+    internal bool ServeStatus { get; init; } = true;
+
+    private IReadOnlyList<AccountDir>? watchedDirs;
+
+    /// <summary>The usage files the status stream watches: the global login's (the statusline's file; its reading is the later of
+    /// that and the probe's row) and each per-CLI login's, with whether it's signed in.</summary>
+    private IReadOnlyList<Status.StatusStreamServer.WatchedUsage> WatchedUsage()
+    {
+        try { watchedDirs = new AccountDirs().All(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { } // the last list read
+        return [new(null, ReportedUsage.DefaultPath, null), .. (watchedDirs ?? []).Select(d => new Status.StatusStreamServer.WatchedUsage(d.Email, d.UsagePath, d.SignedIn))];
     }
 
     /// <summary>
