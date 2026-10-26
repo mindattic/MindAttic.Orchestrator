@@ -379,25 +379,31 @@ public sealed class TerminalPaneViewModel : ObservableObject
     }
 
     /// <summary>Ends its CLI: the whole tree under the tab's process. A hosted tab's host is killed, which takes its ConPTY and
-    /// CLI with it; one still starting is killed as soon as it registers.</summary>
-    internal void Kill()
+    /// CLI with it; one still starting is killed as soon as it registers. False when a hosted tab's host still runs and
+    /// couldn't be killed (M.ORCH-T1034): the tab should stay.</summary>
+    internal bool Kill()
     {
         if (Relay is not null || TermId is not null)
         {
             killRequested = true;
-            if (Session is { } session) KillHost(session);
-            return;
+            if (Session is { } session && !KillHost(session))
+            {
+                killRequested = false;
+                return false;
+            }
+            return true;
         }
         // A process that's already gone is a no-op, however it reports that (it can exit just before the kill).
         try { Local?.ConPTYTerm?.Process?.Kill(true); }
         catch (Exception) { }
+        return true;
     }
 
     /// <summary>Whether <see cref="Kill"/> was asked before its host registered.</summary>
     internal bool KillRequested => killRequested;
 
     /// <summary>Kills <paramref name="session"/>'s host and everything under it, when its pid is still that host (not reused).</summary>
-    internal static void KillHost(TermSessionRecord session) => TermHostKill.Kill(session);
+    internal static bool KillHost(TermSessionRecord session) => TermHostKill.Kill(session);
 }
 
 /// <summary>
@@ -434,7 +440,7 @@ public sealed class TerminalsViewModel : ObservableObject
     internal Func<string, TermSessionRecord?> Lookup { get; init; } = id => TermSessions.Get(id);
 
     /// <summary>Ends an orphaned host (the default kills it and its tree). Tests replace it.</summary>
-    internal Action<TermSessionRecord> KillOrphan { get; init; } = TerminalPaneViewModel.KillHost;
+    internal Action<TermSessionRecord> KillOrphan { get; init; } = session => TerminalPaneViewModel.KillHost(session);
 
     /// <summary>After a failed launch, how long to look for its host having started anyway (to adopt it), and how long after
     /// falling back to keep watching for it (to end it) (M.ORCH-T971).</summary>
@@ -743,6 +749,14 @@ public sealed class TerminalsViewModel : ObservableObject
 
     private readonly Dictionary<string, DateTime> closedLately = new(StringComparer.OrdinalIgnoreCase);
 
+    private bool ClosedLately(string id)
+    {
+        lock (closedLately) return closedLately.TryGetValue(id, out var closed) && DateTime.UtcNow - closed < ClosedHoldOff;
+    }
+
+    /// <summary>A tab's close couldn't end its CLI (M.ORCH-T1034): the tab stays, with why.</summary>
+    public event Action<TerminalPaneViewModel, string>? CloseFailed;
+
     /// <summary>A tab attached to <paramref name="session"/>, unless one shows it already or this dashboard is starting it;
     /// <paramref name="request"/> is its tab file's, else one built from the record. Returns the tab, or null.</summary>
     internal TerminalPaneViewModel? Reattach(TermSessionRecord session, PaneRequest? request = null)
@@ -785,6 +799,8 @@ public sealed class TerminalsViewModel : ObservableObject
             switch (message.Event)
             {
                 case TermSessionEvents.Started when pane is null:
+                    // A host whose tab was closed here lately is going (M.ORCH-T1034): no tab back for it, as in ResyncAsync.
+                    if (ClosedLately(message.Id)) break;
                     var record = TermSessions.Get(message.Id) ?? message.ToRecord();
                     Reattach(record, TermPaneFile.Read(record.Id));
                     break;
@@ -806,10 +822,18 @@ public sealed class TerminalsViewModel : ObservableObject
     {
         // Deselected first, then removed: a still-selected item removed from a TabControl-bound collection crashes WPF
         // (M.ORCH-T859). Its teardown is contained so one bad CLI can never take the dashboard (and every terminal) down.
-        if (SelectedPane == pane) SelectedPane = null;
-        if (pane.TermId is { Length: > 0 } termId) lock (closedLately) closedLately[termId] = DateTime.UtcNow;
-        try { pane.Kill(); }
+        try
+        {
+            // Its host still runs and couldn't be killed (M.ORCH-T1034): the tab stays, so it isn't re-added later as a stranger.
+            if (!pane.Kill())
+            {
+                CloseFailed?.Invoke(pane, $"{pane.Title}'s CLI couldn't be ended (its host may run elevated); its tab stays open.");
+                return;
+            }
+        }
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Closing a terminal failed; removing its tab anyway"); }
+        if (pane.TermId is { Length: > 0 } termId) lock (closedLately) closedLately[termId] = DateTime.UtcNow;
+        if (SelectedPane == pane) SelectedPane = null;
         Panes.Remove(pane);
         // The tab is out of the host grid now: release the terminal's HwndHost, its pipe or ConPTY and its screen buffer,
         // which otherwise stay alive for the rest of the dashboard's run (M.ORCH-T869).

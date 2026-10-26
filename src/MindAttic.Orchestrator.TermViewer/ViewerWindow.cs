@@ -298,7 +298,13 @@ internal sealed class ViewerWindow : Window
         if (answer != MessageBoxResult.OK) return;
         log.Information("Ending {Id:l} at the person's request", session.Id);
         Detach();
-        TermHostKill.Kill(TermSessions.Get(session.Id) ?? session);
+        if (!TermHostKill.Kill(TermSessions.Get(session.Id) ?? session))
+        {
+            // Its host still runs (M.ORCH-T1034): said, and the window stays on it.
+            SetStatus("The CLI couldn't be ended (its host may run elevated); it is still running.");
+            Attach();
+            return;
+        }
         closing = true;
         Close();
     }

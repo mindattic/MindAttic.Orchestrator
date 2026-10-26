@@ -24,6 +24,7 @@ public sealed partial class MainViewModel
             AllTerminals = new TerminalsViewModel();
             AllTerminals.Opened += ShowPane;
             AllTerminals.LoginsChanged += SyncTerminals;
+            AllTerminals.CloseFailed += (_, why) => Toasts.Insert(0, new ToastViewModel("CLI not ended", why, Palette.Over, null));
             AllTerminals.Panes.CollectionChanged += (_, _) => SyncTerminals();
         }
         else AllTerminals = root.AllTerminals;
