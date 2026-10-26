@@ -57,10 +57,38 @@ public static class TermBus
         catch (Exception ex) when (ex is JsonException or InvalidOperationException) { return null; }
     }
 
-    /// <summary>Writes <paramref name="message"/> to the daemon's inbox; whether it got there. Never throws, and never waits
-    /// longer than <paramref name="timeoutMs"/> for the pipe.</summary>
+    /// <summary>Writes <paramref name="message"/> to the daemon's inbox; whether the first try got there. Never throws, and never
+    /// waits longer than <paramref name="timeoutMs"/> for the pipe: a miss is tried again off the caller's thread
+    /// (<see cref="TrySendLineRetrying"/>).</summary>
     public static bool TrySend(TermSessionEvent message, string? pipeName = null, int timeoutMs = ConnectTimeoutMs) =>
-        TrySendLine(Envelope(message, DateTime.UtcNow, Environment.ProcessId), pipeName, timeoutMs);
+        TrySendLineRetrying(Envelope(message, DateTime.UtcNow, Environment.ProcessId), Kind + ":" + message.Id, pipeName, timeoutMs);
+
+    /// <summary>The waits before each retry of a send that missed (M.ORCH-T1001): the bus keeps no copy of these kinds, so one
+    /// sent while the daemon restarted, or while every inbox listener was busy, was lost for good.</summary>
+    public static readonly IReadOnlyList<TimeSpan> RetryBackoff =
+        [TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(600), TimeSpan.FromSeconds(1.5), TimeSpan.FromSeconds(3)];
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, long> sends = new(StringComparer.Ordinal);
+
+    /// <summary><see cref="TrySendLine"/>, and when that misses, the same line again after each of <see cref="RetryBackoff"/>'s
+    /// waits, on the thread pool, so the caller is never held up. A retry stops once a newer line under the same
+    /// <paramref name="key"/> (a session's id, say) was sent, so an old announcement never lands after a newer one. Returns
+    /// whether the first try got there. Never throws.</summary>
+    public static bool TrySendLineRetrying(string envelope, string key, string? pipeName = null, int timeoutMs = ConnectTimeoutMs)
+    {
+        var mine = sends.AddOrUpdate(key, 1, (_, n) => n + 1);
+        if (TrySendLine(envelope, pipeName, timeoutMs)) return true;
+        _ = Task.Run(async () =>
+        {
+            foreach (var wait in RetryBackoff)
+            {
+                await Task.Delay(wait).ConfigureAwait(false);
+                if (sends.TryGetValue(key, out var newest) && newest != mine) return;
+                if (TrySendLine(envelope, pipeName, timeoutMs)) return;
+            }
+        });
+        return false;
+    }
 
     /// <summary>The envelope line of any kind (M.ORCH-T935: <see cref="TermWatchersBus"/> writes <c>term-watchers</c> this way).</summary>
     public static string Envelope<T>(string kind, int version, T payload, DateTime atUtc, int pid) =>

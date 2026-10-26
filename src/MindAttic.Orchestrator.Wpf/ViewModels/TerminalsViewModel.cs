@@ -710,6 +710,39 @@ public sealed class TerminalsViewModel : ObservableObject
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Reattaching the hosted CLIs failed; contained"); }
     }
 
+    /// <summary>
+    /// The safety net under the <c>term-session</c> kind (M.ORCH-T1001): the bus keeps no copy of it, so a host announced while
+    /// the daemon restarted (or every inbox listener was busy) never reached this dashboard. Run every minute or so: a tab for
+    /// every live hosted session no tab shows yet, as at start, but no tab file is pruned (a host this dashboard is starting may
+    /// not have registered yet) and a session whose tab was closed here lately is left alone while its host goes. Never throws.
+    /// </summary>
+    public async Task ResyncAsync()
+    {
+        try
+        {
+            // The tabs read here, on the UI thread; the registry off it.
+            var shown = Panes.Select(p => p.TermId).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var live = await Task.Run(() => TermSessions.Enumerate()
+                .Where(s => !shown.Contains(s.Id))
+                .Select(s => (Session: s, Request: TermPaneFile.Read(s.Id))).ToList());
+            var now = DateTime.UtcNow;
+            foreach (var (session, request) in live)
+            {
+                lock (closedLately)
+                    if (closedLately.TryGetValue(session.Id, out var closed) && now - closed < ClosedHoldOff) continue;
+                if (Reattach(session, request) is not null) Changed?.Invoke();
+            }
+            lock (closedLately)
+                foreach (var id in closedLately.Where(c => now - c.Value >= ClosedHoldOff).Select(c => c.Key).ToList()) closedLately.Remove(id);
+        }
+        catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Re-reading the hosted CLIs failed; contained"); }
+    }
+
+    /// <summary>How long a hosted session whose tab was closed here isn't given a tab back by <see cref="ResyncAsync"/>.</summary>
+    private static readonly TimeSpan ClosedHoldOff = TimeSpan.FromMinutes(2);
+
+    private readonly Dictionary<string, DateTime> closedLately = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>A tab attached to <paramref name="session"/>, unless one shows it already or this dashboard is starting it;
     /// <paramref name="request"/> is its tab file's, else one built from the record. Returns the tab, or null.</summary>
     internal TerminalPaneViewModel? Reattach(TermSessionRecord session, PaneRequest? request = null)
@@ -774,6 +807,7 @@ public sealed class TerminalsViewModel : ObservableObject
         // Deselected first, then removed: a still-selected item removed from a TabControl-bound collection crashes WPF
         // (M.ORCH-T859). Its teardown is contained so one bad CLI can never take the dashboard (and every terminal) down.
         if (SelectedPane == pane) SelectedPane = null;
+        if (pane.TermId is { Length: > 0 } termId) lock (closedLately) closedLately[termId] = DateTime.UtcNow;
         try { pane.Kill(); }
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Closing a terminal failed; removing its tab anyway"); }
         Panes.Remove(pane);

@@ -26,6 +26,9 @@ public partial class MainWindow : Window
     /// <summary>Hidden but holding the lease (no daemon running): the daemon's own pace, since rl-status.json and allocate depend on it.</summary>
     private static readonly TimeSpan HiddenHolderInterval = TimeSpan.FromSeconds(15);
 
+    /// <summary>How often the hosted-session registry is read again for a host whose bus announcement was lost (M.ORCH-T1001).</summary>
+    private static readonly TimeSpan TermResyncInterval = TimeSpan.FromSeconds(45);
+
     /// <summary>The global login's tab, which owns the refresh and every login's tab (M.ORCH-T613).</summary>
     private readonly MainViewModel model = new();
     private readonly DispatcherTimer timer;
@@ -118,6 +121,15 @@ public partial class MainWindow : Window
             // Every CLI still running in its own TermHost gets its tab back first (M.ORCH-T926): a crash or a redeploy of the
             // dashboard never ended it, so it needs no restore.
             if (restoreOnLoad) await model.AllTerminals.ReattachAsync();
+            // And every 45s after (M.ORCH-T1001): a term-session announcement lost on the bus (sent while the daemon restarted)
+            // never gave its host a tab, since the bus keeps no copy and the registry was read only here.
+            if (restoreOnLoad)
+            {
+                var resync = new DispatcherTimer(DispatcherPriority.Background) { Interval = TermResyncInterval };
+                resync.Tick += async (_, _) => await model.AllTerminals.ResyncAsync();
+                resync.Start();
+                Closed += (_, _) => resync.Stop();
+            }
             var restored = restoreOnLoad && SessionRestore.Offer(this, model);
             await model.RefreshAsync();
             if (restored) model.ReselectRestored();

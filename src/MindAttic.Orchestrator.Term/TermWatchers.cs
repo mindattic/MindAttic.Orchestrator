@@ -70,9 +70,10 @@ public static class TermWatchersBus
 
     public static TermWatchersEvent? Parse(string line) => TermBus.ParsePayload<TermWatchersEvent>(line, Kind, Version);
 
-    /// <summary>Sends <paramref name="message"/> to the daemon's inbox (50 ms at most); whether it got there.</summary>
+    /// <summary>Sends <paramref name="message"/> to the daemon's inbox (50 ms at most, a miss tried again off this thread,
+    /// M.ORCH-T1001); whether the first try got there.</summary>
     public static bool TrySend(TermWatchersEvent message, string? pipeName = null) =>
-        TermBus.TrySendLine(Envelope(message, DateTime.UtcNow, Environment.ProcessId), pipeName);
+        TermBus.TrySendLineRetrying(Envelope(message, DateTime.UtcNow, Environment.ProcessId), Kind, pipeName);
 
     /// <summary>Writes the current watchers atomically; false when it couldn't.</summary>
     public static bool Write(IReadOnlyList<TermWatcher> watchers, string? directory = null)
