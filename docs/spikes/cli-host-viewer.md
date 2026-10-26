@@ -1061,9 +1061,12 @@ replaced, never removed, so the remote screen's layout (cursor column, line wrap
 
 **Escape sequences.** The stream is split into printable text, controls and escape sequences (CSI, OSC, DCS, APC, PM,
 SOS and the short ESC forms). Matching runs on the text alone, so an SGR colour change in the middle of a token doesn't
-hide it. A control (CR, LF, TAB, BS) ends a run. Only text bytes are ever replaced, so an escape sequence is never
-corrupted. The cost is that text inside an escape (an OSC title, a hyperlink's URL) isn't masked there. Titles still reach
-remote viewers masked, through the Title frame.
+hide it. A control (CR, LF, TAB, BS) ends a run. A string sequence (OSC, DCS, APC, PM, SOS) carries printable text too:
+a window title (OSC 0/2), a hyperlink's URL (OSC 8), a notification. Its payload is masked on its own, the same way,
+with the introducer and terminator kept, so the sequence stays well formed (M.ORCH-T980). An OSC 52 clipboard write is
+decoded and checked, and dropped whole when what it would copy holds a secret or can't be decoded. Every other escape goes
+byte for byte. Titles also reach remote viewers masked through the Title frame, and `GET /sessions` lists them masked,
+frozen at the title before a pause while the session is paused (M.ORCH-T981).
 
 **Chunk boundaries.** A token can be split across two Output frames. To catch it, the masker holds back these at the end
 of each chunk:

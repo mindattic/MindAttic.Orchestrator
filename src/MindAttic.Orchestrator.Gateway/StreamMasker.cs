@@ -6,8 +6,9 @@ namespace MindAttic.Orchestrator.Gateway;
 /// <summary>
 /// Masks secrets in one remote stream's VT output, chunk by chunk (M.ORCH-T935): each printable character that is part of a
 /// secret (<see cref="SecretMasker"/>) becomes one <c>•</c>, so a token reads <c>•••…</c> and the remote screen's layout (cursor
-/// column, wrapping) stays exactly the host's. Nothing else changes: escape sequences, controls and every other character pass
-/// through byte for byte. Never applied to a local viewer.
+/// column, wrapping) stays exactly the host's. Nothing else changes: controls, escape sequences and every other character pass
+/// through byte for byte, except the printable payload of a string sequence (a title, a hyperlink, a clipboard write; see
+/// <see cref="WriteEscape"/>), masked the same way (M.ORCH-T980). Never applied to a local viewer.
 /// <list type="bullet">
 /// <item><b>Escapes inside a run.</b> The stream is split into printable text, controls and escape sequences (CSI, OSC, DCS,
 /// APC, PM, SOS, and the short ESC forms). Matching runs on the text alone, so an SGR colour change in the middle of a token
@@ -160,6 +161,7 @@ internal sealed class StreamMasker(SecretMasker secrets)
             if (seg.Kind == SegKind.Text)
                 for (var k = seg.LogicalStart; k < seg.LogicalStart + seg.LogicalLength; k++) masked |= mask[k];
             if (masked) output.Write(Bullet);
+            else if (seg.Kind == SegKind.Escape) WriteEscape(output, buf.AsSpan(seg.Start, seg.Length));
             else output.Write(buf.AsSpan(seg.Start, seg.Length));
             sentLogical = seg.LogicalStart + seg.LogicalLength;
         }
@@ -211,6 +213,61 @@ internal sealed class StreamMasker(SecretMasker secrets)
                 from = start;
             }
         }
+    }
+
+    /// <summary>
+    /// Writes one escape sequence (M.ORCH-T980). A string sequence (OSC, DCS, APC, PM, SOS) carries printable text a terminal
+    /// shows or acts on: a window title (OSC 0/2), a hyperlink's URI (OSC 8), a notification. Its payload is masked as text is,
+    /// on its own, one bullet per secret character, with the introducer and terminator kept, so it stays a well-formed
+    /// sequence. A clipboard write (OSC 52) is decoded and checked, and dropped whole when what it would copy holds a secret or
+    /// can't be decoded, since a bullet in base64 would be garbage. Every other sequence goes as it is.
+    /// </summary>
+    private void WriteEscape(ArrayBufferWriter<byte> output, ReadOnlySpan<byte> esc)
+    {
+        if (esc.Length < 3 || esc[1] is not ((byte)']' or (byte)'P' or (byte)'_' or (byte)'^' or (byte)'X'))
+        {
+            output.Write(esc);
+            return;
+        }
+        // The terminator: BEL, CAN or SUB, or ST (ESC \); a sequence cut short or capped has none.
+        var end = esc.Length;
+        if (esc[^1] is 0x07 or 0x18 or 0x1A) end--;
+        else if (esc.Length >= 4 && esc[^2] == 0x1B && esc[^1] == (byte)'\\') end -= 2;
+        else if (esc[^1] == 0x1B) end--;
+        var payload = esc[2..end];
+        if (payload.IsEmpty)
+        {
+            output.Write(esc);
+            return;
+        }
+        if (esc[1] == (byte)']' && payload.StartsWith("52;"u8))
+        {
+            if (ClipboardHoldsSecret(payload)) return;
+            output.Write(esc);
+            return;
+        }
+        var masked = MaskPayload(payload);
+        output.Write(esc[..2]);
+        output.Write(masked);
+        output.Write(esc[end..]);
+    }
+
+    /// <summary>A string sequence's payload masked on its own (it holds no escape: the parser ended the sequence at one).</summary>
+    private byte[] MaskPayload(ReadOnlySpan<byte> payload) => new StreamMasker(secrets).Process(payload, final: true);
+
+    /// <summary>Whether an OSC 52 payload (<c>52;Pc;Pd</c>, Pd base64) would put a secret on the viewer's clipboard: true when
+    /// the decoded text masks to anything else, or Pd isn't base64. A query (<c>?</c>) or an empty Pd (clear) holds none.</summary>
+    private bool ClipboardHoldsSecret(ReadOnlySpan<byte> payload)
+    {
+        var rest = payload[3..];
+        var semi = rest.IndexOf((byte)';');
+        if (semi < 0) return false;
+        var data = rest[(semi + 1)..];
+        if (data.IsEmpty || data.SequenceEqual("?"u8)) return false;
+        byte[] decoded;
+        try { decoded = Convert.FromBase64String(Encoding.ASCII.GetString(data)); }
+        catch (FormatException) { return true; }
+        return !MaskPayload(decoded).AsSpan().SequenceEqual(decoded);
     }
 
     /// <summary>A character a token may continue with: while the text ends in these, the rest may follow in the next chunk.</summary>

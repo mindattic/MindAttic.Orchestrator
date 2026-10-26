@@ -189,14 +189,40 @@ public sealed class BroadcastMaskingTests
     }
 
     [Test]
-    public void A_token_inside_an_escape_sequence_is_never_rewritten()
+    public void A_token_in_an_osc_title_is_masked_and_the_sequence_kept_well_formed()
     {
-        // An OSC title is not screen text: changing its bytes would corrupt the sequence, so it goes as it is (titles reach
-        // remote viewers masked through the Title frame instead).
+        // M.ORCH-T980: a title is printable text the viewer's terminal shows, so its payload is masked; the introducer and the
+        // terminator are kept.
         var token = Fake("sk-ant-api03-", 40);
-        var osc = $"{Esc}]0;{token}\u0007";
-        Assert.That(Mask(osc), Is.EqualTo(osc));
+        Assert.That(Mask($"{Esc}]0;{token}\u0007"), Is.EqualTo($"{Esc}]0;{Bullets(token.Length)}\u0007"));
+        Assert.That(Mask($"{Esc}]2;deploying {token}{Esc}\\after"), Is.EqualTo($"{Esc}]2;deploying {Bullets(token.Length)}{Esc}\\after"));
         Assert.That(SecretMasker.ShapesOnly.MaskText($"title {token}"), Is.EqualTo($"title {Bullets(token.Length)}"));
+        // Split in the middle of the title, as a slow host might send it.
+        var text = $"{Esc}]0;{token}\u0007";
+        Assert.That(Stream([text[..20], text[20..]]), Is.EqualTo($"{Esc}]0;{Bullets(token.Length)}\u0007"));
+    }
+
+    [Test]
+    public void A_token_in_a_hyperlink_dcs_or_apc_string_is_masked()
+    {
+        var value = Fake("", 40);
+        Assert.That(Mask($"{Esc}]8;;https://example.com/cb?token={value}{Esc}\\link{Esc}]8;;{Esc}\\"),
+            Is.EqualTo($"{Esc}]8;;https://example.com/cb?token={Bullets(40)}{Esc}\\link{Esc}]8;;{Esc}\\"));
+        var token = Fake("ghp_", 36);
+        Assert.That(Mask($"{Esc}P{token}{Esc}\\"), Is.EqualTo($"{Esc}P{Bullets(token.Length)}{Esc}\\"));
+        Assert.That(Mask($"{Esc}_{token}{Esc}\\"), Is.EqualTo($"{Esc}_{Bullets(token.Length)}{Esc}\\"));
+    }
+
+    [Test]
+    public void An_osc_52_clipboard_write_holding_a_secret_is_dropped_and_a_harmless_one_kept()
+    {
+        var token = Fake("sk-ant-api03-", 40);
+        var secret = Convert.ToBase64String(Encoding.UTF8.GetBytes($"copied {token}"));
+        Assert.That(Mask($"before{Esc}]52;c;{secret}\u0007after"), Is.EqualTo("beforeafter"));
+        Assert.That(Mask($"{Esc}]52;c;not*base64!\u0007"), Is.Empty, "can't be checked: dropped");
+        var harmless = $"{Esc}]52;c;{Convert.ToBase64String("git status"u8)}\u0007";
+        Assert.That(Mask(harmless), Is.EqualTo(harmless));
+        Assert.That(Mask($"{Esc}]52;c;?\u0007"), Is.EqualTo($"{Esc}]52;c;?\u0007"), "a query");
     }
 
     // ── false positives ─────────────────────────────────────────────────────────
