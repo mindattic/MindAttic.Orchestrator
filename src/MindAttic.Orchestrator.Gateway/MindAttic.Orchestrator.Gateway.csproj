@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    M.ORCH-T933: the team gateway (spike docs/spikes/cli-host-viewer.md, section 5 and "Phase 3 gateway"). An opt-in, per-user
+    ASP.NET Core process (Kestrel, TLS) that bridges each local TermHost pipe to authenticated remote viewers over a WebSocket,
+    frame for frame. Like TermHost it references only the dependency-free Term library, not Core: the daemon starts it with
+    its settings on the command line, so it never loads Core's Vault, SQL and Serilog stack, and a crash in it only drops
+    remote viewers.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>MindAttic.Orchestrator.Gateway</RootNamespace>
+    <AssemblyName>MindAttic.Orchestrator.Gateway</AssemblyName>
+    <!-- HOUSE-LAW-1: whole-number versions only; bump the major. -->
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MindAttic.Orchestrator.Term\MindAttic.Orchestrator.Term.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MindAttic.Orchestrator.Tests" />
+  </ItemGroup>
+
+</Project>
