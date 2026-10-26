@@ -583,7 +583,7 @@
                         <StackPanel>
                             <TextBlock Text="5-hour utilization" Style="{StaticResource MaSectionLabel}" />
                             <mc:MaLineChart x:Name="UtilizationChart" Data="{Binding Utilization, Converter={x:Static local:UtilizationChartData.Converter}}"
-                                            Height="260" Margin="{StaticResource SpaceH0VS}" />
+                                            Height="130" Margin="{StaticResource SpaceH0VS}" />
                             <TextBlock Text="{Binding UtilizationText}" Style="{StaticResource MaTileSubtitle}" FontSize="13" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>

@@ -111,14 +111,14 @@ public sealed class UtilizationChartLayoutTests
         var now = start.AddHours(3);
         var actual = new List<UtilizationPoint> { new(start, 0), new(start.AddHours(1), 30), new(start.AddHours(2), 45), new(now, 70) };
         var chart = new MaLineChart { Data = UtilizationChartData.From(new Utilization(start, start.AddHours(5), now, 99, actual, 70, 20, 110, TimeSpan.FromHours(2)), Theme) };
-        var host = new Border { Background = Brushes.Black, Child = chart, Width = 1400, Height = 260 };
-        host.Measure(new Size(1400, 260));
-        host.Arrange(new Rect(0, 0, 1400, 260));
+        var host = new Border { Background = Brushes.Black, Child = chart, Width = 1400, Height = 130 };
+        host.Measure(new Size(1400, 130));
+        host.Arrange(new Rect(0, 0, 1400, 130));
         host.UpdateLayout();
 
-        var bitmap = new RenderTargetBitmap(1400, 260, 96, 96, PixelFormats.Pbgra32);
+        var bitmap = new RenderTargetBitmap(1400, 130, 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(host);
-        var pixels = new byte[1400 * 260 * 4];
+        var pixels = new byte[1400 * 130 * 4];
         bitmap.CopyPixels(pixels, 1400 * 4, 0);
         Assert.That(chart.ActualWidth, Is.EqualTo(1400));
         Assert.That(pixels.Where((_, i) => i % 4 != 3).Count(b => b > 40), Is.GreaterThan(5000), "the lines and labels drew");
@@ -150,7 +150,7 @@ public sealed class UtilizationChartLayoutTests
         Assert.That(card.Attribute("Width"), Is.Null, "no fixed width: it stretches across the window");
         Assert.That(chart.Attribute("Width"), Is.Null);
         Assert.That((string?)chart.Attribute("Data"), Is.EqualTo("{Binding Utilization, Converter={x:Static local:UtilizationChartData.Converter}}"));
-        Assert.That(double.Parse((string)chart.Attribute("Height")!, System.Globalization.CultureInfo.InvariantCulture), Is.GreaterThanOrEqualTo(240));
+        Assert.That(double.Parse((string)chart.Attribute("Height")!, System.Globalization.CultureInfo.InvariantCulture), Is.EqualTo(130), "half the old 260 (M.ORCH-T877)");
         // It collapses only on an empty caption, which is never so once a snapshot is in, idle or not (M.ORCH-T502).
         Assert.That((string?)card.Attribute("Visibility"), Does.StartWith("{Binding UtilizationText,"));
     }
