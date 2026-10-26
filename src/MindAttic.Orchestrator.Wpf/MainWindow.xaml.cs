@@ -81,10 +81,15 @@ public partial class MainWindow : Window
         model.AllTerminals.Panes.CollectionChanged += (_, e) =>
         {
             foreach (var gone in e.OldItems?.OfType<TerminalPaneViewModel>() ?? []) TerminalPanesHost.Children.Remove(gone.Control);
-            foreach (var added in e.NewItems?.OfType<TerminalPaneViewModel>() ?? []) TerminalPanesHost.Children.Add(added.Control);
+            foreach (var added in e.NewItems?.OfType<TerminalPaneViewModel>() ?? [])
+            {
+                TerminalPanesHost.Children.Add(added.Control);
+                TerminalPaste.Track(added);
+            }
         };
         TerminalClip.Attach(TerminalPanesHost);
         TerminalKeyboard.Attach(this, TerminalPanesHost);
+        PreviewKeyDown += TerminalPaste.OnPreviewKeyDown;
         model.PropertyChanged += (_, _) => UpdateTerminalsCover();
         DataContextChanged += (_, _) => UpdateTerminalsCover();
 
