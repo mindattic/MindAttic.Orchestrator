@@ -8,14 +8,17 @@ public static partial class TicketAttribution
     /// <summary>How <see cref="Scheduling.Scheduler.PromptFor"/> opens every dispatched session.</summary>
     public const string PromptMarker = "Work on ticket ";
 
-    [GeneratedRegex(@"Work on ticket (?<id>(?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+) \((?<type>[a-z]+)\)")]
+    // The type is the first word in the parentheses and the rest is free text: an agent's prompt says "(feature, approved)",
+    // "(chore, approved by the user)" as well as "(fix)", and the type may be left out (M.ORCH-T884: such a subagent was never
+    // seen working its ticket, so its claim counted as pending for hours).
+    [GeneratedRegex(@"Work on ticket (?<id>(?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)\b(?: \((?<type>[a-z]+)[^)]*\))?")]
     private static partial Regex Prompt();
 
     [GeneratedRegex(@"[\\/]MindAttic\.worktrees[\\/][^\\/]+[\\/](?<id>(?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)(?:[\\/]|$)", RegexOptions.IgnoreCase)]
     private static partial Regex Worktree();
 
     public static (string Id, string Type)? FromPrompt(string text) =>
-        Prompt().Match(text) is { Success: true } m ? (m.Groups["id"].Value, m.Groups["type"].Value) : null;
+        Prompt().Match(text) is { Success: true } m ? (m.Groups["id"].Value, m.Groups["type"].Value) : null; // type "" when the prompt names none
 
     [GeneratedRegex(@"^(?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+$", RegexOptions.IgnoreCase)]
     private static partial Regex TicketId();

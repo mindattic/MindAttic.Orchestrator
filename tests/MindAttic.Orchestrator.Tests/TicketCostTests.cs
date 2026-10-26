@@ -21,6 +21,19 @@ public sealed class TicketCostTests
         Assert.That(TicketAttribution.FromWorktree(@"D:\Projects\MindAttic\Repo"), Is.Null);
     }
 
+    // M.ORCH-T884: a handed-out feature or chore prompt says "(feature, approved)", so its subagent was never seen working the
+    // ticket and the claim counted as pending (eating the CLI's allowance) for as long as it ran.
+    [TestCase("Work on ticket M.ORCH-T863 (feature, approved) in MindAttic.Orchestrator. The user's rule", "M.ORCH-T863", "feature")]
+    [TestCase("Work on ticket M.ORCH-T853 (chore, approved by the user): standardize", "M.ORCH-T853", "chore")]
+    [TestCase("Work on ticket M.ORCH-T884 (fix) in MindAttic.Orchestrator.", "M.ORCH-T884", "fix")]
+    [TestCase("Work on ticket M.ORCH-T884 in MindAttic.Orchestrator.", "M.ORCH-T884", "")]
+    public void A_dispatch_prompt_names_its_ticket_whatever_the_parentheses_say(string prompt, string id, string type) =>
+        Assert.That(TicketAttribution.FromPrompt(prompt), Is.EqualTo((id, type)));
+
+    [Test]
+    public void A_prompt_that_names_no_single_ticket_is_not_attributed() =>
+        Assert.That(TicketAttribution.FromPrompt("Work on two tickets with one cause in MindAttic.Orchestrator"), Is.Null);
+
     [TestCase(@"d:\projects\mindattic.worktrees\repo\rp-t7\src", "RP-T7")]
     [TestCase(@"d:/projects/mindattic.worktrees/mindattic.orchestrator/m.orch-t150", "M.ORCH-T150")]
     [TestCase(@"D:\Projects\MindAttic.worktrees\Repo\Rp-T7", "RP-T7")]
