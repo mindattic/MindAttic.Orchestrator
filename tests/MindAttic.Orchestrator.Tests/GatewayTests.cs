@@ -165,6 +165,43 @@ public sealed partial class GatewayTests
     }
 
     [Test]
+    public async Task A_session_the_owner_hasnt_shared_is_neither_listed_nor_attachable()
+    {
+        await using var gateway = await TestGateway.StartAsync();
+        gateway.Broadcast.Current = new TermBroadcastSettings();
+        using var http = gateway.Server.CreateClient();
+        http.DefaultRequestHeaders.Authorization = new("Bearer", gateway.Token(GatewayScopes.Interact));
+        Assert.That(await http.GetStringAsync("/sessions"), Is.EqualTo("[]"));
+        var client = gateway.Client(GatewayScopes.Interact);
+        Assert.ThrowsAsync<InvalidOperationException>(() => client.ConnectAsync(new Uri("ws://localhost/sessions/s1/stream"), Timeout()));
+        Assert.That(gateway.Pipes.Connected, Is.Zero);
+
+        // "Share my sessions" shares it.
+        gateway.Broadcast.Current = new TermBroadcastSettings { ShareAll = true };
+        Assert.That(await http.GetStringAsync("/sessions"), Does.Contain("\"id\":\"s1\""));
+    }
+
+    [Test]
+    public async Task Attaching_and_detaching_are_announced_with_who_and_how()
+    {
+        await using var gateway = await TestGateway.StartAsync();
+        var events = new System.Collections.Concurrent.BlockingCollection<TermWatchersEvent>();
+        gateway.Watchers.Changed += events.Add;
+        using (var socket = await gateway.Client(GatewayScopes.Watch).ConnectAsync(new Uri("ws://localhost/sessions/s1/stream"), Timeout()))
+        {
+            Assert.That(events.TryTake(out var attached, TimeSpan.FromSeconds(10)), Is.True);
+            Assert.That(attached!.Event, Is.EqualTo(TermWatchersEvents.Attached));
+            Assert.That(attached.Watcher!.Viewer, Is.EqualTo(Owner));
+            Assert.That(attached.Watcher.Mode, Is.EqualTo(GatewayScopes.Watch));
+            Assert.That(attached.Watchers.Single().SessionId, Is.EqualTo("s1"));
+            await socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "done", Timeout());
+        }
+        Assert.That(events.TryTake(out var detached, TimeSpan.FromSeconds(10)), Is.True);
+        Assert.That(detached!.Event, Is.EqualTo(TermWatchersEvents.Detached));
+        Assert.That(detached.Watchers, Is.Empty);
+    }
+
+    [Test]
     public async Task A_watcher_gets_the_hosts_frames_one_for_one_but_its_input_and_resize_never_reach_the_host()
     {
         await using var gateway = await TestGateway.StartAsync();
@@ -391,6 +428,13 @@ public sealed partial class GatewayTests
         public TermSessionRecord Session { get; } = GatewayTests.Session("s1");
         public TestServer Server => app.GetTestServer();
 
+        /// <summary>The owner's broadcast choices (M.ORCH-T935): by default "s1" is shared, unmasked, so the bridge's frames go
+        /// through one for one, as T933's tests expect.</summary>
+        public FixedBroadcast Broadcast { get; } = new(new TermBroadcastSettings().Share("s1", true).Mask("s1", false));
+
+        /// <summary>Who is attached; it writes no file and sends nothing on the bus.</summary>
+        public WatcherBoard Watchers { get; } = new(null, null);
+
         /// <param name="grants">The grants (M.ORCH-T934); the owner alone by default.</param>
         /// <param name="audit">Where audit records go; nowhere by default.</param>
         public static async Task<TestGateway> StartAsync(IGatewayGrants? grants = null, IGatewayAudit? audit = null, TimeSpan? auditInterval = null)
@@ -407,6 +451,8 @@ public sealed partial class GatewayTests
                 Log = new GatewayLog(null),
                 Audit = audit ?? NoAudit.Instance,
                 AuditInterval = auditInterval ?? TimeSpan.FromSeconds(10),
+                Broadcast = gateway.Broadcast,
+                Watchers = gateway.Watchers,
             };
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = [], EnvironmentName = "Testing" });
             builder.WebHost.UseTestServer();
