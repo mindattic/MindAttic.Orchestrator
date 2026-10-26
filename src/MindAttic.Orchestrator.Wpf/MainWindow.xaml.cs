@@ -346,26 +346,40 @@ public partial class MainWindow : Window
     private void LoginTabScrollRight_Click(object sender, RoutedEventArgs e) =>
         LoginTabScroller.ScrollToHorizontalOffset(LoginTabScroller.HorizontalOffset + PersonTabWidth);
 
-    /// <summary>Starts <paramref name="icon"/>'s rapid forever blink while <paramref name="on"/>, or settles it fully opaque
-    /// once it isn't, so it's solid rather than left mid-fade the next time it's shown.</summary>
-    private static void Blink(TextBlock icon, bool on) =>
-        icon.BeginAnimation(UIElement.OpacityProperty, on
-            ? new DoubleAnimation(1.0, 0.15, TimeSpan.FromSeconds(0.35)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever }
-            : new DoubleAnimation(1.0, TimeSpan.FromSeconds(0.15)));
-
-    /// <summary>A busy login tab's play icon blinks green rapidly (reversing M.ORCH-T770's calmer glow pulse, at the owner's
-    /// ask) whenever the login has a live CLI, inside the Orchestrator's Terminals panel or outside it: it fires once this
-    /// instance of the repeated <c>DataTemplate</c> loads, so one login's blink never drives another's.</summary>
-    private void TabBusyIcon_Loaded(object sender, RoutedEventArgs e)
+    /// <summary>Pulses <paramref name="icon"/>'s opacity forever while <paramref name="on"/> and the system's client-area animation
+    /// is on (reduced motion off), else clears the animation so it rests fully opaque, never left mid-fade (M.ORCH-T890).</summary>
+    private static void Flash(TextBlock icon, bool on)
     {
-        if (sender is TextBlock icon) Blink(icon, icon.IsVisible);
+        try
+        {
+            if (on && SystemParameters.ClientAreaAnimation)
+                icon.BeginAnimation(UIElement.OpacityProperty,
+                    new DoubleAnimation(1.0, 0.2, TimeSpan.FromSeconds(0.6)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever });
+            else
+            {
+                icon.BeginAnimation(UIElement.OpacityProperty, null);
+                icon.Opacity = 1.0;
+            }
+        }
+        catch (Exception) { } // a flash is decoration: never let it take the tab strip down
     }
 
-    /// <summary>The icon is only visible while its login's tab <c>IsTabBusy</c> (bound through a Visibility converter): showing
-    /// or hiding it is exactly when the blink should start or stop.</summary>
-    private void TabBusyIcon_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    /// <summary>A person tab's pause icon flashes once every open CLI of theirs has stopped (M.ORCH-T890). Each instance of the
+    /// repeated <c>DataTemplate</c> drives only its own icon; it's visible exactly while its tab <c>IsTabAllStopped</c>, so showing
+    /// or hiding it is when the flash starts or stops.</summary>
+    private void TabStoppedIcon_Loaded(object sender, RoutedEventArgs e)
     {
-        if (sender is TextBlock icon) Blink(icon, icon.IsVisible);
+        if (sender is TextBlock icon) Flash(icon, icon.IsVisible);
+    }
+
+    private void TabStoppedIcon_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (sender is TextBlock icon) Flash(icon, icon.IsVisible);
+    }
+
+    private void TabStoppedIcon_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is TextBlock icon) Flash(icon, false);
     }
 
     /// <summary>A CLI tab's right-click menu (M.ORCH-T883; Shift+F10 too): "Move to" each other signed-in login, read when it's

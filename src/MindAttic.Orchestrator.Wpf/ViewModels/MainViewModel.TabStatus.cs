@@ -160,16 +160,49 @@ public sealed partial class MainViewModel
 
     // A person's tab shows its activity icon; the 'API key' tab shows a key instead (the owner's ask, M.ORCH-T763), each with
     // its word in the tooltip and accessible name.
-    public bool IsTabIdle => IsPersonTab && TabActivity == TabActivity.Idle;
-    public bool IsTabBusy => IsPersonTab && TabActivity == TabActivity.Busy;
+    public bool IsTabIdle => IsPersonTab && TabActivity == TabActivity.Idle && !TabAllStopped;
+    public bool IsTabBusy => IsPersonTab && TabActivity == TabActivity.Busy && !TabAllStopped;
     public bool IsTabDisabled => IsPersonTab && TabActivity == TabActivity.Disabled;
 
-    /// <summary>The icon in words, so it's never only a picture: "Busy", "Idle", or why it's disabled.</summary>
+    /// <summary>Every open CLI of this person has stopped (M.ORCH-T890): the green play arrow turns into a flashing pause icon,
+    /// so it shows at a glance that all of their CLIs are done. Never with no CLI open, and never while the login is disabled.</summary>
+    public bool IsTabAllStopped => IsPersonTab && TabActivity != TabActivity.Disabled && TabAllStopped;
+
+    /// <summary>How many CLIs are open on this login when every one of them is idle; 0 when none is open or any is busy.</summary>
+    private int StoppedCliCount
+    {
+        get
+        {
+            try { return AllStoppedOf(snapshot?.Agents, snapshot?.Repos.SelectMany(r => r.Hosts)); }
+            catch (Exception) { return 0; } // never let a half-read snapshot break the tab strip
+        }
+    }
+
+    private bool TabAllStopped => StoppedCliCount > 0;
+
+    /// <summary>
+    /// The number of open CLIs when all of them are idle, else 0, judged per CLI as <c>orchestrator busy</c> does (M.ORCH-T873):
+    /// a CLI works while its turn runs, while any of its subagents runs, while it holds an /allocate claim, or while it holds on
+    /// a prompt. A Launcher tab with no CLI row behind it (no prompt typed yet, its state unread) is unknown, never idle.
+    /// </summary>
+    internal static int AllStoppedOf(IEnumerable<MindAttic.Orchestrator.Activity.AgentBoardRow>? agents, IEnumerable<HostSession>? hosts)
+    {
+        var rows = agents?.ToList() ?? [];
+        if (rows.Count == 0) return 0;
+        if (rows.Any(a => a.State != MindAttic.Orchestrator.Activity.AgentState.Waiting || a.Subagents.Count > 0 || a.Claims.Count > 0 || a.Asking))
+            return 0;
+        var covered = rows.Where(a => a.Host is not null).Select(a => a.Host!.PipeName).ToHashSet(StringComparer.Ordinal);
+        if (hosts?.Any(h => !covered.Contains(h.PipeName)) == true) return 0;
+        return rows.Count;
+    }
+
+    /// <summary>The icon in words, so it's never only a picture: "Busy", "Idle", "All N CLIs stopped", or why it's disabled.</summary>
     public string TabActivityWord => TabActivity switch
     {
+        TabActivity.Disabled => tab.IsApiKey ? "Disabled: API billing off" : tab.SignedIn ? "Disabled: past its cutoff" : "Disabled: signed out",
+        _ when IsPersonTab && StoppedCliCount is > 0 and var n => n == 1 ? "Stopped: its one open CLI is idle" : $"Stopped: all {n} open CLIs are idle",
         TabActivity.Busy => "Busy",
-        TabActivity.Idle => "Idle",
-        _ => tab.IsApiKey ? "Disabled: API billing off" : tab.SignedIn ? "Disabled: past its cutoff" : "Disabled: signed out",
+        _ => "Idle",
     };
 
     /// <summary>The play arrow's opacity: dimmed for the moment of a blink.</summary>
@@ -265,7 +298,7 @@ public sealed partial class MainViewModel
     private void RaiseTabStatus()
     {
         foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(TabTip),
-                                     nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(TabActivityWord),
+                                     nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(IsTabAllStopped), nameof(TabActivityWord),
                                      nameof(ApiKeyClis), nameof(ApiKeyCostText), nameof(TabAskingCount), nameof(TabNeedsYou) })
             Raise(name);
     }
