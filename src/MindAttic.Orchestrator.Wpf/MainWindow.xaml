@@ -116,6 +116,11 @@
         <Button x:Name="SettingsButton" Style="{StaticResource MaToolButton}" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
                 Content="&#xE713;" Command="{Binding ToggleSettingsCommand}" ToolTip="Settings"
                 AutomationProperties.Name="Settings" />
+        <!-- Tickets (M.ORCH-T878): beside the cog, Segoe's Tag glyph (E8EC) opens Tickets Desktop, or brings its window
+             forward when it's already running (TicketsApp.cs); a toast says so when it isn't installed. -->
+        <Button x:Name="TicketsButton" Style="{StaticResource MaToolButton}" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
+                Content="&#xE8EC;" Command="{Binding OpenTicketsAppCommand}" ToolTip="Open Tickets"
+                AutomationProperties.Name="Open Tickets" />
         <!-- The global Pause/Resume toggle (M.ORCH-T808): Segoe's Pause glyph (E769) while work runs; clicked and confirmed, it
              ends every Claude CLI on every login outright and holds every claim and dispatch org-wide. Paused, it shows Play
              (E768) in MaWarn, and a click resumes at once (no confirm). Bound to the shown tab's TogglePauseCommand; every tab

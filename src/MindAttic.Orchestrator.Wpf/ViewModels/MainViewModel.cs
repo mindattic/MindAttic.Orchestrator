@@ -129,6 +129,7 @@ public sealed partial class MainViewModel : ObservableObject
         // One command for every tab (M.ORCH-T654): every ticket link in the window binds it, so a tab of its own re-bound
         // each of them, the whole queue's, on every tab switch. It acts on the tab on screen.
         OpenInTicketsCommand = root?.OpenInTicketsCommand ?? new RelayCommand(p => Shown.OpenInTickets(p as string));
+        OpenTicketsAppCommand = root?.OpenTicketsAppCommand ?? new RelayCommand(() => Shown.OpenTicketsApp());
         InitPhases();
         InitTerminals();
         PendingMoves.Changed += OnMovesChanged;
@@ -165,6 +166,15 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (MindAttic.Orchestrator.Tickets.TicketsDesktop.Open(ticketId, aggregator.Options) is { } error)
             Toasts.Insert(0, new ToastViewModel("Couldn't open it in Tickets Desktop", error, Palette.Over, null));
+    }
+
+    /// <summary>The upper-right Tickets button (M.ORCH-T878): opens Tickets Desktop, or brings it forward if it's running.</summary>
+    public ICommand OpenTicketsAppCommand { get; }
+
+    private void OpenTicketsApp()
+    {
+        if (TicketsApp.OpenOrFocus(aggregator.Options) is { } error)
+            Toasts.Insert(0, new ToastViewModel("Couldn't open Tickets Desktop", error, Palette.Over, null));
     }
     public ICommand DismissToastCommand { get; }
     public ICommand OpenToastCommand { get; }

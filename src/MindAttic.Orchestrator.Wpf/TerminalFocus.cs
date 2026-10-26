@@ -61,7 +61,7 @@ public static partial class TerminalFocus
 
     /// <summary>Restores the window and makes it the foreground one. This process just took the user's click, so it may hand
     /// the foreground on; when Windows refuses anyway, the input queues are joined for the call, the usual way round it.</summary>
-    private static void Foreground(IntPtr hwnd)
+    internal static void Foreground(IntPtr hwnd)
     {
         if (IsIconic(hwnd)) ShowWindow(hwnd, SwRestore);
         if (SetForegroundWindow(hwnd)) return;
