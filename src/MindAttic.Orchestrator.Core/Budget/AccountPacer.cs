@@ -137,7 +137,7 @@ public sealed class AccountPacer
         if (pace is { IsPaced: false, SubagentAllowance: null, Stop: false })
             pace = pace with { SubagentAllowance = Math.Max(1, Math.Min(settings.MaxConcurrentSessions, settings.MaxSubagents)), Subagents = subagents };
         // The room under the stop limits a burst of new subagents (M.ORCH-T959): they spend past the stop while it waits for a tool call.
-        pace = Pacer.CapByStopHeadroom(pace, ReportedUsage.Usable(reported?.FiveHour, now)?.Percent, PaceLedger.TargetPercent);
+        pace = Pacer.CapByStopHeadroom(pace, ReportedUsage.Usable(reported?.FiveHour, now)?.Percent, Pacer.StopPercent(settings, week));
         // Let past its weekly target by the user (M.ORCH-T694): said in its pace note, which its tab shows.
         if (why is not null) pace = pace with { Note = $"{pace.Note} {why}" };
         if (write)

@@ -167,4 +167,17 @@ public sealed class PacerHelperTests
         Assert.That(Pacer.CapByStopHeadroom(Allowing(0), 98, 99).SubagentAllowance, Is.Zero);
         Assert.That(Pacer.CapByStopHeadroom(Allowing(4, stop: true), 98, 99).SubagentAllowance, Is.EqualTo(4));
     }
+
+    [Test]
+    public void The_stop_is_the_lowest_of_the_hooks_stop_the_pace_target_and_the_weekly_ceiling()
+    {
+        // M.ORCH-T1003: the headroom was measured to a fixed 99%.
+        Assert.That(Pacer.StopPercent(new OrchestratorSettings()), Is.EqualTo(98), "the default pace target");
+        Assert.That(Pacer.StopPercent(new OrchestratorSettings { PaceTargetPercent = 90 }), Is.EqualTo(90), "a member's own 5-hour cutoff");
+        Assert.That(Pacer.StopPercent(new OrchestratorSettings { PaceTargetPercent = 100 }), Is.EqualTo(PaceLedger.TargetPercent), "never past the hooks' stop");
+        var week = new WeeklyCap(80, null, null, 72.5, 3, 98);
+        Assert.That(Pacer.StopPercent(new OrchestratorSettings(), week), Is.EqualTo(72.5), "the week's ceiling, at full precision");
+        // At a 90% stop and 84% used, 2 more fit, not 5.
+        Assert.That(Pacer.CapByStopHeadroom(Allowing(5), 84, Pacer.StopPercent(new OrchestratorSettings { PaceTargetPercent = 90 })).SubagentAllowance, Is.EqualTo(2));
+    }
 }

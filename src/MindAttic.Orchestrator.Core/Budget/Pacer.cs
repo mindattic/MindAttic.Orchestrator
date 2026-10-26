@@ -312,6 +312,20 @@ public static class Pacer
         return pace with { SubagentAllowance = raised, UnderTargetPercent = Math.Max(0, u.ProjectedEndPercent), TargetPercent = u.TargetPercent };
     }
 
+    /// <summary>
+    /// Where this login's 5-hour window really stops, as a percent of Claude's meter, for <see cref="CapByStopHeadroom"/>
+    /// (M.ORCH-T1003: it was handed the hooks' fixed 99%, so at a 90% stop and 84% used it let 5 subagents start, not 2): the
+    /// lowest of the hooks' own stop (<see cref="PaceLedger.TargetPercent"/>), the pace target <paramref name="s"/> carries (its
+    /// <see cref="OrchestratorSettings.PaceTargetPercent"/>, a member's own 5-hour cutoff already laid over it) and, while the week
+    /// caps the window, its ceiling. At full precision: nothing here is rounded.
+    /// </summary>
+    public static double StopPercent(OrchestratorSettings s, WeeklyCap? week = null)
+    {
+        var stop = Math.Min(PaceLedger.TargetPercent, Math.Clamp(s.PaceTargetPercent, 1, 100));
+        if (week is { Capped: true, CeilingPercent: { } ceiling }) stop = Math.Min(stop, Math.Max(0, ceiling));
+        return stop;
+    }
+
     /// <summary>The points of the 5-hour window one more subagent is assumed to spend before the stop can reach it (M.ORCH-T959:
     /// four subagents started together at 88% burned the window to Claude's 100% in the 7 minutes the 99% stop needed to land).</summary>
     public const double HeadroomPerSubagentPercent = 3;
@@ -334,7 +348,7 @@ public static class Pacer
         return pace with
         {
             SubagentAllowance = capped,
-            Note = $"{pace.Note} Claude reports the window at {p:0}%, {Math.Max(0, stopPercent - p):0} points under the {stopPercent:0}% stop: no more than {capped} subagent{(capped == 1 ? "" : "s")} at once, so a burst can't run past the stop.",
+            Note = $"{pace.Note} Claude reports the window at {p:0.#}%, {Math.Max(0, stopPercent - p):0.#} points under the {stopPercent:0.#}% stop: no more than {capped} subagent{(capped == 1 ? "" : "s")} at once, so a burst can't run past the stop.",
         };
     }
 
