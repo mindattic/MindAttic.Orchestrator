@@ -159,6 +159,61 @@ public sealed class TerminalPaneViewModel : ObservableObject
         return timer;
     }
 
+    // ── remote broadcast (M.ORCH-T935) ──────────────────────────────────────────
+
+    private IReadOnlyList<TermWatcher> watchers = [];
+    private bool shared, broadcastPaused, masked = true;
+
+    /// <summary>The remote viewers attached to it through the team gateway now.</summary>
+    public IReadOnlyList<TermWatcher> Watchers => watchers;
+
+    public bool IsWatched => watchers.Count > 0;
+
+    /// <summary>Shared with remote viewers (on its own, or by "share my sessions"). Off by default.</summary>
+    public bool IsShared => shared;
+
+    /// <summary>Its remote broadcast is paused: remote viewers see "paused by owner" and nothing else.</summary>
+    public bool IsBroadcastPaused => broadcastPaused;
+
+    /// <summary>Secrets are masked on its remote streams (the default).</summary>
+    public bool IsMasked => masked;
+
+    /// <summary>The "being watched" banner shows while someone is attached remotely or its broadcast is paused.</summary>
+    public bool ShowBroadcastBanner => IsHosted && (IsWatched || broadcastPaused);
+
+    /// <summary>The banner's text: who is watching, how, and whether it's paused or unmasked.</summary>
+    public string BroadcastText
+    {
+        get
+        {
+            var who = string.Join(", ", watchers.Select(w => $"{w.Viewer} ({(w.Mode == "interact" ? "can type" : "watching")}{(w.From is { Length: > 0 } f ? $", from {f}" : "")})"));
+            var text = watchers.Count == 0 ? "No one is watching remotely." : $"Being watched remotely by {who}.";
+            if (broadcastPaused) text += " Broadcast paused: remote viewers see nothing until you resume.";
+            else if (!masked) text += " Secrets are NOT masked for remote viewers.";
+            return text;
+        }
+    }
+
+    public string PauseButtonText => broadcastPaused ? "Resume broadcast" : "Pause broadcast";
+
+    /// <summary>Applies the owner's broadcast choices and the gateway's attached viewers to this tab.</summary>
+    internal void SetBroadcast(TermBroadcastSettings settings, IReadOnlyList<TermWatcher> all)
+    {
+        var id = TermId;
+        List<TermWatcher> mine = id is null ? [] : all.Where(w => string.Equals(w.SessionId, id, StringComparison.OrdinalIgnoreCase)).ToList();
+        var changed = mine.Count != watchers.Count || !mine.Select(w => w.Connection).SequenceEqual(watchers.Select(w => w.Connection));
+        watchers = mine;
+        changed |= Set(ref shared, id is not null && settings.IsShared(id), nameof(IsShared));
+        changed |= Set(ref broadcastPaused, id is not null && settings.IsPaused(id), nameof(IsBroadcastPaused));
+        changed |= Set(ref masked, id is null || settings.IsMasked(id), nameof(IsMasked));
+        if (!changed) return;
+        Raise(nameof(Watchers));
+        Raise(nameof(IsWatched));
+        Raise(nameof(ShowBroadcastBanner));
+        Raise(nameof(BroadcastText));
+        Raise(nameof(PauseButtonText));
+    }
+
     /// <summary>The process its CLI runs under: the TermHost for a hosted tab (the Launcher host and the CLI are its
     /// descendants), else the process ConPTY started (the PowerShell that runs the command); null before it starts.</summary>
     internal int? RootPid => Relay is not null ? Session?.HostPid : (Local?.ConPTYTerm?.Process as ProcessFactory.WrappedProcess)?.Pid;
@@ -363,6 +418,94 @@ public sealed class TerminalsViewModel : ObservableObject
 
     public ICommand CloseCommand { get; }
 
+    // ── remote broadcast (M.ORCH-T935) ──────────────────────────────────────────
+
+    private TermBroadcastSettings broadcast = new();
+    private IReadOnlyList<TermWatcher> remoteWatchers = [];
+    private ICommand? toggleShareCommand, toggleMaskCommand, togglePauseCommand, pauseAllCommand, shareAllCommand;
+
+    /// <summary>Where <c>broadcast.json</c> and <c>watchers.json</c> are (the gateway's folder); tests use their own.</summary>
+    internal string? BroadcastDirectory { get; init; }
+
+    /// <summary>"Share my sessions": every session is shared with remote viewers unless it says otherwise.</summary>
+    public bool ShareAll => broadcast.ShareAll;
+
+    /// <summary>Every session's remote broadcast is paused.</summary>
+    public bool PauseAll => broadcast.PauseAll;
+
+    /// <summary>Shares the tab (its parameter, else the shown one) remotely, or stops sharing it.</summary>
+    public ICommand ToggleShareCommand => toggleShareCommand ??= new RelayCommand(p =>
+    {
+        if (BroadcastId(p) is { } id) ChangeBroadcast(s => s.Share(id, !s.IsShared(id)));
+    });
+
+    /// <summary>Turns masking of secrets on the tab's remote streams off, or back on.</summary>
+    public ICommand ToggleMaskCommand => toggleMaskCommand ??= new RelayCommand(p =>
+    {
+        if (BroadcastId(p) is { } id) ChangeBroadcast(s => s.Mask(id, !s.IsMasked(id)));
+    });
+
+    /// <summary>Pauses the tab's remote broadcast, or resumes it (Ctrl+Shift+B on the shown one). Resuming a tab while every
+    /// session is paused resumes them all.</summary>
+    public ICommand TogglePauseCommand => togglePauseCommand ??= new RelayCommand(p =>
+    {
+        if (BroadcastId(p) is not { } id) return;
+        ChangeBroadcast(s => !s.IsPaused(id) ? s.Pause(id, true, DateTime.UtcNow)
+            : s.PauseAll ? s.PauseEvery(false, DateTime.UtcNow) : s.Pause(id, false, DateTime.UtcNow));
+    });
+
+    /// <summary>Pauses every session's remote broadcast, or resumes them all.</summary>
+    public ICommand PauseAllCommand => pauseAllCommand ??= new RelayCommand(() => ChangeBroadcast(s => s.PauseEvery(!s.PauseAll, DateTime.UtcNow)));
+
+    /// <summary>Turns "share my sessions" on or off.</summary>
+    public ICommand ShareAllCommand => shareAllCommand ??= new RelayCommand(() => ChangeBroadcast(s => s with { ShareAll = !s.ShareAll }));
+
+    private string? BroadcastId(object? parameter) => (parameter as TerminalPaneViewModel ?? SelectedPane)?.TermId;
+
+    /// <summary>A <c>term-watchers</c> bus message (UI thread): who is attached remotely now. Never throws.</summary>
+    public void OnWatchers(TermWatchersEvent message)
+    {
+        try
+        {
+            remoteWatchers = message.Watchers ?? [];
+            ApplyBroadcast();
+        }
+        catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Handling a term-watchers message failed; contained"); }
+    }
+
+    /// <summary>Rereads the owner's broadcast choices and the gateway's attached viewers (each refresh, and on start).</summary>
+    internal void ReadBroadcast()
+    {
+        try
+        {
+            broadcast = TermBroadcast.Read(BroadcastDirectory);
+            remoteWatchers = TermWatchersBus.Current(BroadcastDirectory);
+            ApplyBroadcast();
+        }
+        catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Reading the broadcast settings failed; contained"); }
+    }
+
+    private void ChangeBroadcast(Func<TermBroadcastSettings, TermBroadcastSettings> change)
+    {
+        try
+        {
+            if (TermBroadcast.Update(change, BroadcastDirectory) is { } now) broadcast = now;
+            else OrchestratorLog.For("Terminals").Warning("Couldn't write the broadcast settings");
+            ApplyBroadcast();
+        }
+        catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Changing the broadcast settings failed; contained"); }
+    }
+
+    private void ApplyBroadcast()
+    {
+        foreach (var pane in Panes) pane.SetBroadcast(broadcast, remoteWatchers);
+        Raise(nameof(ShareAll));
+        Raise(nameof(PauseAll));
+        Raise(nameof(PauseAllText));
+    }
+
+    public string PauseAllText => broadcast.PauseAll ? "Resume all" : "Pause all";
+
     /// <summary>Opens <paramref name="request"/> as a new terminal tab and brings it up; returns an error, or null. Its CLI
     /// starts in a TermHost off the UI thread and the tab attaches once it registers; without a host, or when it fails, the
     /// tab runs the CLI in this process instead (logged).</summary>
@@ -449,6 +592,7 @@ public sealed class TerminalsViewModel : ObservableObject
                 return live.Select(s => (Session: s, Request: TermPaneFile.Read(s.Id))).ToList();
             });
             foreach (var (session, request) in sessions) Reattach(session, request);
+            ReadBroadcast();
         }
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Reattaching the hosted CLIs failed; contained"); }
     }
@@ -518,7 +662,8 @@ public sealed class TerminalsViewModel : ObservableObject
     public void Update(Snapshot? snapshot)
     {
         if (Panes.Count == 0) return;
-        var hosts = snapshot?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
+        ReadBroadcast();
+        var hosts =snapshot?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
         var moved = false;
         var learned = false;
         IReadOnlyDictionary<int, int>? parents = null;

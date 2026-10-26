@@ -84,6 +84,8 @@ public partial class MainWindow : Window
         PreviewKeyDown += TerminalPaste.OnPreviewKeyDown;
         // Ctrl+C / Ctrl+X with a selection copy / cut it (M.ORCH-T867, M.ORCH-T866); with none they still reach the CLI (^C, ^X).
         PreviewKeyDown += TerminalCopy.OnPreviewKeyDown;
+        // Ctrl+Shift+B pauses or resumes the shown CLI's remote broadcast (M.ORCH-T935), even while its terminal holds focus.
+        PreviewKeyDown += OnBroadcastKey;
         // Only the kept chords act while a terminal holds focus (M.ORCH-T846): the zoom keys and Esc go to the CLI.
         TerminalKeyboard.GateBindings(this, TerminalPanesHost);
         // Focus stays on the shown CLI's terminal (M.ORCH-T846): back to it after the window is activated, a person's tab is
@@ -186,6 +188,8 @@ public partial class MainWindow : Window
             .On<Status.ShowWorkerRequest>(Status.AppBus.ShowWorker, (_, request) => OnShowWorker(request), Status.AppBus.Version);
         // Hosted CLIs (M.ORCH-T926): one started elsewhere (the Launcher, M.LNCH-T82) gets a tab, one that ended is marked ended.
         bus.On<Term.TermSessionEvent>(Term.TermBus.Kind, (_, session) => model.AllTerminals.OnTermSession(session), Term.TermBus.Version);
+        // Remote viewers attaching and detaching through the team gateway (M.ORCH-T935): the "being watched" banner.
+        bus.On<Term.TermWatchersEvent>(Term.TermWatchersBus.Kind, (_, watchers) => model.AllTerminals.OnWatchers(watchers), Term.TermWatchersBus.Version);
         // The roster, the orgs, the settings, the pause and the reminders (M.ORCH-T891), pushed by whoever changed them: with
         // these, nothing the dashboard shows needs a timed read while the stream is up.
         bus.On<Status.MembersPayload>(Status.StateBus.Members, (_, p) => OnPushedState(p), Status.StateBus.Version)
@@ -474,6 +478,7 @@ public partial class MainWindow : Window
             var agent = pane.HostPid is { } host ? tab.AgentOfHost(host) : null;
             var menu = DropdownMenu(container, $"Move the {pane.Name} CLI to", placement);
             AddPopOutItems(menu, pane);
+            AddBroadcastItems(menu, pane);
             if (agent is null)
             {
                 var wait = DropdownItem("Move to");
@@ -568,6 +573,37 @@ public partial class MainWindow : Window
                 + "Every CLI not started on a login of its own follows at its next turn. Billing goes back to Claude Team first if the API key bills.",
                 tab.MakeDefaultCommand);
         menu.IsOpen = true;
+    }
+
+    /// <summary>Ctrl+Shift+B (M.ORCH-T935): pauses or resumes the shown CLI's remote broadcast, wherever focus is.</summary>
+    private void OnBroadcastKey(object sender, KeyEventArgs e)
+    {
+        if (e.Handled || e.Key != Key.B || Keyboard.Modifiers != (ModifierKeys.Control | ModifierKeys.Shift)) return;
+        if (model.AllTerminals.SelectedPane is not { IsHosted: true } pane) return;
+        model.AllTerminals.TogglePauseCommand.Execute(pane);
+        e.Handled = true;
+    }
+
+    /// <summary>The broadcast items of a hosted CLI tab's right-click menu (M.ORCH-T935): share it with remote viewers, mask
+    /// secrets on its remote streams, pause its broadcast, and "share my sessions".</summary>
+    private void AddBroadcastItems(ContextMenu menu, TerminalPaneViewModel pane)
+    {
+        if (!pane.IsHosted || pane.TermId is null) return;
+        var all = model.AllTerminals;
+        void Add(string header, bool isChecked, string tip, ICommand command, object? parameter)
+        {
+            var item = DropdownItem(header);
+            item.IsCheckable = true;
+            item.IsChecked = isChecked;
+            item.ToolTip = tip;
+            item.Click += (_, _) => { if (command.CanExecute(parameter)) command.Execute(parameter); };
+            menu.Items.Add(item);
+        }
+        Add("Share with remote viewers", pane.IsShared, "Let the team gateway show this CLI to remote viewers you've granted (off by default)", all.ToggleShareCommand, pane);
+        Add("Mask secrets for remote viewers", pane.IsMasked, "Hide API keys, tokens, private keys and Vault-held values on remote streams (on by default; never on this screen)", all.ToggleMaskCommand, pane);
+        Add("Pause broadcast", pane.IsBroadcastPaused, "Remote viewers see \"paused by owner\" and nothing else until you resume (Ctrl+Shift+B)", all.TogglePauseCommand, pane);
+        Add("Share all my sessions", all.ShareAll, "Share every CLI with remote viewers unless one says otherwise", all.ShareAllCommand, null);
+        menu.Items.Add(new Separator());
     }
 
     /// <summary>The library's dark dropdown (M.ORCH-T667): a bare ContextMenu and MenuItem draw WPF's light system menu.</summary>

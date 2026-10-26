@@ -273,6 +273,14 @@
                                         Visibility="{Binding Badge, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                             <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
                             <TextBlock Text="{Binding StateText}" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" />
+                            <!-- Shared with remote viewers (M.ORCH-T935), and an eye while someone watches it remotely. -->
+                            <TextBlock x:Name="TerminalSharedGlyph" Text="&#xE72D;" FontFamily="Segoe MDL2 Assets" FontSize="11" Style="{StaticResource MaMutedText}"
+                                       Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" ToolTip="Shared with remote viewers (right-click to change)"
+                                       Visibility="{Binding IsShared, Converter={StaticResource Visible}}" />
+                            <TextBlock x:Name="TerminalWatchedGlyph" Text="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource MaWarn}"
+                                       Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" ToolTip="{Binding BroadcastText}"
+                                       AutomationProperties.Name="Being watched remotely"
+                                       Visibility="{Binding IsWatched, Converter={StaticResource Visible}}" />
                             <Button x:Name="TerminalCloseButton" Style="{StaticResource MaToolButton}" Content="&#xE711;" Margin="8,-4,0,-4"
                                     Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
                                     Command="{Binding DataContext.Terminals.CloseCommand, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}"
@@ -283,6 +291,28 @@
                     </DataTemplate>
                 </mc:MaTabControl.ItemTemplate>
             </mc:MaTabControl>
+            <!-- "Being watched" (M.ORCH-T935): while a remote viewer is attached to the shown CLI through the team gateway, or its
+                 broadcast is paused, who is watching and how, with Pause broadcast (Ctrl+Shift+B, even while the terminal holds
+                 focus) and Pause all. Pausing never touches this dashboard's own view. Sharing, masking and "share my sessions"
+                 are on the CLI tab's right-click menu. -->
+            <Border x:Name="BroadcastBanner" DataContext="{Binding Terminals.SelectedPane}" Margin="{StaticResource SpaceBS}" Padding="8,4"
+                    BorderThickness="1" BorderBrush="{DynamicResource MaWarn}" CornerRadius="4"
+                    Visibility="{Binding ShowBroadcastBanner, Converter={StaticResource Visible}, FallbackValue=Collapsed}"
+                    AutomationProperties.Name="Remote viewers" AutomationProperties.LiveSetting="Assertive">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="BroadcastPauseButton" Style="{StaticResource MaButton}" Content="{Binding PauseButtonText}"
+                                Command="{Binding DataContext.AllTerminals.TogglePauseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="{Binding}" ToolTip="Pause or resume what remote viewers see of this CLI (Ctrl+Shift+B)" />
+                        <Button x:Name="BroadcastPauseAllButton" Style="{StaticResource MaButton}" Margin="{StaticResource SpaceLS}"
+                                Content="{Binding DataContext.AllTerminals.PauseAllText, RelativeSource={RelativeSource AncestorType=Window}}"
+                                Command="{Binding DataContext.AllTerminals.PauseAllCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                ToolTip="Pause or resume what remote viewers see of every CLI" />
+                    </StackPanel>
+                    <TextBlock Text="&#xE7B3;" FontFamily="Segoe MDL2 Assets" Foreground="{DynamicResource MaWarn}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <TextBlock x:Name="BroadcastText" Text="{Binding BroadcastText}" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource MaWarn}" />
+                </DockPanel>
+            </Border>
         </StackPanel>
         <!-- The chosen terminal, in its own fixed row right under the terminal tabs (M.ORCH-T861), outside the scrolling body:
              shown on a signed-in person's page that has a terminal, like the tabs above. -->

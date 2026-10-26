@@ -135,6 +135,7 @@ internal static class CliApp
                     r.AddCommand<GatewayRemoteListCommand>("list").WithDescription("List the teammates' gateways: name, person, URL, pin and when each token expires; --check also asks each for its sessions.");
                 });
             });
+            config.AddCommand<BroadcastCommand>("broadcast").WithDescription("What the team gateway shows remote viewers (M.ORCH-T935), nothing by default: share|unshare|pause|resume <session|all>, mask|unmask <session>; without an action, every hosted session's choices and who is watching.");
             config.AddCommand<BillingCommand>("billing").WithDescription("Who every CLI bills (Claude Team or the Vault's API key) and each open CLI's own billing; team or api switches every CLI.");
             config.AddBranch("accounts", a =>
             {
