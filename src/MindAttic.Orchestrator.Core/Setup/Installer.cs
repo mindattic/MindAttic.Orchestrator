@@ -135,12 +135,24 @@ public sealed class Installer
             catch (InvalidOperationException) { }
             throw;
         }
+        CleanupTermHosts();
         // The old-named exe is left in place on purpose: Scheduler's logon job, the Launcher and Tickets Desktop's links still
         // start it by that name, and a deleted file would leave the daemon off at the next logon until they move to the new name.
     }
 
+    /// <summary>Deletes the TermHost versions older than the newest that no process runs from (M.ORCH-T932). The daemon repeats it
+    /// on a slow tick, for the versions that were still in use now. Never throws.</summary>
+    public void CleanupTermHosts()
+    {
+        try { Term.TermHostInstalls.Cleanup(Term.TermHostInstalls.Root(InstallDir)); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException) { }
+    }
+
     private string LegacyExe => Path.Combine(InstallDir, LegacyExeName);
 
+    /// <summary>Stops the installed dashboard and daemon, by their exact exe paths. Never a TermHost (M.ORCH-T932): it is a different
+    /// exe name under <c>TermHost\&lt;version&gt;\</c>, each running CLI keeps its host across an upgrade, and the path check below
+    /// leaves anything under that folder alone.</summary>
     public void StopInstalledCopies()
     {
         Run("schtasks", "/End", "/TN", LegacyTaskName);

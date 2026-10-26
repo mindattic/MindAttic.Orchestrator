@@ -90,6 +90,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         var knownStuck = new HashSet<string>(StringComparer.Ordinal);
         var lastStates = new Dictionary<string, RepoState>(StringComparer.OrdinalIgnoreCase);
         var tick = new TickTimer();
+        var termHostsCleanedUtc = DateTime.MinValue;
         while (!cancel.IsCancellationRequested)
         {
             tick.Start();
@@ -135,6 +136,13 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 tick.Lap("process reaper");
                 PruneSessionTempIfDue(cycler);
                 tick.Lap("ended sessions' temp folders");
+                // Old side-by-side TermHost versions, once the CLIs still running on them have ended (M.ORCH-T932).
+                if (DateTime.UtcNow - termHostsCleanedUtc >= TimeSpan.FromMinutes(30))
+                {
+                    termHostsCleanedUtc = DateTime.UtcNow;
+                    foreach (var name in Term.TermHostInstalls.Cleanup(Term.TermHostInstalls.Root(new Setup.Installer().InstallDir)))
+                        Say(LogEventLevel.Information, $"removed the unused TermHost {name}");
+                }
 
                 cycler.PruneMarks();
                 var roster = CliRoster.Build(cycler, aggregator.BillingSwitch, [.. snapshot.Repos.SelectMany(r => r.Hosts)], DateTime.UtcNow);

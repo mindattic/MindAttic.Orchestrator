@@ -22,6 +22,11 @@
     <PackageReference Include="System.Management" Version="10.0.0" />
   </ItemGroup>
 
+  <!-- M.ORCH-T932: the side-by-side TermHost resolver and cleanup live in the dependency-free Term library. -->
+  <ItemGroup>
+    <ProjectReference Include="..\MindAttic.Orchestrator.Term\MindAttic.Orchestrator.Term.csproj" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="MindAttic.Orchestrator.Tests" />
   </ItemGroup>

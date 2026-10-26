@@ -70,6 +70,15 @@ public enum TermModes : uint
     SyncOutput = 128,
 }
 
+/// <summary>How a host's protocol compares to the ones a viewer speaks.</summary>
+public enum TermCompatStatus { Compatible, HostTooNew, HostTooOld }
+
+/// <summary>The result of <see cref="TermProtocol.Check"/>: <see cref="Message"/> is empty when compatible, else a clear status for the user.</summary>
+public sealed record TermCompatibility(TermCompatStatus Status, ushort HostProtocol, string Message)
+{
+    public bool Ok => Status == TermCompatStatus.Compatible;
+}
+
 /// <summary>A decoded Replay frame. <see cref="Data"/> is the ring, <see cref="Reassert"/> the modes and title to write after it.</summary>
 public sealed record TermReplay(ushort Cols, ushort Rows, TermModes Modes, byte[] Data, byte[] Reassert);
 
@@ -84,6 +93,26 @@ public static class TermProtocol
 {
     /// <summary>The protocol this build speaks.</summary>
     public const ushort Version = 1;
+
+    /// <summary>
+    /// Every protocol this build's viewer can speak (M.ORCH-T932). TermHost installs side by side and a running host keeps its
+    /// binary across upgrades, so hosts of several protocols run at once. A viewer must keep speaking every version still
+    /// running: drop a number from here only once no host of it can still be running (its folder is cleaned up, see
+    /// <see cref="TermHostInstalls"/>), and add the new one when <see cref="Version"/> is bumped. A bump that changes frames
+    /// a viewer reads needs the viewer to branch on the host's Hello protocol.
+    /// </summary>
+    public static readonly IReadOnlyList<ushort> Supported = [1];
+
+    /// <summary>Whether a viewer that speaks <see cref="Supported"/> can talk to a host that answered Hello with
+    /// <paramref name="hostProtocol"/>. Never throws: an unknown future version is <see cref="TermCompatStatus.HostTooNew"/>,
+    /// shown to the user as its message instead of crashing the viewer.</summary>
+    public static TermCompatibility Check(ushort hostProtocol) =>
+        Supported.Contains(hostProtocol) ? new(TermCompatStatus.Compatible, hostProtocol, "")
+        : hostProtocol > Supported.Max()
+            ? new(TermCompatStatus.HostTooNew, hostProtocol,
+                $"This session's terminal host speaks protocol {hostProtocol}, newer than this dashboard understands ({Supported.Max()}). Update the dashboard to attach; the CLI keeps running.")
+            : new(TermCompatStatus.HostTooOld, hostProtocol,
+                $"This session's terminal host speaks protocol {hostProtocol}, which this dashboard no longer supports. Close the session to move to the current host.");
 
     /// <summary>The largest frame either side accepts.</summary>
     public const int MaxPayload = 64 * 1024 * 1024;

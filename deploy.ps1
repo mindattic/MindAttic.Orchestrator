@@ -63,6 +63,8 @@ $props      = Join-Path $repo 'Directory.Build.props'
 $coreDir    = Join-Path $repo 'src\MindAttic.Orchestrator.Core'
 $wpfDir     = Join-Path $repo 'src\MindAttic.Orchestrator.Wpf'
 $cliDir     = Join-Path $repo 'src\MindAttic.Orchestrator.Cli'
+$termDir    = Join-Path $repo 'src\MindAttic.Orchestrator.Term'
+$termHostDir = Join-Path $repo 'src\MindAttic.Orchestrator.TermHost'
 $artifact   = Join-Path $repo 'artifacts\MindAttic.Orchestrator.Desktop.exe'
 $appDir     = 'C:\Apps\MindAttic.Orchestrator'
 $cliOut     = Join-Path $appDir 'Cli'
@@ -85,6 +87,8 @@ function Test-Stale([string]$output, [string[]]$dirs) {
     return $false
 }
 
+# Matches the process name exactly (never a wildcard), so MindAttic.Orchestrator.TermHost is never caught: running CLIs keep their
+# host across a redeploy (M.ORCH-T932).
 function Stop-From([string]$name, [string]$dir) {
     foreach ($p in @(Get-Process -Name $name -ErrorAction SilentlyContinue |
             Where-Object { $_.Path -and $_.Path.StartsWith($dir, [System.StringComparison]::OrdinalIgnoreCase) })) {
@@ -159,6 +163,17 @@ function Copy-Published([string]$from, [string]$to) {
             throw
         }
     }
+}
+
+# The newest installed TermHost exe under C:\Apps\MindAttic.Orchestrator\TermHost\<version>\ (M.ORCH-T932), or $null. Folders are
+# named <major.minor.patch>-<yyyyMMddHHmmss>, so the newest sorts last by version, then stamp (TermHostInstalls.Newest does the same).
+function Get-NewestTermHost {
+    $root = Join-Path $appDir 'TermHost'
+    if (-not (Test-Path -LiteralPath $root)) { return $null }
+    Get-ChildItem -LiteralPath $root -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match '^\d+\.\d+\.\d+(-\d{14})?$' -and (Test-Path -LiteralPath (Join-Path $_.FullName 'MindAttic.Orchestrator.TermHost.exe')) } |
+        Sort-Object @{ Expression = { [version](($_.Name -split '-')[0]) } }, @{ Expression = { ($_.Name -split '-', 2)[1] } } |
+        Select-Object -Last 1 | ForEach-Object { Join-Path $_.FullName 'MindAttic.Orchestrator.TermHost.exe' }
 }
 
 function Find-Installed {
@@ -279,6 +294,46 @@ if (Test-Stale $cliExe @($cliDir, $coreDir)) {
         (Get-Item $cliExe).LastWriteTimeUtc = [DateTime]::UtcNow
         Write-Host "Deployed $cliExe" -ForegroundColor Green
     }
+}
+
+# ── TermHost, side by side (M.ORCH-T932) ────────────────────────────────────
+# Each build goes into its own TermHost\<version>\ folder and is never copied over another: running CLIs keep the host binary they
+# started on, new sessions start on the newest. Nothing here stops a TermHost, and nothing deletes an old folder: the installer and
+# the daemon do that once no process runs from it. A build whose code matches the newest installed one adds no folder.
+$termHostRoot = Join-Path $appDir 'TermHost'
+$termHostNewest = Get-NewestTermHost
+if ((-not $termHostNewest) -or (Test-Stale $termHostNewest @($termHostDir, $termDir))) {
+    $termStage = Join-Path $appDir 'TermHost.staging'
+    if (Test-Path $termStage) { Remove-Item -Recurse -Force $termStage }
+    Write-Host "Publishing TermHost -> $termHostRoot" -ForegroundColor Cyan
+    dotnet publish (Join-Path $termHostDir 'MindAttic.Orchestrator.TermHost.csproj') --configuration Release --output $termStage | Out-Host
+    $stageExe = Join-Path $termStage 'MindAttic.Orchestrator.TermHost.exe'
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $stageExe)) { Write-Host 'Publishing TermHost FAILED.' -ForegroundColor Red; $failed = $true }
+    else {
+        $stageDll = Join-Path $termStage 'MindAttic.Orchestrator.TermHost.dll'
+        $same = $false
+        if ($termHostNewest) {
+            $newestDll = Join-Path (Split-Path $termHostNewest) 'MindAttic.Orchestrator.TermHost.dll'
+            $same = (-not $Force) -and (Test-Path $newestDll) -and (Get-FileHash $newestDll).Hash -eq (Get-FileHash $stageDll).Hash
+        }
+        if ($same) {
+            # Touched, so the next deploy doesn't republish the same code just because the source files are newer.
+            (Get-Item $termHostNewest).LastWriteTimeUtc = [DateTime]::UtcNow
+            Write-Host 'TermHost is unchanged; the newest installed version stays.' -ForegroundColor DarkGray
+        } else {
+            $ver = [version](Get-Item $stageExe).VersionInfo.FileVersion
+            $name = '{0}.{1}.{2}-{3}' -f $ver.Major, $ver.Minor, [Math]::Max(0, $ver.Build), [DateTime]::UtcNow.ToString('yyyyMMddHHmmss')
+            $target = Join-Path $termHostRoot $name
+            try {
+                New-Item -ItemType Directory -Force $termHostRoot | Out-Null
+                if (Test-Path -LiteralPath $target) { throw "$target already exists; a version folder is never overwritten." }
+                # Moved into place whole, so a host start never sees a half-copied version.
+                Move-Item -LiteralPath $termStage -Destination $target -ErrorAction Stop
+                Write-Host "Installed TermHost $name" -ForegroundColor Green
+            } catch { Write-Host "Installing TermHost failed: $($_.Exception.Message)" -ForegroundColor Red; $failed = $true }
+        }
+    }
+    Remove-Item -Recurse -Force $termStage -ErrorAction SilentlyContinue
 }
 
 # ── Install, as a double-click would ────────────────────────────────────────
