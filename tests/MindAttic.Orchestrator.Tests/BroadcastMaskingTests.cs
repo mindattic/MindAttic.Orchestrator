@@ -288,6 +288,50 @@ public sealed class BroadcastMaskingTests
         Assert.That(Encoding.UTF8.GetString(masker.Flush(maskCandidate: true)), Is.EqualTo("ghp_" + Bullets(8)));
     }
 
+    // ── replay and short-value gaps (M.ORCH-T1039) ──────────────────────────────
+
+    [Test]
+    public void A_token_half_printed_at_attach_is_masked_in_the_replay_and_its_rest_as_it_comes()
+    {
+        var token = Fake("sk-ant-api03-", 40);
+        var masker = new StreamMasker(SecretMasker.ShapesOnly);
+        var replay = Encoding.UTF8.GetString(masker.ProcessReplay(Encoding.UTF8.GetBytes("echo " + token[..17])));
+        Assert.That(masker.HasPending, Is.False, "a replay goes whole");
+        Assert.That(replay, Is.EqualTo("echo sk-" + Bullets(14)));
+        var live = new List<byte>(masker.Process(Encoding.UTF8.GetBytes(token[17..] + "\r\n")));
+        live.AddRange(masker.Flush());
+        Assert.That(Encoding.UTF8.GetString(live.ToArray()), Is.EqualTo(Bullets(token.Length - 17) + "\r\n"));
+    }
+
+    [Test]
+    public void The_rest_of_a_short_password_masked_when_its_hold_ran_out_is_masked_too()
+    {
+        // A short value fails the 16-character test, so once its hold has run out nothing else would mask what follows.
+        var time = new ManualTime();
+        var masker = new StreamMasker(SecretMasker.ShapesOnly, time);
+        var output = new List<byte>(masker.Process("password: Fx7"u8));
+        time.Now += StreamMasker.MaxCandidateHold + TimeSpan.FromMilliseconds(1);
+        output.AddRange(masker.FlushDue());
+        Assert.That(Encoding.UTF8.GetString(output.ToArray()), Is.EqualTo("password: " + Bullets(3)));
+        output.AddRange(masker.Process("qz \r\nnext line\r\n"u8));
+        output.AddRange(masker.Flush());
+        Assert.That(Encoding.UTF8.GetString(output.ToArray()), Is.EqualTo("password: " + Bullets(5) + " \r\nnext line\r\n"),
+            "the run is masked to its end, and only to its end");
+    }
+
+    [Test]
+    public async Task The_bridge_masks_a_token_half_printed_in_the_replay_and_its_rest_in_live_output()
+    {
+        var token = Fake("sk-ant-api03-", 40);
+        var control = new FixedBroadcast(new TermBroadcastSettings { ShareAll = true });
+        await using var bridge = await Bridge.StartAsync(control, GatewayAccess.Watch);
+        await bridge.HandshakeAsync("echo " + token[..17]);
+        var replay = TermProtocol.ReadReplay(bridge.Replay!)!;
+        Assert.That(Encoding.UTF8.GetString(replay.Data), Is.EqualTo("echo sk-" + Bullets(14)));
+        await bridge.HostSendAsync(TermFrameKind.Output, token[17..] + "\r\n");
+        Assert.That(await bridge.ReceiveOutputUntilAsync("\r\n"), Is.EqualTo(Bullets(token.Length - 17) + "\r\n"));
+    }
+
     // ── over-masking guards (M.ORCH-T1038) ──────────────────────────────────────
 
     [Test]

@@ -294,7 +294,8 @@ internal static class TermBridge
                     }
                     else if (settings.HistoryFenced(id, b.StartedUtc))
                         (data, reassert) = (FencedNotice, masked ? masker.Process(replay.Reassert, final: true) : replay.Reassert);
-                    else if (masked) (data, reassert) = (masker.Process(replay.Data, final: true), masker.Process(replay.Reassert, final: true));
+                    // A token half-printed at attach is masked, never sent bare up to the replay's end (M.ORCH-T1039).
+                    else if (masked) (data, reassert) = (masker.ProcessReplay(replay.Data), masker.Process(replay.Reassert, final: true));
                     else (data, reassert) = (replay.Data, replay.Reassert);
                     var frame = TermProtocol.Frame(kind, TermProtocol.Replay(replay.Cols, replay.Rows, replay.Modes, data, reassert));
                     await SendAsync(socket, frame, counts, ct).ConfigureAwait(false);

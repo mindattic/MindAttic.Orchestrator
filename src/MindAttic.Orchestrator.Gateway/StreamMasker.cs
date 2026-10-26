@@ -75,6 +75,9 @@ internal sealed class StreamMasker
     private DateTimeOffset candidateSince;
     private bool candidateOnly;
 
+    // Whether what was sent ends inside a run whose start was masked unfinished (M.ORCH-T1039): the rest of it is masked too.
+    private bool maskingRun;
+
     /// <param name="time">The clock for the hold timings; the system's by default.</param>
     public StreamMasker(SecretMasker secrets, TimeProvider? time = null)
     {
@@ -108,6 +111,7 @@ internal sealed class StreamMasker
         pemMasked = 0;
         candidateKey = null;
         candidateOnly = false;
+        maskingRun = false;
     }
 
     /// <summary>Everything held, masked; nothing is held after it. With <paramref name="maskCandidate"/> (the stream's order needs
@@ -130,6 +134,11 @@ internal sealed class StreamMasker
     /// <summary>The bytes that can go now, masked; the rest is held for the next call. With <paramref name="final"/>, nothing is
     /// held.</summary>
     public byte[] Process(ReadOnlySpan<byte> chunk, bool final = false) => Run(chunk, final ? Mode.Final : Mode.Normal);
+
+    /// <summary>A replay's screen (M.ORCH-T1039): all of it goes now, as with <c>final</c>, but a strong candidate it ends with
+    /// (a token half-printed at attach) has its secret part masked rather than sent bare, and the rest of it, as live output
+    /// goes on with it, is masked as it comes.</summary>
+    public byte[] ProcessReplay(ReadOnlySpan<byte> chunk) => Run(chunk, Mode.FinalMasking);
 
     private byte[] Run(ReadOnlySpan<byte> chunk, Mode mode)
     {
@@ -210,8 +219,12 @@ internal sealed class StreamMasker
         // 3. A trailing candidate secret (M.ORCH-T982): held until it's told apart, or its hold runs out and its secret part is
         // masked rather than sent bare.
         var now = time.GetUtcNow();
+        // A run whose start was masked when its hold ran out goes on masked to its end (M.ORCH-T1039), even once it no longer
+        // looks like a candidate (a short password ends): its secret part was masked, so the rest of it is too.
+        var runEndsAt = maskingRun ? ContinueMaskedRun(joined, map, marked, offset) : null;
         var (candidate, strong) = mode == Mode.Final ? (null, null) : FindCandidate(joined, map, marked);
         var expired = false;
+        var forced = false;
         if (candidate is { } c)
         {
             var key = sentTotal - offset + map[c.Start];
@@ -220,7 +233,10 @@ internal sealed class StreamMasker
             // Only a strong candidate is masked unfinished (M.ORCH-T1038); a weak one (key=1, apiKey = getT, the first few
             // characters of a Vault value) was only held, in case the rest made it a match, and goes as it is.
             if (strong is { } s && (mode == Mode.FinalMasking || (mode == Mode.Timed && expired)))
+            {
                 for (var k = s.SecretStart; k < s.End; k++) marked[map[k]] = true;
+                forced = true;
+            }
         }
         else candidateKey = null;
 
@@ -266,6 +282,10 @@ internal sealed class StreamMasker
         context.Append(logical, 0, sentLogical);
         if (context.Length > contextChars) context.Remove(0, context.Length - contextChars);
         sentTotal += sentLogical;
+        // A forced candidate ends what was sent, so whatever comes next may be the rest of it; a masked run ends once the
+        // character that ended it was sent.
+        if (forced) maskingRun = true;
+        else if (runEndsAt is { } ended && ended < sentLogical) maskingRun = false;
         pending = holdByte < buf.Length ? buf[holdByte..] : [];
         if (pending.Length > 0)
         {
@@ -276,6 +296,34 @@ internal sealed class StreamMasker
         }
         else candidateOnly = false;
         return output.WrittenSpan.ToArray();
+    }
+
+    /// <summary>
+    /// Marks the rest of a run whose start was masked unfinished (M.ORCH-T1039): the token characters this call's text begins
+    /// with (in <paramref name="joined"/>, so a wrap's break is crossed as matching crosses it), when the run goes on into it.
+    /// Returns where in this call's text the run ended (the character that ended it; -1 when it ended before), or null while
+    /// it may still go on (it reaches the end, or only a line break and an indent follow it).
+    /// </summary>
+    private static int? ContinueMaskedRun(string joined, int[] map, bool[] marked, int offset)
+    {
+        // The first character of this call's text: map rises, so a binary search finds it.
+        int lo = 0, hi = joined.Length;
+        while (lo < hi)
+        {
+            var mid = (lo + hi) / 2;
+            if (map[mid] < offset) lo = mid + 1;
+            else hi = mid;
+        }
+        var j = lo;
+        if (j >= joined.Length) return null;
+        if (j == 0 || !IsTokenChar(joined[j - 1])) return -1;
+        while (j < joined.Length && IsTokenChar(joined[j])) marked[map[j++]] = true;
+        if (j == joined.Length) return null;
+        var t = j;
+        var breaks = 0;
+        for (; t < joined.Length && joined[t] == '\n' && breaks < MaxWrapBreaks; breaks++) t++;
+        for (var indent = 0; breaks > 0 && t < joined.Length && joined[t] == ' ' && indent < MaxWrapIndent; indent++) t++;
+        return breaks > 0 && t == joined.Length ? null : map[j] - offset;
     }
 
     /// <summary>A trailing candidate secret, in <c>joined</c>'s positions: where it starts, where its secret part starts (past a
