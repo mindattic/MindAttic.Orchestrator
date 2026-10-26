@@ -155,20 +155,6 @@ public static class PaneBroker
         return true;
     }
 
-    /// <summary>Whether the dashboard's Terminals pipe currently has a listener: a cheap connect-and-drop, no request sent.
-    /// <c>orchestrator dock</c>'s pre-flight check (M.ORCH-T816), so a missing dashboard is caught before anything
-    /// destructive (ending the CLI it would have reopened) happens.</summary>
-    public static bool IsListening(string? pipeName = null, int connectMs = 500)
-    {
-        try
-        {
-            using var pipe = new NamedPipeClientStream(".", pipeName ?? PipeName, PipeDirection.InOut, PipeOptions.CurrentUserOnly);
-            pipe.Connect(connectMs);
-            return true;
-        }
-        catch (Exception ex) when (ex is TimeoutException or IOException or UnauthorizedAccessException) { return false; }
-    }
-
     /// <summary>Takes requests on <paramref name="pipeName"/> until <paramref name="ct"/> ends, opening each with
     /// <paramref name="open"/> (which answers with an error or null).</summary>
     public static async Task ServeAsync(Func<PaneRequest, Task<string?>> open, CancellationToken ct, string? pipeName = null)

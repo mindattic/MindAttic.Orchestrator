@@ -336,50 +336,6 @@ public partial class MainWindow : Window
         menu.IsOpen = true;
     }
 
-    /// <summary>Open Launcher's right-click menu (M.ORCH-Tnnn): "Open in Tab" (embeds, even over a standalone one already
-    /// running for this login elsewhere) and "Open in Terminal" (always a Windows Terminal window, no embed attempt), beside
-    /// the plain click's automatic embed-or-fallback.</summary>
-    private void OnOpenLauncherContextMenu(object sender, ContextMenuEventArgs e)
-    {
-        if (sender is not FrameworkElement { DataContext: MainViewModel tab } button || !tab.IsTabSignedIn) return;
-        e.Handled = true;
-        var menu = DropdownMenu(button, $"Open the Launcher as {tab.TabTitle}", PlacementMode.Bottom);
-        void Add(string header, string tip, Func<Task> action)
-        {
-            var item = DropdownItem(header);
-            item.ToolTip = tip;
-            item.Click += async (_, _) => await action();
-            menu.Items.Add(item);
-        }
-        Add("Open in Tab", "Embeds the Launcher's menu as a Terminals panel tab, even if a standalone window is already running for this login elsewhere.", tab.OpenLauncherInTabAsync);
-        Add("Open in Terminal", "Opens the Launcher's menu in its own Windows Terminal window, bypassing the embedded panel.", tab.OpenLauncherInTerminalAsync);
-        menu.IsOpen = true;
-    }
-
-    /// <summary>A Terminals panel tab's right-click menu (M.ORCH-Tnnn): "Undock", sending it out to its own Windows Terminal
-    /// window once it's idle, keeping its conversation. Disabled, with why, for the Launcher's own menu pane, a non-Claude
-    /// pane (resume has no equivalent for Codex/Gemini/Kimi, same restriction "Move to account" already has), an ended pane,
-    /// one whose session isn't known yet, and one already being relocated.</summary>
-    private void OnTerminalTabContextMenu(object sender, ContextMenuEventArgs e)
-    {
-        if (e.OriginalSource is not DependencyObject source
-            || ItemsControl.ContainerFromElement(TerminalTabs, source) is not FrameworkElement { DataContext: TerminalPaneViewModel pane } container) return;
-        e.Handled = true;
-        var menu = DropdownMenu(container, pane.Title, e.CursorLeft < 0 ? PlacementMode.Bottom : PlacementMode.MousePoint);
-        var undock = DropdownItem("Undock");
-        var reason = pane.Request.IsMenu ? "The Launcher's own menu can't be undocked."
-            : !string.Equals(pane.Request.Provider, "Claude", StringComparison.OrdinalIgnoreCase) ? $"Undock only supports Claude tabs, not {pane.Request.Provider}."
-            : pane.Ended ? "This CLI has already ended."
-            : pane.Relocating ? "Already undocking."
-            : pane.SessionId is null ? "This tab's session isn't known yet; try again once it's finished starting."
-            : null;
-        undock.IsEnabled = reason is null;
-        if (reason is not null) { undock.ToolTip = reason; ToolTipService.SetShowOnDisabled(undock, true); }
-        undock.Click += async (_, _) => await model.UndockAsync(pane);
-        menu.Items.Add(undock);
-        menu.IsOpen = true;
-    }
-
     /// <summary>The library's dark dropdown (M.ORCH-T667): a bare ContextMenu and MenuItem draw WPF's light system menu.</summary>
     private static ContextMenu DropdownMenu(UIElement target, string name, PlacementMode placement)
     {

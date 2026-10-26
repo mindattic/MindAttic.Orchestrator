@@ -160,7 +160,7 @@ public sealed class SessionControl(OrchestratorOptions options)
 
     /// <summary>A tab's title (M.ORCH-T632): "JR: Repo [Claude]", the login's initials (when it has one) then the repo's
     /// <see cref="ShortName(string, Func{IReadOnlyCollection{string}})"/> and its provider. Internal rather than private so
-    /// <see cref="Relocate"/>'s reopened-tab titles (Dock/Undock) match every other tab's format exactly.</summary>
+    /// the tests can reach it.</summary>
     internal static string TabTitle(string title, string provider, LoginLook? look, Func<IReadOnlyCollection<string>> knownRepos) =>
         look is null ? $"{ShortName(title, knownRepos)} [{provider}]" : $"{look.Initials}: {ShortName(title, knownRepos)} [{provider}]";
 

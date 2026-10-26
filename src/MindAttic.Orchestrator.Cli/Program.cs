@@ -151,7 +151,6 @@ internal static class CliApp
             });
             config.AddCommand<LoginCommand>("login").WithDescription("The account roster (as the dashboard's account menu shows it); with an email or short name, opens that account's login (claude auth login --email); --account <email> signs in a per-CLI login of its own instead; --api-key bills the Vault's API key.");
             config.AddCommand<MoveCommand>("move").WithDescription("Move a running Claude CLI (<repo|pid>) to another signed-in login (--account <email> or --global): its Launcher tab restarts it with claude --resume on that login at its next idle point, keeping its session.");
-            config.AddCommand<DockCommand>("dock").WithDescription("Pulls this standalone Claude tab into the dashboard's Terminals panel, resuming its session: ends it here once idle, reopens embedded under the login it's already on. Claude only; the dashboard must be running to receive it.");
             config.AddCommand<ClisCommand>("clis").WithDescription("Every open Claude CLI and whether /allocate is on in it (the roster the daemon keeps in orchestrator.db).");
             config.AddCommand<BusyCommand>("busy").WithDescription("Whether any Claude CLI on this machine (any login) is still working: mid-turn, a subagent running, an /allocate claim in flight, or holding on a prompt. Exits 1 when any is working or can't be read, 0 when all are idle; the calling CLI is left out. --wait polls until all are idle. deploy.ps1 runs it before a redeploy (M.ORCH-T873).");
             config.AddBranch("db", d =>

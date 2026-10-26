@@ -194,65 +194,36 @@ public sealed partial class MainViewModel
         if (error is { } e) OrchestratorLog.For("Launcher").Warning("Couldn't open {Login:l}'s Launcher tab: {Error:l}", title, e);
     }
 
-    /// <summary>Which hosting surface Open Launcher's right-click menu asks for explicitly, instead of the plain click's
-    /// automatic embed-with-fallback.</summary>
-    internal enum LauncherOpenMode { Auto, Tab, Terminal }
-
     /// <summary>Opens <paramref name="email"/>'s Launcher menu (M.LNCH-T77): embedded as a Terminals panel tab, first among
     /// that login's (so every CLI it opens, seeing itself hosted, routes back into the panel too); one already open there is
     /// brought up rather than getting a second, and so is a standalone one already running outside the dashboard (from
     /// before this, or started by hand) -- off the UI thread, since finding it asks WMI. Embedding failing (rare) falls back
-    /// to the login's own Windows Terminal window, as every Launcher tab opened before M.LNCH-T77. <paramref name="mode"/>
-    /// forces one surface explicitly (the rocket's right-click menu, M.ORCH-Tnnn): <see cref="LauncherOpenMode.Tab"/> skips
-    /// the standalone-already-running check and reports an embed failure directly rather than falling back; <see
-    /// cref="LauncherOpenMode.Terminal"/> skips the embedded-already-open check and never attempts to embed at all. Returns
-    /// an error for a toast (null on success, embedded or not) and a status line either way.</summary>
-    private async Task<(string? Error, string Status)> OpenLauncherPaneAsync(string? email, string tabTitle, LauncherOpenMode mode = LauncherOpenMode.Auto)
+    /// to the login's own Windows Terminal window, as every Launcher tab opened before M.LNCH-T77. Returns an error for a
+    /// toast (null on success, embedded or not) and a status line either way.</summary>
+    private async Task<(string? Error, string Status)> OpenLauncherPaneAsync(string? email, string tabTitle)
     {
         var normalized = AccountDirs.Normalize(email);
-        if (mode != LauncherOpenMode.Terminal &&
-            Root.AllTerminals.Panes.FirstOrDefault(p => p.Request.IsMenu && !p.Ended &&
+        if (Root.AllTerminals.Panes.FirstOrDefault(p => p.Request.IsMenu && !p.Ended &&
                 string.Equals(p.Login, normalized, StringComparison.OrdinalIgnoreCase)) is { } open)
         {
             Root.ShowPane(open);
             return (null, $"The Launcher as {tabTitle} was already open.");
         }
-        if (mode != LauncherOpenMode.Tab)
+        var running = await Task.Run(() => control.RunningLauncherOf(email));
+        if (running is { } pid)
         {
-            var running = await Task.Run(() => control.RunningLauncherOf(email));
-            if (running is { } pid)
-            {
-                var title = control.LauncherTitleOf(email);
-                var result = await Task.Run(() => TerminalFocus.GoTo(new HostSession("Claude", pid, "", null) { Title = title }, []));
-                return (null, result.Outcome == GoToOutcome.NotFound
-                    ? $"The Launcher as {tabTitle} is already open (\"{title}\"): {result.Note}"
-                    : $"The Launcher as {tabTitle} was already open: {result.Note}");
-            }
-        }
-        if (mode == LauncherOpenMode.Terminal)
-        {
-            var forced = await Task.Run(() => control.OpenLauncher(email, out _));
-            return forced is not null ? (forced, forced) : (null, $"Opened the Launcher as {tabTitle} in its own window.");
+            var title = control.LauncherTitleOf(email);
+            var result = await Task.Run(() => TerminalFocus.GoTo(new HostSession("Claude", pid, "", null) { Title = title }, []));
+            return (null, result.Outcome == GoToOutcome.NotFound
+                ? $"The Launcher as {tabTitle} is already open (\"{title}\"): {result.Note}"
+                : $"The Launcher as {tabTitle} was already open: {result.Note}");
         }
         if (Root.OpenTerminal(control.LauncherPaneRequest(email)) is not { } embedError)
             return (null, email is null
                 ? "Opened the Launcher on the global login."
                 : $"Opened the Launcher as {tabTitle}: every repo CLI started from it runs on {email} and shows in this tab.");
-        if (mode == LauncherOpenMode.Tab) return (embedError, embedError);
         var fallback = await Task.Run(() => control.OpenLauncher(email, out _));
         return fallback is not null ? (fallback, fallback) : (null, $"Opened the Launcher as {tabTitle} in its own window.");
-    }
-
-    public Task OpenLauncherInTabAsync() => OpenLauncherExplicitAsync(LauncherOpenMode.Tab);
-    public Task OpenLauncherInTerminalAsync() => OpenLauncherExplicitAsync(LauncherOpenMode.Terminal);
-
-    private async Task OpenLauncherExplicitAsync(LauncherOpenMode mode)
-    {
-        var email = ScopeEmail;
-        Root.launchersOpened.Add(tab.Key);
-        var (error, status) = await OpenLauncherPaneAsync(email, TabTitle, mode);
-        StatusMessage = status;
-        if (error is not null) Toasts.Insert(0, new ToastViewModel("Launcher not opened", error, Palette.Over, null));
     }
 
     private void Retitle(LoginTab next)
