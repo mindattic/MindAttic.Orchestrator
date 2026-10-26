@@ -203,13 +203,13 @@ if ($Force) {
 # loses its state (M.ORCH-T928: a CLI inside a TermHost survives the redeploy, is listed as hosted and never blocks it). `orchestrator busy` (the CLI just published, or the installed one) lists every Claude CLI still working on any login and
 # exits 1 if any is, 0 when all are idle; the CLI running this deploy is left out (its process tree). Any other outcome (no CLI,
 # one too old to have `busy`, a crash) is unknown, and unknown is never taken for idle. -WaitForIdle polls instead of refusing.
-function Test-ClisIdle {
+function Test-ClisIdle([string]$BusyExe = $cliExe) {
     if ($IgnoreBusyClis) {
         Write-Host 'Not checking for working Claude CLIs (-IgnoreBusyClis): any unhosted CLI still working loses its state (hosted ones are unaffected).' -ForegroundColor DarkYellow
         return $true
     }
-    if (-not (Test-Path $cliExe)) {
-        Write-Host "Can't tell whether any Claude CLI is still working: $cliExe isn't there. -IgnoreBusyClis installs anyway." -ForegroundColor Red
+    if (-not (Test-Path $BusyExe)) {
+        Write-Host "Can't tell whether any Claude CLI is still working: $BusyExe isn't there. -IgnoreBusyClis installs anyway." -ForegroundColor Red
         return $false
     }
     $busyArgs = @('busy')
@@ -221,7 +221,7 @@ function Test-ClisIdle {
         Write-Host 'Checking that no other unhosted Claude CLI is still working (CLIs hosted in a TermHost survive the deploy)...' -ForegroundColor Cyan
     }
     $code = $null
-    try { & $cliExe @busyArgs | Out-Host; $code = $LASTEXITCODE }
+    try { & $BusyExe @busyArgs | Out-Host; $code = $LASTEXITCODE }
     catch { Write-Host "orchestrator busy failed: $($_.Exception.Message)" -ForegroundColor Red }
     if ($code -eq 0) { return $true }
     if ($code -eq 1) {
@@ -277,19 +277,29 @@ if (Test-Stale $artifact @($wpfDir, $coreDir, $termWpfDir)) {
 }
 
 # ── The CLI ─────────────────────────────────────────────────────────────────
+# Published to a staging folder here and swapped in only after the busy gate below (M.ORCH-T1007): a refused deploy installs
+# nothing, so no new CLI runs against the old daemon and dashboard. The swap goes file by file: a running CLI call (hooks,
+# /allocate, review) holds its DLLs and must neither fail the deploy nor leave Cli\ half-installed (M.ORCH-T765).
+$cliStage = Join-Path $appDir 'Cli.staging'
+$cliStaged = $false
 if (Test-Stale $cliExe @($cliDir, $coreDir)) {
-    # Published to a staging folder, then swapped in file by file: a running CLI call (hooks, /allocate, review) holds its
-    # DLLs and must neither fail the deploy nor leave Cli\ half-installed (M.ORCH-T765).
-    $cliStage = Join-Path $appDir 'Cli.staging'
     if (Test-Path $cliStage) { Remove-Item -Recurse -Force $cliStage }
-    Write-Host "Publishing the CLI -> $cliOut" -ForegroundColor Cyan
+    Write-Host "Publishing the CLI -> $cliStage" -ForegroundColor Cyan
     dotnet publish (Join-Path $cliDir 'MindAttic.Orchestrator.Cli.csproj') --configuration Release --output $cliStage | Out-Host
-    $swapFailed = $false
-    if ($LASTEXITCODE -eq 0) {
-        try { Copy-Published $cliStage $cliOut } catch { Write-Host "Swapping in the CLI failed: $($_.Exception.Message)" -ForegroundColor Red; $swapFailed = $true }
+    if ($LASTEXITCODE -eq 0 -and (Test-Path (Join-Path $cliStage 'orchestrator.exe'))) { $cliStaged = $true }
+    else {
+        Remove-Item -Recurse -Force $cliStage -ErrorAction SilentlyContinue
+        Write-Host 'Publishing the CLI FAILED.' -ForegroundColor Red; $failed = $true
     }
+}
+
+function Install-StagedCli {
+    if (-not $script:cliStaged) { return }
+    $swapFailed = $false
+    try { Copy-Published $cliStage $cliOut } catch { Write-Host "Swapping in the CLI failed: $($_.Exception.Message)" -ForegroundColor Red; $swapFailed = $true }
     Remove-Item -Recurse -Force $cliStage -ErrorAction SilentlyContinue
-    if ($LASTEXITCODE -ne 0 -or $swapFailed) { Write-Host 'Publishing the CLI FAILED.' -ForegroundColor Red; $failed = $true }
+    $script:cliStaged = $false
+    if ($swapFailed) { Write-Host 'Publishing the CLI FAILED.' -ForegroundColor Red; $script:failed = $true }
     else {
         # The apphost keeps its old time when only Core's method bodies changed (the CLI isn't recompiled), so Core would
         # read newer than it on every later deploy, which would republish it and stop running CLIs each time.
@@ -297,6 +307,20 @@ if (Test-Stale $cliExe @($cliDir, $coreDir)) {
         Write-Host "Deployed $cliExe" -ForegroundColor Green
     }
 }
+
+# ── The busy gate, before anything is installed (M.ORCH-T873, M.ORCH-T1007) ─
+# Installing restarts the dashboard: while another CLI is still working nothing at all is installed (not the CLI, the TermHost,
+# the Gateway or the TermViewer either), so a refused deploy leaves the old build whole. The staged CLI answers when there is one.
+$installed = Find-Installed
+$step = Get-InstallStep $artifact $installed $built ([bool]$Force)
+if ($step -eq 'install') {
+    $busyExe = if ($cliStaged) { Join-Path $cliStage 'orchestrator.exe' } else { $cliExe }
+    if (-not (Test-ClisIdle $busyExe)) {
+        Remove-Item -Recurse -Force $cliStage -ErrorAction SilentlyContinue
+        Exit-Refused
+    }
+}
+Install-StagedCli
 
 # ── Side-by-side parts: TermHost (M.ORCH-T932), Gateway (M.ORCH-T967), TermViewer (M.ORCH-T960) ──
 # Each build goes into its own <part>\<version>\ folder and is never copied over another: running CLIs keep the host binary they
@@ -354,14 +378,12 @@ Publish-SideBySide 'Gateway' $gatewayDir 'MindAttic.Orchestrator.Gateway.exe' @(
 Publish-SideBySide 'TermViewer' $termViewerDir 'MindAttic.Orchestrator.TermViewer.exe' @($termViewerDir, $termWpfDir, $termDir, $coreDir)
 
 # ── Install, as a double-click would ────────────────────────────────────────
-$installed = Find-Installed
-$step = Get-InstallStep $artifact $installed $built ([bool]$Force)
 if ($step -eq 'newer') {
     Write-Host ("The installed {0} ({1:yyyy-MM-dd HH:mm}) is newer than this build ({2:yyyy-MM-dd HH:mm}), so it's left as it is; -Force installs this build over it." -f
         $installed, (Get-Item $installed).LastWriteTime, (Get-Item $artifact).LastWriteTime) -ForegroundColor DarkGray
 } elseif ($step -eq 'install') {
-    # Nothing is stopped before every other CLI is known to be done (M.ORCH-T873).
-    if (-not (Test-ClisIdle)) { Exit-Refused }
+    # Every other CLI was known to be done before anything was installed (the gate above, M.ORCH-T1007); the installer checks
+    # again just before it stops anything.
 
     # ── Earlier layouts ─────────────────────────────────────────────────────
     # Dashboard\ came from the two-folder layout; that daemon ran Cli\orchestrator.exe.
