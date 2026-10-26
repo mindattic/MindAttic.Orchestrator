@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- M.ORCH-T923: throwaway Phase 0 prototype of the relay viewer (spike M.ORCH-T922). Not part of MindAttic.Orchestrator.slnx. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>RelayViewer</RootNamespace>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Same versions as src/MindAttic.Orchestrator.Wpf. The viewer uses the bare TerminalControl; Easy only supplies
+         the types the linked TerminalPaste.cs names. -->
+    <PackageReference Include="CI.Microsoft.Terminal.Wpf" Version="1.25.260303002" />
+    <PackageReference Include="EasyWindowsTerminalControl" Version="1.0.38" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The app's paste logic, used as is; Stubs.cs stands in for its one other dependency. -->
+    <Compile Include="..\..\..\src\MindAttic.Orchestrator.Wpf\TerminalPaste.cs" Link="TerminalPaste.cs" />
+    <Compile Include="..\TermHostStub\Protocol.cs" Link="Protocol.cs" />
+  </ItemGroup>
+
+</Project>
