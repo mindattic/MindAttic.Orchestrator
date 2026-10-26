@@ -20,6 +20,57 @@ public sealed class MainlineTestsTests
     private readonly List<TaskCompletionSource<MainlineTests.SuiteResult>> runs = [];
     private static readonly DateTime Now = new(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc);
 
+    private static Ticket Fix(string id, string status, string test, string reference) =>
+        new(id, "2026-10-25", "fix", status, $"{MainlineTests.SummaryPrefix}{test}{MainlineTests.Separator}boom (landed on main since the last green run: x)", reference);
+
+    [Test]
+    public void FixedSince_finds_a_closed_ticket_whose_fix_is_not_an_ancestor_of_the_run()
+    {
+        var tickets = new[] { Fix("A-T2", TicketRules.Closed, "N.T.X", "abc1234") };
+        Assert.That(MainlineTests.FixedSince(tickets, "N.T.X", _ => false)?.Id, Is.EqualTo("A-T2"));
+        Assert.That(MainlineTests.FixedSince(tickets, "N.T.X", _ => true), Is.Null, "the fix was in the run's commit: it still fails");
+        Assert.That(MainlineTests.FixedSince(tickets, "N.T.X", _ => null), Is.Null, "unknown: file");
+        Assert.That(MainlineTests.FixedSince(tickets, "N.T.Other", _ => false), Is.Null, "another test");
+    }
+
+    [Test]
+    public void FixedSince_ignores_wont_do_and_open_tickets_and_contains_exceptions()
+    {
+        Assert.That(MainlineTests.FixedSince([Fix("A-T2", TicketRules.WontDo, "N.T.X", "abc1234")], "N.T.X", _ => false), Is.Null);
+        Assert.That(MainlineTests.FixedSince([Fix("A-T2", TicketRules.Open, "N.T.X", "abc1234")], "N.T.X", _ => false), Is.Null);
+        Assert.That(MainlineTests.FixedSince([Fix("A-T2", TicketRules.Closed, "N.T.X", "abc1234")], "N.T.X", _ => throw new InvalidOperationException()), Is.Null);
+        Assert.That(MainlineTests.FixedSince([Fix("A-T2", TicketRules.Closed, "N.T.X", "—")], "N.T.X", _ => false), Is.Null, "no commit in the ref");
+    }
+
+    [Test]
+    public void CommitsIn_reads_hashes_out_of_a_ref()
+    {
+        Assert.That(MainlineTests.CommitsIn("SomeTest; abc1234"), Is.EqualTo(new[] { "abc1234" }));
+        Assert.That(MainlineTests.CommitsIn("passes on main@abc1234def"), Is.EqualTo(new[] { "abc1234def" }));
+        Assert.That(MainlineTests.CommitsIn(null), Is.Empty);
+    }
+
+    [Test]
+    public void File_skips_a_failure_fixed_since_the_run_started_and_files_the_rest()
+    {
+        using var db = TicketsDb.Open(TicketsDb.DefaultPath(dir));
+        var fixedTicket = db.Add("A", "fix", TicketRules.Open, Fix("x", "open", "N.T.Fixed", "").Summary, "main@1111111");
+        db.Close(fixedTicket.Id, TicketRules.Closed, "abc1234");
+        var said = MainlineTests.File(db, "A", "main", "aaaaaaa1", "", Result(["N.T.Fixed", "N.T.Real"], []), c => c == "abc1234" ? false : null);
+        Assert.That(said, Has.Some.Contain("N.T.Fixed fixed since this run started"));
+        Assert.That(said, Has.Some.StartWith("filed").And.Contain("N.T.Real"));
+        Assert.That(db.Tickets("A").Select(t => MainlineTests.TestOf(t.Ticket.Summary)).Count(n => n == "N.T.Fixed"), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void File_does_not_file_again_for_a_test_with_an_open_ticket()
+    {
+        using var db = TicketsDb.Open(TicketsDb.DefaultPath(dir));
+        db.Add("A", "fix", TicketRules.Open, Fix("x", "open", "N.T.X", "").Summary, "main@1111111");
+        var said = MainlineTests.File(db, "A", "main", "aaaaaaa1", "", Result(["N.T.X"], []), _ => null);
+        Assert.That(said.Single(), Does.Contain("is open for it"));
+    }
+
     [Test]
     public void SolutionIn_picks_a_tracked_root_solution_slnx_first()
     {

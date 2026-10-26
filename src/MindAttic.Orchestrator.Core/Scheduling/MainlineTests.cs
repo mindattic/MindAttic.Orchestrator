@@ -180,7 +180,7 @@ public sealed partial class MainlineTests(JsonStore store)
             {
                 filed = result.Failed.Count == 0 ? [] : [new Line(true, $"main tests: {run.Repo} isn't in the ticket database, so its failing tests weren't filed")];
             }
-            else filed = [.. File(db, run.Repo, run.Mainline, run.Head, run.Since, result).Select(l => new Line(l.StartsWith("filed", StringComparison.Ordinal), "main tests: " + l))];
+            else filed = [.. File(db, run.Repo, run.Mainline, run.Head, run.Since, result, AncestorCheck(run)).Select(l => new Line(l.StartsWith("filed", StringComparison.Ordinal), "main tests: " + l))];
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or System.Data.Common.DbException)
         {
@@ -190,11 +190,12 @@ public sealed partial class MainlineTests(JsonStore store)
     }
 
     /// <summary>The ticket work of a finished run in <paramref name="repo"/>: what was filed and closed, said.</summary>
-    internal static IReadOnlyList<string> File(TicketsDb db, string repo, string mainline, string head, string since, SuiteResult result)
+    internal static IReadOnlyList<string> File(TicketsDb db, string repo, string mainline, string head, string since, SuiteResult result,
+        Func<string, bool?>? isAncestor = null)
     {
         var said = new List<string>();
-        var open = db.Tickets(repo).Select(t => t.Ticket)
-            .Where(t => t.Status == TicketRules.Open && TestOf(t.Summary) is not null).ToList();
+        var all = db.Tickets(repo).Select(t => t.Ticket).ToList();
+        var open = all.Where(t => t.Status == TicketRules.Open && TestOf(t.Summary) is not null).ToList();
         // Compared as the summary holds them (one line, no '|'), so a parameterized test's name still matches its ticket.
         var passed = result.Passed.Select(OneLine).ToHashSet(StringComparer.Ordinal);
         var filed = new List<string>();
@@ -203,6 +204,12 @@ public sealed partial class MainlineTests(JsonStore store)
             if (open.FirstOrDefault(t => TestOf(t.Summary) == OneLine(f.Test)) is { } already)
             {
                 said.Add($"{f.Test} still fails in {repo}; {already.Id} is open for it");
+                continue;
+            }
+            // A fix for this test landed after the run's commit (the run is long and overlaps landings): the failure is stale (M.ORCH-T904).
+            if (isAncestor is not null && FixedSince(all, f.Test, isAncestor) is { } fix)
+            {
+                said.Add($"{f.Test} fixed since this run started ({fix.Id} closed by a commit after {Short(head)}); not filed");
                 continue;
             }
             var t = db.Add(repo, "fix", TicketRules.Open, Summary(f, mainline, since), $"{mainline}@{Short(head)}");
@@ -217,6 +224,54 @@ public sealed partial class MainlineTests(JsonStore store)
         }
         if (filed.Count > 0) ToTheTop(db, filed);
         return said;
+    }
+
+    /// <summary>
+    /// A "Fails on main" ticket for <paramref name="test"/> closed as fixed (not won't-do) by a commit that is not an ancestor of
+    /// the run's commit, i.e. the fix landed after the run started; null when there is none. <paramref name="isAncestor"/> answers
+    /// whether a commit is an ancestor of the run's commit: true, false, or null when unknown (then the ticket doesn't count:
+    /// when in doubt, file). Never throws.
+    /// </summary>
+    internal static Ticket? FixedSince(IEnumerable<Ticket> tickets, string test, Func<string, bool?> isAncestor)
+    {
+        try
+        {
+            var name = OneLine(test);
+            foreach (var t in tickets)
+            {
+                if (t.Status != TicketRules.Closed || TestOf(t.Summary) != name) continue;
+                foreach (var commit in CommitsIn(t.Ref))
+                    if (isAncestor(commit) == false) return t;
+            }
+        }
+        catch (Exception) { /* a check that fails is no check: the ticket is filed */ }
+        return null;
+    }
+
+    /// <summary>The commit-looking tokens (7 to 40 hex digits) of a ticket's ref, e.g. "abc1234" or "SomeTest; abc1234".</summary>
+    internal static IReadOnlyList<string> CommitsIn(string? reference) =>
+        reference is null ? [] : [.. CommitHash().Matches(reference).Select(m => m.Value).Distinct(StringComparer.OrdinalIgnoreCase)];
+
+    /// <summary><c>git merge-base --is-ancestor &lt;commit&gt; &lt;run head&gt;</c>: 0 yes, 1 no; anything else (an unknown commit,
+    /// a repo the fix hasn't been fetched into yet) is fetched once and asked again, then unknown.</summary>
+    private Func<string, bool?> AncestorCheck(Run run)
+    {
+        var fetched = false;
+        bool? Ask(string commit)
+        {
+            try
+            {
+                var (code, _) = Git(run.Path, ["merge-base", "--is-ancestor", commit, run.Head]);
+                if (code is 0 or 1) return code == 0;
+                if (fetched) return null;
+                fetched = true;
+                Git(run.Path, ["fetch", "--quiet", "origin"]);
+                (code, _) = Git(run.Path, ["merge-base", "--is-ancestor", commit, run.Head]);
+                return code is 0 or 1 ? code == 0 : null;
+            }
+            catch (Exception) { return null; }
+        }
+        return Ask;
     }
 
     /// <summary>
@@ -414,6 +469,9 @@ public sealed partial class MainlineTests(JsonStore store)
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex Whitespace();
+
+    [GeneratedRegex(@"\b[0-9a-f]{7,40}\b", RegexOptions.IgnoreCase)]
+    private static partial Regex CommitHash();
 
     [GeneratedRegex(@"\b(?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+\b")]
     private static partial Regex TicketId();
