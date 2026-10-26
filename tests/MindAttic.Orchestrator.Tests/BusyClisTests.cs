@@ -132,13 +132,17 @@ public sealed class BusyClisTests
     }
 
     [Test]
-    public void What_names_no_cli_refuses_nothing_while_every_open_cli_is_hosted()
+    public void What_names_no_cli_still_refuses_while_every_open_cli_is_hosted_unless_it_is_provably_a_hosted_clis()
     {
-        // M.ORCH-T1006: an unreadable state or a subagent with no CLI can only be a hosted CLI's then.
+        // M.ORCH-T1042 (reverses M.ORCH-T1006's drop): an unhosted CLI the process scan missed may own them, so they still count.
         var unreadable = new BusyClis.State("broken", null, Now.AddMinutes(-1), null, null, null, null, null, Unreadable: true);
         var orphan = new BusyClis.Subagent("agent-y", null, "global login");
         var hosted = Judge([Proc(1) with { HostPid = 900 }], [State("a", 1, "busy"), unreadable], subagents: [orphan]);
-        Assert.That(hosted.AllIdle, Is.True);
+        Assert.That(hosted.AllIdle, Is.False);
+        Assert.That(hosted.Blocking.Count(c => c.Pid is null), Is.EqualTo(2), "the unreadable state and the subagent naming no CLI");
+        // An unreadable state whose session is the hosted CLI's own is provably its, so it is dropped.
+        var hostsOwn = new BusyClis.State("a", null, Now.AddMinutes(-1), null, null, null, null, null, Unreadable: true);
+        Assert.That(Judge([Proc(1) with { HostPid = 900 }], [State("a", 1, "busy"), hostsOwn]).AllIdle, Is.True);
         var mixed = Judge([Proc(1) with { HostPid = 900 }, Proc(2)], [State("a", 1, "busy"), State("b", 2, "idle"), unreadable], subagents: [orphan]);
         Assert.That(mixed.Blocking.Count(c => c.Pid is null), Is.EqualTo(2), "with an unhosted CLI open they may be its");
     }
