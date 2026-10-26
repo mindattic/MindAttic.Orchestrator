@@ -366,18 +366,29 @@ public sealed class BroadcastMaskingTests
     }
 
     [Test]
-    public void The_first_few_characters_of_a_vault_value_are_held_but_not_bulleted_while_a_longer_start_is()
+    public void The_start_of_a_vault_value_is_masked_at_a_flush_at_its_hold_running_out_and_at_a_final_call()
     {
+        // M.ORCH-T1049: a Vault value's first 8-11 characters were weak and went bare, leaking up to half a real secret.
         var vaultValue = "Fixture&Pass-" + Fake("", 20, seed: 21);
         var secrets = new SecretMasker([vaultValue]);
-        var weak = new StreamMasker(secrets);
-        var output = new List<byte>(weak.Process(Encoding.UTF8.GetBytes("login " + vaultValue[..9])));
-        output.AddRange(weak.Flush(maskCandidate: true));
-        Assert.That(Encoding.UTF8.GetString(output.ToArray()), Is.EqualTo("login " + vaultValue[..9]), "9 of 33 characters: weak");
+        var flushed = new StreamMasker(secrets);
+        var output = new List<byte>(flushed.Process(Encoding.UTF8.GetBytes("login " + vaultValue[..9])));
+        output.AddRange(flushed.Flush(maskCandidate: true));
+        Assert.That(Encoding.UTF8.GetString(output.ToArray()), Is.EqualTo("login " + Bullets(9)), "9 of 33 characters, at a flush");
 
-        var strong = new StreamMasker(secrets);
-        output = [.. strong.Process(Encoding.UTF8.GetBytes("login " + vaultValue[..14]))];
-        output.AddRange(strong.Flush(maskCandidate: true));
+        var time = new ManualTime();
+        var timed = new StreamMasker(secrets, time);
+        output = [.. timed.Process(Encoding.UTF8.GetBytes("login " + vaultValue[..9]))];
+        time.Now += StreamMasker.MaxCandidateHold + TimeSpan.FromMilliseconds(1);
+        output.AddRange(timed.FlushDue());
+        Assert.That(Encoding.UTF8.GetString(output.ToArray()), Is.EqualTo("login " + Bullets(9)), "its hold ran out");
+
+        var final = new StreamMasker(secrets).Process(Encoding.UTF8.GetBytes("login " + vaultValue[..9]), final: true);
+        Assert.That(Encoding.UTF8.GetString(final), Is.EqualTo("login " + Bullets(9)), "a final call");
+
+        var longer = new StreamMasker(secrets);
+        output = [.. longer.Process(Encoding.UTF8.GetBytes("login " + vaultValue[..14]))];
+        output.AddRange(longer.Flush(maskCandidate: true));
         Assert.That(Encoding.UTF8.GetString(output.ToArray()), Is.EqualTo("login " + Bullets(14)));
     }
 

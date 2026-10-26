@@ -222,16 +222,27 @@ internal sealed class StreamMasker
         // A run whose start was masked when its hold ran out goes on masked to its end (M.ORCH-T1039), even once it no longer
         // looks like a candidate (a short password ends): its secret part was masked, so the rest of it is too.
         var runEndsAt = maskingRun ? ContinueMaskedRun(joined, map, marked, offset) : null;
-        var (candidate, strong) = mode == Mode.Final ? (null, null) : FindCandidate(joined, map, marked);
+        var (candidate, strong, literal) = FindCandidate(joined, map, marked);
         var expired = false;
         var forced = false;
+        if (mode == Mode.Final)
+        {
+            // Final holds nothing and lets a weak candidate go, but never the start of a Vault value (M.ORCH-T1049).
+            if (literal is { } l)
+            {
+                for (var k = l.SecretStart; k < l.End; k++) marked[map[k]] = true;
+                forced = true;
+            }
+            (candidate, strong) = (null, null);
+        }
         if (candidate is { } c)
         {
             var key = sentTotal - offset + map[c.Start];
             if (candidateKey != key) (candidateKey, candidateSince) = (key, now);
             expired = now - candidateSince >= MaxCandidateHold;
-            // Only a strong candidate is masked unfinished (M.ORCH-T1038); a weak one (key=1, apiKey = getT, the first few
-            // characters of a Vault value) was only held, in case the rest made it a match, and goes as it is.
+            // Only a strong candidate is masked unfinished (M.ORCH-T1038); a weak one (apiKey = getT) was only held, in case the
+            // rest made it a match, and goes as it is. The start of a real Vault value is always strong (M.ORCH-T1049): sent bare
+            // after a gap it leaked up to half the secret.
             if (strong is { } s && (mode == Mode.FinalMasking || (mode == Mode.Timed && expired)))
             {
                 for (var k = s.SecretStart; k < s.End; k++) marked[map[k]] = true;
@@ -389,9 +400,6 @@ internal sealed class StreamMasker
         System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant
         | System.Text.RegularExpressions.RegexOptions.Compiled, TimeSpan.FromMilliseconds(100));
 
-    /// <summary>A Vault value's start this long, or half the value, is strong (masked unfinished); a shorter one is only held.</summary>
-    private const int StrongLiteralPart = 12;
-
     /// <summary>A value after <c>key=</c>, <c>token:</c>, <c>secret=</c> or <c>Bearer</c> this long, with digits and letters, is
     /// strong; a shorter one only held, and one under <see cref="MinAssignedPart"/> characters (or digits alone) not even that.</summary>
     private const int StrongAssignedPart = 8, MinAssignedPart = 4;
@@ -404,21 +412,22 @@ internal sealed class StreamMasker
     /// text can't be the start of a secret.
     /// <para>Only a strong one (Strong, the earliest of them) is masked when its hold runs out or the frame order needs it out
     /// (M.ORCH-T1038): a begun shape; a value after a password name; a value after another name once it is
-    /// <see cref="StrongAssignedPart"/> characters with digits and letters; a Vault value's start once it is
-    /// <see cref="StrongLiteralPart"/> characters or half the value. A weak one (<c>apiKey = getT</c>, a Vault value's first 8
-    /// characters) is held in case the rest makes it a match, then sent as it is; <c>key=1</c> isn't held at all.</para>
+    /// <see cref="StrongAssignedPart"/> characters with digits and letters; any held start of a Vault value (M.ORCH-T1049: it
+    /// is a real secret's start, so it is never sent bare). A weak one (<c>apiKey = getT</c>) is held in case the rest makes it
+    /// a match, then sent as it is; <c>key=1</c> isn't held at all. Literal is the earliest Vault value's start, which even a
+    /// final call masks.</para>
     /// </summary>
-    private (Candidate? Hold, Candidate? Strong) FindCandidate(string joined, int[] map, bool[] marked)
+    private (Candidate? Hold, Candidate? Strong, Candidate? Literal) FindCandidate(string joined, int[] map, bool[] marked)
     {
         var end = joined.Length;
-        if (end == 0) return (null, null);
+        if (end == 0) return (null, null, null);
         var t = end;
         for (var spaces = 0; t > 0 && joined[t - 1] == ' ' && spaces < MaxWrapIndent; spaces++) t--;
         var breaks = 0;
         for (; t > 0 && joined[t - 1] == '\n' && breaks < MaxWrapBreaks; breaks++) t--;
         if (breaks == 0) t = end; // spaces alone end a run
         var runEnd = t;
-        Candidate? best = null, bestStrong = null;
+        Candidate? best = null, bestStrong = null, bestLiteral = null;
         void Consider(Candidate c, bool strong)
         {
             if (best is not { } b || c.Start < b.Start) best = c;
@@ -486,12 +495,14 @@ internal sealed class StreamMasker
                 {
                     if (literal[len - 1] != last || !text.EndsWith(literal.AsSpan(0, len), StringComparison.Ordinal)) continue;
                     if (litEnd - len > 0 && IsTokenChar(joined[litEnd - len - 1]) && IsTokenChar(literal[0])) continue;
-                    Consider(new Candidate(litEnd - len, litEnd - len, litEnd), strong: len >= StrongLiteralPart || len * 2 >= literal.Length);
+                    var found = new Candidate(litEnd - len, litEnd - len, litEnd);
+                    Consider(found, strong: true);
+                    if (bestLiteral is not { } bl || found.Start < bl.Start) bestLiteral = found;
                     break;
                 }
             }
         }
-        return (best, bestStrong);
+        return (best, bestStrong, bestLiteral);
     }
 
     /// <summary>The PEM private key bodies (with their END lines) in <paramref name="combined"/>: from the end of a BEGIN line,
