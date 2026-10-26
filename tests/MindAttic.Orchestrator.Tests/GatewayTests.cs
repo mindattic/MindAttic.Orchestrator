@@ -15,7 +15,7 @@ namespace MindAttic.Orchestrator.Tests;
 
 /// <summary>The team gateway (M.ORCH-T933): tokens, grants, the WebSocket bridge over an in-memory pipe on a TestServer
 /// (frames 1:1, a watcher's input and resize dropped, its Hello never sizing the session), and the daemon's supervisor.</summary>
-public sealed class GatewayTests
+public sealed partial class GatewayTests
 {
     private const string Owner = "owner@example.com";
     private static readonly byte[] SigningKey = Enumerable.Range(1, 32).Select(i => (byte)i).ToArray();
@@ -391,7 +391,9 @@ public sealed class GatewayTests
         public TermSessionRecord Session { get; } = GatewayTests.Session("s1");
         public TestServer Server => app.GetTestServer();
 
-        public static async Task<TestGateway> StartAsync()
+        /// <param name="grants">The grants (M.ORCH-T934); the owner alone by default.</param>
+        /// <param name="audit">Where audit records go; nowhere by default.</param>
+        public static async Task<TestGateway> StartAsync(IGatewayGrants? grants = null, IGatewayAudit? audit = null, TimeSpan? auditInterval = null)
         {
             var gateway = new TestGateway();
             gateway.Services = new GatewayServices
@@ -399,10 +401,12 @@ public sealed class GatewayTests
                 Options = new GatewayOptions { Owner = Owner },
                 Tokens = new GatewayTokens(SigningKey),
                 OwnerKey = OwnerKey,
-                Grants = new OwnerOnlyGrants(Owner),
+                Grants = grants ?? new OwnerOnlyGrants(Owner),
                 Sessions = new FixedSessions(gateway.Session),
                 Pipes = gateway.Pipes,
                 Log = new GatewayLog(null),
+                Audit = audit ?? NoAudit.Instance,
+                AuditInterval = auditInterval ?? TimeSpan.FromSeconds(10),
             };
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = [], EnvironmentName = "Testing" });
             builder.WebHost.UseTestServer();
@@ -411,12 +415,12 @@ public sealed class GatewayTests
             return gateway;
         }
 
-        public string Token(string scope) => Services.Tokens.Issue(Owner, scope, TimeSpan.FromMinutes(5)).Token;
+        public string Token(string scope, string subject = Owner) => Services.Tokens.Issue(subject, scope, TimeSpan.FromMinutes(5)).Token;
 
-        public WebSocketClient Client(string scope)
+        public WebSocketClient Client(string scope, string subject = Owner)
         {
             var client = Server.CreateWebSocketClient();
-            var token = Token(scope);
+            var token = Token(scope, subject);
             client.ConfigureRequest = request => request.Headers.Authorization = "Bearer " + token;
             return client;
         }
