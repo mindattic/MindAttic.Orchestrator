@@ -30,6 +30,10 @@ internal sealed class TermSession
     private static readonly TimeSpan TypingThrottle = TimeSpan.FromSeconds(1);
     private const int DrainLimitMs = 100, DrainQuietMs = 20;
 
+    // M.ORCH-T994: the most a Replay frame's data may take: half a viewer's backlog, leaving the rest for the live output that
+    // queues behind it while it is written.
+    private const int ReplayBudget = (int)(ViewerLink.MaxBacklog / 2);
+
     private IntPtr hPC, hProcess;
 
     // M.ORCH-T991: the pseudoconsole's lifetime. Every ResizePseudoConsole and the close take ptyGate; the close sets ptyClosed
@@ -379,6 +383,13 @@ internal sealed class TermSession
             if (link.IsClosed) return false;
             var (data, reassert, exact) = ReplayScreen.Build(screen is { } s ? s.Snapshot : null, ring.ToArray, modes,
                 ex => StopScreen(ex, "the emulator's snapshot failed"));
+            // M.ORCH-T994: a replay over the viewer's backlog would drop it on every attach, so its oldest scrollback goes.
+            var fitted = ReplayScreen.Fit(data, ReplayBudget - reassert.Length);
+            if (fitted.Length != data.Length)
+            {
+                log.Write($"viewer {link.Id}: the replay ({data.Length}B) is over {ReplayBudget}B; its oldest scrollback is left out");
+                data = fitted;
+            }
             var ok = link.Post(TermFrameKind.Hello, TermProtocol.Hello(link.Protocol, cols, rows))
                      && (link.Protocol < TermProtocol.MultiViewer || link.Post(TermFrameKind.Size, SizeFor(link)))
                      && link.Post(TermFrameKind.Replay, TermProtocol.Replay(cols, rows, modes.Flags, data, reassert))

@@ -42,6 +42,26 @@ internal static class ReplayScreen
     }
 
     /// <summary>
+    /// <paramref name="data"/> cut to at most <paramref name="max"/> bytes by dropping its oldest scrollback (M.ORCH-T994), so
+    /// the Replay frame always fits a viewer's backlog (<see cref="ViewerLink.MaxBacklog"/>) and attaching can't fail on it.
+    /// The cut is just after a line feed (never inside an escape sequence or a UTF-8 character), else before an ESC, else at
+    /// a character's first byte, and the
+    /// rest starts with an SGR reset, since the pen the dropped part set is gone. The screen and the state at the end stay.
+    /// </summary>
+    public static byte[] Fit(byte[] data, int max)
+    {
+        if (data.Length <= max) return data;
+        var reset = "\u001b[0m"u8;
+        var from = data.Length - Math.Max(0, max - reset.Length);
+        var rest = data.AsSpan(from);
+        var lf = rest.IndexOf((byte)'\n');
+        var at = lf >= 0 ? lf + 1 : rest.IndexOf((byte)0x1b);
+        // Neither: at least not inside a UTF-8 character.
+        if (at < 0) at = rest.IndexOfAnyExceptInRange((byte)0x80, (byte)0xbf);
+        return at < 0 ? [] : [.. reset, .. rest[at..]];
+    }
+
+    /// <summary>
     /// <paramref name="data"/> without the queries: replayed, the viewer's renderer would answer them again, and the answers
     /// would reach the CLI's input as typed text.
     /// </summary>
