@@ -199,6 +199,14 @@ internal static class GatewayApp
             http.Response.StatusCode = StatusCodes.Status404NotFound;
             return;
         }
+        // A protocol 1 host serves one viewer at a time: attaching would take the session from its owner's own tab
+        // (M.ORCH-T985). Only the owner may do that to themselves; the wall's client-side check is not the guard.
+        if (session.Protocol < TermProtocol.MultiViewer && !string.Equals(who.Subject.Trim(), g.Options.Owner.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            g.Audit.Write(Record(g, TermGatewayAudit.Refused, who.Subject, session.Id, "none", from, detail: "single-viewer host (protocol 1)"));
+            http.Response.StatusCode = StatusCodes.Status409Conflict;
+            return;
+        }
 
         Stream pipe;
         try { pipe = await g.Pipes.ConnectAsync(session, http.RequestAborted).ConfigureAwait(false); }

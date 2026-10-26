@@ -455,7 +455,7 @@ public sealed partial class GatewayTests
         private WebApplication app = null!;
         public GatewayServices Services { get; private set; } = null!;
         public MemoryPipes Pipes { get; } = new();
-        public TermSessionRecord Session { get; } = GatewayTests.Session("s1");
+        public TermSessionRecord Session { get; private init; } = GatewayTests.Session("s1");
         public TestServer Server => app.GetTestServer();
 
         /// <summary>The owner's broadcast choices (M.ORCH-T935): by default "s1" is shared, unmasked, so the bridge's frames go
@@ -467,9 +467,11 @@ public sealed partial class GatewayTests
 
         /// <param name="grants">The grants (M.ORCH-T934); the owner alone by default.</param>
         /// <param name="audit">Where audit records go; nowhere by default.</param>
-        public static async Task<TestGateway> StartAsync(IGatewayGrants? grants = null, IGatewayAudit? audit = null, TimeSpan? auditInterval = null)
+        /// <param name="session">The session in place of the default "s1".</param>
+        public static async Task<TestGateway> StartAsync(IGatewayGrants? grants = null, IGatewayAudit? audit = null, TimeSpan? auditInterval = null,
+            TermSessionRecord? session = null)
         {
-            var gateway = new TestGateway();
+            var gateway = session is null ? new TestGateway() : new TestGateway { Session = session };
             gateway.Services = new GatewayServices
             {
                 Options = new GatewayOptions { Owner = Owner },

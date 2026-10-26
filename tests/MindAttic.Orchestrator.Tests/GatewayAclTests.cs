@@ -205,6 +205,19 @@ public sealed partial class GatewayTests
     }
 
     [Test]
+    public async Task A_member_cant_attach_to_a_single_viewer_protocol_1_host()
+    {
+        var audit = new MemoryAudit();
+        await using var gateway = await TestGateway.StartAsync(new FixedAcl(Acl()), audit, session: SessionOn("s1", Sam) with { Protocol = 1 });
+        // Erin may watch s1 by default, but its host would drop the owner's tab to serve her.
+        Assert.ThrowsAsync<InvalidOperationException>(() =>
+            gateway.Client(GatewayScopes.Watch, Erin).ConnectAsync(new Uri("ws://localhost/sessions/s1/stream"), Timeout()));
+        var refused = (await audit.WaitFor(TermGatewayAudit.Refused)).Single();
+        Assert.That((refused.Viewer, refused.Session, refused.Detail), Is.EqualTo((Erin, "s1", "single-viewer host (protocol 1)")));
+        Assert.That(gateway.Pipes.Connected, Is.Zero);
+    }
+
+    [Test]
     public async Task Bad_tokens_and_wrong_owner_keys_are_audited_without_the_token_or_key()
     {
         var audit = new MemoryAudit();
