@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using MindAttic.Orchestrator;
 using MindAttic.Orchestrator.Budget;
 using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
@@ -233,6 +234,12 @@ internal sealed class GatewayTokenCommand : Command<GatewayTokenCommand.Settings
         Console.WriteLine(token);
         Console.Error.WriteLine($"A {scope} token for {email}, good until {expires.ToLocalTime():yyyy-MM-dd HH:mm}. Their grants decide what it can do; " +
             "revoke them, or replace the gateway's signing key, to cut it off at once.");
+        if (settings.Minutes is null)
+        {
+            var (scheduled, problem) = GatewayTokenReminders.Schedule(OrchestratorOptions.Load().WorkspaceRoot, email, expires);
+            Console.Error.WriteLine($"Scheduled {scheduled} Psst renewal reminder{(scheduled == 1 ? "" : "s")} before it expires (M.ORCH-T1057)." +
+                (problem is null ? "" : $" {problem}"));
+        }
         return 0;
     }
 }
