@@ -8,7 +8,7 @@ public sealed class StartRequestTests
     [Test]
     public void Start_names_the_repo_after_it()
     {
-        // M.ORCH-T767: the Tickets desktop's Repos tab Start link runs MindAttic.Orchestrator.exe --start <repo>.
+        // M.ORCH-T767: the Tickets desktop's Repos tab Start link runs MindAttic.Orchestrator.Desktop.exe --start <repo>.
         Assert.That(StartRequest.Repo(["--start", "MindAttic.Tickets"]), Is.EqualTo("MindAttic.Tickets"));
         Assert.That(StartRequest.Repo(["--high-contrast", "--START", "GTFO.Core"]), Is.EqualTo("GTFO.Core"));
         Assert.That(StartRequest.Repo([]), Is.Null);

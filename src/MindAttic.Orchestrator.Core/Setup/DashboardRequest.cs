@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace MindAttic.Orchestrator.Setup;
 
 /// <summary>
-/// <c>MindAttic.Orchestrator.exe --show &lt;target&gt;</c> (M.ORCH-T763): Tickets Desktop's deep link (its OrchestratorLink) opens
+/// <c>MindAttic.Orchestrator.Desktop.exe --show &lt;target&gt;</c> (M.ORCH-T763): Tickets Desktop's deep link (its OrchestratorLink) opens
 /// the Orchestrator on a person (a login's email), a session (its id, or the start of it) or a ticket's live work (its id).
 /// A later launch hands it to the dashboard already running down the same single-instance pipe <c>--start</c> uses
 /// (<see cref="SingleInstance"/>, M.ORCH-T767); the first launch keeps it. Only a well-formed target gets through: an email, or

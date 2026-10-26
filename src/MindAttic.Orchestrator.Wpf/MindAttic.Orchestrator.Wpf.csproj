@@ -5,7 +5,7 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <RootNamespace>MindAttic.Orchestrator.Wpf</RootNamespace>
-    <AssemblyName>MindAttic.Orchestrator</AssemblyName>
+    <AssemblyName>MindAttic.Orchestrator.Desktop</AssemblyName>
     <!-- HOUSE-LAW-1: whole-number versions only; bump the major. -->
     <Version>1.0.0</Version>
     <!-- The exe's own icon: Explorer, the shortcuts and a Start or taskbar pin all show it. -->

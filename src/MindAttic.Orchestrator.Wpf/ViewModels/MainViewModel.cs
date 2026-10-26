@@ -492,7 +492,7 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// <c>MindAttic.Orchestrator.exe --start &lt;repo&gt;</c> (M.ORCH-T767, the Tickets desktop's Repos tab Start link): on the global
+    /// <c>MindAttic.Orchestrator.Desktop.exe --start &lt;repo&gt;</c> (M.ORCH-T767, the Tickets desktop's Repos tab Start link): on the global
     /// login's tab, once the first snapshot is in, a Claude CLI in that repo the way Start opens one on Auto (the login picker
     /// and its cutoffs, never a member's own seat, the API key only while API billing is on). Only a repo the workspace has
     /// starts; anything else is refused and said in the status line.

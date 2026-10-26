@@ -13,7 +13,9 @@ namespace MindAttic.Orchestrator.Setup;
 /// </summary>
 public sealed class Installer
 {
-    public const string ExeName = "MindAttic.Orchestrator.exe";
+    public const string ExeName = "MindAttic.Orchestrator.Desktop.exe";
+    /// <summary>The exe's name before M.ORCH-T844: an install still holding it is upgraded in place (its copy stopped, then removed).</summary>
+    public const string LegacyExeName = "MindAttic.Orchestrator.exe";
     /// <summary>The logon task this exe registered before WatchDog took the daemon over (M.ORCH-T475). Never registered
     /// now; still ended on an upgrade and deleted on an uninstall, for a machine that has it yet.</summary>
     public const string LegacyTaskName = @"\MindAttic\Orchestrator\Orchestrator daemon";
@@ -41,8 +43,11 @@ public sealed class Installer
     /// <summary>The house folder (C:\Apps) when it's writable or already holds the install; otherwise per-user Programs.</summary>
     internal static string ChooseInstallDir(string preferred, string fallback)
     {
-        if (File.Exists(Path.Combine(preferred, ExeName))) return preferred;
-        if (File.Exists(Path.Combine(fallback, ExeName))) return fallback;
+        foreach (var name in new[] { ExeName, LegacyExeName })
+        {
+            if (File.Exists(Path.Combine(preferred, name))) return preferred;
+            if (File.Exists(Path.Combine(fallback, name))) return fallback;
+        }
         try
         {
             Directory.CreateDirectory(preferred);
@@ -124,20 +129,27 @@ public sealed class Installer
             // Stopped for nothing (the old exe still locked, say by an elevated dashboard): the old install's daemon runs
             // again, or pacing and the hooks' holds stay off until the next logon (M.ORCH-T353).
             // The copy's failure is what's reported: a daemon that can't start too (no old exe there) mustn't replace it.
-            try { if (!DaemonRunning()) StartDaemon(InstalledExe); }
+            var old = File.Exists(InstalledExe) ? InstalledExe : LegacyExe;
+            try { if (!DaemonRunning() && File.Exists(old)) StartDaemon(old); }
             catch (InvalidOperationException) { }
             throw;
         }
+        // Left behind, the old-named exe is what Scheduler's logon job and other repos' links would still start: an old build.
+        try { if (File.Exists(LegacyExe)) File.Delete(LegacyExe); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
+
+    private string LegacyExe => Path.Combine(InstallDir, LegacyExeName);
 
     public void StopInstalledCopies()
     {
         Run("schtasks", "/End", "/TN", LegacyTaskName);
-        foreach (var p in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(ExeName)))
+        var installed = new[] { InstalledExe, LegacyExe };
+        foreach (var p in new[] { ExeName, LegacyExeName }.SelectMany(n => Process.GetProcessesByName(Path.GetFileNameWithoutExtension(n))))
         {
             try
             {
-                if (p.Id == Environment.ProcessId || p.MainModule?.FileName is not { } path || !SamePath(path, InstalledExe)) continue;
+                if (p.Id == Environment.ProcessId || p.MainModule?.FileName is not { } path || !installed.Any(e => SamePath(path, e))) continue;
                 // Asked to exit first, so it flushes its log (and an older build disposes its tray icon); killed only if it doesn't.
                 if (EventWaitHandle.TryOpenExisting(DashboardExitEvent(p.Id), out var exit))
                     using (exit) { exit.Set(); p.WaitForExit(5000); }

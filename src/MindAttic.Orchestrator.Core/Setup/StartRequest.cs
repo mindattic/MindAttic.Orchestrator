@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace MindAttic.Orchestrator.Setup;
 
 /// <summary>
-/// <c>MindAttic.Orchestrator.exe --start &lt;repo&gt;</c> (M.ORCH-T767): the Tickets desktop's Repos tab Start link (M.TIX-T135)
+/// <c>MindAttic.Orchestrator.Desktop.exe --start &lt;repo&gt;</c> (M.ORCH-T767): the Tickets desktop's Repos tab Start link (M.TIX-T135)
 /// asks the dashboard to start a CLI in a repo, as its own Start does. Only a plain repo name gets through here; the
 /// dashboard then starts it only if the workspace has a repo of that name, and the CLI's folder and title come from the
 /// workspace, never from this text.

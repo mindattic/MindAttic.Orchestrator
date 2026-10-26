@@ -10,8 +10,8 @@ public sealed class InstallerTests
     public void The_daemon_is_started_from_the_exe_with_the_daemon_arg_and_no_window()
     {
         // M.ORCH-T475: Scheduler's Orchestrator.Daemon job starts it at logon; the exe only starts one itself after an upgrade.
-        var psi = Installer.DaemonStartInfo(@"C:\Apps\Mind & Attic\MindAttic.Orchestrator.exe");
-        Assert.That(psi.FileName, Is.EqualTo(@"C:\Apps\Mind & Attic\MindAttic.Orchestrator.exe"));
+        var psi = Installer.DaemonStartInfo(@"C:\Apps\Mind & Attic\MindAttic.Orchestrator.Desktop.exe");
+        Assert.That(psi.FileName, Is.EqualTo(@"C:\Apps\Mind & Attic\MindAttic.Orchestrator.Desktop.exe"));
         Assert.That(psi.ArgumentList, Is.EqualTo(new[] { Installer.DaemonArg }));
         Assert.That(psi.WorkingDirectory, Is.EqualTo(@"C:\Apps\Mind & Attic"));
         Assert.That(psi.CreateNoWindow, Is.True);
@@ -40,12 +40,12 @@ public sealed class InstallerTests
         Assert.That(Installer.LegacyTaskName, Is.EqualTo(@"\MindAttic\Orchestrator\Orchestrator daemon"));
     }
 
-    [TestCase(@"D:\Projects\MindAttic\MindAttic.Orchestrator\src\MindAttic.Orchestrator.Wpf\bin\Debug\net10.0-windows\MindAttic.Orchestrator.exe", true)]
-    [TestCase(@"Z:\x\src\MindAttic.Orchestrator.Wpf\obj\Release\net10.0-windows\win-x64\MindAttic.Orchestrator.exe", true)]
-    [TestCase(@"Z:\Projects\MindAttic.worktrees\MindAttic.Orchestrator\M.ORCH-T200\artifacts\MindAttic.Orchestrator.exe", true)]
-    [TestCase(@"Z:\Temp\claude\scratchpad\orch-test\MindAttic.Orchestrator.exe", true)]
-    [TestCase(@"C:\Users\me\Downloads\MindAttic.Orchestrator.exe", false)]
-    [TestCase(@"C:\Apps\MindAttic.Orchestrator\MindAttic.Orchestrator.exe", false)]
+    [TestCase(@"D:\Projects\MindAttic\MindAttic.Orchestrator\src\MindAttic.Orchestrator.Wpf\bin\Debug\net10.0-windows\MindAttic.Orchestrator.Desktop.exe", true)]
+    [TestCase(@"Z:\x\src\MindAttic.Orchestrator.Wpf\obj\Release\net10.0-windows\win-x64\MindAttic.Orchestrator.Desktop.exe", true)]
+    [TestCase(@"Z:\Projects\MindAttic.worktrees\MindAttic.Orchestrator\M.ORCH-T200\artifacts\MindAttic.Orchestrator.Desktop.exe", true)]
+    [TestCase(@"Z:\Temp\claude\scratchpad\orch-test\MindAttic.Orchestrator.Desktop.exe", true)]
+    [TestCase(@"C:\Users\me\Downloads\MindAttic.Orchestrator.Desktop.exe", false)]
+    [TestCase(@"C:\Apps\MindAttic.Orchestrator\MindAttic.Orchestrator.Desktop.exe", false)]
     public void Dev_builds_never_install_themselves(string exe, bool dev) =>
         Assert.That(Installer.IsDevBuild(exe, @"Z:\Temp\"), Is.EqualTo(dev));
 
@@ -100,7 +100,7 @@ public sealed class InstallerTests
     public void A_shortcut_with_no_icon_set_is_not_the_same_path_and_does_not_throw()
     {
         // WScript reports an unset IconLocation as ",0": its path part is empty (every shortcut made before M.ORCH-T190).
-        var exe = @"C:\Apps\MindAttic.Orchestrator\MindAttic.Orchestrator.exe";
+        var exe = @"C:\Apps\MindAttic.Orchestrator\MindAttic.Orchestrator.Desktop.exe";
         Assert.That(Installer.SamePath(",0".Split(',')[0], exe), Is.False);
         Assert.That(Installer.SamePath("", ""), Is.False);
         Assert.That(Installer.SamePath(exe.ToUpperInvariant(), exe), Is.True);

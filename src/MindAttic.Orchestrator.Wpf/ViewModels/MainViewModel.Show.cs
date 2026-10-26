@@ -3,7 +3,7 @@ using MindAttic.Orchestrator.Setup;
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
 /// <summary>
-/// <c>MindAttic.Orchestrator.exe --show &lt;email|session|ticket&gt;</c> (M.ORCH-T763), Tickets Desktop's deep link: the window
+/// <c>MindAttic.Orchestrator.Desktop.exe --show &lt;email|session|ticket&gt;</c> (M.ORCH-T763), Tickets Desktop's deep link: the window
 /// opens the person the target names (a login's email), or the person whose CLI runs that session or that ticket, switching
 /// org first when the person is in another, and says what it showed; a target nothing matches is said, not guessed at.
 /// </summary>

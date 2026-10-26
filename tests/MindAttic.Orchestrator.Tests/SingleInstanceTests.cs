@@ -34,7 +34,7 @@ public sealed class SingleInstanceTests
     [Test]
     public void A_launch_with_start_hands_its_repo_to_the_running_one()
     {
-        // M.ORCH-T767: the Tickets desktop's Start link runs MindAttic.Orchestrator.exe --start <repo>; the running dashboard gets it.
+        // M.ORCH-T767: the Tickets desktop's Start link runs MindAttic.Orchestrator.Desktop.exe --start <repo>; the running dashboard gets it.
         var name = UniqueName();
         using var first = SingleInstance.Claim(name, TimeSpan.Zero);
         IReadOnlyList<string>? got = null;

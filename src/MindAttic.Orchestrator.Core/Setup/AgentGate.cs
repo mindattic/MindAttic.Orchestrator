@@ -3092,7 +3092,7 @@ public static class AgentGate
             if down is not None:
                 out["systemMessage"] = ((out["systemMessage"] + " ") if out.get("systemMessage") else "") + ("MindAttic.Orchestrator hasn't updated the pace for " + str(int(down // 60)) + " min: its daemon "
                     "isn't running, so agents aren't being paced (only Claude's own " + str(STOP_PERCENT) + "% 5-hour and " + str(int(week_stop_percent())) + "% weekly stops still hold). "
-                    "Start it: C:\\Apps\\MindAttic.Orchestrator\\MindAttic.Orchestrator.exe")
+                    "Start it: C:\\Apps\\MindAttic.Orchestrator\\MindAttic.Orchestrator.Desktop.exe")
             if out:
                 print(json.dumps(out))
         elif event == "PostToolUse":
