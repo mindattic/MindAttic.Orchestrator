@@ -2638,7 +2638,7 @@ public static class AgentGate
             # only for tickets it will get. The files workable() reads trail it: a ticket another live session filed a moment
             # ago is held by next at once, but by the daemon's holds only after its next tick, and every stop until then was
             # sent back for a ticket next refused (M.ORCH-T385). None when next can't be asked (not installed, failed, too slow):
-            # then the stop is let through, not pushed back on workable()'s count (M.ORCH-T901: next took 17s on a busy machine,
+            # then the stop is let through, not pushed back on workable()'s count (M.ORCH-T901: next took 17s on a busy machine (30s now, under the 60s hook timeout),
             # past the old 6s timeout, so the cheap count always stood and nagged).
             try:
                 import shutil, subprocess
@@ -2649,7 +2649,7 @@ public static class AgentGate
                 if pid:
                     env["MINDATTIC_CLI_PID"] = str(pid)  # this CLI, so what it filed itself stays its own (M.ORCH-T328)
                 r = subprocess.run([exe, "next", "--repos", ",".join(repos)], capture_output=True, text=True, encoding="utf-8",
-                                   errors="ignore", timeout=40, env=env, stdin=subprocess.DEVNULL)
+                                   errors="ignore", timeout=30, env=env, stdin=subprocess.DEVNULL)
                 ids = re.findall(r"^=== (\S+) \(", r.stdout or "", re.M)
                 return ids if r.returncode == 0 and (ids or "Nothing handed out" in (r.stdout or "")) else None
             except Exception:
