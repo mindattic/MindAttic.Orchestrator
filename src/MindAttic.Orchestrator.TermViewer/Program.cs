@@ -19,6 +19,9 @@ internal static class Program
         var log = OrchestratorLog.For("TermViewer");
         try
         {
+            // The team wall's pop-out of a teammate's CLI, through their gateway (M.ORCH-T936).
+            if (RemoteViewer.RemoteArg(args) is { } remote)
+                return RemoteViewer.Run(remote, SessionArg(args), args.Contains("--interact", StringComparer.OrdinalIgnoreCase), log);
             if (SessionArg(args) is not { } id)
             {
                 log.Warning("Started without --session <id>; nothing to show");

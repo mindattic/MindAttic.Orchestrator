@@ -117,6 +117,11 @@
         <Button x:Name="TicketsButton" Style="{StaticResource MaToolButton}" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
                 Content="&#xE8EC;" Command="{Binding OpenTicketsAppCommand}" ToolTip="Open Tickets"
                 AutomationProperties.Name="Open Tickets" />
+        <!-- Team wall (M.ORCH-T936): Segoe's People glyph (E716) opens a grid of every live CLI, this machine's and every
+             teammate's gateway's (orchestrator gateway remote add), each a small read-only terminal (TeamWallWindow.cs). -->
+        <Button x:Name="TeamWallButton" Style="{StaticResource MaToolButton}" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
+                Content="&#xE716;" Click="TeamWallButton_Click" ToolTip="Team wall: everyone's live CLIs"
+                AutomationProperties.Name="Team wall" />
         <!-- The global Pause/Resume toggle (M.ORCH-T808): Segoe's Pause glyph (E769) while work runs; clicked and confirmed, it
              ends every Claude CLI on every login outright and holds every claim and dispatch org-wide. Paused, it shows Play
              (E768) in MaWarn, and a click resumes at once (no confirm). Bound to the shown tab's TogglePauseCommand; every tab
