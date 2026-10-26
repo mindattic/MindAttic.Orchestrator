@@ -71,7 +71,9 @@ public partial class MainWindow : Window
         model.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(MainViewModel.IsOnApiKey)) UpdateEmergencyGlow(); };
         UpdateEmergencyGlow();
 
-        CommandBindings.Add(new CommandBinding(WindowCommands.Escape, (_, _) => OnEscape()));
+        CommandBindings.Add(new CommandBinding(WindowCommands.Escape, (_, _) => OnEscape(),
+            // Esc belongs to the CLI while a terminal has focus (M.ORCH-T852): not executable, so the key passes through.
+            (_, e) => e.CanExecute = !TerminalKeyboard.HoldsFocus(TerminalPanesHost)));
 
         // Each terminal lives in the Terminals panel's host grid from its opening to its closing (M.ORCH-T810): a template would
         // build a new terminal (and a new CLI) every time its tab was shown. Native windows, they're clipped to the page's scroll
@@ -82,6 +84,7 @@ public partial class MainWindow : Window
             foreach (var added in e.NewItems?.OfType<TerminalPaneViewModel>() ?? []) TerminalPanesHost.Children.Add(added.Control);
         };
         TerminalClip.Attach(TerminalPanesHost);
+        TerminalKeyboard.Attach(this, TerminalPanesHost);
         model.PropertyChanged += (_, _) => UpdateTerminalsCover();
         DataContextChanged += (_, _) => UpdateTerminalsCover();
 
