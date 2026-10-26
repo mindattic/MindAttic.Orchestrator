@@ -198,6 +198,9 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// <summary>Who's billed (Claude Team or the Vault's API key, masked) and what each open Claude CLI bills (M.ORCH-T436).</summary>
     public Billing.BillingStatus? Billing { get; init; }
 
+    /// <summary>The API key person's money (M.ORCH-T906): its credit, what its CLIs spent and the burndown; null when unread.</summary>
+    public Billing.ApiSpend? ApiSpend { get; init; }
+
     public TokenUsage UsageToday => Repos.Aggregate(default(TokenUsage), (sum, r) => sum + r.UsageToday);
     public int Working => Repos.Count(r => r.State == RepoState.Working);
     public int Waiting => Repos.Count(r => r.State == RepoState.Waiting);

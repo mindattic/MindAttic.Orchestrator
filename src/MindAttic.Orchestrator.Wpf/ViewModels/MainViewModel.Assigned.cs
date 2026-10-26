@@ -168,8 +168,9 @@ public sealed partial class MainViewModel
     /// their own queue, and this is the dashboard's one place to see an unassigned ticket and reach "Assign in Tickets".</summary>
     public ObservableCollection<UserTicketRowViewModel> UnassignedTickets { get; } = [];
 
-    /// <summary>This tab's person's login: its own email, or on the global login's tab the email signed in to it.</summary>
-    public string? PersonEmail => tab.IsApiKey ? null : AccountDirs.Normalize(tab.Email ?? Root.full?.GlobalEmail);
+    /// <summary>This tab's person's login: its own email, or on the global login's tab the email signed in to it. The API key's
+    /// person's is its own login's (M.ORCH-T906): tickets are assigned to it by that email like anyone's.</summary>
+    public string? PersonEmail => AccountDirs.Normalize(tab.Email ?? Root.full?.GlobalEmail);
 
     /// <summary>The Tickets view shows on a person's signed-in tab whose login is known.</summary>
     public bool ShowsUserTickets => IsTabSignedIn && PersonEmail is not null;
@@ -336,13 +337,23 @@ public sealed partial class MainViewModel
         catch (Exception ex) { Trace.TraceWarning($"Closed tickets read failed: {ex.Message}"); }
         var now = DateTime.UtcNow;
         var settings = (FiveHour: (double)paceTargetPercent, Week: (double)weeklyStopPercent);
-        var tabs = loginTabs.Where(t => !t.tab.IsApiKey && t.PersonEmail is not null).ToList();
+        var tabs = loginTabs.Where(t => t.PersonEmail is not null).ToList();
         var wanted = new List<PersonOptionViewModel> { nobody };
         var orgOf = new Dictionary<PersonOptionViewModel, string>();
         foreach (var t in tabs)
         {
             var email = t.PersonEmail!;
             var option = people.FirstOrDefault(p => p.Email == email) ?? new PersonOptionViewModel(email);
+            // The API key's person (M.ORCH-T906): no 5-hour or weekly window, only money. Out of room once its credit is spent.
+            if (t.tab.IsApiKey)
+            {
+                var spend = full?.ApiSpend;
+                option.Update(t.LoginName, spend?.LeftUsd is { } left ? $"{MindAttic.Orchestrator.Billing.ApiSpend.Usd(left)} left" : spend is null ? "" : $"{MindAttic.Orchestrator.Billing.ApiSpend.Usd(spend.TodayUsd)} today",
+                    spend is { OutOfCredit: true } ? "its API credit is spent" : null, t.tab.SignedIn);
+                wanted.Add(option);
+                orgOf[option] = t.OrgId;
+                continue;
+            }
             var row = accountRows.FirstOrDefault(r => TicketPins.Same(r.Email, email));
             var week = row?.WeekUsedAt(now);
             option.Update(t.LoginName, week is { } w ? $"week {Math.Max(0, 100 - w):0}% left" : "",

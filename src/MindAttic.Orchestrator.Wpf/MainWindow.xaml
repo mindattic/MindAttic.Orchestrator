@@ -100,13 +100,9 @@
              between dark (the default) and light at once, every view following, and the choice is saved in the orchestrator's
              settings (ThemeChoice, wired in MainWindow.xaml.cs) so it holds across restarts. It shares the login strip's row and
              stays when the strip is hidden. -->
-        <!-- The emergency billing toggle (M.ORCH-T770): the Vault's API key bills the organization, nobody's seat, so it isn't a
-             person tab beside Amy/Erin/Honey/Jordan/Ryan (the old 'API key' tab, M.ORCH-T630, is hidden from that strip below) -
-             it's a plain icon toggle beside the sun/moon theme toggle, bound to the same ToggleBillingCommand/BillingToggleText
-             that tab used, so one click still moves every open CLI, wherever it's signed in. A plain key, MaText-coloured, while
-             Claude Team bills; solid green with a slow glowing pulse (same treatment as a busy tab's play icon below) while the
-             API key does, so it's never left on unnoticed. Always on the global login's tab (the strip's own row), so it's there
-             whichever person's tab is selected. -->
+        <!-- No emergency billing toggle any more (M.ORCH-T906, which replaced M.ORCH-T770's): the Vault's API key is a person
+             with its own tab in the strip below, its own Launcher and CLIs billing API credits; orchestrator billing stays the
+             command-line tool. -->
         <DockPanel x:Name="TopRow" Grid.Row="0" Margin="{StaticResource SpaceLXLTLRXL}">
         <mc:MaThemeToggle x:Name="ThemeToggle" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0" />
         <!-- Settings (M.ORCH-T804): a single cog between the emergency key and the sun/moon toggle, the only way to open
@@ -128,25 +124,6 @@
         <Button x:Name="PauseButton" Style="{StaticResource MaToolButton}" Visibility="Collapsed" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
                 Content="{Binding PauseGlyph}" Foreground="{Binding PauseBrush}" Command="{Binding TogglePauseCommand}"
                 ToolTip="{Binding PauseToggleText}" AutomationProperties.Name="{Binding PauseToggleText}" />
-        <!-- The library's own MaToolButton (Theme.xaml), not a template of its own (M.ORCH-T775): a Storyboard.TargetName
-             only resolves within a ControlTemplate or DataTemplate's NameScope, and MaToolButton's has no part this button
-             could name, so the glow pulse is set up in code-behind instead (MainWindow.xaml.cs), on a DropShadowEffect
-             assigned straight to the Button, animated by BeginAnimation rather than a Storyboard. That sidesteps the
-             NameScope rule entirely, and the MC4011 compile error and the runtime 'Effect property does not point to a
-             DependencyObject' crash it previously ran into (M.ORCH-T770, M.ORCH-T771). -->
-        <Button x:Name="EmergencyBillingButton" Style="{StaticResource MaToolButton}" Visibility="Collapsed" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
-                Command="{Binding ToggleBillingCommand}" ToolTip="{Binding BillingToggleText}"
-                AutomationProperties.Name="{Binding BillingToggleText}" AutomationProperties.HelpText="{Binding BillingClis}">
-            <!-- Material Design's well-known 'vpn_key' glyph (24x24 viewBox), drawn as a Path rather than an icon-font
-                 codepoint: no MDL2/Fluent glyph for a key is confirmed to exist in this font stack, and a wrong one renders
-                 as a blank tofu box, which a break-glass control can never afford. Its colour is the view model's own live
-                 brush (EmergencyKeyBrush, Palette's MaText/MaGood, M.ORCH-T775) rather than a DataTrigger, so no Style of
-                 its own is needed here either. -->
-            <Viewbox Width="16" Height="16">
-                <Path Data="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"
-                      Stretch="Uniform" Fill="{Binding EmergencyKeyBrush}" />
-            </Viewbox>
-        </Button>
         <!-- Organizations above people (M.ORCH-T655): one pill per org (orchestrator orgs add), shown once there's a second,
              with how many of its people's repos need you; the person tabs below are the chosen org's. Kept on the global login's
              tab (MainWindow.xaml.cs), which holds every org, like the person strip under it. -->
@@ -196,22 +173,14 @@
                  status word are in the tooltip and the accessible name, so neither colour nor the picture is the only cue; the
                  person's terminal colour is the tab's accent, and its trailing text their live 5-hour and weekly use against
                  their own cutoffs, "5hr: 10/98% | wk: 55/90%" (M.ORCH-T793; no 'N need you' count, no '% left'). -->
-            <!-- The 'API key' entry is never shown here (M.ORCH-T770): it isn't a person, so it doesn't get a tab beside
-                 Amy/Erin/Honey/Jordan/Ryan any more - its billing state and toggle moved to the emergency button in the
-                 window's own corner (TopRow, above this strip). Collapsed rather than removed from loginTabs/OrgTabs: Ctrl+Tab,
-                 org scoping and the ApiKeyBody content pane (reachable only were it ever selected, which it now can't be from
-                 here) are untouched. -->
+            <!-- The API key is a person here like any other (M.ORCH-T906): its tab comes after everyone's, its trailing text its
+                 money ("$37.66 left") rather than 5-hour and weekly use. -->
             <mc:MaTabControl.ItemContainerStyle>
                 <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
                     <Setter Property="Accent" Value="{Binding TabBrush}" />
                     <Setter Property="Trailing" Value="{Binding TabTrailing}" />
                     <Setter Property="ToolTip" Value="{Binding TabTip}" />
                     <Setter Property="AutomationProperties.Name" Value="{Binding TabTip}" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsApiKeyTab}" Value="True">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                        </DataTrigger>
-                    </Style.Triggers>
                 </Style>
             </mc:MaTabControl.ItemContainerStyle>
             <mc:MaTabControl.ItemTemplate>
@@ -246,11 +215,6 @@
                             <TextBlock x:Name="TabDisabledIcon" Text="&#xE733;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
                                        Foreground="{DynamicResource MaMuted}" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                        Visibility="{Binding IsTabDisabled, Converter={StaticResource Visible}}" />
-                            <!-- The 'API key' tab shows a key (M.ORCH-T763; the tab itself is collapsed from this strip since M.ORCH-T770,
-                                 its toggle the corner's key button), in place of a person's activity icon. -->
-                            <TextBlock x:Name="TabKeyIcon" Text="&#xE192;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
-                                       Foreground="{DynamicResource MaText}" VerticalAlignment="Center" AutomationProperties.Name="API key"
-                                       Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}" />
                         </Grid>
                         <TextBlock Text="{Binding TabTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <!-- The needs-you flag (M.ORCH-T790): a small red flag at the end of the tab line, only while one of the
@@ -346,35 +310,8 @@
                        Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" AutomationProperties.LiveSetting="Polite" />
         </StackPanel>
 
-        <!-- The 'API key' tab (M.ORCH-T630): the Vault API key's billing, for emergencies, and back to Claude Team (M.ORCH-T436,
-             off the old account menu by M.ORCH-T628), what the CLIs billing it spent today and which CLIs bill it. -->
-        <ScrollViewer x:Name="ApiKeyBody" Grid.Row="4" Style="{StaticResource MaBodyScroll}"
-                      Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}">
-            <StackPanel MaxWidth="760" HorizontalAlignment="Left" Margin="{StaticResource SpaceTL}">
-                <TextBlock Text="API key" Style="{StaticResource MaHeading}" AutomationProperties.HeadingLevel="Level2" />
-                <TextBlock Text="{Binding BillingHeadline}" FontWeight="SemiBold" Foreground="{Binding BillingBrush}" TextWrapping="Wrap" Margin="{StaticResource SpaceTS}" />
-                <TextBlock Text="Bill every CLI to the Vault's API key only in an emergency (every Claude Team seat out of room), and switch back to Claude Team when it's over."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceTXSBM}" />
-                <Button x:Name="BillingToggleButton" Style="{StaticResource MaButton}" Content="{Binding BillingToggleText}" Padding="{StaticResource SpaceHLVXS}"
-                        Command="{Binding ToggleBillingCommand}" HorizontalAlignment="Left" Foreground="{Binding BillingBrush}"
-                        AutomationProperties.Name="{Binding BillingToggleText}" AutomationProperties.HelpText="{Binding BillingClis}">
-                    <Button.ToolTip>
-                        <TextBlock>
-                            <Run Text="{Binding BillingHeadline, Mode=OneWay}" FontWeight="SemiBold" /><LineBreak />
-                            <Run Text="{Binding BillingClis, Mode=OneWay}" />
-                        </TextBlock>
-                    </Button.ToolTip>
-                </Button>
-                <TextBlock x:Name="ApiKeyBillingDetail" Text="{Binding BillingDetail}" Style="{StaticResource MaTileSubtitle}" TextWrapping="Wrap" Margin="{StaticResource SpaceTS}"
-                           AutomationProperties.LiveSetting="Polite"
-                           Visibility="{Binding BillingDetail, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                <TextBlock Text="TODAY" Style="{StaticResource MaSectionLabel}" />
-                <TextBlock x:Name="ApiKeyCost" Text="{Binding ApiKeyCostText}" TextWrapping="Wrap" />
-                <TextBlock Text="WHO BILLS IT" Style="{StaticResource MaSectionLabel}" />
-                <TextBlock x:Name="ApiKeyCliList" Text="{Binding ApiKeyClis}" TextWrapping="Wrap" />
-                <TextBlock Text="{Binding BillingClis}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceTS}" />
-            </StackPanel>
-        </ScrollViewer>
+        <!-- The old 'API key' billing tab's own body (M.ORCH-T630) is gone (M.ORCH-T906): the API key is a person, whose page is
+             the same as everyone's below, its money in place of Claude's 5-hour and weekly meters. -->
 
         <!-- The person's scrolling body, under their fixed terminal: their stats, the toolbar, the 5-hour chart and the tickets
              assigned to them (the Current work agent card board is gone, M.ORCH-T837). One virtualized list (M.ORCH-T754,
@@ -393,7 +330,37 @@
                                    AutomationProperties.Name="Summary">
                     <!-- Budget: the current 5-hour block. Click to change this login's cutoffs (Org limit): the top-right cog is the
                          only way into Settings (M.ORCH-T804). -->
+                    <!-- The API key's person (M.ORCH-T906) has no 5-hour or weekly window: money instead. What's left of its
+                         starting credit, what it has spent (today and lately), and when it runs out at the recent rate. -->
+                    <Button x:Name="ApiLeftTile" Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Height="74" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}"
+                            ToolTip="What's left of the API key's starting credit (orchestrator billing credit &lt;usd&gt; sets it): an estimate from the transcripts' tokens at Anthropic's list prices."
+                            AutomationProperties.Name="{Binding ApiLeftHeadline, StringFormat='API credit left: {0}'}">
+                        <StackPanel>
+                            <TextBlock Text="Credit Left" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
+                            <TextBlock Text="{Binding ApiLeftHeadline}" Style="{StaticResource MaStatValue}" />
+                            <TextBlock Text="{Binding ApiLeftCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="ApiSpentTile" Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Height="74" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}"
+                            ToolTip="What the API key's CLIs have spent since its starting credit was set, today, and the rate over the last 24 hours."
+                            AutomationProperties.Name="{Binding ApiSpentHeadline, StringFormat='API spend: {0}'}">
+                        <StackPanel>
+                            <TextBlock Text="Spent" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
+                            <TextBlock Text="{Binding ApiSpentHeadline}" Style="{StaticResource MaStatValue}" />
+                            <TextBlock Text="{Binding ApiSpentCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="ApiRunsOutTile" Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Height="74" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}"
+                            ToolTip="When the starting credit runs out at the last 24 hours' rate."
+                            AutomationProperties.Name="{Binding ApiRunsOutHeadline, StringFormat='API credit runs out: {0}'}">
+                        <StackPanel>
+                            <TextBlock Text="Runs Out" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBXS}" />
+                            <TextBlock Text="{Binding ApiRunsOutHeadline}" Style="{StaticResource MaStatValue}" />
+                            <TextBlock Text="{Binding ApiRunsOutCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Button>
                     <Button Style="{StaticResource MaSmallStat}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" Padding="{StaticResource SpaceHLV0}" Height="74" Command="{Binding OrgLimitCommand}"
+                            Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}"
                             ToolTip="{Binding BudgetTooltip}"
                             AutomationProperties.Name="{Binding BudgetHeadline, StringFormat='5-hour window {0} used: change the cutoffs'}">
                         <StackPanel>
@@ -416,7 +383,7 @@
                     </Button>
                     <!-- Weekly: the other half of /status's picture. The tab's login's own week (M.ORCH-T628): what's left, its reset's
                          day, date and time, and its weekly stop line (M.ORCH-T609). -->
-                    <Button Style="{StaticResource MaSmallStat}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" Padding="{StaticResource SpaceHLV0}" Height="74" Command="{Binding OrgLimitCommand}"
+                    <Button Style="{StaticResource MaSmallStat}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" Padding="{StaticResource SpaceHLV0}" Height="74" Command="{Binding OrgLimitCommand}" Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}"
                             ToolTip="How much of this login's weekly limit is left (/status reports the used share), when it resets, and where its CLIs stop (the weekly reserve). Opens Org limit to change its cutoffs; the weekly reset is in Settings (the top-right cog)."
                             AutomationProperties.Name="{Binding WeeklyHeadline, StringFormat='Week {0}: change the cutoffs'}">
                         <StackPanel>
@@ -426,7 +393,7 @@
                         </StackPanel>
                     </Button>
                     <!-- Cutoffs (M.ORCH-T707): where this login's 5-hour window and week are cut off; opens Org limit to change them. -->
-                    <Button Style="{StaticResource MaSmallStat}" Command="{Binding OrgLimitCommand}"
+                    <Button Style="{StaticResource MaSmallStat}" Command="{Binding OrgLimitCommand}" Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}"
                             ToolTip="Where this login's access is cut off: its 5-hour cutoff, then its weekly cutoff (orchestrator org limit). Opens Org limit to change them."
                             AutomationProperties.Name="{Binding CutoffsHeadline, StringFormat='Cutoffs {0}: change them'}">
                         <StackPanel>
@@ -436,7 +403,7 @@
                         </StackPanel>
                     </Button>
                     <!-- Last updated: when Claude's meter for this login was read, its plan, and STALE once it's old (M.ORCH-T684). -->
-                    <Button Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}"
+                    <Button Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}"
                             ToolTip="When Claude's own meter for this login was last read, and its plan. Refreshes the dashboard (F5)."
                             AutomationProperties.Name="{Binding LastUpdatedHeadline, StringFormat='Last updated {0}: refresh'}">
                         <StackPanel>
@@ -477,7 +444,7 @@
                      its own full-width row, tall enough that the pace line straight to the target at the reset, the window's
                      own line (red while over that pace, green under) and where the recent rate ends up are easy to read. The
                      caption says it in words. -->
-                <StackPanel x:Name="UtilizationSection" Margin="{StaticResource SectionGap}">
+                <StackPanel x:Name="UtilizationSection" Margin="{StaticResource SectionGap}" Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}">
                     <Border x:Name="UtilizationCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch"
                             AutomationProperties.Name="{Binding UtilizationText, StringFormat='5-hour utilization: {0}'}"
                             Visibility="{Binding UtilizationText, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
@@ -486,6 +453,21 @@
                             <mc:MaLineChart x:Name="UtilizationChart" Data="{Binding Utilization, Converter={x:Static local:UtilizationChartData.Converter}}"
                                             Height="130" Margin="{StaticResource SpaceH0VS}" />
                             <TextBlock Text="{Binding UtilizationText}" Style="{StaticResource MaTileSubtitle}" FontSize="13" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- The API key's person (M.ORCH-T906): its money burning down, in place of the 5-hour chart. From its starting credit
+                     (100%) down to what's left now, then, dotted, where the last 24 hours' rate takes it: to $0 where it runs out,
+                     else what's left at the chart's end. The caption says it in words. -->
+                <StackPanel x:Name="ApiBurnSection" Margin="{StaticResource SectionGap}" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}">
+                    <Border x:Name="ApiBurnCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch"
+                            AutomationProperties.Name="{Binding ApiBurnText, StringFormat='API credit burndown: {0}'}">
+                        <StackPanel>
+                            <TextBlock Text="API credit burndown" Style="{StaticResource MaSectionLabel}" />
+                            <mc:MaLineChart x:Name="ApiBurnChart" Data="{Binding Spend, Converter={x:Static local:ApiBurnChartData.Converter}}"
+                                            Height="130" Margin="{StaticResource SpaceH0VS}" />
+                            <TextBlock Text="{Binding ApiBurnText}" Style="{StaticResource MaTileSubtitle}" FontSize="13" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
                 </StackPanel>

@@ -257,6 +257,14 @@ public sealed record OrchestratorSettings
 
     public const string DefaultPsstAlertTo = "ryan";
 
+    /// <summary>The API key person's starting credit in US dollars (M.ORCH-T906): what its burndown starts from, entered by you with
+    /// <c>orchestrator billing credit &lt;usd&gt;</c> (the real balance isn't read from Anthropic yet). Null: none set, so its page
+    /// shows only what's been spent.</summary>
+    public double? ApiCreditUsd { get; init; }
+
+    /// <summary>When <see cref="ApiCreditUsd"/> was entered: spend is counted against it from then on.</summary>
+    public DateTime? ApiCreditSinceUtc { get; init; }
+
     /// <summary>The dashboard's theme (M.ORCH-T678): "Light" or "Dark", as its sun/moon switch saved it. Null (never switched),
     /// or anything else, is dark, the default; the dashboard reads it at start and writes it at each switch.</summary>
     public string? Theme { get; init; }

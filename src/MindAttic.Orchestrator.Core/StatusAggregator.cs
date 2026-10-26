@@ -43,6 +43,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
     internal string? SessionContextDir { get; init; }
 
     private Billing.BillingSwitch? billingSwitch;
+    private Billing.ApiSpendLedger? apiLedger;
 
     /// <summary>The billing switch (M.ORCH-T436) whose mode and CLIs each snapshot shows; the dashboard's toggle switches it.
     /// The CLIs the rebalancer failed over to the API key (M.ORCH-T664) are read from <see cref="Store"/>, so they're never asked
@@ -544,7 +545,18 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
         }
 
-        return new Snapshot(now, result, warnings) { Budget = budget, Pace = pace, Utilization = utilization, ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, UnknownRepos = new HashSet<string>(tickets.Unknown, StringComparer.OrdinalIgnoreCase), Approved = tickets.Approved, Priorities = tickets.Priorities, Assignees = tickets.Assignees, Reservations = tickets.Reservations, Agents = agentBoard, Billing = billing, Accounts = accountPaces,
+        // The API key person's money (M.ORCH-T906): its sessions' spend, priced per model, kept per hour across restarts.
+        Billing.ApiSpend? apiSpend = null;
+        try
+        {
+            var ledger = apiLedger ??= new Billing.ApiSpendLedger(Path.Combine(Store.Directory, Billing.ApiSpendLedger.FileName));
+            var onKeyPerson = ownLogin.Where(o => Billing.ApiKeyPerson.Is(Accounts.Dirs.Of(o.Value)?.Email)).Select(o => o.Key).ToHashSet(StringComparer.Ordinal);
+            if (ledger.Observe(claudeSessions.Where(s => onKeyPerson.Contains(s.SessionId)), now) && writing) ledger.Save();
+            apiSpend = ledger.Spend(settings.ApiCreditUsd, settings.ApiCreditSinceUtc, now, startOfTodayUtc);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { warnings.Add($"API key spend: {ex.Message}"); }
+
+        return new Snapshot(now, result, warnings) { ApiSpend = apiSpend, Budget = budget, Pace = pace, Utilization = utilization, ProviderUsage = providerUsage, Costs = new TicketCosts(costs), LinkedRepos = LinkedRepos(), History = history, Account = signIn?.Account, Requires = tickets.Requires, UnknownRepos = new HashSet<string>(tickets.Unknown, StringComparer.OrdinalIgnoreCase), Approved = tickets.Approved, Priorities = tickets.Priorities, Assignees = tickets.Assignees, Reservations = tickets.Reservations, Agents = agentBoard, Billing = billing, Accounts = accountPaces,
             // Each session's per-CLI login, and the global login's email: what the dashboard's tabs split it by (M.ORCH-T613).
             OwnLogins = ownLogin.Select(o => (Session: o.Key, Email: Accounts.Dirs.Of(o.Value)?.Email)).Where(o => o.Email is not null)
                 .ToDictionary(o => o.Session, o => o.Email!, StringComparer.Ordinal),

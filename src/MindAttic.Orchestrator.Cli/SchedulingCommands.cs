@@ -42,9 +42,20 @@ internal static class Ctx
     /// (signed in moments ago) is planned unpaced, as with no daemon, never on the global login's room; its hooks still stop
     /// it at Claude's own 99%.
     /// </summary>
+    /// <para>The API key's person (M.ORCH-T906) has no 5-hour or weekly window: it's planned unpaced on its own allowance, never a
+    /// Claude login's, and held (no session slot) only once its starting credit is spent.</para>
     internal static Snapshot OnOwnLogin(Snapshot snapshot, AccountDir? login)
     {
         if (login is null) return snapshot;
+        if (MindAttic.Orchestrator.Billing.ApiKeyPerson.Is(login.Email))
+            return snapshot with
+            {
+                Budget = null, Utilization = null, Account = ClaudeAccount.ApiKey,
+                Pace = snapshot.ApiSpend is { OutOfCredit: true } spend
+                    ? new Pace(PaceMode.Over, 0, 0, 0, null, "API credit", null,
+                        $"API key: its starting credit is spent ({spend.Line}); orchestrator billing credit <usd> sets a new one.")
+                    : null,
+            };
         var own = snapshot.Accounts.FirstOrDefault(a => a.Email.Equals(login.Email, StringComparison.OrdinalIgnoreCase));
         return snapshot with { Budget = own?.Budget, Pace = own?.Pace, Utilization = own?.Utilization, Account = own?.Account };
     }

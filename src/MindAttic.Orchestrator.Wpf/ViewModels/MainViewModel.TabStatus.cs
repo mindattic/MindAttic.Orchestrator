@@ -68,9 +68,13 @@ public sealed partial class MainViewModel
 
     /// <summary>The text beside a person's name (M.ORCH-T793): their live 5-hour and weekly use, each against that person's own
     /// live cutoff ("5hr: 10/98% | wk: 55/90%"), the cutoffs read from /org limit (or the wall while allowed past the weekly one),
-    /// never a fixed number. On the 'API key' tab, the tokens the CLIs billing it spent today.</summary>
-    public string TabTrailing => tab.IsApiKey ? $"{Formatting.Tokens(ApiKeyUsageToday.Fresh)} today"
+    /// never a fixed number. On the API key's person (M.ORCH-T906), money: what's left of its credit, else what it spent today.</summary>
+    public string TabTrailing => tab.IsApiKey ? ApiTrailingOf(Spend)
         : TabUsagePairsOf(FiveHourUsed, FiveHourCutoff, WeekUsed, WeeklyCutoff);
+
+    /// <summary>"$37.66 left", or "$1.20 today" with no starting credit set; "" before the first read.</summary>
+    internal static string ApiTrailingOf(ApiSpend? spend) =>
+        spend is null ? "" : spend.LeftUsd is { } left ? $"{ApiSpend.Usd(left)} left" : $"{ApiSpend.Usd(spend.TodayUsd)} today";
 
     /// <summary>"5hr: 10/98% | wk: 55/90%": each window's % used (rounded, "—" never read) over its cutoff.</summary>
     internal static string TabUsagePairsOf(double? fiveHourUsed, int fiveHourCutoff, double? weekUsed, int weeklyCutoff) =>
@@ -80,9 +84,15 @@ public sealed partial class MainViewModel
         used is { } u ? Math.Max(0, u).ToString("0", System.Globalization.CultureInfo.InvariantCulture) : "—";
 
     private (TabLight Light, string Word) TabStatus => tab.IsApiKey
-        ? (TabLight.Warning, IsOnApiKey ? "API key billing every CLI" : "API key on standby (Claude Team bills)")
+        ? ApiStatusOf(tab.SignedIn, Spend)
         : StatusOf(tab.SignedIn, string.Equals(Root.signingInEmail, tab.Email, StringComparison.OrdinalIgnoreCase) && tab.Email is not null,
             SignedInAsOther, WeekUsed, WeeklyCutoff, FiveHourUsed, FiveHourCutoff);
+
+    /// <summary>The API key's person's light (M.ORCH-T906): red with no key in the Vault, purple once its credit is spent, else green.</summary>
+    internal static (TabLight Light, string Word) ApiStatusOf(bool hasKey, ApiSpend? spend) =>
+        !hasKey ? (TabLight.Bad, "No Claude key in the MindAttic Vault")
+        : spend is { OutOfCredit: true } ? (TabLight.Other, "Its API credit is spent")
+        : (TabLight.Good, "Ready: its CLIs bill API credits");
 
     /// <summary>A person's light and its word: red signed out, purple while signing in, signed in as someone else, at its weekly
     /// stop line (its own weekly cutoff, M.ORCH-T707) or at its 5-hour cutoff, else green.</summary>
@@ -144,7 +154,7 @@ public sealed partial class MainViewModel
 
     /// <summary>The tab's icon: pause idle, a blinking green play arrow busy, gray disabled.</summary>
     public TabActivity TabActivity => tab.IsApiKey
-        ? ActivityOf(usable: IsOnApiKey, pastCutoff: false, working: false, Blinker.Grew || Blinker.Pending > 0)
+        ? ActivityOf(usable: tab.SignedIn, pastCutoff: Spend is { OutOfCredit: true }, WorkingCount > 0 || HostCount > 0, Blinker.Grew || Blinker.Pending > 0)
         : ActivityOf(tab.SignedIn, PastCutoffOf(WeekUsed, WeeklyCutoff, FiveHourUsed, FiveHourCutoff), WorkingCount > 0 || HostCount > 0,
             Blinker.Grew || Blinker.Pending > 0);
 
@@ -158,8 +168,7 @@ public sealed partial class MainViewModel
     internal static bool PastCutoffOf(double? weekUsed, int weeklyCutoff, double? fiveHourUsed, int fiveHourCutoff) =>
         weekUsed >= weeklyCutoff || fiveHourUsed >= fiveHourCutoff;
 
-    // A person's tab shows its activity icon; the 'API key' tab shows a key instead (the owner's ask, M.ORCH-T763), each with
-    // its word in the tooltip and accessible name.
+    // Every tab shows its activity icon (the API key's person too, since M.ORCH-T906), its word in the tooltip and accessible name.
     public bool IsTabIdle => IsPersonTab && TabActivity == TabActivity.Idle && !TabAllStopped;
     public bool IsTabBusy => IsPersonTab && TabActivity == TabActivity.Busy && !TabAllStopped;
     public bool IsTabDisabled => IsPersonTab && TabActivity == TabActivity.Disabled;
@@ -199,7 +208,8 @@ public sealed partial class MainViewModel
     /// <summary>The icon in words, so it's never only a picture: "Busy", "Idle", "All N CLIs stopped", or why it's disabled.</summary>
     public string TabActivityWord => TabActivity switch
     {
-        TabActivity.Disabled => tab.IsApiKey ? "Disabled: API billing off" : tab.SignedIn ? "Disabled: past its cutoff" : "Disabled: signed out",
+        TabActivity.Disabled => tab.IsApiKey ? tab.SignedIn ? "Disabled: its API credit is spent" : "Disabled: no key in the Vault"
+            : tab.SignedIn ? "Disabled: past its cutoff" : "Disabled: signed out",
         _ when IsPersonTab && StoppedCliCount is > 0 and var n => n == 1 ? "Stopped: its one open CLI is idle" : $"Stopped: all {n} open CLIs are idle",
         TabActivity.Busy => "Busy",
         _ => "Idle",
@@ -208,9 +218,8 @@ public sealed partial class MainViewModel
     /// <summary>The play arrow's opacity: dimmed for the moment of a blink.</summary>
     public double TabIconOpacity => Blinker.IsDim ? 0.25 : 1.0;
 
-    /// <summary>The tokens this tab counts for its blinks: its login's uncached tokens today, as the dashboard already read them
-    /// (on the 'API key' tab, the CLIs billing the key's).</summary>
-    private long TabTokens => tab.IsApiKey ? ApiKeyUsageToday.Fresh : snapshot?.UsageToday.Fresh ?? 0;
+    /// <summary>The tokens this tab counts for its blinks: its login's uncached tokens today, as the dashboard already read them.</summary>
+    private long TabTokens => snapshot?.UsageToday.Fresh ?? 0;
 
     /// <summary>Hands this tab's token count from the refresh just applied to its blinker; a busy tab's new blinks start the
     /// shared blink timer, and one that isn't busy drops any it had queued.</summary>
@@ -262,9 +271,6 @@ public sealed partial class MainViewModel
         return who is not null && !who.Equals(email, StringComparison.OrdinalIgnoreCase) ? who : null;
     }
 
-    /// <summary>What the CLIs billing the API key spent today (their sessions' tokens), across the workspace.</summary>
-    private TokenUsage ApiKeyUsageToday => ApiKeyUsageOf(billing, full);
-
     internal static TokenUsage ApiKeyUsageOf(BillingStatus? status, Snapshot? all)
     {
         if (status is null || all is null) return default;
@@ -273,9 +279,7 @@ public sealed partial class MainViewModel
             .Aggregate(default(TokenUsage), (sum, s) => sum + s.UsageToday);
     }
 
-    /// <summary>"2 CLIs bill the API key: MindAttic.Foo (pid 12), …" or "No CLI bills the API key.", for the 'API key' tab.</summary>
-    public string ApiKeyClis => ApiKeyClisOf(billing);
-
+    /// <summary>"2 CLIs bill the API key: MindAttic.Foo (pid 12), …" or "No CLI bills the API key."</summary>
     internal static string ApiKeyClisOf(BillingStatus? status)
     {
         var keyed = status?.Clis.Where(c => c.Bills == BillingModes.Api).ToList() ?? [];
@@ -284,22 +288,57 @@ public sealed partial class MainViewModel
               string.Join(", ", keyed.Select(c => $"{c.Where} (pid {c.Pid})")) + ".";
     }
 
-    /// <summary>"1.2M tokens today (850K uncached) by the CLIs billing it", for the 'API key' tab.</summary>
-    public string ApiKeyCostText
+    // ── The API key's person's page (M.ORCH-T906): money, not Claude's 5-hour and weekly meters ──────────────────────
+
+    /// <summary>Its money as the last read had it; null before one (and on every other tab's page, which never shows it).</summary>
+    public ApiSpend? Spend => full?.ApiSpend;
+
+    /// <summary>The 5-hour and weekly cards, the cutoffs and the 5-hour chart: every page but the API key's, which has no window.</summary>
+    public bool ShowsClaudeMeters => !tab.IsApiKey;
+
+    /// <summary>"$37.66 left", or "—" with no starting credit set.</summary>
+    public string ApiLeftHeadline => Spend?.LeftUsd is { } left ? ApiSpend.Usd(left) : "—";
+
+    /// <summary>"of $50.00 since Oct 26", or how to set a starting credit.</summary>
+    public string ApiLeftCaption => Spend is { CreditUsd: { } c } s
+        ? $"of {ApiSpend.Usd(c)}{(s.SinceUtc is { } at ? $" since {at.ToLocalTime():MMM d}" : "")}"
+        : "no starting credit: orchestrator billing credit <usd>";
+
+    /// <summary>"$12.34", spent since the credit started (or everything on record).</summary>
+    public string ApiSpentHeadline => Spend is { } s ? ApiSpend.Usd(s.SpentUsd) : "—";
+
+    /// <summary>"$1.20 today · $0.45/h lately".</summary>
+    public string ApiSpentCaption => Spend is { } s ? $"{ApiSpend.Usd(s.TodayUsd)} today · {ApiSpend.Usd(s.PerHourUsd)}/h lately" : "not read yet";
+
+    /// <summary>When the credit runs out at the recent rate: "Thu 3:40 PM"; "—" when it won't (nothing spent lately, no credit).</summary>
+    public string ApiRunsOutHeadline => Spend is { OutOfCredit: true } ? "Spent"
+        : Spend?.RunsOutUtc(DateTime.UtcNow) is { } at ? at.ToLocalTime().ToString("ddd h:mm tt", System.Globalization.CultureInfo.CurrentCulture) : "—";
+
+    /// <summary>What the runs-out card is based on.</summary>
+    public string ApiRunsOutCaption => Spend is { OutOfCredit: true } ? "its credit is used up: set a new one to give it work"
+        : Spend?.CreditUsd is null ? "set a starting credit to see when it runs out"
+        : $"at the last {ApiSpend.RateWindow.TotalHours:0} hours' rate";
+
+    /// <summary>The burndown chart's caption, in words, so the picture is never the only cue.</summary>
+    public string ApiBurnText => ApiBurnTextOf(Spend, DateTime.UtcNow);
+
+    internal static string ApiBurnTextOf(ApiSpend? spend, DateTime nowUtc) => spend switch
     {
-        get
-        {
-            var u = ApiKeyUsageToday;
-            return $"{Formatting.Tokens(u.Total)} tokens today ({Formatting.Tokens(u.Fresh)} uncached) by the CLIs billing it.";
-        }
-    }
+        null => "",
+        { CreditUsd: null } => $"No starting credit set, so there's nothing to burn down: {spend.Line}. Prices are Anthropic's list prices applied to the transcripts' tokens, an estimate.",
+        { OutOfCredit: true } => $"The credit is spent: {spend.Line}.",
+        _ => $"{spend.Line}." + (spend.RunsOutUtc(nowUtc) is { } at ? $" At that rate it runs out around {at.ToLocalTime():ddd MMM d h:mm tt}." : " Nothing spent lately, so it isn't running down.") +
+             " Prices are Anthropic's list prices applied to the transcripts' tokens, an estimate.",
+    };
 
     /// <summary>Raises everything the tab strip shows for this tab.</summary>
     private void RaiseTabStatus()
     {
         foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(TabTip),
                                      nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(IsTabAllStopped), nameof(TabActivityWord),
-                                     nameof(ApiKeyClis), nameof(ApiKeyCostText), nameof(TabAskingCount), nameof(TabNeedsYou) })
+                                     nameof(TabAskingCount), nameof(TabNeedsYou), nameof(Spend), nameof(ApiLeftHeadline), nameof(ApiLeftCaption),
+                                     nameof(ApiSpentHeadline), nameof(ApiSpentCaption), nameof(ApiRunsOutHeadline), nameof(ApiRunsOutCaption),
+                                     nameof(ApiBurnText), nameof(ShowsClaudeMeters) })
             Raise(name);
     }
 

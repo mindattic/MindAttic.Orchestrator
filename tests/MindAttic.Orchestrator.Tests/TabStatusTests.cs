@@ -92,11 +92,16 @@ public sealed class TabStatusTests
     }
 
     [Test]
-    public void The_API_key_tab_is_no_logins_and_keyed_apart_from_every_login()
+    public void The_API_key_is_a_person_on_its_own_login_signed_in_while_the_vault_has_a_key()
     {
-        Assert.That(LoginTab.ApiKey.IsApiKey, Is.True);
-        Assert.That(LoginTab.ApiKey.IsGlobal, Is.False);
-        Assert.That(LoginTab.ApiKey.Key, Is.EqualTo(LoginTab.ApiKeyKey).And.Not.Contains("@").And.Not.Empty);
+        // M.ORCH-T906: no longer a special billing tab, but a person whose login is its own folder.
+        var tab = LoginTab.ApiKey(hasKey: true);
+        Assert.That(tab.IsApiKey, Is.True);
+        Assert.That(tab.IsGlobal, Is.False);
+        Assert.That(tab.Email, Is.EqualTo(Billing.ApiKeyPerson.Email));
+        Assert.That(tab.Key, Is.EqualTo(LoginTab.ApiKeyKey).And.EqualTo(Billing.ApiKeyPerson.Email));
+        Assert.That(tab.SignedIn, Is.True);
+        Assert.That(LoginTab.ApiKey(hasKey: false).SignedIn, Is.False, "no key in the Vault: nothing to sign it in with");
         Assert.That(new LoginTab(null, "Ryan (fallback)", "", "").Key, Is.Empty);
     }
 
@@ -112,7 +117,8 @@ public sealed class TabStatusTests
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         var xaml = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
-        Assert.That(xaml, Does.Contain("x:Name=\"TabKeyIcon\" Text=\"&#xE192;\"").And.Contain("{Binding IsApiKeyTab, Converter")
+        // M.ORCH-T906: the API key's person shows the activity icon like everyone; no key icon of its own.
+        Assert.That(xaml, Does.Not.Contain("x:Name=\"TabKeyIcon\"")
             .And.Not.Contain("x:Name=\"TabMiscIcon\"").And.Not.Contain("x:Name=\"MiscBody\""));
         Assert.That(xaml, Does.Contain("x:Name=\"WorkspaceExtras\"").And.Contain("{Binding ShowsWorkspaceExtras,"));
         var tabs = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "ViewModels", "MainViewModel.Tabs.cs"));
@@ -203,11 +209,10 @@ public sealed class TabStatusTests
             .And.Contain("Property=\"AutomationProperties.Name\" Value=\"{Binding TabTip}\"")
             .And.Contain("{Binding TabTitle}"));
 
-        var api = xaml[xaml.IndexOf("x:Name=\"ApiKeyBody\"", StringComparison.Ordinal)..];
-        api = api[..api.IndexOf("</ScrollViewer>", StringComparison.Ordinal)];
-        Assert.That(api, Does.Contain("{Binding IsApiKeyTab").And.Contain("x:Name=\"BillingToggleButton\"").And.Contain("{Binding ToggleBillingCommand}")
-            .And.Contain("{Binding ApiKeyCostText}").And.Contain("{Binding ApiKeyClis}"));
-        Assert.That(System.Text.RegularExpressions.Regex.Matches(xaml, "x:Name=\"BillingToggleButton\"").Count, Is.EqualTo(1), "one switch, on the 'API key' tab");
+        // M.ORCH-T906: no 'API key' billing body or switch; the API key's person page shows money in place of the meters.
+        Assert.That(xaml, Does.Not.Contain("x:Name=\"ApiKeyBody\"").And.Not.Contain("x:Name=\"BillingToggleButton\""));
+        Assert.That(xaml, Does.Contain("x:Name=\"ApiLeftTile\"").And.Contain("x:Name=\"ApiBurnChart\"")
+            .And.Contain("{Binding ShowsClaudeMeters, Converter"));
     }
 
     /// <summary>M.ORCH-T803: every person's tab is the same width, since WPF sizes a TabItem to its header's content by
