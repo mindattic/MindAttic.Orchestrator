@@ -30,6 +30,9 @@ internal sealed class TermSession
     private static readonly TimeSpan TypingThrottle = TimeSpan.FromSeconds(1);
     private const int DrainLimitMs = 100, DrainQuietMs = 20;
 
+    // M.ORCH-T997: how long the exit waits for the output pump to reach EOF before Exit goes out.
+    private const int PumpDrainMs = 5_000, PumpDrainMaxMs = 30_000, PumpQuietMs = 500;
+
     // M.ORCH-T994: the most a Replay frame's data may take: half a viewer's backlog, leaving the rest for the live output that
     // queues behind it while it is written.
     private const int ReplayBudget = (int)(ViewerLink.MaxBacklog / 2);
@@ -102,7 +105,9 @@ internal sealed class TermSession
         _ = Task.Run(AcceptLoopAsync);
         if (started)
         {
-            new Thread(PumpOutput) { IsBackground = true, Name = "pty-out" }.Start();
+            // Set before WatchExit starts, so its wait for the pump never misses a pump that hasn't run yet (M.ORCH-T997).
+            pump = new Thread(PumpOutput) { IsBackground = true, Name = "pty-out" };
+            pump.Start();
             new Thread(WatchExit) { IsBackground = true, Name = "pty-exit" }.Start();
         }
         else new Thread(() => Linger(exitCode)) { IsBackground = true, Name = "linger" }.Start();
@@ -189,7 +194,6 @@ internal sealed class TermSession
 
     private void PumpOutput()
     {
-        pump = Thread.CurrentThread;
         var buffer = new byte[16384];
         try
         {
@@ -236,7 +240,7 @@ internal sealed class TermSession
             log.Write($"cli exited code={code}");
             // Closing the pseudoconsole flushes its last output; the pump keeps reading meanwhile and ends at EOF.
             ClosePty();
-            for (var i = 0; i < 40 && pump is { IsAlive: true }; i++) Thread.Sleep(50);
+            WaitForPump();
         }
         catch (Exception ex) { log.Error(ex, "watching the CLI failed; contained"); }
         // Closed even when watching failed, so a resize after the exit never reaches the pseudoconsole.
@@ -249,6 +253,22 @@ internal sealed class TermSession
             Broadcast(TermFrameKind.Exit, TermProtocol.Exit(code));
         }
         Linger(code);
+    }
+
+    /// <summary>Waits for the output pump to reach EOF before Exit is broadcast (M.ORCH-T997), so the CLI's last output reaches
+    /// the viewers ahead of Exit and isn't lost when the host leaves. Bounded: <see cref="PumpDrainMs"/>, and on to
+    /// <see cref="PumpDrainMaxMs"/> while output still flows (none for <see cref="PumpQuietMs"/> ends it).</summary>
+    private void WaitForPump()
+    {
+        if (pump is not { } p) return;
+        var start = Environment.TickCount64;
+        while (!p.Join(50))
+        {
+            var now = Environment.TickCount64;
+            if (now - start >= PumpDrainMaxMs) break;
+            if (now - start >= PumpDrainMs && now - Volatile.Read(ref lastOutputTicks) >= PumpQuietMs) break;
+        }
+        if (p.IsAlive) log.Write($"the output pump hasn't ended {Environment.TickCount64 - start}ms after the exit; sending Exit anyway");
     }
 
     /// <summary>Closes the pseudoconsole once (M.ORCH-T991): under <see cref="ptyGate"/> it is marked closed and its handle zeroed
