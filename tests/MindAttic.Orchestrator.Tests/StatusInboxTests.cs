@@ -23,6 +23,15 @@ public sealed class StatusInboxTests
     }
 
     [Test]
+    public void The_inbox_name_is_built_from_its_parts_whatever_the_user_name_holds()
+    {
+        Assert.That(StatusStream.InboxPipeNameFor("ryan"), Is.EqualTo("mindattic-orchestrator-status-in-ryan"));
+        // A user name that sanitizes to hold "-status-" is left as it is (M.ORCH-T969): a Replace rewrote it too.
+        Assert.That(StatusStream.InboxPipeNameFor("a status b"), Is.EqualTo("mindattic-orchestrator-status-in-a-status-b"));
+        Assert.That(StatusStream.InboxPipeName, Is.EqualTo(StatusStream.InboxPipeNameFor(Environment.UserName)));
+    }
+
+    [Test]
     public void Sending_with_no_inbox_listening_fails_at_once_without_throwing()
     {
         var clock = System.Diagnostics.Stopwatch.StartNew();

@@ -142,8 +142,15 @@ public sealed record StatusMessage
 public static class StatusStream
 {
     /// <summary>The daemon's pipe; one per Windows user, as each has their own daemon and dashboard.</summary>
-    public static string PipeName { get; } = "mindattic-orchestrator-status-" +
-        new string(Environment.UserName.Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray());
+    public static string PipeName { get; } = "mindattic-orchestrator-status-" + UserPart(Environment.UserName);
+
+    /// <summary>The Windows user's name as the pipe names carry it: every character not a letter or digit made a dash.</summary>
+    internal static string UserPart(string userName) => new(userName.Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray());
+
+    /// <summary>The inbox pipe's name for <paramref name="userName"/>, built from its parts (M.ORCH-T969): a Replace on
+    /// <see cref="PipeName"/> also rewrote a user name that sanitizes to hold "-status-", so the daemon listened on a pipe clients
+    /// that build the name directly (Tickets.Desktop) never reach.</summary>
+    internal static string InboxPipeNameFor(string userName) => "mindattic-orchestrator-status-in-" + UserPart(userName);
 
     /// <summary>How often the server says it's alive while nothing else is sent.</summary>
     public static readonly TimeSpan HeartbeatEvery = TimeSpan.FromSeconds(20);
@@ -152,7 +159,7 @@ public static class StatusStream
     public static readonly TimeSpan SilentFor = TimeSpan.FromSeconds(65);
 
     /// <summary>The daemon's inbox (M.ORCH-T872): writers (the hooks, the statusline) connect, write a line or two, and go.</summary>
-    public static string InboxPipeName { get; } = PipeName.Replace("-status-", "-status-in-", StringComparison.Ordinal);
+    public static string InboxPipeName { get; } = InboxPipeNameFor(Environment.UserName);
 
     /// <summary>The longest line read or relayed: a payload past it is dropped, never buffered whole.</summary>
     public const int MaxLine = 4 * 1024 * 1024;
