@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using EasyWindowsTerminalControl;
 using EasyWindowsTerminalControl.Internals;
 using Microsoft.Terminal.Wpf;
@@ -167,7 +168,15 @@ public sealed class TerminalsViewModel : ObservableObject
             if (selected == value) return;
             if (selected is not null) selected.IsSelected = false;
             selected = value;
-            if (selected is not null) selected.IsSelected = true;
+            if (selected is not null)
+            {
+                selected.IsSelected = true;
+                // Switching tabs (or opening one) should hand the keyboard straight to the CLI now on screen, not
+                // leave it wherever it last was (e.g. the tab strip itself): queued past the Visibility flip
+                // above, since the terminal's native window isn't actually shown until that layout pass runs.
+                var pane = selected;
+                pane.Control.Dispatcher.InvokeAsync(() => { if (ReferenceEquals(selected, pane)) pane.Control.Focus(); }, DispatcherPriority.Input);
+            }
             Raise();
         }
     }
