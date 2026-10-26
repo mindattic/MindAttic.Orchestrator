@@ -276,6 +276,21 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
               $usage = [ordered]@{ rate_limits = $j.rate_limits; at = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ') } | ConvertTo-Json -Depth 5 -Compress
               [IO.File]::WriteAllText("$file.$PID.tmp", $usage)
               Move-Item -LiteralPath "$file.$PID.tmp" -Destination $file -Force
+              # Said on the daemon's status inbox at once (M.ORCH-T892), so dashboards get the reading now rather than at its
+              # slow look at the file. Best effort: anything that fails is skipped within ~50ms.
+              try {
+                $line = [ordered]@{
+                  kind = {{Ps(Status.StatusInbox.UsageWritten)}}; v = 1; at = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'); pid = $PID
+                  payload = [ordered]@{ path = $file; email = {{Ps(account.Email)}} }
+                } | ConvertTo-Json -Depth 3 -Compress
+                $pipe = New-Object IO.Pipes.NamedPipeClientStream('.', {{Ps(Status.StatusStream.InboxPipeName)}}, [IO.Pipes.PipeDirection]::Out)
+                try {
+                  $pipe.Connect(50)
+                  $bytes = (New-Object Text.UTF8Encoding($false)).GetBytes($line + "`n")
+                  $pipe.Write($bytes, 0, $bytes.Length)
+                  $pipe.Flush()
+                } finally { $pipe.Dispose() }
+              } catch { }
             }
           } catch { }
           try { $j.PSObject.Properties.Remove('rate_limits'); $raw = $j | ConvertTo-Json -Depth 20 -Compress } catch { }

@@ -204,8 +204,9 @@ public sealed class StatusStreamServer : IDisposable
     private int instances;
 
     /// <summary>How often the usage files are looked at with no writer saying it wrote one (M.ORCH-T872: was every second; a
-    /// statusline or hook that says so on the inbox is read at once).</summary>
-    public TimeSpan WatchEvery { get; init; } = TimeSpan.FromSeconds(5);
+    /// statusline or hook that says so on the inbox is read at once). M.ORCH-T892: the shared statusline now says so after every
+    /// write, so this is only a slow safety check for a writer that doesn't (an older statusline, a missed pipe).</summary>
+    public TimeSpan WatchEvery { get; init; } = TimeSpan.FromSeconds(60);
 
     /// <summary>A writer said it wrote a usage file (the inbox's <c>usage</c> kind): look at them now. Never throws.</summary>
     public void UsageWritten()
