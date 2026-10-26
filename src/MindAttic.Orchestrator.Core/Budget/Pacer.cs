@@ -312,6 +312,31 @@ public static class Pacer
         return pace with { SubagentAllowance = raised, UnderTargetPercent = Math.Max(0, u.ProjectedEndPercent), TargetPercent = u.TargetPercent };
     }
 
+    /// <summary>The points of the 5-hour window one more subagent is assumed to spend before the stop can reach it (M.ORCH-T959:
+    /// four subagents started together at 88% burned the window to Claude's 100% in the 7 minutes the 99% stop needed to land).</summary>
+    public const double HeadroomPerSubagentPercent = 3;
+
+    /// <summary>
+    /// The room under the 5-hour stop limits how many subagents run at once (M.ORCH-T959). The stop is only read at tool calls, and
+    /// a subagent mid-turn spends past it, so a burst started with little room left overshoots the stop and reaches the limit. With
+    /// Claude's <paramref name="percent"/> of the window and the <paramref name="stopPercent"/>, no more subagents start than
+    /// the room holds at <see cref="HeadroomPerSubagentPercent"/> each; the ones already running are never cut (the allowance
+    /// never drops below them) and one is always allowed while the window is under its stop. It only ever lowers the allowance, and
+    /// is left alone at the stop, when none are allowed, when unpaced with no allowance, or with no report of the window.
+    /// </summary>
+    public static Pace CapByStopHeadroom(Pace pace, double? percent, double stopPercent)
+    {
+        if (percent is not { } p || pace is not { Stop: false, SubagentAllowance: { } allowed and > 0 }) return pace;
+        var fits = (int)Math.Floor(Math.Max(0, stopPercent - p) / HeadroomPerSubagentPercent);
+        var capped = Math.Min(allowed, Math.Max(Math.Max(1, pace.Subagents), fits));
+        if (capped >= allowed) return pace;
+        return pace with
+        {
+            SubagentAllowance = capped,
+            Note = $"{pace.Note} Claude reports the window at {p:0}%, {Math.Max(0, stopPercent - p):0} points under the {stopPercent:0}% stop: no more than {capped} subagent{(capped == 1 ? "" : "s")} at once, so a burst can't run past the stop.",
+        };
+    }
+
     /// <summary>The fewest CLIs spending on one login for <see cref="CoolOff"/> to apply: it's for a login split across many CLIs.</summary>
     public const int CoolOffMinClis = 2;
 

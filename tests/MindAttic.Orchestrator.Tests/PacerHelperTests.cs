@@ -140,4 +140,29 @@ public sealed class PacerHelperTests
         IReadOnlyList<UsageEvent> s = [At(10, 0, 400), At(10, 10, 100), At(10, 20, 300), At(10, 30, 200)];
         Assert.That(Pacer.TypicalPerSession([s], Day), Is.EqualTo(1800), "600, 1,200, 1,800, 2,400 an hour: index two");
     }
+
+    // CapByStopHeadroom (M.ORCH-T959)
+
+    private static Pace Allowing(int allowance, int running = 0, bool stop = false) =>
+        new(PaceMode.Open, 4, 1_000, 0, null, "5-hour", null, "On pace.") { SubagentAllowance = allowance, Subagents = running, Stop = stop };
+
+    [TestCase(88.0, 3)]
+    [TestCase(92.0, 2)]
+    [TestCase(96.0, 1)]
+    [TestCase(98.5, 1)]
+    public void Room_under_the_stop_limits_how_many_subagents_start(double percent, int expected) =>
+        Assert.That(Pacer.CapByStopHeadroom(Allowing(4), percent, 99).SubagentAllowance, Is.EqualTo(expected));
+
+    [Test]
+    public void Subagents_already_running_are_never_cut_by_the_headroom() =>
+        Assert.That(Pacer.CapByStopHeadroom(Allowing(6, running: 5), 97, 99).SubagentAllowance, Is.EqualTo(5));
+
+    [Test]
+    public void Plenty_of_room_no_report_or_the_stop_leave_the_allowance_alone()
+    {
+        Assert.That(Pacer.CapByStopHeadroom(Allowing(4), 40, 99).SubagentAllowance, Is.EqualTo(4));
+        Assert.That(Pacer.CapByStopHeadroom(Allowing(4), null, 99).SubagentAllowance, Is.EqualTo(4));
+        Assert.That(Pacer.CapByStopHeadroom(Allowing(0), 98, 99).SubagentAllowance, Is.Zero);
+        Assert.That(Pacer.CapByStopHeadroom(Allowing(4, stop: true), 98, 99).SubagentAllowance, Is.EqualTo(4));
+    }
 }
