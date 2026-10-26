@@ -93,8 +93,10 @@ public static class TermHostInstalls
     public static IReadOnlyList<string>? RunningExePaths(string exeFile = ExeName)
     {
         var paths = new List<string>();
-        foreach (var p in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(exeFile)))
-            using (p)
+        var processes = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(exeFile));
+        try
+        {
+            foreach (var p in processes)
             {
                 try { if (p.HasExited) continue; paths.Add(p.MainModule!.FileName); }
                 catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
@@ -102,7 +104,14 @@ public static class TermHostInstalls
                     if (!Exited(p)) return null;
                 }
             }
-        return paths;
+            return paths;
+        }
+        finally
+        {
+            // Every one, those after an early return too (M.ORCH-T1018: they leaked their handles on each cleanup pass, for the
+            // TermHost, Gateway and TermViewer installs alike, which all come through here).
+            foreach (var p in processes) p.Dispose();
+        }
     }
 
     private static bool Exited(Process p)
