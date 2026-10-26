@@ -322,11 +322,16 @@ public sealed class TerminalPaneViewModel : ObservableObject
 
     /// <summary>Whether <paramref name="session"/>'s host still runs, by the registry (the pid alive and not reused): what keeps
     /// a dropped relay reconnecting (M.ORCH-T966). Within <see cref="RegisterGrace"/> of attaching, an unregistered host whose
-    /// process runs counts too (M.ORCH-T972). Reads files, so it is called off the UI thread.</summary>
-    internal static bool HostAlive(TermSessionRecord session, DateTime attachedUtc, DateTime nowUtc) =>
-        TermSessions.Get(session.Id) is { } live
+    /// process runs counts too (M.ORCH-T972). A registry file that couldn't be read just now is unknown, not gone (M.ORCH-T1035):
+    /// then the host's own process decides, so a passing read failure never strands the tab as ended. Reads files, so it is
+    /// called off the UI thread.</summary>
+    internal static bool HostAlive(TermSessionRecord session, DateTime attachedUtc, DateTime nowUtc)
+    {
+        if (!TermSessions.TryGet(session.Id, out var live)) return TermSessions.IsHostRunning(session);
+        return live is not null
             ? live.HostPid == session.HostPid
             : nowUtc - attachedUtc < RegisterGrace && TermSessions.IsHostRunning(session);
+    }
 
     /// <summary>A tab marked ended whose session's host turned up after all (its term-session started, M.ORCH-T972): attached
     /// afresh to <paramref name="session"/>. On the UI thread; never throws.</summary>

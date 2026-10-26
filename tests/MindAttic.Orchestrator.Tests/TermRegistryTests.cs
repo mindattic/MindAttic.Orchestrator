@@ -298,4 +298,21 @@ public sealed class TermRegistryTests
         Assert.That(TermLauncher.ReadLaunch("TermHost failed: boom"), Is.Null);
         Assert.That(TermLauncher.ReadLaunch(""), Is.Null);
     }
+
+    [Test]
+    public void A_file_that_cant_be_read_is_unknown_not_gone()
+    {
+        TermSessions.Write(Record("held", pid: 100), dir);
+        var probe = Processes((100, HostStart));
+        using (new FileStream(TermSessions.PathOf("held", dir), FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            Assert.That(TermSessions.TryGet("held", dir, probe, out var record), Is.False, "M.ORCH-T1035: a read failure is unknown");
+            Assert.That(record, Is.Null);
+        }
+        Assert.That(File.Exists(TermSessions.PathOf("held", dir)), Is.True, "nothing is deleted on a read failure");
+        Assert.That(TermSessions.TryGet("held", dir, probe, out var again), Is.True);
+        Assert.That(again?.Id, Is.EqualTo("held"));
+        Assert.That(TermSessions.TryGet("missing", dir, probe, out var none), Is.True);
+        Assert.That(none, Is.Null);
+    }
 }

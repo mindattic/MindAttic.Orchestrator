@@ -75,9 +75,14 @@ public static class TermSessions
 
     /// <summary><see cref="Read(string)"/>; <paramref name="junk"/> is true only when the file was read and holds no record. A
     /// file that couldn't be read (held open by antivirus or an indexer) is not junk (M.ORCH-T995).</summary>
-    private static TermSessionRecord? Read(string path, out bool junk)
+    private static TermSessionRecord? Read(string path, out bool junk) => Read(path, out junk, out _);
+
+    /// <summary><see cref="Read(string, out bool)"/>; <paramref name="unreadable"/> is true when the file is there but couldn't
+    /// be read on any try, so whether it holds a record is unknown (M.ORCH-T1035).</summary>
+    private static TermSessionRecord? Read(string path, out bool junk, out bool unreadable)
     {
         junk = false;
+        unreadable = false;
         for (var attempt = 0; attempt < 5; attempt++)
         {
             try
@@ -92,6 +97,7 @@ public static class TermSessions
             // The rename of a write in progress: try again in a moment.
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Thread.Sleep(20); }
         }
+        unreadable = true;
         return null;
     }
 
@@ -152,6 +158,23 @@ public static class TermSessions
         if (IsAlive(record, hostStart)) return record;
         TryDelete(path);
         return null;
+    }
+
+    /// <summary><see cref="Get(string, string?)"/>, telling a session that's gone from one whose file couldn't be read just now
+    /// (held open by antivirus or an indexer): false then, with <paramref name="record"/> null and nothing deleted, as
+    /// <see cref="Enumerate(string?)"/> does since M.ORCH-T995 (M.ORCH-T1035). True otherwise, with the live record or null.</summary>
+    public static bool TryGet(string id, out TermSessionRecord? record, string? directory = null) => TryGet(id, directory, HostStartOf, out record);
+
+    internal static bool TryGet(string id, string? directory, Func<int, DateTime?> hostStart, out TermSessionRecord? record)
+    {
+        var path = PathOf(id, directory);
+        record = Read(path, out _, out var unreadable);
+        if (unreadable) return false;
+        if (record is null) return true;
+        if (IsAlive(record, hostStart)) return true;
+        record = null;
+        TryDelete(path);
+        return true;
     }
 
     /// <summary>Whether <paramref name="record"/>'s host process still runs (its pid, not reused), registered or not.</summary>
