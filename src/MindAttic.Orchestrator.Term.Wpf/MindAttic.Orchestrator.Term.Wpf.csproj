@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    M.ORCH-T960: the WPF viewer of a TermHost session, shared by the dashboard's Terminals tabs (M.ORCH-T926) and the standalone
+    fallback viewer (MindAttic.Orchestrator.TermViewer), so both attach, type, paste and resize the same way: RelayConnection (the
+    host's pipe as an ITerminalConnection) and RelayTerminal (a bare TerminalControl driven by it).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>MindAttic.Orchestrator.Term.Wpf</RootNamespace>
+    <AssemblyName>MindAttic.Orchestrator.Term.Wpf</AssemblyName>
+    <!-- HOUSE-LAW-1: whole-number versions only; bump the major. -->
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The renderer EasyWindowsTerminalControl 1.0.38 brings the dashboard, at the same version. -->
+    <PackageReference Include="CI.Microsoft.Terminal.Wpf" Version="1.25.260303002" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- OrchestratorLog; Core also brings the dependency-free Term library (the protocol and the session registry). -->
+    <ProjectReference Include="..\MindAttic.Orchestrator.Core\MindAttic.Orchestrator.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MindAttic.Orchestrator.Tests" />
+  </ItemGroup>
+
+</Project>

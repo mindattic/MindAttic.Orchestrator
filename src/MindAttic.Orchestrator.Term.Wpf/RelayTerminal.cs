@@ -6,7 +6,7 @@ using System.Windows.Media;
 using Microsoft.Terminal.Wpf;
 using MindAttic.Orchestrator.Term;
 
-namespace MindAttic.Orchestrator.Wpf;
+namespace MindAttic.Orchestrator.Term.Wpf;
 
 /// <summary>
 /// A Terminals tab's view of a CLI hosted by its own TermHost (M.ORCH-T926): a bare Microsoft.Terminal.Wpf
@@ -15,11 +15,11 @@ namespace MindAttic.Orchestrator.Wpf;
 /// keyboard navigation contained (Tab and the arrows are the CLI's), and focus handed on to the renderer. Closing or disposing
 /// it only drops the pipe: the CLI keeps running in its host, and a new RelayTerminal reattaches to it.
 /// </summary>
-internal sealed class RelayTerminal : UserControl, IDisposable
+public sealed class RelayTerminal : UserControl, IDisposable
 {
     /// <summary>The font EasyTerminalControl set with its theme.</summary>
-    internal const string FontFamilyName = "Cascadia Code";
-    internal const short FontSizePoints = 12;
+    public const string FontFamilyName = "Cascadia Code";
+    public const short FontSizePoints = 12;
 
     private string? pipeName;
     private ushort protocol = TermProtocol.Version;
@@ -100,43 +100,6 @@ internal sealed class RelayTerminal : UserControl, IDisposable
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Closing a relay connection failed; contained"); }
         try { if (loaded) Terminal.Connection = null!; }
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Detaching a relay terminal failed; contained"); }
-        TerminalView.DisposeWindows(this);
-    }
-}
-
-/// <summary>
-/// The element a Terminals tab puts in the panel's host grid (M.ORCH-T926): it holds the tab's terminal for the tab's whole
-/// life, a <see cref="RelayTerminal"/> for a hosted CLI or, as the fallback, an in-process EasyTerminalControl, and can swap
-/// one for the other (a host that fails to start) without the window's grid noticing. Focus on it goes on to the terminal.
-/// </summary>
-internal sealed class TerminalView : Border
-{
-    public TerminalView()
-    {
-        Focusable = true;
-        GotFocus += (_, e) => { if (ReferenceEquals(e.OriginalSource, this) && Child is UIElement inner) inner.Focus(); };
-    }
-
-    /// <summary>Disposes every native window (HwndHost) under <paramref name="root"/>, once it is out of the window. Never throws.</summary>
-    internal static void DisposeWindows(DependencyObject root)
-    {
-        try
-        {
-            foreach (var host in Descendants<HwndHost>(root).ToList())
-                try { host.Dispose(); }
-                catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Releasing a terminal window failed; contained"); }
-        }
-        catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Releasing a terminal's windows failed; contained"); }
-    }
-
-    private static IEnumerable<T> Descendants<T>(DependencyObject parent) where T : DependencyObject
-    {
-        var count = parent is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetChildrenCount(parent) : 0;
-        for (var i = 0; i < count; i++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, i);
-            if (child is T found) { yield return found; continue; }
-            foreach (var deeper in Descendants<T>(child)) yield return deeper;
-        }
+        TerminalWindows.DisposeAll(this);
     }
 }

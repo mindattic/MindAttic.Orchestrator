@@ -65,6 +65,7 @@ $wpfDir     = Join-Path $repo 'src\MindAttic.Orchestrator.Wpf'
 $cliDir     = Join-Path $repo 'src\MindAttic.Orchestrator.Cli'
 $termDir    = Join-Path $repo 'src\MindAttic.Orchestrator.Term'
 $termHostDir = Join-Path $repo 'src\MindAttic.Orchestrator.TermHost'
+$termWpfDir = Join-Path $repo 'src\MindAttic.Orchestrator.Term.Wpf'
 $artifact   = Join-Path $repo 'artifacts\MindAttic.Orchestrator.Desktop.exe'
 $appDir     = 'C:\Apps\MindAttic.Orchestrator'
 $cliOut     = Join-Path $appDir 'Cli'
@@ -265,7 +266,7 @@ $failed = $false
 
 # ── The drag-and-drop exe ───────────────────────────────────────────────────
 $built = $false
-if (Test-Stale $artifact @($wpfDir, $coreDir)) {
+if (Test-Stale $artifact @($wpfDir, $coreDir, $termWpfDir)) {
     Write-Host "Publishing MindAttic.Orchestrator -> $artifact" -ForegroundColor Cyan
     dotnet publish (Join-Path $wpfDir 'MindAttic.Orchestrator.Wpf.csproj') --configuration Release --runtime win-x64 `
         --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true `

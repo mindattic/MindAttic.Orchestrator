@@ -4,5 +4,6 @@
   <Project Path="src/MindAttic.Orchestrator.Wpf/MindAttic.Orchestrator.Wpf.csproj" />
   <Project Path="src/MindAttic.Orchestrator.Term/MindAttic.Orchestrator.Term.csproj" />
   <Project Path="src/MindAttic.Orchestrator.TermHost/MindAttic.Orchestrator.TermHost.csproj" />
+  <Project Path="src/MindAttic.Orchestrator.Term.Wpf/MindAttic.Orchestrator.Term.Wpf.csproj" />
   <Project Path="tests/MindAttic.Orchestrator.Tests/MindAttic.Orchestrator.Tests.csproj" />
 </Solution>

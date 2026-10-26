@@ -27,6 +27,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MindAttic.Orchestrator.Core\MindAttic.Orchestrator.Core.csproj" />
+    <!-- RelayTerminal and RelayConnection, shared with the standalone TermViewer (M.ORCH-T960). -->
+    <ProjectReference Include="..\MindAttic.Orchestrator.Term.Wpf\MindAttic.Orchestrator.Term.Wpf.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="MindAttic.Orchestrator.Term.Wpf" />
   </ItemGroup>
 
   <ItemGroup>

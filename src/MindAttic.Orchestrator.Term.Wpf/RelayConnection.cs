@@ -4,7 +4,7 @@ using System.Text;
 using Microsoft.Terminal.Wpf;
 using MindAttic.Orchestrator.Term;
 
-namespace MindAttic.Orchestrator.Wpf;
+namespace MindAttic.Orchestrator.Term.Wpf;
 
 /// <summary>
 /// An <see cref="ITerminalConnection"/> whose far end is a TermHost's pipe instead of a local ConPTY (M.ORCH-T926, ported from
@@ -15,13 +15,13 @@ namespace MindAttic.Orchestrator.Wpf;
 /// <see cref="Start"/>, the UI thread's: feeding the renderer from the pipe's thread while the UI thread resized it deadlocked
 /// the viewer (Phase 0 lesson 1). Nothing here throws to its caller.</para>
 /// </summary>
-internal sealed class RelayConnection(string pipeName, ushort protocol = TermProtocol.Version) : ITerminalConnection
+public sealed class RelayConnection(string pipeName, ushort protocol = TermProtocol.Version) : ITerminalConnection
 {
     /// <summary>Win32-input-mode: the renderer encodes every key as ESC[Vk;Sc;Uc;Kd;Cs;Rc_, which ConPTY decodes back to key events.</summary>
-    internal const string Win32InputMode = "\u001b[?9001h";
+    public const string Win32InputMode = "\u001b[?9001h";
 
     /// <summary>The most text one Input frame carries (well under 64 KB of UTF-8); a larger paste goes as several, in order.</summary>
-    internal const int InputChunkChars = 16 * 1024;
+    public const int InputChunkChars = 16 * 1024;
 
     private readonly object gate = new();
     private readonly Decoder utf8 = Encoding.UTF8.GetDecoder();
