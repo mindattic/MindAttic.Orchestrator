@@ -35,6 +35,12 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         // The status stream (M.ORCH-T854): every reading and snapshot pushed to the open dashboards the moment it lands.
         using var status = ServeStatus ? new Status.StatusStreamServer { Files = WatchedUsage, ReadingsChanged = waiter.Poke } : null;
         status?.Start();
+        // Its inbox (M.ORCH-T872): a hook that ended a turn, or a writer of a usage file, says so the moment it does, rather than
+        // the daemon noticing the file; any other kind written there is relayed to every subscriber.
+        using var inbox = status is null ? null : new Status.StatusInbox { Relay = e => status.Publish(e) }
+            .On(Status.StatusInbox.Poke, _ => waiter.Poke())
+            .On(Status.StatusInbox.UsageWritten, _ => status.UsageWritten());
+        inbox?.Start();
         void OnReading(ClaudeMeterProbe probe, ReportedUsage reading) =>
             status?.PublishReadings([Status.MeterReading.Of(probe.Label, reading, signedIn: null, "probe")]);
         ClaudeMeterProbe.ReadingLanded += OnReading;

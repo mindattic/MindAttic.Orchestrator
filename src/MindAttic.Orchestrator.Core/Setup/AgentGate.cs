@@ -1403,6 +1403,29 @@ public static class AgentGate
             return a.lower() == b.lower() or canonical_repo(a).lower() == canonical_repo(b).lower()
         """;
 
+    /// <summary>
+    /// Python shared by both hooks (needs <c>json</c>, <c>os</c> and <c>time</c>): <c>publish_status(kind, payload)</c> writes one
+    /// envelope line to the daemon's status inbox (<see cref="Status.StatusInbox"/>, M.ORCH-T872), so a turn that ended reaches it
+    /// the moment it did rather than at its next look at <c>refresh.now</c>. Best effort and never blocking: the pipe is opened
+    /// only if it exists (no daemon, or every listener busy, fails at once), the line is a few hundred bytes (well inside the
+    /// pipe's buffer), and any failure is swallowed, so it can never fail or hold up the hook.
+    /// </summary>
+    internal static string StatusInboxPython => $$"""
+        def publish_status(kind, payload):
+            if os.name != "nt":
+                return
+            try:
+                envelope = dict(kind=kind, v=1, at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), pid=os.getpid(), payload=payload or dict())
+                line = json.dumps(envelope) + "\n"
+                fd = os.open(r"\\.\pipe\{{Status.StatusStream.InboxPipeName}}", os.O_WRONLY | getattr(os, "O_BINARY", 0))
+                try:
+                    os.write(fd, line.encode("utf-8"))
+                finally:
+                    os.close(fd)
+            except Exception:
+                pass
+        """;
+
     /// <summary>Python shared by both hooks (needs <c>json</c>, <c>os</c>, <c>re</c> and <c>Path</c>): the commands exempt from
     /// orchestration pacing (<see cref="Settings.OrchestratorSettings.ExemptCommands"/>), read live from the orchestrator's
     /// settings.json so an edit applies to the next prompt, and which of them a prompt or Skill names (M.ORCH-T198).</summary>
@@ -1837,7 +1860,9 @@ public static class AgentGate
 
         {{ClaudeUsagePython}}
 
-        STALE = {{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}
+        {{StatusInboxPython}}
+
+        STALE ={{(int)Budget.RateLimitStatusWriter.GateStale.TotalSeconds}}
         # MINDATTIC_MAX_HOLD shortens the longest hold so tests can run the held-then-refused paths in seconds.
         try:
             MAX_HOLD = float(os.environ.get("MINDATTIC_MAX_HOLD") or {{MaxHoldSeconds}})
@@ -2102,6 +2127,8 @@ public static class AgentGate
             return bool(session_state(data.get("session_id")).get("exempt"))
         if exempt_turn() or (tool == "Skill" and exempt_skill((data.get("tool_input") or {}).get("skill"))):
             gate_log("exempt", 0)
+            # Said on the daemon's inbox at once (M.ORCH-T872); the file stays for a daemon from before it.
+            publish_status("poke", {"source": "pace-gate", "why": "exempt"})
             try:
                 (Path.home() / ".claude" / "session-context" / "refresh.now").write_text(datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ"))
             except Exception:
@@ -2479,6 +2506,7 @@ public static class AgentGate
         KEEP_GOING = {{{(keepGoing ? "True" : "False")}}}
         {{{WorkspacePython}}}
         {{{MarksPython}}}
+        {{{StatusInboxPython}}}
 
         def pacing_off(pid):
             # /pacing off's mark on this CLI (see the /pacing command below): no pace holds until it closes or /pacing on.
@@ -2673,7 +2701,9 @@ public static class AgentGate
 
         def poke():
             # A turn (or a subagent) just ended, so its reply's tokens are in its transcript: the daemon recounts now
-            # instead of on its next tick, so even a reply with no tool calls is in the pace within a second or two.
+            # instead of on its next tick, so even a reply with no tool calls is in the pace within a second or two. Said on the
+            # daemon's inbox at once (M.ORCH-T872); the file stays for a daemon from before it.
+            publish_status("poke", {"source": "context-gate"})
             try:
                 DIR.mkdir(parents=True, exist_ok=True)
                 (DIR / "refresh.now").write_text(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"))
