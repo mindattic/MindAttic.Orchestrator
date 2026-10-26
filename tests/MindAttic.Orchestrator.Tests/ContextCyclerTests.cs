@@ -30,6 +30,29 @@ public sealed class ContextCyclerTests
     }
 
     [Test]
+    public void A_deciding_mark_past_the_hooks_timeout_reads_idle_and_a_fresh_one_busy()
+    {
+        // M.ORCH-T1048: a Stop hook cut off after its deciding save left the session busy for good for the wakers.
+        var dir = Path.Combine(Path.GetTempPath(), "ctx-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            static string Stamp(DateTime at) => at.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture);
+            var now = DateTime.UtcNow;
+            File.WriteAllText(Path.Combine(dir, "cut.state.json"), $$"""{"state":"busy","at":"{{Stamp(now.AddMinutes(-10))}}","deciding":"{{Stamp(now.AddMinutes(-5))}}"}""");
+            File.WriteAllText(Path.Combine(dir, "live.state.json"), $$"""{"state":"busy","at":"{{Stamp(now.AddMinutes(-1))}}","deciding":"{{Stamp(now.AddSeconds(-5))}}"}""");
+            File.WriteAllText(Path.Combine(dir, "work.state.json"), $$"""{"state":"busy","at":"{{Stamp(now.AddMinutes(-30))}}"}""");
+            foreach (var id in new[] { "cut", "live", "work" })
+                File.WriteAllText(Path.Combine(dir, id + ".json"), $$"""{"session_id":"{{id}}","cwd":"D:\\W\\A","used_percentage":10}""");
+
+            var all = new ContextCycler(dir).Load().ToDictionary(s => s.SessionId, s => s.Idle);
+
+            Assert.That((all["cut"], all["live"], all["work"]), Is.EqualTo((true, false, false)));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Test]
     public void A_state_file_another_process_holds_keeps_its_session_so_the_cli_reads_as_busy()
     {
         // M.ORCH-T539: a non-shared read of a state file a hook had open threw and dropped the session, so the CLI's older,

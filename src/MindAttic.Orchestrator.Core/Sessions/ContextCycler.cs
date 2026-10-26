@@ -104,7 +104,10 @@ public sealed class ContextCycler(string? directory = null)
             using var stateDoc = t;
             if (t is not null)
             {
-                idle = t.RootElement.TryGetProperty("state", out var st) && st.GetString() == "idle";
+                // A busy state whose Stop hook was cut off after its deciding save (a deciding mark past DecidingLife) is idle
+                // here too, as BusyClis and LiveSessions read it, so the wakers and Allocate.ByHand don't wait on it (M.ORCH-T1048).
+                var stateName = t.RootElement.TryGetProperty("state", out var st) && st.ValueKind == JsonValueKind.String ? st.GetString() : null;
+                idle = stateName == "idle" || (stateName == "busy" && !IsBusyTurn(stateName, DecidingOf(t.RootElement), DateTime.UtcNow));
                 if (t.RootElement.TryGetProperty("at", out var at) &&
                     DateTime.TryParse(at.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var when))
                     turn = when;

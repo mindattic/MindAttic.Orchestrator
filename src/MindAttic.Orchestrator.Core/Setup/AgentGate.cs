@@ -2909,6 +2909,7 @@ public static class AgentGate
                     state_file = DIR / (sid + ".state.json")
                     state = load(state_file)
                     state["asking"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                    state.pop("deciding", None)  # the turn is going on, so no Stop hook is deciding it (M.ORCH-T1048)
                     if data.get("transcript_path") and not state.get("transcript") and not data.get("agent_id"):
                         state["transcript"] = data["transcript_path"]
                     save(state_file, state)
@@ -3202,6 +3203,9 @@ public static class AgentGate
         elif event == "PostToolUse":
             # Its tool ran, so whatever it asked you was answered (M.ORCH-T790).
             touched = state.pop("asking", None) is not None
+            # A tool ran, so the turn went on: a deciding mark left by a Stop hook cut off at its timeout goes (M.ORCH-T1048).
+            if state.pop("deciding", None) is not None:
+                touched = True
             # The quicksave /allocate off winds down to: this CLI is wound down (M.ORCH-T572).
             try:
                 if QUICKSAVE.search(str((data.get("tool_input") or {}).get("command") or "")):
@@ -3229,7 +3233,11 @@ public static class AgentGate
             print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": " ".join(said)}}))
         else:
             sys.exit(0)
-        save(state_file, state)
+        # Every Claude CLI runs this hook, so its last save never raises (M.ORCH-T1048).
+        try:
+            save(state_file, state)
+        except Exception:
+            pass
         """.Replace("\r\n", "\n");
 
     /// <summary>Writes the scripts and registers their hooks when anything is missing or out of date.
