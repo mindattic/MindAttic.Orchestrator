@@ -2515,6 +2515,13 @@ public static class AgentGate
 
         def time_left():
             return BUDGET - (time.monotonic() - STARTED)
+
+        # What `orchestrator next` is kept, out of the budget, at a Stop (M.ORCH-T1045): its 30s and its start. The cheap first looks
+        # (the ticket database, the workspace scan) get only what's left over, so next always gets its slice.
+        NEXT_SLICE = 32
+
+        def cheap_left():
+            return time_left() - NEXT_SLICE
         KEEP_GOING = {{{(keepGoing ? "True" : "False")}}}
         {{{WorkspacePython}}}
         {{{MarksPython}}}
@@ -2538,10 +2545,15 @@ public static class AgentGate
 
         def workable(repos, sid=None):
             # The open fixes and approved tickets of repos (names or wildcards such as GTFO.*; "*": every repo), in ticket order.
+            # None when it couldn't tell (no time left for it, the database locked or unreadable): next is then asked instead.
             try:
                 import fnmatch, sqlite3
-                # Its four reads share what's left of the Stop hook's budget (M.ORCH-T1005), so a locked database can't outlast it.
-                db = tickets_db(timeout=max(0.5, min(5.0, (time_left() - 5) / 4)))
+                # Its four reads share what's left of the Stop hook's budget once next's slice is kept back (M.ORCH-T1005,
+                # M.ORCH-T1045), so a locked database can't outlast it or eat into next's time.
+                spare = cheap_left() - 1
+                if spare < 2:
+                    return None
+                db = tickets_db(timeout=max(0.5, min(5.0, spare / 4)))
                 try:
                     rows = db.execute("SELECT id, type, repo, summary FROM tickets WHERE status = 'open' ORDER BY ordinal").fetchall()
                 except sqlite3.OperationalError:  # a database from before tickets had summaries
@@ -2596,16 +2608,19 @@ public static class AgentGate
                 return [r[0] for r in rows if any(fnmatch.fnmatchcase((r[2] or "").lower(), n) for n in named) and (r[2] or "").lower() not in skip and
                         ((r[1] or "").lower() == "fix" or r[0].upper() in approved) and r[0].upper() not in claimed and not blocked(r)]
             except Exception:
-                return []
+                return None
 
         def story_file_repos(repos):
             # Whether a repo named (or matched by a wildcard) keeps its tickets in its own docs/USER_STORIES.md, not the
             # ticket database: workable() can't see those (only their fixes can be worked: approval lives in the database
-            # alone, M.ORCH-T761), so `orchestrator next`, which reads them, is asked instead (M.ORCH-T445).
+            # alone, M.ORCH-T761), so `orchestrator next`, which reads them, is asked instead (M.ORCH-T445). None when it couldn't
+            # tell (out of its share of the budget, M.ORCH-T1045): next is then asked anyway.
             try:
                 import fnmatch, sqlite3
+                if cheap_left() < 1:
+                    return None
                 try:
-                    db = tickets_db(timeout=max(0.5, min(5.0, time_left() - 5)))
+                    db = tickets_db(timeout=max(0.5, min(5.0, cheap_left() - 1)))
                     try:
                         held = {(r or "").lower() for (r,) in db.execute("SELECT DISTINCT repo FROM tickets").fetchall()}
                     finally:
@@ -2613,11 +2628,16 @@ public static class AgentGate
                 except Exception:
                     held = set()
                 named = {r.lower() for r in repos}
-                # The scan stops once the hook's budget is nearly spent (M.ORCH-T1005): what it found by then stands.
-                return any(time_left() > 3 and d.name.lower() not in held and any(fnmatch.fnmatchcase(d.name.lower(), n) for n in named) and
-                           (d / "docs" / "USER_STORIES.md").is_file() for d in WS.iterdir() if d.is_dir())
-            except Exception:
+                # The scan stops once its share of the budget is spent (M.ORCH-T1005, M.ORCH-T1045): undecided, next is asked.
+                for d in WS.iterdir():
+                    if cheap_left() < 0:
+                        return None
+                    if (d.is_dir() and d.name.lower() not in held and any(fnmatch.fnmatchcase(d.name.lower(), n) for n in named) and
+                            (d / "docs" / "USER_STORIES.md").is_file()):
+                        return True
                 return False
+            except Exception:
+                return None
 
         def no_subagent_room(limits, pid):
             # The pace's subagent allowance is used up (all CLIs together), so `orchestrator next` would hand out nothing:
@@ -2992,16 +3012,27 @@ public static class AgentGate
             repos = allocate_repos(my_pid())
             if repos and KEEP_GOING and not stopped and not state.get("goal"):
                 why = "allocate"
-            eligible = bool(why) and not no_subagent_room(limits, my_pid()) and time_left() > 10
-            ids = workable(repos, sid) if eligible else []
-            if ids or (eligible and time_left() > 8 and story_file_repos(repos)):
-                # Only what next would hand out: the count above is the cheap first look, next has the last word. A repo on
-                # its own USER_STORIES.md has tickets the count can't see, so next is asked for it even when the count is empty.
-                # When next can't be read (not installed, failed, unparsed) the cheap count stands, as before; the nagging of
-                # M.ORCH-T901 was next timing out at 6s on a busy machine (17s there), fixed by its 30s timeout.
-                handed = next_hands_out(repos, my_pid())
-                if handed is not None:
-                    ids = handed
+            eligible = bool(why) and not no_subagent_room(limits, my_pid())
+            ids = []
+            if eligible:
+                # Only what next would hand out: the count is the cheap first look, next has the last word. A repo on its own
+                # USER_STORIES.md has tickets the count can't see, so next is asked for it even when the count is empty, and so it
+                # is when a look couldn't tell. When next can't be read (not installed, failed, unparsed) the cheap count stands, as
+                # before; the nagging of M.ORCH-T901 was next timing out at 6s on a busy machine (17s there), fixed by its 30s
+                # timeout. The looks run inside what's left once next's slice is kept back (M.ORCH-T1045), so next always gets it.
+                try:
+                    cheap = workable(repos, sid)
+                    ask = cheap is None or bool(cheap)
+                    if not ask:
+                        found = story_file_repos(repos)
+                        ask = found is None or bool(found)
+                    ids = list(cheap or [])
+                    if ask:
+                        handed = next_hands_out(repos, my_pid())
+                        if handed is not None:
+                            ids = handed
+                except Exception:
+                    pass
             reason = keep_going(repos, ids, sid, why, insisted) if ids else None
             # A turn ending with a nudge waiting is sent on with it, as a prompt queued in its box used to run (M.ORCH-T864).
             nudges = [] if stopped or time_left() < 2 else take_nudges(paced)
