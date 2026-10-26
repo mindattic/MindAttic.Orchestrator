@@ -402,6 +402,21 @@ public sealed class TerminalsViewModel : ObservableObject
     /// <summary>Whether a TermHost can be started (the default looks for one). Tests replace it.</summary>
     internal Func<bool> HostAvailable { get; init; } = () => TermLauncher.FindHost() is not null;
 
+    /// <summary>A live hosted session by id, or null (the default reads the registry). Tests replace it.</summary>
+    internal Func<string, TermSessionRecord?> Lookup { get; init; } = id => TermSessions.Get(id);
+
+    /// <summary>Ends an orphaned host (the default kills it and its tree). Tests replace it.</summary>
+    internal Action<TermSessionRecord> KillOrphan { get; init; } = TerminalPaneViewModel.KillHost;
+
+    /// <summary>After a failed launch, how long to look for its host having started anyway (to adopt it), and how long after
+    /// falling back to keep watching for it (to end it) (M.ORCH-T971).</summary>
+    internal TimeSpan OrphanWait { get; init; } = TimeSpan.FromSeconds(3);
+    internal TimeSpan OrphanWatch { get; init; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>Ids whose launch failed and whose tab runs its CLI in this process instead: a host that turns up under one is an
+    /// orphan, ended, never given a second tab (M.ORCH-T971).</summary>
+    private readonly HashSet<string> abandoned = new(StringComparer.OrdinalIgnoreCase);
+
     public ObservableCollection<TerminalPaneViewModel> Panes { get; } = [];
 
     /// <summary>The one terminal on screen, the shown person's chosen one; null shows none.</summary>
@@ -568,6 +583,16 @@ public sealed class TerminalsViewModel : ObservableObject
         }
         catch (Exception ex) { failure = ex; }
 
+        // A launch that timed out, failed or printed no record may have started its detached host all the same (M.ORCH-T971):
+        // the launch named the session (--id), so a host registered under it is adopted into this tab instead of the CLI
+        // running twice; one that turns up only after the fallback is ended (WatchForOrphan, Reattach).
+        if (record is null)
+        {
+            record = await Task.Run(() => FindOrphan(id)).ConfigureAwait(false);
+            if (record is not null)
+                OrchestratorLog.For("Terminals").Warning(failure, "TermHost's launch of {Repo:l} failed but its host {Id:l} (pid {Pid}) runs; the tab adopts it", pane.Request.Name, id, record.HostPid);
+        }
+
         await dispatcher.InvokeAsync(() =>
         {
             try
@@ -576,6 +601,8 @@ public sealed class TerminalsViewModel : ObservableObject
                 {
                     OrchestratorLog.For("Terminals").Error(failure, "TermHost couldn't start {Repo:l}; it runs inside the dashboard instead", pane.Request.Name);
                     TermPaneFile.Delete(id);
+                    lock (launching) abandoned.Add(id);
+                    _ = Task.Run(() => WatchForOrphan(id));
                     if (Panes.Contains(pane) && !pane.KillRequested) pane.FallBackToLocal();
                     return;
                 }
@@ -591,6 +618,47 @@ public sealed class TerminalsViewModel : ObservableObject
             catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Attaching {Repo:l} to its TermHost failed; contained", pane.Request.Name); }
             finally { lock (launching) launching.Remove(id); }
         });
+    }
+
+    /// <summary>The host of a failed launch <paramref name="id"/> when it registered anyway within <see cref="OrphanWait"/>; else
+    /// null. Off the UI thread; never throws.</summary>
+    private TermSessionRecord? FindOrphan(string id)
+    {
+        var until = DateTime.UtcNow + OrphanWait;
+        while (true)
+        {
+            try { if (Lookup(id) is { } found) return found; }
+            catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Looking for TermHost session {Id:l} failed; contained", id); return null; }
+            if (DateTime.UtcNow >= until) return null;
+            Thread.Sleep(100);
+        }
+    }
+
+    /// <summary>For <see cref="OrphanWatch"/> after a failed launch fell back to an in-process CLI: a host that registers under
+    /// its id after all is ended, so the CLI never runs twice (M.ORCH-T971). Off the UI thread; never throws.</summary>
+    private void WatchForOrphan(string id)
+    {
+        var until = DateTime.UtcNow + OrphanWatch;
+        while (DateTime.UtcNow < until)
+        {
+            try
+            {
+                if (Lookup(id) is { } orphan)
+                {
+                    EndOrphan(orphan);
+                    return;
+                }
+            }
+            catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Watching for an orphaned TermHost {Id:l} failed; contained", id); return; }
+            Thread.Sleep(500);
+        }
+    }
+
+    private void EndOrphan(TermSessionRecord orphan)
+    {
+        OrchestratorLog.For("Terminals").Warning("TermHost {Id:l} (pid {Pid}) started after its launch failed and its tab ran the CLI in-process; ending it", orphan.Id, orphan.HostPid);
+        try { KillOrphan(orphan); }
+        catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Ending the orphaned TermHost {Id:l} failed; contained", orphan.Id); }
     }
 
     /// <summary>A tab's hosted session became known (the restore file records it, M.ORCH-T928).</summary>
@@ -620,7 +688,18 @@ public sealed class TerminalsViewModel : ObservableObject
     {
         try
         {
-            lock (launching) if (launching.Contains(session.Id)) return null;
+            bool orphan;
+            lock (launching)
+            {
+                if (launching.Contains(session.Id)) return null;
+                orphan = abandoned.Contains(session.Id);
+            }
+            if (orphan)
+            {
+                // Its tab runs the CLI in this process since its launch failed (M.ORCH-T971): this host would be a second copy.
+                EndOrphan(session);
+                return null;
+            }
             if (Panes.Any(p => string.Equals(p.TermId, session.Id, StringComparison.OrdinalIgnoreCase))) return null;
             request ??= TermPaneFile.FromRecord(session);
             var pane = new TerminalPaneViewModel(request, session);

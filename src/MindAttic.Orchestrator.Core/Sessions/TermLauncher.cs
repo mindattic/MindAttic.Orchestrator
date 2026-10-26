@@ -107,7 +107,9 @@ public static class TermLauncher
     /// the host has registered (within <paramref name="registerWait"/>, <see cref="DefaultRegisterWait"/> by default; a host that
     /// is running but hasn't written its file by then is returned as its launch reported it). Blocks for at most that long plus
     /// the launch: call it off the UI thread. Throws <see cref="InvalidOperationException"/> when the host can't be found,
-    /// fails to launch, or exits before registering (its log is <c>terms\&lt;id&gt;.log</c>).
+    /// fails to launch, or exits before registering (its log is <c>terms\&lt;id&gt;.log</c>). The host always gets the session id
+    /// (<see cref="TermLaunchSpec.Id"/> or a new one) as <c>--id</c>, so a caller that sets one can find a host that started
+    /// although the launch failed (M.ORCH-T971).
     /// </summary>
     public static TermSessionRecord Start(TermLaunchSpec spec, TimeSpan? registerWait = null)
     {
@@ -138,7 +140,9 @@ public static class TermLauncher
             var stderr = launch.StandardError.ReadToEndAsync();
             if (!launch.WaitForExit(TimeSpan.FromSeconds(30)))
             {
-                try { launch.Kill(); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+                // The tree, so a host it already spawned goes too where it's still a child; a detached one that isn't is found
+                // by the caller under this session's id and adopted or ended (M.ORCH-T971).
+                try { launch.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or AggregateException) { }
                 throw new InvalidOperationException($"TermHost --launch didn't finish (session {id}).");
             }
             output = stdout.GetAwaiter().GetResult();

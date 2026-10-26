@@ -347,6 +347,61 @@ public sealed class TerminalPanesTests
     }
 
     [Test, Apartment(ApartmentState.STA)]
+    public void A_failed_launch_whose_host_runs_anyway_is_adopted_by_its_tab_not_run_twice()
+    {
+        string? launchedId = null;
+        var terminals = new TerminalsViewModel
+        {
+            HostAvailable = () => true,
+            Launch = spec => { launchedId = spec.Id; throw new InvalidOperationException("TermHost --launch didn't finish"); },
+            Lookup = id => new Term.TermSessionRecord { Id = id, HostPid = 999999, Pipe = "mindattic-term-nobody-" + id, CommandLine = "cmd.exe" },
+            KillOrphan = _ => Assert.Fail("an adopted host is never ended"),
+        };
+        var window = OffScreenWindow.Show(600, 300, new System.Windows.Controls.Grid());
+        try
+        {
+            Assert.That(terminals.Open(new PaneRequest("JO: Repo [Claude]", temp.New()) { Command = ["cmd.exe", "/k", "echo pane"] }), Is.Null);
+            var pane = terminals.Panes.Single();
+            Assert.That(Pump(() => pane.Session is not null, TimeSpan.FromSeconds(10)), Is.True, "adopted the host");
+            Assert.That(pane.Session!.Id, Is.EqualTo(launchedId), "matched by the id the launch named");
+            Assert.That(pane.Local, Is.Null, "no in-process copy");
+            Assert.That(pane.IsHosted, Is.True);
+            pane.DisposeControl();
+            TermPaneFile.Delete(launchedId!);
+        }
+        finally { window.Close(); }
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_host_that_registers_after_its_tab_fell_back_is_ended_not_given_a_second_tab()
+    {
+        string? launchedId = null;
+        var ended = new List<string>();
+        var terminals = new TerminalsViewModel
+        {
+            HostAvailable = () => true,
+            Launch = spec => { launchedId = spec.Id; throw new InvalidOperationException("no record"); },
+            Lookup = _ => null,
+            KillOrphan = s => { lock (ended) ended.Add(s.Id); },
+            OrphanWait = TimeSpan.Zero,
+            OrphanWatch = TimeSpan.Zero,
+        };
+        var window = OffScreenWindow.Show(600, 300, new System.Windows.Controls.Grid());
+        try
+        {
+            Assert.That(terminals.Open(new PaneRequest("JO: Repo [Claude]", temp.New()) { Command = ["cmd.exe", "/k", "echo pane"] }), Is.Null);
+            var pane = terminals.Panes.Single();
+            Assert.That(Pump(() => pane.Local is not null, TimeSpan.FromSeconds(10)), Is.True, "fell back to an in-process terminal");
+            var orphan = new Term.TermSessionRecord { Id = launchedId!, HostPid = 999999, Pipe = "mindattic-term-nobody-" + launchedId, CommandLine = "cmd.exe" };
+            terminals.OnTermSession(new Term.TermSessionEvent(orphan, Term.TermSessionEvents.Started));
+            Assert.That(terminals.Panes, Has.Count.EqualTo(1), "no second tab");
+            Assert.That(ended, Is.EqualTo(new[] { launchedId }), "the orphan host was ended");
+            terminals.Close(pane);
+        }
+        finally { window.Close(); }
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
     public void Without_a_TermHost_a_tab_runs_its_CLI_in_process()
     {
         var terminals = new TerminalsViewModel { HostAvailable = () => false };
