@@ -71,6 +71,10 @@ internal sealed class MembersCommand : Command<MembersCommand.Settings>
                 m.Status == "active" ? m.Status : $"[yellow]{Markup.Escape(m.Status)}[/]",
                 SignedInCell(own.Contains(m.Email), accounts.TryGetValue(m.Email, out var at), at, now));
         AnsiConsole.Write(table);
+        // The API key is a member of its own too (M.ORCH-T906): no row of the table (it has no seat), but tickets are assigned to
+        // it by its email like anyone's, and orchestrator billing shows its money.
+        AnsiConsole.MarkupLine(Markup.Escape($"Also: {MindAttic.Orchestrator.Billing.ApiKeyPerson.Name} ({MindAttic.Orchestrator.Billing.ApiKeyPerson.Email}), " +
+            "the Vault's API key as a person: assign it tickets by that email; its CLIs bill API credits (orchestrator billing)."));
         return 0;
     }
 

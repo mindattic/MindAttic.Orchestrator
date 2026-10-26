@@ -345,7 +345,12 @@ public sealed partial class MainViewModel : ObservableObject
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Data.Common.DbException) { }
                 readMembers = members;
                 var orgDirectory = aggregator.Db.TryLoadOrgs();
-                return (built, LoginScope.Tabs(built, dirs, members), orgDirectory);
+                // The API key's person (M.ORCH-T906): its tab is "signed in" while the Vault holds a Claude key.
+                var hasKey = false;
+                try { hasKey = aggregator.BillingSwitch.HasKey; }
+                catch (Exception ex) when (ex is not OutOfMemoryException) { }
+                lastApiKey = hasKey;
+                return (built, LoginScope.Tabs(built, dirs, members, hasKey), orgDirectory);
             }), () => localChanges);
             ApplyTabs(next, tabs, nextOrgs);
             // What a pushed snapshot's figures are laid over until the next read (M.ORCH-T872).
@@ -376,6 +381,10 @@ public sealed partial class MainViewModel : ObservableObject
             await RefreshAsync();
         }
     }
+
+    /// <summary>Whether the Vault held a Claude key at the last read (M.ORCH-T906): the API key's person tab's "signed in",
+    /// reused when the stream's figures are laid over the last read.</summary>
+    private bool lastApiKey;
 
     /// <summary>A refresh was asked for while one ran.</summary>
     private bool refreshQueued;

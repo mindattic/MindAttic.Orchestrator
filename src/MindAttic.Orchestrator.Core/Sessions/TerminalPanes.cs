@@ -77,12 +77,30 @@ public sealed record PaneRequest(string Title, string Directory)
     public string ProcessCommandLine(string? pipeName = null)
     {
         var setup = $"Remove-Item Env:NO_COLOR -ErrorAction SilentlyContinue; $env:COLORTERM = 'truecolor'; " +
-                    $"$env:{PaneBroker.InsideVariable} = {AccountDirs.Ps(pipeName ?? PaneBroker.PipeName)}; ";
+                    $"$env:{PaneBroker.InsideVariable} = {AccountDirs.Ps(pipeName ?? PaneBroker.PipeName)}; " + ApiKeySetup();
         var run = Command is { Count: > 0 } command
             ? "& " + string.Join(' ', command.Select(AccountDirs.Ps))
             : $"& cmd.exe /d /c {AccountDirs.Ps(CommandLine ?? "")}";
         return JoinCommandLine(["powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand",
             Convert.ToBase64String(Encoding.Unicode.GetBytes(setup + run + "; exit $LASTEXITCODE"))]);
+    }
+
+    /// <summary>The variable a pane on the API key's person carries (M.ORCH-T906): <c>api</c>, so a process in it can tell it bills
+    /// API credits. The key itself is never set here: MindAttic.Launcher reads it from the Vault at each CLI's launch.</summary>
+    public const string BillingVariable = "MINDATTIC_CLAUDE_BILLING";
+
+    /// <summary>
+    /// The API key's person's own pane environment (M.ORCH-T906): its login folder as <c>CLAUDE_CONFIG_DIR</c>, and nothing
+    /// inherited from the dashboard that would bill a Claude seat instead (<c>CLAUDE_CODE_OAUTH_TOKEN</c>) or a gateway
+    /// (<c>ANTHROPIC_AUTH_TOKEN</c>); its Launcher and every CLI it hosts bill the Vault key. Empty for any other pane.
+    /// </summary>
+    internal string ApiKeySetup()
+    {
+        if (!Billing.ApiKeyPerson.Is(Login)) return "";
+        var folder = ConfigDir is { Length: > 0 } dir ? dir : Billing.ApiKeyPerson.Dir(new AccountDirs()).Directory;
+        return $"$env:{AccountDirs.EnvVar} = {AccountDirs.Ps(folder)}; " +
+               $"Remove-Item Env:{LoginTokens.EnvVar} -ErrorAction SilentlyContinue; Remove-Item Env:ANTHROPIC_AUTH_TOKEN -ErrorAction SilentlyContinue; " +
+               $"$env:{BillingVariable} = 'api'; ";
     }
 
     /// <summary>Arguments joined into one command line that <c>CommandLineToArgvW</c> splits back into the same arguments.</summary>

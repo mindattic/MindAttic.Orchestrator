@@ -8,26 +8,25 @@ namespace MindAttic.Orchestrator.Sessions;
 /// (M.ORCH-T615), <see cref="SignedIn"/> false: it shows only its Sign in until it is.</summary>
 public sealed record LoginTab(string? Email, string Title, string ToolTip, string Color, bool SignedIn = true)
 {
-    /// <summary>The 'API key' tab's key: never an email, so never a login's.</summary>
-    public const string ApiKeyKey = "api-key";
+    /// <summary>The API key person's tab key (M.ORCH-T906): its email, as any login's.</summary>
+    public const string ApiKeyKey = Billing.ApiKeyPerson.Email;
 
-    /// <summary>The 'API key' tab (M.ORCH-T630): no login, but the Vault API key's billing, after every person's tab.</summary>
-    public static readonly LoginTab ApiKey = new(null, "API key",
-        "The Vault's API key: billing every CLI on it for emergencies, and back to Claude Team", "") { IsApiKey = true };
+    /// <summary>The API key's person tab (M.ORCH-T906, which replaced M.ORCH-T630's 'API key' billing tab): a member like any
+    /// other, on its own login folder (<see cref="Billing.ApiKeyPerson"/>), its CLIs billing API credits. "Signed in" while the
+    /// MindAttic Vault holds a Claude key.</summary>
+    public static LoginTab ApiKey(bool hasKey) =>
+        new(Billing.ApiKeyPerson.Email, Billing.ApiKeyPerson.Name,
+            hasKey ? "The Vault's API key, as a person: its own Launcher and CLIs bill API credits, never a Claude Team seat"
+                   : "The Vault's API key, as a person: there's no Claude key in the MindAttic Vault keyring yet",
+            Billing.ApiKeyPerson.Color, hasKey) { IsApiKey = true };
 
-    /// <summary>Whether this is the 'API key' tab rather than a login's.</summary>
+    /// <summary>Whether this is the API key's person tab rather than a Claude login's.</summary>
     public bool IsApiKey { get; init; }
-
-    /// <summary>The 'API key' tab as billing has it (M.ORCH-T672): marked "(fallback)" while the API key bills, since a CLI
-    /// started with no account of its own then runs on the key, else as <see cref="ApiKey"/>.</summary>
-    public static LoginTab ApiKeyTab(bool billingIsApiKey) =>
-        billingIsApiKey ? ApiKey with { Title = "API key (fallback)", ToolTip = "The Vault's API key, billing now: the fallback for a CLI with no login of its own" } : ApiKey;
 
     public bool IsGlobal => Email is null && !IsApiKey;
 
-    /// <summary>The key a tab is kept by across refreshes: "" for the global login, <see cref="ApiKeyKey"/> for the 'API key'
-    /// tab, else its email.</summary>
-    public string Key => IsApiKey ? ApiKeyKey : Email ?? "";
+    /// <summary>The key a tab is kept by across refreshes: "" for the global login, else its email.</summary>
+    public string Key => Email ?? "";
 }
 
 /// <summary>
@@ -103,14 +102,17 @@ public static class LoginScope
     /// @; any other login's by its login's name. The global one is its member's own seat, never marked a fallback (the API key tab is, while the key bills), each has its email in the tooltip and
     /// its terminal tabs' color as its accent. The global login's own account gets no second tab: the fallback one is its.
     /// </summary>
-    public static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, AccountDirs dirs, IEnumerable<Member>? members = null) =>
-        Tabs(snapshot, email => LoginLook.For(dirs.For(email).Directory, email), LoginLook.For(dirs.ClaudeDir, snapshot.GlobalEmail), members);
+    /// <para>The API key's person (M.ORCH-T906) has its tab after everyone's: <paramref name="apiKey"/> says whether the
+    /// Vault holds a key for it (its "signed in"); null leaves it out.</para>
+    public static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, AccountDirs dirs, IEnumerable<Member>? members = null, bool? apiKey = null) =>
+        Tabs(snapshot, email => LoginLook.For(dirs.For(email).Directory, email), LoginLook.For(dirs.ClaudeDir, snapshot.GlobalEmail), members, apiKey);
 
-    internal static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, Func<string, LoginLook> ownLook, LoginLook globalLook, IEnumerable<Member>? members = null)
+    internal static IReadOnlyList<LoginTab> Tabs(Snapshot snapshot, Func<string, LoginLook> ownLook, LoginLook globalLook, IEnumerable<Member>? members = null,
+        bool? apiKey = null)
     {
         var byEmail = new Dictionary<string, Member>(StringComparer.Ordinal);
         foreach (var m in members ?? [])
-            if (AccountDirs.Normalize(m.Email) is { } key) byEmail.TryAdd(key, m);
+            if (AccountDirs.Normalize(m.Email) is { } key && !Billing.ApiKeyPerson.Is(key)) byEmail.TryAdd(key, m);
         string Title(string email, string alias) => byEmail.TryGetValue(email, out var m) ? MemberRoster.TitleOf(m, alias) : alias;
         var globalEmail = AccountDirs.Normalize(snapshot.GlobalEmail);
         // While the API key bills, the fallback is the key (its tab is marked), and the global login's tab is any member's.
@@ -126,7 +128,7 @@ public static class LoginScope
             .Concat(snapshot.Agents.Select(a => a.OwnLogin))
             .Concat(snapshot.Repos.SelectMany(r => r.Hosts).Select(h => h.OwnLogin))
             .Select(AccountDirs.Normalize).OfType<string>()
-            .Where(e => e != globalEmail)
+            .Where(e => e != globalEmail && !Billing.ApiKeyPerson.Is(e))
             .ToHashSet(StringComparer.Ordinal);
         var waiting = byEmail.Keys
             .Where(e => !live.Contains(e) && e != globalEmail)
@@ -140,9 +142,9 @@ public static class LoginScope
                 : new LoginTab(e, title, $"{e}: its own login (~/.claude-accounts)", look.TabColor);
         });
         // By the name each shows, case-insensitive (M.ORCH-T752): the global login's tab is just its member's, so it sorts
-        // with the others; ties by email, the global one first. The 'API key' tab goes after all of them (ApplyTabs).
+        // with the others; ties by email, the global one first. The API key's person goes after all of them (M.ORCH-T906).
         return [.. own.Prepend(global)
             .OrderBy(t => t.Title, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(t => t.Email ?? "", StringComparer.Ordinal)];
+            .ThenBy(t => t.Email ?? "", StringComparer.Ordinal), .. apiKey is { } hasKey ? [LoginTab.ApiKey(hasKey)] : Array.Empty<LoginTab>()];
     }
 }

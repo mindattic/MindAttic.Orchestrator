@@ -72,7 +72,7 @@ public sealed partial class MainViewModel
         var dirs = OwnLoginDirs();
         var members = lastMembers;
         // Each login's tab and its signed-in state, off the UI thread, as a read does it.
-        var tabs = await Task.Run(() => LoginScope.Tabs(patched, dirs, members));
+        var tabs = await Task.Run(() => LoginScope.Tabs(patched, dirs, members, lastApiKey));
         // A read that landed meanwhile showed something as new or newer.
         if (refreshing || workspace is not { } now || now.TakenUtc >= patched.TakenUtc) return false;
         ApplyTabs(patched, tabs, lastOrgs);

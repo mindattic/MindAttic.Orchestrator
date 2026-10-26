@@ -137,14 +137,16 @@ public sealed class LoginScopeTests
 
         var team = Workspace() with { Billing = Status(Billing.BillingModes.Team) };
         Assert.That(LoginScope.Tabs(team, Look, globalLook).Single(t => t.IsGlobal).Title, Is.EqualTo("Ryan"));
-        Assert.That(LoginTab.ApiKeyTab(false).Title, Is.EqualTo("API key"));
+        Assert.That(LoginTab.ApiKey(true).Title, Is.EqualTo("API key"));
 
         var key = Workspace() with { Billing = Status(Billing.BillingModes.Api) };
-        var tabs = LoginScope.Tabs(key, Look, globalLook);
+        var tabs = LoginScope.Tabs(key, Look, globalLook, apiKey: true);
         Assert.That(tabs.Single(t => t.IsGlobal).Title, Is.EqualTo("Ryan"), "titled like any member's");
         Assert.That(tabs.Any(t => t.Title.Contains("fallback")), Is.False);
-        Assert.That(LoginTab.ApiKeyTab(true).Title, Is.EqualTo("API key (fallback)"));
-        Assert.That(LoginTab.ApiKeyTab(true).IsApiKey, Is.True);
+        // M.ORCH-T906: the API key's person tab comes last, signed in while the Vault has a key.
+        Assert.That(tabs[^1].IsApiKey, Is.True);
+        Assert.That(tabs[^1].SignedIn, Is.True);
+        Assert.That(tabs.Count(t => t.IsApiKey), Is.EqualTo(1));
 
         var member = new Member { Email = "ryan@example.com", Name = "Ryan D", Role = "admin", Tier = "premium" };
         Assert.That(LoginScope.Tabs(key, Look, globalLook, [member]).Single(t => t.IsGlobal).Title, Is.EqualTo("Ryan D"), "its member name");

@@ -61,15 +61,7 @@ public partial class MainWindow : Window
         model.Zoom.Attach(Root, this);
         // The upper-right sun/moon switch (M.ORCH-T678) changes the theme live; each switch is saved, so it holds at the next start.
         ThemeChoice.SaveSwitches(this, model.Store);
-        // The emergency billing button's glow pulse (M.ORCH-T770), set up here rather than a Storyboard in its Style
-        // (M.ORCH-T775): Storyboard.TargetName only resolves within a ControlTemplate or DataTemplate's own NameScope, and
-        // this button wears the library's own MaToolButton style with no named part of its own to target. A DropShadowEffect
-        // assigned straight to the button and animated with BeginAnimation needs no NameScope at all.
-        var emergencyGlow = new DropShadowEffect { Color = GlowColor, ShadowDepth = 0, BlurRadius = 14, Opacity = 0 };
-        EmergencyBillingButton.Effect = emergencyGlow;
-        void UpdateEmergencyGlow() => Pulse(emergencyGlow, model.IsOnApiKey, exitOpacity: 0, exitSeconds: 0.3);
-        model.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(MainViewModel.IsOnApiKey)) UpdateEmergencyGlow(); };
-        UpdateEmergencyGlow();
+        // No emergency billing button any more (M.ORCH-T906): the API key is a person with its own tab, Launcher and CLIs.
 
         CommandBindings.Add(new CommandBinding(WindowCommands.Escape, (_, _) => OnEscape(),
             // Esc belongs to the CLI while a terminal has focus (M.ORCH-T852): not executable, so the key passes through.

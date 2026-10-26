@@ -45,7 +45,7 @@ public sealed class OrganizationsTests
         Assert.That(orgs.OrgOf(Providers.Codex, "Jordan"), Is.EqualTo("sales"), "a login on another LLM");
         Assert.That(orgs.OrgOfClaude("ryan@example.com"), Is.EqualTo(Organization.DefaultId));
         Assert.That(orgs.OrgOfClaude("old@example.com"), Is.EqualTo(Organization.DefaultId), "a member of an org since removed");
-        Assert.That(orgs.OrgOfTab(LoginTab.ApiKey), Is.EqualTo(Organization.DefaultId), "the Vault's key is the workspace's");
+        Assert.That(orgs.OrgOfTab(LoginTab.ApiKey(hasKey: true)), Is.EqualTo(Organization.DefaultId), "the Vault's key is the workspace's");
         Assert.That(orgs.PeopleOf("sales").Single().Person, Is.EqualTo("Jordan"));
         Assert.That(orgs.PeopleOf("sales").Single().Logins, Has.Count.EqualTo(2), "a person owns several logins");
         Assert.That(orgs.ClaudeEmails, Is.EquivalentTo(new[] { "jordan@example.com", "amy@example.com", "old@example.com" }));

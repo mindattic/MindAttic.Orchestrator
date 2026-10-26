@@ -115,9 +115,8 @@ public sealed partial class MainViewModel
 
     private void Step(int by)
     {
-        // The 'API key' tab is never cycled to (M.ORCH-T770): it isn't a person, and it's hidden from the strip, so landing on
-        // it here would select a tab with no visible header to show it was selected.
-        var steppable = orgTabs.Where(t => !t.IsApiKeyTab).ToList();
+        // The API key is a person like any other now (M.ORCH-T906): it's cycled to with the rest.
+        var steppable = orgTabs.ToList();
         if (steppable.Count < 2) return;
         var at = steppable.IndexOf(SelectedTab);
         Select(steppable[((at + by) % steppable.Count + steppable.Count) % steppable.Count]);
@@ -138,9 +137,10 @@ public sealed partial class MainViewModel
         // Who was signed in at the last refresh, so a login disconnected since opens its sign-in by itself (M.ORCH-T796).
         var wasSignedIn = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         foreach (var t in previous) wasSignedIn.TryAdd(t.tab.Key, t.tab.SignedIn);
-        // The 'API key' tab after every person's (M.ORCH-T630). No more 'Miscellaneous' tab (M.ORCH-T825): its content
-        // (allocate, a pacing hold, reminders, finished work, the workspace's problems) now shows on the global login's tab.
-        loginTabs.SyncBy([.. tabs.Where(t => !t.IsApiKey), LoginTab.ApiKeyTab(all.Billing?.Mode == BillingModes.Api)],
+        // The API key's person tab comes in the list itself, after every Claude login's (M.ORCH-T906). No more 'Miscellaneous'
+        // tab (M.ORCH-T825): its content (allocate, a pacing hold, reminders, finished work, the workspace's problems) now shows
+        // on the global login's tab.
+        loginTabs.SyncBy([.. tabs],
             t => t.Key, v => v.tab.Key,
             t => t.IsGlobal ? this : new MainViewModel(this, t),
             (v, t) => v.Retitle(t));
@@ -159,8 +159,8 @@ public sealed partial class MainViewModel
         {
             var org = t.OrgId;
             if (!byOrg.TryGetValue(org, out var orgAll)) byOrg[org] = orgAll = OrgScope.For(all, orgs, org, options.WorkingWindow, options.WaitingWindow);
-            // The 'API key' tab is no login's: scoped to a key no session runs on, it has no repos' sessions or toasts of its own.
-            t.Apply(orgAll, LoginScope.For(orgAll, t.IsApiKeyTab ? t.tab.Key : t.ScopeEmail, options.WorkingWindow, options.WaitingWindow));
+            // The API key's person is scoped to its own login folder's sessions, as any per-CLI login (M.ORCH-T906).
+            t.Apply(orgAll, LoginScope.For(orgAll, t.ScopeEmail, options.WorkingWindow, options.WaitingWindow));
             // Its blinks from the token count this refresh read (M.ORCH-T757): no read of its own.
             t.CountTabTokens(now);
             t.RaiseTabStatus();
@@ -219,6 +219,11 @@ public sealed partial class MainViewModel
             Root.ShowPane(open);
             return (null, $"The Launcher as {tabTitle} was already open.");
         }
+        // The API key's person (M.ORCH-T906): its login folder is made ready first (the Vault key approved there, its look
+        // marked "billing": "api"), so its Launcher runs as the key and every CLI it starts bills API credits. The key itself is
+        // read from the Vault by the Launcher at each CLI's launch; it's never in this pane's command line or environment.
+        if (ApiKeyPerson.Is(email) && await Task.Run(() => ApiKeyPerson.Prepare(new AccountDirs(), aggregator.BillingSwitch)) is { } notReady)
+            return (notReady, notReady);
         var running = await Task.Run(() => control.RunningLauncherOf(email));
         if (running is { } pid)
         {
@@ -250,17 +255,19 @@ public sealed partial class MainViewModel
 
     /// <summary>Whether this tab's login is signed in (M.ORCH-T615). A roster account that isn't yet has a tab showing only its
     /// Sign in; once signed in, the next refresh gives it the whole dashboard and Open Launcher.</summary>
-    public bool IsTabSignedIn => tab.SignedIn && !tab.IsApiKey;
+    /// <para>The API key's person (M.ORCH-T906) is "signed in" while the MindAttic Vault holds a Claude key.</para>
+    public bool IsTabSignedIn => tab.SignedIn;
 
-    /// <summary>A person's tab (signed in or not), not the 'API key' tab (M.ORCH-T630), which shows only its billing panel.</summary>
-    public bool IsPersonTab => !tab.IsApiKey;
+    /// <summary>A person's tab, signed in or not: every tab is one since the API key became a person too (M.ORCH-T906).</summary>
+    public bool IsPersonTab => true;
 
     /// <summary>The panel with only its Sign in: on a person's tab not signed in yet.</summary>
     public bool ShowsSignIn => !tab.SignedIn;
 
     /// <summary>What a tab not signed in yet says above its Sign in.</summary>
-    public string SignInPrompt => tab.SignedIn ? "" :
-        $"{tab.Title} ({tab.Email}) isn't signed in on this machine yet. Sign in to see its dashboard and open the Launcher as {tab.Title}.";
+    public string SignInPrompt => tab.SignedIn ? ""
+        : tab.IsApiKey ? $"There's no {BillingSwitch.VaultProvider} key in the MindAttic Vault keyring. Add one there (MindAttic.Vault, or the Launcher's Settings) and the API key's page and Launcher open at the next refresh."
+        : $"{tab.Title} ({tab.Email}) isn't signed in on this machine yet. Sign in to see its dashboard and open the Launcher as {tab.Title}.";
 
     /// <summary>Sign in, on a tab whose login isn't signed in yet: its own sign-in in a private browser window, then the tab
     /// becomes its dashboard.</summary>
@@ -268,7 +275,7 @@ public sealed partial class MainViewModel
     {
         if (ScopeEmail is not { } email) return;
         if (await SignInOwnAsync(email)) await RefreshAsync();
-    }, () => !tab.SignedIn && ScopeEmail is not null && !IsSigningIn);
+    }, () => !tab.SignedIn && !tab.IsApiKey && ScopeEmail is not null && !IsSigningIn);
 
     /// <summary>Tags each new toast with this tab while there's more than one (toasts tagged by tab), and tells the window.</summary>
     private void OnToastsChanged(object? sender, NotifyCollectionChangedEventArgs e)

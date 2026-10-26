@@ -116,6 +116,11 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         var dirs = new AccountDirs();
         try
         {
+            // The API key's person (M.ORCH-T906): its own login folder, made ready (the Vault key approved there) for a CLI that
+            // bills API credits; null while the Vault holds no key.
+            if (Billing.ApiKeyPerson.Is(email))
+                return Billing.ApiKeyPerson.Prepare(dirs, new Billing.BillingSwitch()) is null
+                    ? new TabLogin(Billing.ApiKeyPerson.Dir(dirs).Directory, Billing.ApiKeyPerson.Email) : null;
             if (AccountDirs.Normalize(email) is { } e && dirs.For(e) is { SignedIn: true } own)
             {
                 dirs.Prepare(own);

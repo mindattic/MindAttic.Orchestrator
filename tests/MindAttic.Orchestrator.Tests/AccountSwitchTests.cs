@@ -257,10 +257,10 @@ public sealed class AccountSwitchTests
         Assert.That(code, Does.Contain("tab.MakeDefaultCommand"));
         Assert.That(xaml[xaml.IndexOf("x:Name=\"OrgToolbar\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"SettingsPersonTabsTab\"", StringComparison.Ordinal)],
             Does.Contain("x:Name=\"BillingDetailLine\""));
-        // M.ORCH-T630: the API-key switch, with its tooltip of who every CLI bills, moved on again to the 'API key' tab.
-        var apiKey = xaml[xaml.IndexOf("x:Name=\"ApiKeyBody\"", StringComparison.Ordinal)..];
-        Assert.That(apiKey, Does.Contain("x:Name=\"BillingToggleButton\"").And.Contain("{Binding ToggleBillingCommand}")
-            .And.Contain("{Binding BillingHeadline, Mode=OneWay}"));
+        // M.ORCH-T906: no API-key switch in the dashboard any more; the API key is a person with its own tab, and
+        // orchestrator billing stays the command-line tool.
+        Assert.That(xaml, Does.Not.Contain("x:Name=\"ApiKeyBody\"").And.Not.Contain("x:Name=\"BillingToggleButton\"")
+            .And.Not.Contain("{Binding ToggleBillingCommand}"));
         // The plan and how fresh the reading is: the Last updated tile (M.ORCH-T763); billing's detail stays off the person's stats.
         var header = xaml[xaml.IndexOf("x:Name=\"Header\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"Toolbar\"", StringComparison.Ordinal)];
         Assert.That(header, Does.Contain("{Binding LastUpdatedCaption}").And.Not.Contain("{Binding BillingDetail}"));

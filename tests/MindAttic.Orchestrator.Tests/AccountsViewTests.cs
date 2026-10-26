@@ -151,7 +151,7 @@ public sealed class AccountsViewTests
             new("b@example.com", "B", "", "", SignedIn: false),
             new("c@example.com", "C", "", ""),
             new("d@example.com", "D", "", "", SignedIn: false),
-            LoginTab.ApiKey with { SignedIn = false },
+            LoginTab.ApiKey(hasKey: false),
         ];
         Assert.That(MainViewModel.NewlyDisconnected(was, now), Is.EqualTo(new[] { "a@example.com" }));
     }
