@@ -3223,7 +3223,10 @@ public static class AgentGate
                 state["closed"] = state.get("closed", []) + [closed.group(1)]
                 touched = True
             if touched:
-                save(state_file, state)
+                try:
+                    save(state_file, state)
+                except Exception:
+                    pass
             # A busy turn (an /allocate run never submits a prompt) takes its nudges here, as the old typed prompt waited in its box.
             said = take_nudges(paced)
             # No context warning any more: nothing quicksaves, clears or reloads a session for it (2026-10-16), so a turn
