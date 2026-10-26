@@ -298,6 +298,10 @@ public sealed class LibraryControlsTests
         var keys = theme.Keys.OfType<string>()
             .Concat(App().Descendants().Select(e => (string?)e.Attribute(X + "Key")).OfType<string>())
             .Concat(window.Descendants().Select(e => (string?)e.Attribute(X + "Key")).OfType<string>())
+            // App.xaml's merged dictionaries resolve at runtime too; follow the ones in the app itself (Themes/Spacing.xaml).
+            .Concat(App().Descendants(P + "ResourceDictionary").Select(d => (string?)d.Attribute("Source"))
+                .Where(src => src is not null && !src.StartsWith("pack:", StringComparison.Ordinal))
+                .SelectMany(src => XDocument.Load(Wpf(src!)).Root!.Descendants().Select(e => (string?)e.Attribute(X + "Key")).OfType<string>()))
             .ToHashSet();
 
         var named = window.Descendants().Attributes().SelectMany(a => Regex.Matches(a.Value, @"\{(?:Static|Dynamic)Resource (\w+)\}").Select(m => m.Groups[1].Value))
