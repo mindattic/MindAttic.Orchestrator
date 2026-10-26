@@ -62,7 +62,8 @@ public sealed partial class MainViewModel
     /// <summary>
     /// "Show who is working X" (<see cref="AppBus.ShowWorker"/>, from Tickets Desktop): the CLI tab in the session working it is
     /// shown; failing that, the person working it is selected. Who works it is the request's, else the plan's claim on it.
-    /// Returns what was shown, or why nothing could be, for the status line. Never throws.
+    /// Returns what was shown, or why nothing could be, for the status line: the shown tab's, the one the toolbar binds and
+    /// announces, after any switch this makes (M.ORCH-T1022). Never throws.
     /// </summary>
     internal string ShowWorker(ShowWorkerRequest request)
     {
@@ -77,15 +78,15 @@ public sealed partial class MainViewModel
             if (session is { Length: > 0 } && AllTerminals.Panes.FirstOrDefault(p => !p.Ended && string.Equals(p.SessionId, session, StringComparison.OrdinalIgnoreCase)) is { } pane)
             {
                 ShowPane(pane);
-                return StatusMessage = $"Showing the CLI working {id}.";
+                return Shown.StatusMessage = $"Showing the CLI working {id}.";
             }
             if (login is not null && loginTabs.FirstOrDefault(t => TicketPins.Same(t.PersonEmail, login)) is { } person)
             {
                 if (person.OrgId != selectedOrgId) SelectOrg(person.OrgId);
                 Select(person);
-                return StatusMessage = $"{id} is worked on {person.LoginName}'s login; its CLI isn't open in this window.";
+                return Shown.StatusMessage = $"{id} is worked on {person.LoginName}'s login; its CLI isn't open in this window.";
             }
-            return StatusMessage = login is null && session is null ? $"Nobody is working {id} right now." : $"{id} is worked on a login with no tab here ({login ?? session}).";
+            return Shown.StatusMessage = login is null && session is null ? $"Nobody is working {id} right now." : $"{id} is worked on a login with no tab here ({login ?? session}).";
         }
         catch (Exception ex)
         {
