@@ -22,13 +22,9 @@
     <PackageReference Include="System.Management" Version="10.0.0" />
   </ItemGroup>
 
-  <!-- M.ORCH-T932: the side-by-side TermHost resolver and cleanup live in the dependency-free Term library. -->
+  <!-- M.ORCH-T932: the side-by-side TermHost resolver and cleanup live in the dependency-free Term library.
+       M.ORCH-T925: so do the session registry and the term-session bus records TermLauncher returns. -->
   <ItemGroup>
-    <ProjectReference Include="..\MindAttic.Orchestrator.Term\MindAttic.Orchestrator.Term.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- M.ORCH-T925: the TermHost session registry and term-session bus records, for TermLauncher and the dashboard. -->
     <ProjectReference Include="..\MindAttic.Orchestrator.Term\MindAttic.Orchestrator.Term.csproj" />
   </ItemGroup>
 

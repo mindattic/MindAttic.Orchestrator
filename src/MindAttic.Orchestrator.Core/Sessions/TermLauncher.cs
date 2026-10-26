@@ -74,17 +74,25 @@ public static class TermLauncher
     public static string? HostPath { get; set; }
 
     /// <summary>
-    /// The host's executable: <see cref="HostPath"/>, else <see cref="HostPathVariable"/>, else <see cref="HostExeName"/> beside
-    /// this app or in its <c>TermHost</c> folder. Null when there's none.
+    /// The host's executable: <see cref="HostPath"/>, else <see cref="HostPathVariable"/>, else the newest side-by-side install
+    /// (<see cref="TermHostInstalls.ResolveExe"/>, M.ORCH-T932) under the Orchestrator's install folder or this app's own, else
+    /// <see cref="HostExeName"/> beside this app (a dev build). Null when there's none.
     /// </summary>
     public static string? FindHost()
     {
+        string? Installed(Func<string> installDir)
+        {
+            try { return TermHostInstalls.ResolveExe(installDir()); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException) { return null; }
+        }
+
         foreach (var candidate in new[]
                  {
                      HostPath,
                      System.Environment.GetEnvironmentVariable(HostPathVariable),
+                     Installed(() => new Setup.Installer().InstallDir),
+                     Installed(() => AppContext.BaseDirectory),
                      Path.Combine(AppContext.BaseDirectory, HostExeName),
-                     Path.Combine(AppContext.BaseDirectory, "TermHost", HostExeName),
                  })
             if (!string.IsNullOrWhiteSpace(candidate) && File.Exists(candidate)) return Path.GetFullPath(candidate);
         return null;

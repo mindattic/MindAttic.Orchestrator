@@ -537,9 +537,9 @@ line. The kind is documented in `docs/app-bus.md`.
 - `Start` then waits up to 5 s (`registerWait`) for the registry file and returns its record. It blocks, so call it off
   the UI thread.
 - It throws `InvalidOperationException` when the host isn't found, fails to launch, or exits before it registers.
-- It finds the host from `TermLauncher.HostPath`, then `%MINDATTIC_TERMHOST%`, then
-  `MindAttic.Orchestrator.TermHost.exe` beside the app or in its `TermHost\` folder (`TermLauncher.FindHost()`). Shipping
-  the host next to the dashboard is T926/T928's job.
+- It finds the host from `TermLauncher.HostPath`, then `%MINDATTIC_TERMHOST%`, then the newest side-by-side install
+  (`TermHostInstalls.ResolveExe`, M.ORCH-T932) under the Orchestrator's install folder or the app's own folder, then
+  `MindAttic.Orchestrator.TermHost.exe` beside the app, for a dev build (`TermLauncher.FindHost()`).
 
 **For T926 on dashboard start:**
 
