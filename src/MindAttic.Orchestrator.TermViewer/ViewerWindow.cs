@@ -192,8 +192,10 @@ internal sealed class ViewerWindow : Window
         // A --stay pop-out reconnects a dropped link while its host lives (M.ORCH-T976). A fallback window does too, but only
         // while the dashboard is absent (M.ORCH-T1040): once its presence is seen the probe says no, the link ends and OnDetached
         // folds the window, so it never takes a protocol 1 session back from the dashboard's tab and ping-pongs with it; while
-        // the dashboard is down, a passing pipe drop no longer leaves it detached, holding the slot and dropping keys.
-        Func<bool> alive = stay ? HostLives : () => !dashboardSeen && HostLives();
+        // the dashboard is down, a passing pipe drop no longer leaves it detached, holding the slot and dropping keys. A link
+        // replaced while the dashboard's mutex or show event exists ends at once too (M.ORCH-T1050), not only after dashboardSeen
+        // (two looks, 2-4s), so a dashboard reattaching to a protocol 1 host first never ping-pongs with this window.
+        Func<bool> alive = stay ? HostLives : () => !dashboardSeen && !DashboardPresence.IsPresent() && HostLives();
         r.Attach(session.Pipe, session.Protocol, alive, interactive: !watchOnly);
         r.Terminal.Focus();
     }
@@ -222,7 +224,7 @@ internal sealed class ViewerWindow : Window
     private void OnDetached(string why)
     {
         if (closing) return;
-        if (!stay && DashboardPresence.IsUp())
+        if (!stay && (dashboardSeen || DashboardPresence.IsPresent()))
         {
             log.Information("{Id:l} was taken by the dashboard; folding back", session.Id);
             Fold();

@@ -14,6 +14,33 @@ public static class DashboardPresence
 {
     public static bool IsUp() => IsUp(SingleInstance.DashboardName);
 
+    /// <summary>Whether the dashboard's mutex or its show event exists (M.ORCH-T1050): looser than <see cref="IsUp"/>, which
+    /// wants both, so a fallback viewer whose link was just taken folds while the dashboard is still starting or handing over,
+    /// rather than reconnecting and taking a protocol 1 session back from its tab. Never throws.</summary>
+    public static bool IsPresent() => IsPresent(SingleInstance.DashboardName);
+
+    internal static bool IsPresent(string name)
+    {
+        try
+        {
+            if (Mutex.TryOpenExisting(SingleInstance.MutexName(name), out var mutex))
+            {
+                mutex.Dispose();
+                return true;
+            }
+        }
+        catch (UnauthorizedAccessException) { return true; }
+        catch (Exception ex) when (ex is IOException or WaitHandleCannotBeOpenedException or ArgumentException) { }
+        try
+        {
+            if (!EventWaitHandle.TryOpenExisting(SingleInstance.ShowEvent(name), out var show)) return false;
+            show.Dispose();
+            return true;
+        }
+        catch (UnauthorizedAccessException) { return true; }
+        catch (Exception ex) when (ex is IOException or WaitHandleCannotBeOpenedException or ArgumentException) { return false; }
+    }
+
     internal static bool IsUp(string name)
     {
         try

@@ -80,6 +80,19 @@ public sealed class FallbackViewersTests
     }
 
     [Test]
+    public void The_dashboard_is_present_while_either_its_mutex_or_its_show_event_exists()
+    {
+        // M.ORCH-T1050: a fallback viewer whose link is taken folds at once on either, rather than reconnecting.
+        var name = @"Local\MindAttic.Orchestrator.Tests.Dashboard." + Guid.NewGuid().ToString("N");
+        Assert.That(DashboardPresence.IsPresent(name), Is.False, "nothing there");
+        using (new Mutex(false, SingleInstance.MutexName(name)))
+            Assert.That(DashboardPresence.IsPresent(name), Is.True, "the mutex alone");
+        using (new EventWaitHandle(false, EventResetMode.AutoReset, SingleInstance.ShowEvent(name)))
+            Assert.That(DashboardPresence.IsPresent(name), Is.True, "the show event alone");
+        Assert.That(DashboardPresence.IsPresent(name), Is.False, "the process that held them is gone");
+    }
+
+    [Test]
     public void A_viewer_slot_is_held_while_its_mutex_exists()
     {
         var id = "t960-" + Guid.NewGuid().ToString("N")[..8];
