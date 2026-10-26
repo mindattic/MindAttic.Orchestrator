@@ -110,10 +110,10 @@ public sealed class TermHostInstallsTests
         var used = Install("1.0.0-20261002000000");
         var newest = Install("1.0.0-20261003000000");
 
-        Assert.That(TermHostInstalls.Cleanup(root, null), Is.Empty);
+        Assert.That(TermHostInstalls.Cleanup(root, null, TimeSpan.Zero), Is.Empty);
         Assert.That(Directory.Exists(old), Is.True);
 
-        var deleted = TermHostInstalls.Cleanup(root, [Path.Combine(used, TermHostInstalls.ExeName)]);
+        var deleted = TermHostInstalls.Cleanup(root, [Path.Combine(used, TermHostInstalls.ExeName)], TimeSpan.Zero);
         Assert.That(deleted, Is.EqualTo(new[] { "1.0.0-20261001000000" }));
         Assert.That(Directory.Exists(old), Is.False);
         Assert.That(Directory.Exists(used), Is.True);
@@ -137,5 +137,15 @@ public sealed class TermHostInstallsTests
         Assert.That(future.Message, Does.Contain("newer"));
         Assert.That(TermProtocol.Check(ushort.MaxValue).Status, Is.EqualTo(TermCompatStatus.HostTooNew));
         Assert.That(TermProtocol.Check(0).Status, Is.EqualTo(TermCompatStatus.HostTooOld));
+    }
+
+    [Test]
+    public void A_version_superseded_just_now_is_kept_until_the_grace_period_has_passed()
+    {
+        var old = Install("1.0.0-20261001000000");
+        Install("1.0.0-20261003000000");
+        Assert.That(TermHostInstalls.Cleanup(root, [], TimeSpan.FromMinutes(10)), Is.Empty);
+        Assert.That(Directory.Exists(old), Is.True);
+        Assert.That(TermHostInstalls.Cleanup(root, [], TimeSpan.Zero), Is.EqualTo(new[] { "1.0.0-20261001000000" }));
     }
 }

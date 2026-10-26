@@ -111,19 +111,65 @@ public static class TermHostInstalls
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { return false; }
     }
 
+    /// <summary>How long a newer version must have existed before the one it superseded may be deleted: a host that resolved the
+    /// older one just before the install is still starting from it.</summary>
+    public static readonly TimeSpan Grace = TimeSpan.FromMinutes(10);
+
     /// <summary>Deletes the removable version folders under <paramref name="root"/>; returns the names deleted. Never throws:
     /// a folder that can't be deleted (something still holds a file) stays for the next pass.</summary>
-    public static IReadOnlyList<string> Cleanup(string root) => Cleanup(root, RunningExePaths());
+    public static IReadOnlyList<string> Cleanup(string root)
+    {
+        // Listed before the processes are read: a host that starts in between is on a folder this pass leaves alone or
+        // one it didn't list.
+        var listed = List(root);
+        return Cleanup(root, listed, RunningExePaths(), Grace);
+    }
 
-    internal static IReadOnlyList<string> Cleanup(string root, IReadOnlyList<string>? running)
+    internal static IReadOnlyList<string> Cleanup(string root, IReadOnlyList<string>? running, TimeSpan grace) =>
+        Cleanup(root, List(root), running, grace);
+
+    private static IReadOnlyList<string> Cleanup(string root, IReadOnlyList<Installed> listed, IReadOnlyList<string>? running, TimeSpan grace)
     {
         if (running is null) return [];
+        SweepDeleting(root);
+        var sorted = Sort(listed);
         var deleted = new List<string>();
-        foreach (var v in SelectRemovable(List(root), running))
+        foreach (var v in SelectRemovable(sorted, running))
         {
-            try { Directory.Delete(v.Directory, recursive: true); deleted.Add(v.Name); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            // The version that superseded it must have been there a while (its folder was created then).
+            var successor = sorted[sorted.FindIndex(x => x.Name == v.Name) + 1];
+            try { if (DateTime.UtcNow - Directory.GetCreationTimeUtc(successor.Directory) < grace) continue; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { continue; }
+            if (Remove(v.Directory)) deleted.Add(v.Name);
         }
         return deleted;
+    }
+
+    /// <summary>Renames the folder to a non-version name first (that fails whole when something holds a file in it), so a
+    /// half-deleted folder is never listed as an install, then deletes it.</summary>
+    private static bool Remove(string directory)
+    {
+        var parent = Path.GetDirectoryName(directory)!;
+        var aside = Path.Combine(parent, "." + Path.GetFileName(directory) + DeletingSuffix);
+        try
+        {
+            if (Directory.Exists(aside)) Directory.Delete(aside, recursive: true);
+            Directory.Move(directory, aside);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
+        try { Directory.Delete(aside, recursive: true); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        return true;
+    }
+
+    private const string DeletingSuffix = ".deleting";
+
+    private static void SweepDeleting(string root)
+    {
+        try
+        {
+            foreach (var dir in Directory.EnumerateDirectories(root, "*" + DeletingSuffix))
+                try { Directory.Delete(dir, recursive: true); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 }

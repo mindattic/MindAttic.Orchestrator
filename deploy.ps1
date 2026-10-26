@@ -302,7 +302,7 @@ if (Test-Stale $cliExe @($cliDir, $coreDir)) {
 # the daemon do that once no process runs from it. A build whose code matches the newest installed one adds no folder.
 $termHostRoot = Join-Path $appDir 'TermHost'
 $termHostNewest = Get-NewestTermHost
-if ((-not $termHostNewest) -or (Test-Stale $termHostNewest @($termHostDir, $termDir))) {
+if ($Force -or (-not $termHostNewest) -or (Test-Stale $termHostNewest @($termHostDir, $termDir))) {
     $termStage = Join-Path $appDir 'TermHost.staging'
     if (Test-Path $termStage) { Remove-Item -Recurse -Force $termStage }
     Write-Host "Publishing TermHost -> $termHostRoot" -ForegroundColor Cyan
@@ -310,12 +310,15 @@ if ((-not $termHostNewest) -or (Test-Stale $termHostNewest @($termHostDir, $term
     $stageExe = Join-Path $termStage 'MindAttic.Orchestrator.TermHost.exe'
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path $stageExe)) { Write-Host 'Publishing TermHost FAILED.' -ForegroundColor Red; $failed = $true }
     else {
-        $stageDll = Join-Path $termStage 'MindAttic.Orchestrator.TermHost.dll'
-        $same = $false
-        if ($termHostNewest) {
-            $newestDll = Join-Path (Split-Path $termHostNewest) 'MindAttic.Orchestrator.TermHost.dll'
-            $same = (-not $Force) -and (Test-Path $newestDll) -and (Get-FileHash $newestDll).Hash -eq (Get-FileHash $stageDll).Hash
+        # Every published file, not just TermHost.dll: a change only in the Term library (the protocol) must install too.
+        function Get-TreeHash([string]$dir) {
+            $base = (Get-Item -LiteralPath $dir).FullName.TrimEnd([char]92) + ''
+            (Get-ChildItem -LiteralPath $dir -Recurse -File | Sort-Object FullName | ForEach-Object {
+                $_.FullName.Substring($base.Length) + ':' + (Get-FileHash -LiteralPath $_.FullName).Hash
+            }) -join '|'
         }
+        $same = $false
+        if ($termHostNewest -and -not $Force) { $same = (Get-TreeHash (Split-Path $termHostNewest)) -eq (Get-TreeHash $termStage) }
         if ($same) {
             # Touched, so the next deploy doesn't republish the same code just because the source files are newer.
             (Get-Item $termHostNewest).LastWriteTimeUtc = [DateTime]::UtcNow
