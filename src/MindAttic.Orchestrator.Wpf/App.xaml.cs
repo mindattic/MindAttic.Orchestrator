@@ -35,6 +35,14 @@ public partial class App : Application
         base.OnStartup(e);
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
+        // Started by the old name (Scheduler's logon job, the Launcher, Tickets Desktop's links): handed to the new-named exe
+        // beside it before anything else, so this copy takes no mutex or pipe and writes no hooks (M.ORCH-T999).
+        if (Environment.ProcessPath is { } started && Installer.ForwardTarget(started) is { } forward)
+        {
+            Shutdown(Forward(forward, e.Args));
+            return;
+        }
+
         if (e.Args.Contains(Installer.DaemonArg, StringComparer.OrdinalIgnoreCase))
         {
             RunDaemon();
@@ -233,13 +241,38 @@ public partial class App : Application
         {
             try
             {
-                var (folders, bytes) = ExtractionPruner.Prune(ExtractionPruner.BaseDir(), Path.GetFileNameWithoutExtension(Environment.ProcessPath!));
+                // The old-named copy (M.ORCH-T999) unpacks under its own name each time it forwards a launch.
+                var (folders, bytes) = (0, 0L);
+                foreach (var app in new[] { Path.GetFileNameWithoutExtension(Environment.ProcessPath!), Path.GetFileNameWithoutExtension(Installer.LegacyExeName) }.Distinct(StringComparer.OrdinalIgnoreCase))
+                {
+                    var (f, b) = ExtractionPruner.Prune(ExtractionPruner.BaseDir(), app);
+                    folders += f;
+                    bytes += b;
+                }
                 if (folders > 0)
                     OrchestratorLog.For("Daemon").Information("Deleted {Folders} old builds' unpacked files ({MB:N0} MB) from {Dir:l}",
                         folders, bytes / 1048576.0, ExtractionPruner.BaseDir());
             }
             catch (Exception ex) { OrchestratorLog.For("Daemon").Error(ex, "Pruning old builds' files failed"); }
         });
+    }
+
+    /// <summary>Starts <paramref name="exe"/> with <paramref name="args"/> and returns this process's exit code. A daemon launch waits
+    /// for it, so a logon job watching this process sees the daemon's lifetime and exit code, not a forwarder that ended at once.</summary>
+    private static int Forward(string exe, string[] args)
+    {
+        var daemon = args.Contains(Installer.DaemonArg, StringComparer.OrdinalIgnoreCase);
+        var psi = new ProcessStartInfo(exe) { UseShellExecute = false, CreateNoWindow = daemon, WorkingDirectory = Path.GetDirectoryName(exe)! };
+        foreach (var a in args) psi.ArgumentList.Add(a);
+        try
+        {
+            using var p = Process.Start(psi);
+            if (p is null) return 1;
+            if (!daemon) return 0;
+            p.WaitForExit();
+            return p.ExitCode;
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { return 1; }
     }
 
     /// <summary>Running from a download folder over an older install (or none): install there and start the installed copy instead.</summary>

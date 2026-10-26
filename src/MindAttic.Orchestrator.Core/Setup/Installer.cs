@@ -135,11 +135,50 @@ public sealed class Installer
             catch (InvalidOperationException) { }
             throw;
         }
+        InstallLegacyCopy(runningExe);
         CleanupTermHosts();
         CleanupGateways();
         CleanupTermViewers();
-        // The old-named exe is left in place on purpose: Scheduler's logon job, the Launcher and Tickets Desktop's links still
-        // start it by that name, and a deleted file would leave the daemon off at the next logon until they move to the new name.
+    }
+
+    /// <summary>
+    /// Scheduler's logon job, the Launcher and Tickets Desktop's links still start the old-named exe, so it is kept, but as a copy of
+    /// this build (M.ORCH-T999): left as the pre-rename build, logon ran the old daemon (no gateway, no fallback viewers, none of the
+    /// newer bus kinds), EnsureDaemon kept it, and an old dashboard started by those links rewrote every CLI's hooks to its old
+    /// versions. A copy run by that name never runs as itself: it forwards to <see cref="ExeName"/> beside it (<see cref="ForwardTarget"/>),
+    /// so it takes no mutex, holds no pipe and writes no hooks. A copy the old exe still locks moves the old file aside first
+    /// (a running exe can be renamed), so no old build stays under the name. Never throws.
+    /// </summary>
+    private void InstallLegacyCopy(string runningExe)
+    {
+        try { File.Copy(runningExe, LegacyExe, overwrite: true); return; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        try
+        {
+            if (File.Exists(LegacyExe)) File.Move(LegacyExe, $"{LegacyExe}.{Environment.ProcessId}.{DateTime.UtcNow:yyyyMMddHHmmss}.old", overwrite: true);
+            File.Copy(runningExe, LegacyExe, overwrite: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        foreach (var old in SafeFiles(InstallDir, LegacyExeName + ".*.old"))
+            try { File.Delete(old); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+
+    private static string[] SafeFiles(string dir, string pattern)
+    {
+        try { return Directory.GetFiles(dir, pattern); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return []; }
+    }
+
+    /// <summary>
+    /// The exe a copy started as <paramref name="self"/> hands its launch to, or null when it runs as itself: a copy named
+    /// <see cref="LegacyExeName"/> with <see cref="ExeName"/> beside it forwards there with the same arguments (M.ORCH-T999), so the
+    /// daemon, the dashboard and the hooks only ever run under the one name.
+    /// </summary>
+    public static string? ForwardTarget(string self)
+    {
+        if (!string.Equals(Path.GetFileName(self), LegacyExeName, StringComparison.OrdinalIgnoreCase)) return null;
+        var target = Path.Combine(Path.GetDirectoryName(self) ?? "", ExeName);
+        return File.Exists(target) && !SamePath(target, self) ? target : null;
     }
 
     /// <summary>Deletes the TermHost versions older than the newest that no process runs from (M.ORCH-T932). The daemon repeats it

@@ -118,6 +118,25 @@ public sealed class InstallerTests
     }
 
     [Test]
+    public void The_old_named_copy_forwards_to_the_new_name_beside_it()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "orch-forward-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(dir);
+            var legacy = Path.Combine(dir, Installer.LegacyExeName);
+            var current = Path.Combine(dir, Installer.ExeName);
+            File.WriteAllText(legacy, "");
+            Assert.That(Installer.ForwardTarget(legacy), Is.Null, "no new-named exe beside it: it runs as itself");
+            File.WriteAllText(current, "");
+            Assert.That(Installer.ForwardTarget(legacy), Is.EqualTo(current));
+            Assert.That(Installer.ForwardTarget(legacy.ToUpperInvariant()), Is.Not.Null, "the name is matched without case");
+            Assert.That(Installer.ForwardTarget(current), Is.Null, "the new name never forwards");
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Test]
     public void A_shortcut_with_no_icon_set_is_not_the_same_path_and_does_not_throw()
     {
         // WScript reports an unset IconLocation as ",0": its path part is empty (every shortcut made before M.ORCH-T190).
