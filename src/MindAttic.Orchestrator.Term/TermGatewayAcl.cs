@@ -121,14 +121,24 @@ public static class TermGatewayAudit
     }
 
     /// <summary>The snapshot; null when there is none or it can't be read.</summary>
-    public static TermGatewayAclSnapshot? ReadAcl(string? directory = null)
+    public static TermGatewayAclSnapshot? ReadAcl(string? directory = null) => TryReadAcl(directory, out var snapshot) ? snapshot : null;
+
+    /// <summary>Reads the snapshot (M.ORCH-T986): false when the file couldn't be read just now (locked, a sharing violation, no
+    /// access), so a caller keeps what it had and tries again. True otherwise, with null when there is none or it isn't a snapshot
+    /// (nobody but the owner, never a guess).</summary>
+    public static bool TryReadAcl(string? directory, out TermGatewayAclSnapshot? snapshot)
     {
+        snapshot = null;
         try
         {
             var path = AclPath(directory);
-            return File.Exists(path) ? JsonSerializer.Deserialize<TermGatewayAclSnapshot>(File.ReadAllText(path), Json) : null;
+            if (!File.Exists(path)) return true;
+            var text = File.ReadAllText(path);
+            try { snapshot = JsonSerializer.Deserialize<TermGatewayAclSnapshot>(text, Json); }
+            catch (JsonException) { snapshot = null; }
+            return true;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return null; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
     }
 
     /// <summary>Appends <paramref name="record"/> to the spool; false when it couldn't be (retried a few times on a sharing

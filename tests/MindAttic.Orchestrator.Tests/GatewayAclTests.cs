@@ -94,6 +94,44 @@ public sealed partial class GatewayTests
         Assert.That(new AclGrants(Owner, dir.Path, () => Now).AccessTo(Erin, SessionOn("s1", Sam)), Is.EqualTo(GatewayAccess.Watch));
     }
 
+    [Test]
+    public void A_snapshot_that_cant_be_read_just_now_keeps_the_last_good_list_and_is_read_again()
+    {
+        using var dir = new TempDir();
+        TermGatewayAudit.WriteAcl(Acl(), dir.Path);
+        var grants = new AclGrants(Owner, dir.Path, () => Now);
+        Assert.That(grants.AccessTo(Erin, SessionOn("s1", Sam)), Is.EqualTo(GatewayAccess.Watch));
+
+        // A new list lands, but the file is locked the moment the gateway looks (M.ORCH-T986).
+        TermGatewayAudit.WriteAcl(Acl(new TermAclGrant(Owner, Erin, "", "interact", Now.AddHours(1))), dir.Path);
+        using (new FileStream(TermGatewayAudit.AclPath(dir.Path), FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            Thread.Sleep(1100);
+            Assert.That(grants.AccessTo(Erin, SessionOn("s1", Sam)), Is.EqualTo(GatewayAccess.Watch), "the last good list, not owner-only");
+        }
+        // Unchanged since, yet read again once it can be.
+        Thread.Sleep(1100);
+        Assert.That(grants.AccessTo(Erin, SessionOn("s1", Sam)), Is.EqualTo(GatewayAccess.Interact));
+    }
+
+    [Test]
+    public void Broadcast_settings_that_cant_be_read_just_now_keep_the_last_good_ones_and_are_read_again()
+    {
+        using var dir = new TempDir();
+        TermBroadcast.Update(s => s.Share("s1", true), dir.Path);
+        using var file = new BroadcastFile(dir.Path);
+        Assert.That(file.Current.IsShared("s1"), Is.True);
+
+        TermBroadcast.Update(s => s.Share("s2", true), dir.Path);
+        using (new FileStream(TermBroadcast.PathIn(dir.Path), FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            Thread.Sleep(BroadcastFile.Interval * 4);
+            Assert.That(file.Current.IsShared("s1"), Is.True, "the last good settings, not nothing shared");
+        }
+        Thread.Sleep(BroadcastFile.Interval * 4);
+        Assert.That(file.Current.IsShared("s2"), Is.True, "read again although the file didn't change since");
+    }
+
     // ── enforcement and audit on the TestServer ─────────────────────────────────
 
     [Test]

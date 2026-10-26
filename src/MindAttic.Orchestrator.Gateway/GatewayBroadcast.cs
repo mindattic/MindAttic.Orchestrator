@@ -31,8 +31,11 @@ internal sealed class BroadcastFile : IBroadcastControl, IDisposable
     public BroadcastFile(string? directory)
     {
         this.directory = directory;
-        seen = Stamp();
-        current = TermBroadcast.Read(directory);
+        var stamp = Stamp();
+        // Not readable at start: nothing shared until it is, and the poll keeps trying (M.ORCH-T986).
+        if (TermBroadcast.TryRead(directory, out var settings)) seen = stamp;
+        else seen = (DateTime.MinValue, long.MinValue);
+        current = settings;
         timer = new Timer(_ => Poll(), null, Interval, Interval);
     }
 
@@ -54,8 +57,11 @@ internal sealed class BroadcastFile : IBroadcastControl, IDisposable
         {
             var stamp = Stamp();
             if (stamp == seen) return;
+            // Not readable just now (a sharing violation as a writer replaces it): the last good settings stay, and the stamp
+            // isn't taken, so the next poll reads it again rather than waiting for the file to change (M.ORCH-T986).
+            if (!TermBroadcast.TryRead(directory, out var settings)) return;
             seen = stamp;
-            current = TermBroadcast.Read(directory);
+            current = settings;
         }
         catch (Exception) { }
     }

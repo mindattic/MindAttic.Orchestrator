@@ -76,9 +76,12 @@ internal sealed class AclGrants(string owner, string directory, Func<DateTime>? 
             try { written = File.GetLastWriteTimeUtc(TermGatewayAudit.AclPath(directory)); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return snapshot; }
             if (written == stamp) return snapshot;
+            // Gone or not a snapshot: nobody but the owner, never the last list kept past a change. Not readable just now (a
+            // sharing violation as the daemon replaces it): the last good list, and the stamp stays, so the next look tries
+            // again rather than waiting for the file to change (M.ORCH-T986).
+            if (!TermGatewayAudit.TryReadAcl(directory, out var read)) return snapshot;
             stamp = written;
-            // Unreadable or gone: nobody but the owner, never the last list kept past a change.
-            snapshot = TermGatewayAudit.ReadAcl(directory);
+            snapshot = read;
             return snapshot;
         }
     }

@@ -104,15 +104,23 @@ public static class TermBroadcast
     };
 
     /// <summary>The settings as written; the defaults (nothing shared) when there are none or they can't be read.</summary>
-    public static TermBroadcastSettings Read(string? directory = null)
+    public static TermBroadcastSettings Read(string? directory = null) =>
+        TryRead(directory, out var settings) ? settings : new TermBroadcastSettings();
+
+    /// <summary>Reads the settings (M.ORCH-T986): false when the file couldn't be read just now (locked, a sharing violation, no
+    /// access), so a caller keeps the last good settings and tries again. True otherwise, with the defaults when there are none
+    /// or they aren't settings.</summary>
+    public static bool TryRead(string? directory, out TermBroadcastSettings settings)
     {
+        settings = new TermBroadcastSettings();
         try
         {
             var path = PathIn(directory);
-            if (!File.Exists(path)) return new TermBroadcastSettings();
-            return Parse(File.ReadAllText(path));
+            if (!File.Exists(path)) return true;
+            settings = Parse(File.ReadAllText(path));
+            return true;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return new TermBroadcastSettings(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
     }
 
     /// <summary>Settings from JSON text; the defaults when it isn't any.</summary>
@@ -141,7 +149,12 @@ public static class TermBroadcast
         {
             try { owned = mutex.WaitOne(TimeSpan.FromSeconds(2)); }
             catch (AbandonedMutexException) { owned = true; }
-            var next = change(Read(directory));
+            // A file that can't be read just now is never replaced by a change to the defaults (M.ORCH-T986).
+            TermBroadcastSettings now = new();
+            var read = false;
+            for (var attempt = 0; attempt < 5 && !(read = TryRead(directory, out now)); attempt++) Thread.Sleep(20 * (attempt + 1));
+            if (!read) return null;
+            var next = change(now);
             return Write(next, directory) ? next : null;
         }
         finally
