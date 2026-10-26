@@ -37,10 +37,19 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         status?.Start();
         // Its inbox (M.ORCH-T872): a hook that ended a turn, or a writer of a usage file, says so the moment it does, rather than
         // the daemon noticing the file; any other kind written there is relayed to every subscriber.
-        using var inbox = status is null ? null : new Status.StatusInbox { Relay = e => status.Publish(e) }
+        // The app bus (M.ORCH-T879): ticket changes, Orchestrator.Desktop's and Tickets.Desktop's presence and their requests of
+        // each other go through the hub, every ticket change read from the database's change feed too, so a ticket filed,
+        // approved or closed anywhere reaches every app (and this daemon's next plan) within seconds.
+        var hub = status is null ? null : new Status.AppBusHub(status, new Tickets.TicketActivityFeed()) { TicketChanged = waiter.Poke };
+        using var inbox = status is null ? null : new Status.StatusInbox { Relay = e => hub!.Take(e) }
             .On(Status.StatusInbox.Poke, _ => waiter.Poke())
             .On(Status.StatusInbox.UsageWritten, _ => status.UsageWritten());
         inbox?.Start();
+        if (hub is not null)
+        {
+            Status.AppBusClient.Hub = hub;
+            _ = Task.Run(() => hub.FollowFeedAsync(() => options.WorkspaceRoot, TimeSpan.FromSeconds(2), cancel));
+        }
         void OnReading(ClaudeMeterProbe probe, ReportedUsage reading) =>
             status?.PublishReadings([Status.MeterReading.Of(probe.Label, reading, signedIn: null, "probe")]);
         ClaudeMeterProbe.ReadingLanded += OnReading;

@@ -335,7 +335,13 @@ public sealed class StatusStreamServer : IDisposable
     /// them). With <paramref name="retain"/>, the latest of its kind is kept and sent to each dashboard as it connects, after the
     /// state. Never throws.
     /// </summary>
-    public void Publish(StatusEnvelope envelope, bool retain = false)
+    public void Publish(StatusEnvelope envelope, bool retain = false) => Publish(envelope, retain ? envelope.Kind : null);
+
+    /// <summary>
+    /// <see cref="Publish(StatusEnvelope, bool)"/>, kept for connecting subscribers under <paramref name="retainAs"/> (null keeps
+    /// nothing): one kind can keep several, as each app's presence is kept under its own name (M.ORCH-T879). Never throws.
+    /// </summary>
+    public void Publish(StatusEnvelope envelope, string? retainAs)
     {
         try
         {
@@ -344,7 +350,7 @@ public sealed class StatusStreamServer : IDisposable
             if (line.Length > StatusStream.MaxLine) { log.Warning("A {Kind:l} status message of {Length} characters was too long to send", envelope.Kind, line.Length); return; }
             lock (gate)
             {
-                if (retain) retained[envelope.Kind] = line;
+                if (retainAs is not null) retained[retainAs] = line;
                 BroadcastLocked(line);
             }
         }

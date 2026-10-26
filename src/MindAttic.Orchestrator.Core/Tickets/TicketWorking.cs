@@ -113,23 +113,31 @@ public static class TicketWorking
     public static void Set(string? workspaceRoot, string id, string? login, string? session)
     {
         if (Of(login, session) is not { } who) return;
-        Write(workspaceRoot, id, "record who works", db => db.SetWorking(id, who.Login, who.Session));
+        // Said on the app bus as it's done (M.ORCH-T879): Tickets.Desktop and the dashboard show the claim at once.
+        if (Write(workspaceRoot, id, "record who works", db => db.SetWorking(id, who.Login, who.Session)))
+            Status.AppBusClient.PublishTicket(id, Status.TicketEvents.Claimed, who.Login, who.Session);
     }
 
     /// <summary>Clears who works ticket <paramref name="id"/> (it landed, was released or given back); best effort.</summary>
-    public static void Clear(string? workspaceRoot, string id) => Write(workspaceRoot, id, "clear who works", db => db.ClearWorking(id));
+    public static void Clear(string? workspaceRoot, string id)
+    {
+        if (Write(workspaceRoot, id, "clear who works", db => db.ClearWorking(id)))
+            Status.AppBusClient.PublishTicket(id, Status.TicketEvents.Released);
+    }
 
-    private static void Write(string? workspaceRoot, string id, string what, Action<TicketsDb> write)
+    private static bool Write(string? workspaceRoot, string id, string what, Action<TicketsDb> write)
     {
         try
         {
             using var db = TicketsDb.OpenIfMigrated(workspaceRoot);
-            if (db is null || db.Ticket(id) is null) return;
+            if (db is null || db.Ticket(id) is null) return false;
             write(db);
+            return true;
         }
         catch (Exception ex) when (IsWriteFailure(ex))
         {
             Log.Warning("couldn't {What} {Ticket:l} in the ticket database (the daemon tries again next tick): {Error:l}", what, id, ex.Message);
+            return false;
         }
     }
 
