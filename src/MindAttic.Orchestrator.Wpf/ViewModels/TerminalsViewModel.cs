@@ -130,6 +130,13 @@ public sealed class TerminalPaneViewModel : ObservableObject
         }
     }
 
+    /// <summary>Releases the terminal control once its tab is closed; never throws.</summary>
+    internal void DisposeControl()
+    {
+        try { (Control as IDisposable)?.Dispose(); }
+        catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Disposing a closed terminal failed; contained"); }
+    }
+
     /// <summary>Ends its CLI: the whole tree under the tab's process.</summary>
     internal void Kill()
     {
@@ -214,6 +221,9 @@ public sealed class TerminalsViewModel : ObservableObject
         try { pane.Kill(); }
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Closing a terminal failed; removing its tab anyway"); }
         Panes.Remove(pane);
+        // The tab is out of the host grid now: release the terminal's HwndHost, its ConPTY and its screen buffer, which
+        // otherwise stay alive for the rest of the dashboard's run (M.ORCH-T869).
+        pane.DisposeControl();
     }
 
     /// <summary>The live terminal running Launcher host <paramref name="hostPid"/>; null when none does.</summary>
