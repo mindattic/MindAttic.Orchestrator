@@ -208,8 +208,11 @@ public sealed class TerminalsViewModel : ObservableObject
     /// <summary>Closes <paramref name="pane"/>, ending its CLI.</summary>
     public void Close(TerminalPaneViewModel pane)
     {
-        pane.Kill();
+        // Deselected first, then removed: a still-selected item removed from a TabControl-bound collection crashes WPF
+        // (M.ORCH-T859). Its teardown is contained so one bad CLI can never take the dashboard (and every terminal) down.
         if (SelectedPane == pane) SelectedPane = null;
+        try { pane.Kill(); }
+        catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Closing a terminal failed; removing its tab anyway"); }
         Panes.Remove(pane);
     }
 
@@ -305,6 +308,16 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     internal void SyncTo(IReadOnlyList<TerminalPaneViewModel> mine)
     {
         var at = selected is null ? -1 : Panes.IndexOf(selected);
+        // The chosen one, if it's leaving, is cleared here first (MaTabControl's SelectedItem binding told of a plain
+        // property change) before its Panes.RemoveAt below: removing the still-selected item straight out of the bound
+        // collection instead crashes the whole process (TabControl.GetSelectedTabItem -> ItemContainerGenerator.
+        // ContainerFromIndex throws IndexOutOfRangeException on the stale index, unhandled; M.ORCH-T859).
+        var cleared = selected is not null && !mine.Contains(selected);
+        if (cleared)
+        {
+            selected = null;
+            Raise(nameof(SelectedPane));
+        }
         for (var i = Panes.Count - 1; i >= 0; i--)
             if (!mine.Contains(Panes[i])) Panes.RemoveAt(i);
         for (var i = 0; i < mine.Count; i++)
@@ -313,14 +326,13 @@ public sealed class PersonTerminalsViewModel : ObservableObject
             if (now < 0) Panes.Insert(i, mine[i]);
             else if (now != i) Panes.Move(now, i);
         }
-        if (selected is not null && !Panes.Contains(selected))
+        if (selected is null && Panes.Count > 0)
         {
-            selected = null;
-            if (Panes.Count > 0) selected = Panes[Math.Clamp(at, 0, Panes.Count - 1)];
+            selected = Panes[cleared ? Math.Clamp(at, 0, Panes.Count - 1) : Panes.Count - 1];
             Raise(nameof(SelectedPane));
             SelectionChanged?.Invoke();
         }
-        else if (selected is null && Panes.Count > 0) SelectedPane = Panes[^1];
+        else if (cleared) SelectionChanged?.Invoke();
         Raise(nameof(HasPanes));
         Raise(nameof(Summary));
     }

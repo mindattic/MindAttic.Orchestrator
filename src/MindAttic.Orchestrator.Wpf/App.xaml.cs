@@ -44,7 +44,13 @@ public partial class App : Application
 
         OrchestratorLog.Start("Dashboard");
         var log = OrchestratorLog.For("Dashboard");
-        DispatcherUnhandledException += (_, args) => log.Fatal(args.Exception, "Dashboard crashed on the UI thread");
+        // Handled = true contains a bad tab close or binding error to that one operation: left unhandled, WPF terminates
+        // the process after this event and every open terminal dies with it (M.ORCH-T859).
+        DispatcherUnhandledException += (_, args) =>
+        {
+            log.Error(args.Exception, "Dashboard hit an unhandled exception on the UI thread; contained, not crashing the window or its terminals");
+            args.Handled = true;
+        };
         AppDomain.CurrentDomain.UnhandledException += (_, args) => log.Fatal(args.ExceptionObject as Exception, "Dashboard crashed");
         TaskScheduler.UnobservedTaskException += (_, args) => log.Error(args.Exception, "Unobserved task exception");
 
