@@ -70,7 +70,7 @@ public sealed partial class MainViewModel
         var dirs = OwnLoginDirs();
         var members = lastMembers;
         // Each login's tab and its signed-in state, off the UI thread, as a read does it.
-        var tabs = await Task.Run(() => LoginScope.Tabs(shown, dirs, members));
+        var tabs = await Task.Run(() => LoginScope.Tabs(shown, dirs, members, lastApiKey));
         // A read or pushed figures that landed meanwhile applied the roster as it is now themselves.
         if (refreshing || !ReferenceEquals(workspace, shown)) return false;
         ApplyTabs(shown, tabs, lastOrgs ?? orgsNow);
