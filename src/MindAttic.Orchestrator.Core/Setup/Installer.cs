@@ -136,6 +136,7 @@ public sealed class Installer
             throw;
         }
         CleanupTermHosts();
+        CleanupGateways();
         // The old-named exe is left in place on purpose: Scheduler's logon job, the Launcher and Tickets Desktop's links still
         // start it by that name, and a deleted file would leave the daemon off at the next logon until they move to the new name.
     }
@@ -145,6 +146,13 @@ public sealed class Installer
     public void CleanupTermHosts()
     {
         try { Term.TermHostInstalls.Cleanup(Term.TermHostInstalls.Root(InstallDir)); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException) { }
+    }
+
+    /// <summary>Deletes the Gateway versions older than the newest that no process runs from (M.ORCH-T967). Never throws.</summary>
+    public void CleanupGateways()
+    {
+        try { Term.GatewayInstalls.Cleanup(Term.GatewayInstalls.Root(InstallDir)); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException) { }
     }
 

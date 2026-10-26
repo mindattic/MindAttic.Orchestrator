@@ -89,7 +89,7 @@ function Test-Stale([string]$output, [string[]]$dirs) {
 }
 
 # Matches the process name exactly (never a wildcard), so MindAttic.Orchestrator.TermHost is never caught: running CLIs keep their
-# host across a redeploy (M.ORCH-T932).
+# host across a redeploy (M.ORCH-T932). Callers pass only the dashboard and CLI names; never a TermHost.
 function Stop-From([string]$name, [string]$dir) {
     foreach ($p in @(Get-Process -Name $name -ErrorAction SilentlyContinue |
             Where-Object { $_.Path -and $_.Path.StartsWith($dir, [System.StringComparison]::OrdinalIgnoreCase) })) {
@@ -166,15 +166,16 @@ function Copy-Published([string]$from, [string]$to) {
     }
 }
 
-# The newest installed TermHost exe under C:\Apps\MindAttic.Orchestrator\TermHost\<version>\ (M.ORCH-T932), or $null. Folders are
-# named <major.minor.patch>-<yyyyMMddHHmmss>, so the newest sorts last by version, then stamp (TermHostInstalls.Newest does the same).
-function Get-NewestTermHost {
-    $root = Join-Path $appDir 'TermHost'
+# The newest installed exe of a side-by-side part, under C:\Apps\MindAttic.Orchestrator\<Name>\<version>\ (TermHost M.ORCH-T932,
+# Gateway M.ORCH-T967), or $null. Folders are named <major.minor.patch>-<yyyyMMddHHmmss>, so the newest sorts last by version,
+# then stamp (TermHostInstalls.Newest and GatewayInstalls.Newest do the same).
+function Get-NewestInstalled([string]$Name, [string]$ExeName) {
+    $root = Join-Path $appDir $Name
     if (-not (Test-Path -LiteralPath $root)) { return $null }
     Get-ChildItem -LiteralPath $root -Directory -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -match '^\d+\.\d+\.\d+(-\d{14})?$' -and (Test-Path -LiteralPath (Join-Path $_.FullName 'MindAttic.Orchestrator.TermHost.exe')) } |
+        Where-Object { $_.Name -match '^\d+\.\d+\.\d+(-\d{14})?$' -and (Test-Path -LiteralPath (Join-Path $_.FullName $ExeName)) } |
         Sort-Object @{ Expression = { [version](($_.Name -split '-')[0]) } }, @{ Expression = { ($_.Name -split '-', 2)[1] } } |
-        Select-Object -Last 1 | ForEach-Object { Join-Path $_.FullName 'MindAttic.Orchestrator.TermHost.exe' }
+        Select-Object -Last 1 | ForEach-Object { Join-Path $_.FullName $ExeName }
 }
 
 function Find-Installed {
@@ -297,48 +298,57 @@ if (Test-Stale $cliExe @($cliDir, $coreDir)) {
     }
 }
 
-# ── TermHost, side by side (M.ORCH-T932) ────────────────────────────────────
-# Each build goes into its own TermHost\<version>\ folder and is never copied over another: running CLIs keep the host binary they
+# ── Side-by-side parts: TermHost (M.ORCH-T932), Gateway (M.ORCH-T967) ───────
+# Each build goes into its own <part>\<version>\ folder and is never copied over another: running CLIs keep the host binary they
 # started on, new sessions start on the newest. Nothing here stops a TermHost, and nothing deletes an old folder: the installer and
 # the daemon do that once no process runs from it. A build whose code matches the newest installed one adds no folder.
-$termHostRoot = Join-Path $appDir 'TermHost'
-$termHostNewest = Get-NewestTermHost
-if ($Force -or (-not $termHostNewest) -or (Test-Stale $termHostNewest @($termHostDir, $termDir))) {
-    $termStage = Join-Path $appDir 'TermHost.staging'
-    if (Test-Path $termStage) { Remove-Item -Recurse -Force $termStage }
-    Write-Host "Publishing TermHost -> $termHostRoot" -ForegroundColor Cyan
-    dotnet publish (Join-Path $termHostDir 'MindAttic.Orchestrator.TermHost.csproj') --configuration Release --output $termStage | Out-Host
-    $stageExe = Join-Path $termStage 'MindAttic.Orchestrator.TermHost.exe'
-    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $stageExe)) { Write-Host 'Publishing TermHost FAILED.' -ForegroundColor Red; $failed = $true }
+# The Gateway may be stopped and restarted by its daemon supervisor (that only drops remote viewers). The TermViewer exe
+# (M.ORCH-T960) reuses this: Publish-SideBySide -Name TermViewer -ProjectDir ... -ExeName ... -StaleDirs ...
+$gatewayDir = Join-Path $repo 'src\MindAttic.Orchestrator.Gateway'
+
+function Get-TreeHash([string]$dir) {
+    $base = (Get-Item -LiteralPath $dir).FullName.TrimEnd([char]92) + ''
+    (Get-ChildItem -LiteralPath $dir -Recurse -File | Sort-Object FullName | ForEach-Object {
+        $_.FullName.Substring($base.Length) + ':' + (Get-FileHash -LiteralPath $_.FullName).Hash
+    }) -join '|'
+}
+
+function Publish-SideBySide([string]$Name, [string]$ProjectDir, [string]$ExeName, [string[]]$StaleDirs) {
+    $root = Join-Path $appDir $Name
+    $newest = Get-NewestInstalled $Name $ExeName
+    if (-not ($Force -or (-not $newest) -or (Test-Stale $newest $StaleDirs))) { return }
+    $stage = Join-Path $appDir "$Name.staging"
+    if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
+    Write-Host "Publishing $Name -> $root" -ForegroundColor Cyan
+    dotnet publish (Join-Path $ProjectDir "MindAttic.Orchestrator.$Name.csproj") --configuration Release --output $stage | Out-Host
+    $stageExe = Join-Path $stage $ExeName
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $stageExe)) { Write-Host "Publishing $Name FAILED." -ForegroundColor Red; $script:failed = $true }
     else {
-        # Every published file, not just TermHost.dll: a change only in the Term library (the protocol) must install too.
-        function Get-TreeHash([string]$dir) {
-            $base = (Get-Item -LiteralPath $dir).FullName.TrimEnd([char]92) + ''
-            (Get-ChildItem -LiteralPath $dir -Recurse -File | Sort-Object FullName | ForEach-Object {
-                $_.FullName.Substring($base.Length) + ':' + (Get-FileHash -LiteralPath $_.FullName).Hash
-            }) -join '|'
-        }
+        # Every published file, not just the exe's dll: a change only in a library it uses must install too.
         $same = $false
-        if ($termHostNewest -and -not $Force) { $same = (Get-TreeHash (Split-Path $termHostNewest)) -eq (Get-TreeHash $termStage) }
+        if ($newest -and -not $Force) { $same = (Get-TreeHash (Split-Path $newest)) -eq (Get-TreeHash $stage) }
         if ($same) {
             # Touched, so the next deploy doesn't republish the same code just because the source files are newer.
-            (Get-Item $termHostNewest).LastWriteTimeUtc = [DateTime]::UtcNow
-            Write-Host 'TermHost is unchanged; the newest installed version stays.' -ForegroundColor DarkGray
+            (Get-Item $newest).LastWriteTimeUtc = [DateTime]::UtcNow
+            Write-Host "$Name is unchanged; the newest installed version stays." -ForegroundColor DarkGray
         } else {
             $ver = [version](Get-Item $stageExe).VersionInfo.FileVersion
-            $name = '{0}.{1}.{2}-{3}' -f $ver.Major, $ver.Minor, [Math]::Max(0, $ver.Build), [DateTime]::UtcNow.ToString('yyyyMMddHHmmss')
-            $target = Join-Path $termHostRoot $name
+            $folder = '{0}.{1}.{2}-{3}' -f $ver.Major, $ver.Minor, [Math]::Max(0, $ver.Build), [DateTime]::UtcNow.ToString('yyyyMMddHHmmss')
+            $target = Join-Path $root $folder
             try {
-                New-Item -ItemType Directory -Force $termHostRoot | Out-Null
+                New-Item -ItemType Directory -Force $root | Out-Null
                 if (Test-Path -LiteralPath $target) { throw "$target already exists; a version folder is never overwritten." }
-                # Moved into place whole, so a host start never sees a half-copied version.
-                Move-Item -LiteralPath $termStage -Destination $target -ErrorAction Stop
-                Write-Host "Installed TermHost $name" -ForegroundColor Green
-            } catch { Write-Host "Installing TermHost failed: $($_.Exception.Message)" -ForegroundColor Red; $failed = $true }
+                # Moved into place whole, so a start never sees a half-copied version.
+                Move-Item -LiteralPath $stage -Destination $target -ErrorAction Stop
+                Write-Host "Installed $Name $folder" -ForegroundColor Green
+            } catch { Write-Host "Installing $Name failed: $($_.Exception.Message)" -ForegroundColor Red; $script:failed = $true }
         }
     }
-    Remove-Item -Recurse -Force $termStage -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue
 }
+
+Publish-SideBySide 'TermHost' $termHostDir 'MindAttic.Orchestrator.TermHost.exe' @($termHostDir, $termDir)
+Publish-SideBySide 'Gateway' $gatewayDir 'MindAttic.Orchestrator.Gateway.exe' @($gatewayDir, $termDir)
 
 # ── Install, as a double-click would ────────────────────────────────────────
 $installed = Find-Installed

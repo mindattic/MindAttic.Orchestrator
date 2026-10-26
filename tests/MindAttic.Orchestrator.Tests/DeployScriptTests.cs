@@ -79,6 +79,21 @@ public sealed class DeployScriptTests
     }
 
     [Test]
+    public void The_gateway_is_published_side_by_side_and_no_process_pattern_can_stop_a_TermHost()
+    {
+        // M.ORCH-T967: the gateway was never published or installed, so `orchestrator gateway on` found no exe. It installs like
+        // TermHost (its own Gateway\<version>\ folder); TermViewer (M.ORCH-T960) reuses the same parameterized step.
+        var script = System.IO.File.ReadAllText(DeployScript());
+        Assert.That(script, Does.Contain("function Publish-SideBySide([string]$Name, [string]$ProjectDir, [string]$ExeName, [string[]]$StaleDirs)"));
+        Assert.That(script, Does.Contain("Publish-SideBySide 'Gateway' $gatewayDir 'MindAttic.Orchestrator.Gateway.exe'"));
+        Assert.That(script, Does.Contain("Publish-SideBySide 'TermHost' $termHostDir 'MindAttic.Orchestrator.TermHost.exe'"));
+        // Stop-Process only ever matches exact names (never a wildcard, never TermHost).
+        foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(script, @"Stop-From\s+'([^']+)'"))
+            Assert.That(m.Groups[1].Value, Does.Not.Contain("TermHost").And.Not.Contain("*"));
+        Assert.That(script, Does.Not.Match(@"Get-Process\s+-Name\s+['""]?[^\s$]*\*"));
+    }
+
+    [Test]
     public void A_newer_installed_build_is_left_alone_unless_forced()
     {
         // M.ORCH-T554: another checkout installed a newer build, so the hashes differed, --install ran without --force,

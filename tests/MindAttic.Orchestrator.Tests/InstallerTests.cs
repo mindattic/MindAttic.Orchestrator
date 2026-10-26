@@ -33,6 +33,27 @@ public sealed class InstallerTests
     }
 
     [Test]
+    public void The_installed_gateway_is_the_newest_version_folder_and_a_plain_Gateway_folder_is_not_one()
+    {
+        // M.ORCH-T967: GatewaySupervisor resolves the exe like TermHostInstalls does.
+        var dir = Path.Combine(Path.GetTempPath(), $"orch-gw-{Guid.NewGuid():N}");
+        try
+        {
+            var root = MindAttic.Orchestrator.Term.GatewayInstalls.Root(dir);
+            foreach (var v in new[] { "1.0.0-20261001000000", "1.0.1-20261020000000", "1.0.1-20261025000000" })
+            {
+                Directory.CreateDirectory(Path.Combine(root, v));
+                File.WriteAllText(Path.Combine(root, v, MindAttic.Orchestrator.Term.GatewayInstalls.ExeName), "");
+            }
+            Directory.CreateDirectory(Path.Combine(root, "9.9.9-20269999999999"));   // no exe: not an install
+            Assert.That(MindAttic.Orchestrator.Term.GatewayInstalls.ResolveExe(dir),
+                Is.EqualTo(Path.Combine(root, "1.0.1-20261025000000", MindAttic.Orchestrator.Term.GatewayInstalls.ExeName)));
+            Assert.That(MindAttic.Orchestrator.Term.TermHostInstalls.ResolveExe(dir), Is.Null, "a Gateway folder is never a TermHost");
+        }
+        finally { try { Directory.Delete(dir, recursive: true); } catch (IOException) { } }
+    }
+
+    [Test]
     public void No_logon_task_is_registered_any_more()
     {
         // M.ORCH-T475: the task (and its XML) is gone; only its name is kept, to end and delete one an older install left.

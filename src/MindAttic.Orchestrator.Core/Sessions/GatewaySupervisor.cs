@@ -90,11 +90,17 @@ public sealed class GatewaySupervisor(Action<LogEventLevel, string> say)
         say(level, line);
     }
 
-    /// <summary><see cref="TermGateway.PathVariable"/>, then <c>Gateway\</c> under the Orchestrator's install folder, then beside this app.</summary>
+    /// <summary><see cref="TermGateway.PathVariable"/>, then the newest <c>Gateway\&lt;version&gt;\</c> under the Orchestrator's install folder
+    /// (<see cref="GatewayInstalls"/>, M.ORCH-T967), then a plain <c>Gateway\</c> there, then beside this app.</summary>
     internal static string? DefaultFindExe()
     {
         var candidates = new List<string?> { Environment.GetEnvironmentVariable(TermGateway.PathVariable) };
-        try { candidates.Add(Path.Combine(new Setup.Installer().InstallDir, "Gateway", TermGateway.ExeName)); }
+        try
+        {
+            var installDir = new Setup.Installer().InstallDir;
+            candidates.Add(GatewayInstalls.ResolveExe(installDir));
+            candidates.Add(Path.Combine(installDir, GatewayInstalls.FolderName, TermGateway.ExeName));
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException) { }
         candidates.Add(Path.Combine(AppContext.BaseDirectory, TermGateway.ExeName));
         return candidates.FirstOrDefault(p => !string.IsNullOrWhiteSpace(p) && File.Exists(p));

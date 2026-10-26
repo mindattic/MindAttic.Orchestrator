@@ -143,6 +143,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     termHostsCleanedUtc = DateTime.UtcNow;
                     foreach (var name in Term.TermHostInstalls.Cleanup(Term.TermHostInstalls.Root(new Setup.Installer().InstallDir)))
                         Say(LogEventLevel.Information, $"removed the unused TermHost {name}");
+                    foreach (var name in Term.GatewayInstalls.Cleanup(Term.GatewayInstalls.Root(new Setup.Installer().InstallDir)))
+                        Say(LogEventLevel.Information, $"removed the unused Gateway {name}");
                 }
                 // The team gateway (M.ORCH-T933), off unless turned on: started, restarted or stopped to match the settings. Its
                 // trouble is contained here: it only ever costs remote viewers, never a tick or a TermHost.
