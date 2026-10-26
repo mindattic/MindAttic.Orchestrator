@@ -152,6 +152,59 @@ public sealed class DeployScriptTests
         Assert.That(script.Contains((char)13), Is.False, "deploy.ps1 keeps its LF line endings");
     }
 
+    [Test]
+    public void Launch_skips_reinstalling_the_tickets_CLI_but_a_plain_deploy_does_not()
+    {
+        // M.ORCH-T832: every Orchestrator launch runs this deploy.ps1 (deploy.bat's -Launch), which chains into Tickets'
+        // deploy.ps1. Without -SkipCli that reinstalled the tickets CLI global tool on every single launch, undoing
+        // M.TIX-T126's fix for slow launches. A deliberate full deploy without -Launch must still install it normally.
+        var orchDir = Directory.CreateDirectory(Path.Combine(dir, "MindAttic.Orchestrator")).FullName;
+        var ticketsDir = Directory.CreateDirectory(Path.Combine(dir, "MindAttic.Tickets")).FullName;
+        var ticketsDeploy = Path.Combine(ticketsDir, "deploy.ps1");
+        var log = Path.Combine(dir, "calls.log");
+        File.WriteAllText(ticketsDeploy,
+            "param([switch]$Force, [switch]$SkipCli, [switch]$Launch)\n" +
+            $"\"Force=$Force;SkipCli=$SkipCli\" | Add-Content -LiteralPath '{log.Replace("'", "''")}'\n");
+
+        var text = File.ReadAllText(DeployScript());
+        const string startMarker = "# ── The sibling repo's deploy";
+        var start = text.IndexOf(startMarker, StringComparison.Ordinal);
+        Assert.That(start, Is.GreaterThanOrEqualTo(0), "deploy.ps1 still chains to Tickets' deploy");
+        var end = text.IndexOf("\nif ($failed)", start, StringComparison.Ordinal);
+        Assert.That(end, Is.GreaterThan(start));
+        var block = text[start..end];
+
+        void Run(bool launch)
+        {
+            var launchLiteral = launch ? "$true" : "$false";
+            var script =
+                "$ErrorActionPreference = 'Stop'\n" +
+                $"$repo = '{orchDir.Replace("'", "''")}'\n" +
+                "$Force = $false\n" +
+                $"$Launch = {launchLiteral}\n" +
+                "$failed = $false\n" +
+                block + "\n";
+            var psi = new ProcessStartInfo("powershell.exe",
+                "-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand " + Convert.ToBase64String(Encoding.Unicode.GetBytes(script)))
+            {
+                UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true,
+            };
+            using var ps = Process.Start(psi)!;
+            var stdout = ps.StandardOutput.ReadToEndAsync();
+            var stderr = ps.StandardError.ReadToEndAsync();
+            if (!ps.WaitForExit(60_000)) { ps.Kill(entireProcessTree: true); Assert.Fail("powershell didn't finish"); }
+            Assert.That(ps.ExitCode, Is.EqualTo(0), "stdout: " + stdout.Result + " stderr: " + stderr.Result);
+        }
+
+        Run(launch: true);
+        Run(launch: false);
+
+        var lines = File.ReadAllLines(log);
+        Assert.That(lines, Has.Length.EqualTo(2));
+        Assert.That(lines[0], Does.Contain("SkipCli=True"), "an Orchestrator launch must not reinstall the tickets CLI");
+        Assert.That(lines[1], Does.Contain("SkipCli=False"), "a plain deploy still installs the tickets CLI");
+    }
+
     /// <summary>Takes <paramref name="function"/> out of deploy.ps1 by the PowerShell parser, runs each call with it, and
     /// returns what they printed, line by line. Nothing else in the script runs.</summary>
     private static string[] RunFunction(string function, params string[] calls)
