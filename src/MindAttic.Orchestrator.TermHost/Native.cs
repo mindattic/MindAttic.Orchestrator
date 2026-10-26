@@ -85,6 +85,33 @@ internal static class Native
         return quoted.Append('\\', slashes * 2).Append('"').ToString();
     }
 
+    private static readonly char[] CmdSpecial = [' ', '\t', '\v', '&', '|', '<', '>', '^', '(', ')', '%', '!', ',', ';', '='];
+
+    /// <summary>
+    /// <see cref="Quote"/> for an argument that cmd.exe parses first, on <c>cmd.exe /d /c</c> and again in a script's <c>%*</c>
+    /// (M.ORCH-T996). An argument with white space or a cmd metacharacter (<c>&amp; | &lt; &gt; ^ ( ) % !</c>, and the
+    /// delimiters <c>, ; =</c>) is always quoted, so both parses take it as literal text. A <c>%</c> can't be made literal inside
+    /// quotes, so it goes outside them, caret-escaped (<c>"a"^%"b"</c>): no variable is expanded. A quote or line break can't
+    /// be passed through cmd safely at all, so an argument holding one is refused.
+    /// </summary>
+    public static string CmdQuote(string arg)
+    {
+        if (arg.IndexOfAny(['"', '\r', '\n', '\0']) >= 0)
+            throw new ArgumentException($"An argument run through cmd.exe can't hold a quote or a line break: {arg}", nameof(arg));
+        if (arg.Length > 0 && arg.IndexOfAny(CmdSpecial) < 0) return arg;
+        var quoted = new StringBuilder("\"");
+        var slashes = 0;
+        foreach (var c in arg)
+        {
+            if (c == '\\') { slashes++; continue; }
+            // Backslashes before a closing quote are doubled, as before the final one.
+            if (c == '%') quoted.Append('\\', slashes * 2).Append("\"^%\"");
+            else quoted.Append('\\', slashes).Append(c);
+            slashes = 0;
+        }
+        return quoted.Append('\\', slashes * 2).Append('"').ToString();
+    }
+
     /// <summary>Starts <paramref name="commandLine"/> detached: no console, its own process group, and outside the caller's job
     /// (<c>CREATE_BREAKAWAY_FROM_JOB</c>), retried without breakaway when the job forbids it. Returns the pid.</summary>
     public static int SpawnDetached(string commandLine, string? cwd)

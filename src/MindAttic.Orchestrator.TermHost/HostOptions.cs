@@ -113,7 +113,8 @@ internal sealed record HostOptions
     }
 
     /// <summary>The CLI's command line for CreateProcess. <paramref name="findOnPath"/> finds a bare program name on PATH
-    /// (with .exe, .com, .cmd or .bat), returning its extension, or null.</summary>
+    /// (with .exe, .com, .cmd or .bat), returning its extension, or null. Throws <see cref="ArgumentException"/> when an
+    /// argument for a .cmd or .bat can't be passed through cmd.exe safely (<see cref="Native.CmdQuote"/>).</summary>
     public string CommandLine(Func<string, string?> findOnPath)
     {
         if (Command.Count == 0) return findOnPath("pwsh") is not null ? "pwsh" : "powershell.exe";
@@ -122,8 +123,9 @@ internal sealed record HostOptions
         var line = string.Join(' ', Command.Select(Native.Quote));
         var first = Command[0];
         if (first.IndexOfAny(['\\', '/', ':']) >= 0 || Path.HasExtension(first)) return line;
-        // CreateProcess runs only .exe files by bare name: a .cmd or .bat on PATH (npm's claude.cmd) goes through cmd.
-        return findOnPath(first) is ".cmd" or ".bat" ? "cmd.exe /d /c " + line : line;
+        // CreateProcess runs only .exe files by bare name: a .cmd or .bat on PATH (npm's claude.cmd) goes through cmd, with
+        // cmd's metacharacters made literal (M.ORCH-T996), or an argument with & | ^ % would run more than the CLI.
+        return findOnPath(first) is ".cmd" or ".bat" ? "cmd.exe /d /c " + string.Join(' ', Command.Select(Native.CmdQuote)) : line;
     }
 
     /// <summary>The extension <paramref name="name"/> has on PATH (.exe, .com, .cmd or .bat, in that order), or null.</summary>
