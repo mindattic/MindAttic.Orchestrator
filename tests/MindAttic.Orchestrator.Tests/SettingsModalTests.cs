@@ -66,7 +66,9 @@ public sealed class SettingsModalTests
         var doc = Window();
         var top = Named(doc, "TopRow");
         var right = top.Elements().Where(e => (string?)e.Attribute("DockPanel.Dock") == "Right").Select(e => (string?)e.Attribute(X + "Name")).ToList();
-        Assert.That(right, Is.EqualTo(new[] { "ThemeToggle", "SettingsButton", "PauseButton", "EmergencyBillingButton" }));
+        Assert.That(right, Is.EqualTo(new[] { "ThemeToggle", "SettingsButton", "TicketsButton", "PauseButton", "EmergencyBillingButton" }));
+        // The Tickets button (M.ORCH-T878) sits beside the cog but opens Tickets Desktop, never Settings.
+        Assert.That((string?)Named(doc, "TicketsButton").Attribute("Command"), Is.EqualTo("{Binding OpenTicketsAppCommand}"));
 
         var cog = Named(doc, "SettingsButton");
         Assert.That((string?)cog.Attribute("Style"), Is.EqualTo("{StaticResource MaToolButton}"));
