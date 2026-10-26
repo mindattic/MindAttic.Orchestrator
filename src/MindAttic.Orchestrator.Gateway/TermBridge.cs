@@ -139,9 +139,13 @@ internal static class TermBridge
                         return new(WebSocketCloseStatus.ProtocolError, "open with Hello");
                     helloSeen = true;
                     // Read-only: the host skips a 0x0 size, so a watcher's Hello never resizes the session.
-                    // From protocol 2 it is also marked read-only (M.ORCH-T930), keeping the viewer's id.
+                    // From protocol 2 it is also marked read-only (M.ORCH-T930), keeping the viewer's id, cleaned for the host's
+                    // log (M.ORCH-T990).
                     if (access < GatewayAccess.Interact)
-                        frame = TermProtocol.Frame(TermFrameKind.Hello, TermProtocol.Hello(hello.Protocol, 0, 0, interactive: false, hello.ViewerId));
+                        frame = TermProtocol.Frame(TermFrameKind.Hello, TermProtocol.Hello(hello.Protocol, 0, 0, interactive: false, TermProtocol.LogSafeId(hello.ViewerId)));
+                    else if (frame.Length > 12 && TermProtocol.LogSafeId(hello.ViewerId) is var clean && clean != hello.ViewerId)
+                        // The size and flags as sent (bytes 0 to 6 of the payload), the id cleaned.
+                        frame = TermProtocol.Frame(TermFrameKind.Hello, [.. frame.AsSpan(5, 7), .. System.Text.Encoding.UTF8.GetBytes(clean)]);
                 }
                 else if (!Forwards(kind, access)
                          // Paused (M.ORCH-T935): the viewer can't see what it would be typing into.

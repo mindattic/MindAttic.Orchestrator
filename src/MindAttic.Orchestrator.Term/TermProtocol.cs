@@ -169,6 +169,20 @@ public static class TermProtocol
     /// <summary>Letters and digits kept, anything else a dash, so a name is safe in a pipe or file name.</summary>
     public static string Sanitize(string text) => new(text.Select(c => char.IsAsciiLetterOrDigit(c) ? c : '-').ToArray());
 
+    /// <summary>The longest viewer id kept (<see cref="LogSafeId"/>).</summary>
+    public const int MaxViewerId = 64;
+
+    /// <summary>A viewer-supplied id fit for one log line: control and format characters (newlines, escapes, bidi overrides)
+    /// dropped, at most <see cref="MaxViewerId"/> characters, so a viewer can't forge or garble log lines (M.ORCH-T990).</summary>
+    public static string LogSafeId(string? id)
+    {
+        if (string.IsNullOrEmpty(id)) return "";
+        var kept = new string(id.Where(c => !char.IsControl(c) && char.GetUnicodeCategory(c) is not
+            (System.Globalization.UnicodeCategory.Format or System.Globalization.UnicodeCategory.LineSeparator
+                or System.Globalization.UnicodeCategory.ParagraphSeparator or System.Globalization.UnicodeCategory.Surrogate)).ToArray()).Trim();
+        return kept.Length <= MaxViewerId ? kept : kept[..MaxViewerId];
+    }
+
     /// <summary>A new session id: 12 random hex characters.</summary>
     public static string NewSessionId() => Guid.NewGuid().ToString("N")[..12];
 

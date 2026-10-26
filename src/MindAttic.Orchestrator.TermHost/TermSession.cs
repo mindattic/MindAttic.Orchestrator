@@ -360,7 +360,7 @@ internal sealed class TermSession
             bool owns;
             lock (gate) owns = policy.Join(mine.Id, h.Interactive, h.Cols, h.Rows);
             log.Write($"viewer {mine.Id} connected: protocol {agreed}, {(h.Interactive ? "interactive" : "read-only")}" +
-                      (h.ViewerId.Length > 0 ? $", id {h.ViewerId}" : "") + (owns ? ", owns the size" : ""));
+                      (h.ViewerId.Length > 0 ? $", id {TermProtocol.LogSafeId(h.ViewerId)}" : "") + (owns ? ", owns the size" : ""));
             // The owner's size first, so the replay below is taken at it.
             if (owns) ApplySize(h.Cols, h.Rows, ownerChanged: true);
             if (Attach(mine)) _ = Task.Run(() => Nudge(mine));
