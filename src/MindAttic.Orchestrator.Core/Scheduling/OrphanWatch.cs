@@ -79,7 +79,7 @@ public sealed class OrphanWatch(JsonStore store)
     private static bool DefaultHostedIn(string directory)
     {
         try { return Term.TermSessions.Enumerate().Any(t => !t.Exited && IsUnder(t.Cwd, directory)); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { return false; }
     }
 
     /// <summary>A worktree's commits ahead of the main line and its uncommitted paths; null when it can't be read (seam).</summary>
