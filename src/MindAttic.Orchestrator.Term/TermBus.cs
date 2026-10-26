@@ -78,7 +78,7 @@ public static class TermBus
     {
         var mine = sends.AddOrUpdate(key, 1, (_, n) => n + 1);
         if (TrySendLine(envelope, pipeName, timeoutMs)) return true;
-        _ = Task.Run(async () =>
+        var retry = Task.Run(async () =>
         {
             foreach (var wait in RetryBackoff)
             {
@@ -87,7 +87,30 @@ public static class TermBus
                 if (TrySendLine(envelope, pipeName, timeoutMs)) return;
             }
         });
+        lock (retries) retries.Add(retry);
+        _ = retry.ContinueWith(t => { lock (retries) retries.Remove(t); }, TaskScheduler.Default);
         return false;
+    }
+
+    private static readonly HashSet<Task> retries = [];
+
+    /// <summary>How long a process about to exit waits at most for its sends' retries (<see cref="WaitForRetries"/>): a little over
+    /// all of <see cref="RetryBackoff"/>'s waits.</summary>
+    public static readonly TimeSpan RetryDrain = TimeSpan.FromSeconds(6);
+
+    /// <summary>Waits, at most <paramref name="max"/> (<see cref="RetryDrain"/> by default), for the retries of the sends that
+    /// missed (M.ORCH-T1017): they run on the thread pool, so a process that exits right after its last announcement (a TermHost's
+    /// <c>ended</c>, the gateway's watcher reset) would otherwise kill them and the announcement would be lost. Returns at once
+    /// when none is pending. Never throws.</summary>
+    public static void WaitForRetries(TimeSpan? max = null)
+    {
+        try
+        {
+            Task[] pending;
+            lock (retries) pending = [.. retries];
+            if (pending.Length > 0) Task.WaitAll(pending, max ?? RetryDrain);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { }
     }
 
     /// <summary>The envelope line of any kind (M.ORCH-T935: <see cref="TermWatchersBus"/> writes <c>term-watchers</c> this way).</summary>

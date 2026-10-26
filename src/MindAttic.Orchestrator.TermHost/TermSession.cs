@@ -121,6 +121,8 @@ internal sealed class TermSession
             screen = null;
         }
         registration?.End();
+        // The ended announcement's retries run off this thread: wait for them (bounded) before the process exits (M.ORCH-T1017).
+        TermBus.WaitForRetries();
         log.Write("host exit");
         return started ? 0 : 1;
     }

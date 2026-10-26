@@ -98,6 +98,8 @@ try
     await app.RunAsync().ConfigureAwait(false);
     watchers.Reset();
     watchers.Drain(TimeSpan.FromSeconds(1));
+    // A reset whose first send missed is retried off this thread: wait for it (bounded) before exiting (M.ORCH-T1017).
+    TermBus.WaitForRetries();
     TermGateway.DeleteStatus(options.DataDir);
     log.Write("gateway stopped");
     return 0;
