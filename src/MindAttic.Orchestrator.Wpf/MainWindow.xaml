@@ -275,7 +275,7 @@
                             <TextBlock Text="{Binding StateText}" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" />
                             <!-- Shared with remote viewers (M.ORCH-T935), and an eye while someone watches it remotely. -->
                             <TextBlock x:Name="TerminalSharedGlyph" Text="&#xE72D;" FontFamily="Segoe MDL2 Assets" FontSize="11" Style="{StaticResource MaMutedText}"
-                                       Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" ToolTip="Shared with remote viewers (right-click to change)"
+                                       Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" ToolTip="Shared with remote viewers (right-click to change)" AutomationProperties.Name="Shared with remote viewers"
                                        Visibility="{Binding IsShared, Converter={StaticResource Visible}}" />
                             <TextBlock x:Name="TerminalWatchedGlyph" Text="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource MaWarn}"
                                        Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" ToolTip="{Binding BroadcastText}"
