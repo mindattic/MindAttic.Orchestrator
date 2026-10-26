@@ -18,9 +18,9 @@ public sealed class TabStatusTests
     public void The_tab_shows_live_5_hour_and_weekly_use_against_the_persons_own_cutoffs()
     {
         // M.ORCH-T793: current/target pairs, the target the person's own cutoff as passed in, never a fixed number.
-        Assert.That(MainViewModel.TabUsagePairsOf(10, 98, 55, 95), Is.EqualTo("5hr: 10/98% | wk: 55/95%"));
-        Assert.That(MainViewModel.TabUsagePairsOf(42.6, 80, 3.2, 90), Is.EqualTo("5hr: 43/80% | wk: 3/90%"));
-        Assert.That(MainViewModel.TabUsagePairsOf(null, 98, null, 90), Is.EqualTo("5hr: —/98% | wk: —/90%"), "never read");
+        Assert.That(MainViewModel.TabUsagePairsOf(10, 55), Is.EqualTo("5hr: 10% | wk: 55%"));
+        Assert.That(MainViewModel.TabUsagePairsOf(42.6, 3.2), Is.EqualTo("5hr: 43% | wk: 3%"));
+        Assert.That(MainViewModel.TabUsagePairsOf(null, null), Is.EqualTo("5hr: —% | wk: —%"), "never read");
     }
 
     [Test]

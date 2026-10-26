@@ -172,7 +172,7 @@
                  library's icon font (Segoe Fluent Icons / MDL2, as MaIconButton draws) in theme tokens. The icon's word and the
                  status word are in the tooltip and the accessible name, so neither colour nor the picture is the only cue; the
                  person's terminal colour is the tab's accent, and its trailing text their live 5-hour and weekly use against
-                 their own cutoffs, "5hr: 10/98% | wk: 55/90%" (M.ORCH-T793; no 'N need you' count, no '% left'). -->
+                 their own cutoffs, "5hr: 29% | wk: 15%" (M.ORCH-T793/T968, cutoffs in the tooltip; no 'N need you' count, no '% left'). -->
             <!-- The API key is a person here like any other (M.ORCH-T906): its tab comes after everyone's, its trailing text its
                  money ("$37.66 left") rather than 5-hour and weekly use. -->
             <mc:MaTabControl.ItemContainerStyle>

@@ -67,18 +67,21 @@ public sealed partial class MainViewModel
     };
 
     /// <summary>The text beside a person's name (M.ORCH-T793): their live 5-hour and weekly use, each against that person's own
-    /// live cutoff ("5hr: 10/98% | wk: 55/90%"), the cutoffs read from /org limit (or the wall while allowed past the weekly one),
-    /// never a fixed number. On the API key's person (M.ORCH-T906), money: what's left of its credit, else what it spent today.</summary>
-    public string TabTrailing => tab.IsApiKey ? ApiTrailingOf(Spend)
-        : TabUsagePairsOf(FiveHourUsed, FiveHourCutoff, WeekUsed, WeeklyCutoff);
+    /// live cutoff ("5hr: 29% | wk: 15%", M.ORCH-T968), the cutoffs moved to the tooltip. Unsigned: empty, just the name. On the API key's person (M.ORCH-T906), money: what's left of its credit, else what it spent today.</summary>
+    public string TabTrailing => !tab.SignedIn ? ""
+        : tab.IsApiKey ? ApiTrailingOf(Spend)
+        : TabUsagePairsOf(FiveHourUsed, WeekUsed);
+
+    /// <summary>The cutoffs the visible label leaves out (M.ORCH-T968), for the tooltip and accessible name: "cutoffs 5-hour 98%, weekly 90%".</summary>
+    internal string TabCutoffsLine => tab.SignedIn && !tab.IsApiKey ? $" Cutoffs: 5-hour {FiveHourCutoff}%, weekly {WeeklyCutoff}%." : "";
 
     /// <summary>"$37.66 left", or "$1.20 today" with no starting credit set; "" before the first read.</summary>
     internal static string ApiTrailingOf(ApiSpend? spend) =>
         spend is null ? "" : spend.LeftUsd is { } left ? $"{ApiSpend.Usd(left)} left" : $"{ApiSpend.Usd(spend.TodayUsd)} today";
 
-    /// <summary>"5hr: 10/98% | wk: 55/90%": each window's % used (rounded, "—" never read) over its cutoff.</summary>
-    internal static string TabUsagePairsOf(double? fiveHourUsed, int fiveHourCutoff, double? weekUsed, int weeklyCutoff) =>
-        $"5hr: {UsedOf(fiveHourUsed)}/{fiveHourCutoff}% | wk: {UsedOf(weekUsed)}/{weeklyCutoff}%";
+    /// <summary>"5hr: 29% | wk: 15%" (M.ORCH-T968): each window's % used, rounded for display only ("—" never read).</summary>
+    internal static string TabUsagePairsOf(double? fiveHourUsed, double? weekUsed) =>
+        $"5hr: {UsedOf(fiveHourUsed)}% | wk: {UsedOf(weekUsed)}%";
 
     private static string UsedOf(double? used) =>
         used is { } u ? Math.Max(0, u).ToString("0", System.Globalization.CultureInfo.InvariantCulture) : "—";
