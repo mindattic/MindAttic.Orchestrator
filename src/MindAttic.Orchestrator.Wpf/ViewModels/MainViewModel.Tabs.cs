@@ -172,9 +172,11 @@ public sealed partial class MainViewModel
         if (NewlyDisconnected(wasSignedIn, loginTabs.Select(t => t.tab)) is { Count: > 0 } disconnected) AutoSignIn(disconnected);
     }
 
-    /// <summary>The logins whose Launcher tab this dashboard has opened (or tried to): each once per run, so one you close
-    /// or exit stays closed until you ask for it again with Open Launcher.</summary>
+    /// <summary>The logins whose Launcher tab this dashboard has opened (or tried to): each once while it stays open: one you
+    /// close or exit is reopened by the next refresh (M.ORCH-T855: the Launcher tab is always open). A fallback open in its own
+    /// window, never embedded, is held, so a failing embed doesn't spawn a window every tick.</summary>
     private readonly HashSet<string> launchersOpened = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> launchersEmbedded = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// One Launcher tab per account (M.ORCH-T699), embedded first in its Terminals panel (M.LNCH-T77): every signed-in login
@@ -184,6 +186,14 @@ public sealed partial class MainViewModel
     private void OpenLaunchers()
     {
         if (!IsGlobalTab) return;
+        foreach (var t in loginTabs)
+        {
+            var key = t.tab.Key;
+            var live = AllTerminals.Panes.Any(p => p.Request.IsMenu && !p.Ended &&
+                string.Equals(p.Login, AccountDirs.Normalize(t.ScopeEmail), StringComparison.OrdinalIgnoreCase));
+            if (live) launchersEmbedded.Add(key);
+            else if (launchersEmbedded.Remove(key)) launchersOpened.Remove(key);
+        }
         var wanted = loginTabs.Where(t => t.IsTabSignedIn && launchersOpened.Add(t.tab.Key)).Select(t => (t.ScopeEmail, t.TabTitle)).ToList();
         foreach (var (email, title) in wanted) _ = OpenLauncherQuietlyAsync(email, title);
     }
@@ -236,7 +246,7 @@ public sealed partial class MainViewModel
         CommandManager.InvalidateRequerySuggested();
     }
 
-    private ICommand? openLauncherCommand, signInTabCommand;
+    private ICommand? signInTabCommand;
 
     /// <summary>Whether this tab's login is signed in (M.ORCH-T615). A roster account that isn't yet has a tab showing only its
     /// Sign in; once signed in, the next refresh gives it the whole dashboard and Open Launcher.</summary>
@@ -252,13 +262,6 @@ public sealed partial class MainViewModel
     public string SignInPrompt => tab.SignedIn ? "" :
         $"{tab.Title} ({tab.Email}) isn't signed in on this machine yet. Sign in to see its dashboard and open the Launcher as {tab.Title}.";
 
-    /// <summary>Open Launcher (M.ORCH-T615): the Launcher's menu as this tab's login (<c>MindAttic.Launcher --account &lt;email&gt;</c>),
-    /// so every repo CLI started from it runs on that login and shows in this tab; on the global login's tab, the Launcher
-    /// unscoped. One login may own many CLIs. It opens embedded, first among this tab's Terminals panel tabs (M.LNCH-T77); a
-    /// login whose Launcher tab is already open (embedded, or standalone outside the dashboard) gets that one brought up
-    /// rather than a second (M.ORCH-T699).</summary>
-    public ICommand OpenLauncherCommand => openLauncherCommand ??= new RelayCommand(async () => await OpenLauncherAsync(),() => IsTabSignedIn);
-
     /// <summary>Sign in, on a tab whose login isn't signed in yet: its own sign-in in a private browser window, then the tab
     /// becomes its dashboard.</summary>
     public ICommand SignInTabCommand => signInTabCommand ??= new RelayCommand(async () =>
@@ -266,15 +269,6 @@ public sealed partial class MainViewModel
         if (ScopeEmail is not { } email) return;
         if (await SignInOwnAsync(email)) await RefreshAsync();
     }, () => !tab.SignedIn && ScopeEmail is not null && !IsSigningIn);
-
-    private async Task OpenLauncherAsync()
-    {
-        var email = ScopeEmail;
-        Root.launchersOpened.Add(tab.Key);
-        var (error, status) = await Root.OpenLauncherPaneAsync(email, TabTitle);
-        StatusMessage = status;
-        if (error is not null) Toasts.Insert(0, new ToastViewModel("Launcher not opened", error, Palette.Over, null));
-    }
 
     /// <summary>Tags each new toast with this tab while there's more than one (toasts tagged by tab), and tells the window.</summary>
     private void OnToastsChanged(object? sender, NotifyCollectionChangedEventArgs e)

@@ -444,8 +444,9 @@
                            Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 </StackPanel>
 
-                <!-- Toolbar: the person's current work, by name and count, on the left; the clock, when the dashboard last refreshed,
-                     Refresh (F5) and Open Launcher, then the zoom, on the right (M.ORCH-T667, M.ORCH-T493). There are no view
+                <!-- Toolbar: the person's current work, by name and count, on the left; the zoom on the right (M.ORCH-T667, M.ORCH-T493). The
+                     clock, refresh info, Refresh and Open Launcher are gone (M.ORCH-T855): refresh is automatic (F5 too) and the
+                     Launcher is its own menu tab. There are no view
                      pills any more (M.ORCH-T763): the Orchestrator shows only what's running, and Tickets Desktop the Repos, the Queue
                      and the audit. -->
                 <Grid x:Name="Toolbar" Margin="{StaticResource SpaceH0VS}" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
@@ -462,32 +463,6 @@
                                    Visibility="{Binding StatusMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="{StaticResource SpaceTS}">
-                        <StackPanel x:Name="HeaderControls" Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Clock.Text}" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" VerticalAlignment="Center" Margin="{StaticResource SpaceRM}"
-                                       AutomationProperties.Name="Current time" ToolTip="Current time" />
-                            <TextBlock Text="{Binding RefreshInfo}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="{StaticResource SpaceRM}" />
-                            <!-- Refresh (M.ORCH-T805): icon only, the library's MaToolButton with the icon font's Refresh glyph (E72C), its
-                                 word in its accessible name and its tooltip (the library theme's implicit ToolTip, never Windows' own). -->
-                            <Button Style="{StaticResource MaToolButton}" Command="{Binding RefreshCommand}" Content="&#xE72C;"
-                                    AutomationProperties.Name="Refresh" ToolTip="Refresh (F5)" />
-                            <!-- No Settings button here any more (M.ORCH-T804): the top-right cog is the only way in. -->
-                            <!-- Open Launcher (M.ORCH-T615): the Launcher's menu as this tab's login (MindAttic.Launcher with its account), so
-                                 every repo CLI started from it runs on that login and shows in this tab; on the global login's tab, unscoped.
-                                 Icon only (M.ORCH-T805): a rocket, drawn as a Path (Material Design's 'rocket_launch', 24x24 viewBox) like
-                                 the emergency key above, since no rocket glyph is confirmed in the icon font and a wrong codepoint is a blank
-                                 tofu box; it takes the button's own foreground, so the library's disabled dimming still shows. -->
-                            <Button x:Name="OpenLauncherButton" Style="{StaticResource MaToolButton}" Command="{Binding OpenLauncherCommand}" Margin="{StaticResource SpaceLS}"
-                                    ToolTipService.ShowOnDisabled="False"
-                                    AutomationProperties.Name="{Binding TabTitle, StringFormat='Open the Launcher as {0}'}">
-                                <Button.ToolTip>
-                                    <TextBlock Text="{Binding TabTitle, StringFormat='Open the Launcher as {0}'}" />
-                                </Button.ToolTip>
-                                <Viewbox Width="16" Height="16">
-                                    <Path Data="M9.19 6.35c-2.04 2.29-3.44 5.58-3.57 5.89L2 10.69l4.05-4.05c.47-.47 1.15-.68 1.81-.55l1.33.26zM11.17 17s3.74-1.55 5.89-3.7c5.4-5.4 4.5-9.62 4.21-10.57-.95-.3-5.17-1.19-10.57 4.21C8.55 9.09 7 12.83 7 12.83L11.17 17zm6.48-2.19c-2.29 2.04-5.58 3.44-5.89 3.57L13.31 22l4.05-4.05c.47-.47.68-1.15.55-1.81l-.26-1.33zM9 18c0 .83-.34 1.58-.88 2.12C6.94 21.3 2 22 2 22s.7-4.94 1.88-6.12C4.42 15.34 5.17 15 6 15c1.66 0 3 1.34 3 3zm4-9c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"
-                                          Stretch="Uniform" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-                                </Viewbox>
-                            </Button>
-                        </StackPanel>
                         <TextBlock Text="{Binding Zoom.Text}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="{StaticResource SpaceLM}"
                                    ToolTip="Ctrl+0 resets the zoom" />
                     </StackPanel>

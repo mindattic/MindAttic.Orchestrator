@@ -86,7 +86,6 @@ public sealed partial class MainViewModel : ObservableObject
     private string provider = "Claude";
     private string prompt = "";
     private string statusMessage = "";
-    private string refreshInfo = "Loading…";
 
     public MainViewModel() : this(null, null) { }
 
@@ -101,7 +100,6 @@ public sealed partial class MainViewModel : ObservableObject
         lease = root?.lease ?? new DispatchLease(store.Directory, db: store.Db);
         aggregator = root?.aggregator ?? new StatusAggregator(OrchestratorOptions.Load(), store, new RateLimitStatusWriter { Db = store.Db }, lease);
         control = root?.control ?? new SessionControl(aggregator.Options);
-        Clock = root?.Clock ?? new();
         Zoom = root?.Zoom ?? new();
         if (root is null) { loginTabs = [this]; orgTabs.Add(this); }
         Toasts.CollectionChanged += OnToastsChanged;
@@ -147,9 +145,6 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Drops this tab's subscription to the static <see cref="PendingMoves.Changed"/>, so a login tab removed on
     /// sign-out isn't kept alive handling every move (M.ORCH-T734).</summary>
     public void Detach() => PendingMoves.Changed -= OnMovesChanged;
-
-    /// <summary>The header's live clock, ticking every second on its own timer, not with the refresh (M.ORCH-T193).</summary>
-    public ClockViewModel Clock { get; }
 
     /// <summary>The window's zoom, 80-200% (WCAG 1.4.4): the library's ZoomLevel, which MainWindow attaches to its content
     /// with Ctrl+Plus / Ctrl+Minus / Ctrl+0; the tiles and cards wrap and the views scroll, so nothing is cut off as it grows.</summary>
@@ -277,7 +272,6 @@ public sealed partial class MainViewModel : ObservableObject
     }
     public string Prompt { get => prompt; set => Set(ref prompt, value); }
     public string StatusMessage { get => statusMessage; private set => Set(ref statusMessage, value); }
-    public string RefreshInfo { get => refreshInfo; private set => Set(ref refreshInfo, value); }
 
     /// <summary>Whether this window is the one process building snapshots (no daemon got the lease first), so it has to
     /// keep refreshing even while hidden: rl-status.json and allocate depend on it.</summary>
@@ -310,7 +304,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     private bool isLoading;
 
-    /// <summary>True until the first refresh finishes, either way (a failure shows in RefreshInfo): the full-screen
+    /// <summary>True until the first refresh finishes, either way (a failure shows in the status message): the full-screen
     /// loader covers the dashboard until then, so it never shows empty or half-filled panels (M.ORCH-T184).</summary>
     public bool IsLoading { get => isLoading; private set => Set(ref isLoading, value); }
 
@@ -345,16 +339,14 @@ public sealed partial class MainViewModel : ObservableObject
             }), () => localChanges);
             ApplyTabs(next, tabs, nextOrgs);
             await TickAllocateAsync(next);
-            var info = aggregator.LastWasShared
-                ? $"Updated {next.TakenUtc.ToLocalTime():T} · shared" + (streamLive ? " · live" : "")
-                : $"Updated {DateTime.Now:T} · {clock.ElapsedMilliseconds} ms";
-            foreach (var tab in LoginTabs) tab.RefreshInfo = info;
+            foreach (var tab in LoginTabs)
+                if (tab.StatusMessage.StartsWith("Refresh failed:", StringComparison.Ordinal)) tab.StatusMessage = "";
         }
         // Any failure is shown and retried next tick: this runs from an async void timer, so an escaped exception would
         // close the dashboard, and with it allocate and rl-status.json if this window holds the lease.
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            foreach (var tab in LoginTabs) tab.RefreshInfo = $"Refresh failed: {ex.Message}";
+            foreach (var tab in LoginTabs) tab.StatusMessage = $"Refresh failed: {ex.Message}";
             OrchestratorLog.For("Dashboard").Error(ex, "refresh failed");
         }
         finally

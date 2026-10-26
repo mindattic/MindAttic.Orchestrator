@@ -106,15 +106,10 @@ public partial class MainWindow : Window
         };
         Loaded += async (_, _) =>
         {
-            model.Clock.Start();
             await model.RefreshAsync();
             timer.Start();
         };
-        Closed += (_, _) =>
-        {
-            timer.Stop();
-            model.Clock.Stop();
-        };
+        Closed += (_, _) => timer.Stop();
         // Minimized, nobody is looking: no 5-second refresh (M.ORCH-T115). Shown again, it catches up at once.
         IsVisibleChanged += async (_, _) => await OnShownOrHidden();
         StateChanged += async (_, _) => await OnShownOrHidden();

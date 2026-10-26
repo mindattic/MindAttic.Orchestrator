@@ -160,7 +160,7 @@ public sealed class DashboardAlignmentTests
     }
 
     [Test]
-    public void The_clock_refresh_and_launcher_sit_right_of_the_current_work_heading_under_the_stat_tiles()
+    public void The_toolbar_has_no_clock_refresh_info_refresh_button_or_launcher_rocket()
     {
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
@@ -168,43 +168,13 @@ public sealed class DashboardAlignmentTests
         XElement Named(string name) => doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == name);
         static string? Binding(XElement e, string attribute) => (string?)e.Attribute(attribute);
 
-        // Below the stat tiles (the chart moved further down, under Terminals, M.ORCH-T826), on the view tabs' row and right
-        // of them (M.ORCH-T667): the toolbar's right-hand column.
+        // M.ORCH-T855: only the current work heading and the zoom remain; refresh is automatic, F5 and the stat tile's own Refresh.
         var toolbar = Named("Toolbar");
-        var controls = Named("HeaderControls");
-        Assert.That(controls.Ancestors().Contains(toolbar), Is.True, "on the toolbar's row, under the stat tiles");
-        Assert.That((string?)controls.Parent!.Attribute("Grid.Column"), Is.EqualTo("1"), "right of the current work's heading");
-        Assert.That(Named("Header").Descendants().Contains(controls), Is.False, "no longer above the tiles");
-        // No view pills (M.ORCH-T763): the person's current work is named on the left.
         Assert.That(toolbar.Descendants(P + "ListBox").Any(l => (string?)l.Attribute("ItemsSource") == "{Binding ViewChoices}"), Is.False);
         Assert.That((string?)Named("WorkHeading").Attribute("Grid.Column"), Is.Null, "the heading on the left");
-
-        var clock = controls.Elements(P + "TextBlock").Single(t => Binding(t, "Text") == "{Binding Clock.Text}");
-        Assert.That((string?)clock.Attribute("AutomationProperties.Name"), Is.EqualTo("Current time"));
-        Assert.That(controls.Elements(P + "TextBlock").Any(t => Binding(t, "Text") == "{Binding RefreshInfo}"), Is.True);
-        // Refresh and Open Launcher are icon-only MaToolButtons (M.ORCH-T805): no text label, their word in the accessible
-        // name and the (library-themed) tooltip.
-        var refresh = controls.Elements(P + "Button").Single(b => Binding(b, "Command") == "{Binding RefreshCommand}");
-        Assert.That((string?)refresh.Attribute("Style"), Is.EqualTo("{StaticResource MaToolButton}"));
-        Assert.That((string?)refresh.Attribute("Content"), Is.EqualTo(""), "the icon font's Refresh glyph, no text label");
-        Assert.That((string?)refresh.Attribute("AutomationProperties.Name"), Is.EqualTo("Refresh"));
-        Assert.That((string?)refresh.Attribute("ToolTip"), Is.EqualTo("Refresh (F5)"));
-        var launcher = Named("OpenLauncherButton");
-        Assert.That(launcher.Parent, Is.EqualTo(controls));
-        Assert.That(Binding(launcher, "Command"), Is.EqualTo("{Binding OpenLauncherCommand}"));
-        Assert.That((string?)launcher.Attribute("Style"), Is.EqualTo("{StaticResource MaToolButton}"));
-        Assert.That((string?)launcher.Attribute("Content"), Is.Null, "a rocket icon, no text label");
-        Assert.That(launcher.Descendants(P + "Path").Count(), Is.EqualTo(1), "the rocket");
-        Assert.That(launcher.Descendants(P + "TextBlock").Single().Ancestors(P + "Button.ToolTip").Any(), Is.True, "its only text is its tooltip");
-        Assert.That((string?)launcher.Attribute("AutomationProperties.Name"), Does.Contain("Open the Launcher as"));
-        // No Settings button here (M.ORCH-T804): the top-right cog is the only way into Settings.
-        Assert.That(controls.Elements(P + "Button").Any(b => (string?)b.Attribute("Content") == "Settings" || Binding(b, "Command") == "{Binding ToggleSettingsCommand}"), Is.False);
+        Assert.That(toolbar.Descendants(P + "Button").Any(), Is.False, "no buttons on the toolbar");
+        Assert.That(doc.Descendants().Any(e => Binding(e, "Text") is "{Binding Clock.Text}" or "{Binding RefreshInfo}"), Is.False);
+        Assert.That(doc.Descendants(P + "Button").Any(b => Binding(b, "Command") == "{Binding OpenLauncherCommand}"), Is.False);
         Assert.That(doc.Descendants(P + "KeyBinding").Any(k => (string?)k.Attribute("Key") == "F5" && Binding(k, "Command") == "{Binding RefreshCommand}"), Is.True, "F5 still refreshes");
-
-        Assert.That(doc.Descendants().Count(e => Binding(e, "Text") is "{Binding Clock.Text}" or "{Binding RefreshInfo}"
-                                                 ), Is.EqualTo(2), "one of each");
-        // The stat tile's own Refresh (its last reading) aside, one icon Refresh and one Open Launcher.
-        Assert.That(doc.Descendants(P + "Button").Count(b => Binding(b, "Command") == "{Binding RefreshCommand}" && (string?)b.Attribute("Style") == "{StaticResource MaToolButton}"), Is.EqualTo(1));
-        Assert.That(doc.Descendants(P + "Button").Count(b => Binding(b, "Command") == "{Binding OpenLauncherCommand}"), Is.EqualTo(1));
     }
 }
