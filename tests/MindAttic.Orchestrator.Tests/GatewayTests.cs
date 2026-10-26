@@ -88,6 +88,36 @@ public sealed partial class GatewayTests
         Assert.That(throttle.Blocked(from), Is.False);
     }
 
+    [Test]
+    public void Concurrent_owner_key_attempts_cant_slip_past_the_limit()
+    {
+        var throttle = new LoginThrottle();
+        var from = IPAddress.Parse("10.0.0.8");
+        var admitted = 0;
+        Parallel.For(0, 64, _ => { if (throttle.TryBegin(from)) Interlocked.Increment(ref admitted); });
+        Assert.That(admitted, Is.EqualTo(LoginThrottle.MaxFailures));
+        Assert.That(throttle.Blocked(from), Is.True);
+        throttle.Succeeded(from);
+        Assert.That(throttle.TryBegin(from), Is.True, "a right key clears the address");
+    }
+
+    [Test]
+    public void The_throttle_keeps_a_bounded_number_of_addresses_forgetting_the_longest_quiet_first()
+    {
+        var throttle = new LoginThrottle(capacity: 3);
+        var a = IPAddress.Parse("10.0.0.1");
+        for (var i = 0; i < LoginThrottle.MaxFailures; i++) throttle.Failed(a);
+        throttle.Failed(IPAddress.Parse("10.0.0.2"));
+        throttle.Failed(IPAddress.Parse("10.0.0.3"));
+        throttle.Failed(a);
+        throttle.Failed(IPAddress.Parse("10.0.0.4"));
+        Assert.That(throttle.Count, Is.EqualTo(3));
+        Assert.That(throttle.Blocked(a), Is.True, "failed most recently: kept");
+        Assert.That(throttle.Blocked(IPAddress.Parse("2001:db8::1")), Is.False);
+        for (var i = 0; i < LoginThrottle.MaxFailures; i++) throttle.Failed(IPAddress.Parse("2001:db8::" + (i + 1)));
+        Assert.That(throttle.Blocked(IPAddress.Parse("2001:db8::ffff")), Is.True, "IPv6 counts by its /64");
+    }
+
     // ── grants ──────────────────────────────────────────────────────────────────
 
     [Test]

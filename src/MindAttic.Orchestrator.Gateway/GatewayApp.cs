@@ -109,11 +109,11 @@ internal static class GatewayApp
             try
             {
                 var from = http.Connection.RemoteIpAddress ?? IPAddress.None;
-                if (g.Throttle.Blocked(from)) return TypedResults.StatusCode(StatusCodes.Status429TooManyRequests);
+                // Counted before the key is checked (M.ORCH-T987), so concurrent guesses can't slip past the limit.
+                if (!g.Throttle.TryBegin(from)) return TypedResults.StatusCode(StatusCodes.Status429TooManyRequests);
                 if (request is null) return TypedResults.BadRequest();
                 if (!GatewayKeys.Matches(g.OwnerKey, request.OwnerKey))
                 {
-                    g.Throttle.Failed(from);
                     g.Log.Write($"token refused: wrong owner key from {from}");
                     return TypedResults.Unauthorized();
                 }
@@ -278,43 +278,110 @@ internal static class GatewayApp
     }
 }
 
-/// <summary>Wrong owner keys per address: <see cref="MaxFailures"/> within <see cref="Window"/> blocks that address until they age out.</summary>
-internal sealed class LoginThrottle(Func<DateTime>? clock = null)
+/// <summary>
+/// Wrong owner keys per address: <see cref="MaxFailures"/> within <see cref="Window"/> blocks that address until they age out
+/// (M.ORCH-T987). Every operation is O(1) under one short lock: each address keeps only its last <see cref="MaxFailures"/>
+/// failure times, and at most <see cref="Capacity"/> addresses are kept, the one that failed longest ago forgotten first, so a
+/// flood of addresses can't grow memory or make a request scan the table. An IPv6 address counts by its /64, the block one
+/// client is usually given. <see cref="TryBegin"/> counts an attempt before its key is checked and <see cref="Succeeded"/> takes
+/// it back, so concurrent guesses can't slip past the limit.
+/// </summary>
+internal sealed class LoginThrottle(Func<DateTime>? clock = null, int capacity = LoginThrottle.Capacity)
 {
     public const int MaxFailures = 5;
+    public const int Capacity = 4096;
     public static readonly TimeSpan Window = TimeSpan.FromMinutes(5);
     private readonly Func<DateTime> now = clock ?? (() => DateTime.UtcNow);
-    private readonly ConcurrentDictionary<IPAddress, Queue<DateTime>> failures = new();
+    private readonly int capacity = Math.Max(1, capacity);
+    private readonly System.Threading.Lock gate = new();
+    private readonly Dictionary<IPAddress, Entry> entries = [];
+    // Least recently failed first.
+    private readonly LinkedList<IPAddress> order = new();
+
+    private sealed class Entry(LinkedListNode<IPAddress> node)
+    {
+        public readonly DateTime[] Times = new DateTime[MaxFailures];
+        public int Next;
+        public readonly LinkedListNode<IPAddress> Node = node;
+    }
+
+    /// <summary>How many addresses are tracked (for tests).</summary>
+    internal int Count
+    {
+        get { lock (gate) return entries.Count; }
+    }
 
     public bool Blocked(IPAddress from)
     {
-        if (!failures.TryGetValue(from, out var q)) return false;
-        lock (q)
+        lock (gate) return entries.TryGetValue(Key(from), out var e) && Recent(e) >= MaxFailures;
+    }
+
+    /// <summary>An owner key is about to be checked: false when the address is blocked; otherwise the attempt counts as a failure
+    /// until <see cref="Succeeded"/> takes it back, atomically with the check.</summary>
+    public bool TryBegin(IPAddress from)
+    {
+        lock (gate)
         {
-            Prune(q);
-            return q.Count >= MaxFailures;
+            var key = Key(from);
+            if (entries.TryGetValue(key, out var e) && Recent(e) >= MaxFailures) return false;
+            Record(key, e);
+            return true;
         }
     }
 
     public void Failed(IPAddress from)
     {
-        var q = failures.GetOrAdd(from, _ => new Queue<DateTime>());
-        lock (q)
+        lock (gate)
         {
-            Prune(q);
-            q.Enqueue(now());
+            var key = Key(from);
+            Record(key, entries.GetValueOrDefault(key));
         }
-        // Bounded: an address with no recent failures is forgotten.
-        if (failures.Count > 1024)
-            foreach (var (address, queue) in failures)
-                lock (queue) { Prune(queue); if (queue.Count == 0) failures.TryRemove(address, out _); }
     }
 
-    public void Succeeded(IPAddress from) => failures.TryRemove(from, out _);
+    public void Succeeded(IPAddress from)
+    {
+        lock (gate)
+        {
+            if (entries.Remove(Key(from), out var e)) order.Remove(e.Node);
+        }
+    }
 
-    private void Prune(Queue<DateTime> q)
+    private void Record(IPAddress key, Entry? e)
+    {
+        if (e is null)
+        {
+            if (entries.Count >= capacity && order.First is { } oldest)
+            {
+                entries.Remove(oldest.Value);
+                order.RemoveFirst();
+            }
+            e = new Entry(order.AddLast(key));
+            entries[key] = e;
+        }
+        else
+        {
+            order.Remove(e.Node);
+            order.AddLast(e.Node);
+        }
+        e.Times[e.Next] = now();
+        e.Next = (e.Next + 1) % MaxFailures;
+    }
+
+    private int Recent(Entry e)
     {
         var cutoff = now() - Window;
-        while (q.Count > 0 && q.Peek() < cutoff) q.Dequeue();
+        var n = 0;
+        foreach (var t in e.Times) if (t >= cutoff && t != default) n++;
+        return n;
+    }
+
+    /// <summary>The address as counted: an IPv4-mapped one as IPv4, an IPv6 one by its /64.</summary>
+    internal static IPAddress Key(IPAddress address)
+    {
+        if (address.IsIPv4MappedToIPv6) return address.MapToIPv4();
+        if (address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetworkV6) return address;
+        var bytes = address.GetAddressBytes();
+        Array.Clear(bytes, 8, 8);
+        return new IPAddress(bytes);
     }
 }
