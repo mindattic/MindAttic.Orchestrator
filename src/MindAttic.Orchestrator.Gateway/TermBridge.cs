@@ -30,8 +30,9 @@ internal static class TermBridge
 
     private static readonly TimeSpan CloseWait = TimeSpan.FromSeconds(2);
 
-    /// <summary>Held output goes out after this much quiet, so masking never delays it longer.</summary>
-    public static readonly TimeSpan FlushAfter = TimeSpan.FromMilliseconds(40);
+    /// <summary>Held output goes out after this much quiet, so masking never delays ordinary text longer (a candidate secret is
+    /// held up to <see cref="StreamMasker.MaxCandidateHold"/>, M.ORCH-T982).</summary>
+    public static readonly TimeSpan FlushAfter = StreamMasker.FlushAfter;
 
     /// <summary>How often a quiet stream looks at the owner's choices (pause, share).</summary>
     public static readonly TimeSpan PolicyTick = TimeSpan.FromMilliseconds(100);
@@ -199,16 +200,24 @@ internal static class TermBridge
     {
         var id = b.SessionId;
         var masker = new StreamMasker(b.Secrets);
-        var held = System.Diagnostics.Stopwatch.StartNew();
         var helloSent = false;
         var paused = false;
         byte[]? title = null;
         Task<(TermFrameKind Kind, byte[] Payload)>? read = null;
 
+        // Everything held, now, as the frame order needs: a held candidate secret goes masked, never bare (M.ORCH-T982).
         async Task FlushAsync()
         {
             if (!masker.HasPending) return;
-            var rest = masker.Flush();
+            var rest = masker.Flush(maskCandidate: true);
+            if (rest.Length > 0) await SendAsync(socket, TermProtocol.Frame(TermFrameKind.Output, rest), counts, ct).ConfigureAwait(false);
+        }
+
+        // What's due after a quiet spell: a candidate secret stays held until it's told apart or its hold runs out.
+        async Task FlushDueAsync()
+        {
+            if (!masker.HasPending) return;
+            var rest = masker.FlushDue();
             if (rest.Length > 0) await SendAsync(socket, TermProtocol.Frame(TermFrameKind.Output, rest), counts, ct).ConfigureAwait(false);
         }
 
@@ -223,7 +232,7 @@ internal static class TermBridge
             }
             if (!read.IsCompleted)
             {
-                var wait = masker.HasPending ? FlushAfter - held.Elapsed : PolicyTick;
+                var wait = masker.DueIn is { } due && due < PolicyTick ? due : PolicyTick;
                 if (wait > TimeSpan.Zero) await Task.WhenAny(read, Task.Delay(wait, ct)).ConfigureAwait(false);
             }
 
@@ -249,7 +258,7 @@ internal static class TermBridge
 
             if (!read.IsCompleted)
             {
-                if (masker.HasPending && held.Elapsed >= FlushAfter) await FlushAsync().ConfigureAwait(false);
+                if (masker.DueIn <= TimeSpan.Zero) await FlushDueAsync().ConfigureAwait(false);
                 continue;
             }
 
@@ -263,11 +272,9 @@ internal static class TermBridge
                     break;
                 case TermFrameKind.Output when masked:
                 {
-                    var hadPending = masker.HasPending;
+                    // The masker times what it holds itself (DueIn).
                     var now = masker.Process(payload);
                     if (now.Length > 0) await SendAsync(socket, TermProtocol.Frame(TermFrameKind.Output, now), counts, ct).ConfigureAwait(false);
-                    // Timed from when the bytes now held started being held, so held output never waits much longer than FlushAfter.
-                    if (masker.HasPending && (!hadPending || now.Length > 0)) held.Restart();
                     break;
                 }
                 case TermFrameKind.Output:
@@ -297,7 +304,9 @@ internal static class TermBridge
                     if (paused) Interlocked.Increment(ref counts.Withheld);
                     else
                     {
-                        await FlushAsync().ConfigureAwait(false);
+                        // A title is apart from the screen: what's due goes first, but a held candidate secret waits on (a CLI
+                        // that retitles itself often mustn't push a half-printed token out bare).
+                        await FlushDueAsync().ConfigureAwait(false);
                         await SendAsync(socket, TermProtocol.Frame(kind, MaskTitle(payload, b, settings)), counts, ct).ConfigureAwait(false);
                     }
                     break;

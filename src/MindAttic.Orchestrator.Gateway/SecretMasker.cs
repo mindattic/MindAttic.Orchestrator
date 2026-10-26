@@ -73,6 +73,9 @@ internal sealed class SecretMasker
     /// <summary>How many literal values it masks.</summary>
     public int LiteralCount => literals.Length;
 
+    /// <summary>The literal values, longest first (memory only, never logged): the stream masker holds a run that begins one.</summary>
+    internal IReadOnlyList<string> Literals => literals;
+
     /// <summary>The longest literal's length: how much already-sent text a stream keeps to catch one split across chunks.</summary>
     public int LongestLiteral { get; }
 

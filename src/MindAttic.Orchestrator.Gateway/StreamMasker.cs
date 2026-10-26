@@ -17,14 +17,36 @@ namespace MindAttic.Orchestrator.Gateway;
 /// <item><b>Chunk boundaries.</b> A trailing run of token characters, an unfinished escape sequence or UTF-8 character is held
 /// back (at most <see cref="MaxHoldChars"/>) until the next chunk, and the text already sent stays as context
 /// (<see cref="contextChars"/>), so a token split across two frames is still caught, and a prefix such as <c>token=</c>
-/// sent in the previous frame still counts. The caller flushes what's held after <see cref="TermBridge.FlushAfter"/> of quiet,
-/// so normal output is delayed by no more than that.</item>
+/// sent in the previous frame still counts. The caller flushes what's held once <see cref="DueIn"/> says so
+/// (<see cref="FlushDue"/>): ordinary text after <see cref="FlushAfter"/> of quiet, so it is delayed by no more than that.</item>
+/// <item><b>Wrapped and slow secrets</b> (M.ORCH-T982). An Ink CLI hard-wraps a long token with a real line break (and the
+/// continuation's indent), so matching also runs on the text with such breaks taken out, where a token-character run goes on
+/// past one and the part after the break looks generated (a digit, or a capital past its first character), so a whole token
+/// ending one line doesn't swallow the next line's first word. A trailing <i>candidate</i>, a run that has begun a known
+/// shape (<c>sk-</c> and so on, past the prefix), a value after a secret-sounding name, or the first
+/// <see cref="MinLiteralPart"/> characters of a Vault value, is held across a line break and across the quiet-spell flush, until
+/// what follows shows it can't be one (it ends, or turns into something else) or at most <see cref="MaxCandidateHold"/>;
+/// then the part of it that would be secret is masked rather than sent bare, and the rest of a token that keeps coming is
+/// masked as it comes. Ordinary text is never held longer than before.</item>
 /// <item><b>PEM blocks.</b> After a <c>-----BEGIN … PRIVATE KEY-----</c> line every printable character is masked through the
 /// <c>-----END … PRIVATE KEY-----</c> line, across any number of chunks (at most <see cref="PemCap"/> characters).</item>
 /// </list>
 /// </summary>
-internal sealed class StreamMasker(SecretMasker secrets)
+internal sealed class StreamMasker
 {
+    /// <summary>Held output goes out after this much quiet, so masking never delays ordinary text longer.</summary>
+    public static readonly TimeSpan FlushAfter = TimeSpan.FromMilliseconds(40);
+
+    /// <summary>The longest a candidate secret is held waiting to be told apart (M.ORCH-T982); then its secret part is masked.</summary>
+    public static readonly TimeSpan MaxCandidateHold = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>A line break a wrapped token may span: at most this many controls (CR, LF), then at most
+    /// <see cref="MaxWrapIndent"/> spaces of indent.</summary>
+    private const int MaxWrapBreaks = 4, MaxWrapIndent = 16;
+
+    /// <summary>The shortest start of a Vault value held as a candidate (a shorter one would hold ordinary words and prefixes).</summary>
+    private const int MinLiteralPart = 8;
+
     /// <summary>The most text characters held back waiting for the rest of a token.</summary>
     public const int MaxHoldChars = 4096;
 
@@ -37,14 +59,45 @@ internal sealed class StreamMasker(SecretMasker secrets)
     /// <summary>The mask: one per secret character.</summary>
     public static ReadOnlySpan<byte> Bullet => "•"u8;
 
-    private readonly int contextChars = Math.Clamp(Math.Max(256, secrets.LongestLiteral), 256, 4096);
+    private readonly SecretMasker secrets;
+    private readonly TimeProvider time;
+    private readonly int contextChars;
     private readonly StringBuilder context = new();
     private byte[] pending = [];
     private bool inPem;
     private int pemMasked;
 
-    /// <summary>Whether bytes are held back for the next chunk (the caller flushes them after a quiet spell).</summary>
+    // Timing (M.ORCH-T982): when what's held started being held; the candidate held, by where it starts in the whole stream,
+    // and since when; and whether all that's held is that candidate (a timed flush let the rest go).
+    private long sentTotal;
+    private DateTimeOffset pendingSince;
+    private long? candidateKey;
+    private DateTimeOffset candidateSince;
+    private bool candidateOnly;
+
+    /// <param name="time">The clock for the hold timings; the system's by default.</param>
+    public StreamMasker(SecretMasker secrets, TimeProvider? time = null)
+    {
+        this.secrets = secrets;
+        this.time = time ?? TimeProvider.System;
+        contextChars = Math.Clamp(Math.Max(256, secrets.LongestLiteral), 256, 4096);
+    }
+
+    /// <summary>Whether bytes are held back for the next chunk (the caller flushes them when <see cref="DueIn"/> says).</summary>
     public bool HasPending => pending.Length > 0;
+
+    /// <summary>How long until what's held should go (<see cref="FlushDue"/>): <see cref="FlushAfter"/> after it started being
+    /// held, or for a held candidate alone, <see cref="MaxCandidateHold"/> after it was first held. Null when nothing is held;
+    /// zero or less when it's due now.</summary>
+    public TimeSpan? DueIn
+    {
+        get
+        {
+            if (pending.Length == 0) return null;
+            var due = candidateOnly && candidateKey is not null ? candidateSince + MaxCandidateHold : pendingSince + FlushAfter;
+            return due - time.GetUtcNow();
+        }
+    }
 
     /// <summary>Forgets what's held and the context (a pause, a fresh replay): nothing held is ever sent.</summary>
     public void Reset()
@@ -53,19 +106,34 @@ internal sealed class StreamMasker(SecretMasker secrets)
         context.Clear();
         inPem = false;
         pemMasked = 0;
+        candidateKey = null;
+        candidateOnly = false;
     }
 
-    /// <summary>Everything held, masked; nothing is held after it.</summary>
-    public byte[] Flush() => Process([], final: true);
+    /// <summary>Everything held, masked; nothing is held after it. With <paramref name="maskCandidate"/> (the stream's order needs
+    /// it all out now: another frame follows) a held candidate's secret part is masked as if its hold ran out, never sent bare.</summary>
+    public byte[] Flush(bool maskCandidate = false) => Run([], maskCandidate ? Mode.FinalMasking : Mode.Final);
+
+    /// <summary>What's due after a quiet spell: everything held but a candidate still inside <see cref="MaxCandidateHold"/>; once
+    /// that runs out, the candidate too, its secret part masked.</summary>
+    public byte[] FlushDue() => Run([], Mode.Timed);
 
     private enum SegKind : byte { Text, Control, Escape }
 
     private readonly record struct Seg(int Start, int Length, SegKind Kind, int LogicalStart, int LogicalLength);
 
+    /// <summary>How a call ends. Normal holds a trailing run and a candidate; Timed holds only a candidate within its hold;
+    /// Final holds nothing; FinalMasking holds nothing and masks a candidate's secret part.</summary>
+    private enum Mode : byte { Normal, Timed, Final, FinalMasking }
+
     /// <summary>The bytes that can go now, masked; the rest is held for the next call. With <paramref name="final"/>, nothing is
     /// held.</summary>
-    public byte[] Process(ReadOnlySpan<byte> chunk, bool final = false)
+    public byte[] Process(ReadOnlySpan<byte> chunk, bool final = false) => Run(chunk, final ? Mode.Final : Mode.Normal);
+
+    private byte[] Run(ReadOnlySpan<byte> chunk, Mode mode)
     {
+        var final = mode != Mode.Normal;
+        var had = pending.Length > 0;
         byte[] buf;
         if (pending.Length == 0) buf = chunk.ToArray();
         else
@@ -123,27 +191,48 @@ internal sealed class StreamMasker(SecretMasker secrets)
             }
         }
 
-        // 2. Match on what was sent before (context) plus this, and mark the characters of this to mask.
+        // 2. Match on what was sent before (context) plus this, and mark the characters to mask (those of this are written).
         var offset = context.Length;
         var combined = context.ToString() + logical;
-        var mask = new bool[logical.Length];
-        void Mark(int start, int end)
-        {
-            for (var k = Math.Max(start, offset); k < end; k++) mask[k - offset] = true;
-        }
+        var marked = new bool[combined.Length];
         var pem = PemRegions(combined, offset);
-        foreach (var (start, end, _) in pem) Mark(start, end);
+        foreach (var (start, end, _) in pem)
+            for (var k = start; k < end; k++) marked[k] = true;
         foreach (var (start, end) in secrets.Find(combined))
-            if (end > offset) Mark(start, end);
+            for (var k = start; k < end; k++) marked[k] = true;
+        // A token hard-wrapped across lines (M.ORCH-T982): matched again with the breaks taken out.
+        var (joined, map) = Join(combined);
+        if (joined.Length != combined.Length)
+            foreach (var (start, end) in secrets.Find(joined))
+                for (var k = start; k < end; k++) marked[map[k]] = true;
 
-        // 3. Hold back a trailing run of token characters (the rest of a token may follow) and anything unfinished.
+        // 3. A trailing candidate secret (M.ORCH-T982): held until it's told apart, or its hold runs out and its secret part is
+        // masked rather than sent bare.
+        var now = time.GetUtcNow();
+        var candidate = mode == Mode.Final ? null : FindCandidate(joined, map, marked);
+        var expired = false;
+        if (candidate is { } c)
+        {
+            var key = sentTotal - offset + map[c.Start];
+            if (candidateKey != key) (candidateKey, candidateSince) = (key, now);
+            expired = now - candidateSince >= MaxCandidateHold;
+            if (mode == Mode.FinalMasking || (mode == Mode.Timed && expired))
+                for (var k = c.SecretStart; k < c.End; k++) marked[map[k]] = true;
+        }
+        else candidateKey = null;
+
+        // 4. Hold back a trailing run of token characters (the rest of a token may follow), a candidate, and anything unfinished.
         var holdLogical = logical.Length;
-        if (!final)
+        int? candidateHold = candidate is { } held0 ? Math.Max(map[held0.Start] - offset, 0) : null;
+        if (candidateHold is { } ch && logical.Length - ch > MaxHoldChars) candidateHold = null;
+        if (mode == Mode.Normal)
         {
             var k = logical.Length;
             while (k > 0 && IsTokenChar(logical[k - 1])) k--;
             if (logical.Length - k <= MaxHoldChars) holdLogical = k;
+            if (candidateHold is { } h) holdLogical = Math.Min(holdLogical, h);
         }
+        else if (mode == Mode.Timed && !expired && candidateHold is { } h) holdLogical = h;
         var holdByte = parsedEnd;
         if (holdLogical < logical.Length)
         {
@@ -151,7 +240,7 @@ internal sealed class StreamMasker(SecretMasker secrets)
             holdByte = Math.Min(holdByte, held.Start);
         }
 
-        // 4. Write what goes now.
+        // 5. Write what goes now.
         var output = new ArrayBufferWriter<byte>(holdByte + 16);
         var sentLogical = 0;
         foreach (var seg in segs)
@@ -159,7 +248,7 @@ internal sealed class StreamMasker(SecretMasker secrets)
             if (seg.Start >= holdByte) break;
             var masked = false;
             if (seg.Kind == SegKind.Text)
-                for (var k = seg.LogicalStart; k < seg.LogicalStart + seg.LogicalLength; k++) masked |= mask[k];
+                for (var k = seg.LogicalStart; k < seg.LogicalStart + seg.LogicalLength; k++) masked |= marked[offset + k];
             if (masked) output.Write(Bullet);
             else if (seg.Kind == SegKind.Escape) WriteEscape(output, buf.AsSpan(seg.Start, seg.Length));
             else output.Write(buf.AsSpan(seg.Start, seg.Length));
@@ -173,8 +262,165 @@ internal sealed class StreamMasker(SecretMasker secrets)
         if (pemMasked > PemCap) (inPem, pemMasked) = (false, 0);
         context.Append(logical, 0, sentLogical);
         if (context.Length > contextChars) context.Remove(0, context.Length - contextChars);
+        sentTotal += sentLogical;
         pending = holdByte < buf.Length ? buf[holdByte..] : [];
+        if (pending.Length > 0)
+        {
+            // Timed from when the bytes now held started being held, so held text never waits much longer than FlushAfter.
+            if (!had || output.WrittenCount > 0) pendingSince = now;
+            // After a timed flush only a candidate is left: it goes when its own hold runs out.
+            candidateOnly = mode == Mode.Timed && candidateKey is not null;
+        }
+        else candidateOnly = false;
         return output.WrittenSpan.ToArray();
+    }
+
+    /// <summary>A trailing candidate secret, in <c>joined</c>'s positions: where it starts, where its secret part starts (past a
+    /// shape's prefix or a name), and its end.</summary>
+    private readonly record struct Candidate(int Start, int SecretStart, int End);
+
+    /// <summary><paramref name="combined"/> with the line breaks a wrapped token spans taken out, and for each of its characters
+    /// where it is in <paramref name="combined"/>. A break (controls, then an indent) between two token characters is taken out
+    /// only when the part after it looks generated (<see cref="LooksGenerated"/>), so a token that ends a line doesn't run on
+    /// into an ordinary word, a capitalised one included, on the next.</summary>
+    private static (string Joined, int[] Map) Join(string combined)
+    {
+        var joined = new StringBuilder(combined.Length);
+        var map = new int[combined.Length];
+        var n = 0;
+        for (var i = 0; i < combined.Length;)
+        {
+            if (combined[i] == '\n' && i > 0 && IsTokenChar(combined[i - 1]))
+            {
+                var j = i;
+                for (var breaks = 0; j < combined.Length && combined[j] == '\n' && breaks < MaxWrapBreaks; breaks++) j++;
+                for (var indent = 0; j < combined.Length && combined[j] == ' ' && indent < MaxWrapIndent; indent++) j++;
+                if (j < combined.Length && IsTokenChar(combined[j]) && LooksGenerated(combined, j))
+                {
+                    i = j;
+                    continue;
+                }
+            }
+            joined.Append(combined[i]);
+            map[n++] = i;
+            i++;
+        }
+        return (joined.ToString(), map);
+    }
+
+    /// <summary>Whether the token-character run at <paramref name="at"/> has a digit, or a capital past its first character, as
+    /// the rest of a generated token nearly always does and an ordinary word ("next", "Done", "Error:") doesn't.</summary>
+    private static bool LooksGenerated(string text, int at)
+    {
+        for (var k = at; k < text.Length && IsTokenChar(text[k]); k++)
+            if (char.IsAsciiDigit(text[k]) || (k > at && char.IsAsciiLetterUpper(text[k]))) return true;
+        return false;
+    }
+
+    /// <summary>A known shape's prefix, what its body may hold and how long it may get before it is whole (AWS ids are fixed),
+    /// and whether a body needs a digit or a capital to count (the bare <c>sk-</c>, so <c>sk-learn</c> isn't held).</summary>
+    private sealed record ShapeStart(string Prefix, Func<char, bool> Body, int MaxBody = int.MaxValue, bool NeedsGenerated = false);
+
+    private static readonly ShapeStart[] ShapeStarts =
+    [
+        new("sk-", c => char.IsAsciiLetterOrDigit(c) || c is '_' or '-', NeedsGenerated: true),
+        .. "pousr".Select(k => new ShapeStart($"gh{k}_", char.IsAsciiLetterOrDigit)),
+        new("github_pat_", c => char.IsAsciiLetterOrDigit(c) || c == '_'),
+        new("AKIA", c => char.IsAsciiLetterUpper(c) || char.IsAsciiDigit(c), MaxBody: 15),
+        new("ASIA", c => char.IsAsciiLetterUpper(c) || char.IsAsciiDigit(c), MaxBody: 15),
+        new("eyJ", c => char.IsAsciiLetterOrDigit(c) || c is '_' or '-' or '.'),
+        .. "abposr".Select(k => new ShapeStart($"xox{k}-", c => char.IsAsciiLetterOrDigit(c) || c == '-')),
+    ];
+
+    /// <summary>A value after a secret-sounding name, at the very end of the text.</summary>
+    private static readonly System.Text.RegularExpressions.Regex AssignedTail = new(
+        @"(?:(?:key|token|secret|password|passwd|pwd)[""']?[ \t]*[:=][ \t]*[""']?|\b[Bb]earer[ \t]+)(?<v>[A-Za-z0-9+/_\-.~]+={0,2})\z",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant
+        | System.Text.RegularExpressions.RegexOptions.Compiled, TimeSpan.FromMilliseconds(100));
+
+    /// <summary>
+    /// The candidate secret <paramref name="joined"/> ends with, if any (M.ORCH-T982): a trailing token run (before at most a
+    /// line break and its indent, which a wrap may continue) that isn't masked already and has begun a known shape past its
+    /// prefix, or is a value after a secret-sounding name with a digit or a capital in it; or the first
+    /// <see cref="MinLiteralPart"/> or more characters of a Vault value. The earliest-starting one wins. Null when the text can't
+    /// be the start of a secret.
+    /// </summary>
+    private Candidate? FindCandidate(string joined, int[] map, bool[] marked)
+    {
+        var end = joined.Length;
+        if (end == 0) return null;
+        var t = end;
+        for (var spaces = 0; t > 0 && joined[t - 1] == ' ' && spaces < MaxWrapIndent; spaces++) t--;
+        var breaks = 0;
+        for (; t > 0 && joined[t - 1] == '\n' && breaks < MaxWrapBreaks; breaks++) t--;
+        if (breaks == 0) t = end; // spaces alone end a run
+        var runEnd = t;
+        Candidate? best = null;
+        void Consider(Candidate c)
+        {
+            if (best is not { } b || c.Start < b.Start) best = c;
+        }
+
+        if (runEnd > 0 && IsTokenChar(joined[runEnd - 1]) && !marked[map[runEnd - 1]])
+        {
+            var runStart = runEnd;
+            while (runStart > 0 && IsTokenChar(joined[runStart - 1]) && runEnd - runStart < MaxHoldChars) runStart--;
+            // A shape starts where no word character comes before it (SecretMasker's Start).
+            for (var s = runStart; s < runEnd && best is null; s++)
+            {
+                if (s > runStart && (char.IsAsciiLetterOrDigit(joined[s - 1]) || joined[s - 1] is '_' or '-')) continue;
+                var tail = joined.AsSpan(s, runEnd - s);
+                foreach (var shape in ShapeStarts)
+                {
+                    if (tail.Length <= shape.Prefix.Length || !tail.StartsWith(shape.Prefix, StringComparison.Ordinal)) continue;
+                    var body = tail[shape.Prefix.Length..];
+                    if (body.Length > shape.MaxBody) continue;
+                    var fits = true;
+                    var generated = false;
+                    var dots = 0;
+                    foreach (var ch in body)
+                    {
+                        if (!shape.Body(ch)) { fits = false; break; }
+                        if (ch == '.') dots++;
+                        generated |= char.IsAsciiDigit(ch) || char.IsAsciiLetterUpper(ch);
+                    }
+                    if (!fits || dots > 2 || (shape.NeedsGenerated && !generated)) continue;
+                    Consider(new Candidate(s, s + shape.Prefix.Length, runEnd));
+                    break;
+                }
+            }
+            // A value after a secret-sounding name.
+            var from = Math.Max(0, runStart - 48);
+            try
+            {
+                var m = AssignedTail.Match(joined, from, runEnd - from);
+                if (m.Success && m.Groups["v"] is { Length: > 0 } v
+                              && v.Value.Any(ch => char.IsAsciiDigit(ch) || char.IsAsciiLetterUpper(ch)))
+                    Consider(new Candidate(v.Index, v.Index, runEnd));
+            }
+            catch (System.Text.RegularExpressions.RegexMatchTimeoutException) { }
+        }
+
+        // The start of a Vault value (it may hold any character, but never a line break).
+        var litEnd = breaks > 0 ? runEnd : end;
+        if (litEnd > 0 && !marked[map[litEnd - 1]])
+        {
+            var last = joined[litEnd - 1];
+            var text = joined.AsSpan(0, litEnd);
+            foreach (var literal in secrets.Literals)
+            {
+                // Long enough not to be an ordinary word or prefix ("admin", "http"), and starting at a token boundary.
+                var least = Math.Min(MinLiteralPart, literal.Length - 1);
+                for (var len = Math.Min(literal.Length - 1, litEnd); len >= least; len--)
+                {
+                    if (literal[len - 1] != last || !text.EndsWith(literal.AsSpan(0, len), StringComparison.Ordinal)) continue;
+                    if (litEnd - len > 0 && IsTokenChar(joined[litEnd - len - 1]) && IsTokenChar(literal[0])) continue;
+                    Consider(new Candidate(litEnd - len, litEnd - len, litEnd));
+                    break;
+                }
+            }
+        }
+        return best;
     }
 
     /// <summary>The PEM private key bodies (with their END lines) in <paramref name="combined"/>: from the end of a BEGIN line,

@@ -159,6 +159,135 @@ public sealed class BroadcastMaskingTests
         Assert.That(masker.Process(euro.AsSpan(1)), Is.EqualTo(euro));
     }
 
+    // ── wrapped and slow secrets (M.ORCH-T982) ──────────────────────────────────
+
+    /// <summary>A clock a test moves by hand.</summary>
+    private sealed class ManualTime : TimeProvider
+    {
+        public DateTimeOffset Now = new(2026, 10, 26, 12, 0, 0, TimeSpan.Zero);
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
+
+    [Test]
+    public void A_token_hard_wrapped_across_lines_is_masked_on_both_lines_with_the_breaks_and_indent_kept()
+    {
+        var token = Fake("sk-ant-api03-", 90);
+        var text = $"  key {token[..50]}\r\n  {token[50..]}\r\ndone\r\n";
+        var expected = $"  key {Bullets(50)}\r\n  {Bullets(token.Length - 50)}\r\ndone\r\n";
+        Assert.That(Mask(text), Is.EqualTo(expected));
+        // A line at a time, as an Ink CLI prints it.
+        Assert.That(Stream([$"  key {token[..50]}\r\n", $"  {token[50..]}\r\n", "done\r\n"]), Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void A_token_ending_a_line_doesnt_swallow_the_next_lines_first_word_even_a_capitalised_one()
+    {
+        var token = Fake("sk-ant-api03-", 90);
+        var text = $"  key {token[..50]}\r\n  {token[50..]}\r\nDone\r\nError: next\r\n";
+        Assert.That(Mask(text), Is.EqualTo($"  key {Bullets(50)}\r\n  {Bullets(token.Length - 50)}\r\nDone\r\nError: next\r\n"));
+        var held = Fake("sk-ant-api03-", 6);
+        Assert.That(Stream([$"key {held}\r\n", "Done\r\n"]), Is.EqualTo($"key {held}\r\nDone\r\n"), "a held start isn't joined to a word");
+    }
+
+    [Test]
+    public void A_vault_value_that_starts_like_a_common_word_doesnt_hold_ordinary_text()
+    {
+        var vaultValue = "admin-" + Fake("", 16, seed: 4);
+        var time = new ManualTime();
+        var masker = new StreamMasker(new SecretMasker([vaultValue]), time);
+        Assert.That(masker.Process("user admin"u8), Is.EqualTo("user "u8.ToArray()));
+        time.Now += StreamMasker.FlushAfter;
+        Assert.That(masker.FlushDue(), Is.EqualTo("admin"u8.ToArray()), "goes after the quiet spell, like any word");
+    }
+
+    [Test]
+    public void A_wrapped_token_whose_first_line_is_too_short_to_match_is_held_across_the_break()
+    {
+        var token = Fake("sk-ant-api03-", 60);
+        var masker = new StreamMasker(SecretMasker.ShapesOnly);
+        var first = Encoding.UTF8.GetString(masker.Process(Encoding.UTF8.GetBytes($"key {token[..18]}\r\n")));
+        Assert.That(first, Is.EqualTo("key "), "the start of a token is held across the line break");
+        var rest = Encoding.UTF8.GetString(masker.Process(Encoding.UTF8.GetBytes($"{token[18..]}\r\n"))) + Encoding.UTF8.GetString(masker.Flush());
+        Assert.That(first + rest, Is.EqualTo($"key {Bullets(18)}\r\n{Bullets(token.Length - 18)}\r\n"));
+    }
+
+    [Test]
+    public void A_slow_token_isnt_flushed_bare_by_the_quiet_spell()
+    {
+        var token = Fake("sk-ant-api03-", 40);
+        var time = new ManualTime();
+        var masker = new StreamMasker(SecretMasker.ShapesOnly, time);
+        var output = new List<byte>();
+        output.AddRange(masker.Process(Encoding.UTF8.GetBytes("echo " + token[..17])));
+        // The quiet spell passes: ordinary text would go now, but a begun token stays held.
+        time.Now += StreamMasker.FlushAfter + TimeSpan.FromMilliseconds(5);
+        Assert.That(masker.DueIn, Is.LessThanOrEqualTo(TimeSpan.Zero));
+        output.AddRange(masker.FlushDue());
+        Assert.That(masker.HasPending, Is.True);
+        Assert.That(masker.DueIn, Is.GreaterThan(TimeSpan.Zero), "next due when the candidate's hold runs out, not at once");
+        time.Now += TimeSpan.FromMilliseconds(200);
+        output.AddRange(masker.Process(Encoding.UTF8.GetBytes(token[17..] + "\r\n")));
+        output.AddRange(masker.Flush());
+        Assert.That(Encoding.UTF8.GetString(output.ToArray()), Is.EqualTo($"echo {Bullets(token.Length)}\r\n"));
+    }
+
+    [Test]
+    public void A_candidate_held_past_its_bound_goes_with_its_secret_part_masked_and_the_rest_masked_as_it_comes()
+    {
+        var token = Fake("sk-ant-api03-", 40);
+        var time = new ManualTime();
+        var masker = new StreamMasker(SecretMasker.ShapesOnly, time);
+        var output = new List<byte>();
+        output.AddRange(masker.Process(Encoding.UTF8.GetBytes("echo " + token[..17])));
+        time.Now += StreamMasker.MaxCandidateHold + TimeSpan.FromMilliseconds(1);
+        output.AddRange(masker.FlushDue());
+        Assert.That(masker.HasPending, Is.False, "the hold is bounded");
+        Assert.That(Encoding.UTF8.GetString(output.ToArray()), Is.EqualTo("echo sk-" + Bullets(14)));
+        output.AddRange(masker.Process(Encoding.UTF8.GetBytes(token[17..] + "\r\n")));
+        output.AddRange(masker.Flush());
+        Assert.That(Encoding.UTF8.GetString(output.ToArray()), Is.EqualTo($"echo sk-{Bullets(token.Length - 3)}\r\n"));
+    }
+
+    [Test]
+    public void Ordinary_text_is_still_due_after_the_short_quiet_spell()
+    {
+        var time = new ManualTime();
+        var masker = new StreamMasker(SecretMasker.ShapesOnly, time);
+        Assert.That(masker.Process("prompt> abc"u8), Is.EqualTo("prompt> "u8.ToArray()));
+        Assert.That(masker.DueIn, Is.EqualTo(StreamMasker.FlushAfter));
+        time.Now += StreamMasker.FlushAfter;
+        Assert.That(masker.FlushDue(), Is.EqualTo("abc"u8.ToArray()));
+        Assert.That(masker.HasPending, Is.False);
+        // Prose and identifiers that merely start like a shape aren't held: sk-learn has no digit or capital.
+        Assert.That(masker.Process("pip install sk-learn"u8), Is.EqualTo("pip install "u8.ToArray()));
+        time.Now += StreamMasker.FlushAfter;
+        Assert.That(masker.FlushDue(), Is.EqualTo("sk-learn"u8.ToArray()));
+    }
+
+    [Test]
+    public void The_start_of_a_vault_value_is_held_until_the_rest_comes()
+    {
+        var vaultValue = "Fixture&Pass-" + Fake("", 10, seed: 21);
+        var time = new ManualTime();
+        var masker = new StreamMasker(new SecretMasker([vaultValue]), time);
+        var output = new List<byte>();
+        output.AddRange(masker.Process(Encoding.UTF8.GetBytes("login " + vaultValue[..9])));
+        time.Now += StreamMasker.FlushAfter + TimeSpan.FromMilliseconds(5);
+        output.AddRange(masker.FlushDue());
+        output.AddRange(masker.Process(Encoding.UTF8.GetBytes(vaultValue[9..] + " ok\r\n")));
+        output.AddRange(masker.Flush());
+        Assert.That(Encoding.UTF8.GetString(output.ToArray()), Is.EqualTo($"login {Bullets(vaultValue.Length)} ok\r\n"));
+    }
+
+    [Test]
+    public void A_flush_for_the_frame_order_masks_a_held_candidate_rather_than_sending_it_bare()
+    {
+        var token = Fake("ghp_", 36);
+        var masker = new StreamMasker(SecretMasker.ShapesOnly);
+        Assert.That(masker.Process(Encoding.UTF8.GetBytes("x " + token[..12])), Is.EqualTo("x "u8.ToArray()));
+        Assert.That(Encoding.UTF8.GetString(masker.Flush(maskCandidate: true)), Is.EqualTo("ghp_" + Bullets(8)));
+    }
+
     // ── escape sequences ────────────────────────────────────────────────────────
 
     [Test]

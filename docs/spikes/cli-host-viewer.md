@@ -1080,6 +1080,21 @@ longer) as context, so a prefix such as `token=` sent in the previous frame stil
 the next chunk shows the run has ended. Otherwise they go after 40 ms of quiet, so masking delays normal output by at
 most about 50 ms. A non-Output frame flushes them first, so the frame order is kept.
 
+**Wrapped and slow secrets** (M.ORCH-T982). An Ink CLI hard-wraps a long token with a real line break, and slow output
+can reach the 40 ms flush before a token is long enough to match. So:
+
+- matching also runs on the text with a wrap's line break (up to four controls and sixteen spaces of indent) taken out
+  between two token-character runs when the part after it has a digit, or a capital past its first character, so a whole
+  token that ends a line doesn't swallow the next line's first word ("next", "Done");
+- a trailing *candidate* is held across a line break and across the 40 ms flush: a run that has begun a known shape past
+  its prefix (the bare `sk-` needs a digit or a capital, so `sk-learn` isn't held), a value with a digit or a capital
+  after a secret-sounding name, or the first eight or more characters of a Vault value, starting at a word boundary;
+- it goes as soon as what follows shows it can't be one, or after at most 500 ms, when its secret part (past the prefix
+  or the name) is masked rather than sent bare; the rest of a token that keeps coming is masked as it comes;
+- a Title frame doesn't push a held candidate out; any other frame does, masked.
+
+Ordinary text is never held longer than before. A box border drawn around a wrapped token (`│ … │`) still breaks it.
+
 **PEM blocks.** After a `-----BEGIN … PRIVATE KEY-----` line, every printable character is masked through the
 `-----END … PRIVATE KEY-----` line, across any number of chunks. This stops after 16 K characters without an END.
 
