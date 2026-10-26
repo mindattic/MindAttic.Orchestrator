@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -26,6 +27,9 @@ public sealed class RelayTerminal : UserControl, IDisposable
     private Func<bool>? hostAlive;
     private bool interactive = true;
     private bool loaded, disposed;
+    private Func<CancellationToken, Task<Stream>>? link;
+    private string? viewerId;
+    private short fontPoints = FontSizePoints;
 
     public RelayTerminal(TerminalTheme theme)
     {
@@ -49,7 +53,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
         {
             try
             {
-                Terminal.SetTheme(Theme, FontFamilyName, FontSizePoints);
+                Terminal.SetTheme(Theme, FontFamilyName, fontPoints);
                 loaded = true;
                 Connect();
             }
@@ -93,10 +97,48 @@ public sealed class RelayTerminal : UserControl, IDisposable
         Connect();
     }
 
+    /// <summary>
+    /// Attaches over any frame stream <paramref name="connect"/> opens (M.ORCH-T936): a team gateway's WebSocket, or a pipe for a
+    /// viewer that names itself (<paramref name="viewer"/>, the id its Hello carries). <paramref name="name"/> is what logs call
+    /// the link. Otherwise as <see cref="Attach"/>.
+    /// </summary>
+    public void AttachLink(string name, Func<CancellationToken, Task<Stream>> connect, int hostProtocol, Func<bool>? alive = null,
+        bool interactive = true, string? viewer = null)
+    {
+        this.interactive = interactive;
+        pipeName = name;
+        link = connect;
+        viewerId = viewer;
+        hostAlive = alive;
+        protocol = TermProtocol.Supported.Contains((ushort)hostProtocol) ? (ushort)hostProtocol : TermProtocol.Version;
+        Connect();
+    }
+
+    /// <summary>The renderer's font size in points (12 by default). A team wall tile sets it small so a whole session's grid
+    /// fits (M.ORCH-T936); a renderer that exists already is re-themed at once. Never throws.</summary>
+    public short FontPoints
+    {
+        get => fontPoints;
+        set
+        {
+            var points = Math.Clamp(value, (short)3, (short)72);
+            if (points == fontPoints) return;
+            fontPoints = points;
+            if (!loaded || disposed) return;
+            try { Terminal.SetTheme(Theme, FontFamilyName, fontPoints); }
+            catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Setting a relay terminal's font failed; contained"); }
+        }
+    }
+
+    /// <summary>The session's size (cols, rows) as the host last said it (protocol 2 hosts).</summary>
+    public event Action<ushort, ushort>? SessionSizeChanged;
+
     private void Connect()
     {
         if (disposed || !loaded || pipeName is null || Connection is not null) return;
-        var connection = new RelayConnection(pipeName, protocol, hostAlive, interactive);
+        var connection = link is { } open
+            ? new RelayConnection(pipeName, open, protocol, hostAlive, interactive, viewerId)
+            : new RelayConnection(pipeName, protocol, hostAlive, interactive);
         connection.Exited += code => Exited?.Invoke(code);
         connection.Detached += why => { ReconnectingChanged?.Invoke(false); Detached?.Invoke(why); };
         connection.Reconnecting += _ => ReconnectingChanged?.Invoke(true);
@@ -121,6 +163,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
         try
         {
             if (disposed || !ReferenceEquals(connection, Connection) || cols == 0 || rows == 0) return;
+            SessionSizeChanged?.Invoke(cols, rows);
             if (owned && Terminal.AutoResize) return;
             if (Terminal.Rows != rows || Terminal.Columns != cols || owned)
             {

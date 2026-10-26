@@ -18,10 +18,37 @@ namespace MindAttic.Orchestrator.Term.Wpf;
 /// learns from Size frames whether it owns the session's size (<see cref="SizeChanged"/>; one that doesn't letterboxes), and
 /// takes the size by typing or with <see cref="TakeSize"/>.</para>
 /// <para>A link that drops while the host lives is attached again with a backoff (M.ORCH-T966): see <see cref="RunAsync"/>.</para>
+/// <para>The link is any <see cref="Stream"/> of frames (M.ORCH-T936): the host's pipe, or a team gateway's WebSocket
+/// (<c>WebSocketFrameStream</c>, one frame per message), opened afresh by <c>connect</c> on every attach.</para>
 /// </summary>
-public sealed class RelayConnection(string pipeName, ushort protocol = TermProtocol.Version, Func<bool>? hostAlive = null, bool interactive = true)
+public sealed class RelayConnection(string name, Func<CancellationToken, Task<Stream>> connect, ushort protocol = TermProtocol.Version,
+    Func<bool>? hostAlive = null, bool interactive = true, string? viewerId = null)
     : ITerminalConnection
 {
+    /// <summary>A viewer of the TermHost serving <paramref name="pipeName"/> on this machine.</summary>
+    public RelayConnection(string pipeName, ushort protocol = TermProtocol.Version, Func<bool>? hostAlive = null, bool interactive = true)
+        : this(pipeName, ct => ConnectPipeAsync(pipeName, ct), protocol, hostAlive, interactive)
+    {
+    }
+
+    /// <summary>Connects to a TermHost's pipe (current user only), giving up after five seconds.</summary>
+    public static async Task<Stream> ConnectPipeAsync(string pipeName, CancellationToken ct)
+    {
+        var p = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromSeconds(5));
+            await p.ConnectAsync(timeout.Token).ConfigureAwait(false);
+            return p;
+        }
+        catch
+        {
+            p.Dispose();
+            throw;
+        }
+    }
+
     /// <summary>Win32-input-mode: the renderer encodes every key as ESC[Vk;Sc;Uc;Kd;Cs;Rc_, which ConPTY decodes back to key events.</summary>
     public const string Win32InputMode = "\u001b[?9001h";
 
@@ -33,7 +60,7 @@ public sealed class RelayConnection(string pipeName, ushort protocol = TermProto
 
     private readonly object gate = new();
     private readonly Decoder utf8 = Encoding.UTF8.GetDecoder();
-    private NamedPipeClientStream? pipe;
+    private Stream? link;
     private volatile bool closed, exited;
     private uint rows, cols;
     private SynchronizationContext? ui;
@@ -156,7 +183,7 @@ public sealed class RelayConnection(string pipeName, ushort protocol = TermProto
         try { return hostAlive(); }
         catch (Exception ex)
         {
-            OrchestratorLog.For("Terminals").Error(ex, "Probing the host of {Pipe:l} failed; taken as gone", pipeName);
+            OrchestratorLog.For("Terminals").Error(ex, "Probing the host of {Pipe:l} failed; taken as gone", name);
             return false;
         }
     }
@@ -168,20 +195,18 @@ public sealed class RelayConnection(string pipeName, ushort protocol = TermProto
     private async Task<Drop> AttachOnceAsync(int previousAttaches)
     {
         var live = false;
-        NamedPipeClientStream? p = null;
+        Stream? p = null;
         try
         {
-            p = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
-            using (var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
-                await p.ConnectAsync(timeout.Token).ConfigureAwait(false);
+            p = await connect(CancellationToken.None).ConfigureAwait(false);
             uint r, c;
             lock (gate)
             {
                 if (closed) return new("closed", true, false);
-                pipe = p;
+                link = p;
                 r = rows; c = cols;
             }
-            Send(TermFrameKind.Hello, TermProtocol.Hello(protocol, (ushort)(c > 0 ? c : 120), (ushort)(r > 0 ? r : 30), interactive, ViewerId));
+            Send(TermFrameKind.Hello, TermProtocol.Hello(protocol, (ushort)(c > 0 ? c : 120), (ushort)(r > 0 ? r : 30), interactive, viewerId ?? ViewerId));
 
             while (!closed)
             {
@@ -234,16 +259,22 @@ public sealed class RelayConnection(string pipeName, ushort protocol = TermProto
         {
             return new(ex is OperationCanceledException or TimeoutException ? "the host's pipe didn't answer" : "the host closed the pipe", closed, live);
         }
+        catch (Exception ex) when (ex is System.Net.WebSockets.WebSocketException or System.Net.Http.HttpRequestException
+                                       or System.Security.Authentication.AuthenticationException or InvalidOperationException)
+        {
+            // A team gateway's link (M.ORCH-T936): unreachable, refused, or the session gone. Expected, so only said, not logged.
+            return new("the gateway's stream failed: " + ex.Message, false, live);
+        }
         catch (Exception ex)
         {
-            OrchestratorLog.For("Terminals").Error(ex, "The relay to {Pipe:l} failed", pipeName);
+            OrchestratorLog.For("Terminals").Error(ex, "The relay to {Pipe:l} failed", name);
             return new("failed: " + ex.Message, false, live);
         }
         finally
         {
             lock (gate)
             {
-                if (ReferenceEquals(pipe, p)) pipe = null;
+                if (ReferenceEquals(link, p)) link = null;
             }
             try { p?.Dispose(); }
             catch (Exception) { }
@@ -281,7 +312,7 @@ public sealed class RelayConnection(string pipeName, ushort protocol = TermProto
         var frame = TermProtocol.Frame(kind, payload);
         lock (gate)
         {
-            if (closed || pipe is not { IsConnected: true } p) return;
+            if (closed || link is not { } p || p is NamedPipeClientStream { IsConnected: false }) return;
             try { p.Write(frame); }
             catch (Exception ex) when (ex is IOException or ObjectDisposedException or InvalidOperationException) { }
         }
@@ -315,22 +346,22 @@ public sealed class RelayConnection(string pipeName, ushort protocol = TermProto
         if (rows == 0 || columns == 0 || SuppressResize) return;
         lock (gate)
         {
-            if (this.rows == rows && cols == columns && pipe is not null) return;
+            if (this.rows == rows && cols == columns && link is not null) return;
             this.rows = rows;
             cols = columns;
         }
         Send(TermFrameKind.Resize, TermProtocol.Size((ushort)Math.Min(columns, ushort.MaxValue), (ushort)Math.Min(rows, ushort.MaxValue)));
     }
 
-    /// <summary>Drops the pipe; the host keeps running.</summary>
+    /// <summary>Drops the link; the host keeps running.</summary>
     public void Close()
     {
         lock (gate)
         {
             closed = true;
-            try { pipe?.Dispose(); }
+            try { link?.Dispose(); }
             catch (Exception) { }
-            pipe = null;
+            link = null;
         }
     }
 }

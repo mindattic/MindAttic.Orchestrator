@@ -31,6 +31,11 @@ public sealed record GatewaySettings
     /// <summary>How long a token lives, 1 to 60 minutes.</summary>
     public int TokenMinutes { get; init; } = 15;
 
+    /// <summary>Teammates' gateways this machine's team wall watches (M.ORCH-T936), changed with <c>orchestrator gateway remote
+    /// add|remove|list</c>. Not part of <see cref="Arguments"/>: they never restart this machine's gateway. Each token is sealed
+    /// with DPAPI for this Windows user (<see cref="GatewayRemote.SealedToken"/>), so this list still holds no plain secret.</summary>
+    public List<GatewayRemote> Remotes { get; init; } = [];
+
     /// <summary>The gateway's arguments for these settings (never a secret): what it runs with, and how the daemon tells a change.</summary>
     public IReadOnlyList<string> Arguments()
     {
