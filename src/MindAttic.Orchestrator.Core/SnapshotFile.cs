@@ -107,7 +107,7 @@ public sealed class SnapshotFile(string path)
     }
 
     /// <summary>System.Text.Json writes an <see cref="IReadOnlySet{T}"/> but can't make one: read it back as a case-insensitive set.</summary>
-    private sealed class ReadOnlySetConverter : JsonConverter<IReadOnlySet<string>>
+    internal sealed class ReadOnlySetConverter : JsonConverter<IReadOnlySet<string>>
     {
         public override IReadOnlySet<string> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
             new HashSet<string>(JsonSerializer.Deserialize<List<string>>(ref reader, options) ?? [], StringComparer.OrdinalIgnoreCase);

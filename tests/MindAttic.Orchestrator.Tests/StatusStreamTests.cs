@@ -48,7 +48,8 @@ public sealed class StatusStreamTests
     public void A_message_round_trips_its_doubles_exactly()
     {
         var sent = new StatusMessage { Kind = StatusMessage.Usage, AtUtc = Now, Readings = [R(0.1 + 0.2, Now, week: 66.66666666666667)] };
-        var back = StatusStream.Deserialize(StatusStream.Serialize(sent))!;
+        var back = StatusStream.DeserializeMessage(StatusStream.Serialize(sent))!;
+        Assert.That(back.Kind, Is.EqualTo(StatusMessage.Usage));
         Assert.That(back.Readings[0].FiveHourPercent, Is.EqualTo(0.1 + 0.2));
         Assert.That(back.Readings[0].WeekPercent, Is.EqualTo(66.66666666666667));
         Assert.That(back.Readings[0].Email, Is.EqualTo("a@x.com"));

@@ -89,7 +89,11 @@ public sealed record MeterReading
         was.ReadUtc != next.ReadUtc;
 }
 
-/// <summary>One line of the status stream (M.ORCH-T854).</summary>
+/// <summary>
+/// The payload of the stream's own status kinds (M.ORCH-T854): <see cref="State"/>, <see cref="Usage"/>, <see cref="Snapshot"/> and
+/// <see cref="Heartbeat"/>, each version <see cref="Version"/>. <see cref="Kind"/>, <see cref="AtUtc"/> and <see cref="Pid"/> are the
+/// envelope's (M.ORCH-T872), filled in as it's read (<see cref="From"/>).
+/// </summary>
 public sealed record StatusMessage
 {
     /// <summary>The full current state, sent first on every connection so a dashboard is never stale.</summary>
@@ -98,22 +102,37 @@ public sealed record StatusMessage
     /// <summary>One or more logins' readings just landed.</summary>
     public const string Usage = "usage";
 
-    /// <summary>The status lease holder published a new snapshot (<see cref="SnapshotFile"/>): read it now.</summary>
+    /// <summary>The status lease holder published a new snapshot (<see cref="SnapshotFile"/>) whose figures weren't pushed: read it now.</summary>
     public const string Snapshot = "snapshot";
 
     /// <summary>Nothing new; says the writer is alive, so a hung one is noticed.</summary>
     public const string Heartbeat = "heartbeat";
 
-    public string Kind { get; init; } = "";
-    public DateTime AtUtc { get; init; }
+    public const int Version = 1;
+
+    [JsonIgnore] public string Kind { get; init; } = "";
+    [JsonIgnore] public DateTime AtUtc { get; init; }
 
     /// <summary>The writing process.</summary>
-    public int Pid { get; init; }
+    [JsonIgnore] public int Pid { get; init; }
 
     public IReadOnlyList<MeterReading> Readings { get; init; } = [];
 
     /// <summary>When the newest snapshot the writer built was taken; null while it has built none (another process holds the lease).</summary>
     public DateTime? SnapshotTakenUtc { get; init; }
+
+    /// <summary>This message in its envelope.</summary>
+    public StatusEnvelope ToEnvelope() => StatusEnvelope.Of(Kind, this, Version) with
+    {
+        AtUtc = AtUtc == default ? DateTime.UtcNow : AtUtc, Pid = Pid == 0 ? Environment.ProcessId : Pid,
+    };
+
+    /// <summary><paramref name="payload"/>, read from <paramref name="envelope"/>, with the envelope's kind, time and writer.</summary>
+    public static StatusMessage From(StatusEnvelope envelope, StatusMessage payload) =>
+        payload with { Kind = envelope.Kind, AtUtc = envelope.AtUtc, Pid = envelope.Pid };
+
+    /// <summary>Whether <paramref name="kind"/> is one of these.</summary>
+    public static bool IsStatusKind(string kind) => kind is State or Usage or Snapshot or Heartbeat;
 }
 
 /// <summary>
@@ -132,22 +151,44 @@ public static class StatusStream
     /// <summary>A stream silent this long is taken as dead (its writer hung) and dropped for a new connection.</summary>
     public static readonly TimeSpan SilentFor = TimeSpan.FromSeconds(65);
 
-    private static readonly JsonSerializerOptions Json = new()
+    /// <summary>The daemon's inbox (M.ORCH-T872): writers (the hooks, the statusline) connect, write a line or two, and go.</summary>
+    public static string InboxPipeName { get; } = PipeName.Replace("-status-", "-status-in-", StringComparison.Ordinal);
+
+    /// <summary>The longest line read or relayed: a payload past it is dropped, never buffered whole.</summary>
+    public const int MaxLine = 4 * 1024 * 1024;
+
+    /// <summary>How payloads are written: as the published snapshot is (NaN and infinities named, read-only sets read back),
+    /// names read case-insensitively, nulls left out. Doubles round-trip exactly.</summary>
+    public static readonly JsonSerializerOptions PayloadJson = new()
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         PropertyNameCaseInsensitive = true,
+        NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
+        Converters = { new SnapshotFile.ReadOnlySetConverter() },
     };
 
-    public static string Serialize(StatusMessage message) => JsonSerializer.Serialize(message, Json);
+    private static readonly JsonSerializerOptions EnvelopeJson = new() { PropertyNameCaseInsensitive = true };
 
-    public static StatusMessage? Deserialize(string line) => JsonSerializer.Deserialize<StatusMessage>(line, Json);
+    public static string Serialize(StatusEnvelope envelope) => JsonSerializer.Serialize(envelope, EnvelopeJson);
+
+    public static string Serialize(StatusMessage message) => Serialize(message.ToEnvelope());
+
+    /// <summary>One line read back; null when it isn't an envelope. Throws <see cref="JsonException"/> on one that isn't JSON.</summary>
+    public static StatusEnvelope? Deserialize(string line) =>
+        JsonSerializer.Deserialize<StatusEnvelope>(line, EnvelopeJson) is { Kind.Length: > 0 } e ? e : null;
+
+    /// <summary>A status kind's message read back from <paramref name="line"/>; null when it's another kind.</summary>
+    public static StatusMessage? DeserializeMessage(string line) =>
+        Deserialize(line) is { } e && StatusMessage.IsStatusKind(e.Kind) && e.PayloadAs<StatusMessage>() is { } m ? StatusMessage.From(e, m) : null;
 }
 
 /// <summary>
-/// The daemon's end of the status stream (M.ORCH-T854). Keeps every login's latest reading and the newest snapshot's time, sends
-/// them whole to each dashboard as it connects, then each change the moment it's published: a meter probe's reading
-/// (<see cref="PublishReadings"/>), a statusline's (the usage files it watches, checked every second), a new snapshot
-/// (<see cref="PublishSnapshot"/>). Nothing here throws into its caller: a failure is logged and the stream carries on.
+/// The daemon's end of the status stream (M.ORCH-T854). Keeps every login's latest reading, the newest snapshot's time and its
+/// figures, sends them whole to each dashboard as it connects, then each change the moment it's published: a meter probe's
+/// reading (<see cref="PublishReadings"/>), a statusline's (the usage files it watches, looked at the moment a writer says it
+/// wrote one on the inbox, <see cref="UsageWritten"/>, and every <see cref="WatchEvery"/> for a writer that doesn't say), a new
+/// snapshot's figures (<see cref="PublishFigures"/>), and any other kind (<see cref="Publish"/>). Nothing here throws into its
+/// caller: a failure is logged and the stream carries on.
 /// </summary>
 public sealed class StatusStreamServer : IDisposable
 {
@@ -156,8 +197,22 @@ public sealed class StatusStreamServer : IDisposable
     private readonly Dictionary<string, MeterReading> readings = new(StringComparer.Ordinal);
     private readonly List<Channel<string>> clients = [];
     private readonly CancellationTokenSource stop = new();
+    // The latest message of each retained kind (the figures, M.ORCH-T872), sent after the state to each dashboard as it connects.
+    private readonly Dictionary<string, string> retained = new(StringComparer.OrdinalIgnoreCase);
+    private readonly SemaphoreSlim written = new(0);
     private DateTime? snapshotTakenUtc;
     private int instances;
+
+    /// <summary>How often the usage files are looked at with no writer saying it wrote one (M.ORCH-T872: was every second; a
+    /// statusline or hook that says so on the inbox is read at once).</summary>
+    public TimeSpan WatchEvery { get; init; } = TimeSpan.FromSeconds(5);
+
+    /// <summary>A writer said it wrote a usage file (the inbox's <c>usage</c> kind): look at them now. Never throws.</summary>
+    public void UsageWritten()
+    {
+        try { if (written.CurrentCount == 0) written.Release(); }
+        catch (Exception ex) when (ex is ObjectDisposedException or SemaphoreFullException) { }
+    }
 
     /// <summary>The pipe served; <see cref="StatusStream.PipeName"/> by default.</summary>
     public string PipeName { get; init; } = StatusStream.PipeName;
@@ -229,7 +284,8 @@ public sealed class StatusStreamServer : IDisposable
         }
     }
 
-    /// <summary>Says a new snapshot taken at <paramref name="takenUtc"/> was published, for every dashboard to read now.</summary>
+    /// <summary>Says a new snapshot taken at <paramref name="takenUtc"/> was published, for every dashboard to read now. The
+    /// daemon sends its figures instead (<see cref="PublishFigures"/>); this is for a snapshot whose figures aren't to hand.</summary>
     public void PublishSnapshot(DateTime takenUtc)
     {
         try
@@ -247,16 +303,73 @@ public sealed class StatusStreamServer : IDisposable
         }
     }
 
+    /// <summary>
+    /// Pushes <paramref name="snapshot"/>'s figures (M.ORCH-T872): every dashboard lays them over what it shows at once, and reads
+    /// the published file only when the rest of it moved. Kept, so a dashboard connecting later gets them straight after the state.
+    /// An older snapshot than the last one sent is dropped.
+    /// </summary>
+    public void PublishFigures(Snapshot snapshot)
+    {
+        try
+        {
+            lock (gate)
+                if (snapshotTakenUtc is { } was && was >= snapshot.TakenUtc) return;
+            // Off the lock: the digest serializes the snapshot.
+            var line = StatusStream.Serialize(StatusEnvelope.Of(SnapshotFigures.Kind, SnapshotFigures.Of(snapshot), SnapshotFigures.Version));
+            lock (gate)
+            {
+                if (snapshotTakenUtc is { } was && was >= snapshot.TakenUtc) return;
+                snapshotTakenUtc = snapshot.TakenUtc;
+                retained[SnapshotFigures.Kind] = line;
+                BroadcastLocked(line);
+            }
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            log.Warning(ex, "Couldn't publish a snapshot's figures on the status stream");
+        }
+    }
+
+    /// <summary>
+    /// Sends <paramref name="envelope"/> to every dashboard: the way any other kind goes out (M.ORCH-T879's ticket events among
+    /// them). With <paramref name="retain"/>, the latest of its kind is kept and sent to each dashboard as it connects, after the
+    /// state. Never throws.
+    /// </summary>
+    public void Publish(StatusEnvelope envelope, bool retain = false)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(envelope.Kind)) return;
+            var line = StatusStream.Serialize(envelope);
+            if (line.Length > StatusStream.MaxLine) { log.Warning("A {Kind:l} status message of {Length} characters was too long to send", envelope.Kind, line.Length); return; }
+            lock (gate)
+            {
+                if (retain) retained[envelope.Kind] = line;
+                BroadcastLocked(line);
+            }
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            log.Warning(ex, "Couldn't publish a {Kind:l} message on the status stream", envelope.Kind);
+        }
+    }
+
+    /// <summary>The latest message of <paramref name="kind"/> kept for connecting dashboards; null when none is.</summary>
+    public string? Retained(string kind)
+    {
+        lock (gate) return retained.GetValueOrDefault(kind);
+    }
+
     /// <summary>How many dashboards are connected now.</summary>
     public int Clients
     {
         get { lock (gate) return clients.Count; }
     }
 
-    private void BroadcastLocked(StatusMessage message)
+    private void BroadcastLocked(StatusMessage message) => BroadcastLocked(StatusStream.Serialize(message));
+
+    private void BroadcastLocked(string line)
     {
-        if (clients.Count == 0) return;
-        var line = StatusStream.Serialize(message);
         // Bounded and dropping the oldest: a dashboard that stops reading can't make the daemon hold its messages forever.
         foreach (var c in clients) c.Writer.TryWrite(line);
     }
@@ -299,11 +412,13 @@ public sealed class StatusStreamServer : IDisposable
     /// <summary>Feeds one dashboard: the full state first, then every message from then on, until it goes away.</summary>
     private async Task FeedAsync(NamedPipeServerStream pipe, CancellationToken ct)
     {
-        var channel = Channel.CreateBounded<string>(new BoundedChannelOptions(512) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true });
+        // A figures message runs to tens of KB: 128 lines is half an hour of ticks behind before the oldest go.
+        var channel = Channel.CreateBounded<string>(new BoundedChannelOptions(128) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true });
         lock (gate)
         {
             // Under the lock, so nothing published between the state and the subscription is lost or sent out of order.
             channel.Writer.TryWrite(StatusStream.Serialize(CurrentLocked()));
+            foreach (var line in retained.Values) channel.Writer.TryWrite(line);
             clients.Add(channel);
         }
         try
@@ -341,8 +456,8 @@ public sealed class StatusStreamServer : IDisposable
         catch (Exception ex) when (ex is not OutOfMemoryException) { log.Warning(ex, "The status stream's heartbeat stopped"); }
     }
 
-    /// <summary>Every second, each watched usage file whose write time moved is read and its reading published: a statusline
-    /// (or a per-CLI login's probe) writing one is on every dashboard within the second.</summary>
+    /// <summary>Each watched usage file whose write time moved is read and its reading published: at once when a writer says
+    /// on the inbox that it wrote one (<see cref="UsageWritten"/>), and every <see cref="WatchEvery"/> for one that doesn't.</summary>
     private async Task WatchAsync(CancellationToken ct)
     {
         if (Files is null) return;
@@ -378,7 +493,7 @@ public sealed class StatusStreamServer : IDisposable
                 if (ex.Message != lastError) log.Warning(ex, "Watching the usage files for the status stream failed; retrying");
                 lastError = ex.Message;
             }
-            try { await Task.Delay(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false); } catch (OperationCanceledException) { return; }
+            try { await written.WaitAsync(WatchEvery, ct).ConfigureAwait(false); } catch (OperationCanceledException) { return; }
         }
     }
 
@@ -391,17 +506,25 @@ public sealed class StatusStreamServer : IDisposable
 }
 
 /// <summary>
-/// A dashboard's end of the status stream (M.ORCH-T854): connects, hands every message to <c>onMessage</c>, and when the daemon
-/// goes away (restarted, upgraded, hung) connects again on its own, getting the full state again first. Every failure is
-/// contained and logged; nothing it does can throw into the dashboard.
+/// A subscriber's end of the status stream (M.ORCH-T854): connects, hands every envelope to <c>onEnvelope</c> (a
+/// <see cref="StatusBus"/>'s <see cref="StatusBus.Dispatch"/>, marshalled to the caller's UI thread), and when the daemon goes
+/// away (restarted, upgraded, hung) connects again on its own, getting the full state again first. Every failure is contained
+/// and logged; nothing it does can throw into the subscriber. Any number of subscribers may run at once, each its own app.
 /// </summary>
 public static class StatusStreamClient
 {
     private static readonly Serilog.ILogger log = OrchestratorLog.For("StatusStream");
 
+    /// <summary>The stream's own status kinds only (M.ORCH-T854's shape): every other kind is skipped.</summary>
+    public static Task RunAsync(Action<StatusMessage> onMessage, Action<bool> connected, CancellationToken ct, string? pipeName = null) =>
+        RunAsync((StatusEnvelope e) =>
+        {
+            if (StatusMessage.IsStatusKind(e.Kind) && e.PayloadAs<StatusMessage>() is { } m) onMessage(StatusMessage.From(e, m));
+        }, connected, ct, pipeName);
+
     /// <summary>Runs until <paramref name="ct"/> ends. <paramref name="connected"/> is told each time the stream comes up or goes
     /// down; both callbacks run on the stream's thread, so the caller marshals to its UI thread.</summary>
-    public static async Task RunAsync(Action<StatusMessage> onMessage, Action<bool> connected, CancellationToken ct, string? pipeName = null)
+    public static async Task RunAsync(Action<StatusEnvelope> onEnvelope, Action<bool> connected, CancellationToken ct, string? pipeName = null)
     {
         var wait = TimeSpan.FromSeconds(1);
         string? lastError = null;
@@ -432,14 +555,14 @@ public static class StatusStreamClient
                     }
                     if (line is null) break; // the daemon closed it: stopped or restarting
                     if (line.Length == 0) continue;
-                    StatusMessage? message;
-                    try { message = StatusStream.Deserialize(line); }
+                    StatusEnvelope? envelope;
+                    try { envelope = StatusStream.Deserialize(line); }
                     catch (JsonException ex)
                     {
                         log.Warning("An unreadable status stream message was skipped: {Message:l}", ex.Message);
                         continue;
                     }
-                    if (message is not null) Notify(() => onMessage(message));
+                    if (envelope is not null) Notify(() => onEnvelope(envelope));
                 }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }

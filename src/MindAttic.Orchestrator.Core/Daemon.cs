@@ -81,8 +81,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     Say(LogEventLevel.Information, $"workspace is now {options.WorkspaceRoot}");
                 }
                 var snapshot = aggregator.Refresh();
-                // Built here (this daemon holds the status lease): every dashboard reads it now, not at its next poll.
-                if (!aggregator.LastWasShared) status?.PublishSnapshot(snapshot.TakenUtc);
+                // Built here (this daemon holds the status lease): its figures go to every dashboard now (M.ORCH-T872), which reads
+                // the published file only when the rest of it moved.
+                if (!aggregator.LastWasShared) status?.PublishFigures(snapshot);
                 tick.Lap("refresh");
                 ReportStatusFile(statusFile);
                 // Only from settings that could be read: defaults would run allocate, keep-going and the subagent cap on
