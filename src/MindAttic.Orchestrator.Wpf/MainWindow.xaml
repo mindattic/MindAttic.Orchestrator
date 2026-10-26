@@ -261,126 +261,58 @@
         </StackPanel>
         </DockPanel>
 
-        <!-- A person's page (M.ORCH-T763, reordered by M.ORCH-T826), read top to bottom: their stats (the 5-hour window, the
-             week, their cutoffs and when Claude's meter was last read) in this pinned header, then below the toolbar their
-             current work, Terminals, the 5-hour chart, and Tickets, all in the one scrolling body (AgentsBody). The header
-             owns the window's left/right gutter; nothing inside it adds its own, so the tiles share both edges (M.ORCH-T192).
-             The tiles are equal cells that together span the row at any width. -->
-        <StackPanel x:Name="Header" Grid.Row="1" Margin="24,18,24,0" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
-
-        <mc:MaTileGrid x:Name="StatTiles" MinItemWidth="200" Spacing="10" RowSpacing="10" Balanced="True" UniformRows="True"
-                           AutomationProperties.Name="Summary">
-            <!-- Budget: the current 5-hour block. Click to change this login's cutoffs (Org limit): the top-right cog is the
-                 only way into Settings (M.ORCH-T804). -->
-            <Button Style="{StaticResource MaSmallStat}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" Padding="14,0,16,0" Height="74" Command="{Binding OrgLimitCommand}"
-                    ToolTip="{Binding BudgetTooltip}"
-                    AutomationProperties.Name="{Binding BudgetHeadline, StringFormat='5-hour window {0} used: change the cutoffs'}">
-                <StackPanel>
-                    <TextBlock Text="5 Hour Limit" Style="{StaticResource MaSectionLabel}" Margin="0,0,0,4" />
-                    <DockPanel>
-                        <TextBlock DockPanel.Dock="Left" Text="{Binding BudgetHeadline}" Style="{StaticResource MaStatValue}"
-                                   Foreground="{Binding BudgetBrush}" />
-                        <TextBlock Text="{Binding BudgetCaption}" Style="{StaticResource MaTileSubtitle}" VerticalAlignment="Center"
-                                   Margin="8,4,0,0" TextWrapping="Wrap" />
-                    </DockPanel>
-                    <ProgressBar x:Name="BudgetBar" Style="{StaticResource MaProgressBar}" Margin="0,2,0,2" Maximum="1"
-                                 Value="{Binding BudgetFill, Mode=OneWay}" Foreground="{Binding BudgetBrush}" Focusable="False"
-                                 AutomationProperties.Name="5-hour window used" />
-                    <!-- While pacing holds work back, that's the line that matters; the full detail stays in the tooltip. -->
-                    <TextBlock Text="{Binding BudgetDetail}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis"
-                               Visibility="{Binding PaceText, Converter={x:Static vm:Converters.EmptyToVisible}}" />
-                    <TextBlock Text="{Binding PaceText}" Style="{StaticResource MaTileSubtitle}" Foreground="{Binding PaceBrush}" TextTrimming="CharacterEllipsis"
-                               Visibility="{Binding PaceText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                </StackPanel>
-            </Button>
-            <!-- Weekly: the other half of /status's picture. The tab's login's own week (M.ORCH-T628): what's left, its reset's
-                 day, date and time, and its weekly stop line (M.ORCH-T609). -->
-            <Button Style="{StaticResource MaSmallStat}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" Padding="14,0,16,0" Height="74" Command="{Binding OrgLimitCommand}"
-                    ToolTip="How much of this login's weekly limit is left (/status reports the used share), when it resets, and where its CLIs stop (the weekly reserve). Opens Org limit to change its cutoffs; the weekly reset is in Settings (the top-right cog)."
-                    AutomationProperties.Name="{Binding WeeklyHeadline, StringFormat='Week {0}: change the cutoffs'}">
-                <StackPanel>
-                    <TextBlock Text="Weekly Limit" Style="{StaticResource MaSectionLabel}" Margin="0,0,0,4" />
-                    <TextBlock Text="{Binding WeeklyHeadline}" Style="{StaticResource MaStatValue}" />
-                    <TextBlock Text="{Binding WeeklyCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
-            </Button>
-            <!-- Cutoffs (M.ORCH-T707): where this login's 5-hour window and week are cut off; opens Org limit to change them. -->
-            <Button Style="{StaticResource MaSmallStat}" Command="{Binding OrgLimitCommand}"
-                    ToolTip="Where this login's access is cut off: its 5-hour cutoff, then its weekly cutoff (orchestrator org limit). Opens Org limit to change them."
-                    AutomationProperties.Name="{Binding CutoffsHeadline, StringFormat='Cutoffs {0}: change them'}">
-                <StackPanel>
-                    <TextBlock Text="Cut Offs" Style="{StaticResource MaSectionLabel}" Margin="0,0,0,4" />
-                    <TextBlock Text="{Binding CutoffsHeadline}" Style="{StaticResource MaStatValue}" />
-                    <TextBlock Text="{Binding CutoffsCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
-            </Button>
-            <!-- Last updated: when Claude's meter for this login was read, its plan, and STALE once it's old (M.ORCH-T684). -->
-            <Button Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}"
-                    ToolTip="When Claude's own meter for this login was last read, and its plan. Refreshes the dashboard (F5)."
-                    AutomationProperties.Name="{Binding LastUpdatedHeadline, StringFormat='Last updated {0}: refresh'}">
-                <StackPanel>
-                    <TextBlock Text="Last Updated" Style="{StaticResource MaSectionLabel}" Margin="0,0,0,4" />
-                    <TextBlock Text="{Binding LastUpdatedHeadline}" Style="{StaticResource MaStatValue}" />
-                    <TextBlock Text="{Binding LastUpdatedCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
-            </Button>
-        </mc:MaTileGrid>
-        <!-- No login-action buttons on a person's page any more: Rename, Org limit and Make default are the person's tab's
-             right-click menu (M.ORCH-T797, MainWindow.xaml.cs's OnLoginTabContextMenu); the login-wide Move CLIs is gone, each
-             CLI moving by its own agent card's Move to; and there's no Sign in (M.ORCH-T796): a login that gets disconnected
-             opens its own sign-in by itself. What the last of those did still shows here. -->
-        <TextBlock x:Name="PersonMessage" Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,12,0,0"
-                   AutomationProperties.LiveSetting="Polite"
-                   Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+        <!-- A person's CLIs (M.ORCH-T810), fixed under their person tab (M.ORCH-T861): the person tabs above, then that person's
+             terminal tabs right beneath them, then the chosen terminal, none of which scroll; everything under them (the stats, the
+             toolbar, current work, the 5-hour chart and Tickets) scrolls in the body (AgentsBody). One tab per CLI of theirs running
+             inside the dashboard (sent by the Launcher when it runs inside the Orchestrator, M.LNCH-T77), each a live ConPTY
+             terminal with the Windows Terminal renderer, underlined in its login's colour and led by its badge (an MaTag in that
+             colour). The terminals are native windows (HwndHosts), which WPF never clips to a scroll view, so the frame sits outside
+             the body rather than in it: it can never scroll up over the tabs, nor be virtualized out of the body's list. They all
+             live in the one host grid below (MainWindow.xaml.cs adds and removes them, since a template would start a new CLI each
+             time it was shown) and only the shown person's chosen one is visible; the window hides them under a dialog or the loader. -->
+        <StackPanel x:Name="TerminalsPanel" Grid.Row="1" Margin="24,10,24,0" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
+            <TextBlock x:Name="TerminalsEmptyHint" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,0,0,6"
+                       Text="No terminals open on this login. When the Launcher runs inside the Orchestrator, each CLI it opens arrives here as a tab of its own: a live terminal you can type in."
+                       Visibility="{Binding Terminals.HasPanes, Converter={x:Static vm:Converters.FalseToVisible}}" />
+            <mc:MaTabControl x:Name="TerminalTabs" ShowContent="False" ItemsSource="{Binding Terminals.Panes}" SelectedItem="{Binding Terminals.SelectedPane}"
+                             Margin="0,0,0,6" AutomationProperties.Name="Terminals" AutomationProperties.HelpText="{Binding Terminals.Summary}" ContextMenuOpening="OnTerminalTabContextMenu"
+                             Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
+                <mc:MaTabControl.ItemContainerStyle>
+                    <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
+                        <Setter Property="Accent" Value="{Binding TabBrush}" />
+                        <Setter Property="ToolTip" Value="{Binding Tooltip}" />
+                        <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+                    </Style>
+                </mc:MaTabControl.ItemContainerStyle>
+                <mc:MaTabControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:TerminalPaneViewModel}">
+                        <StackPanel x:Name="TerminalTab" Orientation="Horizontal">
+                            <mc:MaBadge x:Name="TerminalBadge" Style="{StaticResource MaTag}" Content="{Binding Badge}" Background="{Binding TabBrush}"
+                                        Foreground="{Binding BadgeForeground}" Margin="0,0,6,0" VerticalAlignment="Center"
+                                        Visibility="{Binding Badge, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding StateText}" Style="{StaticResource MaMutedText}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                            <Button x:Name="TerminalCloseButton" Style="{StaticResource MaToolButton}" Content="&#xE711;" Margin="8,-4,0,-4"
+                                    Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
+                                    Command="{Binding DataContext.Terminals.CloseCommand, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}"
+                                    CommandParameter="{Binding}"
+                                    AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
+                                    ToolTip="Close this terminal, ending its CLI" />
+                        </StackPanel>
+                    </DataTemplate>
+                </mc:MaTabControl.ItemTemplate>
+            </mc:MaTabControl>
         </StackPanel>
-
-        <!-- Toolbar: the person's current work, by name and count, on the left; the clock, when the dashboard last refreshed,
-             Refresh (F5) and Open Launcher, then the zoom, on the right (M.ORCH-T667, M.ORCH-T493). There are no view
-             pills any more (M.ORCH-T763): the Orchestrator shows only what's running, and Tickets Desktop the Repos, the Queue
-             and the audit. -->
-        <Grid x:Name="Toolbar" Grid.Row="2" Margin="24,8,24,10" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <StackPanel x:Name="WorkHeading" VerticalAlignment="Center">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Current work" Style="{StaticResource MaHeading}" AutomationProperties.HeadingLevel="Level2" />
-                    <TextBlock Text="{Binding AgentsSummary}" Style="{StaticResource MaMutedText}" Margin="12,0,0,0" VerticalAlignment="Bottom" />
-                </StackPanel>
-                <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="0,4,0,0" Foreground="{DynamicResource MaFocus}"
-                           Visibility="{Binding StatusMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-            </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="0,6,0,0">
-                <StackPanel x:Name="HeaderControls" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Clock.Text}" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" VerticalAlignment="Center" Margin="0,0,12,0"
-                               AutomationProperties.Name="Current time" ToolTip="Current time" />
-                    <TextBlock Text="{Binding RefreshInfo}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                    <!-- Refresh (M.ORCH-T805): icon only, the library's MaToolButton with the icon font's Refresh glyph (E72C), its
-                         word in its accessible name and its tooltip (the library theme's implicit ToolTip, never Windows' own). -->
-                    <Button Style="{StaticResource MaToolButton}" Command="{Binding RefreshCommand}" Content="&#xE72C;"
-                            AutomationProperties.Name="Refresh" ToolTip="Refresh (F5)" />
-                    <!-- No Settings button here any more (M.ORCH-T804): the top-right cog is the only way in. -->
-                    <!-- Open Launcher (M.ORCH-T615): the Launcher's menu as this tab's login (MindAttic.Launcher with its account), so
-                         every repo CLI started from it runs on that login and shows in this tab; on the global login's tab, unscoped.
-                         Icon only (M.ORCH-T805): a rocket, drawn as a Path (Material Design's 'rocket_launch', 24x24 viewBox) like
-                         the emergency key above, since no rocket glyph is confirmed in the icon font and a wrong codepoint is a blank
-                         tofu box; it takes the button's own foreground, so the library's disabled dimming still shows. -->
-                    <Button x:Name="OpenLauncherButton" Style="{StaticResource MaToolButton}" Command="{Binding OpenLauncherCommand}" Margin="8,0,0,0"
-                            ToolTipService.ShowOnDisabled="False" ContextMenuOpening="OnOpenLauncherContextMenu"
-                            AutomationProperties.Name="{Binding TabTitle, StringFormat='Open the Launcher as {0}'}">
-                        <Button.ToolTip>
-                            <TextBlock Text="{Binding TabTitle, StringFormat='Open the Launcher as {0}'}" />
-                        </Button.ToolTip>
-                        <Viewbox Width="16" Height="16">
-                            <Path Data="M9.19 6.35c-2.04 2.29-3.44 5.58-3.57 5.89L2 10.69l4.05-4.05c.47-.47 1.15-.68 1.81-.55l1.33.26zM11.17 17s3.74-1.55 5.89-3.7c5.4-5.4 4.5-9.62 4.21-10.57-.95-.3-5.17-1.19-10.57 4.21C8.55 9.09 7 12.83 7 12.83L11.17 17zm6.48-2.19c-2.29 2.04-5.58 3.44-5.89 3.57L13.31 22l4.05-4.05c.47-.47.68-1.15.55-1.81l-.26-1.33zM9 18c0 .83-.34 1.58-.88 2.12C6.94 21.3 2 22 2 22s.7-4.94 1.88-6.12C4.42 15.34 5.17 15 6 15c1.66 0 3 1.34 3 3zm4-9c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"
-                                  Stretch="Uniform" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-                        </Viewbox>
-                    </Button>
-                </StackPanel>
-                <TextBlock Text="{Binding Zoom.Text}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="12,0,0,0"
-                           ToolTip="Ctrl+0 resets the zoom" />
-            </StackPanel>
+        <!-- The chosen terminal, in its own fixed row right under the terminal tabs (M.ORCH-T861), outside the scrolling body:
+             shown on a signed-in person's page that has a terminal, like the tabs above. -->
+        <Grid x:Name="TerminalFrameRow" Grid.Row="2" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
+            <Border x:Name="TerminalFrame" Style="{StaticResource MaInsetCard}" Height="480" Margin="24,0,24,6"
+                    Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
+                <!-- WPF claims arrow keys (and Tab) for its own directional/tab focus navigation even when a hosted
+                     native window (the terminal, an HwndHost) has Win32 keyboard focus, so a CLI's arrow-key menu never
+                     sees them (M.ORCH-T833): switched off here so they pass straight through to the terminal. -->
+                <Grid x:Name="TerminalPanesHost" KeyboardNavigation.DirectionalNavigation="None" KeyboardNavigation.TabNavigation="None" />
+            </Border>
         </Grid>
 
         <!-- Toasts: what just happened (a session finished its turn, the pace changed). Their own row, so they push the page
@@ -439,6 +371,128 @@
         <ScrollViewer x:Name="AgentsBody" Grid.Row="4" Style="{StaticResource MaBodyScroll}"
                       Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
             <StackPanel>
+                <!-- A person's page (M.ORCH-T763, reordered by M.ORCH-T826), read top to bottom under their fixed person tab,
+                     terminal tabs and terminal (M.ORCH-T861): their stats (the 5-hour window, the week, their cutoffs and when
+                     Claude's meter was last read), then the toolbar, their current work, the 5-hour chart and Tickets, all in this
+                     one scrolling body. The body's MaBodyScroll owns the window's left/right gutter; nothing inside it adds its own,
+                     so the tiles share both edges (M.ORCH-T192). The tiles are equal cells that together span the row at any width. -->
+                <StackPanel x:Name="Header" Margin="0,6,0,0" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
+
+                <mc:MaTileGrid x:Name="StatTiles" MinItemWidth="200" Spacing="10" RowSpacing="10" Balanced="True" UniformRows="True"
+                                   AutomationProperties.Name="Summary">
+                    <!-- Budget: the current 5-hour block. Click to change this login's cutoffs (Org limit): the top-right cog is the
+                         only way into Settings (M.ORCH-T804). -->
+                    <Button Style="{StaticResource MaSmallStat}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" Padding="14,0,16,0" Height="74" Command="{Binding OrgLimitCommand}"
+                            ToolTip="{Binding BudgetTooltip}"
+                            AutomationProperties.Name="{Binding BudgetHeadline, StringFormat='5-hour window {0} used: change the cutoffs'}">
+                        <StackPanel>
+                            <TextBlock Text="5 Hour Limit" Style="{StaticResource MaSectionLabel}" Margin="0,0,0,4" />
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Left" Text="{Binding BudgetHeadline}" Style="{StaticResource MaStatValue}"
+                                           Foreground="{Binding BudgetBrush}" />
+                                <TextBlock Text="{Binding BudgetCaption}" Style="{StaticResource MaTileSubtitle}" VerticalAlignment="Center"
+                                           Margin="8,4,0,0" TextWrapping="Wrap" />
+                            </DockPanel>
+                            <ProgressBar x:Name="BudgetBar" Style="{StaticResource MaProgressBar}" Margin="0,2,0,2" Maximum="1"
+                                         Value="{Binding BudgetFill, Mode=OneWay}" Foreground="{Binding BudgetBrush}" Focusable="False"
+                                         AutomationProperties.Name="5-hour window used" />
+                            <!-- While pacing holds work back, that's the line that matters; the full detail stays in the tooltip. -->
+                            <TextBlock Text="{Binding BudgetDetail}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis"
+                                       Visibility="{Binding PaceText, Converter={x:Static vm:Converters.EmptyToVisible}}" />
+                            <TextBlock Text="{Binding PaceText}" Style="{StaticResource MaTileSubtitle}" Foreground="{Binding PaceBrush}" TextTrimming="CharacterEllipsis"
+                                       Visibility="{Binding PaceText, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                        </StackPanel>
+                    </Button>
+                    <!-- Weekly: the other half of /status's picture. The tab's login's own week (M.ORCH-T628): what's left, its reset's
+                         day, date and time, and its weekly stop line (M.ORCH-T609). -->
+                    <Button Style="{StaticResource MaSmallStat}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" Padding="14,0,16,0" Height="74" Command="{Binding OrgLimitCommand}"
+                            ToolTip="How much of this login's weekly limit is left (/status reports the used share), when it resets, and where its CLIs stop (the weekly reserve). Opens Org limit to change its cutoffs; the weekly reset is in Settings (the top-right cog)."
+                            AutomationProperties.Name="{Binding WeeklyHeadline, StringFormat='Week {0}: change the cutoffs'}">
+                        <StackPanel>
+                            <TextBlock Text="Weekly Limit" Style="{StaticResource MaSectionLabel}" Margin="0,0,0,4" />
+                            <TextBlock Text="{Binding WeeklyHeadline}" Style="{StaticResource MaStatValue}" />
+                            <TextBlock Text="{Binding WeeklyCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Button>
+                    <!-- Cutoffs (M.ORCH-T707): where this login's 5-hour window and week are cut off; opens Org limit to change them. -->
+                    <Button Style="{StaticResource MaSmallStat}" Command="{Binding OrgLimitCommand}"
+                            ToolTip="Where this login's access is cut off: its 5-hour cutoff, then its weekly cutoff (orchestrator org limit). Opens Org limit to change them."
+                            AutomationProperties.Name="{Binding CutoffsHeadline, StringFormat='Cutoffs {0}: change them'}">
+                        <StackPanel>
+                            <TextBlock Text="Cut Offs" Style="{StaticResource MaSectionLabel}" Margin="0,0,0,4" />
+                            <TextBlock Text="{Binding CutoffsHeadline}" Style="{StaticResource MaStatValue}" />
+                            <TextBlock Text="{Binding CutoffsCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Button>
+                    <!-- Last updated: when Claude's meter for this login was read, its plan, and STALE once it's old (M.ORCH-T684). -->
+                    <Button Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}"
+                            ToolTip="When Claude's own meter for this login was last read, and its plan. Refreshes the dashboard (F5)."
+                            AutomationProperties.Name="{Binding LastUpdatedHeadline, StringFormat='Last updated {0}: refresh'}">
+                        <StackPanel>
+                            <TextBlock Text="Last Updated" Style="{StaticResource MaSectionLabel}" Margin="0,0,0,4" />
+                            <TextBlock Text="{Binding LastUpdatedHeadline}" Style="{StaticResource MaStatValue}" />
+                            <TextBlock Text="{Binding LastUpdatedCaption}" Style="{StaticResource MaTileSubtitle}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Button>
+                </mc:MaTileGrid>
+                <!-- No login-action buttons on a person's page any more: Rename, Org limit and Make default are the person's tab's
+                     right-click menu (M.ORCH-T797, MainWindow.xaml.cs's OnLoginTabContextMenu); the login-wide Move CLIs is gone, each
+                     CLI moving by its own agent card's Move to; and there's no Sign in (M.ORCH-T796): a login that gets disconnected
+                     opens its own sign-in by itself. What the last of those did still shows here. -->
+                <TextBlock x:Name="PersonMessage" Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,12,0,0"
+                           AutomationProperties.LiveSetting="Polite"
+                           Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                </StackPanel>
+
+                <!-- Toolbar: the person's current work, by name and count, on the left; the clock, when the dashboard last refreshed,
+                     Refresh (F5) and Open Launcher, then the zoom, on the right (M.ORCH-T667, M.ORCH-T493). There are no view
+                     pills any more (M.ORCH-T763): the Orchestrator shows only what's running, and Tickets Desktop the Repos, the Queue
+                     and the audit. -->
+                <Grid x:Name="Toolbar" Margin="0,8,0,10" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel x:Name="WorkHeading" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Current work" Style="{StaticResource MaHeading}" AutomationProperties.HeadingLevel="Level2" />
+                            <TextBlock Text="{Binding AgentsSummary}" Style="{StaticResource MaMutedText}" Margin="12,0,0,0" VerticalAlignment="Bottom" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="0,4,0,0" Foreground="{DynamicResource MaFocus}"
+                                   Visibility="{Binding StatusMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="0,6,0,0">
+                        <StackPanel x:Name="HeaderControls" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Clock.Text}" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" VerticalAlignment="Center" Margin="0,0,12,0"
+                                       AutomationProperties.Name="Current time" ToolTip="Current time" />
+                            <TextBlock Text="{Binding RefreshInfo}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                            <!-- Refresh (M.ORCH-T805): icon only, the library's MaToolButton with the icon font's Refresh glyph (E72C), its
+                                 word in its accessible name and its tooltip (the library theme's implicit ToolTip, never Windows' own). -->
+                            <Button Style="{StaticResource MaToolButton}" Command="{Binding RefreshCommand}" Content="&#xE72C;"
+                                    AutomationProperties.Name="Refresh" ToolTip="Refresh (F5)" />
+                            <!-- No Settings button here any more (M.ORCH-T804): the top-right cog is the only way in. -->
+                            <!-- Open Launcher (M.ORCH-T615): the Launcher's menu as this tab's login (MindAttic.Launcher with its account), so
+                                 every repo CLI started from it runs on that login and shows in this tab; on the global login's tab, unscoped.
+                                 Icon only (M.ORCH-T805): a rocket, drawn as a Path (Material Design's 'rocket_launch', 24x24 viewBox) like
+                                 the emergency key above, since no rocket glyph is confirmed in the icon font and a wrong codepoint is a blank
+                                 tofu box; it takes the button's own foreground, so the library's disabled dimming still shows. -->
+                            <Button x:Name="OpenLauncherButton" Style="{StaticResource MaToolButton}" Command="{Binding OpenLauncherCommand}" Margin="8,0,0,0"
+                                    ToolTipService.ShowOnDisabled="False" ContextMenuOpening="OnOpenLauncherContextMenu"
+                                    AutomationProperties.Name="{Binding TabTitle, StringFormat='Open the Launcher as {0}'}">
+                                <Button.ToolTip>
+                                    <TextBlock Text="{Binding TabTitle, StringFormat='Open the Launcher as {0}'}" />
+                                </Button.ToolTip>
+                                <Viewbox Width="16" Height="16">
+                                    <Path Data="M9.19 6.35c-2.04 2.29-3.44 5.58-3.57 5.89L2 10.69l4.05-4.05c.47-.47 1.15-.68 1.81-.55l1.33.26zM11.17 17s3.74-1.55 5.89-3.7c5.4-5.4 4.5-9.62 4.21-10.57-.95-.3-5.17-1.19-10.57 4.21C8.55 9.09 7 12.83 7 12.83L11.17 17zm6.48-2.19c-2.29 2.04-5.58 3.44-5.89 3.57L13.31 22l4.05-4.05c.47-.47.68-1.15.55-1.81l-.26-1.33zM9 18c0 .83-.34 1.58-.88 2.12C6.94 21.3 2 22 2 22s.7-4.94 1.88-6.12C4.42 15.34 5.17 15 6 15c1.66 0 3 1.34 3 3zm4-9c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"
+                                          Stretch="Uniform" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                </Viewbox>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock Text="{Binding Zoom.Text}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="12,0,0,0"
+                                   ToolTip="Ctrl+0 resets the zoom" />
+                    </StackPanel>
+                </Grid>
+
                 <StackPanel HorizontalAlignment="Left" Margin="0,12,0,12"
                             Visibility="{Binding HasAgents, Converter={x:Static vm:Converters.FalseToVisible}}">
                     <TextBlock Text="Nothing running on this login right now." FontSize="16" FontWeight="SemiBold" />
@@ -542,58 +596,6 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-
-                <!-- Terminals (M.ORCH-T810), between the person's Current work and their Tickets: one tab per CLI of theirs running
-                     inside the dashboard (sent by the Launcher when it runs inside the Orchestrator, M.LNCH-T77), each a live
-                     ConPTY terminal with the Windows Terminal renderer, so Claude Code draws as it does in Windows Terminal. Each tab
-                     is underlined in its login's colour and led by its badge (an MaTag in that colour). The terminals are native
-                     windows: they all live in the one host grid below (MainWindow.xaml.cs adds and removes them, since a template
-                     would start a new CLI each time it was shown) and only the shown person's chosen one is visible; the window
-                     clips them to this scroll view (TerminalClip.cs) and hides them under a dialog or the loader. -->
-                <StackPanel x:Name="TerminalsPanel" Margin="0,24,0,0">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Terminals" Style="{StaticResource MaHeading}" AutomationProperties.HeadingLevel="Level2" />
-                        <TextBlock Text="{Binding Terminals.Summary}" Style="{StaticResource MaMutedText}" Margin="12,0,0,0" VerticalAlignment="Bottom" />
-                    </StackPanel>
-                    <TextBlock x:Name="TerminalsEmptyHint" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="0,4,0,0"
-                               Text="No terminals open on this login. When the Launcher runs inside the Orchestrator, each CLI it opens arrives here as a tab of its own: a live terminal you can type in."
-                               Visibility="{Binding Terminals.HasPanes, Converter={x:Static vm:Converters.FalseToVisible}}" />
-                    <mc:MaTabControl x:Name="TerminalTabs" ShowContent="False" ItemsSource="{Binding Terminals.Panes}" SelectedItem="{Binding Terminals.SelectedPane}"
-                                     Margin="0,8,0,6" AutomationProperties.Name="Terminals" ContextMenuOpening="OnTerminalTabContextMenu"
-                                     Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
-                        <mc:MaTabControl.ItemContainerStyle>
-                            <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
-                                <Setter Property="Accent" Value="{Binding TabBrush}" />
-                                <Setter Property="ToolTip" Value="{Binding Tooltip}" />
-                                <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
-                            </Style>
-                        </mc:MaTabControl.ItemContainerStyle>
-                        <mc:MaTabControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:TerminalPaneViewModel}">
-                                <StackPanel x:Name="TerminalTab" Orientation="Horizontal">
-                                    <mc:MaBadge x:Name="TerminalBadge" Style="{StaticResource MaTag}" Content="{Binding Badge}" Background="{Binding TabBrush}"
-                                                Foreground="{Binding BadgeForeground}" Margin="0,0,6,0" VerticalAlignment="Center"
-                                                Visibility="{Binding Badge, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
-                                    <TextBlock Text="{Binding StateText}" Style="{StaticResource MaMutedText}" Margin="6,0,0,0" VerticalAlignment="Center" />
-                                    <Button x:Name="TerminalCloseButton" Style="{StaticResource MaToolButton}" Content="&#xE711;" Margin="8,-4,0,-4"
-                                            Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
-                                            Command="{Binding DataContext.Terminals.CloseCommand, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}"
-                                            CommandParameter="{Binding}"
-                                            AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
-                                            ToolTip="Close this terminal, ending its CLI" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </mc:MaTabControl.ItemTemplate>
-                    </mc:MaTabControl>
-                    <Border x:Name="TerminalFrame" Style="{StaticResource MaInsetCard}" Height="480"
-                            Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
-                        <!-- WPF claims arrow keys (and Tab) for its own directional/tab focus navigation even when a hosted
-                             native window (the terminal, an HwndHost) has Win32 keyboard focus, so a CLI's arrow-key menu never
-                             sees them (M.ORCH-T833): switched off here so they pass straight through to the terminal. -->
-                        <Grid x:Name="TerminalPanesHost" KeyboardNavigation.DirectionalNavigation="None" KeyboardNavigation.TabNavigation="None" />
-                    </Border>
-                </StackPanel>
 
                 <!-- This 5-hour window's utilization (M.ORCH-T191), moved below Terminals, under current work (M.ORCH-T826):
                      its own full-width row, tall enough that the pace line straight to the target at the reset, the window's

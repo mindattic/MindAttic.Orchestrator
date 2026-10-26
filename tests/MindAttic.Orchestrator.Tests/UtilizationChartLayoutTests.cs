@@ -143,7 +143,7 @@ public sealed class UtilizationChartLayoutTests
 
         Assert.That(card.Ancestors(p + "WrapPanel"), Is.Empty, "the chart isn't one more tile beside the stats");
         Assert.That(card.Ancestors().Any(e => (string?)e.Attribute(x + "Name") == "Header"), Is.False, "no longer pinned above the toolbar");
-        Assert.That(card.Ancestors().Any(e => (string?)e.Attribute(x + "Name") == "AgentsBody"), Is.True, "in the scrolling body with current work and Terminals");
+        Assert.That(card.Ancestors().Any(e => (string?)e.Attribute(x + "Name") == "AgentsBody"), Is.True, "in the scrolling body with current work, under the fixed Terminals");
         var names = doc.Descendants().Select(e => (string?)e.Attribute(x + "Name")).ToList();
         Assert.That(names.IndexOf("UtilizationCard"), Is.GreaterThan(names.IndexOf("TerminalsPanel")), "under Terminals");
         Assert.That(names.IndexOf("UtilizationCard"), Is.LessThan(names.IndexOf("UserTickets")), "above Tickets");

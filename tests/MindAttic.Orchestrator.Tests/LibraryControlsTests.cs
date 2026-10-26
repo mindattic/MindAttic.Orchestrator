@@ -278,7 +278,9 @@ public sealed class LibraryControlsTests
         Assert.That(tabControls.Select(t => (string?)t.Attribute(X + "Name")), Is.EquivalentTo(new[] { "LoginTabStrip", "SettingsTabs", "TerminalTabs" }), "no page tabs");
         Assert.That(Named(window, "SettingsTabs").Ancestors().Contains(Named(window, "SettingsModal")), Is.True);
         Assert.That((string?)Named(window, "TerminalTabs").Attribute("ShowContent"), Is.EqualTo("False"));
-        Assert.That(Named(window, "TerminalTabs").Ancestors().Contains(Named(window, "AgentsBody")), Is.True);
+        // Fixed under the person tabs, not in the scrolling body (M.ORCH-T861).
+        Assert.That(Named(window, "TerminalTabs").Ancestors().Contains(Named(window, "AgentsBody")), Is.False);
+        Assert.That(Named(window, "TerminalTabs").Ancestors().Contains(Named(window, "TerminalsPanel")), Is.True);
         // The dashboard is always on screen on a signed-in login's tab: no page decides whether its header and toolbar show.
         foreach (var name in new[] { "Header", "Toolbar" })
             Assert.That((string?)Named(window, name).Attribute("Visibility"), Is.EqualTo("{Binding IsTabSignedIn, Converter={StaticResource Visible}}"), name);

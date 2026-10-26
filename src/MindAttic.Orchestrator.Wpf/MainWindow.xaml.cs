@@ -76,8 +76,10 @@ public partial class MainWindow : Window
             (_, e) => e.CanExecute = !TerminalKeyboard.HoldsFocus(TerminalPanesHost)));
 
         // Each terminal lives in the Terminals panel's host grid from its opening to its closing (M.ORCH-T810): a template would
-        // build a new terminal (and a new CLI) every time its tab was shown. Native windows, they're clipped to the page's scroll
-        // view, and hidden while a dialog or the loader covers the window, which they'd otherwise draw over.
+        // build a new terminal (and a new CLI) every time its tab was shown. Native windows, they sit in a fixed row under the
+        // person's terminal tabs, outside the scrolling body (M.ORCH-T861), so they can't scroll over the tabs (TerminalClip only
+        // clips them should they ever sit in a scroll view again), and are hidden while a dialog or the loader covers the window,
+        // which they'd otherwise draw over.
         model.AllTerminals.Panes.CollectionChanged += (_, e) =>
         {
             foreach (var gone in e.OldItems?.OfType<TerminalPaneViewModel>() ?? []) TerminalPanesHost.Children.Remove(gone.Control);
