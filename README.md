@@ -70,7 +70,7 @@ A Windows daemon, dashboard and CLI that keeps Claude agents working the workspa
 
 You need Windows and Claude Code. The released exe is self-contained, so no .NET install is needed to run it.
 
-1. Double-click `MindAttic.Orchestrator.exe`.
+1. Double-click `MindAttic.Orchestrator.Desktop.exe`.
 2. If the workspace (default `D:\Projects\MindAttic`) is missing, pick **build one** or **point at one that's already here**.
 3. The dashboard opens, scans every repo and learns your limits from the last month of transcripts.
 4. In any Claude CLI inside a repo, type `/allocate` to have it work that repo's tickets.
@@ -78,7 +78,7 @@ You need Windows and Claude Code. The released exe is self-contained, so no .NET
 From source (needs the .NET 10 SDK):
 
 ```powershell
-.\deploy.ps1          # build artifacts\MindAttic.Orchestrator.exe (+ the CLI in C:\Apps\MindAttic.Orchestrator\Cli), then install it as a double-click would
+.\deploy.ps1          # build artifacts\MindAttic.Orchestrator.Desktop.exe (+ the CLI in C:\Apps\MindAttic.Orchestrator\Cli), then install it as a double-click would
 .\deploy.ps1 -Launch  # same, then open the dashboard
 dotnet run --project src/MindAttic.Orchestrator.Wpf   # a dev build: never installs itself
 ```
@@ -187,14 +187,14 @@ To check on it: `orchestrator status` (sessions), `orchestrator budget` (percent
 
 ## Install
 
-There's no setup step. `MindAttic.Orchestrator.exe` is one self-contained file: drop it anywhere and double-click it. The first run:
+There's no setup step. `MindAttic.Orchestrator.Desktop.exe` is one self-contained file: drop it anywhere and double-click it. The first run:
 
 1. copies itself to `C:\Apps\MindAttic.Orchestrator` (per-user `%LOCALAPPDATA%\Programs` if `C:\Apps` isn't writable) and hands over to that copy;
 2. if the workspace (default `D:\Projects\MindAttic`) is missing or empty, asks once: **build one** (pick an empty folder; it clones the workspace root repo, `mindattic/codex-standard`, then every repo listed in its `docs\workspace-repos.json`, four at a time, with a progress window) or **point at one that's already here**. Repos that fail (offline, no access) are listed with the `git clone` line that retries each;
 3. starts the daemon (the same exe with `--daemon`: headless, no window) if it isn't running. Starting it at logon and keeping it running is [MindAttic.Scheduler](../MindAttic.Scheduler)'s `Orchestrator.Daemon` job; the exe registers no scheduled task of its own (M.ORCH-T475);
 4. makes Start menu and desktop shortcuts, then opens the dashboard, which scans every repo and learns your limits from the last month of transcripts.
 
-Every later start checks the same things and repairs only what's missing or points elsewhere, so a moved exe, a deleted shortcut or a dead daemon fixes itself. Double-clicking a newer copy upgrades in place (the running daemon and dashboard are stopped and restarted); an older one starts the installed copy instead of replacing it. A dev or test build (under `bin\` or `obj\`, inside a git checkout or worktree, a `*.worktrees` folder, or the temp folder) runs as itself and leaves the install, daemon and shortcuts alone; only `--install` installs it (`--install --force` to replace a newer installed exe). `MindAttic.Orchestrator.exe --uninstall` removes the shortcuts and hooks (and the old `\MindAttic\Orchestrator\Orchestrator daemon` task, if an older install left one); Scheduler's job is removed in Scheduler.
+Every later start checks the same things and repairs only what's missing or points elsewhere, so a moved exe, a deleted shortcut or a dead daemon fixes itself. Double-clicking a newer copy upgrades in place (the running daemon and dashboard are stopped and restarted); an older one starts the installed copy instead of replacing it. A dev or test build (under `bin\` or `obj\`, inside a git checkout or worktree, a `*.worktrees` folder, or the temp folder) runs as itself and leaves the install, daemon and shortcuts alone; only `--install` installs it (`--install --force` to replace a newer installed exe). `MindAttic.Orchestrator.Desktop.exe --uninstall` removes the shortcuts and hooks (and the old `\MindAttic\Orchestrator\Orchestrator daemon` task, if an older install left one); Scheduler's job is removed in Scheduler.
 
 The daemon is what makes budgets and pacing always on: it keeps `~/.claude/rl-status.json` and the pace (including the hold on running agents) current, installs and repairs the pace and context hooks, notices stale assignments, reaps orphaned processes and sweeps landed worktrees. Only one runs (a named mutex), and only one process holds the dispatch lease (`dispatch.lock`). The same lease decides who writes `rl-status.json` and builds the status snapshot: the holder publishes each one to `status-snapshot.json`, and every other dashboard window, and one-off CLI commands like `status` and `queue`, show that instead of reading the transcripts themselves (they build their own only when nothing fresh was published in the last minute, and never overwrite the holder's `rl-status.json`). A minimized dashboard refreshes every 60s instead of every 5s (every 15s while it's the one holding the lease) and catches up the moment it's shown.
 
@@ -313,7 +313,7 @@ There's no tray icon: closing the window quits the dashboard (the daemon keeps r
 | Path | What's there |
 | --- | --- |
 | `src/MindAttic.Orchestrator.Core` | budget and pacing, the pace ledger, scheduling and allocate, session discovery and control, activity readers, audit, installer and the hook scripts |
-| `src/MindAttic.Orchestrator.Wpf` | the dashboard and daemon entry point (`MindAttic.Orchestrator.exe`) |
+| `src/MindAttic.Orchestrator.Wpf` | the dashboard and daemon entry point (`MindAttic.Orchestrator.Desktop.exe`) |
 | `src/MindAttic.Orchestrator.Cli` | the `orchestrator` CLI (Spectre.Console) |
 | `tests/MindAttic.Orchestrator.Tests` | NUnit tests for all of the above, including the Python hooks run for real |
 | `deploy.ps1` | build the single-file exe and the CLI, then install |
