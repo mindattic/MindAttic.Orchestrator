@@ -71,17 +71,24 @@ public static class TermSessions
     public static bool Delete(string id, string? directory = null) => TryDelete(PathOf(id, directory));
 
     /// <summary>Reads one registry file; null when it is missing, unreadable or not a record.</summary>
-    public static TermSessionRecord? Read(string path)
+    public static TermSessionRecord? Read(string path) => Read(path, out _);
+
+    /// <summary><see cref="Read(string)"/>; <paramref name="junk"/> is true only when the file was read and holds no record. A
+    /// file that couldn't be read (held open by antivirus or an indexer) is not junk (M.ORCH-T995).</summary>
+    private static TermSessionRecord? Read(string path, out bool junk)
     {
+        junk = false;
         for (var attempt = 0; attempt < 5; attempt++)
         {
             try
             {
                 if (!File.Exists(path)) return null;
                 var record = JsonSerializer.Deserialize<TermSessionRecord>(File.ReadAllText(path), Json);
-                return record is { Id.Length: > 0, HostPid: > 0 } ? record : null;
+                if (record is { Id.Length: > 0, HostPid: > 0 }) return record;
+                junk = true;
+                return null;
             }
-            catch (JsonException) { return null; }
+            catch (JsonException) { junk = true; return null; }
             // The rename of a write in progress: try again in a moment.
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Thread.Sleep(20); }
         }
@@ -95,7 +102,7 @@ public static class TermSessions
     /// The live sessions in <paramref name="directory"/> (<see cref="DefaultDirectory"/> when null), oldest first. A record whose
     /// host process is gone, or whose pid now belongs to a process that started at another time (a reused pid), is stale: it
     /// is left out and its file deleted. A file that isn't a record, and a temporary file a crashed write left, are deleted once
-    /// a minute old. A session whose CLI has exited is still live while its host lingers (<see cref="TermSessionRecord.Exited"/>).
+    /// a minute old; a file that can't be read just now is skipped, never deleted. A session whose CLI has exited is still live while its host lingers (<see cref="TermSessionRecord.Exited"/>).
     /// </summary>
     public static IReadOnlyList<TermSessionRecord> Enumerate(string? directory) => Enumerate(directory, HostStartOf);
 
@@ -115,9 +122,12 @@ public static class TermSessions
 
         foreach (var file in files)
         {
-            if (Read(file) is not { } record)
+            if (Read(file, out var junk) is not { } record)
             {
-                if (Age(file) > LeftoverAge) TryDelete(file);
+                // M.ORCH-T995: never on a read failure: a live host's file held open for a moment would vanish from discovery.
+                // Only a file read whole that is no record, and only once it is old. A record is deleted only when its host
+                // is gone or its pid reused (below).
+                if (junk && Age(file) > LeftoverAge) TryDelete(file);
                 continue;
             }
             if (IsAlive(record, hostStart)) live.Add(record);
