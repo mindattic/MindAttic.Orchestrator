@@ -21,9 +21,9 @@ namespace MindAttic.Orchestrator.TermViewer;
 /// (<see cref="DashboardPresence"/>); the same check runs every two seconds for when the bus is down, and when this window's
 /// connection is replaced (a protocol 1 host serves one viewer, so the dashboard reattaching takes it from here). A protocol 2
 /// host (M.ORCH-T930) keeps this window attached beside the dashboard's tab, so there the fold rests on the presence signal
-/// and the two-second check, never on being replaced. This window doesn't reconnect a dropped link (no liveness probe given
-/// to RelayTerminal.Attach), so it can't take a protocol 1 session back from the dashboard; only a --stay pop-out does
-/// (M.ORCH-T976).</para>
+/// and the two-second check, never on being replaced. This window reconnects a dropped link only while the dashboard is absent
+/// (M.ORCH-T1040; a --stay pop-out whenever its host lives, M.ORCH-T976), so it can't take a protocol 1 session back from the
+/// dashboard, yet a passing pipe drop while the dashboard is down doesn't leave it detached.</para>
 /// </summary>
 internal sealed class ViewerWindow : Window
 {
@@ -189,13 +189,24 @@ internal sealed class ViewerWindow : Window
         r.InputDropped += ShowNotSent;
         host.Child = r;
         relay = r;
-        // Only a --stay pop-out reconnects a dropped link (M.ORCH-T976). A fallback window gets no liveness probe: a replaced or
-        // dropped link ends it, and OnDetached folds it while the dashboard is present, so it never takes a protocol 1 session
-        // back from the dashboard's tab and ping-pongs with it.
-        Func<bool>? alive = stay ? () => TermSessions.Get(session.Id) is { } live && live.HostPid == session.HostPid : null;
+        // A --stay pop-out reconnects a dropped link while its host lives (M.ORCH-T976). A fallback window does too, but only
+        // while the dashboard is absent (M.ORCH-T1040): once its presence is seen the probe says no, the link ends and OnDetached
+        // folds the window, so it never takes a protocol 1 session back from the dashboard's tab and ping-pongs with it; while
+        // the dashboard is down, a passing pipe drop no longer leaves it detached, holding the slot and dropping keys.
+        Func<bool> alive = stay ? HostLives : () => !dashboardSeen && HostLives();
         r.Attach(session.Pipe, session.Protocol, alive, interactive: !watchOnly);
         r.Terminal.Focus();
     }
+
+    /// <summary>Set once the dashboard is seen present (its app-present on the bus, or two looks in a row): a fallback window
+    /// stops reconnecting then, and folds (M.ORCH-T1040).</summary>
+    private volatile bool dashboardSeen;
+
+    /// <summary>Whether this session's host still runs, by the registry; a file that couldn't be read just now asks the host's
+    /// process instead (M.ORCH-T1035). Called off the UI thread.</summary>
+    private bool HostLives() => TermSessions.TryGet(session.Id, out var live)
+        ? live is not null && live.HostPid == session.HostPid
+        : TermSessions.IsHostRunning(session);
 
     private void Detach()
     {
@@ -262,7 +273,7 @@ internal sealed class ViewerWindow : Window
         {
             if (!stay && DashboardPresence.IsUp())
             {
-                if (++upLooks >= 2) { log.Information("The dashboard is back; {Id:l} folds into its tab", session.Id); Fold(); return; }
+                if (++upLooks >= 2) { dashboardSeen = true; log.Information("The dashboard is back; {Id:l} folds into its tab", session.Id); Fold(); return; }
             }
             else upLooks = 0;
             if (TermSessions.Get(session.Id) is { } now && now.Title is { Length: > 0 } title && title != liveTitle)
@@ -282,6 +293,7 @@ internal sealed class ViewerWindow : Window
         {
             if (envelope.Kind != AppBus.Presence || envelope.V > AppBus.Version) return;
             if (envelope.PayloadAs<AppPresence>() is not { App: AppBus.OrchestratorDesktop }) return;
+            if (!stay && DashboardPresence.IsUp()) dashboardSeen = true;
             Dispatcher.InvokeAsync(() =>
             {
                 if (closing || !DashboardPresence.IsUp()) return;
