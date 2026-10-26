@@ -119,7 +119,11 @@ public partial class MainWindow : Window
         };
         Loaded += async (_, _) =>
         {
+            // The last run's tabs, when it didn't close cleanly (M.ORCH-T862): offered before the first refresh, so a restored
+            // Launcher menu pane counts as its login's and the refresh doesn't open a second; reselected once the tabs are up.
+            var restored = restoreOnLoad && SessionRestore.Offer(this, model);
             await model.RefreshAsync();
+            if (restored) model.ReselectRestored();
             timer.Start();
         };
         Closed += (_, _) => timer.Stop();
@@ -135,6 +139,7 @@ public partial class MainWindow : Window
     public Task<bool> ShowAsync(string target) => model.ShowAsync(target);
 
     private CancellationTokenSource? terminalsPipe;
+    private bool restoreOnLoad;
 
     /// <summary>
     /// Makes this window the one that holds the Terminals panels' terminals (M.ORCH-T810): the hosting entry point. A CLI sent
@@ -144,6 +149,11 @@ public partial class MainWindow : Window
     /// </summary>
     internal void HostTerminals()
     {
+        // Its tabs are written to the session-restore file as they change, and offered back after a crash (M.ORCH-T862).
+        restoreOnLoad = true;
+        SessionRestore.Track(model);
+        // Kept as they stand when the window starts closing: the tabs' teardown after that isn't what was open.
+        Closing += (_, _) => SessionRestore.Freeze();
         terminalsPipe = new CancellationTokenSource();
         _ = Sessions.PaneBroker.ServeAsync(request => Dispatcher.InvokeAsync(() => model.OpenTerminal(request)).Task, terminalsPipe.Token)
             .ContinueWith(t => OrchestratorLog.For("Terminals").Error(t.Exception, "The terminals pipe server ended"), TaskContinuationOptions.OnlyOnFaulted);

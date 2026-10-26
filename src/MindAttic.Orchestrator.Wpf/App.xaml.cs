@@ -54,8 +54,16 @@ public partial class App : Application
         {
             log.Error(args.Exception, "Dashboard hit an unhandled exception on the UI thread; contained, not crashing the window or its terminals");
             args.Handled = true;
+            // Contained, but the session-restore file is brought up to date anyway, in case it wasn't the last (M.ORCH-T862).
+            SessionRestore.Crash("ui-exception");
         };
-        AppDomain.CurrentDomain.UnhandledException += (_, args) => log.Fatal(args.ExceptionObject as Exception, "Dashboard crashed");
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            log.Fatal(args.ExceptionObject as Exception, "Dashboard crashed");
+            SessionRestore.Crash("crash");
+        };
+        // A last write if the process ends without a clean exit having written one (skipped after it).
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => SessionRestore.Crash("process-exit");
         TaskScheduler.UnobservedTaskException += (_, args) => log.Error(args.Exception, "Unobserved task exception");
 
         // Dark unless light was chosen (M.ORCH-T678): the saved choice, before any window (the first-run prompts and the
@@ -152,6 +160,12 @@ public partial class App : Application
 
         if (!dev) RepairSetup(installer, self, log);
 
+        // The last run's session-restore file read and rotated aside before this run writes its own (M.ORCH-T862).
+        SessionRestore.Begin();
+        dashboard = true;
+        // Windows logging off or restarting ends every terminal too: its tabs are offered back at the next start.
+        SessionEnding += (_, _) => SessionRestore.Exit(clean: false, "windows-session-ending");
+
         // Closing the window quits: there's no tray to hide in (M.ORCH-T501).
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         var main = new MainWindow();
@@ -173,11 +187,21 @@ public partial class App : Application
         if (showTarget is not null) _ = ((MainWindow)MainWindow).ShowAsync(showTarget);
         // An upgrade asks this dashboard to exit here (it may be minimized, or behind other windows).
         exitSignal = new EventWaitHandle(false, EventResetMode.ManualReset, Installer.DashboardExitEvent(Environment.ProcessId));
-        ThreadPool.RegisterWaitForSingleObject(exitSignal, (_, _) => { try { Dispatcher.BeginInvoke(() => Shutdown()); } catch (Exception ex) { log.Error(ex, "Exit signal failed"); } }, null, Timeout.Infinite, executeOnlyOnce: true);
+        // An upgrade restarting it isn't a clean exit: its tabs are offered back when the new build starts (M.ORCH-T862).
+        ThreadPool.RegisterWaitForSingleObject(exitSignal, (_, _) =>
+        {
+            try { Dispatcher.BeginInvoke(() => { SessionRestore.Exit(clean: false, "upgrade"); Shutdown(); }); }
+            catch (Exception ex) { log.Error(ex, "Exit signal failed"); }
+        }, null, Timeout.Infinite, executeOnlyOnce: true);
     }
+
+    /// <summary>This process is the dashboard (not the daemon or an install run): it writes the session-restore file.</summary>
+    private bool dashboard;
 
     protected override void OnExit(ExitEventArgs e)
     {
+        // Closed on its own: written once more, marked clean, so the next start offers nothing (M.ORCH-T862).
+        if (dashboard) SessionRestore.Exit(clean: true, "exit");
         OrchestratorLog.Stop();
         daemonMutex?.Dispose();
         exitSignal?.Dispose();
