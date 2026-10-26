@@ -500,7 +500,8 @@
                      else what's left at the chart's end. The caption says it in words. -->
                 <StackPanel x:Name="ApiBurnSection" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}">
                     <Border x:Name="ApiBurnCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch"
-                            AutomationProperties.Name="{Binding ApiBurnText, StringFormat='API credit burndown: {0}'}">
+                            AutomationProperties.Name="{Binding ApiBurnText, StringFormat='API credit burndown: {0}'}"
+                            Visibility="{Binding ApiBurnText, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
                         <StackPanel>
                             <TextBlock Text="API credit burndown" Style="{StaticResource MaSectionLabel}" />
                             <mc:MaLineChart x:Name="ApiBurnChart" Data="{Binding Spend, Converter={x:Static local:ApiBurnChartData.Converter}}"
