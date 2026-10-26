@@ -154,7 +154,7 @@ public sealed partial class GatewayTests
     public async Task A_watch_grant_forces_a_read_only_stream_and_the_audit_records_the_attach_and_detach()
     {
         var audit = new MemoryAudit();
-        await using var gateway = await TestGateway.StartAsync(new FixedAcl(Acl()), audit);
+        await using var gateway = await TestGateway.StartAsync(new FixedAcl(Acl()), audit, session: SessionOn("s1", Sam));
         // Erin, a sales member, may watch s1 (on Sam's sales login) by default; her interact token doesn't change that.
         using var socket = await gateway.Client(GatewayScopes.Interact, Erin).ConnectAsync(new Uri("ws://localhost/sessions/s1/stream"), Timeout());
         await Send(socket, TermProtocol.Frame(TermFrameKind.Hello, TermProtocol.Hello(TermProtocol.Version, 100, 25)));

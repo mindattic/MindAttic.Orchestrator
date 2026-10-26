@@ -56,6 +56,10 @@ internal static class TermBridge
         Action<string>? refresh = null, Func<string>? revokeReason = null)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        // The downstream alone is also cancelled on a revoke (M.ORCH-T1060): letting go of the pipe doesn't end a read already
+        // pending on every stream (BroadcastAsync keeps one across its ticks), so the bridge never noticed and the stream stayed
+        // open. The upstream's receive isn't cancelled: that would abort the socket rather than close it with the reason.
+        using var downCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
         var counts = new Counts();
         var revoked = 0;
         string RevokedWhy()
@@ -65,11 +69,13 @@ internal static class TermBridge
         }
         using var onRevoke = revoke.Register(() =>
         {
+            // Marked first, so the downstream ending on the cancel below is taken for the revoke.
             Interlocked.Exchange(ref revoked, 1);
             TryDispose(pipe);
+            try { downCts.Cancel(); } catch (Exception) { }
         });
         var up = Task.Run(() => UpstreamAsync(socket, pipe, access, counts, log, input, broadcast, refresh, cts.Token));
-        var down = Task.Run(() => DownstreamAsync(socket, pipe, counts, log, broadcast, cts.Token));
+        var down = Task.Run(() => DownstreamAsync(socket, pipe, counts, log, broadcast, downCts.Token));
         string endedBy;
         try
         {
