@@ -110,9 +110,17 @@ public partial class App : Application
                     return;
                 }
             }
+            // Whether the install will stop a running dashboard (M.ORCH-T1030): it is started again afterwards, or with no -Launch it
+            // stayed down, every hosted CLI fell back to its own TermViewer and its restore file waited for a restart that never came.
+            // deploy.ps1 -Launch starts it itself and says so with --no-dashboard-restart.
+            var restartDashboard = false;
             try
             {
-                if (!installer.IsInstalled(self)) installer.Install(self, force: e.Args.Contains("--force", StringComparer.OrdinalIgnoreCase));
+                if (!installer.IsInstalled(self))
+                {
+                    restartDashboard = DashboardPresence.IsUp() && !e.Args.Contains("--no-dashboard-restart", StringComparer.OrdinalIgnoreCase);
+                    installer.Install(self, force: e.Args.Contains("--force", StringComparer.OrdinalIgnoreCase));
+                }
                 log.Information("Installed {Exe:l}", installer.InstalledExe);
                 if (EnsureWorkspace(log)) RepairSetup(installer, installer.InstalledExe, log);
                 // The install stopped the daemon; with no workspace picked (the prompt cancelled) it still runs again from the
@@ -120,6 +128,7 @@ public partial class App : Application
                 else if (!Installer.DaemonRunning())
                     try { installer.EnsureDaemon(installer.InstalledExe); }
                     catch (InvalidOperationException ex) { log.Error(ex, "Couldn't restart the daemon after the install"); }
+                if (restartDashboard && !DashboardPresence.IsUp()) RestartDashboard(installer.InstalledExe, log);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -255,6 +264,20 @@ public partial class App : Application
             }
             catch (Exception ex) { OrchestratorLog.For("Daemon").Error(ex, "Pruning old builds' files failed"); }
         });
+    }
+
+    /// <summary>Starts the dashboard from <paramref name="exe"/> again after an install stopped it (M.ORCH-T1030). Never throws.</summary>
+    private static void RestartDashboard(string exe, Serilog.ILogger log)
+    {
+        try
+        {
+            using var p = Process.Start(new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe)! });
+            log.Information("Restarted the dashboard the install stopped");
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
+        {
+            log.Error(ex, "Couldn't restart the dashboard after the install");
+        }
     }
 
     /// <summary>Starts <paramref name="exe"/> with <paramref name="args"/> and returns this process's exit code. A daemon launch waits

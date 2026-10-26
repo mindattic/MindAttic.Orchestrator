@@ -402,6 +402,8 @@ if ($step -eq 'newer') {
     $installArgs = @('--install')
     if ($Force) { $installArgs += '--force' }
     if ($IgnoreBusyClis) { $installArgs += '--ignore-busy' }
+    # Without -Launch the installer starts a dashboard it stopped again (M.ORCH-T1030); with it, this script starts it below.
+    if ($Launch) { $installArgs += '--no-dashboard-restart' }
     # The installer checks again, just before it stops anything, and exits 3 when a CLI started working since (M.ORCH-T873).
     while ($true) {
         $exitCode = Invoke-Installer $artifact $installArgs
