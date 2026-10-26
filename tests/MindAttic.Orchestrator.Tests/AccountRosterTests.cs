@@ -95,7 +95,8 @@ public sealed class AccountRosterTests
         Assert.That(Observe(Reading(12, 75, Now), Now), Is.False, "a first reading is the meter's own, just taken");
 
         Assert.That(Observe(Reading(14, 75.6, Now.AddMinutes(5)), Now.AddMinutes(5)), Is.False, "under a point: no new reading");
-        Assert.That((Row("a").WeekPercent, Row("a").FiveHourPercent, Row("a").ReadUtc), Is.EqualTo(((double?)75, (double?)12, (DateTime?)Now)));
+        Assert.That((Row("a").WeekPercent, Row("a").FiveHourPercent, Row("a").ReadUtc), Is.EqualTo(((double?)75, (double?)14, (DateTime?)Now.AddMinutes(5))),
+            "the 5-hour percent follows the meter; the week keeps its step's figure (M.ORCH-T871)");
 
         Assert.That(Observe(Reading(17, 76, Now.AddMinutes(10)), Now.AddMinutes(10)), Is.True, "a point: read the meter again");
         Assert.That((Row("a").WeekPercent, Row("a").FiveHourPercent, Row("a").ReadUtc),
@@ -106,6 +107,27 @@ public sealed class AccountRosterTests
         // A new 5-hour window is taken at once, the week unmoved.
         Observe(Reading(1, 76, Now.AddHours(3), fiveReset: Now.AddHours(7)), Now.AddHours(3));
         Assert.That((Row("a").FiveHourPercent, Row("a").FiveHourResetUtc), Is.EqualTo(((double?)1, (DateTime?)Now.AddHours(7))));
+    }
+
+    [Test]
+    public void The_five_hour_percent_follows_the_meter_at_full_precision_between_weekly_steps()
+    {
+        SignIn("a", "a@mindattic.com", Now);
+        Observe(Reading(12, 75, Now), Now);
+
+        Assert.That(Observe(Reading(12.25, 75.2, Now.AddMinutes(1)), Now.AddMinutes(1)), Is.False, "no meter re-read for a 5-hour rise");
+        Assert.That((Row("a").FiveHourPercent, Row("a").WeekPercent), Is.EqualTo(((double?)12.25, (double?)75)), "unrounded; the week keeps its step");
+
+        var stamp = File.GetLastWriteTimeUtc(db.DumpPath);
+        Observe(Reading(12.25, 75.3, Now.AddMinutes(2)), Now.AddMinutes(2));
+        Observe(Reading(11, 75.3, Now.AddMinutes(3)), Now.AddMinutes(3));
+        Assert.That((Row("a").FiveHourPercent, Row("a").ReadUtc), Is.EqualTo(((double?)12.25, (DateTime?)Now.AddMinutes(1))),
+            "the same figure, or a stale lower one in the same window, writes nothing");
+        Assert.That(File.GetLastWriteTimeUtc(db.DumpPath), Is.EqualTo(stamp));
+
+        // The week still steps from its last refresh, not from each 5-hour write.
+        Assert.That(Observe(Reading(13, 76, Now.AddMinutes(4)), Now.AddMinutes(4)), Is.True);
+        Assert.That((Row("a").FiveHourPercent, Row("a").WeekPercent), Is.EqualTo(((double?)13, (double?)76)));
     }
 
     [Test]

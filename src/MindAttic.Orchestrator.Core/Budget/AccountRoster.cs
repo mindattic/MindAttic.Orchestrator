@@ -97,8 +97,8 @@ public sealed record AccountRow
 /// (M.ORCH-T490), in the <c>accounts</c> table of the repo's <c>data/orchestrator.db</c> (apart from the per-account token
 /// ledger), with <c>data/orchestrator.sql</c> rewritten beside it on each change. Each sign-in adds or refreshes the account's row from Claude's meter; while it
 /// stays signed in, the row is refreshed on every <see cref="Step"/>-point move in its weekly percent (taking the 5-hour
-/// percent and both resets with it) or a new window, and the caller reads the meter again then. Accounts not signed in keep
-/// their last reading.
+/// percent and both resets with it) or a new window, and the caller reads the meter again then; between those, a rise in the
+/// 5-hour percent refreshes that alone (M.ORCH-T871). Accounts not signed in keep their last reading.
 /// </summary>
 public static class AccountRoster
 {
@@ -125,7 +125,7 @@ public static class AccountRoster
     /// Brings the roster up to date for <paramref name="signIn"/>: a row for every account it knows (its spans and confirmed
     /// windows, so accounts signed in before the roster existed show up with their resets), the signed-in account's
     /// <paramref name="profile"/>, and <paramref name="reading"/> (Claude's meter, already known to be the signed-in account's)
-    /// when its row has no reading since the account was signed in to, the week has moved a point, or a window is new. Written only when something changed, in one transaction.
+    /// when its row has no reading since the account was signed in to, the week has moved a point, or a window is new; between those, its 5-hour figure alone when that rose (M.ORCH-T871). Written only when something changed, in one transaction.
     /// Returns whether the week rose a point since this sign-in's last reading, so the caller reads the meter again.
     /// </summary>
     public static bool Observe(OrchestratorDb db, SignInState signIn, AccountProfile? profile, ReportedUsage? reading, DateTime nowUtc)
@@ -162,9 +162,9 @@ public static class AccountRoster
                 row = row with { Email = profile.Email ?? row.Email, Org = profile.Org ?? row.Org, Plan = profile.Plan ?? row.Plan };
             if (row.SignedInUtc != signIn.Since) row = row with { SignedInUtc = signIn.Since };
             var moved = Moved(row, reading, nowUtc);
-            if (reading is not null && (reading.Week is not null || reading.FiveHour is not null) &&
-                (row.ReadUtc is not { } read || reading.AtUtc >= read) &&
-                (row.ReadUtc is null || row.ReadUtc < signIn.Since || moved || NewWindow(row.FiveHourResetUtc, reading.FiveHour) || NewWindow(row.WeekResetUtc, reading.Week)))
+            var fresh = reading is not null && (reading.Week is not null || reading.FiveHour is not null) &&
+                (row.ReadUtc is not { } read || reading.AtUtc >= read);
+            if (reading is not null && fresh && (row.ReadUtc is null || row.ReadUtc < signIn.Since || moved || NewWindow(row.FiveHourResetUtc, reading.FiveHour) || NewWindow(row.WeekResetUtc, reading.Week)))
             {
                 var updated = row with
                 {
@@ -180,6 +180,13 @@ public static class AccountRoster
                     reading.Week is { } w && SignInState.Same(w.ResetUtc, row.WeekResetUtc) && reading.AtUtc > prior;
                 row = updated;
             }
+            // The 5-hour percent rose in the same window (M.ORCH-T871): the dashboard's tiles fall back to the roster's figure
+            // when no pace exists, so it follows the meter between weekly steps. Compared at full precision (only display
+            // rounds); a lower one for the same window is a stale statusline's restamp, never a real change (usage doesn't
+            // fall within a window), so it writes nothing. The week is left as it was, so its point steps (and the meter's
+            // re-reads) still count from the last weekly refresh.
+            else if (fresh && reading?.FiveHour is { } five && FiveHourRose(row, five))
+                row = row with { FiveHourPercent = five.Percent, FiveHourResetUtc = five.ResetUtc, ReadUtc = reading.AtUtc };
             if (row != was) changed.Add(row);
         }
         foreach (var row in changed.GroupBy(r => r.Account).Select(g => g.Last())) Upsert(connection, tx, row);
@@ -187,6 +194,11 @@ public static class AccountRoster
 
         static bool NewWindow(DateTime? known, ReportedWindow? w) => w is not null && !SignInState.Same(known, w.ResetUtc);
     }
+
+    /// <summary>Whether <paramref name="five"/> (the meter's 5-hour window, the same one as <paramref name="row"/>'s) says more
+    /// was used than the row does, at full double precision (M.ORCH-T871).</summary>
+    internal static bool FiveHourRose(AccountRow row, ReportedWindow five) =>
+        row.FiveHourPercent is not { } p || five.Percent > p;
 
     private static List<AccountRow> Rows(DbConnection connection, DbTransaction? tx = null)
     {
