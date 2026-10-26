@@ -480,19 +480,25 @@ internal sealed class TermSession
 
     /// <summary>One Input frame (M.ORCH-T930): dropped from a read-only viewer; from an interactive one it makes that viewer the
     /// size's owner (its size applied first) and is written to the CLI, merged with everyone else's. Viewers typing within
-    /// <see cref="TermProtocol.TypingWindow"/> of each other are each sent Typing.</summary>
+    /// <see cref="TermProtocol.TypingWindow"/> of each other are each sent Typing. The terminal's own replies and focus reports
+    /// (<see cref="AutoReplies"/>, M.ORCH-T993) are not typing: they pass only from the size's owner (or from anyone while nobody
+    /// owns it), so the CLI gets one answer per query and the owner's focus, and they never move the ownership.</summary>
     private void OnInput(ViewerLink link, byte[] payload)
     {
-        ViewerPolicy.InputVerdict verdict;
+        var typed = AutoReplies.Strip(payload, out var hasReplies);
+        var verdict = new ViewerPolicy.InputVerdict(false, false, []);
+        byte[] write;
         lock (gate)
         {
-            verdict = policy.Input(link.Id, DateTime.UtcNow);
-            if (!verdict.Accept)
+            if (!policy.IsInteractive(link.Id))
             {
                 if (!link.InputDropLogged) log.Write($"viewer {link.Id} is read-only: its input is dropped");
                 link.InputDropLogged = true;
                 return;
             }
+            if (typed.Length > 0) verdict = policy.Input(link.Id, DateTime.UtcNow);
+            // After any typing in this frame the sender owns the size, so its replies here pass with it.
+            write = !hasReplies || policy.Owner is null || policy.Owner == link.Id ? payload : typed;
             if (verdict.Colliding.Count > 0)
             {
                 var now = DateTime.UtcNow;
@@ -509,7 +515,7 @@ internal sealed class TermSession
             log.Write($"viewer {link.Id} typed: it owns the size");
             ApplyOwnerSize(ownerChanged: true);
         }
-        WriteInput(payload);
+        if (write.Length > 0) WriteInput(write);
     }
 
     /// <summary>
