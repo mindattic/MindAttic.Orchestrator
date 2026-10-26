@@ -183,14 +183,18 @@ public static class PaneBroker
                 await pipe.WaitForConnectionAsync(ct).ConfigureAwait(false);
             }
             catch (OperationCanceledException) { pipe?.Dispose(); return; }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 pipe?.Dispose();
                 OrchestratorLog.For("Terminals").Error(ex, "The terminals pipe couldn't listen; retrying");
                 try { await Task.Delay(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false); } catch (OperationCanceledException) { return; }
                 continue;
             }
-            _ = Task.Run(() => AnswerAsync(pipe, open, ct), ct);
+            _ = Task.Run(async () =>
+            {
+                try { await AnswerAsync(pipe, open, ct).ConfigureAwait(false); }
+                catch (Exception ex) when (ex is not OperationCanceledException) { OrchestratorLog.For("Terminals").Error(ex, "Answering a terminals-pipe request failed; contained"); }
+            }, ct);
         }
     }
 

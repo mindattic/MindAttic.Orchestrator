@@ -116,8 +116,11 @@ public sealed partial class MainViewModel
     /// org's first.</summary>
     private void SyncOrgTabs()
     {
-        orgTabs.ReorderTo([.. loginTabs.Where(t => orgs.InOrg(selectedOrgId, t.tab))]);
-        if (!orgTabs.Contains(SelectedTab) && orgTabs.Count > 0) Select(orgTabs[0]);
+        var wanted = loginTabs.Where(t => orgs.InOrg(selectedOrgId, t.tab)).ToList();
+        // Move the selection off a tab leaving the strip before it's removed from the bound collection: a still-selected item
+        // removed from a Selector-bound collection is the crash of M.ORCH-T859 (M.ORCH-T869).
+        if (!wanted.Contains(SelectedTab) && wanted.Count > 0) Select(wanted[0]);
+        orgTabs.ReorderTo(wanted);
         foreach (var t in loginTabs)
         {
             t.Raise(nameof(SelectedOrg)); t.Raise(nameof(HasLoginTabs)); t.Raise(nameof(IsOrgEmpty)); t.Raise(nameof(OrgEmptyText));

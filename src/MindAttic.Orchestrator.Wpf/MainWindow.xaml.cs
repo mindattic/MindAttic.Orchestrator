@@ -135,7 +135,8 @@ public partial class MainWindow : Window
     internal void HostTerminals()
     {
         terminalsPipe = new CancellationTokenSource();
-        _ = Sessions.PaneBroker.ServeAsync(request => Dispatcher.InvokeAsync(() => model.OpenTerminal(request)).Task, terminalsPipe.Token);
+        _ = Sessions.PaneBroker.ServeAsync(request => Dispatcher.InvokeAsync(() => model.OpenTerminal(request)).Task, terminalsPipe.Token)
+            .ContinueWith(t => OrchestratorLog.For("Terminals").Error(t.Exception, "The terminals pipe server ended"), TaskContinuationOptions.OnlyOnFaulted);
         Closed += (_, _) => terminalsPipe.Cancel();
     }
 
@@ -231,8 +232,16 @@ public partial class MainWindow : Window
     {
         if (sender is not Button { DataContext: AgentRowViewModel a } button) return;
         var tab = Shown;
-        ShowMoveMenu(button, $"Move the {a.Repo} CLI to", await tab.MoveTargetsAsync(a.OwnLogin),
-            async target => await tab.MoveToAccountAsync(a.Repo, a.SessionId, a.CliPid, target));
+        try
+        {
+            ShowMoveMenu(button, $"Move the {a.Repo} CLI to", await tab.MoveTargetsAsync(a.OwnLogin),
+                async target =>
+                {
+                    try { await tab.MoveToAccountAsync(a.Repo, a.SessionId, a.CliPid, target); }
+                    catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Moving a CLI failed; contained"); }
+                });
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Building the Move to menu failed; contained"); }
     }
 
     /// <summary>A person's tab's right-click menu (M.ORCH-T797; Shift+F10 or the menu key on a focused tab too): Rename, Org

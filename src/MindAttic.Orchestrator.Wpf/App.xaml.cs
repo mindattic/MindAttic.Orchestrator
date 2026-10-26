@@ -152,7 +152,7 @@ public partial class App : Application
         if (showTarget is not null) _ = ((MainWindow)MainWindow).ShowAsync(showTarget);
         // An upgrade asks this dashboard to exit here (it may be minimized, or behind other windows).
         exitSignal = new EventWaitHandle(false, EventResetMode.ManualReset, Installer.DashboardExitEvent(Environment.ProcessId));
-        ThreadPool.RegisterWaitForSingleObject(exitSignal, (_, _) => Dispatcher.BeginInvoke(() => Shutdown()), null, Timeout.Infinite, executeOnlyOnce: true);
+        ThreadPool.RegisterWaitForSingleObject(exitSignal, (_, _) => { try { Dispatcher.BeginInvoke(() => Shutdown()); } catch (Exception ex) { log.Error(ex, "Exit signal failed"); } }, null, Timeout.Infinite, executeOnlyOnce: true);
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -176,16 +176,24 @@ public partial class App : Application
             Shutdown();
             return;
         }
-        new Thread(() => new Daemon(new JsonStore()).Run(TimeSpan.FromSeconds(15), CancellationToken.None))
+        new Thread(() =>
+        {
+            try { new Daemon(new JsonStore()).Run(TimeSpan.FromSeconds(15), CancellationToken.None); }
+            catch (Exception ex) { OrchestratorLog.For("Daemon").Error(ex, "The daemon loop died"); }
+        })
         {
             IsBackground = true, Name = "Daemon",
         }.Start();
         ThreadPool.QueueUserWorkItem(_ =>
         {
-            var (folders, bytes) = ExtractionPruner.Prune(ExtractionPruner.BaseDir(), Path.GetFileNameWithoutExtension(Environment.ProcessPath!));
-            if (folders > 0)
-                OrchestratorLog.For("Daemon").Information("Deleted {Folders} old builds' unpacked files ({MB:N0} MB) from {Dir:l}",
-                    folders, bytes / 1048576.0, ExtractionPruner.BaseDir());
+            try
+            {
+                var (folders, bytes) = ExtractionPruner.Prune(ExtractionPruner.BaseDir(), Path.GetFileNameWithoutExtension(Environment.ProcessPath!));
+                if (folders > 0)
+                    OrchestratorLog.For("Daemon").Information("Deleted {Folders} old builds' unpacked files ({MB:N0} MB) from {Dir:l}",
+                        folders, bytes / 1048576.0, ExtractionPruner.BaseDir());
+            }
+            catch (Exception ex) { OrchestratorLog.For("Daemon").Error(ex, "Pruning old builds' files failed"); }
         });
     }
 

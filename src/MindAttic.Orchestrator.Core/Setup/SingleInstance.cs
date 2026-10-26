@@ -76,8 +76,15 @@ public sealed partial class SingleInstance : IDisposable
             waiting = [.. early];
             early.Clear();
         }
-        registration = ThreadPool.RegisterWaitForSingleObject(this.show, (_, _) => show([]), null, Timeout.Infinite, executeOnlyOnce: false);
-        foreach (var args in waiting) ThreadPool.QueueUserWorkItem(_ => show(args));
+        registration = ThreadPool.RegisterWaitForSingleObject(this.show, (_, _) => Guarded(show, []), null, Timeout.Infinite, executeOnlyOnce: false);
+        foreach (var args in waiting) ThreadPool.QueueUserWorkItem(_ => Guarded(show, args));
+    }
+
+    /// <summary>A pool-thread callback that throws ends the whole process, terminals and all (M.ORCH-T869): log it and carry on.</summary>
+    private static void Guarded(Action<IReadOnlyList<string>> show, IReadOnlyList<string> args)
+    {
+        try { show(args); }
+        catch (Exception ex) { OrchestratorLog.For("Dashboard").Error(ex, "A request to show the dashboard failed; contained"); }
     }
 
     private static bool TryOwn(Mutex mutex, TimeSpan wait)
@@ -164,7 +171,7 @@ public sealed partial class SingleInstance : IDisposable
             to = handler;
             if (to is null) { early.Enqueue(args); return; }
         }
-        ThreadPool.QueueUserWorkItem(_ => to(args));
+        ThreadPool.QueueUserWorkItem(_ => Guarded(to, args));
     }
 
     public void Dispose()
