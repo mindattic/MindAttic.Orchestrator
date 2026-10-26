@@ -28,6 +28,10 @@ public sealed record TermGatewayStatus
 
     [JsonPropertyName("version")] public string Version { get; init; } = "";
 
+    /// <summary>The full path of the exe it runs from (M.ORCH-T1028): the daemon restarts it when a redeploy installs a newer one.
+    /// Empty for a gateway that predates it.</summary>
+    [JsonPropertyName("exe")] public string Exe { get; init; } = "";
+
     /// <summary>Whether the daemon started it (<see cref="TermGateway.ManagedVariable"/>): the daemon only ever stops one it manages,
     /// never one started by hand.</summary>
     [JsonPropertyName("managed")] public bool Managed { get; init; }

@@ -29,6 +29,9 @@ public sealed class GatewaySupervisor(Action<LogEventLevel, string> say)
     /// <summary>Stops the process with this pid; a test's records instead.</summary>
     internal Action<int> StopProcess { get; init; } = DefaultStop;
 
+    /// <summary>The exe the process with this pid runs from, or null; a test's stands in.</summary>
+    internal Func<int, string?> RunningExe { get; init; } = DefaultRunningExe;
+
     private DateTime lastStartUtc = DateTime.MinValue;
     private int failures;
     private string? lastSaid;
@@ -52,13 +55,18 @@ public sealed class GatewaySupervisor(Action<LogEventLevel, string> say)
         if (running is not null)
         {
             if (!running.Managed) { SayOnce(LogEventLevel.Information, $"a team gateway started by hand runs (pid {running.Pid}); leaving it be"); return; }
-            if (running.Config == config)
+            var newer = running.Config == config ? NewerInstall(running) : null;
+            if (running.Config == config && newer is null)
             {
                 if (nowUtc - lastStartUtc >= Healthy) failures = 0;
                 return;
             }
+            // A redeploy (M.ORCH-T1028): an old gateway (say, one whose masker leaks) must not keep serving remote viewers, and
+            // its version folder can only be cleaned up once it exits. Remote viewers reconnect to the new one.
             StopProcess(running.Pid);
-            Say(LogEventLevel.Information, $"stopped the team gateway (pid {running.Pid}) to restart it with its new settings");
+            Say(LogEventLevel.Information, newer is null
+                ? $"stopped the team gateway (pid {running.Pid}) to restart it with its new settings"
+                : $"stopped the team gateway (pid {running.Pid}, {Describe(running)}) to restart it on the newer install {newer}");
             lastStartUtc = DateTime.MinValue;
         }
 
@@ -75,6 +83,32 @@ public sealed class GatewaySupervisor(Action<LogEventLevel, string> say)
         Say(pid is null ? LogEventLevel.Warning : LogEventLevel.Information, pid is null
             ? $"couldn't start the team gateway ({exe}); trying again later"
             : $"started the team gateway (pid {pid}) on https://{settings.Bind}:{settings.Port}");
+    }
+
+    /// <summary>
+    /// The exe the gateway would start from now, when it isn't the one <paramref name="running"/> runs from (M.ORCH-T1028); null
+    /// when it is, or when that can't be told. The running exe is the one its status names, else its process's main module (a
+    /// gateway that predates <see cref="TermGatewayStatus.Exe"/>); when neither is known, its version is compared with that of the
+    /// newest install's folder (<see cref="GatewayInstalls"/>).
+    /// </summary>
+    internal string? NewerInstall(TermGatewayStatus running)
+    {
+        if (FindExe() is not { } newest) return null;
+        var current = !string.IsNullOrWhiteSpace(running.Exe) ? running.Exe : RunningExe(running.Pid);
+        if (!string.IsNullOrWhiteSpace(current))
+            return string.Equals(Normalize(current), Normalize(newest), StringComparison.OrdinalIgnoreCase) ? null : newest;
+        var folder = Path.GetFileName(Path.GetDirectoryName(newest) ?? "");
+        return TermHostInstalls.Parse(folder, "", GatewayInstalls.ExeName) is { } installed
+               && (!Version.TryParse(running.Version, out var version) || version < installed.Version) ? newest : null;
+    }
+
+    private static string Describe(TermGatewayStatus running) =>
+        string.IsNullOrWhiteSpace(running.Exe) ? $"version {(running.Version is { Length: > 0 } v ? v : "unknown")}" : running.Exe;
+
+    private static string Normalize(string path)
+    {
+        try { return Path.GetFullPath(path).TrimEnd('\\'); }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { return path.TrimEnd('\\'); }
     }
 
     private void Say(LogEventLevel level, string line)
@@ -122,6 +156,20 @@ public sealed class GatewaySupervisor(Action<LogEventLevel, string> say)
             return p?.Id;
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or InvalidOperationException) { return null; }
+    }
+
+    /// <summary>The gateway's main-module path; null when the pid isn't the gateway any more or it can't be read.</summary>
+    private static string? DefaultRunningExe(int pid)
+    {
+        try
+        {
+            using var p = Process.GetProcessById(pid);
+            return string.Equals(p.ProcessName, ProcessName, StringComparison.OrdinalIgnoreCase) ? p.MainModule?.FileName : null;
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
+        {
+            return null;
+        }
     }
 
     /// <summary>Kills the gateway only: the pid must still be a process of the gateway's name.</summary>

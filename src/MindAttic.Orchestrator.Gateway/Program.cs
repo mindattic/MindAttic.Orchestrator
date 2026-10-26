@@ -87,7 +87,7 @@ try
         TermGateway.WriteStatus(new TermGatewayStatus
         {
             Pid = Environment.ProcessId, ProcessStartUtc = self.StartTime.ToUniversalTime(), Bind = options.Bind, Port = options.Port,
-            CertSha256 = pin, Config = options.Config, Version = GatewayApp.Version,
+            CertSha256 = pin, Config = options.Config, Version = GatewayApp.Version, Exe = Environment.ProcessPath ?? "",
             Managed = Environment.GetEnvironmentVariable(TermGateway.ManagedVariable) == "1",
         }, options.DataDir);
         // Whatever a previous run left: nobody is attached yet.

@@ -398,23 +398,65 @@ public sealed partial class GatewayTests
 
     // ── helpers ─────────────────────────────────────────────────────────────────
 
-    private static GatewaySupervisor Supervisor(string dir, List<IReadOnlyList<string>> started, List<int> stopped) =>
+    [Test]
+    public void The_supervisor_restarts_a_managed_gateway_onto_a_newer_install()
+    {
+        // M.ORCH-T1028: a redeploy installs a newer gateway; the old one must not keep serving with the same settings.
+        using var dir = new TempDir();
+        var started = new List<IReadOnlyList<string>>();
+        var stopped = new List<int>();
+        var newest = @"C:\fake\Gateway\1.2.0-20261026180000\" + TermGateway.ExeName;
+        var supervisor = Supervisor(dir.Path, started, stopped, () => newest);
+        var on = new GatewaySettings { Enabled = true };
+
+        RunningGateway(dir.Path, on, managed: true, exe: newest);
+        supervisor.Tick(on, DateTime.UtcNow);
+        Assert.That(stopped, Is.Empty, "it already runs from the newest install");
+
+        RunningGateway(dir.Path, on, managed: true, exe: @"C:\fake\Gateway\1.2.0-20261020120000\" + TermGateway.ExeName);
+        supervisor.Tick(on, DateTime.UtcNow);
+        Assert.That(stopped, Is.EqualTo(new[] { Environment.ProcessId }), "an older build of the same version is replaced");
+        Assert.That(started, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void The_supervisor_compares_versions_for_a_gateway_that_does_not_name_its_exe()
+    {
+        using var dir = new TempDir();
+        var started = new List<IReadOnlyList<string>>();
+        var stopped = new List<int>();
+        var supervisor = Supervisor(dir.Path, started, stopped, () => @"C:\fake\Gateway\1.2.0-20261026180000\" + TermGateway.ExeName);
+        var on = new GatewaySettings { Enabled = true };
+
+        RunningGateway(dir.Path, on, managed: true, exe: "", version: "1.2.0");
+        supervisor.Tick(on, DateTime.UtcNow);
+        Assert.That(stopped, Is.Empty, "same version, and its exe can't be told");
+
+        RunningGateway(dir.Path, on, managed: true, exe: "", version: "1.1.9");
+        supervisor.Tick(on, DateTime.UtcNow);
+        Assert.That(stopped, Has.Count.EqualTo(1), "an older version is replaced");
+    }
+
+    private static GatewaySupervisor Supervisor(string dir, List<IReadOnlyList<string>> started, List<int> stopped, Func<string?>? findExe = null) =>
         new((_, _) => { })
         {
             StatusDirectory = dir,
-            FindExe = () => @"C:\fake\" + TermGateway.ExeName,
+            FindExe = findExe ?? (() => FakeExe),
             StartProcess = (_, args) => { started.Add(args); return 4242; },
             StopProcess = stopped.Add,
+            RunningExe = _ => null,
         };
 
+    private const string FakeExe = @"C:\fake\" + TermGateway.ExeName;
+
     /// <summary>A status file naming this test process as the gateway, so it reads as running.</summary>
-    private static void RunningGateway(string dir, GatewaySettings settings, bool managed)
+    private static void RunningGateway(string dir, GatewaySettings settings, bool managed, string exe = FakeExe, string version = "")
     {
         using var self = System.Diagnostics.Process.GetCurrentProcess();
         TermGateway.WriteStatus(new TermGatewayStatus
         {
             Pid = Environment.ProcessId, ProcessStartUtc = self.StartTime.ToUniversalTime(), Bind = settings.Bind, Port = settings.Port,
-            Config = string.Join(' ', settings.Arguments()), Managed = managed,
+            Config = string.Join(' ', settings.Arguments()), Managed = managed, Exe = exe, Version = version,
         }, dir);
     }
 
