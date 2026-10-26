@@ -2785,7 +2785,9 @@ public static class AgentGate
             # What the orchestrator wants this CLI to do next (idle claims to start, work to claim, a resume after a limit, tickets
             # handed back after a move: M.ORCH-T864), left as nudge-<pid>-<kind>.txt files. They reach the model as hook context
             # (a prompt, a tool call, or a Stop that sends the turn on), never typed into the input box. Each is taken once; one
-            # older than two of the wakers' cooldowns is stale and dropped, and none is delivered while the window's stop holds.
+            # older than two of the wakers' cooldowns is stale and dropped, and none is delivered while the window's stop holds:
+            # held, it's left where it is for a later hook (M.ORCH-T1004: they were deleted unread, so an unpaced CLI's, or one
+            # whose CONTROL or exempt prompt ran at the stop, lost its /allocate claims and resume for good).
             out = []
             try:
                 pid = my_pid()
@@ -2798,7 +2800,13 @@ public static class AgentGate
                 held = bool(s.get("stop")) or orchestrator_stop(s) is not None
                 for nf in files:
                     try:
-                        if not held and time.time() - nf.stat().st_mtime < 20 * 60:
+                        stale = time.time() - nf.stat().st_mtime >= 20 * 60
+                    except Exception:
+                        continue  # gone while listed: another hook took it
+                    if held and not stale:
+                        continue
+                    try:
+                        if not stale:
                             text = nf.read_text(encoding="utf-8", errors="replace").strip()
                             if text:
                                 out.append(text)
