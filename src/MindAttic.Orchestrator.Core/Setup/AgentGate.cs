@@ -2972,6 +2972,9 @@ public static class AgentGate
                 state.pop("goal", None)
             if data.get("transcript_path"):
                 state["transcript"] = data["transcript_path"]
+            # The session id beside the transcript: a crashed CLI is found by it and resumed with `claude --resume <id>` (M.ORCH-T843).
+            if sid:
+                state["session_id"] = str(sid)
             # The CLI's process id from its first prompt on: `orchestrator next` finds the calling CLI's own session by it, and
             # a CLI whose every stop is pushed back (an /allocate run) never reaches the Stop that used to record it.
             state.update(state="busy", at=now, warned=False, cwd=data.get("cwd"), pid=cli_pid(), auth=auth, config_dir=str(PROFILE_DIR or ""))
@@ -3043,6 +3046,13 @@ public static class AgentGate
             if ALLOCATE_NOTE[0]:
                 notes.append(ALLOCATE_NOTE[0])
             notes.extend(take_nudges())
+            # Safety net for the ticket-per-request rule (MAT-T58, M.ORCH-T843): a genuinely typed prompt (not a slash command, not
+            # a system or task notification, which Claude Code delivers as <tag>...) in a MindAttic repo says to file its ticket first.
+            try:
+                if typed and not typed.startswith(("/", "<")) and repo_of(data.get("cwd") or ""):
+                    notes.append("File this request's ticket first (tickets ticket new) before any work.")
+            except Exception:
+                pass
             out ={"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": " ".join(notes)}} if notes else {}
             # A CLI that started before its SessionStart hook was registered is checked on its first prompt instead, and told
             # only when it's billing the key rather than the claude.ai login (M.ORCH-T434).
@@ -3163,6 +3173,13 @@ public static class AgentGate
         changed |= AddHook(root, "PreToolUse", ContextScriptName, Command(contextScript), ContextHookTimeoutSeconds, AskUserQuestionTool);
         // Claude's own usage reaches the orchestrator only through a statusline redraw; an idle tab redraws on this
         // timer too, so the real percent stays fresh while any tab is open (M.ORCH-T125).
+        // Claude Code deletes session transcripts (and their subagents') after cleanupPeriodDays, 30 by default: a crashed
+        // CLI is resumed from its transcript, so a longer keep is set unless the login already chose one (M.ORCH-T843).
+        if (root["cleanupPeriodDays"] is null)
+        {
+            root["cleanupPeriodDays"] = TranscriptKeepDays;
+            changed = true;
+        }
         if (root["statusLine"] is JsonObject statusLine && statusLine["refreshInterval"] is null)
         {
             statusLine["refreshInterval"] = StatusLineRefreshSeconds;
@@ -3175,6 +3192,9 @@ public static class AgentGate
         }
         return did.Count > 0 ? string.Join(", ", did) : null;
     }
+
+    /// <summary>Days Claude Code keeps session transcripts, written as <c>cleanupPeriodDays</c> when a login has none.</summary>
+    public const int TranscriptKeepDays = 365;
 
     public static string CodexDir { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".codex");
     public static string GeminiDir { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gemini");
