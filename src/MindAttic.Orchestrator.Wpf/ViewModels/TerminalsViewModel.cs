@@ -312,13 +312,41 @@ public sealed class TerminalPaneViewModel : ObservableObject
     {
         Session = session;
         TermId = session.Id;
-        Relay?.Attach(session.Pipe, session.Protocol, () => !killRequested && HostAlive(session));
+        var attachedUtc = DateTime.UtcNow;
+        Relay?.Attach(session.Pipe, session.Protocol, () => !killRequested && HostAlive(session, attachedUtc, DateTime.UtcNow));
     }
 
+    /// <summary>How long a host that hasn't registered yet (TermLauncher gave up waiting after 5 s and returned its launch's
+    /// record) counts as alive while its process runs, so the tab keeps retrying (M.ORCH-T972).</summary>
+    internal static readonly TimeSpan RegisterGrace = TimeSpan.FromSeconds(30);
+
     /// <summary>Whether <paramref name="session"/>'s host still runs, by the registry (the pid alive and not reused): what keeps
-    /// a dropped relay reconnecting (M.ORCH-T966). Reads files, so it is called off the UI thread.</summary>
-    internal static bool HostAlive(TermSessionRecord session) =>
-        TermSessions.Get(session.Id) is { } live && live.HostPid == session.HostPid;
+    /// a dropped relay reconnecting (M.ORCH-T966). Within <see cref="RegisterGrace"/> of attaching, an unregistered host whose
+    /// process runs counts too (M.ORCH-T972). Reads files, so it is called off the UI thread.</summary>
+    internal static bool HostAlive(TermSessionRecord session, DateTime attachedUtc, DateTime nowUtc) =>
+        TermSessions.Get(session.Id) is { } live
+            ? live.HostPid == session.HostPid
+            : nowUtc - attachedUtc < RegisterGrace && TermSessions.IsHostRunning(session);
+
+    /// <summary>A tab marked ended whose session's host turned up after all (its term-session started, M.ORCH-T972): attached
+    /// afresh to <paramref name="session"/>. On the UI thread; never throws.</summary>
+    internal void Revive(TermSessionRecord session)
+    {
+        try
+        {
+            if (killRequested || Relay is not { } old || session.Exited) return;
+            OrchestratorLog.For("Terminals").Information("{Title:l}: its TermHost {Id:l} (pid {Pid}) registered; reattaching the ended tab", Title, session.Id, session.HostPid);
+            // Out of the window first: its native window is released only once it's no longer shown.
+            ((TerminalView)Control).Child = null;
+            old.Dispose();
+            hostEnded = false;
+            Reconnecting = false;
+            Ended = false;
+            UseRelay();
+            Attach(session);
+        }
+        catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Reviving {Title:l} failed; contained", Title); }
+    }
 
     /// <summary>Its host couldn't start: the CLI runs in this process after all, as before T926.</summary>
     internal void FallBackToLocal()
@@ -726,6 +754,10 @@ public sealed class TerminalsViewModel : ObservableObject
                 case TermSessionEvents.Started when pane is null:
                     var record = TermSessions.Get(message.Id) ?? message.ToRecord();
                     Reattach(record, TermPaneFile.Read(record.Id));
+                    break;
+                case TermSessionEvents.Started when pane is { Ended: true, IsHosted: true, KillRequested: false }:
+                    // Its host registered after the tab gave up on it (M.ORCH-T972): the tab comes back to life.
+                    pane.Revive(TermSessions.Get(message.Id) ?? message.ToRecord());
                     break;
                 case TermSessionEvents.Changed when pane is not null && message.Exited:
                 case TermSessionEvents.Ended when pane is not null:

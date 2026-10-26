@@ -401,6 +401,39 @@ public sealed class TerminalPanesTests
         finally { window.Close(); }
     }
 
+    [Test]
+    public void A_host_not_registered_yet_counts_as_alive_while_its_process_runs_for_a_grace_period()
+    {
+        using var me = System.Diagnostics.Process.GetCurrentProcess();
+        var unregistered = new Term.TermSessionRecord
+        {
+            Id = Term.TermProtocol.NewSessionId(), HostPid = me.Id, HostStartUtc = me.StartTime.ToUniversalTime(), Pipe = "mindattic-term-nobody-x", CommandLine = "cmd.exe",
+        };
+        var now = DateTime.UtcNow;
+        Assert.That(TerminalPaneViewModel.HostAlive(unregistered, now, now.AddSeconds(5)), Is.True, "within the grace, its process runs");
+        Assert.That(TerminalPaneViewModel.HostAlive(unregistered, now, now + TerminalPaneViewModel.RegisterGrace), Is.False, "past the grace");
+        Assert.That(TerminalPaneViewModel.HostAlive(unregistered with { HostPid = 999999 }, now, now.AddSeconds(5)), Is.False, "its process is gone");
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_term_session_started_revives_an_ended_tab_with_the_same_id()
+    {
+        var terminals = new TerminalsViewModel();
+        var session = new Term.TermSessionRecord
+        {
+            Id = "late123", HostPid = 999999, Pipe = "mindattic-term-nobody-late123", Title = "AM: Repo [Claude]", Cwd = temp.New(), CommandLine = "cmd.exe",
+        };
+        var pane = terminals.Reattach(session, new PaneRequest("AM: Repo [Claude]", session.Cwd!) { CommandLine = "cmd.exe" });
+        Assert.That(pane, Is.Not.Null);
+        pane!.Ended = true;
+        var before = pane.Relay;
+        terminals.OnTermSession(new Term.TermSessionEvent(session, Term.TermSessionEvents.Started));
+        Assert.That(pane.Ended, Is.False, "revived");
+        Assert.That(pane.Relay, Is.Not.SameAs(before), "attached afresh");
+        Assert.That(terminals.Panes, Has.Count.EqualTo(1));
+        pane.DisposeControl();
+    }
+
     [Test, Apartment(ApartmentState.STA)]
     public void Without_a_TermHost_a_tab_runs_its_CLI_in_process()
     {

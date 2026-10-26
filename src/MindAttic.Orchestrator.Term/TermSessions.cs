@@ -154,6 +154,9 @@ public static class TermSessions
         return null;
     }
 
+    /// <summary>Whether <paramref name="record"/>'s host process still runs (its pid, not reused), registered or not.</summary>
+    public static bool IsHostRunning(TermSessionRecord record) => IsAlive(record, HostStartOf);
+
     /// <summary>Whether <paramref name="record"/>'s host is still the process running under its pid.</summary>
     internal static bool IsAlive(TermSessionRecord record, Func<int, DateTime?> hostStart) =>
         hostStart(record.HostPid) is { } started && (started - record.HostStartUtc).Duration() <= StartTolerance;
