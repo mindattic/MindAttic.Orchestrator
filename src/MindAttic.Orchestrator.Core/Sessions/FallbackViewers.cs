@@ -94,7 +94,8 @@ public static class TermViewerSlot
 /// when the dashboard returns (docs/app-bus.md, "Fallback viewers"). Runs in the always-on daemon on its own thread: every
 /// failure is contained and logged, and nothing here can end the daemon.
 /// <para>A viewer the person closed (it exits 0) isn't reopened until the dashboard has been back and gone down again; one that
-/// crashed (any other exit code) is reopened on the next look.</para>
+/// crashed (any other exit code) is reopened after a wait that doubles with each crash in a row, and after
+/// <see cref="MaxCrashes"/> of them is left closed this time round too (M.ORCH-T974).</para>
 /// </summary>
 public sealed class FallbackViewers
 {
@@ -113,6 +114,7 @@ public sealed class FallbackViewers
     private readonly DashboardDownWatch watch;
     private readonly Dictionary<string, Launched> launched = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> dismissed = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Crashes> crashes = new(StringComparer.OrdinalIgnoreCase);
     private bool wasDown;
     private string? exe;
     private DateTime exeResolvedUtc = DateTime.MinValue;
@@ -122,6 +124,24 @@ public sealed class FallbackViewers
 
     /// <summary>One started viewer: when, and its process (null when the launcher gave none).</summary>
     private sealed record Launched(DateTime AtUtc, Process? Process);
+
+    /// <summary>A session's viewer crashes in a row (M.ORCH-T974), and when the next window may open.</summary>
+    private sealed record Crashes(int Count, DateTime RetryAfterUtc);
+
+    /// <summary>After this many crashes in a row a session's window isn't reopened until the dashboard has been back and gone
+    /// down again (M.ORCH-T974).</summary>
+    public const int MaxCrashes = 6;
+
+    /// <summary>The longest wait before reopening a crashed viewer.</summary>
+    public static readonly TimeSpan MaxCrashDelay = TimeSpan.FromMinutes(1);
+
+    /// <summary>A viewer that ran this long before it crashed starts the count over.</summary>
+    public static readonly TimeSpan StableRun = TimeSpan.FromMinutes(2);
+
+    /// <summary>How long to wait before reopening a viewer after its <paramref name="crashes"/>th crash in a row: 2 s, 4 s, 8 s
+    /// and so on, capped at <see cref="MaxCrashDelay"/>.</summary>
+    public static TimeSpan CrashDelay(int crashes) =>
+        TimeSpan.FromSeconds(Math.Min(Math.Pow(2, Math.Clamp(crashes, 1, 16)), MaxCrashDelay.TotalSeconds));
 
     public Func<bool> DashboardUp { get; init; } = DashboardPresence.IsUp;
     public Func<IReadOnlyList<TermSessionRecord>> Sessions { get; init; } = TermSessions.Enumerate;
@@ -172,12 +192,13 @@ public sealed class FallbackViewers
         try { up = DashboardUp(); }
         catch (Exception) { up = true; } // unsure: never open windows over a dashboard that may be there
         var down = watch.Observe(up, nowUtc);
-        Reap();
+        Reap(nowUtc);
         if (!down)
         {
             if (wasDown) Tell(LogEventLevel.Information, "fallback viewers: the dashboard is back; the standalone viewers fold into its tabs");
             wasDown = false;
             dismissed.Clear();
+            crashes.Clear();
             Forget();
             return 0;
         }
@@ -190,7 +211,8 @@ public sealed class FallbackViewers
 
         var sessions = Sessions();
         var since = launched.ToDictionary(p => p.Key, p => p.Value.AtUtc, StringComparer.OrdinalIgnoreCase);
-        var need = NeedingWindow(sessions, HasViewer, since, dismissed, nowUtc, LaunchGrace);
+        var need = NeedingWindow(sessions, HasViewer, since, dismissed, nowUtc, LaunchGrace)
+            .Where(s => !crashes.TryGetValue(s.Id, out var c) || nowUtc >= c.RetryAfterUtc).ToList();
         if (need.Count == 0) return 0;
         if (Exe(nowUtc) is not { } path) return 0;
         var started = 0;
@@ -214,8 +236,10 @@ public sealed class FallbackViewers
         return started;
     }
 
-    /// <summary>Drops the viewers that exited: one that exited 0 (closed by the person, or folded) is left closed this time round.</summary>
-    private void Reap()
+    /// <summary>Drops the viewers that exited: one that exited 0 (closed by the person, or folded) is left closed this time round;
+    /// one that crashed opens again after a growing wait (M.ORCH-T974), and after <see cref="MaxCrashes"/> in a row not at all
+    /// this time round, said once.</summary>
+    private void Reap(DateTime nowUtc)
     {
         foreach (var (id, entry) in launched.ToList())
         {
@@ -224,7 +248,22 @@ public sealed class FallbackViewers
             {
                 if (!p.HasExited) continue;
                 if (p.ExitCode == 0) dismissed.Add(id);
-                else Tell(LogEventLevel.Warning, $"fallback viewers: the window for {id} exited with {p.ExitCode}; it opens again");
+                else
+                {
+                    var count = crashes.TryGetValue(id, out var before) && nowUtc - entry.AtUtc < StableRun ? before.Count + 1 : 1;
+                    if (count >= MaxCrashes)
+                    {
+                        crashes.Remove(id);
+                        dismissed.Add(id);
+                        Tell(LogEventLevel.Error, $"fallback viewers: the window for {id} crashed {count} times in a row (last exit {p.ExitCode}); it isn't reopened until the dashboard has been back");
+                    }
+                    else
+                    {
+                        var wait = CrashDelay(count);
+                        crashes[id] = new Crashes(count, nowUtc + wait);
+                        Tell(LogEventLevel.Warning, $"fallback viewers: the window for {id} exited with {p.ExitCode}; it opens again in {wait.TotalSeconds:0}s");
+                    }
+                }
             }
             catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
             p.Dispose();

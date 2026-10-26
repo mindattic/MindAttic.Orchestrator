@@ -237,6 +237,61 @@ public sealed class FallbackViewersTests
     }
 
     [Test]
+    public void A_crashed_viewer_waits_longer_each_time_up_to_a_cap()
+    {
+        Assert.That(FallbackViewers.CrashDelay(1), Is.EqualTo(TimeSpan.FromSeconds(2)));
+        Assert.That(FallbackViewers.CrashDelay(2), Is.EqualTo(TimeSpan.FromSeconds(4)));
+        Assert.That(FallbackViewers.CrashDelay(3), Is.EqualTo(TimeSpan.FromSeconds(8)));
+        Assert.That(FallbackViewers.CrashDelay(50), Is.EqualTo(FallbackViewers.MaxCrashDelay));
+        Assert.That(FallbackViewers.CrashDelay(0), Is.EqualTo(TimeSpan.FromSeconds(2)));
+    }
+
+    [Test]
+    public void A_viewer_that_keeps_crashing_is_reopened_with_a_backoff_then_given_up_on_and_said_once()
+    {
+        var rig = new Rig { Up = false, Live = [Session("a")] };
+        var said = new List<string>();
+        var processes = new List<System.Diagnostics.Process>();
+        var viewers = new FallbackViewers(TimeSpan.FromSeconds(5))
+        {
+            DashboardUp = () => rig.Up,
+            Sessions = () => rig.Live,
+            HasViewer = _ => false,
+            ResolveExe = () => "x.exe",
+            Launch = (_, s) =>
+            {
+                rig.Started.Add(s.Id);
+                var crash = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe", "/c exit 3") { CreateNoWindow = true, UseShellExecute = false })!;
+                processes.Add(crash);
+                crash.WaitForExit();
+                return crash;
+            },
+            Say = (_, line) => said.Add(line),
+        };
+        try
+        {
+            var now = T0;
+            viewers.Tick(now);
+            now = now.AddSeconds(5);
+            viewers.Tick(now);
+            Assert.That(rig.Started, Has.Count.EqualTo(1));
+            for (var crash = 1; crash < FallbackViewers.MaxCrashes; crash++)
+            {
+                now = now.AddSeconds(1);
+                viewers.Tick(now); // reaps the crash
+                Assert.That(rig.Started, Has.Count.EqualTo(crash), "not at once");
+                now += FallbackViewers.CrashDelay(crash);
+                viewers.Tick(now);
+                Assert.That(rig.Started, Has.Count.EqualTo(crash + 1), "after the wait");
+            }
+            for (var s = 0; s < 300; s++) viewers.Tick(now.AddSeconds(s + 1));
+            Assert.That(rig.Started, Has.Count.EqualTo(FallbackViewers.MaxCrashes), "given up on");
+            Assert.That(said.Count(l => l.Contains("crashed", StringComparison.Ordinal)), Is.EqualTo(1), "said once");
+        }
+        finally { foreach (var p in processes) p.Dispose(); }
+    }
+
+    [Test]
     public void No_viewer_installed_opens_nothing()
     {
         var rig = new Rig { Up = false, Live = [Session("a")] };
