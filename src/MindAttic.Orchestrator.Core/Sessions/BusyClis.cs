@@ -19,6 +19,9 @@ public enum CliActivity
 
     /// <summary>The CLI asking (the one running the deploy): necessarily busy, and left out.</summary>
     Self,
+
+    /// <summary>Running inside a live TermHost (M.ORCH-T928): it survives a dashboard redeploy, so it never blocks one.</summary>
+    Hosted,
 }
 
 /// <summary>One open Claude CLI as the busy check sees it: its process, repo, login, and why it counts as working or unknown.</summary>
@@ -32,6 +35,9 @@ public sealed record BusyReport(DateTime AtUtc, IReadOnlyList<BusyCli> Clis)
 
     /// <summary>Whether nothing but idle CLIs (and the asking one) is open.</summary>
     public bool AllIdle => Blocking.Count == 0;
+
+    /// <summary>The CLIs running in a live TermHost: unaffected by a redeploy (M.ORCH-T928).</summary>
+    public IReadOnlyList<BusyCli> Hosted => [.. Clis.Where(c => c.Activity == CliActivity.Hosted)];
 }
 
 /// <summary>
@@ -44,8 +50,19 @@ public sealed record BusyReport(DateTime AtUtc, IReadOnlyList<BusyCli> Clis)
 /// </summary>
 public static class BusyClis
 {
-    /// <summary>A Claude process found running: its id, when it started (null when unreadable), and the Claude CLI above it, if any.</summary>
-    public sealed record Proc(int Pid, DateTime? StartedUtc, int? ClaudeParent);
+    /// <summary>A Claude process found running: its id, when it started (null when unreadable), the Claude CLI above it, if any, and
+    /// the live TermHost it runs under, if any (M.ORCH-T928).</summary>
+    public sealed record Proc(int Pid, DateTime? StartedUtc, int? ClaudeParent, int? HostPid = null);
+
+    /// <summary>The TermHost (its pid) a process runs under: the nearest of <paramref name="hostPids"/> among its ancestors; null when
+    /// none (an unhosted CLI, which a redeploy does cut off).</summary>
+    public static int? HostAncestor(int pid, IReadOnlyDictionary<int, (int Parent, string Exe)> tree, IReadOnlySet<int> hostPids)
+    {
+        if (hostPids.Count == 0) return null;
+        foreach (var (ancestor, _) in ProcessTree.Ancestors(pid, tree))
+            if (hostPids.Contains(ancestor)) return ancestor;
+        return null;
+    }
 
     /// <summary>One session's recorded state: null <see cref="Pid"/> and <see cref="Unreadable"/> when it couldn't be parsed.</summary>
     public sealed record State(string SessionId, int? Pid, DateTime WrittenUtc, string? Turn, DateTime? AtUtc, DateTime? AskingSinceUtc,
@@ -111,6 +128,12 @@ public static class BusyClis
                 clis.Add(new BusyCli(p.Pid, repo, login, state?.SessionId, CliActivity.Self, ["the CLI running this check"]));
                 continue;
             }
+            // In a live TermHost it outlives the dashboard: hosted, unaffected by deploy, never blocking.
+            if (p.HostPid is { } host)
+            {
+                clis.Add(new BusyCli(p.Pid, repo, login, state?.SessionId, CliActivity.Hosted, [$"hosted in TermHost pid {host}, unaffected by deploy"]));
+                continue;
+            }
             var why = new List<string>();
             var unknown = false;
             if (state is null)
@@ -164,10 +187,13 @@ public static class BusyClis
         string.IsNullOrWhiteSpace(configDir) ? "global login" : accounts.Of(configDir)?.Email ?? configDir;
 
     /// <summary>Every Claude CLI process (not the Claude Desktop app), with when it started and the CLI above it.</summary>
-    private static List<Proc> Processes(List<string> problems)
+    private static List<Proc> Processes(List<string> problems, Func<IReadOnlyList<Term.TermSessionRecord>>? hosts = null)
     {
         var found = new List<Proc>();
         IReadOnlyDictionary<int, (int Parent, string Exe)> tree;
+        var hostPids = new HashSet<int>();
+        try { hostPids = [.. (hosts ?? Term.TermSessions.Enumerate).Invoke().Select(t => t.HostPid)]; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { problems.Add($"the TermHost sessions couldn't be read: {ex.Message}"); }
         try { tree = ProcessTree.Snapshot(); }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { tree = new Dictionary<int, (int, string)>(); problems.Add($"the process tree couldn't be read: {ex.Message}"); }
         Process[] all;
@@ -191,7 +217,7 @@ public static class BusyClis
                 DateTime? started = null;
                 try { started = p.StartTime.ToUniversalTime(); }
                 catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
-                found.Add(new Proc(p.Id, started, ProcessTree.ClaudeAncestor(p.Id, tree)));
+                found.Add(new Proc(p.Id, started, ProcessTree.ClaudeAncestor(p.Id, tree), HostAncestor(p.Id, tree, hostPids)));
             }
         return found;
     }

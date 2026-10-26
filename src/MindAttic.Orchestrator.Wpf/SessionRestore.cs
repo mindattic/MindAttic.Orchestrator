@@ -136,8 +136,10 @@ internal static class SessionRestore
     {
         try
         {
-            if (!SessionRestoreStore.ShouldOffer(Previous)) return false;
-            var state = Previous!;
+            if (Previous is null) return false;
+            // Tabs whose TermHost still lives are reattached by the dashboard, never offered for --resume (M.ORCH-T928).
+            var state = SessionRestoreStore.Unhosted(Previous);
+            if (!SessionRestoreStore.ShouldOffer(state)) return false;
             var lines = SessionRestoreStore.Describe(state);
             var when = state.SavedUtc.ToLocalTime().ToString("g");
             var answer = MaMessageBox.Show(owner,

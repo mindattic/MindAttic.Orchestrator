@@ -6,7 +6,8 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 
 /// <summary><c>orchestrator busy</c> (M.ORCH-T873): whether any Claude CLI on this machine, on any login, is still working: mid-turn,
-/// running a subagent, holding an /allocate claim, or holding on a prompt. Exit 0 when every one is idle; 1 when any is working
+/// running a subagent, holding an /allocate claim, or holding on a prompt. A CLI inside a live TermHost survives a redeploy, so it
+/// is listed as hosted and never counts (M.ORCH-T928). Exit 0 when every one is idle; 1 when any is working
 /// or can't be read (never taken for idle). deploy.ps1 runs it before a redeploy, which restarts the dashboard and every terminal
 /// it hosts. The CLI running it is left out.</summary>
 internal sealed class BusyCommand : Command<BusyCommand.Settings>
@@ -62,7 +63,7 @@ internal sealed class BusyCommand : Command<BusyCommand.Settings>
         if (report.Clis.Count > 0)
         {
             var table = new Table().Border(TableBorder.Rounded).AddColumns("Repo", "Login", "Pid", "State", "Doing");
-            foreach (var c in report.Clis.OrderBy(c => c.Activity switch { CliActivity.Working => 0, CliActivity.Unknown => 1, CliActivity.Self => 2, _ => 3 })
+            foreach (var c in report.Clis.OrderBy(c => c.Activity switch { CliActivity.Working => 0, CliActivity.Unknown => 1, CliActivity.Self => 2, CliActivity.Hosted => 3, _ => 4 })
                          .ThenBy(c => c.Repo, StringComparer.OrdinalIgnoreCase))
                 table.AddRow(
                     Markup.Escape(c.Repo),
@@ -73,6 +74,7 @@ internal sealed class BusyCommand : Command<BusyCommand.Settings>
                         CliActivity.Working => "[red]working[/]",
                         CliActivity.Unknown => "[yellow]unknown[/]",
                         CliActivity.Self => "[grey]this CLI (left out)[/]",
+                        CliActivity.Hosted => "[blue]hosted, unaffected by deploy[/]",
                         _ => "[green]idle[/]",
                     },
                     Markup.Escape(c.Why.Count == 0 ? "done" : string.Join("; ", c.Why)));
@@ -80,10 +82,10 @@ internal sealed class BusyCommand : Command<BusyCommand.Settings>
         }
         if (report.AllIdle)
         {
-            AnsiConsole.MarkupLine("[green]No other Claude CLI is working: safe to redeploy.[/]");
+            AnsiConsole.MarkupLine("[green]No other unhosted Claude CLI is working: safe to redeploy.[/]");
             return 0;
         }
-        AnsiConsole.MarkupLine($"[red]{report.Blocking.Count} CLI(s) still working or unknown:[/]");
+        AnsiConsole.MarkupLine($"[red]{report.Blocking.Count} CLI(s) unhosted and still working or unknown:[/]");
         foreach (var line in BusyClis.Describe(report)) AnsiConsole.WriteLine("  " + line);
         return BusyExit;
     }

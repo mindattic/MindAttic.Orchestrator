@@ -72,6 +72,16 @@ public sealed class OrphanWatch(JsonStore store)
     /// <summary>Whether a CLI process still runs (seam).</summary>
     internal Func<int, bool> CliRunning { get; init; } = ContextCycler.IsClaude;
 
+    /// <summary>Whether a live TermHost runs a CLI in a folder (seam; M.ORCH-T928): a hosted CLI outlives a dashboard restart, so its
+    /// tab vanishing from the dashboard (no Launcher tab seen) never makes its ticket dark.</summary>
+    internal Func<string, bool> HostedIn { get; init; } = DefaultHostedIn;
+
+    private static bool DefaultHostedIn(string directory)
+    {
+        try { return Term.TermSessions.Enumerate().Any(t => !t.Exited && IsUnder(t.Cwd, directory)); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
+    }
+
     /// <summary>A worktree's commits ahead of the main line and its uncommitted paths; null when it can't be read (seam).</summary>
     internal Func<string, string, (int Ahead, IReadOnlyList<string> Dirty)?> Inspect { get; init; } = InspectWorktree;
 
@@ -105,7 +115,7 @@ public sealed class OrphanWatch(JsonStore store)
     /// CLI recorded, any Launcher tab in its worktree), with nothing written in its worktree for <paramref name="quiet"/> and no
     /// other live session working it.
     /// </summary>
-    internal static IReadOnlyList<QueueItem> Dark(SchedulePlan plan, Snapshot snapshot, Func<int, bool> cliRunning, TimeSpan quiet)
+    internal static IReadOnlyList<QueueItem> Dark(SchedulePlan plan, Snapshot snapshot, Func<int, bool> cliRunning, TimeSpan quiet, Func<string, bool>? hostedIn = null)
     {
         var dark = new List<QueueItem>();
         foreach (var q in plan.Queue)
@@ -113,7 +123,7 @@ public sealed class OrphanWatch(JsonStore store)
             if (q.Assignment is not { Worktree: true, Pilot: null, Log: null } a || q.Moving is not null) continue;
             if (snapshot.TakenUtc - a.StartedUtc < quiet) continue;
             var ownerGone = a.Cli is { } cli ? !cliRunning(cli)
-                : !snapshot.Repos.Any(r => r.Hosts.Any(h => IsUnder(h.WorkingDirectory, a.Directory)));
+                : !snapshot.Repos.Any(r => r.Hosts.Any(h => IsUnder(h.WorkingDirectory, a.Directory))) && hostedIn?.Invoke(a.Directory) != true;
             if (!ownerGone) continue;
             // Another live session working it (not the dead CLI's own, whose subagents died with it).
             if (plan.Worked.Any(w => Same(w.TicketId, q.Id) && (a.CliSession is null || w.SessionId != a.CliSession))) continue;
@@ -157,7 +167,7 @@ public sealed class OrphanWatch(JsonStore store)
         }
 
         var quiet = TimeSpan.FromMinutes(Math.Clamp(settings.OrphanQuietMinutes, 1, 24 * 60));
-        foreach (var q in Dark(plan, snapshot, CliRunning, quiet))
+        foreach (var q in Dark(plan, snapshot, CliRunning, quiet, HostedIn))
         {
             var a = q.Assignment!;
             var i = records.FindIndex(r => Same(r.TicketId, q.Id));

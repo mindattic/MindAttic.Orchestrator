@@ -136,4 +136,39 @@ public sealed class SessionRestoreTests
         Assert.That(request.Title, Is.EqualTo("CD: Repo [Claude]"));
         Assert.That(request.TabColor, Is.EqualTo("#112233"));
     }
+
+    [Test]
+    public void Unhosted_drops_tabs_whose_host_is_alive_and_keeps_the_rest()
+    {
+        var state = new RestoreState
+        {
+            Pid = 1, SelectedTab = 2,
+            Tabs =
+            [
+                new RestoreTab { Request = Host(), SessionId = "s1", HostId = "alive" },
+                new RestoreTab { Request = Host(), SessionId = "s2", HostId = "dead" },
+                new RestoreTab { Request = Host(), SessionId = "s3" },
+            ],
+        };
+        var kept = SessionRestoreStore.Unhosted(state, id => id == "alive");
+        Assert.That(kept.Tabs.Select(t => t.SessionId), Is.EqualTo(new[] { "s2", "s3" }));
+        Assert.That(kept.SelectedTab, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Unhosted_with_every_host_alive_offers_nothing()
+    {
+        var state = new RestoreState { Pid = 1, SelectedTab = 0, Tabs = [new RestoreTab { Request = Host(), HostId = "a" }] };
+        var kept = SessionRestoreStore.Unhosted(state, _ => true);
+        Assert.That(SessionRestoreStore.ShouldOffer(kept), Is.False);
+        Assert.That(kept.SelectedTab, Is.Null);
+    }
+
+    [Test]
+    public void The_host_id_round_trips_through_the_file()
+    {
+        var store = new SessionRestoreStore(temp.New());
+        store.Save(new RestoreState { Tabs = [new RestoreTab { Request = Host(), HostId = "h1" }] });
+        Assert.That(store.Load()!.Tabs[0].HostId, Is.EqualTo("h1"));
+    }
 }

@@ -205,4 +205,13 @@ public sealed class OrphanWatchTests
         Assert.That(OrphanWatch.Forget(store, "a-t1"), Is.True);
         Assert.That(OrphanWatch.Load(store), Is.Empty);
     }
+
+    [Test]
+    public void A_ticket_whose_cli_runs_in_a_live_termhost_is_not_dark_when_the_dashboard_has_no_tab_for_it()
+    {
+        store.SaveAssignments([Claim(Now.AddHours(-1)) with { Cli = null }]);
+        var (plan, snap) = Planned(Now);
+        Assert.That(OrphanWatch.Dark(plan, snap, _ => false, TimeSpan.FromMinutes(5)), Has.Count.EqualTo(1), "no tab and no host: dark");
+        Assert.That(OrphanWatch.Dark(plan, snap, _ => false, TimeSpan.FromMinutes(5), d => d == Tree), Is.Empty, "a live host runs it: not dark");
+    }
 }

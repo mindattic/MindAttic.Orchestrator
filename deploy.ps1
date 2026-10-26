@@ -197,13 +197,13 @@ if ($Force) {
     }
 }
 
-# Whether the install may go ahead (M.ORCH-T873): it restarts the dashboard, and every CLI its Terminals panels host loses its
-# state. `orchestrator busy` (the CLI just published, or the installed one) lists every Claude CLI still working on any login and
+# Whether the install may go ahead (M.ORCH-T873): it restarts the dashboard, and every unhosted CLI its Terminals panels run
+# loses its state (M.ORCH-T928: a CLI inside a TermHost survives the redeploy, is listed as hosted and never blocks it). `orchestrator busy` (the CLI just published, or the installed one) lists every Claude CLI still working on any login and
 # exits 1 if any is, 0 when all are idle; the CLI running this deploy is left out (its process tree). Any other outcome (no CLI,
 # one too old to have `busy`, a crash) is unknown, and unknown is never taken for idle. -WaitForIdle polls instead of refusing.
 function Test-ClisIdle {
     if ($IgnoreBusyClis) {
-        Write-Host 'Not checking for working Claude CLIs (-IgnoreBusyClis): any still working lose their state.' -ForegroundColor DarkYellow
+        Write-Host 'Not checking for working Claude CLIs (-IgnoreBusyClis): any unhosted CLI still working loses its state (hosted ones are unaffected).' -ForegroundColor DarkYellow
         return $true
     }
     if (-not (Test-Path $cliExe)) {
@@ -214,16 +214,16 @@ function Test-ClisIdle {
     if ($WaitForIdle) {
         $busyArgs += @('--wait', '--poll', [string][Math]::Max(5, $BusyPollSeconds))
         if ($WaitTimeoutMinutes -gt 0) { $busyArgs += @('--timeout', [string]$WaitTimeoutMinutes) }
-        Write-Host 'Waiting until every other Claude CLI is idle (-WaitForIdle)...' -ForegroundColor Cyan
+        Write-Host 'Waiting until every other unhosted Claude CLI is idle (-WaitForIdle)...' -ForegroundColor Cyan
     } else {
-        Write-Host 'Checking that no other Claude CLI is still working...' -ForegroundColor Cyan
+        Write-Host 'Checking that no other unhosted Claude CLI is still working (CLIs hosted in a TermHost survive the deploy)...' -ForegroundColor Cyan
     }
     $code = $null
     try { & $cliExe @busyArgs | Out-Host; $code = $LASTEXITCODE }
     catch { Write-Host "orchestrator busy failed: $($_.Exception.Message)" -ForegroundColor Red }
     if ($code -eq 0) { return $true }
     if ($code -eq 1) {
-        Write-Host 'Deploy refused: the CLIs above are still working (or their state can''t be read), and installing restarts the dashboard, so every CLI it hosts would lose its state. Nothing was stopped. Run it again once they are done, with -WaitForIdle to wait for them, or with -IgnoreBusyClis to install anyway.' -ForegroundColor Red
+        Write-Host 'Deploy refused: the unhosted CLIs above are still working (or their state can''t be read), and installing restarts the dashboard, so each of them would lose its state. CLIs hosted in a TermHost are unaffected and don''t count. Nothing was stopped. Run it again once they are done, with -WaitForIdle to wait for them, or with -IgnoreBusyClis to install anyway.' -ForegroundColor Red
     } else {
         Write-Host "Deploy refused: couldn't tell whether any Claude CLI is still working (orchestrator busy exited $code). Nothing was stopped; -IgnoreBusyClis installs anyway." -ForegroundColor Red
     }

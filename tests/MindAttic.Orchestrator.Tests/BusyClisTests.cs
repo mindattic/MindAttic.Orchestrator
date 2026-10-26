@@ -88,4 +88,34 @@ public sealed class BusyClisTests
         Assert.That(report.AllIdle, Is.False);
         Assert.That(report.Blocking.Single().Activity, Is.EqualTo(CliActivity.Unknown));
     }
+
+    [Test]
+    public void A_busy_cli_inside_a_live_termhost_is_hosted_and_never_blocks()
+    {
+        var report = Judge([Proc(1) with { HostPid = 900 }, Proc(2)], [State("a", 1, "busy"), State("b", 2, "idle")]);
+        Assert.That(report.AllIdle, Is.True);
+        Assert.That(report.Hosted.Single().Pid, Is.EqualTo(1));
+        Assert.That(report.Hosted.Single().Why.Single(), Does.Contain("unaffected by deploy"));
+    }
+
+    [Test]
+    public void An_unhosted_busy_cli_still_blocks_beside_a_hosted_one()
+    {
+        var report = Judge([Proc(1) with { HostPid = 900 }, Proc(2)], [State("a", 1, "busy"), State("b", 2, "busy")]);
+        Assert.That(report.Blocking.Select(c => c.Pid), Is.EqualTo(new int?[] { 2 }));
+        Assert.That(report.Hosted, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void HostAncestor_finds_the_termhost_above_a_cli_by_walking_parent_pids()
+    {
+        var tree = new Dictionary<int, (int Parent, string Exe)>
+        {
+            [900] = (1, "TermHost.exe"), [901] = (900, "conhost.exe"), [902] = (901, "claude.exe"), [50] = (1, "cmd.exe"), [51] = (50, "claude.exe"),
+        };
+        var hosts = new HashSet<int> { 900 };
+        Assert.That(BusyClis.HostAncestor(902, tree, hosts), Is.EqualTo(900));
+        Assert.That(BusyClis.HostAncestor(51, tree, hosts), Is.Null);
+        Assert.That(BusyClis.HostAncestor(902, tree, new HashSet<int>()), Is.Null);
+    }
 }

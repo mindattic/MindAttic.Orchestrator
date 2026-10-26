@@ -18,6 +18,10 @@ public sealed record RestoreTab
 
     /// <summary>It was the tab its person's page showed.</summary>
     public bool Chosen { get; init; }
+
+    /// <summary>The TermHost session its CLI ran in (M.ORCH-T928), null when it ran unhosted (in the dashboard's own process). While
+    /// that host lives the dashboard reattaches the tab itself, so a restore never offers it.</summary>
+    public string? HostId { get; init; }
 }
 
 /// <summary>Every terminal tab open in the dashboard, and who and what was on screen (M.ORCH-T862): rewritten whenever that
@@ -140,6 +144,27 @@ public sealed class SessionRestoreStore(string? directory = null)
 
     /// <summary>Whether <paramref name="state"/> is one to offer: it wasn't a clean exit and had a tab open.</summary>
     public static bool ShouldOffer(RestoreState? state) => state is { Clean: false, Tabs.Count: > 0 };
+
+    /// <summary>
+    /// <paramref name="state"/> without the tabs whose TermHost still lives (M.ORCH-T928): the dashboard reattaches those, so
+    /// offering them for <c>--resume</c> would run each CLI twice. What stays died with its host or was never hosted (the fallback
+    /// path). <see cref="RestoreState.SelectedTab"/> follows its tab, or goes when that tab was dropped.
+    /// <paramref name="hostAlive"/> says whether a session id has a live host (default: <see cref="Term.TermSessions.Get"/>).
+    /// </summary>
+    public static RestoreState Unhosted(RestoreState state, Func<string, bool>? hostAlive = null)
+    {
+        hostAlive ??= id => Term.TermSessions.Get(id) is not null;
+        var kept = new List<RestoreTab>();
+        int? selected = null;
+        for (var i = 0; i < state.Tabs.Count; i++)
+        {
+            var tab = state.Tabs[i];
+            if (tab.HostId is { Length: > 0 } id && hostAlive(id)) continue;
+            if (state.SelectedTab == i) selected = kept.Count;
+            kept.Add(tab);
+        }
+        return kept.Count == state.Tabs.Count ? state : state with { Tabs = kept, SelectedTab = selected };
+    }
 
     /// <summary>
     /// The request that reopens <paramref name="tab"/>: a Launcher menu pane as it was; a Claude CLI on the login it was on
