@@ -2,5 +2,7 @@
   <Project Path="src/MindAttic.Orchestrator.Core/MindAttic.Orchestrator.Core.csproj" />
   <Project Path="src/MindAttic.Orchestrator.Cli/MindAttic.Orchestrator.Cli.csproj" />
   <Project Path="src/MindAttic.Orchestrator.Wpf/MindAttic.Orchestrator.Wpf.csproj" />
+  <Project Path="src/MindAttic.Orchestrator.Term/MindAttic.Orchestrator.Term.csproj" />
+  <Project Path="src/MindAttic.Orchestrator.TermHost/MindAttic.Orchestrator.TermHost.csproj" />
   <Project Path="tests/MindAttic.Orchestrator.Tests/MindAttic.Orchestrator.Tests.csproj" />
 </Solution>

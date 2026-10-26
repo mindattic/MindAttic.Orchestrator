@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    M.ORCH-T924: TermHost, one detached process per CLI. It owns that CLI's ConPTY and serves it on a per-user, per-session
+    named pipe (MindAttic.Orchestrator.Term's TermProtocol), so the CLI outlives the dashboard (spike
+    docs/spikes/cli-host-viewer.md, promoted from the Phase 0 prototype prototypes/T923-relay/TermHostStub).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>MindAttic.Orchestrator.TermHost</RootNamespace>
+    <AssemblyName>MindAttic.Orchestrator.TermHost</AssemblyName>
+    <!-- HOUSE-LAW-1: whole-number versions only; bump the major. -->
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <!-- The bundled ConPTY (conpty.dll + OpenConsole.exe), the same version the dashboard gets through
+       EasyWindowsTerminalControl, not kernel32's inbox copy (Phase 0 result 4). -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.Console.ConPTY" Version="1.24.260710001" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MindAttic.Orchestrator.Term\MindAttic.Orchestrator.Term.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MindAttic.Orchestrator.Tests" />
+  </ItemGroup>
+
+</Project>

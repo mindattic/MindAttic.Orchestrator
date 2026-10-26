@@ -26,6 +26,9 @@
     <ProjectReference Include="..\..\src\MindAttic.Orchestrator.Core\MindAttic.Orchestrator.Core.csproj" />
     <ProjectReference Include="..\..\src\MindAttic.Orchestrator.Cli\MindAttic.Orchestrator.Cli.csproj" />
     <ProjectReference Include="..\..\src\MindAttic.Orchestrator.Wpf\MindAttic.Orchestrator.Wpf.csproj" />
+    <!-- TermHost's protocol, options and replay pieces (M.ORCH-T924, M.ORCH-T927). -->
+    <ProjectReference Include="..\..\src\MindAttic.Orchestrator.Term\MindAttic.Orchestrator.Term.csproj" />
+    <ProjectReference Include="..\..\src\MindAttic.Orchestrator.TermHost\MindAttic.Orchestrator.TermHost.csproj" />
   </ItemGroup>
 
 </Project>

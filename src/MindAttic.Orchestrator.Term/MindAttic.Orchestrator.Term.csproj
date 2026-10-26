@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    M.ORCH-T924: the TermHost wire format, shared by the host (MindAttic.Orchestrator.TermHost) and its viewers (the
+    dashboard's RelayTerminal, T926). Deliberately dependency-free: the host references only this, not Core, so it never
+    loads Core's Vault, SQL, Serilog and WMI stack and stays small, quick to start and rarely redeployed (spike section 7).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>MindAttic.Orchestrator.Term</RootNamespace>
+    <AssemblyName>MindAttic.Orchestrator.Term</AssemblyName>
+    <!-- HOUSE-LAW-1: whole-number versions only; bump the major. -->
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MindAttic.Orchestrator.Tests" />
+  </ItemGroup>
+
+</Project>
