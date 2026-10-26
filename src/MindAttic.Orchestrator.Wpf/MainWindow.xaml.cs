@@ -92,17 +92,30 @@ public partial class MainWindow : Window
         TerminalClip.Attach(TerminalPanesHost);
         TerminalKeyboard.Attach(this, TerminalPanesHost);
         PreviewKeyDown += TerminalPaste.OnPreviewKeyDown;
+        // Only the kept chords act while a terminal holds focus (M.ORCH-T846): the zoom keys and Esc go to the CLI.
+        TerminalKeyboard.GateBindings(this, TerminalPanesHost);
+        // Focus stays on the shown CLI's terminal (M.ORCH-T846): back to it after the window is activated, a person's tab is
+        // chosen, a dialog closes, a toast appears, a click on the page (not into a text box, a menu or a dialog) and a refresh
+        // that took the focused element away.
+        Activated += (_, _) => PinTerminalFocus();
+        model.SelectedTabChanged += (_, _) => PinTerminalFocus();
+        PreviewMouseUp += (_, _) => PinTerminalFocus();
         model.PropertyChanged += (_, _) => UpdateTerminalsCover();
         DataContextChanged += (_, _) => UpdateTerminalsCover();
 
         // A toast on any login's tab flashes the window.
-        model.ToastRaised += (_, _) => OnToastAdded();
+        model.ToastRaised += (_, _) =>
+        {
+            OnToastAdded();
+            PinTerminalFocus();
+        };
 
         timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = PollInterval };
         timer.Tick += async (_, _) =>
         {
             await model.RefreshAsync();
             Retime();
+            PinTerminalFocus(onlyIfLost: true);
         };
         Loaded += async (_, _) =>
         {
@@ -184,7 +197,11 @@ public partial class MainWindow : Window
         {
             var refresh = model.ApplyStatus(message);
             Retime();
-            if (refresh && IsLoaded && !Hidden) await model.RefreshAsync();
+            if (refresh && IsLoaded && !Hidden)
+            {
+                await model.RefreshAsync();
+                PinTerminalFocus(onlyIfLost: true);
+            }
         }
         // async void on the dispatcher: an escaped exception would close the dashboard.
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -202,12 +219,47 @@ public partial class MainWindow : Window
         TerminalPanesHost.Visibility = covered ? Visibility.Hidden : Visibility.Visible;
     }
 
+    /// <summary>
+    /// Hands the keyboard back to the shown CLI's terminal (M.ORCH-T846), queued past the click, layout or refresh that
+    /// prompted it (a terminal shown again only gets its native window back on the layout pass). It stays put while the window
+    /// isn't active, a dialog is open, the terminals are covered, or focus is somewhere the user chose to be: a text box (Settings,
+    /// Rename), an open menu or dropdown, another window. With <paramref name="onlyIfLost"/> (a refresh) it only takes focus
+    /// back that went nowhere, as when a rebuilt list dropped the focused row, so tabbing round the page still works.
+    /// </summary>
+    private void PinTerminalFocus(bool onlyIfLost = false) =>
+        Dispatcher.InvokeAsync(() =>
+        {
+            var shown = Shown;
+            if (!IsActive || shown.IsSettingsOpen || shown.IsRenameOpen || shown.IsLimitOpen
+                || TerminalPanesHost.Visibility != Visibility.Visible) return;
+            if (model.AllTerminals.SelectedPane?.Control is not { IsVisible: true } terminal) return;
+            var focused = Keyboard.FocusedElement as DependencyObject;
+            if (ReferenceEquals(focused, terminal) || KeepsFocus(focused, onlyIfLost)) return;
+            terminal.Focus();
+        }, DispatcherPriority.ContextIdle);
+
+    /// <summary>Whether <paramref name="focused"/> keeps the keyboard rather than handing it to the terminal: a text box
+    /// the user clicked into, anything in a popup (a menu, a dropdown) or another window, and with <paramref name="onlyIfLost"/>
+    /// any element still on screen.</summary>
+    private bool KeepsFocus(DependencyObject? focused, bool onlyIfLost)
+    {
+        if (focused is null || ReferenceEquals(focused, this)) return false;
+        var source = PresentationSource.FromDependencyObject(focused);
+        if (source is null) return false; // taken off screen with its list: lost
+        if (!ReferenceEquals(source.RootVisual, this)) return true; // a popup (a menu, a dropdown) or another window
+        if (focused is TextBoxBase or PasswordBox) return true; // an editable ComboBox's text too
+        return onlyIfLost && focused is UIElement { IsVisible: true };
+    }
+
     /// <summary>Reads out the shown tab's status and queue lines.</summary>
     private void OnShownChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (sender != Shown) return;
         if (e.PropertyName is nameof(MainViewModel.IsSettingsOpen) or nameof(MainViewModel.IsRenameOpen) or nameof(MainViewModel.IsLimitOpen))
+        {
             UpdateTerminalsCover();
+            PinTerminalFocus(); // a dialog closing hands the keyboard back to the CLI
+        }
         if (e.PropertyName == nameof(MainViewModel.StatusMessage)) Announce(Shown.StatusMessage);
         else if (e.PropertyName == nameof(MainViewModel.QueueMessage)) Announce(Shown.QueueMessage);
     }

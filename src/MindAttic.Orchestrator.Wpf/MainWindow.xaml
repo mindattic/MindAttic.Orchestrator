@@ -21,7 +21,10 @@
              holds keyboard focus, since plain Left/Right there move the CLI's own cursor instead of the tab strip's selection. -->
         <KeyBinding Key="Left" Modifiers="Control" Command="{Binding Terminals.PreviousCommand}" />
         <KeyBinding Key="Right" Modifiers="Control" Command="{Binding Terminals.NextCommand}" />
-        <!-- Ctrl+Plus / Ctrl+Minus / Ctrl+0 (main row and number pad) are the library's ZoomLevel's, added in MainWindow.xaml.cs. -->
+        <!-- Ctrl+Plus / Ctrl+Minus / Ctrl+0 (main row and number pad) are the library's ZoomLevel's, added in MainWindow.xaml.cs.
+             While a terminal holds focus only F5, Ctrl+Tab, Ctrl+Shift+Tab, Ctrl+Left/Right (and the paste keys) act
+             (M.ORCH-T846): every other binding here (Esc, the zoom keys) is gated so its key reaches the CLI. -->
+
     </Window.InputBindings>
 
     <Window.Resources>

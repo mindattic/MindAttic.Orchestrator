@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Data;
 using System.Windows.Interop;
 
 namespace MindAttic.Orchestrator.Wpf;
@@ -14,6 +15,9 @@ namespace MindAttic.Orchestrator.Wpf;
 /// the window's binding (<see cref="HoldsFocus"/>). Ctrl or Alt chords are not touched, except Ctrl+Left/Right (M.ORCH-T824): with
 /// Ctrl alone, those switch to the previous/next CLI tab of the shown login even while its terminal holds focus, so the CLI gives
 /// up its own Ctrl+Left/Right word jump. Ctrl+Shift and Alt variants still go to the CLI.
+/// <para>The window's own key bindings stand aside too (M.ORCH-T846): while a terminal holds focus only the dashboard's kept
+/// chords (<see cref="IsKeptChord"/>) still act; every other KeyBinding on the window (the zoom keys Ctrl+Plus, Ctrl+Minus and
+/// Ctrl+0, and Esc) is gated by <see cref="GateBindings"/> so its key reaches the CLI instead.</para>
 /// </summary>
 internal static partial class TerminalKeyboard
 {
@@ -39,6 +43,51 @@ internal static partial class TerminalKeyboard
         var command = step > 0 ? panes.NextCommand : panes.PreviousCommand;
         if (command.CanExecute(null)) command.Execute(null);
         e.Handled = true;
+    }
+
+    /// <summary>The chords the dashboard keeps even while a terminal holds focus (M.ORCH-T846): Ctrl+Tab and Ctrl+Shift+Tab
+    /// (login tabs), Ctrl+Left/Right (CLI tabs), Ctrl+V and Shift+Insert (paste) and F5 (refresh). Every other key, Ctrl+C and
+    /// Ctrl+X (the CLI's interrupt) among them, belongs to the CLI.</summary>
+    internal static bool IsKeptChord(Key key, ModifierKeys modifiers) =>
+        (key == Key.F5 && modifiers == ModifierKeys.None)
+        || (key == Key.Tab && modifiers is ModifierKeys.Control or (ModifierKeys.Control | ModifierKeys.Shift))
+        || (key is Key.Left or Key.Right && modifiers == ModifierKeys.Control)
+        || (key == Key.V && modifiers == ModifierKeys.Control)
+        || (key == Key.Insert && modifiers == ModifierKeys.Shift);
+
+    /// <summary>Gates every KeyBinding on <paramref name="window"/> that isn't a kept chord (M.ORCH-T846): its command can't
+    /// execute while a terminal holds focus, so WPF leaves the key unhandled and it goes on to the CLI. Call once the window's
+    /// bindings are all added (the XAML's and the zoom's). A data-bound command is left alone: its binding would put the
+    /// ungated command back (none today, as every bound one is a kept chord).</summary>
+    public static void GateBindings(Window window, FrameworkElement terminals)
+    {
+        foreach (var binding in window.InputBindings.OfType<KeyBinding>())
+        {
+            if (IsKeptChord(binding.Key, binding.Modifiers) || binding.Command is null or GatedCommand
+                || BindingOperations.IsDataBound(binding, InputBinding.CommandProperty)) continue;
+            binding.Command = new GatedCommand(binding.Command, terminals, window);
+        }
+    }
+
+    /// <summary>A window key's command that stands aside while a terminal holds focus. A routed one (Esc) is routed from the
+    /// window, as its KeyBinding did.</summary>
+    private sealed class GatedCommand(ICommand inner, FrameworkElement terminals, IInputElement target) : ICommand
+    {
+        public event EventHandler? CanExecuteChanged
+        {
+            add => inner.CanExecuteChanged += value;
+            remove => inner.CanExecuteChanged -= value;
+        }
+
+        public bool CanExecute(object? parameter) => !HoldsFocus(terminals)
+            && (inner is RoutedCommand routed ? routed.CanExecute(parameter, target) : inner.CanExecute(parameter));
+
+        public void Execute(object? parameter)
+        {
+            if (!CanExecute(parameter)) return;
+            if (inner is RoutedCommand routed) routed.Execute(parameter, target);
+            else inner.Execute(parameter);
+        }
     }
 
     /// <summary>True while a terminal has the keyboard: the window's own key bindings (Esc) should stand aside.</summary>
