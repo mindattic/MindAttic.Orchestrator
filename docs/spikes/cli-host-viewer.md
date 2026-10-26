@@ -637,6 +637,185 @@ Serializing a full scrollback takes about 4 ms and comes to about 1 MB of VT. A 
 Each replay came from the emulator. All 45 lines came back with their `38;2;255;100;0` colour, at the attach size, ending
 with the cursor at the prompt.
 
+## Phase 3 gateway (M.ORCH-T933, 2026-10-26)
+
+`src/MindAttic.Orchestrator.Gateway` is an ASP.NET Core minimal API on Kestrel with TLS. It bridges each local TermHost pipe
+to authenticated remote viewers over a WebSocket. Like TermHost, it references only the Term library, not Core. It is
+**off by default**.
+
+### Enabling it
+
+```
+orchestrator gateway on                                  # 127.0.0.1:7443, self-signed dev certificate
+orchestrator gateway --bind 100.101.102.103              # listen on this machine's Tailscale address
+orchestrator gateway --dev-cert-names ryan-pc.tail1234.ts.net,100.101.102.103
+orchestrator gateway --cert-thumbprint <hex>             # or --cert-path <file.pfx>; "none" clears either
+orchestrator gateway                                     # shows the settings, whether it runs, and its certificate pin
+orchestrator gateway off
+```
+
+- **Settings.** These live in `OrchestratorSettings.Gateway`: `Enabled`, `Bind` (default `127.0.0.1`, so turning it on
+  exposes nothing until you pick an address), `Port` (7443), `CertPath` or `CertThumbprint`, `DevCertNames`, `Owner` and
+  `TokenMinutes` (15). None of them is a secret.
+- **Lifetime.** Each tick, the daemon's `GatewaySupervisor` matches the gateway to the settings:
+  - when it's on and no gateway runs, it starts one as a per-user process with the settings as arguments;
+  - when the settings change, it restarts the gateway;
+  - when the gateway exits, it starts it again, backing off from 1 minute to 30 minutes while it keeps failing;
+  - when it's turned off, it stops the gateway.
+
+  It only ever stops a gateway it started (`managed` in the status file), never one run by hand. It never touches a
+  TermHost: a gateway crash, restart or stop only drops remote viewers. A named mutex keeps one gateway per user session.
+- **Finding the exe.** The supervisor looks at `%MINDATTIC_GATEWAY%` first, then
+  `C:\Apps\MindAttic.Orchestrator\Gateway\MindAttic.Orchestrator.Gateway.exe`, then the daemon's own folder. `deploy.ps1`
+  doesn't publish it yet (a follow-up, kept out of T928's deploy work). Until then, either
+  `dotnet publish src/MindAttic.Orchestrator.Gateway -c Release -o C:\Apps\MindAttic.Orchestrator\Gateway` or point
+  `MINDATTIC_GATEWAY` at a build.
+- **Files.** These live in `%LOCALAPPDATA%\MindAttic\MindAttic.Orchestrator\gateway\`:
+  - `gateway.json`: the status (pid, start time, bind, port, certificate SHA-256, arguments, version, managed);
+    `TermGateway.Running()` reads it;
+  - `signing.key` and `owner.key`;
+  - `dev-cert.pfx`;
+  - `gateway.log`, which names who attached to what, from where, read-only or interactive, and how it ended, as counts.
+    It never holds a token, a key, a header or a byte of terminal output.
+
+### TLS
+
+The gateway uses the first of these that applies:
+
+1. `CertThumbprint`: a certificate with its key in `CurrentUser\My`, else `LocalMachine\My`.
+2. `CertPath`: a PFX. Its password, if it has one, comes from the `MINDATTIC_GATEWAY_CERT_PASSWORD` environment variable,
+   never from a setting or an argument.
+3. Neither: a self-signed development certificate. It is made once for `localhost`, `127.0.0.1`, `::1`, the machine name
+   and `DevCertNames`, and made again within 30 days of expiry or when the names change.
+
+No client trusts the dev certificate, so a client **pins** it. It compares the server certificate's SHA-256 with the pin
+that `orchestrator gateway` or `MindAttic.Orchestrator.Gateway fingerprint` prints:
+
+```csharp
+socket.Options.RemoteCertificateValidationCallback = (_, cert, _, _) =>
+    cert is not null && Convert.ToHexString(SHA256.HashData(cert.GetRawCertData())) == pin;
+```
+
+Pass the pin to a teammate the way you pass the owner key: over a channel you already trust.
+
+### Small teams: Tailscale or a VPN
+
+The gateway is a per-machine service, so no relay is needed when the machines can reach each other.
+
+1. Install Tailscale on each machine, in one tailnet.
+2. On the machine whose CLIs are watched:
+   `orchestrator gateway --bind <its 100.x address> --dev-cert-names <its MagicDNS name>,<its 100.x address>` and
+   `orchestrator gateway on`.
+3. Restrict who may reach the port with a tailnet ACL, for example `"dst": ["ryan-pc:7443"]` for the team's group only.
+   Windows Firewall must allow inbound TCP 7443 on the Tailscale interface.
+4. The viewer connects to `wss://<MagicDNS name>:7443/...` and pins the certificate.
+
+Tailscale's WireGuard already encrypts the hop. TLS with a pin still keeps the token and the stream safe from anything
+else on the tailnet. A classic VPN works the same way: bind to the VPN interface's address. Never bind `0.0.0.0` on a
+machine that is directly on the internet.
+
+### Authentication
+
+Callers present `Authorization: Bearer <token>`. Tokens are only read from that header: a token in a URL would land in
+logs. A token is `v1.<payload>.<signature>`:
+
+- the payload is base64url JSON: subject, scope (`watch` or `interact`), issued, expires and a random id;
+- the signature is HMAC-SHA256 under `signing.key`.
+
+Tokens live 15 minutes by default and never more than 60. They are stateless. Deleting `signing.key` and restarting
+revokes every token. There are two ways to get one:
+
+- **Locally:** `MindAttic.Orchestrator.Gateway token [--scope watch] [--minutes N]`. Being able to read the key file
+  proves you're the owner.
+- **Remotely:** `POST /auth/token` with `{ "ownerKey": "...", "scope": "watch", "minutes": 15 }`, for the owner on their
+  other machine. The owner key comes from `MindAttic.Orchestrator.Gateway owner-key`. Five wrong keys from one address in
+  five minutes give 429 until they age out.
+
+**Why not MindAttic.Authentication (yet).** It is a Razor Class Library built for a browser:
+
+- a cookie session with Data Protection;
+- antiforgery-protected form posts;
+- a host-owned EF Core `DbContext` implementing `IAuthDataContext`;
+- the pepper, KEK and reset key from `MindAttic:Vault:Security:*`, failing closed without them.
+
+Its consumers (Ideas, IdiotProof, Prose, Tutor) all host it in a web app with their own database. A headless per-user
+gateway has no database, no browser and no Vault section. So this phase uses the minimal token pair above, which is
+enough while the only identity allowed in is the machine owner. Hosting the library comes with real team sign-in. One way
+is a central MindAttic web app that runs it and mints gateway tokens, with the same `v1` format and a shared or published
+key. That belongs with M.ORCH-T934's member grants.
+
+### Authorization
+
+`IGatewayGrants.AccessTo(viewer, session)` returns `None`, `Watch` or `Interact`. For now `OwnerOnlyGrants` gives the
+`Owner` identity (default: the Windows user name) `Interact` and everyone else `None`. The access a request gets is the
+least of three things:
+
+- the grant;
+- the token's scope;
+- `?mode=watch`, if the request asks for it.
+
+M.ORCH-T934 replaces the grants with `term_grants` from `orchestrator.db` and adds the audit log. M.ORCH-T935 adds masking
+and the "being watched" banner.
+
+### Endpoints
+
+| Route | Auth | What it does |
+|---|---|---|
+| `GET /health` | none | `{ ok, version }` |
+| `POST /auth/token` | owner key | `{ token, subject, scope, expiresUtc }` |
+| `GET /sessions` | bearer | The hosted sessions the caller may see, from `TermSessions.Enumerate()`: `id`, `title`, `login`, `repo`, `cols`, `rows`, `state`, `exitCode`, `startedUtc`, `protocol` and `access`. The command line, folder, config dir, pipe and host pid are left out |
+| `GET /sessions/{id}/stream` | bearer, WebSocket | Bridges the session's pipe (`mindattic-term-<user>-<id>`). An unknown session and a forbidden one both answer 404, so a token can't probe for ids. A pipe that can't be opened answers 502 |
+
+### The protocol over the WebSocket
+
+It is the pipe protocol, unchanged: **each binary WebSocket message carries exactly one TermHost frame**
+(`u8 kind | u32 length | payload`) in both directions. A remote viewer runs the same RelayConnection logic, with a stream
+that reads and writes whole messages instead of a pipe:
+
+1. The viewer sends Hello.
+2. The host answers with Hello, Replay, Live, Title (when known) and Exit (when the CLI has exited).
+3. The live Output, Modes, Size, Title and Exit frames follow as they happen.
+
+The gateway checks each viewer message:
+
+- It must be binary and hold one whole frame, with a length that matches.
+- It may be at most 1 MB, which is room for 64 KB paste chunks.
+- The first frame must be Hello.
+
+A viewer that breaks these rules is closed with a WebSocket close status. Of a viewer's later frames, only Input and Resize
+go on, and only from an interactive viewer. Every host frame goes to the viewer unchanged. When the host closes the pipe
+(the session ended, or a newer viewer replaced this one), the viewer gets a normal close: "the session's host closed the
+stream".
+
+**Read-only watchers.** A watcher's Hello reaches the host at **0x0**. The host ignores a zero size, so a watcher never
+takes the session's size, and it reads the real size from the host's Hello and Size frames. The gateway drops a watcher's
+Input and Resize frames and counts them in the log line written when it detaches.
+
+**Compression.** The gateway offers permessage-deflate (`DangerousEnableCompression`, 15-bit window, context takeover).
+It is used when the viewer asks for it (`ClientWebSocketOptions.DangerousDeflateOptions`). VT compresses 5 to 10x. The
+"dangerous" in the name is the CRIME/BREACH class of attacks: secrets compressed beside attacker-chosen text. Only an
+interactive viewer can choose text here, and for now that is only the owner. Revisit this together with T935's masker once
+other members get `interact`.
+
+**Not yet: several viewers per session.** TermHost serves one viewer at a time, and a new connection replaces the old one
+(multi-viewer is M.ORCH-T930). Until T930 lands, a remote attach displaces the local dashboard's viewer of that session,
+and a dashboard reattach displaces the remote one. Neither affects the CLI.
+
+### Smoke test (2026-10-26)
+
+Setup: a TermHost running `cmd /d /k echo hello-gateway`, and the gateway on `127.0.0.1:17443` with a dev certificate and
+a scratch data folder. A throwaway `ClientWebSocket` client pinned the certificate. The results:
+
+- **Authentication.** `/sessions` answered 401 with no token and with a bad one, and listed the session with a watch
+  token. A wrong owner key got 401, and the right one got a 5-minute watch token.
+- **Watch token.** The viewer got Hello `120x30`, a Replay containing `hello-gateway`, Live and Title. Its typed line
+  never came back. The registry still said `120x30` after it sent Resize `90x20`. The log said "2 dropped".
+- **Interact token.** permessage-deflate was negotiated. The Hello at `100x25` resized the session, the typed line echoed
+  back, and Resize took it to `90x20`. `?mode=watch` with the same token dropped its input again.
+- **Wrong pin.** A client with a wrong pin failed the TLS handshake.
+- **CLI exit.** Typing `exit` from an interactive viewer delivered the Exit frame, then the close "the session's host
+  closed the stream". The host ended and removed its record.
+
 ## Sources
 
 - Decompiled: `CI.Microsoft.Terminal.Wpf` 1.25.260303002 (`ITerminalConnection`, `TerminalControl`, `TerminalContainer`) and `EasyWindowsTerminalControl` 1.0.38 (`EasyTerminalControl`, `TermPTY`), from `%USERPROFILE%\.nuget\packages`.
