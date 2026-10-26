@@ -279,6 +279,53 @@ public partial class MainWindow : Window
         if (sender is TextBlock icon) Blink(icon, icon.IsVisible);
     }
 
+    /// <summary>A CLI tab's right-click menu (M.ORCH-T883; Shift+F10 too): "Move to" each other signed-in login, read when it's
+    /// opened, moving that CLI there. Not on the Launcher's own menu tab; disabled until the CLI's host is known.</summary>
+    private async void OnTerminalTabContextMenu(object sender, ContextMenuEventArgs e)
+    {
+        try
+        {
+            if (e.OriginalSource is not DependencyObject source
+                || ItemsControl.ContainerFromElement(TerminalTabs, source) is not FrameworkElement { DataContext: TerminalPaneViewModel pane } container
+                || pane.Request.IsMenu) return;
+            e.Handled = true;
+            var tab = Shown;
+            var placement = e.CursorLeft < 0 ? PlacementMode.Bottom : PlacementMode.MousePoint;
+            var agent = pane.HostPid is { } host ? tab.AgentOfHost(host) : null;
+            var menu = DropdownMenu(container, $"Move the {pane.Name} CLI to", placement);
+            if (agent is null)
+            {
+                var wait = DropdownItem("Move to");
+                wait.IsEnabled = false;
+                wait.ToolTip = "This CLI isn't known to the Orchestrator yet: it shows up once its first turn starts";
+                ToolTipService.SetShowOnDisabled(wait, true);
+                menu.Items.Add(wait);
+                menu.IsOpen = true;
+                return;
+            }
+            var targets = await tab.MoveTargetsAsync(agent.OwnLogin);
+            if (targets.Count == 0)
+            {
+                var none = DropdownItem("Move to: no other signed-in login");
+                none.IsEnabled = false;
+                menu.Items.Add(none);
+            }
+            foreach (var target in targets)
+            {
+                var item = DropdownItem($"Move to {target.Label}");
+                item.ToolTip = target.IsGlobal ? "The global login (~/.claude)" : $"{target.Email}'s own login (~/.claude-accounts)";
+                item.Click += async (_, _) =>
+                {
+                    try { await tab.MoveToAccountAsync(agent.Repo, agent.SessionId, agent.CliPid, target); }
+                    catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Moving a CLI failed; contained"); }
+                };
+                menu.Items.Add(item);
+            }
+            menu.IsOpen = true;
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Building the Move to menu failed; contained"); }
+    }
+
     /// <summary>A person's tab's right-click menu (M.ORCH-T797; Shift+F10 or the menu key on a focused tab too): Rename, Org
     /// limit and Make default, the login actions that were standalone buttons on the person's page. Make default is this
     /// person's own (it signs the global fallback login in to their account), so it's here, shown only while it applies. The

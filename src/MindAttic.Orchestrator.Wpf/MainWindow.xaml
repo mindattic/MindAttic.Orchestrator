@@ -274,7 +274,7 @@
             <TextBlock x:Name="TerminalsEmptyHint" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceBS}"
                        Text="No terminals open on this login. When the Launcher runs inside the Orchestrator, each CLI it opens arrives here as a tab of its own: a live terminal you can type in."
                        Visibility="{Binding Terminals.HasPanes, Converter={x:Static vm:Converters.FalseToVisible}}" />
-            <mc:MaTabControl x:Name="TerminalTabs" ShowContent="False" ItemsSource="{Binding Terminals.Panes}" SelectedItem="{Binding Terminals.SelectedPane}"
+            <mc:MaTabControl x:Name="TerminalTabs" ShowContent="False" ContextMenuOpening="OnTerminalTabContextMenu" ItemsSource="{Binding Terminals.Panes}" SelectedItem="{Binding Terminals.SelectedPane}"
                              Margin="{StaticResource SpaceBS}" AutomationProperties.Name="Terminals" AutomationProperties.HelpText="{Binding Terminals.Summary}"
                              Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
                 <mc:MaTabControl.ItemContainerStyle>
