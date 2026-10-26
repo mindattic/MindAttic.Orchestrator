@@ -59,18 +59,48 @@ public static class TermBus
 
     /// <summary>Writes <paramref name="message"/> to the daemon's inbox; whether it got there. Never throws, and never waits
     /// longer than <paramref name="timeoutMs"/> for the pipe.</summary>
-    public static bool TrySend(TermSessionEvent message, string? pipeName = null, int timeoutMs = ConnectTimeoutMs)
+    public static bool TrySend(TermSessionEvent message, string? pipeName = null, int timeoutMs = ConnectTimeoutMs) =>
+        TrySendLine(Envelope(message, DateTime.UtcNow, Environment.ProcessId), pipeName, timeoutMs);
+
+    /// <summary>The envelope line of any kind (M.ORCH-T935: <see cref="TermWatchersBus"/> writes <c>term-watchers</c> this way).</summary>
+    public static string Envelope<T>(string kind, int version, T payload, DateTime atUtc, int pid) =>
+        JsonSerializer.Serialize(new Line<T>(kind, version, atUtc, pid, payload), Json);
+
+    /// <summary>The payload of an envelope line of <paramref name="kind"/> at most <paramref name="version"/>; null otherwise.</summary>
+    public static T? ParsePayload<T>(string line, string kind, int version) where T : class
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(line);
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object) return null;
+            if (!root.TryGetProperty("kind", out var k) || k.GetString() != kind) return null;
+            if (root.TryGetProperty("v", out var v) && v.TryGetInt32(out var found) && found > version) return null;
+            return root.TryGetProperty("payload", out var payload) ? payload.Deserialize<T>(Json) : null;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException) { return null; }
+    }
+
+    /// <summary>Writes one envelope line to the daemon's inbox; whether it got there. Never throws.</summary>
+    public static bool TrySendLine(string envelope, string? pipeName = null, int timeoutMs = ConnectTimeoutMs)
     {
         try
         {
             using var pipe = new NamedPipeClientStream(".", pipeName ?? InboxPipeName, PipeDirection.Out, PipeOptions.CurrentUserOnly);
             pipe.Connect(timeoutMs);
-            pipe.Write(Encoding.UTF8.GetBytes(Envelope(message, DateTime.UtcNow, Environment.ProcessId) + "\n"));
+            pipe.Write(Encoding.UTF8.GetBytes(envelope + "\n"));
             pipe.Flush();
             return true;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException) { return false; }
     }
+
+    private sealed record Line<T>(
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("v")] int V,
+        [property: JsonPropertyName("at")] DateTime At,
+        [property: JsonPropertyName("pid")] int Pid,
+        [property: JsonPropertyName("payload")] T Payload);
 
     private sealed record Line(
         [property: JsonPropertyName("kind")] string Kind,

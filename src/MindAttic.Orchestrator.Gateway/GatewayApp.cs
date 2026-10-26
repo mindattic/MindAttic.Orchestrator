@@ -27,6 +27,16 @@ internal sealed class GatewayServices
 
     /// <summary>The clock audit records are stamped with.</summary>
     public Func<DateTime> Clock { get; init; } = () => DateTime.UtcNow;
+
+    /// <summary>The owner's choices of what is shared, masked and paused (M.ORCH-T935): <c>broadcast.json</c>, reread as it
+    /// changes. The default shares nothing.</summary>
+    public IBroadcastControl Broadcast { get; init; } = new FixedBroadcast(new TermBroadcastSettings());
+
+    /// <summary>What the masker hides: the token shapes, and the Vault's values once loaded.</summary>
+    public SecretMasker Secrets { get; init; } = SecretMasker.ShapesOnly;
+
+    /// <summary>Who is attached remotely, announced on the status bus.</summary>
+    public WatcherBoard Watchers { get; init; } = new(null, null);
 }
 
 /// <summary>A session as <c>GET /sessions</c> lists it: never its command line, folder, config dir, pipe or host pid.</summary>
@@ -41,7 +51,8 @@ internal sealed record GatewaySession(
     [property: JsonPropertyName("exitCode")] int? ExitCode,
     [property: JsonPropertyName("startedUtc")] DateTime StartedUtc,
     [property: JsonPropertyName("protocol")] int Protocol,
-    [property: JsonPropertyName("access")] string Access);
+    [property: JsonPropertyName("access")] string Access,
+    [property: JsonPropertyName("paused")] bool Paused);
 
 internal sealed record TokenRequest(
     [property: JsonPropertyName("ownerKey")] string? OwnerKey,
@@ -127,12 +138,15 @@ internal static class GatewayApp
             {
                 if (Authenticate(http, g) is not { } who) return Results.Unauthorized();
                 var list = new List<GatewaySession>();
+                var broadcast = g.Broadcast.Current;
                 foreach (var s in g.Sessions.Enumerate())
                 {
+                    // Only what the owner shares (M.ORCH-T935): remote watching is opt-in, per session or for all of them.
+                    if (!broadcast.IsShared(s.Id)) continue;
                     var access = OwnerOnlyGrants.Effective(g.Grants.AccessTo(who.Subject, s), who.Scope, null);
                     if (access == GatewayAccess.None) continue;
                     list.Add(new GatewaySession(s.Id, s.Title, s.Login, s.Repo, s.Cols, s.Rows, s.State, s.ExitCode, s.StartedUtc, s.Protocol,
-                        access == GatewayAccess.Interact ? GatewayScopes.Interact : GatewayScopes.Watch));
+                        access == GatewayAccess.Interact ? GatewayScopes.Interact : GatewayScopes.Watch, broadcast.IsPaused(s.Id)));
                 }
                 return Results.Json(list);
             }
@@ -160,14 +174,15 @@ internal static class GatewayApp
         if (!http.WebSockets.IsWebSocketRequest) { http.Response.StatusCode = StatusCodes.Status400BadRequest; return; }
         var session = g.Sessions.Get(id);
         string? requestedMode = http.Request.Query["mode"];
-        var access = session is null ? GatewayAccess.None
+        var shared = session is not null && g.Broadcast.Current.IsShared(session.Id);
+        var access = session is null || !shared ? GatewayAccess.None
             : OwnerOnlyGrants.Effective(g.Grants.AccessTo(who.Subject, session), who.Scope, requestedMode);
         var from = http.Connection.RemoteIpAddress?.ToString() ?? "?";
-        // Not found and not allowed look the same, so a token can't probe for session ids.
+        // Not found, not shared (M.ORCH-T935) and not allowed look the same, so a token can't probe for session ids.
         if (session is null || access == GatewayAccess.None)
         {
             g.Audit.Write(Record(g, TermGatewayAudit.Refused, who.Subject, TermProtocol.Sanitize(id), "none", from,
-                detail: session is null ? "no such session" : "no grant"));
+                detail: session is null ? "no such session" : !shared ? "not shared" : "no grant"));
             http.Response.StatusCode = StatusCodes.Status404NotFound;
             return;
         }
@@ -189,8 +204,11 @@ internal static class GatewayApp
             ServerMaxWindowBits = 15,
         }).ConfigureAwait(false);
         var mode = access == GatewayAccess.Interact ? GatewayScopes.Interact : GatewayScopes.Watch;
-        g.Log.Write($"attach {session.Id} by {who.Subject} from {from} ({mode})");
+        var masked = g.Broadcast.Current.IsMasked(session.Id);
+        g.Log.Write($"attach {session.Id} by {who.Subject} from {from} ({mode}, {(masked ? "masked" : "unmasked")})");
         g.Audit.Write(Record(g, TermGatewayAudit.Attach, who.Subject, session.Id, mode, from));
+        // The owner's dashboard shows a "being watched" banner while this lasts (M.ORCH-T935).
+        var watcher = g.Watchers.Attach(session.Id, who.Subject, access, from);
 
         // Every interval: the input typed since (counts and sizes only), and the access checked again, so a revoked or
         // expired grant closes the stream rather than lasting as long as the connection does.
@@ -220,13 +238,19 @@ internal static class GatewayApp
             catch (Exception ex) { g.Log.Error(ex, "watching a stream's access failed; contained"); }
         });
 
-        var result = await TermBridge.RunAsync(socket, pipe, access, g.Log, http.RequestAborted, input, revoke.Token).ConfigureAwait(false);
+        BridgeResult result;
+        try
+        {
+            result = await TermBridge.RunAsync(socket, pipe, access, g.Log, http.RequestAborted, input, revoke.Token,
+                new BroadcastStream(session.Id, session.StartedUtc, g.Broadcast, g.Secrets)).ConfigureAwait(false);
+        }
+        finally { g.Watchers.Detach(watcher); }
         await stopWatch.CancelAsync().ConfigureAwait(false);
         try { await watch.ConfigureAwait(false); } catch (Exception) { }
         WriteInput(g, input, who.Subject, session.Id, mode, from);
         var ended = revoked ? "access revoked" : result.EndedBy;
         g.Log.Write($"detach {session.Id} by {who.Subject}: ended by {ended}, {result.FramesUp} frames up, " +
-                    $"{result.FramesDown} down ({result.BytesDown} bytes), {result.Dropped} dropped");
+                    $"{result.FramesDown} down ({result.BytesDown} bytes), {result.Dropped} dropped, {result.Withheld} withheld while paused");
         g.Audit.Write(Record(g, TermGatewayAudit.Detach, who.Subject, session.Id, mode, from, result.FramesUp, result.BytesDown,
             $"ended by {ended}; {result.FramesDown} frames down, {result.Dropped} dropped"));
     }

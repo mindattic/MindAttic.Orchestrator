@@ -49,6 +49,11 @@ try
 
     var certificate = GatewayCertificates.Load(options);
     var pin = GatewayCertificates.Pin(certificate);
+    // M.ORCH-T935: the Vault's secret values, held in memory only, so the masker hides them as literal strings on remote streams.
+    var secrets = new SecretMasker(VaultSecrets.Load(log.Write));
+    log.Write($"masking token shapes and {secrets.LiteralCount} Vault-held values on remote streams");
+    using var broadcast = new BroadcastFile(options.DataDir);
+    var watchers = new WatcherBoard(options.DataDir, message => TermWatchersBus.TrySend(message));
     var services = new GatewayServices
     {
         Options = options,
@@ -61,6 +66,9 @@ try
         Pipes = new NamedPipeConnector(),
         Log = log,
         Audit = new SpoolAudit(options.DataDir, log),
+        Broadcast = broadcast,
+        Secrets = secrets,
+        Watchers = watchers,
     };
 
     var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = [], ContentRootPath = AppContext.BaseDirectory });
@@ -80,10 +88,14 @@ try
             CertSha256 = pin, Config = options.Config, Version = GatewayApp.Version,
             Managed = Environment.GetEnvironmentVariable(TermGateway.ManagedVariable) == "1",
         }, options.DataDir);
+        // Whatever a previous run left: nobody is attached yet.
+        watchers.Reset();
         log.Write($"gateway {GatewayApp.Version} listening on https://{options.Bind}:{options.Port} for {options.Owner}, certificate " +
                   $"{(options.UsesDevCert ? "self-signed dev" : "configured")} SHA-256 {pin}");
     });
     await app.RunAsync().ConfigureAwait(false);
+    watchers.Reset();
+    watchers.Drain(TimeSpan.FromSeconds(1));
     TermGateway.DeleteStatus(options.DataDir);
     log.Write("gateway stopped");
     return 0;

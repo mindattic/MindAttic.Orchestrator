@@ -38,6 +38,10 @@ public enum TermFrameKind : byte
     /// other. A viewer may show "another viewer is typing" for that long (M.ORCH-T930).</summary>
     Typing = 8,
 
+    /// <summary>u8: 1 when the owner paused the broadcast of this session, 0 when it resumed (M.ORCH-T935). Only the team gateway
+    /// sends it, and only to remote viewers; a host never does. While paused no Output, Replay data or Title follows.</summary>
+    Paused = 9,
+
     // Both ways.
 
     /// <summary>u16 protocol | u16 cols | u16 rows, and from protocol 2 (viewer to host) u8 flags (<see cref="TermHelloFlags"/>)

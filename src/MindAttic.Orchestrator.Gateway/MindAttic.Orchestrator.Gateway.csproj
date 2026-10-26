@@ -6,6 +6,8 @@
     frame for frame. Like TermHost it references only the dependency-free Term library, not Core: the daemon starts it with
     its settings on the command line, so it never loads Core's Vault, SQL and Serilog stack, and a crash in it only drops
     remote viewers.
+    M.ORCH-T935: it reads the MindAttic Vault itself (the package alone, not Core's stack) once at start, so its masker can hide
+    the owner's secret values on remote streams; the values stay in its memory.
   -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -18,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MindAttic.Orchestrator.Term\MindAttic.Orchestrator.Term.csproj" />
+    <PackageReference Include="MindAttic.Vault" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup>

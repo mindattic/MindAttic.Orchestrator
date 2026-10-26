@@ -246,6 +246,10 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
                     case TermFrameKind.Typing:
                         Post(() => OtherTyping?.Invoke());
                         break;
+                    case TermFrameKind.Paused when payload.Length > 0 && payload[0] != 0:
+                        // From the team gateway only (M.ORCH-T935): nothing follows until the owner resumes, which clears the screen.
+                        Raise("\r\n\u001b[0m\u001b[7m broadcast paused by owner \u001b[0m\r\n");
+                        break;
                     case TermFrameKind.Exit:
                         var code = TermProtocol.ReadExit(payload);
                         exited = true;
