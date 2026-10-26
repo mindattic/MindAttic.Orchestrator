@@ -107,12 +107,12 @@ public sealed class StatusStreamTests
         Assert.That(MainViewModel.LiveWindow(null, Reset, 30, Reset, Now), Is.Null);
     }
 
-    [TestCase(false, false, true, 300)]
-    [TestCase(true, false, true, 300)]
+    [TestCase(false, false, true, null)]
+    [TestCase(true, false, true, null)]
     [TestCase(false, true, true, 5)]
     [TestCase(true, true, true, 15)]
     [TestCase(false, false, false, 5)]
     [TestCase(true, false, false, 60)]
-    public void With_the_stream_live_the_poll_is_only_a_five_minute_heartbeat_unless_this_window_builds(bool hidden, bool holdsLease, bool live, int seconds) =>
-        Assert.That(MainWindow.RefreshInterval(hidden, holdsLease, live), Is.EqualTo(TimeSpan.FromSeconds(seconds)));
+    public void With_the_stream_live_there_is_no_poll_unless_this_window_builds(bool hidden, bool holdsLease, bool live, int? seconds) =>
+        Assert.That(MainWindow.RefreshInterval(hidden, holdsLease, live), Is.EqualTo(seconds is { } s ? TimeSpan.FromSeconds(s) : (TimeSpan?)null));
 }

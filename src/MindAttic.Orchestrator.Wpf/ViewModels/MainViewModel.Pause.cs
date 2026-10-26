@@ -78,6 +78,8 @@ public sealed partial class MainViewModel
         finally
         {
             NoteLocalChange();
+            // What was pushed before this toggle is behind it: the store is read until its own push lands (M.ORCH-T891).
+            Root.pushedPause = null;
             Root.switchingPause = false;
             CommandManager.InvalidateRequerySuggested();
             RaisePause();
@@ -85,10 +87,11 @@ public sealed partial class MainViewModel
         await RefreshAsync();
     }
 
-    /// <summary>Reads the pause once a refresh (the global login's tab, applied first); every tab shows the same.</summary>
+    /// <summary>Reads the pause once a refresh (the global login's tab, applied first); every tab shows the same. While the
+    /// status stream pushes it (M.ORCH-T891), the pushed one, with no read of the store.</summary>
     private void ApplyPause()
     {
-        if (root is null && !switchingPause) paused = GlobalPause.Active(store);
+        if (root is null && !switchingPause) paused = pushedPause ?? GlobalPause.Active(store);
         RaisePause();
     }
 

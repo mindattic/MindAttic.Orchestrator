@@ -129,6 +129,13 @@ public sealed class SettingsViewModel : ObservableObject
         Error = "";
     }
 
+    /// <summary>The settings changed elsewhere (pushed on the status bus, M.ORCH-T891): shown again as they are now, unless a field
+    /// here was edited, which is never thrown away under the typing.</summary>
+    public void ReloadIfUnedited()
+    {
+        if (Current() == loaded && Allocate == loadedAllocate) Load();
+    }
+
     private void Save()
     {
         // Only what was edited here is checked, as only that is saved (M.ORCH-T338): a value the CLI set outside the panel's

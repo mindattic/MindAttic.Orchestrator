@@ -126,9 +126,14 @@ public partial class MainWindow : Window
             var restored = restoreOnLoad && SessionRestore.Offer(this, model);
             await model.RefreshAsync();
             if (restored) model.ReselectRestored();
-            timer.Start();
+            polling = true;
+            Retime();
         };
-        Closed += (_, _) => timer.Stop();
+        Closed += (_, _) =>
+        {
+            polling = false;
+            timer.Stop();
+        };
         // Minimized, nobody is looking: no 5-second refresh (M.ORCH-T115). Shown again, it catches up at once.
         IsVisibleChanged += async (_, _) => await OnShownOrHidden();
         StateChanged += async (_, _) => await OnShownOrHidden();
@@ -167,8 +172,9 @@ public partial class MainWindow : Window
     /// <summary>
     /// Subscribes to the daemon's status stream (M.ORCH-T854): each reading of Claude's meter is applied to the tabs the moment
     /// it lands, and each new snapshot's figures the daemon pushes are laid over the tabs at once (M.ORCH-T872; the published
-    /// file read only when the rest of the snapshot moved), so the poll drops to <see cref="StreamFallbackInterval"/>
-    /// while the stream is up. It connects again on its own whenever the daemon restarts. Called by the app for its one
+    /// file read only when the rest of the snapshot moved), and the roster, orgs, settings, pause and reminders as anyone changes
+    /// them (M.ORCH-T891), so there's no poll while the stream is up (<see cref="RefreshInterval"/>). It connects again on its own
+    /// whenever the daemon restarts. Called by the app for its one
     /// dashboard only, never by a test's window.
     /// </summary>
     internal void ListenForStatus()
@@ -185,6 +191,15 @@ public partial class MainWindow : Window
         bus.On<Status.TicketBusEvent>(Status.AppBus.Ticket, (_, change) => OnTicketChange(change), Status.AppBus.Version)
             .On<Status.AppPresence>(Status.AppBus.Presence, (_, presence) => model.Presences.Note(presence), Status.AppBus.Version)
             .On<Status.ShowWorkerRequest>(Status.AppBus.ShowWorker, (_, request) => OnShowWorker(request), Status.AppBus.Version);
+        // The roster, the orgs, the settings, the pause and the reminders (M.ORCH-T891), pushed by whoever changed them: with
+        // these, nothing the dashboard shows needs a timed read while the stream is up.
+        bus.On<Status.MembersPayload>(Status.StateBus.Members, (_, p) => OnPushedState(p), Status.StateBus.Version)
+            .On<Status.OrgsPayload>(Status.StateBus.Orgs, (_, p) => OnPushedState(p), Status.StateBus.Version)
+            .On<Status.SettingsPayload>(Status.StateBus.Settings, (_, p) => OnPushedState(p), Status.StateBus.Version)
+            .On<Status.PausePayload>(Status.StateBus.Pause, (_, p) => OnPushedState(p), Status.StateBus.Version)
+            .On<Status.RemindersPayload>(Status.StateBus.Reminders, (_, p) => OnPushedState(p), Status.StateBus.Version);
+        // And what this dashboard changes of them is pushed the same way, to every other subscriber, off the UI thread.
+        Status.StateBus.Enable(background: true);
         _ = Task.Run(() => Status.StatusStreamClient.RunAsync(
             (Status.StatusEnvelope envelope) => Dispatcher.InvokeAsync(() => bus.Dispatch(envelope)),
             live =>
@@ -256,6 +271,24 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             OrchestratorLog.For("Dashboard").Error(ex, "Applying a snapshot's pushed figures failed");
+        }
+    }
+
+    /// <summary>The roster, the orgs, the settings, the pause or the reminders pushed off the stream (M.ORCH-T891), on the UI
+    /// thread: laid over the tabs at once, or, when a read was under way that may have missed the change, the store read again.</summary>
+    private async void OnPushedState(Status.StatePayload payload)
+    {
+        try
+        {
+            if (!model.ApplyPushedState(payload)) return;
+            var read = await model.ReapplyStateAsync(Hidden || !IsLoaded);
+            if (read && IsLoaded && !Hidden) await model.RefreshAsync();
+            PinTerminalFocus(onlyIfLost: true);
+        }
+        // async void on the dispatcher: an escaped exception would close the dashboard.
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            OrchestratorLog.For("Dashboard").Error(ex, "Applying pushed {Kind:l} failed", payload.GetType().Name);
         }
     }
 
@@ -530,27 +563,33 @@ public partial class MainWindow : Window
 
     private bool Hidden => !IsVisible || WindowState == WindowState.Minimized;
 
+    // Whether the poll may run: set once the first refresh is done, cleared as the window closes.
+    private bool polling;
+
+    /// <summary>Starts, retimes or stops the poll (<see cref="RefreshInterval"/>): stopped while the daemon's stream pushes everything.</summary>
     private void Retime()
     {
-        var interval = RefreshInterval(Hidden, model.HoldsLease, model.IsStreamLive);
+        if (RefreshInterval(Hidden, model.HoldsLease, model.IsStreamLive) is not { } interval)
+        {
+            timer.Stop();
+            return;
+        }
         if (timer.Interval != interval) timer.Interval = interval;
+        if (polling && !timer.IsEnabled) timer.Start();
     }
 
     /// <summary>
-    /// The poll while the status stream is up: a heartbeat (M.ORCH-T872; was a 60s safety net, M.ORCH-T854). Every figure a
-    /// snapshot gives is pushed with it, and the figures say when the rest of the snapshot moved, so the published file is read
-    /// the moment it has something new. What the stream doesn't carry yet is read only by a full refresh: the member roster,
-    /// the orgs, settings, the pause and reminders, which change from this window (which refreshes after each change) or now
-    /// and then from a CLI; five minutes bounds how long one of those can lag. A stream that drops goes back to the 5s poll.
+    /// How often to refresh: while this window holds the lease (no daemon builds the snapshots) every 5s shown and 15s hidden, as
+    /// it feeds rl-status.json and allocate; with no daemon's status stream up (disconnected, or its daemon builds no snapshots),
+    /// every 5s shown and 60s hidden. With it up, never (null; M.ORCH-T891, was a 5-minute heartbeat, M.ORCH-T872): every figure
+    /// a snapshot gives is pushed with it and the figures say when the rest of the snapshot moved (M.ORCH-T872), ticket changes
+    /// are pushed (M.ORCH-T879), and so are the member roster, the orgs, the settings, the pause and the reminders, by whoever
+    /// changes them (M.ORCH-T891), so nothing shown is left to a timed read. A stream that drops, or whose daemon stops building
+    /// snapshots, goes back to the poll at once.
     /// </summary>
-    private static readonly TimeSpan StreamFallbackInterval = TimeSpan.FromMinutes(5);
-
-    /// <summary>How often to refresh: while this window holds the lease (no daemon builds the snapshots) every 5s shown and 15s
-    /// hidden, as it feeds rl-status.json and allocate; with the daemon's status stream up, every 5 minutes, as a heartbeat; else
-    /// every 5s shown and 60s hidden.</summary>
-    internal static TimeSpan RefreshInterval(bool hidden, bool holdsLease, bool streamLive = false) =>
+    internal static TimeSpan? RefreshInterval(bool hidden, bool holdsLease, bool streamLive = false) =>
         holdsLease ? (hidden ? HiddenHolderInterval : PollInterval)
-        : streamLive ? StreamFallbackInterval
+        : streamLive ? null
         : !hidden ? PollInterval : HiddenInterval;
 
     private bool wasHidden;

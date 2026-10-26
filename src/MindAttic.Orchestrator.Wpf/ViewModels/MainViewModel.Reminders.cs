@@ -13,8 +13,9 @@ public sealed partial class MainViewModel
 
     private void ApplyReminders(DateTime nowUtc)
     {
-        // Read once a refresh, by the global login's tab (applied first); every login's tab shows the same.
-        var lines = root?.Reminders ?? ReminderLines(ReminderBook.Pending(store), nowUtc);
+        // Read once a refresh, by the global login's tab (applied first); every login's tab shows the same. While the status
+        // stream pushes them (M.ORCH-T891), the pushed ones, with no read of the store.
+        var lines = root?.Reminders ?? ReminderLines(pushedReminders ?? ReminderBook.Pending(store), nowUtc);
         if (lines.SequenceEqual(Reminders)) return;
         Reminders = lines;
         Raise(nameof(HasReminders));

@@ -26,7 +26,8 @@ can carry a copy of it.
 ## Behaviour on connect and reconnect
 
 - When an app connects, the daemon first sends the full status state (`state`), then the messages it keeps: the last
-  snapshot's figures and every app's latest `app-present`. After that it sends each message as it happens. A heartbeat
+  snapshot's figures, every app's latest `app-present`, and the latest `members`, `orgs`, `settings`, `pause` and
+  `reminders` of its own store. After that it sends each message as it happens. A heartbeat
   arrives every 20 seconds. If the stream is silent for 65 seconds, treat it as dead and reconnect.
 - When the daemon is down, the pipe doesn't exist. Keep working without it and retry the connection with a backoff
   (1 second, doubling up to 10 seconds). Send `app-present` again after every connect, because the daemon forgets
@@ -90,6 +91,48 @@ session and shows it. Failing that, it selects the person whose login works the 
 If no one is working the ticket, its status line says so. Send this only while `orchestrator-desktop` is present and
 handles `show-worker`. Call `AllowSetForegroundWindow(<its pid>)` before sending. Fallback: start
 `MindAttic.Orchestrator.Desktop.exe`, which only brings the dashboard forward.
+
+## The Orchestrator's own state (M.ORCH-T891)
+
+Five kinds carry what the dashboard used to learn only by rereading the store: `members`, `orgs`, `settings`, `pause`
+and `reminders`, each at v1. The contract is `src/MindAttic.Orchestrator.Core/Status/StateBus.cs`.
+
+Each message is the whole of its kind, read back from the store right after the change, so the latest one is the
+truth and one missed loses nothing. Numbers and times are carried at full precision. Whoever makes the change
+publishes it as the write commits (`StoreChanges` in the store layer says each write):
+
+- the dashboard (Settings, the theme switch, the pause button), through the inbox, off its UI thread;
+- the `orchestrator` CLI (`members add|set|remove`, `org members add|set|remove`, `orgs add|rename|remove|member|unmember|repo`,
+  `settings`, `budget`, `remind`, `remind --cancel`), through the inbox before the command exits;
+- the daemon (a reminder sent or pruned, a member's name and role synced from claude.ai), straight to its hub.
+
+A process publishes only once it turns publishing on (`StateBus.Enable`): the CLI, the dashboard and the daemon do, a
+test never does. The daemon also publishes all five as they stand when it starts, so a dashboard connecting gets them
+whatever changed while no daemon ran. It keeps the latest of each kind for its own store only, and a change to its own
+store brings its next plan forward.
+
+Every payload has these fields:
+
+| Field | Meaning |
+|---|---|
+| `store` | The full path of the orchestrator database it was read from. Apply only messages whose `store` is your own (compared ignoring case): a scratch or another workspace's store says nothing about yours. |
+| `atUtc` | When it was read back. |
+
+The rest of each payload:
+
+| Kind | Fields |
+|---|---|
+| `members` | `members`: every member of the organization, by email (`Email`, `Name`, `Role`, `Tier`, `Status`, `JoinedUtc`, `UpdatedUtc`). |
+| `orgs` | `orgs`: every org, the default one first (`Id`, `Name`, `Position`); `members`: every login placed in one (`OrgId`, `Person`, `Login`, `Provider`). |
+| `settings` | `settings`: the whole of the orchestrator's settings, as `OrchestratorSettings` writes them. |
+| `pause` | `paused`, `sinceUtc`, `by`: the global pause. |
+| `reminders` | `pending`: every reminder not sent yet, soonest first (`Id`, `Text`, `DueUtc`, `To`, `CreatedUtc`, `Failures`, `LastError`). |
+
+Nested records keep their own property names; every payload is read case-insensitively. The dashboard lays each over
+what it shows at once: the roster and the orgs re-split the person tabs, the pause and the reminders go straight to
+every tab, and settings reload an open Settings panel that has no edits. With these on the stream, the dashboard no
+longer polls while its stream is up and its daemon builds the snapshots. It polls only while disconnected (every 5s
+shown, 60s hidden), or while it holds the status lease itself (every 5s shown, 15s hidden).
 
 ## What M.TIX-T158 implements in Tickets.Desktop
 

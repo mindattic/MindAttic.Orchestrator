@@ -27,7 +27,11 @@ public sealed partial class MainViewModel
     {
         if (root is not null) { root.SetStreamLive(connected); return; }
         streamConnected = connected;
-        if (!connected) streamBuilds = figuresSeen = false;
+        if (!connected)
+        {
+            streamBuilds = figuresSeen = false;
+            ForgetPushedState();
+        }
         Raise(nameof(IsStreamLive));
     }
 
