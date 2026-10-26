@@ -576,7 +576,8 @@
                                                 Visibility="{Binding Badge, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                                     <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
                                     <TextBlock Text="{Binding StateText}" Style="{StaticResource MaMutedText}" Margin="6,0,0,0" VerticalAlignment="Center" />
-                                    <Button x:Name="TerminalCloseButton" Style="{StaticResource MaToolButton}" Content="&#xE711;" Margin="8,0,0,0"
+                                    <Button x:Name="TerminalCloseButton" Style="{StaticResource MaToolButton}" Content="&#xE711;" Margin="8,-4,0,-4"
+                                            Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
                                             Command="{Binding DataContext.Terminals.CloseCommand, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}"
                                             CommandParameter="{Binding}"
                                             AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
