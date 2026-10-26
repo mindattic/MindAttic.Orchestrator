@@ -65,8 +65,8 @@ internal sealed class Ring
         return true;
     }
 
-    /// <summary>How far past the cut a line feed is looked for, and how far before it the start of an escape sequence.</summary>
-    private const int LineSearch = 64 * 1024, SequenceLookBack = 512;
+    /// <summary>How far past the cut a line feed is looked for.</summary>
+    private const int LineSearch = 64 * 1024;
 
     /// <summary>
     /// Where the bytes kept from <paramref name="data"/> may start, at or after <paramref name="from"/> (M.ORCH-T998), so a ring
@@ -81,13 +81,16 @@ internal sealed class Ring
         if (lf >= 0) return from + lf + 1;
 
         var at = from;
-        var back = Math.Max(0, from - SequenceLookBack);
-        var esc = data[back..from].LastIndexOf(Esc);
+        // The last escape before the cut, however far back (M.ORCH-T1043: a 512-byte look-back missed the start of a longer OSC
+        // title or hyperlink, and the cut landed inside its payload). A string sequence's payload holds no ESC but its ST, so
+        // the last one is either the sequence the cut is in or one that ended before it.
+        var esc = data[..from].LastIndexOf(Esc);
         if (esc >= 0)
         {
-            var end = SequenceEnd(data, back + esc);
-            // Unterminated in the ring: start at the next sequence, if any.
-            if (end < 0) { var next = data[from..].IndexOf(Esc); at = next < 0 ? data.Length : from + next; }
+            var end = SequenceEnd(data, esc);
+            // Unterminated in the ring: start at the next sequence, if any; with none the cut stays where it was (M.ORCH-T1043:
+            // it dropped the whole ring, and the replay came back empty).
+            if (end < 0) { var next = data[from..].IndexOf(Esc); if (next >= 0) at = from + next; }
             else if (end > from) at = end;
         }
         while (at < data.Length && (data[at] & 0xc0) == 0x80) at++;
