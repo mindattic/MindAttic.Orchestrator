@@ -24,7 +24,8 @@ internal sealed record GatewayPrincipal(string Subject, string Scope, DateTime E
 /// object (subject, scope, issued, expires, a random id) and the signature its HMAC-SHA256 under the gateway's signing key
 /// (<see cref="GatewayKeys"/>). The format itself is <see cref="TermGatewayTokens"/>, shared with <c>orchestrator gateway token</c>
 /// (M.ORCH-T934), which mints a member's token on the owner's machine. Stateless: a token is good until it expires, at most
-/// <see cref="GatewayOptions.MaxTokenMinutes"/> after it was issued; replacing the signing key revokes every token at once. A
+/// <see cref="GatewayOptions.MaxTokenMinutes"/> after it was issued, or <see cref="TermGatewayTokens.MemberDays"/> days for a member
+/// token (M.ORCH-T1056); replacing the signing key revokes every token at once, and grants decide what any token can do. A
 /// token is never logged.
 /// </summary>
 internal sealed class GatewayTokens(Func<byte[]> signingKeyNow, Func<DateTime>? clock = null)
@@ -55,7 +56,8 @@ internal sealed class GatewayTokens(Func<byte[]> signingKeyNow, Func<DateTime>? 
             var at = now();
             var issued = DateTimeOffset.FromUnixTimeSeconds(p.Iat).UtcDateTime;
             var expires = DateTimeOffset.FromUnixTimeSeconds(p.Exp).UtcDateTime;
-            if (issued > at + Skew || expires <= at - Skew || expires - issued > TimeSpan.FromMinutes(GatewayOptions.MaxTokenMinutes)) return null;
+            var longest = p.Kind == TermGatewayTokens.MemberKind ? TermGatewayTokens.MaxLifetime(p.Kind) : TimeSpan.FromMinutes(GatewayOptions.MaxTokenMinutes);
+            if (issued > at + Skew || expires <= at - Skew || expires - issued > longest) return null;
             return new GatewayPrincipal(p.Sub, p.Scope, expires);
         }
         catch (Exception ex) when (ex is JsonException or FormatException or ArgumentException) { return null; }

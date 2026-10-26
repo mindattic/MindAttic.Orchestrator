@@ -213,7 +213,7 @@ internal sealed class GatewayTokenCommand : Command<GatewayTokenCommand.Settings
         public string? Scope { get; init; }
 
         [CommandOption("--minutes <N>")]
-        [Description("1 to 60; left out, the gateway's token minutes.")]
+        [Description("1 to 60 for a short-lived token; left out, the token lasts 365 days.")]
         public int? Minutes { get; init; }
     }
 
@@ -228,9 +228,11 @@ internal sealed class GatewayTokenCommand : Command<GatewayTokenCommand.Settings
             ?? (TermGrants.List(GatewayAcl.Db(), now, TermGrants.OwnerOf(gateway)).Any(g => g.Viewer == email && g.Level == TermGrants.Interact)
                 ? TermGrants.Interact : TermGrants.Watch);
         var key = TermGatewayTokens.LoadOrCreateKey(TermGateway.DefaultDirectory, TermGatewayTokens.SigningKeyFile);
-        var (token, expires) = TermGatewayTokens.Issue(key, email, scope, TimeSpan.FromMinutes(settings.Minutes ?? gateway.TokenMinutes), now);
+        var lifetime = settings.Minutes is { } minutes ? TimeSpan.FromMinutes(minutes) : TimeSpan.FromDays(TermGatewayTokens.MemberDays);
+        var (token, expires) = TermGatewayTokens.Issue(key, email, scope, lifetime, now, member: true);
         Console.WriteLine(token);
-        Console.Error.WriteLine($"A {scope} token for {email}, good until {expires.ToLocalTime():HH:mm}. Their grants decide what it can do.");
+        Console.Error.WriteLine($"A {scope} token for {email}, good until {expires.ToLocalTime():yyyy-MM-dd HH:mm}. Their grants decide what it can do; " +
+            "revoke them, or replace the gateway's signing key, to cut it off at once.");
         return 0;
     }
 }

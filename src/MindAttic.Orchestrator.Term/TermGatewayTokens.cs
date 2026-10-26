@@ -17,22 +17,35 @@ public static class TermGatewayTokens
     public const string Watch = "watch", Interact = "interact";
     public const string SigningKeyFile = "signing.key", OwnerKeyFile = "owner.key";
 
-    /// <summary>The longest a token may live.</summary>
+    /// <summary>The longest a session token may live.</summary>
     public const int MaxMinutes = 60;
+
+    /// <summary>The longest, and default, life of a member token minted by <c>orchestrator gateway token</c> (M.ORCH-T1056): a
+    /// teammate keeps watching without a new token every hour. Revoking their grants or replacing the signing key still cuts them
+    /// off at once.</summary>
+    public const int MemberDays = 365;
+
+    /// <summary>The payload kind of a member token.</summary>
+    public const string MemberKind = "member";
 
     public static bool IsScope(string? scope) => scope?.ToLowerInvariant() is Watch or Interact;
 
-    /// <summary>A token for <paramref name="subject"/> with <paramref name="scope"/>, living <paramref name="lifetime"/> (at most
-    /// <see cref="MaxMinutes"/>) from <paramref name="nowUtc"/>.</summary>
-    public static (string Token, DateTime ExpiresUtc) Issue(byte[] signingKey, string subject, string scope, TimeSpan lifetime, DateTime nowUtc)
+    /// <summary>The longest <paramref name="kind"/> of token may live.</summary>
+    public static TimeSpan MaxLifetime(string? kind) => kind == MemberKind ? TimeSpan.FromDays(MemberDays) : TimeSpan.FromMinutes(MaxMinutes);
+
+    /// <summary>A token for <paramref name="subject"/> with <paramref name="scope"/>, living <paramref name="lifetime"/> from
+    /// <paramref name="nowUtc"/>: at most <see cref="MaxMinutes"/>, or <see cref="MemberDays"/> for a <paramref name="member"/> token.</summary>
+    public static (string Token, DateTime ExpiresUtc) Issue(byte[] signingKey, string subject, string scope, TimeSpan lifetime, DateTime nowUtc,
+        bool member = false)
     {
         if (string.IsNullOrWhiteSpace(subject)) throw new ArgumentException("A token needs a subject.", nameof(subject));
         if (!IsScope(scope)) throw new ArgumentException($"Unknown scope {scope}.", nameof(scope));
-        var max = TimeSpan.FromMinutes(MaxMinutes);
+        var kind = member ? MemberKind : null;
+        var max = MaxLifetime(kind);
         if (lifetime <= TimeSpan.Zero || lifetime > max) lifetime = max;
         var expires = nowUtc + lifetime;
         var payload = new TermGatewayTokenPayload(subject.Trim(), scope.ToLowerInvariant(), ToUnix(nowUtc), ToUnix(expires),
-            Convert.ToHexString(RandomNumberGenerator.GetBytes(8)));
+            Convert.ToHexString(RandomNumberGenerator.GetBytes(8)), kind);
         var body = Prefix + Base64Url(JsonSerializer.SerializeToUtf8Bytes(payload));
         return (body + "." + Base64Url(Sign(signingKey, body)), DateTimeOffset.FromUnixTimeSeconds(payload.Exp).UtcDateTime);
     }
@@ -72,10 +85,12 @@ public static class TermGatewayTokens
     }
 }
 
-/// <summary>A token's payload: subject, scope, issued and expires (Unix seconds) and a random id.</summary>
+/// <summary>A token's payload: subject, scope, issued and expires (Unix seconds), a random id, and its kind (null for a session
+/// token, <see cref="TermGatewayTokens.MemberKind"/> for a member token).</summary>
 public sealed record TermGatewayTokenPayload(
     [property: JsonPropertyName("sub")] string Sub,
     [property: JsonPropertyName("scope")] string Scope,
     [property: JsonPropertyName("iat")] long Iat,
     [property: JsonPropertyName("exp")] long Exp,
-    [property: JsonPropertyName("jti")] string Jti);
+    [property: JsonPropertyName("jti")] string Jti,
+    [property: JsonPropertyName("kind"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Kind = null);
