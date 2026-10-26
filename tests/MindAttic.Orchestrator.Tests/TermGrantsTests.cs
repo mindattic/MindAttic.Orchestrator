@@ -68,6 +68,16 @@ public sealed class TermGrantsTests
     }
 
     [Test]
+    public void Revoke_matches_the_session_id_in_any_case_as_the_gateway_does()
+    {
+        TermGrants.Grant(db, Owner, "erin@example.com", "interact", "Sess-AB12", Now.AddHours(1), null, Now);
+        Assert.That(TermGrants.List(db, Now).Single().Session, Is.EqualTo("sess-ab12"), "stored in lower case");
+
+        Assert.That(TermGrants.Revoke(db, Owner, "erin@example.com", "SESS-ab12"), Is.EqualTo(1));
+        Assert.That(TermGrants.List(db, Now), Is.Empty);
+    }
+
+    [Test]
     public void The_snapshot_holds_active_members_their_orgs_and_live_grants_only()
     {
         MemberRoster.Add(db, "erin@example.com", "Erin", "member", "standard", "active", Now);

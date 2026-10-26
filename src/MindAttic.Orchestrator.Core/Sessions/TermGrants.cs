@@ -51,7 +51,8 @@ public static class TermGrants
         if (lv == Interact && expiresUtc is null) throw new ArgumentException("An interact grant needs an expiry.", nameof(expiresUtc));
         if (expiresUtc is { } e && (e <= nowUtc || e - nowUtc > MaxFor + TimeSpan.FromMinutes(1)))
             throw new ArgumentException($"A grant lasts from a minute to {MaxFor.TotalDays:0} days.", nameof(expiresUtc));
-        var grant = new TermGrant(owner.Trim(), who, session?.Trim() ?? "", lv, expiresUtc is { } x ? Utc(x) : null, createdBy, Utc(nowUtc));
+        // Session ids are matched case-insensitively everywhere (the gateway, broadcast.json), so they're stored in lower case.
+        var grant = new TermGrant(owner.Trim(), who, session?.Trim().ToLowerInvariant() ?? "", lv, expiresUtc is { } x ? Utc(x) : null, createdBy, Utc(nowUtc));
         db.WriteData((connection, tx) => Sql.Upsert(connection, tx, "term_grants", ["owner", "viewer", "session"],
             ("owner", grant.Owner), ("viewer", grant.Viewer), ("session", grant.Session), ("level", grant.Level),
             ("expires_utc", grant.ExpiresUtc is { } ex ? Iso(ex) : null), ("created_by", grant.CreatedBy), ("created_utc", Iso(grant.CreatedUtc))));
@@ -68,8 +69,9 @@ public static class TermGrants
         {
             removed = session is null
                 ? Sql.Run(connection, tx, "DELETE FROM term_grants WHERE owner = @o AND viewer = @v;", ("@o", owner.Trim()), ("@v", who))
-                : Sql.Run(connection, tx, "DELETE FROM term_grants WHERE owner = @o AND viewer = @v AND session = @s;",
-                    ("@o", owner.Trim()), ("@v", who), ("@s", session.Trim()));
+                // In any case, as the gateway matches it (and grants stored before ids were lower-cased).
+                : Sql.Run(connection, tx, "DELETE FROM term_grants WHERE owner = @o AND viewer = @v AND LOWER(session) = @s;",
+                    ("@o", owner.Trim()), ("@v", who), ("@s", session.Trim().ToLowerInvariant()));
             return removed > 0;
         });
         return removed;
