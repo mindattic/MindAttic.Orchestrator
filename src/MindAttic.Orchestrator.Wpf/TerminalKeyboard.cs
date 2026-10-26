@@ -11,15 +11,35 @@ namespace MindAttic.Orchestrator.Wpf;
 /// Home, End and Page keys and marks them handled, which swallows them before the terminal's window ever sees them (Claude's
 /// /status screen couldn't be paged left and right); the window's Escape binding likewise took Esc. While a terminal holds
 /// focus, the navigation keys are handled once, here, and posted straight to the terminal's own window; Esc is left alone by
-/// the window's binding (<see cref="HoldsFocus"/>). Ctrl+Left/Right (previous/next tab) and every other Ctrl or Alt chord are not
-/// touched.
+/// the window's binding (<see cref="HoldsFocus"/>). Ctrl or Alt chords are not touched, except Ctrl+Left/Right (M.ORCH-T824): with
+/// Ctrl alone, those switch to the previous/next CLI tab of the shown login even while its terminal holds focus, so the CLI gives
+/// up its own Ctrl+Left/Right word jump. Ctrl+Shift and Alt variants still go to the CLI.
 /// </summary>
 internal static partial class TerminalKeyboard
 {
     private const uint WmKeyDown = 0x0100;
 
     public static void Attach(Window window, FrameworkElement terminals) =>
-        window.PreviewKeyDown += (_, e) => OnPreviewKeyDown(terminals, e);
+        window.PreviewKeyDown += (_, e) =>
+        {
+            OnTabSwitch(window, terminals, e);
+            OnPreviewKeyDown(terminals, e);
+        };
+
+    /// <summary>Ctrl+Left / Ctrl+Right, Ctrl alone (M.ORCH-T824): -1 / +1, the previous / next CLI tab; otherwise 0.</summary>
+    internal static int TabStep(Key key, ModifierKeys modifiers) =>
+        modifiers != ModifierKeys.Control ? 0 : key switch { Key.Left => -1, Key.Right => +1, _ => 0 };
+
+    /// <summary>Takes Ctrl+Left/Right from a focused terminal before its native window sees them, and steps the shown login's
+    /// CLI tabs. Elsewhere the window's own KeyBindings run the same commands (a text box keeps its word jump).</summary>
+    private static void OnTabSwitch(Window window, FrameworkElement terminals, KeyEventArgs e)
+    {
+        if (e.Handled || TabStep(e.Key, Keyboard.Modifiers) is not (var step and not 0) || !HoldsFocus(terminals)) return;
+        if (window.DataContext is not ViewModels.MainViewModel { Terminals: { } panes }) return;
+        var command = step > 0 ? panes.NextCommand : panes.PreviousCommand;
+        if (command.CanExecute(null)) command.Execute(null);
+        e.Handled = true;
+    }
 
     /// <summary>True while a terminal has the keyboard: the window's own key bindings (Esc) should stand aside.</summary>
     public static bool HoldsFocus(FrameworkElement terminals) =>
