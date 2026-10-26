@@ -57,6 +57,10 @@ public partial class MainWindow : Window
         // switch of tab or org builds only what's on screen.
         VirtualizedList.ApplyBody(AgentsBody);
         model.SelectedTabChanged += (_, _) => DataContext = model.SelectedTab;
+        // The scrolled login strip follows the selected tab (M.ORCH-T1025): Ctrl+Tab, Show who's working or an org switch
+        // can select one off screen.
+        model.SelectedTabChanged += (_, _) => BringSelectedTabIntoView();
+        model.OrgTabs.CollectionChanged += (_, _) => BringSelectedTabIntoView();
         DataContextChanged += (_, e) =>
         {
             if (e.OldValue is MainViewModel was) was.PropertyChanged -= OnShownChanged;
@@ -451,6 +455,18 @@ public partial class MainWindow : Window
         LoginTabScrollLeft.IsEnabled = LoginTabScroller.HorizontalOffset > 0.5;
         LoginTabScrollRight.IsEnabled = LoginTabScroller.HorizontalOffset < LoginTabScroller.ScrollableWidth - 0.5;
     }
+
+    /// <summary>Scrolls <see cref="LoginTabScroller"/> to the selected person's tab once the strip has laid it out
+    /// (M.ORCH-T1025). Never throws.</summary>
+    private void BringSelectedTabIntoView() =>
+        Dispatcher.BeginInvoke(() =>
+        {
+            try
+            {
+                if (LoginTabStrip.ItemContainerGenerator.ContainerFromItem(model.SelectedTab) is FrameworkElement tab) tab.BringIntoView();
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Scrolling to the selected tab failed; contained"); }
+        }, DispatcherPriority.Loaded);
 
     private void LoginTabScrollLeft_Click(object sender, RoutedEventArgs e) =>
         LoginTabScroller.ScrollToHorizontalOffset(LoginTabScroller.HorizontalOffset - PersonTabWidth);
