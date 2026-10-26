@@ -24,6 +24,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
     private string? pipeName;
     private ushort protocol = TermProtocol.Version;
     private Func<bool>? hostAlive;
+    private bool interactive = true;
     private bool loaded, disposed;
 
     public RelayTerminal(TerminalTheme theme)
@@ -83,8 +84,9 @@ public sealed class RelayTerminal : UserControl, IDisposable
     /// <summary>Attaches to the host serving <paramref name="pipe"/>: at once when the renderer's window exists, else once it
     /// loads (output written before it exists would be lost). While <paramref name="alive"/> says the host lives, a dropped
     /// link is attached again (M.ORCH-T966); it is called off the UI thread.</summary>
-    public void Attach(string pipe, int hostProtocol, Func<bool>? alive = null)
+    public void Attach(string pipe, int hostProtocol, Func<bool>? alive = null, bool interactive = true)
     {
+        this.interactive = interactive;
         pipeName = pipe;
         hostAlive = alive;
         protocol = TermProtocol.Supported.Contains((ushort)hostProtocol) ? (ushort)hostProtocol : TermProtocol.Version;
@@ -94,7 +96,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
     private void Connect()
     {
         if (disposed || !loaded || pipeName is null || Connection is not null) return;
-        var connection = new RelayConnection(pipeName, protocol, hostAlive);
+        var connection = new RelayConnection(pipeName, protocol, hostAlive, interactive);
         connection.Exited += code => Exited?.Invoke(code);
         connection.Detached += why => { ReconnectingChanged?.Invoke(false); Detached?.Invoke(why); };
         connection.Reconnecting += _ => ReconnectingChanged?.Invoke(true);

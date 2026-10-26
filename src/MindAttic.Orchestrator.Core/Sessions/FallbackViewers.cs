@@ -279,6 +279,28 @@ public sealed class FallbackViewers
         return Process.Start(psi);
     }
 
+    /// <summary>A pop-out window on <paramref name="session"/> beside the dashboard's tab (M.ORCH-T931): <c>TermViewer --session
+    /// &lt;id&gt; --stay [--watch]</c>. It never folds back while the dashboard is up, since the person asked for it. Never throws;
+    /// returns null (and says why) when no TermViewer is installed or it couldn't start.</summary>
+    public static Process? PopOut(TermSessionRecord session, bool watchOnly)
+    {
+        try
+        {
+            if (DefaultExe() is not { } exe) return null;
+            var psi = new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe) ?? "" };
+            psi.ArgumentList.Add("--session");
+            psi.ArgumentList.Add(session.Id);
+            psi.ArgumentList.Add("--stay");
+            if (watchOnly) psi.ArgumentList.Add("--watch");
+            return Process.Start(psi);
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or InvalidOperationException or UnauthorizedAccessException)
+        {
+            OrchestratorLog.For("FallbackViewers").Error(ex, "Popping out {Id:l} failed; contained", session.Id);
+            return null;
+        }
+    }
+
     private void Tell(LogEventLevel level, string line)
     {
         try

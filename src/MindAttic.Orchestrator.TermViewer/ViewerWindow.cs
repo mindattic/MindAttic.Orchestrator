@@ -31,6 +31,7 @@ internal sealed class ViewerWindow : Window
     private readonly TermSessionRecord session;
     private readonly PaneRequest pane;
     private readonly bool stay;
+    private readonly bool watchOnly;
     private readonly TextBlock status = new() { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 10, 0), Foreground = Brushes.Gainsboro };
     private readonly Border host = new() { Background = Brushes.Black };
     private readonly DispatcherTimer watch = new() { Interval = TimeSpan.FromSeconds(2) };
@@ -41,11 +42,12 @@ internal sealed class ViewerWindow : Window
     private int upLooks;
     private bool closing;
 
-    public ViewerWindow(TermSessionRecord session, PaneRequest pane, bool stay = false)
+    public ViewerWindow(TermSessionRecord session, PaneRequest pane, bool stay = false, bool watchOnly = false)
     {
         this.session = session;
         this.pane = pane;
         this.stay = stay;
+        this.watchOnly = watchOnly;
         liveTitle = session.Title is { Length: > 0 } t ? t : pane.Title;
         Width = 1100;
         Height = 700;
@@ -58,6 +60,7 @@ internal sealed class ViewerWindow : Window
         item.Items.Add(Item("_Copy", "Ctrl+C", Copy));
         item.Items.Add(Item("_Paste", "Ctrl+V", Paste));
         item.Items.Add(new Separator());
+        if (!watchOnly) item.Items.Add(Item("_Take size", null, TakeSize));
         item.Items.Add(Item("_Reattach", null, Reattach));
         item.Items.Add(Item("Close (the CLI keeps running)", null, Close));
         item.Items.Add(new Separator());
@@ -72,6 +75,17 @@ internal sealed class ViewerWindow : Window
         }
         DockPanel.SetDock(menu, Dock.Left);
         bar.Children.Add(menu);
+        if (watchOnly)
+        {
+            var tag = new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(0x5A, 0x4A, 0x10)), CornerRadius = new CornerRadius(3), Margin = new Thickness(4, 3, 4, 3),
+                Padding = new Thickness(6, 0, 6, 0), ToolTip = "Read-only: nothing typed here reaches the CLI, and this window never changes its size",
+                Child = new TextBlock { Text = "WATCH ONLY", Foreground = Brushes.Gold, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center },
+            };
+            DockPanel.SetDock(tag, Dock.Left);
+            bar.Children.Add(tag);
+        }
         bar.Children.Add(status);
 
         var root = new DockPanel();
@@ -81,7 +95,9 @@ internal sealed class ViewerWindow : Window
         Content = root;
 
         UpdateTitle();
-        SetStatus("Dashboard down: this CLI runs in its own window, and goes back to its tab when the dashboard returns");
+        SetStatus(stay
+            ? (watchOnly ? "Watching only: this window shows the CLI beside its tab and never types into it" : "Popped out: this window and the CLI's tab both show it; Session > Take size makes this window's size the CLI's")
+            : "Dashboard down: this CLI runs in its own window, and goes back to its tab when the dashboard returns");
         PreviewKeyDown += OnPreviewKeyDown;
         Loaded += (_, _) => Attach();
         Activated += (_, _) => relay?.Terminal.Focus();
@@ -144,7 +160,7 @@ internal sealed class ViewerWindow : Window
         r.Detached += OnDetached;
         host.Child = r;
         relay = r;
-        r.Attach(session.Pipe, session.Protocol);
+        r.Attach(session.Pipe, session.Protocol, () => TermSessions.Get(session.Id) is { } live && live.HostPid == session.HostPid, interactive: !watchOnly);
         r.Terminal.Focus();
     }
 
@@ -175,6 +191,15 @@ internal sealed class ViewerWindow : Window
             return;
         }
         SetStatus($"Detached: {why}. Another viewer may have it; Session > Reattach takes it back.");
+    }
+
+    /// <summary>Makes this window's size the session's (sends TakeSize); a no-op when it owns it, is watch only, or the host is
+    /// protocol 1.</summary>
+    private void TakeSize()
+    {
+        if (watchOnly || relay is not { Connection: { } connection } r) return;
+        connection.TakeSize();
+        r.Terminal.Focus();
     }
 
     private void Reattach()
@@ -254,7 +279,7 @@ internal sealed class ViewerWindow : Window
 
     private void Paste()
     {
-        if (relay is not { Connection: { } connection }) return;
+        if (watchOnly || relay is not { Connection: { } connection }) return;
         string text;
         try { text = Clipboard.ContainsText() ? Clipboard.GetText() : ""; }
         catch (System.Runtime.InteropServices.ExternalException) { return; }
@@ -266,7 +291,7 @@ internal sealed class ViewerWindow : Window
     {
         try
         {
-            if (e.Handled || relay is not { Connection: { } connection } r || Keyboard.FocusedElement is not HwndHost) return;
+            if (e.Handled || watchOnly || relay is not { Connection: { } connection } r || Keyboard.FocusedElement is not HwndHost) return;
             var key = e.Key == Key.System ? e.SystemKey : e.Key;
             var mods = Keyboard.Modifiers;
             // Phase 0 lesson 3: WPF would take these for focus and scrolling; they go to the CLI as win32-input-mode events.

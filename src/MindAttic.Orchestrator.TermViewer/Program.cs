@@ -25,20 +25,24 @@ internal static class Program
                 return 2;
             }
             // --stay (for trying it out beside a running dashboard): shown even then, and never folds back.
+            // --watch: a read-only Hello (M.ORCH-T931); it only ever shows the session. The dashboard's "Pop out" menu starts it
+            // with --stay (and --watch for watch only), beside the tab, on a protocol 2 host.
             var stay = args.Contains("--stay", StringComparer.OrdinalIgnoreCase);
+            var watchOnly = args.Contains("--watch", StringComparer.OrdinalIgnoreCase);
             if (!stay && DashboardPresence.IsUp())
             {
                 log.Information("The dashboard is up; it shows {Id:l}, so this viewer exits", id);
                 return 0;
             }
             using var slot = new Mutex(initiallyOwned: true, TermViewerSlot.MutexName(id), out var first);
-            if (!first)
+            if (!first && !stay)
             {
                 log.Information("Another viewer already shows {Id:l}; this one exits", id);
                 return 0;
             }
             try
             {
+                // A deliberate pop-out (--stay) may share the session with another viewer, so it never exits for a held slot.
                 if (TermSessions.Get(id) is not { } session)
                 {
                     log.Information("No live hosted session {Id:l}; nothing to show", id);
@@ -54,13 +58,13 @@ internal static class Program
                 };
                 AppDomain.CurrentDomain.UnhandledException += (_, e) => log.Fatal(e.ExceptionObject as Exception, "TermViewer crashed");
                 TaskScheduler.UnobservedTaskException += (_, e) => { log.Error(e.Exception, "Unobserved task exception"); e.SetObserved(); };
-                var window = new ViewerWindow(session, pane, stay);
+                var window = new ViewerWindow(session, pane, stay, watchOnly);
                 log.Information("Showing {Id:l} ({Title:l}) while the dashboard is down", id, session.Title ?? "");
                 return app.Run(window);
             }
             finally
             {
-                try { slot.ReleaseMutex(); }
+                try { if (first) slot.ReleaseMutex(); }
                 catch (ApplicationException) { }
             }
         }

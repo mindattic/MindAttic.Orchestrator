@@ -10,6 +10,8 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
 using System.Windows.Threading;
+using MindAttic.Orchestrator.Sessions;
+using MindAttic.Orchestrator.Term;
 using MindAttic.Orchestrator.Wpf.ViewModels;
 
 namespace MindAttic.Orchestrator.Wpf;
@@ -471,6 +473,7 @@ public partial class MainWindow : Window
             var placement = e.CursorLeft < 0 ? PlacementMode.Bottom : PlacementMode.MousePoint;
             var agent = pane.HostPid is { } host ? tab.AgentOfHost(host) : null;
             var menu = DropdownMenu(container, $"Move the {pane.Name} CLI to", placement);
+            AddPopOutItems(menu, pane);
             if (agent is null)
             {
                 var wait = DropdownItem("Move to");
@@ -502,6 +505,35 @@ public partial class MainWindow : Window
             menu.IsOpen = true;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Building the Move to menu failed; contained"); }
+    }
+
+    /// <summary>"Pop out (interactive)" and "Pop out (watch only)" (M.ORCH-T931): a TermViewer window on this CLI beside its tab,
+    /// which stays attached. Needs a hosted CLI on a protocol 2 host (one that serves several viewers).</summary>
+    private static void AddPopOutItems(ContextMenu menu, TerminalPaneViewModel pane)
+    {
+        foreach (var (header, watchOnly) in new[] { ("Pop out (interactive)", false), ("Pop out (watch only)", true) })
+        {
+            var item = DropdownItem(header);
+            var session = pane.Session;
+            if (session is null || session.Protocol < TermProtocol.MultiViewer)
+            {
+                item.IsEnabled = false;
+                item.ToolTip = session is null ? "Only a hosted CLI can be popped out" : "This CLI's host serves one viewer; it can be popped out once restarted on a newer host";
+                ToolTipService.SetShowOnDisabled(item, true);
+            }
+            else
+                item.Click += (_, _) =>
+                {
+                    try
+                    {
+                        if (FallbackViewers.PopOut(session, watchOnly) is { } started) started.Dispose();
+                        else OrchestratorLog.For("Dashboard").Warning("No TermViewer could be started for {Id:l}", session.Id);
+                    }
+                    catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Popping out a CLI failed; contained"); }
+                };
+            menu.Items.Add(item);
+        }
+        menu.Items.Add(new Separator());
     }
 
     /// <summary>A person's tab's right-click menu (M.ORCH-T797; Shift+F10 or the menu key on a focused tab too): Rename, Org
