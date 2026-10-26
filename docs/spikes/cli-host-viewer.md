@@ -742,20 +742,91 @@ Its consumers (Ideas, IdiotProof, Prose, Tutor) all host it in a web app with th
 gateway has no database, no browser and no Vault section. So this phase uses the minimal token pair above, which is
 enough while the only identity allowed in is the machine owner. Hosting the library comes with real team sign-in. One way
 is a central MindAttic web app that runs it and mints gateway tokens, with the same `v1` format and a shared or published
-key. That belongs with M.ORCH-T934's member grants.
+key.
+
+- **Members' tokens (M.ORCH-T934).** The owner mints a token for a member with `orchestrator gateway token <who>
+  [--scope watch|interact] [--minutes N]` and hands it to them over a channel they already trust. `<who>` names a member of
+  the `members` table (email, the part before the @, name, first name, login alias or initials), and the token's subject is
+  their email. So a token is bound to a member identity, and what it can do is decided by their grants, not by the token.
+  Without `--scope`, the scope is `interact` when they hold a live interact grant and `watch` otherwise. The format lives in
+  the Term library (`TermGatewayTokens`), so the CLI and the gateway share one definition and the gateway still never
+  loads Core.
+- **Re-examined for T934: still no headless MindAttic.Authentication.** Ideas (and Web) consume it as above: an
+  `AddMindAtticAuthentication` DI graph over the host's EF Core `DbContext` with the auth schema, cookie sign-in pages and
+  `MindAttic:Vault:Security:*` secrets that fail closed. A headless check would need all three on every member's
+  machine, and nothing in `orchestrator login` or the `members` table holds a per-member secret to check against (a
+  member is entered by hand, by email). Building that is the central sign-in app above. Until then, owner-issued
+  per-member HMAC tokens give the same binding for a small team. Every token still lasts at most an hour, so the owner
+  re-issues it, and deleting `signing.key` revokes them all.
 
 ### Authorization
 
-`IGatewayGrants.AccessTo(viewer, session)` returns `None`, `Watch` or `Interact`. For now `OwnerOnlyGrants` gives the
-`Owner` identity (default: the Windows user name) `Interact` and everyone else `None`. The access a request gets is the
-least of three things:
+`IGatewayGrants.AccessTo(viewer, session)` returns `None`, `Watch` or `Interact`. The access a request gets is the least of
+three things:
 
 - the grant;
 - the token's scope;
 - `?mode=watch`, if the request asks for it.
 
-M.ORCH-T934 replaces the grants with `term_grants` from `orchestrator.db` and adds the audit log. M.ORCH-T935 adds masking
-and the "being watched" banner.
+**Grants (M.ORCH-T934).** `AclGrants` decides from `orchestrator.db`:
+
+- The owner (`Owner`, default the Windows user name) always has `Interact`.
+- Anyone who isn't an **active** member (`members.status = 'active'`) has `None`, whatever a grant says.
+- A member in the same org as the session's login may **watch** by default. The session's org is the org of its `login`
+  in `org_members`, and a login no row names (the global one included) is the default org's. The member's orgs are the
+  orgs of their own logins, or of rows under their name; with none, the default org.
+- A row in `term_grants(owner, viewer, session, level, expires_utc, created_by, created_utc)` raises that to its level
+  while it lasts. `session` is `''` for every session of the owner's, or one session's id. **Interact always has an
+  expiry**: one without is ignored. Watch may have none.
+
+```
+orchestrator gateway grant erin interact --for 2h          # every session, for two hours (interact defaults to 1h)
+orchestrator gateway grant sam watch --session 4f1c...     # one session; watch without --for never expires
+orchestrator gateway revoke erin [--session <id>]          # without --session, every grant to them
+orchestrator gateway grants [--all]                        # --all: expired ones too
+orchestrator gateway audit [--since 2h|<date>] [--limit N]
+orchestrator gateway token erin [--scope interact]
+```
+
+**How the database reaches the gateway.** The gateway references only the Term library, never Core's SQL stack, so it
+reads a snapshot, `acl.json` in its data folder: the active members, the Claude logins placed in orgs, and the live
+grants. Nothing in it is a secret. The daemon rewrites it each tick while the gateway is on, but only when it changed. A
+`grant`, `revoke` or `gateway on` rewrites it at once. The gateway reads it again whenever the file's time changes
+(checked at most once a second). With no snapshot, only the owner gets in.
+
+**Enforcement.**
+
+- `GET /sessions` lists only the sessions the caller may see, with the access they get.
+- An attach without access answers 404, as an unknown id does.
+- An attach with watch access is read-only, as for a `watch` token: its Hello goes to the host at 0x0, and its Input and
+  Resize are dropped.
+- Every 10 seconds a stream checks its access again. When it drops (a revoke, an expiry, a member removed), the gateway
+  lets go of the pipe and closes the socket with `1008 access revoked`.
+
+**Audit.** Each of these is one record:
+
+- an attach, with its level and the viewer's address;
+- a refused attach;
+- a detach, with frames up, bytes down, how it ended and what was dropped;
+- each 10-second batch of remote **Input**, counted as frames and payload bytes.
+
+What was typed or shown is never recorded, because it can hold secrets, and neither is a token. The gateway appends the
+records to `audit.jsonl` in its data folder. The daemon (each tick) and `orchestrator gateway audit` move that file aside,
+import it into `term_audit` in `orchestrator.db` (each record once, by its id) and then delete it. `term_audit` isn't in
+`data/orchestrator.sql`, since it grows with every attach. `term_grants` is. Both tables exist in SQLite (migration 16)
+and SQL Server (schema 5).
+
+Smoke test (2026-10-26). Setup: a TermHost running `cmd` on `sam@example.com`, and the gateway on `127.0.0.1:17443` with
+a scratch data folder. The snapshot had Erin and Sam in sales and Pat in ops. The results:
+
+- **`/sessions`.** Erin saw the session as `watch`, Pat saw `[]`, and the owner saw it as `interact`.
+- **Pat's attach.** It got 404 and was audited as `refused`.
+- **Erin, no grant.** She attached read-only, even with an interact token, and her typed line never echoed.
+- **Erin, interact grant.** It echoed. Revoking the grant mid-stream closed her socket with `PolicyViolation access
+  revoked` within 10 seconds.
+- **`audit.jsonl`.** It held the refused, attach, input (1 frame, 28 bytes), and detach records, and none of the typed text.
+
+M.ORCH-T935 adds masking and the "being watched" banner.
 
 ### Endpoints
 
@@ -794,8 +865,8 @@ Input and Resize frames and counts them in the log line written when it detaches
 **Compression.** The gateway offers permessage-deflate (`DangerousEnableCompression`, 15-bit window, context takeover).
 It is used when the viewer asks for it (`ClientWebSocketOptions.DangerousDeflateOptions`). VT compresses 5 to 10x. The
 "dangerous" in the name is the CRIME/BREACH class of attacks: secrets compressed beside attacker-chosen text. Only an
-interactive viewer can choose text here, and for now that is only the owner. Revisit this together with T935's masker once
-other members get `interact`.
+interactive viewer can choose text here. Since M.ORCH-T934 that includes a member with an interact grant, so revisit this
+together with T935's masker.
 
 **Several viewers per session** came with M.ORCH-T930 (see "Several viewers"). A protocol 1 host still serves one viewer at a
 time: there a remote attach displaces the local dashboard's viewer of that session, and a dashboard reattach displaces the
