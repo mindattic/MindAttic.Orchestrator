@@ -208,10 +208,11 @@ public static class TeamWall
     /// <c>--session &lt;id&gt; --stay</c> (with <c>--watch</c> unless <paramref name="interact"/>), a remote one as
     /// <c>--remote &lt;name&gt; --session &lt;id&gt;</c> (with <c>--interact</c> only when asked and the grant allows it). The
     /// token never goes on the command line: the viewer reads the remote from the settings. Never throws; false when no
-    /// TermViewer is installed or it couldn't start.
+    /// TermViewer is installed or it couldn't start, or when the session's host serves one viewer (<see cref="CanPopOut"/>).
     /// </summary>
     public static bool PopOut(WallSession session, bool interact)
     {
+        if (!CanPopOut(session)) return false;
         try
         {
             if (FallbackViewers.DefaultExe() is not { } exe) return false;
@@ -226,6 +227,11 @@ public static class TeamWall
             return false;
         }
     }
+
+    /// <summary>Whether a tile can be opened larger (M.ORCH-T1032): only on a host that serves several viewers
+    /// (<see cref="WallSession.Streamable"/>), as the dashboard's own pop-out requires. On a protocol 1 host the pop-out and the
+    /// owner's tab would take the single-viewer session from each other in a reconnect loop.</summary>
+    public static bool CanPopOut(WallSession session) => session.Streamable;
 
     /// <summary>The TermViewer arguments <see cref="PopOut"/> uses.</summary>
     public static IReadOnlyList<string> PopOutArguments(WallSession session, bool interact)

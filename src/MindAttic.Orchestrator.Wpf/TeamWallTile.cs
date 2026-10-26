@@ -259,6 +259,12 @@ internal sealed class TeamWallTile : Border, IDisposable
     {
         try
         {
+            if (!TeamWall.CanPopOut(Session))
+            {
+                state.Text = "one viewer at a time: can't open larger";
+                dot.Fill = DownBrush;
+                return;
+            }
             if (TeamWall.PopOut(Session, interactive)) return;
             state.Text = "no TermViewer to open it in";
             dot.Fill = WaitBrush;

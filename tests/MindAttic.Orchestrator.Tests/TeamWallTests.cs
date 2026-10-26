@@ -244,4 +244,12 @@ public sealed class TeamWallTests
         Assert.That(TeamWall.PopOutArguments(theirs, interact: true), Is.EqualTo(new[] { "--remote", "jordan", "--session", "t" }), "the grant doesn't allow it");
         Assert.That(TeamWall.PopOutArguments(granted, interact: true), Is.EqualTo(new[] { "--remote", "jordan", "--session", "g", "--interact" }));
     }
+
+    [Test]
+    public void Only_a_multi_viewer_host_can_be_popped_out()
+    {
+        Assert.That(TeamWall.CanPopOut(Tile(TeamWall.LocalGateway, "m", protocol: 2)), Is.True);
+        Assert.That(TeamWall.CanPopOut(Tile(TeamWall.LocalGateway, "old", protocol: 1)), Is.False, "M.ORCH-T1032: it would fight the owner's tab");
+        Assert.That(TeamWall.PopOut(Tile("jordan", "old", protocol: 1), interact: false), Is.False);
+    }
 }
