@@ -945,6 +945,58 @@ Size frames with their owner byte, and Typing frames, go down to the viewer unch
 
 **TermViewer (T960).** A fallback viewer stays attached beside the dashboard's tab on a protocol 2 host instead of being replaced. So it folds back on the dashboard's `app-present` and its 2-second check, not on losing its link. It is given no liveness probe, so it never reconnects, and can't take a protocol 1 session back from the dashboard.
 
+## Team wall (M.ORCH-T936, 2026-10-26)
+
+The People button beside Tickets opens the **team wall**: one window with a grid of every live CLI, this machine's and every
+teammate's gateway's. Each tile is a small read-only `RelayTerminal` rendering the real TUI, with whose CLI it is, its title
+and its state.
+
+**Adding a teammate.** The teammate issues a token for you (`orchestrator gateway token <you>`, M.ORCH-T934) and passes it,
+with their gateway's certificate pin, over a channel you already trust. Then:
+
+```
+orchestrator gateway remote add jordan jordan-pc.tail1234.ts.net:7443 --pin <sha256> --person Jordan   # asks for the token, hidden
+orchestrator gateway remote list [--check]     # pins, token expiry; --check asks each gateway for its sessions
+orchestrator gateway remote remove jordan
+```
+
+The remotes live in `OrchestratorSettings.Gateway.Remotes`: name, person, URL, pin, and the token **sealed with DPAPI** for this
+Windows user, so the settings still hold no plain secret. `--token -` reads it from standard input. A remote never restarts
+this machine's own gateway.
+
+**Transport.** `RelayConnection` now takes a function that opens any `Stream` of frames, so the pipe and the WebSocket share
+one code path. `WebSocketFrameStream` hands out each received message in turn and sends each written frame as one binary
+message from a queue of its own, so typing never blocks on the network. `GatewayClient` lists `/sessions` and opens
+`/sessions/{id}/stream?mode=watch` with permessage-deflate, checking TLS against the pin and sending the token only in the
+`Authorization` header.
+
+**The wall.**
+
+- Every 10 s it reads this machine's registry and each gateway's `/sessions`, all at once and off the UI thread, and merges them
+  (`TeamWall.Merge`). Tiles are grouped by source, a tile keeps its place across looks, and a new one goes after. The streams
+  themselves are live.
+- A gateway that can't be reached, refuses its token, fails the pin or times out (6 s) shows as offline in the header, with
+  why in its tooltip. It never blocks the window, and every exception is contained.
+- **It pages, not scrolls.** A renderer is an HWND, which a ScrollViewer can't clip, and which WPF can't scale either. So each
+  tile shrinks the font until the session's whole grid fits, and a page holds as many 420x260 tiles as fit, at most 12. Only
+  the page on screen has terminals at all. Every tile pauses while the wall is minimized.
+- A protocol 1 host serves one viewer, so a tile would take its session from the owner's tab. Such tiles never stream.
+- Clicking a tile's header or its terminal opens it larger in TermViewer, **watch only**: `--session <id> --stay --watch` for
+  this machine's own (T931), and `--remote <name> --session <id>` for a teammate's. TermViewer reads the remote from the
+  settings, so the token never appears on a command line. **Interact** shows only where the gateway says the grant allows it
+  (`access: interact`), and adds `--interact`.
+- It is its own window rather than a dashboard panel, because the dashboard's terminal HWNDs would draw over a panel.
+
+**Smoke test.** An unlisted TermHost running `cmd`, a hand-written registry record, and the gateway on `127.0.0.1:17443` with
+a scratch data folder and its dev certificate. The results:
+
+- The list came over the gateway.
+- A watch stream replayed `hello-wall`, and its typed line was dropped ("1 dropped" in the gateway log).
+- An interact stream echoed its typed line.
+- A closed port showed offline in about 2 s, a wrong pin as "its certificate doesn't match the pin", and a bad token as refused.
+- A tile-sized window rendered the session at 5 pt, letterboxed at 120x30.
+- The wall itself showed three hosts live. In a smaller window it paged them 2 per page.
+
 ## Sources
 
 - Decompiled: `CI.Microsoft.Terminal.Wpf` 1.25.260303002 (`ITerminalConnection`, `TerminalControl`, `TerminalContainer`) and `EasyWindowsTerminalControl` 1.0.38 (`EasyTerminalControl`, `TermPTY`), from `%USERPROFILE%\.nuget\packages`.
