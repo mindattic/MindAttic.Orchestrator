@@ -18,6 +18,15 @@ internal sealed class GatewayServices
     public required IPipeConnector Pipes { get; init; }
     public required GatewayLog Log { get; init; }
     public LoginThrottle Throttle { get; } = new();
+
+    /// <summary>Every attach, detach, refusal and remote input count (M.ORCH-T934); the gateway's Program spools them.</summary>
+    public IGatewayAudit Audit { get; init; } = NoAudit.Instance;
+
+    /// <summary>How often a stream writes its input counts and checks its access again (a revoked grant closes it).</summary>
+    public TimeSpan AuditInterval { get; init; } = TimeSpan.FromSeconds(10);
+
+    /// <summary>The clock audit records are stamped with.</summary>
+    public Func<DateTime> Clock { get; init; } = () => DateTime.UtcNow;
 }
 
 /// <summary>A session as <c>GET /sessions</c> lists it: never its command line, folder, config dir, pipe or host pid.</summary>
@@ -150,10 +159,18 @@ internal static class GatewayApp
         if (Authenticate(http, g) is not { } who) { http.Response.StatusCode = StatusCodes.Status401Unauthorized; return; }
         if (!http.WebSockets.IsWebSocketRequest) { http.Response.StatusCode = StatusCodes.Status400BadRequest; return; }
         var session = g.Sessions.Get(id);
+        string? requestedMode = http.Request.Query["mode"];
         var access = session is null ? GatewayAccess.None
-            : OwnerOnlyGrants.Effective(g.Grants.AccessTo(who.Subject, session), who.Scope, http.Request.Query["mode"]);
+            : OwnerOnlyGrants.Effective(g.Grants.AccessTo(who.Subject, session), who.Scope, requestedMode);
+        var from = http.Connection.RemoteIpAddress?.ToString() ?? "?";
         // Not found and not allowed look the same, so a token can't probe for session ids.
-        if (session is null || access == GatewayAccess.None) { http.Response.StatusCode = StatusCodes.Status404NotFound; return; }
+        if (session is null || access == GatewayAccess.None)
+        {
+            g.Audit.Write(Record(g, TermGatewayAudit.Refused, who.Subject, TermProtocol.Sanitize(id), "none", from,
+                detail: session is null ? "no such session" : "no grant"));
+            http.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
 
         Stream pipe;
         try { pipe = await g.Pipes.ConnectAsync(session, http.RequestAborted).ConfigureAwait(false); }
@@ -171,13 +188,62 @@ internal static class GatewayApp
             DisableServerContextTakeover = false,
             ServerMaxWindowBits = 15,
         }).ConfigureAwait(false);
-        var from = http.Connection.RemoteIpAddress?.ToString() ?? "?";
-        var mode = access == GatewayAccess.Interact ? "interact" : "watch";
+        var mode = access == GatewayAccess.Interact ? GatewayScopes.Interact : GatewayScopes.Watch;
         g.Log.Write($"attach {session.Id} by {who.Subject} from {from} ({mode})");
-        var result = await TermBridge.RunAsync(socket, pipe, access, g.Log, http.RequestAborted).ConfigureAwait(false);
-        g.Log.Write($"detach {session.Id} by {who.Subject}: ended by {result.EndedBy}, {result.FramesUp} frames up, " +
+        g.Audit.Write(Record(g, TermGatewayAudit.Attach, who.Subject, session.Id, mode, from));
+
+        // Every interval: the input typed since (counts and sizes only), and the access checked again, so a revoked or
+        // expired grant closes the stream rather than lasting as long as the connection does.
+        var input = new GatewayInputMeter();
+        using var revoke = new CancellationTokenSource();
+        using var stopWatch = new CancellationTokenSource();
+        var revoked = false;
+        var watch = Task.Run(async () =>
+        {
+            try
+            {
+                while (!stopWatch.IsCancellationRequested)
+                {
+                    await Task.Delay(g.AuditInterval, stopWatch.Token).ConfigureAwait(false);
+                    WriteInput(g, input, who.Subject, session.Id, mode, from);
+                    var now = OwnerOnlyGrants.Effective(g.Grants.AccessTo(who.Subject, session), who.Scope, requestedMode);
+                    if (now < access)
+                    {
+                        revoked = true;
+                        g.Log.Write($"access to {session.Id} by {who.Subject} dropped to {now}; closing the stream");
+                        await revoke.CancelAsync().ConfigureAwait(false);
+                        return;
+                    }
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex) { g.Log.Error(ex, "watching a stream's access failed; contained"); }
+        });
+
+        var result = await TermBridge.RunAsync(socket, pipe, access, g.Log, http.RequestAborted, input, revoke.Token).ConfigureAwait(false);
+        await stopWatch.CancelAsync().ConfigureAwait(false);
+        try { await watch.ConfigureAwait(false); } catch (Exception) { }
+        WriteInput(g, input, who.Subject, session.Id, mode, from);
+        var ended = revoked ? "access revoked" : result.EndedBy;
+        g.Log.Write($"detach {session.Id} by {who.Subject}: ended by {ended}, {result.FramesUp} frames up, " +
                     $"{result.FramesDown} down ({result.BytesDown} bytes), {result.Dropped} dropped");
+        g.Audit.Write(Record(g, TermGatewayAudit.Detach, who.Subject, session.Id, mode, from, result.FramesUp, result.BytesDown,
+            $"ended by {ended}; {result.FramesDown} frames down, {result.Dropped} dropped"));
     }
+
+    /// <summary>An input record for what <paramref name="input"/> counted since it was last taken; none when nothing was typed.</summary>
+    private static void WriteInput(GatewayServices g, GatewayInputMeter input, string viewer, string session, string level, string from)
+    {
+        var (frames, bytes) = input.Take();
+        if (frames > 0) g.Audit.Write(Record(g, TermGatewayAudit.Input, viewer, session, level, from, frames, bytes));
+    }
+
+    private static TermGatewayAuditRecord Record(GatewayServices g, string what, string viewer, string session, string level, string remote,
+        long frames = 0, long bytes = 0, string? detail = null) => new()
+    {
+        AtUtc = g.Clock(), Event = what, Viewer = viewer, Owner = g.Options.Owner, Session = session, Level = level, Remote = remote,
+        Frames = frames, Bytes = bytes, Detail = detail,
+    };
 
     /// <summary>The bearer token's holder, or null. Only the Authorization header is read: a token in a URL would land in logs.</summary>
     internal static GatewayPrincipal? Authenticate(HttpContext http, GatewayServices g)

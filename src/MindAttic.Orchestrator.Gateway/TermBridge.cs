@@ -25,11 +25,21 @@ internal static class TermBridge
 
     private static readonly TimeSpan CloseWait = TimeSpan.FromSeconds(2);
 
-    public static async Task<BridgeResult> RunAsync(WebSocket socket, Stream pipe, GatewayAccess access, GatewayLog log, CancellationToken ct)
+    /// <param name="input">Counts each Input frame that goes on to the host, for the audit log (M.ORCH-T934): counts only.</param>
+    /// <param name="revoke">Fired when the viewer's access was revoked (M.ORCH-T934): the pipe is let go, and the viewer is told
+    /// so with a policy-violation close, as when the host closes it (cancelling a receive would abort the socket unannounced).</param>
+    public static async Task<BridgeResult> RunAsync(WebSocket socket, Stream pipe, GatewayAccess access, GatewayLog log, CancellationToken ct,
+        GatewayInputMeter? input = null, CancellationToken revoke = default)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var counts = new Counts();
-        var up = Task.Run(() => UpstreamAsync(socket, pipe, access, counts, log, cts.Token));
+        var revoked = 0;
+        using var onRevoke = revoke.Register(() =>
+        {
+            Interlocked.Exchange(ref revoked, 1);
+            TryDispose(pipe);
+        });
+        var up = Task.Run(() => UpstreamAsync(socket, pipe, access, counts, log, input, cts.Token));
         var down = Task.Run(() => DownstreamAsync(socket, pipe, counts, log, cts.Token));
         string endedBy;
         try
@@ -37,16 +47,19 @@ internal static class TermBridge
             var first = await Task.WhenAny(up, down).ConfigureAwait(false);
             if (first == down)
             {
-                endedBy = "host";
-                // The host closed the pipe (the session ended, or another viewer replaced this one): say so, and give the
-                // viewer a moment to answer the close.
-                await TryCloseOutputAsync(socket, WebSocketCloseStatus.NormalClosure, "the session's host closed the stream").ConfigureAwait(false);
+                var byRevoke = Volatile.Read(ref revoked) == 1;
+                endedBy = byRevoke ? "access revoked" : "host";
+                // The host closed the pipe (the session ended, or another viewer replaced this one), or access was revoked: say
+                // so, and give the viewer a moment to answer the close.
+                await TryCloseOutputAsync(socket, byRevoke ? WebSocketCloseStatus.PolicyViolation : WebSocketCloseStatus.NormalClosure,
+                    byRevoke ? "access revoked" : "the session's host closed the stream").ConfigureAwait(false);
                 await Task.WhenAny(up, Task.Delay(CloseWait, CancellationToken.None)).ConfigureAwait(false);
                 cts.Cancel();
             }
             else
             {
                 var close = await up.ConfigureAwait(false);
+                if (Volatile.Read(ref revoked) == 1) close = new(WebSocketCloseStatus.PolicyViolation, "access revoked");
                 endedBy = close.Reason;
                 cts.Cancel();
                 TryDispose(pipe);
@@ -76,7 +89,8 @@ internal static class TermBridge
     private readonly record struct Close(WebSocketCloseStatus Status, string Reason);
 
     /// <summary>Viewer to host. Returns how the socket should be closed.</summary>
-    private static async Task<Close> UpstreamAsync(WebSocket socket, Stream pipe, GatewayAccess access, Counts counts, GatewayLog log, CancellationToken ct)
+    private static async Task<Close> UpstreamAsync(WebSocket socket, Stream pipe, GatewayAccess access, Counts counts, GatewayLog log,
+        GatewayInputMeter? input, CancellationToken ct)
     {
         var buffer = new byte[16 * 1024];
         var helloSeen = false;
@@ -117,6 +131,7 @@ internal static class TermBridge
                 await pipe.WriteAsync(frame, ct).ConfigureAwait(false);
                 await pipe.FlushAsync(ct).ConfigureAwait(false);
                 Interlocked.Increment(ref counts.FramesUp);
+                if (kind == TermFrameKind.Input) input?.Add(frame.Length - 5);
             }
         }
         catch (OperationCanceledException) { return new(WebSocketCloseStatus.NormalClosure, "cancelled"); }

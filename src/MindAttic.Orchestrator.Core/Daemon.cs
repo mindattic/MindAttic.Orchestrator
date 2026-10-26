@@ -155,6 +155,14 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 // trouble is contained here: it only ever costs remote viewers, never a tick or a TermHost.
                 try { gateway.Tick(s.Gateway, DateTime.UtcNow); }
                 catch (Exception ex) { Say(LogEventLevel.Warning, $"team gateway: {ex.Message}"); }
+                // Its viewing ACL (M.ORCH-T934): the members, orgs and grants it decides from, as a snapshot it reads, and its
+                // spooled audit records into orchestrator.db's term_audit (also after it's turned off, so none is left behind).
+                try
+                {
+                    if (s.Gateway.Enabled) TermGrants.Publish(store.Db, DateTime.UtcNow);
+                    TermGrants.ImportAudit(store.Db);
+                }
+                catch (Exception ex) { Say(LogEventLevel.Warning, $"team gateway ACL and audit: {ex.Message}"); }
                 tick.Lap("team gateway");
 
                 cycler.PruneMarks();

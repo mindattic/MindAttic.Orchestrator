@@ -115,7 +115,18 @@ internal static class CliApp
             config.AddCommand<ShowCommand>("show").WithDescription("The sessions the orchestrator ran on a ticket (the ticket itself, its history and commits: tickets ticket show).");
             config.AddCommand<UsageReportCommand>("report").WithDescription("The usage report: every member's 5-hour and weekly use and resets, points left to the weekly target, how old each reading is and whether it's accurate; --detail adds the CLIs' spend and the API key's; --since <date>, --csv, --json; --md/--html <file> write it to share.");
             config.AddCommand<ReportCommand>("tokens").WithDescription("Uncached tokens by week, repo, provider and ticket type, and cost per completed ticket by model; --csv writes it out (was report before M.ORCH-T685).");
-            config.AddCommand<GatewayCommand>("gateway").WithDescription("The team gateway (M.ORCH-T933), off by default: on|off, and where it listens (--bind, --port) and its certificate (--cert-path, --cert-thumbprint, --dev-cert-names); shows whether it runs and its certificate pin.");
+            config.AddBranch("gateway", gw =>
+            {
+                gw.SetDescription("The team gateway (M.ORCH-T933), off by default: on|off, and where it listens (--bind, --port) and its certificate (--cert-path, --cert-thumbprint, --dev-cert-names); shows whether it runs and its certificate pin. Who may watch or interact: grant, revoke, grants; who did: audit; a member's token: token (M.ORCH-T934).");
+                gw.SetDefaultCommand<GatewayCommand>();
+                gw.AddCommand<GatewayCommand>("on").WithDescription("Turn the gateway on (with any of the gateway options).");
+                gw.AddCommand<GatewayCommand>("off").WithDescription("Turn the gateway off.");
+                gw.AddCommand<GatewayGrantCommand>("grant").WithDescription("Let a member watch or interact: grant <who> watch|interact [[--session <id>]] [[--for 2h]] (interact defaults to 1h; watch never expires unless --for).");
+                gw.AddCommand<GatewayRevokeCommand>("revoke").WithDescription("Take a member's grants back: revoke <who> [[--session <id>]]; a stream they allowed closes within seconds.");
+                gw.AddCommand<GatewayGrantsCommand>("grants").WithDescription("List the grants (--all: expired ones too); same-org members may watch by default.");
+                gw.AddCommand<GatewayAuditCommand>("audit").WithDescription("Who attached, detached and typed (counts, never content): audit [[--since 2h|<date>]] [[--limit N]].");
+                gw.AddCommand<GatewayTokenCommand>("token").WithDescription("A bearer token for a member, to hand them: token <who> [[--scope watch|interact]] [[--minutes N]].");
+            });
             config.AddCommand<BillingCommand>("billing").WithDescription("Who every CLI bills (Claude Team or the Vault's API key) and each open CLI's own billing; team or api switches every CLI.");
             config.AddBranch("accounts", a =>
             {

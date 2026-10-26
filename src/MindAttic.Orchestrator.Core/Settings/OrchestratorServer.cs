@@ -165,11 +165,22 @@ public sealed class OrchestratorServer(string connectionString)
             provider nvarchar(64) NOT NULL, login nvarchar(386) NOT NULL, org_id nvarchar(450) NOT NULL, person nvarchar(max) NOT NULL,
             added_utc nvarchar(64) NULL
             """, "ALTER TABLE org_members ADD CONSTRAINT org_members_key PRIMARY KEY (provider, login); CREATE INDEX org_members_org ON org_members (org_id);"),
+        // The team gateway's viewing ACL and audit (M.ORCH-T934). The grant key's columns are sized to fit an index key (900 bytes).
+        ("term_grants", """
+            owner nvarchar(128) NOT NULL, viewer nvarchar(256) NOT NULL, session nvarchar(64) NOT NULL, level nvarchar(16) NOT NULL,
+            expires_utc nvarchar(64) NULL, created_by nvarchar(256) NULL, created_utc nvarchar(64) NOT NULL
+            """, "ALTER TABLE term_grants ADD CONSTRAINT term_grants_key PRIMARY KEY (owner, viewer, session);"),
+        ("term_audit", """
+            id nvarchar(64) NOT NULL PRIMARY KEY, at_utc nvarchar(64) NOT NULL, event nvarchar(16) NOT NULL, viewer nvarchar(256) NOT NULL,
+            owner nvarchar(256) NULL, session nvarchar(64) NOT NULL, level nvarchar(16) NOT NULL, remote nvarchar(64) NULL,
+            frames bigint NOT NULL, bytes bigint NOT NULL, detail nvarchar(max) NULL
+            """, "CREATE INDEX term_audit_at ON term_audit (at_utc);"),
     ];
 
     /// <summary>The schema's version: 1, the tables of SQLite's first ten steps; 2, <c>members</c> (M.ORCH-T670); 3,
-    /// <c>assignments.account</c> (M.ORCH-T668); 4, <c>organizations</c> and <c>org_members</c> (M.ORCH-T655).</summary>
-    public const int SchemaVersion = 4;
+    /// <c>assignments.account</c> (M.ORCH-T668); 4, <c>organizations</c> and <c>org_members</c> (M.ORCH-T655); 5, <c>term_grants</c>
+    /// and <c>term_audit</c> (M.ORCH-T934).</summary>
+    public const int SchemaVersion = 5;
 
     /// <summary>The changes to tables already there, one step per version past 1, as SQLite's migrations add them: a column
     /// added to a table there is one more step here (an <c>ALTER TABLE ... ADD</c>, also added to its <see cref="Tables"/> row so
@@ -179,6 +190,7 @@ public sealed class OrchestratorServer(string connectionString)
         ("members", ""), // 2: members, a new table (created with the rest below)
         ("assignments", "IF COL_LENGTH(N'assignments', N'account') IS NULL ALTER TABLE assignments ADD account nvarchar(450) NULL;"), // 3: the login each was dispatched on (M.ORCH-T668)
         ("organizations", ""), // 4: organizations and org_members, new tables (created with the rest below; M.ORCH-T655)
+        ("term_grants", ""), // 5: term_grants and term_audit, new tables (created with the rest below; M.ORCH-T934)
     ];
 
     private void EnsureSchema(SqlConnection connection)

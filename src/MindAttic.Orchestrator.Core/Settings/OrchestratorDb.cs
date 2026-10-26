@@ -445,6 +445,37 @@ public sealed class OrchestratorDb(string path)
         """
         ALTER TABLE gate_events ADD COLUMN account TEXT;
         """,
+        // 16: the team gateway's viewing ACL and audit (M.ORCH-T934; see Sessions.TermGrants). term_grants: who (viewer, a
+        // member's email) may watch or interact with the owner's sessions, all of them (session '') or one, until when (ISO-8601
+        // UTC; NULL only for watch), and who granted it when. term_audit: one row per attach, detach, refusal or batch of remote
+        // input (counts and sizes, never content), keyed by the id the gateway gave it so a repeated import adds it once; not
+        // in the dump, as it grows with every attach.
+        """
+        CREATE TABLE term_grants (
+            owner       TEXT NOT NULL,
+            viewer      TEXT NOT NULL,
+            session     TEXT NOT NULL,
+            level       TEXT NOT NULL,
+            expires_utc TEXT,
+            created_by  TEXT,
+            created_utc TEXT NOT NULL,
+            PRIMARY KEY (owner, viewer, session)
+        );
+        CREATE TABLE term_audit (
+            id      TEXT PRIMARY KEY,
+            at_utc  TEXT NOT NULL,
+            event   TEXT NOT NULL,
+            viewer  TEXT NOT NULL,
+            owner   TEXT,
+            session TEXT NOT NULL,
+            level   TEXT NOT NULL,
+            remote  TEXT,
+            frames  INTEGER NOT NULL,
+            bytes   INTEGER NOT NULL,
+            detail  TEXT
+        );
+        CREATE INDEX term_audit_at ON term_audit (at_utc);
+        """,
     ];
 
     /// <summary>State rows rewritten every daemon tick or dashboard minute, left out of the dump so they don't produce a
@@ -476,6 +507,7 @@ public sealed class OrchestratorDb(string path)
         ("assignments", "position", ""),
         ("organizations", "id", ""),
         ("org_members", "provider, login", ""),
+        ("term_grants", "owner, viewer, session", ""),
         ("state", "name", " WHERE name NOT IN (" + string.Join(", ", Volatile.Select(v => "'" + v + "'")) + ")"),
     ];
 

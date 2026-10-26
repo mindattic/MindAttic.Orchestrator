@@ -54,10 +54,13 @@ try
         Options = options,
         Tokens = new GatewayTokens(GatewayKeys.LoadOrCreate(options.DataDir, GatewayKeys.SigningKeyFile)),
         OwnerKey = GatewayKeys.LoadOrCreate(options.DataDir, GatewayKeys.OwnerKeyFile),
-        Grants = new OwnerOnlyGrants(options.Owner),
+        // M.ORCH-T934: members' grants and org membership from orchestrator.db (the snapshot the daemon writes), and the audit
+        // spool the daemon imports into it.
+        Grants = new AclGrants(options.Owner, options.DataDir),
         Sessions = new RegistrySessions(),
         Pipes = new NamedPipeConnector(),
         Log = log,
+        Audit = new SpoolAudit(options.DataDir, log),
     };
 
     var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = [], ContentRootPath = AppContext.BaseDirectory });

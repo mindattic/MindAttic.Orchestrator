@@ -49,7 +49,8 @@ internal sealed class GatewayCommand : Command<GatewayCommand.Settings>
         var s = store.LoadSettingsToChange();
         var g = s.Gateway;
         static string? Clear(string value) => value.Equals("none", StringComparison.OrdinalIgnoreCase) ? null : value.Trim();
-        if (settings.Switch is { } sw)
+        // "gateway on" and "gateway off" are subcommands of the gateway branch (M.ORCH-T934), beside grant, revoke and the rest.
+        if ((settings.Switch ?? (context.Name is "on" or "off" ? context.Name : null)) is { } sw)
         {
             if (sw.Equals("on", StringComparison.OrdinalIgnoreCase)) g = g with { Enabled = true };
             else if (sw.Equals("off", StringComparison.OrdinalIgnoreCase)) g = g with { Enabled = false };
@@ -79,6 +80,8 @@ internal sealed class GatewayCommand : Command<GatewayCommand.Settings>
         {
             store.SaveSettings(s with { Gateway = g });
             AnsiConsole.MarkupLine("[green]Saved.[/] [grey]The daemon starts, restarts or stops the gateway within a tick.[/]");
+            // Its ACL ready before it starts (M.ORCH-T934); the owner may have changed with these settings.
+            if (g.Enabled) GatewayAcl.Publish();
         }
 
         AnsiConsole.MarkupLine($"Team gateway: {(g.Enabled ? "[green]on[/]" : "[grey]off[/]")} · https://{Markup.Escape(g.Bind)}:{g.Port} · owner {Markup.Escape(g.Owner ?? Environment.UserName)} · tokens {g.TokenMinutes} min");
@@ -90,7 +93,8 @@ internal sealed class GatewayCommand : Command<GatewayCommand.Settings>
             AnsiConsole.MarkupLine($"Running: pid {running.Pid}, {Markup.Escape(running.Bind)}:{running.Port}, version {Markup.Escape(running.Version)}" +
                                    $"{(running.Managed ? "" : " (started by hand)")}, certificate SHA-256 [aqua]{running.CertSha256}[/]");
         else AnsiConsole.MarkupLine("[grey]Not running.[/]");
-        AnsiConsole.MarkupLine($"[grey]A token: {TermGateway.ExeName} token [[--scope watch]]; the owner key for POST /auth/token: {TermGateway.ExeName} owner-key.[/]");
+        AnsiConsole.MarkupLine($"[grey]Your token: {TermGateway.ExeName} token [[--scope watch]]; the owner key for POST /auth/token: {TermGateway.ExeName} owner-key.[/]");
+        AnsiConsole.MarkupLine("[grey]A member's token: orchestrator gateway token <who>; who may do what: grants, grant <who> watch|interact, revoke <who>; who did: audit.[/]");
         return 0;
     }
 }
