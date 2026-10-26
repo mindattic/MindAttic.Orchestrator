@@ -102,13 +102,15 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
                 unthrottled: cycler.IsUnthrottled(pid), self: c.SessionId, cli: pid, pilots: pilots, onSince: since, loginOf: loginOf, login: email, orgs: orgs);
             if (handed.Count > 0) due.Add((pid, c, repos, [.. handed.Select(h => h.Item.Id)]));
         }
+        CliNudges.Retain(cycler.Directory, "work", due.Select(d => d.Pid));
         if (due.Count == 0) return [];
 
         var wakes = new List<Wake>();
         foreach (var d in due)
         {
             // Left for the hook on every pass (it replaces the last, so a nudge never piles up); said once per idle stretch.
-            CliNudges.Leave(cycler.Directory, d.Pid, "work", Prompt(d.Repos, d.Ids));
+            // Resume-after-reset off: only said to you, never nudged, as it was only said when typing was off.
+            if (settings.ResumeAfterReset) CliNudges.Leave(cycler.Directory, d.Pid, "work", Prompt(d.Repos, d.Ids));
             wokenUtc[d.Pid] = nowUtc;
             if (saidFor.TryGetValue(d.Pid, out var turn) && turn == d.Session.TurnUtc) continue;
             saidFor[d.Pid] = d.Session.TurnUtc;
@@ -164,6 +166,7 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
             room -= items.Count;
             due.Add((pid, c?.Cwd, items));
         }
+        CliNudges.Retain(cycler.Directory, "claims", due.Select(d => d.Pid));
         if (due.Count == 0) return [];
 
         var wakes = new List<Wake>();
@@ -172,7 +175,7 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
             var ids = d.Items.Select(i => i.Id).ToList();
             var tickets = string.Join(", ", ids);
             var them = ids.Count == 1 ? "it" : "them";
-            CliNudges.Leave(cycler.Directory, d.Pid, "claims", ClaimsPrompt(d.Items, projected, settings.PaceTargetPercent));
+            if (settings.ResumeAfterReset) CliNudges.Leave(cycler.Directory, d.Pid, "claims", ClaimsPrompt(d.Items, projected, settings.PaceTargetPercent));
             wokenUtc[d.Pid] = nowUtc;
             if (saidClaims.TryGetValue(d.Pid, out var was) && was == tickets) continue;
             saidClaims[d.Pid] = tickets;

@@ -25,4 +25,35 @@ public static class CliNudges
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
     }
+
+    /// <summary>Drops every <paramref name="kind"/> nudge left for a CLI no longer in <paramref name="pids"/>, so a stale one never
+    /// tells a CLI to start work it no longer has.</summary>
+    public static void Retain(string directory, string kind, IEnumerable<int> pids)
+    {
+        var keep = pids.ToHashSet();
+        try
+        {
+            if (!Directory.Exists(directory)) return;
+            foreach (var f in Directory.EnumerateFiles(directory, $"{Prefix}*-{kind}.txt"))
+            {
+                var name = Path.GetFileNameWithoutExtension(f)[Prefix.Length..];
+                var dash = name.IndexOf('-');
+                if (dash > 0 && int.TryParse(name[..dash], out var pid) && keep.Contains(pid)) continue;
+                try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+
+    /// <summary>Drops every nudge (the global pause is on: nothing is told to carry on until it's lifted).</summary>
+    public static void Clear(string directory)
+    {
+        try
+        {
+            if (!Directory.Exists(directory)) return;
+            foreach (var f in Directory.EnumerateFiles(directory, $"{Prefix}*.txt"))
+                try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
 }

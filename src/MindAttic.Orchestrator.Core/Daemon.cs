@@ -124,6 +124,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     // didn't land in time is unlocked with its old owner keeping them (M.ORCH-T637).
                     ReportMoves(snapshot.Agents, DateTime.UtcNow);
                     // Not while the global pause is on (M.ORCH-T808): nothing is told to carry on until it's lifted.
+                    // Paused, a nudge left before it would tell a CLI to carry on: they're all dropped (M.ORCH-T864).
+                    if (Scheduling.GlobalPause.Active(store)) Sessions.CliNudges.Clear(new Sessions.ContextCycler().Directory);
                     if (!Scheduling.GlobalPause.Active(store))
                         ReportWakes(waker.Tick(snapshot.Pace, s.ResumeAfterReset, DateTime.UtcNow));
                     // An idle /allocate CLI let stop when its next handed out nothing is sent back once next has work for it
@@ -131,7 +133,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     ReportAllocateWakes(pilotWaker.Tick(plan, s, DateTime.UtcNow, snapshot));
                     // On course to end under target with room for more: a CLI holding claims no subagent is on is told to start
                     // them now (M.ORCH-T529: two sat unstarted at a projected 65% of 98% until the user asked).
-                    ReportAllocateWakes(pilotWaker.TickClaims(snapshot, plan, s, DateTime.UtcNow));
+                    ReportAllocateWakes(pilotWaker.TickClaims(snapshot, plan, s, DateTime.UtcNow), alert: false);
                     // A dispatch whose CLI or tab exited mid-task (closed, crashed, slept) is orphaned: said at once, and handed back to
                     // the repo's /allocate CLI or started again in a new tab in its worktree (M.ORCH-T748), as a window's stop is resumed.
                     try
@@ -456,12 +458,14 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     private readonly UnderTarget underTarget = new();
 
     /// <summary>Logs each /allocate CLI nudged (through its hook, never typed into its box, M.ORCH-T864) and raises the Needs-you alert, since an idle one only takes it at its next prompt.</summary>
-    internal void ReportAllocateWakes(IEnumerable<AllocateWaker.Wake> wakes)
+    internal void ReportAllocateWakes(IEnumerable<AllocateWaker.Wake> wakes, bool alert = true)
     {
+        // An idle CLI only takes its nudge when you next talk to it, so that's said to you; a busy one with claims to start takes it
+        // at its next tool call or stop, and needs nothing from you.
         foreach (var w in wakes)
         {
-            Say(LogEventLevel.Warning, w.Line);
-            Alert("Needs you", w.Line);
+            Say(alert ? LogEventLevel.Warning : LogEventLevel.Information, w.Line);
+            if (alert) Alert("Needs you", w.Line);
         }
     }
 

@@ -2750,6 +2750,37 @@ public static class AgentGate
         def my_pid():
             return os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
 
+        def take_nudges():
+            # What the orchestrator wants this CLI to do next (idle claims to start, work to claim, a resume after a limit, tickets
+            # handed back after a move: M.ORCH-T864), left as nudge-<pid>-<kind>.txt files. They reach the model as hook context
+            # (a prompt, a tool call, or a Stop that sends the turn on), never typed into the input box. Each is taken once; one
+            # older than two of the wakers' cooldowns is stale and dropped, and none is delivered while the window's stop holds.
+            out = []
+            try:
+                pid = my_pid()
+                if not pid or not str(pid).isdigit():
+                    return out
+                files = sorted(CLI_MARKS_DIR.glob("nudge-" + str(pid) + "-*.txt"))
+                if not files:
+                    return out
+                s = orchestrator_status()
+                held = bool(s.get("stop")) or orchestrator_stop(s) is not None
+                for nf in files:
+                    try:
+                        if not held and time.time() - nf.stat().st_mtime < 20 * 60:
+                            text = nf.read_text(encoding="utf-8", errors="replace").strip()
+                            if text:
+                                out.append(text)
+                    except Exception:
+                        pass
+                    try:
+                        nf.unlink()
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            return out
+
         try:
             # UTF-8 as Claude Code writes it, not the ANSI code page Python reads a pipe in on Windows (M.ORCH-T392).
             data = json.loads(sys.stdin.buffer.read().decode("utf-8", errors="replace"))
@@ -2900,6 +2931,10 @@ public static class AgentGate
                 if handed is not None:
                     ids = handed
             reason = keep_going(repos, ids, sid, why, insisted) if ids else None
+            # A turn ending with a nudge waiting is sent on with it, as a prompt queued in its box used to run (M.ORCH-T864).
+            nudges = [] if stopped else take_nudges()
+            if nudges:
+                reason = ((reason + " ") if reason else "") + " ".join(nudges)
             if reason:
                 state.update(nudged=True, worked=False)
                 state.pop("closed", None)
@@ -3007,27 +3042,8 @@ public static class AgentGate
                 notes.append(CROSSREPO_NOTE[0])
             if ALLOCATE_NOTE[0]:
                 notes.append(ALLOCATE_NOTE[0])
-            # What the orchestrator wants this CLI to do next (idle claims to start, work to claim, a resume after a limit, tickets
-            # handed back after a move: M.ORCH-T864). It's left as a nudge-<pid>-<kind>.txt file and reaches the model here, as context
-            # with the prompt the user typed; the orchestrator never types it into the input box. Each is delivered once.
-            try:
-                nudge_pid = my_pid()
-                if nudge_pid and str(nudge_pid).isdigit():
-                    for nf in sorted(CLI_MARKS_DIR.glob("nudge-" + str(nudge_pid) + "-*.txt")):
-                        try:
-                            if time.time() - nf.stat().st_mtime < 6 * 3600:
-                                text = nf.read_text(encoding="utf-8", errors="replace").strip()
-                                if text:
-                                    notes.append(text)
-                        except Exception:
-                            pass
-                        try:
-                            nf.unlink()
-                        except Exception:
-                            pass
-            except Exception:
-                pass
-            out = {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": " ".join(notes)}} if notes else {}
+            notes.extend(take_nudges())
+            out ={"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": " ".join(notes)}} if notes else {}
             # A CLI that started before its SessionStart hook was registered is checked on its first prompt instead, and told
             # only when it's billing the key rather than the claude.ai login (M.ORCH-T434).
             # After a /login to another account the line from its start names the old one: the first prompt since says the new
@@ -3090,7 +3106,8 @@ public static class AgentGate
                 touched = True
             if touched:
                 save(state_file, state)
-            said = []
+            # A busy turn (an /allocate run never submits a prompt) takes its nudges here, as the old typed prompt waited in its box.
+            said = take_nudges()
             # No context warning any more: nothing quicksaves, clears or reloads a session for it (2026-10-16), so a turn
             # is never told to stop for its context; Claude's own compaction handles a full one.
             if not said:

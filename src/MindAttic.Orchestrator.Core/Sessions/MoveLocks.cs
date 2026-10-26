@@ -188,7 +188,7 @@ public sealed class MoveHandback(JsonStore store)
 
         var ids = claims.Select(c => c.TicketId).ToList();
         // The CLI as it runs now (its process on the new login when it landed), or the old one while it's still running.
-        int? pid = end.Landed ? end.Cli?.CliPid ?? m.Pid : IsAlive(m.Pid) ? m.Pid : null;
+        int? pid = end.Landed ? end.Cli?.CliPid : IsAlive(m.Pid) ? m.Pid : null;
         var headline = end.Landed
             ? $"move: the CLI in {where} is on {m.ToName} now"
             : $"move: the CLI in {where} didn't move to {m.ToName} ({end.Why}); it stays with {m.FromEmail ?? AccountMove.GlobalLabel.ToLowerInvariant()}";
