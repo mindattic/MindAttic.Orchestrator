@@ -144,7 +144,34 @@ internal sealed class ViewerWindow : Window
 
     private void UpdateTitle() => Title = TitleOf(pane.Initials, liveTitle, session.Id, exitCode);
 
-    private void SetStatus(string text) => status.Text = text;
+    private void SetStatus(string text)
+    {
+        notSent?.Stop();
+        status.Text = text;
+    }
+
+    private DispatcherTimer? notSent;
+    private string? statusBeforeNotSent;
+
+    /// <summary>Keys or a paste were dropped while the link is down (M.ORCH-T979): said for a few seconds, then the status before
+    /// it comes back. The input itself is never queued or replayed.</summary>
+    private void ShowNotSent()
+    {
+        try
+        {
+            if (closing || exitCode is not null) return;
+            if (notSent is null)
+            {
+                notSent = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+                notSent.Tick += (_, _) => { notSent.Stop(); if (statusBeforeNotSent is { } before) status.Text = before; statusBeforeNotSent = null; };
+            }
+            if (!notSent.IsEnabled) statusBeforeNotSent = status.Text;
+            notSent.Stop();
+            status.Text = "Not sent: reconnecting to the CLI's host; type it again once it's back";
+            notSent.Start();
+        }
+        catch (Exception ex) { log.Error(ex, "Showing the not-sent notice failed; contained"); }
+    }
 
     private void Attach()
     {
@@ -158,6 +185,7 @@ internal sealed class ViewerWindow : Window
             SetStatus($"The CLI exited with {code}. Close this window when you're done with it.");
         };
         r.Detached += OnDetached;
+        r.InputDropped += ShowNotSent;
         host.Child = r;
         relay = r;
         r.Attach(session.Pipe, session.Protocol, () => TermSessions.Get(session.Id) is { } live && live.HostPid == session.HostPid, interactive: !watchOnly);

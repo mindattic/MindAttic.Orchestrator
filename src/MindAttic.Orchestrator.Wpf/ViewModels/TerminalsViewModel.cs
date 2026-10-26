@@ -23,8 +23,8 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 public sealed class TerminalPaneViewModel : ObservableObject
 {
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<FrameworkElement, TerminalPaneViewModel> ByControl = new();
-    private bool isSelected, ended, hostEnded, killRequested, reconnecting, otherTyping;
-    private System.Windows.Threading.DispatcherTimer? typingTimer;
+    private bool isSelected, ended, hostEnded, killRequested, reconnecting, otherTyping, inputNotSent;
+    private System.Windows.Threading.DispatcherTimer? typingTimer, notSentTimer;
     private string? pipeName;
     private TermModes localModes;
 
@@ -141,7 +141,23 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>Another viewer of this CLI typed within two seconds of this one (M.ORCH-T930); clears two seconds after the last.</summary>
     public bool OtherTyping { get => otherTyping; private set { if (Set(ref otherTyping, value)) Raise(nameof(StateText)); } }
 
-    public string StateText => Ended ? "ended" : Reconnecting ? "reconnecting" : OtherTyping ? "another viewer is typing" : "";
+    /// <summary>Keys or a paste were just dropped because the relay is reconnecting (M.ORCH-T979); clears after a few seconds.</summary>
+    public bool InputNotSent { get => inputNotSent; private set { if (Set(ref inputNotSent, value)) Raise(nameof(StateText)); } }
+
+    public string StateText => Ended ? "ended" : InputNotSent ? "not sent, reconnecting" : Reconnecting ? "reconnecting" : OtherTyping ? "another viewer is typing" : "";
+
+    /// <summary>Shows "not sent, reconnecting" for a few seconds (M.ORCH-T979): the input is dropped, never replayed later.</summary>
+    private void ShowInputNotSent()
+    {
+        InputNotSent = true;
+        if (notSentTimer is null)
+        {
+            notSentTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            notSentTimer.Tick += (_, _) => { notSentTimer.Stop(); InputNotSent = false; };
+        }
+        notSentTimer.Stop();
+        notSentTimer.Start();
+    }
 
     /// <summary>Shows the "another viewer is typing" hint for <see cref="TermProtocol.TypingWindow"/>. On the UI thread.</summary>
     private void ShowOtherTyping()
@@ -264,6 +280,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
             Reconnecting = on && !killRequested;
         };
         relay.OtherTyping += ShowOtherTyping;
+        relay.InputDropped += () => { if (!killRequested && !Ended) ShowInputNotSent(); };
         relay.Detached += why =>
         {
             if (killRequested) return;

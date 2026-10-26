@@ -85,6 +85,10 @@ public sealed class RelayTerminal : UserControl, IDisposable
     /// <summary>Another viewer of the same CLI typed within two seconds of this one (M.ORCH-T930).</summary>
     public event Action? OtherTyping;
 
+    /// <summary>Keys or a paste were dropped, not sent, because the link is down and being attached again (M.ORCH-T979). On the
+    /// UI thread.</summary>
+    public event Action? InputDropped;
+
     /// <summary>Attaches to the host serving <paramref name="pipe"/>: at once when the renderer's window exists, else once it
     /// loads (output written before it exists would be lost). While <paramref name="alive"/> says the host lives, a dropped
     /// link is attached again (M.ORCH-T966); it is called off the UI thread.</summary>
@@ -145,6 +149,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
         connection.Attached += () => ReconnectingChanged?.Invoke(false);
         connection.SizeChanged += (c, r, owned) => FollowSize(connection, c, r, owned);
         connection.OtherTyping += () => OtherTyping?.Invoke();
+        connection.InputDropped += () => InputDropped?.Invoke();
         Connection = connection;
         // Resets the renderer (ESC c), then Start()s the connection; the host's replay follows.
         Terminal.Connection = connection;

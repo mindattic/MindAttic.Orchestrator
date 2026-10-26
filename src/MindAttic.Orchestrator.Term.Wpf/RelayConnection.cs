@@ -66,7 +66,7 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
         System.Threading.Channels.Channel.CreateUnbounded<(Stream, byte[])>(new() { SingleReader = true });
     private readonly CancellationTokenSource sending = new();
     private Stream? link;
-    private volatile bool closed, exited;
+    private volatile bool closed, exited, ended;
     private uint rows, cols;
     private SynchronizationContext? ui;
 
@@ -189,6 +189,7 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
             if (drop.Live) attaches++;
             if (drop.Final || exited || !HostAlive())
             {
+                ended = true;
                 Post(() => Detached?.Invoke(drop.Why));
                 return;
             }
@@ -201,6 +202,7 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
             if (closed) return;
             if (!HostAlive())
             {
+                ended = true;
                 Post(() => Detached?.Invoke(why + "; the host is gone"));
                 return;
             }
@@ -359,10 +361,25 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
         }
     }
 
-    /// <summary>Sends text to the CLI: the renderer's key sequences, or a paste payload (chunked, in order).</summary>
+    /// <summary>Input was typed or pasted while there was no link to send it on (connecting or reconnecting, M.ORCH-T979): it
+    /// was dropped, never queued, since stale keystrokes replayed into a CLI later could do anything.</summary>
+    public event Action? InputDropped;
+
+    private bool HasLink()
+    {
+        lock (gate) return !closed && link is { } p && p is not NamedPipeClientStream { IsConnected: false };
+    }
+
+    /// <summary>Sends text to the CLI: the renderer's key sequences, or a paste payload (chunked, in order). With no link it is
+    /// dropped and <see cref="InputDropped"/> raised (not once the connection is closed or has ended).</summary>
     public void WriteInput(string data)
     {
         if (string.IsNullOrEmpty(data)) return;
+        if (!HasLink())
+        {
+            if (!closed && !ended) Post(() => { if (!closed && !ended) InputDropped?.Invoke(); });
+            return;
+        }
         var at = 0;
         while (at < data.Length)
         {
