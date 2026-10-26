@@ -111,14 +111,17 @@ public sealed class MainlineTestsTests
     }
 
     [Test]
-    public void The_claim_prompt_runs_only_the_touched_tests_and_leaves_the_full_suite_to_the_orchestrator()
+    public void The_claim_prompt_builds_without_running_tests_commits_plainly_and_leaves_the_full_suite_to_the_orchestrator()
     {
         var item = new QueueItem("A", @"D:\W\A", new Ticket("A-T1", "2026-10-01", "fix", "open", "x", "—"), 0, null, false);
         var prompt = Allocate.PromptFor(item, @"D:\WT\A\A-T1", "orch/a-t1", "main");
 
-        Assert.That(prompt, Does.Contain("run only the tests your change touches"));
+        Assert.That(prompt, Does.Contain("build it to check it; do not run any tests"));
+        Assert.That(prompt, Does.Contain("Commit with plain git commit (not /commit"));
+        Assert.That(prompt, Does.Contain("You are done only when the push has succeeded and the ticket is closed."));
+        Assert.That(prompt, Does.Not.Contain("but don't push"));
         Assert.That(prompt, Does.Contain("the orchestrator runs A's full suite on main itself and files a fix ticket for any test that fails, so don't wait for a full run"));
-        Assert.That(prompt.IndexOf("run only the tests", StringComparison.Ordinal), Is.LessThan(prompt.IndexOf("/commit", StringComparison.Ordinal)), "the touched tests come before the commit");
+        Assert.That(prompt.IndexOf("do not run any tests", StringComparison.Ordinal), Is.LessThan(prompt.IndexOf("plain git commit", StringComparison.Ordinal)), "the build comes before the commit");
     }
 
     [Test]

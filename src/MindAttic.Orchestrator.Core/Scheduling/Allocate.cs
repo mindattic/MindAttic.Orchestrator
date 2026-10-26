@@ -234,22 +234,27 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         "Run any subagents in the foreground, never in the background. " +
         // M.ORCH-T561: the full suite (often 20+ minutes that spend no tokens) is the daemon's, run on main after the landing
         // (MainlineTests), so the subagent's slot goes to the next ticket as soon as its own work is done.
-        "When it's done: build, and run only the tests your change touches (the tests of the code you changed), not the whole suite: " +
-        $"once you land, the orchestrator runs {item.Repo}'s full suite on {mainline} itself and files a fix ticket for any test that fails, so don't wait for a full run. " +
-        "Then run /commit, but don't push (the next step does). " +
+        // M.ORCH-T896: numbered, so the commit reads as one step of several (it used to end a Sonnet's turn: "not pushed, as instructed"),
+        // and build-only (MAT-T59: agents never run tests; the tests run as the /commit gate, which a subagent skips with plain git commit).
+        "Do these steps in order: " +
+        "1. When the work is done, build it to check it; do not run any tests (not even the ones your change touches), " +
+        $"because once you land, the orchestrator runs {item.Repo}'s full suite on {mainline} itself and files a fix ticket for any test that fails, so don't wait for a full run. " +
+        $"2. Commit with plain git commit (not /commit, whose gate runs the test suite), with {item.Id} at the end of the subject; no push yet, the steps below do that, so keep going. " +
         // M.ORCH-T563: a Sonnet ticket's big or risky diff gets one Opus review of the diff alone before it lands.
-        (model is { IsSonnet: true } ? ReviewStep(item.Id) : "") +
-        $"Land it on {item.Repo}'s main line, {mainline}: git fetch origin, git rebase origin/{mainline} (resolve any conflicts, then rebuild and rerun those tests), git push origin HEAD:{mainline}. " +
+        (model is { IsSonnet: true } ? "3. " + ReviewStep(item.Id) : "") +
+        $"{(model is { IsSonnet: true } ? 4 : 3)}. Land it on {item.Repo}'s main line, {mainline}: git fetch origin, git rebase origin/{mainline} (resolve any conflicts, then rebuild), git push origin HEAD:{mainline}. " +
         // Found live (M.ORCH-T178): chained after the push, a rejected push (main moved) still closed the ticket, unlanded, on a pre-rebase hash.
-        $"If the push is rejected because {mainline} moved, fetch, rebase and push again. Only once the push has succeeded, as its own step, " +
-        $"mark it finished: tickets ticket close {item.Id} --ref <the test, or the commit hash as it landed on {mainline}>. " +
+        $"If the push is rejected because {mainline} moved, fetch, rebase and push again. " +
+        $"{(model is { IsSonnet: true } ? 5 : 4)}. Only once the push has succeeded, as its own step, " +
+        $"mark it finished: tickets ticket close {item.Id} --ref <the commit hash as it landed on {mainline}>. " +
+        "You are done only when the push has succeeded and the ticket is closed. " +
         "If you can't finish or land it, leave the ticket open and say why.";
 
     /// <summary>What a Sonnet ticket's prompt says between its commit and its landing (M.ORCH-T563).</summary>
     internal static string ReviewStep(string id) =>
-        $"Then, before landing, run orchestrator review {id} from the worktree: it decides whether this Sonnet ticket's diff needs its one Opus " +
+        $"Before landing, run orchestrator review {id} from the worktree: it decides whether this Sonnet ticket's diff needs its one Opus " +
         "review (a big diff, or one touching the gates, pacing or git landing) and, if so, runs it on the diff alone. Fix what the review " +
-        "finds that's really wrong, rerun the tests it touches and commit that; don't run the review again. ";
+        "finds that's really wrong, rebuild and commit that with plain git commit; don't run the review again. ";
 
     /// <summary>
     /// Agents that exited. A worktree agent is done when its ticket is closed (in the ticket database, or on origin/main
