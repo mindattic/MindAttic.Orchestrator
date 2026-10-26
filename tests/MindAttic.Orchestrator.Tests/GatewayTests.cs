@@ -469,7 +469,7 @@ public sealed partial class GatewayTests
         /// <param name="audit">Where audit records go; nowhere by default.</param>
         /// <param name="session">The session in place of the default "s1".</param>
         public static async Task<TestGateway> StartAsync(IGatewayGrants? grants = null, IGatewayAudit? audit = null, TimeSpan? auditInterval = null,
-            TermSessionRecord? session = null, GatewayTokens? tokens = null)
+            TermSessionRecord? session = null, GatewayTokens? tokens = null, ISessionSource? sessions = null)
         {
             var gateway = session is null ? new TestGateway() : new TestGateway { Session = session };
             gateway.Services = new GatewayServices
@@ -478,7 +478,7 @@ public sealed partial class GatewayTests
                 Tokens = tokens ?? new GatewayTokens(SigningKey),
                 OwnerKey = OwnerKey,
                 Grants = grants ?? new OwnerOnlyGrants(Owner),
-                Sessions = new FixedSessions(gateway.Session),
+                Sessions = sessions ?? new FixedSessions(gateway.Session),
                 Pipes = gateway.Pipes,
                 Log = new GatewayLog(null),
                 Audit = audit ?? NoAudit.Instance,
@@ -514,6 +514,41 @@ public sealed partial class GatewayTests
     {
         public IReadOnlyList<TermSessionRecord> Enumerate() => sessions;
         public TermSessionRecord? Get(string id) => sessions.FirstOrDefault(s => s.Id == id);
+    }
+
+    /// <summary>One session whose record a test changes (its title, say) as the host would.</summary>
+    private sealed class OneSession(TermSessionRecord session) : ISessionSource
+    {
+        public volatile TermSessionRecord Current = session;
+        public IReadOnlyList<TermSessionRecord> Enumerate() => [Current];
+        public TermSessionRecord? Get(string id) => Current.Id == id ? Current : null;
+    }
+
+    // ── /sessions titles (M.ORCH-T981) ──────────────────────────────────────────
+
+    /// <summary>A made-up token of a known shape, built at run time: never a real secret.</summary>
+    private static readonly string FakeGitHubToken = "ghp_" + string.Concat(Enumerable.Repeat("FAKEfake0123", 3));
+
+    [Test]
+    public async Task Sessions_lists_titles_masked_and_frozen_while_paused()
+    {
+        var sessions = new OneSession(Session("s1") with { Title = "deploying with " + FakeGitHubToken });
+        await using var gateway = await TestGateway.StartAsync(sessions: sessions);
+        gateway.Broadcast.Current = new TermBroadcastSettings().Share("s1", true); // masked, as by default
+        using var http = gateway.Server.CreateClient();
+        http.DefaultRequestHeaders.Authorization = new("Bearer", gateway.Token(GatewayScopes.Watch));
+
+        var listed = await http.GetStringAsync("/sessions");
+        Assert.That(listed, Does.Not.Contain(FakeGitHubToken).And.Contain("deploying with "));
+
+        gateway.Broadcast.Current = gateway.Broadcast.Current.Pause("s1", true, DateTime.UtcNow);
+        sessions.Current = sessions.Current with { Title = "new title set during the pause" };
+        listed = await http.GetStringAsync("/sessions");
+        Assert.That(listed, Does.Not.Contain("during the pause").And.Contain("deploying with "), "frozen at the title before the pause");
+        Assert.That(listed, Does.Not.Contain(FakeGitHubToken));
+
+        gateway.Broadcast.Current = gateway.Broadcast.Current.Pause("s1", false, DateTime.UtcNow);
+        Assert.That(await http.GetStringAsync("/sessions"), Does.Contain("new title set during the pause"));
     }
 
     /// <summary>Hands the gateway one end of an in-memory duplex pipe per connect, and keeps the host's end for the test.</summary>

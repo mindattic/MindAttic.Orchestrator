@@ -19,6 +19,10 @@ internal sealed class GatewayServices
     public required GatewayLog Log { get; init; }
     public LoginThrottle Throttle { get; } = new();
 
+    /// <summary>Each session's title as <c>GET /sessions</c> last listed it while not paused, by lower-case id: what it lists
+    /// while the session is paused (M.ORCH-T981). Only live sessions are kept.</summary>
+    internal ConcurrentDictionary<string, string?> ListedTitles { get; } = new(StringComparer.Ordinal);
+
     /// <summary>Caps how many unauthenticated refusals reach the audit (M.ORCH-T988).</summary>
     public RefusalBudget Refusals { get; } = new();
 
@@ -150,14 +154,21 @@ internal static class GatewayApp
                 }
                 var list = new List<GatewaySession>();
                 var broadcast = g.Broadcast.Current;
-                foreach (var s in g.Sessions.Enumerate())
+                var sessions = g.Sessions.Enumerate();
+                foreach (var s in sessions)
                 {
                     // Only what the owner shares (M.ORCH-T935): remote watching is opt-in, per session or for all of them.
                     if (!broadcast.IsShared(s.Id)) continue;
                     var access = OwnerOnlyGrants.Effective(g.Grants.AccessTo(who.Subject, s), who.Scope, null);
                     if (access == GatewayAccess.None) continue;
-                    list.Add(new GatewaySession(s.Id, s.Title, s.Login, s.Repo, s.Cols, s.Rows, s.State, s.ExitCode, s.StartedUtc, s.Protocol,
+                    list.Add(new GatewaySession(s.Id, ListedTitle(g, s, broadcast), s.Login, s.Repo, s.Cols, s.Rows, s.State, s.ExitCode, s.StartedUtc, s.Protocol,
                         access == GatewayAccess.Interact ? GatewayScopes.Interact : GatewayScopes.Watch, broadcast.IsPaused(s.Id)));
+                }
+                // Titles kept for sessions that ended are let go.
+                if (g.ListedTitles.Count > sessions.Count)
+                {
+                    var live = sessions.Select(s => TitleKey(s.Id)).ToHashSet(StringComparer.Ordinal);
+                    foreach (var key in g.ListedTitles.Keys) if (!live.Contains(key)) g.ListedTitles.TryRemove(key, out _);
                 }
                 return Results.Json(list);
             }
@@ -309,6 +320,20 @@ internal static class GatewayApp
         AtUtc = g.Clock(), Event = what, Viewer = viewer, Owner = g.Options.Owner, Session = session, Level = level, Remote = remote,
         Frames = frames, Bytes = bytes, Detail = detail,
     };
+
+    /// <summary>The title <c>GET /sessions</c> lists for <paramref name="s"/> (M.ORCH-T981): masked as its stream is, unless the
+    /// owner turned masking off for it; while it is paused, the one listed before the pause (none if it never was), so a title
+    /// set during the pause never reaches a viewer, as on the stream.</summary>
+    private static string? ListedTitle(GatewayServices g, TermSessionRecord s, TermBroadcastSettings broadcast)
+    {
+        var key = TitleKey(s.Id);
+        string? raw;
+        if (broadcast.IsPaused(s.Id)) raw = g.ListedTitles.GetValueOrDefault(key);
+        else g.ListedTitles[key] = raw = s.Title;
+        return raw is null || !broadcast.IsMasked(s.Id) ? raw : g.Secrets.MaskText(raw);
+    }
+
+    private static string TitleKey(string id) => id.Trim().ToLowerInvariant();
 
     /// <summary>A refusal of an unauthenticated request in the audit (M.ORCH-T988), within <see cref="GatewayServices.Refusals"/>:
     /// who it was can't be known, so the viewer is "?"; never the token, the key or a header.</summary>
