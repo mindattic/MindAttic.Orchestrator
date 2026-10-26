@@ -325,7 +325,9 @@ public sealed partial class MainViewModel : ObservableObject
             await root.RefreshAsync();
             return;
         }
-        if (refreshing) return;
+        // One asked for mid-refresh (a snapshot the status stream just announced, M.ORCH-T854) runs once this one is done,
+        // rather than being dropped until the next push.
+        if (refreshing) { refreshQueued = true; return; }
         refreshing = true;
         try
         {
@@ -346,7 +348,7 @@ public sealed partial class MainViewModel : ObservableObject
             ApplyTabs(next, tabs, nextOrgs);
             await TickAllocateAsync(next);
             var info = aggregator.LastWasShared
-                ? $"Updated {next.TakenUtc.ToLocalTime():T} · shared"
+                ? $"Updated {next.TakenUtc.ToLocalTime():T} · shared" + (streamLive ? " · live" : "")
                 : $"Updated {DateTime.Now:T} · {clock.ElapsedMilliseconds} ms";
             foreach (var tab in LoginTabs) tab.RefreshInfo = info;
         }
@@ -366,7 +368,15 @@ public sealed partial class MainViewModel : ObservableObject
             refreshing = false;
             IsLoading = false;
         }
+        if (refreshQueued)
+        {
+            refreshQueued = false;
+            await RefreshAsync();
+        }
     }
+
+    /// <summary>A refresh was asked for while one ran.</summary>
+    private bool refreshQueued;
 
     /// <summary>Counts the changes made here that a snapshot reads back (a billing switch, a priority bump).</summary>
     private int localChanges;

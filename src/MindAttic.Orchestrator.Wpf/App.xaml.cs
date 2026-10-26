@@ -139,6 +139,8 @@ public partial class App : Application
         MainWindow = main;
         // This dashboard holds the Terminals panels' terminals, and takes the ones the Launcher sends it (M.ORCH-T810).
         main.HostTerminals();
+        // Every reading and snapshot pushed from the daemon the moment it lands, rather than polled (M.ORCH-T854).
+        main.ListenForStatus();
         MainWindow.Show();
         DashboardWindow.Track(MainWindow);
         instance.OnShowRequested(args => Dispatcher.BeginInvoke(() =>

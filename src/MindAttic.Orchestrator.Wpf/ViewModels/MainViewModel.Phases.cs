@@ -71,7 +71,9 @@ public sealed partial class MainViewModel
 
     /// <summary>The tab's login's 5-hour window, % used (M.ORCH-T628): from its own pace, else (a login the daemon hasn't paced
     /// yet) the roster's last reading of it.</summary>
-    public string BudgetHeadline => Budget is null && OwnRow?.FiveHourUsedAt(DateTime.UtcNow) is { } read ? Formatting.FiveHourPercent(read)
+    // A reading the status stream pushed since the snapshot (M.ORCH-T854) is what's real now, and wins.
+    public string BudgetHeadline => LiveFiveHour is { } live ? Formatting.FiveHourPercent(live)
+        : Budget is null && OwnRow?.FiveHourUsedAt(DateTime.UtcNow) is { } read ? Formatting.FiveHourPercent(read)
         : BlockHeadline(Budget);
 
     /// <summary>The 5-hour tile's figure for a pace (M.ORCH-T636): against only the busiest block (no real limit known, so the
@@ -83,7 +85,7 @@ public sealed partial class MainViewModel
         _ => Formatting.FiveHourPercent(b.BlockPercent),
     };
 
-    public string BudgetCaption => Budget switch
+    public string BudgetCaption => LiveFiveHour is not null ? "of your 5-hour limit (Claude's count)" : Budget switch
     {
         null => OwnRow?.FiveHourUsedAt(DateTime.UtcNow) is null ? "" : "of your 5-hour limit (Claude's count)",
         { CurrentBlock: null } => "No 5-hour block running",
@@ -186,7 +188,7 @@ public sealed partial class MainViewModel
     };
 
     /// <summary>0..1 fill for the bar; peak mode can pass 100% but the bar stops full.</summary>
-    public double BudgetFill => Math.Clamp((Budget?.CurrentBlock is null ? 0 : Budget.BlockPercent) / 100, 0, 1);
+    public double BudgetFill => Math.Clamp((LiveFiveHour ?? (Budget?.CurrentBlock is null ? 0 : Budget.BlockPercent)) / 100, 0, 1);
 
     public Brush BudgetBrush => BlockBrush(Budget);
 
@@ -268,10 +270,13 @@ public sealed partial class MainViewModel
     private static string Left(double usedPercent) => Math.Max(0, 100 - usedPercent).ToString("0");
 
     /// <summary>The tab's login's week used (M.ORCH-T628): its own pace's, else the roster's last reading of it.</summary>
-    private double? WeekUsed => Budget?.WeeklyPercent ?? OwnRow?.WeekUsedAt(DateTime.UtcNow);
+    // A reading the status stream pushed since the snapshot (M.ORCH-T854) wins.
+    private double? WeekUsed => LiveWeek ?? SnapshotWeek;
 
-    /// <summary>When the tab's login's week resets: its own pace's, else the roster's; null on a rolling 7 days.</summary>
-    private DateTime? WeekReset => Budget?.WeekResetUtc ?? OwnRow?.WeekResetAt(DateTime.UtcNow);
+    private double? SnapshotWeek => Budget?.WeeklyPercent ?? OwnRow?.WeekUsedAt(DateTime.UtcNow);
+
+    /// <summary>When the tab's login's week resets: the pushed reading's, else its own pace's, else the roster's; null on a rolling 7 days.</summary>
+    private DateTime? WeekReset => (LiveWeek is not null ? Live?.WeekResetUtc : null) ?? Budget?.WeekResetUtc ?? OwnRow?.WeekResetAt(DateTime.UtcNow);
 
     /// <summary>How much of the tab's login's week is left (M.ORCH-T628): "23% left".</summary>
     public string WeeklyHeadline => WeeklyHeadlineOf(WeekUsed);

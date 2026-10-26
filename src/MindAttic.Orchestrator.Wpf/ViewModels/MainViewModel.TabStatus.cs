@@ -134,7 +134,8 @@ public sealed partial class MainViewModel
             : UsageCutoffs.Custom(Root.cutoffs, CutoffEmail) is null ? " · the defaults" : " · its own");
 
     /// <summary>The Last updated tile: how long ago Claude's meter for this login was read ("3m ago"), "—" never.</summary>
-    public string LastUpdatedHeadline => LastUpdatedOf(OwnRow, DateTime.UtcNow);
+    public string LastUpdatedHeadline => Live is { } l && (OwnRow?.ReadUtc is not { } read || l.ReadUtc > read)
+        ? Formatting.Ago(l.ReadUtc, DateTime.UtcNow) : LastUpdatedOf(OwnRow, DateTime.UtcNow);
 
     internal static string LastUpdatedOf(AccountRow? row, DateTime nowUtc) => row?.ReadUtc is { } r ? Formatting.Ago(r, nowUtc) : "—";
 
@@ -211,8 +212,11 @@ public sealed partial class MainViewModel
         if (!active) blinkTimer?.Stop();
     }
 
-    /// <summary>The 5-hour window's % used: its own pace's against a real limit, else the roster's last reading.</summary>
-    private double? FiveHourUsed => Budget is { CurrentBlock: not null, BlockLimitIsPeak: false, BlockLimit: > 0 } b
+    /// <summary>The 5-hour window's % used: the reading the status stream just pushed (M.ORCH-T854), else the snapshot's.</summary>
+    private double? FiveHourUsed => LiveFiveHour ?? SnapshotFiveHour;
+
+    /// <summary>The snapshot's 5-hour % used: its own pace's against a real limit, else the roster's last reading.</summary>
+    private double? SnapshotFiveHour => Budget is { CurrentBlock: not null, BlockLimitIsPeak: false, BlockLimit: > 0 } b
         ? b.BlockPercent : OwnRow?.FiveHourUsedAt(DateTime.UtcNow);
 
     /// <summary>On a per-CLI login's tab, who its folder is signed in to when that's another account's email; else null.</summary>

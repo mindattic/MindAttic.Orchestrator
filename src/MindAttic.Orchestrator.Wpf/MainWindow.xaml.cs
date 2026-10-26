@@ -140,6 +140,62 @@ public partial class MainWindow : Window
         Closed += (_, _) => terminalsPipe.Cancel();
     }
 
+    private CancellationTokenSource? statusStream;
+
+    /// <summary>
+    /// Subscribes to the daemon's status stream (M.ORCH-T854): each reading of Claude's meter is applied to the tabs the moment
+    /// it lands, and each new snapshot the daemon publishes is read at once, so the poll drops to <see cref="StreamFallbackInterval"/>
+    /// while the stream is up. It connects again on its own whenever the daemon restarts. Called by the app for its one
+    /// dashboard only, never by a test's window.
+    /// </summary>
+    internal void ListenForStatus()
+    {
+        statusStream = new CancellationTokenSource();
+        var token = statusStream.Token;
+        _ = Task.Run(() => Status.StatusStreamClient.RunAsync(
+            message => Dispatcher.InvokeAsync(() => OnStatus(message)),
+            live => Dispatcher.InvokeAsync(() =>
+            {
+                model.SetStreamLive(live);
+                Retime();
+            }),
+            token), token);
+        // Holding the status lease itself (no daemon running), this process's own meter probe reads the meters: each reading is
+        // applied as it lands too, as the daemon's would be.
+        void OnLocalReading(Budget.ClaudeMeterProbe probe, Budget.ReportedUsage reading)
+        {
+            var message = new Status.StatusMessage
+            {
+                Kind = Status.StatusMessage.Usage, AtUtc = DateTime.UtcNow, Pid = Environment.ProcessId,
+                Readings = Status.MeterReading.Of(probe.Label, reading, signedIn: null, "probe") is { } r ? [r] : [],
+            };
+            Dispatcher.InvokeAsync(() => OnStatus(message));
+        }
+        Budget.ClaudeMeterProbe.ReadingLanded += OnLocalReading;
+        Closed += (_, _) =>
+        {
+            statusStream.Cancel();
+            Budget.ClaudeMeterProbe.ReadingLanded -= OnLocalReading;
+        };
+    }
+
+    /// <summary>One message off the stream, on the UI thread. Hidden, a new snapshot waits for the window to be shown (it catches
+    /// up then); the readings are applied either way, being cheap.</summary>
+    private async void OnStatus(Status.StatusMessage message)
+    {
+        try
+        {
+            var refresh = model.ApplyStatus(message);
+            Retime();
+            if (refresh && IsLoaded && !Hidden) await model.RefreshAsync();
+        }
+        // async void on the dispatcher: an escaped exception would close the dashboard.
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            OrchestratorLog.For("Dashboard").Error(ex, "Applying a status stream message failed");
+        }
+    }
+
     /// <summary>The terminals are native windows WPF can't draw over: hidden (never collapsed, so each keeps its size) while
     /// Settings, Rename or Org limit is open, the loader covers the window or an org with no login covers the page.</summary>
     private void UpdateTerminalsCover()
@@ -363,14 +419,21 @@ public partial class MainWindow : Window
 
     private void Retime()
     {
-        var interval = RefreshInterval(Hidden, model.HoldsLease);
+        var interval = RefreshInterval(Hidden, model.HoldsLease, model.IsStreamLive);
         if (timer.Interval != interval) timer.Interval = interval;
     }
 
-    /// <summary>How often to refresh: every 5s while shown; hidden, every 15s if this window holds the lease (it feeds
-    /// rl-status.json and allocate), else every 60s.</summary>
-    internal static TimeSpan RefreshInterval(bool hidden, bool holdsLease) =>
-        !hidden ? PollInterval : holdsLease ? HiddenHolderInterval : HiddenInterval;
+    /// <summary>The poll while the status stream is up (M.ORCH-T854): only a safety net, since every snapshot the daemon builds
+    /// is pushed and read at once.</summary>
+    private static readonly TimeSpan StreamFallbackInterval = TimeSpan.FromSeconds(60);
+
+    /// <summary>How often to refresh: while this window holds the lease (no daemon builds the snapshots) every 5s shown and 15s
+    /// hidden, as it feeds rl-status.json and allocate; with the daemon's status stream up, every 60s, as a safety net; else
+    /// every 5s shown and 60s hidden.</summary>
+    internal static TimeSpan RefreshInterval(bool hidden, bool holdsLease, bool streamLive = false) =>
+        holdsLease ? (hidden ? HiddenHolderInterval : PollInterval)
+        : streamLive ? StreamFallbackInterval
+        : !hidden ? PollInterval : HiddenInterval;
 
     private bool wasHidden;
 
