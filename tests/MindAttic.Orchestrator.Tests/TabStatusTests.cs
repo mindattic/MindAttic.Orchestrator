@@ -185,13 +185,16 @@ public sealed class TabStatusTests
             .And.Contain("x:Name=\"TabBusyIcon\" Text=\"&#xE768;\"").And.Contain("Foreground=\"{DynamicResource MaGood}\"")
             .And.Contain("{Binding IsTabBusy").And.Contain("x:Name=\"TabDisabledIcon\" Text=\"&#xE733;\"").And.Contain("Foreground=\"{DynamicResource MaMuted}\"")
             .And.Contain("{Binding IsTabDisabled").And.Contain("FontFamily=\"Segoe Fluent Icons, Segoe MDL2 Assets\""));
-        // M.ORCH-T770: the busy icon glows and pulses instead of the old per-token TabIconOpacity blink, so it reads as
-        // "action is taking place" the same way the emergency billing toggle does. M.ORCH-T775 moved the glow's DropShadowEffect
-        // and its pulse into code-behind (MainWindow.xaml.cs's TabBusyIcon_Loaded/TabBusyIcon_IsVisibleChanged): a Storyboard
-        // here would need a NameScope the library-only XAML rule leaves no library-styled place to put, and a bare
-        // (UIElement.Effect).(DropShadowEffect.Opacity) compound path throws at runtime ("'Effect' property does not point to
-        // a DependencyObject") rather than resolving to a freshly-set local value.
-        Assert.That(strip, Does.Contain("x:Name=\"TabBusyIcon\"").And.Contain("Loaded=\"TabBusyIcon_Loaded\"").And.Contain("IsVisibleChanged=\"TabBusyIcon_IsVisibleChanged\""));
+        // M.ORCH-T890: the busy icon is a steady green play (no blink); once every open CLI of the login has stopped, a separate
+        // pause icon (TabStoppedIcon) flashes its opacity from code-behind (MainWindow.xaml.cs's Flash, honouring reduced motion
+        // via SystemParameters.ClientAreaAnimation), since a Storyboard here would need a NameScope the DataTemplate can't give.
+        Assert.That(strip, Does.Contain("x:Name=\"TabStoppedIcon\" Text=\"&#xE769;\"").And.Contain("{Binding IsTabAllStopped")
+            .And.Contain("Loaded=\"TabStoppedIcon_Loaded\"").And.Contain("IsVisibleChanged=\"TabStoppedIcon_IsVisibleChanged\"")
+            .And.Contain("Unloaded=\"TabStoppedIcon_Unloaded\"").And.Contain("AutomationProperties.Name=\"{Binding TabActivityWord}\""));
+        Assert.That(strip, Does.Not.Contain("TabBusyIcon_Loaded"), "the busy icon no longer blinks (M.ORCH-T890)");
+        var codeBehind = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml.cs"));
+        Assert.That(codeBehind, Does.Contain("private static void Flash(TextBlock icon, bool on)").And.Contain("SystemParameters.ClientAreaAnimation")
+            .And.Contain("RepeatBehavior.Forever"));
         Assert.That(strip, Does.Not.Contain("Opacity=\"{Binding TabIconOpacity}\""), "replaced by the soothing pulse (M.ORCH-T770)");
         Assert.That(strip, Does.Not.Contain("<Storyboard"), "the pulse is driven from code-behind now (M.ORCH-T775), not a Storyboard element");
         Assert.That(strip, Does.Not.Contain("(UIElement.Effect)"), "self-targeting an Effect's sub-property throws at runtime; name it and target it directly");
