@@ -145,6 +145,8 @@ public sealed class ContextCyclerTests
                 psi.Environment["MINDATTIC_WORKSPACE"] = ws;
                 psi.Environment["APPDATA"] = dir; // approvals come from here, never this machine's settings
                 psi.Environment["MINDATTIC_CLI_PID"] = cli.ToString();
+                // No real orchestrator to ask (this machine has one installed): its answer would replace the count under test.
+                psi.Environment["MINDATTIC_ORCHESTRATOR"] = Path.Combine(dir, "no-orchestrator.exe");
                 using var p = System.Diagnostics.Process.Start(psi)!;
                 p.StandardInput.Write(System.Text.Json.JsonSerializer.Serialize(input));
                 p.StandardInput.Close();
