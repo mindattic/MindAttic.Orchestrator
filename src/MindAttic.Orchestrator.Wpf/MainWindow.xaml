@@ -125,7 +125,7 @@
              ends every Claude CLI on every login outright and holds every claim and dispatch org-wide. Paused, it shows Play
              (E768) in MaWarn, and a click resumes at once (no confirm). Bound to the shown tab's TogglePauseCommand; every tab
              shows the one pause. -->
-        <Button x:Name="PauseButton" Style="{StaticResource MaToolButton}" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
+        <Button x:Name="PauseButton" Style="{StaticResource MaToolButton}" Visibility="Collapsed" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
                 Content="{Binding PauseGlyph}" Foreground="{Binding PauseBrush}" Command="{Binding TogglePauseCommand}"
                 ToolTip="{Binding PauseToggleText}" AutomationProperties.Name="{Binding PauseToggleText}" />
         <!-- The library's own MaToolButton (Theme.xaml), not a template of its own (M.ORCH-T775): a Storyboard.TargetName
@@ -134,7 +134,7 @@
              assigned straight to the Button, animated by BeginAnimation rather than a Storyboard. That sidesteps the
              NameScope rule entirely, and the MC4011 compile error and the runtime 'Effect property does not point to a
              DependencyObject' crash it previously ran into (M.ORCH-T770, M.ORCH-T771). -->
-        <Button x:Name="EmergencyBillingButton" Style="{StaticResource MaToolButton}" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
+        <Button x:Name="EmergencyBillingButton" Style="{StaticResource MaToolButton}" Visibility="Collapsed" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
                 Command="{Binding ToggleBillingCommand}" ToolTip="{Binding BillingToggleText}"
                 AutomationProperties.Name="{Binding BillingToggleText}" AutomationProperties.HelpText="{Binding BillingClis}">
             <!-- Material Design's well-known 'vpn_key' glyph (24x24 viewBox), drawn as a Path rather than an icon-font
