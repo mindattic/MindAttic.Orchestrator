@@ -216,9 +216,15 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
                     case TermFrameKind.Hello:
                         if (TermProtocol.ReadHello(payload) is { } hello && TermProtocol.Check(hello.Protocol) is { Ok: false } bad)
                         {
-                            Raise($"\r\n\u001b[33m{bad.Message}\u001b[0m\r\n");
+                            // Close() sets 'closed', which drops whatever Raise posts and makes RunAsync return without a
+                            // Detached (M.ORCH-T973): the message and the end are posted here, past that check, and logged.
+                            var message = bad.Message;
+                            OrchestratorLog.For("Terminals").Warning("The host of {Pipe:l} speaks another protocol: {Message:l}", name, message);
+                            var text = $"\r\n\u001b[33m{message}\u001b[0m\r\n";
+                            Post(() => TerminalOutput?.Invoke(this, new TerminalOutputEventArgs(text)));
+                            Post(() => Detached?.Invoke(message));
                             Close();
-                            return new(bad.Message, true, false);
+                            return new(message, true, false);
                         }
                         break;
                     case TermFrameKind.Replay:
