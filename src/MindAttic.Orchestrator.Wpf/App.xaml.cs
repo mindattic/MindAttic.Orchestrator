@@ -3,6 +3,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using MindAttic.Components.Wpf.Controls;
+using MindAttic.Orchestrator.Sessions;
 using MindAttic.Orchestrator.Settings;
 using MindAttic.Orchestrator.Setup;
 
@@ -25,6 +26,9 @@ public partial class App : Application
     private EventWaitHandle? exitSignal;
     private SingleInstance? instance;
     private IDisposable? highContrast;
+
+    /// <summary>What --install exits with when it refused because a Claude CLI is still working (M.ORCH-T873); deploy.ps1 reads it.</summary>
+    public const int BusyRefusedExit = 3;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -75,6 +79,21 @@ public partial class App : Application
         // dev or worktree build installs; it still won't replace a newer installed exe unless --force is passed too.
         if (e.Args.Contains("--install", StringComparer.OrdinalIgnoreCase))
         {
+            // Installing stops the running dashboard, and every CLI its Terminals panels host goes with it: refused while any Claude
+            // CLI is still working or can't be read, unless --ignore-busy (M.ORCH-T873). deploy.ps1 reads the exit code.
+            if (!installer.IsInstalled(self) && !e.Args.Contains("--ignore-busy", StringComparer.OrdinalIgnoreCase))
+            {
+                var busy = BusyClis.Scan();
+                if (!busy.AllIdle)
+                {
+                    var lines = BusyClis.Describe(busy);
+                    log.Warning("Install refused: {Count} Claude CLI(s) still working or unknown: {Clis:l}", lines.Count, string.Join(" | ", lines));
+                    Console.Error.WriteLine("Install refused: these Claude CLIs are still working (or their state can't be read); --ignore-busy installs anyway.");
+                    foreach (var line in lines) Console.Error.WriteLine("  " + line);
+                    Shutdown(BusyRefusedExit);
+                    return;
+                }
+            }
             try
             {
                 if (!installer.IsInstalled(self)) installer.Install(self, force: e.Args.Contains("--force", StringComparer.OrdinalIgnoreCase));
@@ -202,6 +221,22 @@ public partial class App : Application
     /// <summary>Running from a download folder over an older install (or none): install there and start the installed copy instead.</summary>
     private static bool TryInstallAndHandOver(Installer installer, string self, Serilog.ILogger log, IReadOnlyList<string> args)
     {
+        // A double-click install restarts the running dashboard too (M.ORCH-T873): asked first while any CLI is still working.
+        var busy = BusyClis.Scan();
+        if (!busy.AllIdle)
+        {
+            var lines = BusyClis.Describe(busy);
+            log.Warning("Install would cut off {Count} Claude CLI(s) still working or unknown: {Clis:l}", lines.Count, string.Join(" | ", lines));
+            var go = MaMessageBox.Show("These Claude CLIs are still working, or their state can't be read:\n\n" + string.Join("\n", lines.Take(12)) +
+                (lines.Count > 12 ? $"\n...and {lines.Count - 12} more" : "") +
+                "\n\nInstalling restarts the dashboard, and every CLI in its Terminals panels loses its state.\n\nYes: install anyway. No: open the installed copy and install later.",
+                "MindAttic Orchestrator", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+            if (go != MessageBoxResult.Yes)
+            {
+                log.Information("Install declined while CLIs were working; starting the installed copy instead");
+                return installer.InstalledExe is { } exe && File.Exists(exe) && TryHandOver(installer, log, args);
+            }
+        }
         try
         {
             installer.Install(self);

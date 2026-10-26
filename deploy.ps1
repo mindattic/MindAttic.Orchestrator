@@ -21,19 +21,38 @@
     Without -Force each part is rebuilt only when a source file under its project or
     MindAttic.Orchestrator.Core (or Directory.Build.props) is newer than its output.
 
+    Installing restarts the dashboard, and every CLI its Terminals panels host loses its state. So before the install stops
+    anything it asks `orchestrator busy` whether any Claude CLI on this machine (any login) is still working: mid-turn, a
+    subagent running, an /allocate claim in flight, or holding on a prompt. If any is, or its state can't be read, the deploy
+    lists them and exits 1 without stopping anything (M.ORCH-T873). The CLI running this deploy is left out.
+
 .PARAMETER Force
     Clean bin/obj and rebuild everything even if nothing looks changed.
 
 .PARAMETER Launch
     Open the dashboard afterwards.
 
+.PARAMETER IgnoreBusyClis
+    Install even while other Claude CLIs are still working; they lose their state.
+
+.PARAMETER WaitForIdle
+    Instead of refusing while CLIs are working, poll until every one is idle, then install.
+
+.PARAMETER WaitTimeoutMinutes
+    With -WaitForIdle: give up (and refuse) after this many minutes; 0 waits for as long as it takes.
+
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File deploy.ps1
     powershell -ExecutionPolicy Bypass -File deploy.ps1 -Force -Launch
+    powershell -ExecutionPolicy Bypass -File deploy.ps1 -WaitForIdle
 #>
 param(
     [switch]$Force,
-    [switch]$Launch
+    [switch]$Launch,
+    [switch]$IgnoreBusyClis,
+    [switch]$WaitForIdle,
+    [int]$WaitTimeoutMinutes = 0,
+    [int]$BusyPollSeconds = 30
 )
 
 Set-StrictMode -Version Latest
@@ -160,11 +179,43 @@ if ($Force) {
     }
 }
 
-# ── Earlier layouts ─────────────────────────────────────────────────────────
-# Dashboard\ came from the two-folder layout; that daemon ran Cli\orchestrator.exe.
-Stop-From 'MindAttic.Orchestrator' (Join-Path $appDir 'Dashboard')
-$oldDashboard = Join-Path $appDir 'Dashboard'
-if (Test-Path $oldDashboard) { Remove-Item -Recurse -Force $oldDashboard; Write-Host "Removed the old $oldDashboard" -ForegroundColor DarkGray }
+# Whether the install may go ahead (M.ORCH-T873): it restarts the dashboard, and every CLI its Terminals panels host loses its
+# state. `orchestrator busy` (the CLI just published, or the installed one) lists every Claude CLI still working on any login and
+# exits 1 if any is, 0 when all are idle; the CLI running this deploy is left out (its process tree). Any other outcome (no CLI,
+# one too old to have `busy`, a crash) is unknown, and unknown is never taken for idle. -WaitForIdle polls instead of refusing.
+function Test-ClisIdle {
+    if ($IgnoreBusyClis) {
+        Write-Host 'Not checking for working Claude CLIs (-IgnoreBusyClis): any still working lose their state.' -ForegroundColor DarkYellow
+        return $true
+    }
+    if (-not (Test-Path $cliExe)) {
+        Write-Host "Can't tell whether any Claude CLI is still working: $cliExe isn't there. -IgnoreBusyClis installs anyway." -ForegroundColor Red
+        return $false
+    }
+    $busyArgs = @('busy')
+    if ($WaitForIdle) {
+        $busyArgs += @('--wait', '--poll', [string][Math]::Max(5, $BusyPollSeconds))
+        if ($WaitTimeoutMinutes -gt 0) { $busyArgs += @('--timeout', [string]$WaitTimeoutMinutes) }
+        Write-Host 'Waiting until every other Claude CLI is idle (-WaitForIdle)...' -ForegroundColor Cyan
+    } else {
+        Write-Host 'Checking that no other Claude CLI is still working...' -ForegroundColor Cyan
+    }
+    $code = $null
+    try { & $cliExe @busyArgs | Out-Host; $code = $LASTEXITCODE }
+    catch { Write-Host "orchestrator busy failed: $($_.Exception.Message)" -ForegroundColor Red }
+    if ($code -eq 0) { return $true }
+    if ($code -eq 1) {
+        Write-Host 'Deploy refused: the CLIs above are still working (or their state can''t be read), and installing restarts the dashboard, so every CLI it hosts would lose its state. Nothing was stopped. Run it again once they are done, with -WaitForIdle to wait for them, or with -IgnoreBusyClis to install anyway.' -ForegroundColor Red
+    } else {
+        Write-Host "Deploy refused: couldn't tell whether any Claude CLI is still working (orchestrator busy exited $code). Nothing was stopped; -IgnoreBusyClis installs anyway." -ForegroundColor Red
+    }
+    return $false
+}
+
+function Exit-Refused {
+    if ($Launch -and (Find-Installed)) { Start-Process -FilePath (Find-Installed) }
+    exit 1
+}
 
 # ── The shortcuts' launcher ─────────────────────────────────────────────────
 # Written before the install, so the app it starts points the desktop and Start menu shortcuts here (Installer.ShortcutTarget):
@@ -234,13 +285,34 @@ if ($step -eq 'newer') {
     Write-Host ("The installed {0} ({1:yyyy-MM-dd HH:mm}) is newer than this build ({2:yyyy-MM-dd HH:mm}), so it's left as it is; -Force installs this build over it." -f
         $installed, (Get-Item $installed).LastWriteTime, (Get-Item $artifact).LastWriteTime) -ForegroundColor DarkGray
 } elseif ($step -eq 'install') {
+    # Nothing is stopped before every other CLI is known to be done (M.ORCH-T873).
+    if (-not (Test-ClisIdle)) { Exit-Refused }
+
+    # ── Earlier layouts ─────────────────────────────────────────────────────
+    # Dashboard\ came from the two-folder layout; that daemon ran Cli\orchestrator.exe.
+    Stop-From 'MindAttic.Orchestrator' (Join-Path $appDir 'Dashboard')
+    $oldDashboard = Join-Path $appDir 'Dashboard'
+    if (Test-Path $oldDashboard) { Remove-Item -Recurse -Force $oldDashboard; Write-Host "Removed the old $oldDashboard" -ForegroundColor DarkGray }
+
     Write-Host 'Installing (stops a running copy and its daemon; the daemon restarts from the new build)...' -ForegroundColor Cyan
     # An old-layout daemon still running from the CLI folder; only it: a CLI call in flight (an /allocate CLI's
     # `orchestrator next --claim`) is left to finish, as a deploy that doesn't republish the CLI must.
     Get-CimInstance Win32_Process -Filter "Name='orchestrator.exe'" -ErrorAction SilentlyContinue |
         Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($cliOut, [System.StringComparison]::OrdinalIgnoreCase) -and $_.CommandLine -match '\sdaemon\b' } |
         ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop } catch { } }
-    $exitCode = Invoke-Installer $artifact $(if ($Force) { @('--install', '--force') } else { @('--install') })
+    $installArgs = @('--install')
+    if ($Force) { $installArgs += '--force' }
+    if ($IgnoreBusyClis) { $installArgs += '--ignore-busy' }
+    # The installer checks again, just before it stops anything, and exits 3 when a CLI started working since (M.ORCH-T873).
+    while ($true) {
+        $exitCode = Invoke-Installer $artifact $installArgs
+        if ($exitCode -ne 3) { break }
+        Write-Host 'The installer refused: a Claude CLI started working since the check. Nothing was stopped.' -ForegroundColor DarkYellow
+        if (-not $WaitForIdle -or -not (Test-ClisIdle)) {
+            if (-not $WaitForIdle) { $null = Test-ClisIdle }   # lists who, for the refusal
+            Exit-Refused
+        }
+    }
     $installed = Find-Installed
     if ($exitCode -eq 0 -and $installed) { Write-Host "Installed $installed" -ForegroundColor Green }
     else { Write-Host 'Install FAILED; see its log, %APPDATA%\MindAttic\Logging\MindAttic.Orchestrator\MindAttic.Log.db (MindAttic.Log.Reader opens it).' -ForegroundColor Red; $failed = $true }

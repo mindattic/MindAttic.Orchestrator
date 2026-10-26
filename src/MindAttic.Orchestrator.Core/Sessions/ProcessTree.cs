@@ -51,6 +51,9 @@ public static partial class ProcessTree
 
     private static Dictionary<int, int> Parents() => Processes().ToDictionary(p => p.Key, p => p.Value.Parent);
 
+    /// <summary>Every running process's parent and exe name, by process id, at one moment.</summary>
+    internal static IReadOnlyDictionary<int, (int Parent, string Exe)> Snapshot() => Processes();
+
     private static Dictionary<int, (int Parent, string Exe)> Processes()
     {
         var parents = new Dictionary<int, (int Parent, string Exe)>();
