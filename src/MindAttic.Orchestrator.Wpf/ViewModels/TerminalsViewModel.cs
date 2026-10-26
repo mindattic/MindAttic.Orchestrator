@@ -23,7 +23,7 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 public sealed class TerminalPaneViewModel : ObservableObject
 {
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<FrameworkElement, TerminalPaneViewModel> ByControl = new();
-    private bool isSelected, ended, hostEnded, killRequested;
+    private bool isSelected, ended, hostEnded, killRequested, reconnecting;
     private string? pipeName;
     private TermModes localModes;
 
@@ -134,7 +134,10 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>Its CLI has exited; the tab stays up, showing its last lines, until closed.</summary>
     public bool Ended { get => ended; internal set { if (Set(ref ended, value)) Raise(nameof(StateText)); } }
 
-    public string StateText => Ended ? "ended" : "";
+    /// <summary>Its relay dropped while the host lives and is attaching again (M.ORCH-T966).</summary>
+    public bool Reconnecting { get => reconnecting; internal set { if (Set(ref reconnecting, value)) Raise(nameof(StateText)); } }
+
+    public string StateText => Ended ? "ended" : Reconnecting ? "reconnecting" : "";
 
     /// <summary>The process its CLI runs under: the TermHost for a hosted tab (the Launcher host and the CLI are its
     /// descendants), else the process ConPTY started (the PowerShell that runs the command); null before it starts.</summary>
@@ -180,6 +183,11 @@ public sealed class TerminalPaneViewModel : ObservableObject
     {
         var relay = new RelayTerminal(Campbell);
         relay.Exited += _ => { hostEnded = true; Ended = true; };
+        relay.ReconnectingChanged += on =>
+        {
+            if (on && !Reconnecting && !killRequested) OrchestratorLog.For("Terminals").Information("{Title:l}: lost its TermHost's pipe; reconnecting", Title);
+            Reconnecting = on && !killRequested;
+        };
         relay.Detached += why =>
         {
             if (killRequested) return;
@@ -211,8 +219,13 @@ public sealed class TerminalPaneViewModel : ObservableObject
     {
         Session = session;
         TermId = session.Id;
-        Relay?.Attach(session.Pipe, session.Protocol);
+        Relay?.Attach(session.Pipe, session.Protocol, () => !killRequested && HostAlive(session));
     }
+
+    /// <summary>Whether <paramref name="session"/>'s host still runs, by the registry (the pid alive and not reused): what keeps
+    /// a dropped relay reconnecting (M.ORCH-T966). Reads files, so it is called off the UI thread.</summary>
+    internal static bool HostAlive(TermSessionRecord session) =>
+        TermSessions.Get(session.Id) is { } live && live.HostPid == session.HostPid;
 
     /// <summary>Its host couldn't start: the CLI runs in this process after all, as before T926.</summary>
     internal void FallBackToLocal()

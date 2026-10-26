@@ -23,6 +23,7 @@ public sealed class RelayTerminal : UserControl, IDisposable
 
     private string? pipeName;
     private ushort protocol = TermProtocol.Version;
+    private Func<bool>? hostAlive;
     private bool loaded, disposed;
 
     public RelayTerminal(TerminalTheme theme)
@@ -63,14 +64,20 @@ public sealed class RelayTerminal : UserControl, IDisposable
     /// <summary>The CLI exited, with its code.</summary>
     public event Action<int>? Exited;
 
-    /// <summary>The pipe went away without this tab closing it, with why.</summary>
+    /// <summary>The pipe went away for good without this tab closing it, with why.</summary>
     public event Action<string>? Detached;
 
+    /// <summary>The pipe dropped while the host lives and is being attached again (M.ORCH-T966): true then, false once the
+    /// live stream is back.</summary>
+    public event Action<bool>? ReconnectingChanged;
+
     /// <summary>Attaches to the host serving <paramref name="pipe"/>: at once when the renderer's window exists, else once it
-    /// loads (output written before it exists would be lost).</summary>
-    public void Attach(string pipe, int hostProtocol)
+    /// loads (output written before it exists would be lost). While <paramref name="alive"/> says the host lives, a dropped
+    /// link is attached again (M.ORCH-T966); it is called off the UI thread.</summary>
+    public void Attach(string pipe, int hostProtocol, Func<bool>? alive = null)
     {
         pipeName = pipe;
+        hostAlive = alive;
         protocol = TermProtocol.Supported.Contains((ushort)hostProtocol) ? (ushort)hostProtocol : TermProtocol.Version;
         Connect();
     }
@@ -78,9 +85,11 @@ public sealed class RelayTerminal : UserControl, IDisposable
     private void Connect()
     {
         if (disposed || !loaded || pipeName is null || Connection is not null) return;
-        var connection = new RelayConnection(pipeName, protocol);
+        var connection = new RelayConnection(pipeName, protocol, hostAlive);
         connection.Exited += code => Exited?.Invoke(code);
-        connection.Detached += why => Detached?.Invoke(why);
+        connection.Detached += why => { ReconnectingChanged?.Invoke(false); Detached?.Invoke(why); };
+        connection.Reconnecting += _ => ReconnectingChanged?.Invoke(true);
+        connection.Attached += () => ReconnectingChanged?.Invoke(false);
         Connection = connection;
         // Resets the renderer (ESC c), then Start()s the connection; the host's replay follows.
         Terminal.Connection = connection;
