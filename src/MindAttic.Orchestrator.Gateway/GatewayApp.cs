@@ -80,7 +80,9 @@ internal sealed record TokenResponse(
 /// address in five minutes and it answers 429 until they age out.</item>
 /// <item><c>GET /sessions</c>: this machine's hosted sessions the caller may see.</item>
 /// <item><c>GET /sessions/{id}/stream</c>, a WebSocket (permessage-deflate offered): the session's frames, both ways
-/// (<see cref="TermBridge"/>); <c>?mode=watch</c> asks for read-only.</item>
+/// (<see cref="TermBridge"/>); <c>?mode=watch</c> asks for read-only. It lasts as long as its token, or the latest fresh one
+/// the viewer sends in a RefreshToken frame (M.ORCH-T1041); one that lapses ends it as "token expired", a replaced signing key
+/// as "access revoked".</item>
 /// </list>
 /// Everything but <c>/health</c> and <c>/auth/token</c> needs <c>Authorization: Bearer &lt;token&gt;</c>. Every handler contains
 /// its exceptions; nothing logs a token, a key or a header.
@@ -91,6 +93,9 @@ internal static class GatewayApp
 
     /// <summary>How many access checks in a row may fail before a stream is closed (M.ORCH-T984).</summary>
     public const int MaxWatchFailures = 2;
+
+    /// <summary>How many refused token refreshes one stream logs and audits (M.ORCH-T1041); later ones are dropped unsaid.</summary>
+    public const int MaxRefusedRefreshes = 5;
 
     /// <summary>Builds the app on <paramref name="builder"/> (Kestrel and TLS are the caller's).</summary>
     public static WebApplication Build(WebApplicationBuilder builder, GatewayServices services)
@@ -260,11 +265,32 @@ internal static class GatewayApp
 
         // Every interval: the input typed since (counts and sizes only), and the token and access checked again, so an expired
         // token, a replaced signing key, or a revoked or expired grant closes the stream rather than lasting as long as the
-        // connection does.
+        // connection does. The viewer may send a fresh token in band before its own expires (M.ORCH-T1041), which then counts.
         var input = new GatewayInputMeter();
         using var revoke = new CancellationTokenSource();
         using var stopWatch = new CancellationTokenSource();
         var revoked = false;
+        var credential = new StreamCredential(token!, who);
+        var endedWhy = "access revoked";
+        var refusedRefreshes = 0;
+        void Refresh(string fresh)
+        {
+            var p = g.Tokens.Validate(fresh.Trim());
+            var refused = p is null ? "bad or expired token"
+                : !string.Equals(p.Subject.Trim(), who.Subject.Trim(), StringComparison.OrdinalIgnoreCase) ? "another member's token"
+                : OwnerOnlyGrants.Effective(g.Grants.AccessTo(p.Subject, session), p.Scope, requestedMode) < access ? "less access than the stream has"
+                : null;
+            if (refused is not null)
+            {
+                // A viewer that keeps sending bad tokens isn't let flood the log and the audit.
+                if (Interlocked.Increment(ref refusedRefreshes) > MaxRefusedRefreshes) return;
+                g.Log.Write($"token refresh for {session.Id} by {who.Subject} refused: {refused}");
+                g.Audit.Write(Record(g, TermGatewayAudit.Refused, who.Subject, session.Id, mode, from, detail: "token refresh refused: " + refused));
+                return;
+            }
+            if (credential.Extend(fresh.Trim(), p!))
+                g.Log.Write($"token for {session.Id} by {who.Subject} refreshed: good until {p!.ExpiresUtc:HH:mm:ss}Z");
+        }
         // A check that throws is contained inside the loop, so the checks go on (M.ORCH-T984); one that fails
         // MaxWatchFailures times running closes the stream: access that can't be checked isn't assumed (fails closed).
         var watch = Task.Run(async () =>
@@ -278,12 +304,19 @@ internal static class GatewayApp
                 try
                 {
                     WriteInput(g, input, who.Subject, session.Id, mode, from);
-                    // The token as well as the grant (M.ORCH-T983): it expired, or signing.key was replaced, so it no longer
-                    // validates, and the stream it opened ends with it.
-                    if (g.Tokens.Validate(token) is null) why = "lapsed: its token expired or the signing key changed";
+                    // The token as well as the grant (M.ORCH-T983): the latest one the viewer sent expired, or signing.key was
+                    // replaced, so it no longer validates, and the stream ends with it. Expiry is told apart from a replaced
+                    // key (M.ORCH-T1041): the one is the viewer not refreshing in time, the other the owner revoking everyone.
+                    var (current, holder) = credential.Now;
+                    if (g.Tokens.Validate(current) is null)
+                    {
+                        var expired = g.Tokens.Expired(holder);
+                        endedWhy = expired ? "token expired" : "access revoked";
+                        why = expired ? "lapsed: its token expired and no fresh one came" : "revoked: the signing key changed";
+                    }
                     else
                     {
-                        var now = OwnerOnlyGrants.Effective(g.Grants.AccessTo(who.Subject, session), who.Scope, requestedMode);
+                        var now = OwnerOnlyGrants.Effective(g.Grants.AccessTo(who.Subject, session), holder.Scope, requestedMode);
                         if (now < access) why = $"dropped to {now}";
                     }
                     failures = 0;
@@ -306,13 +339,13 @@ internal static class GatewayApp
         try
         {
             result = await TermBridge.RunAsync(socket, pipe, access, g.Log, http.RequestAborted, input, revoke.Token,
-                new BroadcastStream(session.Id, session.StartedUtc, g.Broadcast, g.Secrets)).ConfigureAwait(false);
+                new BroadcastStream(session.Id, session.StartedUtc, g.Broadcast, g.Secrets), Refresh, () => endedWhy).ConfigureAwait(false);
         }
         finally { g.Watchers.Detach(watcher); }
         await stopWatch.CancelAsync().ConfigureAwait(false);
         try { await watch.ConfigureAwait(false); } catch (Exception) { }
         WriteInput(g, input, who.Subject, session.Id, mode, from);
-        var ended = revoked ? "access revoked" : result.EndedBy;
+        var ended = revoked ? endedWhy : result.EndedBy;
         g.Log.Write($"detach {session.Id} by {who.Subject}: ended by {ended}, {result.FramesUp} frames up, " +
                     $"{result.FramesDown} down ({result.BytesDown} bytes), {result.Dropped} dropped, {result.Withheld} withheld while paused");
         g.Audit.Write(Record(g, TermGatewayAudit.Detach, who.Subject, session.Id, mode, from, result.FramesUp, result.BytesDown,
@@ -378,6 +411,35 @@ internal static class GatewayApp
         var header = http.Request.Headers.Authorization.ToString();
         const string scheme = "Bearer ";
         return header.StartsWith(scheme, StringComparison.OrdinalIgnoreCase) ? header[scheme.Length..].Trim() : null;
+    }
+}
+
+/// <summary>
+/// The token a stream lasts on (M.ORCH-T1041): the one it was opened with, then the latest fresh one the viewer sent in band
+/// that validated for the same member. Held in memory only, never logged.
+/// </summary>
+internal sealed class StreamCredential(string token, GatewayPrincipal holder)
+{
+    private readonly System.Threading.Lock gate = new();
+    private string token = token;
+    private GatewayPrincipal holder = holder;
+
+    /// <summary>The token now, and who it validated as.</summary>
+    public (string Token, GatewayPrincipal Holder) Now
+    {
+        get { lock (gate) return (token, holder); }
+    }
+
+    /// <summary>Takes <paramref name="fresh"/> (validated as <paramref name="by"/>) when it lasts longer than the token held; false
+    /// when it doesn't, so a replayed older token never shortens the stream.</summary>
+    public bool Extend(string fresh, GatewayPrincipal by)
+    {
+        lock (gate)
+        {
+            if (by.ExpiresUtc <= holder.ExpiresUtc) return false;
+            (token, holder) = (fresh, by);
+            return true;
+        }
     }
 }
 

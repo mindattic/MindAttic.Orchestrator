@@ -1,5 +1,6 @@
 using System.Net.WebSockets;
 using System.Threading.Channels;
+using MindAttic.Orchestrator.Settings;
 using MindAttic.Orchestrator.Term;
 
 namespace MindAttic.Orchestrator.Sessions;
@@ -36,11 +37,54 @@ public sealed class WebSocketFrameStream : Stream
     private int position, length;
     private volatile bool broken, disposed;
 
-    public WebSocketFrameStream(WebSocket socket)
+    /// <summary>How often a stream looks for a fresher token to send the gateway (M.ORCH-T1041).</summary>
+    public static readonly TimeSpan RefreshCheck = TimeSpan.FromSeconds(20);
+
+    private volatile bool wrote;
+
+    /// <param name="freshToken">The member's token for this gateway as it is now (the settings, read again), or null when there
+    /// is none: whenever it is a newer one than the stream last sent (it lasts longer), it goes to the gateway in a RefreshToken
+    /// frame (M.ORCH-T1041), so the stream outlives the token it was opened with. Without it nothing is refreshed.</param>
+    /// <param name="sentToken">The token the stream was opened with.</param>
+    public WebSocketFrameStream(WebSocket socket, Func<string?>? freshToken = null, string? sentToken = null)
     {
         this.socket = socket;
         _ = Task.Run(SendLoopAsync);
+        if (freshToken is not null) _ = Task.Run(() => RefreshLoopAsync(freshToken, sentToken));
     }
+
+    /// <summary>Every <see cref="RefreshCheck"/>, a newer token goes to the gateway, after the viewer's own first frame (its Hello)
+    /// so it never comes ahead of it. Never throws; ends with the stream.</summary>
+    private async Task RefreshLoopAsync(Func<string?> freshToken, string? sent)
+    {
+        try
+        {
+            while (!disposed && !broken)
+            {
+                await Task.Delay(RefreshCheck, stop.Token).ConfigureAwait(false);
+                if (!wrote) continue;
+                string? next;
+                try { next = freshToken(); }
+                catch (Exception ex)
+                {
+                    OrchestratorLog.For("TeamWall").Error(ex, "Reading a gateway's fresh token failed; contained");
+                    continue;
+                }
+                if (!IsNewer(next, sent, DateTime.UtcNow)) continue;
+                if (!outbox.Writer.TryWrite(TermProtocol.Frame(TermFrameKind.RefreshToken, System.Text.Encoding.UTF8.GetBytes(next!)))) return;
+                sent = next;
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (ObjectDisposedException) { }
+    }
+
+    /// <summary>Whether <paramref name="candidate"/> is worth sending in place of <paramref name="sent"/>: another token, not yet
+    /// expired, that says it lasts longer.</summary>
+    internal static bool IsNewer(string? candidate, string? sent, DateTime nowUtc) =>
+        !string.IsNullOrWhiteSpace(candidate) && candidate != sent
+        && GatewayRemotes.ExpiresUtc(candidate) is { } expires && expires > nowUtc
+        && (GatewayRemotes.ExpiresUtc(sent) is not { } old || expires > old);
 
     public override bool CanRead => !disposed;
     public override bool CanWrite => !disposed && !broken;
@@ -110,6 +154,7 @@ public sealed class WebSocketFrameStream : Stream
         if (broken) throw new IOException("The gateway's stream is closed.");
         if (buffer.Length == 0) return;
         if (!outbox.Writer.TryWrite(buffer.ToArray())) throw new IOException("The gateway's stream is backed up; the link is taken as lost.");
+        wrote = true;
     }
 
     public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)

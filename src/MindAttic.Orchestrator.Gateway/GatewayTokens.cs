@@ -61,6 +61,10 @@ internal sealed class GatewayTokens(Func<byte[]> signingKeyNow, Func<DateTime>? 
         catch (Exception ex) when (ex is JsonException or FormatException or ArgumentException) { return null; }
     }
 
+    /// <summary>Whether a token that validated as <paramref name="principal"/> has since expired (M.ORCH-T1041), by the same clock
+    /// and skew as <see cref="Validate"/>: when it no longer validates and this is false, the signing key changed.</summary>
+    public bool Expired(GatewayPrincipal principal) => principal.ExpiresUtc <= now() - Skew;
+
     internal static string Base64Url(ReadOnlySpan<byte> bytes) => TermGatewayTokens.Base64Url(bytes);
 
     internal static byte[]? FromBase64Url(string text) => TermGatewayTokens.FromBase64Url(text);

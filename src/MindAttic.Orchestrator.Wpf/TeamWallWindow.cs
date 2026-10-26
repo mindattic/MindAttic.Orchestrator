@@ -234,7 +234,8 @@ internal sealed class TeamWallWindow : Window
             }
         foreach (var r in wanted)
             if (!clients.ContainsKey(r.Name))
-                try { clients[r.Name] = new GatewayClient(r); }
+                // Its streams send the gateway the fresh token the member is given since, before theirs expires (M.ORCH-T1041).
+                try { clients[r.Name] = new GatewayClient(r, () => GatewayRemotes.Find(store.LoadSettings().Gateway, r.Name)); }
                 catch (Exception ex) { log.Error(ex, "Setting up gateway {Name:l} failed; contained", r.Name); }
     }
 

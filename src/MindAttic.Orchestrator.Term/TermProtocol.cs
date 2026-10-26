@@ -61,6 +61,13 @@ public enum TermFrameKind : byte
 
     /// <summary>Empty (protocol 2): this interactive viewer takes the size explicitly (M.ORCH-T930).</summary>
     TakeSize = 0x13,
+
+    // Viewer -> team gateway.
+
+    /// <summary>UTF-8: a fresh bearer token for the stream this viewer holds through a team gateway (M.ORCH-T1041). The gateway
+    /// validates it as it did the token the stream was opened with and, when it is good for the same member and as much access,
+    /// lets the stream last until it expires. It never reaches a host, and is never sent over a host's pipe.</summary>
+    RefreshToken = 0x20,
 }
 
 /// <summary>The flags byte of a protocol 2 Hello from a viewer.</summary>

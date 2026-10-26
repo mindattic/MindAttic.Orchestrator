@@ -311,7 +311,108 @@ public sealed partial class GatewayTests
         now += TimeSpan.FromMinutes(10); // the test token lasts five
         var result = await socket.ReceiveAsync(new byte[256], Timeout());
         Assert.That(result.MessageType, Is.EqualTo(WebSocketMessageType.Close));
-        Assert.That((socket.CloseStatus, socket.CloseStatusDescription), Is.EqualTo(((WebSocketCloseStatus?)WebSocketCloseStatus.PolicyViolation, "access revoked")));
+        // Told apart from a revocation (M.ORCH-T1041): the viewer just didn't refresh in time.
+        Assert.That((socket.CloseStatus, socket.CloseStatusDescription), Is.EqualTo(((WebSocketCloseStatus?)WebSocketCloseStatus.PolicyViolation, "token expired")));
+        var detach = (await audit.WaitFor(TermGatewayAudit.Detach)).Last();
+        Assert.That(detach.Detail, Does.StartWith("ended by token expired"));
+    }
+
+    // ── in-band token refresh (M.ORCH-T1041) ────────────────────────────────────
+
+    [Test]
+    public async Task A_fresh_token_sent_in_band_keeps_the_stream_open_past_the_first_ones_expiry()
+    {
+        var now = DateTime.UtcNow;
+        var tokens = new GatewayTokens(SigningKey, () => now);
+        var audit = new MemoryAudit();
+        await using var gateway = await TestGateway.StartAsync(audit: audit, auditInterval: TimeSpan.FromMilliseconds(100), tokens: tokens);
+        using var socket = await gateway.Client(GatewayScopes.Watch).ConnectAsync(new Uri("ws://localhost/sessions/s1/stream"), Timeout());
+        await Send(socket, TermProtocol.Frame(TermFrameKind.Hello, TermProtocol.Hello(TermProtocol.Version, 100, 25)));
+        await TermProtocol.ReadFrameAsync(gateway.Pipes.Host, Timeout());
+
+        now += TimeSpan.FromMinutes(4); // the first token lasts five
+        var fresh = tokens.Issue(Owner, GatewayScopes.Watch, TimeSpan.FromMinutes(5)).Token;
+        await Send(socket, TermProtocol.Frame(TermFrameKind.RefreshToken, Encoding.UTF8.GetBytes(fresh)));
+        await Task.Delay(300);
+        now += TimeSpan.FromMinutes(3); // past the first token's expiry and skew, inside the fresh one's
+        await Task.Delay(500);
+
+        // Still open: output the host writes now reaches the viewer, and the refresh frame never reached the host.
+        await gateway.Pipes.Host.WriteAsync(TermProtocol.Frame(TermFrameKind.Output, "still here"u8.ToArray()));
+        await gateway.Pipes.Host.FlushAsync();
+        var frame = await Receive(socket);
+        Assert.That((TermFrameKind)frame[0], Is.EqualTo(TermFrameKind.Output));
+        Assert.That(audit.Records.Any(r => r.Event == TermGatewayAudit.Detach), Is.False);
+
+        now += TimeSpan.FromMinutes(5); // and the fresh one lapses too
+        var result = await socket.ReceiveAsync(new byte[256], Timeout());
+        Assert.That(result.MessageType, Is.EqualTo(WebSocketMessageType.Close));
+        Assert.That(socket.CloseStatusDescription, Is.EqualTo("token expired"));
+    }
+
+    [Test]
+    public async Task A_refresh_with_another_members_or_a_forged_token_is_refused_and_doesnt_extend_the_stream()
+    {
+        var now = DateTime.UtcNow;
+        var tokens = new GatewayTokens(SigningKey, () => now);
+        var audit = new MemoryAudit();
+        var grants = new FixedAcl(Acl(new TermAclGrant(Owner, Pat, "", "watch", null), new TermAclGrant(Owner, Erin, "", "watch", null)));
+        await using var gateway = await TestGateway.StartAsync(grants, audit, TimeSpan.FromMilliseconds(100), tokens: tokens);
+        using var socket = await gateway.Client(GatewayScopes.Watch, Pat).ConnectAsync(new Uri("ws://localhost/sessions/s1/stream"), Timeout());
+        await Send(socket, TermProtocol.Frame(TermFrameKind.Hello, TermProtocol.Hello(TermProtocol.Version, 100, 25)));
+        await TermProtocol.ReadFrameAsync(gateway.Pipes.Host, Timeout());
+
+        now += TimeSpan.FromMinutes(4);
+        var someoneElses = tokens.Issue(Erin, GatewayScopes.Watch, TimeSpan.FromMinutes(5)).Token;
+        var forged = new GatewayTokens(OwnerKey, () => now).Issue(Pat, GatewayScopes.Watch, TimeSpan.FromMinutes(5)).Token;
+        await Send(socket, TermProtocol.Frame(TermFrameKind.RefreshToken, Encoding.UTF8.GetBytes(someoneElses)));
+        await Send(socket, TermProtocol.Frame(TermFrameKind.RefreshToken, Encoding.UTF8.GetBytes(forged)));
+        await audit.WaitFor(TermGatewayAudit.Refused);
+
+        now += TimeSpan.FromMinutes(3);
+        var result = await socket.ReceiveAsync(new byte[256], Timeout());
+        Assert.That(result.MessageType, Is.EqualTo(WebSocketMessageType.Close));
+        Assert.That(socket.CloseStatusDescription, Is.EqualTo("token expired"));
+        var refusals = audit.Records.Where(r => r.Event == TermGatewayAudit.Refused).Select(r => r.Detail ?? "").ToList();
+        Assert.That(refusals.Any(d => d.Contains("another member's token", StringComparison.Ordinal)), Is.True);
+        Assert.That(refusals.Any(d => d.Contains("bad or expired token", StringComparison.Ordinal)), Is.True);
+    }
+
+    [Test]
+    public async Task A_replaced_signing_key_still_closes_a_refreshed_stream_as_revoked()
+    {
+        var key = SigningKey;
+        var tokens = new GatewayTokens(() => Volatile.Read(ref key));
+        var audit = new MemoryAudit();
+        await using var gateway = await TestGateway.StartAsync(audit: audit, auditInterval: TimeSpan.FromMilliseconds(100), tokens: tokens);
+        using var socket = await gateway.Client(GatewayScopes.Watch).ConnectAsync(new Uri("ws://localhost/sessions/s1/stream"), Timeout());
+        await Send(socket, TermProtocol.Frame(TermFrameKind.Hello, TermProtocol.Hello(TermProtocol.Version, 100, 25)));
+        await TermProtocol.ReadFrameAsync(gateway.Pipes.Host, Timeout());
+        var fresh = tokens.Issue(Owner, GatewayScopes.Watch, TimeSpan.FromMinutes(10)).Token;
+        await Send(socket, TermProtocol.Frame(TermFrameKind.RefreshToken, Encoding.UTF8.GetBytes(fresh)));
+        await Task.Delay(200);
+
+        Volatile.Write(ref key, OwnerKey); // a fresh signing.key
+        var result = await socket.ReceiveAsync(new byte[256], Timeout());
+        Assert.That(result.MessageType, Is.EqualTo(WebSocketMessageType.Close));
+        Assert.That(socket.CloseStatusDescription, Is.EqualTo("access revoked"));
+        var detach = (await audit.WaitFor(TermGatewayAudit.Detach)).Last();
+        Assert.That(detach.Detail, Does.StartWith("ended by access revoked"));
+    }
+
+    [Test]
+    public void The_client_sends_only_a_token_that_lasts_longer_than_the_one_it_sent()
+    {
+        var now = DateTime.UtcNow;
+        var key = SigningKey;
+        string Mint(int minutes) => TermGatewayTokens.Issue(key, Pat, GatewayScopes.Watch, TimeSpan.FromMinutes(minutes), now).Token;
+        var sent = Mint(5);
+        Assert.That(Sessions.WebSocketFrameStream.IsNewer(sent, sent, now), Is.False, "the same token");
+        Assert.That(Sessions.WebSocketFrameStream.IsNewer(Mint(10), sent, now), Is.True);
+        Assert.That(Sessions.WebSocketFrameStream.IsNewer(Mint(3), sent, now), Is.False, "one that lapses sooner");
+        Assert.That(Sessions.WebSocketFrameStream.IsNewer(null, sent, now), Is.False);
+        Assert.That(Sessions.WebSocketFrameStream.IsNewer("not-a-token", sent, now), Is.False);
+        Assert.That(Sessions.WebSocketFrameStream.IsNewer(Mint(10), sent, now.AddMinutes(11)), Is.False, "already expired");
     }
 
     [Test]
@@ -400,6 +501,9 @@ public sealed partial class GatewayTests
         private readonly ConcurrentQueue<TermGatewayAuditRecord> records = new();
 
         public void Write(TermGatewayAuditRecord record) => records.Enqueue(record);
+
+        /// <summary>The records so far.</summary>
+        public List<TermGatewayAuditRecord> Records => [.. records];
 
         /// <summary>The records so far, once one of <paramref name="what"/> is among them (the handler writes its last after the
         /// socket closes, so a test waits for it).</summary>

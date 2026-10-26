@@ -42,7 +42,8 @@ internal static class RemoteViewer
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return 0;
         }
-        using var client = new GatewayClient(remote);
+        // The stream sends the gateway the fresh token the member is given since, before its own expires (M.ORCH-T1041).
+        using var client = new GatewayClient(remote, () => GatewayRemotes.Find(new JsonStore().LoadSettings().Gateway, remoteName));
         var listing = Task.Run(() => client.ListAsync(CancellationToken.None)).GetAwaiter().GetResult();
         var info = listing.Sessions.FirstOrDefault(s => s.Id == id);
         if (!listing.Online || info is null)

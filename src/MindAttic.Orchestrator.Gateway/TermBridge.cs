@@ -47,18 +47,28 @@ internal static class TermBridge
     /// <param name="revoke">Fired when the viewer's access was revoked (M.ORCH-T934): the pipe is let go, and the viewer is told
     /// so with a policy-violation close, as when the host closes it (cancelling a receive would abort the socket unannounced).</param>
     /// <param name="broadcast">The owner's choices for this remote stream (M.ORCH-T935): masking, pause, sharing.</param>
+    /// <param name="refresh">Handed each RefreshToken frame's token (M.ORCH-T1041); such a frame never reaches the host. Without
+    /// it they are dropped.</param>
+    /// <param name="revokeReason">Why <paramref name="revoke"/> fired, as the close and the result say it ("access revoked", or
+    /// "token expired"); "access revoked" without it.</param>
     public static async Task<BridgeResult> RunAsync(WebSocket socket, Stream pipe, GatewayAccess access, GatewayLog log, CancellationToken ct,
-        GatewayInputMeter? input = null, CancellationToken revoke = default, BroadcastStream? broadcast = null)
+        GatewayInputMeter? input = null, CancellationToken revoke = default, BroadcastStream? broadcast = null,
+        Action<string>? refresh = null, Func<string>? revokeReason = null)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var counts = new Counts();
         var revoked = 0;
+        string RevokedWhy()
+        {
+            try { return revokeReason?.Invoke() is { Length: > 0 } why ? why : "access revoked"; }
+            catch (Exception) { return "access revoked"; }
+        }
         using var onRevoke = revoke.Register(() =>
         {
             Interlocked.Exchange(ref revoked, 1);
             TryDispose(pipe);
         });
-        var up = Task.Run(() => UpstreamAsync(socket, pipe, access, counts, log, input, broadcast, cts.Token));
+        var up = Task.Run(() => UpstreamAsync(socket, pipe, access, counts, log, input, broadcast, refresh, cts.Token));
         var down = Task.Run(() => DownstreamAsync(socket, pipe, counts, log, broadcast, cts.Token));
         string endedBy;
         try
@@ -69,18 +79,18 @@ internal static class TermBridge
                 var byRevoke = Volatile.Read(ref revoked) == 1;
                 // The owner stopped sharing the session (M.ORCH-T935): null when the host closed the pipe.
                 var unshared = await down.ConfigureAwait(false);
-                endedBy = byRevoke ? "access revoked" : unshared is not null ? "owner" : "host";
-                // The host closed the pipe (the session ended, or another viewer replaced this one), access was revoked, or the
-                // owner stopped sharing: say so, and give the viewer a moment to answer the close.
+                endedBy = byRevoke ? RevokedWhy() : unshared is not null ? "owner" : "host";
+                // The host closed the pipe (the session ended, or another viewer replaced this one), access was revoked (or its
+                // token expired), or the owner stopped sharing: say so, and give the viewer a moment to answer the close.
                 await TryCloseOutputAsync(socket, byRevoke ? WebSocketCloseStatus.PolicyViolation : WebSocketCloseStatus.NormalClosure,
-                    byRevoke ? "access revoked" : unshared ?? "the session's host closed the stream").ConfigureAwait(false);
+                    byRevoke ? endedBy : unshared ?? "the session's host closed the stream").ConfigureAwait(false);
                 await Task.WhenAny(up, Task.Delay(CloseWait, CancellationToken.None)).ConfigureAwait(false);
                 cts.Cancel();
             }
             else
             {
                 var close = await up.ConfigureAwait(false);
-                if (Volatile.Read(ref revoked) == 1) close = new(WebSocketCloseStatus.PolicyViolation, "access revoked");
+                if (Volatile.Read(ref revoked) == 1) close = new(WebSocketCloseStatus.PolicyViolation, RevokedWhy());
                 endedBy = close.Reason;
                 cts.Cancel();
                 TryDispose(pipe);
@@ -111,7 +121,7 @@ internal static class TermBridge
 
     /// <summary>Viewer to host. Returns how the socket should be closed.</summary>
     private static async Task<Close> UpstreamAsync(WebSocket socket, Stream pipe, GatewayAccess access, Counts counts, GatewayLog log,
-        GatewayInputMeter? input, BroadcastStream? broadcast, CancellationToken ct)
+        GatewayInputMeter? input, BroadcastStream? broadcast, Action<string>? refresh, CancellationToken ct)
     {
         var buffer = new byte[16 * 1024];
         var helloSeen = false;
@@ -147,6 +157,13 @@ internal static class TermBridge
                     else if (frame.Length > 12 && TermProtocol.LogSafeId(hello.ViewerId) is var clean && clean != hello.ViewerId)
                         // The size and flags as sent (bytes 0 to 6 of the payload), the id cleaned.
                         frame = TermProtocol.Frame(TermFrameKind.Hello, [.. frame.AsSpan(5, 7), .. System.Text.Encoding.UTF8.GetBytes(clean)]);
+                }
+                else if (kind == TermFrameKind.RefreshToken && refresh is not null)
+                {
+                    // For the gateway, never the host (M.ORCH-T1041): a fresh token extends the stream.
+                    try { refresh(System.Text.Encoding.UTF8.GetString(frame.AsSpan(5))); }
+                    catch (Exception ex) { log.Error(ex, "refreshing a stream's token failed; contained"); }
+                    continue;
                 }
                 else if (!Forwards(kind, access)
                          // Paused (M.ORCH-T935): the viewer can't see what it would be typing into.

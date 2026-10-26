@@ -55,9 +55,14 @@ public sealed class GatewayClient : IDisposable
     private readonly string? token;
     private readonly string? pin;
 
-    public GatewayClient(GatewayRemote remote)
+    private readonly Func<GatewayRemote?>? latest;
+
+    /// <param name="latest">This remote as the settings hold it now (read again each time), so an open stream can send the
+    /// gateway the fresh token the member was given since (M.ORCH-T1041); null: streams last only as long as this token.</param>
+    public GatewayClient(GatewayRemote remote, Func<GatewayRemote?>? latest = null)
     {
         Remote = remote;
+        this.latest = latest;
         token = GatewayRemotes.Token(remote);
         pin = GatewayRemotes.NormalizePin(remote.CertSha256);
         BaseUrl = GatewayRemotes.NormalizeUrl(remote.Url);
@@ -160,13 +165,22 @@ public sealed class GatewayClient : IDisposable
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(ConnectTimeout);
             await socket.ConnectAsync(url, timeout.Token).ConfigureAwait(false);
-            return new WebSocketFrameStream(socket);
+            return new WebSocketFrameStream(socket, latest is null ? null : FreshToken, token);
         }
         catch
         {
             socket.Dispose();
             throw;
         }
+    }
+
+    /// <summary>The member's token for this gateway as the settings hold it now: only while the remote still names the same
+    /// gateway (URL and pin), so a token meant for another one never goes to this one. Null when there is none.</summary>
+    internal string? FreshToken()
+    {
+        if (latest?.Invoke() is not { } now) return null;
+        if (GatewayRemotes.NormalizeUrl(now.Url) != BaseUrl || GatewayRemotes.NormalizePin(now.CertSha256) != pin) return null;
+        return GatewayRemotes.Token(now);
     }
 
     public void Dispose() => http.Dispose();
