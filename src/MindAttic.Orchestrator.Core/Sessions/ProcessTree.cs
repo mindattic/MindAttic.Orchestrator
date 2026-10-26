@@ -39,7 +39,7 @@ public static partial class ProcessTree
     }
 
     /// <summary>The same walk over a given child-to-parent map; it gives up after 16 steps, so a pid cycle ends.</summary>
-    internal static bool IsAncestor(int ancestor, int pid, IReadOnlyDictionary<int, int> parents)
+    public static bool IsAncestor(int ancestor, int pid, IReadOnlyDictionary<int, int> parents)
     {
         for (var i = 0; i < 16 && parents.TryGetValue(pid, out var parent) && parent != 0; i++)
         {
@@ -49,7 +49,11 @@ public static partial class ProcessTree
         return false;
     }
 
-    private static Dictionary<int, int> Parents() => Processes().ToDictionary(p => p.Key, p => p.Value.Parent);
+    /// <summary>Every running process's parent, by process id, at one moment: for many <see cref="IsAncestor(int, int, IReadOnlyDictionary{int, int})"/>
+    /// checks off one snapshot.</summary>
+    public static IReadOnlyDictionary<int, int> ParentMap() => Parents();
+
+    private static Dictionary<int, int> Parents() =>Processes().ToDictionary(p => p.Key, p => p.Value.Parent);
 
     /// <summary>Every running process's parent and exe name, by process id, at one moment.</summary>
     internal static IReadOnlyDictionary<int, (int Parent, string Exe)> Snapshot() => Processes();

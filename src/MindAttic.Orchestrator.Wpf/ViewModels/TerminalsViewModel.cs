@@ -92,6 +92,10 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>The Launcher host process running in it, once found (for "Go to tab").</summary>
     public int? HostPid { get; internal set; }
 
+    /// <summary>The Claude session its CLI is in now, once seen (M.ORCH-T862): what the session-restore file resumes it on.
+    /// A restored tab starts with the session it resumes.</summary>
+    public string? SessionId { get; internal set; }
+
     public bool IsSelected
     {
         get => isSelected;
@@ -226,6 +230,8 @@ public sealed class TerminalsViewModel : ObservableObject
         if (Panes.Count == 0) return;
         var hosts = snapshot?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
         var moved = false;
+        var learned = false;
+        IReadOnlyDictionary<int, int>? parents = null;
         foreach (var pane in Panes.Where(p => !p.Ended).ToList())
         {
             if (pane.HasExited)
@@ -235,8 +241,14 @@ public sealed class TerminalsViewModel : ObservableObject
             }
             if (snapshot is null || pane.RootPid is not { } root) continue;
             pane.HostPid ??= hosts.FirstOrDefault(h => h.ProcessId == root || ProcessTree.IsAncestor(root, h.ProcessId))?.ProcessId;
-            if (pane.HostPid is not { } host) continue;
-            if (snapshot.Agents.FirstOrDefault(a => a.Host?.ProcessId == host) is not { SessionId: { Length: > 0 } session }) continue;
+            var session = SessionOf(pane, root, snapshot, ref parents);
+            if (session is { Length: > 0 } && !string.Equals(session, pane.SessionId, StringComparison.Ordinal))
+            {
+                // The session its CLI is in now (a /clear starts a new one): what a restore resumes it on (M.ORCH-T862).
+                pane.SessionId = session;
+                learned = true;
+            }
+            if (pane.HostPid is not { } || session is not { Length: > 0 }) continue;
             // Its person is the login its CLI is on now: moved to another, it moves to that one's page.
             var login = LoginScope.LoginOf(snapshot, session);
             if (!string.Equals(login, pane.Login, StringComparison.OrdinalIgnoreCase))
@@ -246,6 +258,27 @@ public sealed class TerminalsViewModel : ObservableObject
             }
         }
         if (moved) LoginsChanged?.Invoke();
+        if (learned) SessionsLearned?.Invoke();
+    }
+
+    /// <summary>A pane's CLI's session was learned or changed (M.ORCH-T862): the session-restore file is rewritten.</summary>
+    public event Action? SessionsLearned;
+
+    /// <summary>The Claude session <paramref name="pane"/>'s CLI is in: the agent its Launcher host runs, else the one whose
+    /// claude.exe (the pid the context gate recorded in session-context) runs under the pane's own process. Null for a
+    /// Launcher menu pane, and while none is seen. The process tree is read once per refresh, and only when a host doesn't answer.</summary>
+    private static string? SessionOf(TerminalPaneViewModel pane, int root, Snapshot snapshot, ref IReadOnlyDictionary<int, int>? parents)
+    {
+        if (pane.Request.IsMenu) return null;
+        if (pane.HostPid is { } host && snapshot.Agents.FirstOrDefault(a => a.Host?.ProcessId == host) is { SessionId: { Length: > 0 } byHost })
+            return byHost;
+        if (!snapshot.Agents.Any(a => a.CliPid is not null)) return null;
+        try
+        {
+            var tree = parents ??= ProcessTree.ParentMap();
+            return snapshot.Agents.FirstOrDefault(a => a.CliPid is { } cli && (cli == root || ProcessTree.IsAncestor(root, cli, tree)))?.SessionId;
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { return null; }
     }
 }
 
