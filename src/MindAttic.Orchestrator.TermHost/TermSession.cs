@@ -522,16 +522,18 @@ internal sealed class TermSession
         try
         {
             Thread.Sleep(150);
-            ushort c, r;
-            lock (gate) { if (!viewers.Contains(link) || exited || ptyClosed) return; c = cols; r = rows; }
-            if (c > 1) { SetPtySize((ushort)(c - 1), r); Thread.Sleep(150); }
-            lock (gate)
+            // The narrow step under ptyGate with the size it is taken from (M.ORCH-T992), so a resize can't slip in between.
+            lock (ptyGate)
             {
-                if (exited || ptyClosed) return;
-                // A resize in the meantime already repainted at its own size.
-                if (c != cols || r != rows) return;
+                ushort c, r;
+                lock (gate) { if (!viewers.Contains(link) || exited || ptyClosed) return; c = cols; r = rows; }
+                if (c <= 1) return;
+                SetPtySize((ushort)(c - 1), r);
             }
-            SetPtySize(c, r);
+            Thread.Sleep(150);
+            lock (gate) { if (exited || ptyClosed) return; }
+            // Back to the session's size as it is now, whatever resizes came meanwhile.
+            SyncPtySize();
         }
         catch (Exception ex) { log.Error(ex, "the redraw nudge failed; contained"); }
     }
@@ -573,8 +575,23 @@ internal sealed class TermSession
             }
             if (resize || ownerChanged) BroadcastSize();
         }
-        // Outside the lock, as the prototype did: the output pump must stay free to drain the repaint the resize causes.
-        if (resize) SetPtySize(c, r);
+        // Outside gate, as the prototype did: the output pump must stay free to drain the repaint the resize causes. Through the
+        // sequencer (M.ORCH-T992), so two racing resizes can't reach the ConPTY in the wrong order.
+        if (resize) SyncPtySize();
+    }
+
+    /// <summary>The one resize sequencer (M.ORCH-T992): under <see cref="ptyGate"/> it reads the session's size as it is now and
+    /// applies it to the ConPTY. Callers change cols and rows under <see cref="gate"/> first and then call this, so whichever
+    /// reaches the ConPTY last applies the latest size: the PTY always ends at the size viewers, registry and emulator have.
+    /// Lock order: ptyGate, then gate.</summary>
+    private void SyncPtySize()
+    {
+        lock (ptyGate)
+        {
+            ushort c, r;
+            lock (gate) { c = cols; r = rows; }
+            SetPtySize(c, r);
+        }
     }
 
     /// <summary>Lets output already on its way reach the viewers before a Size frame: waits, up to <see cref="DrainLimitMs"/>, for
@@ -591,7 +608,7 @@ internal sealed class TermSession
     }
 
     /// <summary>Resizes the ConPTY, never once it is closed (M.ORCH-T991): the check and the call are under <see cref="ptyGate"/>,
-    /// which the close takes too.</summary>
+    /// which the close takes too. To the session's size only through <see cref="SyncPtySize"/>.</summary>
     private void SetPtySize(ushort c, ushort r)
     {
         try
