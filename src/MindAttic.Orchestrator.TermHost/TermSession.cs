@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
 using MindAttic.Orchestrator.Term;
+using MindAttic.Orchestrator.TermHost.Replay;
 using static MindAttic.Orchestrator.TermHost.Native;
 
 namespace MindAttic.Orchestrator.TermHost;
@@ -34,7 +35,11 @@ internal sealed class TermSession
     private bool exited;
     private int exitCode;
     private string? title;
-    private byte[] startFailure = [];
+
+    // M.ORCH-T927: the late-attach replay. Fed and copied only under gate.
+    private readonly Ring ring = new();
+    private readonly ModeTracker modes = new();
+    private TermModes lastModes = TermModes.CursorVisible;
 
     public TermSession(HostOptions options, HostLog log)
     {
@@ -91,7 +96,7 @@ internal sealed class TermSession
                 exited = true;
                 exitCode = code == 0 ? -1 : code;
                 // What a viewer that attaches is shown, so it can tell why nothing ran.
-                startFailure = Encoding.UTF8.GetBytes($"\u001b[31mTermHost: the CLI couldn't start: {why} (error {code})\u001b[0m\r\n");
+                ring.Append(Encoding.UTF8.GetBytes($"\u001b[31mTermHost: the CLI couldn't start: {why} (error {code})\u001b[0m\r\n"));
             }
             return false;
         }
@@ -155,7 +160,21 @@ internal sealed class TermSession
     {
         lock (gate)
         {
+            ring.Append(chunk);
+            modes.Feed(chunk);
             if (viewer is { } v && !v.Post(TermFrameKind.Output, chunk)) Drop(v);
+
+            var flags = modes.Flags;
+            if (flags != lastModes)
+            {
+                lastModes = flags;
+                if (viewer is { } v2 && !v2.Post(TermFrameKind.Modes, TermProtocol.Modes(flags))) Drop(v2);
+            }
+            if (modes.Title is { } cliTitle && cliTitle != title)
+            {
+                title = cliTitle;
+                if (viewer is { } v3 && !v3.Post(TermFrameKind.Title, TermProtocol.Title(cliTitle))) Drop(v3);
+            }
         }
     }
 
@@ -248,6 +267,7 @@ internal sealed class TermSession
             }
             ApplySize(h.Cols, h.Rows, announce: false);
             Attach(mine);
+            _ = Task.Run(() => Nudge(mine));
             await ReadViewerAsync(pipe, mine).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IOException or EndOfStreamException or ObjectDisposedException or InvalidDataException or OperationCanceledException) { }
@@ -272,9 +292,9 @@ internal sealed class TermSession
             var old = viewer;
             viewer = link;
             if (old is not null) { old.Dispose(); log.Write("previous viewer replaced"); }
-            var data = startFailure;
+            var (data, reassert) = ReplayScreen.Build(ring.ToArray(), modes);
             var ok = link.Post(TermFrameKind.Hello, TermProtocol.Hello(TermProtocol.Version, cols, rows))
-                     && link.Post(TermFrameKind.Replay, TermProtocol.Replay(cols, rows, TermModes.CursorVisible, data, []))
+                     && link.Post(TermFrameKind.Replay, TermProtocol.Replay(cols, rows, modes.Flags, data, reassert))
                      && link.Post(TermFrameKind.Live, [])
                      && (title is null || link.Post(TermFrameKind.Title, TermProtocol.Title(title)))
                      && (!exited || link.Post(TermFrameKind.Exit, TermProtocol.Exit(exitCode)));
@@ -303,6 +323,30 @@ internal sealed class TermSession
                     break;
             }
         }
+    }
+
+    /// <summary>
+    /// The redraw nudge (M.ORCH-T927): a replay drawn at older sizes can garble the live region, so after it the ConPTY is
+    /// resized to cols-1, then back to cols. Claude Code and other TUIs repaint on a resize, so the visible screen comes out
+    /// right (the dtach trick). The session's size never changes, so no Size frame is sent.
+    /// </summary>
+    private void Nudge(ViewerLink link)
+    {
+        try
+        {
+            Thread.Sleep(150);
+            ushort c, r;
+            lock (gate) { if (viewer != link || exited) return; c = cols; r = rows; }
+            if (c > 1) { SetPtySize((ushort)(c - 1), r); Thread.Sleep(150); }
+            lock (gate)
+            {
+                if (exited) return;
+                // A resize in the meantime already repainted at its own size.
+                if (c != cols || r != rows) return;
+            }
+            SetPtySize(c, r);
+        }
+        catch (Exception ex) { log.Error(ex, "the redraw nudge failed; contained"); }
     }
 
     private void ApplySize(ushort c, ushort r, bool announce)
