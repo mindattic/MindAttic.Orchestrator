@@ -174,7 +174,9 @@ function Get-NewestInstalled([string]$Name, [string]$ExeName) {
     if (-not (Test-Path -LiteralPath $root)) { return $null }
     Get-ChildItem -LiteralPath $root -Directory -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -match '^\d+\.\d+\.\d+(-\d{14})?$' -and (Test-Path -LiteralPath (Join-Path $_.FullName $ExeName)) } |
-        Sort-Object @{ Expression = { [version](($_.Name -split '-')[0]) } }, @{ Expression = { ($_.Name -split '-', 2)[1] } } |
+        # A folder with no build stamp (1.0.0, which the pattern and TermHostInstalls.Parse accept) sorts first among its version:
+        # indexing the missing stamp threw under strict mode and aborted the whole deploy (M.ORCH-T1008).
+        Sort-Object @{ Expression = { [version](($_.Name -split '-')[0]) } }, @{ Expression = { $parts = @($_.Name -split '-', 2); if ($parts.Count -gt 1) { $parts[1] } else { '' } } } |
         Select-Object -Last 1 | ForEach-Object { Join-Path $_.FullName $ExeName }
 }
 
