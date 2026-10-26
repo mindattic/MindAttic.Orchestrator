@@ -116,6 +116,8 @@ public sealed class JsonStore
             WriteTo(name, (connection, tx) => Write(connection, tx, name, node));
             Retire(name);
         });
+        // Committed: the status bus pushes it to every dashboard (M.ORCH-T891).
+        StoreChanges.Note(this, name);
     }
 
     /// <summary>
@@ -123,19 +125,24 @@ public sealed class JsonStore
     /// (the daemon's allocate, a dashboard's Dispatch, the CLI) waits for this one and is never dropped. A value that isn't
     /// readable JSON, or an old file that can't be read in, throws rather than having an empty one saved over it.
     /// </summary>
-    public void Update<T>(string name, Action<T> change) where T : new() => Guard(() =>
+    public void Update<T>(string name, Action<T> change) where T : new()
     {
-        if (!Import(name))
-            throw new InvalidDataException($"{Path.Combine(Directory, name + ".json")} couldn't be read in; left as it is rather than saved over");
-        WriteTo(name, (connection, tx) =>
+        Guard(() =>
         {
-            T value;
-            try { value = Read(connection, tx, name) is { } node ? node.Deserialize<T>(Options) ?? new T() : new T(); }
-            catch (JsonException ex) { throw new InvalidDataException($"{Describe(name)} isn't readable JSON; left as it is rather than saved over", ex); }
-            change(value);
-            Write(connection, tx, name, JsonSerializer.SerializeToNode(value, Options));
+            if (!Import(name))
+                throw new InvalidDataException($"{Path.Combine(Directory, name + ".json")} couldn't be read in; left as it is rather than saved over");
+            WriteTo(name, (connection, tx) =>
+            {
+                T value;
+                try { value = Read(connection, tx, name) is { } node ? node.Deserialize<T>(Options) ?? new T() : new T(); }
+                catch (JsonException ex) { throw new InvalidDataException($"{Describe(name)} isn't readable JSON; left as it is rather than saved over", ex); }
+                change(value);
+                Write(connection, tx, name, JsonSerializer.SerializeToNode(value, Options));
+            });
         });
-    });
+        // Committed: the status bus pushes it to every dashboard (M.ORCH-T891).
+        StoreChanges.Note(this, name);
+    }
 
     public OrchestratorSettings LoadSettings() => Load<OrchestratorSettings>(SettingsName);
 

@@ -40,7 +40,13 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         // The app bus (M.ORCH-T879): ticket changes, Orchestrator.Desktop's and Tickets.Desktop's presence and their requests of
         // each other go through the hub, every ticket change read from the database's change feed too, so a ticket filed,
         // approved or closed anywhere reaches every app (and this daemon's next plan) within seconds.
-        var hub = status is null ? null : new Status.AppBusHub(status, new Tickets.TicketActivityFeed()) { TicketChanged = waiter.Poke };
+        var hub = status is null ? null : new Status.AppBusHub(status, new Tickets.TicketActivityFeed())
+        {
+            TicketChanged = waiter.Poke,
+            // The roster, orgs, settings, pause and reminders (M.ORCH-T891): this store's are kept for connecting dashboards, and a
+            // change to one brings the next plan forward.
+            OwnStore = Status.StateBus.StoreOf(store.Db), StateChanged = waiter.Poke,
+        };
         using var inbox = status is null ? null : new Status.StatusInbox { Relay = e => hub!.Take(e) }
             .On(Status.StatusInbox.Poke, _ => waiter.Poke())
             .On(Status.StatusInbox.UsageWritten, _ => status.UsageWritten());
@@ -49,6 +55,10 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         {
             Status.AppBusClient.Hub = hub;
             _ = Task.Run(() => hub.FollowFeedAsync(() => options.WorkspaceRoot, TimeSpan.FromSeconds(2), cancel));
+            // Every change this process writes to them is pushed from now on (through the hub, in this process), and each as it
+            // stands now is kept for the dashboards that connect, whatever changed while no daemon ran (M.ORCH-T891).
+            Status.StateBus.Enable(background: false);
+            Status.StateBus.PublishAll(store);
         }
         void OnReading(ClaudeMeterProbe probe, ReportedUsage reading) =>
             status?.PublishReadings([Status.MeterReading.Of(probe.Label, reading, signedIn: null, "probe")]);

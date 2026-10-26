@@ -75,6 +75,7 @@ public static class MemberRoster
                 throw new InvalidOperationException($"{member.Email} is already a member (orchestrator members set changes it).");
             Upsert(connection, tx, member);
         });
+        StoreChanges.Note(db, StoreChanges.Members);
         return member;
     }
 
@@ -86,6 +87,7 @@ public static class MemberRoster
     {
         var key = Key(email);
         Member? result = null;
+        var changed = false;
         db.WriteDataIf((connection, tx) =>
         {
             var was = Rows(connection, tx).FirstOrDefault(m => m.Email == key)
@@ -95,8 +97,9 @@ public static class MemberRoster
             if (next == was) { result = was; return false; }
             result = next with { UpdatedUtc = nowUtc };
             Upsert(connection, tx, result);
-            return true;
+            return changed = true;
         });
+        if (changed) StoreChanges.Note(db, StoreChanges.Members);
         return result!;
     }
 
@@ -121,6 +124,7 @@ public static class MemberRoster
             Upsert(connection, tx, next with { UpdatedUtc = nowUtc });
             return changed = true;
         });
+        if (changed) StoreChanges.Note(db, StoreChanges.Members);
         return changed;
     }
 
@@ -131,6 +135,7 @@ public static class MemberRoster
         var key = Key(email);
         var removed = false;
         db.WriteDataIf((connection, tx) => removed = Sql.Run(connection, tx, "DELETE FROM members WHERE email = @email;", ("@email", key)) > 0);
+        if (removed) StoreChanges.Note(db, StoreChanges.Members);
         return removed;
     }
 

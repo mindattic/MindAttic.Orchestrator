@@ -179,6 +179,7 @@ public static class OrgStore
         if (string.IsNullOrWhiteSpace(org.Id) || string.IsNullOrWhiteSpace(org.Name)) throw new ArgumentException("An org needs an id and a name.", nameof(org));
         db.WriteData((connection, tx) => Sql.Upsert(connection, tx, "organizations", ["id"],
             ("id", org.Id), ("name", org.Name.Trim()), ("position", org.Position), ("created_utc", DateTime.UtcNow.ToString("O"))));
+        StoreChanges.Note(db, StoreChanges.Orgs);
     }
 
     /// <summary>Removes the org <paramref name="id"/> (never the default one); its members go back to the default org.
@@ -192,6 +193,7 @@ public static class OrgStore
             Sql.Run(connection, tx, "DELETE FROM org_members WHERE org_id = @id;", ("@id", id));
             removed = Sql.Run(connection, tx, "DELETE FROM organizations WHERE id = @id;", ("@id", id)) > 0;
         });
+        if (removed) StoreChanges.Note(db, StoreChanges.Orgs);
         return removed;
     }
 
@@ -208,6 +210,7 @@ public static class OrgStore
             Sql.Upsert(connection, tx, "org_members", ["provider", "login"],
                 ("org_id", m.OrgId), ("person", m.Person), ("login", m.Login), ("provider", m.Provider), ("added_utc", DateTime.UtcNow.ToString("O")));
         });
+        StoreChanges.Note(db, StoreChanges.Orgs);
         return m;
     }
 
@@ -218,6 +221,7 @@ public static class OrgStore
         var removed = false;
         db.WriteData((connection, tx) => removed = Sql.Run(connection, tx, "DELETE FROM org_members WHERE provider = @p AND login = @l;",
             ("@p", p), ("@l", OrgMember.NormalizeLogin(p, login))) > 0);
+        if (removed) StoreChanges.Note(db, StoreChanges.Orgs);
         return removed;
     }
 }

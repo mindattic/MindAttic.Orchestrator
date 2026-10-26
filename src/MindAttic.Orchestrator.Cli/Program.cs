@@ -9,6 +9,9 @@ using Spectre.Console.Cli;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 OrchestratorLog.Start(args.FirstOrDefault() == "daemon" ? "Daemon" : "Cli");
+// A change this command makes to the members, orgs, settings, pause or reminders is pushed to every dashboard through the
+// daemon's inbox as it commits (M.ORCH-T891), so none has to poll for it. Sent before the command returns: the process exits next.
+MindAttic.Orchestrator.Status.StateBus.Enable(background: false);
 
 var app = CliApp.Create();
 try

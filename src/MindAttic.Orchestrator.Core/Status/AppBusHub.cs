@@ -19,11 +19,15 @@ public static class AppBusClient
     internal static Func<StatusEnvelope, bool> Send { get; set; } = e => StatusInbox.TrySend(e);
 
     /// <summary>Publishes <paramref name="payload"/> as <paramref name="kind"/>; whether it reached the daemon.</summary>
-    public static bool Publish<T>(string kind, T payload)
+    public static bool Publish<T>(string kind, T payload) => Publish(kind, payload, AppBus.Version);
+
+    /// <summary>Publishes <paramref name="payload"/> as version <paramref name="version"/> of <paramref name="kind"/> (M.ORCH-T891:
+    /// the <see cref="StateBus"/> kinds); whether it reached the daemon.</summary>
+    public static bool Publish<T>(string kind, T payload, int version)
     {
         try
         {
-            var envelope = StatusEnvelope.Of(kind, payload, AppBus.Version);
+            var envelope = StatusEnvelope.Of(kind, payload, version);
             if (Hub is { } hub)
             {
                 hub.Take(envelope);
@@ -106,6 +110,14 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
     /// <summary>Called after a ticket change went out: the daemon refreshes its plan so the queue follows within seconds.</summary>
     public Action? TicketChanged { get; init; }
 
+    /// <summary>The daemon's own store (<see cref="StateBus.StoreOf(Settings.OrchestratorDb)"/>, M.ORCH-T891): only its roster, orgs,
+    /// settings, pause and reminders are kept for subscribers as they connect (another store's, a scratch one, still goes out but
+    /// can't stand in for them). Null keeps every store's.</summary>
+    public string? OwnStore { get; init; }
+
+    /// <summary>Called after the daemon's own store's roster, orgs, settings, pause or reminders changed: its next plan reads them.</summary>
+    public Action? StateChanged { get; init; }
+
     /// <summary>The key a presence is kept under on the stream: one per app.</summary>
     public static string PresenceKey(string app) => AppBus.Presence + ":" + app.Trim().ToLowerInvariant();
 
@@ -125,6 +137,12 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
                 case AppBus.Presence:
                     if (envelope.PayloadAs<AppPresence>() is not { App.Length: > 0 } presence) return;
                     stream.Publish(envelope, PresenceKey(presence.App));
+                    return;
+                case StateBus.Members or StateBus.Orgs or StateBus.Settings or StateBus.Pause or StateBus.Reminders:
+                    // The whole of its kind each time: the latest is kept, so a dashboard connecting gets it after the state.
+                    var own = OwnStore is null || StateBus.SameStore(StateBus.StoreOf(envelope), OwnStore);
+                    stream.Publish(envelope, own ? envelope.Kind : null);
+                    if (own) StateChanged?.Invoke();
                     return;
                 default:
                     stream.Publish(envelope);
