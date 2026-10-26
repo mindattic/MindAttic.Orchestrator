@@ -309,6 +309,7 @@
             <TextBlock Text="{Binding AccountsMessage}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" TextAlignment="Center" Margin="{StaticResource SpaceTM}"
                        Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" AutomationProperties.LiveSetting="Polite" />
         </StackPanel>
+                <!-- Same row (M.ORCH-T958): swapped in for the 5-hour card, so Tickets stays right after it. -->
 
         <!-- The old 'API key' billing tab's own body (M.ORCH-T630) is gone (M.ORCH-T906): the API key is a person, whose page is
              the same as everyone's below, its money in place of Claude's 5-hour and weekly meters. -->
@@ -444,7 +445,8 @@
                      its own full-width row, tall enough that the pace line straight to the target at the reset, the window's
                      own line (red while over that pace, green under) and where the recent rate ends up are easy to read. The
                      caption says it in words. -->
-                <StackPanel x:Name="UtilizationSection" Margin="{StaticResource SectionGap}" Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}">
+                <StackPanel x:Name="UtilizationSection" Margin="{StaticResource SectionGap}">
+                <StackPanel x:Name="ClaudeMetersSection" Visibility="{Binding ShowsClaudeMeters, Converter={StaticResource Visible}}">
                     <Border x:Name="UtilizationCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch"
                             AutomationProperties.Name="{Binding UtilizationText, StringFormat='5-hour utilization: {0}'}"
                             Visibility="{Binding UtilizationText, Converter={x:Static vm:Converters.EmptyToCollapsed}}">
@@ -460,7 +462,7 @@
                 <!-- The API key's person (M.ORCH-T906): its money burning down, in place of the 5-hour chart. From its starting credit
                      (100%) down to what's left now, then, dotted, where the last 24 hours' rate takes it: to $0 where it runs out,
                      else what's left at the chart's end. The caption says it in words. -->
-                <StackPanel x:Name="ApiBurnSection" Margin="{StaticResource SectionGap}" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}">
+                <StackPanel x:Name="ApiBurnSection" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}">
                     <Border x:Name="ApiBurnCard" Style="{StaticResource MaCard}" HorizontalAlignment="Stretch"
                             AutomationProperties.Name="{Binding ApiBurnText, StringFormat='API credit burndown: {0}'}">
                         <StackPanel>
@@ -470,6 +472,7 @@
                             <TextBlock Text="{Binding ApiBurnText}" Style="{StaticResource MaTileSubtitle}" FontSize="13" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
+                </StackPanel>
                 </StackPanel>
 
                 <!-- Tickets per user (M.ORCH-T668), below the person's open CLIs: the tickets assigned to them, each with who
