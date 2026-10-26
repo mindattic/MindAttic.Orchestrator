@@ -205,7 +205,8 @@ internal static class TermBridge
         byte[]? title = null;
         Task<(TermFrameKind Kind, byte[] Payload)>? read = null;
 
-        // Everything held, now, as the frame order needs: a held candidate secret goes masked, never bare (M.ORCH-T982).
+        // Everything held, now, as the frame order needs: a held strong candidate secret goes masked, never bare (M.ORCH-T982),
+        // a weak one as it is (M.ORCH-T1038).
         async Task FlushAsync()
         {
             if (!masker.HasPending) return;
@@ -312,8 +313,14 @@ internal static class TermBridge
                     break;
                 default:
                     // Hello, Live, Size, Modes, Exit and anything newer carry no screen content: they go as they are, after
-                    // what's held, so the order is kept.
-                    if (!paused) await FlushAsync().ConfigureAwait(false);
+                    // what's due. A held candidate secret waits on past them, as past a Title (M.ORCH-T1038): Modes and Size
+                    // frames come often, and forcing a candidate out masked on each of them bulleted ordinary code. Only Exit
+                    // ends the output, so everything held goes before it (a strong candidate masked).
+                    if (!paused)
+                    {
+                        if (kind == TermFrameKind.Exit) await FlushAsync().ConfigureAwait(false);
+                        else await FlushDueAsync().ConfigureAwait(false);
+                    }
                     await SendAsync(socket, TermProtocol.Frame(kind, payload), counts, ct).ConfigureAwait(false);
                     if (kind == TermFrameKind.Hello) helloSent = true;
                     break;

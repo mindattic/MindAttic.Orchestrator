@@ -288,6 +288,80 @@ public sealed class BroadcastMaskingTests
         Assert.That(Encoding.UTF8.GetString(masker.Flush(maskCandidate: true)), Is.EqualTo("ghp_" + Bullets(8)));
     }
 
+    // ── over-masking guards (M.ORCH-T1038) ──────────────────────────────────────
+
+    [Test]
+    public void A_short_digit_after_key_is_no_candidate_and_goes_after_the_quiet_spell()
+    {
+        var time = new ManualTime();
+        var masker = new StreamMasker(SecretMasker.ShapesOnly, time);
+        var output = new List<byte>();
+        output.AddRange(masker.Process("map[key=1"u8));
+        time.Now += StreamMasker.FlushAfter;
+        output.AddRange(masker.FlushDue());
+        Assert.That(masker.HasPending, Is.False, "not held as a candidate");
+        Assert.That(Encoding.UTF8.GetString(output.ToArray()), Is.EqualTo("map[key=1"));
+    }
+
+    [TestCase("const apiKey = getT")]
+    [TestCase("token: useT")]
+    public void A_code_identifier_after_a_secret_sounding_name_is_held_but_never_bulleted(string code)
+    {
+        var time = new ManualTime();
+        var masker = new StreamMasker(SecretMasker.ShapesOnly, time);
+        var output = new List<byte>();
+        output.AddRange(masker.Process(Encoding.UTF8.GetBytes(code)));
+        time.Now += StreamMasker.MaxCandidateHold + TimeSpan.FromMilliseconds(1);
+        output.AddRange(masker.FlushDue());
+        Assert.That(Encoding.UTF8.GetString(output.ToArray()), Is.EqualTo(code), "its hold ran out: sent as it is");
+
+        var flushed = new StreamMasker(SecretMasker.ShapesOnly);
+        var bytes = new List<byte>(flushed.Process(Encoding.UTF8.GetBytes(code)));
+        bytes.AddRange(flushed.Flush(maskCandidate: true));
+        Assert.That(Encoding.UTF8.GetString(bytes.ToArray()), Is.EqualTo(code), "nor when the frame order flushes it");
+    }
+
+    [Test]
+    public void The_first_few_characters_of_a_vault_value_are_held_but_not_bulleted_while_a_longer_start_is()
+    {
+        var vaultValue = "Fixture&Pass-" + Fake("", 20, seed: 21);
+        var secrets = new SecretMasker([vaultValue]);
+        var weak = new StreamMasker(secrets);
+        var output = new List<byte>(weak.Process(Encoding.UTF8.GetBytes("login " + vaultValue[..9])));
+        output.AddRange(weak.Flush(maskCandidate: true));
+        Assert.That(Encoding.UTF8.GetString(output.ToArray()), Is.EqualTo("login " + vaultValue[..9]), "9 of 33 characters: weak");
+
+        var strong = new StreamMasker(secrets);
+        output = [.. strong.Process(Encoding.UTF8.GetBytes("login " + vaultValue[..14]))];
+        output.AddRange(strong.Flush(maskCandidate: true));
+        Assert.That(Encoding.UTF8.GetString(output.ToArray()), Is.EqualTo("login " + Bullets(14)));
+    }
+
+    [Test]
+    public void A_long_generated_value_after_a_secret_sounding_name_is_still_masked_unfinished()
+    {
+        var value = Fake("", 30);
+        var masker = new StreamMasker(SecretMasker.ShapesOnly);
+        var output = new List<byte>(masker.Process(Encoding.UTF8.GetBytes("API_KEY=" + value[..10])));
+        output.AddRange(masker.Flush(maskCandidate: true));
+        Assert.That(Encoding.UTF8.GetString(output.ToArray()), Is.EqualTo("API_KEY=" + Bullets(10)));
+    }
+
+    [Test]
+    public async Task A_modes_or_size_frame_doesnt_force_a_held_candidate_out_bulleted()
+    {
+        var control = new FixedBroadcast(new TermBroadcastSettings { ShareAll = true });
+        await using var bridge = await Bridge.StartAsync(control, GatewayAccess.Watch);
+        await bridge.HandshakeAsync();
+        await bridge.HostSendAsync(TermFrameKind.Output, "  const apiKey = getT");
+        await bridge.HostSendFrameAsync(TermProtocol.Frame(TermFrameKind.Modes, TermProtocol.Modes(TermModes.None)));
+        await bridge.HostSendAsync(TermFrameKind.Output, "oken();\r\n");
+        var seen = new List<(TermFrameKind Kind, byte[] Payload)>();
+        var text = await bridge.ReceiveOutputUntilAsync("\r\n", seen);
+        Assert.That(text, Is.EqualTo("  const apiKey = getToken();\r\n"));
+        Assert.That(seen.Any(f => f.Kind == TermFrameKind.Modes), Is.True, "the Modes frame went on");
+    }
+
     // ── escape sequences ────────────────────────────────────────────────────────
 
     [Test]

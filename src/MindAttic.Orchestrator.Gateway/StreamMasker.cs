@@ -111,7 +111,8 @@ internal sealed class StreamMasker
     }
 
     /// <summary>Everything held, masked; nothing is held after it. With <paramref name="maskCandidate"/> (the stream's order needs
-    /// it all out now: another frame follows) a held candidate's secret part is masked as if its hold ran out, never sent bare.</summary>
+    /// it all out now: the session exited, or masking was turned off) a held strong candidate's secret part is masked as if its
+    /// hold ran out, never sent bare; a weak one goes as it is (M.ORCH-T1038).</summary>
     public byte[] Flush(bool maskCandidate = false) => Run([], maskCandidate ? Mode.FinalMasking : Mode.Final);
 
     /// <summary>What's due after a quiet spell: everything held but a candidate still inside <see cref="MaxCandidateHold"/>; once
@@ -209,15 +210,17 @@ internal sealed class StreamMasker
         // 3. A trailing candidate secret (M.ORCH-T982): held until it's told apart, or its hold runs out and its secret part is
         // masked rather than sent bare.
         var now = time.GetUtcNow();
-        var candidate = mode == Mode.Final ? null : FindCandidate(joined, map, marked);
+        var (candidate, strong) = mode == Mode.Final ? (null, null) : FindCandidate(joined, map, marked);
         var expired = false;
         if (candidate is { } c)
         {
             var key = sentTotal - offset + map[c.Start];
             if (candidateKey != key) (candidateKey, candidateSince) = (key, now);
             expired = now - candidateSince >= MaxCandidateHold;
-            if (mode == Mode.FinalMasking || (mode == Mode.Timed && expired))
-                for (var k = c.SecretStart; k < c.End; k++) marked[map[k]] = true;
+            // Only a strong candidate is masked unfinished (M.ORCH-T1038); a weak one (key=1, apiKey = getT, the first few
+            // characters of a Vault value) was only held, in case the rest made it a match, and goes as it is.
+            if (strong is { } s && (mode == Mode.FinalMasking || (mode == Mode.Timed && expired)))
+                for (var k = s.SecretStart; k < s.End; k++) marked[map[k]] = true;
         }
         else candidateKey = null;
 
@@ -334,31 +337,44 @@ internal sealed class StreamMasker
 
     /// <summary>A value after a secret-sounding name, at the very end of the text.</summary>
     private static readonly System.Text.RegularExpressions.Regex AssignedTail = new(
-        @"(?:(?:key|token|secret|password|passwd|pwd)[""']?[ \t]*[:=][ \t]*[""']?|\b[Bb]earer[ \t]+)(?<v>[A-Za-z0-9+/_\-.~]+={0,2})\z",
+        @"(?:(?<name>key|token|secret|password|passwd|pwd)[""']?[ \t]*[:=][ \t]*[""']?|\b[Bb]earer[ \t]+)(?<v>[A-Za-z0-9+/_\-.~]+={0,2})\z",
         System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant
         | System.Text.RegularExpressions.RegexOptions.Compiled, TimeSpan.FromMilliseconds(100));
+
+    /// <summary>A Vault value's start this long, or half the value, is strong (masked unfinished); a shorter one is only held.</summary>
+    private const int StrongLiteralPart = 12;
+
+    /// <summary>A value after <c>key=</c>, <c>token:</c>, <c>secret=</c> or <c>Bearer</c> this long, with digits and letters, is
+    /// strong; a shorter one only held, and one under <see cref="MinAssignedPart"/> characters (or digits alone) not even that.</summary>
+    private const int StrongAssignedPart = 8, MinAssignedPart = 4;
 
     /// <summary>
     /// The candidate secret <paramref name="joined"/> ends with, if any (M.ORCH-T982): a trailing token run (before at most a
     /// line break and its indent, which a wrap may continue) that isn't masked already and has begun a known shape past its
     /// prefix, or is a value after a secret-sounding name with a digit or a capital in it; or the first
-    /// <see cref="MinLiteralPart"/> or more characters of a Vault value. The earliest-starting one wins. Null when the text can't
-    /// be the start of a secret.
+    /// <see cref="MinLiteralPart"/> or more characters of a Vault value. The earliest-starting one is held (Hold). Null when the
+    /// text can't be the start of a secret.
+    /// <para>Only a strong one (Strong, the earliest of them) is masked when its hold runs out or the frame order needs it out
+    /// (M.ORCH-T1038): a begun shape; a value after a password name; a value after another name once it is
+    /// <see cref="StrongAssignedPart"/> characters with digits and letters; a Vault value's start once it is
+    /// <see cref="StrongLiteralPart"/> characters or half the value. A weak one (<c>apiKey = getT</c>, a Vault value's first 8
+    /// characters) is held in case the rest makes it a match, then sent as it is; <c>key=1</c> isn't held at all.</para>
     /// </summary>
-    private Candidate? FindCandidate(string joined, int[] map, bool[] marked)
+    private (Candidate? Hold, Candidate? Strong) FindCandidate(string joined, int[] map, bool[] marked)
     {
         var end = joined.Length;
-        if (end == 0) return null;
+        if (end == 0) return (null, null);
         var t = end;
         for (var spaces = 0; t > 0 && joined[t - 1] == ' ' && spaces < MaxWrapIndent; spaces++) t--;
         var breaks = 0;
         for (; t > 0 && joined[t - 1] == '\n' && breaks < MaxWrapBreaks; breaks++) t--;
         if (breaks == 0) t = end; // spaces alone end a run
         var runEnd = t;
-        Candidate? best = null;
-        void Consider(Candidate c)
+        Candidate? best = null, bestStrong = null;
+        void Consider(Candidate c, bool strong)
         {
             if (best is not { } b || c.Start < b.Start) best = c;
+            if (strong && (bestStrong is not { } s || c.Start < s.Start)) bestStrong = c;
         }
 
         if (runEnd > 0 && IsTokenChar(joined[runEnd - 1]) && !marked[map[runEnd - 1]])
@@ -385,7 +401,7 @@ internal sealed class StreamMasker
                         generated |= char.IsAsciiDigit(ch) || char.IsAsciiLetterUpper(ch);
                     }
                     if (!fits || dots > 2 || (shape.NeedsGenerated && !generated)) continue;
-                    Consider(new Candidate(s, s + shape.Prefix.Length, runEnd));
+                    Consider(new Candidate(s, s + shape.Prefix.Length, runEnd), strong: true);
                     break;
                 }
             }
@@ -396,7 +412,14 @@ internal sealed class StreamMasker
                 var m = AssignedTail.Match(joined, from, runEnd - from);
                 if (m.Success && m.Groups["v"] is { Length: > 0 } v
                               && v.Value.Any(ch => char.IsAsciiDigit(ch) || char.IsAsciiLetterUpper(ch)))
-                    Consider(new Candidate(v.Index, v.Index, runEnd));
+                {
+                    var value = v.Value;
+                    // A password is short and written, not generated: any start of one counts.
+                    var password = m.Groups["name"] is { Success: true, Length: > 0 } name && name.Value[0] is 'p' or 'P';
+                    var strong = password || (value.Length >= StrongAssignedPart && value.Any(char.IsAsciiDigit) && value.Any(char.IsAsciiLetter));
+                    if (password || (value.Length >= MinAssignedPart && !value.All(char.IsAsciiDigit)))
+                        Consider(new Candidate(v.Index, v.Index, runEnd), strong);
+                }
             }
             catch (System.Text.RegularExpressions.RegexMatchTimeoutException) { }
         }
@@ -415,12 +438,12 @@ internal sealed class StreamMasker
                 {
                     if (literal[len - 1] != last || !text.EndsWith(literal.AsSpan(0, len), StringComparison.Ordinal)) continue;
                     if (litEnd - len > 0 && IsTokenChar(joined[litEnd - len - 1]) && IsTokenChar(literal[0])) continue;
-                    Consider(new Candidate(litEnd - len, litEnd - len, litEnd));
+                    Consider(new Candidate(litEnd - len, litEnd - len, litEnd), strong: len >= StrongLiteralPart || len * 2 >= literal.Length);
                     break;
                 }
             }
         }
-        return best;
+        return (best, bestStrong);
     }
 
     /// <summary>The PEM private key bodies (with their END lines) in <paramref name="combined"/>: from the end of a BEGIN line,
