@@ -4,14 +4,21 @@ using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
 
-/// <summary>Copying an embedded terminal's selection (M.ORCH-T867): which chords take it, and that a missing or unreadable
-/// selection always leaves the key for the CLI (its ^C interrupt).</summary>
+/// <summary>Copying an embedded terminal's selection (M.ORCH-T867) and cutting it (M.ORCH-T866): which chords take it, and that a
+/// missing or unreadable selection always leaves the key for the CLI (its ^C interrupt, or ^X).</summary>
 public sealed class TerminalCopyTests
 {
     [Test]
     public void PlainCtrlCCopies() =>
         Assert.That(TerminalCopy.ChordOf(Key.C, ModifierKeys.Control), Is.EqualTo(TerminalCopy.Chord.Copy));
 
+    [Test]
+    public void PlainCtrlXCuts() =>
+        Assert.That(TerminalCopy.ChordOf(Key.X, ModifierKeys.Control), Is.EqualTo(TerminalCopy.Chord.Cut));
+
+    [TestCase(Key.X, ModifierKeys.None)]
+    [TestCase(Key.X, ModifierKeys.Control | ModifierKeys.Shift)]
+    [TestCase(Key.X, ModifierKeys.Control | ModifierKeys.Alt)]
     [TestCase(Key.C, ModifierKeys.None)]
     [TestCase(Key.C, ModifierKeys.Control | ModifierKeys.Shift)]
     [TestCase(Key.C, ModifierKeys.Control | ModifierKeys.Alt)]

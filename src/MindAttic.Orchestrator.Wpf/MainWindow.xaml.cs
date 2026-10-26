@@ -92,7 +92,7 @@ public partial class MainWindow : Window
         TerminalClip.Attach(TerminalPanesHost);
         TerminalKeyboard.Attach(this, TerminalPanesHost);
         PreviewKeyDown += TerminalPaste.OnPreviewKeyDown;
-        // Ctrl+C with a selection copies it (M.ORCH-T867); with none it still reaches the CLI as ^C.
+        // Ctrl+C / Ctrl+X with a selection copy / cut it (M.ORCH-T867, M.ORCH-T866); with none they still reach the CLI (^C, ^X).
         PreviewKeyDown += TerminalCopy.OnPreviewKeyDown;
         // Only the kept chords act while a terminal holds focus (M.ORCH-T846): the zoom keys and Esc go to the CLI.
         TerminalKeyboard.GateBindings(this, TerminalPanesHost);

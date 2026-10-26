@@ -48,7 +48,7 @@ internal static partial class TerminalKeyboard
     /// <summary>The chords the dashboard keeps even while a terminal holds focus (M.ORCH-T846): Ctrl+Tab and Ctrl+Shift+Tab
     /// (login tabs), Ctrl+Left/Right (CLI tabs), Ctrl+V and Shift+Insert (paste) and F5 (refresh). Every other key, Ctrl+C and
     /// Ctrl+X among them, belongs to the CLI (Ctrl+C is its interrupt; with a selection, <see cref="TerminalCopy"/> copies
-    /// it instead).</summary>
+    /// or cuts it instead).</summary>
     internal static bool IsKeptChord(Key key, ModifierKeys modifiers) =>
         (key == Key.F5 && modifiers == ModifierKeys.None)
         || (key == Key.Tab && modifiers is ModifierKeys.Control or (ModifierKeys.Control | ModifierKeys.Shift))
