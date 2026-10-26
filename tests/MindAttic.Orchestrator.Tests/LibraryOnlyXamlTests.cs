@@ -32,6 +32,7 @@ public sealed class LibraryOnlyXamlTests
     [
         "Application", "ResourceDictionary", "DataTemplate", "ItemsPanelTemplate", "Style", "Setter", "Trigger", "DataTrigger",
         "MultiTrigger", "MultiDataTrigger", "Condition", "Binding", "MultiBinding", "KeyBinding", "BooleanToVisibilityConverter",
+        "Thickness", "Double",
     ];
 
     /// <summary>Layout panels: they place their children and draw nothing of their own. Viewbox is here too (M.ORCH-T775): it

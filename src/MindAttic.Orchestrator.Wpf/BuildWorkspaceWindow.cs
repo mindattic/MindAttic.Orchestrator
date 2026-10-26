@@ -17,8 +17,8 @@ public sealed class BuildWorkspaceWindow : Window
     {
         IsReadOnly = true, FontFamily = new System.Windows.Media.FontFamily("Consolas"), FontSize = 12,
     };
-    private readonly ProgressBar bar = new() { IsIndeterminate = true, Height = 4, Margin = new Thickness(0, 8, 0, 8) };
-    private readonly Button done = new() { Content = "Working…", IsEnabled = false, Padding = new Thickness(20, 6, 20, 6), HorizontalAlignment = HorizontalAlignment.Right };
+    private readonly ProgressBar bar = new() { IsIndeterminate = true, Height = 4 };
+    private readonly Button done = new() { Content = "Working…", IsEnabled = false, HorizontalAlignment = HorizontalAlignment.Right };
     private readonly MaModal question = new() { DialogWidth = 460 };
     private readonly Func<IProgress<string>, Task<BootstrapResult>> clone;
     private TaskCompletionSource<bool>? answer;
@@ -41,12 +41,16 @@ public sealed class BuildWorkspaceWindow : Window
         output.TextWrapping = TextWrapping.NoWrap;
         bar.SetResourceReference(StyleProperty, "MaProgressBar");
         done.SetResourceReference(StyleProperty, "MaPrimaryButton");
-        var panel = new DockPanel { Margin = new Thickness(16) };
-        var header = new TextBlock { Text = $"Cloning into {folder}", FontSize = 15, Margin = new Thickness(0, 0, 0, 4) };
+        var panel = new DockPanel();
+        panel.SetResourceReference(MarginProperty, "SpaceL");
+        var header = new TextBlock { Text = $"Cloning into {folder}", FontSize = 15 };
+        header.SetResourceReference(MarginProperty, "SpaceBXS");
+        bar.SetResourceReference(MarginProperty, "SpaceH0VS");
+        done.SetResourceReference(PaddingProperty, "SpaceHLVS");
         DockPanel.SetDock(header, Dock.Top);
         DockPanel.SetDock(bar, Dock.Top);
         DockPanel.SetDock(done, Dock.Bottom);
-        done.Margin = new Thickness(0, 10, 0, 0);
+        done.SetResourceReference(MarginProperty, "SpaceTS");
         done.Click += (_, _) => { DialogResult = succeeded; };
         panel.Children.Add(header);
         panel.Children.Add(bar);
@@ -87,7 +91,8 @@ public sealed class BuildWorkspaceWindow : Window
     private Task<bool> AskAsync(string title, string detail)
     {
         answer = new TaskCompletionSource<bool>();
-        var no = new Button { Content = "_No", Margin = new Thickness(0, 0, 8, 0) };
+        var no = new Button { Content = "_No" };
+        no.SetResourceReference(MarginProperty, "SpaceRS");
         var yes = new Button { Content = "_Yes", IsDefault = true };
         no.SetResourceReference(StyleProperty, "MaButton");
         yes.SetResourceReference(StyleProperty, "MaPrimaryButton");

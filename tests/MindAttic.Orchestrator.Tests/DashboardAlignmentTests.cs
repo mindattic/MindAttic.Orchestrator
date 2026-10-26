@@ -104,9 +104,16 @@ public sealed class DashboardAlignmentTests
         var root = TestContext.CurrentContext.TestDirectory;
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         var doc = XDocument.Load(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
+        var appDoc = XDocument.Load(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "App.xaml"));
         XElement Named(string name) => doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == name);
-        static double[] Sides(string? thickness)
+        double[] Sides(string? thickness)
         {
+            // A spacing resource (M.ORCH-T853, e.g. {StaticResource SpaceHXLV0}) is looked up in App.xaml's scale.
+            if (thickness is { } r && r.StartsWith("{StaticResource ") && r.EndsWith('}'))
+            {
+                var key = r["{StaticResource ".Length..^1].Trim();
+                thickness = (string?)appDoc.Descendants().Single(e => e.Name.LocalName == "Thickness" && (string?)e.Attribute(X + "Key") == key);
+            }
             var parts = (thickness ?? "0").Split(',').Select(v => double.Parse(v, CultureInfo.InvariantCulture)).ToArray();
             return parts.Length switch { 1 => [parts[0], parts[0]], 2 => [parts[0], parts[0]], _ => [parts[0], parts[2]] };
         }
