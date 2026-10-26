@@ -29,6 +29,13 @@
     <!-- TermHost's protocol, options and replay pieces (M.ORCH-T924, M.ORCH-T927). -->
     <ProjectReference Include="..\..\src\MindAttic.Orchestrator.Term\MindAttic.Orchestrator.Term.csproj" />
     <ProjectReference Include="..\..\src\MindAttic.Orchestrator.TermHost\MindAttic.Orchestrator.TermHost.csproj" />
+    <!-- The team gateway (M.ORCH-T933), on a TestServer. -->
+    <ProjectReference Include="..\..\src\MindAttic.Orchestrator.Gateway\MindAttic.Orchestrator.Gateway.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.13" />
   </ItemGroup>
 
 </Project>
