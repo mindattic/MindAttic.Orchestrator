@@ -32,16 +32,18 @@ internal sealed class Ring
         int searchFrom, oldLength;
         if (chunk.Length >= buffer.Length)
         {
-            chunk[^buffer.Length..].CopyTo(buffer);
-            length = buffer.Length;
+            var kept = chunk[SafeCut(chunk, chunk.Length - buffer.Length)..];
+            kept.CopyTo(buffer);
+            length = kept.Length;
             searchFrom = oldLength = 0;
         }
         else
         {
             if (length + chunk.Length > buffer.Length)
             {
-                // Drop an eighth more than needed, so the shifting is amortized.
+                // Drop an eighth more than needed, so the shifting is amortized; and on to a safe place to start (M.ORCH-T998).
                 var drop = Math.Min(length, length + chunk.Length - buffer.Length + buffer.Length / 8);
+                drop = SafeCut(buffer.AsSpan(0, length), drop);
                 Buffer.BlockCopy(buffer, drop, buffer, 0, length - drop);
                 length -= drop;
             }
@@ -61,6 +63,62 @@ internal sealed class Ring
             length -= start;
         }
         return true;
+    }
+
+    /// <summary>How far past the cut a line feed is looked for, and how far before it the start of an escape sequence.</summary>
+    private const int LineSearch = 64 * 1024, SequenceLookBack = 512;
+
+    /// <summary>
+    /// Where the bytes kept from <paramref name="data"/> may start, at or after <paramref name="from"/> (M.ORCH-T998), so a ring
+    /// replay never begins mid UTF-8 character or mid escape sequence: just after the next line feed when one is near, else
+    /// past the end of an escape sequence the cut falls inside, and then on to a UTF-8 lead byte.
+    /// </summary>
+    internal static int SafeCut(ReadOnlySpan<byte> data, int from)
+    {
+        if (from <= 0) return 0;
+        if (from >= data.Length) return data.Length;
+        var lf = data.Slice(from, Math.Min(LineSearch, data.Length - from)).IndexOf((byte)'\n');
+        if (lf >= 0) return from + lf + 1;
+
+        var at = from;
+        var back = Math.Max(0, from - SequenceLookBack);
+        var esc = data[back..from].LastIndexOf(Esc);
+        if (esc >= 0)
+        {
+            var end = SequenceEnd(data, back + esc);
+            // Unterminated in the ring: start at the next sequence, if any.
+            if (end < 0) { var next = data[from..].IndexOf(Esc); at = next < 0 ? data.Length : from + next; }
+            else if (end > from) at = end;
+        }
+        while (at < data.Length && (data[at] & 0xc0) == 0x80) at++;
+        return at;
+    }
+
+    private const byte Esc = 0x1b;
+
+    /// <summary>The end (exclusive) of the escape sequence at <paramref name="at"/>; -1 when it doesn't end in <paramref name="data"/>.</summary>
+    private static int SequenceEnd(ReadOnlySpan<byte> data, int at)
+    {
+        var i = at + 1;
+        if (i >= data.Length) return -1;
+        switch (data[i])
+        {
+            case (byte)'[':
+                for (i++; i < data.Length; i++)
+                    if (data[i] is >= 0x40 and <= 0x7e) return i + 1;
+                return -1;
+            case (byte)']' or (byte)'P' or (byte)'_' or (byte)'^' or (byte)'X':
+                for (i++; i < data.Length; i++)
+                {
+                    if (data[i] == 0x07) return i + 1;
+                    if (data[i] == Esc) return i + 1 < data.Length ? i + 2 : -1;
+                }
+                return -1;
+            default:
+                // ESC, intermediates, then one final byte (ESC c, ESC ( B, ESC 7).
+                while (i < data.Length && data[i] is >= 0x20 and <= 0x2f) i++;
+                return i < data.Length ? i + 1 : -1;
+        }
     }
 
     private int LastClear(byte[] clear, int searchFrom, int oldLength)
