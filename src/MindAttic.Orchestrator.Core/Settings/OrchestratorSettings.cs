@@ -306,6 +306,10 @@ public sealed record OrchestratorSettings
     /// labelled "orchestrator" and CI runs that failed on main as tickets (see <see cref="Tickets.GitHubIntake"/>).</summary>
     public bool GitHubIntake { get; init; }
 
+    /// <summary>The team gateway (M.ORCH-T933): off by default; when on, the daemon keeps it running as a per-user process
+    /// (see <see cref="Sessions.GatewaySupervisor"/>). <c>orchestrator gateway</c> shows and changes it.</summary>
+    public GatewaySettings Gateway { get; init; } = new();
+
     /// <summary>Manual priorities as settings.json kept them before the ticket database (M.ORCH-T384): moved into
     /// <c>ticket_queue</c> once by <see cref="Tickets.QueueImport"/> and dropped here, like <see cref="Approved"/>.</summary>
     public Dictionary<string, int>? Priorities { get; set; }

@@ -91,6 +91,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         var lastStates = new Dictionary<string, RepoState>(StringComparer.OrdinalIgnoreCase);
         var tick = new TickTimer();
         var termHostsCleanedUtc = DateTime.MinValue;
+        var gateway = new GatewaySupervisor((level, line) => Say(level, line));
         while (!cancel.IsCancellationRequested)
         {
             tick.Start();
@@ -143,6 +144,11 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                     foreach (var name in Term.TermHostInstalls.Cleanup(Term.TermHostInstalls.Root(new Setup.Installer().InstallDir)))
                         Say(LogEventLevel.Information, $"removed the unused TermHost {name}");
                 }
+                // The team gateway (M.ORCH-T933), off unless turned on: started, restarted or stopped to match the settings. Its
+                // trouble is contained here: it only ever costs remote viewers, never a tick or a TermHost.
+                try { gateway.Tick(s.Gateway, DateTime.UtcNow); }
+                catch (Exception ex) { Say(LogEventLevel.Warning, $"team gateway: {ex.Message}"); }
+                tick.Lap("team gateway");
 
                 cycler.PruneMarks();
                 var roster = CliRoster.Build(cycler, aggregator.BillingSwitch, [.. snapshot.Repos.SelectMany(r => r.Hosts)], DateTime.UtcNow);

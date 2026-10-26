@@ -115,6 +115,7 @@ internal static class CliApp
             config.AddCommand<ShowCommand>("show").WithDescription("The sessions the orchestrator ran on a ticket (the ticket itself, its history and commits: tickets ticket show).");
             config.AddCommand<UsageReportCommand>("report").WithDescription("The usage report: every member's 5-hour and weekly use and resets, points left to the weekly target, how old each reading is and whether it's accurate; --detail adds the CLIs' spend and the API key's; --since <date>, --csv, --json; --md/--html <file> write it to share.");
             config.AddCommand<ReportCommand>("tokens").WithDescription("Uncached tokens by week, repo, provider and ticket type, and cost per completed ticket by model; --csv writes it out (was report before M.ORCH-T685).");
+            config.AddCommand<GatewayCommand>("gateway").WithDescription("The team gateway (M.ORCH-T933), off by default: on|off, and where it listens (--bind, --port) and its certificate (--cert-path, --cert-thumbprint, --dev-cert-names); shows whether it runs and its certificate pin.");
             config.AddCommand<BillingCommand>("billing").WithDescription("Who every CLI bills (Claude Team or the Vault's API key) and each open CLI's own billing; team or api switches every CLI.");
             config.AddBranch("accounts", a =>
             {
