@@ -91,18 +91,38 @@ internal static partial class TerminalKeyboard
         }
     }
 
-    /// <summary>True while a terminal has the keyboard: the window's own key bindings (Esc) should stand aside.</summary>
+    /// <summary>True while a terminal has the keyboard: the window's own key bindings (Esc) should stand aside. The focused
+    /// element is the renderer's HwndHost, inside a tab's RelayTerminal (M.ORCH-T926) or its in-process fallback.</summary>
     public static bool HoldsFocus(FrameworkElement terminals) =>
-        terminals.IsVisible && terminals.IsKeyboardFocusWithin && Keyboard.FocusedElement is HwndHost;
+        terminals.IsVisible && terminals.IsKeyboardFocusWithin && Keyboard.FocusedElement is HwndHost host
+        && ViewModels.TerminalPaneViewModel.Of(host) is not null;
 
     /// <summary>Keys WPF would otherwise act on (scroll, move focus) before the CLI sees them.</summary>
     internal static bool IsForwarded(Key key, ModifierKeys modifiers) =>
         (modifiers & (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Windows)) == 0
         && key is Key.Left or Key.Right or Key.Up or Key.Down or Key.Home or Key.End or Key.PageUp or Key.PageDown;
 
+    /// <summary>A navigation key as the win32-input-mode events the renderer itself produces (ESC[Vk;Sc;Uc;Kd;Cs;Rc_), down then
+    /// up, with ENHANCED_KEY (256: the arrows, Home, End and Page keys are the grey ones) and SHIFT_PRESSED (16) when held.</summary>
+    internal static string Win32Key(int vk, uint scanCode, bool shift)
+    {
+        var state = 256 | (shift ? 16 : 0);
+        return $"\u001b[{vk};{scanCode};0;1;{state};1_\u001b[{vk};{scanCode};0;0;{state};1_";
+    }
+
     private static void OnPreviewKeyDown(FrameworkElement terminals, KeyEventArgs e)
     {
         if (e.Handled || !IsForwarded(e.Key, Keyboard.Modifiers) || !HoldsFocus(terminals)) return;
+        // A hosted tab (M.ORCH-T926, Phase 0 lesson 3): the key goes straight to the CLI through its relay connection, encoded
+        // as the renderer encodes every other key. Posting WM_KEYDOWN to the renderer lost keys and reordered them against
+        // typed text.
+        if (TerminalPaste.Focused(terminals) is { Relay.Connection: { } connection })
+        {
+            var key = KeyInterop.VirtualKeyFromKey(e.Key);
+            connection.WriteInput(Win32Key(key, MapVirtualKey((uint)key, 0), (Keyboard.Modifiers & ModifierKeys.Shift) != 0));
+            e.Handled = true;
+            return;
+        }
         var target = GetFocus();
         if (target == IntPtr.Zero) return;
         var vk = KeyInterop.VirtualKeyFromKey(e.Key);

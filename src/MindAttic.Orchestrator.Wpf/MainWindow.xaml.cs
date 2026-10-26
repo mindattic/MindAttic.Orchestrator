@@ -75,11 +75,7 @@ public partial class MainWindow : Window
         model.AllTerminals.Panes.CollectionChanged += (_, e) =>
         {
             foreach (var gone in e.OldItems?.OfType<TerminalPaneViewModel>() ?? []) TerminalPanesHost.Children.Remove(gone.Control);
-            foreach (var added in e.NewItems?.OfType<TerminalPaneViewModel>() ?? [])
-            {
-                TerminalPanesHost.Children.Add(added.Control);
-                TerminalPaste.Track(added);
-            }
+            foreach (var added in e.NewItems?.OfType<TerminalPaneViewModel>() ?? []) TerminalPanesHost.Children.Add(added.Control);
         };
         TerminalClip.Attach(TerminalPanesHost);
         TerminalKeyboard.Attach(this, TerminalPanesHost);
@@ -115,6 +111,9 @@ public partial class MainWindow : Window
         {
             // The last run's tabs, when it didn't close cleanly (M.ORCH-T862): offered before the first refresh, so a restored
             // Launcher menu pane counts as its login's and the refresh doesn't open a second; reselected once the tabs are up.
+            // Every CLI still running in its own TermHost gets its tab back first (M.ORCH-T926): a crash or a redeploy of the
+            // dashboard never ended it, so it needs no restore.
+            if (restoreOnLoad) await model.AllTerminals.ReattachAsync();
             var restored = restoreOnLoad && SessionRestore.Offer(this, model);
             await model.RefreshAsync();
             if (restored) model.ReselectRestored();
@@ -183,6 +182,8 @@ public partial class MainWindow : Window
         bus.On<Status.TicketBusEvent>(Status.AppBus.Ticket, (_, change) => OnTicketChange(change), Status.AppBus.Version)
             .On<Status.AppPresence>(Status.AppBus.Presence, (_, presence) => model.Presences.Note(presence), Status.AppBus.Version)
             .On<Status.ShowWorkerRequest>(Status.AppBus.ShowWorker, (_, request) => OnShowWorker(request), Status.AppBus.Version);
+        // Hosted CLIs (M.ORCH-T926): one started elsewhere (the Launcher, M.LNCH-T82) gets a tab, one that ended is marked ended.
+        bus.On<Term.TermSessionEvent>(Term.TermBus.Kind, (_, session) => model.AllTerminals.OnTermSession(session), Term.TermBus.Version);
         // The roster, the orgs, the settings, the pause and the reminders (M.ORCH-T891), pushed by whoever changed them: with
         // these, nothing the dashboard shows needs a timed read while the stream is up.
         bus.On<Status.MembersPayload>(Status.StateBus.Members, (_, p) => OnPushedState(p), Status.StateBus.Version)

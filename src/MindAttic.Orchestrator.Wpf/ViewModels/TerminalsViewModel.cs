@@ -8,35 +8,46 @@ using EasyWindowsTerminalControl.Internals;
 using Microsoft.Terminal.Wpf;
 using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Sessions;
+using MindAttic.Orchestrator.Term;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
 /// <summary>
-/// One CLI running in a person's Terminals panel (M.ORCH-T810): a true terminal, the Windows Terminal renderer
-/// (Microsoft.Terminal.Wpf, GPU drawn, full ANSI and 24-bit color) over ConPTY, through EasyWindowsTerminalControl, so an
-/// interactive CLI like Claude Code renders as it does in Windows Terminal. Plain stream redirection can't: it needs a TTY.
+/// One CLI in a person's Terminals panel (M.ORCH-T810): a true terminal, the Windows Terminal renderer (Microsoft.Terminal.Wpf,
+/// GPU drawn, full ANSI and 24-bit color), so an interactive CLI like Claude Code renders as it does in Windows Terminal.
+/// <para>The CLI lives in its own TermHost process (M.ORCH-T926): the tab is a <see cref="RelayTerminal"/> attached to the host's
+/// pipe, so a dashboard crash, restart or redeploy never kills it, and the next dashboard reattaches the tab. When no host is
+/// installed or one fails to start, the tab falls back to an in-process EasyTerminalControl over ConPTY, as before T926.</para>
 /// Its tab carries the login's initials badge and color, as its Windows Terminal tab would (M.ORCH-T616).
 /// </summary>
 public sealed class TerminalPaneViewModel : ObservableObject
 {
-    private bool isSelected, ended;
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<FrameworkElement, TerminalPaneViewModel> ByControl = new();
+    private bool isSelected, ended, hostEnded, killRequested;
+    private string? pipeName;
+    private TermModes localModes;
 
-    public TerminalPaneViewModel(PaneRequest request, string? pipeName = null)
+    /// <summary>A tab that runs <paramref name="request"/> in the dashboard's own process (the fallback, and what tests build);
+    /// with <paramref name="hosted"/> its terminal waits for <see cref="Attach"/> to a TermHost instead.</summary>
+    public TerminalPaneViewModel(PaneRequest request, string? pipeName = null, bool hosted = false)
     {
         Request = request;
-        Control = new EasyTerminalControl
-        {
-            StartupCommandLine = request.ProcessCommandLine(pipeName),
-            WorkingDirectory = request.Directory,
-            // Windows Terminal's own Campbell scheme: without a theme the renderer's 16-color table isn't set, and the CLI's
-            // colors were lost (what M.ORCH-T751 removed the old panes over).
-            Theme = Campbell,
-            Visibility = Visibility.Hidden,
-        };
+        this.pipeName = pipeName;
+        Control = new TerminalView { Visibility = Visibility.Hidden };
+        ByControl.AddOrUpdate(Control, this);
         System.Windows.Automation.AutomationProperties.SetName(Control, request.Title);
         TabBrush = request.TabColor is { } hex && TryBrush(hex) is { } brush ? brush : Brushes.Gray;
         BadgeForeground = ReadableOn(TabBrush);
         Login = request.Login;
+        if (hosted) UseRelay();
+        else UseLocal();
+    }
+
+    /// <summary>A tab reattached to a live hosted session (dashboard start, or one started elsewhere).</summary>
+    internal TerminalPaneViewModel(PaneRequest request, TermSessionRecord session) : this(request, hosted: true)
+    {
+        Attach(session);
+        if (session.Exited) Ended = true;
     }
 
     /// <summary>Windows Terminal's default Campbell scheme, as the renderer's COLORREFs (0x00BBGGRR).</summary>
@@ -62,14 +73,38 @@ public sealed class TerminalPaneViewModel : ObservableObject
         catch (Exception ex) when (ex is FormatException or NotSupportedException) { return null; }
     }
 
+    /// <summary>The tab whose <see cref="Control"/> is <paramref name="element"/>, or holds it; null for none.</summary>
+    internal static TerminalPaneViewModel? Of(DependencyObject? element)
+    {
+        for (var at = element; at is not null; at = VisualTreeHelper.GetParent(at) ?? LogicalTreeHelper.GetParent(at))
+            if (at is FrameworkElement fe && ByControl.TryGetValue(fe, out var pane)) return pane;
+        return null;
+    }
+
     public PaneRequest Request { get; }
 
     /// <summary>The person whose page it's on: its CLI's login's email, null for the global login. The login it was opened on
     /// until the dashboard sees its CLI on another (moved with "Move to").</summary>
     public string? Login { get; internal set; }
 
-    /// <summary>The terminal itself: kept for the tab's whole life, since a new control would start a new process.</summary>
-    public EasyTerminalControl Control { get; }
+    /// <summary>The tab's element in the panel's host grid, kept for the tab's whole life; it holds <see cref="Relay"/> or
+    /// <see cref="Local"/>.</summary>
+    public FrameworkElement Control { get; }
+
+    /// <summary>The terminal attached to the CLI's TermHost; null for an in-process tab.</summary>
+    internal RelayTerminal? Relay { get; private set; }
+
+    /// <summary>The in-process fallback terminal; null for a hosted tab.</summary>
+    internal EasyTerminalControl? Local { get; private set; }
+
+    /// <summary>Whether its CLI runs in a TermHost (it outlives the dashboard).</summary>
+    public bool IsHosted => Relay is not null;
+
+    /// <summary>The hosted session's id, set before its host starts; null for an in-process tab.</summary>
+    public string? TermId { get; internal set; }
+
+    /// <summary>The hosted session once its host registered (or the one reattached to).</summary>
+    public TermSessionRecord? Session { get; private set; }
 
     public string Title => Request.Title;
     public string Badge => Request.Initials is { Length: > 0 } i ? $"{i}:" : "";
@@ -112,31 +147,146 @@ public sealed class TerminalPaneViewModel : ObservableObject
 
     public string StateText => Ended ? "ended" : "";
 
-    /// <summary>The process ConPTY started (the PowerShell that runs the command); null before it starts.</summary>
-    internal int? RootPid => (Control.ConPTYTerm?.Process as ProcessFactory.WrappedProcess)?.Pid;
+    /// <summary>The process its CLI runs under: the TermHost for a hosted tab (the Launcher host and the CLI are its
+    /// descendants), else the process ConPTY started (the PowerShell that runs the command); null before it starts.</summary>
+    internal int? RootPid => Relay is not null ? Session?.HostPid : (Local?.ConPTYTerm?.Process as ProcessFactory.WrappedProcess)?.Pid;
 
     internal bool HasExited
     {
         get
         {
-            try { return Control.ConPTYTerm?.Process is { } p && p.HasExited; }
+            if (Relay is not null) return hostEnded;
+            try { return Local?.ConPTYTerm?.Process is { } p && p.HasExited; }
             catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { return true; }
         }
     }
 
-    /// <summary>Releases the terminal control once its tab is closed; never throws.</summary>
+    /// <summary>Whether its CLI asked for bracketed paste (T868): from the host's Modes frames when hosted, so a reattached tab
+    /// knows at once; from the output when in-process.</summary>
+    internal bool Bracketed => ((Relay?.Modes ?? localModes) & TermModes.BracketedPaste) != 0;
+
+    /// <summary>The in-process tab's bracketed-paste state, as <see cref="TerminalPaste"/> reads it from the output.</summary>
+    internal void SetLocalBracketed(bool on) => localModes = on ? localModes | TermModes.BracketedPaste : localModes & ~TermModes.BracketedPaste;
+
+    /// <summary>Writes <paramref name="data"/> to the CLI as typed input; false when there's nowhere to write it yet.</summary>
+    internal bool WriteInput(string data)
+    {
+        if (Relay is { Connection: { } connection })
+        {
+            connection.WriteInput(data);
+            return true;
+        }
+        if (Local?.ConPTYTerm is { } term)
+        {
+            term.WriteToTerm(data.AsSpan());
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>The renderer's selected text, clearing it (copy and cut, T866/T867).</summary>
+    internal string? ReadSelection() => (Relay?.Terminal ?? Local?.Terminal)?.GetSelectedText();
+
+    private void UseRelay()
+    {
+        var relay = new RelayTerminal(Campbell);
+        relay.Exited += _ => { hostEnded = true; Ended = true; };
+        relay.Detached += why =>
+        {
+            if (killRequested) return;
+            OrchestratorLog.For("Terminals").Information("{Title:l}: detached from its TermHost ({Why:l})", Title, why);
+            hostEnded = true;
+            Ended = true;
+        };
+        Relay = relay;
+        ((TerminalView)Control).Child = relay;
+    }
+
+    private void UseLocal()
+    {
+        var local = new EasyTerminalControl
+        {
+            StartupCommandLine = Request.ProcessCommandLine(pipeName),
+            WorkingDirectory = Request.Directory,
+            // Windows Terminal's own Campbell scheme: without a theme the renderer's 16-color table isn't set, and the CLI's
+            // colors were lost (what M.ORCH-T751 removed the old panes over).
+            Theme = Campbell,
+        };
+        Local = local;
+        ((TerminalView)Control).Child = local;
+        TerminalPaste.Track(this, local);
+    }
+
+    /// <summary>Attaches the tab to its TermHost's session.</summary>
+    internal void Attach(TermSessionRecord session)
+    {
+        Session = session;
+        TermId = session.Id;
+        Relay?.Attach(session.Pipe, session.Protocol);
+    }
+
+    /// <summary>Its host couldn't start: the CLI runs in this process after all, as before T926.</summary>
+    internal void FallBackToLocal()
+    {
+        if (Local is not null) return;
+        var old = Relay;
+        Relay = null;
+        TermId = null;
+        Session = null;
+        // Out of the window first: its native window is released only once it's no longer shown.
+        ((TerminalView)Control).Child = null;
+        old?.Dispose();
+        UseLocal();
+    }
+
+    /// <summary>Releases the terminal once its tab is closed: a hosted tab's pipe (the host was asked to end first) and every
+    /// native window. Never throws.</summary>
     internal void DisposeControl()
     {
-        try { (Control as IDisposable)?.Dispose(); }
+        try
+        {
+            if (Relay is { } relay) relay.Dispose();
+            else if (Local is { } local)
+            {
+                local.DisconnectConPTYTerm();
+                TerminalView.DisposeWindows(local);
+            }
+        }
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Disposing a closed terminal failed; contained"); }
     }
 
-    /// <summary>Ends its CLI: the whole tree under the tab's process.</summary>
+    /// <summary>Ends its CLI: the whole tree under the tab's process. A hosted tab's host is killed, which takes its ConPTY and
+    /// CLI with it; one still starting is killed as soon as it registers.</summary>
     internal void Kill()
     {
+        if (Relay is not null || TermId is not null)
+        {
+            killRequested = true;
+            if (Session is { } session) KillHost(session);
+            return;
+        }
         // A process that's already gone is a no-op, however it reports that (it can exit just before the kill).
-        try { Control.ConPTYTerm?.Process?.Kill(true); }
+        try { Local?.ConPTYTerm?.Process?.Kill(true); }
         catch (Exception) { }
+    }
+
+    /// <summary>Whether <see cref="Kill"/> was asked before its host registered.</summary>
+    internal bool KillRequested => killRequested;
+
+    /// <summary>Kills <paramref name="session"/>'s host and everything under it, when its pid is still that host (not reused).</summary>
+    internal static void KillHost(TermSessionRecord session)
+    {
+        try
+        {
+            if (TermSessions.HostStartOf(session.HostPid) is not { } started || (started - session.HostStartUtc).Duration() > TimeSpan.FromSeconds(1)) return;
+            using var process = System.Diagnostics.Process.GetProcessById(session.HostPid);
+            process.Kill(entireProcessTree: true);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException or AggregateException) { }
+        finally
+        {
+            TermPaneFile.Delete(session.Id);
+        }
     }
 }
 
@@ -145,10 +295,13 @@ public sealed class TerminalPaneViewModel : ObservableObject
 /// login's tab. Each person's page shows its own (<see cref="PersonTerminalsViewModel"/>); the terminals themselves all live in
 /// the panel's one host grid, since a native terminal can't be re-templated without starting over, and only the shown person's
 /// chosen one is visible (<see cref="SelectedPane"/>).
+/// <para>Each CLI starts in its own TermHost (M.ORCH-T926) and the tab attaches to it; on start the dashboard reattaches every
+/// live hosted session (<see cref="ReattachAsync"/>) and follows the <c>term-session</c> bus kind (<see cref="OnTermSession"/>).</para>
 /// </summary>
 public sealed class TerminalsViewModel : ObservableObject
 {
     private readonly string? pipeName;
+    private readonly HashSet<string> launching = new(StringComparer.OrdinalIgnoreCase);
     private TerminalPaneViewModel? selected;
 
     public TerminalsViewModel(string? pipeName = null)
@@ -156,6 +309,16 @@ public sealed class TerminalsViewModel : ObservableObject
         this.pipeName = pipeName;
         CloseCommand = new RelayCommand(p => { if (p is TerminalPaneViewModel pane) Close(pane); });
     }
+
+    /// <summary>Whether new CLIs start in a TermHost (when one is installed); off, every tab runs in this process.</summary>
+    public bool UseTermHost { get; init; } = true;
+
+    /// <summary>Starts a hosted CLI and returns its record; blocks (the default is <see cref="TermLauncher.Start(TermLaunchSpec, TimeSpan?)"/>).
+    /// Tests replace it.</summary>
+    internal Func<TermLaunchSpec, TermSessionRecord> Launch { get; init; } = spec => TermLauncher.Start(spec);
+
+    /// <summary>Whether a TermHost can be started (the default looks for one). Tests replace it.</summary>
+    internal Func<bool> HostAvailable { get; init; } = () => TermLauncher.FindHost() is not null;
 
     public ObservableCollection<TerminalPaneViewModel> Panes { get; } = [];
 
@@ -190,12 +353,21 @@ public sealed class TerminalsViewModel : ObservableObject
 
     public ICommand CloseCommand { get; }
 
-    /// <summary>Opens <paramref name="request"/> as a new terminal tab and brings it up; returns an error, or null.</summary>
+    /// <summary>Opens <paramref name="request"/> as a new terminal tab and brings it up; returns an error, or null. Its CLI
+    /// starts in a TermHost off the UI thread and the tab attaches once it registers; without a host, or when it fails, the
+    /// tab runs the CLI in this process instead (logged).</summary>
     public string? Open(PaneRequest request)
     {
         if (request.Problem() is { } problem) return problem;
+        var hosted = false;
+        if (UseTermHost)
+        {
+            try { hosted = HostAvailable(); }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Terminals").Error(ex, "Looking for TermHost failed"); }
+            if (!hosted) OrchestratorLog.For("Terminals").Warning("TermHost isn't installed: {Repo:l} runs inside the dashboard", request.Name);
+        }
         TerminalPaneViewModel pane;
-        try { pane = new TerminalPaneViewModel(request, pipeName); }
+        try { pane = new TerminalPaneViewModel(request, pipeName, hosted); }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or InvalidOperationException or System.ComponentModel.Win32Exception)
         {
             OrchestratorLog.For("Terminals").Error(ex, "Couldn't open a terminal for {Repo:l}", request.Name);
@@ -203,10 +375,118 @@ public sealed class TerminalsViewModel : ObservableObject
         }
         Panes.Add(pane);
         Opened?.Invoke(pane);
+        if (hosted) _ = StartHostedAsync(pane);
         return null;
     }
 
-    /// <summary>Closes <paramref name="pane"/>, ending its CLI.</summary>
+    /// <summary>Starts <paramref name="pane"/>'s CLI under a TermHost off the UI thread, then attaches the tab, or falls back to
+    /// an in-process terminal when the host can't start. Never throws.</summary>
+    private async Task StartHostedAsync(TerminalPaneViewModel pane)
+    {
+        var dispatcher = pane.Control.Dispatcher;
+        var id = TermProtocol.NewSessionId();
+        pane.TermId = id;
+        lock (launching) launching.Add(id);
+        TermSessionRecord? record = null;
+        Exception? failure = null;
+        try
+        {
+            // The tab's look goes beside the host's record, so a restarted dashboard reattaches it as it was.
+            TermPaneFile.Write(id, pane.Request);
+            var spec = TermLaunchSpec.From(pane.Request, pipeName) with { Id = id };
+            record = await Task.Run(() => Launch(spec)).ConfigureAwait(false);
+        }
+        catch (Exception ex) { failure = ex; }
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            try
+            {
+                if (record is null)
+                {
+                    OrchestratorLog.For("Terminals").Error(failure, "TermHost couldn't start {Repo:l}; it runs inside the dashboard instead", pane.Request.Name);
+                    TermPaneFile.Delete(id);
+                    if (Panes.Contains(pane) && !pane.KillRequested) pane.FallBackToLocal();
+                    return;
+                }
+                if (!Panes.Contains(pane) || pane.KillRequested)
+                {
+                    // Closed while its host was starting: the host is ended now that it's known.
+                    TerminalPaneViewModel.KillHost(record);
+                    return;
+                }
+                pane.Attach(record);
+                Changed?.Invoke();
+            }
+            catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Attaching {Repo:l} to its TermHost failed; contained", pane.Request.Name); }
+            finally { lock (launching) launching.Remove(id); }
+        });
+    }
+
+    /// <summary>A tab's hosted session became known (the restore file records it, M.ORCH-T928).</summary>
+    public event Action? Changed;
+
+    /// <summary>On dashboard start: a tab for every live hosted session no tab shows yet, on its person's page (by its login or
+    /// config dir), and tab files of sessions that are gone deleted. The registry is read off the UI thread. Never throws.</summary>
+    public async Task ReattachAsync()
+    {
+        try
+        {
+            var sessions = await Task.Run(() =>
+            {
+                var live = TermSessions.Enumerate();
+                TermPaneFile.Prune(live.Select(s => s.Id));
+                return live.Select(s => (Session: s, Request: TermPaneFile.Read(s.Id))).ToList();
+            });
+            foreach (var (session, request) in sessions) Reattach(session, request);
+        }
+        catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Reattaching the hosted CLIs failed; contained"); }
+    }
+
+    /// <summary>A tab attached to <paramref name="session"/>, unless one shows it already or this dashboard is starting it;
+    /// <paramref name="request"/> is its tab file's, else one built from the record. Returns the tab, or null.</summary>
+    internal TerminalPaneViewModel? Reattach(TermSessionRecord session, PaneRequest? request = null)
+    {
+        try
+        {
+            lock (launching) if (launching.Contains(session.Id)) return null;
+            if (Panes.Any(p => string.Equals(p.TermId, session.Id, StringComparison.OrdinalIgnoreCase))) return null;
+            request ??= TermPaneFile.FromRecord(session);
+            var pane = new TerminalPaneViewModel(request, session);
+            Panes.Add(pane);
+            OrchestratorLog.For("Terminals").Information("Reattached {Title:l} to its TermHost {Id:l} (pid {Pid})", request.Title, session.Id, session.HostPid);
+            return pane;
+        }
+        catch (Exception ex)
+        {
+            OrchestratorLog.For("Terminals").Error(ex, "Reattaching TermHost session {Id:l} failed; contained", session.Id);
+            return null;
+        }
+    }
+
+    /// <summary>A <c>term-session</c> bus message (UI thread): a session started elsewhere (the Launcher, M.LNCH-T82) gets a tab;
+    /// one whose CLI exited, or whose host ended, is marked ended. Never throws.</summary>
+    public void OnTermSession(TermSessionEvent message)
+    {
+        try
+        {
+            var pane = Panes.FirstOrDefault(p => string.Equals(p.TermId, message.Id, StringComparison.OrdinalIgnoreCase));
+            switch (message.Event)
+            {
+                case TermSessionEvents.Started when pane is null:
+                    var record = TermSessions.Get(message.Id) ?? message.ToRecord();
+                    Reattach(record, TermPaneFile.Read(record.Id));
+                    break;
+                case TermSessionEvents.Changed when pane is not null && message.Exited:
+                case TermSessionEvents.Ended when pane is not null:
+                    pane.Ended = true;
+                    break;
+            }
+        }
+        catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Handling a term-session message failed; contained"); }
+    }
+
+    /// <summary>Closes <paramref name="pane"/>, ending its CLI (a hosted one's TermHost is killed).</summary>
     public void Close(TerminalPaneViewModel pane)
     {
         // Deselected first, then removed: a still-selected item removed from a TabControl-bound collection crashes WPF
@@ -215,8 +495,8 @@ public sealed class TerminalsViewModel : ObservableObject
         try { pane.Kill(); }
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Closing a terminal failed; removing its tab anyway"); }
         Panes.Remove(pane);
-        // The tab is out of the host grid now: release the terminal's HwndHost, its ConPTY and its screen buffer, which
-        // otherwise stay alive for the rest of the dashboard's run (M.ORCH-T869).
+        // The tab is out of the host grid now: release the terminal's HwndHost, its pipe or ConPTY and its screen buffer,
+        // which otherwise stay alive for the rest of the dashboard's run (M.ORCH-T869).
         pane.DisposeControl();
     }
 

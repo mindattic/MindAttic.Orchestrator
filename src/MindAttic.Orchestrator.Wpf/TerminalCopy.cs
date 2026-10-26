@@ -45,11 +45,11 @@ internal static class TerminalCopy
             if (e.Handled) return;
             var chord = ChordOf(e.Key == Key.System ? e.SystemKey : e.Key, Keyboard.Modifiers);
             if (chord == Chord.None) { swallowRepeats = false; return; }
-            if (sender is not DependencyObject root || TerminalPaste.Focused(root) is not { } control) return;
+            if (sender is not DependencyObject root || TerminalPaste.Focused(root) is not { } pane) return;
             if (e.IsRepeat && swallowRepeats) { e.Handled = true; return; }
             swallowRepeats = false;
-            if (control.Terminal is not { } terminal) return;
-            if (!TryTake(terminal.GetSelectedText, SetClipboard)) return;
+            // The selection is local to the renderer, hosted tab (M.ORCH-T926) or in-process alike.
+            if (!TryTake(pane.ReadSelection, SetClipboard)) return;
             swallowRepeats = true;
             e.Handled = true;
         }

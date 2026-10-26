@@ -21,6 +21,9 @@ public sealed partial class MainViewModel
             SessionId = p.SessionId,
             Login = p.Login,
             Chosen = Root.loginTabs.Any(t => ReferenceEquals(t.Terminals?.SelectedPane, p)),
+            // Its TermHost session (M.ORCH-T926): while that host lives the next dashboard reattaches the tab, so a restore
+            // never offers it (M.ORCH-T928). Null for an in-process tab.
+            HostId = p.IsHosted ? p.TermId : null,
         }).ToList();
         var shown = all.SelectedPane is { } s ? panes.IndexOf(s) : -1;
         return new RestoreState

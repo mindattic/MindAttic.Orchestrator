@@ -52,6 +52,7 @@ internal static class SessionRestore
             all.Panes.CollectionChanged += (_, _) => Changed();
             all.LoginsChanged += Changed;
             all.SessionsLearned += Changed;
+            all.Changed += Changed; // a tab's TermHost session became known (M.ORCH-T926)
             all.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TerminalsViewModel.SelectedPane)) Changed(); };
             root.SelectedTabChanged += (_, _) => Changed();
         }
