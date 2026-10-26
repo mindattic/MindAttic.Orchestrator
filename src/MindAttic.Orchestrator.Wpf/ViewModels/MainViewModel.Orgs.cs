@@ -120,7 +120,20 @@ public sealed partial class MainViewModel
         // Move the selection off a tab leaving the strip before it's removed from the bound collection: a still-selected item
         // removed from a Selector-bound collection is the crash of M.ORCH-T859 (M.ORCH-T869).
         if (!wanted.Contains(SelectedTab) && wanted.Count > 0) Select(wanted[0]);
-        orgTabs.ReorderTo(wanted);
+        if (!wanted.Contains(SelectedTab) && orgTabs.Contains(SelectedTab))
+        {
+            // No tab of the new org to move to (an org with no Claude login, M.ORCH-T1019): the strip lets go of the selected
+            // tab instead, before it's removed, and the window keeps showing it.
+            stripCleared = true;
+            foreach (var t in loginTabs) t.Raise(nameof(StripSelection));
+            try { orgTabs.ReorderTo(wanted); }
+            finally
+            {
+                stripCleared = false;
+                foreach (var t in loginTabs) t.Raise(nameof(StripSelection));
+            }
+        }
+        else orgTabs.ReorderTo(wanted);
         foreach (var t in loginTabs)
         {
             t.Raise(nameof(SelectedOrg)); t.Raise(nameof(HasLoginTabs)); t.Raise(nameof(IsOrgEmpty)); t.Raise(nameof(OrgEmptyText));

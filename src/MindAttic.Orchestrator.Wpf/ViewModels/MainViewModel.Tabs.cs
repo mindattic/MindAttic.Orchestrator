@@ -90,6 +90,16 @@ public sealed partial class MainViewModel
         set => Root.Select(value);
     }
 
+    /// <summary>What the tab strip shows selected: <see cref="SelectedTab"/>, except null while the strip is emptied (M.ORCH-T1019),
+    /// so the strip lets go of its selected item before that item leaves its bound collection (the crash of M.ORCH-T859).</summary>
+    public MainViewModel? StripSelection
+    {
+        get => Root.stripCleared ? null : SelectedTab;
+        set { if (value is not null) Root.Select(value); }
+    }
+
+    private bool stripCleared;
+
     /// <summary>The tab on screen, which the shared queue's rows act through (M.ORCH-T654).</summary>
     internal MainViewModel Shown => Root.SelectedTab;
 
@@ -107,7 +117,7 @@ public sealed partial class MainViewModel
     {
         if (next is null || ReferenceEquals(next, SelectedTab) || !loginTabs.Contains(next)) return;
         selectedTab = next;
-        foreach (var t in loginTabs) t.Raise(nameof(SelectedTab));
+        foreach (var t in loginTabs) { t.Raise(nameof(SelectedTab)); t.Raise(nameof(StripSelection)); }
         SelectedTabChanged?.Invoke(this, EventArgs.Empty);
         // The person shown is the one whose chosen terminal shows (M.ORCH-T810).
         ShowChosenPane();

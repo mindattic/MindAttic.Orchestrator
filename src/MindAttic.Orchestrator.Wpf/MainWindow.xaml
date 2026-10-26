@@ -166,7 +166,7 @@
             <ScrollViewer x:Name="LoginTabScroller" Grid.Column="1" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
                           HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
                           ScrollChanged="LoginTabScroller_ScrollChanged">
-        <mc:MaTabControl x:Name="LoginTabStrip" ShowContent="False" ItemsSource="{Binding OrgTabs}" SelectedItem="{Binding SelectedTab}"
+        <mc:MaTabControl x:Name="LoginTabStrip" ShowContent="False" ItemsSource="{Binding OrgTabs}" SelectedItem="{Binding StripSelection}"
                          AutomationProperties.Name="Claude logins, one dashboard tab each"
                          ContextMenuOpening="OnLoginTabContextMenu">
             <!-- Status at a glance (M.ORCH-T630), all the library's MaTabItem (M.ORCH-T667): a status icon before the name
