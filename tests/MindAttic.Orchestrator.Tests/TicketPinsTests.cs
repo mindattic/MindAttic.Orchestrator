@@ -147,7 +147,7 @@ public sealed class TicketPinsTests
         var window = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
         Assert.That(window.IndexOf("x:Name=\"UserTickets\"", StringComparison.Ordinal),
             Is.GreaterThan(window.IndexOf("x:Name=\"TerminalFrame\"", StringComparison.Ordinal)), "below the person's CLIs");
-        Assert.That(window, Does.Contain("Style=\"{StaticResource MaRowList}\" ItemsSource=\"{Binding AssignedTickets}\"")
+        Assert.That(window, Does.Contain("Style=\"{StaticResource MaRowList}\" ItemsSource=\"{Binding QueueTickets}\"")
             .And.Contain("ItemsSource=\"{Binding UnassignedTickets}\"").And.Contain("x:Name=\"AssignInTickets\""));
         // M.ORCH-T762: assigning, reassigning and redelegating are Tickets Desktop's; the dashboard only links there.
         Assert.That(window, Does.Not.Contain("AssigneePicker").And.Not.Contain("RedelegateCommand").And.Not.Contain("UpCommand"));

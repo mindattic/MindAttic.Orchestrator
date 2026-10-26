@@ -491,11 +491,25 @@
                     <TextBlock Text="A ticket assigned to a person is dispatched only on their login (next --claim, allocate and Start); while they're out of room it waits for them. Assign, reassign or redelegate it in Tickets Desktop: every ticket here opens there."
                                Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource RowGutter}" />
                     <TextBlock Text="{Binding AssignedHeader}" Style="{StaticResource MaSectionLabel}" />
-                    <TextBlock Text="{Binding NoAssignedText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
-                               Visibility="{Binding HasNoAssigned, Converter={StaticResource Visible}}" />
                 </StackPanel>
-                <ItemsControl x:Name="AssignedTicketList" Style="{StaticResource MaRowList}" ItemsSource="{Binding AssignedTickets}"
-                              ItemTemplate="{StaticResource UserTicketTemplate}" AutomationProperties.Name="{Binding AssignedHeader}"
+                <!-- The person's Queue by status (M.ORCH-T849): Active (open and claimed or being worked), Pending (open and
+                     waiting: unapproved, on a prerequisite, or queued), Closed and Won't do (the last 7 days), each with its
+                     count; Active first. A bare strip: the one list below shows the selected tab's tickets, so the body's
+                     virtualized list still builds only the rows on screen (M.ORCH-T754). -->
+                <mc:MaTabControl x:Name="QueueStatusTabs" ShowContent="False" ItemsSource="{Binding QueueTabs}" SelectedItem="{Binding SelectedQueueTab}"
+                                 DisplayMemberPath="Name" Margin="{StaticResource SpaceBS}" AutomationProperties.Name="Queue by status"
+                                 Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}">
+                    <mc:MaTabControl.ItemContainerStyle>
+                        <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
+                            <Setter Property="Trailing" Value="{Binding CountText}" />
+                            <Setter Property="AutomationProperties.Name" Value="{Binding AccessibleName}" />
+                        </Style>
+                    </mc:MaTabControl.ItemContainerStyle>
+                </mc:MaTabControl>
+                <TextBlock x:Name="NoQueueTickets" Text="{Binding NoQueueTicketsText}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap"
+                           Visibility="{Binding HasNoQueueTickets, Converter={StaticResource Visible}}" />
+                <ItemsControl x:Name="AssignedTicketList" Style="{StaticResource MaRowList}" ItemsSource="{Binding QueueTickets}"
+                              ItemTemplate="{StaticResource UserTicketTemplate}" AutomationProperties.Name="{Binding SelectedQueueTab.AccessibleName}"
                               Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}" />
                 <TextBlock Text="{Binding UnassignedHeader}" Style="{StaticResource MaSectionLabel}"
                            Visibility="{Binding ShowsUnassignedTickets, Converter={StaticResource Visible}}" />

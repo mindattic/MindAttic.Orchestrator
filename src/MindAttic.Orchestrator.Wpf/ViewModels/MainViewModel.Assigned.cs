@@ -1,9 +1,13 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Globalization;
 using System.Windows.Input;
 using MindAttic.Components.Wpf.Controls;
 using MindAttic.Components.Wpf.Mvvm;
 using MindAttic.Orchestrator.Scheduling;
 using MindAttic.Orchestrator.Sessions;
+using MindAttic.Orchestrator.Tickets;
+using MindAttic.Tickets.Log;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
@@ -46,6 +50,7 @@ public sealed class UserTicketRowViewModel : ObservableObject
     private QueueItem item;
     private PersonOptionViewModel assignee;
     private string? waiting;
+    private DateTime? closedUtc;
 
     public UserTicketRowViewModel(QueueItem item, MainViewModel owner)
     {
@@ -53,6 +58,9 @@ public sealed class UserTicketRowViewModel : ObservableObject
         this.owner = owner;
         assignee = owner.OptionFor(item.Assignee);
     }
+
+    /// <summary>A closed or won't-do ticket on the Queue's Closed or Won't do tab (M.ORCH-T849): when it closed, if known.</summary>
+    public UserTicketRowViewModel(ClosedTicket closed, MainViewModel owner) : this(closed.AsItem(), owner) => closedUtc = closed.ClosedUtc;
 
     public string Id => item.Id;
     public string Repo => item.Repo;
@@ -76,12 +84,22 @@ public sealed class UserTicketRowViewModel : ObservableObject
     /// <summary>What's happening to it: being worked (and on which login), waiting for its user, or what the queue says.</summary>
     public string Status => waiting ?? item switch
     {
+        { Ticket.Status: TicketRules.WontDo } => "Won't do" + (closedUtc is { } w ? $", closed {Formatting.Ago(w, DateTime.UtcNow)}" : ""),
+        { Ticket.Status: TicketRules.Closed } => "Closed" + (closedUtc is { } c ? $" {Formatting.Ago(c, DateTime.UtcNow)}" : ""),
         { Assignment: { } a, IsAssigned: true } => $"Being worked since {Formatting.Ago(a.StartedUtc, DateTime.UtcNow)}" + (a.Account is { } on ? $" on {on}" : ""),
         { BlockedBy.Count: > 0 } => $"Waits for {string.Join(", ", item.BlockedBy)}",
+        { MayWork: false } => "Waits for approval",
         { TooBig: true } => $"Too big for what's left ({item.Estimate})",
         { Assignee: { } who } => $"Dispatched only on {owner.NameOf(who)}'s login",
         _ => item.Estimate is { } e ? $"~{Formatting.Tokens(e.Fresh)}" : "",
     };
+
+    /// <summary>A closed row's refresh (M.ORCH-T849): its ticket and when it closed.</summary>
+    public void Update(ClosedTicket next)
+    {
+        closedUtc = next.ClosedUtc;
+        Update(next.AsItem());
+    }
 
     public void Update(QueueItem next)
     {
@@ -90,6 +108,39 @@ public sealed class UserTicketRowViewModel : ObservableObject
         waiting = next is { Assignee: { } who, IsAssigned: false } && owner.OptionFor(who).OutOfRoom is { } why
             ? TicketPins.WaitingText(owner.NameOf(who), why) : null;
         Raise(string.Empty);
+    }
+}
+
+/// <summary>Which of a person's tickets a Queue tab lists (M.ORCH-T849).</summary>
+public enum QueueStatus
+{
+    /// <summary>Open and claimed or being worked.</summary>
+    Active,
+    /// <summary>Open and waiting: unapproved, waiting on a prerequisite, or queued.</summary>
+    Pending,
+    /// <summary>Closed within <see cref="ClosedTicketSource.Window"/>.</summary>
+    Closed,
+    /// <summary>Closed as won't do within <see cref="ClosedTicketSource.Window"/>.</summary>
+    WontDo,
+}
+
+/// <summary>One tab of a person's Queue (M.ORCH-T849): its tickets, and their count in its header.</summary>
+public sealed class QueueTabViewModel(QueueStatus status, string name) : ObservableObject
+{
+    public QueueStatus Status { get; } = status;
+    public string Name { get; } = name;
+    public ObservableCollection<UserTicketRowViewModel> Tickets { get; } = [];
+
+    /// <summary>The count the tab's header shows after its name.</summary>
+    public string CountText => Tickets.Count.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>"Active: 3 tickets", the tab's accessible name.</summary>
+    public string AccessibleName => $"{Name}: {Tickets.Count} ticket{(Tickets.Count == 1 ? "" : "s")}";
+
+    public void RaiseCount()
+    {
+        Raise(nameof(CountText));
+        Raise(nameof(AccessibleName));
     }
 }
 
@@ -148,11 +199,136 @@ public sealed partial class MainViewModel
     /// <summary>A user's name as their tab is titled ("Ryan"), else their email.</summary>
     internal string NameOf(string email) => Root.people.FirstOrDefault(p => TicketPins.Same(p.Email, email))?.Name ?? email;
 
+    // The Queue's tabs (M.ORCH-T849).
+
+    /// <summary>How often a refresh re-reads the recently closed tickets; a push (<see cref="ReloadTicketQueues"/>) reads at once.</summary>
+    private static readonly TimeSpan ClosedReadEvery = TimeSpan.FromMinutes(1);
+
+    private readonly ClosedTicketSource closedSource = new();
+    private IReadOnlyList<ClosedTicket> closedTickets = [];
+    private DateTime closedReadUtc = DateTime.MinValue;
+    private bool closedReading;
+    private bool closedReadAgain;
+    private QueueTabViewModel? selectedQueueTab;
+
+    /// <summary>The person's Queue by status: Active, Pending, Closed (the last 7 days) and Won't do, each with its count.</summary>
+    public IReadOnlyList<QueueTabViewModel> QueueTabs { get; } =
+    [
+        new(QueueStatus.Active, "Active"),
+        new(QueueStatus.Pending, "Pending"),
+        new(QueueStatus.Closed, "Closed"),
+        new(QueueStatus.WontDo, "Won't do"),
+    ];
+
+    /// <summary>The Queue tab shown; Active until another is picked.</summary>
+    public QueueTabViewModel SelectedQueueTab
+    {
+        get => selectedQueueTab ?? QueueTabs[0];
+        set
+        {
+            // The strip leaves the window's tree as the body scrolls, which can hand back null: keep the pick.
+            if (value is null || ReferenceEquals(value, SelectedQueueTab)) return;
+            selectedQueueTab = value;
+            foreach (var name in new[] { nameof(SelectedQueueTab), nameof(QueueTickets), nameof(HasNoQueueTickets), nameof(NoQueueTicketsText) })
+                Raise(name);
+        }
+    }
+
+    /// <summary>The tickets of the Queue tab shown.</summary>
+    public ObservableCollection<UserTicketRowViewModel> QueueTickets => SelectedQueueTab.Tickets;
+
+    public bool HasNoQueueTickets => QueueTickets.Count == 0;
+
+    public string NoQueueTicketsText => SelectedQueueTab.Status switch
+    {
+        QueueStatus.Active => $"Nothing assigned to {LoginName} is being worked right now.",
+        QueueStatus.Pending => $"Nothing assigned to {LoginName} is waiting. Assign a ticket to them in Tickets Desktop (Assign in Tickets): it's then dispatched only on their login.",
+        QueueStatus.Closed => $"Nothing assigned to {LoginName} closed in the last {ClosedTicketSource.Window.TotalDays:0} days.",
+        _ => $"Nothing assigned to {LoginName} was closed as won't do in the last {ClosedTicketSource.Window.TotalDays:0} days.",
+    };
+
+    /// <summary>
+    /// The one place the Queue's data loads (M.ORCH-T849): re-reads the recently closed tickets from the ticket database, then
+    /// brings every tab's Queue (and the rest of the Tickets view) up to date with the plan. A refresh reaches it through
+    /// <see cref="ApplyUserTickets"/>, at most once a minute for the closed read; a pushed ticket event (M.ORCH-T879) calls this
+    /// to read at once. Never throws: a failed read keeps the last good one.
+    /// </summary>
+    public void ReloadTicketQueues()
+    {
+        try
+        {
+            Root.LoadClosedTickets(force: true);
+            Root.ApplyUserTickets();
+        }
+        catch (Exception ex) { Trace.TraceWarning($"Queue reload failed: {ex.Message}"); }
+    }
+
+    /// <summary>Reads the recently closed tickets off the UI thread, then shows them; on the global login's tab, with a UI to
+    /// return to. Without <paramref name="force"/>, only once <see cref="ClosedReadEvery"/> has passed since the last read.</summary>
+    private void LoadClosedTickets(bool force)
+    {
+        if (closedReading) { closedReadAgain |= force; return; }
+        var now = DateTime.UtcNow;
+        if (!force && now - closedReadUtc < ClosedReadEvery) return;
+        // No UI to come back to (a test, or before the window's up): nothing is read.
+        if (SynchronizationContext.Current is null) return;
+        var ui = TaskScheduler.FromCurrentSynchronizationContext();
+        var workspaceRoot = WorkspaceRoot;
+        closedReading = true;
+        closedReadUtc = now;
+        Task.Run(() =>
+        {
+            try { return closedSource.Read(workspaceRoot, now); }
+            catch (Exception ex) { Trace.TraceWarning($"Closed tickets read failed: {ex.Message}"); return null; }
+        }).ContinueWith(read =>
+        {
+            try
+            {
+                closedReading = false;
+                if (read.Status == TaskStatus.RanToCompletion && read.Result is { } closed) ApplyClosedTickets(closed);
+                if (closedReadAgain) { closedReadAgain = false; LoadClosedTickets(force: true); }
+            }
+            catch (Exception ex) { Trace.TraceWarning($"Closed tickets apply failed: {ex.Message}"); }
+        }, CancellationToken.None, TaskContinuationOptions.None, ui);
+    }
+
+    /// <summary>Shows <paramref name="closed"/> on every tab's Closed and Won't do tabs.</summary>
+    internal void ApplyClosedTickets(IReadOnlyList<ClosedTicket> closed)
+    {
+        Root.closedTickets = closed;
+        Root.ApplyUserTickets();
+    }
+
+    /// <summary>This tab's Queue tabs from the plan's queue and the recently closed tickets.</summary>
+    private void SyncQueueTabs(IReadOnlyList<QueueItem> queue, IReadOnlyList<ClosedTicket> closed)
+    {
+        var email = PersonEmail;
+        List<QueueItem> mine = email is null ? [] : [.. queue.Where(q => TicketPins.Same(q.Assignee, email))];
+        List<ClosedTicket> done = email is null ? [] : [.. closed.Where(c => TicketPins.Same(c.Assignee, email))];
+        SyncOpen(QueueTabs[0].Tickets, mine.Where(q => q.IsAssigned));
+        SyncOpen(QueueTabs[1].Tickets, mine.Where(q => !q.IsAssigned));
+        SyncClosed(QueueTabs[2].Tickets, done.Where(c => c.Ticket.Status == TicketRules.Closed));
+        SyncClosed(QueueTabs[3].Tickets, done.Where(c => c.Ticket.Status == TicketRules.WontDo));
+        foreach (var tab in QueueTabs) tab.RaiseCount();
+        Raise(nameof(HasNoQueueTickets));
+        Raise(nameof(NoQueueTicketsText));
+    }
+
+    private void SyncOpen(ObservableCollection<UserTicketRowViewModel> rows, IEnumerable<QueueItem> items) =>
+        rows.SyncBy([.. items], q => q.Id, r => r.Id, q => { var r = new UserTicketRowViewModel(q, this); r.Update(q); return r; }, (r, q) => r.Update(q));
+
+    private void SyncClosed(ObservableCollection<UserTicketRowViewModel> rows, IEnumerable<ClosedTicket> items) =>
+        rows.SyncBy([.. items], c => c.Id, r => r.Id, c => { var r = new UserTicketRowViewModel(c, this); r.Update(c); return r; }, (r, c) => r.Update(c));
+
     /// <summary>Brings the people and every tab's ticket lists up to date with the plan and the roster's last reading; on the
     /// global login's tab, after each plan and each roster read.</summary>
     private void ApplyUserTickets()
     {
         if (!IsGlobalTab) { Root.ApplyUserTickets(); return; }
+        // The recently closed tickets, for each Queue's Closed and Won't do tabs (M.ORCH-T849): read off the UI thread at most
+        // once a minute, shown when the read is back.
+        try { LoadClosedTickets(force: false); }
+        catch (Exception ex) { Trace.TraceWarning($"Closed tickets read failed: {ex.Message}"); }
         var now = DateTime.UtcNow;
         var settings = (FiveHour: (double)paceTargetPercent, Week: (double)weeklyStopPercent);
         var tabs = loginTabs.Where(t => !t.tab.IsApiKey && t.PersonEmail is not null).ToList();
@@ -186,6 +362,8 @@ public sealed partial class MainViewModel
             // Only the global login's tab lists the unassigned queue (M.ORCH-T842); a person's page shows just their own.
             t.UnassignedTickets.SyncBy([.. queue.Where(q => t.IsGlobalTab && q.Assignee is null && !q.IsAssigned)], q => q.Id, r => r.Id,
                 q => { var r = new UserTicketRowViewModel(q, t); r.Update(q); return r; }, (r, q) => r.Update(q));
+            try { t.SyncQueueTabs(queue, closedTickets); }
+            catch (Exception ex) { Trace.TraceWarning($"Queue tabs failed: {ex.Message}"); }
             foreach (var name in new[] { nameof(AssignedHeader), nameof(UnassignedHeader), nameof(NoAssignedText), nameof(HasNoAssigned), nameof(PersonEmail), nameof(ShowsUserTickets), nameof(ShowsUnassignedTickets) })
                 t.Raise(name);
         }
