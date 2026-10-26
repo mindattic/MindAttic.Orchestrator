@@ -142,7 +142,7 @@ public sealed class LimitWakerTests
     {
         State("w1", 77, "idle", Now.AddDays(-3), until: Now.AddMinutes(-5), window: "weekly");
         var stopped = Now.AddDays(-3).ToLocalTime().ToString("ddd h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
-        Assert.That(Waker().Tick(Open, true, Now).Single().Line, Does.Contain($"stopped for it at {stopped} "),
+        Assert.That(Waker().Tick(Open, true, Now).Single().Line, Does.Contain($"stopped for the limit at {stopped})"),
             "a weekly stop days back isn't read as today's");
         var reset = new LimitStop("5-hour", Now.AddHours(-26), Now.AddHours(-30));
         Assert.That(LimitWaker.ResumePrompt(reset, Now), Does.Contain(Now.AddHours(-26).ToLocalTime().ToString("ddd h:mm tt", System.Globalization.CultureInfo.InvariantCulture)));
