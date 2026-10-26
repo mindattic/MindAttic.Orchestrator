@@ -108,7 +108,8 @@ public sealed class DeployScriptTests
         Assert.That(lines, Is.EqualTo(new[] { "newer", "install", "install", "current", "install", "none" }));
         var script = System.IO.File.ReadAllText(DeployScript());
         Assert.That(script, Does.Contain("if ($step -eq 'newer')"), "a newer install is said and skipped, not run and failed");
-        Assert.That(script, Does.Contain("@('--install', '--force')"), "-Force installs over a newer build");
+        Assert.That(script, Does.Contain("$installArgs = @('--install')"), "the installer is always run with --install");
+        Assert.That(script, Does.Match(@"if \(\$Force\) \{ \$installArgs \+= '--force' \}"), "-Force installs over a newer build");
     }
 
     [Test]
