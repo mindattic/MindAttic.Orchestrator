@@ -20,7 +20,6 @@ public sealed partial class MainViewModel
     private Allocate allocate = null!;
     private SchedulePlan? plan;
     private BudgetLevel? lastBudgetLevel;
-    private PaceMode? lastPaceMode;
     private readonly HashSet<string> knownStuck = new(StringComparer.Ordinal);
     private bool briefed;
     private DateTime seenSavedUtc;
@@ -543,16 +542,10 @@ public sealed partial class MainViewModel
 
         ApplyAgents(next);
 
-        // Paced, the pace is what changes what the scheduler does, so it's what gets a toast.
-        if (next.Pace is { IsPaced: true } pace)
-        {
-            if (lastPaceMode is { } was && pace.Mode > was && pace.Mode != PaceMode.Open)
-                Toasts.Insert(0, new ToastViewModel(
-                    pace.Mode switch { PaceMode.Throttled => "Pacing", PaceMode.Coast => "Coasting", _ => "At the limit" },
-                    pace.Note, pace.Mode == PaceMode.Throttled ? Palette.Waiting : Palette.Over, null));
-            lastPaceMode = pace.Mode;
+        // Pace changes get no toast (M.ORCH-T857): the 5-hour chart and its caption already say it. Paced, the budget level is
+        // only tracked, so a toast doesn't fire the moment pacing ends.
+        if (next.Pace is { IsPaced: true })
             lastBudgetLevel = next.Budget?.Level;
-        }
         else if (next.Budget is { } b)
         {
             if (lastBudgetLevel is { } was && b.Level > was)
@@ -561,7 +554,6 @@ public sealed partial class MainViewModel
                     $"{b.WorstPercent:0}% used. The scheduler is holding new work.",
                     b.Level == BudgetLevel.Over ? Palette.Over : Palette.Waiting, null));
             lastBudgetLevel = b.Level;
-            lastPaceMode = null;
         }
 
         var stuck = MindAttic.Orchestrator.Activity.Watchdog.Stuck(next);
