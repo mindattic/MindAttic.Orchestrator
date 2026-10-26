@@ -272,7 +272,7 @@
                            AutomationProperties.Name="Summary">
             <!-- Budget: the current 5-hour block. Click to change this login's cutoffs (Org limit): the top-right cog is the
                  only way into Settings (M.ORCH-T804). -->
-            <Button Style="{StaticResource MaSmallStat}" HorizontalContentAlignment="Stretch" Command="{Binding OrgLimitCommand}"
+            <Button Style="{StaticResource MaSmallStat}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" Padding="14,0,16,0" Height="74" Command="{Binding OrgLimitCommand}"
                     ToolTip="{Binding BudgetTooltip}"
                     AutomationProperties.Name="{Binding BudgetHeadline, StringFormat='5-hour window {0} used: change the cutoffs'}">
                 <StackPanel>
@@ -283,7 +283,7 @@
                         <TextBlock Text="{Binding BudgetCaption}" Style="{StaticResource MaTileSubtitle}" VerticalAlignment="Center"
                                    Margin="8,4,0,0" TextWrapping="Wrap" />
                     </DockPanel>
-                    <ProgressBar x:Name="BudgetBar" Style="{StaticResource MaProgressBar}" Margin="0,4,0,4" Maximum="1"
+                    <ProgressBar x:Name="BudgetBar" Style="{StaticResource MaProgressBar}" Margin="0,2,0,2" Maximum="1"
                                  Value="{Binding BudgetFill, Mode=OneWay}" Foreground="{Binding BudgetBrush}" Focusable="False"
                                  AutomationProperties.Name="5-hour window used" />
                     <!-- While pacing holds work back, that's the line that matters; the full detail stays in the tooltip. -->
@@ -295,7 +295,7 @@
             </Button>
             <!-- Weekly: the other half of /status's picture. The tab's login's own week (M.ORCH-T628): what's left, its reset's
                  day, date and time, and its weekly stop line (M.ORCH-T609). -->
-            <Button Style="{StaticResource MaSmallStat}" Command="{Binding OrgLimitCommand}"
+            <Button Style="{StaticResource MaSmallStat}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" Padding="14,0,16,0" Height="74" Command="{Binding OrgLimitCommand}"
                     ToolTip="How much of this login's weekly limit is left (/status reports the used share), when it resets, and where its CLIs stop (the weekly reserve). Opens Org limit to change its cutoffs; the weekly reset is in Settings (the top-right cog)."
                     AutomationProperties.Name="{Binding WeeklyHeadline, StringFormat='Week {0}: change the cutoffs'}">
                 <StackPanel>
