@@ -176,10 +176,15 @@ public sealed class SessionRestoreStore(string? directory = null)
     public static PaneRequest ReopenRequest(RestoreTab tab, Func<string?, string>? configDirOf = null, Func<string?, LoginLook?>? lookOf = null)
     {
         var request = tab.Request;
-        if (request.IsMenu || request.Command is not { Count: > 0 } command) return request;
+        if (request.IsMenu) return request;
+        // A tab built from its TermHost's record (TermPaneFile.FromRecord: a Launcher-started CLI) has only its whole command
+        // line (M.ORCH-T1029): split it into its arguments, so a Launcher host command drops its --prompt and resumes like any other.
+        if (request.Command is not { Count: > 0 } && request.CommandLine is { Length: > 0 } line && SplitArgs(line) is { Count: > 1 } split)
+            request = request with { Command = split, CommandLine = null };
+        if (request.Command is not { Count: > 0 } command) return tab.Request;
         var args = command.ToList();
         var isHost = args.Count > 1 && args.Skip(1).Any(a => a.Equals("host", StringComparison.OrdinalIgnoreCase));
-        if (!isHost) return request;
+        if (!isHost) return tab.Request;
         RemoveOption(args, "--prompt");
         RemoveOption(args, "--resume");
         var claude = string.Equals(request.Provider, "Claude", StringComparison.OrdinalIgnoreCase);
@@ -212,6 +217,21 @@ public sealed class SessionRestoreStore(string? directory = null)
         return request with { Command = args };
     }
 
+    /// <summary>A Windows command line's arguments; empty when it can't be split. Never throws.</summary>
+    private static IReadOnlyList<string> SplitArgs(string commandLine)
+    {
+        try { return HostSessionScanner.SplitCommandLine(commandLine); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { return []; }
+    }
+
+    /// <summary>Whether <paramref name="tab"/> reopens with <c>--resume</c> (<see cref="ReopenRequest"/>): a tab whose command
+    /// isn't a Launcher host command reopens as it was started, so its session isn't resumed.</summary>
+    public static bool Resumes(RestoreTab tab)
+    {
+        try { return ReopenRequest(tab).Command?.Contains("--resume", StringComparer.OrdinalIgnoreCase) == true; }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { return false; }
+    }
+
     /// <summary>Removes every <paramref name="name"/> and the value after it.</summary>
     internal static void RemoveOption(List<string> args, string name)
     {
@@ -227,6 +247,7 @@ public sealed class SessionRestoreStore(string? directory = null)
     [
         .. state.Tabs.Select(t => t.Request.IsMenu
             ? $"{t.Request.Title}: the Launcher menu"
-            : $"{t.Request.Title} in {t.Request.Directory}: " + (t.SessionId is { Length: > 0 } s ? $"resumes session {s}" : "no session known, opens fresh")),
+            : $"{t.Request.Title} in {t.Request.Directory}: " + (t.SessionId is not { Length: > 0 } s ? "no session known, opens fresh"
+                : Resumes(t) ? $"resumes session {s}" : $"reopens as it was started; session {s} can't be resumed from its command")),
     ];
 }
