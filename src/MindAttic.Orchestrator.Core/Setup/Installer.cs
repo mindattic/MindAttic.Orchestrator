@@ -123,20 +123,20 @@ public sealed class Installer
         if (!force && WhyNotReplace(runningExe) is { } why) throw new IOException($"Not installing: {why}. Pass --force to install it anyway.");
         Directory.CreateDirectory(InstallDir);
         StopInstalledCopies();
+        // Chosen before the copy: a copy that fails partway can leave a truncated file at InstalledExe, which is no exe to restart.
+        var old = File.Exists(InstalledExe) ? InstalledExe : LegacyExe;
         try { File.Copy(runningExe, InstalledExe, overwrite: true); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // Stopped for nothing (the old exe still locked, say by an elevated dashboard): the old install's daemon runs
             // again, or pacing and the hooks' holds stay off until the next logon (M.ORCH-T353).
             // The copy's failure is what's reported: a daemon that can't start too (no old exe there) mustn't replace it.
-            var old = File.Exists(InstalledExe) ? InstalledExe : LegacyExe;
             try { if (!DaemonRunning() && File.Exists(old)) StartDaemon(old); }
             catch (InvalidOperationException) { }
             throw;
         }
-        // Left behind, the old-named exe is what Scheduler's logon job and other repos' links would still start: an old build.
-        try { if (File.Exists(LegacyExe)) File.Delete(LegacyExe); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        // The old-named exe is left in place on purpose: Scheduler's logon job, the Launcher and Tickets Desktop's links still
+        // start it by that name, and a deleted file would leave the daemon off at the next logon until they move to the new name.
     }
 
     private string LegacyExe => Path.Combine(InstallDir, LegacyExeName);

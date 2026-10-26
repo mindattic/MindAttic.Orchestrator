@@ -121,6 +121,12 @@ public sealed class InstallerTests
             File.WriteAllText(Path.Combine(fallback, Installer.ExeName), "");
             Assert.That(Installer.ChooseInstallDir(preferred, fallback), Is.EqualTo(fallback), "an existing install stays where it is");
 
+            // An install still holding only the pre-M.ORCH-T844 name stays where it is too, to be upgraded in place.
+            File.Delete(Path.Combine(fallback, Installer.ExeName));
+            File.WriteAllText(Path.Combine(fallback, Installer.LegacyExeName), "");
+            Assert.That(Installer.ChooseInstallDir(preferred, fallback), Is.EqualTo(fallback), "a legacy-named install stays where it is");
+            File.WriteAllText(Path.Combine(fallback, Installer.ExeName), "");
+
             var installer = new Installer(fallback);
             Assert.That(installer.IsInstalled(Path.Combine(fallback, Installer.ExeName.ToUpperInvariant())), Is.True);
             Assert.That(installer.IsInstalled(@"C:\Users\me\Downloads\" + Installer.ExeName), Is.False);
