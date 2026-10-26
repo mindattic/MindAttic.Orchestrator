@@ -31,13 +31,13 @@ internal static class Native
     [DllImport("kernel32.dll", SetLastError = true)]
     public static extern bool CreatePipe(out IntPtr hReadPipe, out IntPtr hWritePipe, IntPtr lpPipeAttributes, int nSize);
 
-    [DllImport("kernel32.dll", SetLastError = true)]
+    [DllImport("conpty.dll", SetLastError = true)]
     public static extern int CreatePseudoConsole(COORD size, IntPtr hInput, IntPtr hOutput, uint dwFlags, out IntPtr phPC);
 
-    [DllImport("kernel32.dll", SetLastError = true)]
+    [DllImport("conpty.dll", SetLastError = true)]
     public static extern int ResizePseudoConsole(IntPtr hPC, COORD size);
 
-    [DllImport("kernel32.dll", SetLastError = true)]
+    [DllImport("conpty.dll", SetLastError = true)]
     public static extern void ClosePseudoConsole(IntPtr hPC);
 
     [DllImport("kernel32.dll", SetLastError = true)]

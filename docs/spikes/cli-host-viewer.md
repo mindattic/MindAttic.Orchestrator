@@ -461,6 +461,36 @@ Phase 3
 Phase 4
 - M.ORCH-T937: Structured activity feed: evaluate stream-json, hooks and Remote Control as a low-bandwidth "what is everyone doing" view beside the real terminals.
 
+## Phase 0 results (M.ORCH-T923, 2026-10-26)
+
+`prototypes/T923-relay/`: a TermHostStub (one ConPTY per detached process, 4 MB ring, sticky modes, per-session pipe) and a RelayViewer (a bare `TerminalControl` driven by a `RelayConnection`). It was tested against a live `claude` session and a Windows PowerShell session. Keys were sent with a pipe client using the renderer's own win32-input-mode encoding, and every result was checked through the viewer's screen.
+
+**Verdict: GO for Phase 1.** All seven checks pass.
+
+| Check | Result |
+|---|---|
+| 1. Attach and render | Pass. The real Claude TUI shows pixel-identical in the viewer |
+| 2. Keys (typing, Home/End/Left, Backspace, Enter, Ctrl+C) | Pass. `cho abcdef` + Home `e` + End `Z` Backspace + Left Left `X` + Enter printed `abcdXef`, and Ctrl+C broke a stuck prompt |
+| 3. Paste | Pass. A two-line paste reached Claude bracketed (the host tracked `?2004`) and was not submitted |
+| 4. Resize | Pass. Resizing the window took the host to 80x23, and Claude reflowed |
+| 5. Reattach mid-work | Pass. Output kept going with no viewer attached; on reattach the missed lines replayed, then the stream continued live. A half-typed Claude prompt survived the viewer closing |
+| 6. Viewer force-killed | Pass. Both hosts survived, and a new viewer process reattached to the exact screen |
+| 7. CLI exit | Pass. The viewer shows the exit code, and the host lingers 60 s, then exits |
+
+**Bugs found and fixed in the prototype (carry these into Phase 1):**
+
+1. **Deadlock on connect.** Raising `TerminalOutput` from the pipe's reader thread while the renderer resizes on the UI thread froze the viewer. `RelayConnection` now captures the UI `SynchronizationContext` in `Start()` and posts output to it, in order. T926 must do the same.
+2. **Stale host size.** The renderer reports its grid before the connection exists, so the host stayed at the Hello default and Claude drew for the wrong size. The viewer now sends the terminal's actual rows and cols right after setting `Connection`.
+3. **Navigation keys.** WPF keyboard navigation swallows arrows, Home/End and PgUp/PgDn before the native renderer sees them (the T852 problem). Posting `WM_KEYDOWN` to the renderer's HWND lost and reordered keys. Sending them as win32-input-mode sequences through the connection is deterministic. T926 should use that rather than T852's PostMessage.
+4. **Use the bundled ConPTY.** The host now imports `CreatePseudoConsole` and its siblings from `conpty.dll` (`Microsoft.Windows.Console.ConPTY` 1.24.260710001), the same one the app gets through EasyWindowsTerminalControl, instead of kernel32's inbox copy.
+
+**Open items for Phase 1:**
+
+- **Replay garbling.** A replay at a different size than the session's history (attach at 118x32 after 120x30 output) duplicates or clips some earlier lines. The visible TUI region repaints correctly after the redraw nudge. This is expected for Option A; Phase 2's emulator (T929) removes it.
+- **Bad command crashes the host.** A command that isn't found (`pwsh` isn't installed on this machine, yet it's the host's default) crashed the host with an unlogged Win32Exception. T924: log and exit cleanly, and default to `powershell.exe` when `pwsh` is missing.
+- **PSReadLine prompt overwrite.** When a prompt wraps exactly at the edge, PSReadLine's redraw overwrote the trailing `>`. It's cosmetic and the same in a plain terminal.
+- **One viewer at a time.** A second connection replaces the first. Multi-viewer support is T930.
+
 ## Sources
 
 - Decompiled: `CI.Microsoft.Terminal.Wpf` 1.25.260303002 (`ITerminalConnection`, `TerminalControl`, `TerminalContainer`) and `EasyWindowsTerminalControl` 1.0.38 (`EasyTerminalControl`, `TermPTY`), from `%USERPROFILE%\.nuget\packages`.

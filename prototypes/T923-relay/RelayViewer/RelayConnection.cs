@@ -32,7 +32,21 @@ internal sealed class RelayConnection(string sessionId) : ITerminalConnection
 
     public uint Modes { get; private set; }
 
-    public void Start() => Task.Run(RunAsync);
+    private SynchronizationContext? ui;
+
+    // Start() runs on the UI thread (the Connection setter calls it). Output goes back to that thread, in order: feeding the
+    // renderer from the pipe's thread while the UI thread resizes it deadlocked the viewer on connect.
+    public void Start()
+    {
+        ui = SynchronizationContext.Current;
+        Task.Run(RunAsync);
+    }
+
+    private void Raise(string text)
+    {
+        if (ui is { } context) context.Post(_ => TerminalOutput?.Invoke(this, new TerminalOutputEventArgs(text)), null);
+        else TerminalOutput?.Invoke(this, new TerminalOutputEventArgs(text));
+    }
 
     private async Task RunAsync()
     {
@@ -60,8 +74,7 @@ internal sealed class RelayConnection(string sessionId) : ITerminalConnection
                         break;
                     case Protocol.Exit:
                         StatusChanged?.Invoke($"CLI exited (code {BinaryPrimitives.ReadInt32LittleEndian(payload)})");
-                        TerminalOutput?.Invoke(this, new TerminalOutputEventArgs(
-                            $"\r\n\u001b[33m[CLI exited with code {BinaryPrimitives.ReadInt32LittleEndian(payload)}]\u001b[0m\r\n"));
+                        Raise($"\r\n\u001b[33m[CLI exited with code {BinaryPrimitives.ReadInt32LittleEndian(payload)}]\u001b[0m\r\n");
                         break;
                 }
             }
@@ -82,17 +95,17 @@ internal sealed class RelayConnection(string sessionId) : ITerminalConnection
         HostSize?.Invoke(hostCols, hostRows);
         ModesChanged?.Invoke(Modes);
         // The renderer was just reset; win32-input-mode first (as EasyTerminalControl does), then the ring, then the modes.
-        TerminalOutput?.Invoke(this, new TerminalOutputEventArgs("\u001b[?9001h"));
+        Raise("\u001b[?9001h");
         Emit(payload.AsSpan(12, dataLen));
         var tail = Encoding.UTF8.GetString(payload, 12 + dataLen, payload.Length - 12 - dataLen);
-        if (tail.Length > 0) TerminalOutput?.Invoke(this, new TerminalOutputEventArgs(tail));
+        if (tail.Length > 0) Raise(tail);
     }
 
     private void Emit(ReadOnlySpan<byte> bytes)
     {
         var chars = new char[Encoding.UTF8.GetMaxCharCount(bytes.Length)];
         var n = utf8.GetChars(bytes, chars, false);
-        if (n > 0) TerminalOutput?.Invoke(this, new TerminalOutputEventArgs(new string(chars, 0, n)));
+        if (n > 0) Raise(new string(chars, 0, n));
     }
 
     private void Send(byte kind, ReadOnlySpan<byte> payload)
@@ -107,7 +120,12 @@ internal sealed class RelayConnection(string sessionId) : ITerminalConnection
     }
 
     /// <summary>Sends text to the CLI (the renderer's key sequences, or a paste payload).</summary>
-    public void WriteInput(string data) => Send(Protocol.Input, Encoding.UTF8.GetBytes(data));
+    public void WriteInput(string data)
+    {
+        if (Environment.GetEnvironmentVariable("T923_INPUT_LOG") is { Length: > 0 } log)
+            try { File.AppendAllText(log, $"{DateTime.Now:HH:mm:ss.fff} {data.Replace("\u001b", "\\e")}\n"); } catch (IOException) { }
+        Send(Protocol.Input, Encoding.UTF8.GetBytes(data));
+    }
 
     public void Resize(uint rows, uint columns)
     {

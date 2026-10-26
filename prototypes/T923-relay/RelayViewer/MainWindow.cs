@@ -67,6 +67,8 @@ internal sealed class MainWindow : Window
         c.StatusChanged += s => Dispatcher.BeginInvoke(() => { if (connection == c) status.Text = s; });
         // Setting Connection resets the renderer (ESC c), then calls Start(); the replay follows from the host.
         terminal.Connection = c;
+        // The renderer reported its grid before this connection existed, so the host would keep its old size: tell it now.
+        if (terminal.Rows > 0 && terminal.Columns > 0) c.Resize((uint)terminal.Rows, (uint)terminal.Columns);
         terminal.Focus();
     }
 
@@ -78,6 +80,22 @@ internal sealed class MainWindow : Window
     /// <summary>Ctrl+V and Shift+Insert: the app's TerminalPaste payload (CR newlines, bracketed when the host's CLI turned that on).</summary>
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        // As the app's TerminalKeyboard (M.ORCH-T852): WPF's keyboard navigation takes the arrow, Home, End and Page keys before
+        // the terminal's native window sees them, so while it holds focus they are posted straight to it.
+        if (!e.Handled && Keyboard.FocusedElement is System.Windows.Interop.HwndHost
+            && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Windows)) == 0
+            && e.Key is Key.Left or Key.Right or Key.Up or Key.Down or Key.Home or Key.End or Key.PageUp or Key.PageDown
+            && connection is { } nav)
+        {
+            // Sent straight to the CLI as win32-input-mode key events (ESC[Vk;Sc;Uc;Kd;Cs;Rc_, down then up, ENHANCED_KEY set:
+            // these are the grey keys), the same encoding the renderer produces for every other key. Posting WM_KEYDOWN to the
+            // renderer's window lost keys and reordered them against the typed text.
+            var vk = KeyInterop.VirtualKeyFromKey(e.Key);
+            var sc = MapVirtualKey((uint)vk, 0);
+            nav.WriteInput($"\u001b[{vk};{sc};0;1;256;1_\u001b[{vk};{sc};0;0;256;1_");
+            e.Handled = true;
+            return;
+        }
         if (e.Handled || !TerminalPaste.IsPasteChord(e) || connection is not { } c) return;
         e.Handled = true;
         string text;
@@ -100,6 +118,8 @@ internal sealed class MainWindow : Window
             Ref(0x767676), Ref(0xE74856), Ref(0x16C60C), Ref(0xF9F1A5), Ref(0x3B78FF), Ref(0xB4009E), Ref(0x61D6D6), Ref(0xF2F2F2),
         ],
     };
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern uint MapVirtualKey(uint code, uint mapType);
 
     private static uint Ref(int rgb) => (uint)(((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF));
 }
