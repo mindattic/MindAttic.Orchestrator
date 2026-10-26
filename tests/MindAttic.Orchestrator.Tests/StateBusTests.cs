@@ -135,6 +135,23 @@ public sealed class StateBusTests
     }
 
     [Test]
+    public void The_daemon_drops_a_state_message_older_than_the_one_it_holds()
+    {
+        // M.ORCH-T1002: a quick pause on then off can reach the inbox in either order.
+        var own = Scratch();
+        using var stream = new StatusStreamServer { PipeName = "test-" + Guid.NewGuid() };
+        var changed = 0;
+        var hub = new AppBusHub(stream, new Tickets.TicketActivityFeed()) { OwnStore = StateBus.StoreOf(own.Db), StateChanged = () => changed++ };
+        var at = DateTime.UtcNow;
+        hub.Take(StatusEnvelope.Of(StateBus.Pause, new PausePayload { Store = StateBus.StoreOf(own.Db), AtUtc = at, Paused = false }, StateBus.Version));
+        hub.Take(StatusEnvelope.Of(StateBus.Pause, new PausePayload { Store = StateBus.StoreOf(own.Db), AtUtc = at.AddSeconds(-1), Paused = true }, StateBus.Version));
+        Assert.That(stream.Retained(StateBus.Pause), Does.Contain("\"paused\":false"), "the newer pause stays held");
+        Assert.That(changed, Is.EqualTo(1));
+        hub.Take(StatusEnvelope.Of(StateBus.Pause, new PausePayload { Store = StateBus.StoreOf(own.Db), AtUtc = at.AddSeconds(1), Paused = true }, StateBus.Version));
+        Assert.That(stream.Retained(StateBus.Pause), Does.Contain("\"paused\":true"));
+    }
+
+    [Test]
     public void A_payload_round_trips_and_names_its_store()
     {
         var store = Scratch();

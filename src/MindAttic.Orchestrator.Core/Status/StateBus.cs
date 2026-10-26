@@ -67,6 +67,17 @@ public static class StateBus
         catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException) { return null; }
     }
 
+    /// <summary>The payload's <c>atUtc</c> (when it was read from the store) from any of these kinds' envelopes; null when it has none.</summary>
+    public static DateTime? AtOf(StatusEnvelope envelope)
+    {
+        try
+        {
+            return envelope.Payload.ValueKind == JsonValueKind.Object && envelope.Payload.TryGetProperty("atUtc", out var at)
+                && at.ValueKind == JsonValueKind.String && at.TryGetDateTime(out var when) && when != default ? when.ToUniversalTime() : null;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException) { return null; }
+    }
+
     private static readonly object gate = new();
     private static readonly Dictionary<string, (string Kind, StoreChange Change)> waiting = new(StringComparer.OrdinalIgnoreCase);
     private static bool draining, inBackground;

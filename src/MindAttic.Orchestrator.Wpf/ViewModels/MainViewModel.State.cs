@@ -26,6 +26,8 @@ public sealed partial class MainViewModel
         if (root is not null) return root.ApplyPushedState(payload);
         // Another store's (a test's scratch database, another workspace's daemon) says nothing of this one.
         if (!StateBus.SameStore(payload.Store, StateBus.StoreOf(store.Db))) return false;
+        // Older than the one of its kind applied already (M.ORCH-T1002: two quick changes can arrive in either order): dropped.
+        if (!NewerThanApplied(payload)) return false;
         switch (payload)
         {
             case MembersPayload m:
@@ -75,6 +77,21 @@ public sealed partial class MainViewModel
         if (refreshing || !ReferenceEquals(workspace, shown)) return false;
         ApplyTabs(shown, tabs, lastOrgs ?? orgsNow);
         return false;
+    }
+
+    // When each kind's payload applied last was read from the store; kept across a dropped stream, since what comes again then is
+    // the daemon's latest of each, no older than what was applied.
+    private readonly Dictionary<Type, DateTime> appliedAt = [];
+
+    /// <summary>Whether <paramref name="payload"/> was read no earlier than the last of its kind applied, noting it when so. One
+    /// with no time (an older writer) is taken.</summary>
+    internal bool NewerThanApplied(StatePayload payload)
+    {
+        if (payload.AtUtc == default) return true;
+        var at = payload.AtUtc.ToUniversalTime();
+        if (appliedAt.TryGetValue(payload.GetType(), out var held) && at < held) return false;
+        appliedAt[payload.GetType()] = at;
+        return true;
     }
 
     /// <summary>The stream dropped: the pause and the reminders are read from the store again until it's back.</summary>

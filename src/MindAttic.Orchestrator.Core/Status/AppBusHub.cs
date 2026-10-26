@@ -141,6 +141,14 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
                 case StateBus.Members or StateBus.Orgs or StateBus.Settings or StateBus.Pause or StateBus.Reminders:
                     // The whole of its kind each time: the latest is kept, so a dashboard connecting gets it after the state.
                     var own = OwnStore is null || StateBus.SameStore(StateBus.StoreOf(envelope), OwnStore);
+                    // Each send is its own connection and the inbox's listeners relay at once, so two quick changes can arrive in
+                    // either order (M.ORCH-T1002): one read before the payload already held is older news, and is dropped, never
+                    // kept or applied over the newer one.
+                    if (own && !NewerState(envelope))
+                    {
+                        log.Debug("Dropped a {Kind:l} message older than the one held", envelope.Kind);
+                        return;
+                    }
                     stream.Publish(envelope, own ? envelope.Kind : null);
                     if (own) StateChanged?.Invoke();
                     return;
@@ -152,6 +160,21 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             log.Warning(ex, "Couldn't relay a {Kind:l} app message", envelope.Kind);
+        }
+    }
+
+    private readonly Dictionary<string, DateTime> stateAt = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Whether <paramref name="envelope"/>'s payload was read no earlier than the one of its kind held, noting it when so.
+    /// One with no time of its own (an older writer) is taken.</summary>
+    private bool NewerState(StatusEnvelope envelope)
+    {
+        if (StateBus.AtOf(envelope) is not { } at) return true;
+        lock (stateAt)
+        {
+            if (stateAt.TryGetValue(envelope.Kind, out var held) && at < held) return false;
+            stateAt[envelope.Kind] = at;
+            return true;
         }
     }
 
