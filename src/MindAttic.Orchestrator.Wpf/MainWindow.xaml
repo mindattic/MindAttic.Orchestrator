@@ -587,7 +587,10 @@
                     </mc:MaTabControl>
                     <Border x:Name="TerminalFrame" Style="{StaticResource MaInsetCard}" Height="480"
                             Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
-                        <Grid x:Name="TerminalPanesHost" />
+                        <!-- WPF claims arrow keys (and Tab) for its own directional/tab focus navigation even when a hosted
+                             native window (the terminal, an HwndHost) has Win32 keyboard focus, so a CLI's arrow-key menu never
+                             sees them (M.ORCH-T833): switched off here so they pass straight through to the terminal. -->
+                        <Grid x:Name="TerminalPanesHost" KeyboardNavigation.DirectionalNavigation="None" KeyboardNavigation.TabNavigation="None" />
                     </Border>
                 </StackPanel>
 
