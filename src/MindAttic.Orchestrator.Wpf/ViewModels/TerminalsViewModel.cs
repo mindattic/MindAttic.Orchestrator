@@ -897,10 +897,15 @@ public sealed class PersonTerminalsViewModel : ObservableObject
     public TerminalPaneViewModel? SelectedPane
     {
         get => selected;
-        // Ctrl+click on the selected tab deselects it, writing null: it stays on the one it was.
+        // Ctrl+click on the selected tab deselects it, writing null: it stays on the one it was, and the strip is told so
+        // (M.ORCH-T1024), after the binding's own write is done (a change raised during it is ignored), or it shows none chosen.
         set
         {
-            if (value is null && Panes.Count > 0) return;
+            if (value is null && Panes.Count > 0)
+            {
+                if (selected is not null && Panes.Contains(selected)) SynchronizationContext.Current?.Post(_ => Raise(nameof(SelectedPane)), null);
+                return;
+            }
             if (value is not null && !Panes.Contains(value)) return;
             if (!Set(ref selected, value)) return;
             SelectionChanged?.Invoke();

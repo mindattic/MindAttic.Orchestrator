@@ -95,7 +95,12 @@ public sealed partial class MainViewModel
     public MainViewModel? StripSelection
     {
         get => Root.stripCleared ? null : SelectedTab;
-        set { if (value is not null) Root.Select(value); }
+        set
+        {
+            if (value is not null) Root.Select(value);
+            // Ctrl+click on the selected pill writes null: the strip is told it stays selected once the write is done (M.ORCH-T1024).
+            else if (!Root.stripCleared && Root.orgTabs.Contains(SelectedTab)) SynchronizationContext.Current?.Post(_ => { foreach (var t in Root.loginTabs) t.Raise(nameof(StripSelection)); }, null);
+        }
     }
 
     private bool stripCleared;
