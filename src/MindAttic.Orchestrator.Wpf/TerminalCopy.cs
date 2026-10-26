@@ -1,0 +1,61 @@
+using System.Windows;
+using System.Windows.Input;
+
+namespace MindAttic.Orchestrator.Wpf;
+
+/// <summary>
+/// Ctrl+C in the embedded terminal that has keyboard focus copies its selected text to the clipboard (M.ORCH-T867). The native
+/// terminal doesn't copy on its own: a key clears its selection and goes to the CLI. So the chord is taken before the terminal
+/// sees it, only when there is a selection: <c>TerminalControl.GetSelectedText</c> reads (and clears) it. With no selection, or
+/// one that can't be read, the key is left alone and reaches the CLI as its interrupt (^C), as it always did. Only plain Ctrl+C;
+/// Ctrl+Shift+C and the like still go to the CLI.
+/// </summary>
+internal static class TerminalCopy
+{
+    /// <summary>What a chord asks of the terminal's selection.</summary>
+    internal enum Chord { None, Copy }
+
+    /// <summary>Set after a copy, so the auto-repeats of the held chord don't go on to interrupt the CLI.</summary>
+    private static bool swallowRepeats;
+
+    internal static Chord ChordOf(Key key, ModifierKeys modifiers) =>
+        modifiers != ModifierKeys.Control ? Chord.None : key switch { Key.C => Chord.Copy, _ => Chord.None };
+
+    /// <summary>Takes the selection with <paramref name="readSelection"/> and puts it on the clipboard with
+    /// <paramref name="setClipboard"/>. True when there was a selection (the key is then handled, even if the clipboard was
+    /// busy: the selection is spent and the person asked to copy, not to interrupt); false when there's none or it couldn't be
+    /// read, so the key goes on to the CLI.</summary>
+    internal static bool TryTake(Func<string?> readSelection, Action<string> setClipboard)
+    {
+        string? text;
+        try { text = readSelection(); }
+        catch (Exception) { return false; }
+        if (string.IsNullOrEmpty(text)) return false;
+        try { setClipboard(text); }
+        catch (Exception) { }
+        return true;
+    }
+
+    public static void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        try
+        {
+            if (e.Handled) return;
+            var chord = ChordOf(e.Key == Key.System ? e.SystemKey : e.Key, Keyboard.Modifiers);
+            if (chord == Chord.None) { swallowRepeats = false; return; }
+            if (sender is not DependencyObject root || TerminalPaste.Focused(root) is not { } control) return;
+            if (e.IsRepeat && swallowRepeats) { e.Handled = true; return; }
+            swallowRepeats = false;
+            if (control.Terminal is not { } terminal) return;
+            if (!TryTake(terminal.GetSelectedText, SetClipboard)) return;
+            swallowRepeats = true;
+            e.Handled = true;
+        }
+        catch (Exception)
+        {
+            // Never let a copy fault take the dashboard down; an unhandled key still reaches the CLI.
+        }
+    }
+
+    private static void SetClipboard(string text) => Clipboard.SetDataObject(text, copy: true);
+}

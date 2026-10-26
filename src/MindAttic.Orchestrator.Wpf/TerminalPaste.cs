@@ -47,7 +47,7 @@ internal static class TerminalPaste
     }
 
     /// <summary>The terminal under keyboard focus, or null.</summary>
-    private static EasyTerminalControl? Focused(DependencyObject root)
+    internal static EasyTerminalControl? Focused(DependencyObject root)
     {
         for (var at = Keyboard.FocusedElement as DependencyObject; at is not null; at = System.Windows.Media.VisualTreeHelper.GetParent(at))
             if (at is EasyTerminalControl c) return c;
