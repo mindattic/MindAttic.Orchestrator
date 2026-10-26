@@ -72,10 +72,5 @@ internal static class TerminalPaste
     }
 
     /// <summary>What to send the CLI for pasted <paramref name="text"/>: CRLF and LF as CR, bracketed when asked.</summary>
-    internal static string Payload(string text, bool bracketed)
-    {
-        if (text.Length == 0) return "";
-        text = text.Replace("\r\n", "\r").Replace('\n', '\r');
-        return bracketed ? "\u001b[200~" + text + "\u001b[201~" : text;
-    }
+    internal static string Payload(string text, bool bracketed) => RelayInput.PastePayload(text, bracketed);
 }

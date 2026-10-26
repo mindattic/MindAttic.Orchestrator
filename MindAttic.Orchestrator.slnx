@@ -6,5 +6,6 @@
   <Project Path="src/MindAttic.Orchestrator.TermHost/MindAttic.Orchestrator.TermHost.csproj" />
   <Project Path="src/MindAttic.Orchestrator.Term.Wpf/MindAttic.Orchestrator.Term.Wpf.csproj" />
   <Project Path="src/MindAttic.Orchestrator.Gateway/MindAttic.Orchestrator.Gateway.csproj" />
+  <Project Path="src/MindAttic.Orchestrator.TermViewer/MindAttic.Orchestrator.TermViewer.csproj" />
   <Project Path="tests/MindAttic.Orchestrator.Tests/MindAttic.Orchestrator.Tests.csproj" />
 </Solution>

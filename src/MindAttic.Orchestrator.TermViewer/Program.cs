@@ -1,0 +1,86 @@
+using System.Windows;
+using MindAttic.Orchestrator.Sessions;
+using MindAttic.Orchestrator.Term;
+
+namespace MindAttic.Orchestrator.TermViewer;
+
+/// <summary>
+/// <c>MindAttic.Orchestrator.TermViewer --session &lt;id&gt;</c> (M.ORCH-T960): one window on one hosted CLI, for while the dashboard
+/// is down. It exits 0 without a window when the dashboard is up (attaching would take the session from its tab), when another
+/// viewer already holds the session (<see cref="TermViewerSlot"/>), or when the session is gone. It exits 0 too when the person
+/// closes it or it folds back into the dashboard, so the daemon reopens only a viewer that crashed.
+/// </summary>
+internal static class Program
+{
+    [STAThread]
+    private static int Main(string[] args)
+    {
+        OrchestratorLog.Start("TermViewer");
+        var log = OrchestratorLog.For("TermViewer");
+        try
+        {
+            if (SessionArg(args) is not { } id)
+            {
+                log.Warning("Started without --session <id>; nothing to show");
+                return 2;
+            }
+            // --stay (for trying it out beside a running dashboard): shown even then, and never folds back.
+            var stay = args.Contains("--stay", StringComparer.OrdinalIgnoreCase);
+            if (!stay && DashboardPresence.IsUp())
+            {
+                log.Information("The dashboard is up; it shows {Id:l}, so this viewer exits", id);
+                return 0;
+            }
+            using var slot = new Mutex(initiallyOwned: true, TermViewerSlot.MutexName(id), out var first);
+            if (!first)
+            {
+                log.Information("Another viewer already shows {Id:l}; this one exits", id);
+                return 0;
+            }
+            try
+            {
+                if (TermSessions.Get(id) is not { } session)
+                {
+                    log.Information("No live hosted session {Id:l}; nothing to show", id);
+                    return 0;
+                }
+                var pane = TermPaneFile.Read(id) ?? TermPaneFile.FromRecord(session);
+                var app = new Application { ShutdownMode = ShutdownMode.OnMainWindowClose };
+                // A fault in one handler is logged and contained: left unhandled it would close the window (never the CLI).
+                app.DispatcherUnhandledException += (_, e) =>
+                {
+                    log.Error(e.Exception, "TermViewer hit an unhandled exception on the UI thread; contained");
+                    e.Handled = true;
+                };
+                AppDomain.CurrentDomain.UnhandledException += (_, e) => log.Fatal(e.ExceptionObject as Exception, "TermViewer crashed");
+                TaskScheduler.UnobservedTaskException += (_, e) => { log.Error(e.Exception, "Unobserved task exception"); e.SetObserved(); };
+                var window = new ViewerWindow(session, pane, stay);
+                log.Information("Showing {Id:l} ({Title:l}) while the dashboard is down", id, session.Title ?? "");
+                return app.Run(window);
+            }
+            finally
+            {
+                try { slot.ReleaseMutex(); }
+                catch (ApplicationException) { }
+            }
+        }
+        catch (Exception ex)
+        {
+            log.Fatal(ex, "TermViewer failed");
+            return 1;
+        }
+        finally
+        {
+            OrchestratorLog.Stop();
+        }
+    }
+
+    /// <summary>The id after <c>--session</c>, or null.</summary>
+    internal static string? SessionArg(IReadOnlyList<string> args)
+    {
+        for (var i = 0; i < args.Count - 1; i++)
+            if (string.Equals(args[i], "--session", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(args[i + 1]))
+                return args[i + 1].Trim();
+        return null;
+    }
+}

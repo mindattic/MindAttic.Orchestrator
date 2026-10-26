@@ -98,17 +98,10 @@ internal static partial class TerminalKeyboard
         && ViewModels.TerminalPaneViewModel.Of(host) is not null;
 
     /// <summary>Keys WPF would otherwise act on (scroll, move focus) before the CLI sees them.</summary>
-    internal static bool IsForwarded(Key key, ModifierKeys modifiers) =>
-        (modifiers & (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Windows)) == 0
-        && key is Key.Left or Key.Right or Key.Up or Key.Down or Key.Home or Key.End or Key.PageUp or Key.PageDown;
+    internal static bool IsForwarded(Key key, ModifierKeys modifiers) => RelayInput.IsForwarded(key, modifiers);
 
-    /// <summary>A navigation key as the win32-input-mode events the renderer itself produces (ESC[Vk;Sc;Uc;Kd;Cs;Rc_), down then
-    /// up, with ENHANCED_KEY (256: the arrows, Home, End and Page keys are the grey ones) and SHIFT_PRESSED (16) when held.</summary>
-    internal static string Win32Key(int vk, uint scanCode, bool shift)
-    {
-        var state = 256 | (shift ? 16 : 0);
-        return $"\u001b[{vk};{scanCode};0;1;{state};1_\u001b[{vk};{scanCode};0;0;{state};1_";
-    }
+    /// <summary>A navigation key as the win32-input-mode events the renderer itself produces (<see cref="RelayInput.Win32Key"/>).</summary>
+    internal static string Win32Key(int vk, uint scanCode, bool shift) => RelayInput.Win32Key(vk, scanCode, shift);
 
     private static void OnPreviewKeyDown(FrameworkElement terminals, KeyEventArgs e)
     {

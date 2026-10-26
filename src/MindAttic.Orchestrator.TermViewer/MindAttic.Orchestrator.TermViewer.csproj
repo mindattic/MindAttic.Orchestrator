@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    M.ORCH-T960: the standalone fallback viewer. While Orchestrator.Desktop is down, the daemon starts one of these per hosted CLI
+    (TermViewer - -session <id>), so every CLI stays on screen and keeps working; each closes itself when the dashboard is back
+    and takes the session into its tabs. It reuses the dashboard's RelayTerminal and RelayConnection (MindAttic.Orchestrator.Term.Wpf).
+    deploy.ps1 installs it side by side, to <install dir>\TermViewer\<version>\ (TermViewerInstalls), as it does TermHost.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>MindAttic.Orchestrator.TermViewer</RootNamespace>
+    <AssemblyName>MindAttic.Orchestrator.TermViewer</AssemblyName>
+    <!-- HOUSE-LAW-1: whole-number versions only; bump the major. -->
+    <Version>1.0.0</Version>
+    <ApplicationIcon>..\..\assets\logo.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="..\..\assets\logo.ico" Link="logo.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- UseWPF drops System.IO from the implicit usings. -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MindAttic.Orchestrator.Term.Wpf\MindAttic.Orchestrator.Term.Wpf.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MindAttic.Orchestrator.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -298,13 +298,15 @@ if (Test-Stale $cliExe @($cliDir, $coreDir)) {
     }
 }
 
-# ── Side-by-side parts: TermHost (M.ORCH-T932), Gateway (M.ORCH-T967) ───────
+# ── Side-by-side parts: TermHost (M.ORCH-T932), Gateway (M.ORCH-T967), TermViewer (M.ORCH-T960) ──
 # Each build goes into its own <part>\<version>\ folder and is never copied over another: running CLIs keep the host binary they
 # started on, new sessions start on the newest. Nothing here stops a TermHost, and nothing deletes an old folder: the installer and
 # the daemon do that once no process runs from it. A build whose code matches the newest installed one adds no folder.
 # The Gateway may be stopped and restarted by its daemon supervisor (that only drops remote viewers). The TermViewer exe
-# (M.ORCH-T960) reuses this: Publish-SideBySide -Name TermViewer -ProjectDir ... -ExeName ... -StaleDirs ...
+# (M.ORCH-T960, the standalone viewer the daemon opens for each hosted CLI while the dashboard is down) is never stopped here: an
+# open viewer keeps its folder, and the daemon starts the newest.
 $gatewayDir = Join-Path $repo 'src\MindAttic.Orchestrator.Gateway'
+$termViewerDir = Join-Path $repo 'src\MindAttic.Orchestrator.TermViewer'
 
 function Get-TreeHash([string]$dir) {
     $base = (Get-Item -LiteralPath $dir).FullName.TrimEnd([char]92) + ''
@@ -349,6 +351,7 @@ function Publish-SideBySide([string]$Name, [string]$ProjectDir, [string]$ExeName
 
 Publish-SideBySide 'TermHost' $termHostDir 'MindAttic.Orchestrator.TermHost.exe' @($termHostDir, $termDir)
 Publish-SideBySide 'Gateway' $gatewayDir 'MindAttic.Orchestrator.Gateway.exe' @($gatewayDir, $termDir)
+Publish-SideBySide 'TermViewer' $termViewerDir 'MindAttic.Orchestrator.TermViewer.exe' @($termViewerDir, $termWpfDir, $termDir, $coreDir)
 
 # ── Install, as a double-click would ────────────────────────────────────────
 $installed = Find-Installed

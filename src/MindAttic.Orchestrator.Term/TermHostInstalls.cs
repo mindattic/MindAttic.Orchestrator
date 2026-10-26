@@ -195,3 +195,25 @@ public static class GatewayInstalls
 
     public static IReadOnlyList<string> Cleanup(string root) => TermHostInstalls.Cleanup(root, ExeName);
 }
+
+/// <summary>
+/// The side-by-side standalone TermViewer installs (M.ORCH-T960): the same <c>&lt;version&gt;-&lt;stamp&gt;</c> folders as
+/// <see cref="TermHostInstalls"/>, under <c>&lt;install dir&gt;\TermViewer\</c>. The daemon's fallback viewers start the newest; an
+/// open viewer keeps its folder until it closes, and a folder nothing runs from is cleaned up.
+/// </summary>
+public static class TermViewerInstalls
+{
+    public const string FolderName = "TermViewer";
+    public const string ExeName = "MindAttic.Orchestrator.TermViewer.exe";
+
+    public static string Root(string installDir) => Path.Combine(installDir, FolderName);
+
+    public static IReadOnlyList<TermHostInstalls.Installed> List(string root) => TermHostInstalls.List(root, ExeName);
+
+    public static TermHostInstalls.Installed? Newest(string root) => TermHostInstalls.Newest(root, ExeName);
+
+    /// <summary>The newest TermViewer exe under the install dir, or null.</summary>
+    public static string? ResolveExe(string installDir) => Newest(Root(installDir))?.Exe;
+
+    public static IReadOnlyList<string> Cleanup(string root) => TermHostInstalls.Cleanup(root, ExeName);
+}

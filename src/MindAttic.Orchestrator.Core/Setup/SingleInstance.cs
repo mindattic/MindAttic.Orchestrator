@@ -42,6 +42,9 @@ public sealed partial class SingleInstance : IDisposable
 
     public static string ShowEvent(string name) => name + ".Show";
 
+    /// <summary>The mutex the running instance holds for its life.</summary>
+    public static string MutexName(string name) => name + ".Instance";
+
     /// <summary>The hand-off pipe: per name and per Windows session, as the <c>Local\</c> mutex and event are.</summary>
     internal static string PipeName(string name) =>
         name.Replace('\\', '.') + ".HandOff." + System.Diagnostics.Process.GetCurrentProcess().SessionId;
@@ -51,7 +54,7 @@ public sealed partial class SingleInstance : IDisposable
     public static SingleInstance? Claim(string name, TimeSpan wait, IReadOnlyList<string>? args = null)
     {
         args ??= [];
-        var mutex = new Mutex(false, name + ".Instance");
+        var mutex = new Mutex(false, MutexName(name));
         if (TryOwn(mutex, TimeSpan.Zero)) return new SingleInstance(mutex, name);
         if (!SignalShow(name, args))
         {

@@ -60,6 +60,9 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             Status.StateBus.Enable(background: false);
             Status.StateBus.PublishAll(store);
         }
+        // The fallback viewers (M.ORCH-T960): while the dashboard is down, every hosted CLI gets its own TermViewer window. On its own
+        // thread, once a second, contained: nothing it does can end this loop.
+        if (ShowFallbackViewers) StartFallbackViewers(cancel);
         void OnReading(ClaudeMeterProbe probe, ReportedUsage reading) =>
             status?.PublishReadings([Status.MeterReading.Of(probe.Label, reading, signedIn: null, "probe")]);
         ClaudeMeterProbe.ReadingLanded += OnReading;
@@ -145,6 +148,8 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                         Say(LogEventLevel.Information, $"removed the unused TermHost {name}");
                     foreach (var name in Term.GatewayInstalls.Cleanup(Term.GatewayInstalls.Root(new Setup.Installer().InstallDir)))
                         Say(LogEventLevel.Information, $"removed the unused Gateway {name}");
+                    foreach (var name in Term.TermViewerInstalls.Cleanup(Term.TermViewerInstalls.Root(new Setup.Installer().InstallDir)))
+                        Say(LogEventLevel.Information, $"removed the unused TermViewer {name}");
                 }
                 // The team gateway (M.ORCH-T933), off unless turned on: started, restarted or stopped to match the settings. Its
                 // trouble is contained here: it only ever costs remote viewers, never a tick or a TermHost.
@@ -382,6 +387,41 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
 
     /// <summary>Whether <see cref="Run"/> serves the status stream (M.ORCH-T854); a test's daemon doesn't.</summary>
     internal bool ServeStatus { get; init; } = true;
+
+    /// <summary>Opens a standalone TermViewer for each hosted CLI while the dashboard is down (M.ORCH-T960); off in tests.</summary>
+    internal bool ShowFallbackViewers { get; init; } = true;
+
+    /// <summary>Held by the one daemon that runs the fallback viewers: a second daemon (<c>orchestrator daemon</c> beside the logon
+    /// one) waits for it, and takes over if it ends.</summary>
+    internal const string FallbackViewersMutex = @"Local\MindAttic.Orchestrator.FallbackViewers";
+
+    private void StartFallbackViewers(CancellationToken cancel)
+    {
+        try
+        {
+            new Thread(() =>
+            {
+                try
+                {
+                    using var role = new Mutex(false, FallbackViewersMutex);
+                    var owned = false;
+                    while (!owned && !cancel.IsCancellationRequested)
+                    {
+                        try { owned = role.WaitOne(TimeSpan.FromSeconds(5)); }
+                        catch (AbandonedMutexException) { owned = true; } // the daemon that had it died: ours now
+                    }
+                    if (!owned) return;
+                    try { new FallbackViewers { Say = (level, line) => Say(level, line) }.Run(cancel); }
+                    finally { try { role.ReleaseMutex(); } catch (ApplicationException) { } }
+                }
+                catch (Exception ex) { log.Error(ex, "The fallback viewers stopped; contained, the daemon carries on"); }
+            })
+            {
+                IsBackground = true, Name = "FallbackViewers",
+            }.Start();
+        }
+        catch (Exception ex) { log.Error(ex, "Starting the fallback viewers failed; contained"); }
+    }
 
     private IReadOnlyList<AccountDir>? watchedDirs;
 

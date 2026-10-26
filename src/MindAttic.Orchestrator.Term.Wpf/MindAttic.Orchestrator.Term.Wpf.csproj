@@ -12,6 +12,8 @@
     <AssemblyName>MindAttic.Orchestrator.Term.Wpf</AssemblyName>
     <!-- HOUSE-LAW-1: whole-number versions only; bump the major. -->
     <Version>1.0.0</Version>
+    <!-- LibraryImport's generated marshalling (RelayInput's MapVirtualKey) needs it. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

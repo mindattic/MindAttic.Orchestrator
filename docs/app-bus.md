@@ -118,6 +118,27 @@ the fast path: the registry files under `%LOCALAPPDATA%\MindAttic\MindAttic.Orch
 reconnect. The contract is `src/MindAttic.Orchestrator.Term/TermBus.cs` and `TermSessionRecord.cs`. In .NET, read it
 with `bus.On<TermSessionEvent>(TermBus.Kind, handler, TermBus.Version)`.
 
+## Fallback viewers (M.ORCH-T960)
+
+When Orchestrator.Desktop is down, every hosted CLI appears in its own standalone window and keeps working. No new kind is
+needed: the daemon reads the registry, and the windows fold back on the dashboard's existing `app-present`.
+
+- **Dashboard down.** The daemon (one at a time, by the `Local\MindAttic.Orchestrator.FallbackViewers` mutex) looks once a
+  second. The dashboard is up while both its single-instance mutex (`Local\MindAttic.Orchestrator.Dashboard.Instance`) and its
+  show event (`...Dashboard.Show`) exist; it is down once neither has been seen for 5 seconds in a row (`DashboardDownWatch`).
+- **Opening.** While it is down, each running session in `TermSessions.Enumerate()` without a viewer gets
+  `MindAttic.Orchestrator.TermViewer.exe --session <id>`, the newest under `<install dir>\TermViewer\<version>\`
+  (`TermViewerInstalls`). A viewer holds `Local\MindAttic.Orchestrator.TermViewer.<id>` while open, which is how the daemon knows
+  the session has one. A session started while the dashboard stays down (the Launcher) gets a window within about a second. A
+  window the person closed (exit 0) stays closed until the dashboard has come back; one that crashed opens again.
+- **Folding back: the viewer folds itself.** The dashboard reattaches every session as it starts (M.ORCH-T926) and sends
+  `app-present` (`orchestrator-desktop`) on its bus connection. Each TermViewer subscribes to the bus, and on that presence, once
+  the dashboard's mutex and show event confirm it is up, it closes quietly. The dashboard sends nothing per session. Two backups
+  cover a bus that is down: the viewer checks the dashboard every 2 seconds (folding on two up checks in a row), and, while a
+  host serves one viewer at a time (until M.ORCH-T930), the dashboard's reattach replaces the viewer's connection, and a viewer
+  that loses its connection while the dashboard is up folds at once.
+- **Closing** a TermViewer only detaches; the CLI keeps running. Its Session menu's "End CLI" kills the host's process tree.
+
 ## The Orchestrator's own state (M.ORCH-T891)
 
 Five kinds carry what the dashboard used to learn only by rereading the store: `members`, `orgs`, `settings`, `pause`

@@ -50,22 +50,11 @@ public sealed class TerminalPaneViewModel : ObservableObject
         if (session.Exited) Ended = true;
     }
 
-    /// <summary>Windows Terminal's default Campbell scheme, as the renderer's COLORREFs (0x00BBGGRR).</summary>
-    internal static readonly TerminalTheme Campbell = new()
-    {
-        DefaultBackground = Ref(0x0C0C0C),
-        DefaultForeground = Ref(0xCCCCCC),
-        DefaultSelectionBackground = Ref(0xFFFFFF),
-        CursorStyle = CursorStyle.BlinkingBar,
-        ColorTable =
-        [
-            Ref(0x0C0C0C), Ref(0xC50F1F), Ref(0x13A10E), Ref(0xC19C00), Ref(0x0037DA), Ref(0x881798), Ref(0x3A96DD), Ref(0xCCCCCC),
-            Ref(0x767676), Ref(0xE74856), Ref(0x16C60C), Ref(0xF9F1A5), Ref(0x3B78FF), Ref(0xB4009E), Ref(0x61D6D6), Ref(0xF2F2F2),
-        ],
-    };
+    /// <summary>Windows Terminal's default Campbell scheme (shared with the standalone TermViewer, M.ORCH-T960).</summary>
+    internal static TerminalTheme Campbell => TerminalThemes.Campbell;
 
     /// <summary>"#RRGGBB" as a Win32 COLORREF.</summary>
-    internal static uint Ref(int rgb) => (uint)(((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF));
+    internal static uint Ref(int rgb) => TerminalThemes.Ref(rgb);
 
     private static Brush? TryBrush(string hex)
     {
@@ -274,20 +263,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
     internal bool KillRequested => killRequested;
 
     /// <summary>Kills <paramref name="session"/>'s host and everything under it, when its pid is still that host (not reused).</summary>
-    internal static void KillHost(TermSessionRecord session)
-    {
-        try
-        {
-            if (TermSessions.HostStartOf(session.HostPid) is not { } started || (started - session.HostStartUtc).Duration() > TimeSpan.FromSeconds(1)) return;
-            using var process = System.Diagnostics.Process.GetProcessById(session.HostPid);
-            process.Kill(entireProcessTree: true);
-        }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException or AggregateException) { }
-        finally
-        {
-            TermPaneFile.Delete(session.Id);
-        }
-    }
+    internal static void KillHost(TermSessionRecord session) => TermHostKill.Kill(session);
 }
 
 /// <summary>
