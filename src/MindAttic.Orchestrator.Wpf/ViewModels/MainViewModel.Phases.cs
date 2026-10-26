@@ -322,31 +322,6 @@ public sealed partial class MainViewModel
             Raise(name);
     }
 
-    // ── Agent board ─────────────────────────────────────────────────────────
-
-    public ObservableCollection<AgentRowViewModel> Agents { get; } = [];
-    public bool HasAgents => Agents.Count > 0;
-
-    /// <summary>Subagents running across every agent on the board.</summary>
-    public int SubagentCount => Agents.Sum(a => a.Subagents.Count);
-
-    public string AgentsSummary => Agents.Count == 0 ? "" :
-        $"{Agents.Count} agent{(Agents.Count == 1 ? "" : "s")} · {Agents.Count(a => a.State == MindAttic.Orchestrator.Activity.AgentState.Waiting)} need you · " +
-        $"{SubagentCount} subagent{(SubagentCount == 1 ? "" : "s")} running";
-
-    private void ApplyAgents(Snapshot next)
-    {
-        // Ones waiting on you first: that's what a glance at the board is for. Then the most recently active.
-        Agents.SyncBy([.. next.Agents.OrderBy(r => r.State != MindAttic.Orchestrator.Activity.AgentState.Waiting)], r => r.SessionId, a => a.SessionId,
-            r => { var a = new AgentRowViewModel(r.SessionId); a.Update(r, TitleOf(r), next.TakenUtc); return a; },
-            (a, r) => a.Update(r, TitleOf(r), next.TakenUtc));
-        Raise(nameof(HasAgents)); Raise(nameof(SubagentCount)); Raise(nameof(AgentsSummary));
-        ReconcileMoves(next);
-
-        string? TitleOf(AgentBoardRow r) => r.TicketId is not { Length: > 0 } id ? null
-            : next.Repos.FirstOrDefault(repo => repo.Name == r.Repo)?.OpenTickets.FirstOrDefault(t => t.Id == id)?.Summary;
-    }
-
     // ── Queue ───────────────────────────────────────────────────────────────
 
     // The queue is the whole workspace's (M.ORCH-T613), so one plan and one set of rows, on the global login's tab, are what
@@ -540,7 +515,7 @@ public sealed partial class MainViewModel
                                      nameof(Pace), nameof(PaceText), nameof(PaceBrush), nameof(Utilization), nameof(UtilizationText) })
             Raise(name);
 
-        ApplyAgents(next);
+        ReconcileMoves(next);
 
         // Pace changes get no toast (M.ORCH-T857): the 5-hour chart and its caption already say it. Paced, the budget level is
         // only tracked, so a toast doesn't fire the moment pacing ends.

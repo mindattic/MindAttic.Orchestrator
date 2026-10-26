@@ -263,7 +263,7 @@
 
         <!-- A person's CLIs (M.ORCH-T810), fixed under their person tab (M.ORCH-T861): the person tabs above, then that person's
              terminal tabs right beneath them, then the chosen terminal, none of which scroll; everything under them (the stats, the
-             toolbar, current work, the 5-hour chart and Tickets) scrolls in the body (AgentsBody). One tab per CLI of theirs running
+             toolbar, the 5-hour chart and Tickets) scrolls in the body (AgentsBody). One tab per CLI of theirs running
              inside the dashboard (sent by the Launcher when it runs inside the Orchestrator, M.LNCH-T77), each a live ConPTY
              terminal with the Windows Terminal renderer, underlined in its login's colour and led by its badge (an MaTag in that
              colour). The terminals are native windows (HwndHosts), which WPF never clips to a scroll view, so the frame sits outside
@@ -364,16 +364,15 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- The person's current work: every Claude CLI and allocate agent on their login as a card, its running subagents
-             inside it, waiting-on-you first; each card's ticket a snippet that links into Tickets Desktop (its ticket option). State is
-             a word and a glyph as well as a colour (WCAG 1.4.1). Then the tickets assigned to them. One virtualized list
-             (M.ORCH-T754, MainWindow.xaml.cs): only what's on screen is built. -->
+        <!-- The person's scrolling body, under their fixed terminal: their stats, the toolbar, the 5-hour chart and the tickets
+             assigned to them (the Current work agent card board is gone, M.ORCH-T837). One virtualized list (M.ORCH-T754,
+             MainWindow.xaml.cs): only what's on screen is built. -->
         <ScrollViewer x:Name="AgentsBody" Grid.Row="4" Style="{StaticResource MaBodyScroll}"
                       Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
             <StackPanel>
                 <!-- A person's page (M.ORCH-T763, reordered by M.ORCH-T826), read top to bottom under their fixed person tab,
                      terminal tabs and terminal (M.ORCH-T861): their stats (the 5-hour window, the week, their cutoffs and when
-                     Claude's meter was last read), then the toolbar, their current work, the 5-hour chart and Tickets, all in this
+                     Claude's meter was last read), then the toolbar, the 5-hour chart and Tickets, all in this
                      one scrolling body. The body's MaBodyScroll owns the window's left/right gutter; nothing inside it adds its own,
                      so the tiles share both edges (M.ORCH-T192). The tiles are equal cells that together span the row at any width. -->
                 <StackPanel x:Name="Header" Margin="{StaticResource SpaceTS}" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
@@ -444,135 +443,25 @@
                            Visibility="{Binding AccountsMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                 </StackPanel>
 
-                <!-- Toolbar: the person's current work, by name and count, on the left; the zoom on the right (M.ORCH-T667, M.ORCH-T493). The
-                     clock, refresh info, Refresh and Open Launcher are gone (M.ORCH-T855): refresh is automatic (F5 too) and the
-                     Launcher is its own menu tab. There are no view
-                     pills any more (M.ORCH-T763): the Orchestrator shows only what's running, and Tickets Desktop the Repos, the Queue
-                     and the audit. -->
+                <!-- Toolbar: what the person's last action did on the left, the zoom on the right (M.ORCH-T667, M.ORCH-T493). The
+                     clock, refresh info, Refresh and Open Launcher are gone (M.ORCH-T855), and so are the Current work heading and
+                     its agent card board (M.ORCH-T837): each CLI is its own terminal tab, fixed above. There are no view pills any
+                     more (M.ORCH-T763): the Orchestrator shows only what's running, and Tickets Desktop the Repos, the Queue and
+                     the audit. -->
                 <Grid x:Name="Toolbar" Margin="{StaticResource SpaceH0VS}" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel x:Name="WorkHeading" VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Current work" Style="{StaticResource MaHeading}" AutomationProperties.HeadingLevel="Level2" />
-                            <TextBlock Text="{Binding AgentsSummary}" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLM}" VerticalAlignment="Bottom" />
-                        </StackPanel>
-                        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Margin="{StaticResource RowGutter}" Foreground="{DynamicResource MaFocus}"
-                                   Visibility="{Binding StatusMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                    </StackPanel>
+                    <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource MaFocus}"
+                               Visibility="{Binding StatusMessage, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="{StaticResource SpaceTS}">
                         <TextBlock Text="{Binding Zoom.Text}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center" Margin="{StaticResource SpaceLM}"
                                    ToolTip="Ctrl+0 resets the zoom" />
                     </StackPanel>
                 </Grid>
 
-                <StackPanel HorizontalAlignment="Left" Margin="{StaticResource SpaceH0VM}"
-                            Visibility="{Binding HasAgents, Converter={x:Static vm:Converters.FalseToVisible}}">
-                    <TextBlock Text="Nothing running on this login right now." FontSize="16" FontWeight="SemiBold" />
-                    <TextBlock Text="Open a Claude CLI from the Launcher, or start one from Tickets Desktop's Repos, and it shows up here with its subagents inside it."
-                               Style="{StaticResource MaMutedText}" Margin="{StaticResource RowGutter}" TextWrapping="Wrap" />
-                </StackPanel>
-
-                <!-- Equal columns and gaps that fill the width, flush with the tiles' edges (M.ORCH-T192): the library's MaTileList. -->
-                <ItemsControl x:Name="AgentCards" ItemsSource="{Binding Agents}" Style="{StaticResource MaTileList}" AutomationProperties.Name="Agents"
-                              mc:MaList.MinItemWidth="420" mc:MaList.Spacing="12" mc:MaList.RowSpacing="12">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:AgentRowViewModel}">
-                            <!-- The library's MaAccentCard: no margin (the list owns the gaps, M.ORCH-T192) and no padding (the state
-                                 stripe, an MaAccentBar, runs to the card's edge) (M.ORCH-T182). -->
-                            <Border x:Name="AgentCard" Style="{StaticResource MaAccentCard}">
-                                <Grid>
-                                <DockPanel IsEnabled="{Binding IsUnlocked}">
-                                    <!-- The state's colour down the left edge: a cue, never the only one. -->
-                                    <Border Style="{StaticResource MaAccentBar}" Background="{Binding StateBrush}" />
-                                    <StackPanel Margin="{StaticResource CardPadding}">
-                                        <DockPanel>
-                                            <mc:MaBadge x:Name="StatePill" DockPanel.Dock="Left" Glyph="{Binding StateGlyph}" Content="{Binding StateLabel}"
-                                                        Foreground="{Binding StateBrush}" Margin="{StaticResource SpaceRS}" />
-                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Elapsed}" Style="{StaticResource MaMutedText}" VerticalAlignment="Center"
-                                                       ToolTip="How long it's been on this" Margin="{StaticResource SpaceLS}" />
-                                            <TextBlock Text="{Binding Repo}" Style="{StaticResource MaHeading}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                        </DockPanel>
-                                        <!-- The Claude login this CLI bills (M.ORCH-T606), so one on the wrong account shows. -->
-                                        <TextBlock Text="{Binding Login}" Style="{StaticResource MaMutedText}" FontSize="11" Margin="{StaticResource RowGutter}" TextTrimming="CharacterEllipsis"
-                                                   ToolTip="{Binding LoginTip}" Visibility="{Binding Login, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                                        <!-- A snippet of the ticket it's on (M.ORCH-T763): a link that opens it in Tickets Desktop (its ticket option);
-                                             with no ticket, the line is plain text, not a dead link. -->
-                                        <TextBlock x:Name="AgentTicketSnippet" Margin="{StaticResource SpaceTS}" TextWrapping="Wrap" MaxHeight="38" TextTrimming="CharacterEllipsis"
-                                                   ToolTip="{Binding Headline}" Visibility="{Binding HasTicket, Converter={StaticResource Visible}}">
-                                            <Hyperlink Style="{StaticResource TicketLink}" CommandParameter="{Binding TicketId}"
-                                                       AutomationProperties.Name="{Binding Headline, StringFormat='{}{0}: open it in Tickets Desktop'}"><Run Text="{Binding Headline, Mode=OneWay}" /></Hyperlink>
-                                        </TextBlock>
-                                        <TextBlock Text="{Binding Headline}" Margin="{StaticResource SpaceTS}" TextWrapping="Wrap"
-                                                   Visibility="{Binding HasTicket, Converter={x:Static vm:Converters.FalseToVisible}}" />
-                                        <TextBlock Text="{Binding Meta}" Style="{StaticResource MaMutedText}" Margin="{StaticResource RowGutter}" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding Doing}" Margin="{StaticResource SpaceTS}" TextWrapping="Wrap" MaxHeight="38" TextTrimming="CharacterEllipsis"
-                                                   Visibility="{Binding Doing, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                                        <!-- To this CLI's own terminal tab (M.ORCH-T619), and Move to another signed-in login (M.ORCH-T607);
-                                             only a CLI in a Launcher tab has either. -->
-                                        <StackPanel Orientation="Horizontal" Margin="{StaticResource SpaceTS}" Visibility="{Binding HasHost, Converter={StaticResource Visible}}">
-                                            <Button Command="{Binding DataContext.GoToTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                    CommandParameter="{Binding}" Style="{StaticResource MaButton}" Content="Go to tab" Padding="{StaticResource SpaceHMVXS}"
-                                                    ToolTip="Bring this CLI's terminal to the front, on its tab"
-                                                    AutomationProperties.Name="{Binding Repo, StringFormat='Go to the {0} tab'}" />
-                                            <Button x:Name="AgentMoveToButton" Click="OnMoveToClick" Style="{StaticResource MaButton}" Content="Move to ▾" Padding="{StaticResource SpaceHMVXS}" Margin="{StaticResource SpaceLS}"
-                                                    ToolTip="Move this CLI to another signed-in login: its Launcher tab restarts it with claude --resume on that login at its next idle point, keeping its session"
-                                                    AutomationProperties.Name="{Binding Repo, StringFormat='Move the {0} CLI to another login'}" />
-                                        </StackPanel>
-                                        <TextBlock local:TicketText.Text="{Binding HoldNote}" Foreground="{DynamicResource MaWarn}" FontSize="12" TextWrapping="Wrap" Margin="{StaticResource RowGutter}"
-                                                   Visibility="{Binding HoldNote, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                                        <!-- The tickets this CLI claimed, only its own (M.ORCH-T532), each a link into Tickets Desktop (M.ORCH-T762). -->
-                                        <TextBlock local:TicketText.Text="{Binding Claims}" Style="{StaticResource MaMutedText}" Margin="{StaticResource RowGutter}" TextWrapping="Wrap"
-                                                   Visibility="{Binding Claims, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-
-                                        <!-- Its subagents, inside it. -->
-                                        <Border x:Name="SubagentPanel" Style="{StaticResource MaInsetCard}"
-                                                Visibility="{Binding HasSubagents, Converter={StaticResource Visible}}">
-                                            <StackPanel>
-                                                <TextBlock Text="{Binding SubagentsHeader}" Style="{StaticResource MaSectionLabel}" Margin="{StaticResource SpaceBS}" />
-                                                <ItemsControl ItemsSource="{Binding Subagents}" Style="{StaticResource MaRowList}">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate DataType="{x:Type vm:SubagentRowViewModel}">
-                                                            <Grid>
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="Auto" />
-                                                                    <ColumnDefinition Width="*" />
-                                                                    <ColumnDefinition Width="Auto" />
-                                                                </Grid.ColumnDefinitions>
-                                                                <Grid.RowDefinitions>
-                                                                    <RowDefinition Height="Auto" />
-                                                                    <RowDefinition Height="Auto" />
-                                                                </Grid.RowDefinitions>
-                                                                <mc:MaBadge x:Name="SubagentTag" Style="{StaticResource MaTag}" Content="{Binding Type}" Margin="{StaticResource SpaceRS}" />
-                                                                <TextBlock Grid.Column="1" Text="{Binding Task}" TextWrapping="Wrap" MaxHeight="36"
-                                                                           TextTrimming="CharacterEllipsis" FontSize="12" ToolTip="{Binding Task}" />
-                                                                <TextBlock Grid.Column="2" Text="{Binding Meta}" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}" VerticalAlignment="Top" />
-                                                                <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Doing}" Style="{StaticResource MaMutedText}" Margin="{StaticResource RowGutter}" />
-                                                            </Grid>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                            </StackPanel>
-                                        </Border>
-                                    </StackPanel>
-                                </DockPanel>
-                                <!-- A move in flight (M.ORCH-T638): the card is locked under a translucent veil until its CLI lands on the new login. -->
-                                <Grid x:Name="AgentMovingOverlay" Visibility="{Binding IsMoving, Converter={StaticResource Visible}}">
-                                    <Border Style="{StaticResource MaVeil}" />
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <mc:MaSpinner Width="20" Height="20" StrokeThickness="2" Margin="{StaticResource SpaceRS}" />
-                                        <TextBlock Text="{Binding MovingText}" FontWeight="SemiBold" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
-                                    </StackPanel>
-                                </Grid>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <!-- This 5-hour window's utilization (M.ORCH-T191), moved below Terminals, under current work (M.ORCH-T826):
+                <!-- This 5-hour window's utilization (M.ORCH-T191), moved below Terminals (M.ORCH-T826):
                      its own full-width row, tall enough that the pace line straight to the target at the reset, the window's
                      own line (red while over that pace, green under) and where the recent rate ends up are easy to read. The
                      caption says it in words. -->

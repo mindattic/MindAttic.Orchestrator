@@ -188,36 +188,9 @@ public sealed class LibraryControlsTests
     }
 
     [Test]
-    public void The_agent_state_pill_and_subagent_tag_are_McBadges()
+    public void No_card_is_hand_built()
     {
         var window = Window();
-        var pill = Named(window, "StatePill");
-        Assert.That(pill.Name, Is.EqualTo(Mc + "MaBadge"));
-        Assert.That((string?)pill.Attribute("Glyph"), Is.EqualTo("{Binding StateGlyph}"));
-        Assert.That((string?)pill.Attribute("Content"), Is.EqualTo("{Binding StateLabel}"));
-        Assert.That((string?)pill.Attribute("Foreground"), Is.EqualTo("{Binding StateBrush}"));
-
-        var tag = Named(window, "SubagentTag");
-        Assert.That(tag.Name, Is.EqualTo(Mc + "MaBadge"));
-        Assert.That((string?)tag.Attribute("Style"), Is.EqualTo("{StaticResource MaTag}"));
-    }
-
-    [Test]
-    public void The_agent_card_and_its_subagent_panel_are_McCards_and_no_card_is_hand_built()
-    {
-        var window = Window();
-
-        // The agent card is the library's MaAccentCard (MaCard with no margin, the list owns the gaps, and no padding,
-        // the MaAccentBar runs to its edge), its subagents an MaInsetCard (M.ORCH-T667; the login cards went with the Accounts view, M.ORCH-T763).
-        foreach (var name in new[] { "AgentCard" })
-        {
-            var card = Named(window, name);
-            Assert.That((string?)card.Attribute("Style"), Is.EqualTo("{StaticResource MaAccentCard}"), name);
-            Assert.That(card.Attribute("Background") ?? card.Attribute("BorderBrush") ?? card.Attribute("CornerRadius") ?? card.Attribute("Padding"), Is.Null, "the card's look is the library's");
-            Assert.That(card.Descendants(P + "Border").Count(b => (string?)b.Attribute("Style") == "{StaticResource MaAccentBar}"), Is.EqualTo(1), name);
-        }
-        foreach (var name in new[] { "SubagentPanel" })
-            Assert.That((string?)Named(window, name).Attribute("Style"), Is.EqualTo("{StaticResource MaInsetCard}"), name);
 
         // A rounded surface drawn by hand is a card the library already has.
         bool MaCardStyled(XElement b) => ((string?)b.Attribute("Style"))?.StartsWith("{StaticResource Ma") == true;

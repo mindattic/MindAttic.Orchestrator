@@ -146,7 +146,7 @@ public sealed class TicketPinsTests
         while (!Path.Exists(Path.Combine(root, ".git"))) root = Path.GetDirectoryName(root) ?? throw new AssertionException("no repo root above the tests");
         var window = File.ReadAllText(Path.Combine(root, "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
         Assert.That(window.IndexOf("x:Name=\"UserTickets\"", StringComparison.Ordinal),
-            Is.GreaterThan(window.IndexOf("x:Name=\"AgentCards\"", StringComparison.Ordinal)), "below the person's CLIs");
+            Is.GreaterThan(window.IndexOf("x:Name=\"TerminalFrame\"", StringComparison.Ordinal)), "below the person's CLIs");
         Assert.That(window, Does.Contain("Style=\"{StaticResource MaRowList}\" ItemsSource=\"{Binding AssignedTickets}\"")
             .And.Contain("ItemsSource=\"{Binding UnassignedTickets}\"").And.Contain("x:Name=\"AssignInTickets\""));
         // M.ORCH-T762: assigning, reassigning and redelegating are Tickets Desktop's; the dashboard only links there.

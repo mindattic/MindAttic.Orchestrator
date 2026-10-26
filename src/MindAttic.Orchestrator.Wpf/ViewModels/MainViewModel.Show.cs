@@ -18,7 +18,7 @@ public sealed partial class MainViewModel
         var kind = DashboardRequest.KindOf(target);
         var globalEmail = workspace?.GlobalEmail;
         var found = loginTabs.FirstOrDefault(t => t.IsPersonTab &&
-            ShowMatches(kind, target, t.ScopeEmail ?? globalEmail, t.Agents.Select(a => (a.SessionId, (Func<string, bool>)a.Holds))));
+            ShowMatches(kind, target, t.ScopeEmail ?? globalEmail, (t.snapshot?.Agents ?? []).Select(a => (a.SessionId, (Func<string, bool>)(id => Holds(a, id))))));
         if (found is null)
         {
             var what = kind switch { ShowKind.Person => "No person here has the login", ShowKind.Ticket => "No running CLI is on", _ => "No running CLI has the session" };
@@ -38,6 +38,11 @@ public sealed partial class MainViewModel
         log.Information("--show {Target:l}: showing {Tab:l}", target, found.TabTitle);
         return true;
     }
+
+    /// <summary>Whether a CLI is on <paramref name="ticketId"/>: the ticket it was started on, or one it claimed.</summary>
+    private static bool Holds(MindAttic.Orchestrator.Activity.AgentBoardRow a, string ticketId) =>
+        string.Equals(a.TicketId, ticketId, StringComparison.OrdinalIgnoreCase) ||
+        a.Claims.Any(c => string.Equals(c, ticketId, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Whether a person with login <paramref name="email"/> and CLIs <paramref name="agents"/> (each its session id and
     /// whether it's on a ticket) is what <paramref name="target"/> names: their email; a session id, or its start (at least 8

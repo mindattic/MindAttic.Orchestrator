@@ -10,8 +10,7 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 /// <summary>
 /// A person's login actions (M.ORCH-T763), on their own page now that the Accounts view is gone: Rename (its name and terminal-title prefix,
 /// M.ORCH-T633), Org limit (its own 5-hour and weekly cutoffs, as <c>orchestrator org limit</c> sets them, M.ORCH-T707) and
-/// Make default, all three the person's tab's right-click menu (M.ORCH-T797); each CLI moves by its own agent card's Move to
-/// (<see cref="MoveTargetsAsync"/>). The org-wide ones, Add login, Sign in all and Report, sit in the small toolbar above the
+/// Make default, all three the person's tab's right-click menu (M.ORCH-T797). The org-wide ones, Add login, Sign in all and Report, sit in the small toolbar above the
 /// person tabs, on the global login's tab. There's no Sign in among them (M.ORCH-T796): a login that gets disconnected opens
 /// its own sign-in (<see cref="OwnLogins.SignIn"/>) by itself.
 /// </summary>

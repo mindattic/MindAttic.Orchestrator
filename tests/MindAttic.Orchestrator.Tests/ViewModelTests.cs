@@ -171,20 +171,8 @@ public sealed class ViewModelTests
         Assert.That(StatusAggregator.LoginText(own, global, billingIsApiKey: true), Is.EqualTo(expected));
 
     [Test]
-    public void Agent_cards_and_launcher_tabs_show_the_login_each_cli_bills()
+    public void Launcher_tabs_show_the_login_each_cli_bills()
     {
-        var now = DateTime.UtcNow;
-        var row = new MindAttic.Orchestrator.Activity.AgentBoardRow("s1", "A", null, null, now, now,
-            MindAttic.Orchestrator.Activity.AgentState.Working, "", false, default, []) { Login = "a@b.com" };
-        var card = new AgentRowViewModel("s1");
-        card.Update(row, null, now);
-        Assert.That((card.Login, card.AccessibleName.Contains("Login: a@b.com.")), Is.EqualTo(("Login: a@b.com", true)));
-        card.Update(row with { Login = null }, null, now);
-        Assert.That(card.Login, Is.Empty, "nothing shown when the login isn't known");
-
-        card.Update(row with { Login = "Jordan", LoginEmail = "j@b.com" }, null, now);
-        Assert.That((card.Login, card.LoginTip), Is.EqualTo(("Login: Jordan", "The Claude login this CLI bills: j@b.com")), "the name, the email in the tooltip (M.ORCH-T614)");
-
         var host = new HostRowViewModel(new HostSession("Claude", 7, "p", null) { Login = "g (fallback)", LoginEmail = "g@b.com" });
         Assert.That((host.Detail, host.DetailTip), Is.EqualTo(("PID 7 · g (fallback)", "Bills the Claude login g@b.com")));
         host.Update(new HostSession("Claude", 7, "p", null));

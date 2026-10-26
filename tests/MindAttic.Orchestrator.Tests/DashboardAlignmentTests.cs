@@ -151,12 +151,6 @@ public sealed class DashboardAlignmentTests
         var beside = MaScrollArea.PaddingFor(gutter, Visibility.Visible);
         Assert.That(beside.Left, Is.EqualTo(Side));
         Assert.That(beside.Right + MaScrollArea.ScrollBarWidth, Is.EqualTo(Side), "the scroll bar sits inside the gutter");
-
-        // The agent cards are laid out by the library's MaTileList and carry no fixed width or margin of their own.
-        var agents = Named("AgentCards");
-        Assert.That((string?)agents.Attribute("Style"), Is.EqualTo("{StaticResource MaTileList}"));
-        var card = agents.Descendants(P + "DataTemplate").First().Elements().First();
-        Assert.That(card.Attribute("Width") ?? card.Attribute("Margin"), Is.Null);
     }
 
     [Test]
@@ -168,10 +162,12 @@ public sealed class DashboardAlignmentTests
         XElement Named(string name) => doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == name);
         static string? Binding(XElement e, string attribute) => (string?)e.Attribute(attribute);
 
-        // M.ORCH-T855: only the current work heading and the zoom remain; refresh is automatic, F5 and the stat tile's own Refresh.
+        // M.ORCH-T855: only the status line and the zoom remain; refresh is automatic, F5 and the stat tile's own Refresh. The
+        // Current work heading went with its agent card board (M.ORCH-T837).
         var toolbar = Named("Toolbar");
         Assert.That(toolbar.Descendants(P + "ListBox").Any(l => (string?)l.Attribute("ItemsSource") == "{Binding ViewChoices}"), Is.False);
-        Assert.That((string?)Named("WorkHeading").Attribute("Grid.Column"), Is.Null, "the heading on the left");
+        Assert.That(doc.Descendants().Any(e => (string?)e.Attribute(X + "Name") == "WorkHeading"), Is.False, "no Current work heading");
+        Assert.That(doc.Descendants().Any(e => (string?)e.Attribute("Text") == "Current work"), Is.False);
         Assert.That(toolbar.Descendants(P + "Button").Any(), Is.False, "no buttons on the toolbar");
         Assert.That(doc.Descendants().Any(e => Binding(e, "Text") is "{Binding Clock.Text}" or "{Binding RefreshInfo}"), Is.False);
         Assert.That(doc.Descendants(P + "Button").Any(b => Binding(b, "Command") == "{Binding OpenLauncherCommand}"), Is.False);

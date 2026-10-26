@@ -4,32 +4,9 @@ using MindAttic.Orchestrator.Activity;
 
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
-/// <summary>"Go to tab" (M.ORCH-T619): a toast, a Launcher tab row or an agent card brings that CLI's own terminal up.</summary>
+/// <summary>"Go to tab" (M.ORCH-T619): a toast brings that CLI's own terminal up.</summary>
 public sealed partial class MainViewModel
 {
-    private ICommand? goToTabCommand;
-
-    /// <summary>Parameter: a <see cref="HostRowViewModel"/> or an <see cref="AgentRowViewModel"/>.</summary>
-    public ICommand GoToTabCommand => goToTabCommand ??= new RelayCommand(async p =>
-    {
-        switch (p)
-        {
-            case HostRowViewModel row:
-                var result = await GoToAsync(row.Host);
-                if (result.Outcome != GoToOutcome.Tab) row.ShowFeedback(result.Note);
-                break;
-            case AgentRowViewModel agent:
-                await GoToOrShowRepoAsync(agent.Host, agent.Repo);
-                break;
-        }
-    }, p => p switch
-    {
-        // Off while its CLI moves to another login (M.ORCH-T637).
-        HostRowViewModel row => !row.IsMoving,
-        AgentRowViewModel agent => !agent.IsMoving,
-        _ => true,
-    });
-
     /// <summary>The tab a toast about <paramref name="repo"/> goes to: the one whose CLI waits on you, else its only (or first) tab.</summary>
     internal static HostSession? HostForToast(RepoStatus? repo, IEnumerable<AgentBoardRow> agents)
     {

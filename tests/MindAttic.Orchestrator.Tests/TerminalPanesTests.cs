@@ -257,10 +257,10 @@ public sealed class TerminalPanesTests
         Assert.That((string?)Named("AgentsBody").Attribute("Grid.Row"), Is.EqualTo(rows.IndexOf("*").ToString()), "everything under them scrolls");
         foreach (var name in new[] { "TerminalsPanel", "TerminalTabs", "TerminalFrame" })
             Assert.That(Named(name).Ancestors().Contains(Named("AgentsBody")), Is.False, name);
-        // In the body: the stats, the toolbar, current work, then the 5-hour chart and Tickets (M.ORCH-T826).
+        // In the body: the stats, the toolbar, then the 5-hour chart and Tickets (M.ORCH-T826; no Current work board, M.ORCH-T837).
         var body = Named("AgentsBody").Elements().Single().Elements().Select(e => (string?)e.Attribute(x + "Name")).ToList();
         Assert.That(body.IndexOf("Toolbar"), Is.EqualTo(body.IndexOf("Header") + 1));
-        Assert.That(body.IndexOf("UtilizationSection"), Is.EqualTo(body.IndexOf("AgentCards") + 1));
+        Assert.That(body.IndexOf("UtilizationSection"), Is.EqualTo(body.IndexOf("Toolbar") + 1));
         Assert.That(body.IndexOf("UserTickets"), Is.EqualTo(body.IndexOf("UtilizationSection") + 1));
         Assert.That((string?)Named("TerminalTabs").Attribute("ItemsSource"), Is.EqualTo("{Binding Terminals.Panes}"));
         Assert.That(Named("TerminalPanesHost").Parent, Is.SameAs(Named("TerminalFrame")));

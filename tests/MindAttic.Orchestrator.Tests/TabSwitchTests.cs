@@ -37,13 +37,14 @@ public sealed class TabSwitchTests
     }
 
     [Test]
-    public void A_persons_page_shows_their_running_agents_and_no_repos_queue_audit_or_accounts_view()
+    public void A_persons_page_has_no_agent_board_repos_queue_audit_or_accounts_view()
     {
-        // M.ORCH-T763: the Orchestrator shows only what's running; Tickets Desktop owns the Repos, the Queue and the audit.
+        // M.ORCH-T763: the Orchestrator shows only what's running; Tickets Desktop owns the Repos, the Queue and the audit. The
+        // Current work agent card board is gone too (M.ORCH-T837): each CLI is its own terminal tab.
         var doc = XDocument.Load(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml"));
-        var list = doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == "AgentCards");
-        Assert.That((string?)list.Attribute("ItemsSource"), Is.EqualTo("{Binding Agents}"), "only the shown tab's DataContext is bound");
-        foreach (var gone in new[] { "ReposBody", "DetailPane", "QueueView", "QueueList", "AuditBody", "AccountsBody", "LoginCardList", "SearchBox" })
+        Assert.That(doc.Descendants().Any(e => (string?)e.Attribute("ItemsSource") == "{Binding Agents}"), Is.False, "no agent board");
+        Assert.That(typeof(MainViewModel).GetProperty("Agents"), Is.Null);
+        foreach (var gone in new[] { "AgentCards", "WorkHeading", "ReposBody", "DetailPane", "QueueView", "QueueList", "AuditBody", "AccountsBody", "LoginCardList", "SearchBox" })
             Assert.That(doc.Descendants().Any(e => (string?)e.Attribute(X + "Name") == gone), Is.False, gone);
         Assert.That(doc.Descendants().Any(e => (string?)e.Attribute("ItemsSource") == "{Binding ViewChoices}"), Is.False, "no view pills");
         Assert.That(typeof(MainViewModel).GetProperty("ViewChoice"), Is.Null);

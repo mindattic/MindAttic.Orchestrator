@@ -279,24 +279,6 @@ public partial class MainWindow : Window
         if (sender is TextBlock icon) Blink(icon, icon.IsVisible);
     }
 
-    /// <summary>"Move to" on an agent card (M.ORCH-T607): a menu of the other signed-in logins, read when it's opened, each moving
-    /// that CLI to its login.</summary>
-    private async void OnMoveToClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Button { DataContext: AgentRowViewModel a } button) return;
-        var tab = Shown;
-        try
-        {
-            ShowMoveMenu(button, $"Move the {a.Repo} CLI to", await tab.MoveTargetsAsync(a.OwnLogin),
-                async target =>
-                {
-                    try { await tab.MoveToAccountAsync(a.Repo, a.SessionId, a.CliPid, target); }
-                    catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Moving a CLI failed; contained"); }
-                });
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Building the Move to menu failed; contained"); }
-    }
-
     /// <summary>A person's tab's right-click menu (M.ORCH-T797; Shift+F10 or the menu key on a focused tab too): Rename, Org
     /// limit and Make default, the login actions that were standalone buttons on the person's page. Make default is this
     /// person's own (it signs the global fallback login in to their account), so it's here, shown only while it applies. The
@@ -345,27 +327,6 @@ public partial class MainWindow : Window
         var item = new MenuItem { Header = header };
         item.SetResourceReference(StyleProperty, "MaDropdownMenuItem");
         return item;
-    }
-
-    private void ShowMoveMenu(Button button, string name, IReadOnlyList<MindAttic.Orchestrator.Sessions.MoveTarget> targets,
-        Func<MindAttic.Orchestrator.Sessions.MoveTarget, Task> move)
-    {
-        var menu = DropdownMenu(button, name, PlacementMode.Bottom);
-        MenuItem Item(object header) => DropdownItem(header);
-        if (targets.Count == 0)
-        {
-            var none = Item("No other signed-in login");
-            none.IsEnabled = false;
-            menu.Items.Add(none);
-        }
-        foreach (var target in targets)
-        {
-            var item = Item(target.Label);
-            item.ToolTip = target.IsGlobal ? "The global login (~/.claude)" : $"{target.Email}'s own login (~/.claude-accounts)";
-            item.Click += async (_, _) => await move(target);
-            menu.Items.Add(item);
-        }
-        menu.IsOpen = true;
     }
 
     private bool Hidden => !IsVisible || WindowState == WindowState.Minimized;

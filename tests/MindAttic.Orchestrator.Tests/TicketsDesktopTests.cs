@@ -48,13 +48,10 @@ public sealed class TicketsDesktopTests
             Does.Contain("OpenInTicketsCommand"));
 
         var links = doc.Descendants(p + "Hyperlink").Where(h => (string?)h.Attribute("Style") == "{StaticResource TicketLink}").ToList();
-        // The per-user Tickets view's ticket (M.ORCH-T668), its title and its Assign in Tickets (M.ORCH-T762), a finished ticket and
-        // an agent's ticket snippet (M.ORCH-T763); the Repos and Queue views' links went with them to Tickets Desktop.
+        // The per-user Tickets view's ticket (M.ORCH-T668), its title and its Assign in Tickets (M.ORCH-T762) and a finished
+        // ticket; the Repos and Queue views' links went with them to Tickets Desktop, the agent card's snippet with its board (M.ORCH-T837).
         Assert.That(links.Select(h => (string)h.Attribute("CommandParameter")!),
-            Is.EquivalentTo(new[] { "{Binding Id}", "{Binding Id}", "{Binding Id}", "{Binding TicketId}", "{Binding TicketId}" }));
-        var snippet = doc.Descendants().Single(e => (string?)e.Attribute(x + "Name") == "AgentTicketSnippet");
-        Assert.That(snippet.Element(p + "Hyperlink")!.Element(p + "Run")!.Attribute("Text")!.Value, Is.EqualTo("{Binding Headline, Mode=OneWay}"),
-            "the snippet (id and title) is the link itself");
+            Is.EquivalentTo(new[] { "{Binding Id}", "{Binding Id}", "{Binding Id}", "{Binding TicketId}" }));
         // Each one opens through the same style's OpenInTicketsCommand (no link overrides it with its own Command).
         Assert.That(links, Has.None.Matches<XElement>(h => h.Attribute("Command") is not null));
         Assert.That(links, Has.All.Matches<XElement>(h => h.Attribute(XName.Get("AutomationProperties.Name")) is not null));
@@ -66,9 +63,9 @@ public sealed class TicketsDesktopTests
             // An organization's summary isn't a ticket's.
             .Where(e => e.Ancestors(p + "DataTemplate").FirstOrDefault()?.Attribute("DataType")?.Value.Contains("OrgViewModel") != true);
         Assert.That(plain, Is.Empty, "no ticket id or title left as plain text");
-        // Free text that names tickets (the dashboard's message, a status, a held note, a CLI's claims) links each id it names.
+        // Free text that names tickets (the dashboard's message, the queue's last line) links each id it names.
         Assert.That(doc.Descendants(p + "TextBlock").Count(e => e.Attribute(XName.Get("{clr-namespace:MindAttic.Orchestrator.Wpf}TicketText.Text")) is not null),
-            Is.GreaterThanOrEqualTo(4));
+            Is.GreaterThanOrEqualTo(2));
     }
 
     [Test]
