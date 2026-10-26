@@ -478,10 +478,11 @@
                     </Border>
                 </StackPanel>
 
-                <!-- Tickets per user (M.ORCH-T668), below the person's open CLIs: the tickets assigned to them, then the unassigned
-                     queue, each with who it's assigned to. An assigned ticket is dispatched only on its user's login. Each part sits
+                <!-- Tickets per user (M.ORCH-T668), below the person's open CLIs: the tickets assigned to them, each with who
+                     it's assigned to. A person's page shows only their own queue; the unassigned queue shows on the global
+                     login's tab only (M.ORCH-T842), the dashboard's one place to see an unassigned ticket. An assigned ticket is dispatched only on its user's login. Each part sits
                      straight in the view, the lists too, so the view's one virtualized list builds only the tickets on screen
-                     (M.ORCH-T754): the unassigned queue is the same hundreds of tickets on every tab. -->
+                     (M.ORCH-T754). -->
                 <StackPanel x:Name="UserTickets" Margin="{StaticResource SectionGap}" Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}">
                     <TextBlock Text="Tickets" Style="{StaticResource MaHeading}" />
                     <TextBlock Text="A ticket assigned to a person is dispatched only on their login (next --claim, allocate and Start); while they're out of room it waits for them. Assign, reassign or redelegate it in Tickets Desktop: every ticket here opens there."
@@ -494,10 +495,10 @@
                               ItemTemplate="{StaticResource UserTicketTemplate}" AutomationProperties.Name="{Binding AssignedHeader}"
                               Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}" />
                 <TextBlock Text="{Binding UnassignedHeader}" Style="{StaticResource MaSectionLabel}"
-                           Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}" />
+                           Visibility="{Binding ShowsUnassignedTickets, Converter={StaticResource Visible}}" />
                 <ItemsControl x:Name="UnassignedTicketList" Style="{StaticResource MaRowList}" ItemsSource="{Binding UnassignedTickets}"
                               ItemTemplate="{StaticResource UserTicketTemplate}" AutomationProperties.Name="{Binding UnassignedHeader}"
-                              Visibility="{Binding ShowsUserTickets, Converter={StaticResource Visible}}" />
+                              Visibility="{Binding ShowsUnassignedTickets, Converter={StaticResource Visible}}" />
 
                 <!-- What fits on no person's page (M.ORCH-T763), on the global login's tab instead of its own 'Miscellaneous'
                      tab (M.ORCH-T825): allocate and the pace's slots, a pacing hold, the reminders the daemon texts through

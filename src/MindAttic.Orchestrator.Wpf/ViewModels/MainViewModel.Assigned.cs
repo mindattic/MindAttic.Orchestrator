@@ -94,8 +94,8 @@ public sealed class UserTicketRowViewModel : ObservableObject
 }
 
 /// <summary>
-/// Tickets per user (M.ORCH-T668): under each person's open CLIs, their Tickets view lists the tickets assigned to them and the
-/// unassigned queue, each saying who has it. An assignment is a pin (<see cref="TicketPins"/>): it's dispatched only on its user's
+/// Tickets per user (M.ORCH-T668): under each person's open CLIs, their Tickets view lists the tickets assigned to them (the
+/// global login's tab also lists the unassigned queue, M.ORCH-T842), each saying who has it. An assignment is a pin (<see cref="TicketPins"/>): it's dispatched only on its user's
 /// login, and while they're out of room it waits for them, its card saying why. The assignment itself is made, changed or dropped
 /// in Tickets Desktop (M.ORCH-T762), which every ticket here links to.
 /// </summary>
@@ -113,7 +113,8 @@ public sealed partial class MainViewModel
     /// <summary>This tab's person's tickets: the ones assigned to them, in queue order.</summary>
     public ObservableCollection<UserTicketRowViewModel> AssignedTickets { get; } = [];
 
-    /// <summary>The unassigned queue, in queue order, as this tab shows it (the same tickets on every tab).</summary>
+    /// <summary>The unassigned queue, in queue order, on the global login's tab only (M.ORCH-T842): a person's page shows only
+    /// their own queue, and this is the dashboard's one place to see an unassigned ticket and reach "Assign in Tickets".</summary>
     public ObservableCollection<UserTicketRowViewModel> UnassignedTickets { get; } = [];
 
     /// <summary>This tab's person's login: its own email, or on the global login's tab the email signed in to it.</summary>
@@ -121,6 +122,9 @@ public sealed partial class MainViewModel
 
     /// <summary>The Tickets view shows on a person's signed-in tab whose login is known.</summary>
     public bool ShowsUserTickets => IsTabSignedIn && PersonEmail is not null;
+
+    /// <summary>The unassigned queue shows on the global login's tab only (M.ORCH-T842).</summary>
+    public bool ShowsUnassignedTickets => ShowsUserTickets && IsGlobalTab;
 
     /// <summary>Nothing is assigned to this tab's person: the view says how to assign them something.</summary>
     public bool HasNoAssigned => AssignedTickets.Count == 0;
@@ -179,9 +183,10 @@ public sealed partial class MainViewModel
             // Each tab's rows are its own, so their pickers offer the tab's org's people (M.ORCH-T754).
             t.AssignedTickets.SyncBy([.. queue.Where(q => email is not null && TicketPins.Same(q.Assignee, email))], q => q.Id, r => r.Id,
                 q => { var r = new UserTicketRowViewModel(q, t); r.Update(q); return r; }, (r, q) => r.Update(q));
-            t.UnassignedTickets.SyncBy([.. queue.Where(q => q.Assignee is null && !q.IsAssigned)], q => q.Id, r => r.Id,
+            // Only the global login's tab lists the unassigned queue (M.ORCH-T842); a person's page shows just their own.
+            t.UnassignedTickets.SyncBy([.. queue.Where(q => t.IsGlobalTab && q.Assignee is null && !q.IsAssigned)], q => q.Id, r => r.Id,
                 q => { var r = new UserTicketRowViewModel(q, t); r.Update(q); return r; }, (r, q) => r.Update(q));
-            foreach (var name in new[] { nameof(AssignedHeader), nameof(UnassignedHeader), nameof(NoAssignedText), nameof(HasNoAssigned), nameof(PersonEmail), nameof(ShowsUserTickets) })
+            foreach (var name in new[] { nameof(AssignedHeader), nameof(UnassignedHeader), nameof(NoAssignedText), nameof(HasNoAssigned), nameof(PersonEmail), nameof(ShowsUserTickets), nameof(ShowsUnassignedTickets) })
                 t.Raise(name);
         }
     }
