@@ -262,7 +262,13 @@ public partial class App : Application
     private static int Forward(string exe, string[] args)
     {
         var daemon = args.Contains(Installer.DaemonArg, StringComparer.OrdinalIgnoreCase);
-        var psi = new ProcessStartInfo(exe) { UseShellExecute = false, CreateNoWindow = daemon, WorkingDirectory = Path.GetDirectoryName(exe)! };
+        // The caller's working directory is kept (M.ORCH-T1044): a Launcher or Tickets link's relative path arguments resolve against
+        // it, not the install folder. The daemon still runs from its own folder, as DaemonStartInfo starts it.
+        var psi = new ProcessStartInfo(exe)
+        {
+            UseShellExecute = false, CreateNoWindow = daemon,
+            WorkingDirectory = daemon ? Path.GetDirectoryName(exe)! : Environment.CurrentDirectory,
+        };
         foreach (var a in args) psi.ArgumentList.Add(a);
         try
         {
