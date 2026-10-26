@@ -172,8 +172,10 @@ public sealed partial class MainViewModel
     /// person's is its own login's (M.ORCH-T906): tickets are assigned to it by that email like anyone's.</summary>
     public string? PersonEmail => AccountDirs.Normalize(tab.Email ?? Root.full?.GlobalEmail);
 
-    /// <summary>The Tickets view shows on a person's signed-in tab whose login is known.</summary>
-    public bool ShowsUserTickets => IsTabSignedIn && PersonEmail is not null;
+    /// <summary>The Tickets view shows on a person's signed-in tab whose login is known, and always on the signed-in global
+    /// login's tab: with its email unknown (an API-key-only setup) it still holds the queue tabs and the only unassigned queue
+    /// (M.ORCH-T1023); its own lists are just empty.</summary>
+    public bool ShowsUserTickets => IsTabSignedIn && (PersonEmail is not null || IsGlobalTab);
 
     /// <summary>The unassigned queue shows on the global login's tab only (M.ORCH-T842).</summary>
     public bool ShowsUnassignedTickets => ShowsUserTickets && IsGlobalTab;
