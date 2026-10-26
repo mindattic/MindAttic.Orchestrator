@@ -269,7 +269,7 @@ $failed = $false
 
 # ── The drag-and-drop exe ───────────────────────────────────────────────────
 $built = $false
-if (Test-Stale $artifact @($wpfDir, $coreDir, $termWpfDir)) {
+if (Test-Stale $artifact @($wpfDir, $coreDir, $termWpfDir, $termDir)) {
     Write-Host "Publishing MindAttic.Orchestrator -> $artifact" -ForegroundColor Cyan
     dotnet publish (Join-Path $wpfDir 'MindAttic.Orchestrator.Wpf.csproj') --configuration Release --runtime win-x64 `
         --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true `
@@ -284,7 +284,7 @@ if (Test-Stale $artifact @($wpfDir, $coreDir, $termWpfDir)) {
 # /allocate, review) holds its DLLs and must neither fail the deploy nor leave Cli\ half-installed (M.ORCH-T765).
 $cliStage = Join-Path $appDir 'Cli.staging'
 $cliStaged = $false
-if (Test-Stale $cliExe @($cliDir, $coreDir)) {
+if (Test-Stale $cliExe @($cliDir, $coreDir, $termDir)) {
     if (Test-Path $cliStage) { Remove-Item -Recurse -Force $cliStage }
     Write-Host "Publishing the CLI -> $cliStage" -ForegroundColor Cyan
     dotnet publish (Join-Path $cliDir 'MindAttic.Orchestrator.Cli.csproj') --configuration Release --output $cliStage | Out-Host
