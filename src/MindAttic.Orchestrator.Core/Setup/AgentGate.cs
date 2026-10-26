@@ -2799,13 +2799,14 @@ public static class AgentGate
         def my_pid():
             return os.environ.get("MINDATTIC_CLI_PID") or cli_pid()
 
-        def take_nudges():
+        def take_nudges(paced=True):
             # What the orchestrator wants this CLI to do next (idle claims to start, work to claim, a resume after a limit, tickets
             # handed back after a move: M.ORCH-T864), left as nudge-<pid>-<kind>.txt files. They reach the model as hook context
             # (a prompt, a tool call, or a Stop that sends the turn on), never typed into the input box. Each is taken once; one
             # older than two of the wakers' cooldowns is stale and dropped, and none is delivered while the window's stop holds:
             # held, it's left where it is for a later hook (M.ORCH-T1004: they were deleted unread, so an unpaced CLI's, or one
-            # whose CONTROL or exempt prompt ran at the stop, lost its /allocate claims and resume for good).
+            # whose CONTROL or exempt prompt ran at the stop, lost its /allocate claims and resume for good). Only a paced CLI is
+            # held: one billed elsewhere (an API key) isn't held by the subscription's stop, so its nudges go through (M.ORCH-T1037).
             out = []
             try:
                 pid = my_pid()
@@ -2814,8 +2815,10 @@ public static class AgentGate
                 files = sorted(CLI_MARKS_DIR.glob("nudge-" + str(pid) + "-*.txt"))
                 if not files:
                     return out
-                s = orchestrator_status()
-                held = bool(s.get("stop")) or orchestrator_stop(s) is not None
+                held = False
+                if paced:
+                    s = orchestrator_status()
+                    held = bool(s.get("stop")) or orchestrator_stop(s) is not None
                 for nf in files:
                     try:
                         stale = time.time() - nf.stat().st_mtime >= 20 * 60
@@ -3001,7 +3004,7 @@ public static class AgentGate
                     ids = handed
             reason = keep_going(repos, ids, sid, why, insisted) if ids else None
             # A turn ending with a nudge waiting is sent on with it, as a prompt queued in its box used to run (M.ORCH-T864).
-            nudges = [] if stopped or time_left() < 2 else take_nudges()
+            nudges = [] if stopped or time_left() < 2 else take_nudges(paced)
             if nudges:
                 reason = ((reason + " ") if reason else "") + " ".join(nudges)
             if reason:
@@ -3115,7 +3118,7 @@ public static class AgentGate
                 notes.append(CROSSREPO_NOTE[0])
             if ALLOCATE_NOTE[0]:
                 notes.append(ALLOCATE_NOTE[0])
-            notes.extend(take_nudges())
+            notes.extend(take_nudges(paced))
             # Safety net for the ticket-per-request rule (MAT-T58, M.ORCH-T843): a genuinely typed prompt (not a slash command, not
             # a system or task notification, which Claude Code delivers as <tag>...) in a MindAttic repo says to file its ticket first.
             try:
@@ -3187,7 +3190,7 @@ public static class AgentGate
             if touched:
                 save(state_file, state)
             # A busy turn (an /allocate run never submits a prompt) takes its nudges here, as the old typed prompt waited in its box.
-            said = take_nudges()
+            said = take_nudges(paced)
             # No context warning any more: nothing quicksaves, clears or reloads a session for it (2026-10-16), so a turn
             # is never told to stop for its context; Claude's own compaction handles a full one.
             if not said:
