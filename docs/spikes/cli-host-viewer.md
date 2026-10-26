@@ -826,7 +826,8 @@ a scratch data folder. The snapshot had Erin and Sam in sales and Pat in ops. Th
   revoked` within 10 seconds.
 - **`audit.jsonl`.** It held the refused, attach, input (1 frame, 28 bytes), and detach records, and none of the typed text.
 
-M.ORCH-T935 adds masking and the "being watched" banner.
+M.ORCH-T935 adds opt-in sharing, masking, pause and the "being watched" banner (see "Broadcast hygiene" below).
+Beyond the grant, a session is reachable only while the owner shares it.
 
 ### Endpoints
 
@@ -834,8 +835,8 @@ M.ORCH-T935 adds masking and the "being watched" banner.
 |---|---|---|
 | `GET /health` | none | `{ ok, version }` |
 | `POST /auth/token` | owner key | `{ token, subject, scope, expiresUtc }` |
-| `GET /sessions` | bearer | The hosted sessions the caller may see, from `TermSessions.Enumerate()`: `id`, `title`, `login`, `repo`, `cols`, `rows`, `state`, `exitCode`, `startedUtc`, `protocol` and `access`. The command line, folder, config dir, pipe and host pid are left out |
-| `GET /sessions/{id}/stream` | bearer, WebSocket | Bridges the session's pipe (`mindattic-term-<user>-<id>`). An unknown session and a forbidden one both answer 404, so a token can't probe for ids. A pipe that can't be opened answers 502 |
+| `GET /sessions` | bearer | The hosted sessions the owner shares (M.ORCH-T935) and the caller may see, from `TermSessions.Enumerate()`: `id`, `title`, `login`, `repo`, `cols`, `rows`, `state`, `exitCode`, `startedUtc`, `protocol`, `access` and `paused`. The command line, folder, config dir, pipe and host pid are left out |
+| `GET /sessions/{id}/stream` | bearer, WebSocket | Bridges the session's pipe (`mindattic-term-<user>-<id>`). An unknown session, an unshared one and a forbidden one all answer 404, so a token can't probe for ids. A pipe that can't be opened answers 502 |
 
 ### The protocol over the WebSocket
 
@@ -854,7 +855,8 @@ The gateway checks each viewer message:
 - The first frame must be Hello.
 
 A viewer that breaks these rules is closed with a WebSocket close status. Of a viewer's later frames, only Input and Resize
-go on, and only from an interactive viewer. Every host frame goes to the viewer unchanged. When the host closes the pipe
+go on, and only from an interactive viewer. Every host frame goes to the viewer unchanged, apart from the masking and
+pausing of "Broadcast hygiene" below. When the host closes the pipe
 (the session ended, or a newer viewer replaced this one), the viewer gets a normal close: "the session's host closed the
 stream".
 
@@ -866,7 +868,8 @@ Input and Resize frames and counts them in the log line written when it detaches
 It is used when the viewer asks for it (`ClientWebSocketOptions.DangerousDeflateOptions`). VT compresses 5 to 10x. The
 "dangerous" in the name is the CRIME/BREACH class of attacks: secrets compressed beside attacker-chosen text. Only an
 interactive viewer can choose text here. Since M.ORCH-T934 that includes a member with an interact grant, so revisit this
-together with T935's masker.
+together with T935's masker. The masker helps, because masked bytes never enter the compressor, but it doesn't
+settle the question: an unmasked secret could still sit beside text that viewer typed.
 
 **Several viewers per session** came with M.ORCH-T930 (see "Several viewers"). A protocol 1 host still serves one viewer at a
 time: there a remote attach displaces the local dashboard's viewer of that session, and a dashboard reattach displaces the
@@ -996,6 +999,152 @@ a scratch data folder and its dev certificate. The results:
 - A closed port showed offline in about 2 s, a wrong pin as "its certificate doesn't match the pin", and a bad token as refused.
 - A tile-sized window rendered the session at 5 pt, letterboxed at 120x30.
 - The wall itself showed three hosts live. In a smaller window it paged them 2 per page.
+
+## Broadcast hygiene (M.ORCH-T935, 2026-10-26)
+
+This covers mitigations 1 to 3 of section 5 ("Secrets on screen are broadcast"). Mitigation 4, the audit log, is
+M.ORCH-T934's. None of it ever touches a local viewer: the dashboard's own terminal shows the CLI exactly as it is.
+
+### Opt-in sharing
+
+Being able to reach a session through the gateway is not enough to see it. The owner must also share it, and nothing is
+shared by default. The owner's choices live in `broadcast.json` in the gateway folder (`TermBroadcast`, in the Term
+library):
+
+- `shareAll`: the "share my sessions" setting;
+- `pauseAll`;
+- for each session id: `shared` (true, false, or absent to follow `shareAll`), `masked` (on by default), `paused` and
+  `lastPausedUtc`.
+
+The file never holds a secret. The running gateway checks its time and size every 150 ms and rereads it when they change,
+so sharing, masking and pausing take effect without a restart (a restart would drop every viewer). Three things write it:
+
+- **The dashboard.** A hosted CLI tab's right-click menu has "Share with remote viewers", "Mask secrets for remote
+  viewers", "Pause broadcast" and "Share all my sessions". A shared tab shows a share glyph.
+- **The CLI.** `orchestrator broadcast` lists every hosted session's choices and who is watching. It also takes
+  `share|unshare|pause|resume <id|all>` and `mask|unmask <id>`.
+- **Anything else** that calls `TermBroadcast.Update`. It writes atomically, under a named mutex.
+
+When a session isn't shared, `/sessions` leaves it out and its stream answers 404 (audited as refused, "not shared").
+When the owner stops sharing a session that someone is watching, the gateway closes that stream with "the owner stopped
+sharing this session". So a teammate's team wall (T936) shows only the sessions the owner shares, and a wall tile shows
+the Paused frame as a "broadcast paused by owner" line.
+
+### The masker
+
+`SecretMasker` finds secrets, and `StreamMasker` replaces them in one remote stream's VT bytes. This happens in the gateway,
+on Output, on Replay (its data and its re-asserted modes) and on Title frames, before they leave the machine.
+
+**What it masks.** It masks these token shapes:
+
+- `sk-ant-…`, and `sk-…` (OpenAI, including `sk-proj-`);
+- `ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_` and `github_pat_…`;
+- AWS access key ids (`AKIA…`, `ASIA…`);
+- JWTs (three base64url segments, the first `eyJ`);
+- Slack `xox[abposr]-` tokens;
+- PEM private-key blocks;
+- long, high-entropy hex or base64 after a name ending in `key`, `token`, `secret` or `password` and then `=` or `:`
+  (quoted or not, any prefix such as `ANTHROPIC_API_KEY`), or after `Bearer`.
+
+It also masks the exact values of the owner's Vault-held secrets, matched as literal strings:
+
+- the LLM and broker keyrings: each provider's key, its pool, and any key, secret, token or password field;
+- every bucket's `tokens.json` under the Vault's roaming root;
+- the FTP password.
+
+The gateway reads them once at start and keeps them only in memory. The gateway references the `MindAttic.Vault` package
+for this, not Core. The log records only how many values it loaded. Values shorter than 8 characters are ignored, since
+they would hit ordinary words.
+
+**How a secret looks remotely.** Each secret character becomes one `•`, so a token reads `•••…`. Bytes only ever get
+replaced, never removed, so the remote screen's layout (cursor column, line wrapping) stays exactly the host's.
+
+**Escape sequences.** The stream is split into printable text, controls and escape sequences (CSI, OSC, DCS, APC, PM,
+SOS and the short ESC forms). Matching runs on the text alone, so an SGR colour change in the middle of a token doesn't
+hide it. A control (CR, LF, TAB, BS) ends a run. Only text bytes are ever replaced, so an escape sequence is never
+corrupted. The cost is that text inside an escape (an OSC title, a hyperlink's URL) isn't masked there. Titles still reach
+remote viewers masked, through the Title frame.
+
+**Chunk boundaries.** A token can be split across two Output frames. To catch it, the masker holds back these at the end
+of each chunk:
+
+- a trailing run of token characters;
+- an unfinished escape sequence;
+- an unfinished UTF-8 character.
+
+Holding is capped at 4,096 characters. The masker also keeps the last 256 characters it sent (more if a Vault value is
+longer) as context, so a prefix such as `token=` sent in the previous frame still counts. Held bytes go out as soon as
+the next chunk shows the run has ended. Otherwise they go after 40 ms of quiet, so masking delays normal output by at
+most about 50 ms. A non-Output frame flushes them first, so the frame order is kept.
+
+**PEM blocks.** After a `-----BEGIN … PRIVATE KEY-----` line, every printable character is masked through the
+`-----END … PRIVATE KEY-----` line, across any number of chunks. This stops after 16 K characters without an END.
+
+**False positives.** These are guarded against:
+
+- a token must start at a word boundary, so `task-list` and `desk-lamp` don't count;
+- the bare `sk-` shape needs digits, letters and entropy, so `sk-learn-contrib-…` doesn't count;
+- a value after `key=` needs mixed case and digits, or to be long hex, and high entropy, so identifiers, kebab-case
+  names and `password: hunter2` don't count;
+- a bare commit hash or a UUID is never masked.
+
+**Turning it off.** The owner can turn masking off for a session, from the menu or with `orchestrator broadcast unmask
+<id>`. The banner then says so.
+
+### Pause broadcast
+
+There are three ways to pause:
+
+- one click on the banner's "Pause broadcast", or Ctrl+Shift+B (handled before the terminal, like the paste keys, so it works
+  even while the terminal holds focus), pauses the shown CLI's remote streams;
+- "Pause all" pauses every session;
+- `orchestrator broadcast pause <id|all>` from the CLI.
+
+While a session is paused, its remote viewers get one **Paused** frame (`TermFrameKind.Paused = 9`, payload `u8 1`). This
+kind is new and comes from the gateway only; a host never sends it. After it, they get no Output, no Replay data and no
+Title. Hello, Live, Size, Modes and Exit still go, since they carry no screen content. A remote viewer's Input is dropped,
+because it can't see what it would be typing into. Bytes the masker held at the moment of the pause are discarded.
+
+On resume, the viewer gets `Paused 0`, then a cleared screen (`ESC[H ESC[2J ESC[3J`) and the current title. The output
+the pause hid never follows, so the remote screen fills in again as the CLI redraws.
+
+A session that has been paused at any point (`lastPausedUtc`), or that was running during a "pause all", no longer gives
+its history to a remote attach. The host's replay may hold what the pause hid, so the viewer gets a one-line notice in
+place of the replay data, and then the live stream. The dashboard's RelayConnection shows a Paused frame as a
+reverse-video "broadcast paused by owner" line.
+
+### "Being watched"
+
+The gateway's `WatcherBoard` announces each attach and detach on the status bus as `term-watchers` (v1, see
+`docs/app-bus.md`). It also rewrites `watchers.json` in the gateway folder, which is the truth for a dashboard that starts
+later. The announcement and the file write happen under one lock, so they follow the order of the changes.
+
+In the dashboard's Terminals tab:
+
+- the watched CLI's tab shows an eye;
+- while someone is attached or the broadcast is paused, a banner under the tab strip says who is watching, from where,
+  and whether they're watching or can type. It also says if the broadcast is paused or unmasked, and has Pause broadcast
+  and Pause all;
+- the dashboard reads the files again at each refresh, so it catches up after a missed message.
+
+### Smoke test (2026-10-26)
+
+Setup:
+
+- a stand-in host serving a session pipe, whose CLI was `cmd /d /c echo token is <a fake sk-ant-api03 token>`. It made no
+  bus announcement, so the running dashboard opened no tab;
+- the gateway on `127.0.0.1:17935` with a scratch data folder and `shareAll`;
+- a pinned `ClientWebSocket` watcher.
+
+The results:
+
+- **Masking.** The replay showed `token is •••…` and `plain line` unchanged. The title showed `smoke •••…`. The live line
+  had the token split across two frames inside an SGR colour run; it arrived as `ESC[32mlive ` and then `•••…ESC[0m`.
+  No byte of the fake token reached the viewer.
+- **Watchers.** `watchers.json` listed the attach (watch) while the viewer was attached and was empty after it detached.
+- **Pause and resume.** Writing `paused` gave the viewer `Paused 01`. The line the host wrote during the pause never
+  arrived (the log said "1 withheld while paused"). Resume gave `Paused 00`, the clear and the title, then the next line.
+- **Vault and log.** The gateway log said it loaded 29 Vault-held values. It never held the token.
 
 ## Sources
 

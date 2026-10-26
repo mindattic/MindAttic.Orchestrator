@@ -118,6 +118,34 @@ the fast path: the registry files under `%LOCALAPPDATA%\MindAttic\MindAttic.Orch
 reconnect. The contract is `src/MindAttic.Orchestrator.Term/TermBus.cs` and `TermSessionRecord.cs`. In .NET, read it
 with `bus.On<TermSessionEvent>(TermBus.Kind, handler, TermBus.Version)`.
 
+### `term-watchers` (v1): a remote viewer attached or detached (M.ORCH-T935)
+
+The team gateway (`src/MindAttic.Orchestrator.Gateway`) writes one of these to the inbox each time a remote viewer
+attaches to a hosted session or detaches from it, and once as it starts and as it stops. The daemon relays it unchanged.
+The dashboard's Terminals tab uses it to show the owner a "being watched" banner on that CLI.
+
+```json
+{"event":"attached","watcher":{"connection":"51234-3","sessionId":"73ff73abb9c6","viewer":"ryand","mode":"watch","from":"100.101.102.7","sinceUtc":"2026-10-26T17:02:11.5Z"},"watchers":[{"connection":"51234-3","sessionId":"73ff73abb9c6","viewer":"ryand","mode":"watch","from":"100.101.102.7","sinceUtc":"2026-10-26T17:02:11.5Z"}],"gatewayPid":51234}
+```
+
+| Field | Meaning |
+|---|---|
+| `event` | `attached`, `detached`, or `reset` (the gateway started or is stopping, so nobody is attached) |
+| `watcher` | Who attached or detached. Left out for `reset`. |
+| `watcher.connection` | This attachment's id, unique for the gateway's run |
+| `watcher.sessionId` | The hosted session it watches (a `term-session` id) |
+| `watcher.viewer` | Who: the bearer token's subject |
+| `watcher.mode` | `watch` (read-only) or `interact` |
+| `watcher.from`, `watcher.sinceUtc` | The viewer's address, and when it attached |
+| `watchers` | Every remote viewer attached now, to any session. A reader replaces what it knew with this list. |
+| `gatewayPid` | The gateway process |
+
+It never carries a token, a key or a byte of terminal output. The bus is only the fast path: the gateway also rewrites
+`%LOCALAPPDATA%\MindAttic\MindAttic.Orchestrator\gateway\watchers.json` on each change and deletes it as it stops, so a
+subscriber reads `TermWatchersBus.Current()` on start and after a reconnect. That method returns nothing unless the
+gateway runs. The contract is `src/MindAttic.Orchestrator.Term/TermWatchers.cs`. In .NET, read it with
+`bus.On<TermWatchersEvent>(TermWatchersBus.Kind, handler, TermWatchersBus.Version)`.
+
 ## Fallback viewers (M.ORCH-T960)
 
 When Orchestrator.Desktop is down, every hosted CLI appears in its own standalone window and keeps working. No new kind is
