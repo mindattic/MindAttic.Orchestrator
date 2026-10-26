@@ -149,7 +149,9 @@ public sealed class PacerHelperTests
     [TestCase(88.0, 3)]
     [TestCase(92.0, 2)]
     [TestCase(96.0, 1)]
-    [TestCase(98.5, 1)]
+    [TestCase(98.5, 0)]
+    [TestCase(99.0, 0)]
+    [TestCase(100.0, 0)]
     public void Room_under_the_stop_limits_how_many_subagents_start(double percent, int expected) =>
         Assert.That(Pacer.CapByStopHeadroom(Allowing(4), percent, 99).SubagentAllowance, Is.EqualTo(expected));
 

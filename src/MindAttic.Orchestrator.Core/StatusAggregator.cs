@@ -437,14 +437,14 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
         pace = Pacer.UnderTarget(pace, utilization, settings.MaxSubagents);
         // Split across many CLIs whose live trend together crossed the pace line: new subagents start slower until it bends back (M.ORCH-T785).
         pace = Pacer.CoolOff(pace, utilization, Math.Max(active, pace.SubagentsByCli.Count));
-        // The room under the stop limits a burst of new subagents (M.ORCH-T959): they spend past the stop while it waits for a tool call.
-        pace = Pacer.CapByStopHeadroom(pace, ReportedUsage.Usable(reported?.FiveHour, now)?.Percent, PaceLedger.TargetPercent);
         // An API key has no 5-hour or weekly window: nothing it spends is held against the subscription's learned limits.
         if (signIn is { IsApiKey: true })
         {
             budget = BudgetCalculator.Compute(events, settings with { BlockBudget = null, WeeklyBudget = null }, now, startOfTodayUtc);
             pace = new Pace(PaceMode.Unpaced, settings.MaxConcurrentSessions, 0, budget.RecentFreshPerHour, null, null, null, Pacer.ApiKeyNote);
         }
+        // The room under the stop limits a burst of new subagents (M.ORCH-T959): they spend past the stop while it waits for a tool call.
+        else pace = Pacer.CapByStopHeadroom(pace, ReportedUsage.Usable(reported?.FiveHour, now)?.Percent, PaceLedger.TargetPercent);
         var writing = rateLimitFile is not null && (statusLease is null || statusLease.IsHeld || statusLease.TryAcquire());
         if (writing) rateLimitFile!.Write(budget, pace);
         // Each per-CLI login's own budget and pace (M.ORCH-T559), written for its CLIs' hooks by the process writing the global one.

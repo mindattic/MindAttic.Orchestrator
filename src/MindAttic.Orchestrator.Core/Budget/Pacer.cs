@@ -321,14 +321,15 @@ public static class Pacer
     /// a subagent mid-turn spends past it, so a burst started with little room left overshoots the stop and reaches the limit. With
     /// Claude's <paramref name="percent"/> of the window and the <paramref name="stopPercent"/>, no more subagents start than
     /// the room holds at <see cref="HeadroomPerSubagentPercent"/> each; the ones already running are never cut (the allowance
-    /// never drops below them) and one is always allowed while the window is under its stop. It only ever lowers the allowance, and
+    /// never drops below them) and none start once there's no room for one. It only ever lowers the allowance, and
     /// is left alone at the stop, when none are allowed, when unpaced with no allowance, or with no report of the window.
     /// </summary>
     public static Pace CapByStopHeadroom(Pace pace, double? percent, double stopPercent)
     {
         if (percent is not { } p || pace is not { Stop: false, SubagentAllowance: { } allowed and > 0 }) return pace;
         var fits = (int)Math.Floor(Math.Max(0, stopPercent - p) / HeadroomPerSubagentPercent);
-        var capped = Math.Min(allowed, Math.Max(Math.Max(1, pace.Subagents), fits));
+        // With no room for even one more, none start (a new one spends ~3 points before the stop reaches it); the running ones continue.
+        var capped = Math.Min(allowed, Math.Max(pace.Subagents, fits));
         if (capped >= allowed) return pace;
         return pace with
         {
