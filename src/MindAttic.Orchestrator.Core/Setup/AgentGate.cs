@@ -3049,8 +3049,8 @@ public static class AgentGate
             # Safety net for the ticket-per-request rule (MAT-T58, M.ORCH-T843): a genuinely typed prompt (not a slash command, not
             # a system or task notification, which Claude Code delivers as <tag>...) in a MindAttic repo says to file its ticket first.
             try:
-                if typed and not typed.startswith(("/", "<")) and repo_of(data.get("cwd") or ""):
-                    notes.append("File this request's ticket first (tickets ticket new) before any work.")
+                if typed and not typed.startswith(("/", "<")) and repo_of(data.get("cwd") or "") and not re.search(r"[A-Z][A-Za-z.]*-T\d+", typed):
+                    notes.append("If this is a new task with no ticket yet, file its ticket first (tickets ticket new) before any work.")
             except Exception:
                 pass
             out ={"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": " ".join(notes)}} if notes else {}
@@ -3174,8 +3174,8 @@ public static class AgentGate
         // Claude's own usage reaches the orchestrator only through a statusline redraw; an idle tab redraws on this
         // timer too, so the real percent stays fresh while any tab is open (M.ORCH-T125).
         // Claude Code deletes session transcripts (and their subagents') after cleanupPeriodDays, 30 by default: a crashed
-        // CLI is resumed from its transcript, so a longer keep is set unless the login already chose one (M.ORCH-T843).
-        if (root["cleanupPeriodDays"] is null)
+        // CLI is resumed from its transcript, so a longer keep is set unless the login already keeps them at least that long (M.ORCH-T843).
+        if (root["cleanupPeriodDays"] is not JsonValue keep || !keep.TryGetValue<int>(out var keepDays) || keepDays < TranscriptKeepDays)
         {
             root["cleanupPeriodDays"] = TranscriptKeepDays;
             changed = true;
