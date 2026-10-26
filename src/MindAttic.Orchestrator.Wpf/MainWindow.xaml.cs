@@ -51,6 +51,7 @@ public partial class MainWindow : Window
         OrgToolbar.DataContext = model;
         // Settings fills 80% of the window both ways (M.ORCH-T804), following it as it resizes or zooms.
         Root.SizeChanged += (_, _) => SizeSettings();
+        TerminalFrame.IsVisibleChanged += (_, _) => SizeTerminalRow();
         // A person's current work (including, on the global login's tab, what fits on no person's page, M.ORCH-T825) is one
         // virtualized list (M.ORCH-T754): headings and notes, then the lists' items a row (or a line of cards) each, so a
         // switch of tab or org builds only what's on screen.
@@ -407,6 +408,24 @@ public partial class MainWindow : Window
         glow.BeginAnimation(DropShadowEffect.OpacityProperty, on
             ? new DoubleAnimation(0.25, 0.95, TimeSpan.FromSeconds(1.3)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever }
             : new DoubleAnimation(exitOpacity, TimeSpan.FromSeconds(exitSeconds)));
+
+    /// <summary>The tallest the terminal frame gets, its margin's 8 below it included (it was a fixed 480, M.ORCH-T1020).</summary>
+    private const double TerminalRowMax = 480 + 8;
+
+    /// <summary>While the terminal shows, its row is a star row (three times the body's share, at most <see cref="TerminalRowMax"/>)
+    /// rather than a fixed 480 in an Auto row, so a short or zoomed window shrinks the terminal too and the scrolling body below
+    /// (stats, queue tabs, chart, tickets) never collapses to nothing (M.ORCH-T1020). Hidden, the row takes no room.</summary>
+    private void SizeTerminalRow()
+    {
+        try
+        {
+            var row = Root.RowDefinitions[2];
+            var shown = TerminalFrame.IsVisible;
+            row.Height = shown ? new GridLength(3, GridUnitType.Star) : GridLength.Auto;
+            row.MaxHeight = shown ? TerminalRowMax : double.PositiveInfinity;
+        }
+        catch (Exception ex) { OrchestratorLog.For("Dashboard").Error(ex, "Sizing the terminal's row failed; contained"); }
+    }
 
     /// <summary>Every person's tab is the same width (M.ORCH-T803): the library's MaTabItem has no Width of its own (it's plain
     /// FrameworkElement's), so the ItemContainerStyle (M.ORCH-T667) can't set it without "adding looks of its own" to a
