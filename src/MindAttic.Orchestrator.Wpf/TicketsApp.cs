@@ -9,9 +9,21 @@ namespace MindAttic.Orchestrator.Wpf;
 /// <see cref="OrchestratorOptions.TicketsDesktopExe"/> (C:\Apps\...), else %LOCALAPPDATA%\Programs\... when there's no C:\Apps.
 /// Never throws.
 /// </summary>
-public static class TicketsApp
+public static partial class TicketsApp
 {
     private const string Name = "MindAttic.Tickets.Desktop";
+
+    /// <summary>Lets process <paramref name="pid"/> take the foreground (M.ORCH-T879): Tickets Desktop, asked over the app bus to
+    /// open a ticket, brings its own window forward, which Windows allows only with leave from the app in front. Never throws.</summary>
+    public static void AllowForeground(int pid)
+    {
+        try { AllowSetForegroundWindow(pid); }
+        catch (Exception) { /* not allowed or not there: it flashes its taskbar button instead */ }
+    }
+
+    [System.Runtime.InteropServices.LibraryImport("user32.dll")]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static partial bool AllowSetForegroundWindow(int processId);
 
     /// <summary>Opens or focuses Tickets Desktop; returns why it couldn't, or null once it's up.</summary>
     public static string? OpenOrFocus(OrchestratorOptions options)

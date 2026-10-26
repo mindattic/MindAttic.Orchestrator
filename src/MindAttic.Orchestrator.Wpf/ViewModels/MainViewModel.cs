@@ -162,11 +162,7 @@ public sealed partial class MainViewModel : ObservableObject
     /// close it there (M.ORCH-T500); the parameter is the id.</summary>
     public ICommand OpenInTicketsCommand { get; }
 
-    private void OpenInTickets(string? ticketId)
-    {
-        if (MindAttic.Orchestrator.Tickets.TicketsDesktop.Open(ticketId, aggregator.Options) is { } error)
-            Toasts.Insert(0, new ToastViewModel("Couldn't open it in Tickets Desktop", error, Palette.Over, null));
-    }
+    // OpenInTickets: MainViewModel.AppBus.cs (M.ORCH-T879: over the app bus when Tickets Desktop listens).
 
     /// <summary>The upper-right Tickets button (M.ORCH-T878): opens Tickets Desktop, or brings it forward if it's running.</summary>
     public ICommand OpenTicketsAppCommand { get; }

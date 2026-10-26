@@ -180,13 +180,25 @@ public partial class MainWindow : Window
             .On<Status.SnapshotFigures>(Status.SnapshotFigures.Kind, OnFigures, Status.SnapshotFigures.Version);
         foreach (var kind in new[] { Status.StatusMessage.State, Status.StatusMessage.Usage, Status.StatusMessage.Snapshot, Status.StatusMessage.Heartbeat })
             bus.On<Status.StatusMessage>(kind, (e, m) => OnStatus(Status.StatusMessage.From(e, m)), Status.StatusMessage.Version);
+        // The app bus (M.ORCH-T879): ticket changes refresh the Queue, Tickets Desktop's presence says it can open a ticket
+        // without a new process, and it can ask this window to show who works a ticket.
+        bus.On<Status.TicketBusEvent>(Status.AppBus.Ticket, (_, change) => OnTicketChange(change), Status.AppBus.Version)
+            .On<Status.AppPresence>(Status.AppBus.Presence, (_, presence) => model.Presences.Note(presence), Status.AppBus.Version)
+            .On<Status.ShowWorkerRequest>(Status.AppBus.ShowWorker, (_, request) => OnShowWorker(request), Status.AppBus.Version);
         _ = Task.Run(() => Status.StatusStreamClient.RunAsync(
             (Status.StatusEnvelope envelope) => Dispatcher.InvokeAsync(() => bus.Dispatch(envelope)),
-            live => Dispatcher.InvokeAsync(() =>
+            live =>
             {
-                model.SetStreamLive(live);
-                Retime();
-            }),
+                // Said on every connection, as the daemon forgets it on a restart: this window acts on "show who is working X".
+                if (live) Status.AppBusClient.PublishPresence(Status.AppBus.OrchestratorDesktop, [Status.AppBus.ShowWorker]);
+                Dispatcher.InvokeAsync(() =>
+                {
+                    model.SetStreamLive(live);
+                    // Gone with the stream: each listening app says so again on the next connection.
+                    if (!live) model.Presences.Clear();
+                    Retime();
+                });
+            },
             token), token);
         // Holding the status lease itself (no daemon running), this process's own meter probe reads the meters: each reading is
         // applied as it lands too, as the daemon's would be.
@@ -244,6 +256,43 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             OrchestratorLog.For("Dashboard").Error(ex, "Applying a snapshot's pushed figures failed");
+        }
+    }
+
+    private bool queueReloadQueued;
+
+    /// <summary>
+    /// A ticket changed (M.ORCH-T879), on the UI thread: the Queue's tabs are read again (<see cref="ViewModels.MainViewModel.ReloadTicketQueues"/>)
+    /// instead of waiting for the next timed read. A burst (a sync, an import) is read once, after it, at background priority;
+    /// the open tickets' own move (claimed, closed) follows with the snapshot the daemon builds for it within seconds.
+    /// </summary>
+    private void OnTicketChange(Status.TicketBusEvent change)
+    {
+        if (queueReloadQueued) return;
+        queueReloadQueued = true;
+        Dispatcher.InvokeAsync(() =>
+        {
+            queueReloadQueued = false;
+            try { model.ReloadTicketQueues(); }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("TicketBus").Error(ex, "Reloading the Queue for {Ticket:l} failed", change.Id); }
+        }, DispatcherPriority.Background);
+    }
+
+    /// <summary>"Show who is working X" from Tickets Desktop (M.ORCH-T879), on the UI thread: the window comes forward (Tickets
+    /// Desktop lets it take the foreground) on the person and CLI tab working the ticket.</summary>
+    private void OnShowWorker(Status.ShowWorkerRequest request)
+    {
+        try
+        {
+            if (request.To is { Length: > 0 } to && !string.Equals(to, Status.AppBus.OrchestratorDesktop, StringComparison.OrdinalIgnoreCase)) return;
+            if (!Tickets.TicketsDesktop.IsTicketId(request.Id)) return;
+            model.ShowWorker(request);
+            DashboardWindow.Restore(this);
+            PinTerminalFocus();
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            OrchestratorLog.For("TicketBus").Error(ex, "Showing who works {Ticket:l} failed", request.Id);
         }
     }
 

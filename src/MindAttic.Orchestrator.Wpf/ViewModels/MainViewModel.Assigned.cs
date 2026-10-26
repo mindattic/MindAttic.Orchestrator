@@ -204,6 +204,9 @@ public sealed partial class MainViewModel
     /// <summary>How often a refresh re-reads the recently closed tickets; a push (<see cref="ReloadTicketQueues"/>) reads at once.</summary>
     private static readonly TimeSpan ClosedReadEvery = TimeSpan.FromMinutes(1);
 
+    /// <summary>The same while the status stream is up and ticket changes are pushed (M.ORCH-T879): a safety net only.</summary>
+    private static readonly TimeSpan ClosedReadEveryLive = TimeSpan.FromMinutes(15);
+
     private readonly ClosedTicketSource closedSource = new();
     private IReadOnlyList<ClosedTicket> closedTickets = [];
     private DateTime closedReadUtc = DateTime.MinValue;
@@ -269,7 +272,9 @@ public sealed partial class MainViewModel
     {
         if (closedReading) { closedReadAgain |= force; return; }
         var now = DateTime.UtcNow;
-        if (!force && now - closedReadUtc < ClosedReadEvery) return;
+        // With the daemon's stream up every ticket change is pushed (M.ORCH-T879) and reads at once, so the timed read is only a
+        // safety net; without it, the minute's poll as before.
+        if (!force && now - closedReadUtc < (IsStreamLive ? ClosedReadEveryLive : ClosedReadEvery)) return;
         // No UI to come back to (a test, or before the window's up): nothing is read.
         if (SynchronizationContext.Current is null) return;
         var ui = TaskScheduler.FromCurrentSynchronizationContext();
