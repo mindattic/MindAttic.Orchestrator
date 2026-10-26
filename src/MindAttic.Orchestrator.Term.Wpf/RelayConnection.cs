@@ -142,7 +142,15 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
         catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "The writer to {Pipe:l} failed; contained", name); }
     }
 
+    /// <summary>Posts an event (not output) to the UI thread, after any output raised before it: the open batch is sealed, so
+    /// output raised after this goes out after it too.</summary>
     private void Post(Action action)
+    {
+        lock (pendingGate) batch = null;
+        PostRaw(action);
+    }
+
+    private void PostRaw(Action action)
     {
         void Run()
         {
@@ -153,10 +161,57 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
         else Run();
     }
 
+    /// <summary>The most output text (chars) waiting for the UI thread before the reader stops reading the link (M.ORCH-T1015):
+    /// the host then holds the rest, under its own per-viewer cap.</summary>
+    internal const int MaxPendingChars = 1 << 20;
+
+    // Output waiting for the UI thread (M.ORCH-T1015): text raised while a batch is open joins it, so a flood is one posted
+    // closure per UI turn rather than one per frame; any other event seals the batch, keeping everything in order (Phase 0
+    // lesson 1). pendingChars counts every unrendered batch; past MaxPendingChars the reader waits on 'roomForOutput'.
+    private readonly object pendingGate = new();
+    private StringBuilder? batch;
+    private int pendingChars;
+    private TaskCompletionSource? roomForOutput;
+
     private void Raise(string text)
     {
         if (text.Length == 0) return;
-        Post(() => { if (!closed) TerminalOutput?.Invoke(this, new TerminalOutputEventArgs(text)); });
+        StringBuilder? opened = null;
+        lock (pendingGate)
+        {
+            pendingChars += text.Length;
+            if (batch is null) batch = opened = new StringBuilder();
+            batch.Append(text);
+        }
+        if (opened is not null) PostRaw(() => Drain(opened));
+    }
+
+    /// <summary>On the UI thread: renders one batch, whole, and lets a waiting reader go on once there is room.</summary>
+    private void Drain(StringBuilder done)
+    {
+        string text;
+        TaskCompletionSource? room = null;
+        lock (pendingGate)
+        {
+            if (ReferenceEquals(batch, done)) batch = null;
+            text = done.ToString();
+            pendingChars -= text.Length;
+            if (pendingChars <= MaxPendingChars / 2) (room, roomForOutput) = (roomForOutput, null);
+        }
+        room?.TrySetResult();
+        if (!closed) TerminalOutput?.Invoke(this, new TerminalOutputEventArgs(text));
+    }
+
+    /// <summary>Waits while too much output is waiting for the UI thread (M.ORCH-T1015); returns at once when there is room or
+    /// the connection is closed.</summary>
+    private Task RoomForOutputAsync()
+    {
+        lock (pendingGate)
+        {
+            if (closed || pendingChars <= MaxPendingChars) return Task.CompletedTask;
+            roomForOutput ??= new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            return roomForOutput.Task;
+        }
     }
 
     /// <summary>How long to wait before reconnect attempt <paramref name="attempt"/> (0 first): 0.5 s, 1 s, 2 s, 4 s, then 5 s
@@ -274,6 +329,7 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
                         break;
                     case TermFrameKind.Output:
                         Emit(payload);
+                        await RoomForOutputAsync().ConfigureAwait(false);
                         break;
                     case TermFrameKind.Modes:
                         SetModes(TermProtocol.ReadModes(payload));
@@ -419,6 +475,9 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
         try { sending.Cancel(); }
         catch (ObjectDisposedException) { }
         outbox.Writer.TryComplete();
+        TaskCompletionSource? room;
+        lock (pendingGate) (room, roomForOutput) = (roomForOutput, null);
+        room?.TrySetResult();
         lock (gate)
         {
             closed = true;
