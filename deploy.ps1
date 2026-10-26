@@ -259,6 +259,10 @@ if (-not $env:MINDATTIC_DEPLOY_CHAIN) {
         Write-Host "Deploying MindAttic.Tickets too ($ticketsDeploy)..." -ForegroundColor Cyan
         $chainArgs = @{}
         if ($Force) { $chainArgs['Force'] = $true }
+        # Every Orchestrator launch runs this deploy.ps1 (via deploy.bat's -Launch); without -SkipCli that reinstalled
+        # the tickets CLI global tool on every single launch, undoing M.TIX-T126's fix for slow launches (M.ORCH-T832).
+        # A deliberate full deploy without -Launch still reinstalls Tickets' CLI normally.
+        if ($Launch) { $chainArgs['SkipCli'] = $true }
         $env:MINDATTIC_DEPLOY_CHAIN = '1'
         try {
             # Tickets' deploy.ps1 has no exit code convention of its own (unlike this script): it signals failure by

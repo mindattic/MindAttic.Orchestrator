@@ -100,8 +100,29 @@ public sealed class UtilizationSeriesTests
     }
 
     [Test]
-    public void Nothing_to_draw_without_a_real_limit()
+    public void Drawn_flat_at_the_reported_percent_without_a_real_limit_yet()
     {
-        Assert.That(UtilizationSeries.Build([], Budget(40, peak: true), 99, Start.AddHours(1)), Is.Null);
+        // M.ORCH-T835: a window is running but no real 5-hour limit has been learned yet (peak-relative, or none at
+        // all), so there's no token-per-hour rate to project - still draw the reported BlockPercent rather than
+        // leave the chart blank (M.ORCH-T629: every tab always shows its chart).
+        var u = UtilizationSeries.Build([], Budget(40, peak: true), 99, Start.AddHours(1));
+
+        Assert.That(u, Is.Not.Null);
+        Assert.That((u.NowPercent, u.ProjectedEndPercent, u.PercentPerHour), Is.EqualTo((40.0, 40.0, 0.0)));
+        Assert.That(u.Ended, Is.False);
+        Assert.That(u.Idle, Is.False);
+    }
+
+    [Test]
+    public void Still_climbs_with_the_actual_reports_without_a_real_limit_yet()
+    {
+        // Claude's own reports still draw the climbing line even with no learned limit (BlockLimit <= 0): the fallback
+        // only replaces the rate-based projection, not the real readings.
+        var u = UtilizationSeries.Build([S(1, 10), S(1.5, 30)], new(new UsageBlock(Start, End, default, Start), 0, false, 30, default,
+            default, null, null, 0, null, 90), 99, Start.AddHours(1.5));
+
+        Assert.That(u, Is.Not.Null);
+        Assert.That(u.Actual.Select(p => p.Percent), Is.EqualTo(new[] { 0, 10, 30.0 }));
+        Assert.That(u.NowPercent, Is.EqualTo(30));
     }
 }

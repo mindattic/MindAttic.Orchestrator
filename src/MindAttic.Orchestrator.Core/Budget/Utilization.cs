@@ -45,19 +45,29 @@ public static class UtilizationSeries
 
     /// <summary>
     /// The current window's line from Claude's own reports (<paramref name="samples"/> of that window, only ever rising:
-    /// a lower one is a stale report from an idle session) and the budget's figure now. Null without a real 5-hour limit while a window
-    /// runs; with none running, the last window as it ended (or an empty axis), never null.
+    /// a lower one is a stale report from an idle session) and the budget's figure now. With a window running but no real
+    /// 5-hour limit learned yet (peak-relative or none, M.ORCH-T835), still drawn flat against <see cref="BudgetStatus.BlockPercent"/>
+    /// (the same fallback <see cref="MindAttic.Orchestrator.Wpf.ViewModels.MainViewModel.IdleUtilization"/> uses while idle) rather
+    /// than nothing, since there's no rate to project without a known limit (M.ORCH-T629: every tab always shows its chart). With
+    /// none running, the last window as it ended (or an empty axis). Never null.
     /// </summary>
     /// <param name="exponent">The pace curve's exponent (<see cref="Settings.OrchestratorSettings.PaceExponent"/>): 1 draws the straight line.</param>
-    public static Utilization? Build(IReadOnlyList<UsageSample> samples, BudgetStatus b, double targetPercent, DateTime nowUtc, double exponent = 1)
+    public static Utilization Build(IReadOnlyList<UsageSample> samples, BudgetStatus b, double targetPercent, DateTime nowUtc, double exponent = 1)
     {
         // Between windows the graph stays up with the last one as it ended (M.ORCH-T502): Claude's own percents, so no
         // token limit is needed to draw it.
         if (b.CurrentBlock is not { } block) return LastWindow(samples, targetPercent, nowUtc, exponent);
-        if (b.BlockLimitIsPeak || b.BlockLimit <= 0) return null;
         var points = Line(samples, block.StartUtc, block.EndUtc, nowUtc);
         var now = Math.Max(points[^1].Percent, b.BlockPercent);
         if (nowUtc > points[^1].AtUtc) points.Add(new(nowUtc, now));
+
+        if (b.BlockLimitIsPeak || b.BlockLimit <= 0)
+        {
+            // No real 5-hour limit learned yet: no token-per-hour rate to project against one, so the line just holds
+            // where Claude's own reporting (folded into BlockPercent above) puts it, rather than leaving the chart blank.
+            var flat = new Utilization(block.StartUtc, block.EndUtc, nowUtc, targetPercent, points, now, 0, now, TimeSpan.Zero, exponent);
+            return flat with { OverPace = OverPace(flat, points) };
+        }
 
         // The rate the projection carries forward is never under what the last few minutes show (M.ORCH-T783): a fresh
         // burst across a login's CLIs and subagents moves ControlFreshPerHour within minutes, while the 30-minute
