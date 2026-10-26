@@ -19,6 +19,9 @@ internal sealed class GatewayServices
     public required GatewayLog Log { get; init; }
     public LoginThrottle Throttle { get; } = new();
 
+    /// <summary>Caps how many unauthenticated refusals reach the audit (M.ORCH-T988).</summary>
+    public RefusalBudget Refusals { get; } = new();
+
     /// <summary>Every attach, detach, refusal and remote input count (M.ORCH-T934); the gateway's Program spools them.</summary>
     public IGatewayAudit Audit { get; init; } = NoAudit.Instance;
 
@@ -115,6 +118,7 @@ internal static class GatewayApp
                 if (!GatewayKeys.Matches(g.OwnerKey, request.OwnerKey))
                 {
                     g.Log.Write($"token refused: wrong owner key from {from}");
+                    AuditRefusal(g, "", from.ToString(), "wrong owner key");
                     return TypedResults.Unauthorized();
                 }
                 g.Throttle.Succeeded(from);
@@ -136,7 +140,11 @@ internal static class GatewayApp
         {
             try
             {
-                if (Authenticate(http, g) is not { } who) return Results.Unauthorized();
+                if (Authenticate(http, g) is not { } who)
+                {
+                    AuditRefusal(g, "", RemoteOf(http), TokenRefusal(http));
+                    return Results.Unauthorized();
+                }
                 var list = new List<GatewaySession>();
                 var broadcast = g.Broadcast.Current;
                 foreach (var s in g.Sessions.Enumerate())
@@ -170,7 +178,12 @@ internal static class GatewayApp
 
     private static async Task StreamAsync(HttpContext http, string id, GatewayServices g)
     {
-        if (Authenticate(http, g) is not { } who) { http.Response.StatusCode = StatusCodes.Status401Unauthorized; return; }
+        if (Authenticate(http, g) is not { } who)
+        {
+            AuditRefusal(g, TermProtocol.Sanitize(id), RemoteOf(http), TokenRefusal(http));
+            http.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
         if (!http.WebSockets.IsWebSocketRequest) { http.Response.StatusCode = StatusCodes.Status400BadRequest; return; }
         var session = g.Sessions.Get(id);
         string? requestedMode = http.Request.Query["mode"];
@@ -268,6 +281,21 @@ internal static class GatewayApp
         AtUtc = g.Clock(), Event = what, Viewer = viewer, Owner = g.Options.Owner, Session = session, Level = level, Remote = remote,
         Frames = frames, Bytes = bytes, Detail = detail,
     };
+
+    /// <summary>A refusal of an unauthenticated request in the audit (M.ORCH-T988), within <see cref="GatewayServices.Refusals"/>:
+    /// who it was can't be known, so the viewer is "?"; never the token, the key or a header.</summary>
+    private static void AuditRefusal(GatewayServices g, string session, string remote, string why)
+    {
+        if (!g.Refusals.TryTake(out var skipped)) return;
+        g.Audit.Write(Record(g, TermGatewayAudit.Refused, "?", session, "none", remote,
+            detail: skipped > 0 ? $"{why} ({skipped} more refusals not recorded before this)" : why));
+    }
+
+    /// <summary>Why a request's token was refused, in words that never hold the token.</summary>
+    private static string TokenRefusal(HttpContext http) =>
+        string.IsNullOrWhiteSpace(http.Request.Headers.Authorization.ToString()) ? "no token" : "bad or expired token";
+
+    private static string RemoteOf(HttpContext http) => http.Connection.RemoteIpAddress?.ToString() ?? "?";
 
     /// <summary>The bearer token's holder, or null. Only the Authorization header is read: a token in a URL would land in logs.</summary>
     internal static GatewayPrincipal? Authenticate(HttpContext http, GatewayServices g)

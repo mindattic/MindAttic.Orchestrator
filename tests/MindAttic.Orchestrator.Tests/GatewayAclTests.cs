@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
+using System.Net;
 using System.Net.WebSockets;
+using System.Text;
 using MindAttic.Orchestrator.Gateway;
 using MindAttic.Orchestrator.Term;
 using NUnit.Framework;
@@ -200,6 +202,51 @@ public sealed partial class GatewayTests
         var refused = (await audit.WaitFor(TermGatewayAudit.Refused)).Single();
         Assert.That((refused.Viewer, refused.Session, refused.Level, refused.Detail), Is.EqualTo((Pat, "s1", "none", "no grant")));
         Assert.That(gateway.Pipes.Connected, Is.Zero);
+    }
+
+    [Test]
+    public async Task Bad_tokens_and_wrong_owner_keys_are_audited_without_the_token_or_key()
+    {
+        var audit = new MemoryAudit();
+        await using var gateway = await TestGateway.StartAsync(new FixedAcl(Acl()), audit);
+        using var http = gateway.Server.CreateClient();
+        const string fakeToken = "v1.not-a-real-token.fake-signature";
+        http.DefaultRequestHeaders.Authorization = new("Bearer", fakeToken);
+        Assert.That((await http.GetAsync("/sessions")).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+        var ws = gateway.Server.CreateWebSocketClient();
+        ws.ConfigureRequest = request => request.Headers.Authorization = "Bearer " + fakeToken;
+        Assert.ThrowsAsync<InvalidOperationException>(() => ws.ConnectAsync(new Uri("ws://localhost/sessions/s1/stream"), Timeout()));
+        http.DefaultRequestHeaders.Authorization = null;
+        const string fakeKey = "fake-owner-key-for-tests";
+        var answer = await http.PostAsync("/auth/token", new System.Net.Http.StringContent($$"""{"ownerKey":"{{fakeKey}}"}""", Encoding.UTF8, "application/json"));
+        Assert.That(answer.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+
+        var refused = (await audit.WaitFor(TermGatewayAudit.Refused)).Where(r => r.Event == TermGatewayAudit.Refused).ToList();
+        for (var i = 0; refused.Count < 3 && i < 50; i++)
+        {
+            await Task.Delay(20);
+            refused = (await audit.WaitFor(TermGatewayAudit.Refused)).Where(r => r.Event == TermGatewayAudit.Refused).ToList();
+        }
+        Assert.That(refused.Select(r => (r.Session, r.Detail)), Is.EquivalentTo(new[]
+        {
+            ("", "bad or expired token"), ("s1", "bad or expired token"), ("", "wrong owner key"),
+        }));
+        Assert.That(refused.All(r => r.Viewer == "?" && r.Level == "none"));
+        var json = string.Join("\n", refused.Select(r => System.Text.Json.JsonSerializer.Serialize(r)));
+        Assert.That(json, Does.Not.Contain("not-a-real-token").And.Not.Contain(fakeKey));
+    }
+
+    [Test]
+    public void Unauthenticated_refusals_reach_the_audit_at_a_bounded_rate()
+    {
+        var now = Now;
+        var budget = new RefusalBudget(() => now);
+        for (var i = 0; i < RefusalBudget.PerMinute; i++) Assert.That(budget.TryTake(out _), Is.True);
+        Assert.That(budget.TryTake(out _), Is.False);
+        Assert.That(budget.TryTake(out _), Is.False);
+        now += TimeSpan.FromMinutes(1);
+        Assert.That(budget.TryTake(out var skipped), Is.True);
+        Assert.That(skipped, Is.EqualTo(2));
     }
 
     [Test]

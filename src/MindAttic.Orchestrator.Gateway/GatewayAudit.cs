@@ -33,6 +33,41 @@ internal sealed class NoAudit : IGatewayAudit
     public void Write(TermGatewayAuditRecord record) { }
 }
 
+/// <summary>
+/// How many refusals of unauthenticated requests (a bad or expired token, a wrong owner key) are written to the audit
+/// (M.ORCH-T988): at most <see cref="PerMinute"/> a minute, so a scanner can't flood the spool; the next one written after a
+/// quiet spell says how many were left out. Thread-safe.
+/// </summary>
+internal sealed class RefusalBudget(Func<DateTime>? clock = null)
+{
+    public const int PerMinute = 60;
+    private readonly Func<DateTime> now = clock ?? (() => DateTime.UtcNow);
+    private readonly System.Threading.Lock gate = new();
+    private DateTime windowStart = DateTime.MinValue;
+    private int written;
+    private long skipped;
+
+    /// <summary>Whether to write this one; <paramref name="skippedBefore"/> is how many weren't written since the last that was.</summary>
+    public bool TryTake(out long skippedBefore)
+    {
+        lock (gate)
+        {
+            var at = now();
+            if (at - windowStart >= TimeSpan.FromMinutes(1)) (windowStart, written) = (at, 0);
+            if (written >= PerMinute)
+            {
+                skipped++;
+                skippedBefore = 0;
+                return false;
+            }
+            written++;
+            skippedBefore = skipped;
+            skipped = 0;
+            return true;
+        }
+    }
+}
+
 /// <summary>Counts a viewer's Input frames as they go to the host, and their payload bytes, never their content; the stream's
 /// handler takes the counts since it last looked (<see cref="Take"/>) for an input audit record.</summary>
 internal sealed class GatewayInputMeter
