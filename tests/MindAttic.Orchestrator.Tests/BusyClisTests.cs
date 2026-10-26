@@ -118,4 +118,28 @@ public sealed class BusyClisTests
         Assert.That(BusyClis.HostAncestor(51, tree, hosts), Is.Null);
         Assert.That(BusyClis.HostAncestor(902, tree, new HashSet<int>()), Is.Null);
     }
+
+    [Test]
+    public void A_termhost_that_reused_a_dead_parents_pid_is_not_the_clis_host()
+    {
+        // M.ORCH-T1006: 950's parent died and a TermHost started later took its pid, 900.
+        var tree = new Dictionary<int, (int Parent, string Exe)> { [900] = (1, "TermHost.exe"), [950] = (900, "claude.exe"), [901] = (900, "conhost.exe"), [902] = (901, "claude.exe") };
+        var starts = new Dictionary<int, DateTime?> { [900] = Now.AddMinutes(-10), [950] = Now.AddHours(-2), [901] = Now.AddMinutes(-9), [902] = Now.AddMinutes(-9), [1] = Now.AddDays(-1) };
+        var hosts = new HashSet<int> { 900 };
+        Assert.That(BusyClis.HostAncestor(950, tree, hosts, pid => starts.GetValueOrDefault(pid)), Is.Null, "the host started after the CLI");
+        Assert.That(BusyClis.HostAncestor(902, tree, hosts, pid => starts.GetValueOrDefault(pid)), Is.EqualTo(900), "its real host");
+        Assert.That(BusyClis.HostAncestor(902, tree, hosts, pid => pid == 901 ? null : starts.GetValueOrDefault(pid)), Is.Null, "a step it can't check");
+    }
+
+    [Test]
+    public void What_names_no_cli_refuses_nothing_while_every_open_cli_is_hosted()
+    {
+        // M.ORCH-T1006: an unreadable state or a subagent with no CLI can only be a hosted CLI's then.
+        var unreadable = new BusyClis.State("broken", null, Now.AddMinutes(-1), null, null, null, null, null, Unreadable: true);
+        var orphan = new BusyClis.Subagent("agent-y", null, "global login");
+        var hosted = Judge([Proc(1) with { HostPid = 900 }], [State("a", 1, "busy"), unreadable], subagents: [orphan]);
+        Assert.That(hosted.AllIdle, Is.True);
+        var mixed = Judge([Proc(1) with { HostPid = 900 }, Proc(2)], [State("a", 1, "busy"), State("b", 2, "idle"), unreadable], subagents: [orphan]);
+        Assert.That(mixed.Blocking.Count(c => c.Pid is null), Is.EqualTo(2), "with an unhosted CLI open they may be its");
+    }
 }

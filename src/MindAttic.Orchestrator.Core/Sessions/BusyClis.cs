@@ -55,12 +55,22 @@ public static class BusyClis
     public sealed record Proc(int Pid, DateTime? StartedUtc, int? ClaudeParent, int? HostPid = null);
 
     /// <summary>The TermHost (its pid) a process runs under: the nearest of <paramref name="hostPids"/> among its ancestors; null when
-    /// none (an unhosted CLI, which a redeploy does cut off).</summary>
-    public static int? HostAncestor(int pid, IReadOnlyDictionary<int, (int Parent, string Exe)> tree, IReadOnlySet<int> hostPids)
+    /// none (an unhosted CLI, which a redeploy does cut off). With <paramref name="startOf"/> (when a pid's process started, null when
+    /// it can't be read) each step up is checked (M.ORCH-T1006): a parent that started after its child is another process that took a
+    /// dead parent's pid, so the walk ends there, and so does one whose start can't be read. Otherwise an unhosted CLI whose dead
+    /// parent's pid a TermHost reused counted as hosted, and an install cut it off.</summary>
+    public static int? HostAncestor(int pid, IReadOnlyDictionary<int, (int Parent, string Exe)> tree, IReadOnlySet<int> hostPids,
+        Func<int, DateTime?>? startOf = null)
     {
         if (hostPids.Count == 0) return null;
+        var child = pid;
         foreach (var (ancestor, _) in ProcessTree.Ancestors(pid, tree))
+        {
+            if (startOf is not null && (startOf(child) is not { } childStart || startOf(ancestor) is not { } parentStart || parentStart > childStart + StartSlack))
+                return null;
             if (hostPids.Contains(ancestor)) return ancestor;
+            child = ancestor;
+        }
         return null;
     }
 
@@ -158,12 +168,17 @@ public static class BusyClis
             clis.Add(new BusyCli(p.Pid, repo, login, state?.SessionId, activity, why));
         }
 
-        // What can't be tied to an open CLI is unknown, not idle.
-        foreach (var s in subagents.Where(s => s.Cli is null))
-            clis.Add(new BusyCli(null, "?", s.Login, null, CliActivity.Unknown, [$"subagent {s.Agent} is running, and its mark names no CLI"]));
-        var oldest = procs.Where(p => p.StartedUtc is not null).Select(p => p.StartedUtc!.Value).DefaultIfEmpty(DateTime.MinValue).Min();
-        foreach (var s in states.Where(s => s.Unreadable && procs.Count > 0 && s.WrittenUtc >= oldest - StartSlack))
-            clis.Add(new BusyCli(null, "?", "?", s.SessionId, CliActivity.Unknown, [$"session {s.SessionId}'s state couldn't be read"]));
+        // What can't be tied to an open CLI is unknown, not idle: it may be an unhosted CLI's. With every open CLI hosted (or the one
+        // asking) it can only be one of theirs, which the redeploy doesn't touch, so it refuses nothing (M.ORCH-T1006).
+        var anyUnhosted = clis.Any(c => c.Pid is not null && c.Activity is not (CliActivity.Self or CliActivity.Hosted));
+        if (anyUnhosted)
+        {
+            foreach (var s in subagents.Where(s => s.Cli is null))
+                clis.Add(new BusyCli(null, "?", s.Login, null, CliActivity.Unknown, [$"subagent {s.Agent} is running, and its mark names no CLI"]));
+            var oldest = procs.Where(p => p.StartedUtc is not null).Select(p => p.StartedUtc!.Value).DefaultIfEmpty(DateTime.MinValue).Min();
+            foreach (var s in states.Where(s => s.Unreadable && procs.Count > 0 && s.WrittenUtc >= oldest - StartSlack))
+                clis.Add(new BusyCli(null, "?", "?", s.SessionId, CliActivity.Unknown, [$"session {s.SessionId}'s state couldn't be read"]));
+        }
         foreach (var problem in problems)
             clis.Add(new BusyCli(null, "?", "?", null, CliActivity.Unknown, [problem]));
         return new BusyReport(nowUtc, clis);
@@ -196,6 +211,20 @@ public static class BusyClis
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { problems.Add($"the TermHost sessions couldn't be read: {ex.Message}"); }
         try { tree = ProcessTree.Snapshot(); }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { tree = new Dictionary<int, (int, string)>(); problems.Add($"the process tree couldn't be read: {ex.Message}"); }
+        // When each pid's process started, read once a scan: the host walk checks each step up with it (M.ORCH-T1006).
+        var starts = new Dictionary<int, DateTime?>();
+        DateTime? StartOf(int pid)
+        {
+            if (starts.TryGetValue(pid, out var known)) return known;
+            DateTime? at = null;
+            try
+            {
+                using var proc = Process.GetProcessById(pid);
+                at = proc.StartTime.ToUniversalTime();
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
+            return starts[pid] = at;
+        }
         Process[] all;
         try { all = Process.GetProcesses(); }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
@@ -217,7 +246,8 @@ public static class BusyClis
                 DateTime? started = null;
                 try { started = p.StartTime.ToUniversalTime(); }
                 catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
-                found.Add(new Proc(p.Id, started, ProcessTree.ClaudeAncestor(p.Id, tree), HostAncestor(p.Id, tree, hostPids)));
+                if (started is not null) starts[p.Id] = started;
+                found.Add(new Proc(p.Id, started, ProcessTree.ClaudeAncestor(p.Id, tree), HostAncestor(p.Id, tree, hostPids, StartOf)));
             }
         return found;
     }
