@@ -132,7 +132,7 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         var inRepo = repos.ToDictionary(r => r.Name, r => Working.Count(a => Same(a.Repo, r.Name)), StringComparer.OrdinalIgnoreCase);
         var failed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var paceBound = false;
-        // The whole queue in its order (manual priority, then smallest effort), not repo by repo: filling the first repo
+        // The whole queue in its order (manual priority, then newest first, prerequisites first: M.ORCH-T863), not repo by repo: filling the first repo
         // alphabetically before looking at the next left a +70 story waiting behind five unprioritized ones (found live).
         foreach (var next in plan.Queue)
         {

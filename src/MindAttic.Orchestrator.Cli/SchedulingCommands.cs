@@ -95,6 +95,8 @@ internal sealed class QueueCommand : Command<QueueCommand.Settings>
         var (_, _, _, plan) = Ctx.Load();
         AnsiConsole.MarkupLine($"{plan.Queue.Count} open tickets · {plan.Occupied} of {plan.Slots} session slots in use" +
             (plan.Cap < plan.Slots ? $" · pacing allows {plan.Cap}" : ""));
+        AnsiConsole.MarkupLine("[grey]Order: an explicit priority (tickets ticket bump, a failing-test fix) first, then newest created first " +
+            "(same date: the higher ticket number); each ticket's open prerequisites ('requires' links) come just before it and it waits for them.[/]");
         if (plan.Hold is not null) AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(plan.Hold)}[/]");
         foreach (var p in plan.Proposals)
             AnsiConsole.MarkupLine($"[green]next:[/] {p.Item.Id} in {Markup.Escape(p.Item.Repo)} [grey]({Markup.Escape(p.Reason)})[/]  → orchestrator dispatch {p.Item.Id}");
@@ -118,7 +120,8 @@ internal sealed class QueueCommand : Command<QueueCommand.Settings>
                 : q.Reserved > 0 && !q.IsAssigned ? $"[aqua]{Formatting.Tokens(q.Reserved)} reserved[/]"
                 : q.TooBig ? "[yellow]too big for now[/]" : q.IsStale ? $"[yellow]stale since {Formatting.Ago(q.StaleSinceUtc, DateTime.UtcNow)}[/]"
                 : q.IsAssigned ? $"[aqua]assigned {Formatting.Ago(q.Assignment!.StartedUtc, DateTime.UtcNow)}[/]"
-                : plan.Proposals.Any(p => p.Item == q) ? "[green]next[/]" : "";
+                : plan.Proposals.Any(p => p.Item == q) ? "[green]next[/]"
+                : q.RequiredBy.Count > 0 ? $"[grey]required by {string.Join(", ", q.RequiredBy)}[/]" : "";
             table.AddRow((++i).ToString(), Markup.Escape(q.Id), Markup.Escape(q.Repo), Markup.Escape(q.Ticket.Type), q.Priority == 0 ? "" : q.Priority.ToString("+#;-#"),
                 Markup.Escape(q.Ticket.Date), Markup.Escape(Trim(q.Ticket.Summary, 60)), note);
         }

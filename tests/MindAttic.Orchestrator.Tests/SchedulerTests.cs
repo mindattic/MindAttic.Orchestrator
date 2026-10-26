@@ -20,7 +20,7 @@ public sealed class SchedulerTests
         new(DateTime.UtcNow, repos, []) { Budget = budget };
 
     [Test]
-    public void Queue_orders_by_priority_then_type_then_age()
+    public void Queue_orders_by_priority_then_newest_first()
     {
         var snap = Snap(null,
             Repo("A", RepoState.Dormant, T("A-T1", "docs", "2026-01-01"), T("A-T2", "fix", "2026-09-01")),
@@ -29,7 +29,7 @@ public sealed class SchedulerTests
 
         var plan = Scheduler.Plan(snap, new OrchestratorSettings(), []);
 
-        Assert.That(plan.Queue.Select(q => q.Id), Is.EqualTo(new[] { "A-T1", "B-T2", "A-T2", "B-T1" }));
+        Assert.That(plan.Queue.Select(q => q.Id), Is.EqualTo(new[] { "A-T1", "A-T2", "B-T2", "B-T1" }), "the bumped one, then newest created first (M.ORCH-T863)");
     }
 
     [Test]
@@ -84,7 +84,7 @@ public sealed class SchedulerTests
         var plan = Scheduler.Plan(snap, new OrchestratorSettings { MaxConcurrentSessions = 3 }, []);
 
         Assert.That(plan.Occupied, Is.EqualTo(1));
-        Assert.That(plan.Proposals.Select(p => p.Item.Id), Is.EqualTo(new[] { "B-T1", "C-T1" }));
+        Assert.That(plan.Proposals.Select(p => p.Item.Id), Is.EqualTo(new[] { "B-T2", "C-T1" }), "B's newest; then C, on the same date and number");
         Assert.That(plan.Proposals.All(p => !p.UseWorktree));
     }
 
@@ -162,9 +162,9 @@ public sealed class SchedulerTests
     }
 
     [Test]
-    public void After_priority_the_smallest_effort_goes_first_and_every_story_ends_committed_and_closed()
+    public void After_priority_the_newest_goes_first_whatever_its_estimate_and_every_story_ends_committed_and_closed()
     {
-        // Fixes in A have cost ~100 each, in B ~1,000: B's older fix waits behind A's cheaper one.
+        // Fixes in A have cost ~100 each, in B ~1,000; B's older fix waits behind A's newer one (M.ORCH-T863: newest first, not cheapest).
         var done = new List<MindAttic.Orchestrator.Budget.SessionCost>();
         for (var i = 0; i < 3; i++)
         {
@@ -219,7 +219,7 @@ public sealed class SchedulerTests
         new(now, [new RepoStatus("A", @"D:\W\A", RepoState.Dormant,
             tabOpen ? [new HostSession("Claude", 1, "pipe", Worktree + @"\src")] : [],
             transcriptAt is { } at ? [new TranscriptSession("s", Worktree, at, default, null)] : [],
-            [T("A-T1"), T("A-T2")], transcriptAt, default)], []);
+            [T("A-T1", date: "2026-10-02"), T("A-T2")], transcriptAt, default)], []); // A-T1 the newest (M.ORCH-T863)
 
     private static readonly Assignment Quiet =
         new("A-T1", "A", Worktree, "Claude", DateTime.UtcNow.AddHours(-20), Worktree: true);

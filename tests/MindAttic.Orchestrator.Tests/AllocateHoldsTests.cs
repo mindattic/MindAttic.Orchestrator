@@ -85,23 +85,23 @@ public sealed class AllocateHoldsTests
         var snap = Snap(("A", [T("A-T1"), T("A-T2")]));
         var pilot = Pilot();
         pilot.Tick(Paced(snap, 1), snap, Settings(), Now);
-        agents.Clear(); // A-T1's agent exits without closing it, with the window open
+        agents.Clear(); // A-T2's agent (the newest first, M.ORCH-T863) exits without closing it, with the window open
 
         var said = pilot.Tick(Paced(snap, 1), snap, Settings(), Now.AddMinutes(30));
-        Assert.That(said.Select(Allocate.NeedsYou).OfType<string>().Single(), Does.StartWith("A-T1's agent in A ended without finishing it"));
-        Assert.That(started.Select(s => s.Prompt[..19]), Is.EqualTo(new[] { "Work on ticket A-T1", "Work on ticket A-T2" }), "A moves on to A-T2");
+        Assert.That(said.Select(Allocate.NeedsYou).OfType<string>().Single(), Does.StartWith("A-T2's agent in A ended without finishing it"));
+        Assert.That(started.Select(s => s.Prompt[..19]), Is.EqualTo(new[] { "Work on ticket A-T2", "Work on ticket A-T1" }), "A moves on to A-T1");
 
-        agents.Clear(); // A-T2 finishes
-        landed.Add("A-T2");
-        var after = Snap(("A", [T("A-T1")]));
+        agents.Clear(); // A-T1 finishes
+        landed.Add("A-T1");
+        var after = Snap(("A", [T("A-T2")]));
         for (var i = 1; i <= 4; i++)
         {
             var later = pilot.Tick(Paced(after, 10), after, Settings(), Now.AddHours(i));
             if (i == 1) Assert.That(later, Has.Some.Contains("A's open stories are blocked, parked or too big"));
             else Assert.That(later, Has.None.Contains("parked"), "said once, not every tick");
         }
-        Assert.That(started, Has.Count.EqualTo(2), "A-T1 stays parked however much room there is");
-        Assert.That(started.Count(s => s.Prompt.StartsWith("Work on ticket A-T1", StringComparison.Ordinal)), Is.EqualTo(1));
+        Assert.That(started, Has.Count.EqualTo(2), "A-T2 stays parked however much room there is");
+        Assert.That(started.Count(s => s.Prompt.StartsWith("Work on ticket A-T2", StringComparison.Ordinal)), Is.EqualTo(1));
     }
 
     [Test]
@@ -224,8 +224,8 @@ public sealed class AllocateHoldsTests
         const string cap = "allocate: A has 1 agents working, the cap you set for it (settings --repo-sessions)";
 
         var first = pilot.Tick(Paced(snap, 10), snap, capped, Now);
-        Assert.That(started.Select(s => s.Dir), Is.EquivalentTo(new[] { @"D:\WT\A\A-T1", @"D:\WT\B\B-T1" }));
-        Assert.That(first.Count(l => l == cap), Is.EqualTo(1), "A-T2 and A-T3 both hit the cap; it's said once");
+        Assert.That(started.Select(s => s.Dir), Is.EquivalentTo(new[] { @"D:\WT\A\A-T3", @"D:\WT\B\B-T1" }), "A's newest (M.ORCH-T863)");
+        Assert.That(first.Count(l => l == cap), Is.EqualTo(1), "A-T2 and A-T1 both hit the cap; it's said once");
 
         var second = pilot.Tick(Paced(snap, 10), snap, capped, Now.AddMinutes(20));
         Assert.That(second, Has.None.EqualTo(cap), "nor again on the next tick while it's unchanged");
@@ -242,8 +242,8 @@ public sealed class AllocateHoldsTests
 
         var said = pilot.Tick(Paced(snap, 10), snap, Settings(), Now);
         Assert.That(started.Select(s => s.Dir), Is.EqualTo(new[] { @"D:\WT\B\B-T1" }), "B starts despite A's failure");
-        Assert.That(worktreeCalls.Count(p => p.StartsWith(@"D:\WT\A\", StringComparison.Ordinal)), Is.EqualTo(1), "A-T2 isn't tried once A-T1 failed");
-        Assert.That(said, Has.Some.EqualTo("allocate: couldn't make a worktree for A-T1: disk full"));
+        Assert.That(worktreeCalls.Count(p => p.StartsWith(@"D:\WT\A\", StringComparison.Ordinal)), Is.EqualTo(1), "A-T1 isn't tried once A-T2 (the newest) failed");
+        Assert.That(said, Has.Some.EqualTo("allocate: couldn't make a worktree for A-T2: disk full"));
         Assert.That(said, Has.None.Contains("A has no open stories").And.None.Contains("A's open stories"), "a failure isn't reported as nothing to do");
         Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EqualTo(new[] { "B-T1" }), "nothing is claimed for A");
 

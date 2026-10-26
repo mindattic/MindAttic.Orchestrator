@@ -28,6 +28,9 @@ public sealed record QueueItem(string Repo, string RepoPath, Ticket Ticket, int 
     /// <summary>Open tickets it waits for; it isn't proposed until they close.</summary>
     public IReadOnlyList<string> BlockedBy { get; init; } = [];
 
+    /// <summary>Queued tickets that wait for this one (it's their prerequisite), so it's pulled ahead of them (M.ORCH-T863).</summary>
+    public IReadOnlyList<string> RequiredBy { get; init; } = [];
+
     /// <summary>Opened more than <see cref="OrchestratorSettings.GroomAfterDays"/> ago.</summary>
     public bool Old { get; init; }
 
@@ -117,11 +120,6 @@ public sealed record SchedulePlan(
 /// </summary>
 public static partial class Scheduler
 {
-    private static readonly Dictionary<string, int> TypeRank = new(StringComparer.Ordinal)
-    {
-        ["fix"] = 3, ["feature"] = 2, ["chore"] = 1, ["docs"] = 0,
-    };
-
     private const int Century = 36_525;
 
     public static SchedulePlan Plan(Snapshot snapshot, OrchestratorSettings settings, IReadOnlyList<Assignment> assignments)
@@ -187,15 +185,13 @@ public static partial class Scheduler
             // A ticket the last-resort cool-off aborted mid-run goes back at the front for the next round (M.ORCH-T786).
             .ThenByDescending(q => snapshot.Requeued.Contains(q.Id))
             .ThenByDescending(q => q.Reserved > 0)
+            // An explicit priority (tickets ticket bump/priority, or the daemon lifting a failing-test fix above the rest,
+            // M.ORCH-T562) still outranks recency (M.ORCH-T863).
             .ThenByDescending(q => q.Priority)
-            // Smallest effort first: a known estimate before an unknown one, cheapest first.
-            .ThenBy(q => q.Estimate is null)
-            .ThenBy(q => q.Estimate?.Fresh ?? 0)
-            .ThenByDescending(q => TypeRank.GetValueOrDefault(q.Ticket.Type))
-            .ThenBy(q => q.Ticket.Date, StringComparer.Ordinal)
-            .ThenBy(q => q.Ticket.Number ?? int.MaxValue)
-            .ThenBy(q => q.Repo, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(q => q, Newest)
             .ToList();
+        // Then each ticket's open prerequisites ('requires' links) are pulled ahead of it, transitively (M.ORCH-T863).
+        queue = PrerequisitesFirst(queue);
 
         // A ticket that's no longer open was finished (or closed by hand): its assignment is done.
         var finished = assignments.Where(a => !openIds.Contains(a.TicketId) && !snapshot.UnknownRepos.Contains(a.Repo)).ToList();
@@ -284,7 +280,8 @@ public static partial class Scheduler
 
             reposTaken.Add(item.Repo);
             var why = reserved ? $"reserved {Formatting.Tokens(item.Reserved)}"
-                : item.Priority != 0 ? $"priority {item.Priority:+#;-#}" : $"oldest {item.Ticket.Type}";
+                : item.RequiredBy.Count > 0 ? $"required by {string.Join(", ", item.RequiredBy)}"
+                : item.Priority != 0 ? $"priority {item.Priority:+#;-#}" : $"newest {item.Ticket.Type}";
             // A stale ticket that had a worktree goes back to it: its partial work is there.
             var worktree = item.NeedsWorktree;
             if (item.IsStale) why += $"; its last session went quiet {Formatting.Ago(item.StaleSinceUtc, snapshot.TakenUtc)}";
@@ -314,6 +311,54 @@ public static partial class Scheduler
                 .Where(r => OrchestratorSettings.ForRepo(settings.RepoBudgetPercent, r, 0) is > 0 and var pct && limit5h > 0 && RepoSpent(r) >= limit5h * pct / 100)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase),
         };
+    }
+
+    /// <summary>
+    /// Newest first (M.ORCH-T863: "recently created tickets always have highest priority"): the later creation date first,
+    /// and on the same date the higher ticket number, then the repo's name so the order is stable.
+    /// </summary>
+    internal static readonly IComparer<QueueItem> Newest = Comparer<QueueItem>.Create((a, b) =>
+    {
+        var byDate = string.CompareOrdinal(b.Ticket.Date, a.Ticket.Date);
+        if (byDate != 0) return byDate;
+        var byNumber = (b.Ticket.Number ?? int.MinValue).CompareTo(a.Ticket.Number ?? int.MinValue);
+        return byNumber != 0 ? byNumber : StringComparer.OrdinalIgnoreCase.Compare(a.Repo, b.Repo);
+    });
+
+    /// <summary>
+    /// Pulls each unassigned ticket's open prerequisites (<see cref="QueueItem.BlockedBy"/>: its 'requires' links and "blocked by"
+    /// phrases) ahead of it, transitively, keeping the prerequisites in <paramref name="ordered"/>'s own order among themselves
+    /// (M.ORCH-T863). A prerequisite outside the list (awaiting approval) or already assigned isn't moved; a cycle is broken
+    /// where it closes, so each ticket appears once. Assigned tickets keep their place at the end. Each moved prerequisite's
+    /// <see cref="QueueItem.RequiredBy"/> names the queued tickets that wait for it.
+    /// </summary>
+    internal static List<QueueItem> PrerequisitesFirst(IReadOnlyList<QueueItem> ordered)
+    {
+        var rank = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var byId = new Dictionary<string, QueueItem>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < ordered.Count; i++)
+            if (!ordered[i].IsAssigned && byId.TryAdd(ordered[i].Id, ordered[i])) rank[ordered[i].Id] = i;
+        var requiredBy = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var q in ordered.Where(q => !q.IsAssigned))
+            foreach (var id in q.BlockedBy.Where(byId.ContainsKey))
+                (requiredBy.TryGetValue(id, out var list) ? list : requiredBy[id] = []).Add(q.Id);
+
+        var result = new List<QueueItem>(ordered.Count);
+        var placed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var visiting = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void Place(QueueItem q)
+        {
+            // Already placed, or on the path that led here: a cycle, broken by placing this one after what it waits for.
+            if (placed.Contains(q.Id) || !visiting.Add(q.Id)) return;
+            foreach (var id in q.BlockedBy.Where(byId.ContainsKey).OrderBy(id => rank[id])) Place(byId[id]);
+            visiting.Remove(q.Id);
+            placed.Add(q.Id);
+            result.Add(requiredBy.TryGetValue(q.Id, out var deps) ? q with { RequiredBy = deps } : q);
+        }
+        foreach (var q in ordered)
+            if (!q.IsAssigned) Place(q);
+        result.AddRange(ordered.Where(q => q.IsAssigned));
+        return result;
     }
 
     /// <summary>How recently a transcript must have been written for its agent to count as still working what it has.</summary>

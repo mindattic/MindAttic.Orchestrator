@@ -240,10 +240,10 @@ public sealed class AllocateTests
 
         var before = Planned(); // what a second CLI read before this one's claim landed
         var (handed, why) = Allocate.Next(Planned(), settings, store, ["A"], null, claim: true, Now, Make, _ => "master");
-        Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T1", "A-T2" }), "A's fixes only (A-T3 awaits approval, B isn't named), up to the 2 the allowance has room for");
+        Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T2", "A-T1" }), "A's fixes only (A-T3 awaits approval, B isn't named), up to the 2 the allowance has room for");
         Assert.That(why, Is.Null);
-        Assert.That(made, Is.EqualTo(new[] { @"D:\WT\A\A-T1", @"D:\WT\A\A-T2" }));
-        Assert.That(handed[0].Prompt, Does.Contain("Work on ticket A-T1").And.Contain("cd there first").And.Contain("HEAD:master").And.Contain("tickets ticket close A-T1"));
+        Assert.That(made, Is.EqualTo(new[] { @"D:\WT\A\A-T2", @"D:\WT\A\A-T1" }), "newest first (M.ORCH-T863)");
+        Assert.That(handed[1].Prompt, Does.Contain("Work on ticket A-T1").And.Contain("cd there first").And.Contain("HEAD:master").And.Contain("tickets ticket close A-T1"));
         Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EquivalentTo(new[] { "A-T1", "A-T2" }), "claimed, so not handed out twice");
 
         // A second CLI whose plan was read before the first one's claim landed hands nothing out twice.
@@ -289,7 +289,7 @@ public sealed class AllocateTests
 
         GlobalPause.Resume(store);
         Assert.That(Allocate.Next(Planned(), settings, store, ["A"], null, claim: true, Now, Make, _ => "main").Handed.Select(h => h.Item.Id),
-            Is.EqualTo(new[] { "A-T1", "A-T2" }), "resumed: claimed again");
+            Is.EqualTo(new[] { "A-T2", "A-T1" }), "resumed: claimed again");
     }
 
     /// <summary>M.ORCH-T495: one repo's /allocate claimed all 8 places at once (8 subagents on one repo) while other CLIs got none.</summary>
@@ -478,19 +478,19 @@ public sealed class AllocateTests
             var snap = new Snapshot(Now, [new RepoStatus("A", repo, RepoState.Dormant, [], [], [T("A-T1"), T("A-T2")], null, default)], []);
             var plan = Paced(snap, 5); // read while both were open
             using (var db = MindAttic.Tickets.Data.TicketsDb.Open(MindAttic.Tickets.Data.TicketsDb.DefaultPath(dir)))
-                db.Close("A-T1", reference: "done");
-            Assert.That((Allocate.StillOpen(repo, "A-T1"), Allocate.StillOpen(repo, "a-t2")), Is.EqualTo((false, true)));
+                db.Close("A-T2", reference: "done"); // the newest, first in the queue (M.ORCH-T863)
+            Assert.That((Allocate.StillOpen(repo, "A-T2"), Allocate.StillOpen(repo, "a-t1")), Is.EqualTo((false, true)));
 
             var made = new List<string>();
             (bool, string, string) Make(string r, string path, string branch) { made.Add(path); return (true, path, ""); }
             var settings = new OrchestratorSettings { WorktreeRoot = Path.Combine(dir, "wt") };
             var (handed, why) = Allocate.Next(plan, settings, store, ["A"], 1, claim: true, Now, Make, _ => "main", pilotRunning: _ => false);
-            Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T2" }), "the closed one is passed over for the next");
-            Assert.That(made, Is.EqualTo(new[] { Path.Combine(dir, "wt", "A", "A-T2") }), "no worktree for the closed one");
-            Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EqualTo(new[] { "A-T2" }));
+            Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T1" }), "the closed one is passed over for the next");
+            Assert.That(made, Is.EqualTo(new[] { Path.Combine(dir, "wt", "A", "A-T1") }), "no worktree for the closed one");
+            Assert.That(store.LoadAssignments().Select(a => a.TicketId), Is.EqualTo(new[] { "A-T1" }));
 
             using (var db = MindAttic.Tickets.Data.TicketsDb.Open(MindAttic.Tickets.Data.TicketsDb.DefaultPath(dir)))
-                db.Close("A-T2", reference: "done");
+                db.Close("A-T1", reference: "done");
             var (none, whyNone) = Allocate.Next(plan with { }, settings, new JsonStore(Path.Combine(dir, "store2")), ["A"], 1, claim: true, Now, Make, _ => "main",
                 pilotRunning: _ => false);
             Assert.That((none.Count, whyNone), Is.EqualTo((0, "they were closed since the queue was read; nothing else is ready")));
@@ -592,11 +592,11 @@ public sealed class AllocateTests
         var settings = new OrchestratorSettings { WorktreeRoot = @"D:\WT" };
         (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
         var before = Paced(snap, 5);
-        store.UpdateAssignments(all => all.Add(new Assignment("A-T1", "A", @"D:\WT\A\A-T1", "Claude", Now, true))); // the other CLI
+        store.UpdateAssignments(all => all.Add(new Assignment("A-T2", "A", @"D:\WT\A\A-T2", "Claude", Now, true))); // the other CLI, on the newest
 
         var (handed, why) = Allocate.Next(before, settings, store, ["A"], 1, claim: true, Now.AddSeconds(1), Make, _ => "main");
 
-        Assert.That((handed.Select(h => h.Item.Id).Single(), why), Is.EqualTo(("A-T2", (string?)null)), "its one place goes to the next free ticket");
+        Assert.That((handed.Select(h => h.Item.Id).Single(), why), Is.EqualTo(("A-T1", (string?)null)), "its one place goes to the next free ticket");
     }
 
     [Test]
@@ -644,7 +644,7 @@ public sealed class AllocateTests
         (bool, string, string) Make(string repo, string path, string branch) => (true, path, "");
 
         var (handed, _) = Allocate.Next(Paced(snap, 5), settings, store, ["*"], 10, claim: true, Now, Make, _ => "main");
-        Assert.That(handed.Select(h => h.Item.Id), Is.EquivalentTo(new[] { "A-T1", "A-T2", "B-T1" }));
+        Assert.That(handed.Select(h => h.Item.Id), Is.EquivalentTo(new[] { "A-T4", "A-T3", "B-T1" }), "A's newest two (M.ORCH-T863)");
 
         var (more, why) = Allocate.Next(Paced(snap, 5), settings, store, ["A"], 10, claim: true, Now, Make, _ => "main");
         Assert.That((more.Count, why), Is.EqualTo((0, "A is at the cap you set (settings --repo-sessions or --repo-cap); nothing else is ready")), "its two are being worked");
@@ -750,7 +750,7 @@ public sealed class AllocateTests
         Assert.That(plan.Pace, Is.Null);
 
         var (handed, _) = Allocate.Next(plan, settings, store, ["A"], null, claim: true, Now, Make, _ => "main", stillOpen: (_, _) => true, pilotRunning: _ => false);
-        Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T4" }), "one place left of the four");
+        Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T6" }), "one place left of the four, the newest");
 
         var (none, why) = Allocate.Next(Scheduler.Plan(snap, settings, store.LoadAssignments()), settings, store, ["A"], null, claim: true, Now, Make, _ => "main",
             stillOpen: (_, _) => true, pilotRunning: _ => false);
@@ -911,12 +911,13 @@ public sealed class AllocateTests
             (@"D:\WT\A\A-T1", "Work on ticket A-T1"), (@"D:\WT\A\A-T2", "Work on ticket A-T2"), (@"D:\WT\A\A-T3", "Work on ticket A-T3"),
             (@"D:\WT\B\B-T1", "Work on ticket B-T1"),
         }), "with room, all of A's stories run at once, each in its worktree; C has no CLI open");
-        Assert.That(started[0].Prompt, Does.Contain("own git worktree").And.Contains("branch orch/a-t1").And.Contains("/commit")
-            .And.Contains("git push origin HEAD:main").And.Contains("tickets ticket close A-T1 --ref"));
-        Assert.That(started[0].Log, Does.StartWith(Path.Combine(dir, "logs")).And.Contains("T1-"));
+        // Newest first (M.ORCH-T863): A-T3 starts first.
+        Assert.That(started[0].Prompt, Does.Contain("own git worktree").And.Contains("branch orch/a-t3").And.Contains("/commit")
+            .And.Contains("git push origin HEAD:main").And.Contains("tickets ticket close A-T3 --ref"));
+        Assert.That(started[0].Log, Does.StartWith(Path.Combine(dir, "logs")).And.Contains("T3-"));
         Assert.That(said, Has.Some.Contains("in the background"));
-        var a = store.LoadAssignments().Single(x => x.TicketId == "A-T1");
-        Assert.That((a.Directory, a.Worktree, a.Pilot), Is.EqualTo((@"D:\WT\A\A-T1", true, (int?)started[0].Pid)));
+        var a = store.LoadAssignments().Single(x => x.TicketId == "A-T3");
+        Assert.That((a.Directory, a.Worktree, a.Pilot), Is.EqualTo((@"D:\WT\A\A-T3", true, (int?)started[0].Pid)));
         Assert.That(pilot.Working, Has.Count.EqualTo(4));
 
         pilot.Tick(Paced(snap, 10), snap, new() { WorktreeRoot = @"D:\WT" }, Now.AddMinutes(1));
@@ -929,17 +930,17 @@ public sealed class AllocateTests
         Cli(100, @"D:\W\A");
         var snap = Snap(("A", [T("A-T1"), T("A-T2"), T("A-T3")]));
         var pilot = Pilot();
-        pilot.Tick(Paced(snap, 2), snap, new(), Now); // room for two: A-T1 and A-T2
-        agents.Clear(); // both exit: A-T1 landed closed on main, A-T2 didn't close
-        landed.Add("A-T1");
+        pilot.Tick(Paced(snap, 2), snap, new(), Now); // room for two, newest first: A-T3 and A-T2
+        agents.Clear(); // both exit: A-T3 landed closed on main, A-T2 didn't close
+        landed.Add("A-T3");
 
-        var after = Snap(("A", [T("A-T2"), T("A-T3")]));
+        var after = Snap(("A", [T("A-T1"), T("A-T2")]));
         var said = pilot.Tick(Paced(after, 2), after, new(), Now.AddMinutes(30));
-        Assert.That(said, Has.Some.Contains("finished A-T1"));
+        Assert.That(said, Has.Some.Contains("finished A-T3"));
         Assert.That(said, Has.Some.Contains("needs you: A-T2's agent in A ended without finishing it (closed and landed)"));
         pilot.Tick(Paced(after, 2), after, new(), Now.AddMinutes(31));
-        Assert.That(started.Skip(2).Select(s => s.Prompt[..19]), Is.EqualTo(new[] { "Work on ticket A-T3" }),
-            "A moves on to A-T3; A-T2 is back in the queue for you, not retried in a loop");
+        Assert.That(started.Skip(2).Select(s => s.Prompt[..19]), Is.EqualTo(new[] { "Work on ticket A-T1" }),
+            "A moves on to A-T1; A-T2 is back in the queue for you, not retried in a loop");
         Assert.That(store.LoadAssignments().Any(x => x.TicketId == "A-T2"), Is.False);
         Assert.That(Allocate.ClosedIn("| A-T1 | 2026-10-01 | fix | closed | x | t |\n| A-T2 | 2026-10-01 | fix | open | y | — |", "A-T1"), Is.True);
         Assert.That(Allocate.ClosedIn("| A-T1 | 2026-10-01 | fix | closed | x | t |\n| A-T2 | 2026-10-01 | fix | open | y | — |", "A-T2"), Is.False);
@@ -1071,7 +1072,7 @@ public sealed class AllocateTests
         var restarted = Pilot(); // a new daemon: same store, the agents' processes still running
         restarted.Tick(Plan(snap), snap, one, Now.AddMinutes(5));
         Assert.That(started, Has.Count.EqualTo(1));
-        Assert.That(restarted.Working.Single().TicketId, Is.EqualTo("A-T1"));
+        Assert.That(restarted.Working.Single().TicketId, Is.EqualTo("A-T2"), "the newest");
     }
 
     [Test]

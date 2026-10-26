@@ -53,9 +53,9 @@ public sealed class TicketWorkingTests
         var (handed, _) = Allocate.Next(plan, settings, store, ["A"], 1, claim: true, Now, Make, _ => "main", pilotRunning: _ => false,
             self: "sess-1", login: "Ryan@Example.com");
 
-        Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T1" }));
+        Assert.That(handed.Select(h => h.Item.Id), Is.EqualTo(new[] { "A-T2" }), "the newest (M.ORCH-T863)");
         using (var db = Open())
-            Assert.That((db.Work("A-T1").Login, db.Work("A-T1").Session), Is.EqualTo(("ryan@example.com", "sess-1")), "recorded as it's claimed");
+            Assert.That((db.Work("A-T2").Login, db.Work("A-T2").Session), Is.EqualTo(("ryan@example.com", "sess-1")), "recorded as it's claimed");
 
         // The daemon's sync with the claim still there changes nothing; released, it's cleared.
         var claimed = Scheduler.Plan(Snap(), new(), store.LoadAssignments());
@@ -64,7 +64,7 @@ public sealed class TicketWorkingTests
         store.SaveAssignments([]);
         var (changed, failed) = TicketWorking.Sync(dir, claimed, store.LoadAssignments());
         Assert.That((changed, failed.Count), Is.EqualTo((1, 0)));
-        using (var db = Open()) Assert.That(db.Work("A-T1").IsWorking, Is.False, "released: nobody works it");
+        using (var db = Open()) Assert.That(db.Work("A-T2").IsWorking, Is.False, "released: nobody works it");
     }
 
     [Test]

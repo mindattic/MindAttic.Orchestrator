@@ -70,7 +70,7 @@ public sealed class ClaimOwnerTests
         var wakes = waker.TickClaims(snap, plan, Settings, Now);
 
         Assert.That(wakes.Single(w => w.Pid == First).Tickets, Is.EqualTo(new[] { "A-T1" }));
-        Assert.That(wakes.Single(w => w.Pid == Second).Tickets, Is.EqualTo(new[] { "A-T2", "A-T3" }));
+        Assert.That(wakes.Single(w => w.Pid == Second).Tickets, Is.EqualTo(new[] { "A-T3", "A-T2" }), "in queue order: newest first (M.ORCH-T863)");
         string Nudge(int pid) => File.ReadAllText(Path.Combine(cycler.Directory, $"nudge-{pid}-claims.txt"));
         Assert.That(Nudge(First), Does.Contain("A-T1").And.Not.Contain("A-T2").And.Not.Contain("A-T3"));
         Assert.That(Nudge(Second), Does.Contain("A-T2").And.Contain("A-T3").And.Not.Contain("A-T1"));
@@ -85,7 +85,7 @@ public sealed class ClaimOwnerTests
 
         var idle = AllocateWaker.IdleClaims(snap, plan, pilots, Now);
 
-        Assert.That(idle.Select(i => (i.Cli, i.Item.Id)), Is.EqualTo(new[] { (Second, "A-T1"), (Second, "A-T2") }),
+        Assert.That(idle.Select(i => (i.Cli, i.Item.Id)), Is.EqualTo(new[] { (Second, "A-T2"), (Second, "A-T1") }),
             "made before claims recorded it, or by a CLI no longer running /allocate: left to the one that works A");
     }
 
@@ -139,7 +139,7 @@ public sealed class ClaimOwnerTests
         var handed = Allocate.Next(plan, Settings, store, ["A"], null, claim: false, Now, cli: First, pilots: pilots, cliRunning: c => c == First).Handed;
         Assert.That(handed, Has.Count.EqualTo(6), "every free ticket: the dead claims don't take 3 of the 8 places");
         Assert.That(AllocateWaker.IdleClaims(snap, plan, pilots, Now).Select(i => (i.Cli, i.Item.Id)),
-            Is.EqualTo(new[] { (First, "A-T1"), (First, "A-T2"), (First, "A-T3"), (First, "A-T4") }), "offered to the CLI that works A");
+            Is.EqualTo(new[] { (First, "A-T4"), (First, "A-T3"), (First, "A-T2"), (First, "A-T1") }), "offered to the CLI that works A, newest first");
     }
 
     [Test]
