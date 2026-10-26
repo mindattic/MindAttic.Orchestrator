@@ -141,15 +141,33 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 PruneSessionTempIfDue(cycler);
                 tick.Lap("ended sessions' temp folders");
                 // Old side-by-side TermHost versions, once the CLIs still running on them have ended (M.ORCH-T932).
+                // Each in its own try (M.ORCH-T1009), as the gateway's is: one that throws no longer skips the rest of the tick
+                // (allocate, reminders, orphans, keep-going), and a failed one is tried again in 5 minutes, not 30.
                 if (DateTime.UtcNow - termHostsCleanedUtc >= TimeSpan.FromMinutes(30))
                 {
                     termHostsCleanedUtc = DateTime.UtcNow;
-                    foreach (var name in Term.TermHostInstalls.Cleanup(Term.TermHostInstalls.Root(new Setup.Installer().InstallDir)))
-                        Say(LogEventLevel.Information, $"removed the unused TermHost {name}");
-                    foreach (var name in Term.GatewayInstalls.Cleanup(Term.GatewayInstalls.Root(new Setup.Installer().InstallDir)))
-                        Say(LogEventLevel.Information, $"removed the unused Gateway {name}");
-                    foreach (var name in Term.TermViewerInstalls.Cleanup(Term.TermViewerInstalls.Root(new Setup.Installer().InstallDir)))
-                        Say(LogEventLevel.Information, $"removed the unused TermViewer {name}");
+                    string? installDir = null;
+                    try { installDir = new Setup.Installer().InstallDir; }
+                    catch (Exception ex) { Say(LogEventLevel.Warning, $"old side-by-side versions: couldn't find the install folder: {ex.Message}"); }
+                    var failed = installDir is null;
+                    if (installDir is not null)
+                        foreach (var (part, cleanup) in new (string, Func<string, IReadOnlyList<string>>)[]
+                        {
+                            ("TermHost", dir => [.. Term.TermHostInstalls.Cleanup(Term.TermHostInstalls.Root(dir))]),
+                            ("Gateway", dir => [.. Term.GatewayInstalls.Cleanup(Term.GatewayInstalls.Root(dir))]),
+                            ("TermViewer", dir => [.. Term.TermViewerInstalls.Cleanup(Term.TermViewerInstalls.Root(dir))]),
+                        })
+                            try
+                            {
+                                foreach (var name in cleanup(installDir))
+                                    Say(LogEventLevel.Information, $"removed the unused {part} {name}");
+                            }
+                            catch (Exception ex)
+                            {
+                                failed = true;
+                                Say(LogEventLevel.Warning, $"old {part} versions: couldn't clean them up (trying again in 5 minutes): {ex.Message}");
+                            }
+                    if (failed) termHostsCleanedUtc = DateTime.UtcNow - TimeSpan.FromMinutes(25);
                 }
                 // The team gateway (M.ORCH-T933), off unless turned on: started, restarted or stopped to match the settings. Its
                 // trouble is contained here: it only ever costs remote viewers, never a tick or a TermHost.
