@@ -27,13 +27,16 @@ internal sealed record GatewayPrincipal(string Subject, string Scope, DateTime E
 /// <see cref="GatewayOptions.MaxTokenMinutes"/> after it was issued; replacing the signing key revokes every token at once. A
 /// token is never logged.
 /// </summary>
-internal sealed class GatewayTokens(byte[] signingKey, Func<DateTime>? clock = null)
+internal sealed class GatewayTokens(Func<byte[]> signingKeyNow, Func<DateTime>? clock = null)
 {
     private static readonly TimeSpan Skew = TimeSpan.FromSeconds(30);
     private readonly Func<DateTime> now = clock ?? (() => DateTime.UtcNow);
 
+    /// <param name="signingKey">A fixed key (a test, or a one-off command).</param>
+    public GatewayTokens(byte[] signingKey, Func<DateTime>? clock = null) : this(() => signingKey, clock) { }
+
     public (string Token, DateTime ExpiresUtc) Issue(string subject, string scope, TimeSpan lifetime) =>
-        TermGatewayTokens.Issue(signingKey, subject, scope, lifetime, now());
+        TermGatewayTokens.Issue(signingKeyNow(), subject, scope, lifetime, now());
 
     /// <summary>The token's holder; null when it is malformed, forged, expired, not yet valid or lived too long.</summary>
     public GatewayPrincipal? Validate(string? token)
@@ -45,7 +48,7 @@ internal sealed class GatewayTokens(byte[] signingKey, Func<DateTime>? clock = n
             if (dot <= TermGatewayTokens.Prefix.Length) return null;
             var body = token[..dot];
             var signature = FromBase64Url(token[(dot + 1)..]);
-            if (signature is null || !CryptographicOperations.FixedTimeEquals(signature, TermGatewayTokens.Sign(signingKey, body))) return null;
+            if (signature is null || !CryptographicOperations.FixedTimeEquals(signature, TermGatewayTokens.Sign(signingKeyNow(), body))) return null;
             if (FromBase64Url(body[TermGatewayTokens.Prefix.Length..]) is not { } json) return null;
             var p = JsonSerializer.Deserialize<TermGatewayTokenPayload>(json);
             if (p is null || string.IsNullOrWhiteSpace(p.Sub) || !GatewayScopes.IsValid(p.Scope)) return null;
@@ -64,11 +67,74 @@ internal sealed class GatewayTokens(byte[] signingKey, Func<DateTime>? clock = n
 }
 
 /// <summary>
+/// The serving gateway's signing key as <c>signing.key</c> holds it now (M.ORCH-T983): the file's time is looked at, at most once
+/// every <see cref="Recheck"/>, and the key read again when it changes, so replacing or deleting the file revokes every token,
+/// open streams included (each re-validates its token), without a restart. A gone or unusable file gets a new key (as at
+/// first use); a file that can't be read just now keeps the key it had, since making a new one then would revoke every token
+/// over a sharing violation. The key is never logged.
+/// </summary>
+internal sealed class SigningKeyFile
+{
+    public static readonly TimeSpan Recheck = TimeSpan.FromSeconds(1);
+    private readonly string directory;
+    private readonly string path;
+    private readonly System.Threading.Lock gate = new();
+    private byte[] key;
+    private DateTime stamp, checkedUtc;
+
+    public SigningKeyFile(string directory)
+    {
+        this.directory = directory;
+        path = Path.Combine(directory, GatewayKeys.SigningKeyFile);
+        key = GatewayKeys.LoadOrCreate(directory, GatewayKeys.SigningKeyFile);
+        stamp = WrittenUtc();
+        checkedUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>The key now.</summary>
+    public byte[] Current
+    {
+        get
+        {
+            lock (gate)
+            {
+                var at = DateTime.UtcNow;
+                if (at - checkedUtc < Recheck) return key;
+                checkedUtc = at;
+                try
+                {
+                    if (!File.Exists(path))
+                    {
+                        key = GatewayKeys.LoadOrCreate(directory, GatewayKeys.SigningKeyFile);
+                        stamp = WrittenUtc();
+                        return key;
+                    }
+                    var written = File.GetLastWriteTimeUtc(path);
+                    if (written == stamp) return key;
+                    var read = TermGatewayTokens.FromBase64Url(File.ReadAllText(path).Trim());
+                    key = read is { Length: >= 32 } ? read : GatewayKeys.LoadOrCreate(directory, GatewayKeys.SigningKeyFile);
+                    stamp = read is { Length: >= 32 } ? written : WrittenUtc();
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+                return key;
+            }
+        }
+    }
+
+    private DateTime WrittenUtc()
+    {
+        try { return File.GetLastWriteTimeUtc(path); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return DateTime.MinValue; }
+    }
+}
+
+/// <summary>
 /// The gateway's two secrets, each 32 random bytes in its own file in the data folder (under the user's own
 /// <c>%LOCALAPPDATA%</c>), made on first use: <c>signing.key</c> signs tokens, and <c>owner.key</c> is what the machine owner
 /// trades for a token (<c>POST /auth/token</c>) from another machine. Reading either file proves you are the owner, so a token can
 /// also be minted locally (<c>MindAttic.Orchestrator.Gateway token</c>, or <c>orchestrator gateway token &lt;who&gt;</c> for a
-/// member). Delete <c>signing.key</c> and restart to revoke every token; delete <c>owner.key</c> to change the owner key.
+/// member). Delete or replace <c>signing.key</c> to revoke every token (the serving gateway notices within a second and
+/// closes open streams within a watch interval, <see cref="SigningKeyFile"/>); delete <c>owner.key</c> to change the owner key.
 /// </summary>
 internal static class GatewayKeys
 {

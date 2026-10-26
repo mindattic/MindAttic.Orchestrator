@@ -298,6 +298,61 @@ public sealed partial class GatewayTests
     }
 
     [Test]
+    public async Task A_stream_ends_when_its_token_expires()
+    {
+        var now = DateTime.UtcNow;
+        var tokens = new GatewayTokens(SigningKey, () => now);
+        var audit = new MemoryAudit();
+        await using var gateway = await TestGateway.StartAsync(audit: audit, auditInterval: TimeSpan.FromMilliseconds(100), tokens: tokens);
+        using var socket = await gateway.Client(GatewayScopes.Watch).ConnectAsync(new Uri("ws://localhost/sessions/s1/stream"), Timeout());
+        await Send(socket, TermProtocol.Frame(TermFrameKind.Hello, TermProtocol.Hello(TermProtocol.Version, 100, 25)));
+        await TermProtocol.ReadFrameAsync(gateway.Pipes.Host, Timeout());
+
+        now += TimeSpan.FromMinutes(10); // the test token lasts five
+        var result = await socket.ReceiveAsync(new byte[256], Timeout());
+        Assert.That(result.MessageType, Is.EqualTo(WebSocketMessageType.Close));
+        Assert.That((socket.CloseStatus, socket.CloseStatusDescription), Is.EqualTo(((WebSocketCloseStatus?)WebSocketCloseStatus.PolicyViolation, "access revoked")));
+    }
+
+    [Test]
+    public async Task A_stream_ends_when_the_signing_key_is_replaced()
+    {
+        var key = SigningKey;
+        var tokens = new GatewayTokens(() => Volatile.Read(ref key));
+        await using var gateway = await TestGateway.StartAsync(auditInterval: TimeSpan.FromMilliseconds(100), tokens: tokens);
+        using var socket = await gateway.Client(GatewayScopes.Watch).ConnectAsync(new Uri("ws://localhost/sessions/s1/stream"), Timeout());
+        await Send(socket, TermProtocol.Frame(TermFrameKind.Hello, TermProtocol.Hello(TermProtocol.Version, 100, 25)));
+        await TermProtocol.ReadFrameAsync(gateway.Pipes.Host, Timeout());
+
+        Volatile.Write(ref key, OwnerKey); // any other 32 bytes: a fresh signing.key
+        var result = await socket.ReceiveAsync(new byte[256], Timeout());
+        Assert.That(result.MessageType, Is.EqualTo(WebSocketMessageType.Close));
+        Assert.That(socket.CloseStatus, Is.EqualTo((WebSocketCloseStatus?)WebSocketCloseStatus.PolicyViolation));
+    }
+
+    [Test]
+    public void The_signing_key_file_is_read_again_when_replaced_and_kept_when_it_cant_be_read()
+    {
+        using var dir = new TempDir();
+        var file = new SigningKeyFile(dir.Path);
+        var first = file.Current;
+        var tokens = new GatewayTokens(() => file.Current);
+        var (token, _) = tokens.Issue(Owner, GatewayScopes.Watch, TimeSpan.FromMinutes(5));
+
+        var path = Path.Combine(dir.Path, GatewayKeys.SigningKeyFile);
+        using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            Thread.Sleep(SigningKeyFile.Recheck + TimeSpan.FromMilliseconds(100));
+            Assert.That(file.Current, Is.EqualTo(first), "locked: the key it had, never a new one");
+        }
+        File.Delete(path);
+        GatewayKeys.LoadOrCreate(dir.Path, GatewayKeys.SigningKeyFile); // a fresh key, as an owner rotating it would
+        Thread.Sleep(SigningKeyFile.Recheck + TimeSpan.FromMilliseconds(100));
+        Assert.That(file.Current, Is.Not.EqualTo(first));
+        Assert.That(tokens.Validate(token), Is.Null, "every token signed with the old key is revoked");
+    }
+
+    [Test]
     public async Task A_stream_whose_access_check_keeps_failing_is_closed_not_left_open()
     {
         var audit = new MemoryAudit();

@@ -469,13 +469,13 @@ public sealed partial class GatewayTests
         /// <param name="audit">Where audit records go; nowhere by default.</param>
         /// <param name="session">The session in place of the default "s1".</param>
         public static async Task<TestGateway> StartAsync(IGatewayGrants? grants = null, IGatewayAudit? audit = null, TimeSpan? auditInterval = null,
-            TermSessionRecord? session = null)
+            TermSessionRecord? session = null, GatewayTokens? tokens = null)
         {
             var gateway = session is null ? new TestGateway() : new TestGateway { Session = session };
             gateway.Services = new GatewayServices
             {
                 Options = new GatewayOptions { Owner = Owner },
-                Tokens = new GatewayTokens(SigningKey),
+                Tokens = tokens ?? new GatewayTokens(SigningKey),
                 OwnerKey = OwnerKey,
                 Grants = grants ?? new OwnerOnlyGrants(Owner),
                 Sessions = new FixedSessions(gateway.Session),

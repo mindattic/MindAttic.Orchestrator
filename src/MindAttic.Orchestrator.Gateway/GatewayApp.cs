@@ -181,6 +181,7 @@ internal static class GatewayApp
 
     private static async Task StreamAsync(HttpContext http, string id, GatewayServices g)
     {
+        var token = BearerToken(http);
         if (Authenticate(http, g) is not { } who)
         {
             AuditRefusal(g, TermProtocol.Sanitize(id), RemoteOf(http), TokenRefusal(http));
@@ -234,8 +235,9 @@ internal static class GatewayApp
         // The owner's dashboard shows a "being watched" banner while this lasts (M.ORCH-T935).
         var watcher = g.Watchers.Attach(session.Id, who.Subject, access, from);
 
-        // Every interval: the input typed since (counts and sizes only), and the access checked again, so a revoked or
-        // expired grant closes the stream rather than lasting as long as the connection does.
+        // Every interval: the input typed since (counts and sizes only), and the token and access checked again, so an expired
+        // token, a replaced signing key, or a revoked or expired grant closes the stream rather than lasting as long as the
+        // connection does.
         var input = new GatewayInputMeter();
         using var revoke = new CancellationTokenSource();
         using var stopWatch = new CancellationTokenSource();
@@ -253,8 +255,14 @@ internal static class GatewayApp
                 try
                 {
                     WriteInput(g, input, who.Subject, session.Id, mode, from);
-                    var now = OwnerOnlyGrants.Effective(g.Grants.AccessTo(who.Subject, session), who.Scope, requestedMode);
-                    if (now < access) why = $"dropped to {now}";
+                    // The token as well as the grant (M.ORCH-T983): it expired, or signing.key was replaced, so it no longer
+                    // validates, and the stream it opened ends with it.
+                    if (g.Tokens.Validate(token) is null) why = "lapsed: its token expired or the signing key changed";
+                    else
+                    {
+                        var now = OwnerOnlyGrants.Effective(g.Grants.AccessTo(who.Subject, session), who.Scope, requestedMode);
+                        if (now < access) why = $"dropped to {now}";
+                    }
                     failures = 0;
                 }
                 catch (Exception ex)
@@ -318,11 +326,15 @@ internal static class GatewayApp
     private static string RemoteOf(HttpContext http) => http.Connection.RemoteIpAddress?.ToString() ?? "?";
 
     /// <summary>The bearer token's holder, or null. Only the Authorization header is read: a token in a URL would land in logs.</summary>
-    internal static GatewayPrincipal? Authenticate(HttpContext http, GatewayServices g)
+    internal static GatewayPrincipal? Authenticate(HttpContext http, GatewayServices g) =>
+        BearerToken(http) is { } token ? g.Tokens.Validate(token) : null;
+
+    /// <summary>The bearer token in the Authorization header, unchecked; held only in memory, never logged.</summary>
+    private static string? BearerToken(HttpContext http)
     {
         var header = http.Request.Headers.Authorization.ToString();
         const string scheme = "Bearer ";
-        return header.StartsWith(scheme, StringComparison.OrdinalIgnoreCase) ? g.Tokens.Validate(header[scheme.Length..].Trim()) : null;
+        return header.StartsWith(scheme, StringComparison.OrdinalIgnoreCase) ? header[scheme.Length..].Trim() : null;
     }
 }
 

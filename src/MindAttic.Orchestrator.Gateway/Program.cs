@@ -54,10 +54,12 @@ try
     log.Write($"masking token shapes and {secrets.LiteralCount} Vault-held values on remote streams");
     using var broadcast = new BroadcastFile(options.DataDir);
     var watchers = new WatcherBoard(options.DataDir, message => TermWatchersBus.TrySend(message));
+    var signingKey = new SigningKeyFile(options.DataDir);
     var services = new GatewayServices
     {
         Options = options,
-        Tokens = new GatewayTokens(GatewayKeys.LoadOrCreate(options.DataDir, GatewayKeys.SigningKeyFile)),
+        // M.ORCH-T983: signing.key as it is now, so replacing it revokes every token, open streams included, without a restart.
+        Tokens = new GatewayTokens(() => signingKey.Current),
         OwnerKey = GatewayKeys.LoadOrCreate(options.DataDir, GatewayKeys.OwnerKeyFile),
         // M.ORCH-T934: members' grants and org membership from orchestrator.db (the snapshot the daemon writes), and the audit
         // spool the daemon imports into it.
