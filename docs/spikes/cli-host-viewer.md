@@ -261,7 +261,7 @@ cursor and modes exactly at the current size. Candidates:
 
 | Engine | Language | Fit |
 |---|---|---|
-| **libghostty-vt** | Zig, with a C API; no libc dependency; builds for Windows | Best fidelity, proven by Ghostty. Its C API signatures are still in flux, so pin a version and P/Invoke it from TermHost. **First choice** |
+| **libghostty-vt** | Zig, with a C API; no libc dependency; builds for Windows | Best fidelity, proven by Ghostty. Its C API signatures are still in flux, so pin a version and P/Invoke it from TermHost. **First choice; chosen in T929** (see "Phase 2 decisions") |
 | libvterm | C | Mature (Neovim uses it). Needs our own serializer, has no reflow, and its scrollback is callback-based |
 | vtnetcore (VtNetCore.XTermParser) | C# | Managed, so no native build, but old and lightly maintained. **Fallback** |
 | @xterm/headless + addon-serialize | JS | Exactly VS Code's path, but drags Node into every host. Rejected |
@@ -413,7 +413,7 @@ hooks, which is a cheap source for that feed.
 | ConPTY handle handoff (stretch) | n/a | Possible in principle. A ConPTY is anonymous pipes plus a signal pipe, a reference handle and the conhost process; Windows Terminal's default-terminal `ITerminalHandoff` hands a live conhost session to another process, and node-pty is gaining an option to adopt `{input, output, signal, ref, server, client}`. But `HPCON`'s internals are undocumented. **Not needed** with per-session hosts; revisit only if one shared host is ever chosen |
 | Orphaned sessions (no viewer, CLI waiting forever) | n/a | A session is never killed for lacking a viewer. The dashboard shows it, with a "Detached" badge per person. The daemon reports sessions idle for more than N hours (a setting) on the status bus. A host whose CLI exited lingers 10 minutes, then exits |
 | Stale registry entries | n/a | Each entry holds the host's pid and start time; a viewer drops one whose process is gone or was reused |
-| Memory per session | ConPTY and buffers inside the dashboard | conhost 5 to 10 MB; TermHost about 10 to 15 MB (NativeAOT) or 30 to 40 MB (JIT); ring 4 MB; Phase 2 emulator with 10k lines x 120 cols about 15 to 25 MB worst case. Claude itself (300+ MB) dominates either way. About 40 to 60 MB of overhead per session, or about 0.5 to 0.7 GB for a dozen |
+| Memory per session | ConPTY and buffers inside the dashboard | conhost 5 to 10 MB; TermHost about 10 to 15 MB (NativeAOT) or 30 to 40 MB (JIT); ring 4 MB; Phase 2 emulator with 10k lines x 120 cols about 9 MB plain, 25 MB worst case (measured in T929). Claude itself (300+ MB) dominates either way. About 40 to 60 MB of overhead per session, or about 0.5 to 0.7 GB for a dozen |
 | Logoff, reboot | Everything dies | Everything still dies: the hosts are per-user processes. Keep T862's restore file, now written by each host, so the next logon offers `--resume` for each. A Windows service in session 0 could survive logoff but not run claude in the user's desktop; rejected in section 1 |
 | Sleep, hibernate, RDP reconnect, lock | Fine | Fine: no process changes |
 | Dashboard running from a job object (debugger, CI) | n/a | Hosts are started with breakaway, or by a broker that isn't in the job (the daemon's `spawn-term` inbox kind), so they don't die with the dashboard's job |
@@ -486,7 +486,7 @@ Phase 4
 
 **Open items for Phase 1:**
 
-- **Replay garbling.** A replay at a different size than the session's history (attach at 118x32 after 120x30 output) duplicates or clips some earlier lines. The visible TUI region repaints correctly after the redraw nudge. This is expected for Option A; Phase 2's emulator (T929) removes it.
+- **Replay garbling.** A replay at a different size than the session's history (attach at 118x32 after 120x30 output) duplicates or clips some earlier lines. The visible TUI region repaints correctly after the redraw nudge. This is expected for Option A; Phase 2's emulator (T929) removes it (done: see "Phase 2 decisions").
 - **Bad command crashes the host.** A command that isn't found (`pwsh` isn't installed on this machine, yet it's the host's default) crashed the host with an unlogged Win32Exception. T924: log and exit cleanly, and default to `powershell.exe` when `pwsh` is missing.
 - **PSReadLine prompt overwrite.** When a prompt wraps exactly at the edge, PSReadLine's redraw overwrote the trailing `>`. It's cosmetic and the same in a plain terminal.
 - **One viewer at a time.** A second connection replaces the first. Multi-viewer support is T930.
@@ -551,6 +551,66 @@ line. The kind is documented in `docs/app-bus.md`.
 **Smoke test (2026-10-26).** A scratch console started `cmd.exe /d /k` through `TermLauncher.Start`. The registry file
 appeared, `Enumerate()` listed it, and after the host was killed `Enumerate()` dropped it and deleted the file. A second
 CLI ran `exit 5`. Its record went to `exited`/`5`, and after its 2 s linger the host exited and removed its own file.
+
+## Phase 2 decisions (M.ORCH-T929, 2026-10-26)
+
+**Engine: libghostty-vt**, through the [DeBlasis.GhosttyVt](https://github.com/deblasis/libghostty-vt-dotnet) bindings,
+pinned to exactly `[1.4.1]`. That package bundles a prebuilt `ghostty-vt.dll` for win-x64 (upstream Ghostty 1.3.2-dev,
+commit `f54340ad`), so TermHost needs no Zig toolchain or native build of our own. Building libghostty-vt here wasn't
+practical: no Zig on the build machine, a Windows build needs MSVC and the Windows SDK and isn't reproducible, and the C
+API is still moving. The package's pin answers the moving API. It also exposes the raw C ABI next to the curated one.
+
+The managed fallbacks were rejected:
+
+| Candidate | Why not |
+|---|---|
+| VtNetCore 1.0.30 | Last released in 2019. One UTF-16 `char` per cell, so wide characters and emoji break the grid. No public access to the buffers |
+| XtermSharp 1.0.0-alpha.10 | Its attributes pack colours into a 256-colour index (`MatchColor` maps RGB to the palette), so 24-bit colour is lost |
+| Terminal.Emulation 0.4.5 | Pure C#, with truecolor and an alternate screen, but young (0.x, about 3k downloads) and needs our own serializer. A possible plan C |
+
+**Serializer: libghostty-vt's own VT formatter** (`Terminal.CreateFormatter(FormatterFormat.Vt)`). It is Ghostty's code
+for this exact job. It emits the text with SGR including 24-bit colour, then the modes, scrolling region, keyboard and
+charset state, and finally the cursor position and pen. `HeadlessScreen` (`src/MindAttic.Orchestrator.TermHost/Replay/`) wraps it:
+
+- **Soft wraps** are kept: lines are written unwrapped, so the viewer wraps them again at the same width and can still
+  reflow them.
+- **Both buffers.** The formatter only reads the active screen. So when a program is on the alternate screen, the host
+  switches to the primary screen and back (`?1049l`, then `?47h`, which doesn't clear), then restores the switch modes,
+  the alternate cursor and the pen. The primary screen's text, its cursor (exact after `?1049`) and its scrollback come
+  first, then the switch, home, and the alternate screen. This is skipped while the parser is in the middle of an escape
+  sequence the CLI hasn't finished, and then only the alternate screen goes.
+- **Left out:** the palette (it would override the viewer's theme), the title (the ModeTracker re-asserts it), and the
+  pending-wrap flag of a cursor parked in the last column.
+
+**Wiring in TermHost.** Every output chunk feeds the ring, the ModeTracker and the emulator, all under the session lock.
+The emulator starts at the session's size and is resized with it. ApplySize resizes it first, so a viewer that attaches
+at a new size gets a snapshot taken at that size. A replay from the emulator needs no redraw nudge.
+
+**Fallback.** Option A stays. The ring is always fed. When the emulator can't start (a missing native library), or throws
+on output, on a resize or on a snapshot, the host logs it, drops the emulator for good (once it has missed output it
+can't be exact), and serves the ring with the nudge from then on. The host never crashes over it.
+
+**Memory.** Scrollback is capped at 10,000 lines by default (`HeadlessScreen.DefaultScrollbackLines`). libghostty-vt
+also caps scrollback in bytes, with a default of only a few hundred lines at 120 columns, and the bindings'
+`MaxScrollbackLines` option doesn't lift it. So the host sets both through the raw ABI: a 64 MB byte ceiling, then the
+line cap, which is the one that binds. Rows are freed a page at a time, so 9,600 to 9,900 lines are kept.
+
+Measured per session at 120 columns with a full 10,000-line scrollback:
+
+- about 9 MB for plain text;
+- about 25 MB when every cell has its own 24-bit colour (the worst case);
+- 2.9 MB for the native DLL, shared by every session.
+
+Serializing a full scrollback takes about 4 ms and comes to about 1 MB of VT. A Claude session is typically 50 to
+300 KB.
+
+**Smoke test** (a host running `cmd`, then throwaway pipe clients):
+
+1. 45 lines of 24-bit coloured output at 120x30, then a resize to 100x25.
+2. An attach at 100x25, then one at 90x20.
+
+Each replay came from the emulator. All 45 lines came back with their `38;2;255;100;0` colour, at the attach size, ending
+with the cursor at the prompt.
 
 ## Sources
 

@@ -3,8 +3,8 @@ using System.Text;
 namespace MindAttic.Orchestrator.TermHost.Replay;
 
 /// <summary>
-/// What a viewer that attaches late is sent (M.ORCH-T927): the ring, cleaned of the queries a renderer would answer again,
-/// and the sticky modes and title to re-assert after it.
+/// What a viewer that attaches late is sent: the headless emulator's snapshot (M.ORCH-T929), or, without one, the ring
+/// (M.ORCH-T927), cleaned of the queries a renderer would answer again; then the sticky modes and title to re-assert.
 /// </summary>
 internal static class ReplayScreen
 {
@@ -14,7 +14,23 @@ internal static class ReplayScreen
 
     private static readonly string[] AltScreenEnters = ["\u001b[?1049h", "\u001b[?47h", "\u001b[?1047h"];
 
-    /// <summary>The replay's data and re-assertion VT.</summary>
+    /// <summary>
+    /// The replay (M.ORCH-T929): the emulator's <paramref name="snapshot"/> when there is one and it works (Exact: no redraw
+    /// nudge needed), else the ring (Option A). A snapshot that throws is reported to <paramref name="failed"/>, never thrown.
+    /// </summary>
+    public static (byte[] Data, byte[] Reassert, bool Exact) Build(Func<byte[]>? snapshot, Func<byte[]> ring, ModeTracker modes,
+        Action<Exception>? failed = null)
+    {
+        if (snapshot is not null)
+        {
+            try { return (snapshot(), Encoding.UTF8.GetBytes(modes.Reassert()), true); }
+            catch (Exception ex) { failed?.Invoke(ex); }
+        }
+        var (data, reassert) = Build(ring(), modes);
+        return (data, reassert, false);
+    }
+
+    /// <summary>The ring replay's data and re-assertion VT.</summary>
     public static (byte[] Data, byte[] Reassert) Build(byte[] ring, ModeTracker modes)
     {
         var data = StripQueries(ring);

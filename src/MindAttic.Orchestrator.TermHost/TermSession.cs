@@ -44,6 +44,10 @@ internal sealed class TermSession
     // M.ORCH-T925: the registry file and the term-session announcements.
     private Registration? registration;
 
+    // M.ORCH-T929: the headless emulator the exact replay is taken from; null when it couldn't start or has failed, and the
+    // ring above serves alone. Fed, resized and snapshotted only under gate.
+    private HeadlessScreen? screen;
+
     public TermSession(HostOptions options, HostLog log)
     {
         this.options = options;
@@ -70,6 +74,7 @@ internal sealed class TermSession
         try { registration = new Registration(options, commandLine, cols, rows, log); registration.Start(); }
         catch (Exception ex) { log.Error(ex, "registering the session failed; running unregistered"); registration = null; }
 
+        StartScreen();
         var started = TryStartCli(commandLine);
         _ = Task.Run(AcceptLoopAsync);
         if (started)
@@ -80,7 +85,7 @@ internal sealed class TermSession
         else new Thread(() => Linger(exitCode)) { IsBackground = true, Name = "linger" }.Start();
 
         done.Wait();
-        lock (gate) { viewer?.Dispose(); viewer = null; }
+        lock (gate) { viewer?.Dispose(); viewer = null; screen?.Dispose(); screen = null; }
         registration?.End();
         log.Write("host exit");
         return started ? 0 : 1;
@@ -105,7 +110,9 @@ internal sealed class TermSession
                 exitCode = code == 0 ? -1 : code;
                 MarkExited(exitCode);
                 // What a viewer that attaches is shown, so it can tell why nothing ran.
-                ring.Append(Encoding.UTF8.GetBytes($"\u001b[31mTermHost: the CLI couldn't start: {why} (error {code})\u001b[0m\r\n"));
+                var message = Encoding.UTF8.GetBytes($"\u001b[31mTermHost: the CLI couldn't start: {why} (error {code})\u001b[0m\r\n");
+                ring.Append(message);
+                FeedScreen(message);
             }
             return false;
         }
@@ -170,6 +177,7 @@ internal sealed class TermSession
         lock (gate)
         {
             ring.Append(chunk);
+            FeedScreen(chunk);
             modes.Feed(chunk);
             if (viewer is { } v && !v.Post(TermFrameKind.Output, chunk)) Drop(v);
 
@@ -280,8 +288,7 @@ internal sealed class TermSession
                 return;
             }
             ApplySize(h.Cols, h.Rows, announce: false);
-            Attach(mine);
-            _ = Task.Run(() => Nudge(mine));
+            if (Attach(mine)) _ = Task.Run(() => Nudge(mine));
             await ReadViewerAsync(pipe, mine).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IOException or EndOfStreamException or ObjectDisposedException or InvalidDataException or OperationCanceledException) { }
@@ -298,23 +305,55 @@ internal sealed class TermSession
     }
 
     /// <summary>Makes <paramref name="link"/> the viewer: sends it the session so far and subscribes it to the live stream, under
-    /// the one lock the output pump takes, so no byte is lost or doubled between them.</summary>
-    private void Attach(ViewerLink link)
+    /// the one lock the output pump takes, so no byte is lost or doubled between them. True when the replay came from the
+    /// ring and wants the redraw nudge; the emulator's snapshot is exact at the session's size (M.ORCH-T929).</summary>
+    private bool Attach(ViewerLink link)
     {
         lock (gate)
         {
             var old = viewer;
             viewer = link;
             if (old is not null) { old.Dispose(); log.Write("previous viewer replaced"); }
-            var (data, reassert) = ReplayScreen.Build(ring.ToArray(), modes);
+            var (data, reassert, exact) = ReplayScreen.Build(screen is { } s ? s.Snapshot : null, ring.ToArray, modes,
+                ex => StopScreen(ex, "the emulator's snapshot failed"));
             var ok = link.Post(TermFrameKind.Hello, TermProtocol.Hello(TermProtocol.Version, cols, rows))
                      && link.Post(TermFrameKind.Replay, TermProtocol.Replay(cols, rows, modes.Flags, data, reassert))
                      && link.Post(TermFrameKind.Live, [])
                      && (title is null || link.Post(TermFrameKind.Title, TermProtocol.Title(title)))
                      && (!exited || link.Post(TermFrameKind.Exit, TermProtocol.Exit(exitCode)));
-            if (!ok) { Drop(link); return; }
-            log.Write($"viewer attached cols={cols} rows={rows} replay={data.Length}B");
+            if (!ok) { Drop(link); return false; }
+            log.Write($"viewer attached cols={cols} rows={rows} replay={data.Length}B from the {(exact ? "emulator" : "ring")}");
+            return !exact;
         }
+    }
+
+    /// <summary>Starts the headless emulator (M.ORCH-T929) at the session's size. When it can't start, the ring serves alone.</summary>
+    private void StartScreen()
+    {
+        try
+        {
+            var started = new HeadlessScreen(cols, rows);
+            lock (gate) screen = started;
+            log.Write($"emulator started (libghostty-vt) {cols}x{rows}, scrollback {started.ScrollbackLines} lines");
+        }
+        catch (Exception ex) { log.Error(ex, "the emulator couldn't start; the replay uses the raw ring"); }
+    }
+
+    /// <summary>Called under <see cref="gate"/>.</summary>
+    private void FeedScreen(ReadOnlySpan<byte> chunk)
+    {
+        if (screen is null) return;
+        try { screen.Feed(chunk); }
+        catch (Exception ex) { StopScreen(ex, "the emulator failed on output"); }
+    }
+
+    /// <summary>Called under <see cref="gate"/>. Drops the emulator for good: once it has missed output it can't be exact.</summary>
+    private void StopScreen(Exception ex, string what)
+    {
+        log.Error(ex, what + "; the replay uses the raw ring from now on");
+        var dead = screen;
+        screen = null;
+        try { dead?.Dispose(); } catch (Exception) { }
     }
 
     private async Task ReadViewerAsync(Stream pipe, ViewerLink link)
@@ -340,7 +379,7 @@ internal sealed class TermSession
     }
 
     /// <summary>
-    /// The redraw nudge (M.ORCH-T927): a replay drawn at older sizes can garble the live region, so after it the ConPTY is
+    /// The redraw nudge (M.ORCH-T927), after a ring replay only: one drawn at older sizes can garble the live region, so after it the ConPTY is
     /// resized to cols-1, then back to cols. Claude Code and other TUIs repaint on a resize, so the visible screen comes out
     /// right (the dtach trick). The session's size never changes, so no Size frame is sent.
     /// </summary>
@@ -372,6 +411,12 @@ internal sealed class TermSession
             cols = c;
             rows = r;
             registration?.Update(s => s with { Cols = c, Rows = r });
+            // The emulator follows the session's size (reflowing as a terminal would), so a snapshot is taken at it.
+            if (screen is not null)
+            {
+                try { screen.Resize(c, r); }
+                catch (Exception ex) { StopScreen(ex, "the emulator failed to resize"); }
+            }
         }
         // Outside the lock, as the prototype did: the output pump must stay free to drain the repaint the resize causes.
         SetPtySize(c, r);

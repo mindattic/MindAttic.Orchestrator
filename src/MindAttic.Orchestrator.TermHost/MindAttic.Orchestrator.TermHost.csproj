@@ -20,6 +20,16 @@
     <PackageReference Include="Microsoft.Windows.Console.ConPTY" Version="1.24.260710001" />
   </ItemGroup>
 
+  <!-- M.ORCH-T929: the headless VT emulator behind the exact replay. libghostty-vt (ghostty-vt.dll, upstream Ghostty
+       1.3.2-dev f54340ad) through DeBlasis.GhosttyVt, pinned exactly: its C API is still moving. HeadlessScreen calls the
+       raw ABI for the scrollback line cap and the parser state, hence unsafe blocks. -->
+  <PropertyGroup>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="DeBlasis.GhosttyVt" Version="[1.4.1]" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\MindAttic.Orchestrator.Term\MindAttic.Orchestrator.Term.csproj" />
   </ItemGroup>
