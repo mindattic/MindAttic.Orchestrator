@@ -47,7 +47,9 @@ internal sealed class TeamWallWindow : Window
     private readonly DispatcherTimer timer = new() { Interval = TeamWall.RefreshEvery };
     private readonly CancellationTokenSource lifetime = new();
     private readonly Dictionary<string, TeamWallTile> tiles = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, GatewayClient> clients = new(StringComparer.OrdinalIgnoreCase);
+    // Concurrent (M.ORCH-T1014): a tile's reconnect reads it from a thread-pool thread (ConnectFor) while SyncClients and
+    // Shutdown change it on the UI thread. A client disposed under a reconnect fails that attach, which the relay contains.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, GatewayClient> clients = new(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyList<WallSession> all = [];
     private IReadOnlyList<WallGateway> gateways = [];
     private volatile HashSet<string> listed = new(StringComparer.Ordinal);
@@ -224,11 +226,11 @@ internal sealed class TeamWallWindow : Window
     {
         var wanted = remotes.Where(r => GatewayRemotes.IsValidName(r.Name))
             .GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase).Select(g => g.Last()).ToList();
-        foreach (var name in clients.Keys.ToList())
-            if (wanted.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase)) is not { } r || r != clients[name].Remote)
+        foreach (var (name, client) in clients.ToArray())
+            if (wanted.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase)) is not { } r || r != client.Remote)
             {
-                try { clients[name].Dispose(); } catch (Exception) { }
-                clients.Remove(name);
+                clients.TryRemove(new KeyValuePair<string, GatewayClient>(name, client));
+                try { client.Dispose(); } catch (Exception) { }
             }
         foreach (var r in wanted)
             if (!clients.ContainsKey(r.Name))
@@ -335,8 +337,8 @@ internal sealed class TeamWallWindow : Window
         foreach (var tile in tiles.Values)
             try { tile.Dispose(); } catch (Exception ex) { log.Error(ex, "Closing a tile failed; contained"); }
         tiles.Clear();
-        foreach (var client in clients.Values)
-            try { client.Dispose(); } catch (Exception) { }
-        clients.Clear();
+        foreach (var name in clients.Keys)
+            if (clients.TryRemove(name, out var client))
+                try { client.Dispose(); } catch (Exception) { }
     }
 }
