@@ -157,14 +157,23 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
                     var own = OwnStore is null || StateBus.SameStore(StateBus.StoreOf(envelope), OwnStore);
                     // Each send is its own connection and the inbox's listeners relay at once, so two quick changes can arrive in
                     // either order (M.ORCH-T1002): one read before the payload already held is older news, and is dropped, never
-                    // kept or applied over the newer one.
-                    if (own && !NewerState(envelope))
+                    // kept or applied over the newer one. The check and the publish happen under one lock (M.ORCH-T1013): with the
+                    // publish after it, an older payload checked first could still be published after a newer one and stay kept.
+                    if (!own)
                     {
-                        log.Debug("Dropped a {Kind:l} message older than the one held", envelope.Kind);
+                        stream.Publish(envelope);
                         return;
                     }
-                    stream.Publish(envelope, own ? envelope.Kind : null);
-                    if (own) StateChanged?.Invoke();
+                    lock (stateAt)
+                    {
+                        if (!NewerState(envelope))
+                        {
+                            log.Debug("Dropped a {Kind:l} message older than the one held", envelope.Kind);
+                            return;
+                        }
+                        stream.Publish(envelope, envelope.Kind);
+                    }
+                    StateChanged?.Invoke();
                     return;
                 default:
                     stream.Publish(envelope);
@@ -180,16 +189,13 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
     private readonly Dictionary<string, DateTime> stateAt = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Whether <paramref name="envelope"/>'s payload was read no earlier than the one of its kind held, noting it when so.
-    /// One with no time of its own (an older writer) is taken.</summary>
+    /// One with no time of its own (an older writer) is taken. The caller holds the lock on <see cref="stateAt"/>.</summary>
     private bool NewerState(StatusEnvelope envelope)
     {
         if (StateBus.AtOf(envelope) is not { } at) return true;
-        lock (stateAt)
-        {
-            if (stateAt.TryGetValue(envelope.Kind, out var held) && at < held) return false;
-            stateAt[envelope.Kind] = at;
-            return true;
-        }
+        if (stateAt.TryGetValue(envelope.Kind, out var held) && at < held) return false;
+        stateAt[envelope.Kind] = at;
+        return true;
     }
 
     /// <summary>A change the feed read from the ticket database, sent to every subscriber.</summary>
