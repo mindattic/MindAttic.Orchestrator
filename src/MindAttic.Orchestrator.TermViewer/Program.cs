@@ -37,7 +37,10 @@ internal static class Program
                 log.Information("The dashboard is up; it shows {Id:l}, so this viewer exits", id);
                 return 0;
             }
-            using var slot = new Mutex(initiallyOwned: true, TermViewerSlot.MutexName(id), out var first);
+            // Only an interactive viewer holds or counts for the session's slot (M.ORCH-T977): a --watch pop-out holding it would
+            // stop the daemon opening the interactive fallback window when the dashboard goes down.
+            var first = true;
+            using var slot = watchOnly ? null : new Mutex(initiallyOwned: true, TermViewerSlot.MutexName(id), out first);
             if (!first && !stay)
             {
                 log.Information("Another viewer already shows {Id:l}; this one exits", id);
@@ -67,7 +70,7 @@ internal static class Program
             }
             finally
             {
-                try { if (first) slot.ReleaseMutex(); }
+                try { if (first) slot?.ReleaseMutex(); }
                 catch (ApplicationException) { }
             }
         }

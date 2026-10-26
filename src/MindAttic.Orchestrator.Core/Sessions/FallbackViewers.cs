@@ -64,8 +64,9 @@ public sealed class DashboardDownWatch(TimeSpan? threshold = null)
 }
 
 /// <summary>
-/// A standalone TermViewer's claim on one session (M.ORCH-T960): a viewer holds this named mutex while its window is open, so the
-/// daemon knows the session already has a window and a second viewer of the same session exits at once.
+/// A standalone TermViewer's claim on one session (M.ORCH-T960): an interactive viewer holds this named mutex while its window is
+/// open, so the daemon knows the session already has a window and a second viewer of the same session exits at once. A --watch
+/// pop-out never holds it (M.ORCH-T977): a read-only window doesn't stand in for the interactive fallback one.
 /// </summary>
 public static class TermViewerSlot
 {
