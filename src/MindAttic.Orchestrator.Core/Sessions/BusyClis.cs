@@ -168,17 +168,17 @@ public static class BusyClis
             clis.Add(new BusyCli(p.Pid, repo, login, state?.SessionId, activity, why));
         }
 
-        // What can't be tied to an open CLI is unknown, not idle: it may be an unhosted CLI's. With every open CLI hosted (or the one
-        // asking) it can only be one of theirs, which the redeploy doesn't touch, so it refuses nothing (M.ORCH-T1006).
-        var anyUnhosted = clis.Any(c => c.Pid is not null && c.Activity is not (CliActivity.Self or CliActivity.Hosted));
-        if (anyUnhosted)
-        {
-            foreach (var s in subagents.Where(s => s.Cli is null))
-                clis.Add(new BusyCli(null, "?", s.Login, null, CliActivity.Unknown, [$"subagent {s.Agent} is running, and its mark names no CLI"]));
-            var oldest = procs.Where(p => p.StartedUtc is not null).Select(p => p.StartedUtc!.Value).DefaultIfEmpty(DateTime.MinValue).Min();
-            foreach (var s in states.Where(s => s.Unreadable && procs.Count > 0 && s.WrittenUtc >= oldest - StartSlack))
-                clis.Add(new BusyCli(null, "?", "?", s.SessionId, CliActivity.Unknown, [$"session {s.SessionId}'s state couldn't be read"]));
-        }
+        // What can't be tied to an open CLI is unknown, not idle: it may be an unhosted CLI's, one the process scan didn't identify.
+        // It is dropped only when it is provably a hosted CLI's (or the asking one's), which the redeploy doesn't touch: an unreadable
+        // state whose session is one of theirs (M.ORCH-T1042: dropped whenever every CLI the scan found was hosted, an unhosted CLI
+        // the scan missed let a deploy pass; M.ORCH-T1006). A subagent mark naming no CLI can't be tied to one, so it always counts.
+        var hostedSessions = clis.Where(c => c.Activity is (CliActivity.Self or CliActivity.Hosted) && c.SessionId is { Length: > 0 })
+            .Select(c => c.SessionId!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var s in subagents.Where(s => s.Cli is null))
+            clis.Add(new BusyCli(null, "?", s.Login, null, CliActivity.Unknown, [$"subagent {s.Agent} is running, and its mark names no CLI"]));
+        var oldest = procs.Where(p => p.StartedUtc is not null).Select(p => p.StartedUtc!.Value).DefaultIfEmpty(DateTime.MinValue).Min();
+        foreach (var s in states.Where(s => s.Unreadable && procs.Count > 0 && s.WrittenUtc >= oldest - StartSlack && !hostedSessions.Contains(s.SessionId)))
+            clis.Add(new BusyCli(null, "?", "?", s.SessionId, CliActivity.Unknown, [$"session {s.SessionId}'s state couldn't be read"]));
         foreach (var problem in problems)
             clis.Add(new BusyCli(null, "?", "?", null, CliActivity.Unknown, [problem]));
         return new BusyReport(nowUtc, clis);
