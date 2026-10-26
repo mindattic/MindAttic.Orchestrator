@@ -321,7 +321,7 @@ public sealed class ContextCycler(string? directory = null)
                 using var doc = JsonDocument.Parse(File.ReadAllText(file));
                 var root = doc.RootElement;
                 if (!root.TryGetProperty("pid", out var p) || p.ValueKind != JsonValueKind.Number || !p.TryGetInt32(out var pid)) continue;
-                var busy = root.TryGetProperty("state", out var st) && st.GetString() == "busy";
+                var busy = root.TryGetProperty("state", out var st) && IsBusyTurn(st.GetString(), DecidingOf(root), nowUtc);
                 var session = Path.GetFileName(file)[..^".state.json".Length];
                 if (!newest.TryGetValue(pid, out var seen) || written > seen.At) newest[pid] = (session, written, busy);
             }
@@ -368,6 +368,20 @@ public sealed class ContextCycler(string? directory = null)
 
     /// <summary>Whether a session's state still says it's blocked on you: its <c>asking</c> mark, with no transcript line
     /// written since (past <see cref="AskingSlack"/>).</summary>
+    /// <summary>Whether a session's recorded turn state is busy: <c>busy</c>, unless it is the Stop hook's <c>deciding</c> mark
+    /// (M.ORCH-T1036: the turn stays busy while the hook decides whether to send it on) older than the hook's timeout, which is a
+    /// hook cut off there, and the turn ended with it.</summary>
+    internal static bool IsBusyTurn(string? turn, DateTime? decidingUtc, DateTime nowUtc) =>
+        turn == "busy" && (decidingUtc is not { } since || nowUtc - since <= DecidingLife);
+
+    /// <summary>How long the Stop hook's <c>deciding</c> mark counts: its timeout, and a little over.</summary>
+    internal static readonly TimeSpan DecidingLife = TimeSpan.FromSeconds(Setup.AgentGate.ContextHookTimeoutSeconds + 15);
+
+    /// <summary>When a state's <c>deciding</c> mark was written; null when it has none.</summary>
+    internal static DateTime? DecidingOf(JsonElement state) =>
+        state.TryGetProperty("deciding", out var d) && d.ValueKind == JsonValueKind.String &&
+        DateTime.TryParse(d.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var at) ? at : null;
+
     internal static bool IsAsking(JsonElement state)
     {
         if (!state.TryGetProperty("asking", out var a) || a.ValueKind != JsonValueKind.String ||

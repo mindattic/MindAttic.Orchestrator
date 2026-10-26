@@ -76,7 +76,7 @@ public static class BusyClis
 
     /// <summary>One session's recorded state: null <see cref="Pid"/> and <see cref="Unreadable"/> when it couldn't be parsed.</summary>
     public sealed record State(string SessionId, int? Pid, DateTime WrittenUtc, string? Turn, DateTime? AtUtc, DateTime? AskingSinceUtc,
-        string? Cwd, string? ConfigDir, bool Unreadable = false);
+        string? Cwd, string? ConfigDir, bool Unreadable = false, DateTime? DecidingUtc = null);
 
     /// <summary>A running subagent mark: its agent id and the CLI it runs in (null when the mark names none or can't be read).</summary>
     public sealed record Subagent(string Agent, int? Cli, string Login);
@@ -146,6 +146,9 @@ public static class BusyClis
             }
             var why = new List<string>();
             var unknown = false;
+            // Its Stop hook marks the turn busy while it decides whether to send it on (M.ORCH-T1036); a mark older than the hook's
+            // timeout is a hook that was cut off, and the turn ended with it.
+            if (state is { Turn: "busy" } && !ContextCycler.IsBusyTurn(state.Turn, state.DecidingUtc, nowUtc)) state = state with { Turn = "idle" };
             if (state is null)
             {
                 unknown = true;
@@ -308,7 +311,8 @@ public static class BusyClis
         DateTime? When(string name) => Text(name) is { } t &&
             DateTime.TryParse(t, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var w) ? w : null;
         int? pid = r.TryGetProperty("pid", out var p) && p.ValueKind == JsonValueKind.Number && p.TryGetInt32(out var n) && n > 0 ? n : null;
-        return new State(session, pid, writtenUtc, Text("state"), When("at"), ContextCycler.IsAsking(r) ? When("asking") : null, Text("cwd"), Text("config_dir"));
+        return new State(session, pid, writtenUtc, Text("state"), When("at"), ContextCycler.IsAsking(r) ? When("asking") : null, Text("cwd"), Text("config_dir"),
+            DecidingUtc: When("deciding"));
     }
 
     private static string ReadShared(string path)

@@ -2975,22 +2975,14 @@ public static class AgentGate
                 save(state_file, state)
                 print(json.dumps({"decision": "block", "reason": wind_down_told(repo_of(data.get("cwd") or "") or Path(str(data.get("cwd") or ".")).name)}))
                 sys.exit(0)
-            # Saved as the idle turn it is before anything slow is asked (M.ORCH-T1005): a hook killed at its timeout past here
-            # ends the turn all the same, and left busy, the busy gate and the dashboard kept this CLI working. A turn sent on
-            # below saves its own state over this one.
+            # Saved as still busy, deciding since now, before anything slow is asked (M.ORCH-T1036): saved idle here (M.ORCH-T1005),
+            # an /allocate CLI about to be sent on read idle for up to the whole budget, so a deploy's busy gate could pass and cut it
+            # or a restart gate restart it mid-handoff. It is saved idle below only when the turn really ends; a hook killed at its
+            # timeout leaves this mark, which the busy gate takes as the turn ended once that timeout has passed.
             try:
-                ended = dict(state)
-                for k in ("nudged", "worked", "closed"):
-                    ended.pop(k, None)
-                ended.update(state="idle", at=now, pid=cli_pid(), cwd=data.get("cwd"), auth=auth, config_dir=str(PROFILE_DIR or ""))
-                if needs_typed:
-                    ended["asking"] = now
-                held = limit_held(limits, data, now) if paced and stopped else None
-                if held:
-                    ended["limit_stop"] = held
-                else:
-                    ended.pop("limit_stop", None)
-                save(state_file, ended)
+                deciding = dict(state)
+                deciding.update(state="busy", deciding=now, pid=cli_pid(), cwd=data.get("cwd"), auth=auth, config_dir=str(PROFILE_DIR or ""))
+                save(state_file, deciding)
             except Exception:
                 pass
             # Only a CLI that typed /allocate is kept going, on its own repos, while they have workable tickets.
@@ -3015,10 +3007,11 @@ public static class AgentGate
             if reason:
                 state.update(nudged=True, worked=False)
                 state.pop("closed", None)
+                state.pop("deciding", None)
                 save(state_file, state)
                 print(json.dumps({"decision": "block", "reason": reason}))
                 sys.exit(0)
-            for k in ("nudged", "worked", "closed"):
+            for k in ("nudged", "worked", "closed", "deciding"):
                 state.pop(k, None)
             state.update(state="idle", at=now, pid=cli_pid(), cwd=data.get("cwd"), auth=auth, config_dir=str(PROFILE_DIR or ""))
             if needs_typed:
@@ -3043,7 +3036,7 @@ public static class AgentGate
         elif event == "UserPromptSubmit":
             # A new prompt (yours, or the daemon's resume after the reset) is the CLI going on: it's no longer waiting on a window.
             # And whatever it was holding on for you is answered (M.ORCH-T790).
-            for k in ("nudged", "worked", "closed", "limit_stop", "quicksave_told", "asking", "needs_typed"):
+            for k in ("nudged", "worked", "closed", "limit_stop", "quicksave_told", "asking", "needs_typed", "deciding"):
                 state.pop(k, None)
             if state.get("goal") and goal_finished(state.get("transcript"), state["goal"]):
                 state.pop("goal", None)
