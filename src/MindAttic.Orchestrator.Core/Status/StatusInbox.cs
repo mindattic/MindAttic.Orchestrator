@@ -18,6 +18,8 @@ public sealed class StatusInbox : IDisposable
     private static readonly Serilog.ILogger log = OrchestratorLog.For("StatusStream");
     private readonly Dictionary<string, Action<StatusEnvelope>> handlers = new(StringComparer.OrdinalIgnoreCase);
     private readonly CancellationTokenSource stop = new();
+    private readonly object creating = new();
+    private int instances;
 
     /// <summary>A writer said a turn or a subagent ended: its tokens are in its transcript, so recount now.</summary>
     public const string Poke = "poke";
@@ -67,10 +69,20 @@ public sealed class StatusInbox : IDisposable
         while (!ct.IsCancellationRequested)
         {
             NamedPipeServerStream? pipe = null;
+            var counted = false;
             try
             {
-                pipe = new NamedPipeServerStream(PipeName, PipeDirection.In, NamedPipeServerStream.MaxAllowedServerInstances,
-                    PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+                // The first instance claims the name, as the stream's does (M.ORCH-T1000): a second daemon (an `orchestrator daemon`
+                // beside the logon one) joined this pipe and took about half of what writers sent. It listens once the first is gone.
+                // Created one at a time, so no listener of this inbox joins another process's pipe while its first is being made.
+                lock (creating)
+                {
+                    var first = instances == 0 ? PipeOptions.FirstPipeInstance : PipeOptions.None;
+                    pipe = new NamedPipeServerStream(PipeName, PipeDirection.In, NamedPipeServerStream.MaxAllowedServerInstances,
+                        PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly | first);
+                    instances++;
+                    counted = true;
+                }
                 await pipe.WaitForConnectionAsync(ct).ConfigureAwait(false);
                 warned = false;
                 // One writer at a time per listener; a writer that hangs open is let go after a few seconds.
@@ -79,19 +91,28 @@ public sealed class StatusInbox : IDisposable
                 using var reader = new StreamReader(pipe, new UTF8Encoding(false), leaveOpen: true);
                 while (await reader.ReadLineAsync(read.Token).ConfigureAwait(false) is { } line) Take(line.Trim());
             }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested) { pipe?.Dispose(); return; }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { Release(); return; }
             catch (OperationCanceledException) { } // a writer held it open too long
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ObjectDisposedException)
             {
                 // Taken by another process, or the writer went mid-line: said once while it keeps happening, retried.
                 if (!warned) log.Information("The status inbox couldn't listen or read ({Message:l}); retrying", ex.Message);
                 warned = true;
-                pipe?.Dispose();
-                pipe = null;
+                // Released before the wait, so another listener here isn't told this inbox still holds the name.
+                Release();
                 try { await Task.Delay(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false); } catch (OperationCanceledException) { return; }
             }
             catch (Exception ex) when (ex is not OutOfMemoryException) { log.Warning(ex, "The status inbox failed; listening again"); }
-            finally { pipe?.Dispose(); }
+            finally { Release(); }
+
+            void Release()
+            {
+                pipe?.Dispose();
+                pipe = null;
+                if (!counted) return;
+                counted = false;
+                lock (creating) instances--;
+            }
         }
     }
 

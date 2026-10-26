@@ -51,4 +51,24 @@ public sealed class StatusInboxTests
             await Task.Delay(50, stop.Token);
         await poked.Task.WaitAsync(stop.Token);
     }
+
+    [Test]
+    public async Task A_second_inbox_on_the_same_pipe_takes_none_of_its_lines()
+    {
+        // M.ORCH-T1000: a second daemon's inbox joined the first's pipe and took about half the lines.
+        var pipe = "mindattic-orchestrator-status-in-test-" + Guid.NewGuid().ToString("N");
+        var (first, second) = (0, 0);
+        using var a = new StatusInbox { PipeName = pipe }.On(StatusInbox.Poke, _ => Interlocked.Increment(ref first));
+        a.Start();
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        while (!StatusInbox.TrySend(StatusEnvelope.Of("warm-up", new { }), pipe, 500)) await Task.Delay(50, stop.Token);
+        using var b = new StatusInbox { PipeName = pipe }.On(StatusInbox.Poke, _ => Interlocked.Increment(ref second));
+        b.Start();
+        await Task.Delay(300, stop.Token);
+        for (var sent = 0; sent < 20;)
+            if (StatusInbox.TrySend(StatusEnvelope.Of(StatusInbox.Poke, new { }), pipe, 500)) sent++;
+            else await Task.Delay(20, stop.Token);
+        while (Volatile.Read(ref first) < 20) await Task.Delay(20, stop.Token);
+        Assert.That(second, Is.Zero);
+    }
 }

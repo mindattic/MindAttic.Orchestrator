@@ -236,6 +236,20 @@ internal sealed class DaemonCommand : Command<DaemonCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
+        // The daemon's own mutex, as the installed one takes (M.ORCH-T1000): a second daemon beside the logon one split the status
+        // inbox with it, so about half of what writers sent went to one that acted on none of it.
+        using var mutex = new Mutex(initiallyOwned: true, MindAttic.Orchestrator.Setup.Installer.DaemonMutex, out var first);
+        if (!first)
+        {
+            AnsiConsole.MarkupLine("[yellow]A daemon is already running (the logon one, or another `orchestrator daemon`); this one won't start beside it.[/]");
+            return 1;
+        }
+        try { return Run(settings); }
+        finally { mutex.ReleaseMutex(); }
+    }
+
+    private static int Run(Settings settings)
+    {
         using var stop = new CancellationTokenSource();
         ConsoleCancelEventHandler onCtrlC = (_, e) => { e.Cancel = true; stop.Cancel(); };
         Console.CancelKeyPress += onCtrlC;
