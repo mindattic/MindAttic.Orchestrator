@@ -232,13 +232,25 @@ internal static class GatewayApp
             return;
         }
 
-        using var socket = await http.WebSockets.AcceptWebSocketAsync(new WebSocketAcceptContext
+        WebSocket accepted;
+        try
         {
-            // permessage-deflate: VT compresses 5 to 10x (spike section 5). Offered; used when the viewer asks for it.
-            DangerousEnableCompression = true,
-            DisableServerContextTakeover = false,
-            ServerMaxWindowBits = 15,
-        }).ConfigureAwait(false);
+            accepted = await http.WebSockets.AcceptWebSocketAsync(new WebSocketAcceptContext
+            {
+                // permessage-deflate: VT compresses 5 to 10x (spike section 5). Offered; used when the viewer asks for it.
+                DangerousEnableCompression = true,
+                DisableServerContextTakeover = false,
+                ServerMaxWindowBits = 15,
+            }).ConfigureAwait(false);
+        }
+        catch
+        {
+            // The upgrade failed (M.ORCH-T1016): TermBridge, which owns the pipe from here on, never runs, so the pipe is closed
+            // here; otherwise each failed upgrade leaks a handle and leaves a half-open viewer on the host.
+            await DisposeQuietly(pipe, g).ConfigureAwait(false);
+            throw;
+        }
+        using var socket = accepted;
         var mode = access == GatewayAccess.Interact ? GatewayScopes.Interact : GatewayScopes.Watch;
         var masked = g.Broadcast.Current.IsMasked(session.Id);
         g.Log.Write($"attach {session.Id} by {who.Subject} from {from} ({mode}, {(masked ? "masked" : "unmasked")})");
@@ -305,6 +317,12 @@ internal static class GatewayApp
                     $"{result.FramesDown} down ({result.BytesDown} bytes), {result.Dropped} dropped, {result.Withheld} withheld while paused");
         g.Audit.Write(Record(g, TermGatewayAudit.Detach, who.Subject, session.Id, mode, from, result.FramesUp, result.BytesDown,
             $"ended by {ended}; {result.FramesDown} frames down, {result.Dropped} dropped"));
+    }
+
+    private static async Task DisposeQuietly(Stream pipe, GatewayServices g)
+    {
+        try { await pipe.DisposeAsync().ConfigureAwait(false); }
+        catch (Exception ex) { g.Log.Error(ex, "closing a session pipe failed; contained"); }
     }
 
     /// <summary>An input record for what <paramref name="input"/> counted since it was last taken; none when nothing was typed.</summary>
