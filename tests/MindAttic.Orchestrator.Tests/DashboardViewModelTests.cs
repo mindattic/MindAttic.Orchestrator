@@ -50,6 +50,24 @@ public sealed class DashboardViewModelTests
     }
 
     [Test]
+    public void The_5hr_weekly_boxes_band_by_the_raw_percentage_not_the_logins_own_cutoff()
+    {
+        // M.ORCH-T1191 (author request): the 5hr/weekly limit boxes (and the same reading on the 5-hour graph) band green
+        // under a third, the theme's own text colour through the middle third, orange from two-thirds up -- fixed bands on
+        // the number itself, unlike the tab light's cutoff-relative Good/Warn/Over.
+        _ = System.IO.Packaging.PackUriHelper.UriSchemePack; // registers pack:// outside an Application
+        Assert.That(MainViewModel.BandBrush(null), Is.SameAs(Palette.Working), "no reading yet reads as the low band, never orange");
+        Assert.That(MainViewModel.BandBrush(0), Is.SameAs(Palette.Working));
+        Assert.That(MainViewModel.BandBrush(33), Is.SameAs(Palette.Working));
+        Assert.That(MainViewModel.BandBrush(34), Is.SameAs(Palette.Text));
+        Assert.That(MainViewModel.BandBrush(66), Is.SameAs(Palette.Text));
+        Assert.That(MainViewModel.BandBrush(67), Is.SameAs(Palette.Waiting));
+        Assert.That(MainViewModel.BandBrush(100), Is.SameAs(Palette.Waiting));
+        // A high login-specific cutoff (e.g. 98%) never keeps a 90% reading out of the orange band: the band ignores cutoffs.
+        Assert.That(MainViewModel.BandBrush(90), Is.SameAs(Palette.Waiting));
+    }
+
+    [Test]
     public void The_utilization_card_stays_visible_while_idle_between_windows()
     {
         // M.ORCH-T502: the card collapses only on an empty caption (MainWindow.xaml binds its Visibility to UtilizationText),

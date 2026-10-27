@@ -224,10 +224,9 @@ public sealed partial class MainViewModel
     /// <summary>"5hr limit: 66%" (M.ORCH-T1168).</summary>
     public string FiveHourLimitText => $"5hr limit: {FiveHourLimitPercent.ToString("0", System.Globalization.CultureInfo.InvariantCulture)}%";
 
-    /// <summary>The 5hr box's bar colour: the same Good/Warn/Over convention <see cref="BlockBrush"/> draws the (now unused)
-    /// budget tile in, judged against this login's own 5-hour cutoff (<see cref="FiveHourCutoff"/>, M.ORCH-T968) rather than a
-    /// newly invented threshold.</summary>
-    public Brush FiveHourLimitBrush => LimitBrush(FiveHourUsed, FiveHourCutoff);
+    /// <summary>The 5hr box's figure and bar colour (M.ORCH-T1191, author request): banded by the raw percentage itself,
+    /// the same reading the 5-hour graph plots, not this login's own cutoff.</summary>
+    public Brush FiveHourLimitBrush => BandBrush(FiveHourUsed);
 
     /// <summary>The utilization panel's compact weekly readout: the live weekly used percent already on the tab strip
     /// (<see cref="WeekUsed"/>).</summary>
@@ -236,14 +235,16 @@ public sealed partial class MainViewModel
     /// <summary>"Weekly limit: 22%" (M.ORCH-T1168).</summary>
     public string WeeklyLimitText => $"Weekly limit: {WeeklyLimitPercent.ToString("0", System.Globalization.CultureInfo.InvariantCulture)}%";
 
-    /// <summary>The weekly box's bar colour, judged against this login's own weekly cutoff (<see cref="WeeklyCutoff"/>).</summary>
-    public Brush WeeklyLimitBrush => LimitBrush(WeekUsed, WeeklyCutoff);
+    /// <summary>The weekly box's figure and bar colour (M.ORCH-T1191): the same band as <see cref="FiveHourLimitBrush"/>.</summary>
+    public Brush WeeklyLimitBrush => BandBrush(WeekUsed);
 
-    /// <summary>Good under <paramref name="cutoff"/>, Warn from there to 100%, Over past it.</summary>
-    private static Brush LimitBrush(double? used, int cutoff) => used switch
+    /// <summary>The 5hr/weekly/graph usage band (M.ORCH-T1191, author request): green under a third, the theme's own text
+    /// colour through the middle third, orange from two-thirds up -- a fixed band on the raw percentage, unlike the tab
+    /// light's cutoff-relative Good/Warn/Over (<see cref="StatusOf"/>).</summary>
+    internal static Brush BandBrush(double? usedPercent) => usedPercent switch
     {
-        { } u when u >= 100 => Palette.Over,
-        { } u when u >= cutoff => Palette.Waiting,
+        { } u when u >= 67 => Palette.Waiting,
+        { } u when u >= 34 => Palette.Text,
         _ => Palette.Working,
     };
 

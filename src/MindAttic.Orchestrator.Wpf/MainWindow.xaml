@@ -79,37 +79,6 @@
             </Border>
         </DataTemplate>
 
-        <!-- A notification circle (M.ORCH-T1167, laid out in a row by M.ORCH-T1180): borderless and small on purpose (18px,
-             not the library's 34px MaToolButton) so a whole row of them sits comfortably next to the 5hr/weekly limit boxes
-             in the utilization card's header. The dot grows slightly on hover/focus as its only feedback; its colour is the
-             item's own Accent, set in the DataTemplate below. -->
-        <Style x:Key="NotificationDot" TargetType="Button">
-            <Setter Property="Width" Value="18" />
-            <Setter Property="Height" Value="18" />
-            <Setter Property="Margin" Value="2,0,2,0" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Grid Background="Transparent">
-                            <Ellipse x:Name="Dot" Width="12" Height="12" Fill="{TemplateBinding Tag}" />
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Dot" Property="Width" Value="15" />
-                                <Setter TargetName="Dot" Property="Height" Value="15" />
-                            </Trigger>
-                            <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="Dot" Property="Width" Value="15" />
-                                <Setter TargetName="Dot" Property="Height" Value="15" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
     </Window.Resources>
 
     <Grid x:Name="Root">
@@ -480,7 +449,7 @@
                                  horizontally rather than wrapping or crowding the limit boxes out (PruneToasts already caps
                                  the count at MainViewModel.MaxToasts, so this is a fallback, not the main defence). -->
                             <StackPanel x:Name="UtilizationHeaderRow" Orientation="Horizontal" HorizontalAlignment="Right">
-                                <ScrollViewer MaxWidth="260" VerticalAlignment="Center"
+                                <ScrollViewer x:Name="ToastRow" MaxWidth="260" VerticalAlignment="Center"
                                               HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                                     <ItemsControl x:Name="ToastDots" ItemsSource="{Binding Toasts}" AutomationProperties.Name="Notifications">
                                         <ItemsControl.ItemsPanel>
@@ -490,9 +459,14 @@
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate DataType="{x:Type vm:ToastViewModel}">
-                                                <Button Style="{StaticResource NotificationDot}" Tag="{Binding Accent}"
+                                                <!-- No app-owned style or template (M.ORCH-T1183): the library's own MaToolButton
+                                                     (flat hover/focus feedback, no chrome), sized down with plain local Width/Height/
+                                                     Margin/Padding, around the library's MaStatusLight for the dot itself, whose
+                                                     Foreground is bound straight to the item's own Accent brush. -->
+                                                <Button Style="{StaticResource MaToolButton}" Width="22" Height="22" Padding="0" Margin="2,0,2,0"
                                                         Command="{Binding DataContext.OpenToastCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding}" AutomationProperties.Name="{Binding Title}">
+                                                    <mc:MaStatusLight Width="12" Height="12" Foreground="{Binding Accent}" />
                                                     <Button.ToolTip>
                                                         <ToolTip>
                                                             <StackPanel MaxWidth="320">
@@ -510,7 +484,7 @@
                                 <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" Margin="{StaticResource SpaceLS}" MinWidth="104"
                                         AutomationProperties.Name="{Binding FiveHourLimitText}">
                                     <StackPanel>
-                                        <TextBlock Text="{Binding FiveHourLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" />
+                                        <TextBlock Text="{Binding FiveHourLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" Foreground="{Binding FiveHourLimitBrush}" />
                                         <ProgressBar Style="{StaticResource MaProgressBar}" Margin="{StaticResource SpaceTS}"
                                                      Value="{Binding FiveHourLimitPercent, Mode=OneWay}" Foreground="{Binding FiveHourLimitBrush}" />
                                     </StackPanel>
@@ -518,7 +492,7 @@
                                 <Border Style="{StaticResource MaCard}" Padding="{StaticResource SpaceHSVXS}" Margin="{StaticResource SpaceLS}" MinWidth="104"
                                         AutomationProperties.Name="{Binding WeeklyLimitText}">
                                     <StackPanel>
-                                        <TextBlock Text="{Binding WeeklyLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" />
+                                        <TextBlock Text="{Binding WeeklyLimitText}" Style="{StaticResource MaMutedText}" FontSize="11" Foreground="{Binding WeeklyLimitBrush}" />
                                         <ProgressBar Style="{StaticResource MaProgressBar}" Margin="{StaticResource SpaceTS}"
                                                      Value="{Binding WeeklyLimitPercent, Mode=OneWay}" Foreground="{Binding WeeklyLimitBrush}" />
                                     </StackPanel>
