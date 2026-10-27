@@ -1,7 +1,7 @@
 -- MindAttic.Orchestrator database dump (written with every change; the .db file is the store).
 
 -- accounts
-INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', 'ohleo199@mindattic.com', 'MindAttic', 'Team · Max 5x', 0, 1793130600, 91, 1793138400, 1793113152, 1792686357.102392);
+INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a3ae0a8-1412-43d4-a4b9-278387ae4d00/96142256-0cfd-4191-90f1-9c7987cb184a', 'ohleo199@mindattic.com', 'MindAttic', 'Team · Max 5x', 0, 1793155200, 91, 1793138400, 1793137850, 1792686357.102392);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('1a45d147-abaf-4098-9f29-54375717dfd7/96142256-0cfd-4191-90f1-9c7987cb184a', 'ryandebraal@mindattic.com', 'MindAttic', 'Team · Max 5x', 0, 1792609200, 100, 1792764000, 1792591343, 1792591305.195613);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('2544fa20-81fb-425b-9d08-f32c585a9205/96142256-0cfd-4191-90f1-9c7987cb184a', 'shampoo1232@mindattic.com', 'MindAttic', 'Team · Max 5x', 51, 1792600200, 96, 1792702800, 1792589089, 1792464053.5616076);
 INSERT INTO accounts (id, email, org, plan, five_hour_percent, five_hour_reset, week_percent, week_reset, read_at, signed_in_at) VALUES ('8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', 'pdftransferjr@mindattic.com', 'MindAttic', 'Team · Max 5x', 81, 1792688400, 93, 1792929600, 1792685787, 1792670412.137807);
@@ -15,94 +15,6 @@ INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VAL
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'admin', 'premium', 'active', 1792866937.8856213, 1792866937.8856213);
 
 -- usage_samples
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T19:51:05Z', 87, '2026-10-20T20:30:00Z', 13090447);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T19:51:58Z', 87, '2026-10-20T20:30:00Z', 13106798);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T19:56:13Z', 87, '2026-10-20T20:30:00Z', 13112000);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:31:13Z', 0, '2026-10-21T01:30:00Z', 843);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:31:24Z', 0, '2026-10-21T01:30:00Z', 38637);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:31:58Z', 1, '2026-10-21T01:30:00Z', 106947);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:32:58Z', 1, '2026-10-21T01:30:00Z', 144645);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:33:58Z', 1, '2026-10-21T01:30:00Z', 179895);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:34:58Z', 1, '2026-10-21T01:30:00Z', 210998);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:35:58Z', 2, '2026-10-21T01:30:00Z', 247865);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:36:31Z', 2, '2026-10-21T01:30:00Z', 263840);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:36:58Z', 2, '2026-10-21T01:30:00Z', 302775);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:37:58Z', 3, '2026-10-21T01:30:00Z', 365922);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:38:58Z', 3, '2026-10-21T01:30:00Z', 416111);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:39:40Z', 3, '2026-10-21T01:30:00Z', 428863);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:39:55Z', 3, '2026-10-21T01:30:00Z', 449194);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:40:58Z', 4, '2026-10-21T01:30:00Z', 553979);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:41:58Z', 4, '2026-10-21T01:30:00Z', 570096);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:42:58Z', 4, '2026-10-21T01:30:00Z', 603736);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:43:58Z', 5, '2026-10-21T01:30:00Z', 641451);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:44:58Z', 5, '2026-10-21T01:30:00Z', 678048);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:45:29.8538723Z', 6, '2026-10-21T01:30:00Z', 692769);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:45:29Z', 6, '2026-10-21T01:30:00Z', 692769);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:47:59Z', 6, '2026-10-21T01:30:00Z', 742060);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:48:58Z', 6, '2026-10-21T01:30:00Z', 756415);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:49:35.5434058Z', 7, '2026-10-21T01:30:00Z', 792327);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:49:58Z', 7, '2026-10-21T01:30:00Z', 814411);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:50:58Z', 7, '2026-10-21T01:30:00Z', 885080);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:51:58Z', 7, '2026-10-21T01:30:00Z', 914771);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:52:58Z', 8, '2026-10-21T01:30:00Z', 960808);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:53:58Z', 8, '2026-10-21T01:30:00Z', 974803);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:54:58Z', 8, '2026-10-21T01:30:00Z', 1004000);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:55:59Z', 9, '2026-10-21T01:30:00Z', 1032602);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:56:05.256395Z', 9, '2026-10-21T01:30:00Z', 1034390);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:56:05Z', 9, '2026-10-21T01:30:00Z', 1034390);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:56:59Z', 9, '2026-10-21T01:30:00Z', 1049204);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:57:58Z', 9, '2026-10-21T01:30:00Z', 1060802);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:58:36Z', 9, '2026-10-21T01:30:00Z', 1072774);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:58:50Z', 9, '2026-10-21T01:30:00Z', 1084448);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:58:58Z', 9, '2026-10-21T01:30:00Z', 1087104);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:59:32Z', 9, '2026-10-21T01:30:00Z', 1093438);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T20:59:58Z', 10, '2026-10-21T01:30:00Z', 1124017);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:00:58Z', 10, '2026-10-21T01:30:00Z', 1140290);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:01:58Z', 10, '2026-10-21T01:30:00Z', 1187534);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:02:58Z', 10, '2026-10-21T01:30:00Z', 1204107);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:03:58Z', 10, '2026-10-21T01:30:00Z', 1221652);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:04:58Z', 10, '2026-10-21T01:30:00Z', 1241286);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:05:58Z', 11, '2026-10-21T01:30:00Z', 1254569);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:06:58Z', 11, '2026-10-21T01:30:00Z', 1275736);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:07:58Z', 11, '2026-10-21T01:30:00Z', 1278249);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:08:58Z', 11, '2026-10-21T01:30:00Z', 1288000);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:09:58Z', 11, '2026-10-21T01:30:00Z', 1288000);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:10:58Z', 11, '2026-10-21T01:30:00Z', 1288000);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:11:58Z', 11, '2026-10-21T01:30:00Z', 1288000);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:12:58Z', 11, '2026-10-21T01:30:00Z', 1288000);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:13:58Z', 11, '2026-10-21T01:30:00Z', 1288000);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:14:58Z', 11, '2026-10-21T01:30:00Z', 1288000);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:15:58Z', 11, '2026-10-21T01:30:00Z', 1288000);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:16:58Z', 11, '2026-10-21T01:30:00Z', 1288000);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:17:58Z', 11, '2026-10-21T01:30:00Z', 1288000);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:18:58Z', 12, '2026-10-21T01:30:00Z', 1462395);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:19:58Z', 12, '2026-10-21T01:30:00Z', 1470818);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:20:54Z', 12, '2026-10-21T01:30:00Z', 1477166);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:21:58Z', 12, '2026-10-21T01:30:00Z', 1591492);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:22:58Z', 13, '2026-10-21T01:30:00Z', 1620869);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:23:58Z', 13, '2026-10-21T01:30:00Z', 1665286);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:24:58Z', 13, '2026-10-21T01:30:00Z', 1700751);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:25:58Z', 14, '2026-10-21T01:30:00Z', 1715877);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:26:55Z', 14, '2026-10-21T01:30:00Z', 1749665);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:28:58Z', 14, '2026-10-21T01:30:00Z', 1788032);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:29:09.5431167Z', 15, '2026-10-21T01:30:00Z', 1791334);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:29:58Z', 15, '2026-10-21T01:30:00Z', 1797693);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:30:58Z', 15, '2026-10-21T01:30:00Z', 1808886);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:31:25Z', 15, '2026-10-21T01:30:00Z', 1915551);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:31:58Z', 15, '2026-10-21T01:30:00Z', 1930911);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:32:25Z', 16, '2026-10-21T01:30:00Z', 2034435);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:32:55Z', 17, '2026-10-21T01:30:00Z', 2318279);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:33:43Z', 17, '2026-10-21T01:30:00Z', 2392679);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:35:26Z', 17, '2026-10-21T01:30:00Z', 2418024);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:36:03Z', 17, '2026-10-21T01:30:00Z', 2427043);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:36:05.2482334Z', 18, '2026-10-21T01:30:00Z', 2427043);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:36:05Z', 18, '2026-10-21T01:30:00Z', 2427043);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:40:58Z', 18, '2026-10-21T01:30:00Z', 2465405);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:42:30Z', 18, '2026-10-21T01:30:00Z', 2475267);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:47:34.8131532Z', 20, '2026-10-21T01:30:00Z', 2787024);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:47:34Z', 20, '2026-10-21T01:30:00Z', 2787024);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:49:56Z', 21, '2026-10-21T01:30:00Z', 2987099);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:50:57Z', 24, '2026-10-21T01:30:00Z', 3553355);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:51:58Z', 27, '2026-10-21T01:30:00Z', 4116068);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:52:05.494447Z', 27, '2026-10-21T01:30:00Z', 4195076);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T21:52:05Z', 27, '2026-10-21T01:30:00Z', 4194169);
@@ -1805,6 +1717,7 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T19:39:33Z', 0, '2026-10-27T19:50:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T19:44:43Z', 0, '2026-10-27T19:50:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T19:49:50Z', 0, '2026-10-27T19:50:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T21:50:50Z', 0, '2026-10-28T02:40:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -2245,11 +2158,11 @@ INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALU
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-26', 'RogueTrader.Brevity', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1874639);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-26', 'Unity.Ricochet', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 288163);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', '(workspace root)', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1637552);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Orchestrator', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 11108632);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Orchestrator', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 12081482);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'MindAttic.Tickets', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1002401);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 30696901);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'Prose', 'Claude', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 30704997);
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'REA.Bloodlines', 'Claude', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 1070995);
-INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'REA.Bloodlines', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5253315);
+INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-27', 'REA.Bloodlines', 'Claude', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', NULL, 5260851);
 
 -- ticket_costs
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('00437c54-780b-4060-a0d9-d212cfac52c0', 'M.ORCH-T794', 'fix', 'MindAttic.Orchestrator', 5118, '2026-10-24T17:35:04.649Z', 1, 'opus');
@@ -2776,11 +2689,12 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2c51efb7-7fba-4b21-8c6f-9cc9c2ac59a2', 'GG-T46', 'feature', 'GridGameGaiden', 385490, '2026-10-15T15:20:35.827Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2cb16b93-720e-400b-817b-a0ec575a507c', 'M.ORCH-T631', 'chore', 'MindAttic.Orchestrator', 25007, '2026-10-23T01:02:00.298Z', 1, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2cd2e503-c388-43a5-a723-89d9354d9aee', 'USS-T44', 'feature', 'UnitySolarSystem', 255951, '2026-10-15T11:19:51.119Z', 1, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2dd2b796-793e-4c61-836e-de83457d1291', 'A-T1', '', 'MindAttic.Orchestrator', 2980196, '2026-10-27T21:41:43.077Z', 1, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2dd2b796-793e-4c61-836e-de83457d1291', 'A-T1', '', 'MindAttic.Orchestrator', 3062149, '2026-10-27T21:50:06.14Z', 1, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2dd2b796-793e-4c61-836e-de83457d1291/agent-a0bf6b6d7b4aa4346', 'M.ORCH-T1069', 'fix', 'MindAttic.Orchestrator', 133419, '2026-10-27T21:17:26.449Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2dd2b796-793e-4c61-836e-de83457d1291/agent-a2a698710d19a26d5', 'M.ORCH-T1169', 'fix', 'MindAttic.Orchestrator', 54144, '2026-10-27T21:41:38.994Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2dd2b796-793e-4c61-836e-de83457d1291/agent-a2a698710d19a26d5', 'M.ORCH-T1169', 'fix', 'MindAttic.Orchestrator', 106626, '2026-10-27T21:45:43.773Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2dd2b796-793e-4c61-836e-de83457d1291/agent-a2d34c71afcdf4c17', 'M.ORCH-T813', 'fix', 'MindAttic.Orchestrator', 105897, '2026-10-27T21:16:35.889Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2dd2b796-793e-4c61-836e-de83457d1291/agent-a4062ac243628124e', 'M.ORCH-T1093', 'fix', 'MindAttic.Orchestrator', 107633, '2026-10-27T21:16:16.943Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2dd2b796-793e-4c61-836e-de83457d1291/agent-a5a434f34380cf01f', 'M.ORCH-T1175', 'fix', 'MindAttic.Orchestrator', 71683, '2026-10-27T21:44:16.361Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2dd2b796-793e-4c61-836e-de83457d1291/agent-a70bac9eaa518dbda', 'M.ORCH-T1151', 'fix', 'MindAttic.Orchestrator', 54882, '2026-10-27T20:07:08.154Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2dd2b796-793e-4c61-836e-de83457d1291/agent-a7e4f58b9fee309da', 'M.ORCH-T1051', 'fix', 'MindAttic.Orchestrator', 46050, '2026-10-27T20:03:58.437Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2dd2b796-793e-4c61-836e-de83457d1291/agent-a7e8c7144cabf99d3', 'M.ORCH-T758', 'feature', 'MindAttic.Orchestrator', 139294, '2026-10-27T21:16:09.088Z', 0, 'opus');
@@ -2790,7 +2704,7 @@ INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, ow
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2dd2b796-793e-4c61-836e-de83457d1291/agent-ab8e8cd044d8e9482', 'M.ORCH-T815', 'feature', 'MindAttic.Orchestrator', 27206, '2026-10-27T21:11:14.307Z', 0, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2dd2b796-793e-4c61-836e-de83457d1291/agent-adec163dccc64f945', 'M.ORCH-T802', 'fix', 'MindAttic.Orchestrator', 154278, '2026-10-27T21:17:29.277Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2dd2b796-793e-4c61-836e-de83457d1291/agent-ae3319dbe9817ba34', 'M.ORCH-T1105', 'fix', 'MindAttic.Orchestrator', 47286, '2026-10-27T20:05:57.387Z', 0, 'sonnet');
-INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2dd2b796-793e-4c61-836e-de83457d1291/agent-aef9b10620f4828f2', 'M.ORCH-T1174', 'fix', 'MindAttic.Orchestrator', 35529, '2026-10-27T21:41:35.575Z', 0, 'sonnet');
+INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2dd2b796-793e-4c61-836e-de83457d1291/agent-aef9b10620f4828f2', 'M.ORCH-T1174', 'fix', 'MindAttic.Orchestrator', 93522, '2026-10-27T21:48:17.644Z', 0, 'sonnet');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2e308308-cd8b-4cca-8742-4651ad3c572e', 'M.ORCH-T843', 'chore', 'MindAttic.Orchestrator', 6901, '2026-10-26T02:59:09.765Z', 1, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2e908411-5591-4107-9c97-c17511fa302b', 'MAT-T53', 'docs', 'MindAttic.Agency', 46134, '2026-10-24T06:44:29.524Z', 1, 'opus');
 INSERT INTO ticket_costs (session_id, ticket_id, type, repo, fresh, last_utc, own_share, model) VALUES ('2efe68bb-8df4-4797-a605-fc49205bbc52', 'GG-T39', 'feature', 'GridGameGaiden', 437324, '2026-10-15T14:22:03.227Z', 1, 'sonnet');
@@ -4432,10 +4346,6 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (39, 'RB-T229', 'REA.Bloodlines', 'D:\Projects\MindAttic\REA.Bloodlines', 'Claude', '2026-10-27T20:34:13.714886Z', 1, NULL, NULL, NULL, 38576, '45cf52c0-6fa6-40aa-8b74-97a3411645e5', 'sonnet', NULL, 'honey@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (40, 'M.ORCH-T815', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic\MindAttic.Orchestrator', 'Claude', '2026-10-27T21:09:42.7984773Z', 1, NULL, NULL, NULL, 35572, '2dd2b796-793e-4c61-836e-de83457d1291', 'opus', NULL, 'waffle@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (41, 'RB-T219', 'REA.Bloodlines', 'D:\Projects\MindAttic\REA.Bloodlines', 'Claude', '2026-10-27T21:12:03.5809281Z', 1, NULL, NULL, NULL, 38576, '45cf52c0-6fa6-40aa-8b74-97a3411645e5', 'sonnet', NULL, 'honey@mindattic.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (42, 'M.ORCH-T1172', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic\MindAttic.Orchestrator', 'Claude', '2026-10-27T21:39:40.6669959Z', 1, NULL, NULL, NULL, 35572, '2dd2b796-793e-4c61-836e-de83457d1291', 'sonnet', NULL, 'waffle@mindattic.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (43, 'M.ORCH-T1169', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic\MindAttic.Orchestrator', 'Claude', '2026-10-27T21:39:52.8157174Z', 1, NULL, NULL, NULL, 35572, '2dd2b796-793e-4c61-836e-de83457d1291', 'sonnet', NULL, 'waffle@mindattic.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (44, 'M.ORCH-T1174', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic\MindAttic.Orchestrator', 'Claude', '2026-10-27T21:40:43.6488942Z', 1, NULL, NULL, NULL, 35572, '2dd2b796-793e-4c61-836e-de83457d1291', 'sonnet', NULL, 'waffle@mindattic.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (45, 'M.ORCH-T1175', 'MindAttic.Orchestrator', 'D:\Projects\MindAttic\MindAttic.Orchestrator', 'Claude', '2026-10-27T21:41:26.3120017Z', 1, NULL, NULL, NULL, 35572, '2dd2b796-793e-4c61-836e-de83457d1291', 'sonnet', NULL, 'waffle@mindattic.com');
 
 -- organizations
 
@@ -7638,7 +7548,9 @@ INSERT INTO state (name, value) VALUES ('requeued', '{
   "U.RICO-T52": "2026-10-26T22:04:20.3213858Z",
   "U.RICO-T84": "2026-10-26T22:04:20.3213858Z",
   "U.RICO-T80": "2026-10-26T22:04:20.3213858Z",
-  "M.ORCH-T1069": "2026-10-27T21:17:10.9233189Z"
+  "M.ORCH-T1069": "2026-10-27T21:17:10.9233189Z",
+  "M.ORCH-T1169": "2026-10-27T21:45:24.8751026Z",
+  "M.ORCH-T1174": "2026-10-27T21:48:09.1667856Z"
 }');
 INSERT INTO state (name, value) VALUES ('usage-cutoff-alerts', '{
   "Alerted": {
