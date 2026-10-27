@@ -149,6 +149,9 @@ public static class DuplicationAudit
                 var name = System.IO.Path.GetFileName(e);
                 if (Directory.Exists(e))
                 {
+                    // Junctions aren't followed (M.ORCH-T1157): one pointing back up would walk a folder forever.
+                    try { if ((File.GetAttributes(e) & FileAttributes.ReparsePoint) != 0) continue; }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { continue; }
                     var keep = name is ".claude" or ".prose" || (!SkipDirs.Contains(name) && !name.StartsWith('.'));
                     if (keep)
                         pending.Push(e);
