@@ -523,4 +523,48 @@ public sealed class PacerTests
         }
         finally { File.Delete(path); }
     }
+
+    /// <summary>A window sized from Claude's reports (1M tokens) that last read 97%, first seen at 2:57, judged at 3:00 with
+    /// <paramref name="events"/> spent (M.ORCH-T1110).</summary>
+    private static Pace AtReported97(params UsageEvent[] events)
+    {
+        var now = Day.AddHours(3);
+        // A statusline restamped the same 97% ten seconds ago: the meter read it at 2:57.
+        var reported = new ReportedUsage(new ReportedWindow(97, Day.AddHours(5)), null, now.AddSeconds(-10));
+        var samples = new[] { new UsageSample(now.AddMinutes(-3), 97, Day.AddHours(5), 970_000), new UsageSample(now.AddSeconds(-10), 97, Day.AddHours(5), 990_000) };
+        var settings = new OrchestratorSettings { PaceTargetPercent = 98 };
+        var b = BudgetCalculator.Compute([E(1, 970_000), .. events], settings, now, Day, TimeZoneInfo.Utc, reported: reported, reportedLimit: 1_000_000,
+            reportedSeenUtc: ReportedLimit.FirstSeen(samples, reported));
+        return Pacer.Compute(b, 1, null, settings, now);
+    }
+
+    [Test]
+    public void The_stop_counts_what_was_spent_since_Claudes_last_percent()
+    {
+        // M.ORCH-T1110: Honey's 98% stop waited for a reading of 99%. 97% plus 15k (1.5 points) spent since it was first seen is past 98%.
+        var p = AtReported97(E(3 - 2.0 / 60, 15_000));
+
+        Assert.That(p.Stop, Is.True);
+        Assert.That((p.Mode, p.SessionCap, p.SubagentAllowance), Is.EqualTo((PaceMode.Coast, 0, (int?)0)));
+        Assert.That(p.Note, Does.Contain("Claude last reported 97%"));
+    }
+
+    [Test]
+    public void The_stop_looks_a_minute_ahead_at_the_burn()
+    {
+        // 120k in the 10 minutes before it was seen (720k/h) spends 1.2 points in the next minute: 97% + 1.2 is past the 98% stop.
+        var p = AtReported97(E(3 - 8.0 / 60, 120_000));
+
+        Assert.That(p.Stop, Is.True);
+    }
+
+    [Test]
+    public void Nothing_stops_below_the_cutoff_on_a_quiet_window()
+    {
+        // 97% with nothing spent since it was seen and little burn (20k in 10 minutes: 0.2 of a point a minute): no hold, no stop.
+        var p = AtReported97(E(3 - 8.0 / 60, 20_000));
+
+        Assert.That(p.Stop, Is.False);
+        Assert.That(p.SubagentAllowance, Is.GreaterThan(0));
+    }
 }

@@ -417,7 +417,7 @@ public sealed class StatusAggregator(OrchestratorOptions options, JsonStore? sto
             allowedWhy = allowedResult.Why;
         }
         var budget = BudgetCalculator.Compute(events, paceSettings, now, startOfTodayUtc, learned: calibration,
-            reported: reported, reportedLimit: reportedLimit, ledgerFromUtc: signIn?.LedgerFrom);
+            reported: reported, reportedLimit: reportedLimit, ledgerFromUtc: signIn?.LedgerFrom, reportedSeenUtc: ReportedLimit.FirstSeen(mine, reported));
         budget = HoldWeeklyStop(budget, now);
 
         var recentFrom = now - BudgetCalculator.RecentWindow;

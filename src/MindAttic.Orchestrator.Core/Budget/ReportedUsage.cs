@@ -90,6 +90,17 @@ public static class ReportedLimit
             .OrderByDescending(s => s.Percent).ThenByDescending(s => s.AtUtc).FirstOrDefault();
         return best is null ? reported : reported with { FiveHour = w with { Percent = best.Percent }, AtUtc = best.AtUtc, WeekAtUtc = reported.WeekAt };
     }
+
+    /// <summary>When <paramref name="reported"/>'s 5-hour percent was first seen (M.ORCH-T1110): the earliest sample of its window at
+    /// that percent or more, or the report's own time when it's newer than every sample. Statuslines restamp their last percent
+    /// each minute, so the report's time says when it was written, not when the meter read it. Null with no 5-hour window.</summary>
+    public static DateTime? FirstSeen(IEnumerable<UsageSample> samples, ReportedUsage? reported)
+    {
+        if (reported?.FiveHour is not { } w) return null;
+        var first = samples.Where(s => s.ResetUtc == w.ResetUtc && s.Percent >= w.Percent && s.AtUtc <= reported.AtUtc)
+            .Select(s => (DateTime?)s.AtUtc).Min();
+        return first ?? reported.AtUtc;
+    }
 }
 
 /// <summary>

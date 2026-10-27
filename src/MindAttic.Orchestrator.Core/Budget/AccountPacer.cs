@@ -111,7 +111,9 @@ public sealed class AccountPacer
         var limits = LimitCalibration.Merge(before, observed, now);
         if (write && !limits.SequenceEqual(before)) SaveLimits(dir, state.Account, limits);
         var calibration = new LimitCalibration(limits);
-        var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration, reported: reported, reportedLimit: limit);
+        // The stop counts what's been spent since Claude's percent was first seen, not since a statusline last restamped it (M.ORCH-T1110).
+        var budget = BudgetCalculator.Compute(events, settings, now, startOfTodayUtc, learned: calibration, reported: reported, reportedLimit: limit,
+            reportedSeenUtc: ReportedLimit.FirstSeen(samples, reported));
 
         var recentFrom = now - BudgetCalculator.RecentWindow;
         var active = sessions.Count(s => s.Events.Count > 0 && s.Events[^1].AtUtc >= recentFrom);

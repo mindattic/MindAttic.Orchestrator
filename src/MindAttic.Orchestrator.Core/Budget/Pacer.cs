@@ -149,7 +149,7 @@ public static class Pacer
         {
             var spentOut = !b.BlockLimitIsPeak && b.BlockLimit > 0 && b.CurrentBlock is { } blk &&
                 (blk.Usage.Fresh >= b.BlockLimit * Math.Clamp(s.PaceTargetPercent, 1, 100) / 100.0 ||
-                 b.BlockPercent / 100.0 >= Math.Clamp(s.PaceTargetPercent, 1, 100) / 100.0);
+                 StopPercentOf(b) / 100.0 >= Math.Clamp(s.PaceTargetPercent, 1, 100) / 100.0);
             // Said when it's so: "Pacing is off." alone read as nothing held while the gate refused every call (M.ORCH-T466).
             var offNote = spentOut && b.CurrentBlock is { } end
                 ? $"Pacing is off, but the 5-hour window is at its target: tool calls are refused until it resets at {Formatting.ResetTime(end.EndUtc, nowUtc)}."
@@ -216,7 +216,9 @@ public static class Pacer
         // above the curve, but that only holds agents until the curve catches up; it never stops them.
         // Claude's own percent too: the tokens used are floored from it, so at exactly the target they fall a fraction short
         // and the stop would wait for the hooks' own line (M.ORCH-T1087).
-        var atTarget = windows.Any(w => w.Used >= w.Limit * target) || (b.CurrentBlock is not null && b.BlockPercent / 100.0 >= target);
+        // And by the percent the spend since Claude's last reading and the next minute's burn put it at, not the last reading alone
+        // (M.ORCH-T1110: the 98% stop landed at the next refresh's 99%, and the window ran on to 100%).
+        var atTarget = windows.Any(w => w.Used >= w.Limit * target) || (b.CurrentBlock is not null && StopPercentOf(b) / 100.0 >= target);
         // No wind-down (M.ORCH-T741): the owner's rule is to run to the cutoff, with nothing throttled or held before it.
 
         // What one more session costs: today's sessions if any are running, else your usual session. A
@@ -229,7 +231,8 @@ public static class Pacer
         double? perSession = activeSessions > 0 && recent > 0
             ? Math.Max(Unheld(recent, recentDelaySeconds) / activeSessions, typicalPerSession ?? 0)
             : typicalPerSession;
-        var cap = sustainable <= 0 ? 0
+        // At the stop nothing new starts, though the tokens counted (Claude's floored percent) leave the target a fraction of room.
+        var cap = atTarget || sustainable <= 0 ? 0
             : perSession is > 0 and var p ? (int)Math.Clamp(Math.Floor(sustainable / p), 0, max)
             : Math.Min(1, max); // no history at all: start one and measure it
 
@@ -250,6 +253,9 @@ public static class Pacer
                         (delay > 0 ? $" by holding each tool call about {delay:0}s" : "") +
                         ". Keep working normally; the subagent allowance says how many subagents may run at once.";
         if (delay > 0) note += $" Agents held {delay:0}s per tool call.";
+        // A stop Claude's own number doesn't show yet says what it's judged by (M.ORCH-T1110).
+        if (atTarget && b.StopBlockPercent is { } judged && b.BlockPercent / 100.0 < target)
+            note += $" Claude last reported {b.BlockPercent:0.#}%; the tokens spent since and the next minute's burn put it at {judged:0.#}%.";
         // Every pace note says weekly-aware pacing is on, and which limit governs (M.ORCH-T666).
         if (week is not null) note += " " + week.Note;
         // And what it plans this window and the week to end at, so the curve can be checked against how they end (M.ORCH-T669).
@@ -257,7 +263,7 @@ public static class Pacer
         var room = windows.Min(w => Math.Max(0, w.Limit * target - w.Used));
         double? weekRoom = week?.WeekRoom5HourPoints is { } points && b.BlockLimit > 0 ? points / 100 * b.BlockLimit : null;
         var demand = Unheld(b.ControlFreshPerHour, recentDelaySeconds);
-        var allowance = SubagentAllowance(sustainable, demand, perSession, subagents, s.MaxSubagents);
+        var allowance = atTarget ? 0 : SubagentAllowance(sustainable, demand, perSession, subagents, s.MaxSubagents);
         return new Pace(mode, cap, sustainable, recent, perSession, gov.Name, gov.ResetUtc, note, agentNote)
         {
             RoomTokens = room, AgentDelaySeconds = delay, SubagentAllowance = allowance, Subagents = subagents,
@@ -267,6 +273,10 @@ public static class Pacer
             Profile = s.FrontLoaded ? OrchestratorSettings.FrontLoadedProfile : OrchestratorSettings.LinearProfile,
         };
     }
+
+    /// <summary>The 5-hour percent the stop goes by (M.ORCH-T1110): <see cref="BudgetStatus.StopBlockPercent"/> where the window is
+    /// sized from Claude's reports, else <see cref="BudgetStatus.BlockPercent"/>.</summary>
+    internal static double StopPercentOf(BudgetStatus b) => Math.Max(b.BlockPercent, b.StopBlockPercent ?? 0);
 
     /// <summary>
     /// The uncached tokens per hour that keep a window on its pace curve. Linear (<paramref name="k"/> = 1): what's left of the

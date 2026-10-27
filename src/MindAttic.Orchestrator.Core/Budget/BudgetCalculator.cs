@@ -47,6 +47,11 @@ public sealed record BudgetStatus(
     public LimitSource BlockLimitSource { get; init; } = LimitSource.Peak;
     public LimitSource? WeeklyLimitSource { get; init; }
 
+    /// <summary>The 5-hour percent the stop is judged by (M.ORCH-T1110, <see cref="BudgetCalculator.StopPercent"/>): Claude's
+    /// percent plus what's been spent since it was first seen and the next minute's burn; never under <see cref="BlockPercent"/>.
+    /// Null when the window isn't sized from Claude's reports. Only the stop uses it: every display still shows Claude's number.</summary>
+    public double? StopBlockPercent { get; init; }
+
     /// <summary>Uncached tokens per hour over the last <see cref="BudgetCalculator.RecentWindow"/>:
     /// the burn rate to steer by, since the whole-block average lags.</summary>
     public double RecentFreshPerHour { get; init; }
@@ -136,9 +141,11 @@ public static class BudgetCalculator
     /// Limits come from settings first, then from <paramref name="learned"/> limit hits; with
     /// neither, the 5-hour block is compared to your busiest block as context only.
     /// </summary>
+    /// <param name="reportedSeenUtc">When <paramref name="reported"/>'s 5-hour percent was first seen (<see cref="ReportedLimit.FirstSeen"/>),
+    /// for <see cref="BudgetStatus.StopBlockPercent"/> (M.ORCH-T1110); null takes the report's own time.</param>
     public static BudgetStatus Compute(IReadOnlyList<UsageEvent> events, OrchestratorSettings settings, DateTime nowUtc, DateTime startOfTodayUtc,
         TimeZoneInfo? zone = null, LimitCalibration? learned = null, ReportedUsage? reported = null, long? reportedLimit = null,
-        DateTime? ledgerFromUtc = null)
+        DateTime? ledgerFromUtc = null, DateTime? reportedSeenUtc = null)
     {
         var blocks = Blocks(events);
         var current = blocks.Count > 0 && blocks[^1].IsActive(nowUtc) ? blocks[^1] : null;
@@ -277,15 +284,23 @@ public static class BudgetCalculator
             }
         }
 
+        var control = events.Where(e => e.AtUtc >= nowUtc - ControlWindow && e.AtUtc <= nowUtc).Sum(e => e.Usage.Fresh) / ControlWindow.TotalHours;
+        // What the stop goes by (M.ORCH-T1110): Claude's percent is a whole number read a minute or more apart, so the 98% stop
+        // only landed at the first refresh that saw 99%, two points late at ~1 point a minute.
+        double? stopPercent = blockSource == LimitSource.Reported && reported5h is not null && reported is not null && current is not null && limit > 0
+            ? StopPercent(reported5h.Percent, reportedSeenUtc is { } seen && seen <= reported.AtUtc ? seen : reported.AtUtc, events, limit, control, nowUtc)
+            : null;
+
         return new BudgetStatus(current, limit, isPeak, blockPercent, Sum(events.Where(e => e.AtUtc >= startOfTodayUtc)),
             week, weeklyLimit, weeklyPercent, perHour, projected, settings.WarnPercent)
         {
+            StopBlockPercent = stopPercent is { } sp ? Math.Max(sp, blockPercent) : null,
             WeekStartUtc = weekStart,
             WeekResetUtc = weekReset,
             BlockLimitSource = blockSource,
             WeeklyLimitSource = weeklySource,
             RecentFreshPerHour = recent / RecentWindow.TotalHours,
-            ControlFreshPerHour = events.Where(e => e.AtUtc >= nowUtc - ControlWindow && e.AtUtc <= nowUtc).Sum(e => e.Usage.Fresh) / ControlWindow.TotalHours,
+            ControlFreshPerHour = control,
             AtLimitUntilUtc = wall?.ResetUtc,
             AtLimitKind = wall?.Kind,
             WeeklyStop = reportedWeek is not null && reportedWeek.Percent >= settings.WeeklyStopPercent ? reportedWeek : null,
@@ -295,6 +310,25 @@ public static class BudgetCalculator
             WeeklyLimitOutdated = weeklyRefuted,
             WeeklyLedgerPartial = weeklyLedgerPartial && weeklySource is null,
         };
+    }
+
+    /// <summary>How far ahead the stop looks (M.ORCH-T1110): a stop worked out now reaches the hooks at the next refresh, a minute
+    /// or more on (longer behind a slow tick), while every running subagent keeps spending.</summary>
+    public static readonly TimeSpan StopLead = TimeSpan.FromMinutes(1);
+
+    /// <summary>
+    /// The 5-hour percent the stop is judged by (M.ORCH-T1110): Claude's <paramref name="reportedPercent"/>, plus the tokens spent
+    /// since <paramref name="seenUtc"/> (when that percent was first seen: it was at least that much then, so what's spent after it
+    /// is on top), plus <see cref="StopLead"/> of the recent <paramref name="perHour"/> burn, the spend before the stop can land.
+    /// The Oct 26 window read 97% at 04:49Z and 99% at the next refresh (04:52Z, behind an 80 s tick) while five subagents spent a
+    /// point a minute, so the 98% stop came at 99% and the window reached 100%. Nothing is held below the cutoff: it is only where
+    /// the cutoff is judged to be.
+    /// </summary>
+    internal static double StopPercent(double reportedPercent, DateTime seenUtc, IEnumerable<UsageEvent> events, long limit, double perHour, DateTime nowUtc)
+    {
+        if (limit <= 0) return Math.Min(100, reportedPercent);
+        var since = events.Where(e => e.AtUtc > seenUtc && e.AtUtc <= nowUtc).Sum(e => e.Usage.Fresh);
+        return Math.Min(100, reportedPercent) + 100.0 * (since + Math.Max(0, perHour) * StopLead.TotalHours) / limit;
     }
 
     /// <summary>A window's limit in tokens from Claude's own percent: what the window had spent by the
