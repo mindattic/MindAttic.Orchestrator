@@ -20,7 +20,7 @@ public sealed class BuildWorkspaceWindowTests
         // build not succeeded, so WorkspaceRoot wasn't saved and the next start asked for a folder again.
         var folder = temps.New();
         Directory.CreateDirectory(Path.Combine(folder, "SomeApp"));
-        File.WriteAllText(Path.Combine(folder, "SomeApp", "deploy.ps1"), "");
+        File.WriteAllText(Path.Combine(folder, "SomeApp", "run.ps1"), "");
         var window = OffScreenWindow.BuildWorkspace(folder, _ => Task.FromResult(new BootstrapResult(1, 0, [])));
 
         var build = window.BuildAsync();

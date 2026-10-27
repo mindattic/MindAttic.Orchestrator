@@ -33,6 +33,36 @@ public sealed class SchedulerTests
     }
 
     [Test]
+    public void A_ticket_requiring_an_epic_starts_once_the_epic_is_approved_and_the_epic_itself_is_never_work()
+    {
+        // M.ORCH-T1146: A-T1 is the epic; A-T2 and A-T3 are its approved children; A-T3 also requires the earlier phase's A-T4.
+        var snap = Snap(null, Repo("A", RepoState.Dormant, T("A-T1", "feature"), T("A-T2", "feature"), T("A-T3", "feature"), T("A-T4", "feature"))) with
+        {
+            Epics = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "a-t1" },
+            Approved = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "A-T2", "A-T3", "A-T4" },
+            Requires = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase) { ["A-T2"] = ["A-T1"], ["A-T3"] = ["A-T1", "A-T4"] },
+        };
+
+        var unapproved = Scheduler.Plan(snap, new OrchestratorSettings(), []);
+        Assert.That(unapproved.Queue.Single(q => q.Id == "A-T2").BlockedBy, Is.EqualTo(new[] { "A-T1" }), "blocked while its epic is unapproved");
+        Assert.That(unapproved.Queue.Select(q => q.Id), Does.Not.Contain("A-T1"), "the epic is never queued");
+        Assert.That(unapproved.AwaitingApproval.Select(q => q.Id), Does.Contain("A-T1"), "an unapproved epic waits for your yes");
+        Assert.That(unapproved.Proposals.Select(p => p.Item.Id), Does.Not.Contain("A-T2"));
+
+        var started = Scheduler.Plan(snap with { Approved = new HashSet<string>(snap.Approved, StringComparer.OrdinalIgnoreCase) { "A-T1" } }, new OrchestratorSettings(), []);
+        Assert.That(started.Queue.Single(q => q.Id == "A-T2").BlockedBy, Is.Empty, "free once its epic is approved");
+        Assert.That(started.Queue.Single(q => q.Id == "A-T3").BlockedBy, Is.EqualTo(new[] { "A-T4" }), "a non-epic requirement still waits for it to close");
+        Assert.That(started.Queue.Select(q => q.Id), Does.Not.Contain("A-T1"), "an approved epic is never work");
+        Assert.That(started.AwaitingApproval.Select(q => q.Id), Does.Not.Contain("A-T1"), "nor waiting once it's started");
+        Assert.That(started.Proposals.Select(p => p.Item.Id), Does.Not.Contain("A-T1"));
+
+        // Even a fix-typed epic, or one somebody assigned, isn't queued.
+        var fixEpic = snap with { Repos = [Repo("A", RepoState.Dormant, T("A-T1", "fix"))] };
+        Assert.That(Scheduler.Plan(fixEpic, new OrchestratorSettings(),
+            [new Assignment("A-T1", "A", @"D:\W\A", "Claude", DateTime.UtcNow, true) { Pilot = 1, Log = "x" }]).Queue, Is.Empty);
+    }
+
+    [Test]
     public void Only_fixes_and_approved_tickets_are_work_and_the_rest_wait_for_your_yes()
     {
         var snap = Snap(null, Repo("A", RepoState.Dormant, T("A-T1", "feature"), T("A-T2", "fix"), T("A-T3", "chore"), T("A-T4", "docs")));

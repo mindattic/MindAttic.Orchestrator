@@ -116,11 +116,11 @@ public static class WorkspaceBootstrap
         return new BootstrapResult(todo.Count - (failed.Count - unsafeNames.Count()), manifest.Repos.Count - todo.Count - unsafeNames.Count(), failed);
     }
 
-    /// <summary>The apps in a workspace: repos with a deploy.ps1 at the root (the house way to install one). The
+    /// <summary>The apps in a workspace: repos with a run.ps1 at the root (the house way to install one). The
     /// orchestrator itself is left out: it installs itself, and redeploying would stop the running copy.</summary>
     public static IReadOnlyList<string> Apps(string folder) =>
         [.. Directory.EnumerateDirectories(folder)
-            .Where(d => File.Exists(Path.Combine(d, "deploy.ps1")) && !Path.GetFileName(d).Equals("MindAttic.Orchestrator", StringComparison.OrdinalIgnoreCase))
+            .Where(d => File.Exists(Path.Combine(d, "run.ps1")) && !Path.GetFileName(d).Equals("MindAttic.Orchestrator", StringComparison.OrdinalIgnoreCase))
             .Select(Path.GetFileName)
             .Order(StringComparer.OrdinalIgnoreCase)!];
 
@@ -128,7 +128,7 @@ public static class WorkspaceBootstrap
     internal static TimeSpan OutputGrace { get; set; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
-    /// Runs each app's deploy.ps1 (no -Launch, so nothing opens), one at a time since several build
+    /// Runs each app's run.ps1 (no -Launch, so nothing opens), one at a time since several build
     /// shared packages, with a time limit per app. Returns the apps that failed.
     /// </summary>
     public static async Task<IReadOnlyList<string>> InstallAppsAsync(string folder, IProgress<string> progress, TimeSpan? perApp = null, CancellationToken cancel = default)
@@ -144,7 +144,7 @@ public static class WorkspaceBootstrap
                 RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true,
                 WorkingDirectory = Path.Combine(folder, app),
             };
-            foreach (var a in new[] { "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", Path.Combine(folder, app, "deploy.ps1") }) psi.ArgumentList.Add(a);
+            foreach (var a in new[] { "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", Path.Combine(folder, app, "run.ps1") }) psi.ArgumentList.Add(a);
             try
             {
                 using var p = Process.Start(psi)!;

@@ -127,7 +127,7 @@ public sealed class WorkspaceBootstrapTests
         })
         {
             Directory.CreateDirectory(Path.Combine(ws, app));
-            File.WriteAllText(Path.Combine(ws, app, "deploy.ps1"), script);
+            File.WriteAllText(Path.Combine(ws, app, "run.ps1"), script);
         }
         Directory.CreateDirectory(Path.Combine(ws, "Library"));
 
@@ -184,7 +184,7 @@ public sealed class WorkspaceBootstrapTests
     private static void App(string ws, string name, string script)
     {
         Directory.CreateDirectory(Path.Combine(ws, name));
-        File.WriteAllText(Path.Combine(ws, name, "deploy.ps1"), script);
+        File.WriteAllText(Path.Combine(ws, name, "run.ps1"), script);
     }
 
     private sealed class SyncProgress(List<string> lines) : IProgress<string>

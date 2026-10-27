@@ -18,10 +18,13 @@ public sealed class OpenTicketSource
     /// are still in its WAL) changes no file time here, as <see cref="TicketActivityFeed.ForceEvery"/> (bughunt 2026-10-27).</summary>
     public static readonly TimeSpan DbMaxAge = TicketActivityFeed.ForceEvery;
 
+    /// <summary>The label that makes a ticket an epic (M.ORCH-T1146).</summary>
+    public const string EpicLabel = "epic";
+
     private DateTime dbReadUtc;
 
     private (string Path, DateTime WriteUtc, ILookup<string, Ticket> Open, HashSet<string> Repos, IReadOnlyDictionary<string, IReadOnlyList<string>> Requires,
-        IReadOnlySet<string> Approved, IReadOnlyDictionary<string, long> Priorities, WorkState Work)? fromDb;
+        IReadOnlySet<string> Approved, IReadOnlySet<string> Epics, IReadOnlyDictionary<string, long> Priorities, WorkState Work)? fromDb;
 
     /// <summary>Ticket → the tickets it requires (prerequisite links in the database: <c>tickets ticket block</c> writes them).</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>> Requires => fromDb?.Requires ?? new Dictionary<string, IReadOnlyList<string>>();
@@ -29,6 +32,10 @@ public sealed class OpenTicketSource
     /// <summary>Tickets approved for work in the database's queue (<c>tickets ticket approve</c>, the Tickets Desktop): the one
     /// store approval lives in (M.ORCH-T384).</summary>
     public IReadOnlySet<string> Approved => fromDb?.Approved ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Tickets labelled <c>epic</c> in the database (M.ORCH-T1146): never work themselves, and a 'requires' link to
+    /// one waits only until it's approved.</summary>
+    public IReadOnlySet<string> Epics => fromDb?.Epics ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Ticket → its manual priority in the database's queue (higher runs sooner); missing means 0.</summary>
     public IReadOnlyDictionary<string, long> Priorities => fromDb?.Priorities ?? new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
@@ -111,6 +118,7 @@ public sealed class OpenTicketSource
                     db.Tickets().Where(t => t.Ticket.Status == TicketRules.Open).ToLookup(t => t.Repo, t => t.Ticket, StringComparer.OrdinalIgnoreCase),
                     db.Repos().Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase), requires,
                     queue.Where(q => q.Value.Approval == TicketsDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
+                    db.AllLabels().Where(l => l.Value.Contains(EpicLabel, StringComparer.OrdinalIgnoreCase)).Select(l => l.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
                     queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase),
                     WorkState.Of(db));
                 dbReadUtc = DateTime.UtcNow;

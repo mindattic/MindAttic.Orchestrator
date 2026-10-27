@@ -101,7 +101,7 @@ public sealed class ModelChoiceTests
         Assert.That(DiffReview.Judge(big, s with { ReviewDiffLines = -1 }, ModelChoice.Sonnet).Review, Is.False, "-1: none for size");
 
         foreach (var risky in new[] { "src/MindAttic.Orchestrator.Core/Setup/AgentGate.cs", "src/MindAttic.Orchestrator.Core/Budget/Pacer.cs",
-                     "src/MindAttic.Orchestrator.Core/Scheduling/Dispatcher.cs", "shared/hooks/commit-msg", "deploy.ps1",
+                     "src/MindAttic.Orchestrator.Core/Scheduling/Dispatcher.cs", "shared/hooks/commit-msg", "run.ps1",
                      "src/MindAttic.Orchestrator.Core/{Old.cs => Scheduling/Allocate.cs}" })
             Assert.That(DiffReview.Judge([new(risky, 1, 0)], s, ModelChoice.Sonnet).Review, Is.True, risky);
         Assert.That(DiffReview.Judge([new("src/A/Formatting.cs", 1, 0)], s, ModelChoice.Sonnet).Review, Is.False);

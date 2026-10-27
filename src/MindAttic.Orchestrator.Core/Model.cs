@@ -171,6 +171,10 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// waits outside the queue until it's here, so no agent works a feature you didn't ask for (M.ORCH-T384).</summary>
     public IReadOnlySet<string> Approved { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Tickets labelled <c>epic</c> in the ticket database (M.ORCH-T1146): never queued or dispatched as work, and a
+    /// 'requires' link to one is satisfied once it's <see cref="Approved"/> (started), not only once it closes.</summary>
+    public IReadOnlySet<string> Epics { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Ticket → its manual priority in the ticket database's queue; higher runs sooner, missing means 0.</summary>
     public IReadOnlyDictionary<string, long> Priorities { get; init; } = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
@@ -185,9 +189,9 @@ public sealed record Snapshot(DateTime TakenUtc, IReadOnlyList<RepoStatus> Repos
     /// first in the queue for the next round.</summary>
     public IReadOnlySet<string> Requeued { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Whether <paramref name="ticket"/> may be worked: a fix, or one approved in the database's queue.</summary>
-    public bool MayWork(Ticket ticket) =>
-        ticket.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) || Approved.Contains(ticket.Id);
+    /// <summary>Whether <paramref name="ticket"/> may be worked: a fix, or one approved in the database's queue; never an epic (M.ORCH-T1146).</summary>
+    public bool MayWork(Ticket ticket) => !Epics.Contains(ticket.Id) &&
+        (ticket.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) || Approved.Contains(ticket.Id));
 
     /// <summary>Every live Claude session and allocate background agent, with its running subagents nested under it.</summary>
     public IReadOnlyList<Activity.AgentBoardRow> Agents { get; init; } = [];

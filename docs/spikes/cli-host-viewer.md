@@ -66,7 +66,7 @@ connection against the exact package versions we ship (see section 2).
 - `src/MindAttic.Orchestrator.Wpf/SessionRestore.cs` (T862) writes every tab's Claude session continuously. After an unclean
   exit, the next start offers `claude --resume`. That recovers the conversation, but not the process: in-flight tool calls,
   the running bash, the scroll position and the half-typed prompt are all lost.
-- `deploy.ps1` (T873) refuses to install while any hosted CLI is busy, because an install restarts the dashboard.
+- `run.ps1` (T873) refuses to install while any hosted CLI is busy, because an install restarts the dashboard.
 - `Daemon.cs` is the always-on logon job (status bus T854/T872, app bus T879/T891). It changes often, so it is a poor
   home for something that must never restart (section 7).
 
@@ -666,7 +666,7 @@ orchestrator gateway off
   It only ever stops a gateway it started (`managed` in the status file), never one run by hand. It never touches a
   TermHost: a gateway crash, restart or stop only drops remote viewers. A named mutex keeps one gateway per user session.
 - **Finding the exe.** The supervisor looks at `%MINDATTIC_GATEWAY%` first, then
-  `C:\Apps\MindAttic.Orchestrator\Gateway\MindAttic.Orchestrator.Gateway.exe`, then the daemon's own folder. `deploy.ps1`
+  `C:\Apps\MindAttic.Orchestrator\Gateway\MindAttic.Orchestrator.Gateway.exe`, then the daemon's own folder. `run.ps1`
   doesn't publish it yet (a follow-up, kept out of T928's deploy work). Until then, either
   `dotnet publish src/MindAttic.Orchestrator.Gateway -c Release -o C:\Apps\MindAttic.Orchestrator\Gateway` or point
   `MINDATTIC_GATEWAY` at a build.
@@ -1175,4 +1175,4 @@ The results:
 - libghostty-vt: [libghostty is coming](https://mitchellh.com/writing/libghostty-is-coming), [Ghostling (heise)](https://heise.de/-11222728)
 - ConPTY: [Introducing the Windows Pseudo Console](https://devblogs.microsoft.com/commandline/windows-command-line-introducing-the-windows-pseudo-console-conpty/); handoff handles in node-pty: [PR 725](https://github.com/microsoft/node-pty/pull/725)
 - Claude Code Remote Control: [code.claude.com/docs/en/mobile](https://code.claude.com/docs/en/mobile)
-- In this repo: `TerminalsViewModel.cs`, `TerminalPanes.cs` (PaneBroker), `TerminalPaste.cs`, `TerminalKeyboard.cs`, `TerminalCopy.cs`, `SessionRestore.cs`, `Daemon.cs`, `docs/app-bus.md`, `OrchestratorDb.cs` (members, org_members), `deploy.ps1` (T873); MindAttic.Launcher `HostAgentCommand.cs`.
+- In this repo: `TerminalsViewModel.cs`, `TerminalPanes.cs` (PaneBroker), `TerminalPaste.cs`, `TerminalKeyboard.cs`, `TerminalCopy.cs`, `SessionRestore.cs`, `Daemon.cs`, `docs/app-bus.md`, `OrchestratorDb.cs` (members, org_members), `run.ps1` (T873); MindAttic.Launcher `HostAgentCommand.cs`.

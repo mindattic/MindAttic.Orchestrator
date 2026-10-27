@@ -174,7 +174,7 @@ public sealed class AuditTests
     [TestCase(@"C:\W\A\Pages\Index.razor", "MindAttic.Components (web/Blazor)")]
     [TestCase(@"C:\W\A\wwwroot\site.CSS", "MindAttic.Components (web/Blazor)")]
     [TestCase(@"C:\W\A\app\main.tsx", "MindAttic.Components (web/Blazor)")]
-    [TestCase(@"C:\W\A\deploy.ps1", "MindAttic.Deploy or mindattic-agent-standard")]
+    [TestCase(@"C:\W\A\run.ps1", "MindAttic.Deploy or mindattic-agent-standard")]
     [TestCase(@"C:\W\A\tools\Build.psm1", "MindAttic.Deploy or mindattic-agent-standard")]
     [TestCase(@"C:\W\A\scripts\run.py", "a shared Python package")]
     [TestCase(@"C:\W\A\src\Util.cs", "MindAttic.Helpers (or a new shared package)")]

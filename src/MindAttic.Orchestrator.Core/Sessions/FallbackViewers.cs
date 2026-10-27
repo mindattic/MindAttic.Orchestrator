@@ -314,7 +314,7 @@ public sealed class FallbackViewers
         if (exe is null && !saidMissing)
         {
             saidMissing = true;
-            Tell(LogEventLevel.Warning, $"fallback viewers: no {ExeName} found (deploy.ps1 installs it under {FolderName}\\<version>\\); the hosted CLIs keep running without a window");
+            Tell(LogEventLevel.Warning, $"fallback viewers: no {ExeName} found (run.ps1 installs it under {FolderName}\\<version>\\); the hosted CLIs keep running without a window");
         }
         return exe;
     }

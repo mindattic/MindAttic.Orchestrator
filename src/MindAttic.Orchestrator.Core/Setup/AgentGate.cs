@@ -2634,11 +2634,17 @@ public static class AgentGate
                     approved = {a.upper() for (a,) in db.execute("SELECT ticket_id FROM ticket_queue WHERE approval = 'approved'").fetchall()}
                 except Exception:
                     approved = set()
+                # An epic (label 'epic') is never work itself, and a ticket requiring one may start once it's approved, not
+                # only once it's closed (M.ORCH-T1146), as the scheduler reads them.
+                try:
+                    epics = {e.upper() for (e,) in db.execute("SELECT ticket_id FROM ticket_labels WHERE label = 'epic'").fetchall()}
+                except Exception:
+                    epics = set()
                 db.close()
                 settings = orch_settings()
                 def blocked(r):
                     on = waits.get(r[0].upper(), set()) | {m.upper() for m in re.findall(r"blocked by ((?:[A-Z]\.)?[A-Z][A-Z0-9]*-T\d+)", r[3] or "", re.I)}
-                    return any(b != r[0].upper() and b in open_ids for b in on)
+                    return any(b != r[0].upper() and b in open_ids and not (b in epics and b in approved) for b in on)
                 # A ticket `orchestrator next --claim` already handed to a subagent is being worked: it isn't left (M.ORCH-T188).
                 claimed = {t.upper() for t in orch_assignments()}
                 # A claim gone stale is back in the queue, and `orchestrator next` hands it out again: it's work. Only the
@@ -2666,7 +2672,7 @@ public static class AgentGate
                 claimed |= held
                 named = {r.lower() for r in repos}
                 return [r[0] for r in rows if any(fnmatch.fnmatchcase((r[2] or "").lower(), n) for n in named) and (r[2] or "").lower() not in skip and
-                        ((r[1] or "").lower() == "fix" or r[0].upper() in approved) and r[0].upper() not in claimed and not blocked(r)]
+                        ((r[1] or "").lower() == "fix" or r[0].upper() in approved) and r[0].upper() not in claimed and r[0].upper() not in epics and not blocked(r)]
             except Exception:
                 return None
 

@@ -4,7 +4,7 @@ using NUnit.Framework;
 
 namespace MindAttic.Orchestrator.Tests;
 
-// deploy.ps1's install step, run in isolation: its Invoke-Installer is taken out of the script by the PowerShell parser
+// run.ps1's install step, run in isolation: its Invoke-Installer is taken out of the script by the PowerShell parser
 // and given a stand-in installer, so nothing here builds or touches the real install.
 public sealed class DeployScriptTests
 {
@@ -23,10 +23,10 @@ public sealed class DeployScriptTests
     {
         for (var d = new DirectoryInfo(TestContext.CurrentContext.TestDirectory); d != null; d = d.Parent)
         {
-            var path = Path.Combine(d.FullName, "deploy.ps1");
+            var path = Path.Combine(d.FullName, "run.ps1");
             if (File.Exists(path) && File.Exists(Path.Combine(d.FullName, "MindAttic.Orchestrator.slnx"))) return path;
         }
-        throw new FileNotFoundException("deploy.ps1 not found above the test directory");
+        throw new FileNotFoundException("run.ps1 not found above the test directory");
     }
 
     [Test]
@@ -45,7 +45,7 @@ public sealed class DeployScriptTests
             "$ErrorActionPreference = 'Stop'\n" +
             $"$ast = [System.Management.Automation.Language.Parser]::ParseFile('{DeployScript().Replace("'", "''")}', [ref]$null, [ref]$null)\n" +
             "$f = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Invoke-Installer' }, $true) | Select-Object -First 1\n" +
-            "if (-not $f) { throw 'deploy.ps1 has no Invoke-Installer' }\n" +
+            "if (-not $f) { throw 'run.ps1 has no Invoke-Installer' }\n" +
             ". ([scriptblock]::Create($f.Extent.Text))\n" +
             $"$code = Invoke-Installer '{installer.Replace("'", "''")}' @('{pidFile.Replace("'", "''")}')\n" +
             "\"exit=$code\"\n";
@@ -165,22 +165,22 @@ public sealed class DeployScriptTests
         var script = File.ReadAllText(DeployScript());
         Assert.That(script, Does.Contain("--output $cliStage"), "the CLI is published to a staging folder, not into the installed one");
         Assert.That(script, Does.Not.Contain("--output $cliOut"));
-        Assert.That(script.Contains((char)13), Is.False, "deploy.ps1 keeps its LF line endings");
+        Assert.That(script.Contains((char)13), Is.False, "run.ps1 keeps its LF line endings");
     }
 
     [Test]
     public void Deploy_builds_only_the_Orchestrator_and_never_chains_into_Tickets_deploy()
     {
-        // M.ORCH-T1147: Orchestrator and Tickets deploy independently. deploy.ps1 used to run MindAttic.Tickets' deploy.ps1
+        // M.ORCH-T1147: Orchestrator and Tickets deploy independently. run.ps1 used to run MindAttic.Tickets' run.ps1
         // after its own (M.ORCH-T832/T1100), guarded by MINDATTIC_DEPLOY_CHAIN; that chain is gone.
         var script = File.ReadAllText(DeployScript());
-        Assert.That(script, Does.Not.Contain(@"MindAttic.Tickets\deploy.ps1"), "deploy.ps1 must not run Tickets' deploy");
-        Assert.That(script, Does.Not.Contain("MindAttic.Tickets/deploy.ps1"));
+        Assert.That(script, Does.Not.Contain(@"MindAttic.Tickets\run.ps1"), "run.ps1 must not run Tickets' deploy");
+        Assert.That(script, Does.Not.Contain("MindAttic.Tickets/run.ps1"));
         Assert.That(script, Does.Not.Contain("MINDATTIC_DEPLOY_CHAIN"));
         Assert.That(script, Does.Not.Contain("SkipCli"));
     }
 
-    /// <summary>Takes <paramref name="function"/> out of deploy.ps1 by the PowerShell parser, runs each call with it, and
+    /// <summary>Takes <paramref name="function"/> out of run.ps1 by the PowerShell parser, runs each call with it, and
     /// returns what they printed, line by line. Nothing else in the script runs.</summary>
     private static string[] RunFunction(string function, params string[] calls)
     {
@@ -189,7 +189,7 @@ public sealed class DeployScriptTests
             $"$ast = [System.Management.Automation.Language.Parser]::ParseFile('{DeployScript().Replace("'", "''")}', [ref]$null, [ref]$null)\n" +
             $"foreach ($name in '{function.Replace(";", "','")}') {{ " +
             "$f = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name }, $true) | Select-Object -First 1; " +
-            "if (-not $f) { throw \"deploy.ps1 has no $name\" }; " +
+            "if (-not $f) { throw \"run.ps1 has no $name\" }; " +
             ". ([scriptblock]::Create($f.Extent.Text)) }\n" +
             string.Join("\n", calls) + "\n";
         var psi = new ProcessStartInfo("powershell.exe",

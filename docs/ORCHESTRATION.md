@@ -64,6 +64,16 @@ The daemon starts at logon and refreshes every 15 seconds, sooner when a turn en
    - *Stop:* at the target, every tool call is refused and every typed prompt is answered without being sent, so
      nothing more is spent until the reset. The orchestrator's own commands (`/allocate`, `/pacing`) still work.
 
+## What may start: approval, requires and epics
+
+Only fixes and tickets approved in the ticket database's queue are work. A ticket that `requires` another (a
+`tickets ticket block` link, or "blocked by X" in its summary) waits until that ticket closes. The one exception is an
+epic, a ticket labelled `epic` (M.ORCH-T1146): a requirement on an epic is met once the epic is approved (started),
+not only once it closes. So an epic's children can be approved one by one and still not start until the epic itself is
+approved, while any other requirement they carry, such as an earlier phase's tickets, still waits for closure. An epic
+is never queued, proposed, handed out by `orchestrator next --claim` or counted as work by keep-going: while unapproved
+it waits for your yes with the other proposed tickets, and once approved it just stays open until its children are done.
+
 ## Scaling up and down
 
 The same arithmetic both speeds up and slows down:

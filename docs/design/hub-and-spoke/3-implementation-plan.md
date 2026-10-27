@@ -328,7 +328,7 @@ allowance, never break a cutoff.
 
 **Code and ops:**
 
-- `deploy.ps1` publishes `Hub`, and the gateway too (its publish was left out of T928).
+- `run.ps1` publishes `Hub`, and the gateway too (its publish was left out of T928).
 - Hub backup: the SQL Server and SQLite pattern in `DATA_STORES.md`.
 - A runbook for moving the hub to a dedicated tailnet box. Spokes re-pin by `hub join --rotate-pin`, signed by the old
   key.

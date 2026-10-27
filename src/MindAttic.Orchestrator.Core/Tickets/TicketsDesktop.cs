@@ -54,7 +54,7 @@ public static partial class TicketsDesktop
     {
         if (!IsTicketId(ticketId)) return $"Not a ticket id: {ticketId}";
         if (!File.Exists(options.TicketsDesktopExe))
-            return $"Tickets Desktop not found at {options.TicketsDesktopExe} (run MindAttic.Tickets/deploy.ps1).";
+            return $"Tickets Desktop not found at {options.TicketsDesktopExe} (run MindAttic.Tickets/run.ps1).";
 
         var psi = new ProcessStartInfo(options.TicketsDesktopExe) { UseShellExecute = false };
         foreach (var a in Arguments(ticketId!, options.WorkspaceRoot)) psi.ArgumentList.Add(a);

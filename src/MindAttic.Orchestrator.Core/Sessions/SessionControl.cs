@@ -25,7 +25,7 @@ public sealed class SessionControl(OrchestratorOptions options)
         if (configDir is not null && provider != "Claude")
             return $"--account is a Claude login: {provider} has none.";
         if (!File.Exists(options.LauncherExe))
-            return $"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/deploy.ps1).";
+            return $"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/run.ps1).";
         if (!Directory.Exists(directory))
             return $"Folder not found: {directory}";
 
@@ -55,7 +55,7 @@ public sealed class SessionControl(OrchestratorOptions options)
         if (email is not null && AccountDirs.Normalize(email) is null)
             return $"\"{email}\" isn't an email address: the Launcher's --account takes the account's whole email.";
         if (!File.Exists(options.LauncherExe))
-            return $"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/deploy.ps1).";
+            return $"Launcher not found at {options.LauncherExe} (run MindAttic.Launcher/run.ps1).";
         if ((running = LauncherMenuOf(LauncherMenus(), email)) is not null) return null;
         var psi = new ProcessStartInfo("wt.exe") { UseShellExecute = false };
         foreach (var a in LauncherArguments(email)) psi.ArgumentList.Add(a);

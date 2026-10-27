@@ -30,7 +30,7 @@ internal sealed class WorkspaceBuildCommand : AsyncCommand<WorkspaceBuildCommand
         public string Root { get; init; } = WorkspaceBootstrap.DefaultRootRemote;
 
         [CommandOption("--install-apps")]
-        [Description("Then run every app's deploy.ps1 (no -Launch).")]
+        [Description("Then run every app's run.ps1 (no -Launch).")]
         public bool InstallApps { get; init; }
     }
 

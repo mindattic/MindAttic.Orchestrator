@@ -29,10 +29,10 @@ public sealed record OrchestratorOptions
     public string? TranscriptCache { get; init; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MindAttic", "MindAttic.Orchestrator", "transcripts.cache.json");
 
-    /// <summary>The deployed Launcher (see MindAttic.Launcher/deploy.ps1).</summary>
+    /// <summary>The deployed Launcher (see MindAttic.Launcher/run.ps1).</summary>
     public string LauncherExe { get; init; } = @"C:\Apps\MindAttic.Launcher\MindAttic.Launcher.exe";
 
-    /// <summary>The deployed Tickets Desktop (see MindAttic.Tickets/deploy.ps1), where a ticket id the dashboard lists opens (M.ORCH-T500).</summary>
+    /// <summary>The deployed Tickets Desktop (see MindAttic.Tickets/run.ps1), where a ticket id the dashboard lists opens (M.ORCH-T500).</summary>
     public string TicketsDesktopExe { get; init; } = @"C:\Apps\MindAttic.Tickets.Desktop\MindAttic.Tickets.Desktop.exe";
 
     /// <summary>A transcript written this recently means the agent is mid-turn.</summary>

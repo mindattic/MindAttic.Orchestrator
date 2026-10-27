@@ -8,7 +8,7 @@ using Spectre.Console.Cli;
 /// <summary><c>orchestrator busy</c> (M.ORCH-T873): whether any Claude CLI on this machine, on any login, is still working: mid-turn,
 /// running a subagent, holding an /allocate claim, or holding on a prompt. A CLI inside a live TermHost survives a redeploy, so it
 /// is listed as hosted and never counts (M.ORCH-T928). Exit 0 when every one is idle; 1 when any is working
-/// or can't be read (never taken for idle). deploy.ps1 runs it before a redeploy, which restarts the dashboard and every terminal
+/// or can't be read (never taken for idle). run.ps1 runs it before a redeploy, which restarts the dashboard and every terminal
 /// it hosts. The CLI running it is left out.</summary>
 internal sealed class BusyCommand : Command<BusyCommand.Settings>
 {

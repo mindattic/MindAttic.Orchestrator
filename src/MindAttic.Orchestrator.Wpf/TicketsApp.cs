@@ -5,7 +5,7 @@ namespace MindAttic.Orchestrator.Wpf;
 
 /// <summary>
 /// The dashboard's Tickets button (M.ORCH-T878): opens Tickets Desktop, or brings its window forward when it's already
-/// running. The exe is where MindAttic.Tickets/deploy.ps1 installs it: the configured
+/// running. The exe is where MindAttic.Tickets/run.ps1 installs it: the configured
 /// <see cref="OrchestratorOptions.TicketsDesktopExe"/> (C:\Apps\...), else %LOCALAPPDATA%\Programs\... when there's no C:\Apps.
 /// Never throws.
 /// </summary>
@@ -37,7 +37,7 @@ public static partial class TicketsApp
             }
 
             if (Resolve(options) is not { } exe)
-                return $"Tickets Desktop isn't installed (looked for {options.TicketsDesktopExe}; run MindAttic.Tickets/deploy.ps1).";
+                return $"Tickets Desktop isn't installed (looked for {options.TicketsDesktopExe}; run MindAttic.Tickets/run.ps1).";
 
             var psi = new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe)! };
             if (Directory.Exists(options.WorkspaceRoot)) { psi.ArgumentList.Add("--root"); psi.ArgumentList.Add(options.WorkspaceRoot); }

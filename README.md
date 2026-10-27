@@ -78,8 +78,8 @@ You need Windows and Claude Code. The released exe is self-contained, so no .NET
 From source (needs the .NET 10 SDK):
 
 ```powershell
-.\deploy.ps1          # build artifacts\MindAttic.Orchestrator.Desktop.exe (+ the CLI in C:\Apps\MindAttic.Orchestrator\Cli), then install it as a double-click would
-.\deploy.ps1 -Launch  # same, then open the dashboard
+.\run.ps1          # build artifacts\MindAttic.Orchestrator.Desktop.exe (+ the CLI in C:\Apps\MindAttic.Orchestrator\Cli), then install it as a double-click would
+.\run.ps1 -Launch  # same, then open the dashboard
 dotnet run --project src/MindAttic.Orchestrator.Wpf   # a dev build: never installs itself
 ```
 
@@ -227,7 +227,7 @@ The same core drives a CLI, deployed as `orchestrator.exe` in `C:\Apps\MindAttic
 | `report [--weeks 4] [--csv FILE]` | uncached tokens by week and repo, by provider, by ticket type, and per completed ticket by model (Sonnet against Opus; a ticket counts as the model that spent the most on it, so an Opus review leaves a Sonnet ticket Sonnet's) |
 | `remind "<text>" --at <time> [--to <contact>]` / `remind --list` / `remind --cancel <id>` | save a reminder the daemon texts through Psst when it's due (see [Watching](#watching)); `--at` takes `9am`, `tomorrow`, `tomorrow 8am`, `fri 5pm`, `tonight`, `in 2h`, `30m` or `2026-10-20 09:00`, local time; `--to` a Psst contact or a US number, by default you (Psst's own number). A CLI agent asked to "remind me tomorrow" runs it too |
 | `workspace export` | write `docs\workspace-repos.json` in the workspace root repo from the repos on disk (commit and push it so new machines get them) |
-| `workspace build <folder> [--root URL] [--install-apps]` / `workspace install-apps` | clone the workspace root, then every repo it lists, into a folder; on a partial workspace, only what's missing; `install-apps` runs every other app's `deploy.ps1` |
+| `workspace build <folder> [--root URL] [--install-apps]` / `workspace install-apps` | clone the workspace root, then every repo it lists, into a folder; on a partial workspace, only what's missing; `install-apps` runs every other app's `run.ps1` |
 
 Starting sessions needs the deployed Launcher at `C:\Apps\MindAttic.Launcher\MindAttic.Launcher.exe`.
 
@@ -316,7 +316,7 @@ There's no tray icon: closing the window quits the dashboard (the daemon keeps r
 | `src/MindAttic.Orchestrator.Wpf` | the dashboard and daemon entry point (`MindAttic.Orchestrator.Desktop.exe`) |
 | `src/MindAttic.Orchestrator.Cli` | the `orchestrator` CLI (Spectre.Console) |
 | `tests/MindAttic.Orchestrator.Tests` | NUnit tests for all of the above, including the Python hooks run for real |
-| `deploy.ps1` | build the single-file exe and the CLI, then install |
+| `run.ps1` | build the single-file exe and the CLI, then install |
 
 It targets `net10.0-windows` and uses the MindAttic.Log, MindAttic.Vault, MindAttic.Tickets and MindAttic.Components.Wpf packages.
 

@@ -258,9 +258,9 @@ public sealed class Installer
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), ShortcutName),
     ];
 
-    /// <summary>What a source checkout's deploy.ps1 writes beside the installed exe: a menu, 1) Deploy &amp; Run (redeploys, then
+    /// <summary>What a source checkout's run.ps1 writes beside the installed exe: a menu, 1) Deploy &amp; Run (redeploys, then
     /// opens the app) or 2) Run (just opens it) (MAT-T67).</summary>
-    public const string LauncherName = "deploy.bat";
+    public const string LauncherName = "run.bat";
 
     /// <summary>What the shortcuts open: the <see cref="LauncherName"/> beside <paramref name="exe"/> when there is one, so every
     /// open runs the newest build; otherwise (a drag-and-drop install, no checkout) the exe itself.</summary>

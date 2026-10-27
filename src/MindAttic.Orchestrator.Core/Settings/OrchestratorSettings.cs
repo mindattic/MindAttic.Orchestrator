@@ -350,7 +350,7 @@ public sealed record OrchestratorSettings
         // Pacing.
         "*/Budget/Pacer.cs", "*/Budget/BudgetCalculator.cs", "*/Budget/PaceLedger*.cs", "*/Scheduling/SubagentShare.cs", "*RateLimitStatus*",
         // Git landing.
-        "*/Scheduling/Dispatcher.cs", "*/Scheduling/Allocate.cs", "*land*.ps1", "*deploy.ps1",
+        "*/Scheduling/Dispatcher.cs", "*/Scheduling/Allocate.cs", "*land*.ps1", "*run.ps1",
     ];
 }
 

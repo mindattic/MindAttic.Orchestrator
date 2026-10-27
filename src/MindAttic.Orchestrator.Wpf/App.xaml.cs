@@ -27,7 +27,7 @@ public partial class App : Application
     private SingleInstance? instance;
     private IDisposable? highContrast;
 
-    /// <summary>What --install exits with when it refused because a Claude CLI is still working (M.ORCH-T873); deploy.ps1 reads it.</summary>
+    /// <summary>What --install exits with when it refused because a Claude CLI is still working (M.ORCH-T873); run.ps1 reads it.</summary>
     public const int BusyRefusedExit = 3;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -91,12 +91,12 @@ public partial class App : Application
 
         var self = Environment.ProcessPath!;
 
-        // What a double-click does, without the window: deploy.ps1 runs this after publishing. The one way a
+        // What a double-click does, without the window: run.ps1 runs this after publishing. The one way a
         // dev or worktree build installs; it still won't replace a newer installed exe unless --force is passed too.
         if (e.Args.Contains("--install", StringComparer.OrdinalIgnoreCase))
         {
             // Installing stops the running dashboard, and every CLI its Terminals panels host goes with it: refused while any Claude
-            // CLI is still working or can't be read, unless --ignore-busy (M.ORCH-T873). deploy.ps1 reads the exit code.
+            // CLI is still working or can't be read, unless --ignore-busy (M.ORCH-T873). run.ps1 reads the exit code.
             if (!installer.IsInstalled(self) && !e.Args.Contains("--ignore-busy", StringComparer.OrdinalIgnoreCase))
             {
                 var busy = BusyClis.Scan();
@@ -112,7 +112,7 @@ public partial class App : Application
             }
             // Whether the install will stop a running dashboard (M.ORCH-T1030): it is started again afterwards, or with no -Launch it
             // stayed down, every hosted CLI fell back to its own TermViewer and its restore file waited for a restart that never came.
-            // deploy.ps1 -Launch starts it itself and says so with --no-dashboard-restart.
+            // run.ps1 -Launch starts it itself and says so with --no-dashboard-restart.
             var restartDashboard = false;
             try
             {
@@ -134,7 +134,7 @@ public partial class App : Application
             {
                 log.Error(ex, "Install failed");
                 Console.Error.WriteLine($"Install failed: {ex.Message}");
-                Shutdown(1); // deploy.ps1 reads the exit code: the old copy still being there isn't an install
+                Shutdown(1); // run.ps1 reads the exit code: the old copy still being there isn't an install
                 return;
             }
             Shutdown();

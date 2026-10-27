@@ -30,7 +30,7 @@ public sealed class TicketsDesktopTests
     public void A_missing_install_or_a_bad_id_says_why_instead_of_starting_anything()
     {
         var options = new OrchestratorOptions { TicketsDesktopExe = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "none.exe") };
-        Assert.That(TicketsDesktop.Open("M.ORCH-T500", options), Does.StartWith("Tickets Desktop not found at").And.Contain("deploy.ps1"));
+        Assert.That(TicketsDesktop.Open("M.ORCH-T500", options), Does.StartWith("Tickets Desktop not found at").And.Contain("run.ps1"));
         Assert.That(TicketsDesktop.Open("not an id", options), Is.EqualTo("Not a ticket id: not an id"));
     }
 

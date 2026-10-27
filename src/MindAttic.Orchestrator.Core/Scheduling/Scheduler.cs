@@ -137,20 +137,24 @@ public static partial class Scheduler
             return snapshot.TakenUtc - last > TimeSpan.FromHours(Math.Min(settings.StaleAfterHours, Century * 24)) ? last : null;
         }
 
-        // A block set by hand is a 'requires' link in the ticket database (tickets ticket block, M.ORCH-T762).
+        // Approval and priority from the ticket database's queue alone, read through the MindAttic.Tickets engine, where
+        // tickets ticket approve/priority and the Tickets Desktop write them too (M.ORCH-T761).
+        bool IsApproved(string id) => snapshot.Approved.Contains(id);
+        // An epic (label 'epic', M.ORCH-T1146) is never work itself: it's started by approving it, and closes when its children are done.
+        bool IsEpic(string id) => snapshot.Epics.Contains(id);
+
+        // A block set by hand is a 'requires' link in the ticket database (tickets ticket block, M.ORCH-T762). One on an epic
+        // waits only until the epic is approved (started), not until it closes (M.ORCH-T1146).
         IReadOnlyList<string> Blockers(Ticket t) =>
             [.. BlockedByPhrase().Matches(t.Summary).Select(m => m.Groups["id"].Value.ToUpperInvariant())
                 .Concat(snapshot.Requires.GetValueOrDefault(t.Id) ?? [])
-                .Where(id => id != t.Id && openIds.Contains(id))
+                .Where(id => id != t.Id && openIds.Contains(id) && !(IsEpic(id) && IsApproved(id)))
                 .Distinct(StringComparer.Ordinal)];
 
         var groomBefore = settings.GroomAfterDays > 0
             ? DateOnly.FromDateTime(snapshot.TakenUtc.ToLocalTime().AddDays(-Math.Min(settings.GroomAfterDays, Century)))
             : DateOnly.MinValue;
-        // Approval and priority from the ticket database's queue alone, read through the MindAttic.Tickets engine, where
-        // tickets ticket approve/priority and the Tickets Desktop write them too (M.ORCH-T761).
-        bool IsApproved(string id) => snapshot.Approved.Contains(id);
-        bool MayWork(Ticket t) => t.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) || IsApproved(t.Id);
+        bool MayWork(Ticket t) => !IsEpic(t.Id) && (t.Type.Equals("fix", StringComparison.OrdinalIgnoreCase) || IsApproved(t.Id));
         // Clamped to what a queue item holds.
         int Priority(string id) => (int)Math.Clamp(snapshot.Priorities.GetValueOrDefault(id), int.MinValue, int.MaxValue);
         // Who each ticket is assigned to (M.ORCH-T668), from the ticket database (M.ORCH-T762), whatever case its id was saved in.
@@ -159,12 +163,13 @@ public static partial class Scheduler
         // Only fixes and tickets you approved are work; the rest wait for your yes outside the queue (one already
         // being worked stays, so its agent is still tracked). One whose assignment went stale waits for it too (M.ORCH-T394).
         var awaiting = snapshot.Repos
-            .SelectMany(r => r.OpenTickets.Where(t => !MayWork(t) && (assigned.GetValueOrDefault(t.Id) is not { } a || StaleSince(a) is not null))
+            // An epic waits here for its yes, and once approved (started) it's neither waiting nor work (M.ORCH-T1146).
+            .SelectMany(r => r.OpenTickets.Where(t => !MayWork(t) && !(IsEpic(t.Id) && IsApproved(t.Id)) && (assigned.GetValueOrDefault(t.Id) is not { } a || StaleSince(a) is not null))
                 .Select(t => new QueueItem(r.Name, r.Path, t, Priority(t.Id), null, false) { Old = IsOld(t), Approved = IsApproved(t.Id), Assignee = assignees.GetValueOrDefault(t.Id) }))
             .OrderBy(q => q.Repo, StringComparer.OrdinalIgnoreCase).ThenBy(q => q.Ticket.Number ?? int.MaxValue)
             .ToList();
         var queue = snapshot.Repos
-            .SelectMany(r => r.OpenTickets.Where(t => MayWork(t) || assigned.ContainsKey(t.Id)).Select(t => new QueueItem(
+            .SelectMany(r => r.OpenTickets.Where(t => !IsEpic(t.Id) && (MayWork(t) || assigned.ContainsKey(t.Id))).Select(t => new QueueItem(
                 r.Name, r.Path, t,
                 Priority(t.Id),
                 assigned.GetValueOrDefault(t.Id),

@@ -226,6 +226,38 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void A_ticket_requiring_an_epic_is_work_once_the_epic_is_approved_and_the_epic_never_is()
+    {
+        // M.ORCH-T1146, as the scheduler reads it: a 'requires' link to an epic waits only until the epic is approved.
+        var db = Path.Combine(ws, "MindAttic.Tickets", "data", "Tickets.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(db)!);
+        void Sql(string sql)
+        {
+            using var mk = Process.Start(new ProcessStartInfo("python") { ArgumentList = { "-I", "-c",
+                "import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.executescript(sys.argv[2]); d.commit()", db, sql }, UseShellExecute = false })!;
+            mk.WaitForExit(20_000);
+        }
+        Sql("create table tickets(id,repo,status,ordinal,type,summary); create table links(from_id,to_id,kind);" +
+            "create table ticket_queue(ticket_id,approval,priority,updated); create table ticket_labels(ticket_id,label,added);" +
+            "insert into tickets values('U.SPC-T1','UnitySolarSystem','open',1,'feature','the epic');" +
+            "insert into tickets values('U.SPC-T2','UnitySolarSystem','open',2,'feature','a child');" +
+            "insert into ticket_labels values('U.SPC-T1','epic','');" +
+            "insert into ticket_queue values('U.SPC-T2','approved',0,'');" +
+            "insert into links values('U.SPC-T2','U.SPC-T1','requires');");
+        var uss = Path.Combine(ws, "UnitySolarSystem");
+        Directory.CreateDirectory(Marks);
+        File.WriteAllText(Path.Combine(Marks, $"allocate-{Cli}"), "UnitySolarSystem");
+        object Asking(string sid) => new { hook_event_name = "Stop", session_id = sid, cwd = uss, last_assistant_message = "Shall I start the next one?" };
+        Status(new { });
+
+        Assert.That(Gate(Asking("e1"), AgentGate.ContextScriptName).Output, Is.Empty, "its epic isn't approved yet");
+        Sql("insert into ticket_queue values('U.SPC-T1','approved',0,'');");
+        var told = Gate(Asking("e2"), AgentGate.ContextScriptName).Output;
+        Assert.That(told, Does.Contain("\"block\"").And.Contain("U.SPC-T2"), "its epic is started: it's work");
+        Assert.That(told, Does.Not.Contain("U.SPC-T1"), "the epic itself never is");
+    }
+
+    [Test]
     public void A_prompt_refused_at_a_weekly_stop_names_the_week_and_its_reset()
     {
         Status(new { stop = true, stop_window = "weekly", reset_time = "Mon 9:00 AM", stop_until = DateTime.UtcNow.AddDays(3).ToString("yyyy-MM-ddTHH:mm:ssZ") });
@@ -1103,7 +1135,7 @@ public sealed class HookScriptTests
                                   "powershell -NoProfile -Command \"gci C:\\ -r -Filter x\"", "where /r C:\\ python.exe", "where.exe /R \"D:\\\" x" })
             Assert.That(Gate(Bash(c)).Output, Does.Contain("\"deny\""), c);
         foreach (var c in new[] { "where python", "where /r . python.exe", "cmd /c dir C:\\", "powershell -c \"Get-ChildItem C:\\Users\\me -Recurse\"",
-                                  "powershell -NoProfile -File deploy.ps1" })
+                                  "powershell -NoProfile -File run.ps1" })
             Assert.That(Gate(Bash(c)).Output, Does.Not.Contain("\"deny\""), c);
     }
 
