@@ -53,9 +53,15 @@ public static partial class ReminderTime
         if (Span().Match(t) is { Success: true } span && (span.Groups["d"].Success || span.Groups["h"].Success || span.Groups["m"].Success))
         {
             double Of(string g) => span.Groups[g].Success ? double.Parse(span.Groups[g].Value, CultureInfo.InvariantCulture) : 0;
-            var by = TimeSpan.FromDays(Of("d")) + TimeSpan.FromHours(Of("h")) + TimeSpan.FromMinutes(Of("m"));
-            if (by <= TimeSpan.Zero) return false;
-            local = nowLocal + by;
+            TimeSpan by;
+            // A span past what a date can hold is unreadable, not a crash (M.ORCH-T1090).
+            try
+            {
+                by = TimeSpan.FromDays(Of("d")) + TimeSpan.FromHours(Of("h")) + TimeSpan.FromMinutes(Of("m"));
+                if (by <= TimeSpan.Zero) return false;
+                local = nowLocal + by;
+            }
+            catch (Exception ex) when (ex is OverflowException or ArgumentOutOfRangeException) { return false; }
             fromNow = by;
             return true;
         }
