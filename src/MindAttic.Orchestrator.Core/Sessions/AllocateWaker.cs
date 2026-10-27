@@ -55,14 +55,15 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
     /// <summary>Which idle CLIs have work now: the nudge is left for each one's hook, and said to you once per idle stretch.</summary>
     public IReadOnlyList<Wake> Tick(SchedulePlan plan, OrchestratorSettings settings, DateTime nowUtc, Snapshot? snapshot = null)
     {
-        if (!settings.KeepGoing || !settings.Allocate) return [];
+        // /allocate off, or no CLI it's on in: no "work" nudge stands, so the last one isn't delivered on (bughunt 2026-10-27).
+        if (!settings.KeepGoing || !settings.Allocate) { CliNudges.Retain(cycler.Directory, "work", []); return []; }
         var pilots = Pilots?.Invoke() ?? cycler.AllocateClis();
         foreach (var gone in wokenUtc.Keys.Concat(saidFor.Keys).Where(p => !pilots.ContainsKey(p)).ToList())
         {
             wokenUtc.Remove(gone);
             saidFor.Remove(gone);
         }
-        if (pilots.Count == 0) return [];
+        if (pilots.Count == 0) { CliNudges.Retain(cycler.Directory, "work", []); return []; }
         var newest = cycler.Load().Where(c => c.Pid is not null).GroupBy(c => c.Pid!.Value)
             .ToDictionary(g => g.Key, g => g.MaxBy(c => (Written(c.SessionId), c.TurnUtc))!);
         var since = PilotsSince?.Invoke() ?? (Pilots is null ? cycler.AllocateSince() : new Dictionary<int, DateTime>()); // warming up (M.ORCH-T558): not woken for one it can't have yet
@@ -143,12 +144,14 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
     /// </summary>
     public IReadOnlyList<Wake> TickClaims(Snapshot snapshot, SchedulePlan plan, OrchestratorSettings settings, DateTime nowUtc)
     {
-        if (!settings.KeepGoing || !settings.Allocate) return [];
-        if (UnderTarget.Projected(snapshot, plan) is not { } projected || !UnderTarget.HasRoom(plan)) return [];
+        // Every early return drops the "claims" nudges that no longer stand, as the pass below does (bughunt 2026-10-27).
+        if (!settings.KeepGoing || !settings.Allocate) { CliNudges.Retain(cycler.Directory, "claims", []); return []; }
+        if (UnderTarget.Projected(snapshot, plan) is not { } projected || !UnderTarget.HasRoom(plan))
+        { CliNudges.Retain(cycler.Directory, "claims", CoolingDown(nowUtc)); return []; }
         var pilots = Pilots?.Invoke() ?? cycler.AllocateClis();
-        if (pilots.Count == 0) return [];
+        if (pilots.Count == 0) { CliNudges.Retain(cycler.Directory, "claims", []); return []; }
         var idle = IdleClaims(snapshot, plan, pilots, nowUtc);
-        if (idle.Count == 0) return [];
+        if (idle.Count == 0) { CliNudges.Retain(cycler.Directory, "claims", CoolingDown(nowUtc)); return []; }
         var newest = cycler.Load().Where(c => c.Pid is not null).GroupBy(c => c.Pid!.Value)
             .ToDictionary(g => g.Key, g => g.MaxBy(c => (Written(c.SessionId), c.TurnUtc))!);
         // No more tickets put to the CLIs than the allowance has room for.

@@ -66,7 +66,11 @@ public sealed class TerminalPaneViewModel : ObservableObject
     /// <summary>The tab whose <see cref="Control"/> is <paramref name="element"/>, or holds it; null for none.</summary>
     internal static TerminalPaneViewModel? Of(DependencyObject? element)
     {
-        for (var at = element; at is not null; at = VisualTreeHelper.GetParent(at) ?? LogicalTreeHelper.GetParent(at))
+        // A ContentElement (a ticket Hyperlink) makes VisualTreeHelper.GetParent throw, so walk it logically (bughunt 2026-10-27).
+        for (var at = element; at is not null;
+             at = at is Visual or System.Windows.Media.Media3D.Visual3D
+                 ? VisualTreeHelper.GetParent(at) ?? LogicalTreeHelper.GetParent(at)
+                 : LogicalTreeHelper.GetParent(at))
             if (at is FrameworkElement fe && ByControl.TryGetValue(fe, out var pane)) return pane;
         return null;
     }

@@ -382,6 +382,9 @@ public partial class MainWindow : Window
             if (model.AllTerminals.SelectedPane?.Control is not { IsVisible: true } terminal) return;
             var focused = Keyboard.FocusedElement as DependencyObject;
             if (ReferenceEquals(focused, terminal) || KeepsFocus(focused, onlyIfLost)) return;
+            // Null FocusedElement is the normal state while the renderer's own window has Win32 focus: keep it, or every
+            // refresh bounces focus (flicker, a cancelled IME composition) (bughunt 2026-10-27).
+            if (focused is null && TerminalKeyboard.HoldsWin32Focus(terminal)) return;
             terminal.Focus();
         }, DispatcherPriority.ContextIdle);
 

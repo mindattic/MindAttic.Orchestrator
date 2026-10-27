@@ -260,6 +260,18 @@ public sealed class ContextCyclerMarksTests
     }
 
     [Test]
+    public void A_malformed_pid_or_limit_stop_skips_the_field_not_the_session()
+    {
+        // bughunt 2026-10-27: a fractional pid threw FormatException, an out-of-range until ArgumentOutOfRangeException.
+        File.WriteAllText(Path.Combine(dir, "abc.json"), """{"used_percentage":12,"cwd":"D:\\x"}""");
+        File.WriteAllText(Path.Combine(dir, "abc.state.json"), """{"state":"idle","pid":4.5,"limit_stop":{"until":1e300,"window":"5-hour"}}""");
+
+        var s = new ContextCycler(dir).Load().Single();
+
+        Assert.That((s.SessionId, s.Pid, s.Idle, s.LimitStop), Is.EqualTo(("abc", (int?)null, true, (LimitStop?)null)));
+    }
+
+    [Test]
     public void A_statusline_file_held_open_for_writing_is_still_read()
     {
         var path = Path.Combine(dir, "abc.json");

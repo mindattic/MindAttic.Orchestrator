@@ -81,6 +81,19 @@ public sealed class AllocateWakerTests
     }
 
     [Test]
+    public void Turning_allocate_off_drops_the_nudge_it_left()
+    {
+        // bughunt 2026-10-27: the early return skipped CliNudges.Retain, so the last nudge was still delivered.
+        State("idle", Now.AddHours(-6));
+        var waker = Waker();
+        Assert.That(waker.Tick(Plan(4, 0, T("A-T1")), Settings, Now), Has.Count.EqualTo(1));
+        Assert.That(Nudges(), Has.Count.EqualTo(1));
+
+        Assert.That(waker.Tick(Plan(4, 0, T("A-T1")), Settings with { Allocate = false }, Now.AddMinutes(1)), Is.Empty);
+        Assert.That(Nudges(), Is.Empty);
+    }
+
+    [Test]
     public void A_cli_on_its_own_login_is_judged_by_that_accounts_pace_not_the_global_logins()
     {
         // Found live 2026-10-22 (M.ORCH-T640): the nudge said "room to work again" three times while that CLI's own

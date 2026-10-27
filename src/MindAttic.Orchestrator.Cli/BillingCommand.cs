@@ -65,7 +65,8 @@ internal sealed class BillingCommand : Command<BillingCommand.Settings>
                 return 1;
             }
             var store = Ctx.Store();
-            store.SaveSettings(store.LoadSettings() with
+            // LoadSettingsToChange: a settings row that can't be read is never saved over with defaults (bughunt 2026-10-27).
+            store.SaveSettings(store.LoadSettingsToChange() with
             {
                 ApiCreditUsd = usd > 0 ? usd : null,
                 ApiCreditSinceUtc = usd > 0 ? nowUtc : null,

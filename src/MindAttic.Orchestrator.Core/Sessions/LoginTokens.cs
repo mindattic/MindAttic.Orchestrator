@@ -90,7 +90,7 @@ public sealed partial class LoginTokens(TokenStore? store = null)
         {
             try { held = mutex.WaitOne(TimeSpan.FromSeconds(15)); }
             catch (AbandonedMutexException) { held = true; }
-            if (!held) throw new IOException("Another process is holding the login-token store; try again.");
+            if (!held) throw new StoreBusyException();
             return work(s);
         }
         finally { if (held) mutex.ReleaseMutex(); }
@@ -119,9 +119,18 @@ public sealed partial class LoginTokens(TokenStore? store = null)
         }
     }
 
+    /// <summary>The store's lock stayed held past its wait: the token may well be there, it just couldn't be read now
+    /// (bughunt 2026-10-27).</summary>
+    internal sealed class StoreBusyException() : IOException("Another process is holding the login-token store; try again.");
+
     /// <summary>The token kept for <paramref name="email"/>; null when none is, or it can't be read.</summary>
-    public LoginToken? For(string? email)
+    public LoginToken? For(string? email) => Read(email, out _);
+
+    /// <summary><see cref="For"/>, saying whether a null came from the store's lock being busy rather than no token
+    /// (bughunt 2026-10-27).</summary>
+    private LoginToken? Read(string? email, out bool busy)
     {
+        busy = false;
         if (AccountDirs.Normalize(email) is not { } e) return null;
         try
         {
@@ -131,6 +140,7 @@ public sealed partial class LoginTokens(TokenStore? store = null)
             var expires = o["expires"]?.GetValue<DateTime>() ?? minted + Lifetime;
             return new LoginToken(e, DateTime.SpecifyKind(minted, DateTimeKind.Utc), DateTime.SpecifyKind(expires, DateTimeKind.Utc), sealedText);
         }
+        catch (StoreBusyException) { busy = true; return null; }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException or IOException or UnauthorizedAccessException) { return null; }
     }
 
@@ -213,9 +223,10 @@ public sealed partial class LoginTokens(TokenStore? store = null)
     }
 
     /// <summary>Whether <paramref name="email"/> needs a token minted: none kept, it's expired or expiring soon, or it can't be
-    /// unsealed here.</summary>
+    /// unsealed here. Not while the store's lock is busy: that's no reason to open a browser over a token that may be fine
+    /// (bughunt 2026-10-27).</summary>
     public bool NeedsMint(string email, DateTime nowUtc) =>
-        For(email) is not { } t || t.Expired(nowUtc) || t.ExpiringSoon(nowUtc) || Reveal(t) is null;
+        Read(email, out var busy) is not { } t ? !busy : t.Expired(nowUtc) || t.ExpiringSoon(nowUtc) || Reveal(t) is null;
 
     /// <summary>
     /// Mints <paramref name="dir"/>'s long-lived token: runs <c>claude setup-token</c> under the folder (<see cref="Run"/>),

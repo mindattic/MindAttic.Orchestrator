@@ -111,16 +111,18 @@ public sealed class ContextCycler(string? directory = null)
                 if (t.RootElement.TryGetProperty("at", out var at) &&
                     DateTime.TryParse(at.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var when))
                     turn = when;
-                if (t.RootElement.TryGetProperty("pid", out var pp) && pp.ValueKind == JsonValueKind.Number) pid = pp.GetInt32();
+                // A malformed number (a fraction, out of range) skips the field rather than throwing past the catch (bughunt 2026-10-27).
+                if (t.RootElement.TryGetProperty("pid", out var pp) && pp.ValueKind == JsonValueKind.Number && pp.TryGetInt32(out var p)) pid = p;
                 if (t.RootElement.TryGetProperty("goal", out var g) && g.ValueKind == JsonValueKind.String) goal = g.GetString();
                 if (cwd is null && t.RootElement.TryGetProperty("cwd", out var tc) && tc.ValueKind == JsonValueKind.String) cwd = tc.GetString();
                 if (t.RootElement.TryGetProperty("limit_stop", out var ls) && ls.ValueKind == JsonValueKind.Object &&
-                    ls.TryGetProperty("until", out var u) && u.ValueKind == JsonValueKind.Number)
+                    ls.TryGetProperty("until", out var u) && u.ValueKind == JsonValueKind.Number
+                    && u.TryGetDouble(out var untilSeconds) && untilSeconds is >= 0 and < MaxUnixSeconds)
                 {
                     var stopped = ls.TryGetProperty("at", out var sa) && sa.ValueKind == JsonValueKind.String &&
                         DateTime.TryParse(sa.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var s) ? s : turn;
                     limitStop = new LimitStop(ls.TryGetProperty("window", out var lw) && lw.ValueKind == JsonValueKind.String ? lw.GetString()! : "5-hour",
-                        DateTime.UnixEpoch.AddSeconds(u.GetDouble()), stopped);
+                        DateTime.UnixEpoch.AddSeconds(untilSeconds), stopped);
                 }
             }
             return new SessionContext(sessionId, cwd, percent, idle, turn) { Pid = pid, Goal = goal, LimitStop = limitStop };
@@ -130,6 +132,9 @@ public sealed class ContextCycler(string? directory = null)
             return null;
         }
     }
+
+    /// <summary>The last whole second DateTime holds past the Unix epoch, 9999-12-31 (bughunt 2026-10-27).</summary>
+    private const double MaxUnixSeconds = 253_402_300_799;
 
     /// <summary>Reads a file another process may hold open for writing.</summary>
     private static string ReadShared(string path)

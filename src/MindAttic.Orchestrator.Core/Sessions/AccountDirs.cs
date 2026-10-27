@@ -342,9 +342,17 @@ public sealed class AccountDirs(string? root = null, string? claudeDir = null, s
     private static void WriteIfChanged(string path, string text)
     {
         if (File.Exists(path) && File.ReadAllText(path) == text) return;
-        var temp = path + ".tmp";
-        File.WriteAllText(temp, text, new UTF8Encoding(false));
-        File.Move(temp, path, overwrite: true);
+        // A temp of its own: two Prepare calls at once (the rebalancer's move and the dashboard) shared one (bughunt 2026-10-27).
+        var temp = $"{path}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            File.WriteAllText(temp, text, new UTF8Encoding(false));
+            File.Move(temp, path, overwrite: true);
+        }
+        finally
+        {
+            try { File.Delete(temp); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
     }
 
     /// <summary>Links <paramref name="link"/> to <paramref name="target"/> with a junction (no elevation needed). Left alone when

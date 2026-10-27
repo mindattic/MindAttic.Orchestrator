@@ -553,6 +553,15 @@ public sealed class TerminalPanesTests
         Assert.That(TerminalPaste.Focused(elsewhere), Is.Null, "a key aimed anywhere else is no terminal's");
     }
 
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_key_from_a_hyperlink_is_no_terminals_and_never_throws()
+    {
+        // bughunt 2026-10-27: a ContentElement (a ticket Hyperlink) made VisualTreeHelper.GetParent throw on every key.
+        var link = new System.Windows.Documents.Hyperlink();
+        _ = new System.Windows.Controls.TextBlock(link);
+        Assert.That(TerminalPaneViewModel.Of(link), Is.Null);
+    }
+
     private static bool Alive(int pid)
     {
         try { using var p = System.Diagnostics.Process.GetProcessById(pid); return !p.HasExited; }

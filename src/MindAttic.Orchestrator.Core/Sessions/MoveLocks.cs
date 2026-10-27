@@ -131,7 +131,10 @@ public sealed class MoveLocks(JsonStore store)
             foreach (var m in all.ToList())
             {
                 MoveEnd? end = null;
-                if (seen.FirstOrDefault(r => Landed(m, r)) is { } row) end = new MoveEnd(m, true, row, "");
+                // Its own session or Launcher tab before any other CLI of its repo started since the move, so another CLI that
+                // happens to start there isn't handed its claims while the moved one is also in view (bughunt 2026-10-27).
+                if ((seen.FirstOrDefault(r => Landed(m, r) && (r.SessionId == m.SessionId || (m.HostPid is { } host && r.Host?.ProcessId == host)))
+                     ?? seen.FirstOrDefault(r => Landed(m, r))) is { } row) end = new MoveEnd(m, true, row, "");
                 else if (nowUtc - m.StartedUtc > Timeout)
                     end = new MoveEnd(m, false, null, $"its CLI didn't show up on {m.ToName} within {Timeout.TotalMinutes:0} minutes");
                 else if (nowUtc - m.StartedUtc > GoneAfter && !IsAlive(m.Pid))

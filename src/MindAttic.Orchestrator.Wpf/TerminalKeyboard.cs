@@ -118,8 +118,31 @@ internal static partial class TerminalKeyboard
         if (PostMessage(target, WmKeyDown, (nint)vk, lParam)) e.Handled = true;
     }
 
+    /// <summary>Whether Win32 focus is in a renderer window (an <see cref="HwndHost"/> or one of its children) under
+    /// <paramref name="terminal"/>: <see cref="Keyboard.FocusedElement"/> is null then, yet the terminal has the keyboard
+    /// (bughunt 2026-10-27).</summary>
+    internal static bool HoldsWin32Focus(DependencyObject terminal)
+    {
+        var focus = GetFocus();
+        if (focus == IntPtr.Zero) return false;
+        foreach (var host in HwndHosts(terminal))
+            if (host.Handle is var handle && handle != IntPtr.Zero && (handle == focus || IsChild(handle, focus))) return true;
+        return false;
+    }
+
+    private static IEnumerable<HwndHost> HwndHosts(DependencyObject parent)
+    {
+        if (parent is HwndHost self) { yield return self; yield break; }
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+            foreach (var host in HwndHosts(System.Windows.Media.VisualTreeHelper.GetChild(parent, i))) yield return host;
+    }
+
     [LibraryImport("user32.dll")]
     private static partial IntPtr GetFocus();
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool IsChild(IntPtr parent, IntPtr window);
 
     [LibraryImport("user32.dll")]
     private static partial uint MapVirtualKey(uint code, uint mapType);

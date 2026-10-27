@@ -127,6 +127,22 @@ public sealed class MoveLocksTests
     }
 
     [Test]
+    public void Its_own_tab_lands_it_ahead_of_another_cli_of_its_repo_started_since()
+    {
+        // bughunt 2026-10-27: the first CLI of its repo started since the move on the new login was taken for it.
+        var locks = new MoveLocks(store) { IsAlive = _ => true };
+        locks.TryBegin(new MoveLock
+        {
+            SessionId = "sess-1", Pid = OldPid, HostPid = Tab.ProcessId, Repo = "A", ToEmail = "b@x.com", ToName = "Bea", StartedUtc = Now, Tickets = ["A-T1"],
+        }, out _);
+        var other = Row("sess-9", 9999, "b@x.com", new HostSession("Claude", 88, "mindattic-host-claude-88", @"D:\W\A"), Now.AddMinutes(1));
+
+        var ends = locks.Reconcile([other, Row("sess-2", NewPid, "b@x.com", Tab, Now.AddMinutes(1))], Now.AddMinutes(2));
+
+        Assert.That(ends.Single().Cli?.SessionId, Is.EqualTo("sess-2"));
+    }
+
+    [Test]
     public void Once_it_lands_on_the_new_login_its_tickets_are_handed_back_to_start_again_in_their_worktrees()
     {
         store.SaveAssignments([Claim("A-T1", OldPid), Claim("A-T2", 999, "other")]);

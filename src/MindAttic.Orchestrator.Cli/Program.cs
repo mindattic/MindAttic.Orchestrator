@@ -308,7 +308,7 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
         var repo = new MindAttic.Tickets.Workspace(options.WorkspaceRoot).Find(settings.Repo);
         if (repo is null) { AnsiConsole.MarkupLine($"[red]No repo named {Markup.Escape(settings.Repo)}.[/]"); return 1; }
         if (Ctx.Provider(settings.Provider) is not { } provider) return 1;
-        string? configDir = null, email = null;
+        string? configDir = null, email = null, pickNote = null;
         var dirs = DirsOverride?.Invoke() ?? new AccountDirs();
         if (settings.Account is not null)
         {
@@ -316,13 +316,15 @@ internal sealed class StartCommand : Command<StartCommand.Settings>
             (configDir, email) = (dir.Directory, dir.Email);
         }
         // No --account: the Auto login (M.ORCH-T605) puts it on a per-CLI login no CLI runs on yet, else the global one.
-        else if (new LoginPicker(dirs, LiveOverride) { Allowances = () => WeeklyAllowances.Active(Ctx.Store(), DateTime.UtcNow), Cutoffs = () => UsageCutoffs.Load(Ctx.Store()) }.ForNewTab(provider, Ctx.Settings.AutoLogin, DateTime.UtcNow, out _, Ctx.Settings.WeeklyStopPercent) is { } auto)
+        else if (new LoginPicker(dirs, LiveOverride) { Allowances = () => WeeklyAllowances.Active(Ctx.Store(), DateTime.UtcNow), Cutoffs = () => UsageCutoffs.Load(Ctx.Store()) }.ForNewTab(provider, Ctx.Settings.AutoLogin, DateTime.UtcNow, out pickNote, Ctx.Settings.WeeklyStopPercent) is { } auto)
             (configDir, email) = (auto.Directory, auto.Email);
         // No login of its own has room: never the global login, a member's own seat (M.ORCH-T747); the API key when billing is on (M.ORCH-T706), else it waits.
         if (settings.Account is null && configDir is null && provider == "Claude"
             && !(BillingOverride?.Invoke() ?? MindAttic.Orchestrator.Scheduling.Dispatcher.ApiBillingInForce()))
         {
-            AnsiConsole.MarkupLine("[red]No login of its own has room and API billing is off: not started on the global login (a member's own seat). Pass --account, or switch API billing on.[/]");
+            // Why the picker found none (bughunt 2026-10-27): Auto login off, or its own reason, not only "no room".
+            var why = !Ctx.Settings.AutoLogin ? "Auto login is off" : pickNote is { Length: > 0 } note ? note : "no login of its own has room";
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(why)} and API billing is off: not started on the global login (a member's own seat). Pass --account, or switch API billing on.[/]");
             return 1;
         }
         var error = new SessionControl(options).Start(repo.Name, repo.Path, provider, settings.Prompt, configDir);
