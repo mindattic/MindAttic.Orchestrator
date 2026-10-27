@@ -199,7 +199,8 @@ public sealed class LibraryControlsTests
         Assert.That((string?)dots.Attribute("ItemsSource"), Is.EqualTo("{Binding Toasts}"));
 
         var button = dots.Descendants(P + "Button").Single();
-        Assert.That((string?)button.Attribute("Style"), Is.EqualTo("{StaticResource NotificationDot}"));
+        Assert.That((string?)button.Attribute("Style"), Is.EqualTo("{StaticResource MaToolButton}"));
+        Assert.That(button.Descendants(Mc + "MaStatusLight").Single().Attribute("Foreground")?.Value, Is.EqualTo("{Binding Accent}"));
         Assert.That((string?)button.Attribute("Command"),
             Is.EqualTo("{Binding DataContext.OpenToastCommand, RelativeSource={RelativeSource AncestorType=Window}}"));
 
