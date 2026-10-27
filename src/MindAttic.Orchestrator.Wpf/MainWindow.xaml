@@ -392,7 +392,7 @@
                         </StackPanel>
                     </Button>
                 </mc:MaTileGrid>
-                <!-- No login-action buttons on a person's page any more: Rename, Org limit and Make default are the person's tab's
+                <!-- No login-action buttons on a person's page any more: Rename and Org limit are the person's tab's
                      right-click menu (M.ORCH-T797, MainWindow.xaml.cs's OnLoginTabContextMenu); the login-wide Move CLIs is gone, each
                      CLI moving by its own agent card's Move to; and there's no Sign in (M.ORCH-T796): a login that gets disconnected
                      opens its own sign-in by itself. What the last of those did still shows here. -->

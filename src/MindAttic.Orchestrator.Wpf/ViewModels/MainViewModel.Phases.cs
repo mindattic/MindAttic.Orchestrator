@@ -317,8 +317,7 @@ public sealed partial class MainViewModel
         foreach (var name in new[] { nameof(BudgetHeadline), nameof(BudgetCaption), nameof(BudgetDetail),
                                      nameof(WeeklyHeadline), nameof(WeeklyCaption), nameof(WeeklyAccountLine),
                                      nameof(Utilization), nameof(UtilizationText),
-                                     nameof(CutoffsHeadline), nameof(CutoffsCaption), nameof(LastUpdatedHeadline), nameof(LastUpdatedCaption),
-                                     nameof(CanMakeDefault) })
+                                     nameof(CutoffsHeadline), nameof(CutoffsCaption), nameof(LastUpdatedHeadline), nameof(LastUpdatedCaption) })
             Raise(name);
     }
 

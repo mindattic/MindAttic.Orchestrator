@@ -119,8 +119,8 @@ public sealed class AccountsViewTests
             "off the main dashboard");
         Assert.That(code, Does.Contain("OrgToolbar.DataContext = model;"));
 
-        // M.ORCH-T797: no login-action buttons on a person's page: Rename, Org limit and Make default (this person's own: it
-        // makes their login the fallback) are the person's tab's right-click menu, the library's dark dropdown; Move CLIs is
+        // M.ORCH-T797: no login-action buttons on a person's page: Rename and Org limit are the person's tab's right-click
+        // menu, the library's dark dropdown (no Make default since M.ORCH-T1097); Move CLIs is
         // gone (each agent card's Move to). M.ORCH-T796: no per-person Sign in; a disconnected login opens its sign-in by itself.
         var page = xaml[xaml.IndexOf("x:Name=\"StatTiles\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"UtilizationCard\"", StringComparison.Ordinal)];
         Assert.That(page, Does.Not.Contain("SignInPerson").And.Not.Contain("{Binding RenamePersonCommand}")
@@ -130,7 +130,7 @@ public sealed class AccountsViewTests
         Assert.That(xaml, Does.Contain("ContextMenuOpening=\"OnLoginTabContextMenu\""));
         var menu = code[code.IndexOf("void OnLoginTabContextMenu", StringComparison.Ordinal)..];
         menu = menu[..menu.IndexOf("menu.IsOpen = true;", StringComparison.Ordinal)];
-        Assert.That(menu, Does.Contain("tab.RenamePersonCommand").And.Contain("tab.OrgLimitCommand").And.Contain("tab.MakeDefaultCommand")
+        Assert.That(menu, Does.Contain("tab.RenamePersonCommand").And.Contain("tab.OrgLimitCommand").And.Not.Contain("MakeDefault")
             .And.Contain("DropdownMenu(").And.Contain("IsPersonTab"));
         Assert.That(xaml, Does.Contain("x:Name=\"LimitModal\"").And.Contain("{Binding SaveLimitCommand}"));
     }

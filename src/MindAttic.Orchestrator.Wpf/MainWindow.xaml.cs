@@ -628,10 +628,9 @@ public partial class MainWindow : Window
         menu.Items.Add(new Separator());
     }
 
-    /// <summary>A person's tab's right-click menu (M.ORCH-T797; Shift+F10 or the menu key on a focused tab too): Rename, Org
-    /// limit and Make default, the login actions that were standalone buttons on the person's page. Make default is this
-    /// person's own (it signs the global fallback login in to their account), so it's here, shown only while it applies. The
-    /// tab is selected first, since the Rename and Org limit dialogs are the shown tab's.</summary>
+    /// <summary>A person's tab's right-click menu (M.ORCH-T797; Shift+F10 or the menu key on a focused tab too): Rename and
+    /// Org limit, the login actions that were standalone buttons on the person's page. The tab is selected first, since both
+    /// dialogs are the shown tab's.</summary>
     private void OnLoginTabContextMenu(object sender, ContextMenuEventArgs e)
     {
         if (e.OriginalSource is not DependencyObject source
@@ -655,10 +654,6 @@ public partial class MainWindow : Window
         }
         Add("Rename…", "Give this login a name and a terminal-title prefix (orchestrator accounts alias <email> <name>)", tab.RenamePersonCommand);
         Add("Org limit…", "Set this login's own 5-hour and weekly cutoffs (orchestrator org limit <who> --weekly --5h)", tab.OrgLimitCommand);
-        if (tab.CanMakeDefault)
-            Add("Make default", "Make this login the fallback: sign the global login (~/.claude) in to this account, opening its login in the browser. "
-                + "Every CLI not started on a login of its own follows at its next turn. Billing goes back to Claude Team first if the API key bills.",
-                tab.MakeDefaultCommand);
         menu.IsOpen = true;
     }
 

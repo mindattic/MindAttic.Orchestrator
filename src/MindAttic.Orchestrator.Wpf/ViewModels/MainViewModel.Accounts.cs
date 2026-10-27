@@ -11,13 +11,12 @@ namespace MindAttic.Orchestrator.Wpf.ViewModels;
 /// has left and when each resets). There's no account menu any more (M.ORCH-T628): every person is signed in at once, each
 /// with a tab of their own (M.ORCH-T613) whose stat tiles carry that login's own numbers (<see cref="OwnRow"/>), and what
 /// only the menu did moved to the Accounts view: billing the API key for emergencies and back to Claude Team
-/// (<see cref="ToggleBillingCommand"/>, M.ORCH-T436), and making a login the global default (<see cref="MakeDefaultCommand"/>).
+/// (<see cref="ToggleBillingCommand"/>, M.ORCH-T436).
 /// </summary>
 public sealed partial class MainViewModel
 {
     private IReadOnlyList<AccountRow> accountRows = [];
     private string? currentAccount;
-    private bool switchingAccount;
 
     /// <summary>Each account's weekly stop line (M.ORCH-T609), from the weekly reserve setting as of the last refresh.</summary>
     private int weeklyStopPercent = MindAttic.Orchestrator.Settings.OrchestratorSettings.WeeklyStopFor(MindAttic.Orchestrator.Settings.OrchestratorSettings.DefaultWeeklyReservePercent);
@@ -64,19 +63,7 @@ public sealed partial class MainViewModel
         RaiseOwnNumbers();
     }
 
-    private ICommand? makeDefaultCommand, toggleBillingCommand;
-
-    /// <summary>"Make default", a person's login action (M.ORCH-T763; the Accounts view's card had it before): signs the global
-    /// login in to this per-CLI login's account, so every CLI not started on a login of its own runs on it, as picking it in the
-    /// old account menu did.</summary>
-    public ICommand MakeDefaultCommand => makeDefaultCommand ??= new RelayCommand(async () =>
-    {
-        if (CanMakeDefault && ScopeEmail is { } email) await MakeDefaultAsync(email);
-    }, () => CanMakeDefault && !switchingAccount && !switchingBilling);
-
-    /// <summary>A signed-in per-CLI login the global login isn't signed in to already can become the global default.</summary>
-    public bool CanMakeDefault => IsTabSignedIn && ScopeEmail is { } email &&
-        !string.Equals(email, Root.workspace?.GlobalEmail, StringComparison.OrdinalIgnoreCase);
+    private ICommand? toggleBillingCommand;
 
     /// <summary>The Accounts view's billing button: "Use API key (emergencies)" while Claude Team bills, "Back to Claude Team"
     /// while the Vault's key does (M.ORCH-T436). Switching every open CLI onto the organization's key is a break-glass action
@@ -85,7 +72,7 @@ public sealed partial class MainViewModel
     /// emergency that justified the key is over.</summary>
     public ICommand ToggleBillingCommand => toggleBillingCommand ??= new RelayCommand(async () =>
     {
-        if (switchingBilling || switchingAccount) return;
+        if (switchingBilling) return;
         if (IsOnApiKey) { await SwitchBillingAsync(BillingModes.Team); return; }
         var confirmed = MindAttic.Components.Wpf.Controls.MaMessageBox.Show(
             System.Windows.Application.Current?.MainWindow,
@@ -96,7 +83,7 @@ public sealed partial class MainViewModel
             == System.Windows.MessageBoxResult.Yes;
         if (!confirmed) return;
         await SwitchBillingAsync(BillingModes.Api);
-    }, () => !switchingBilling && !switchingAccount);
+    }, () => !switchingBilling);
 
     /// <summary>Whether the Vault's API key bills every CLI right now.</summary>
     public bool IsOnApiKey => billing?.Mode == BillingModes.Api;
@@ -108,45 +95,6 @@ public sealed partial class MainViewModel
     /// key does, as a view model's own live brush (<see cref="Palette"/>) rather than a Style's DataTrigger, so the icon needs
     /// no style of its own (M.ORCH-T775).</summary>
     public System.Windows.Media.Brush EmergencyKeyBrush => IsOnApiKey ? Palette.Working : Palette.Text;
-
-    /// <summary>Signs the global login in to <paramref name="email"/>'s account (its roster row, or the email alone when the
-    /// roster doesn't know it yet): billing goes back to Claude Team first if the key was billing. The dashboard follows the
-    /// switch at the next refresh after it lands.</summary>
-    public async Task MakeDefaultAsync(string email)
-    {
-        if (switchingAccount || switchingBilling) return;
-        var row = accountRows.FirstOrDefault(r => string.Equals(r.Email, email, StringComparison.OrdinalIgnoreCase))
-                  ?? new AccountRow { Account = email, Email = email };
-        switchingAccount = true;
-        CommandManager.InvalidateRequerySuggested();
-        billingMessage = row.Account == currentAccount ? "Switching every CLI back to Claude Team…" : $"Opening {row.Label}'s login in the browser…";
-        billingMessageUtc = DateTime.UtcNow;
-        Raise(nameof(BillingDetail));
-        try
-        {
-            var hosts = full?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
-            var current = currentAccount;
-            var result = await Task.Run(() => AccountSwitch.SignIn(row, current, aggregator.BillingSwitch, hosts, "dashboard", sso: false, DateTime.UtcNow));
-            billingMessage = result.Error ?? result.Lines.LastOrDefault() ?? "";
-            billingMessageUtc = DateTime.UtcNow;
-            if (result.Error is not null)
-                Toasts.Insert(0, new ToastViewModel("Default login not switched", result.Error, Palette.Over, null));
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException)
-        {
-            billingMessage = $"Couldn't switch the default login: {ex.Message}";
-            billingMessageUtc = DateTime.UtcNow;
-            OrchestratorLog.For("Dashboard").Error(ex, "account switch failed");
-        }
-        finally
-        {
-            NoteLocalChange();
-            switchingAccount = false;
-            CommandManager.InvalidateRequerySuggested();
-            Raise(nameof(BillingDetail));
-        }
-        await RefreshAsync();
-    }
 
     private bool signingInAll;
     private RelayCommand? signInAllCommand;

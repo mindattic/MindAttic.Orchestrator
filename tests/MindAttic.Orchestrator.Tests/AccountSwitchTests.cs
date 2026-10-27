@@ -252,9 +252,8 @@ public sealed class AccountSwitchTests
             .And.Not.Contain("AccountMenuButton").And.Not.Contain("AccountPopup").And.Not.Contain("AccountMenuItems"));
         Assert.That(code, Does.Not.Contain("AccountPopup"));
 
-        // The menu's global default is a person's login action (M.ORCH-T763), on their tab's right-click menu (M.ORCH-T797), its
-        // detail line beside the org-wide actions.
-        Assert.That(code, Does.Contain("tab.MakeDefaultCommand"));
+        // No 'Make default' any more (M.ORCH-T1097); the billing detail line stays beside the org-wide actions.
+        Assert.That(code, Does.Not.Contain("MakeDefault"));
         Assert.That(xaml[xaml.IndexOf("x:Name=\"OrgToolbar\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"SettingsPersonTabsTab\"", StringComparison.Ordinal)],
             Does.Contain("x:Name=\"BillingDetailLine\""));
         // M.ORCH-T906: no API-key switch in the dashboard any more; the API key is a person with its own tab, and
