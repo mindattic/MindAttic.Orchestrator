@@ -61,4 +61,20 @@ public sealed class LauncherRespawnTests
         Assert.That(respawn.Decide("amy@example.com", true, false, false, false, Now.AddSeconds(5)), Is.EqualTo(LauncherRespawnOutcome.Capped));
         Assert.That(respawn.TryTake("amy@example.com", Now.AddSeconds(10)), Is.False);
     }
+
+    [Test]
+    public void A_new_Launcher_replaces_only_that_persons_ended_Launcher_tabs()
+    {
+        // M.ORCH-T1153: a Launcher that kept failing left one more ended tab per retry; each retry now takes its place.
+        var panes = new[]
+        {
+            (Who: "amy", Launcher: true, Ended: true),
+            (Who: "amy", Launcher: true, Ended: true),
+            (Who: "amy", Launcher: true, Ended: false),
+            (Who: "amy", Launcher: false, Ended: true),
+            (Who: "erin", Launcher: true, Ended: true),
+        };
+        var replaced = LauncherRespawn.Replaced(panes, p => p.Launcher, p => p.Ended, p => p.Who == "amy");
+        Assert.That(replaced, Is.EqualTo(new[] { panes[0], panes[1] }), "Amy's ended Launchers only: not her live one, not her ended CLI, not Erin's");
+    }
 }

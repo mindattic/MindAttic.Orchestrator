@@ -53,4 +53,11 @@ public sealed class LauncherRespawn
         if (hasLiveTab) return LauncherRespawnOutcome.TabStillOpen;
         return TryTake(key, nowUtc) ? LauncherRespawnOutcome.Spawn : LauncherRespawnOutcome.Capped;
     }
+
+    /// <summary>
+    /// M.ORCH-T1153: the tabs a new Launcher for one person replaces, closed just before it opens: that person's Launcher tabs
+    /// whose CLI has ended. A Launcher that kept failing left one more "ended" tab per retry; now each retry takes its place.
+    /// </summary>
+    public static IReadOnlyList<T> Replaced<T>(IEnumerable<T> panes, Func<T, bool> isLauncher, Func<T, bool> ended, Func<T, bool> theirs) =>
+        [.. panes.Where(p => isLauncher(p) && ended(p) && theirs(p))];
 }

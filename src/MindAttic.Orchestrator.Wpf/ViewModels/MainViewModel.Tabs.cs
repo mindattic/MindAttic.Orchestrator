@@ -248,7 +248,7 @@ public sealed partial class MainViewModel
         // Through the same cap as a last tab's respawn (M.ORCH-T1150): a Launcher that exits at once is reopened at most every 30s.
         var now = DateTime.UtcNow;
         var wanted = loginTabs.Where(t => t.IsTabSignedIn && !launchersOpened.Contains(t.tab.Key) && launcherRespawn.TryTake(t.tab.Key, now))
-            .Select(t => { launchersOpened.Add(t.tab.Key); return (t.ScopeEmail, t.TabTitle); }).ToList();
+            .Select(t => { launchersOpened.Add(t.tab.Key); CloseEndedLaunchers(t); return (t.ScopeEmail, t.TabTitle); }).ToList();
         foreach (var (email, title) in wanted) _ = OpenLauncherQuietlyAsync(email, title);
     }
 
@@ -256,6 +256,18 @@ public sealed partial class MainViewModel
     {
         var (error, _) = await OpenLauncherPaneAsync(email, title, embedOnly);
         if (error is { } e) OrchestratorLog.For("Launcher").Warning("Couldn't open {Login:l}'s Launcher tab: {Error:l}", title, e);
+    }
+
+    /// <summary>M.ORCH-T1153: a new Launcher for <paramref name="person"/> replaces their ended Launcher tabs rather than piling up
+    /// beside them. Closing one already ended is no tab gone (<see cref="OnTabGone"/> counted it when it ended).</summary>
+    private void CloseEndedLaunchers(MainViewModel person)
+    {
+        foreach (var pane in LauncherRespawn.Replaced(AllTerminals.Panes, p => p.Request.IsMenu, p => p.Ended, p => ReferenceEquals(OwnerOf(p), person)))
+        {
+            // Counted as gone already, so closing it can't run the last-tab check again for the Launcher replacing it.
+            if (!tabsGone.TryGetValue(pane, out _)) tabsGone.Add(pane, null);
+            AllTerminals.Close(pane);
+        }
     }
 
     private readonly LauncherRespawn launcherRespawn = new();
@@ -305,6 +317,7 @@ public sealed partial class MainViewModel
                     log.Information("{Login:l}'s last tab ({Title:l}) is gone: opening a new Launcher as them", owner.TabTitle, pane.Title);
                     launchersEmbedded.Remove(key);
                     launchersOpened.Add(key);
+                    CloseEndedLaunchers(owner);
                     _ = OpenLauncherQuietlyAsync(owner.ScopeEmail, owner.TabTitle, embedOnly: true);
                     break;
                 case LauncherRespawnOutcome.Capped:
