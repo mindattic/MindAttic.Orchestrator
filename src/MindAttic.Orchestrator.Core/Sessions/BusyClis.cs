@@ -245,7 +245,7 @@ public static class BusyClis
                 string? path = null;
                 try { path = p.MainModule?.FileName; }
                 catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
-                if (!Scheduling.GlobalPause.IsCli(path)) continue;
+                if (!IsCli(path)) continue;
                 DateTime? started = null;
                 try { started = p.StartTime.ToUniversalTime(); }
                 catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
@@ -334,4 +334,10 @@ public static class BusyClis
             if (cancel.WaitHandle.WaitOne(poll)) return report;
         }
     }
+
+    /// <summary>Whether a <c>claude</c> process at <paramref name="path"/> is a CLI rather than the Claude Desktop app (installed
+    /// under <c>AnthropicClaude</c>, or as a Store app under <c>WindowsApps</c>). A path that couldn't be read counts as a CLI.</summary>
+    internal static bool IsCli(string? path) => path is null ||
+        (path.IndexOf("AnthropicClaude", StringComparison.OrdinalIgnoreCase) < 0 &&
+         path.IndexOf(@"\WindowsApps\", StringComparison.OrdinalIgnoreCase) < 0);
 }

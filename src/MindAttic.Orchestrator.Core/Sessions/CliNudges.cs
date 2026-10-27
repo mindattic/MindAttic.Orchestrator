@@ -44,16 +44,4 @@ public static class CliNudges
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
-
-    /// <summary>Drops every nudge (the global pause is on: nothing is told to carry on until it's lifted).</summary>
-    public static void Clear(string directory)
-    {
-        try
-        {
-            if (!Directory.Exists(directory)) return;
-            foreach (var f in Directory.EnumerateFiles(directory, $"{Prefix}*.txt"))
-                try { File.Delete(f); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
-    }
 }

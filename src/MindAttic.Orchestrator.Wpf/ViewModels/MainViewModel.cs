@@ -432,7 +432,6 @@ public sealed partial class MainViewModel : ObservableObject
         Regroup();
         ApplyPhases(next);
         ApplyBilling(next);
-        ApplyPause();
         ApplyReminders(DateTime.UtcNow);
         ApplyAccounts(all, DateTime.UtcNow);
         // Who's out of room is read with the roster, just above (M.ORCH-T668).

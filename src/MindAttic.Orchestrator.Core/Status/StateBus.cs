@@ -10,7 +10,7 @@ namespace MindAttic.Orchestrator.Status;
 
 /// <summary>
 /// What the dashboard used to learn only by rereading the store, pushed on the status bus instead (M.ORCH-T891): the member roster,
-/// the orgs, the settings, the global pause and the pending reminders, each its own kind. Each message carries the whole of its
+/// the orgs, the settings and the pending reminders, each its own kind. Each message carries the whole of its
 /// kind as it stands right after the change (read back from the store, at full precision), so the latest one is the truth and a
 /// subscriber that missed one loses nothing at the next. Published by whichever process changed it, the moment the change commits
 /// (<see cref="StoreChanges"/>): the dashboard and the <c>orchestrator</c> CLI through the daemon's inbox, the daemon straight to
@@ -31,9 +31,6 @@ public static class StateBus
     /// <summary>The orchestrator's settings (<see cref="SettingsPayload"/>).</summary>
     public const string Settings = "settings";
 
-    /// <summary>The global pause (<see cref="PausePayload"/>).</summary>
-    public const string Pause = "pause";
-
     /// <summary>The reminders not sent yet (<see cref="RemindersPayload"/>).</summary>
     public const string Reminders = "reminders";
 
@@ -41,9 +38,9 @@ public static class StateBus
     public const int Version = 1;
 
     /// <summary>Every kind of these.</summary>
-    public static IReadOnlyList<string> Kinds { get; } = [Members, Orgs, Settings, Pause, Reminders];
+    public static IReadOnlyList<string> Kinds { get; } = [Members, Orgs, Settings, Reminders];
 
-    public static bool IsStateKind(string? kind) => kind is Members or Orgs or Settings or Pause or Reminders;
+    public static bool IsStateKind(string? kind) => kind is Members or Orgs or Settings or Reminders;
 
     /// <summary>The store <paramref name="db"/> is, as payloads name it: its full path.</summary>
     public static string StoreOf(OrchestratorDb db) => db.Path;
@@ -99,7 +96,7 @@ public static class StateBus
     /// <summary>The kind a change is, or null when it's none of these.</summary>
     internal static string? KindOf(StoreChange change) => change.Store is null
         ? change.Name switch { StoreChanges.Members => Members, StoreChanges.Orgs => Orgs, _ => null }
-        : change.Name switch { JsonStore.SettingsName => Settings, GlobalPause.StateName => Pause, ReminderBook.Name => Reminders, _ => null };
+        : change.Name switch { JsonStore.SettingsName => Settings, ReminderBook.Name => Reminders, _ => null };
 
     private static void OnChanged(StoreChange change)
     {
@@ -174,9 +171,6 @@ public static class StateBus
                 case Settings:
                     return store is not null && store.TryLoadSettings(out var settings)
                         ? new SettingsPayload { Store = name, AtUtc = at, Settings = settings } : null;
-                case Pause:
-                    return store is not null && store.TryLoad<PauseState>(GlobalPause.StateName, out var pause)
-                        ? new PausePayload { Store = name, AtUtc = at, Paused = pause.Paused, SinceUtc = pause.SinceUtc, By = pause.By } : null;
                 case Reminders:
                     return store is not null && store.TryLoad<List<Reminder>>(ReminderBook.Name, out var all)
                         ? new RemindersPayload { Store = name, AtUtc = at, Pending = [.. all.Where(r => r.Pending).OrderBy(r => r.DueUtc)] } : null;
@@ -222,14 +216,6 @@ public sealed record OrgsPayload : StatePayload
 public sealed record SettingsPayload : StatePayload
 {
     [JsonPropertyName("settings")] public OrchestratorSettings Settings { get; init; } = new();
-}
-
-/// <summary>The <see cref="StateBus.Pause"/> payload: the global pause, on or off, since when and who turned it on.</summary>
-public sealed record PausePayload : StatePayload
-{
-    [JsonPropertyName("paused")] public bool Paused { get; init; }
-    [JsonPropertyName("sinceUtc")] public DateTime? SinceUtc { get; init; }
-    [JsonPropertyName("by")] public string? By { get; init; }
 }
 
 /// <summary>The <see cref="StateBus.Reminders"/> payload: every reminder not sent yet, soonest first.</summary>

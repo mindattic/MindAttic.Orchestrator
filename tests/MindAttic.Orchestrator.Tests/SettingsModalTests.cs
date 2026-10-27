@@ -61,14 +61,13 @@ public sealed class SettingsModalTests
     [Test]
     public void A_single_cog_between_the_key_and_the_theme_toggle_is_the_only_way_into_settings()
     {
-        // M.ORCH-T804: the top-right strip reads key, pause/resume, cog, sun/moon (pause/resume added by M.ORCH-T808).
+        // M.ORCH-T804: the top-right strip ends cog, sun/moon (the global pause, M.ORCH-T808, was removed by M.ORCH-T1080).
         // Each docks Right, so the XAML lists them right to left.
         var doc = Window();
         var top = Named(doc, "TopRow");
         var right = top.Elements().Where(e => (string?)e.Attribute("DockPanel.Dock") == "Right").Select(e => (string?)e.Attribute(X + "Name")).ToList();
         // The emergency key button is gone (M.ORCH-T906): the API key is a person with its own tab.
-        // The team wall's People button (M.ORCH-T936) sits between Tickets and pause.
-        Assert.That(right, Is.EqualTo(new[] { "ThemeToggle", "SettingsButton", "TicketsButton", "TeamWallButton", "PauseButton" }));
+        Assert.That(right, Is.EqualTo(new[] { "ThemeToggle", "SettingsButton", "TicketsButton", "TeamWallButton" }));
         // The Tickets button (M.ORCH-T878) sits beside the cog but opens Tickets Desktop, never Settings.
         Assert.That((string?)Named(doc, "TicketsButton").Attribute("Command"), Is.EqualTo("{Binding OpenTicketsAppCommand}"));
 

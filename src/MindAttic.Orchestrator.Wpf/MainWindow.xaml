@@ -122,13 +122,6 @@
         <Button x:Name="TeamWallButton" Style="{StaticResource MaToolButton}" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
                 Content="&#xE716;" Click="TeamWallButton_Click" ToolTip="Team wall: everyone's live CLIs"
                 AutomationProperties.Name="Team wall" />
-        <!-- The global Pause/Resume toggle (M.ORCH-T808): Segoe's Pause glyph (E769) while work runs; clicked and confirmed, it
-             ends every Claude CLI on every login outright and holds every claim and dispatch org-wide. Paused, it shows Play
-             (E768) in MaWarn, and a click resumes at once (no confirm). Bound to the shown tab's TogglePauseCommand; every tab
-             shows the one pause. -->
-        <Button x:Name="PauseButton" Style="{StaticResource MaToolButton}" Visibility="Collapsed" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,0,0,0"
-                Content="{Binding PauseGlyph}" Foreground="{Binding PauseBrush}" Command="{Binding TogglePauseCommand}"
-                ToolTip="{Binding PauseToggleText}" AutomationProperties.Name="{Binding PauseToggleText}" />
         <!-- Organizations above people (M.ORCH-T655): one pill per org (orchestrator orgs add), shown once there's a second,
              with how many of its people's repos need you; the person tabs below are the chosen org's. Kept on the global login's
              tab (MainWindow.xaml.cs), which holds every org, like the person strip under it. -->

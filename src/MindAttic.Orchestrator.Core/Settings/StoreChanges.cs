@@ -2,7 +2,7 @@ namespace MindAttic.Orchestrator.Settings;
 
 /// <summary>
 /// One change written to the orchestrator's store (M.ORCH-T891): a <see cref="JsonStore"/> value saved (<see cref="Store"/> set,
-/// <see cref="Name"/> its name: settings, global-pause, reminders, ...) or a table of <see cref="Db"/> changed (<see cref="Store"/>
+/// <see cref="Name"/> its name: settings, reminders, ...) or a table of <see cref="Db"/> changed (<see cref="Store"/>
 /// null, <see cref="Name"/> one of <see cref="StoreChanges.Members"/> or <see cref="StoreChanges.Orgs"/>).
 /// </summary>
 public sealed record StoreChange(string Name, OrchestratorDb Db, JsonStore? Store);

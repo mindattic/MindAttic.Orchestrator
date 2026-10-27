@@ -201,7 +201,6 @@ The rest of each payload:
 | `members` | `members`: every member of the organization, by email (`Email`, `Name`, `Role`, `Tier`, `Status`, `JoinedUtc`, `UpdatedUtc`). |
 | `orgs` | `orgs`: every org, the default one first (`Id`, `Name`, `Position`); `members`: every login placed in one (`OrgId`, `Person`, `Login`, `Provider`). |
 | `settings` | `settings`: the whole of the orchestrator's settings, as `OrchestratorSettings` writes them. |
-| `pause` | `paused`, `sinceUtc`, `by`: the global pause. |
 | `reminders` | `pending`: every reminder not sent yet, soonest first (`Id`, `Text`, `DueUtc`, `To`, `CreatedUtc`, `Failures`, `LastError`). |
 
 Nested records keep their own property names; every payload is read case-insensitively. The dashboard lays each over

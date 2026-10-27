@@ -207,12 +207,11 @@ public partial class MainWindow : Window
         bus.On<Term.TermSessionEvent>(Term.TermBus.Kind, (_, session) => model.AllTerminals.OnTermSession(session), Term.TermBus.Version);
         // Remote viewers attaching and detaching through the team gateway (M.ORCH-T935): the "being watched" banner.
         bus.On<Term.TermWatchersEvent>(Term.TermWatchersBus.Kind, (_, watchers) => model.AllTerminals.OnWatchers(watchers), Term.TermWatchersBus.Version);
-        // The roster, the orgs, the settings, the pause and the reminders (M.ORCH-T891), pushed by whoever changed them: with
+        // The roster, the orgs, the settings and the reminders (M.ORCH-T891), pushed by whoever changed them: with
         // these, nothing the dashboard shows needs a timed read while the stream is up.
         bus.On<Status.MembersPayload>(Status.StateBus.Members, (_, p) => OnPushedState(p), Status.StateBus.Version)
             .On<Status.OrgsPayload>(Status.StateBus.Orgs, (_, p) => OnPushedState(p), Status.StateBus.Version)
             .On<Status.SettingsPayload>(Status.StateBus.Settings, (_, p) => OnPushedState(p), Status.StateBus.Version)
-            .On<Status.PausePayload>(Status.StateBus.Pause, (_, p) => OnPushedState(p), Status.StateBus.Version)
             .On<Status.RemindersPayload>(Status.StateBus.Reminders, (_, p) => OnPushedState(p), Status.StateBus.Version);
         // And what this dashboard changes of them is pushed the same way, to every other subscriber, off the UI thread.
         Status.StateBus.Enable(background: true);

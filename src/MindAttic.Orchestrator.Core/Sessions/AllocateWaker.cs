@@ -55,7 +55,7 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
     /// <summary>Which idle CLIs have work now: the nudge is left for each one's hook, and said to you once per idle stretch.</summary>
     public IReadOnlyList<Wake> Tick(SchedulePlan plan, OrchestratorSettings settings, DateTime nowUtc, Snapshot? snapshot = null)
     {
-        if (!settings.KeepGoing || !settings.Allocate || GlobalPause.Active(store)) return [];
+        if (!settings.KeepGoing || !settings.Allocate) return [];
         var pilots = Pilots?.Invoke() ?? cycler.AllocateClis();
         foreach (var gone in wokenUtc.Keys.Concat(saidFor.Keys).Where(p => !pilots.ContainsKey(p)).ToList())
         {
@@ -143,7 +143,7 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
     /// </summary>
     public IReadOnlyList<Wake> TickClaims(Snapshot snapshot, SchedulePlan plan, OrchestratorSettings settings, DateTime nowUtc)
     {
-        if (!settings.KeepGoing || !settings.Allocate || GlobalPause.Active(store)) return [];
+        if (!settings.KeepGoing || !settings.Allocate) return [];
         if (UnderTarget.Projected(snapshot, plan) is not { } projected || !UnderTarget.HasRoom(plan)) return [];
         var pilots = Pilots?.Invoke() ?? cycler.AllocateClis();
         if (pilots.Count == 0) return [];

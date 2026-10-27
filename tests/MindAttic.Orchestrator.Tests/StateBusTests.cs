@@ -48,7 +48,6 @@ public sealed class StateBusTests
     {
         var store = Scratch();
         Assert.That(StateBus.KindOf(new StoreChange(JsonStore.SettingsName, store.Db, store)), Is.EqualTo(StateBus.Settings));
-        Assert.That(StateBus.KindOf(new StoreChange(GlobalPause.StateName, store.Db, store)), Is.EqualTo(StateBus.Pause));
         Assert.That(StateBus.KindOf(new StoreChange(ReminderBook.Name, store.Db, store)), Is.EqualTo(StateBus.Reminders));
         Assert.That(StateBus.KindOf(new StoreChange(StoreChanges.Members, store.Db, null)), Is.EqualTo(StateBus.Members));
         Assert.That(StateBus.KindOf(new StoreChange(StoreChanges.Orgs, store.Db, null)), Is.EqualTo(StateBus.Orgs));
@@ -77,10 +76,6 @@ public sealed class StateBusTests
         Assert.That(settings.Settings.WarnPercent, Is.EqualTo(70));
         Assert.That(settings.Settings.DiskWarnGb, Is.EqualTo(12.345678901234567));
         Assert.That(settings.Settings.PaceCurveK, Is.EqualTo(0.1 + 0.2));
-
-        store.Save(GlobalPause.StateName, new PauseState { Paused = true, SinceUtc = Now, By = "me@example.com" });
-        var pause = Last<PausePayload>(StateBus.Pause);
-        Assert.That((pause.Paused, pause.SinceUtc, pause.By), Is.EqualTo((true, (DateTime?)Now, "me@example.com")));
 
         var later = ReminderBook.Add(store, "later", Now.AddHours(2), "ryan", Now);
         var sooner = ReminderBook.Add(store, "sooner", Now.AddHours(1), null, Now);
@@ -125,31 +120,34 @@ public sealed class StateBusTests
         var changed = 0;
         var hub = new AppBusHub(stream, new Tickets.TicketActivityFeed()) { OwnStore = StateBus.StoreOf(own.Db), StateChanged = () => changed++ };
 
-        hub.Take(StatusEnvelope.Of(StateBus.Pause, new PausePayload { Store = StateBus.StoreOf(own.Db), Paused = true }, StateBus.Version));
-        Assert.That(stream.Retained(StateBus.Pause), Does.Contain("\"paused\":true"));
+        hub.Take(StatusEnvelope.Of(StateBus.Settings, Warn(own, 71), StateBus.Version));
+        Assert.That(stream.Retained(StateBus.Settings), Does.Contain("\"WarnPercent\":71"));
         Assert.That(changed, Is.EqualTo(1));
 
-        hub.Take(StatusEnvelope.Of(StateBus.Pause, new PausePayload { Store = StateBus.StoreOf(other.Db), Paused = false }, StateBus.Version));
-        Assert.That(stream.Retained(StateBus.Pause), Does.Contain("\"paused\":true"), "a scratch store's pause can't stand in for the daemon's");
+        hub.Take(StatusEnvelope.Of(StateBus.Settings, Warn(other, 73), StateBus.Version));
+        Assert.That(stream.Retained(StateBus.Settings), Does.Contain("\"WarnPercent\":71"), "a scratch store's settings can't stand in for the daemon's");
         Assert.That(changed, Is.EqualTo(1));
     }
 
     [Test]
     public void The_daemon_drops_a_state_message_older_than_the_one_it_holds()
     {
-        // M.ORCH-T1002: a quick pause on then off can reach the inbox in either order.
+        // M.ORCH-T1002: two quick changes can reach the inbox in either order.
         var own = Scratch();
         using var stream = new StatusStreamServer { PipeName = "test-" + Guid.NewGuid() };
         var changed = 0;
         var hub = new AppBusHub(stream, new Tickets.TicketActivityFeed()) { OwnStore = StateBus.StoreOf(own.Db), StateChanged = () => changed++ };
         var at = DateTime.UtcNow;
-        hub.Take(StatusEnvelope.Of(StateBus.Pause, new PausePayload { Store = StateBus.StoreOf(own.Db), AtUtc = at, Paused = false }, StateBus.Version));
-        hub.Take(StatusEnvelope.Of(StateBus.Pause, new PausePayload { Store = StateBus.StoreOf(own.Db), AtUtc = at.AddSeconds(-1), Paused = true }, StateBus.Version));
-        Assert.That(stream.Retained(StateBus.Pause), Does.Contain("\"paused\":false"), "the newer pause stays held");
+        hub.Take(StatusEnvelope.Of(StateBus.Settings, Warn(own, 71) with { AtUtc = at }, StateBus.Version));
+        hub.Take(StatusEnvelope.Of(StateBus.Settings, Warn(own, 73) with { AtUtc = at.AddSeconds(-1) }, StateBus.Version));
+        Assert.That(stream.Retained(StateBus.Settings), Does.Contain("\"WarnPercent\":71"), "the newer settings stay held");
         Assert.That(changed, Is.EqualTo(1));
-        hub.Take(StatusEnvelope.Of(StateBus.Pause, new PausePayload { Store = StateBus.StoreOf(own.Db), AtUtc = at.AddSeconds(1), Paused = true }, StateBus.Version));
-        Assert.That(stream.Retained(StateBus.Pause), Does.Contain("\"paused\":true"));
+        hub.Take(StatusEnvelope.Of(StateBus.Settings, Warn(own, 73) with { AtUtc = at.AddSeconds(1) }, StateBus.Version));
+        Assert.That(stream.Retained(StateBus.Settings), Does.Contain("\"WarnPercent\":73"));
     }
+
+    private static SettingsPayload Warn(JsonStore store, int percent) =>
+        new() { Store = StateBus.StoreOf(store.Db), Settings = new OrchestratorSettings { WarnPercent = percent } };
 
     [Test]
     public void A_payload_round_trips_and_names_its_store()

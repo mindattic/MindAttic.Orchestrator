@@ -30,8 +30,6 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
     {
         prompt ??= Scheduler.PromptFor(item);
         var settings = store.LoadSettings();
-        // The global pause (M.ORCH-T808): nothing is dispatched anywhere until it's lifted.
-        if (GlobalPause.Active(store)) return new Result(false, $"{item.Id} isn't started: {GlobalPause.Why}.", null);
         // The caller's plan may be seconds old: an /allocate CLI's `next --claim` (or another window) may have taken the
         // ticket since. Only the assignment the plan saw (a stale one) may be replaced.
         bool ClaimedElsewhere(IEnumerable<Assignment> all) => all.Any(a => a.TicketId == item.Id && a != item.Assignment);

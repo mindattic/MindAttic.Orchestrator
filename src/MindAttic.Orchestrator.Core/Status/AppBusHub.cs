@@ -152,7 +152,7 @@ public sealed class AppBusHub(StatusStreamServer stream, TicketActivityFeed feed
                     if (envelope.PayloadAs<AppPresence>() is not { App.Length: > 0 } presence) return;
                     stream.Publish(envelope, PresenceKey(presence.App));
                     return;
-                case StateBus.Members or StateBus.Orgs or StateBus.Settings or StateBus.Pause or StateBus.Reminders:
+                case StateBus.Members or StateBus.Orgs or StateBus.Settings or StateBus.Reminders:
                     // The whole of its kind each time: the latest is kept, so a dashboard connecting gets it after the state.
                     var own = OwnStore is null || StateBus.SameStore(StateBus.StoreOf(envelope), OwnStore);
                     // Each send is its own connection and the inbox's listeners relay at once, so two quick changes can arrive in
