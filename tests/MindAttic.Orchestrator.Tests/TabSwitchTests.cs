@@ -83,7 +83,12 @@ public sealed class TabSwitchTests
         var view = doc.Descendants().Single(e => (string?)e.Attribute(X + "Name") == body);
         var content = view.Elements().Single();
         Assert.That(content.Name.LocalName, Is.EqualTo("StackPanel"), "a vertical panel whose children become the list's items");
-        var lists = view.Descendants().Where(e => e.Name.LocalName == "ItemsControl" && !e.Ancestors().Any(a => a.Name.LocalName == "DataTemplate")).ToList();
+        // ToastDots (M.ORCH-T1167, merged into the limit-box header row by M.ORCH-T1180) is exempt: it's capped at
+        // MainViewModel.MaxToasts, so unlike Tickets/Queue/Reminders/Finished/Warnings it never scales with org size, and it
+        // was never one of VirtualizedBody's managed rows even before T1180 moved it inside this body (it lived outside the
+        // body entirely, as its own overlay).
+        var lists = view.Descendants().Where(e => e.Name.LocalName == "ItemsControl" && !e.Ancestors().Any(a => a.Name.LocalName == "DataTemplate")
+            && (string?)e.Attribute(X + "Name") != "ToastDots").ToList();
         Assert.That(lists, Is.Not.Empty);
         Assert.That(lists.Select(l => l.Parent), Is.All.EqualTo(content), "a list nested in a panel of its own would build every row");
         Assert.That(File.ReadAllText(Path.Combine(RepoRoot(), "src", "MindAttic.Orchestrator.Wpf", "MainWindow.xaml.cs")),
