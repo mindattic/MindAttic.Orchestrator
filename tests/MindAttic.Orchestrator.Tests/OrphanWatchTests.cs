@@ -87,7 +87,11 @@ public sealed class OrphanWatchTests
         Assert.That(handed.Single().Directory, Is.EqualTo(Repo));
         Assert.That(handed.Single().Prompt, Does.StartWith("A previous agent on A-T1 died mid-task").And.Contain("redispatch 1")
             .And.Contain("src/Half.cs").And.Contain("2 commits not on the main line").And.Contain("never discard").And.Contain("Work on ticket A-T1"));
-        Assert.That(handed.Single().Prompt, Does.Not.Contain("\"").And.Not.Contain("\n"));
+        // The carry-forward preamble is one line with no double quote; the ticket prompt after it may quote its commit step
+        // (M.ORCH-T1149), which a tab's command line makes safe itself (SessionControl.SafePrompt).
+        var prompt = handed.Single().Prompt!;
+        Assert.That(prompt[..prompt.IndexOf("Work on ticket A-T1", StringComparison.Ordinal)], Does.Not.Contain("\""));
+        Assert.That(prompt, Does.Not.Contain("\n"));
     }
 
     [Test]
