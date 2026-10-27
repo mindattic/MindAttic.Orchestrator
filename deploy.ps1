@@ -459,7 +459,12 @@ if ($Launch -and $installed) { Start-Process -FilePath $installed }
 # Deploying Orchestrator also deploys Tickets (its deploy.ps1 does the same back here).
 # MINDATTIC_DEPLOY_CHAIN stops Orchestrator -> Tickets -> Orchestrator from looping.
 if (-not $env:MINDATTIC_DEPLOY_CHAIN) {
-    $ticketsDeploy = Join-Path $repo '..\MindAttic.Tickets\deploy.ps1'
+    # Beside the main checkout, not $repo: the -FromHere re-run's $repo is the clean deploy worktree under MindAttic.worktrees
+    # (M.ORCH-T1067), which has no MindAttic.Tickets beside it (M.ORCH-T1100). Its git common dir is the main checkout's .git.
+    $siblingRoot = $repo
+    $common = (& git -C $repo rev-parse --path-format=absolute --git-common-dir 2>$null)
+    if ($LASTEXITCODE -eq 0 -and $common) { $siblingRoot = Split-Path -Parent $common.Trim() }
+    $ticketsDeploy = Join-Path $siblingRoot '..\MindAttic.Tickets\deploy.ps1'
     if (Test-Path $ticketsDeploy) {
         Write-Host "Deploying MindAttic.Tickets too ($ticketsDeploy)..." -ForegroundColor Cyan
         $chainArgs = @{}
