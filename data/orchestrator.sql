@@ -15,9 +15,6 @@ INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VAL
 INSERT INTO members (email, name, role, tier, status, joined_at, updated_at) VALUES ('waffle@mindattic.com', 'Waffle', 'admin', 'premium', 'active', 1792866937.8856213, 1792866937.8856213);
 
 -- usage_samples
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T19:05:22Z', 75, '2026-10-20T20:30:00Z', 11656980);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T19:08:49Z', 76, '2026-10-20T20:30:00Z', 11853239);
-INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T19:10:58Z', 77, '2026-10-20T20:30:00Z', 11951609);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T19:15:06Z', 78, '2026-10-20T20:30:00Z', 12023791);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T19:19:09Z', 79, '2026-10-20T20:30:00Z', 12269518);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-20T19:23:21Z', 80, '2026-10-20T20:30:00Z', 12339122);
@@ -1812,6 +1809,8 @@ INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T18:49:41Z', 0, '2026-10-27T19:50:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T18:54:52Z', 0, '2026-10-27T19:50:00Z', 0);
 INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T19:03:34Z', 0, '2026-10-27T19:50:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T19:09:03Z', 0, '2026-10-27T19:50:00Z', 0);
+INSERT INTO usage_samples (at, percent, reset, window_fresh) VALUES ('2026-10-27T19:14:07Z', 0, '2026-10-27T19:50:00Z', 0);
 
 -- pace_ledger
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-09-17T07:10:00Z', NULL, '2026-09-17T02:10:00Z', 'Over', 'hit the 5-hour limit at 12:21 AM', NULL, NULL, 4387274, 0, 0, '2026-09-17T05:21:20.426Z', NULL, 0, 0, 0, 0, 0, '[]');
@@ -1944,6 +1943,7 @@ INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, 
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-27T10:00:00Z', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-27T05:00:00Z', 'Under', 'ended at 86%', 86, 86, 15170850, 68, 0, NULL, NULL, 24, 30, 22, 0, 71, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-27T14:30:00Z', '278b4195-962e-489a-bc6f-29c407304223/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-27T09:30:00Z', 'Under', 'ended at 27%', 27, 27, 3439047, 278, 0, NULL, NULL, 0, 0, 0, 0, 1, '[]');
 INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-27T15:00:00Z', '8675f09e-2ea3-4c0b-9af4-1ea1c5001fbf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-27T10:00:00Z', 'Under', 'ended at 15%', 15, 15, 2429503, 63, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
+INSERT INTO pace_ledger (end_utc, account, start_utc, grade, why, peak_percent, final_percent, fresh, samples, minutes_at_target, limit_hit_utc, weekly_hit_utc, held, held_minutes, refused, prompts_answered, exempt, gaps) VALUES ('2026-10-27T19:00:00Z', 'd769f8c5-9906-44e8-adee-fbc651f355bf/96142256-0cfd-4191-90f1-9c7987cb184a', '2026-10-27T14:00:00Z', 'Under', 'ended at 14%', 14, 14, 1637552, 64, 0, NULL, NULL, 0, 0, 0, 0, 0, '[]');
 
 -- usage_history
 INSERT INTO usage_history (day, repo, provider, account, before_utc, fresh) VALUES ('2026-10-07', 'GTFO.EZ', 'Claude', NULL, NULL, 3524458);
@@ -4397,9 +4397,8 @@ INSERT INTO assignments (position, ticket_id, repo, directory, provider, started
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (42, 'PRS-T311', 'Prose', 'D:\Projects\MindAttic\Prose', 'Claude', '2026-10-27T18:22:52.5428281Z', 1, NULL, NULL, NULL, 30760, '52d32bc1-0939-4dbe-8425-35585a84452a', 'sonnet', NULL, 'pdftransferjr@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (43, 'PRS-T310', 'Prose', 'D:\Projects\MindAttic\Prose', 'Claude', '2026-10-27T18:22:52.5428281Z', 1, NULL, NULL, NULL, 30760, '52d32bc1-0939-4dbe-8425-35585a84452a', 'sonnet', NULL, 'pdftransferjr@mindattic.com');
 INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (44, 'PRS-T309', 'Prose', 'D:\Projects\MindAttic\Prose', 'Claude', '2026-10-27T18:22:52.5428281Z', 1, NULL, NULL, NULL, 30760, '52d32bc1-0939-4dbe-8425-35585a84452a', 'sonnet', NULL, 'pdftransferjr@mindattic.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (45, 'PRS-T307', 'Prose', 'D:\Projects\MindAttic\Prose', 'Claude', '2026-10-27T18:30:31.5644237Z', 1, NULL, NULL, NULL, 30760, '52d32bc1-0939-4dbe-8425-35585a84452a', 'sonnet', NULL, 'pdftransferjr@mindattic.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (46, 'PRS-T306', 'Prose', 'D:\Projects\MindAttic\Prose', 'Claude', '2026-10-27T18:37:36.6588676Z', 1, NULL, NULL, NULL, 30760, '52d32bc1-0939-4dbe-8425-35585a84452a', 'sonnet', NULL, 'pdftransferjr@mindattic.com');
-INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (47, 'PRS-T304', 'Prose', 'D:\Projects\MindAttic\Prose', 'Claude', '2026-10-27T18:54:43.8293916Z', 1, NULL, NULL, NULL, 30760, '52d32bc1-0939-4dbe-8425-35585a84452a', 'sonnet', NULL, 'pdftransferjr@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (45, 'PRS-T306', 'Prose', 'D:\Projects\MindAttic\Prose', 'Claude', '2026-10-27T18:37:36.6588676Z', 1, NULL, NULL, NULL, 30760, '52d32bc1-0939-4dbe-8425-35585a84452a', 'sonnet', NULL, 'pdftransferjr@mindattic.com');
+INSERT INTO assignments (position, ticket_id, repo, directory, provider, started_utc, worktree, pilot, pilot_started_utc, log, cli, cli_session, model, reviewed_utc, account) VALUES (46, 'PRS-T304', 'Prose', 'D:\Projects\MindAttic\Prose', 'Claude', '2026-10-27T18:54:43.8293916Z', 1, NULL, NULL, NULL, 30760, '52d32bc1-0939-4dbe-8425-35585a84452a', 'sonnet', NULL, 'pdftransferjr@mindattic.com');
 
 -- organizations
 
@@ -7184,7 +7183,7 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "a57a30142679f3ed216b7bb6a585534536b6391c"
   },
   "MindAttic.Orchestrator": {
-    "Tested": "31627f2801ae8188988e59866253ecd7a3830155",
+    "Tested": "33094e7283983a1309062c116c0ca08be89b1eba",
     "Green": "c751991dd066a483890befbe28dbde5047190b60"
   },
   "MindAttic.Psst": {
@@ -7195,8 +7194,8 @@ INSERT INTO state (name, value) VALUES ('mainline-tests', '{
     "Tested": "7332476b16161496300b69d2c8838a9cb55f38e7"
   },
   "MindAttic.Tickets": {
-    "Tested": "dc86565ccbee8ca1c49e95853a32ef26a75618f9",
-    "Green": "dc86565ccbee8ca1c49e95853a32ef26a75618f9"
+    "Tested": "abd420841d74d984419bf96fdf6f2f7168c77412",
+    "Green": "abd420841d74d984419bf96fdf6f2f7168c77412"
   },
   "MindAttic.Vault": {
     "Tested": "ac2e2fd848071f2cd0db1f8a77f0bb3dad28d3d8",
@@ -7383,11 +7382,12 @@ INSERT INTO state (name, value) VALUES ('orphaned-tickets', '[
     "Directory": "D:\\Projects\\MindAttic.worktrees\\Prose\\PRS-T133",
     "FirstSeenUtc": "2026-10-23T22:52:59.3465752Z",
     "State": "orphaned",
-    "Deaths": 2,
+    "Deaths": 3,
     "Redispatches": 1,
-    "DeadStartedUtc": "2026-10-24T03:59:44.9448021Z",
+    "DeadStartedUtc": "2026-10-27T06:24:43.327922Z",
     "RedispatchedUtc": "2026-10-24T03:59:43.0321025Z",
     "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Cli": 30760,
     "Ahead": 0,
     "Uncommitted": [],
     "Open": true
@@ -7481,6 +7481,126 @@ INSERT INTO state (name, value) VALUES ('orphaned-tickets', '[
     "DeadStartedUtc": "2026-10-25T05:50:15.1466819Z",
     "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
     "Cli": 30244,
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "PRS-T311",
+    "Repo": "Prose",
+    "Directory": "D:\\Projects\\MindAttic\\Prose",
+    "FirstSeenUtc": "2026-10-27T19:07:46.5642627Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-27T18:22:52.5428281Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Cli": 30760,
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "PRS-T310",
+    "Repo": "Prose",
+    "Directory": "D:\\Projects\\MindAttic\\Prose",
+    "FirstSeenUtc": "2026-10-27T19:07:46.5642627Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-27T18:22:52.5428281Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Cli": 30760,
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "PRS-T306",
+    "Repo": "Prose",
+    "Directory": "D:\\Projects\\MindAttic\\Prose",
+    "FirstSeenUtc": "2026-10-27T19:07:46.5642627Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-27T18:37:36.6588676Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Cli": 30760,
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "PRS-T314",
+    "Repo": "Prose",
+    "Directory": "D:\\Projects\\MindAttic\\Prose",
+    "FirstSeenUtc": "2026-10-27T19:09:05.5054865Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-27T18:22:52.5428281Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Cli": 30760,
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "PRS-T313",
+    "Repo": "Prose",
+    "Directory": "D:\\Projects\\MindAttic\\Prose",
+    "FirstSeenUtc": "2026-10-27T19:09:05.5054865Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-27T18:22:52.5428281Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Cli": 30760,
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "PRS-T312",
+    "Repo": "Prose",
+    "Directory": "D:\\Projects\\MindAttic\\Prose",
+    "FirstSeenUtc": "2026-10-27T19:09:05.5054865Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-27T18:22:52.5428281Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Cli": 30760,
+    "Ahead": 0,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "PRS-T309",
+    "Repo": "Prose",
+    "Directory": "D:\\Projects\\MindAttic\\Prose",
+    "FirstSeenUtc": "2026-10-27T19:09:05.5054865Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-27T18:22:52.5428281Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Cli": 30760,
+    "Ahead": 1,
+    "Uncommitted": [],
+    "Open": true
+  },
+  {
+    "TicketId": "PRS-T304",
+    "Repo": "Prose",
+    "Directory": "D:\\Projects\\MindAttic\\Prose",
+    "FirstSeenUtc": "2026-10-27T19:09:05.5054865Z",
+    "State": "orphaned",
+    "Deaths": 1,
+    "Redispatches": 0,
+    "DeadStartedUtc": "2026-10-27T18:54:43.8293916Z",
+    "Why": "redispatching orphaned tickets is off (settings --orphan-redispatches); start it again yourself",
+    "Cli": 30760,
     "Ahead": 0,
     "Uncommitted": [],
     "Open": true
