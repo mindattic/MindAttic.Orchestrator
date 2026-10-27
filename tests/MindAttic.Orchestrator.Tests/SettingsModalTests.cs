@@ -67,7 +67,8 @@ public sealed class SettingsModalTests
         var top = Named(doc, "TopRow");
         var right = top.Elements().Where(e => (string?)e.Attribute("DockPanel.Dock") == "Right").Select(e => (string?)e.Attribute(X + "Name")).ToList();
         // The emergency key button is gone (M.ORCH-T906): the API key is a person with its own tab.
-        Assert.That(right, Is.EqualTo(new[] { "ThemeToggle", "SettingsButton", "TicketsButton", "PauseButton" }));
+        // The team wall's People button (M.ORCH-T936) sits between Tickets and pause.
+        Assert.That(right, Is.EqualTo(new[] { "ThemeToggle", "SettingsButton", "TicketsButton", "TeamWallButton", "PauseButton" }));
         // The Tickets button (M.ORCH-T878) sits beside the cog but opens Tickets Desktop, never Settings.
         Assert.That((string?)Named(doc, "TicketsButton").Attribute("Command"), Is.EqualTo("{Binding OpenTicketsAppCommand}"));
 
