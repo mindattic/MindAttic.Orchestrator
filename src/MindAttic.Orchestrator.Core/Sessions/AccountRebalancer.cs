@@ -379,7 +379,7 @@ public sealed class AccountRebalancer(AccountMove mover, LoginPicker? picker = n
         cutoffAlerts ??= new CutoffAlerts(Store);
         var logins = signedIn.Select(a => (a.Email, Name: mover.NameFor(a.Directory, a.Email), Usage: (Func<ReportedUsage?>)(() => usageOf(a)))).ToList();
         if (globalEmail is { Length: > 0 } g && dirOf(g) is null)
-            logins.Add((g, mover.NameFor(mover.Dirs.ClaudeDir, g), () => globalUsage.Value));
+            logins.Add((g, mover.NameFor("", g), () => globalUsage.Value));
         foreach (var (email, name, usage) in logins)
         {
             var crossed = cutoffAlerts.Check(email, name, usage(), UsageCutoffs.WeeklyFor(cutoffs, email), UsageCutoffs.FiveHourFor(cutoffs, email),
