@@ -313,7 +313,7 @@
              5-hour/weekly chart and the tickets) is pinned to a fixed peek instead of sharing the room 3:1 as it used to
              (M.ORCH-T1020), so its own ScrollViewer is how you reach the rest of it, not a share of the visible window. -->
         <Grid x:Name="TerminalFrameRow" Grid.Row="2" Visibility="{Binding IsTabSignedIn, Converter={StaticResource Visible}}">
-            <Border x:Name="TerminalFrame" Style="{StaticResource MaInsetCard}" MinHeight="160" Margin="{StaticResource SpaceLXLRXLBS}"
+            <Border x:Name="TerminalFrame" MinHeight="160" Margin="{StaticResource SpaceLXLRXLBS}"
                     Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
                 <!-- WPF claims arrow keys (and Tab) for its own directional/tab focus navigation even when a hosted
                      native window (the terminal, an HwndHost) has Win32 keyboard focus, so a CLI's arrow-key menu never

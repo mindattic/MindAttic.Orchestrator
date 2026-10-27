@@ -413,9 +413,10 @@ public partial class MainWindow : Window
             : new DoubleAnimation(exitOpacity, TimeSpan.FromSeconds(exitSeconds)));
 
     /// <summary>How tall <see cref="AgentsBody"/> (and the sign-in prompt sharing its row) peeks while the terminal fills the
-    /// rest of the window: just enough of the 5-hour/weekly chart or the queue to show there's more, and invite a scroll down
-    /// to it (M.ORCH-T1072). The body's own ScrollViewer (MaBodyScroll) reaches everything below the peek.</summary>
-    private const double AgentsBodyPeek = 120;
+    /// rest of the window: enough of the 5-hour/weekly chart card (its label, 130px chart and caption) to show whole, never
+    /// clipped against the status bar below, and invite a scroll down to the rest (M.ORCH-T1072, M.ORCH-T1095). The body's own
+    /// ScrollViewer (MaBodyScroll) reaches everything below the peek.</summary>
+    private const double AgentsBodyPeek = 170;
 
     /// <summary>The terminal fills the remainder of the window under the tab strip (M.ORCH-T1072): while it shows, its row is
     /// the Grid's one star row, so it takes every pixel left after the fixed rows above and below, and the scrolling body
