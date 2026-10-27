@@ -149,8 +149,11 @@ public sealed class OrphanWatch(JsonStore store)
     /// One pass: records each dispatch that went dark (once), alerts on it, and redispatches what may be; drops the records of
     /// tickets that closed. <paramref name="pilots"/> are the live /allocate CLIs and their repos.
     /// </summary>
+    /// <param name="orgs">With more than one org (M.ORCH-T758), a dark ticket is handed back only to an /allocate CLI of its own
+    /// org (each CLI's login in <paramref name="cliLogins"/>); else it opens in a tab on one of its members' logins.</param>
     public IReadOnlyList<Event> Tick(SchedulePlan plan, Snapshot snapshot, OrchestratorSettings settings,
-        IReadOnlyDictionary<int, IReadOnlyList<string>> pilots, DateTime nowUtc)
+        IReadOnlyDictionary<int, IReadOnlyList<string>> pilots, DateTime nowUtc, OrgRouting? orgs = null,
+        IReadOnlyDictionary<int, string?>? cliLogins = null)
     {
         var events = new List<Event>();
         if (!store.TryLoad<List<OrphanRecord>>(StoreName, out var records)) return events;
@@ -183,7 +186,8 @@ public sealed class OrphanWatch(JsonStore store)
                     (rec.Deaths > 1 ? $" (it went dark {Times(rec.Deaths)})" : "");
                 events.Add(new Event($"orphaned: {text}", true, ("Orphaned ticket", text, false)));
             }
-            if (rec.State == OrphanRecord.Orphaned) rec = Redispatch(q, rec, plan, settings, pilots, nowUtc, events);
+            if (rec.State == OrphanRecord.Orphaned)
+                rec = Redispatch(q, rec, plan, settings, orgs is { Active: true } ? AllocateWaker.OfOrg(pilots, orgs, cliLogins, q) : pilots, nowUtc, events);
             if (i >= 0) records[i] = rec; else records.Add(rec);
         }
 

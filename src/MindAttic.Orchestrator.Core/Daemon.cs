@@ -230,7 +230,22 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                         {
                             OpenTab = (item, prompt) => new Dispatcher(new SessionControl(options), store).Dispatch(item, Providers.Claude, submit: true, prompt: prompt),
                         };
-                        ReportOrphans(orphans.Tick(plan, snapshot, s, cycler.AllocateClis(), DateTime.UtcNow));
+                        // Per org (M.ORCH-T758): handed back only to an /allocate CLI of the ticket's org.
+                        var allocateClis = cycler.AllocateClis();
+                        var orgs = OrgRouting.Load(store, s, snapshot.GlobalEmail);
+                        var cliLogins = orgs.Active ? pilotWaker.LoginsOf(allocateClis.Keys, snapshot.GlobalEmail) : null;
+                        ReportOrphans(orphans.Tick(plan, snapshot, s, allocateClis, DateTime.UtcNow, orgs, cliLogins));
+                        // An org none of whose members runs /allocate has its tickets started in a tab on one of their logins
+                        // (M.ORCH-T758), where they'd otherwise wait.
+                        if (orgs.Active)
+                        {
+                            orgReach ??= new OrgReach(store)
+                            {
+                                OpenTab = (item, prompt) => new Dispatcher(new SessionControl(options), store).Dispatch(item, Providers.Claude, submit: true, prompt: prompt),
+                            };
+                            foreach (var line in orgReach.Tick(plan, s, orgs, allocateClis, cliLogins!, DateTime.UtcNow))
+                                Say(LogEventLevel.Information, line);
+                        }
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
                     {
@@ -524,6 +539,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     }
 
     private OrphanWatch? orphans;
+    private OrgReach? orgReach;
 
     /// <summary>Logs what <see cref="OrphanWatch"/> found and did, and raises each alert it carries (M.ORCH-T748).</summary>
     internal void ReportOrphans(IEnumerable<OrphanWatch.Event> events)

@@ -140,37 +140,64 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
     /// its UserPromptSubmit hook adds to the next turn's context (<see cref="CliNudges"/>; never typed into its box, M.ORCH-T864):
     /// start them now, overlapping files are rebased, not a reason to wait. Busy or idle, but not one waiting on a window or
     /// running a /goal. A CLI is nudged at most once per <see cref="Cooldown"/> (shared with <see cref="Tick"/>), and each
-    /// set of claims is said to you in the dashboard and the log once.
+    /// set of claims is said to you in the dashboard and the log once. With more than one org (M.ORCH-T758) the window and the
+    /// room are each org's own logins' (<see cref="OrgRooms"/>), and a claim is put only to a CLI of its org.
     /// </summary>
     public IReadOnlyList<Wake> TickClaims(Snapshot snapshot, SchedulePlan plan, OrchestratorSettings settings, DateTime nowUtc)
     {
         // Every early return drops the "claims" nudges that no longer stand, as the pass below does (bughunt 2026-10-27).
         if (!settings.KeepGoing || !settings.Allocate) { CliNudges.Retain(cycler.Directory, "claims", []); return []; }
-        if (UnderTarget.Projected(snapshot, plan) is not { } projected || !UnderTarget.HasRoom(plan))
+        // Per org (M.ORCH-T758): with more than one org, each org's claims are judged on its own logins' windows and allowances,
+        // and a claim whose CLI is gone goes only to an /allocate CLI of its own org. One org: the global login's plan, as before.
+        var orgs = Orgs?.Invoke() ?? OrgRouting.Load(store, settings, snapshot.GlobalEmail);
+        var orgRoom = orgs.Active ? OrgRooms(snapshot, plan, settings, orgs, PlanOf(settings)) : null;
+        var globalProjected = orgRoom is null ? UnderTarget.Projected(snapshot, plan) : null;
+        if (orgRoom is null ? globalProjected is null || !UnderTarget.HasRoom(plan) : orgRoom.Count == 0)
         { CliNudges.Retain(cycler.Directory, "claims", CoolingDown(nowUtc)); return []; }
         var pilots = Pilots?.Invoke() ?? cycler.AllocateClis();
         if (pilots.Count == 0) { CliNudges.Retain(cycler.Directory, "claims", []); return []; }
-        var idle = IdleClaims(snapshot, plan, pilots, nowUtc);
+        var cliLogins = orgs.Active ? LoginsOf(pilots.Keys, snapshot.GlobalEmail) : null;
+        var idle = IdleClaims(snapshot, plan, pilots, nowUtc, orgs.Active ? orgs : null, cliLogins);
         if (idle.Count == 0) { CliNudges.Retain(cycler.Directory, "claims", CoolingDown(nowUtc)); return []; }
-        var newest = cycler.Load().Where(c => c.Pid is not null).GroupBy(c => c.Pid!.Value)
-            .ToDictionary(g => g.Key, g => g.MaxBy(c => (Written(c.SessionId), c.TurnUtc))!);
-        // No more tickets put to the CLIs than the allowance has room for.
-        var room = plan.Pace!.SubagentAllowance!.Value - plan.Pace.Subagents;
+        var newest = Newest();
+        // No more tickets put to the CLIs than the allowance has room for: the global login's, or each org's logins' own.
+        var room = orgRoom is null ? plan.Pace!.SubagentAllowance!.Value - plan.Pace.Subagents : 0;
+        var left = orgRoom?.ToDictionary(o => o.Key, o => o.Value.Room, StringComparer.OrdinalIgnoreCase);
 
-        var due = new List<(int Pid, string? Cwd, IReadOnlyList<QueueItem> Items)>();
+        var due = new List<(int Pid, string? Cwd, IReadOnlyList<QueueItem> Items, double Projected)>();
         var moving = Moving();
         foreach (var g in idle.GroupBy(c => c.Cli).OrderBy(g => g.Key))
         {
-            if (room <= 0) break;
+            if (left is null && room <= 0) break;
             var pid = g.Key;
             if (moving.Contains(pid)) continue; // locked while it moves (M.ORCH-T637)
             newest.TryGetValue(pid, out var c);
             if (c is not null && (c.LimitStop is not null || c.Goal is not null)) continue;
             if (wokenUtc.TryGetValue(pid, out var last) && nowUtc - last < Cooldown) continue;
             if (!IsAlive(pid)) continue;
-            var items = g.Select(x => x.Item).Take(room).ToList();
-            room -= items.Count;
-            due.Add((pid, c?.Cwd, items));
+            List<QueueItem> items;
+            double projected;
+            if (left is null)
+            {
+                items = [.. g.Select(x => x.Item).Take(room)];
+                room -= items.Count;
+                projected = globalProjected!.Value;
+            }
+            else
+            {
+                // Each claim counted against its own org's room: an org with none left (or not under target) waits.
+                items = [];
+                foreach (var item in g.Select(x => x.Item))
+                {
+                    var org = orgs.OrgOf(item);
+                    if (left.GetValueOrDefault(org) <= 0) continue;
+                    left[org]--;
+                    items.Add(item);
+                }
+                if (items.Count == 0) continue;
+                projected = orgRoom![orgs.OrgOf(items[0])].Projected;
+            }
+            due.Add((pid, c?.Cwd, items, projected));
         }
         CliNudges.Retain(cycler.Directory, "claims", due.Select(d => d.Pid).Concat(CoolingDown(nowUtc))); // a CLI inside its cooldown keeps the nudge it was just left
         if (due.Count == 0) return [];
@@ -181,6 +208,7 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
             var ids = d.Items.Select(i => i.Id).ToList();
             var tickets = string.Join(", ", ids);
             var them = ids.Count == 1 ? "it" : "them";
+            var projected = d.Projected;
             if (settings.ResumeAfterReset) CliNudges.Leave(cycler.Directory, d.Pid, "claims", ClaimsPrompt(d.Items, projected, settings.PaceTargetPercent));
             wokenUtc[d.Pid] = nowUtc;
             if (saidClaims.TryGetValue(d.Pid, out var was) && was == tickets) continue;
@@ -202,10 +230,12 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
     /// /allocate CLIs on one repo, the repo's owner was prompted for the other's claims) while it's a live /allocate CLI;
     /// a claim whose CLI isn't known (made before claims recorded it) or has gone goes to the /allocate CLI whose repos name
     /// its repo: one naming it outright first, then one on a wildcard or every repo; a repo no /allocate CLI works is
-    /// nobody's to be told.
+    /// nobody's to be told. With more than one org (M.ORCH-T758: <paramref name="orgs"/>, each CLI's login in
+    /// <paramref name="cliLogins"/>), that fallback is only an /allocate CLI of the ticket's own org; with none, it's nobody's here.
     /// </summary>
     internal static IReadOnlyList<(int Cli, QueueItem Item)> IdleClaims(Snapshot snapshot, SchedulePlan plan,
-        IReadOnlyDictionary<int, IReadOnlyList<string>> pilots, DateTime nowUtc)
+        IReadOnlyDictionary<int, IReadOnlyList<string>> pilots, DateTime nowUtc, OrgRouting? orgs = null,
+        IReadOnlyDictionary<int, string?>? cliLogins = null)
     {
         var worked = plan.Worked.Select(w => w.TicketId).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var idle = new List<(int, QueueItem)>();
@@ -217,11 +247,71 @@ public sealed class AllocateWaker(ContextCycler cycler, JsonStore store)
             if (nowUtc - a.StartedUtc < ClaimIdle) continue;
             // By repo and ticket in the shared checkout (M.ORCH-T1122), where the /allocate CLI's own session works too.
             if (Scheduling.TicketActivity.Active(a, snapshot, at => nowUtc - at < ClaimIdle)) continue;
-            var claimer = a.Cli is { } made && pilots.ContainsKey(made) ? made : OwnerOf(q.Repo, pilots);
+            var claimer = a.Cli is { } made && pilots.ContainsKey(made) ? made
+                : OwnerOf(q.Repo, orgs is { Active: true } ? OfOrg(pilots, orgs, cliLogins, q) : pilots);
             if (claimer is { } cli) idle.Add((cli, q));
         }
         return idle;
     }
+
+    /// <summary>The /allocate CLIs whose login may be handed <paramref name="item"/> (M.ORCH-T758: of its org); a CLI whose login
+    /// isn't known is the global login's.</summary>
+    internal static IReadOnlyDictionary<int, IReadOnlyList<string>> OfOrg(IReadOnlyDictionary<int, IReadOnlyList<string>> pilots,
+        OrgRouting orgs, IReadOnlyDictionary<int, string?>? cliLogins, QueueItem item) =>
+        pilots.Where(p => orgs.MayTake(item, cliLogins?.GetValueOrDefault(p.Key))).ToDictionary(p => p.Key, p => p.Value);
+
+    /// <summary>
+    /// Each org's room for more subagents while its logins' windows are on course to end under target (M.ORCH-T758): the sum,
+    /// over its logins whose own window is under target and whose own allowance has room (each per-CLI login on its own pace,
+    /// the global login on its plan when it's the org's), of that room, and the lowest projection among them. An org with no
+    /// such login isn't in it.
+    /// </summary>
+    internal static Dictionary<string, (int Room, double Projected)> OrgRooms(Snapshot snapshot, SchedulePlan plan,
+        OrchestratorSettings settings, OrgRouting orgs, Func<Snapshot, SchedulePlan>? planOf = null)
+    {
+        var rooms = new Dictionary<string, (int Room, double Projected)>(StringComparer.OrdinalIgnoreCase);
+        void Add(string org, Snapshot s, SchedulePlan p)
+        {
+            if (UnderTarget.Projected(s, p) is not { } projected || !UnderTarget.HasRoom(p)) return;
+            var room = p.Pace!.SubagentAllowance!.Value - p.Pace.Subagents;
+            rooms[org] = rooms.TryGetValue(org, out var was) ? (was.Room + room, Math.Min(was.Projected, projected)) : (room, projected);
+        }
+        Add(orgs.OrgOfLogin(null), snapshot, plan);
+        planOf ??= s => Scheduler.Plan(s, settings, []);
+        foreach (var account in snapshot.Accounts)
+        {
+            if (snapshot.GlobalEmail is { } global && TicketPins.Same(account.Email, global)) continue; // the global login, counted above
+            var own = snapshot with { Budget = account.Budget, Pace = account.Pace, Utilization = account.Utilization, Account = account.Account };
+            Add(orgs.OrgOfLogin(account.Email), own, planOf(own));
+        }
+        return rooms;
+    }
+
+    /// <summary>The Claude login (email) each CLI runs on, from its newest session (M.ORCH-T758); <paramref name="globalEmail"/>
+    /// for one on the global login or not known.</summary>
+    public IReadOnlyDictionary<int, string?> LoginsOf(IEnumerable<int> pids, string? globalEmail)
+    {
+        var newest = Newest();
+        IReadOnlyDictionary<string, string> own;
+        try { own = OwnLogins?.Invoke() ?? cycler.OnOwnLogin(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { own = new Dictionary<string, string>(); }
+        var logins = new Dictionary<int, string?>();
+        foreach (var pid in pids)
+            logins[pid] = newest.TryGetValue(pid, out var c) && own.TryGetValue(c.SessionId, out var dir) && Dirs.Of(dir) is { } login
+                ? login.Email : globalEmail;
+        return logins;
+    }
+
+    /// <summary>A login's plan, as <see cref="Tick"/> plans a CLI on a login of its own.</summary>
+    private Func<Snapshot, SchedulePlan> PlanOf(OrchestratorSettings settings)
+    {
+        IReadOnlyList<Assignment>? assignments = null;
+        return s => Scheduler.Plan(s, settings, assignments ??= store.LoadAssignments());
+    }
+
+    /// <summary>Each CLI's newest session, by process id.</summary>
+    private Dictionary<int, SessionContext> Newest() => cycler.Load().Where(c => c.Pid is not null).GroupBy(c => c.Pid!.Value)
+        .ToDictionary(g => g.Key, g => g.MaxBy(c => (Written(c.SessionId), c.TurnUtc))!);
 
     private static int? OwnerOf(string repo, IReadOnlyDictionary<int, IReadOnlyList<string>> pilots)
     {

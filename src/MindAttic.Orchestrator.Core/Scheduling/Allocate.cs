@@ -23,6 +23,9 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
     internal string LogDirectory { get; init; } = BackgroundAgent.LogDirectory;
     internal Func<string, string> MainlineOf { get; init; } = Dispatcher.Mainline;
 
+    /// <summary>The orgs and the repos' orgs (seam; <see cref="OrgRouting.Load"/>).</summary>
+    internal Func<OrgRouting>? Orgs { get; init; }
+
     /// <summary>Where the shared statusline reads which repos wait on the pace (<see cref="DefaultWaitingPath"/>);
     /// null writes nothing.</summary>
     public string? WaitingPath { get; init; }
@@ -130,6 +133,9 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         var inRepo = repos.ToDictionary(r => r.Name, r => Working.Count(a => Same(a.Repo, r.Name)), StringComparer.OrdinalIgnoreCase);
         var failed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var paceBound = false;
+        // A background agent runs on the global login (the daemon's own), so with more than one org it's started only on that
+        // login's org's tickets (M.ORCH-T758, as orchestrator next --claim hands a CLI only its login's org's).
+        var orgs = Orgs?.Invoke() ?? OrgRouting.Load(store, settings, snapshot.GlobalEmail);
         // The whole queue in its order (manual priority, then newest first, prerequisites first: M.ORCH-T863), not repo by repo: filling the first repo
         // alphabetically before looking at the next left a +70 story waiting behind five unprioritized ones (found live).
         foreach (var next in plan.Queue)
@@ -138,6 +144,11 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
             // A ticket assigned to a user (M.ORCH-T668) goes only to a CLI on their login, never to a background agent.
             if (next.IsAssigned || next.IsPinned || next.BlockedBy.Count > 0 || parked.Contains(next.Id) || !next.MayWork ||
                 (room is { } left && next.Estimate is { } e && e.Fresh > left)) continue;
+            if (!orgs.MayTake(next, null))
+            {
+                Tell("org " + next.Repo, $"allocate: {next.Repo}'s tickets are {orgs.NameOf(orgs.OrgOf(next))}'s and go only to its members' logins, not a background agent on the global login");
+                continue;
+            }
             if (more <= 0)
             {
                 Tell("cap", $"allocate: {running} agent{(running == 1 ? "" : "s")} working; the pace has no room for another right now");
