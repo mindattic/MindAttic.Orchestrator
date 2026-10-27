@@ -128,9 +128,17 @@ public sealed record LoginLook(string Window, string Initials, string TabColor)
             if (initials.Trim() is { Length: > 0 } i) file["initials"] = i; else file.Remove("initials");
         }
         Directory.CreateDirectory(folder);
-        var temp = path + ".tmp";
-        File.WriteAllText(temp, file.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), new UTF8Encoding(false));
-        File.Move(temp, path, overwrite: true);
+        // A temp of its own (M.ORCH-T1155): two SetAlias calls at once shared one and raced on File.Move.
+        var temp = $"{path}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            File.WriteAllText(temp, file.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), new UTF8Encoding(false));
+            File.Move(temp, path, overwrite: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            try { File.Delete(temp); } catch (Exception delEx) when (delEx is IOException or UnauthorizedAccessException) { }
+        }
         return For(folder, e).Alias;
     }
 
