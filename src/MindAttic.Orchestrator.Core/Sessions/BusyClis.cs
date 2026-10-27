@@ -179,7 +179,8 @@ public static class BusyClis
             .Select(c => c.SessionId!).ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var s in subagents.Where(s => s.Cli is null))
             clis.Add(new BusyCli(null, "?", s.Login, null, CliActivity.Unknown, [$"subagent {s.Agent} is running, and its mark names no CLI"]));
-        var oldest = procs.Where(p => p.StartedUtc is not null).Select(p => p.StartedUtc!.Value).DefaultIfEmpty(DateTime.MinValue).Min();
+        // No CLI's start time known: every unreadable state counts (MinValue - StartSlack would throw, M.ORCH-T1084).
+        var oldest = procs.Where(p => p.StartedUtc is not null).Select(p => p.StartedUtc!.Value).DefaultIfEmpty(DateTime.MinValue + StartSlack).Min();
         foreach (var s in states.Where(s => s.Unreadable && procs.Count > 0 && s.WrittenUtc >= oldest - StartSlack && !hostedSessions.Contains(s.SessionId)))
             clis.Add(new BusyCli(null, "?", "?", s.SessionId, CliActivity.Unknown, [$"session {s.SessionId}'s state couldn't be read"]));
         foreach (var problem in problems)
