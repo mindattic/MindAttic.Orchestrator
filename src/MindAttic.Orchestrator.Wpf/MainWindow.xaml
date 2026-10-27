@@ -226,11 +226,11 @@
                         <Grid x:Name="TabStatusIcon" VerticalAlignment="Center" Margin="{StaticResource SpaceRS}">
                             <!-- Idle, or every open CLI has stopped (M.ORCH-T890): a gray box, "zzz" (M.ORCH-T1173). -->
                             <mc:MaBadge x:Name="TabIdleBadge" Style="{StaticResource MaTag}" Content="zzz" Background="{DynamicResource MaMuted}"
-                                        Foreground="White" FontSize="7" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
+                                        Foreground="{DynamicResource MaOnAccent}" FontSize="7" VerticalAlignment="Center" AutomationProperties.Name="{Binding TabActivityWord}"
                                         Visibility="{Binding ShowsIdleBadge, Converter={StaticResource Visible}}" />
                             <!-- Busy: a green box, a play arrow (M.ORCH-T890: no flash; boxed M.ORCH-T1173). -->
                             <mc:MaBadge x:Name="TabBusyBadge" Style="{StaticResource MaTag}" Content="&#xE768;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                        Background="{DynamicResource MaGood}" Foreground="White" FontSize="8" VerticalAlignment="Center"
+                                        Background="{DynamicResource MaGood}" Foreground="{DynamicResource MaOnAccent}" FontSize="8" VerticalAlignment="Center"
                                         AutomationProperties.Name="{Binding TabActivityWord}"
                                         Visibility="{Binding ShowsBusyBadge, Converter={StaticResource Visible}}" />
                             <!-- One of this person's CLIs is genuinely blocked on them (a permission prompt, a question, or a
@@ -238,7 +238,7 @@
                                  place of the old trailing red flag), over the idle or busy box above while it's true. Not a
                                  count: how many is in the tooltip and accessible name, so the picture is never the only cue. -->
                             <mc:MaBadge x:Name="TabAskingBadge" Style="{StaticResource MaTag}" Content="?" Background="{DynamicResource MaWarn}"
-                                        Foreground="White" FontSize="9" FontWeight="Bold" VerticalAlignment="Center"
+                                        Foreground="{DynamicResource MaOnAccent}" FontSize="9" FontWeight="Bold" VerticalAlignment="Center"
                                         ToolTip="{Binding TabNeedsYouTip}" AutomationProperties.Name="Blocked waiting on you"
                                         Visibility="{Binding TabNeedsYou, Converter={StaticResource Visible}}" />
                             <TextBlock x:Name="TabDisabledIcon" Text="&#xE733;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
