@@ -539,6 +539,18 @@ public sealed class TerminalPanesTests
         Assert.That(TerminalPaste.Payload("a\r\nb\nc", bracketed: true), Is.EqualTo("\u001b[200~a\rb\rc\u001b[201~"));
     }
 
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_paste_or_copy_chord_finds_its_tab_from_the_key_s_target_not_the_keyboard_focus()
+    {
+        // While the renderer has Win32 focus WPF's Keyboard.FocusedElement is null; the key is routed to the renderer itself
+        // (M.ORCH-T1109), so the chord's tab is the one that holds its original source.
+        var pane = new TerminalPaneViewModel(new PaneRequest("RD: Repo [Claude]", temp.New()) { Repo = "Repo", CommandLine = "cmd.exe" }, hosted: true);
+        var e = new KeyEventArgs(Keyboard.PrimaryDevice, null!, 0, Key.V) { Source = pane.Relay!.Terminal };
+        Assert.That(TerminalPaste.Focused(e), Is.SameAs(pane));
+        var elsewhere = new KeyEventArgs(Keyboard.PrimaryDevice, null!, 0, Key.V) { Source = new System.Windows.Controls.TextBox() };
+        Assert.That(TerminalPaste.Focused(elsewhere), Is.Null, "a key aimed anywhere else is no terminal's");
+    }
+
     private static bool Alive(int pid)
     {
         try { using var p = System.Diagnostics.Process.GetProcessById(pid); return !p.HasExited; }

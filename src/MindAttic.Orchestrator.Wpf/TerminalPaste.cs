@@ -49,6 +49,13 @@ internal static class TerminalPaste
     internal static TerminalPaneViewModel? Focused(DependencyObject root) =>
         Keyboard.FocusedElement is DependencyObject focused ? TerminalPaneViewModel.Of(focused) : null;
 
+    /// <summary>The terminal tab key <paramref name="e"/> went to, or null (M.ORCH-T1109). Not <see cref="Keyboard.FocusedElement"/>:
+    /// once Win32 focus is in the renderer's own window WPF deactivates its keyboard and that is null, so the paste and copy
+    /// chords found no tab. The key is still routed, to the renderer's HwndHost (the child sink with Win32 focus), which is
+    /// its original source.</summary>
+    internal static TerminalPaneViewModel? Focused(KeyEventArgs e) =>
+        e.OriginalSource is DependencyObject target ? TerminalPaneViewModel.Of(target) : null;
+
     public static bool IsPasteChord(KeyEventArgs e)
     {
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
@@ -61,7 +68,7 @@ internal static class TerminalPaste
     {
         try
         {
-            if (e.Handled || !IsPasteChord(e) || sender is not DependencyObject root || Focused(root) is not { } pane) return;
+            if (e.Handled || !IsPasteChord(e) || Focused(e) is not { } pane) return;
             e.Handled = true;
             string text;
             try { text = Clipboard.ContainsText() ? Clipboard.GetText() : ""; }

@@ -45,7 +45,8 @@ internal static class TerminalCopy
             if (e.Handled) return;
             var chord = ChordOf(e.Key == Key.System ? e.SystemKey : e.Key, Keyboard.Modifiers);
             if (chord == Chord.None) { swallowRepeats = false; return; }
-            if (sender is not DependencyObject root || TerminalPaste.Focused(root) is not { } pane) return;
+            // The tab the key went to, not the one Keyboard.FocusedElement names (null while the renderer has Win32 focus, M.ORCH-T1109).
+            if (TerminalPaste.Focused(e) is not { } pane) return;
             if (e.IsRepeat && swallowRepeats) { e.Handled = true; return; }
             swallowRepeats = false;
             // The selection is local to the renderer, hosted tab (M.ORCH-T926) or in-process alike.
