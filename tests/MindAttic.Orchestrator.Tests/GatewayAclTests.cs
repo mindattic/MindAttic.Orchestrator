@@ -454,6 +454,19 @@ public sealed partial class GatewayTests
     }
 
     [Test]
+    public void A_key_file_that_cant_be_read_is_never_replaced_with_a_new_key()
+    {
+        // bughunt 2026-10-27: a read failure made a new key over the old one, revoking every token.
+        using var dir = new TempDir();
+        var first = GatewayKeys.LoadOrCreate(dir.Path, GatewayKeys.OwnerKeyFile);
+        var path = Path.Combine(dir.Path, GatewayKeys.OwnerKeyFile);
+        using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+            Assert.Throws<IOException>(() => GatewayKeys.LoadOrCreate(dir.Path, GatewayKeys.OwnerKeyFile));
+        Assert.That(GatewayKeys.LoadOrCreate(dir.Path, GatewayKeys.OwnerKeyFile), Is.EqualTo(first));
+        Assert.That(Directory.GetFiles(dir.Path, "*.tmp"), Is.Empty);
+    }
+
+    [Test]
     public async Task A_stream_whose_access_check_keeps_failing_is_closed_not_left_open()
     {
         var audit = new MemoryAudit();

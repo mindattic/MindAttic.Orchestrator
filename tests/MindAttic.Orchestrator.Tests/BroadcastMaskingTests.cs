@@ -249,6 +249,22 @@ public sealed class BroadcastMaskingTests
     }
 
     [Test]
+    public void The_rest_of_a_matched_token_longer_than_the_context_is_masked_after_a_quiet_spell()
+    {
+        // bughunt 2026-10-27: its start had left the context, so the rest went bare.
+        var token = Fake("sk-ant-api03-", 600);
+        var time = new ManualTime();
+        var masker = new StreamMasker(SecretMasker.ShapesOnly, time);
+        var output = new List<byte>();
+        output.AddRange(masker.Process(Encoding.UTF8.GetBytes("echo " + token[..400])));
+        time.Now += StreamMasker.FlushAfter + TimeSpan.FromMilliseconds(5);
+        output.AddRange(masker.FlushDue());
+        output.AddRange(masker.Process(Encoding.UTF8.GetBytes(token[400..] + "\r\nnext\r\n")));
+        output.AddRange(masker.Flush());
+        Assert.That(Encoding.UTF8.GetString(output.ToArray()), Is.EqualTo($"echo {Bullets(token.Length)}\r\nnext\r\n"));
+    }
+
+    [Test]
     public void Ordinary_text_is_still_due_after_the_short_quiet_spell()
     {
         var time = new ManualTime();

@@ -114,22 +114,33 @@ public static class TermSessions
 
     /// <summary><see cref="Enumerate(string?)"/> with <paramref name="hostStart"/> saying when a pid's process started (UTC),
     /// or null when no process has it; tests pass their own.</summary>
-    internal static IReadOnlyList<TermSessionRecord> Enumerate(string? directory, Func<int, DateTime?> hostStart)
+    internal static IReadOnlyList<TermSessionRecord> Enumerate(string? directory, Func<int, DateTime?> hostStart) =>
+        Enumerate(directory, hostStart, out _);
+
+    /// <summary><see cref="Enumerate(string?)"/>; <paramref name="complete"/> is false when the folder couldn't be listed or a
+    /// record couldn't be read, so a session left out may still be live (bughunt 2026-10-27). A caller dropping what belongs to
+    /// sessions not listed does so only when it is true.</summary>
+    public static IReadOnlyList<TermSessionRecord> Enumerate(string? directory, out bool complete) => Enumerate(directory, HostStartOf, out complete);
+
+    internal static IReadOnlyList<TermSessionRecord> Enumerate(string? directory, Func<int, DateTime?> hostStart, out bool complete)
     {
         var dir = directory ?? DefaultDirectory;
         var live = new List<TermSessionRecord>();
+        complete = false;
         string[] files;
         try
         {
-            if (!Directory.Exists(dir)) return live;
+            if (!Directory.Exists(dir)) { complete = true; return live; }
             files = Directory.GetFiles(dir, "*.json");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return live; }
 
+        complete = true;
         foreach (var file in files)
         {
-            if (Read(file, out var junk) is not { } record)
+            if (Read(file, out var junk, out var unreadable) is not { } record)
             {
+                if (unreadable) complete = false;
                 // M.ORCH-T995: never on a read failure: a live host's file held open for a moment would vanish from discovery.
                 // Only a file read whole that is no record, and only once it is old. A record is deleted only when its host
                 // is gone or its pid reused (below).

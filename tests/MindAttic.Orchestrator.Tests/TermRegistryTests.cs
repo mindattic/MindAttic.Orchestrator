@@ -315,4 +315,23 @@ public sealed class TermRegistryTests
         Assert.That(TermSessions.TryGet("missing", dir, probe, out var none), Is.True);
         Assert.That(none, Is.Null);
     }
+
+    [Test]
+    public void Enumerate_says_it_is_incomplete_when_a_record_cant_be_read()
+    {
+        // bughunt 2026-10-27: a caller pruning by the listing mustn't drop a live session it couldn't read.
+        TermSessions.Write(Record("held", pid: 100), dir);
+        TermSessions.Write(Record("ok", pid: 100), dir);
+        var probe = Processes((100, HostStart));
+        using (new FileStream(TermSessions.PathOf("held", dir), FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            var live = TermSessions.Enumerate(dir, probe, out var complete);
+            Assert.That(live.Select(r => r.Id), Is.EqualTo(new[] { "ok" }));
+            Assert.That(complete, Is.False);
+        }
+        Assert.That(TermSessions.Enumerate(dir, probe, out var after), Has.Count.EqualTo(2));
+        Assert.That(after, Is.True);
+        TermSessions.Enumerate(Path.Combine(dir, "missing"), probe, out var missing);
+        Assert.That(missing, Is.True, "no folder: no session");
+    }
 }

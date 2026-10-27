@@ -116,7 +116,15 @@ internal sealed class GatewayRevokeCommand : Command<GatewayRevokeCommand.Settin
     public override int Execute(CommandContext context, Settings settings)
     {
         // A grant can outlive the member it names: their email is taken as given when no member matches.
-        var email = MemberLookup.Match(OrgHelpCommand.People(), settings.Who) is [var one] ? one.Email
+        var found = MemberLookup.Match(OrgHelpCommand.People(), settings.Who);
+        if (found.Count > 1)
+        {
+            // Never taken as an email that names no one, revoking nothing (bughunt 2026-10-27).
+            AnsiConsole.MarkupLine($"[red]\"{Markup.Escape(settings.Who.Trim())}\" could be more than one member: name one of them.[/]");
+            foreach (var p in found) AnsiConsole.MarkupLine($"  {Markup.Escape(p.Label)}");
+            return 1;
+        }
+        var email = found is [var one] ? one.Email
             : AccountDirs.Normalize(settings.Who) ?? settings.Who.Trim().ToLowerInvariant();
         var removed = TermGrants.Revoke(GatewayAcl.Db(), GatewayAcl.Owner(), email, settings.Session);
         GatewayAcl.Publish();

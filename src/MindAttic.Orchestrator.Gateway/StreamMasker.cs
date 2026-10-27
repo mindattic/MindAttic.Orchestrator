@@ -294,8 +294,10 @@ internal sealed class StreamMasker
         if (context.Length > contextChars) context.Remove(0, context.Length - contextChars);
         sentTotal += sentLogical;
         // A forced candidate ends what was sent, so whatever comes next may be the rest of it; a masked run ends once the
-        // character that ended it was sent.
-        if (forced) maskingRun = true;
+        // character that ended it was sent. So does a matched secret that runs to the end of what was sent: the rest of a long one
+        // may follow once its start has left the context (bughunt 2026-10-27).
+        var endsMatched = !inPem && sentLogical > 0 && marked[offset + sentLogical - 1] && IsTokenChar(logical[sentLogical - 1]);
+        if (forced || endsMatched) maskingRun = true;
         else if (runEndsAt is { } ended && ended < sentLogical) maskingRun = false;
         pending = holdByte < buf.Length ? buf[holdByte..] : [];
         if (pending.Length > 0)

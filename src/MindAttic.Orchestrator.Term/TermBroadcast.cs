@@ -149,6 +149,8 @@ public static class TermBroadcast
         {
             try { owned = mutex.WaitOne(TimeSpan.FromSeconds(2)); }
             catch (AbandonedMutexException) { owned = true; }
+            // Never a read-modify-write without the lock: another writer's change would be lost (bughunt 2026-10-27).
+            if (!owned) return null;
             // A file that can't be read just now is never replaced by a change to the defaults (M.ORCH-T986).
             TermBroadcastSettings now = new();
             var read = false;

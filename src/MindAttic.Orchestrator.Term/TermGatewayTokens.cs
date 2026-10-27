@@ -57,12 +57,33 @@ public static class TermGatewayTokens
     {
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, file);
-        if (File.Exists(path) && TryRead(path) is { Length: >= 32 } existing) return existing;
+        bool replace;
+        for (var attempt = 0; ; attempt++)
+        {
+            // A key file that can't be read just now is tried again, then throws: never replaced, which would revoke every
+            // token signed with it (bughunt 2026-10-27). One there but holding no key is replaced, as before.
+            try
+            {
+                replace = File.Exists(path);
+                if (replace && FromBase64Url(File.ReadAllText(path).Trim()) is { Length: >= 32 } existing) return existing;
+                break;
+            }
+            catch (Exception ex) when (attempt < 5 && ex is IOException or UnauthorizedAccessException) { Thread.Sleep(20 * (attempt + 1)); }
+        }
         var key = RandomNumberGenerator.GetBytes(32);
-        var temp = path + ".tmp";
+        var temp = path + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp";
         File.WriteAllText(temp, Base64Url(key));
-        File.Move(temp, path, overwrite: true);
-        return key;
+        try
+        {
+            File.Move(temp, path, overwrite: replace);
+            return key;
+        }
+        catch (IOException) when (!replace && File.Exists(path))
+        {
+            // Another process made it first: use its key, so every process holds the one on disk (bughunt 2026-10-27).
+            try { File.Delete(temp); } catch (Exception) { }
+            return LoadOrCreateKey(directory, file);
+        }
     }
 
     public static string Base64Url(ReadOnlySpan<byte> bytes) => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
@@ -77,12 +98,6 @@ public static class TermGatewayTokens
     }
 
     public static long ToUnix(DateTime utc) => new DateTimeOffset(DateTime.SpecifyKind(utc, DateTimeKind.Utc)).ToUnixTimeSeconds();
-
-    private static byte[]? TryRead(string path)
-    {
-        try { return FromBase64Url(File.ReadAllText(path).Trim()); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
-    }
 }
 
 /// <summary>A token's payload: subject, scope, issued and expires (Unix seconds), a random id, and its kind (null for a session

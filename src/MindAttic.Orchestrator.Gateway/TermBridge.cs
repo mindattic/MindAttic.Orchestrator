@@ -324,6 +324,9 @@ internal static class TermBridge
                     await SendAsync(socket, frame, counts, ct).ConfigureAwait(false);
                     break;
                 }
+                case TermFrameKind.Replay:
+                    // A malformed replay is dropped, never forwarded raw past masking and the pause (bughunt 2026-10-27).
+                    break;
                 case TermFrameKind.Title:
                     title = payload;
                     if (paused) Interlocked.Increment(ref counts.Withheld);

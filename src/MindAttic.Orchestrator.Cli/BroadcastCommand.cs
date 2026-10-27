@@ -25,7 +25,7 @@ internal sealed class BroadcastCommand : Command<BroadcastCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        var live = TermSessions.Enumerate();
+        var live = TermSessions.Enumerate(null, out var complete);
         if (settings.Action is { } action)
         {
             var target = settings.Session?.Trim();
@@ -54,7 +54,8 @@ internal sealed class BroadcastCommand : Command<BroadcastCommand.Settings>
                 _ => null,
             };
             if (change is null) { AnsiConsole.MarkupLine("[red]Say share, unshare, pause, resume (a session or all), mask or unmask (a session).[/]"); return 1; }
-            if (TermBroadcast.Update(s => change(s).Prune(live.Select(l => l.Id))) is null)
+            // Entries are pruned only when every session was read: a live one briefly unreadable keeps its pause (bughunt 2026-10-27).
+            if (TermBroadcast.Update(s => complete ? change(s).Prune(live.Select(l => l.Id)) : change(s)) is null)
             {
                 AnsiConsole.MarkupLine($"[red]Couldn't write {Markup.Escape(TermBroadcast.PathIn())}.[/]");
                 return 1;
