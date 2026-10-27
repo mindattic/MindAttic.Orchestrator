@@ -290,7 +290,10 @@ public sealed class MainlineTestsTests
         runs[0].SetResult(Result(["A.Tests.One"], []));
         var lines = Tick(tests, Now.AddMinutes(2));
         Assert.That(lines.Select(l => l.Text), Has.None.Contains("fixed since"));
-        Assert.That(Filed().Single(t => MainlineTests.TestOf(t.Summary) == "A.Tests.One").Status, Is.EqualTo(TicketRules.Open));
+        // The stale closed ticket (its commit never reached origin/main) stays closed; the unknown verdict still files a
+        // fresh one rather than reusing it (M.ORCH-T1174: two tickets now name this test, so Single() by test name alone throws).
+        var matching = Filed().Where(t => MainlineTests.TestOf(t.Summary) == "A.Tests.One").ToList();
+        Assert.That(matching.Select(t => t.Status), Is.EquivalentTo(new[] { TicketRules.Closed, TicketRules.Open }));
     }
 
     [Test]
