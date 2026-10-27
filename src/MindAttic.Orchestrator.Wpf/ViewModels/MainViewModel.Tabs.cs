@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -54,6 +54,14 @@ public sealed partial class MainViewModel
         $"{tab.Title}: {TabActivityWord}, {TabStatusWord}" + (TabTrailing.Length > 0 ? $", {TabTrailing}" : "") + $". {tab.ToolTip}." + TabStaleLine + TabCutoffsLine +
         (tab.SignedIn && !tab.IsApiKey ? ResetsLineOf(FiveHourResetUtc, WeekReset, DateTime.UtcNow) : "") +
         NeedsYouLine(TabAskingCount);
+
+    /// <summary>What hovering a person's tab shows (M.ORCH-T1120): only their cutoffs and when their week resets, e.g. "Cutoffs:
+    /// 5-hour 98%, weekly 95%. Week resets Tue 10/27 5:00 PM (in 7hr 3m)." A tab with no cutoffs (signed out, the API key,
+    /// the global login's) keeps the full <see cref="TabTip"/>, which stays the accessible name of every tab.</summary>
+    public string TabHoverTip => TabHoverTipOf(TabCutoffsLine, WeekReset, DateTime.UtcNow) ?? TabTip;
+
+    internal static string? TabHoverTipOf(string cutoffsLine, DateTime? weekResetUtc, DateTime nowUtc) =>
+        cutoffsLine.Length == 0 ? null : (cutoffsLine + ResetsLineOf(null, weekResetUtc, nowUtc)).Trim();
 
     /// <summary>When this login's 5-hour window resets: the pushed reading's while it's the one shown, else its budget's block, else the roster's.</summary>
     private DateTime? FiveHourResetUtc => (LiveFiveHour is not null ? Live?.FiveHourResetUtc : null)
@@ -287,7 +295,7 @@ public sealed partial class MainViewModel
     {
         if (next == tab) return;
         tab = next;
-        Raise(nameof(Tab)); Raise(nameof(TabTitle)); Raise(nameof(TabTip)); Raise(nameof(TabBrush));
+        Raise(nameof(Tab)); Raise(nameof(TabTitle)); Raise(nameof(TabTip)); Raise(nameof(TabHoverTip)); Raise(nameof(TabBrush));
         Raise(nameof(IsTabSignedIn)); Raise(nameof(SignInPrompt));
         Raise(nameof(IsApiKeyTab)); Raise(nameof(IsPersonTab)); Raise(nameof(ShowsSignIn)); RaiseTabStatus();
         CommandManager.InvalidateRequerySuggested();

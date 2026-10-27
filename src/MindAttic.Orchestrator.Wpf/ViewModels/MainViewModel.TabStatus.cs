@@ -1,4 +1,4 @@
-using System.Windows.Media;
+﻿using System.Windows.Media;
 using System.Windows.Threading;
 using MindAttic.Components.Wpf.Controls;
 using MindAttic.Orchestrator.Billing;
@@ -376,7 +376,7 @@ public sealed partial class MainViewModel
     /// <summary>Raises everything the tab strip shows for this tab.</summary>
     private void RaiseTabStatus()
     {
-        foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(TabTip),
+        foreach (var name in new[] { nameof(TabLight), nameof(TabLightStatus), nameof(TabStatusWord), nameof(TabLightBrush), nameof(TabTrailing), nameof(TabTip), nameof(TabHoverTip),
                                      nameof(TabActivity), nameof(IsTabIdle), nameof(IsTabBusy), nameof(IsTabDisabled), nameof(IsTabAllStopped), nameof(TabActivityWord),
                                      nameof(TabAskingCount), nameof(TabNeedsYou), nameof(Spend), nameof(ApiLeftHeadline), nameof(ApiLeftCaption),
                                      nameof(ApiSpentHeadline), nameof(ApiSpentCaption), nameof(ApiRunsOutHeadline), nameof(ApiRunsOutCaption),

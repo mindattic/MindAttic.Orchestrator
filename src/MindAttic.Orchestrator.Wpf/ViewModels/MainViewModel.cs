@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Input;
@@ -444,7 +444,7 @@ public sealed partial class MainViewModel : ObservableObject
         Raise(nameof(TicketCount)); Raise(nameof(RepoCount)); Raise(nameof(TokensToday));
         Raise(nameof(TokensDetail)); Raise(nameof(Warnings)); Raise(nameof(HasWarnings)); Raise(nameof(WarningsText));
         Raise(nameof(ShowsWarningsSection));
-        Raise(nameof(TabTrailing)); Raise(nameof(TabTip));
+        Raise(nameof(TabTrailing)); Raise(nameof(TabTip)); Raise(nameof(TabHoverTip));
     }
 
     /// <summary>The most toasts shown at once; the oldest (last) go first.</summary>

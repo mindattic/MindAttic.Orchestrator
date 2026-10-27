@@ -31,6 +31,16 @@ public sealed class TabStatusTests
     }
 
     [Test]
+    public void Hovering_a_persons_tab_shows_only_their_cutoffs_and_the_weekly_reset()
+    {
+        // M.ORCH-T1120: no name, status, email or 5-hour reset; just the cutoffs and when the week resets.
+        var tip = MainViewModel.TabHoverTipOf(" Cutoffs: 5-hour 98%, weekly 95%.", Now.AddHours(7).AddMinutes(3), Now);
+        Assert.That(tip, Does.StartWith("Cutoffs: 5-hour 98%, weekly 95%. Week resets ").And.EndWith("(in 7hr 3m)."));
+        Assert.That(MainViewModel.TabHoverTipOf(" Cutoffs: 5-hour 98%, weekly 95%.", null, Now), Is.EqualTo("Cutoffs: 5-hour 98%, weekly 95%."));
+        Assert.That(MainViewModel.TabHoverTipOf("", Now.AddHours(1), Now), Is.Null, "no cutoffs (signed out, the API key): the full tip instead");
+    }
+
+    [Test]
     public void The_tab_shows_live_5_hour_and_weekly_use_against_the_persons_own_cutoffs()
     {
         // M.ORCH-T793: current/target pairs, the target the person's own cutoff as passed in, never a fixed number.

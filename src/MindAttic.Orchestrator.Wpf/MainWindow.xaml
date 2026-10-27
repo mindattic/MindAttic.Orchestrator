@@ -177,7 +177,7 @@
                 <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
                     <Setter Property="Accent" Value="{Binding TabBrush}" />
                     <Setter Property="Trailing" Value="{Binding TabTrailing}" />
-                    <Setter Property="ToolTip" Value="{Binding TabTip}" />
+                    <Setter Property="ToolTip" Value="{Binding TabHoverTip}" />
                     <Setter Property="AutomationProperties.Name" Value="{Binding TabTip}" />
                 </Style>
             </mc:MaTabControl.ItemContainerStyle>
