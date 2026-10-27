@@ -200,10 +200,12 @@ public sealed class TerminalPanesTests
     [Test, Apartment(ApartmentState.STA)]
     public void The_Launcher_s_own_menu_pane_shows_without_a_provider_bracket()
     {
-        var menu = new TerminalPaneViewModel(new PaneRequest("RD: Launcher", temp.New()) { Repo = "Launcher", Provider = "Launcher", CommandLine = "cmd.exe", IsMenu = true });
+        var menu = new TerminalPaneViewModel(new PaneRequest("RD: Launcher", temp.New()) { Repo = "Launcher", Provider = "Launcher", CommandLine = "cmd.exe", IsMenu = true, Initials = "RD" });
         Assert.That(menu.Name, Is.EqualTo("Launcher"));
-        var cli = new TerminalPaneViewModel(new PaneRequest("RD: Repo [Claude]", temp.New()) { Repo = "Repo", CommandLine = "cmd.exe" });
+        var cli = new TerminalPaneViewModel(new PaneRequest("RD: Repo [Claude]", temp.New()) { Repo = "Repo", CommandLine = "cmd.exe", Initials = "RD" });
         Assert.That(cli.Name, Is.EqualTo("Repo [Claude]"));
+        Assert.That(menu.Badge, Is.EqualTo("RD:"), "the Launcher tab still carries its login's badge (M.ORCH-T1172)");
+        Assert.That(cli.Badge, Is.EqualTo(""), "a CLI tab no longer repeats it: it already sits under that Launcher tab (M.ORCH-T1172)");
     }
 
     [Test]
@@ -436,6 +438,32 @@ public sealed class TerminalPanesTests
     }
 
     [Test, Apartment(ApartmentState.STA)]
+    public void Opening_tabs_in_order_stamps_each_one_with_a_rising_position_that_a_reattach_keeps()
+    {
+        // M.ORCH-T1170: so a dashboard crash and restart puts a still-live session's tab back where it was, Open() stamps it
+        // with its spot in the sequence, saved in its sidecar; Reattach must never overwrite that with a fresh one.
+        var terminals = new TerminalsViewModel { HostAvailable = () => false };
+        Assert.That(terminals.Open(new PaneRequest("A", temp.New()) { CommandLine = "cmd.exe" }), Is.Null);
+        Assert.That(terminals.Open(new PaneRequest("B", temp.New()) { CommandLine = "cmd.exe" }), Is.Null);
+        Assert.That(terminals.Open(new PaneRequest("C", temp.New()) { CommandLine = "cmd.exe" }), Is.Null);
+        var (a, b, c) = (terminals.Panes[0], terminals.Panes[1], terminals.Panes[2]);
+        Assert.That(a.Request.Order, Is.Not.Null);
+        Assert.That(new[] { a, b, c }.Select(p => p.Request.Order), Is.Ordered.Ascending, "later opens always sort after earlier ones");
+        foreach (var p in terminals.Panes.ToList()) terminals.Close(p);
+
+        // A session reattached in some other order (arrival/registry order after a crash) still carries its original Order,
+        // and sorting by it (as MainViewModel.Terminals.SyncTerminals does) restores the pre-crash tab strip.
+        var fresh = new TerminalsViewModel();
+        var reattachedC = fresh.Reattach(new Term.TermSessionRecord { Id = "c1", Pipe = "mindattic-term-nobody-c1", CommandLine = "cmd.exe", Cwd = temp.New() }, c.Request);
+        var reattachedA = fresh.Reattach(new Term.TermSessionRecord { Id = "a1", Pipe = "mindattic-term-nobody-a1", CommandLine = "cmd.exe", Cwd = temp.New() }, a.Request);
+        var reattachedB = fresh.Reattach(new Term.TermSessionRecord { Id = "b1", Pipe = "mindattic-term-nobody-b1", CommandLine = "cmd.exe", Cwd = temp.New() }, b.Request);
+        Assert.That(new[] { reattachedC, reattachedA, reattachedB }.OrderBy(p => p!.Request.Order), Is.EqualTo(new[] { reattachedA, reattachedB, reattachedC }));
+        reattachedA!.DisposeControl();
+        reattachedB!.DisposeControl();
+        reattachedC!.DisposeControl();
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
     public void Without_a_TermHost_a_tab_runs_its_CLI_in_process()
     {
         var terminals = new TerminalsViewModel { HostAvailable = () => false };
@@ -461,11 +489,11 @@ public sealed class TerminalPanesTests
         Assert.That(pane!.IsHosted, Is.True);
         Assert.That(pane.TermId, Is.EqualTo("abc123"));
         Assert.That(pane.Login, Is.EqualTo("amy@example.com"));
-        Assert.That(pane.Badge, Is.EqualTo("AM:"));
+        Assert.That(pane.Badge, Is.EqualTo(""), "a CLI tab carries no badge: only the Launcher's own tab does (M.ORCH-T1172)");
         Assert.That(terminals.Reattach(session, request), Is.Null, "one tab per session");
 
         var named = terminals.Reattach(session with { Id = "def456", Pipe = "mindattic-term-nobody-def456" }, request with { Alias = "Amy" });
-        Assert.That(named!.Badge, Is.EqualTo("AM:"), "initials win over the name, as on every CLI tab (M.ORCH-T1099)");
+        Assert.That(named!.Badge, Is.EqualTo(""), "still no badge on a CLI tab, named or not (M.ORCH-T1172)");
         named.DisposeControl();
 
         terminals.OnTermSession(new Term.TermSessionEvent(session, Term.TermSessionEvents.Ended));

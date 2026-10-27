@@ -47,12 +47,16 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>Hands each person's tab its own terminals (on the global login's tab, which holds them all), the Launcher's
-    /// own menu pane first (M.LNCH-T77) and every CLI tab after it in the order each opened, then shows the chosen one.</summary>
+    /// own menu pane first (M.LNCH-T77) and every CLI tab after it in its original position (M.ORCH-T1170): the order it was
+    /// first opened in, not the order a dashboard restart happened to reattach it in, so a crash and restart leaves the tab
+    /// strip looking the same as before. A tab with no recorded position (opened before this existed, or reattached from a
+    /// record with no sidecar) sorts after every tab that has one.</summary>
     private void SyncTerminals()
     {
         if (!IsGlobalTab) { Root.SyncTerminals(); return; }
         var owners = AllTerminals.Panes.ToLookup(OwnerOf);
-        foreach (var t in loginTabs) t.Terminals.SyncTo([.. owners[t].OrderByDescending(p => p.Request.IsMenu)]);
+        foreach (var t in loginTabs)
+            t.Terminals.SyncTo([.. owners[t].OrderByDescending(p => p.Request.IsMenu).ThenBy(p => p.Request.Order ?? long.MaxValue)]);
         ShowChosenPane();
     }
 

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Threading;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -102,9 +103,10 @@ public sealed class TerminalPaneViewModel : ObservableObject
 
     public string Title => Request.Title;
 
-    /// <summary>The tab's badge chip: the login's initials ("WA:"), the same on the Launcher's tab as on every CLI's (M.ORCH-T1099,
-    /// which reversed M.ORCH-T1071's name-first badge); its name only when it has no initials.</summary>
-    public string Badge => Request.Initials is { Length: > 0 } i ? $"{i}:" : Request.Alias is { Length: > 0 } a ? $"{a}:" : "";
+    /// <summary>The tab's badge chip: the login's initials ("WA:"), its name when it has no initials, shown only on the
+    /// Launcher's own tab (M.ORCH-T1172) — a login's other CLI tabs already sit under that Launcher tab, so repeating the
+    /// badge on each of them said nothing new.</summary>
+    public string Badge => !Request.IsMenu ? "" : Request.Initials is { Length: > 0 } i ? $"{i}:" : Request.Alias is { Length: > 0 } a ? $"{a}:" : "";
     public string Name => Request.IsMenu ? SessionControl.ShortName(Request.Name) : $"{SessionControl.ShortName(Request.Name)} [{Request.Provider}]";
     public string Tooltip => $"{Request.Title}\n{Request.Directory}\n{Request.Alias ?? Login ?? "global login"}";
     public Brush TabBrush { get; }
@@ -594,12 +596,17 @@ public sealed class TerminalsViewModel : ObservableObject
 
     public string PauseAllText => broadcast.PauseAll ? "Resume all" : "Pause all";
 
+    /// <summary>Ticks as of construction, then up by one each call: a tab opened later always sorts after one opened earlier
+    /// (M.ORCH-T1170), including across a dashboard restart, since ticks keep rising while this process is down too.</summary>
+    private static long nextOrder = DateTime.UtcNow.Ticks;
+
     /// <summary>Opens <paramref name="request"/> as a new terminal tab and brings it up; returns an error, or null. Its CLI
     /// starts in a TermHost off the UI thread and the tab attaches once it registers; without a host, or when it fails, the
     /// tab runs the CLI in this process instead (logged).</summary>
     public string? Open(PaneRequest request)
     {
         if (request.Problem() is { } problem) return problem;
+        request = request with { Order = Interlocked.Increment(ref nextOrder) };
         var hosted = false;
         if (UseTermHost)
         {

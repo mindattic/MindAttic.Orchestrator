@@ -49,6 +49,13 @@ public sealed record PaneRequest(string Title, string Directory)
     /// Terminals panel tabs, and it's shown without a provider bracket.</summary>
     public bool IsMenu { get; init; }
 
+    /// <summary>Where this tab sat among its login's tabs when it was first opened (M.ORCH-T1170): ticks, so later tabs sort
+    /// after earlier ones. Saved in the session's <see cref="TermPaneFile"/> sidecar alongside everything else, so a session
+    /// still live after a dashboard crash reattaches to the same spot in the tab strip instead of wherever reattachment order
+    /// happens to put it. Null for a tab opened before this existed, or built straight from a record with no sidecar
+    /// (<see cref="TermPaneFile.FromRecord"/>): it sorts after every tab that has one.</summary>
+    public long? Order { get; init; }
+
     /// <summary>The person whose page the tab goes on: the login's email, or null for the global login's.</summary>
     [JsonIgnore]
     public string? Login => AccountDirs.Normalize(Email) ?? LoginOf(ConfigDir);
