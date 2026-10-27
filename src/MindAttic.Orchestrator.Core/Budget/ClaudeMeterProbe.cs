@@ -162,9 +162,20 @@ public sealed class ClaudeMeterProbe
     /// percent for the same one. Otherwise the file.</summary>
     public static ReportedUsage? Fresher(ReportedUsage? file, ReportedUsage? probed, DateTime nowUtc)
     {
-        if (ReportedUsage.Usable(probed?.FiveHour, nowUtc) is not { } p) return file;
-        if (ReportedUsage.Usable(file?.FiveHour, nowUtc) is not { } f) return probed;
-        return f.ResetUtc == p.ResetUtc && p.Percent > f.Percent ? probed : file;
+        ReportedUsage? picked, other;
+        if (ReportedUsage.Usable(probed?.FiveHour, nowUtc) is not { } p) (picked, other) = (file, probed);
+        else if (ReportedUsage.Usable(file?.FiveHour, nowUtc) is not { } f) (picked, other) = (probed, file);
+        else { var fromProbed = f.ResetUtc == p.ResetUtc && p.Percent > f.Percent; (picked, other) = fromProbed ? (probed, file) : (file, probed); }
+        return RaiseWeek(picked, other);
+    }
+
+    /// <summary>Raises <paramref name="picked"/>'s weekly percent to <paramref name="other"/>'s when it reports more for
+    /// the same week (M.ORCH-T1162): the two readings above are compared for 5-hour freshness only, so picking one
+    /// mustn't regress the week if the other happens to carry a higher, equally current sample of it.</summary>
+    private static ReportedUsage? RaiseWeek(ReportedUsage? picked, ReportedUsage? other)
+    {
+        if (picked?.Week is not { } week || other?.Week is not { } otherWeek) return picked;
+        return otherWeek.ResetUtc == week.ResetUtc && otherWeek.Percent > week.Percent ? picked with { Week = otherWeek } : picked;
     }
 
     /// <summary>Starts an ask in the background when <see cref="Due"/> and none is in flight or backing off; returns
@@ -493,11 +504,22 @@ public sealed class ClaudeMeterProbe
         string source = "orchestrator")
     {
         var five = reading.FiveHour;
-        if (five is not null && (db is not null ? ReportedUsage.LoadRow(atUtc, db) : ReportedUsage.Load(atUtc, path, db)) is { FiveHour: { } old } was && was.Account == account && old.ResetUtc == five.ResetUtc && old.Percent > five.Percent)
-            five = old;
+        var week = reading.Week;
+        if (five is not null || week is not null)
+        {
+            var was = db is not null ? ReportedUsage.LoadRow(atUtc, db) : ReportedUsage.Load(atUtc, path, db);
+            if (was is not null && was.Account == account)
+            {
+                if (five is not null && was.FiveHour is { } old && old.ResetUtc == five.ResetUtc && old.Percent > five.Percent) five = old;
+                // Usage never falls within a week either (M.ORCH-T1162): without this, two open CLIs' statuslines could
+                // restamp the week with a stale, lower percent at a newer time, and the 90%-of-week hard stop would never
+                // latch even once the real account crossed it.
+                if (week is not null && was.Week is { } oldWeek && oldWeek.ResetUtc == week.ResetUtc && oldWeek.Percent > week.Percent) week = oldWeek;
+            }
+        }
         var limits = new JsonObject();
         if (five is not null) limits["five_hour"] = Node(five);
-        if (reading.Week is { } week) limits["seven_day"] = Node(week);
+        if (week is not null) limits["seven_day"] = Node(week);
         var json = new JsonObject
         {
             ["rate_limits"] = limits,
@@ -508,7 +530,7 @@ public sealed class ClaudeMeterProbe
         if (db is not null)
         {
             db.SaveState(ReportedUsage.StateName, json.ToJsonString()); // the statusline's file is never replaced
-            return new ReportedUsage(five, reading.Week, atUtc) { Account = account };
+            return new ReportedUsage(five, week, atUtc) { Account = account };
         }
         var tmp = $"{path}.{Environment.ProcessId}.tmp";
         File.WriteAllText(tmp, json.ToJsonString());
@@ -518,7 +540,7 @@ public sealed class ClaudeMeterProbe
             try { File.Delete(tmp); } catch (IOException) { }
             throw;
         }
-        return new ReportedUsage(five, reading.Week, atUtc) { Account = account };
+        return new ReportedUsage(five, week, atUtc) { Account = account };
 
         static JsonObject Node(ReportedWindow w) => new()
         {

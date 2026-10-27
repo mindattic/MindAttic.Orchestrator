@@ -82,13 +82,24 @@ public static class ReportedLimit
             var running = samples.Where(s => s.ResetUtc > now && s.AtUtc <= now)
                 .OrderByDescending(s => s.Percent).ThenByDescending(s => s.AtUtc).FirstOrDefault();
             if (running is not null)
-                return new ReportedUsage(new ReportedWindow(running.Percent, running.ResetUtc), reported?.Week, running.AtUtc)
-                    { WeekAtUtc = reported?.WeekAt };
+                return RaiseWeek(new ReportedUsage(new ReportedWindow(running.Percent, running.ResetUtc), reported?.Week, running.AtUtc)
+                    { WeekAtUtc = reported?.WeekAt }, samples);
         }
-        if (reported?.FiveHour is not { } w) return reported;
+        if (reported?.FiveHour is not { } w) return RaiseWeek(reported, samples);
         var best = samples.Where(s => s.ResetUtc == w.ResetUtc && s.Percent > w.Percent)
             .OrderByDescending(s => s.Percent).ThenByDescending(s => s.AtUtc).FirstOrDefault();
-        return best is null ? reported : reported with { FiveHour = w with { Percent = best.Percent }, AtUtc = best.AtUtc, WeekAtUtc = reported.WeekAt };
+        return RaiseWeek(best is null ? reported : reported with { FiveHour = w with { Percent = best.Percent }, AtUtc = best.AtUtc, WeekAtUtc = reported.WeekAt }, samples);
+    }
+
+    /// <summary>Raises <paramref name="reported"/>'s weekly percent to the highest recorded for the same weekly window
+    /// (M.ORCH-T1162): the same stale-restamp guard as above, applied to the week instead of the 5-hour window. Usage
+    /// within a week never goes down either, so a later, lower restamp of it must never win over a sample already seen.</summary>
+    private static ReportedUsage? RaiseWeek(ReportedUsage? reported, IReadOnlyList<UsageSample> samples)
+    {
+        if (reported?.Week is not { } week) return reported;
+        var best = samples.Where(s => s.WeekResetUtc == week.ResetUtc && s.WeekPercent > week.Percent)
+            .OrderByDescending(s => s.WeekPercent).ThenByDescending(s => s.AtUtc).FirstOrDefault();
+        return best is null ? reported : reported with { Week = week with { Percent = best.WeekPercent!.Value } };
     }
 
     /// <summary>When <paramref name="reported"/>'s 5-hour percent was first seen (M.ORCH-T1110): the earliest sample of its window at
