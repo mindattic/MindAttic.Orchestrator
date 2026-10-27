@@ -97,6 +97,10 @@ public sealed partial class MainViewModel
     /// gone as soon as they're all running again. A flag, not a count; the count is in the tooltip.</summary>
     public bool TabNeedsYou => TabAskingCount > 0;
 
+    /// <summary>The red flag's own tooltip (M.ORCH-T790), shown on hovering the glyph itself rather than the whole tab: what it means
+    /// and how many CLIs it covers, e.g. "Blocked waiting on you: a CLI here is blocked waiting on your answer."</summary>
+    public string TabNeedsYouTip => "Blocked waiting on you:" + NeedsYouLine(TabAskingCount);
+
     internal static int AskingOf(IEnumerable<MindAttic.Orchestrator.Activity.AgentBoardRow>? agents) => agents?.Count(a => a.Asking) ?? 0;
 
     /// <summary>The flag in words for the tooltip and the accessible name, so it's never only a picture; empty with none blocked.</summary>
@@ -248,14 +252,22 @@ public sealed partial class MainViewModel
         // Through the same cap as a last tab's respawn (M.ORCH-T1150): a Launcher that exits at once is reopened at most every 30s.
         var now = DateTime.UtcNow;
         var wanted = loginTabs.Where(t => t.IsTabSignedIn && !launchersOpened.Contains(t.tab.Key) && launcherRespawn.TryTake(t.tab.Key, now))
-            .Select(t => { launchersOpened.Add(t.tab.Key); CloseEndedLaunchers(t); return (t.ScopeEmail, t.TabTitle); }).ToList();
-        foreach (var (email, title) in wanted) _ = OpenLauncherQuietlyAsync(email, title);
+            .Select(t => { launchersOpened.Add(t.tab.Key); CloseEndedLaunchers(t); return (t.tab.Key, t.ScopeEmail, t.TabTitle); }).ToList();
+        foreach (var (key, email, title) in wanted) _ = OpenLauncherQuietlyAsync(key, email, title);
     }
 
-    private async Task OpenLauncherQuietlyAsync(string? email, string title, bool embedOnly = false)
+    /// <summary>Opens <paramref name="key"/>'s Launcher and logs why, quietly, on a failure — which also undoes the optimistic
+    /// <see cref="launchersOpened"/> mark from whichever caller is about to fire-and-forget this (M.ORCH-T1192): left marked
+    /// after a failed open, a login's last tab closing could never spawn another Launcher for it again, since every later
+    /// refresh's own retry (<see cref="OpenLaunchers"/>) skips a key already in <see cref="launchersOpened"/>.</summary>
+    private async Task OpenLauncherQuietlyAsync(string key, string? email, string title, bool embedOnly = false)
     {
         var (error, _) = await OpenLauncherPaneAsync(email, title, embedOnly);
-        if (error is { } e) OrchestratorLog.For("Launcher").Warning("Couldn't open {Login:l}'s Launcher tab: {Error:l}", title, e);
+        if (error is { } e)
+        {
+            OrchestratorLog.For("Launcher").Warning("Couldn't open {Login:l}'s Launcher tab: {Error:l}", title, e);
+            launchersOpened.Remove(key);
+        }
     }
 
     /// <summary>M.ORCH-T1153: a new Launcher for <paramref name="person"/> replaces their ended Launcher tabs rather than piling up
@@ -318,7 +330,7 @@ public sealed partial class MainViewModel
                     launchersEmbedded.Remove(key);
                     launchersOpened.Add(key);
                     CloseEndedLaunchers(owner);
-                    _ = OpenLauncherQuietlyAsync(owner.ScopeEmail, owner.TabTitle, embedOnly: true);
+                    _ = OpenLauncherQuietlyAsync(key, owner.ScopeEmail, owner.TabTitle, embedOnly: true);
                     break;
                 case LauncherRespawnOutcome.Capped:
                     // Let the refresh reopen it once the cap is up.
