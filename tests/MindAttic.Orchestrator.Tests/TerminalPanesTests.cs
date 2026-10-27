@@ -250,7 +250,9 @@ public sealed class TerminalPanesTests
         var rootGrid = Named("Root");
         Assert.That(Named("TerminalsPanel").Parent, Is.SameAs(rootGrid));
         Assert.That((string?)Named("TerminalsPanel").Attribute("Grid.Row"), Is.EqualTo("1"));
-        Assert.That(Named("TerminalTabs").Parent, Is.SameAs(Named("TerminalsPanel")));
+        // Wrapped in a scroller row (M.ORCH-T1171, mirroring the login tabs' M.ORCH-T822), so its direct parent is that
+        // row's ScrollViewer rather than TerminalsPanel itself; it must still live inside TerminalsPanel.
+        Assert.That(Named("TerminalTabs").Ancestors().Contains(Named("TerminalsPanel")), Is.True);
         Assert.That(Named("TerminalFrameRow").Parent, Is.SameAs(rootGrid));
         Assert.That((string?)Named("TerminalFrameRow").Attribute("Grid.Row"), Is.EqualTo("2"));
         Assert.That(Named("TerminalFrame").Parent, Is.SameAs(Named("TerminalFrameRow")));
