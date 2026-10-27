@@ -232,7 +232,9 @@ public sealed partial class MainlineTests(JsonStore store)
     /// A "Fails on main" ticket for <paramref name="test"/> closed as fixed (not won't-do) by a commit that is not an ancestor of
     /// the run's commit, i.e. the fix landed after the run started; null when there is none. <paramref name="isAncestor"/> answers
     /// whether a commit is an ancestor of the run's commit: true, false, or null when unknown (then the ticket doesn't count:
-    /// when in doubt, file). Never throws.
+    /// when in doubt, file). False must mean the commit actually landed on the mainline after the run started, not merely that
+    /// it isn't an ancestor of the run's commit (a pre-rebase or branch-only hash that never reached main would also answer
+    /// false to that alone (M.ORCH-T1093)); see <see cref="AncestorCheck"/> for the real check. Never throws.
     /// </summary>
     internal static Ticket? FixedSince(IEnumerable<Ticket> tickets, string test, Func<string, bool?> isAncestor)
     {
@@ -255,21 +257,43 @@ public sealed partial class MainlineTests(JsonStore store)
         reference is null ? [] : [.. CommitHash().Matches(reference).Select(m => m.Value).Distinct(StringComparer.OrdinalIgnoreCase)];
 
     /// <summary><c>git merge-base --is-ancestor &lt;commit&gt; &lt;run head&gt;</c>: 0 yes, 1 no; anything else (an unknown commit,
-    /// a repo the fix hasn't been fetched into yet) is fetched once and asked again, then unknown.</summary>
+    /// a repo the fix hasn't been fetched into yet) is fetched once and asked again, then unknown. A commit that isn't an
+    /// ancestor of the run's head counts as a later fix only once it's also confirmed an ancestor of
+    /// <c>origin/&lt;mainline&gt;</c>: this checkout is shared by every agent working the repo, so a pre-rebase or branch-only
+    /// commit a ticket's ref still names can remain a loose object here without ever landing on main; that must not read as
+    /// "fixed since" (M.ORCH-T1093).</summary>
     private Func<string, bool?> AncestorCheck(Run run)
     {
         var fetched = false;
+        void FetchOnce()
+        {
+            if (fetched) return;
+            fetched = true;
+            Git(run.Path, ["fetch", "--quiet", "origin"]);
+        }
+        bool? IsAncestor(string commit, string of)
+        {
+            var (code, _) = Git(run.Path, ["merge-base", "--is-ancestor", commit, of]);
+            return code is 0 or 1 ? code == 0 : null;
+        }
         bool? Ask(string commit)
         {
             try
             {
-                var (code, _) = Git(run.Path, ["merge-base", "--is-ancestor", commit, run.Head]);
-                if (code is 0 or 1) return code == 0;
-                if (fetched) return null;
-                fetched = true;
-                Git(run.Path, ["fetch", "--quiet", "origin"]);
-                (code, _) = Git(run.Path, ["merge-base", "--is-ancestor", commit, run.Head]);
-                return code is 0 or 1 ? code == 0 : null;
+                var onHead = IsAncestor(commit, run.Head);
+                if (onHead is null)
+                {
+                    FetchOnce();
+                    onHead = IsAncestor(commit, run.Head);
+                }
+                if (onHead != false) return onHead; // an ancestor of the run's head, or still unknown after a fetch
+                var onMainline = IsAncestor(commit, "origin/" + run.Mainline);
+                if (onMainline is null)
+                {
+                    FetchOnce();
+                    onMainline = IsAncestor(commit, "origin/" + run.Mainline);
+                }
+                return onMainline == true ? false : null;
             }
             catch (Exception) { return null; }
         }

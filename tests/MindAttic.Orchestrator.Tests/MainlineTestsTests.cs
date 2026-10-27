@@ -259,6 +259,73 @@ public sealed class MainlineTestsTests
     }
 
     [Test]
+    public void A_fix_commit_that_never_landed_on_the_mainline_does_not_count_as_fixed_since()
+    {
+        // M.ORCH-T1093: the checkout is shared by every agent working the repo, so a closed ticket's ref can still name a
+        // pre-rebase or branch-only commit that only exists as a loose object here. Not an ancestor of the run's head, but
+        // it never landed on origin/main either, so it's not a real fix: the test is filed again.
+        using (var db = TicketsDb.Open(TicketsDb.DefaultPath(dir)))
+        {
+            var fixedTicket = db.Add("A", "fix", TicketRules.Open, Fix("x", "open", "A.Tests.One", "").Summary, "main@1111111");
+            db.Close(fixedTicket.Id, TicketRules.Closed, "deadbee1");
+        }
+        var tests = new MainlineTests(store)
+        {
+            Git = (p, a) => a[0] switch
+            {
+                "rev-parse" => (0, head + "\n"),
+                "diff" => (0, diff + "\n"),
+                "ls-tree" => (0, root),
+                "log" => (0, ""),
+                "merge-base" => (1, ""), // not an ancestor of the run's head, nor of origin/main
+                _ => (0, ""),
+            },
+            MainlineOf = _ => "main",
+            RunSuite = _ => throw new InvalidOperationException("Spawn stands in for the run"),
+            Spawn = w => { var r = new TaskCompletionSource<MainlineTests.SuiteResult>(); runs.Add(r); return r.Task; },
+        };
+        Tick(tests, Now);
+        head = "aaaaaaa2";
+        Tick(tests, Now.AddMinutes(1));
+        runs[0].SetResult(Result(["A.Tests.One"], []));
+        var lines = Tick(tests, Now.AddMinutes(2));
+        Assert.That(lines.Select(l => l.Text), Has.None.Contains("fixed since"));
+        Assert.That(Filed().Single(t => MainlineTests.TestOf(t.Summary) == "A.Tests.One").Status, Is.EqualTo(TicketRules.Open));
+    }
+
+    [Test]
+    public void A_fix_commit_not_in_the_run_but_landed_on_the_mainline_counts_as_fixed_since()
+    {
+        // The same shape of commit, but this one really is an ancestor of origin/main: the fix landed after the run started.
+        using (var db = TicketsDb.Open(TicketsDb.DefaultPath(dir)))
+        {
+            var fixedTicket = db.Add("A", "fix", TicketRules.Open, Fix("x", "open", "A.Tests.One", "").Summary, "main@1111111");
+            db.Close(fixedTicket.Id, TicketRules.Closed, "cafef00d");
+        }
+        var tests = new MainlineTests(store)
+        {
+            Git = (p, a) => a[0] switch
+            {
+                "rev-parse" => (0, head + "\n"),
+                "diff" => (0, diff + "\n"),
+                "ls-tree" => (0, root),
+                "log" => (0, ""),
+                "merge-base" => a[^1].StartsWith("origin/", StringComparison.Ordinal) ? (0, "") : (1, ""),
+                _ => (0, ""),
+            },
+            MainlineOf = _ => "main",
+            RunSuite = _ => throw new InvalidOperationException("Spawn stands in for the run"),
+            Spawn = w => { var r = new TaskCompletionSource<MainlineTests.SuiteResult>(); runs.Add(r); return r.Task; },
+        };
+        Tick(tests, Now);
+        head = "aaaaaaa2";
+        Tick(tests, Now.AddMinutes(1));
+        runs[0].SetResult(Result(["A.Tests.One"], []));
+        var lines = Tick(tests, Now.AddMinutes(2));
+        Assert.That(lines.Select(l => l.Text), Has.Some.Contains("fixed since this run started"));
+    }
+
+    [Test]
     public void A_run_that_did_not_complete_files_and_closes_nothing()
     {
         var tests = Make();
