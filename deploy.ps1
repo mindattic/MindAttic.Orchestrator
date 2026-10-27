@@ -135,6 +135,9 @@ if not exist "%APP_EXE%" (
 start "" "%APP_EXE%"
 exit /b 0
 "@
+    # CRLF throughout: cmd misreads goto labels in an LF-only batch file. Rewritten only when it differs: the launcher runs
+    # this script, and cmd reads a batch file by offset, so rewriting it mid-run would corrupt the rest of that run.
+    $launcherText = ($launcherText -replace "`r?`n", "`r`n") + "`r`n"
     New-Item -ItemType Directory -Force $appDir | Out-Null
     if (-not (Test-Path $launcher) -or (Get-Content -Raw $launcher) -ne $launcherText) {
         Set-Content -LiteralPath $launcher -Value $launcherText -Encoding ascii -NoNewline
