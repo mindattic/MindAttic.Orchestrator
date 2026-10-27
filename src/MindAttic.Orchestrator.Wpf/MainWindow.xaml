@@ -295,8 +295,8 @@
                  broadcast is paused, who is watching and how, with Pause broadcast (Ctrl+Shift+B, even while the terminal holds
                  focus) and Pause all. Pausing never touches this dashboard's own view. Sharing, masking and "share my sessions"
                  are on the CLI tab's right-click menu. -->
-            <Border x:Name="BroadcastBanner" DataContext="{Binding Terminals.SelectedPane}" Margin="{StaticResource SpaceBS}" Padding="8,4"
-                    BorderThickness="1" BorderBrush="{DynamicResource MaWarn}" CornerRadius="4"
+            <Border x:Name="BroadcastBanner" Style="{StaticResource MaCard}" DataContext="{Binding Terminals.SelectedPane}" Margin="{StaticResource SpaceBS}" Padding="8,4"
+                    Background="Transparent" BorderBrush="{DynamicResource MaWarn}" CornerRadius="4"
                     Visibility="{Binding ShowBroadcastBanner, Converter={StaticResource Visible}, FallbackValue=Collapsed}"
                     AutomationProperties.Name="Remote viewers" AutomationProperties.LiveSetting="Assertive">
                 <DockPanel>
