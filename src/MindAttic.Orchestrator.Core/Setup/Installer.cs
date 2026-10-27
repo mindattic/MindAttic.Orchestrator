@@ -258,8 +258,8 @@ public sealed class Installer
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), ShortcutName),
     ];
 
-    /// <summary>What a source checkout's deploy.ps1 writes beside the installed exe: it redeploys when the source is newer,
-    /// then opens the app.</summary>
+    /// <summary>What a source checkout's deploy.ps1 writes beside the installed exe: a menu, 1) Deploy &amp; Run (redeploys, then
+    /// opens the app) or 2) Run (just opens it) (MAT-T67).</summary>
     public const string LauncherName = "deploy.bat";
 
     /// <summary>What the shortcuts open: the <see cref="LauncherName"/> beside <paramref name="exe"/> when there is one, so every
@@ -284,12 +284,12 @@ public sealed class Installer
         {
             dynamic link = shell.CreateShortcut(path);
             if (File.Exists(path) && SamePath((string)link.TargetPath, target)
-                && SamePath(((string)link.IconLocation).Split(',')[0], exe)) continue;
+                && SamePath(((string)link.IconLocation).Split(',')[0], exe) && (int)link.WindowStyle == 1) continue;
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             link.TargetPath = target;
             link.IconLocation = icon;
-            // 7 = minimized: the launcher's console stays in the taskbar while it checks or rebuilds, not over the desktop.
-            link.WindowStyle = SamePath(target, exe) ? 1 : 7;
+            // 1 = normal: the launcher opens with a menu to answer (1) Deploy & Run, 2) Run, MAT-T67), so it can't start minimized.
+            link.WindowStyle = 1;
             link.WorkingDirectory = Path.GetDirectoryName(exe);
             link.Description = "Every agent session across the workspace: status, budget and pace, the ticket queue";
             link.Save();
