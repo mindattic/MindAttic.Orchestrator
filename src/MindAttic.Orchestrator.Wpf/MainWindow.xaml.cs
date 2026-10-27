@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
@@ -63,8 +64,18 @@ public partial class MainWindow : Window
         model.OrgTabs.CollectionChanged += (_, _) => BringSelectedTabIntoView();
         DataContextChanged += (_, e) =>
         {
-            if (e.OldValue is MainViewModel was) was.PropertyChanged -= OnShownChanged;
-            if (e.NewValue is MainViewModel now) now.PropertyChanged += OnShownChanged;
+            if (e.OldValue is MainViewModel was)
+            {
+                was.PropertyChanged -= OnShownChanged;
+                was.Terminals.SelectionChanged -= BringSelectedTerminalTabIntoView;
+                was.Terminals.Panes.CollectionChanged -= OnTerminalPanesChanged;
+            }
+            if (e.NewValue is MainViewModel now)
+            {
+                now.PropertyChanged += OnShownChanged;
+                now.Terminals.SelectionChanged += BringSelectedTerminalTabIntoView;
+                now.Terminals.Panes.CollectionChanged += OnTerminalPanesChanged;
+            }
         };
         model.PropertyChanged += OnShownChanged;
         // Scales the window's content and binds Ctrl+Plus / Ctrl+Minus / Ctrl+0 on the window, wherever focus is.
@@ -550,6 +561,42 @@ public partial class MainWindow : Window
 
     private void LoginTabScrollRight_Click(object sender, RoutedEventArgs e) =>
         LoginTabScroller.ScrollToHorizontalOffset(LoginTabScroller.HorizontalOffset + TabScrollStep);
+
+    /// <summary>No wrap, ever (M.ORCH-T1171), the CLI tabs' own version of <see cref="LoginTabScroller_ScrollChanged"/>: each
+    /// tab already sizes to its own content, so these arrows only page the strip past the window's width rather than let it
+    /// wrap to a second row.</summary>
+    private void TerminalTabScroller_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        var can = TerminalTabScroller.ScrollableWidth > 0.5;
+        TerminalTabScrollLeft.Visibility = TerminalTabScrollRight.Visibility = can ? Visibility.Visible : Visibility.Collapsed;
+        TerminalTabScrollLeft.IsEnabled = TerminalTabScroller.HorizontalOffset > 0.5;
+        TerminalTabScrollRight.IsEnabled = TerminalTabScroller.HorizontalOffset < TerminalTabScroller.ScrollableWidth - 0.5;
+    }
+
+    /// <summary>Scrolls <see cref="TerminalTabScroller"/> to the shown tab's selected CLI once the strip has laid it out, the
+    /// same way <see cref="BringSelectedTabIntoView"/> does for the login tabs. Never throws.</summary>
+    private void BringSelectedTerminalTabIntoView() =>
+        Dispatcher.BeginInvoke(() =>
+        {
+            try
+            {
+                if (TerminalTabs.ItemContainerGenerator.ContainerFromItem(Shown.Terminals.SelectedPane) is FrameworkElement tab) tab.BringIntoView();
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException) { OrchestratorLog.For("Dashboard").Error(ex, "Scrolling to the selected CLI tab failed; contained"); }
+        }, DispatcherPriority.Loaded);
+
+    private void OnTerminalPanesChanged(object? sender, NotifyCollectionChangedEventArgs e) => BringSelectedTerminalTabIntoView();
+
+    /// <summary>One CLI tab's width, what the strip's arrows scroll by.</summary>
+    private double TerminalTabScrollStep =>
+        TerminalTabs.Items.Count > 0 && TerminalTabs.ItemContainerGenerator.ContainerFromIndex(0) is FrameworkElement { ActualWidth: > 0 } first
+            ? first.ActualWidth : 200;
+
+    private void TerminalTabScrollLeft_Click(object sender, RoutedEventArgs e) =>
+        TerminalTabScroller.ScrollToHorizontalOffset(TerminalTabScroller.HorizontalOffset - TerminalTabScrollStep);
+
+    private void TerminalTabScrollRight_Click(object sender, RoutedEventArgs e) =>
+        TerminalTabScroller.ScrollToHorizontalOffset(TerminalTabScroller.HorizontalOffset + TerminalTabScrollStep);
 
     /// <summary>A CLI tab's right-click menu (M.ORCH-T883; Shift+F10 too): "Move to" each other signed-in login, read when it's
     /// opened, moving that CLI there. Not on the Launcher's own menu tab; disabled until the CLI's host is known.</summary>

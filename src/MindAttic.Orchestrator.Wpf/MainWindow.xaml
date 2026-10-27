@@ -279,42 +279,62 @@
             <TextBlock x:Name="TerminalsEmptyHint" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceBS}"
                        Text="No terminals open on this login. When the Launcher runs inside the Orchestrator, each CLI it opens arrives here as a tab of its own: a live terminal you can type in."
                        Visibility="{Binding Terminals.HasPanes, Converter={x:Static vm:Converters.FalseToVisible}}" />
-            <mc:MaTabControl x:Name="TerminalTabs" ShowContent="False" ContextMenuOpening="OnTerminalTabContextMenu" ItemsSource="{Binding Terminals.Panes}" SelectedItem="{Binding Terminals.SelectedPane}"
-                             Margin="{StaticResource SpaceBS}" AutomationProperties.Name="Terminals" AutomationProperties.HelpText="{Binding Terminals.Summary}"
-                             Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
-                <mc:MaTabControl.ItemContainerStyle>
-                    <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
-                        <Setter Property="Accent" Value="{Binding TabBrush}" />
-                        <Setter Property="ToolTip" Value="{Binding Tooltip}" />
-                        <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
-                    </Style>
-                </mc:MaTabControl.ItemContainerStyle>
-                <mc:MaTabControl.ItemTemplate>
-                    <DataTemplate DataType="{x:Type vm:TerminalPaneViewModel}">
-                        <StackPanel x:Name="TerminalTab" Orientation="Horizontal">
-                            <mc:MaBadge x:Name="TerminalBadge" Style="{StaticResource MaTag}" Content="{Binding Badge}" Background="{Binding TabBrush}"
-                                        Foreground="{Binding BadgeForeground}" Margin="{StaticResource SpaceRS}" VerticalAlignment="Center"
-                                        Visibility="{Binding Badge, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
-                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding StateText}" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" />
-                            <!-- Shared with remote viewers (M.ORCH-T935), and an eye while someone watches it remotely. -->
-                            <TextBlock x:Name="TerminalSharedGlyph" Text="&#xE72D;" FontFamily="Segoe MDL2 Assets" FontSize="11" Style="{StaticResource MaMutedText}"
-                                       Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" ToolTip="Shared with remote viewers (right-click to change)" AutomationProperties.Name="Shared with remote viewers"
-                                       Visibility="{Binding IsShared, Converter={StaticResource Visible}}" />
-                            <TextBlock x:Name="TerminalWatchedGlyph" Text="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource MaWarn}"
-                                       Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" ToolTip="{Binding BroadcastText}"
-                                       AutomationProperties.Name="Being watched remotely"
-                                       Visibility="{Binding IsWatched, Converter={StaticResource Visible}}" />
-                            <Button x:Name="TerminalCloseButton" Style="{StaticResource MaToolButton}" Content="&#xE711;" Margin="8,-4,0,-4"
-                                    Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
-                                    Command="{Binding DataContext.Terminals.CloseCommand, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}"
-                                    CommandParameter="{Binding}"
-                                    AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
-                                    ToolTip="Close this terminal, ending its CLI" />
-                        </StackPanel>
-                    </DataTemplate>
-                </mc:MaTabControl.ItemTemplate>
-            </mc:MaTabControl>
+            <!-- No wrap, ever (M.ORCH-T1171, mirroring the login tabs' M.ORCH-T822): each tab is already only as wide as its own
+                 content, so once there are enough CLIs open the strip is wider than the window. A plain horizontal ScrollViewer
+                 around it, paged by the < and > buttons (TerminalTabScroller_ScrollChanged/TerminalTabScrollLeft_Click/Right_Click
+                 in MainWindow.xaml.cs), hidden while everything fits and disabled at each end rather than wrapping to a second row. -->
+            <Grid x:Name="TerminalTabStripRow" Margin="{StaticResource SpaceBS}" Visibility="{Binding Terminals.HasPanes, Converter={StaticResource Visible}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button x:Name="TerminalTabScrollLeft" Grid.Column="0" Style="{StaticResource MaToolButton}" Content="&#xE76B;"
+                        Click="TerminalTabScrollLeft_Click" Margin="{StaticResource SpaceRXS}" Visibility="Collapsed"
+                        ToolTip="Scroll the CLI tabs left" AutomationProperties.Name="Scroll the CLI tabs left" />
+                <ScrollViewer x:Name="TerminalTabScroller" Grid.Column="1" Style="{StaticResource MaBodyScroll}" mc:MaScrollArea.Gutter="0"
+                              HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+                              ScrollChanged="TerminalTabScroller_ScrollChanged">
+                    <mc:MaTabControl x:Name="TerminalTabs" ShowContent="False" ContextMenuOpening="OnTerminalTabContextMenu" ItemsSource="{Binding Terminals.Panes}" SelectedItem="{Binding Terminals.SelectedPane}"
+                                     AutomationProperties.Name="Terminals" AutomationProperties.HelpText="{Binding Terminals.Summary}">
+                        <mc:MaTabControl.ItemContainerStyle>
+                            <Style TargetType="mc:MaTabItem" BasedOn="{StaticResource {x:Type mc:MaTabItem}}">
+                                <Setter Property="Accent" Value="{Binding TabBrush}" />
+                                <Setter Property="ToolTip" Value="{Binding Tooltip}" />
+                                <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+                            </Style>
+                        </mc:MaTabControl.ItemContainerStyle>
+                        <mc:MaTabControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:TerminalPaneViewModel}">
+                                <StackPanel x:Name="TerminalTab" Orientation="Horizontal">
+                                    <mc:MaBadge x:Name="TerminalBadge" Style="{StaticResource MaTag}" Content="{Binding Badge}" Background="{Binding TabBrush}"
+                                                Foreground="{Binding BadgeForeground}" Margin="{StaticResource SpaceRS}" VerticalAlignment="Center"
+                                                Visibility="{Binding Badge, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding StateText}" Style="{StaticResource MaMutedText}" Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" />
+                                    <!-- Shared with remote viewers (M.ORCH-T935), and an eye while someone watches it remotely. -->
+                                    <TextBlock x:Name="TerminalSharedGlyph" Text="&#xE72D;" FontFamily="Segoe MDL2 Assets" FontSize="11" Style="{StaticResource MaMutedText}"
+                                               Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" ToolTip="Shared with remote viewers (right-click to change)" AutomationProperties.Name="Shared with remote viewers"
+                                               Visibility="{Binding IsShared, Converter={StaticResource Visible}}" />
+                                    <TextBlock x:Name="TerminalWatchedGlyph" Text="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource MaWarn}"
+                                               Margin="{StaticResource SpaceLS}" VerticalAlignment="Center" ToolTip="{Binding BroadcastText}"
+                                               AutomationProperties.Name="Being watched remotely"
+                                               Visibility="{Binding IsWatched, Converter={StaticResource Visible}}" />
+                                    <Button x:Name="TerminalCloseButton" Style="{StaticResource MaToolButton}" Content="&#xE711;" Margin="8,-4,0,-4"
+                                            Width="22" Height="18" FontSize="10" VerticalAlignment="Center"
+                                            Command="{Binding DataContext.Terminals.CloseCommand, RelativeSource={RelativeSource AncestorType=mc:MaTabControl}}"
+                                            CommandParameter="{Binding}"
+                                            AutomationProperties.Name="{Binding Title, StringFormat='Close {0}'}"
+                                            ToolTip="Close this terminal, ending its CLI" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </mc:MaTabControl.ItemTemplate>
+                    </mc:MaTabControl>
+                </ScrollViewer>
+                <Button x:Name="TerminalTabScrollRight" Grid.Column="2" Style="{StaticResource MaToolButton}" Content="&#xE76C;"
+                        Click="TerminalTabScrollRight_Click" Margin="{StaticResource SpaceLXS}" Visibility="Collapsed"
+                        ToolTip="Scroll the CLI tabs right" AutomationProperties.Name="Scroll the CLI tabs right" />
+            </Grid>
             <!-- "Being watched" (M.ORCH-T935): while a remote viewer is attached to the shown CLI through the team gateway, or its
                  broadcast is paused, who is watching and how, with Pause broadcast (Ctrl+Shift+B, even while the terminal holds
                  focus) and Pause all. Pausing never touches this dashboard's own view. Sharing, masking and "share my sessions"
