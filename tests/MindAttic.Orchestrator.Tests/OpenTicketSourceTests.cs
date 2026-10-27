@@ -76,7 +76,9 @@ public sealed class OpenTicketSourceTests
         var warnings = new List<string>();
         using (new FileStream(a.StoriesPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) // held when the daemon starts
             Assert.That(source.OpenFor(a, warnings), Is.Empty);
+        Assert.That(source.Unknown, Does.Contain("A"), "unknown, not none: its claims aren't finished (bughunt 2026-10-27)");
         Assert.That(source.OpenFor(a, warnings).Select(t => t.Id), Is.EqualTo(new[] { "A-T1" }), "the same file, unchanged, read once it can be");
+        Assert.That(source.Unknown, Is.Empty);
     }
 
     [Test]

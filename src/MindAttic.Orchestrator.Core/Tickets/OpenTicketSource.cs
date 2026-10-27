@@ -14,6 +14,12 @@ public sealed class OpenTicketSource
     private readonly Dictionary<string, (DateTime WriteUtc, IReadOnlyList<Ticket> Open)> cache =
         new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>How long a database read stands even when its file didn't move: a database on SQL Server (or one whose writes
+    /// are still in its WAL) changes no file time here, as <see cref="TicketActivityFeed.ForceEvery"/> (bughunt 2026-10-27).</summary>
+    public static readonly TimeSpan DbMaxAge = TicketActivityFeed.ForceEvery;
+
+    private DateTime dbReadUtc;
+
     private (string Path, DateTime WriteUtc, ILookup<string, Ticket> Open, HashSet<string> Repos, IReadOnlyDictionary<string, IReadOnlyList<string>> Requires,
         IReadOnlySet<string> Approved, IReadOnlyDictionary<string, long> Priorities, WorkState Work)? fromDb;
 
@@ -77,6 +83,8 @@ public sealed class OpenTicketSource
             // Caught mid-write (or held by an editor or git): its last good read stands, not "no open tickets", which
             // would read every claimed ticket as finished and let allocate reap live assignments. Read again next time.
             // With no good read yet, nothing is cached either: cached under this write time it would stand until the file changed.
+            // Nor is it "none": its open tickets are unknown, as the database read says (bughunt 2026-10-27).
+            if (hit.Open is null) unknown.Add(repo.Name);
             return hit.Open ?? [];
         }
         cache[path] = (written, open);
@@ -89,7 +97,7 @@ public sealed class OpenTicketSource
         var path = TicketsDb.DefaultPath(root);
         if (!File.Exists(path)) return null;
         var written = File.GetLastWriteTimeUtc(path);
-        if (fromDb is not { } c || c.Path != path || c.WriteUtc != written)
+        if (fromDb is not { } c || c.Path != path || c.WriteUtc != written || DateTime.UtcNow - dbReadUtc >= DbMaxAge)
         {
             try
             {
@@ -105,6 +113,7 @@ public sealed class OpenTicketSource
                     queue.Where(q => q.Value.Approval == TicketsDb.Approved).Select(q => q.Key).ToHashSet(StringComparer.OrdinalIgnoreCase),
                     queue.Where(q => q.Value.Priority != 0).ToDictionary(q => q.Key, q => q.Value.Priority, StringComparer.OrdinalIgnoreCase),
                     WorkState.Of(db));
+                dbReadUtc = DateTime.UtcNow;
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Data.Common.DbException)
             {

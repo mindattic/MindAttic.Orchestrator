@@ -55,6 +55,10 @@ public static partial class AgentAbort
     /// <summary>A mark's file name, as the context gate names a subagent's own mark.</summary>
     public static string MarkName(string agentId) => SafeName().Replace(agentId, "_");
 
+    /// <summary>A transcript's agent id (<c>agent-&lt;id&gt;</c>, its file name) as the marks name it: the bare <c>&lt;id&gt;</c>
+    /// (bughunt 2026-10-27).</summary>
+    public static string BareId(string agentId) => agentId.StartsWith("agent-", StringComparison.Ordinal) ? agentId["agent-".Length..] : agentId;
+
     [GeneratedRegex(@"[^A-Za-z0-9_.-]")]
     private static partial Regex SafeName();
 
@@ -221,8 +225,9 @@ public sealed class AgentAborter(JsonStore store, string globalMarksDirectory, s
         foreach (var gone in coolingSince.Keys.Where(k => logins.All(l => !l.Key.Equals(k, StringComparison.OrdinalIgnoreCase))).ToList()) coolingSince.Remove(gone);
 
         // Every subagent working a ticket, as the transcripts know it: its ticket and its responses in the reader's window.
+        // Keyed by the bare id the marks use: a transcript's id is its file name, "agent-<id>" (bughunt 2026-10-27).
         var ticketed = snapshot.Repos.SelectMany(r => r.Sessions).SelectMany(s => s.TicketedSubagents)
-            .GroupBy(a => AgentAbort.MarkName(a.AgentId), StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+            .GroupBy(a => AgentAbort.MarkName(AgentAbort.BareId(a.AgentId)), StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
         var aborted = new List<AbortedAgent>();
         foreach (var login in logins)
         {

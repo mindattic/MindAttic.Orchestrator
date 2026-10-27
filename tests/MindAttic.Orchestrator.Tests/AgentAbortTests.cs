@@ -35,6 +35,14 @@ public sealed class AgentAbortTests
     }
 
     [Test]
+    public void A_transcripts_agent_id_is_keyed_as_its_mark_is_named()
+    {
+        // The transcript names it agent-<id> (its file name); the gate's mark, bare <id> (bughunt 2026-10-27).
+        Assert.That(AgentAbort.MarkName(AgentAbort.BareId("agent-a1b2c3")), Is.EqualTo("a1b2c3"));
+        Assert.That(AgentAbort.BareId("a1b2c3"), Is.EqualTo("a1b2c3"), "already bare: unchanged");
+    }
+
+    [Test]
     public void One_landing_its_work_is_aborted_last()
     {
         var running = new[] { C("a1", 9, landing: true), C("a2", 4), C("a3", 3) };

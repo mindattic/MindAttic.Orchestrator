@@ -413,7 +413,8 @@ public sealed partial class MainlineTests(JsonStore store)
         ProcessResult r;
         try { r = runner.Run("dotnet", ["test", solution, "--disable-build-servers", "--logger", "trx", "--results-directory", results], timeout); }
         catch (System.ComponentModel.Win32Exception ex) { return new SuiteResult(false, [], new HashSet<string>(), $"couldn't run dotnet: {ex.Message}"); }
-        if (r.TimedOut) return new SuiteResult(false, [], new HashSet<string>(), $"it ran past {timeout.TotalMinutes:0} minutes and was stopped");
+        // One that exited with its pipes still held (a lingering testhost) finished: its TRX results stand (bughunt 2026-10-27).
+        if (r.TimedOut && !r.Exited) return new SuiteResult(false, [], new HashSet<string>(), $"it ran past {timeout.TotalMinutes:0} minutes and was stopped");
         var trx = Directory.Exists(results) ? Directory.GetFiles(results, "*.trx", SearchOption.AllDirectories) : [];
         if (trx.Length == 0)
             return r.ExitCode == 0 ? new SuiteResult(true, [], new HashSet<string> { BuildName })

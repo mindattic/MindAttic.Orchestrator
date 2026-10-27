@@ -62,11 +62,13 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
 
         var title = useWorktree ? $"{item.Repo} {item.Id}" : item.Repo;
         Func<string, bool>? eligible = orgs.Active && !item.IsPinned ? email => orgs.OrgOfLogin(email) == orgId : null;
+        string? pickedEmail = null;
         var (startError, cameUp) = OpenTab is { } seam ? seam(title, directory, provider, prompt, submit)
-            : Open(title, directory, provider, prompt, submit, login, eligible);
+            : Open(title, directory, provider, prompt, submit, login, eligible, out pickedEmail);
         if (startError is not null) return new Result(false, startError, null);
 
-        var assignment = new Assignment(item.Id, item.Repo, directory, provider, DateTime.UtcNow, useWorktree) { Account = AccountDirs.Normalize(login?.Email) };
+        // With no login chosen, the one the picker chose works it (bughunt 2026-10-27).
+        var assignment = new Assignment(item.Id, item.Repo, directory, provider, DateTime.UtcNow, useWorktree) { Account = AccountDirs.Normalize(login?.Email ?? pickedEmail) };
         var raced = false;
         store.UpdateAssignments(all =>
         {
@@ -142,20 +144,25 @@ public sealed class Dispatcher(SessionControl sessions, JsonStore store)
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return routing; }
     }
 
-    private (string? Error, Task<bool>? CameUp) Open(string title, string directory, string provider, string prompt, bool submit, TabLogin? login, Func<string, bool>? eligible)
+    private (string? Error, Task<bool>? CameUp) Open(string title, string directory, string provider, string prompt, bool submit, TabLogin? login, Func<string, bool>? eligible,
+        out string? pickedEmail)
     {
         var before = sessions.HostIds();
         var focus = Foreground.Current();
         var noLogin = false;
+        string? picked = null;
         var configDir = ConfigDirFor(provider, login, () =>
         {
             // One CLI per account (M.ORCH-T605): a Claude tab goes on a free per-CLI login. With none free it never lands on the
             // global login, a member's own seat (M.ORCH-T747): the API key when the owner has API billing on (M.ORCH-T706), else it waits.
             var loaded = store.LoadSettings();
-            var dir = (Logins ?? new LoginPicker { Allowances = () => Budget.WeeklyAllowances.Active(store, DateTime.UtcNow), Cutoffs = () => Budget.UsageCutoffs.Load(store) }).ForNewTab(provider, loaded.AutoLogin, DateTime.UtcNow, out _, loaded.WeeklyStopPercent, eligible)?.Directory;
+            var chosen = (Logins ?? new LoginPicker { Allowances = () => Budget.WeeklyAllowances.Active(store, DateTime.UtcNow), Cutoffs = () => Budget.UsageCutoffs.Load(store) }).ForNewTab(provider, loaded.AutoLogin, DateTime.UtcNow, out _, loaded.WeeklyStopPercent, eligible);
+            var dir = chosen?.Directory;
+            picked = chosen?.Email;
             noLogin = dir is null && !ApiBillingOn();
             return dir;
         });
+        pickedEmail = picked;
         if (noLogin) return ("no login of its own has room and API billing is off: it waits for a login with room, or for API billing to be switched on (the API key is the only fallback, never a member's seat)", null);
         var startError = sessions.Start(title, directory, provider, prompt, configDir);
         if (startError is not null) return (startError, null);

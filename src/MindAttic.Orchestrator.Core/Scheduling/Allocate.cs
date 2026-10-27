@@ -275,12 +275,22 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
 
         var gone = store.LoadAssignments().Where(a => a.Log is not null && !(a.Pilot is not null && IsRunning(a))).ToList();
         if (gone.Count == 0) return;
-        foreach (var a in gone)
+        foreach (var a in gone.ToList())
         {
             // The repo's own checkout, from the snapshot: the queue has no item for a repo whose last open story this was.
             var repoPath = snapshot.Repos.FirstOrDefault(r => r.Path.Length > 0 && Same(r.Name, a.Repo))?.Path
                 ?? plan.Queue.FirstOrDefault(q => Same(q.Repo, a.Repo))?.RepoPath ?? a.Directory;
-            var (closed, note) = a.Worktree ? Land(a, repoPath) : (!plan.Queue.Any(q => q.Id == a.TicketId), "");
+            bool closed;
+            string note;
+            try { (closed, note) = a.Worktree ? Land(a, repoPath) : (!plan.Queue.Any(q => q.Id == a.TicketId), ""); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.Data.Common.DbException)
+            {
+                // The ticket database busy (as StillOpen allows for): unknown, not unfinished. Kept, and judged again next tick,
+                // rather than throwing the rest of the tick away with the reaped already landed (bughunt 2026-10-27).
+                gone.Remove(a);
+                said.Add($"allocate: couldn't tell whether {a.TicketId} in {a.Repo} landed ({ex.Message}); trying again next tick");
+                continue;
+            }
             // Halted by the window's stop, it didn't fail: its work stays in its worktree and it carries on after the reset.
             var halted = !closed && plan.Stopped;
             if (!closed && !halted) parked.Add(a.TicketId);
@@ -332,7 +342,11 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
                 // ticket closes, and the agent (or you, reviewing) may still be there (M.ORCH-T329).
                 var here = new Assignment(id.ToUpperInvariant(), repo.Name, tree, Providers.Claude, DateTime.MinValue, true);
                 if (snapshot.TakenUtc - Scheduler.LastActivityUtc(here, snapshot) < Scheduler.WorkingWithin) continue;
-                var (landed, note) = Land(here with { StartedUtc = nowUtc }, repo.Path);
+                bool landed;
+                string note;
+                try { (landed, note) = Land(here with { StartedUtc = nowUtc }, repo.Path); }
+                // The ticket database busy: the next sweep looks again (bughunt 2026-10-27).
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.Data.Common.DbException) { continue; }
                 if (landed) said.Add($"allocate: tidied the finished worktree of {id} in {repo.Name}{note}");
                 else
                 {

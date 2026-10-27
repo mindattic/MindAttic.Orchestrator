@@ -6,6 +6,10 @@ namespace MindAttic.Orchestrator;
 public sealed record ProcessResult(int ExitCode, string Output, string Error, bool TimedOut)
 {
     public static ProcessResult Killed { get; } = new(-1, "", "", TimedOut: true);
+
+    /// <summary>The process itself exited (its <see cref="ExitCode"/> is real); with <see cref="TimedOut"/> it's only its output
+    /// that was cut short, by a pipe something it started still held (bughunt 2026-10-27).</summary>
+    public bool Exited { get; init; }
 }
 
 /// <summary>Runs a command to completion or its timeout; the daemon's seam for <c>tickets db sync</c> and <c>gh</c>.</summary>
@@ -20,6 +24,10 @@ public interface IProcessRunner
 public sealed class ProcessRunner : IProcessRunner
 {
     public static ProcessRunner Default { get; } = new();
+
+    /// <summary>How long the pipes are waited on once the process exited: a held pipe won't come free by waiting out the rest of a
+    /// long timeout (a test run's, say), and a finished pipe drains at once (bughunt 2026-10-27).</summary>
+    public static readonly TimeSpan PipeGrace = TimeSpan.FromSeconds(30);
 
     public ProcessResult Run(string file, IReadOnlyList<string> args, TimeSpan timeout)
     {
@@ -38,11 +46,13 @@ public sealed class ProcessRunner : IProcessRunner
         }
         // The readers end at the pipes' EOF, not at the process's exit: a grandchild that inherited them (and outlives it)
         // would hold the daemon's loop forever, so the wait for them still counts against the timeout. Output cut short
-        // that way is reported as timed out, never as a success with nothing to say.
+        // that way is reported as timed out, never as a success with nothing to say; marked Exited, since the process itself
+        // finished. The wait is at most PipeGrace (bughunt 2026-10-27).
         var left = timeout - started.Elapsed;
+        if (left > PipeGrace) left = PipeGrace;
         if (!Task.WaitAll([output, error], left > TimeSpan.Zero ? left : TimeSpan.Zero))
             return new ProcessResult(p.ExitCode, output.IsCompletedSuccessfully ? output.Result : "",
-                error.IsCompletedSuccessfully ? error.Result : "", TimedOut: true);
-        return new ProcessResult(p.ExitCode, output.Result, error.Result, TimedOut: false);
+                error.IsCompletedSuccessfully ? error.Result : "", TimedOut: true) { Exited = true };
+        return new ProcessResult(p.ExitCode, output.Result, error.Result, TimedOut: false) { Exited = true };
     }
 }
