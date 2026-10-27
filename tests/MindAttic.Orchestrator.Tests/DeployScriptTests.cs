@@ -169,56 +169,15 @@ public sealed class DeployScriptTests
     }
 
     [Test]
-    public void Launch_skips_reinstalling_the_tickets_CLI_but_a_plain_deploy_does_not()
+    public void Deploy_builds_only_the_Orchestrator_and_never_chains_into_Tickets_deploy()
     {
-        // M.ORCH-T832: every Orchestrator launch runs this deploy.ps1 (deploy.bat's -Launch), which chains into Tickets'
-        // deploy.ps1. Without -SkipCli that reinstalled the tickets CLI global tool on every single launch, undoing
-        // M.TIX-T126's fix for slow launches. A deliberate full deploy without -Launch must still install it normally.
-        var orchDir = Directory.CreateDirectory(Path.Combine(dir, "MindAttic.Orchestrator")).FullName;
-        var ticketsDir = Directory.CreateDirectory(Path.Combine(dir, "MindAttic.Tickets")).FullName;
-        var ticketsDeploy = Path.Combine(ticketsDir, "deploy.ps1");
-        var log = Path.Combine(dir, "calls.log");
-        File.WriteAllText(ticketsDeploy,
-            "param([switch]$Force, [switch]$SkipCli, [switch]$Launch)\n" +
-            $"\"Force=$Force;SkipCli=$SkipCli\" | Add-Content -LiteralPath '{log.Replace("'", "''")}'\n");
-
-        var text = File.ReadAllText(DeployScript());
-        const string startMarker = "# ── The sibling repo's deploy";
-        var start = text.IndexOf(startMarker, StringComparison.Ordinal);
-        Assert.That(start, Is.GreaterThanOrEqualTo(0), "deploy.ps1 still chains to Tickets' deploy");
-        var end = text.IndexOf("\nif ($failed)", start, StringComparison.Ordinal);
-        Assert.That(end, Is.GreaterThan(start));
-        var block = text[start..end];
-
-        void Run(bool launch)
-        {
-            var launchLiteral = launch ? "$true" : "$false";
-            var script =
-                "$ErrorActionPreference = 'Stop'\n" +
-                $"$repo = '{orchDir.Replace("'", "''")}'\n" +
-                "$Force = $false\n" +
-                $"$Launch = {launchLiteral}\n" +
-                "$failed = $false\n" +
-                block + "\n";
-            var psi = new ProcessStartInfo("powershell.exe",
-                "-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand " + Convert.ToBase64String(Encoding.Unicode.GetBytes(script)))
-            {
-                UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true,
-            };
-            using var ps = Process.Start(psi)!;
-            var stdout = ps.StandardOutput.ReadToEndAsync();
-            var stderr = ps.StandardError.ReadToEndAsync();
-            if (!ps.WaitForExit(60_000)) { ps.Kill(entireProcessTree: true); Assert.Fail("powershell didn't finish"); }
-            Assert.That(ps.ExitCode, Is.EqualTo(0), "stdout: " + stdout.Result + " stderr: " + stderr.Result);
-        }
-
-        Run(launch: true);
-        Run(launch: false);
-
-        var lines = File.ReadAllLines(log);
-        Assert.That(lines, Has.Length.EqualTo(2));
-        Assert.That(lines[0], Does.Contain("SkipCli=True"), "an Orchestrator launch must not reinstall the tickets CLI");
-        Assert.That(lines[1], Does.Contain("SkipCli=False"), "a plain deploy still installs the tickets CLI");
+        // M.ORCH-T1147: Orchestrator and Tickets deploy independently. deploy.ps1 used to run MindAttic.Tickets' deploy.ps1
+        // after its own (M.ORCH-T832/T1100), guarded by MINDATTIC_DEPLOY_CHAIN; that chain is gone.
+        var script = File.ReadAllText(DeployScript());
+        Assert.That(script, Does.Not.Contain(@"MindAttic.Tickets\deploy.ps1"), "deploy.ps1 must not run Tickets' deploy");
+        Assert.That(script, Does.Not.Contain("MindAttic.Tickets/deploy.ps1"));
+        Assert.That(script, Does.Not.Contain("MINDATTIC_DEPLOY_CHAIN"));
+        Assert.That(script, Does.Not.Contain("SkipCli"));
     }
 
     /// <summary>Takes <paramref name="function"/> out of deploy.ps1 by the PowerShell parser, runs each call with it, and
