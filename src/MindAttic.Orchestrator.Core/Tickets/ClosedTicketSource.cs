@@ -39,8 +39,10 @@ public sealed class ClosedTicketSource
         if (db is null) return [];
         var assignees = OpenTicketSource.WorkState.Of(db).Assignees;
         if (assignees.Count == 0) return [];
+        // Open tickets aren't filtered out here (M.ORCH-T1163): Recent needs to see a ticket go through Open itself,
+        // so a reopen-then-reclose can't reuse the stale close time its cache keyed only on the "closed" status string.
         var candidates = db.Tickets()
-            .Where(t => t.Ticket.Status != TicketRules.Open && assignees.ContainsKey(t.Ticket.Id))
+            .Where(t => assignees.ContainsKey(t.Ticket.Id))
             .OrderByDescending(t => t.Ticket.Date, StringComparer.Ordinal).ThenByDescending(t => t.Ticket.Number ?? 0)
             .ToList();
         return Recent(candidates, assignees, id => db.History(id), nowUtc);
@@ -55,6 +57,13 @@ public sealed class ClosedTicketSource
         var list = new List<ClosedTicket>();
         foreach (var (repo, ticket) in candidates)
         {
+            if (ticket.Status == TicketRules.Open)
+            {
+                // Drops a stale close time once a ticket is seen open again (M.ORCH-T1163), so a later reclose
+                // re-reads its history instead of matching the cache entry from before it was reopened.
+                closedAt.Remove(ticket.Id);
+                continue;
+            }
             // Opened inside the window, it closed inside it too: no history needed to know it belongs.
             var opened = OpenedUtc(ticket);
             if (!closedAt.TryGetValue(ticket.Id, out var known) || known.Status != ticket.Status)
