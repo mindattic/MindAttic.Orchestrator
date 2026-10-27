@@ -141,8 +141,22 @@ public sealed class TerminalPaneViewModel : ObservableObject
         }
     }
 
-    /// <summary>Its CLI has exited; the tab stays up, showing its last lines, until closed.</summary>
-    public bool Ended { get => ended; internal set { if (Set(ref ended, value)) Raise(nameof(StateText)); } }
+    /// <summary>Its CLI has exited; the tab stays up, showing its last lines, until closed (by hand, or pruned once stale,
+    /// M.ORCH-T1177).</summary>
+    public bool Ended
+    {
+        get => ended;
+        internal set
+        {
+            if (!Set(ref ended, value)) return;
+            EndedAtUtc = value ? DateTime.UtcNow : null;
+            Raise(nameof(StateText));
+        }
+    }
+
+    /// <summary>When this tab last became <see cref="Ended"/> (M.ORCH-T1177): what <see cref="TerminalsViewModel.PruneEnded"/>
+    /// measures a long-idle, ended tab's age against; null while it's live, cleared again on <see cref="Revive"/>.</summary>
+    public DateTime? EndedAtUtc { get; private set; }
 
     /// <summary>Its relay dropped while the host lives and is attaching again (M.ORCH-T966).</summary>
     public bool Reconnecting { get => reconnecting; internal set { if (Set(ref reconnecting, value)) Raise(nameof(StateText)); } }
@@ -776,6 +790,23 @@ public sealed class TerminalsViewModel : ObservableObject
     /// <summary>How long a hosted session whose tab was closed here isn't given a tab back by <see cref="ResyncAsync"/>.</summary>
     private static readonly TimeSpan ClosedHoldOff = TimeSpan.FromMinutes(2);
 
+    /// <summary>How long an ended tab stays, for whoever closes it by hand to still see its last lines, before
+    /// <see cref="PruneEnded"/> closes it unasked (M.ORCH-T1177): without this, a member who stops coming back to the
+    /// dashboard (on leave, between projects) never closes theirs, and every CLI that ends on their page piles up a tab,
+    /// forever, for no one to see.</summary>
+    internal static readonly TimeSpan EndedLifetime = TimeSpan.FromHours(24);
+
+    /// <summary>Closes every tab that's sat <see cref="Ended"/> longer than <see cref="EndedLifetime"/>, as <see cref="Close"/>
+    /// would by hand (M.ORCH-T1177). Run each refresh, from <see cref="Update"/>; never throws.</summary>
+    internal void PruneEnded(DateTime nowUtc)
+    {
+        foreach (var pane in Panes.Where(p => p.Ended && p.EndedAtUtc is { } at && nowUtc - at > EndedLifetime).ToList())
+        {
+            try { Close(pane); }
+            catch (Exception ex) { OrchestratorLog.For("Terminals").Error(ex, "Pruning {Title:l}'s long-ended tab failed; contained", pane.Title); }
+        }
+    }
+
     private readonly Dictionary<string, DateTime> closedLately = new(StringComparer.OrdinalIgnoreCase);
 
     private bool ClosedLately(string id)
@@ -872,10 +903,13 @@ public sealed class TerminalsViewModel : ObservableObject
     /// <summary>The live terminal running Launcher host <paramref name="hostPid"/>; null when none does.</summary>
     public TerminalPaneViewModel? Find(int hostPid) => Panes.FirstOrDefault(p => p.HostPid == hostPid && !p.Ended);
 
-    /// <summary>At each refresh: a terminal whose CLI has exited is marked ended; a live one learns its Launcher host, and
-    /// follows its CLI to the login it runs on now.</summary>
+    /// <summary>At each refresh: an ended tab sat past <see cref="EndedLifetime"/> is pruned (M.ORCH-T1177); a terminal whose
+    /// CLI has exited is marked ended; a live one learns its Launcher host, and follows its CLI to the login it runs on
+    /// now.</summary>
     public void Update(Snapshot? snapshot)
     {
+        if (Panes.Count == 0) return;
+        PruneEnded(DateTime.UtcNow);
         if (Panes.Count == 0) return;
         ReadBroadcast();
         var hosts =snapshot?.Repos.SelectMany(r => r.Hosts).ToList() ?? [];
