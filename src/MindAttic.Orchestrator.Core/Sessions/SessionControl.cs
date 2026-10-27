@@ -122,6 +122,7 @@ public sealed class SessionControl(OrchestratorOptions options)
             ConfigDir = configDir,
             Email = normalized,
             Initials = look.Initials,
+            Alias = look.Alias,
             TabColor = look.TabColor,
             IsMenu = true,
         };

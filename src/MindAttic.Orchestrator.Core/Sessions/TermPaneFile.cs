@@ -91,6 +91,7 @@ public static partial class TermPaneFile
             ConfigDir = record.ConfigDir,
             Email = record.Login,
             Initials = match.Success ? match.Groups["badge"].Value : style?.Initials,
+            Alias = style?.Alias,
             TabColor = style?.TabColor,
         };
     }

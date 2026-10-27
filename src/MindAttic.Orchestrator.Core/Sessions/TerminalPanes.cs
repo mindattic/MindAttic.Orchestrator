@@ -37,6 +37,11 @@ public sealed record PaneRequest(string Title, string Directory)
     /// <summary>The login's badge, "RD".</summary>
     public string? Initials { get; init; }
 
+    /// <summary>The signed-in login's own name (M.ORCH-T1071, <see cref="LoginLook.Alias"/>), "Jordan": shown on the tab ahead
+    /// of <see cref="Initials"/> when known, so the tab says whose CLI it is, not just its badge's letters. Null when the
+    /// login's name isn't known (falls back to <see cref="Initials"/> alone).</summary>
+    public string? Alias { get; init; }
+
     /// <summary>The tab's color, "#RRGGBB"; null for none.</summary>
     public string? TabColor { get; init; }
 

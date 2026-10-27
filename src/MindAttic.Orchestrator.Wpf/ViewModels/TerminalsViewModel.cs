@@ -97,9 +97,13 @@ public sealed class TerminalPaneViewModel : ObservableObject
     public TermSessionRecord? Session { get; private set; }
 
     public string Title => Request.Title;
-    public string Badge => Request.Initials is { Length: > 0 } i ? $"{i}:" : "";
+
+    /// <summary>The tab's badge chip (M.ORCH-T1071): the login's own name ("Jordan") when known, so the tab says whose CLI it
+    /// is at a glance, not just a two-letter code; its <see cref="Initials"/> badge when the name isn't known (an older saved
+    /// pane, or a sender that hasn't caught up to <see cref="PaneRequest.Alias"/> yet).</summary>
+    public string Badge => Request.Alias is { Length: > 0 } a ? $"{a}:" : Request.Initials is { Length: > 0 } i ? $"{i}:" : "";
     public string Name => Request.IsMenu ? SessionControl.ShortName(Request.Name) : $"{SessionControl.ShortName(Request.Name)} [{Request.Provider}]";
-    public string Tooltip => $"{Request.Title}\n{Request.Directory}\n{Login ?? "global login"}";
+    public string Tooltip => $"{Request.Title}\n{Request.Directory}\n{Request.Alias ?? Login ?? "global login"}";
     public Brush TabBrush { get; }
 
     /// <summary>The badge's text color: black or white, whichever reads on the chip of <see cref="TabBrush"/>.</summary>
