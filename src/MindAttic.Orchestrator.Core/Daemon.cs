@@ -95,6 +95,20 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
         var tick = new TickTimer();
         var termHostsCleanedUtc = DateTime.MinValue;
         var gateway = new GatewaySupervisor((level, line) => Say(level, line));
+        // The refresh, also run beside a tick that runs long (M.ORCH-T1111): its main-line tests, audit or allocate took 80s and
+        // more, and rl-status.json (the meter the 5-hour stop reads) went that long unrefreshed while subagents spent. One
+        // refresh at a time, the tick's and the one beside it, so the two never write the status files at once.
+        var refresher = new OffTickRefresh(interval);
+        Snapshot RefreshNow()
+        {
+            var snapshot = aggregator.Refresh();
+            // Built here (this daemon holds the status lease): its figures go to every dashboard now (M.ORCH-T872), which reads
+            // the published file only when the rest of it moved.
+            if (!aggregator.LastWasShared) status?.PublishFigures(snapshot);
+            ReportStatusFile(statusFile);
+            return snapshot;
+        }
+        var beside = StartOffTickRefresh(refresher, () => RefreshNow(), cancel);
         while (!cancel.IsCancellationRequested)
         {
             tick.Start();
@@ -106,16 +120,13 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
                 if (OrchestratorOptions.TryLoad(store, out var latest) && latest.WorkspaceRoot != options.WorkspaceRoot)
                 {
                     options = latest;
-                    Build();
+                    refresher.Run(() => { Build(); return true; });
                     ledger.WorkspaceRoot = options.WorkspaceRoot;
                     Say(LogEventLevel.Information, $"workspace is now {options.WorkspaceRoot}");
                 }
-                var snapshot = aggregator.Refresh();
-                // Built here (this daemon holds the status lease): its figures go to every dashboard now (M.ORCH-T872), which reads
-                // the published file only when the rest of it moved.
-                if (!aggregator.LastWasShared) status?.PublishFigures(snapshot);
+                var snapshot = refresher.Run(RefreshNow);
+                refresher.Ticking = true;
                 tick.Lap("refresh");
-                ReportStatusFile(statusFile);
                 // Only from settings that could be read: defaults would run allocate, keep-going and the subagent cap on
                 // nothing anyone set and rewrite the hooks with them, every tick a bad row stays (M.ORCH-T720).
                 if (!store.TryLoadSettings(out var s)) throw new SettingsUnreadableException(store.Describe(JsonStore.SettingsName));
@@ -400,9 +411,13 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             {
                 Say(LogEventLevel.Error, $"refresh failed: {ex.Message}", ex);
             }
+            // Between ticks the loop's own refresh is next; nothing runs beside it (M.ORCH-T1111).
+            refresher.Ticking = false;
             if (tick.Slow() is { } slow) Say(LogEventLevel.Warning, slow);
             WaitForNextRefresh(interval, cancel);
         }
+        // Ended before the leases it refreshes under are let go.
+        beside?.Join();
         ClaudeMeterProbe.ReadingLanded -= OnReading;
         Say(LogEventLevel.Information, "daemon stopped");
     }
@@ -630,9 +645,73 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
     }
 
     /// <summary>
-    /// Times each part of a tick. <c>rl-status.json</c> is written once a tick, so a tick that runs long leaves the pace
-    /// gates on a stale file; one past <see cref="SlowTick"/> is logged with where its time went, so a stall can be traced
-    /// to its step (M.ORCH-T205: no sample for 5 minutes and nothing said why).
+    /// Runs the refresh beside a tick that runs long (M.ORCH-T1111): while <see cref="Ticking"/> (the tick is past its own
+    /// refresh), <see cref="TryRefresh"/> refreshes once the last one is <c>every</c> old, so <c>rl-status.json</c> keeps the
+    /// loop's cadence however long the tick's audit, allocate or main-line tests take. Every refresh, the tick's and the one
+    /// beside it, goes through <see cref="Run{T}"/>'s lock: one at a time, never two writers of the status files at once.
+    /// </summary>
+    internal sealed class OffTickRefresh(TimeSpan every, Func<DateTime>? clock = null)
+    {
+        private readonly Func<DateTime> now = clock ?? (() => DateTime.UtcNow);
+        private readonly object gate = new();
+        private DateTime lastUtc = DateTime.MinValue;
+
+        /// <summary>Whether a tick is running past its own refresh.</summary>
+        public volatile bool Ticking;
+
+        /// <summary>Runs <paramref name="refresh"/> under the lock, timing the next one beside the tick from when it ends.</summary>
+        public T Run<T>(Func<T> refresh)
+        {
+            lock (gate)
+            {
+                var result = refresh();
+                lastUtc = now();
+                return result;
+            }
+        }
+
+        /// <summary>Whether a refresh beside the tick is due: a tick runs and the last refresh is <c>every</c> old.</summary>
+        public bool Due() => Ticking && now() - lastUtc >= every;
+
+        /// <summary>Refreshes when <see cref="Due"/> (checked again under the lock); whether it did.</summary>
+        public bool TryRefresh(Action refresh)
+        {
+            if (!Due()) return false;
+            lock (gate)
+            {
+                if (!Due()) return false;
+                Run(() => { refresh(); return true; });
+                return true;
+            }
+        }
+    }
+
+    /// <summary>The thread that runs <see cref="OffTickRefresh.TryRefresh"/> each second until cancelled (M.ORCH-T1111); a refresh
+    /// that throws is logged and tried again, never ending the daemon. Null when it couldn't start.</summary>
+    private Thread? StartOffTickRefresh(OffTickRefresh refresher, Action refresh, CancellationToken cancel)
+    {
+        try
+        {
+            var thread = new Thread(() =>
+            {
+                while (!cancel.WaitHandle.WaitOne(TimeSpan.FromSeconds(1)))
+                    try { refresher.TryRefresh(refresh); }
+                    catch (Exception ex) { Say(LogEventLevel.Error, $"refresh beside a long tick failed: {ex.Message}", ex); }
+            })
+            {
+                IsBackground = true, Name = "OffTickRefresh",
+            };
+            thread.Start();
+            return thread;
+        }
+        catch (Exception ex) { log.Error(ex, "Starting the refresh beside long ticks failed; contained"); return null; }
+    }
+
+    /// <summary>
+    /// Times each part of a tick. A tick that runs long once left the pace gates on a stale <c>rl-status.json</c>; it's now
+    /// refreshed beside the tick (<see cref="OffTickRefresh"/>, M.ORCH-T1111), and one past <see cref="SlowTick"/> is still
+    /// logged with where its time went, so a stall can be traced to its step (M.ORCH-T205: no sample for 5 minutes and nothing
+    /// said why).
     /// </summary>
     internal sealed class TickTimer(Func<DateTime>? clock = null)
     {
@@ -664,7 +743,7 @@ public sealed partial class Daemon(JsonStore store, Action<LogEventLevel, string
             var parts = laps.Where(l => l.Took >= TimeSpan.FromSeconds(1)).OrderByDescending(l => l.Took)
                 .Select(l => $"{l.Name} {l.Took.TotalSeconds:0}s");
             return $"a tick took {total.TotalSeconds:0}s ({string.Join(", ", parts.DefaultIfEmpty("no one step over a second"))}); " +
-                "rl-status.json isn't refreshed while a tick runs";
+                "rl-status.json was refreshed beside it meanwhile (M.ORCH-T1111)";
         }
     }
 

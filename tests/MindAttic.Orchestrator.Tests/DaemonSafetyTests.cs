@@ -461,6 +461,29 @@ public sealed class DaemonSafetyTests
     }
 
     [Test]
+    public void A_tick_that_runs_long_has_the_refresh_run_beside_it_at_the_loops_cadence()
+    {
+        // M.ORCH-T1111: an 80s tick (72s of main-line tests) left the 5-hour meter unrefreshed for its length.
+        var now = new DateTime(2026, 10, 27, 4, 52, 0, DateTimeKind.Utc);
+        var refresher = new Daemon.OffTickRefresh(TimeSpan.FromSeconds(15), () => now);
+        var beside = 0;
+        refresher.Run(() => true); // the tick's own refresh
+        now = now.AddSeconds(30);
+        Assert.That(refresher.TryRefresh(() => beside++), Is.False, "between ticks the loop's own refresh is next");
+
+        refresher.Run(() => true);
+        refresher.Ticking = true;
+        now = now.AddSeconds(10);
+        Assert.That(refresher.TryRefresh(() => beside++), Is.False, "not before the cadence is up");
+        now = now.AddSeconds(5);
+        Assert.That(refresher.TryRefresh(() => beside++), Is.True);
+        Assert.That(refresher.TryRefresh(() => beside++), Is.False, "timed from the one just run");
+        now = now.AddSeconds(15);
+        Assert.That(refresher.TryRefresh(() => beside++), Is.True);
+        Assert.That(beside, Is.EqualTo(2));
+    }
+
+    [Test]
     public void A_status_file_that_cant_be_written_is_said_once_and_its_recovery_once()
     {
         var path = Path.Combine(dir, "rl-status.json");
