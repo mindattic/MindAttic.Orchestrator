@@ -247,7 +247,15 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
         $"because once you land, the orchestrator runs {item.Repo}'s full suite on {mainline} itself and files a fix ticket for any test that fails, so don't wait for a full run. " +
         // M.ORCH-T1149: the checkout is shared, so its index may already hold another agent's staged files; a bare git commit
         // took all of them (13df3ae7). Naming the paths after -- commits those paths and nothing else, whatever is staged.
-        $"2. Commit this ticket's work alone, as one commit, naming every file you changed: git add <path> ... for new files, then plain " +
+        // M.ORCH-T1178: the checkout is also shared file-by-file, so another agent's concurrent edit, pull or commit on the
+        // same path can overwrite or drop this one's own edit with no conflict shown (observed twice live: a Badge edit
+        // silently swept into an unrelated commit, and a test edit vanished with nothing run to explain it). Re-reading each
+        // path right before committing can't prevent that race, but it turns a silent loss into a loud one.
+        $"2. Right before committing, re-read each file you changed and confirm it still has the edit you made (this checkout is shared, so " +
+        "another agent's own concurrent edit, pull, or commit on the same path can overwrite or drop yours with no error shown): if any doesn't " +
+        "match, STOP without committing it — don't commit whatever is currently on disk and don't assume your edit is simply gone — and say so " +
+        "loudly, naming the path, so it can be re-checked instead of silently lost or bundled into the wrong commit. Otherwise commit this " +
+        "ticket's work alone, as one commit, naming every file you changed: git add <path> ... for new files, then plain " +
         "git commit -m \"<subject>\" -- <path> <path> ... (the -- and the paths are required: other agents share this checkout and " +
         "may have files staged, and a commit without paths would take theirs too) " +
         $"(not /commit, whose gate runs the test suite), with {item.Id} at the end of the subject; no push yet, the steps below do that, so keep going. " +
@@ -266,7 +274,9 @@ public sealed class Allocate(JsonStore store, ContextCycler sessions, DispatchLe
     internal static string ReviewStep(string id) =>
         $"Before landing, run orchestrator review {id} from the checkout: it decides whether this Sonnet ticket's diff needs its one Opus " +
         "review (a big diff, or one touching the gates, pacing or git landing) and, if so, runs it on the diff alone. Fix what the review " +
-        "finds that's really wrong, rebuild and commit that with plain git commit -m \"<subject>\" -- <path> ... (only your paths); don't run the review again. ";
+        "finds that's really wrong, rebuild, and, same as before, re-read each path right before this commit too (the review took time, so another " +
+        "agent's concurrent edit to the same path is even more likely here; M.ORCH-T1178) and commit that with plain git commit -m \"<subject>\" " +
+        "-- <path> ... (only your paths); don't run the review again. ";
 
     /// <summary>
     /// Agents that exited. One in the repo's checkout (every one since M.ORCH-T1122) is done when its ticket is closed: it

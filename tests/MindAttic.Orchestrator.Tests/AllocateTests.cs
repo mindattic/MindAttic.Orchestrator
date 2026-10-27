@@ -854,6 +854,29 @@ public sealed class AllocateTests
     }
 
     [Test]
+    public void The_prompt_has_the_agent_re_read_its_own_changed_files_right_before_each_commit_and_abort_loudly_on_a_mismatch()
+    {
+        // M.ORCH-T1178: naming paths after -- (M.ORCH-T1149) stops OTHER agents' staged files riding along, but does nothing
+        // when two agents are both legitimately editing the SAME path for different tickets at once; the checkout gives no
+        // conflict or error either way, so the prompt at least has the agent make that failure loud instead of silent.
+        var item = new QueueItem("A", @"D:\W\A", T("A-T1"), 0, null, false);
+        var prompt = Allocate.PromptFor(item, @"D:\W\A", "master");
+
+        Assert.That(prompt, Does.Contain("re-read each file you changed and confirm it still has the edit you made")
+            .And.Contain("another agent's own concurrent edit, pull, or commit on the same path can overwrite or drop yours with no error shown")
+            .And.Contain("STOP without committing")
+            .And.Contain("don't assume your edit is simply gone"));
+        var reread = prompt.IndexOf("re-read each file you changed", StringComparison.Ordinal);
+        var commit = prompt.IndexOf("git commit -m \"<subject>\" -- <path>", StringComparison.Ordinal);
+        Assert.That(reread, Is.GreaterThanOrEqualTo(0));
+        Assert.That(reread, Is.LessThan(commit), "the re-read and abort check comes before the commit command, not after");
+
+        // The Opus review's recommit (M.ORCH-T563) reopens the same race after spending more time, so it gets the same reminder.
+        var review = Allocate.ReviewStep("A-T1");
+        Assert.That(review, Does.Contain("re-read each path right before this commit too").And.Contain("M.ORCH-T1178"));
+    }
+
+    [Test]
     public void Repos_with_an_open_cli_get_parallel_background_agents_sharing_the_repos_checkout_and_nothing_is_typed()
     {
         Cli(100, @"D:\W\A");
