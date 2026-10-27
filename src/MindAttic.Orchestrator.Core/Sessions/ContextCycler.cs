@@ -321,7 +321,7 @@ public sealed class ContextCycler(string? directory = null)
             {
                 var written = File.GetLastWriteTimeUtc(file);
                 if (nowUtc - written > TimeSpan.FromDays(1)) continue;
-                using var doc = JsonDocument.Parse(File.ReadAllText(file));
+                using var doc = JsonDocument.Parse(ReadShared(file));
                 var root = doc.RootElement;
                 if (!root.TryGetProperty("pid", out var p) || p.ValueKind != JsonValueKind.Number || !p.TryGetInt32(out var pid)) continue;
                 var busy = root.TryGetProperty("state", out var st) && IsBusyTurn(st.GetString(), DecidingOf(root), nowUtc);
