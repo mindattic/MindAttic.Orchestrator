@@ -414,7 +414,9 @@ public sealed class ClaudeMeterProbeTests
         await probe.Pending;
         Assert.That(renews, Is.EqualTo(1));
         Assert.That(probe.LastResult, Does.Contain("refused to refresh"));
-        Assert.That(probe.NextAskUtc, Is.GreaterThanOrEqualTo(Now + ClaudeMeterProbe.NoMeterBackoff));
+        // T813: a refused refresh backs off the short Backoff, not NoMeterBackoff -- this login's meter is real, and a
+        // refusal can be a momentary race with another CLI rotating the same token, not only a revoked sign-in.
+        Assert.That(probe.NextAskUtc, Is.EqualTo(Now + ClaudeMeterProbe.Backoff));
     }
 
     [Test]
