@@ -1,5 +1,6 @@
 using System.Text;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Threading;
 using System.Xml.Linq;
 using MindAttic.Orchestrator.Sessions;
@@ -513,6 +514,20 @@ public sealed class TerminalPanesTests
         // Phase 0 lesson 3 (M.ORCH-T926): ESC[Vk;Sc;Uc;Kd;Cs;Rc_ with ENHANCED_KEY (256), plus SHIFT_PRESSED (16) when held.
         Assert.That(TerminalKeyboard.Win32Key(0x25, 0x4B, shift: false), Is.EqualTo("\u001b[37;75;0;1;256;1_\u001b[37;75;0;0;256;1_"));
         Assert.That(TerminalKeyboard.Win32Key(0x24, 0x47, shift: true), Is.EqualTo("\u001b[36;71;0;1;272;1_\u001b[36;71;0;0;272;1_"));
+    }
+
+    [Test, Apartment(ApartmentState.STA)]
+    public void A_gated_window_key_matches_nothing_while_a_terminal_holds_focus()
+    {
+        // M.ORCH-T1108: a matching KeyBinding marks Esc handled even when its command can't run, so the gesture stands aside.
+        var focused = true;
+        var gesture = new TerminalKeyboard.GatedGesture(new KeyGesture(Key.Escape), () => focused);
+        using var source = new System.Windows.Interop.HwndSource(new System.Windows.Interop.HwndSourceParameters("esc"));
+        var esc = new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Escape) { RoutedEvent = Keyboard.KeyDownEvent };
+        var target = new System.Windows.Controls.Grid();
+        Assert.That(gesture.Matches(target, esc), Is.False, "the terminal's: Esc goes on to the CLI");
+        focused = false;
+        Assert.That(gesture.Matches(target, esc), Is.True, "elsewhere the window's Esc still acts");
     }
 
     [Test]

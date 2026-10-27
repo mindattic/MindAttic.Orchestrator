@@ -1,7 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Data;
 using System.Windows.Interop;
 
 namespace MindAttic.Orchestrator.Wpf;
@@ -56,39 +55,29 @@ internal static partial class TerminalKeyboard
         || (key == Key.V && modifiers == ModifierKeys.Control)
         || (key == Key.Insert && modifiers == ModifierKeys.Shift);
 
-    /// <summary>Gates every KeyBinding on <paramref name="window"/> that isn't a kept chord (M.ORCH-T846): its command can't
-    /// execute while a terminal holds focus, so WPF leaves the key unhandled and it goes on to the CLI. Call once the window's
-    /// bindings are all added (the XAML's and the zoom's). A data-bound command is left alone: its binding would put the
-    /// ungated command back (none today, as every bound one is a kept chord).</summary>
+    /// <summary>Gates every KeyBinding on <paramref name="window"/> that isn't a kept chord (M.ORCH-T846): its gesture doesn't
+    /// match while a terminal holds focus, so WPF leaves the key unhandled and it goes on to the CLI. Call once the window's
+    /// bindings are all added (the XAML's and the zoom's).
+    /// <para>The gesture, not the command (M.ORCH-T1108): a KeyBinding whose gesture matches marks the key handled even when its
+    /// command can't execute (WPF's CommandManager only lets it go on when a routed CanExecute asks to continue routing), and a
+    /// handled key never reaches the renderer's window. Esc did nothing in a CLI tab: Claude's /status didn't close, the
+    /// Launcher's menus didn't go back.</para></summary>
     public static void GateBindings(Window window, FrameworkElement terminals)
     {
         foreach (var binding in window.InputBindings.OfType<KeyBinding>())
         {
-            if (IsKeptChord(binding.Key, binding.Modifiers) || binding.Command is null or GatedCommand
-                || BindingOperations.IsDataBound(binding, InputBinding.CommandProperty)) continue;
-            binding.Command = new GatedCommand(binding.Command, terminals, window);
+            if (IsKeptChord(binding.Key, binding.Modifiers) || binding.Gesture is not KeyGesture gesture || gesture is GatedGesture) continue;
+            binding.Gesture = new GatedGesture(gesture, () => HoldsFocus(terminals));
         }
     }
 
-    /// <summary>A window key's command that stands aside while a terminal holds focus. A routed one (Esc) is routed from the
-    /// window, as its KeyBinding did.</summary>
-    private sealed class GatedCommand(ICommand inner, FrameworkElement terminals, IInputElement target) : ICommand
+    /// <summary>A window key's gesture that stands aside (matches nothing) while <paramref name="standAside"/> says so: a
+    /// terminal holds focus (M.ORCH-T1108).</summary>
+    internal sealed class GatedGesture(KeyGesture inner, Func<bool> standAside)
+        : KeyGesture(inner.Key, inner.Modifiers, inner.DisplayString)
     {
-        public event EventHandler? CanExecuteChanged
-        {
-            add => inner.CanExecuteChanged += value;
-            remove => inner.CanExecuteChanged -= value;
-        }
-
-        public bool CanExecute(object? parameter) => !HoldsFocus(terminals)
-            && (inner is RoutedCommand routed ? routed.CanExecute(parameter, target) : inner.CanExecute(parameter));
-
-        public void Execute(object? parameter)
-        {
-            if (!CanExecute(parameter)) return;
-            if (inner is RoutedCommand routed) routed.Execute(parameter, target);
-            else inner.Execute(parameter);
-        }
+        public override bool Matches(object targetElement, InputEventArgs inputEventArgs) =>
+            !standAside() && base.Matches(targetElement, inputEventArgs);
     }
 
     /// <summary>True while a terminal has the keyboard: the window's own key bindings (Esc) should stand aside. The focused
