@@ -159,11 +159,18 @@ public sealed class SessionControl(OrchestratorOptions options)
     /// <see cref="LoginTokens.TabEnv"/>): sets <c>CLAUDE_CODE_OAUTH_TOKEN</c> from the Vault, or clears one it would inherit.</summary>
     internal Func<string?, string> TokenEnv { get; init; } = configDir => LoginTokens.Default.TabEnv(configDir, DateTime.UtcNow);
 
-    /// <summary>A tab's title (M.ORCH-T632): "JR: Repo [Claude]", the login's initials (when it has one) then the repo's
-    /// <see cref="ShortName(string, Func{IReadOnlyCollection{string}})"/> and its provider. Internal rather than private so
-    /// the tests can reach it.</summary>
+    /// <summary>A tab's title (M.ORCH-T632): "JR: Repo", the login's initials (when it has one) then the repo's
+    /// <see cref="ShortName(string, Func{IReadOnlyCollection{string}})"/> and, once there's more than one provider worth
+    /// telling apart, its name ("JR: Repo [Codex]", <see cref="ProviderTag"/>). Internal rather than private so the tests can
+    /// reach it.</summary>
     internal static string TabTitle(string title, string provider, LoginLook? look, Func<IReadOnlyCollection<string>> knownRepos) =>
-        look is null ? $"{ShortName(title, knownRepos)} [{provider}]" : $"{look.Initials}: {ShortName(title, knownRepos)} [{provider}]";
+        look is null ? $"{ShortName(title, knownRepos)}{ProviderTag(provider)}" : $"{look.Initials}: {ShortName(title, knownRepos)}{ProviderTag(provider)}";
+
+    /// <summary>The " [Provider]" a tab's title ends with (M.ORCH-T1176): blank for Claude, since every tab was one until
+    /// other providers are told apart some other way (icons, once they're further along); still shown for anything else, so
+    /// a Codex or Gemini tab isn't mistaken for a Claude one. Public, like <see cref="ShortName(string)"/>, for the Wpf
+    /// project's own tab labels (<c>TerminalPaneViewModel.Name</c>).</summary>
+    public static string ProviderTag(string provider) => provider == "Claude" ? "" : $" [{provider}]";
 
     /// <summary>The repo names known right now, process-wide (M.ORCH-T632): every <see cref="StatusAggregator.Refresh"/>
     /// replaces this with the snapshot's own repos, so the single-argument <see cref="ShortName(string)"/> — the only form a

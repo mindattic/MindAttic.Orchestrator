@@ -11,13 +11,14 @@ public sealed record TerminalTab(long Window, string Name);
 /// </summary>
 public static class TerminalTabPicker
 {
-    /// <summary>The title a host's tab carries: its <c>--title</c>, else "folder [Provider]" as the Orchestrator's own tabs read, the
-    /// folder's leading prefix dropped (<see cref="SessionControl.ShortName"/>).</summary>
+    /// <summary>The title a host's tab carries: its <c>--title</c>, else "folder" (or "folder [Provider]" for anything but
+    /// Claude, <see cref="SessionControl.ProviderTag"/>) as the Orchestrator's own tabs read, the folder's leading prefix
+    /// dropped (<see cref="SessionControl.ShortName"/>).</summary>
     public static string? ExpectedTitle(HostSession host)
     {
         if (!string.IsNullOrWhiteSpace(host.Title)) return host.Title.Trim();
         var folder = host.WorkingDirectory is { Length: > 0 } dir ? Path.GetFileName(dir.TrimEnd('\\', '/')) : null;
-        return string.IsNullOrEmpty(folder) ? null : $"{SessionControl.ShortName(folder)} [{host.Provider}]";
+        return string.IsNullOrEmpty(folder) ? null : $"{SessionControl.ShortName(folder)}{SessionControl.ProviderTag(host.Provider)}";
     }
 
     /// <summary>A tab's name without the leading status glyph and spaces ("▶  REA.Bloodlines [Claude]" → "REA.Bloodlines [Claude]").</summary>
