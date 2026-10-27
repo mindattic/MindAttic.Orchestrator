@@ -26,6 +26,12 @@
     subagent running, an /allocate claim in flight, or holding on a prompt. If any is, or its state can't be read, the deploy
     lists them and exits 1 without stopping anything (M.ORCH-T873). The CLI running this deploy is left out.
 
+    It always deploys the latest checked-in code: it fetches origin and builds a dedicated clean worktree at origin/main
+    (..\MindAttic.worktrees\MindAttic.Orchestrator\deploy), never the checkout it was run from (M.ORCH-T1067).
+
+.PARAMETER FromHere
+    Build this folder as it is instead of origin/main (the clean worktree's own re-run passes it).
+
 .PARAMETER Force
     Clean bin/obj and rebuild everything even if nothing looks changed.
 
@@ -52,11 +58,37 @@ param(
     [switch]$IgnoreBusyClis,
     [switch]$WaitForIdle,
     [int]$WaitTimeoutMinutes = 0,
-    [int]$BusyPollSeconds = 30
+    [int]$BusyPollSeconds = 30,
+    [switch]$FromHere
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+# Always deploy the latest checked-in code (M.ORCH-T1067): the checkout this script was run from may be stale, diverged
+# or full of someone's uncommitted work, so fetch origin and build a dedicated clean worktree at origin/main instead,
+# re-running this script there. -FromHere skips that and builds this very folder (what the re-run itself uses).
+if (-not $FromHere) {
+    $commonDir = (& git -C $PSScriptRoot rev-parse --path-format=absolute --git-common-dir).Trim()
+    if ($LASTEXITCODE -ne 0) { throw "Not a git checkout: $PSScriptRoot" }
+    $mainRepo = Split-Path -Parent $commonDir
+    $deployTree = Join-Path (Split-Path -Parent (Split-Path -Parent $mainRepo)) "MindAttic.worktrees\$(Split-Path -Leaf $mainRepo)\deploy"
+    & git -C $mainRepo fetch --quiet origin main
+    if ($LASTEXITCODE -ne 0) { throw 'git fetch origin main failed.' }
+    if (-not (Test-Path (Join-Path $deployTree '.git'))) {
+        & git -C $mainRepo worktree prune
+        & git -C $mainRepo worktree add --detach --force $deployTree origin/main | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw "Couldn't make the deploy worktree at $deployTree." }
+    } else {
+        & git -C $deployTree reset --quiet --hard origin/main
+        if ($LASTEXITCODE -ne 0) { throw "Couldn't move the deploy worktree to origin/main." }
+        & git -C $deployTree clean -fdq   # keeps ignored bin/obj, so unchanged parts aren't rebuilt
+    }
+    Write-Host "Deploying origin/main: $(& git -C $deployTree log -1 --format='%h %s')"
+    $forward = @{} + $PSBoundParameters
+    & (Join-Path $deployTree 'deploy.ps1') @forward -FromHere
+    exit $LASTEXITCODE
+}
 
 $repo       = $PSScriptRoot
 $props      = Join-Path $repo 'Directory.Build.props'
