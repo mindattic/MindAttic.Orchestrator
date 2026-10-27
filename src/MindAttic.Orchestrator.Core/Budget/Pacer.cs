@@ -148,7 +148,8 @@ public static class Pacer
         if (!s.Pacing && b.AtLimitUntilUtc is null && !b.WeeklyStopped(nowUtc))
         {
             var spentOut = !b.BlockLimitIsPeak && b.BlockLimit > 0 && b.CurrentBlock is { } blk &&
-                blk.Usage.Fresh >= b.BlockLimit * Math.Clamp(s.PaceTargetPercent, 1, 100) / 100.0;
+                (blk.Usage.Fresh >= b.BlockLimit * Math.Clamp(s.PaceTargetPercent, 1, 100) / 100.0 ||
+                 b.BlockPercent / 100.0 >= Math.Clamp(s.PaceTargetPercent, 1, 100) / 100.0);
             // Said when it's so: "Pacing is off." alone read as nothing held while the gate refused every call (M.ORCH-T466).
             var offNote = spentOut && b.CurrentBlock is { } end
                 ? $"Pacing is off, but the 5-hour window is at its target: tool calls are refused until it resets at {Formatting.ResetTime(end.EndUtc, nowUtc)}."
@@ -213,7 +214,9 @@ public static class Pacer
             .MinBy(x => x.Rate);
         // At the target: nothing more is spent before the reset. Under the front-loaded curve the rate is also 0 while usage is
         // above the curve, but that only holds agents until the curve catches up; it never stops them.
-        var atTarget = windows.Any(w => w.Used >= w.Limit * target);
+        // Claude's own percent too: the tokens used are floored from it, so at exactly the target they fall a fraction short
+        // and the stop would wait for the hooks' own line (M.ORCH-T1087).
+        var atTarget = windows.Any(w => w.Used >= w.Limit * target) || (b.CurrentBlock is not null && b.BlockPercent / 100.0 >= target);
         // No wind-down (M.ORCH-T741): the owner's rule is to run to the cutoff, with nothing throttled or held before it.
 
         // What one more session costs: today's sessions if any are running, else your usual session. A
