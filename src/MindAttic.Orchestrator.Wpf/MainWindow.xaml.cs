@@ -242,10 +242,23 @@ public partial class MainWindow : Window
             Dispatcher.InvokeAsync(() => OnStatus(message));
         }
         Budget.ClaudeMeterProbe.ReadingLanded += OnLocalReading;
+        // A tab's CLI drew its usage figures (M.ORCH-T1118): laid over that login's tab at once, as a probe's reading is; the
+        // daemon, told on its inbox, publishes it to every dashboard and brings the pace and stops forward.
+        void OnScreenReading(string? email, Budget.ReportedUsage reading)
+        {
+            var message = new Status.StatusMessage
+            {
+                Kind = Status.StatusMessage.Usage, AtUtc = DateTime.UtcNow, Pid = Environment.ProcessId,
+                Readings = Status.MeterReading.Of(email, reading, signedIn: null, Budget.ScreenUsage.Source) is { } r ? [r] : [],
+            };
+            Dispatcher.InvokeAsync(() => OnStatus(message));
+        }
+        Budget.ScreenUsage.Landed += OnScreenReading;
         Closed += (_, _) =>
         {
             statusStream.Cancel();
             Budget.ClaudeMeterProbe.ReadingLanded -= OnLocalReading;
+            Budget.ScreenUsage.Landed -= OnScreenReading;
         };
     }
 

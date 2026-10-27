@@ -328,7 +328,7 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
                         Post(() => Attached?.Invoke());
                         break;
                     case TermFrameKind.Output:
-                        Emit(payload);
+                        Emit(payload, live: true);
                         await RoomForOutputAsync().ConfigureAwait(false);
                         break;
                     case TermFrameKind.Modes:
@@ -395,13 +395,23 @@ public sealed class RelayConnection(string name, Func<CancellationToken, Task<St
         Raise(Win32InputMode);
     }
 
-    private void Emit(ReadOnlySpan<byte> bytes)
+    /// <summary>Handed each chunk of live output as it is decoded, on the reader's thread (M.ORCH-T1118: the dashboard reads
+    /// Claude's usage figures off it). Never the replay, which redraws what the screen showed before. It must be cheap; what it
+    /// throws is contained.</summary>
+    public Action<string>? OutputTap { get; set; }
+
+    private void Emit(ReadOnlySpan<byte> bytes, bool live = false)
     {
         var chars = new char[Encoding.UTF8.GetMaxCharCount(bytes.Length)];
         var n = utf8.GetChars(bytes, chars, false);
         if (n == 0) return;
         var text = new string(chars, 0, n);
         Raise(text);
+        if (live && OutputTap is { } tap)
+        {
+            try { tap(text); }
+            catch (Exception ex) { OrchestratorLog.For("Terminals").Debug("An output tap on {Pipe:l} failed: {Message:l}", name, ex.Message); }
+        }
         // The CLI's own full reset (ESC c) would turn win32-input-mode off in the renderer.
         if (text.Contains("\u001bc", StringComparison.Ordinal)) Raise(Win32InputMode);
     }

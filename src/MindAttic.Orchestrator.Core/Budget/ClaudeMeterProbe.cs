@@ -447,8 +447,10 @@ public sealed class ClaudeMeterProbe
     /// <summary>Writes <paramref name="reading"/> (its 5-hour window may be missing) as the statusline does, stamped <paramref name="atUtc"/> and tagged with
     /// <paramref name="account"/>. Usage never falls within a window, so a higher percent already in the probe's own row (db) or file for the same
     /// window is kept (with this, newer, time), when it's the same account's: an untagged statusline reading may be another
-    /// account's whose window happens to reset at the same minute, and its percent would be written tagged as this one's.</summary>
-    internal static ReportedUsage Write(string path, ReportedUsage reading, DateTime atUtc, string? account = null, Settings.OrchestratorDb? db = null)
+    /// account's whose window happens to reset at the same minute, and its percent would be written tagged as this one's.
+    /// <paramref name="source"/> names the writer: "orchestrator" (the probe) or <see cref="ScreenUsage.Source"/> (M.ORCH-T1118).</summary>
+    internal static ReportedUsage Write(string path, ReportedUsage reading, DateTime atUtc, string? account = null, Settings.OrchestratorDb? db = null,
+        string source = "orchestrator")
     {
         var five = reading.FiveHour;
         if (five is not null && (db is not null ? ReportedUsage.LoadRow(atUtc, db) : ReportedUsage.Load(atUtc, path, db)) is { FiveHour: { } old } was && was.Account == account && old.ResetUtc == five.ResetUtc && old.Percent > five.Percent)
@@ -460,7 +462,7 @@ public sealed class ClaudeMeterProbe
         {
             ["rate_limits"] = limits,
             ["at"] = atUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture),
-            ["source"] = "orchestrator",
+            ["source"] = source,
         };
         if (account is not null) json["account"] = account;
         if (db is not null)

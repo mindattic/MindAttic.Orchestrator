@@ -134,6 +134,10 @@ public sealed class RelayTerminal : UserControl, IDisposable
         }
     }
 
+    /// <summary>Handed each chunk of the CLI's live output as it is decoded, off the UI thread (M.ORCH-T1118,
+    /// <see cref="RelayConnection.OutputTap"/>); it must be cheap.</summary>
+    public Action<string>? OutputTap { get; set; }
+
     /// <summary>The session's size (cols, rows) as the host last said it (protocol 2 hosts).</summary>
     public event Action<ushort, ushort>? SessionSizeChanged;
 
@@ -150,6 +154,8 @@ public sealed class RelayTerminal : UserControl, IDisposable
         connection.SizeChanged += (c, r, owned) => FollowSize(connection, c, r, owned);
         connection.OtherTyping += () => OtherTyping?.Invoke();
         connection.InputDropped += () => InputDropped?.Invoke();
+        // Each live chunk to whoever reads the screen (M.ORCH-T1118), on the reader's thread.
+        connection.OutputTap = text => OutputTap?.Invoke(text);
         Connection = connection;
         // Resets the renderer (ESC c), then Start()s the connection; the host's replay follows.
         Terminal.Connection = connection;

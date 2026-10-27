@@ -291,9 +291,18 @@ public sealed class TerminalPaneViewModel : ObservableObject
             hostEnded = true;
             Ended = true;
         };
+        // Claude's usage figures read off its screen (M.ORCH-T1118): fed on the relay's reader thread, parsed on the pool.
+        if (Request.Provider == "Claude") relay.OutputTap = (screen ??= new Budget.ScreenUsageScanner(OnScreenUsage)).Feed;
         Relay = relay;
         ((TerminalView)Control).Child = relay;
     }
+
+    private Budget.ScreenUsageScanner? screen;
+
+    /// <summary>Its CLI drew usage figures (M.ORCH-T1118): written as its login's fresh reading (the global login's only when it
+    /// runs on no login folder at all). On the pool; never throws.</summary>
+    private void OnScreenUsage(Budget.ReportedUsage reading) =>
+        Budget.ScreenUsage.Record(Login, Request.ConfigDir ?? Session?.ConfigDir, reading, DateTime.UtcNow);
 
     private void UseLocal()
     {
@@ -376,6 +385,7 @@ public sealed class TerminalPaneViewModel : ObservableObject
     {
         try
         {
+            screen?.Dispose();
             if (Relay is { } relay) relay.Dispose();
             else if (Local is { } local)
             {
