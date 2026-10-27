@@ -87,7 +87,9 @@ public sealed partial class MainlineTests(JsonStore store)
     public IReadOnlyList<Line> Tick(IEnumerable<(string Name, string Path)> repos, string worktreeRoot, Func<TicketsDb?> openTickets, DateTime nowUtc, bool mayStart = true)
     {
         var lines = new List<Line>();
-        var state = store.Load<Dictionary<string, RepoState>>(StateName);
+        // Unreadable now (the database busy past its timeout): nothing is done this tick. Defaults would record every repo as
+        // tested where it stands and save that over every Green (M.ORCH-T1091); finished runs are reported next tick.
+        if (!store.TryLoad<Dictionary<string, RepoState>>(StateName, out var state)) return lines;
         var changed = false;
         foreach (var done in running.Values.Where(r => r.Task.IsCompleted).ToList())
         {
