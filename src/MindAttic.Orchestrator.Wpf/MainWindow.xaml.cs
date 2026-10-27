@@ -345,11 +345,11 @@ public partial class MainWindow : Window
     }
 
     /// <summary>The terminals are native windows WPF can't draw over: hidden (never collapsed, so each keeps its size) while
-    /// Settings, Rename or Org limit is open, the loader covers the window or an org with no login covers the page.</summary>
+    /// Settings or User Settings is open, the loader covers the window or an org with no login covers the page.</summary>
     private void UpdateTerminalsCover()
     {
         var shown = Shown;
-        var covered = shown.IsSettingsOpen || shown.IsRenameOpen || shown.IsLimitOpen || model.IsLoading || model.IsOrgEmpty;
+        var covered = shown.IsSettingsOpen || shown.IsUserSettingsOpen || model.IsLoading || model.IsOrgEmpty;
         TerminalPanesHost.Visibility = covered ? Visibility.Hidden : Visibility.Visible;
     }
 
@@ -357,14 +357,14 @@ public partial class MainWindow : Window
     /// Hands the keyboard back to the shown CLI's terminal (M.ORCH-T846), queued past the click, layout or refresh that
     /// prompted it (a terminal shown again only gets its native window back on the layout pass). It stays put while the window
     /// isn't active, a dialog is open, the terminals are covered, or focus is somewhere the user chose to be: a text box (Settings,
-    /// Rename), an open menu or dropdown, another window. With <paramref name="onlyIfLost"/> (a refresh) it only takes focus
+    /// User Settings), an open menu or dropdown, another window. With <paramref name="onlyIfLost"/> (a refresh) it only takes focus
     /// back that went nowhere, as when a rebuilt list dropped the focused row, so tabbing round the page still works.
     /// </summary>
     private void PinTerminalFocus(bool onlyIfLost = false) =>
         Dispatcher.InvokeAsync(() =>
         {
             var shown = Shown;
-            if (!IsActive || shown.IsSettingsOpen || shown.IsRenameOpen || shown.IsLimitOpen
+            if (!IsActive || shown.IsSettingsOpen || shown.IsUserSettingsOpen
                 || TerminalPanesHost.Visibility != Visibility.Visible) return;
             if (model.AllTerminals.SelectedPane?.Control is not { IsVisible: true } terminal) return;
             var focused = Keyboard.FocusedElement as DependencyObject;
@@ -389,7 +389,7 @@ public partial class MainWindow : Window
     private void OnShownChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (sender != Shown) return;
-        if (e.PropertyName is nameof(MainViewModel.IsSettingsOpen) or nameof(MainViewModel.IsRenameOpen) or nameof(MainViewModel.IsLimitOpen))
+        if (e.PropertyName is nameof(MainViewModel.IsSettingsOpen) or nameof(MainViewModel.IsUserSettingsOpen))
         {
             UpdateTerminalsCover();
             PinTerminalFocus(); // a dialog closing hands the keyboard back to the CLI
@@ -628,9 +628,9 @@ public partial class MainWindow : Window
         menu.Items.Add(new Separator());
     }
 
-    /// <summary>A person's tab's right-click menu (M.ORCH-T797; Shift+F10 or the menu key on a focused tab too): Rename and
-    /// Org limit, the login actions that were standalone buttons on the person's page. The tab is selected first, since both
-    /// dialogs are the shown tab's.</summary>
+    /// <summary>A person's tab's right-click menu (M.ORCH-T797; Shift+F10 or the menu key on a focused tab too): User Settings
+    /// (M.ORCH-T1098, Rename and Org limit merged), the login action that was standalone buttons on the person's page. The tab is
+    /// selected first, since the dialog is the shown tab's.</summary>
     private void OnLoginTabContextMenu(object sender, ContextMenuEventArgs e)
     {
         if (e.OriginalSource is not DependencyObject source
@@ -652,8 +652,8 @@ public partial class MainWindow : Window
             };
             menu.Items.Add(item);
         }
-        Add("Rename…", "Give this login a name and a terminal-title prefix (orchestrator accounts alias <email> <name>)", tab.RenamePersonCommand);
-        Add("Org limit…", "Set this login's own 5-hour and weekly cutoffs (orchestrator org limit <who> --weekly --5h)", tab.OrgLimitCommand);
+        Add("User Settings…", "This login's name, terminal-title prefix and own 5-hour and weekly cutoffs (orchestrator accounts alias, orchestrator org limit)",
+            tab.UserSettingsCommand);
         menu.IsOpen = true;
     }
 
@@ -772,8 +772,7 @@ public partial class MainWindow : Window
     {
         var shown = Shown;
         if (shown.IsSettingsOpen) shown.IsSettingsOpen = false;
-        else if (shown.IsRenameOpen) shown.IsRenameOpen = false;
-        else if (shown.IsLimitOpen) shown.IsLimitOpen = false;
+        else if (shown.IsUserSettingsOpen) shown.IsUserSettingsOpen = false;
     }
 
     /// <summary>Says <paramref name="text"/> through a screen reader without moving focus (WCAG 4.1.3, status messages):

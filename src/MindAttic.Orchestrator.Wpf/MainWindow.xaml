@@ -360,8 +360,6 @@
 
                 <mc:MaTileGrid x:Name="StatTiles" MinItemWidth="200" Spacing="10" RowSpacing="10" Balanced="True" UniformRows="True"
                                    AutomationProperties.Name="Summary">
-                    <!-- Budget: the current 5-hour block. Click to change this login's cutoffs (Org limit): the top-right cog is the
-                         only way into Settings (M.ORCH-T804). -->
                     <!-- The API key's person (M.ORCH-T906) has no 5-hour or weekly window: money instead. What's left of its
                          starting credit, what it has spent (today and lately), and when it runs out at the recent rate. -->
                     <Button x:Name="ApiLeftTile" Style="{StaticResource MaSmallStat}" Command="{Binding RefreshCommand}" Height="74" Visibility="{Binding IsApiKeyTab, Converter={StaticResource Visible}}"
@@ -392,7 +390,7 @@
                         </StackPanel>
                     </Button>
                 </mc:MaTileGrid>
-                <!-- No login-action buttons on a person's page any more: Rename and Org limit are the person's tab's
+                <!-- No login-action buttons on a person's page any more: User Settings (M.ORCH-T1098) is the person's tab's
                      right-click menu (M.ORCH-T797, MainWindow.xaml.cs's OnLoginTabContextMenu); the login-wide Move CLIs is gone, each
                      CLI moving by its own agent card's Move to; and there's no Sign in (M.ORCH-T796): a login that gets disconnected
                      opens its own sign-in by itself. What the last of those did still shows here. -->
@@ -791,41 +789,29 @@
             </mc:MaModal.Footer>
         </mc:MaModal>
 
-        <!-- Rename (M.ORCH-T633), a person's login action (M.ORCH-T763): the account's email (its ID, never edited), its Name
-             (the card's title; the member's name too) and its Prefix (the badge its terminal titles start with). -->
-        <mc:MaModal x:Name="RenameModal" Grid.RowSpan="6" Title="Rename login" AutomationProperties.Name="Rename login" DialogWidth="460"
-                    IsOpen="{Binding IsRenameOpen}" CloseCommand="{Binding CancelRenameCommand}">
+        <!-- User Settings (M.ORCH-T1098, was Org limit and Rename), a person's login action (M.ORCH-T763) from their tab's
+             right-click menu: the account's email (its ID, never edited); its Name (its tab's title; the member's name too) and
+             Prefix (the badge its terminal titles start with, M.ORCH-T633); and its own 5-hour and weekly cutoffs (M.ORCH-T707), as
+             orchestrator org limit sets them. Defaults fills in the default cutoffs; one Save keeps everything. -->
+        <mc:MaModal x:Name="UserSettingsModal" Grid.RowSpan="6" Title="User Settings" AutomationProperties.Name="User Settings" DialogWidth="460"
+                    IsOpen="{Binding IsUserSettingsOpen}" CloseCommand="{Binding CancelUserSettingsCommand}">
             <StackPanel>
                 <TextBlock Text="Email" Margin="{StaticResource SpaceBXS}" />
-                <TextBox x:Name="RenameEmailBox" Style="{StaticResource MaTextBox}" Height="32" IsReadOnly="True" Text="{Binding RenameEmail, Mode=OneWay}"
+                <TextBox x:Name="UserSettingsEmailBox" Style="{StaticResource MaTextBox}" Height="32" IsReadOnly="True" Text="{Binding RenameEmail, Mode=OneWay}"
                          AutomationProperties.Name="Email" ToolTip="The account's ID: it can't be changed" />
-                <TextBlock Text="Name" Margin="{StaticResource SpaceTSBXS}" />
-                <TextBox x:Name="RenameNameBox" Style="{StaticResource MaTextBox}" Height="32" Text="{Binding RenameName, UpdateSourceTrigger=PropertyChanged}"
-                         AutomationProperties.Name="Name" />
-                <TextBlock Text="What the Orchestrator calls this login, on its card and its tab. Blank goes back to the email's part before the @."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource RowGutter}" />
-                <TextBlock Text="Prefix" Margin="{StaticResource SpaceTSBXS}" />
-                <TextBox x:Name="RenamePrefixBox" Style="{StaticResource MaTextBox}" Height="32" Width="100" HorizontalAlignment="Left"
-                         Text="{Binding RenamePrefix, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Prefix" />
-                <TextBlock Text="The badge its terminal titles start with, e.g. JR in [JR] Repo [Claude]: up to 3 letters or digits. Blank takes it from the name."
-                           Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource RowGutter}" />
-            </StackPanel>
-            <mc:MaModal.Footer>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Style="{StaticResource MaButton}" Content="Cancel" Padding="{StaticResource SpaceHLVS}" Margin="{StaticResource SpaceRS}" Command="{Binding CancelRenameCommand}" />
-                    <Button Style="{StaticResource MaPrimaryButton}" Content="Save" Padding="{StaticResource SpaceHLVS}" Command="{Binding SaveLoginAliasCommand}" />
+                <StackPanel x:Name="RenameSection" Visibility="{Binding HasRenameSection, Converter={StaticResource Visible}}">
+                    <TextBlock Text="Name" Margin="{StaticResource SpaceTSBXS}" />
+                    <TextBox x:Name="RenameNameBox" Style="{StaticResource MaTextBox}" Height="32" Text="{Binding RenameName, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Name" />
+                    <TextBlock Text="What the Orchestrator calls this login, on its tab. Blank goes back to the email's part before the @."
+                               Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource RowGutter}" />
+                    <TextBlock Text="Prefix" Margin="{StaticResource SpaceTSBXS}" />
+                    <TextBox x:Name="RenamePrefixBox" Style="{StaticResource MaTextBox}" Height="32" Width="100" HorizontalAlignment="Left"
+                             Text="{Binding RenamePrefix, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Prefix" />
+                    <TextBlock Text="The badge its terminal titles start with, e.g. JR in [JR] Repo [Claude]: up to 3 letters or digits. Blank takes it from the name."
+                               Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource RowGutter}" />
                 </StackPanel>
-            </mc:MaModal.Footer>
-        </mc:MaModal>
-
-        <!-- Org limit (M.ORCH-T763), a person's login action: their own 5-hour and weekly cutoffs (M.ORCH-T707), as
-             orchestrator org limit sets them; Defaults puts both back. -->
-        <mc:MaModal x:Name="LimitModal" Grid.RowSpan="6" Title="Org limit" AutomationProperties.Name="Org limit" DialogWidth="460"
-                    IsOpen="{Binding IsLimitOpen}" CloseCommand="{Binding CancelLimitCommand}">
-            <StackPanel>
-                <TextBlock Text="Login" Margin="{StaticResource SpaceBXS}" />
-                <TextBox x:Name="LimitEmailBox" Style="{StaticResource MaTextBox}" Height="32" IsReadOnly="True" Text="{Binding LimitEmail, Mode=OneWay}"
-                         AutomationProperties.Name="Login" />
+                <StackPanel x:Name="LimitSection" Visibility="{Binding HasLimitSection, Converter={StaticResource Visible}}">
                 <TextBlock Text="5-hour cutoff (% of the 5-hour window)" Margin="{StaticResource SpaceTSBXS}" />
                 <TextBox x:Name="LimitFiveHourBox" Style="{StaticResource MaTextBox}" Height="32" Width="100" HorizontalAlignment="Left"
                          Text="{Binding LimitFiveHour, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="5-hour cutoff percent" />
@@ -833,15 +819,17 @@
                 <TextBox x:Name="LimitWeeklyBox" Style="{StaticResource MaTextBox}" Height="32" Width="100" HorizontalAlignment="Left"
                          Text="{Binding LimitWeekly, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Weekly cutoff percent" />
                 <TextBlock Text="{Binding LimitHint}" Style="{StaticResource MaMutedText}" TextWrapping="Wrap" Margin="{StaticResource SpaceTS}" />
+                </StackPanel>
                 <TextBlock Text="{Binding LimitError}" Foreground="{DynamicResource MaBad}" TextWrapping="Wrap" Margin="{StaticResource SpaceTS}" AutomationProperties.LiveSetting="Assertive"
                            Visibility="{Binding LimitError, Converter={x:Static vm:Converters.EmptyToCollapsed}}" />
             </StackPanel>
             <mc:MaModal.Footer>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Style="{StaticResource MaButton}" Content="Defaults" Padding="{StaticResource SpaceHLVS}" Margin="{StaticResource SpaceRS}" Command="{Binding ResetLimitCommand}"
-                            ToolTip="Back to the defaults: 98% of the 5-hour window, 90% of the week" />
-                    <Button Style="{StaticResource MaButton}" Content="Cancel" Padding="{StaticResource SpaceHLVS}" Margin="{StaticResource SpaceRS}" Command="{Binding CancelLimitCommand}" />
-                    <Button Style="{StaticResource MaPrimaryButton}" Content="Save" Padding="{StaticResource SpaceHLVS}" Command="{Binding SaveLimitCommand}" />
+                            Visibility="{Binding HasLimitSection, Converter={StaticResource Visible}}"
+                            ToolTip="Fill in the default cutoffs, 98% of the 5-hour window and 90% of the week; Save keeps them" />
+                    <Button Style="{StaticResource MaButton}" Content="Cancel" Padding="{StaticResource SpaceHLVS}" Margin="{StaticResource SpaceRS}" Command="{Binding CancelUserSettingsCommand}" />
+                    <Button Style="{StaticResource MaPrimaryButton}" Content="Save" Padding="{StaticResource SpaceHLVS}" Command="{Binding SaveUserSettingsCommand}" />
                 </StackPanel>
             </mc:MaModal.Footer>
         </mc:MaModal>

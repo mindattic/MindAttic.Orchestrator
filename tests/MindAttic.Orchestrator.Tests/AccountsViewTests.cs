@@ -59,7 +59,7 @@ public sealed class AccountsViewTests
     [TestCase("90", "", "5-hour")]
     public void Org_limit_takes_each_cutoff_only_in_its_bounds(string weekly, string fiveHour, string? refused)
     {
-        // M.ORCH-T763: the person's Org limit dialog, as orchestrator org limit --weekly --5h bounds them (M.ORCH-T707).
+        // M.ORCH-T763: the person's User Settings dialog's cutoffs (M.ORCH-T1098, was Org limit), as orchestrator org limit --weekly --5h bounds them (M.ORCH-T707).
         var why = MainViewModel.ParseCutoffs(weekly, fiveHour, out var w, out var f);
         if (refused is null)
         {
@@ -119,20 +119,22 @@ public sealed class AccountsViewTests
             "off the main dashboard");
         Assert.That(code, Does.Contain("OrgToolbar.DataContext = model;"));
 
-        // M.ORCH-T797: no login-action buttons on a person's page: Rename and Org limit are the person's tab's right-click
+        // M.ORCH-T797: no login-action buttons on a person's page: User Settings (M.ORCH-T1098) is the person's tab's right-click
         // menu, the library's dark dropdown (no Make default since M.ORCH-T1097); Move CLIs is
         // gone (each agent card's Move to). M.ORCH-T796: no per-person Sign in; a disconnected login opens its sign-in by itself.
         var page = xaml[xaml.IndexOf("x:Name=\"StatTiles\"", StringComparison.Ordinal)..xaml.IndexOf("x:Name=\"UtilizationCard\"", StringComparison.Ordinal)];
-        Assert.That(page, Does.Not.Contain("SignInPerson").And.Not.Contain("{Binding RenamePersonCommand}")
+        Assert.That(page, Does.Not.Contain("SignInPerson").And.Not.Contain("{Binding UserSettingsCommand}")
             .And.Not.Contain("{Binding MakeDefaultCommand}").And.Not.Contain("x:Name=\"PersonActions\""));
         Assert.That(page, Does.Contain("x:Name=\"PersonMessage\""), "what the last action did still shows on the page");
         Assert.That(xaml + code, Does.Not.Contain("OnMoveAllClick").And.Not.Contain("MoveClisButton").And.Not.Contain("MoveAllToAsync"));
         Assert.That(xaml, Does.Contain("ContextMenuOpening=\"OnLoginTabContextMenu\""));
         var menu = code[code.IndexOf("void OnLoginTabContextMenu", StringComparison.Ordinal)..];
         menu = menu[..menu.IndexOf("menu.IsOpen = true;", StringComparison.Ordinal)];
-        Assert.That(menu, Does.Contain("tab.RenamePersonCommand").And.Contain("tab.OrgLimitCommand").And.Not.Contain("MakeDefault")
-            .And.Contain("DropdownMenu(").And.Contain("IsPersonTab"));
-        Assert.That(xaml, Does.Contain("x:Name=\"LimitModal\"").And.Contain("{Binding SaveLimitCommand}"));
+        // M.ORCH-T1098: Rename and Org limit are one User Settings dialog, its one menu item.
+        Assert.That(menu, Does.Contain("tab.UserSettingsCommand").And.Not.Contain("RenamePersonCommand").And.Not.Contain("OrgLimitCommand")
+            .And.Not.Contain("MakeDefault").And.Contain("DropdownMenu(").And.Contain("IsPersonTab"));
+        Assert.That(xaml, Does.Contain("x:Name=\"UserSettingsModal\"").And.Contain("{Binding SaveUserSettingsCommand}")
+            .And.Contain("{Binding RenameName").And.Contain("{Binding LimitWeekly").And.Not.Contain("x:Name=\"RenameModal\"").And.Not.Contain("x:Name=\"LimitModal\""));
     }
 
     [Test]

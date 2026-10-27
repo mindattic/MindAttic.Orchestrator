@@ -8,9 +8,9 @@ using MindAttic.Orchestrator.Settings;
 namespace MindAttic.Orchestrator.Wpf.ViewModels;
 
 /// <summary>
-/// A person's login actions (M.ORCH-T763), on their own page now that the Accounts view is gone: Rename (its name and terminal-title prefix,
-/// M.ORCH-T633) and Org limit (its own 5-hour and weekly cutoffs, as <c>orchestrator org limit</c> sets them, M.ORCH-T707), both
-/// the person's tab's right-click menu (M.ORCH-T797). The org-wide ones, Add login, Sign in all and Report, sit in the small toolbar above the
+/// A person's login actions (M.ORCH-T763), on their own page now that the Accounts view is gone: User Settings (M.ORCH-T1098), its
+/// name and terminal-title prefix (M.ORCH-T633) and its own 5-hour and weekly cutoffs (as <c>orchestrator org limit</c> sets them,
+/// M.ORCH-T707) in one dialog, from the person's tab's right-click menu (M.ORCH-T797). The org-wide ones, Add login, Sign in all and Report, sit in the small toolbar above the
 /// person tabs, on the global login's tab. There's no Sign in among them (M.ORCH-T796): a login that gets disconnected opens
 /// its own sign-in (<see cref="OwnLogins.SignIn"/>) by itself.
 /// </summary>
@@ -23,28 +23,37 @@ public sealed partial class MainViewModel
     /// <summary>The email Add login signs in a login of its own for.</summary>
     public string NewAccountEmail { get => newAccountEmail; set => Set(ref newAccountEmail, value ?? ""); }
 
-    /// <summary>What the last Sign in, Add login, Rename, Org limit or Move did, or is doing.</summary>
+    /// <summary>What the last Sign in, Add login, User Settings or Move did, or is doing.</summary>
     public string AccountsMessage { get => accountsMessage; private set => Set(ref accountsMessage, value); }
 
     public bool IsSigningIn { get => signingIn; private set => Set(ref signingIn, value); }
 
-    private ICommand? addAccountCommand, renamePersonCommand, saveLoginAliasCommand, cancelRenameCommand;
+    private ICommand? addAccountCommand;
 
-    // ── Rename ──────────────────────────────────────────────────────────────
+    // ── User Settings (M.ORCH-T1098: Rename and Org limit in one dialog) ────
 
-    /// <summary>The login the Rename dialog names: its folder and its account's email.</summary>
+    /// <summary>The login User Settings names: its folder and its account's email; null when its email isn't known.</summary>
     private (string Folder, string Email)? renaming;
     private string renameName = "", renamePrefix = "";
+    private bool userSettingsOpen;
+    private ICommand? userSettingsCommand, saveUserSettingsCommand, cancelUserSettingsCommand, resetLimitCommand;
 
-    /// <summary>The Rename dialog is open (M.ORCH-T633), from the person's Rename.</summary>
-    public bool IsRenameOpen
+    /// <summary>The person's User Settings dialog is open (from their tab's right-click menu): their login's name and prefix
+    /// (M.ORCH-T633) and their own 5-hour and weekly cutoffs (M.ORCH-T707), one Save for both.</summary>
+    public bool IsUserSettingsOpen
     {
-        get => renaming is not null;
-        set { if (!value && renaming is not null) { renaming = null; RaiseRename(); } }
+        get => userSettingsOpen;
+        set { if (!value && userSettingsOpen) CloseUserSettings(); }
     }
 
+    /// <summary>Whether the dialog has the login's Name and Prefix to edit (its email is known).</summary>
+    public bool HasRenameSection => renaming is not null;
+
+    /// <summary>Whether the dialog has cutoffs to edit.</summary>
+    public bool HasLimitSection => limiting is not null;
+
     /// <summary>The dialog's Email: the login's account, shown and never edited.</summary>
-    public string RenameEmail => renaming?.Email ?? "";
+    public string RenameEmail => renaming?.Email ?? limiting ?? "";
 
     /// <summary>The dialog's Name: the login's alias, its tab's title (blank: the email's part before the @).</summary>
     public string RenameName { get => renameName; set => Set(ref renameName, value ?? ""); }
@@ -63,39 +72,83 @@ public sealed partial class MainViewModel
         return Root.workspace?.GlobalEmail is { Length: > 0 } global ? (dirs.ClaudeDir, global) : null;
     }
 
-    /// <summary>Rename: opens the Rename dialog on this person's login (M.ORCH-T614, M.ORCH-T633).</summary>
-    public ICommand RenamePersonCommand => renamePersonCommand ??= new RelayCommand(() =>
+    /// <summary>User Settings: opens the dialog on this person's login, its Name and Prefix (M.ORCH-T614, M.ORCH-T633) and its own
+    /// cutoffs (orchestrator org limit &lt;who&gt; --weekly --5h, M.ORCH-T707).</summary>
+    public ICommand UserSettingsCommand => userSettingsCommand ??= new RelayCommand(() =>
     {
-        if (OwnLogin() is not { } login) return;
-        BeginRename(login.Folder, login.Email);
-    }, () => IsTabSignedIn);
+        renaming = OwnLogin();
+        if (renaming is { } login)
+        {
+            RenameName = LoginLook.For(login.Folder, login.Email).Alias;
+            RenamePrefix = LoginLook.InitialsOverride(login.Folder, login.Email) ?? "";
+        }
+        limiting = CutoffEmail is { Length: > 0 } email ? email : null;
+        if (limiting is { } who)
+        {
+            LimitWeekly = UsageCutoffs.WeeklyFor(Root.cutoffs, who).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            LimitFiveHour = UsageCutoffs.FiveHourFor(Root.cutoffs, who).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+        LimitError = "";
+        if (renaming is null && limiting is null) return;
+        userSettingsOpen = true;
+        RaiseUserSettings();
+    }, () => IsTabSignedIn && (OwnLogin() is not null || CutoffEmail is { Length: > 0 }));
 
-    internal void BeginRename(string folder, string email)
+    /// <summary>Closes User Settings without saving (Cancel, Esc, its close button, the backdrop).</summary>
+    public ICommand CancelUserSettingsCommand => cancelUserSettingsCommand ??= new RelayCommand(CloseUserSettings);
+
+    /// <summary>Saves the dialog: its login's Name and Prefix, with the member's name in the members table (M.ORCH-T670), and
+    /// its cutoffs, each in its bounds (refused, with why, otherwise, and nothing is saved). Cutoffs left at the defaults are
+    /// saved as the defaults (orchestrator org limit --reset), not as a custom pair that happens to match them.</summary>
+    public ICommand SaveUserSettingsCommand => saveUserSettingsCommand ??= new RelayCommand(async () =>
     {
-        renaming = (folder, email);
-        RenameName = LoginLook.For(folder, email).Alias;
-        RenamePrefix = LoginLook.InitialsOverride(folder, email) ?? "";
-        RaiseRename();
-    }
-
-    private void RaiseRename()
-    {
-        Raise(nameof(IsRenameOpen)); Raise(nameof(RenameEmail));
-    }
-
-    /// <summary>Closes the Rename dialog without saving (Cancel, Esc, its close button, the backdrop).</summary>
-    public ICommand CancelRenameCommand => cancelRenameCommand ??= new RelayCommand(() => { renaming = null; RaiseRename(); });
-
-    /// <summary>Saves the dialog's Name and Prefix for its login, and the member's name in the members table (M.ORCH-T670).</summary>
-    public ICommand SaveLoginAliasCommand => saveLoginAliasCommand ??= new RelayCommand(async () =>
-    {
-        if (renaming is not { } login) return;
-        AccountsMessage = SaveAlias(OwnLoginDirs(), login.Folder, login.Email, RenameName, RenamePrefix, aggregator.Db);
-        renaming = null;
-        RaiseRename();
+        if (!userSettingsOpen) return;
+        int weekly = 0, fiveHour = 0;
+        if (limiting is not null && ParseCutoffs(LimitWeekly, LimitFiveHour, out weekly, out fiveHour) is { } why) { LimitError = why; return; }
+        var said = new List<string>();
+        if (renaming is { } login) said.Add(SaveAlias(OwnLoginDirs(), login.Folder, login.Email, RenameName, RenamePrefix, aggregator.Db));
+        if (limiting is { } email)
+        {
+            try
+            {
+                var set = weekly == UsageCutoffs.DefaultWeeklyPercent && fiveHour == UsageCutoffs.DefaultFiveHourPercent
+                    ? UsageCutoffs.Reset(store, email, TabTitle)
+                    : UsageCutoffs.Set(store, email, TabTitle, weekly, fiveHour);
+                said.Add($"{TabTitle}'s cutoffs: {UsageCutoffs.Text(set.WeeklyPercent, set.FiveHourPercent)}.");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Data.Common.DbException)
+            {
+                AccountsMessage = string.Join(" ", said);
+                LimitError = $"Couldn't save {email}'s cutoffs: {ex.Message}";
+                return;
+            }
+        }
+        AccountsMessage = string.Join(" ", said);
+        CloseUserSettings();
         NoteLocalChange();
         await RefreshAsync();
     });
+
+    /// <summary>Defaults: puts the dialog's cutoffs back to 90% of the week and 98% of the 5-hour window, for Save to keep.</summary>
+    public ICommand ResetLimitCommand => resetLimitCommand ??= new RelayCommand(() =>
+    {
+        LimitWeekly = UsageCutoffs.DefaultWeeklyPercent.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        LimitFiveHour = UsageCutoffs.DefaultFiveHourPercent.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        LimitError = "";
+    }, () => limiting is not null);
+
+    private void CloseUserSettings()
+    {
+        userSettingsOpen = false;
+        renaming = null;
+        limiting = null;
+        RaiseUserSettings();
+    }
+
+    private void RaiseUserSettings()
+    {
+        Raise(nameof(IsUserSettingsOpen)); Raise(nameof(RenameEmail)); Raise(nameof(HasRenameSection)); Raise(nameof(HasLimitSection));
+    }
 
     /// <summary>Names <paramref name="email"/>'s logins <paramref name="alias"/> with the badge <paramref name="initials"/>
     /// (null leaves it; blank derives it from the name): every folder that's its login
@@ -116,21 +169,11 @@ public sealed partial class MainViewModel
         }
     }
 
-    // ── Org limit ───────────────────────────────────────────────────────────
+    // ── User Settings' cutoffs ──────────────────────────────────────────────
 
+    /// <summary>Whose cutoffs User Settings sets; null while it's closed or has no cutoffs to set.</summary>
     private string? limiting;
     private string limitWeekly = "", limitFiveHour = "", limitError = "";
-    private ICommand? orgLimitCommand, saveLimitCommand, resetLimitCommand, cancelLimitCommand;
-
-    /// <summary>The Org limit dialog is open, on this person's login.</summary>
-    public bool IsLimitOpen
-    {
-        get => limiting is not null;
-        set { if (!value && limiting is not null) { limiting = null; RaiseLimit(); } }
-    }
-
-    /// <summary>Whose cutoffs the dialog sets.</summary>
-    public string LimitEmail => limiting ?? "";
 
     /// <summary>The dialog's weekly cutoff, % of the week.</summary>
     public string LimitWeekly { get => limitWeekly; set => Set(ref limitWeekly, value ?? ""); }
@@ -146,52 +189,6 @@ public sealed partial class MainViewModel
         $"{UsageCutoffs.MinFiveHourPercent} to 100 ({UsageCutoffs.DefaultFiveHourPercent} by default). At either, this login's access is cut off " +
         "until it resets or you allow it past (orchestrator org allow).";
 
-    /// <summary>Org limit: opens the dialog on this person's own cutoffs (orchestrator org limit &lt;who&gt; --weekly --5h).</summary>
-    public ICommand OrgLimitCommand => orgLimitCommand ??= new RelayCommand(() =>
-    {
-        if (CutoffEmail is not { Length: > 0 } email) return;
-        limiting = email;
-        LimitWeekly = UsageCutoffs.WeeklyFor(Root.cutoffs, email).ToString(System.Globalization.CultureInfo.InvariantCulture);
-        LimitFiveHour = UsageCutoffs.FiveHourFor(Root.cutoffs, email).ToString(System.Globalization.CultureInfo.InvariantCulture);
-        LimitError = "";
-        RaiseLimit();
-    }, () => IsTabSignedIn && CutoffEmail is { Length: > 0 });
-
-    public ICommand CancelLimitCommand => cancelLimitCommand ??= new RelayCommand(() => { limiting = null; RaiseLimit(); });
-
-    /// <summary>Saves the dialog's cutoffs, each in its bounds; refused, with why, otherwise.</summary>
-    public ICommand SaveLimitCommand => saveLimitCommand ??= new RelayCommand(async () =>
-    {
-        if (limiting is not { } email) return;
-        if (ParseCutoffs(LimitWeekly, LimitFiveHour, out var weekly, out var fiveHour) is { } why) { LimitError = why; return; }
-        await ChangeLimitAsync(email, () => UsageCutoffs.Set(store, email, TabTitle, weekly, fiveHour));
-    });
-
-    /// <summary>Back to the defaults for this person.</summary>
-    public ICommand ResetLimitCommand => resetLimitCommand ??= new RelayCommand(async () =>
-    {
-        if (limiting is not { } email) return;
-        await ChangeLimitAsync(email, () => UsageCutoffs.Reset(store, email, TabTitle));
-    });
-
-    private async Task ChangeLimitAsync(string email, Func<UsageCutoff> change)
-    {
-        try
-        {
-            var set = change();
-            AccountsMessage = $"{TabTitle}'s cutoffs: {UsageCutoffs.Text(set.WeeklyPercent, set.FiveHourPercent)}.";
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Data.Common.DbException)
-        {
-            LimitError = $"Couldn't save {email}'s cutoffs: {ex.Message}";
-            return;
-        }
-        limiting = null;
-        RaiseLimit();
-        NoteLocalChange();
-        await RefreshAsync();
-    }
-
     /// <summary>The dialog's two numbers as cutoffs in their bounds; why not, else null.</summary>
     internal static string? ParseCutoffs(string weeklyText, string fiveHourText, out int weekly, out int fiveHour)
     {
@@ -203,11 +200,6 @@ public sealed partial class MainViewModel
             || fiveHour < UsageCutoffs.MinFiveHourPercent || fiveHour > 100)
             return $"The 5-hour cutoff is a whole number from {UsageCutoffs.MinFiveHourPercent} to 100.";
         return null;
-    }
-
-    private void RaiseLimit()
-    {
-        Raise(nameof(IsLimitOpen)); Raise(nameof(LimitEmail));
     }
 
     // ── Sign in ─────────────────────────────────────────────────────────────
