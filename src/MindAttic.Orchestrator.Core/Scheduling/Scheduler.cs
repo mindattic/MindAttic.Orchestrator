@@ -406,7 +406,8 @@ public static partial class Scheduler
             foreach (var s in repo.Sessions)
             {
                 if (s.LastWriteUtc > last && TicketActivity.Works(s.Cwd, s.TicketId, a, byFolder)) last = s.LastWriteUtc;
-                if (byFolder) continue;
+                // Checked unconditionally (M.ORCH-T1164), the same as TicketActivity.Active: a legacy worktree
+                // assignment with a quiet parent session but an actively-writing subagent must count as live too.
                 foreach (var t in s.TicketedSubagents)
                     if (t.Events.Count > 0 && t.Events[^1].AtUtc > last && TicketActivity.Works(t.Cwd, t.TicketId, a, byFolder)) last = t.Events[^1].AtUtc;
             }
