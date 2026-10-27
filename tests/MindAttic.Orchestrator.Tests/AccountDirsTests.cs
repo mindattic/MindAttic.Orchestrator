@@ -375,7 +375,9 @@ public sealed class AccountDirsTests
             new(id, @"D:\W\A", at, default, null) { Events = [new UsageEvent(at, new TokenUsage(fresh, 0, 0, 0))] };
         var sessions = new[] { Session("own", 1_000, now.AddMinutes(-2)), Session("global", 900_000, now.AddMinutes(-1)) };
         var pacer = new AccountPacer { Dirs = dirs, Probe = false, ProjectsDir = Path.Combine(dir, "no-projects") };
-        var paces = pacer.Tick(sessions, new Dictionary<string, string> { ["own"] = b.Directory }, new OrchestratorSettings(), now, now.Date, null, write: true);
+        // "Today" starts an hour back, not at now.Date: in the first minutes after UTC midnight the "own" session
+        // (two minutes old) fell on yesterday's side of now.Date and Today.Fresh read 0 (M.ORCH-T1065).
+        var paces = pacer.Tick(sessions, new Dictionary<string, string> { ["own"] = b.Directory }, new OrchestratorSettings(), now, now.AddHours(-1), null, write: true);
 
         var pace = paces.Single();
         Assert.That(pace.Email, Is.EqualTo("b@example.com"));
