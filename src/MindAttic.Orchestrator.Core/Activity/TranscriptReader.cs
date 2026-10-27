@@ -302,7 +302,8 @@ public sealed partial class TranscriptReader(string projectsDir, string? cachePa
 
     private IEnumerable<FileInfo> EnumerateTranscripts()
     {
-        var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true };
+        // Junctions aren't followed (M.ORCH-T1159): one pointing back up would walk a folder forever.
+        var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint };
         return new DirectoryInfo(projectsDir).EnumerateFiles("*.jsonl", options);
     }
 
