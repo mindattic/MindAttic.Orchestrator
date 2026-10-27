@@ -21,6 +21,7 @@
     <Thickness x:Key="SpaceHLVS">16,8,16,8</Thickness>
     <Thickness x:Key="SpaceHLVXS">16,4,16,4</Thickness>
     <Thickness x:Key="SpaceHMVXS">12,4,12,4</Thickness>
+    <Thickness x:Key="SpaceHSVXS">8,4,8,4</Thickness>
     <Thickness x:Key="SpaceLM">12,0,0,0</Thickness>
     <Thickness x:Key="SpaceLS">8,0,0,0</Thickness>
     <Thickness x:Key="SpaceLSTXS">8,4,0,0</Thickness>
