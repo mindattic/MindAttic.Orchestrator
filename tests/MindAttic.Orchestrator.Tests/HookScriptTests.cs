@@ -586,6 +586,29 @@ public sealed class HookScriptTests
     }
 
     [Test]
+    public void The_images_pasted_into_a_prompt_are_kept_beside_the_ticket_database_and_the_agent_told_to_link_them()
+    {
+        // M.ORCH-T1117: Claude Code keeps a pasted image only in %TEMP%\claude\<cwd slug>\<session>\images\<N>.png.
+        var temp = Path.Combine(dir, "tmp");
+        var images = Path.Combine(temp, "claude", System.Text.RegularExpressions.Regex.Replace(ws, "[^A-Za-z0-9]", "-"), "img1", "images");
+        Directory.CreateDirectory(images);
+        File.WriteAllBytes(Path.Combine(images, "9.png"), [1, 2, 3]);
+        File.WriteAllBytes(Path.Combine(images, "8.png"), [4]); // not in this prompt: left alone
+        Status(new { });
+        var env = new Dictionary<string, string> { ["TMPDIR"] = temp, ["TEMP"] = temp, ["TMP"] = temp, ["CLAUDE_CODE_TMPDIR"] = "" };
+        object Prompt(string prompt) => new { hook_event_name = "UserPromptSubmit", session_id = "img1", prompt, cwd = ws };
+
+        var said = Gate(Prompt("this is broken [Image #9] and [Image #12]"), env, AgentGate.ContextScriptName).Output;
+
+        var inbox = Path.Combine(ws, "MindAttic.Tickets", "data", "attachments", "_inbox", "img1");
+        var kept = Path.Combine(inbox, DateTime.Now.ToString("yyyy-MM-dd") + "-image-9.png");
+        Assert.That(File.ReadAllBytes(kept), Is.EqualTo(new byte[] { 1, 2, 3 }), "copied out of the session's temp folder");
+        Assert.That(Directory.GetFiles(inbox), Has.Length.EqualTo(1), "only the prompt's own images, and #12 isn't there to copy");
+        Assert.That(said, Does.Contain("[Images]").And.Contain(new Uri(kept).AbsoluteUri).And.Contain("tickets ticket note"));
+        Assert.That(Gate(Prompt("no pictures here"), env, AgentGate.ContextScriptName).Output, Does.Not.Contain("[Images]"));
+    }
+
+    [Test]
     public void The_status_the_daemon_writes_in_the_second_of_a_switch_is_obeyed()
     {
         // M.ORCH-T325: rl-status.json's timestamp is cut to the second; the switch is dated to the fraction.

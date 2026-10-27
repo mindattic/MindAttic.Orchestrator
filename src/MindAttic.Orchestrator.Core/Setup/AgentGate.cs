@@ -2531,6 +2531,47 @@ public static class AgentGate
             # /pacing off's mark on this CLI (see the /pacing command below): no pace holds until it closes or /pacing on.
             return bool(pid) and (DIR / ("unthrottled-" + str(pid))).exists()
 
+        # Every image you paste is kept and linked to the ticket filed from its prompt (M.ORCH-T1117). Claude Code saves a pasted
+        # image only in the session's temp folder, %TEMP%\claude\<cwd with every non-alphanumeric as ->\<session>\images\<N>.png,
+        # and the prompt says "[Image #N]" where it was. Each one is copied, once, into the ticket database's data folder (committed
+        # with it): attachments\_inbox\<session>\<yyyy-MM-dd>-image-<N>.png, and the agent is told to link it from the ticket.
+        IMAGE_MAX_BYTES = 20 * 1024 * 1024
+        def save_images(typed, sid, cwd):
+            # The line telling the agent where this prompt's images were saved; None when it has none (or none could be saved).
+            # Never raises, and gives up past a few seconds: the prompt is never held up or lost over an image.
+            try:
+                numbers = sorted({int(n) for n in re.findall(r"\[Image #(\d+)\]", typed or "")})
+                if not numbers or not re.fullmatch(r"[A-Za-z0-9_.-]+", str(sid or "")):
+                    return None
+                import shutil, tempfile
+                base = Path(os.environ.get("CLAUDE_CODE_TMPDIR") or tempfile.gettempdir()) / "claude"
+                own = base / re.sub(r"[^A-Za-z0-9]", "-", str(cwd or "")) / str(sid) / "images"
+                folders = [own] if own.is_dir() else [f for f in base.glob("*/" + str(sid) + "/images") if f.is_dir()]
+                if not folders:
+                    return None
+                inbox = Path(os.path.abspath(TICKETS_DB)).parent / "attachments" / "_inbox" / str(sid)
+                started, saved = time.monotonic(), []
+                for n in numbers:
+                    if time.monotonic() - started > 5:
+                        break
+                    src = next((f for d in folders for f in sorted(d.glob(str(n) + ".*")) if f.is_file()), None)
+                    if src is None or src.stat().st_size > IMAGE_MAX_BYTES:
+                        continue
+                    kept = next(iter(sorted(inbox.glob("*-image-" + str(n) + ".*"))), None) if inbox.is_dir() else None
+                    if kept is None:
+                        inbox.mkdir(parents=True, exist_ok=True)
+                        kept = inbox / (datetime.now().strftime("%Y-%m-%d") + "-image-" + str(n) + (src.suffix or ".png").lower())
+                        shutil.copyfile(src, kept)
+                    saved.append("[Image #" + str(n) + "] " + kept.as_uri())
+                if not saved:
+                    return None
+                return ("[Images] This prompt's images are saved: " + ", ".join(saved) + ". Link each as a markdown image, e.g. "
+                        "![image N](file:///...), in the --description of any ticket you file from this prompt, or with "
+                        "tickets ticket note <ID> \"<markdown>\" on the ticket the prompt is about. Move them first into "
+                        "attachments\\<ticket-id>\\ beside _inbox (same name) and link them there; if that's awkward, link them where they are.")
+            except Exception:
+                return None
+
         def orchestrator_start_lines(pid):
             # What SessionStart tells this CLI about itself, after the "[Billing]" line: add more here as the
             # orchestrator gains more to report at a CLI's start.
@@ -3158,6 +3199,10 @@ public static class AgentGate
                     notes.append("If this is a new task with no ticket yet, file its ticket first (tickets ticket new) before any work.")
             except Exception:
                 pass
+            # The images pasted into it, kept for good and to be linked from its ticket (M.ORCH-T1117).
+            images = save_images(typed, sid, data.get("cwd"))
+            if images:
+                notes.append(images)
             out ={"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": " ".join(notes)}} if notes else {}
             # A CLI that started before its SessionStart hook was registered is checked on its first prompt instead, and told
             # only when it's billing the key rather than the claude.ai login (M.ORCH-T434).
