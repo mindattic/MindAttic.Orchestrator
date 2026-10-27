@@ -463,6 +463,10 @@ public sealed class TerminalPanesTests
         Assert.That(pane.Badge, Is.EqualTo("AM:"));
         Assert.That(terminals.Reattach(session, request), Is.Null, "one tab per session");
 
+        var named = terminals.Reattach(session with { Id = "def456", Pipe = "mindattic-term-nobody-def456" }, request with { Alias = "Amy" });
+        Assert.That(named!.Badge, Is.EqualTo("AM:"), "initials win over the name, as on every CLI tab (M.ORCH-T1099)");
+        named.DisposeControl();
+
         terminals.OnTermSession(new Term.TermSessionEvent(session, Term.TermSessionEvents.Ended));
         Assert.That(pane.Ended, Is.True);
         pane.DisposeControl();

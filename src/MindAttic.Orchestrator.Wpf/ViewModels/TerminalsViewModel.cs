@@ -98,10 +98,9 @@ public sealed class TerminalPaneViewModel : ObservableObject
 
     public string Title => Request.Title;
 
-    /// <summary>The tab's badge chip (M.ORCH-T1071): the login's own name ("Jordan") when known, so the tab says whose CLI it
-    /// is at a glance, not just a two-letter code; its <see cref="Initials"/> badge when the name isn't known (an older saved
-    /// pane, or a sender that hasn't caught up to <see cref="PaneRequest.Alias"/> yet).</summary>
-    public string Badge => Request.Alias is { Length: > 0 } a ? $"{a}:" : Request.Initials is { Length: > 0 } i ? $"{i}:" : "";
+    /// <summary>The tab's badge chip: the login's initials ("WA:"), the same on the Launcher's tab as on every CLI's (M.ORCH-T1099,
+    /// which reversed M.ORCH-T1071's name-first badge); its name only when it has no initials.</summary>
+    public string Badge => Request.Initials is { Length: > 0 } i ? $"{i}:" : Request.Alias is { Length: > 0 } a ? $"{a}:" : "";
     public string Name => Request.IsMenu ? SessionControl.ShortName(Request.Name) : $"{SessionControl.ShortName(Request.Name)} [{Request.Provider}]";
     public string Tooltip => $"{Request.Title}\n{Request.Directory}\n{Request.Alias ?? Login ?? "global login"}";
     public Brush TabBrush { get; }
