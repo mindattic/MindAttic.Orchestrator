@@ -435,11 +435,15 @@ public partial class MainWindow : Window
             : new DoubleAnimation(exitOpacity, TimeSpan.FromSeconds(exitSeconds)));
 
     /// <summary>The least <see cref="AgentsBody"/> (and the sign-in prompt sharing its row) is ever given while the terminal
-    /// shows: enough of the 5-hour/weekly chart card (its label, 130px chart and caption) to show whole, never clipped against
-    /// the status bar below (M.ORCH-T1072, M.ORCH-T1095). Above that floor the body shares the leftover room with the terminal
-    /// (M.ORCH-T1166) rather than being pinned to it as a fixed peek, so it isn't left showing only a sliver with a dead gap
-    /// below the terminal above it. The body's own ScrollViewer (MaBodyScroll) reaches whatever's still below the fold.</summary>
-    private const double AgentsBodyPeek = 170;
+    /// shows: enough of the 5-hour/weekly chart card's own header and its 130px chart to clear the status bar below, so the
+    /// chart's own bottom axis labels (its target and projection, M.ORCH-T191) never clip against it (M.ORCH-T1072, M.ORCH-T1095,
+    /// M.ORCH-T1169). Measured, not guessed: the card's own top padding and border (11), its header row (the title and, since
+    /// M.ORCH-T1168, the 5hr/weekly limit boxes beside it — unchanged at ~41, since the boxes are shorter than the title's own
+    /// MaSectionLabel margin and never grow the row) and the chart's own top margin (8) and height (130) come to ~190 before
+    /// the caption below it, which the floor leaves to the body's own ScrollViewer (MaBodyScroll) rather than guaranteeing too.
+    /// Above this floor the body shares the leftover room with the terminal (M.ORCH-T1166) rather than being pinned to it as a
+    /// fixed peek, so it isn't left showing only a sliver with a dead gap below the terminal above it.</summary>
+    private const double AgentsBodyPeek = 190;
 
     /// <summary>How tall the terminal row is let grow while a terminal shows (M.ORCH-T1166): comfortably more than a CLI
     /// needs for its visible transcript, so scrollback and a tall prompt still have room, but not so much that a short
